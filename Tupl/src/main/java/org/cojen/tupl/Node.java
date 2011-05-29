@@ -2612,6 +2612,10 @@ final class Node extends Latch {
      * latches are acquired by this method -- it is only used for debugging.
      */
     void tracePages(NodeStore store, java.util.BitSet bits) throws IOException {
+        if (mId == 0) {
+            return;
+        }
+
         if (!bits.get((int) mId)) {
             throw new CorruptNodeException("Page already seen: " + mId);
         }

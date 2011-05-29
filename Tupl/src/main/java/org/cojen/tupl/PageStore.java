@@ -19,6 +19,8 @@ package org.cojen.tupl;
 import java.io.Closeable;
 import java.io.IOException;
 
+import java.util.BitSet;
+
 import java.util.concurrent.locks.Lock;
 
 /**
@@ -28,7 +30,7 @@ import java.util.concurrent.locks.Lock;
  *
  * @author Brian S O'Neill
  */
-public interface PageStore extends Closeable {
+interface PageStore extends Closeable {
     /**
      * Returns the fixed size of all pages in the store, in bytes.
      */
@@ -38,6 +40,11 @@ public interface PageStore extends Closeable {
      * Returns a snapshot of additional store stats.
      */
     public Stats stats();
+
+    /**
+     * Returns a BitSet where each clear bit indicates a free page.
+     */
+    public BitSet traceFreePages() throws IOException;
 
     /**
      * Reads a page without locking. Caller must ensure that a deleted page

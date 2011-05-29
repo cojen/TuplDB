@@ -19,6 +19,7 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 import java.util.Arrays;
+import java.util.BitSet;
 
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -27,7 +28,7 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  * @author Brian S O'Neill
  */
-public class PageAllocator {
+class PageAllocator {
     /*
 
     Root structure is encoded as follows, in 48 bytes:
@@ -45,10 +46,10 @@ public class PageAllocator {
     The total page count is encoded in the header, which is used to truncate
     the file if uncommitted pages were allocated at the end.
 
-    The free list stores available page ids. Deleted page ids are appended to
-    a new free list, in queue order. At commit, the new free list is stitched
-    to the existing free list in stack order. This design allows the free list
-    to updated without ever updating existing free list nodes.
+    The free list stores available page ids. Deleted page ids are appended to a
+    new free list, in queue order. At commit, the new free list is stitched to
+    the existing free list in stack order. This design allows the free list to
+    be updated without ever updating existing free list nodes.
 
     +------------------------------------------+
     | long: next free list node id             |
@@ -79,7 +80,7 @@ public class PageAllocator {
 
     private final PageArray mPageArray;
 
-    // These fields are guarded by this lock.
+    // These fields are guarded by mAllocLock.
     private final ReentrantLock mAllocLock;
     private final byte[] mFreeListHead;
     private long mFreeListHeadId;
@@ -90,7 +91,7 @@ public class PageAllocator {
     private long mFreePageCount;
     private long mTotalPageCount;
 
-    // These fields are guarded by this lock.
+    // These fields are guarded by mDeleteLock.
     private final ReentrantLock mDeleteLock;
     private final IdHeap mDeletedIds;
     private final byte[] mDeletedListTail;
@@ -157,8 +158,8 @@ public class PageAllocator {
             if (actualPageCount > totalPageCount) {
                 if (!array.isReadOnly()) {
                     // Truncate extra uncommitted pages.
-                    System.out.println("Page count is too large: "
-                                       + actualPageCount + " > " + totalPageCount);
+                    //System.out.println("Page count is too large: "
+                    //                   + actualPageCount + " > " + totalPageCount);
                     array.setPageCount(totalPageCount, false);
                 }
             } else if (actualPageCount < totalPageCount) {
@@ -180,7 +181,7 @@ public class PageAllocator {
 
         mPageArray = array;
 
-        // These locks muct be reentrant. The deletePage method can call into
+        // These locks must be reentrant. The deletePage method can call into
         // drainDeletedIds, which calls allocPage, which can re-acquire delete
         // lock. The commit method acquires both locks, and then it calls
         // drainDeletedIds, acquiring the locks again.
@@ -505,6 +506,104 @@ public class PageAllocator {
         Arrays.fill(tailBuf, end, pageSize, (byte) 0);
 
         mDeletedListTailId = newTailId;
+    }
+
+    void addTo(PageStore.Stats stats) {
+        mAllocLock.lock();
+        try {
+            stats.totalPages += mTotalPageCount;
+            stats.freePages += mFreePageCount;
+        } finally {
+            mAllocLock.unlock();
+        }
+    }
+
+    /**
+     * Clears bits representing pages which are in the free list, and set pages
+     * which are in use.
+     */
+    void traceFreePages(BitSet pages, int scalar, int offset) throws IOException {
+        {
+            int total;
+            mAllocLock.lock();
+            try {
+                total = (int) mTotalPageCount;
+            } finally {
+                mAllocLock.unlock();
+            }
+            for (int i=0; i<total; i++) {
+                pages.set(i * scalar + offset);
+            }
+        }
+
+        class NodeOffsetRef implements IntegerRef {
+            int offset;
+            public int get() {
+                return offset;
+            }
+            public void set(int v) {
+                offset = v;
+            }
+        }
+
+        NodeOffsetRef nodeOffsetRef = new NodeOffsetRef();
+
+        mAllocLock.lock();
+        try {
+            long nodeId = mFreeListHeadId;
+            if (nodeId == 0) {
+                return;
+            }
+
+            byte[] node = mFreeListHead.clone();
+            long pageId = mFreeListHeadFirstPageId;
+            nodeOffsetRef.offset = mFreeListHeadOffset;
+
+            while (true) {
+                if (!isValidPageId(pageId, mTotalPageCount)) {
+                    throw new CorruptPageStoreException
+                        ("Invalid page id in free list: " + (pageId * scalar + offset));
+                }
+
+                clearPageBit(pages, pageId, scalar, offset);
+
+                if (nodeOffsetRef.offset < node.length) {
+                    long delta = DataIO.readUnsignedVarLong(node, nodeOffsetRef);
+                    if (delta > 0) {
+                        pageId += delta;
+                        continue;
+                    }
+                }
+
+                // Indicate free list node itself as free and move to the next
+                // node in the free list.
+
+                clearPageBit(pages, nodeId, scalar, offset);
+                nodeId = DataIO.readLong(node, I_NEXT_FREE_LIST_ID);
+                if (nodeId == 0) {
+                    break;
+                }
+                nodeOffsetRef.offset = DataIO.readInt(node, I_NEXT_FREE_OFFSET);
+                pageId = DataIO.readLong(node, I_NEXT_FREE_FIRST_PAGE_ID);
+                mPageArray.readPage(nodeId, node);
+            }
+        } finally {
+            mAllocLock.unlock();
+        }
+    }
+
+    private static void clearPageBit(BitSet pages, long pageId, int scalar, int offset)
+        throws CorruptPageStoreException
+    {
+        pageId = pageId * scalar + offset;
+        int index = (int) pageId;
+        if (pages.get(index)) {
+            pages.clear(index);
+        } else {
+            if (index < pages.size()) {
+                throw new CorruptPageStoreException("Doubly freed page: " + pageId);
+            }
+        }
     }
 
     private static boolean isValidPageId(long pageId, long totalPageCount) {
