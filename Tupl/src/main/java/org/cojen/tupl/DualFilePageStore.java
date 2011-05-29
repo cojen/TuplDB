@@ -21,6 +21,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
+import java.util.BitSet;
 import java.util.UUID;
 
 import java.util.concurrent.locks.Lock;
@@ -49,7 +50,7 @@ import java.util.zip.CRC32;
  *
  * @author Brian S O'Neill
  */
-public class DualFilePageStore implements PageStore {
+class DualFilePageStore implements PageStore {
     /*
 
     Header format for first page in each file, which is always 512 bytes:
@@ -261,8 +262,18 @@ public class DualFilePageStore implements PageStore {
 
     @Override
     public Stats stats() {
-        // FIXME
-        throw null;
+        Stats stats = new Stats();
+        mAllocator0.mPageAllocator.addTo(stats);
+        mAllocator1.mPageAllocator.addTo(stats);
+        return stats;
+    }
+
+    @Override
+    public BitSet traceFreePages() throws IOException {
+        BitSet pages = new BitSet();
+        mAllocator0.mPageAllocator.traceFreePages(pages, 2, 0);
+        mAllocator1.mPageAllocator.traceFreePages(pages, 2, 1);
+        return pages;
     }
 
     @Override

@@ -350,9 +350,6 @@ final class NodeStore {
             return;
         }
 
-        // FIXME: Exclusive latch on root node causes everything to hang before callback
-        // is invoked. This affects all nodes, actually. Try to use shared latches.
-
         mPageStore.commit(new PageStore.CommitCallback() {
             @Override
             public byte[] prepare() throws IOException {
