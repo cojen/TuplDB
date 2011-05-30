@@ -118,17 +118,4 @@ final class IdHeap {
         }
         return offset;
     }
-
-    /**
-     * Remove and encode at least one id into the given buffer, up to the
-     * maximum possible. Except for the first, each id is encoded as a
-     * difference from the previous.
-     *
-     * @return new offset
-     */
-    public int drain(byte[] buffer, int offset, int length) {
-        long prevId = remove();
-        offset = DataIO.writeUnsignedVarLong(buffer, offset, prevId);
-        return drain(prevId, buffer, offset, length);
-    }
 }
