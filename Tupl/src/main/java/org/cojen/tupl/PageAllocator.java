@@ -33,15 +33,15 @@ class PageAllocator {
 
     Root structure is encoded as follows, in 48 bytes:
 
-    +------------------------------------------+
-    | int:  reserved; must be zero             |
-    | long: total page count                   |
-    | long: free page count                    |
-    | long: free list page count               |
-    | long: first free list node id            |
-    | int:  first free node offset             |
-    | long: first free node first free page id | (seed for deltas)
-    +------------------------------------------+
+    +------------------------------------------------------------+
+    | int:  reserved; must be zero                               |
+    | long: total page count                                     |
+    | long: free page count                                      |
+    | long: free list page count                                 |
+    | long: first free list node id                              |
+    | int:  first free node offset                               |
+    | long: first free node first free page id (seed for deltas) |
+    +------------------------------------------------------------+
 
     The total page count is encoded in the header, which is used to truncate
     the file if uncommitted pages were allocated at the end.
@@ -51,15 +51,15 @@ class PageAllocator {
     the existing free list in stack order. This design allows the free list to
     be updated without ever updating existing free list nodes.
 
-    +------------------------------------------+
-    | long: next free list node id             |
-    | int:  next free node offset              |
-    | long: next free node first free page id  | (seed for deltas)
-    +------------------------------------------+
-    | remaining free page ids (delta encoded)  |
-    -                                          -
-    |                                          |
-    +------------------------------------------+
+    +-----------------------------------------------------------+
+    | long: next free list node id                              |
+    | int:  next free node offset                               |
+    | long: next free node first free page id (seed for deltas) |
+    +-----------------------------------------------------------+
+    | remaining free page ids (delta encoded)                   |
+    -                                                           -
+    |                                                           |
+    +-----------------------------------------------------------+
 
     */
 
