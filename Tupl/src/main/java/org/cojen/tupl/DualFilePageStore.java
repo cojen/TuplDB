@@ -62,8 +62,9 @@ class DualFilePageStore implements PageStore {
     | int:  commit number                      |
     | int:  checksum                           |
     | allocator header (48 bytes)              |
+    | foreign free pages header (40 bytes)     |
     +------------------------------------------+
-    | reserved (180 bytes)                     |
+    | reserved (140 bytes)                     |
     +------------------------------------------+
     | extra data (256 bytes)                   |
     +------------------------------------------+
@@ -91,19 +92,39 @@ class DualFilePageStore implements PageStore {
 
     private final ReadWriteLock mCommitLock;
     // Commit number is the highest one which has been committed.
-    private int mCommitNumber;
+    private volatile int mCommitNumber;
 
     private static class Allocator {
         final PageAllocator mPageAllocator;
-        final long mFlag;
+        final long mIdFlag;
+        final ForeignPageQueue mForeignPages;
+        final long mForeignIdFlag;
 
-        Allocator(PageAllocator pageAllocator, int flag) {
+        Allocator(PageAllocator pageAllocator, int idFlag, ForeignPageQueue foreignPages) {
             mPageAllocator = pageAllocator;
-            mFlag = flag;
+            mIdFlag = idFlag;
+            mForeignPages = foreignPages;
+            mForeignIdFlag = idFlag ^ 1;
         }
 
         long allocPage() throws IOException {
-            return (mPageAllocator.allocPage() << 1) | mFlag;
+            return (mPageAllocator.allocPage() << 1) | mIdFlag;
+        }
+
+        long allocForeignPage() throws IOException {
+            long id = mForeignPages.allocPage();
+            return id == 0 ? 0 : ((id << 1) | mForeignIdFlag);
+        }
+
+        void addTo(Stats stats) {
+            mPageAllocator.addTo(stats);
+            mForeignPages.addTo(stats);
+        }
+
+        void tracePages(BitSet pages) throws IOException {
+            mPageAllocator.tracePages(pages, 2, (int) mIdFlag);
+            // FIXME
+            //mForeignPages.tracePages(pages, 2, ((int) mIdFlag) ^ 1);
         }
     }
 
@@ -111,8 +132,9 @@ class DualFilePageStore implements PageStore {
     private final Allocator mAllocator1;
 
     private Allocator mActivateAllocator;
+    private Allocator mInactivateAllocator;
 
-    private IdStack mPendingDeletes;
+    private boolean mAllowForeignAllocations;
 
     private static class FPA extends FilePageArray {
         FPA(File file, boolean readOnly, int pageSize, int openFileCount) throws IOException {
@@ -167,6 +189,7 @@ class DualFilePageStore implements PageStore {
 
         long uid;
         PageAllocator allocator0, allocator1;
+        ForeignPageQueue foreignPages0, foreignPages1;
         int commitNumber0, commitNumber1;
 
         try {
@@ -178,6 +201,9 @@ class DualFilePageStore implements PageStore {
                 // Newly created files.
                 allocator0 = new PageAllocator(mPageArray0, 1);
                 allocator1 = new PageAllocator(mPageArray1, 1);
+
+                foreignPages0 = new ForeignPageQueue(allocator0);
+                foreignPages1 = new ForeignPageQueue(allocator1);
 
                 UUID uuid = UUID.randomUUID();
                 uid = (uuid.getMostSignificantBits() ^ uuid.getLeastSignificantBits()) & ~1;
@@ -229,6 +255,11 @@ class DualFilePageStore implements PageStore {
 
                 allocator0 = new PageAllocator(mPageArray0, header0, I_ALLOCATOR_HEADER);
                 allocator1 = new PageAllocator(mPageArray1, header1, I_ALLOCATOR_HEADER);
+
+                foreignPages0 = new ForeignPageQueue
+                    (allocator0, header0, I_ALLOCATOR_HEADER + allocator0.headerSize());
+                foreignPages1 = new ForeignPageQueue
+                    (allocator1, header1, I_ALLOCATOR_HEADER + allocator1.headerSize());
             }
         } catch (Throwable e) {
             throw closeOnFailure(e);
@@ -240,16 +271,25 @@ class DualFilePageStore implements PageStore {
 
         mCommitLock.writeLock().lock();
         try {
-            mAllocator0 = new Allocator(allocator0, 0);
-            mAllocator1 = new Allocator(allocator1, 1);
+            mAllocator0 = new Allocator(allocator0, 0, foreignPages0);
+            mAllocator1 = new Allocator(allocator1, 1, foreignPages1);
 
             if (commitNumber0 < commitNumber1) {
                 mCommitNumber = commitNumber1;
                 mActivateAllocator = mAllocator0;
+                mInactivateAllocator = mAllocator1;
             } else {
                 mCommitNumber = commitNumber0;
                 mActivateAllocator = mAllocator1;
+                mInactivateAllocator = mAllocator0;
             }
+
+            // Drain all foreign pages from active file, since they were all
+            // transfered to the other file when last committed.
+            ForeignPageQueue foreignPages = mActivateAllocator.mForeignPages;
+            while (foreignPages.allocPage() != 0);
+
+            mAllowForeignAllocations = true;
         } finally {
             mCommitLock.writeLock().unlock();
         }
@@ -263,16 +303,16 @@ class DualFilePageStore implements PageStore {
     @Override
     public Stats stats() {
         Stats stats = new Stats();
-        mAllocator0.mPageAllocator.addTo(stats);
-        mAllocator1.mPageAllocator.addTo(stats);
+        mAllocator0.addTo(stats);
+        mAllocator1.addTo(stats);
         return stats;
     }
 
     @Override
-    public BitSet traceFreePages() throws IOException {
+    public BitSet tracePages() throws IOException {
         BitSet pages = new BitSet();
-        mAllocator0.mPageAllocator.traceFreePages(pages, 2, 0);
-        mAllocator1.mPageAllocator.traceFreePages(pages, 2, 1);
+        mAllocator0.tracePages(pages);
+        mAllocator1.tracePages(pages);
         return pages;
     }
 
@@ -319,7 +359,12 @@ class DualFilePageStore implements PageStore {
     public long reservePage() throws IOException {
         mCommitLock.readLock().lock();
         try {
-            return mActivateAllocator.allocPage();
+            long id;
+            if (mAllowForeignAllocations && (id = mInactivateAllocator.allocForeignPage()) != 0) {
+                return id;
+            } else {
+                return mActivateAllocator.allocPage();
+            }
         } catch (Throwable e) {
             throw closeOnFailure(e);
         } finally {
@@ -348,14 +393,10 @@ class DualFilePageStore implements PageStore {
         id >>= 1;
         mCommitLock.readLock().lock();
         try {
-            IdStack pending;
-            if (allocator == mActivateAllocator || (pending = mPendingDeletes) == null) {
+            if (allocator == mActivateAllocator) {
                 allocator.mPageAllocator.deletePage(id);
             } else {
-                // Don't delete until commit finishes.
-                synchronized (pending) {
-                    pending.add(id);
-                }
+                mActivateAllocator.mForeignPages.deletePage(id);
             }
         } catch (Throwable e) {
             throw closeOnFailure(e);
@@ -376,28 +417,43 @@ class DualFilePageStore implements PageStore {
 
     @Override
     public void commit(CommitCallback callback) throws IOException {
-        final IdStack pendingDeletes = new IdStack();
-        long uid = mUid;
-
+        // Transfer all remaining foreign pages from inactive file into active
+        // file, in preparation for committing them. Since the inactive
+        // allocator isn't committed at this time, these foreign pages must be
+        // drained at startup to ensure pages aren't double allocated.
+        mCommitLock.readLock().lock();
+        try {
+            PageAllocator active = mActivateAllocator.mPageAllocator;
+            ForeignPageQueue inactive = mInactivateAllocator.mForeignPages;
+            long id;
+            while ((id = inactive.allocPage()) != 0) {
+                active.deletePage(id);
+            }
+        } catch (Throwable e) {
+            throw closeOnFailure(e);
+        } finally {
+            mCommitLock.readLock().unlock();
+        }
+ 
         mCommitLock.writeLock().lock();
         mCommitLock.readLock().lock();
 
-        int commitNumber = mCommitNumber + 1;
+        final Allocator lastAllocator = mActivateAllocator;
 
-        final PageAllocator lastAllocator;
-        if (mActivateAllocator == mAllocator0) {
-            uid &= ~1;
-            lastAllocator = mAllocator0.mPageAllocator;
+        final long uid;
+        if (lastAllocator == mAllocator0) {
             mActivateAllocator = mAllocator1;
+            uid = mUid & ~1;
         } else {
-            uid |= 1;
-            lastAllocator = mAllocator1.mPageAllocator;
             mActivateAllocator = mAllocator0;
+            uid = mUid | 1;
         }
 
-        // Deletes against the last file must be queued during commit, since
-        // they are not part of the commit.
-        mPendingDeletes = pendingDeletes;
+        mInactivateAllocator = lastAllocator;
+        final int commitNumber = mCommitNumber + 1;
+
+        // Prevent modifications to the file being committed.
+        mAllowForeignAllocations = false;
 
         // Downgrade and keep read lock. This prevents another commit from
         // starting concurrently.
@@ -406,19 +462,28 @@ class DualFilePageStore implements PageStore {
         // At this point, all allocations go to the other file. The previously
         // active file will become the highest committed file. The first flush
         // operation is slow, and it is performed without locks held. Since the
-        // last file is not being used for allocations, and deletes are queued,
-        // it won't be modified during the flush.
+        // last file is not being used for allocations, it won't be modified
+        // during the flush.
 
         try {
+            byte[] header = new byte[pageSize()];
+
+            // FIXME: comment is wrong
+            // Although this commit might block writing a few pages, it is
+            // necessary to do this with exclusive lock held to prevent
+            // foreign allocations from the newly inactive allocator.
+            lastAllocator.mForeignPages.commit
+                (header, I_ALLOCATOR_HEADER + lastAllocator.mPageAllocator.headerSize(), null);
+
             // Invoke the callback to ensure all dirty pages get written.
             byte[] extra = callback == null ? null : callback.prepare();
 
             // Ensure all writes are flushed before flushing the
             // header. There's otherwise no ordering guarantees. This is also
             // the slowest step in the entire commit sequence.
-            lastAllocator.pageArray().flush();
+            lastAllocator.mPageAllocator.pageArray().flush();
 
-            commitHeader(lastAllocator, uid, commitNumber, extra);
+            commitHeader(header, lastAllocator.mPageAllocator, uid, commitNumber, extra);
 
             mCommitNumber = commitNumber;
         } catch (Throwable e) {
@@ -427,21 +492,9 @@ class DualFilePageStore implements PageStore {
             mCommitLock.readLock().unlock();
         }
 
-        // Now apply all the pending deletes that occurred during the commit.
-
         mCommitLock.writeLock().lock();
-        try {
-            mPendingDeletes = null;
-        } finally {
-            mCommitLock.writeLock().unlock();
-        }
-
-        synchronized (pendingDeletes) {
-            int size = pendingDeletes.size();
-            for (int i=0; i<size; i++) {
-                lastAllocator.deletePage(pendingDeletes.remove());
-            }
-        }
+        mAllowForeignAllocations = true;
+        mCommitLock.writeLock().unlock();
     }
 
     @Override
@@ -485,14 +538,24 @@ class DualFilePageStore implements PageStore {
         throw Utils.closeOnFailure(this, e);
     }
 
-    private static void commitHeader(PageAllocator allocator,
-                                     long uid,
-                                     int commitNumber,
-                                     byte[] extra)
+    private static void commitHeader(final PageAllocator allocator,
+                                     final long uid,
+                                     final int commitNumber,
+                                     final byte[] extra)
+        throws IOException
+    {
+        commitHeader(new byte[allocator.pageArray().pageSize()],
+                     allocator, uid, commitNumber, extra);
+    }
+
+    private static void commitHeader(final byte[] header,
+                                     final PageAllocator allocator,
+                                     final long uid,
+                                     final int commitNumber,
+                                     final byte[] extra)
         throws IOException
     {
         final PageArray array = allocator.pageArray();
-        final byte[] header = new byte[array.pageSize()];
 
         DataIO.writeLong(header, I_MAGIC_NUMBER, MAGIC_NUMBER);
         DataIO.writeLong(header, I_FILE_UID, uid);
@@ -506,7 +569,7 @@ class DualFilePageStore implements PageStore {
 
         allocator.commit(header, I_ALLOCATOR_HEADER, new PageAllocator.CommitReady() {
             @Override
-            public void ready(int headerSize) throws IOException {
+            public void ready(int newOffset) throws IOException {
                 // Durably write the new page store header before returning
                 // from this method, to ensure that the allocator doesn't start
                 // returning uncommitted pages. This would prevent rollback
