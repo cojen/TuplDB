@@ -44,7 +44,7 @@ interface PageStore extends Closeable {
     /**
      * Returns a BitSet where each clear bit indicates a free page.
      */
-    public BitSet traceFreePages() throws IOException;
+    public BitSet tracePages() throws IOException;
 
     /**
      * Reads a page without locking. Caller must ensure that a deleted page
