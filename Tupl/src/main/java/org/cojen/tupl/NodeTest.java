@@ -112,8 +112,16 @@ public class NodeTest {
         byte[] bkey = key.getBytes();
         byte[] bvalue = value.getBytes();
 
-        boolean inserted = root.insert(store, bkey, bvalue);
-        //System.out.println(inserted);
+        boolean inserted = root.store(store, bkey, bvalue);
+        if (!inserted) {
+            boolean deleted = root.store(store, bkey, null);
+            return;
+            //System.out.println(deleted);
+            /*
+            inserted = root.store(store, bkey, bvalue);
+            assertTrue(inserted);
+            */
+        }
 
         byte[] fvalue = root.search(store, bkey);
         try {

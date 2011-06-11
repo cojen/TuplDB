@@ -354,30 +354,32 @@ final class Node extends Latch {
     }
 
     /**
-     * Root insert.
+     * Root insert or delete.
      *
-     * @param key insert key
-     * @param value insert value 
+     * @param key key to store
+     * @param value value to store; null to delete
      * @return false if entry already exists
      */
-    boolean insert(NodeStore store, byte[] key, byte[] value) throws IOException {
+    boolean store(NodeStore store, byte[] key, byte[] value) throws IOException {
         final Lock sharedCommitLock = store.sharedCommitLock();
         sharedCommitLock.lock();
         try {
             acquireShared();
 
+            // FIXME: Deletes need to merge nodes.
+
             if (isLeaf()) {
                 if (tryUpgrade()) {
-                    return subInsertLeafRoot(store, key, value);
+                    return subStoreLeafRoot(store, key, value);
                 }
             } else if (store.shouldMarkDirty(this)) {
                 // Mark root node dirty.
                 if (tryUpgrade()) {
                     store.markDirty(this);
-                    return subInsert(this, null, store, key, value, true) != FAILED;
+                    return subStore(this, null, store, key, value, true) != FAILED;
                 }
             } else {
-                return subInsert(this, null, store, key, value, false) != FAILED;
+                return subStore(this, null, store, key, value, false) != FAILED;
             }
 
             // This point is reached if an exclusive latch is required, but was not
@@ -387,9 +389,9 @@ final class Node extends Latch {
             store.markDirty(this);
 
             if (isLeaf()) {
-                return subInsertLeafRoot(store, key, value);
+                return subStoreLeafRoot(store, key, value);
             } else {
-                return subInsert(this, null, store, key, value, true) != FAILED;
+                return subStore(this, null, store, key, value, true) != FAILED;
             }
         } finally {
             sharedCommitLock.unlock();
@@ -397,19 +399,19 @@ final class Node extends Latch {
     }
 
     /**
-     * Sub insert into internal node with shared or exclusive latch held. Latch is
+     * Sub store into internal node with shared or exclusive latch held. Latch is
      * released by the time this method returns.
      *
      * @param parentLatch shared latch held on parent; is null for root or if
      * exclusive latch is held on this node
-     * @param key insert key
-     * @param value insert value
+     * @param key key to store
+     * @param value value to store; null to delete
      * @param exclusiveHeld is true if exclusive latch is held on this node
      * @return FAILED, SUCCESS, or SPLIT
      */
-    private static int subInsert(Node node, Latch parentLatch,
-                                 NodeStore store, byte[] key, byte[] value,
-                                 boolean exclusiveHeld)
+    private static int subStore(Node node, Latch parentLatch,
+                                NodeStore store, byte[] key, byte[] value,
+                                boolean exclusiveHeld)
         throws IOException
     {
         // Caller invokes store.used for this Node. Root node is not managed in
@@ -424,8 +426,8 @@ final class Node extends Latch {
             if (childPos < 0) {
                 childPos = ~childPos;
             } else {
-                // FIXME: Should short-circuit, but delete implementation
-                // currently doesn't remove internal nodes.
+                // FIXME: Should short-circuit for inserts, but delete
+                // implementation currently doesn't remove internal nodes.
                 /*
                   if (parentLatch != null) {
                       parentLatch.releaseShared();
@@ -438,6 +440,8 @@ final class Node extends Latch {
 
             Node childNode = node.mChildNodes[childPos >> 1];
             childId = node.retrieveChildRefId(childPos);
+
+            // FIXME: This code needs to support node merges.
 
             c2: {
                 c3: if (childNode != null && childId == childNode.mId) {
@@ -469,9 +473,9 @@ final class Node extends Latch {
 
                         store.used(childNode);
 
-                        int subChildPos = childNode.subInsertLeafCheck(key);
+                        int subChildPos = childNode.subStoreLeafCheck(key, value);
                         if (subChildPos < 0) {
-                            // Child already exists; latch has been released by check method.
+                            // Failed store check; latch has been released by check method.
                             if (parentLatch != null) {
                                 parentLatch.releaseShared();
                             }
@@ -500,7 +504,7 @@ final class Node extends Latch {
                         long id = node.mId;
                         node.release(exclusiveHeld);
 
-                        if (childNode.subInsertLeaf(store, key, value, subChildPos) != null) {
+                        if (childNode.subStoreLeaf(store, key, value, subChildPos) != null) {
                             return finishSplit(node, store, id, key, childPos, childNode);
                         }
 
@@ -573,14 +577,14 @@ final class Node extends Latch {
                         int result;
                         if (childExclusive) {
                             node.release(exclusiveHeld);
-                            result = subInsert(childNode, null, store, key, value, true);
+                            result = subStore(childNode, null, store, key, value, true);
                         } else {
                             // Keep shared latch on this parent node, in case
                             // sub search needs to upgrade its shared latch.
                             if (exclusiveHeld) {
                                 node.downgrade();
                             }
-                            result = subInsert(childNode, node, store, key, value, false);
+                            result = subStore(childNode, node, store, key, value, false);
                         }
 
                         if (result == SPLIT) {
@@ -620,7 +624,7 @@ final class Node extends Latch {
                 // possible that a delete slipped in when the latch was
                 // released, and that the root is now a leaf.
                 if (node.isLeaf()) {
-                    return node.subInsertLeafRoot(store, key, value) ? SUCCESS : FAILED;
+                    return node.subStoreLeafRoot(store, key, value) ? SUCCESS : FAILED;
                 }
             }
         } // end c1
@@ -640,9 +644,9 @@ final class Node extends Latch {
         }
 
         if (childNode.isLeaf()) {
-            int subChildPos = childNode.subInsertLeafCheck(key);
+            int subChildPos = childNode.subStoreLeafCheck(key, value);
             if (subChildPos < 0) {
-                // Child already exists; latch has been released by check method.
+                // Failed store check; latch has been released by check method.
                 node.releaseExclusive();
                 return FAILED;
             }
@@ -655,7 +659,7 @@ final class Node extends Latch {
             long id = node.mId;
             node.releaseExclusive();
 
-            if (childNode.subInsertLeaf(store, key, value, subChildPos) != null) {
+            if (childNode.subStoreLeaf(store, key, value, subChildPos) != null) {
                 return finishSplit(node, store, id, key, childPos, childNode);
             }
 
@@ -670,7 +674,7 @@ final class Node extends Latch {
             long id = node.mId;
             node.releaseExclusive();
 
-            int result = subInsert(childNode, null, store, key, value, true);
+            int result = subStore(childNode, null, store, key, value, true);
 
             if (result == SPLIT) {
                 result = finishSplit(node, store, id, key, childPos, childNode);
@@ -681,43 +685,82 @@ final class Node extends Latch {
     }
 
     /**
-     * Check if insert into leaf will succeed, with exclusive latch held. Latch is
-     * released if negative value is returned.
+     * Check if leaf store or delete will succeed, with exclusive latch
+     * held. Latch is released if negative value is returned.
      *
-     * @return -1 if entry already exists or else non-negative child insert position
+     * @return -1 if check failed, else non-negative child position
      */
-    private int subInsertLeafCheck(byte[] key) {
+    private int subStoreLeafCheck(byte[] key, byte[] value) {
         int childPos = binarySearchLeaf(key);
-        if (childPos >= 0) {
-            releaseExclusive();
-            return -1;
+        if (childPos < 0) {
+            if (value != null) {
+                // Insert will succeed.
+                return ~childPos;
+            }
+        } else {
+            if (value == null) {
+                // Delete will succeed.
+                return childPos;
+            }
         }
-        return ~childPos;
+        releaseExclusive();
+        return -1;
     }
 
     /**
-     * Sub insert into leaf with exclusive latch held. Latch is released by the
+     * Sub store into leaf with exclusive latch held. Latch is released by the
      * time this method returns.
      *
-     * @param key insert key
-     * @param value insert value
+     * @param key key to store
+     * @param value value to store; null to delete
      * @return false if entry already exists
      */
-    private boolean subInsertLeafRoot(NodeStore store, byte[] key, byte[] value)
+    private boolean subStoreLeafRoot(NodeStore store, byte[] key, byte[] value)
         throws IOException
     {
-        int childPos = subInsertLeafCheck(key);
+        int childPos = subStoreLeafCheck(key, value);
         if (childPos < 0) {
-            // Child already exists; latch has been released by check method.
+            // Failed store check; latch has been released by check method.
             return false;
         }
+
         store.markDirty(this);
-        insertLeafEntry(store, childPos, key, value);
-        if (mSplit != null) {
-            finishSplitRoot(store);
+
+        if (value == null) {
+            deleteLeafEntry(childPos);
+        } else {
+            insertLeafEntry(store, childPos, key, value);
+            if (mSplit != null) {
+                finishSplitRoot(store);
+            }
         }
+
         releaseExclusive();
         return true;
+    }
+
+    /**
+     * Sub store into leaf with exclusive latch held. Latch is released by the time this
+     * method returns.
+     *
+     * @param key key to store
+     * @param value value to store; null to delete
+     * @param childPos child position from check method
+     * @return non-null if split
+     */
+    private Object subStoreLeaf(NodeStore store, byte[] key, byte[] value, int childPos)
+        throws IOException
+    {
+        Object split;
+        if (value == null) {
+            deleteLeafEntry(childPos);
+            split = null;
+        } else {
+            insertLeafEntry(store, childPos, key, value);
+            split = mSplit;
+        }
+        releaseExclusive();
+        return split;
     }
 
     /**
@@ -857,24 +900,6 @@ final class Node extends Latch {
         node.releaseExclusive();
 
         return result;
-    }
-
-    /**
-     * Sub insert into leaf with exclusive latch held. Latch is released by the time this
-     * method returns.
-     *
-     * @param key insert key
-     * @param value insert value
-     * @param childPos child position from check method
-     * @return non-null if split
-     */
-    private Object subInsertLeaf(NodeStore store, byte[] key, byte[] value, int childPos)
-        throws IOException
-    {
-        insertLeafEntry(store, childPos, key, value);
-        Split split = mSplit;
-        releaseExclusive();
-        return split;
     }
 
     /**
@@ -1387,7 +1412,8 @@ final class Node extends Latch {
         int searchVecEnd = mSearchVecEnd;
 
         int leftSpace = searchVecStart - mLeftSegTail;
-        int rightSpace = mRightSegTail - searchVecEnd - ((searchVecEnd - searchVecStart) << 2) - 17;
+        int rightSpace = mRightSegTail - searchVecEnd
+            - ((searchVecEnd - searchVecStart) << 2) - 17;
 
         int encodedLen = split.splitKeyEncodedLength();
 
@@ -2163,7 +2189,8 @@ final class Node extends Latch {
                 // Copy existing child ids and insert new child id.
                 {
                     int newDestLoc = newSearchVecLoc;
-                    System.arraycopy(page, searchVecEnd + 2, newPage, newSearchVecLoc, newChildPos);
+                    System.arraycopy(page, searchVecEnd + 2,
+                                     newPage, newSearchVecLoc, newChildPos);
 
                     // Leave gap for new child id, to be set by caller.
                     result.mNewChildPos = newSearchVecLoc + newChildPos;
@@ -2277,7 +2304,8 @@ final class Node extends Latch {
                     newDestLoc += headChildIdsLen;
                     result.mNewChildPos = newDestLoc;
 
-                    int tailChildIdsLen = ((searchVecEnd - searchVecStart) << 2) + 16 - newChildPos;
+                    int tailChildIdsLen =
+                        ((searchVecEnd - searchVecStart) << 2) + 16 - newChildPos;
                     System.arraycopy(page, searchVecEnd + 2 + newChildPos,
                                      newPage, newDestLoc + 8, tailChildIdsLen);
 
@@ -2323,7 +2351,8 @@ final class Node extends Latch {
      * @param keyPos normalized search vector position of key to insert
      * @param childPos normalized search vector position of child node id to insert
      */
-    private InSplitResult compactInternal(NodeStore store, int encodedLen, int keyPos, int childPos)
+    private InSplitResult compactInternal(NodeStore store,
+                                          int encodedLen, int keyPos, int childPos)
         throws InterruptedIOException
     {
         byte[] page = mPage;
@@ -2393,7 +2422,7 @@ final class Node extends Latch {
 
     /**
      * Provides information necessary to complete split by copying split key, pointer to
-     * split key, and pointer to new child id,
+     * split key, and pointer to new child id.
      */
     private static class InSplitResult {
         byte[] mPage;
