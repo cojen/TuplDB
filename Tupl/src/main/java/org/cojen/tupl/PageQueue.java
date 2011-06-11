@@ -484,9 +484,16 @@ abstract class PageQueue {
     }
 
     /**
-     * Clears bits representing pages which are in the free list.
+     * Clears bits representing pages which are in the free list. Pages in the
+     * deleted list are not traced.
      */
-    void tracePages(BitSet pages, int scalar, int offset) throws IOException {
+    int traceFreePages(BitSet pages,
+                       int scalar, int offset,
+                       int fnScalar, int fnOffset)
+        throws IOException
+    {
+        int count = 0;
+
         class NodeOffsetRef implements IntegerRef {
             int offset;
             public int get() {
@@ -503,7 +510,7 @@ abstract class PageQueue {
         try {
             long nodeId = mFreeListHeadId;
             if (nodeId == 0) {
-                return;
+                return count;
             }
 
             byte[] node = mFreeListHead.clone();
@@ -516,6 +523,7 @@ abstract class PageQueue {
                         ("Invalid page id in free list: " + (pageId * scalar + offset));
                 }
 
+                count++;
                 clearPageBit(pages, pageId, scalar, offset);
 
                 if (nodeOffsetRef.offset < node.length) {
@@ -529,7 +537,8 @@ abstract class PageQueue {
                 // Indicate free list node itself as free and move to the next
                 // node in the free list.
 
-                clearPageBit(pages, nodeId, scalar, offset);
+                count++;
+                clearPageBit(pages, nodeId, fnScalar, fnOffset);
                 nodeId = DataIO.readLong(node, I_NEXT_FREE_LIST_ID);
                 if (nodeId == 0) {
                     break;
@@ -541,6 +550,8 @@ abstract class PageQueue {
         } finally {
             mAllocLock.unlock();
         }
+
+        return count;
     }
 
     private static void clearPageBit(BitSet pages, long pageId, int scalar, int offset)
