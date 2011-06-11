@@ -118,26 +118,6 @@ class PageAllocator extends PageQueue {
         }
     }
 
-    /**
-     * Clears bits representing pages which are in the free list, and sets pages
-     * which are in use.
-     */
-    @Override
-    void tracePages(BitSet pages, int scalar, int offset) throws IOException {
-        Lock lock = allocLock();
-        lock.lock();
-        try {
-            int limit = (Integer.MAX_VALUE - offset) / scalar;
-            int total = (int) Math.min(mTotalPageCount, limit);
-            for (int i=0; i<total; i++) {
-                pages.set(i * scalar + offset);
-            }
-            super.tracePages(pages, scalar, offset);
-        } finally {
-            lock.unlock();
-        }
-    }
-
     @Override
     long createPage() throws IOException {
         long id = mTotalPageCount++;
@@ -159,5 +139,22 @@ class PageAllocator extends PageQueue {
     @Override
     void deleteQueuePage(long id) throws IOException {
         deletePage(id);
+    }
+
+    /**
+     * Sets a bit for each page.
+     */
+    void markAllPages(BitSet pages, int scalar, int offset) throws IOException {
+        Lock lock = allocLock();
+        lock.lock();
+        try {
+            int limit = (Integer.MAX_VALUE - offset) / scalar;
+            int total = (int) Math.min(mTotalPageCount, limit);
+            for (int i=0; i<total; i++) {
+                pages.set(i * scalar + offset);
+            }
+        } finally {
+            lock.unlock();
+        }
     }
 }

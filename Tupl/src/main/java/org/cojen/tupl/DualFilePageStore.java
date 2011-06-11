@@ -121,10 +121,14 @@ class DualFilePageStore implements PageStore {
             mForeignPages.addTo(stats);
         }
 
-        void tracePages(BitSet pages) throws IOException {
-            mPageAllocator.tracePages(pages, 2, (int) mIdFlag);
-            // FIXME
-            //mForeignPages.tracePages(pages, 2, ((int) mIdFlag) ^ 1);
+        void markAllPages(BitSet pages) throws IOException {
+            mPageAllocator.markAllPages(pages, 2, (int) mIdFlag);
+        }
+
+        int traceFreePages(BitSet pages) throws IOException {
+            int count = mPageAllocator.traceFreePages(pages, 2, (int) mIdFlag, 2, (int) mIdFlag);
+            count += mForeignPages.traceFreePages(pages, 2, ((int) mIdFlag) ^ 1, 2, (int) mIdFlag);
+            return count;
         }
     }
 
@@ -285,7 +289,9 @@ class DualFilePageStore implements PageStore {
             }
 
             // Drain all foreign pages from active file, since they were all
-            // transfered to the other file when last committed.
+            // transfered to the other file when last committed. This
+            // essentially just deletes all the pages in the free list,
+            // although not in the most efficient manner.
             ForeignPageQueue foreignPages = mActivateAllocator.mForeignPages;
             while (foreignPages.allocPage() != 0);
 
@@ -311,8 +317,10 @@ class DualFilePageStore implements PageStore {
     @Override
     public BitSet tracePages() throws IOException {
         BitSet pages = new BitSet();
-        mAllocator0.tracePages(pages);
-        mAllocator1.tracePages(pages);
+        mAllocator0.markAllPages(pages);
+        mAllocator1.markAllPages(pages);
+        int count = mAllocator0.traceFreePages(pages);
+        count += mAllocator1.traceFreePages(pages);
         return pages;
     }
 
