@@ -16,8 +16,10 @@
 
 package org.cojen.tupl;
 
+import java.io.IOException;
+
 /**
- * Ideas for a generic cursor.
+ *
  *
  * @author Brian S O'Neill
  */
@@ -31,7 +33,7 @@ public interface Cursor {
      *
      * @throws IllegalStateException if key position is undefined
      */
-    byte[] getKey();
+    byte[] getKey() throws IOException;
 
     /**
      * Returns the value at the cursor's position. Null is returned for
@@ -41,7 +43,7 @@ public interface Cursor {
      *
      * @throws IllegalStateException if key position is undefined
      */
-    byte[] getValue();
+    byte[] getValue() throws IOException;
 
     /**
      * Set the value at the cursor's position. A null value deletes the entry.
@@ -50,108 +52,28 @@ public interface Cursor {
      *
      * @throws IllegalStateException if key position is undefined or if key is null
      */
-    void setValue(byte[] value);
+    void setValue(byte[] value) throws IOException;
 
     /**
-     * Move the cursor to the given key, returning true if it exists. An empty
-     * key moves to the first possible entry, and a null key moves past the
-     * greatest possible key. No value can be mapped to a null key.
+     * Move the cursor to find the given key, returning true if it exists. An
+     * empty key moves to the first possible entry, and a null key moves past
+     * the greatest possible key. No value can be mapped to a null key.
      *
      * <p>cost: O(log n)
      */
-    boolean move(byte[] key);
+    boolean find(byte[] key) throws IOException;
 
     /**
-     * Advances to the cursor to the next available entry, unless none
-     * exists. If false is returned, the current key remains unchanged.
+     * Move the cursor by a relative amount of entries, which may be less if
+     * not enough entries exist. Pass a positive amount for forward movement,
+     * and pass a negative amount for reverse movement.
      *
-     * <p>cost: O(1)
+     * <p>cost: O(|amount|)
      *
+     * @return actual amount moved
      * @throws IllegalStateException if key position is undefined
      */
-    boolean next();
-
-    /**
-     * Advances to the cursor to the previous available entry, unless none
-     * exists. If false is returned, the current key remains unchanged.
-     *
-     * <p>cost: O(1)
-     *
-     * @throws IllegalStateException if key position is undefined
-     */
-    boolean previous();
-
-    /**
-     * Move the cursor to the first available entry greater than or equal to
-     * the given key. If false is returned, the cursor is at positioned at the
-     * given key.
-     *
-     * <pre>
-     * return move(key) ? true : next();
-     * </pre>
-     */
-    boolean moveGe(byte[] key);
-
-    /**
-     * Move the cursor to the first available entry less than or equal to
-     * the given key. If false is returned, the cursor is at positioned at the
-     * given key.
-     *
-     * <pre>
-     * return move(key) ? true : previous();
-     * </pre>
-     *
-     * <p>cost: O(log n)
-     */
-    boolean moveLe(byte[] key);
-
-    /**
-     * Move the cursor to the first available entry less than the given key. If
-     * false is returned, the cursor is at positioned at the given key.
-     *
-     * <pre>
-     * move(key); return previous();
-     * </pre>
-     *
-     * <p>cost: O(log n)
-     */
-    boolean moveLt(byte[] key);
-
-    /**
-     * Move the cursor to the first available entry greater than the given
-     * key. If false is returned, the cursor is at positioned at the given key.
-     *
-     * <pre>
-     * move(key); return next();
-     * </pre>
-     *
-     * <p>cost: O(log n)
-     */
-    boolean moveGt(byte[] key);
-
-    /**
-     * Moves the cursor to the first available entry, unless none exists. If
-     * false is returned, the current key is empty.
-     *
-     * <pre>
-     * return moveGe(new byte[0]);
-     * </pre>
-     *
-     * <p>cost: O(log n)
-     */
-    boolean first();
-
-    /**
-     * Moves the cursor to the last available entry, unless none exists. If
-     * false is returned, the current key is null.
-     *
-     * <pre>
-     * return moveLt(null);
-     * </pre>
-     *
-     * <p>cost: O(log n)
-     */
-    boolean last();
+    int move(int amount) throws IOException;
 
     /**
      * Resets the cursor position to be undefined.
@@ -159,4 +81,106 @@ public interface Cursor {
      * <p>cost: O(1)
      */
     void reset();
+
+    // All remaining methods can be derived from the core methods.
+
+    /**
+     * Advances to the cursor to the next available entry, unless none
+     * exists. If false is returned, the current key remains unchanged.
+     *
+     * <pre>
+     * return move(1) != 0;
+     * </pre>
+     *
+     * <p>cost: O(1)
+     *
+     * @throws IllegalStateException if key position is undefined
+     */
+    boolean next() throws IOException;
+
+    /**
+     * Advances to the cursor to the previous available entry, unless none
+     * exists. If false is returned, the current key remains unchanged.
+     *
+     * <pre>
+     * return move(-1) != 0;
+     * </pre>
+     *
+     * <p>cost: O(1)
+     *
+     * @throws IllegalStateException if key position is undefined
+     */
+    boolean previous() throws IOException;
+
+    /**
+     * Move the cursor to find the first available entry greater than or equal
+     * to the given key. If false is returned, the cursor is at positioned at
+     * the given key.
+     *
+     * <pre>
+     * return find(key) ? true : next();
+     * </pre>
+     */
+    boolean findGe(byte[] key) throws IOException;
+
+    /**
+     * Move the cursor to find the first available entry less than or equal to
+     * the given key. If false is returned, the cursor is at positioned at the
+     * given key.
+     *
+     * <pre>
+     * return find(key) ? true : previous();
+     * </pre>
+     *
+     * <p>cost: O(log n)
+     */
+    boolean findLe(byte[] key) throws IOException;
+
+    /**
+     * Move the cursor to find the first available entry less than the given
+     * key. If false is returned, the cursor is at positioned at the given key.
+     *
+     * <pre>
+     * find(key); return previous();
+     * </pre>
+     *
+     * <p>cost: O(log n)
+     */
+    boolean findLt(byte[] key) throws IOException;
+
+    /**
+     * Move the cursor to find the first available entry greater than the given
+     * key. If false is returned, the cursor is at positioned at the given key.
+     *
+     * <pre>
+     * find(key); return next();
+     * </pre>
+     *
+     * <p>cost: O(log n)
+     */
+    boolean findGt(byte[] key) throws IOException;
+
+    /**
+     * Move the cursor to find the first available entry, unless none
+     * exists. If false is returned, the current key is empty.
+     *
+     * <pre>
+     * return findGe(new byte[0]);
+     * </pre>
+     *
+     * <p>cost: O(log n)
+     */
+    boolean first() throws IOException;
+
+    /**
+     * Move the cursor to find the last available entry, unless none exists. If
+     * false is returned, the current key is null.
+     *
+     * <pre>
+     * return findLt(null);
+     * </pre>
+     *
+     * <p>cost: O(log n)
+     */
+    boolean last() throws IOException;
 }
