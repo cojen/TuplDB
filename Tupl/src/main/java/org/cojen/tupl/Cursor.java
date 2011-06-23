@@ -73,7 +73,7 @@ public interface Cursor {
      * @return actual amount moved
      * @throws IllegalStateException if key position is undefined
      */
-    int move(int amount) throws IOException;
+    long move(long amount) throws IOException;
 
     /**
      * Resets the cursor position to be undefined.
