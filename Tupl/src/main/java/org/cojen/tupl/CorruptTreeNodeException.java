@@ -23,12 +23,12 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-public class CorruptNodeException extends IOException {
-    public CorruptNodeException(String message) {
+public class CorruptTreeNodeException extends IOException {
+    public CorruptTreeNodeException(String message) {
         super(message);
     }
 
-    public CorruptNodeException(Throwable cause) {
+    public CorruptTreeNodeException(Throwable cause) {
         super(cause);
     }
 }

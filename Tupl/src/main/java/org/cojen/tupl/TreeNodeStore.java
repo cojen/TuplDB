@@ -24,14 +24,14 @@ import java.util.List;
 
 import java.util.concurrent.locks.Lock;
 
-import static org.cojen.tupl.Node.*;
+import static org.cojen.tupl.TreeNode.*;
 
 /**
  * 
  *
  * @author Brian S O'Neill
  */
-final class NodeStore {
+final class TreeNodeStore {
     private static final int ENCODING_VERSION = 20110514;
 
     private final PageStore mPageStore;
@@ -41,23 +41,25 @@ final class NodeStore {
     private final Latch mCacheLatch;
     private final int mMaxCachedNodeCount;
     private int mCachedNodeCount;
-    private Node mMostRecentlyUsed;
-    private Node mLeastRecentlyUsed;
+    private TreeNode mMostRecentlyUsed;
+    private TreeNode mLeastRecentlyUsed;
 
     private final Lock mSharedCommitLock;
 
-    private final Node mRoot;
+    private final TreeNode mRoot;
 
     // Is either CACHED_DIRTY_0 or CACHED_DIRTY_1. Access is guarded by commit lock.
     private byte mCommitState;
 
-    NodeStore(PageStore store, int minCachedNodeCount, int maxCachedNodeCount) throws IOException {
+    TreeNodeStore(PageStore store, int minCachedNodeCount, int maxCachedNodeCount)
+        throws IOException
+    {
         this(store, minCachedNodeCount, maxCachedNodeCount,
              Runtime.getRuntime().availableProcessors());
     }
 
-    NodeStore(PageStore store, int minCachedNodeCount, int maxCachedNodeCount,
-              int spareBufferCount)
+    TreeNodeStore(PageStore store, int minCachedNodeCount, int maxCachedNodeCount,
+                  int spareBufferCount)
         throws IOException
     {
         if (minCachedNodeCount > maxCachedNodeCount) {
@@ -111,14 +113,14 @@ final class NodeStore {
      * Loads the root node, or creates one if store is new. Root node is not eligible for
      * eviction.
      */
-    private Node loadRoot() throws IOException {
+    private TreeNode loadRoot() throws IOException {
         byte[] header = new byte[12];
         mPageStore.readExtraCommitData(header);
         int version = DataIO.readInt(header, 0);
 
         if (version == 0) {
             // Assume store is new and return a new empty leaf node.
-            return new Node(pageSize(), true);
+            return new TreeNode(pageSize(), true);
         }
 
         if (version != ENCODING_VERSION) {
@@ -127,7 +129,7 @@ final class NodeStore {
 
         long rootId = DataIO.readLong(header, 4);
 
-        Node root = new Node(pageSize(), false);
+        TreeNode root = new TreeNode(pageSize(), false);
         root.read(this, rootId);
         return root;
     }
@@ -135,7 +137,7 @@ final class NodeStore {
     /**
      * Returns the tree root node, which is always the same instance.
      */
-    Node root() {
+    TreeNode root() {
         return mRoot;
     }
 
@@ -154,15 +156,15 @@ final class NodeStore {
     }
 
     /**
-     * Returns a new or recycled Node instance, latched exclusively, with an id
+     * Returns a new or recycled TreeNode instance, latched exclusively, with an id
      * of zero and a clean state.
      */
-    Node allocLatchedNode() throws IOException {
+    TreeNode allocLatchedNode() throws IOException {
         mCacheLatch.acquireExclusive();
         try {
             int max = mMaxCachedNodeCount;
             if (mCachedNodeCount < max) {
-                Node node = new Node(pageSize(), false);
+                TreeNode node = new TreeNode(pageSize(), false);
                 node.acquireExclusiveUnfair();
 
                 mCachedNodeCount++;
@@ -177,7 +179,7 @@ final class NodeStore {
             }
 
             do {
-                Node node = mLeastRecentlyUsed;
+                TreeNode node = mLeastRecentlyUsed;
                 (mLeastRecentlyUsed = node.mMoreUsed).mLessUsed = null;
                 node.mMoreUsed = null;
                 (node.mLessUsed = mMostRecentlyUsed).mMoreUsed = node;
@@ -205,8 +207,8 @@ final class NodeStore {
      * Returns a new reserved node, latched exclusively and marked dirty. Caller
      * must hold commit lock.
      */
-    Node newNodeForSplit() throws IOException {
-        Node node = allocLatchedNode();
+    TreeNode newNodeForSplit() throws IOException {
+        TreeNode node = allocLatchedNode();
         node.mId = mPageStore.reservePage();
         node.mCachedState = mCommitState;
         return node;
@@ -218,7 +220,7 @@ final class NodeStore {
      *
      * @return false if node cannot be evicted
      */
-    private boolean evict(Node node) throws IOException {
+    private boolean evict(TreeNode node) throws IOException {
         if (!node.canEvict()) {
             return false;
         }
@@ -244,7 +246,7 @@ final class NodeStore {
     /**
      * Caller must hold commit lock and any latch on node.
      */
-    boolean shouldMarkDirty(Node node) {
+    boolean shouldMarkDirty(TreeNode node) {
         return node.mCachedState != mCommitState;
     }
 
@@ -255,7 +257,7 @@ final class NodeStore {
      *
      * @return true if just made dirty and id changed
      */
-    boolean markDirty(Node node) throws IOException {
+    boolean markDirty(TreeNode node) throws IOException {
         byte state = node.mCachedState;
         if (state == mCommitState) {
             return false;
@@ -284,15 +286,15 @@ final class NodeStore {
     /**
      * Indicate that node is most recently used.
      */
-    void used(Node node) {
+    void used(TreeNode node) {
         // Because this method can be a bottleneck, don't wait for exclusive
         // latch. If node is popular, it will get more chances to be identified
         // as most recently used. This strategy works well enough because cache
         // eviction is always a best-guess approach.
         if (mCacheLatch.tryAcquireExclusive()) {
-            Node moreUsed = node.mMoreUsed;
+            TreeNode moreUsed = node.mMoreUsed;
             if (moreUsed != null) {
-                Node lessUsed = node.mLessUsed;
+                TreeNode lessUsed = node.mLessUsed;
                 if ((moreUsed.mLessUsed = lessUsed) == null) {
                     mLeastRecentlyUsed = moreUsed;
                 } else {
@@ -327,7 +329,7 @@ final class NodeStore {
      * made concurrently. Only one thread is granted access to this method.
      */
     void commit() throws IOException {
-        final Node root = mRoot;
+        final TreeNode root = mRoot;
 
         // Quick check.
         root.acquireShared();
@@ -361,7 +363,7 @@ final class NodeStore {
     /**
      * Method is invoked with exclusive commit lock and root node latch held.
      */
-    private byte[] flush(Node root) throws IOException {
+    private byte[] flush(TreeNode root) throws IOException {
         final long rootId = root.mId;
         final int stateToFlush = mCommitState;
         mCommitState = (byte) (CACHED_DIRTY_0 + ((stateToFlush - CACHED_DIRTY_0) ^ 1));
@@ -373,11 +375,11 @@ final class NodeStore {
         // Perform a breadth-first traversal of tree, finding dirty nodes.
         // Because this step can effectively deny all concurrent access to
         // the tree, acquire latches unfairly to speed it up.
-        List<Node> dirty = new ArrayList<Node>();
+        List<TreeNode> dirty = new ArrayList<TreeNode>();
         dirty.add(root);
 
         for (int mi=0; mi<dirty.size(); mi++) {
-            Node node = dirty.get(mi);
+            TreeNode node = dirty.get(mi);
 
             if (node.isLeaf()) {
                 node.releaseExclusive();
@@ -387,10 +389,10 @@ final class NodeStore {
             // Allow reads that don't load children into the node.
             node.downgrade();
 
-            Node[] childNodes = node.mChildNodes;
+            TreeNode[] childNodes = node.mChildNodes;
 
             for (int ci=0; ci<childNodes.length; ci++) {
-                Node childNode = childNodes[ci];
+                TreeNode childNode = childNodes[ci];
                 if (childNode != null) {
                     long childId = node.retrieveChildRefIdFromIndex(ci);
                     if (childId == childNode.mId) {
@@ -411,7 +413,7 @@ final class NodeStore {
         // the tree itself, but this leads to race conditions.
 
         for (int mi=0; mi<dirty.size(); mi++) {
-            Node node = dirty.get(mi);
+            TreeNode node = dirty.get(mi);
             dirty.set(mi, null);
             node.acquireExclusive();
             if (node.mCachedState != stateToFlush) {

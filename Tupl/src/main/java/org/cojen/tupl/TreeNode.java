@@ -28,8 +28,8 @@ import java.util.concurrent.locks.Lock;
  *
  * @author Brian S O'Neill
  */
-final class Node extends Latch {
-    // Note: Changing these values affects how NodeStore handles the commit flag.
+final class TreeNode extends Latch {
+    // Note: Changing these values affects how TreeNodeStore handles the commit flag.
     static final byte CACHED_CLEAN = 0, CACHED_DIRTY_0 = 1, CACHED_DIRTY_1 = 2;
 
     static final byte TYPE_LEAF = 0, TYPE_INTERNAL = 1;
@@ -39,9 +39,9 @@ final class Node extends Latch {
 
     private static final int FAILED = 0, SUCCESS = 1, SPLIT = 2;
 
-    // These fields are managed exclusively by NodeStore.
-    Node mMoreUsed; // points to more recently used node
-    Node mLessUsed; // points to less recently used node
+    // These fields are managed exclusively by TreeNodeStore.
+    TreeNode mMoreUsed; // points to more recently used node
+    TreeNode mLessUsed; // points to less recently used node
 
     /*
       All node types have a similar structure and support a maximum page size of 65536
@@ -170,12 +170,12 @@ final class Node extends Latch {
     int mSearchVecEnd;
 
     // References to child nodes currently available. Is null for leaf nodes.
-    Node[] mChildNodes;
+    TreeNode[] mChildNodes;
 
     // Set by a partially completed split.
     Split mSplit;
 
-    Node(int pageSize, boolean newEmptyRoot) {
+    TreeNode(int pageSize, boolean newEmptyRoot) {
         mPage = new byte[pageSize];
 
         if (newEmptyRoot) {
@@ -197,7 +197,7 @@ final class Node extends Latch {
      * @param key search key
      * @return copy of value or null if not found
      */
-    byte[] search(NodeStore store, byte[] key) throws IOException {
+    byte[] search(TreeNodeStore store, byte[] key) throws IOException {
         acquireShared();
         // Note: No need to check if root has split, since root splits are always
         // completed before releasing the root latch.
@@ -214,12 +214,12 @@ final class Node extends Latch {
      * @param exclusiveHeld is true if exclusive latch is held on this node
      * @return copy of value or null if not found
      */
-    private static byte[] subSearch(Node node, Latch parentLatch,
-                                    NodeStore store, byte[] key,
+    private static byte[] subSearch(TreeNode node, Latch parentLatch,
+                                    TreeNodeStore store, byte[] key,
                                     boolean exclusiveHeld)
         throws IOException
     {
-        // Caller invokes store.used for this Node. Root node is not managed in
+        // Caller invokes store.used for this TreeNode. Root node is not managed in
         // usage list, because it cannot be evicted.
 
         int childPos;
@@ -234,7 +234,7 @@ final class Node extends Latch {
                 childPos += 2;
             }
 
-            Node childNode = node.mChildNodes[childPos >> 1];
+            TreeNode childNode = node.mChildNodes[childPos >> 1];
             childId = node.retrieveChildRefId(childPos);
 
             childCheck: if (childNode != null && childId == childNode.mId) {
@@ -302,7 +302,7 @@ final class Node extends Latch {
         // If this point is reached, exclusive latch for this node is held and
         // child needs to be loaded. Parent latch has been released.
 
-        Node childNode = store.allocLatchedNode();
+        TreeNode childNode = store.allocLatchedNode();
         node.mChildNodes[childPos >> 1] = childNode;
 
         // Release this node's exclusive latch, and allow concurrent reads
@@ -360,7 +360,7 @@ final class Node extends Latch {
      * @param value value to store; null to delete
      * @return false if entry already exists
      */
-    boolean store(NodeStore store, byte[] key, byte[] value) throws IOException {
+    boolean store(TreeNodeStore store, byte[] key, byte[] value) throws IOException {
         final Lock sharedCommitLock = store.sharedCommitLock();
         sharedCommitLock.lock();
         try {
@@ -409,12 +409,12 @@ final class Node extends Latch {
      * @param exclusiveHeld is true if exclusive latch is held on this node
      * @return FAILED, SUCCESS, or SPLIT
      */
-    private static int subStore(Node node, Latch parentLatch,
-                                NodeStore store, byte[] key, byte[] value,
+    private static int subStore(TreeNode node, Latch parentLatch,
+                                TreeNodeStore store, byte[] key, byte[] value,
                                 boolean exclusiveHeld)
         throws IOException
     {
-        // Caller invokes store.used for this Node. Root node is not managed in
+        // Caller invokes store.used for this TreeNode. Root node is not managed in
         // usage list, because it cannot be evicted.
 
         int childPos;
@@ -438,7 +438,7 @@ final class Node extends Latch {
                 childPos += 2;
             }
 
-            Node childNode = node.mChildNodes[childPos >> 1];
+            TreeNode childNode = node.mChildNodes[childPos >> 1];
             childId = node.retrieveChildRefId(childPos);
 
             // FIXME: This code needs to support node merges.
@@ -632,7 +632,7 @@ final class Node extends Latch {
         // If this point is reached, exclusive latch for this node is held and
         // child needs to be loaded. Parent latch has been released.
 
-        Node childNode = store.allocLatchedNode();
+        TreeNode childNode = store.allocLatchedNode();
         node.mChildNodes[childPos >> 1] = childNode;
 
         try {
@@ -715,7 +715,7 @@ final class Node extends Latch {
      * @param value value to store; null to delete
      * @return false if entry already exists
      */
-    private boolean subStoreLeafRoot(NodeStore store, byte[] key, byte[] value)
+    private boolean subStoreLeafRoot(TreeNodeStore store, byte[] key, byte[] value)
         throws IOException
     {
         int childPos = subStoreLeafCheck(key, value);
@@ -748,7 +748,7 @@ final class Node extends Latch {
      * @param childPos child position from check method
      * @return non-null if split
      */
-    private Object subStoreLeaf(NodeStore store, byte[] key, byte[] value, int childPos)
+    private Object subStoreLeaf(TreeNodeStore store, byte[] key, byte[] value, int childPos)
         throws IOException
     {
         Object split;
@@ -766,11 +766,11 @@ final class Node extends Latch {
     /**
      * Caller must hold exclusive root latch and it must verify that root has split.
      */
-    private void finishSplitRoot(NodeStore store) throws IOException {
+    private void finishSplitRoot(TreeNodeStore store) throws IOException {
         // Create a child node and copy this root node state into it. Then update this
         // root node to point to new and split child nodes. New root is always an internal node.
 
-        Node child = store.newNodeForSplit();
+        TreeNode child = store.newNodeForSplit();
 
         byte[] newPage = child.mPage;
         child.mPage = mPage;
@@ -785,9 +785,9 @@ final class Node extends Latch {
         Split split = mSplit;
         mSplit = null;
 
-        Node sibling = split.latchSibling(store);
+        TreeNode sibling = split.latchSibling(store);
 
-        Node left, right;
+        TreeNode left, right;
         if (split.mSplitRight) {
             left = child;
             right = sibling;
@@ -806,7 +806,7 @@ final class Node extends Latch {
         DataIO.writeLong(newPage, searchVecStart + 2 + 8, right.mId);
 
         // FIXME: recycle these arrays
-        mChildNodes = new Node[] {left, right};
+        mChildNodes = new TreeNode[] {left, right};
 
         mPage = newPage;
         mType = TYPE_INTERNAL;
@@ -829,8 +829,8 @@ final class Node extends Latch {
      * @param childNode node which has split
      * @return SUCCESS or SPLIT (if split needs to propagate up again)
      */
-    private static int finishSplit(Node node, NodeStore store, long id,
-                                   byte[] key, int childPos, Node childNode)
+    private static int finishSplit(TreeNode node, TreeNodeStore store, long id,
+                                   byte[] key, int childPos, TreeNode childNode)
         throws IOException
     {
         int result = SUCCESS;
@@ -846,7 +846,7 @@ final class Node extends Latch {
                 childPos = 0;
             }
 
-            Node[] childNodes = node.mChildNodes;
+            TreeNode[] childNodes = node.mChildNodes;
             int ix = childPos >> 1;
 
             childNode.acquireExclusiveUnfair();
@@ -906,7 +906,7 @@ final class Node extends Latch {
      * Caller must hold exclusive latch. Latch is never released by this method, even if
      * an exception is thrown.
      */
-    void read(NodeStore store, long id) throws IOException {
+    void read(TreeNodeStore store, long id) throws IOException {
         byte[] page = mPage;
 
         store.readPage(id, page);
@@ -916,10 +916,10 @@ final class Node extends Latch {
 
         byte type = page[0];
         if (type != TYPE_INTERNAL && type != TYPE_LEAF) {
-            throw new CorruptNodeException("Unknown type: " + type);
+            throw new CorruptTreeNodeException("Unknown type: " + type);
         }
         if (page[1] != 0) {
-            throw new CorruptNodeException("Illegal reserved byte: " + page[1]);
+            throw new CorruptTreeNodeException("Illegal reserved byte: " + page[1]);
         }
 
         mType = type;
@@ -931,7 +931,7 @@ final class Node extends Latch {
 
         if (type == TYPE_INTERNAL) {
             // FIXME: recycle child node arrays
-            mChildNodes = new Node[numKeys() + 1];
+            mChildNodes = new TreeNode[numKeys() + 1];
         }
 
         //verify0();
@@ -940,7 +940,7 @@ final class Node extends Latch {
     /**
      * Caller must hold any latch, which is not released, even if an exception is thrown.
      */
-    void write(NodeStore store) throws IOException {
+    void write(TreeNodeStore store) throws IOException {
         if (mSplit != null) {
             throw new AssertionError("Cannot write partially split node");
         }
@@ -966,10 +966,10 @@ final class Node extends Latch {
             return false;
         }
 
-        Node[] childNodes = mChildNodes;
+        TreeNode[] childNodes = mChildNodes;
         if (childNodes != null) {
             for (int i=0; i<childNodes.length; i++) {
-                Node child = mChildNodes[i];
+                TreeNode child = mChildNodes[i];
                 if (child != null) {
                     if (child.tryAcquireShared()) {
                         long childId = retrieveChildRefIdFromIndex(i);
@@ -1260,7 +1260,7 @@ final class Node extends Latch {
     /**
      * @param pos compliment of position as provided by binarySearchLeaf; must be positive
      */
-    private void insertLeafEntry(NodeStore store, int pos, byte[] key, byte[] value)
+    private void insertLeafEntry(TreeNodeStore store, int pos, byte[] key, byte[] value)
         throws IOException
     {
         insertLeafEntry(store, pos, key, value, calculateEncodedLength(key, value));
@@ -1269,7 +1269,7 @@ final class Node extends Latch {
     /**
      * @param pos position as provided by binarySearchLeaf; must be positive
      */
-    private void insertLeafEntry(NodeStore store, int pos, byte[] key, byte[] value,
+    private void insertLeafEntry(TreeNodeStore store, int pos, byte[] key, byte[] value,
                                  final int encodedLen)
         throws IOException
     {
@@ -1370,7 +1370,8 @@ final class Node extends Latch {
      * @param splitChild child node which split
      * @return sub-insert child if key was provided; exclusive latch held
      */
-    private Node insertSplitChildRef(NodeStore store, byte[] key, int keyPos, Node splitChild)
+    private TreeNode insertSplitChildRef(TreeNodeStore store, byte[] key, int keyPos,
+                                         TreeNode splitChild)
         throws IOException
     {
         if (store.shouldMarkDirty(splitChild)) {
@@ -1380,10 +1381,10 @@ final class Node extends Latch {
 
         final Split split = splitChild.mSplit;
         splitChild.mSplit = null;
-        final Node newChild = split.latchSibling(store);
+        final TreeNode newChild = split.latchSibling(store);
 
-        final Node leftChild;
-        final Node rightChild;
+        final TreeNode leftChild;
+        final TreeNode rightChild;
         int newChildPos = keyPos >> 1;
         if (split.mSplitRight) {
             leftChild = splitChild;
@@ -1397,7 +1398,7 @@ final class Node extends Latch {
         // Update references to child node instances.
         {
             // FIXME: recycle child node arrays
-            Node[] newChildNodes = new Node[mChildNodes.length + 1];
+            TreeNode[] newChildNodes = new TreeNode[mChildNodes.length + 1];
             System.arraycopy(mChildNodes, 0, newChildNodes, 0, newChildPos);
             System.arraycopy(mChildNodes, newChildPos, newChildNodes, newChildPos + 1,
                              mChildNodes.length - newChildPos);
@@ -1563,7 +1564,7 @@ final class Node extends Latch {
     /**
      * @param pos position as provided by binarySearchLeaf; must be positive
      */
-    private boolean updateLeafValue(NodeStore store, int pos, byte[] key, byte[] value)
+    private boolean updateLeafValue(TreeNodeStore store, int pos, byte[] key, byte[] value)
         throws IOException
     {
         final byte[] page = mPage;
@@ -1829,7 +1830,7 @@ final class Node extends Latch {
      * @param pos normalized search vector position of entry to insert/update
      * @return location for newly allocated entry, already pointed to by search vector
      */
-    private int compactLeaf(NodeStore store, int encodedLen, int pos, boolean forInsert)
+    private int compactLeaf(TreeNodeStore store, int encodedLen, int pos, boolean forInsert)
         throws InterruptedIOException
     {
         byte[] page = mPage;
@@ -1894,12 +1895,12 @@ final class Node extends Latch {
      * @param encodedLen length of new entry to allocate
      * @param pos normalized search vector position of entry to insert/update
      */
-    private void splitLeafAndCreateEntry(NodeStore store, byte[] key, byte[] value,
+    private void splitLeafAndCreateEntry(TreeNodeStore store, byte[] key, byte[] value,
                                          int encodedLen, int pos, boolean forInsert)
         throws IOException
     {
         if (mSplit != null) {
-            throw new AssertionError("Node is already split");
+            throw new AssertionError("TreeNode is already split");
         }
 
         // Split can move node entries to a new left or right node. Choose such that the
@@ -1912,7 +1913,7 @@ final class Node extends Latch {
 
         byte[] page = mPage;
 
-        Node newNode = store.newNodeForSplit();
+        TreeNode newNode = store.newNodeForSplit();
         newNode.mType = TYPE_LEAF;
         newNode.mGarbage = 0;
 
@@ -2070,12 +2071,13 @@ final class Node extends Latch {
     }
 
     private InSplitResult splitInternal
-        (final NodeStore store, final int keyPos, final Node splitChild, final Node newChild,
+        (final TreeNodeStore store, final int keyPos,
+         final TreeNode splitChild, final TreeNode newChild,
          final int newChildPos, final int encodedLen)
         throws IOException
     {
         if (mSplit != null) {
-            throw new AssertionError("Node is already split");
+            throw new AssertionError("TreeNode is already split");
         }
 
         // Split can move node entries to a new left or right node. Choose such that the
@@ -2084,7 +2086,7 @@ final class Node extends Latch {
 
         final byte[] page = mPage;
 
-        final Node newNode = store.newNodeForSplit();
+        final TreeNode newNode = store.newNodeForSplit();
         newNode.mType = TYPE_INTERNAL;
         newNode.mGarbage = 0;
 
@@ -2203,8 +2205,8 @@ final class Node extends Latch {
                     // been placed into mChildNodes by caller.
                     // FIXME: recycle child node arrays
                     int leftLen = ((newSearchVecLoc - HEADER_SIZE) >> 1) + 1;
-                    Node[] leftChildNodes = new Node[leftLen];
-                    Node[] rightChildNodes = new Node[mChildNodes.length - leftLen];
+                    TreeNode[] leftChildNodes = new TreeNode[leftLen];
+                    TreeNode[] rightChildNodes = new TreeNode[mChildNodes.length - leftLen];
                     System.arraycopy(mChildNodes, 0, leftChildNodes, 0, leftLen);
                     System.arraycopy(mChildNodes, leftLen,
                                      rightChildNodes, 0, rightChildNodes.length);
@@ -2313,8 +2315,8 @@ final class Node extends Latch {
                     // been placed into mChildNodes by caller.
                     // FIXME: recycle child node arrays
                     int rightLen = ((newSearchVecEnd - newSearchVecLoc) >> 1) + 2;
-                    Node[] rightChildNodes = new Node[rightLen];
-                    Node[] leftChildNodes = new Node[mChildNodes.length - rightLen];
+                    TreeNode[] rightChildNodes = new TreeNode[rightLen];
+                    TreeNode[] leftChildNodes = new TreeNode[mChildNodes.length - rightLen];
                     System.arraycopy(mChildNodes, leftChildNodes.length,
                                      rightChildNodes, 0, rightLen);
                     System.arraycopy(mChildNodes, 0, leftChildNodes, 0, leftChildNodes.length);
@@ -2351,7 +2353,7 @@ final class Node extends Latch {
      * @param keyPos normalized search vector position of key to insert
      * @param childPos normalized search vector position of child node id to insert
      */
-    private InSplitResult compactInternal(NodeStore store,
+    private InSplitResult compactInternal(TreeNodeStore store,
                                           int encodedLen, int keyPos, int childPos)
         throws InterruptedIOException
     {
@@ -2460,12 +2462,12 @@ final class Node extends Latch {
     /**
      * Verifies the integrity of this node.
      */
-    public void verify() throws CorruptNodeException {
+    public void verify() throws CorruptTreeNodeException {
         acquireShared();
         try {
             verify0();
         } catch (IndexOutOfBoundsException e) {
-            throw new CorruptNodeException(e);
+            throw new CorruptTreeNodeException(e);
         } finally {
             releaseShared();
         }
@@ -2474,25 +2476,25 @@ final class Node extends Latch {
     /**
      * Caller must hold any latch.
      */
-    void verify0() throws CorruptNodeException {
+    void verify0() throws CorruptTreeNodeException {
         final byte[] page = mPage;
 
         if (mLeftSegTail < HEADER_SIZE) {
-            throw new CorruptNodeException("Left segment tail: " + mLeftSegTail);
+            throw new CorruptTreeNodeException("Left segment tail: " + mLeftSegTail);
         }
         if (mSearchVecStart < mLeftSegTail) {
-            throw new CorruptNodeException("Search vector start: " + mSearchVecStart);
+            throw new CorruptTreeNodeException("Search vector start: " + mSearchVecStart);
         }
         if (mSearchVecEnd < (mSearchVecStart - 2)) {
-            throw new CorruptNodeException("Search vector end: " + mSearchVecEnd);
+            throw new CorruptTreeNodeException("Search vector end: " + mSearchVecEnd);
         }
         if (mRightSegTail < mSearchVecEnd || mRightSegTail > (page.length - 1)) {
-            throw new CorruptNodeException("Right segment tail: " + mRightSegTail);
+            throw new CorruptTreeNodeException("Right segment tail: " + mRightSegTail);
         }
 
         if (!isLeaf()) {
             if (numKeys() + 1 != mChildNodes.length) {
-                throw new CorruptNodeException
+                throw new CorruptTreeNodeException
                     ("Wrong number of child nodes: " +
                      (numKeys() + 1) + " != " + mChildNodes.length);
             }
@@ -2500,7 +2502,7 @@ final class Node extends Latch {
             int childIdsStart = mSearchVecEnd + 2;
             int childIdsEnd = childIdsStart + ((childIdsStart - mSearchVecStart) << 2) + 8;
             if (childIdsEnd > (mRightSegTail + 1)) {
-                throw new CorruptNodeException("Child ids end: " + childIdsEnd);
+                throw new CorruptTreeNodeException("Child ids end: " + childIdsEnd);
             }
 
             LIHashTable childIds = new LIHashTable(9);
@@ -2509,12 +2511,12 @@ final class Node extends Latch {
                 long childId = DataIO.readLong(page, i);
 
                 if (childId < 0 || childId == 0 || childId == 1) {
-                    throw new CorruptNodeException("Illegal child id: " + childId);
+                    throw new CorruptTreeNodeException("Illegal child id: " + childId);
                 }
 
                 LIHashTable.Entry e = childIds.insert(childId);
                 if (e.value != 0) {
-                    throw new CorruptNodeException("Duplicate child id: " + childId);
+                    throw new CorruptTreeNodeException("Duplicate child id: " + childId);
                 }
                 e.value = 1;
             }
@@ -2531,7 +2533,7 @@ final class Node extends Latch {
             if (loc < HEADER_SIZE || loc >= page.length ||
                 (loc >= mLeftSegTail && loc <= mRightSegTail))
             {
-                throw new CorruptNodeException("Entry location: " + loc);
+                throw new CorruptTreeNodeException("Entry location: " + loc);
             }
 
             int keyLen;
@@ -2553,7 +2555,7 @@ final class Node extends Latch {
             if (lastKeyLoc != 0) {
                 int result = Utils.compareKeys(page, lastKeyLoc, lastKeyLen, page, loc, keyLen);
                 if (result >= 0) {
-                    throw new CorruptNodeException("Key order: " + result);
+                    throw new CorruptTreeNodeException("Key order: " + result);
                 }
             }
 
@@ -2564,7 +2566,7 @@ final class Node extends Latch {
         int garbage = page.length - used;
 
         if (mGarbage != garbage) {
-            throw new CorruptNodeException("Garbage: " + mGarbage + " != " + garbage);
+            throw new CorruptTreeNodeException("Garbage: " + mGarbage + " != " + garbage);
         }
     }
 
@@ -2572,16 +2574,16 @@ final class Node extends Latch {
      * Counts all the enties in the tree rooted at this node. No latches are
      * acquired by this method -- it is only used for debugging.
      */
-    long countEntries(NodeStore store) throws IOException {
+    long countEntries(TreeNodeStore store) throws IOException {
         if (isLeaf()) {
             return 1 + ((mSearchVecEnd - mSearchVecStart) >> 1);
         }
 
-        Node child = mChildNodes[mChildNodes.length - 1];
+        TreeNode child = mChildNodes[mChildNodes.length - 1];
         long childId = retrieveChildRefIdFromIndex(mChildNodes.length - 1);
 
         if (child == null || childId != child.mId) {
-            child = new Node(store.pageSize(), false);
+            child = new TreeNode(store.pageSize(), false);
             child.read(store, childId);
         }
 
@@ -2592,7 +2594,7 @@ final class Node extends Latch {
             childId = retrieveChildRefId(pos);
 
             if (child == null || childId != child.mId) {
-                child = new Node(store.pageSize(), false);
+                child = new TreeNode(store.pageSize(), false);
                 child.read(store, childId);
             }
 
@@ -2606,16 +2608,16 @@ final class Node extends Latch {
      * Counts all the pages used to store the tree rooted at this node. No
      * latches are acquired by this method -- it is only used for debugging.
      */
-    long countPages(NodeStore store) throws IOException {
+    long countPages(TreeNodeStore store) throws IOException {
         if (isLeaf()) {
             return 1;
         }
 
-        Node child = mChildNodes[mChildNodes.length - 1];
+        TreeNode child = mChildNodes[mChildNodes.length - 1];
         long childId = retrieveChildRefIdFromIndex(mChildNodes.length - 1);
 
         if (child == null || childId != child.mId) {
-            child = new Node(store.pageSize(), false);
+            child = new TreeNode(store.pageSize(), false);
             child.read(store, childId);
         }
 
@@ -2626,7 +2628,7 @@ final class Node extends Latch {
             childId = retrieveChildRefId(pos);
 
             if (child == null || childId != child.mId) {
-                child = new Node(store.pageSize(), false);
+                child = new TreeNode(store.pageSize(), false);
                 child.read(store, childId);
             }
 
@@ -2640,13 +2642,13 @@ final class Node extends Latch {
      * Clears a bit for each page used to store the tree rooted at this node. No
      * latches are acquired by this method -- it is only used for debugging.
      */
-    void tracePages(NodeStore store, java.util.BitSet bits) throws IOException {
+    void tracePages(TreeNodeStore store, java.util.BitSet bits) throws IOException {
         if (mId == 0) {
             return;
         }
 
         if (!bits.get((int) mId)) {
-            throw new CorruptNodeException("Page already seen: " + mId);
+            throw new CorruptTreeNodeException("Page already seen: " + mId);
         }
         bits.clear((int) mId);
 
@@ -2654,11 +2656,11 @@ final class Node extends Latch {
             return;
         }
 
-        Node child = mChildNodes[mChildNodes.length - 1];
+        TreeNode child = mChildNodes[mChildNodes.length - 1];
         long childId = retrieveChildRefIdFromIndex(mChildNodes.length - 1);
 
         if (child == null || childId != child.mId) {
-            child = new Node(store.pageSize(), false);
+            child = new TreeNode(store.pageSize(), false);
             child.read(store, childId);
         }
 
@@ -2669,7 +2671,7 @@ final class Node extends Latch {
             childId = retrieveChildRefId(pos);
 
             if (child == null || childId != child.mId) {
-                child = new Node(store.pageSize(), false);
+                child = new TreeNode(store.pageSize(), false);
                 child.read(store, childId);
             }
 
@@ -2681,7 +2683,7 @@ final class Node extends Latch {
      * Prints the contents of tree rooted at this node. No latches are acquired
      * by this method -- it is only used for debugging.
      */
-    void dump(NodeStore store, String indent) throws IOException {
+    void dump(TreeNodeStore store, String indent) throws IOException {
         verify();
 
         if (isLeaf()) {
@@ -2693,11 +2695,11 @@ final class Node extends Latch {
             return;
         }
 
-        Node child = mChildNodes[mChildNodes.length - 1];
+        TreeNode child = mChildNodes[mChildNodes.length - 1];
         long childId = retrieveChildRefIdFromIndex(mChildNodes.length - 1);
 
         if (child == null || childId != child.mId) {
-            child = new Node(store.pageSize(), false);
+            child = new TreeNode(store.pageSize(), false);
             child.read(store, childId);
         }
 
@@ -2712,7 +2714,7 @@ final class Node extends Latch {
             childId = retrieveChildRefId(pos);
 
             if (child == null || childId != child.mId) {
-                child = new Node(store.pageSize(), false);
+                child = new TreeNode(store.pageSize(), false);
                 child.read(store, childId);
             }
 
