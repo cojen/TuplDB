@@ -68,7 +68,7 @@ public interface Cursor {
      * not enough entries exist. Pass a positive amount for forward movement,
      * and pass a negative amount for reverse movement.
      *
-     * <p>cost: O(|amount|)
+     * <p>cost: O(log n)
      *
      * @return actual amount moved
      * @throws IllegalStateException if key position is undefined
