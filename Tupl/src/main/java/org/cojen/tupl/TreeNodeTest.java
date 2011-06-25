@@ -27,7 +27,7 @@ import static org.junit.Assert.*;
  *
  * @author Brian S O'Neill
  */
-public class NodeTest {
+public class TreeNodeTest {
     public static void main(String[] args) throws Exception {
         java.io.File file0, file1;
         if (args.length > 0) {
@@ -40,8 +40,8 @@ public class NodeTest {
 
         final PageStore pstore = new DualFilePageStore(file0, file1);
         final int cachedNodes = 100000;
-        final NodeStore store = new NodeStore(pstore, cachedNodes, cachedNodes);
-        final Node root = store.root();
+        final TreeNodeStore store = new TreeNodeStore(pstore, cachedNodes, cachedNodes);
+        final TreeNode root = store.root();
 
         byte[] value = root.search(store, "hello".getBytes());
         System.out.println(value == null ? null : new String(value));
@@ -102,7 +102,7 @@ public class NodeTest {
     }
 
     private static void testInsert(Map<String, String> map, boolean fullTest,
-                                   NodeStore store, Node root, String key, String value)
+                                   TreeNodeStore store, TreeNode root, String key, String value)
         throws IOException
     {
         if (map != null) {

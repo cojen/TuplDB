@@ -26,7 +26,7 @@ import java.io.IOException;
 class Split {
     final boolean mSplitRight;
     private final long mSiblingId;
-    private volatile Node mSibling;
+    private volatile TreeNode mSibling;
 
     // In many cases a copy of the key is not necessary; a simple reference to the
     // appropriate sub node works fine. This strategy assumes that the sub node will not
@@ -37,7 +37,7 @@ class Split {
     /**
      * @param sibling must have exclusive lock when called; is released as a side-effect
      */
-    Split(boolean splitRight, Node sibling, byte[] splitKey) {
+    Split(boolean splitRight, TreeNode sibling, byte[] splitKey) {
         mSplitRight = splitRight;
         mSiblingId = sibling.mId;
         mSibling = sibling;
@@ -54,8 +54,8 @@ class Split {
      * @param node node which was split; shared latch must be held
      * @return original node or sibling
      */
-    Node selectNodeShared(NodeStore store, byte[] key, Node node) throws IOException {
-        Node sibling = mSibling;
+    TreeNode selectNodeShared(TreeNodeStore store, byte[] key, TreeNode node) throws IOException {
+        TreeNode sibling = mSibling;
         sibling.acquireShared();
 
         if (mSiblingId != sibling.mId) {
@@ -72,7 +72,7 @@ class Split {
             }
         }
 
-        Node left, right;
+        TreeNode left, right;
         if (mSplitRight) {
             left = node;
             right = sibling;
@@ -103,8 +103,10 @@ class Split {
      * @param node node which was split; exclusive latch must be held
      * @return original node or sibling
      */
-    Node selectNodeExclusive(NodeStore store, byte[] key, Node node) throws IOException {
-        Node sibling = mSibling;
+    TreeNode selectNodeExclusive(TreeNodeStore store, byte[] key, TreeNode node)
+        throws IOException
+    {
+        TreeNode sibling = mSibling;
         sibling.acquireExclusive();
 
         if (mSiblingId != sibling.mId) {
@@ -120,7 +122,7 @@ class Split {
             }
         }
 
-        Node left, right;
+        TreeNode left, right;
         if (mSplitRight) {
             left = node;
             right = sibling;
@@ -145,8 +147,8 @@ class Split {
     /**
      * @return sibling with exclusive latch held
      */
-    Node latchSibling(NodeStore store) throws IOException {
-        Node sibling = mSibling;
+    TreeNode latchSibling(TreeNodeStore store) throws IOException {
+        TreeNode sibling = mSibling;
         sibling.acquireExclusiveUnfair();
         if (mSiblingId != sibling.mId) {
             // Sibling was evicted, which is extremely rare.
