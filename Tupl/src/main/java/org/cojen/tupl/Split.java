@@ -106,21 +106,7 @@ class Split {
     TreeNode selectNodeExclusive(TreeNodeStore store, byte[] key, TreeNode node)
         throws IOException
     {
-        TreeNode sibling = mSibling;
-        sibling.acquireExclusive();
-
-        if (mSiblingId != sibling.mId) {
-            // Sibling was evicted, which is extremely rare.
-            synchronized (this) {
-                sibling = mSibling;
-                if (mSiblingId != sibling.mId) {
-                    sibling.releaseExclusive();
-                    sibling = store.allocLatchedNode();
-                    sibling.read(store, mSiblingId);
-                    mSibling = sibling;
-                }
-            }
-        }
+        TreeNode sibling = latchSibling(store);
 
         TreeNode left, right;
         if (mSplitRight) {
@@ -142,6 +128,42 @@ class Split {
             right.releaseExclusive();
             return left;
         }
+    }
+
+    /**
+     * Allows a search to continue into a split node by selecting the original
+     * node or the sibling. If the original node is returned, its exclusive
+     * lock is still held. If the sibling is returned, it will have an
+     * exclusive latch held and the original node's latch is released.
+     *
+     * @param node node which was split; exclusive latch must be held
+     * @return original node or sibling
+     */
+    TreeNode selectLeftNodeExclusive(TreeNodeStore store, TreeNode node) throws IOException {
+        if (mSplitRight) {
+            return node;
+        }
+        TreeNode sibling = latchSibling(store);
+        node.releaseExclusive();
+        return sibling;
+    }
+
+    /**
+     * Allows a search to continue into a split node by selecting the original
+     * node or the sibling. If the original node is returned, its exclusive
+     * lock is still held. If the sibling is returned, it will have an
+     * exclusive latch held and the original node's latch is released.
+     *
+     * @param node node which was split; exclusive latch must be held
+     * @return original node or sibling
+     */
+    TreeNode selectRightNodeExclusive(TreeNodeStore store, TreeNode node) throws IOException {
+        if (!mSplitRight) {
+            return node;
+        }
+        TreeNode sibling = latchSibling(store);
+        node.releaseExclusive();
+        return sibling;
     }
 
     /**

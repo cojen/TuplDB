@@ -172,6 +172,9 @@ final class TreeNode extends Latch {
     // References to child nodes currently available. Is null for leaf nodes.
     TreeNode[] mChildNodes;
 
+    // Linked stack of CursorFrames bound to this TreeNode.
+    CursorFrame mLastCursorFrame;
+
     // Set by a partially completed split.
     Split mSplit;
 
@@ -309,6 +312,7 @@ final class TreeNode extends Latch {
         // again. Any threads which wish to access the same child will block
         // until this thread has finished loading the child and released its
         // exclusive latch.
+        childNode.mId = childId;
         node.downgrade();
         exclusiveHeld = false;
 
@@ -317,6 +321,7 @@ final class TreeNode extends Latch {
         } catch (IOException e) {
             // Another thread might access child and see that it is invalid because id is
             // zero. It will assume it got evicted and will load child again.
+            childNode.mId = 0;
             childNode.releaseExclusive();
             node.releaseShared();
             throw e;
@@ -962,7 +967,7 @@ final class TreeNode extends Latch {
      * Caller must hold any latch.
      */
     boolean canEvict() {
-        if (mSplit != null) {
+        if (mLastCursorFrame != null || mSplit != null) {
             return false;
         }
 
@@ -1007,6 +1012,17 @@ final class TreeNode extends Latch {
      */
     int numKeys() {
         return (mSearchVecEnd - mSearchVecStart + 2) >> 1;
+    }
+
+    /**
+     * Caller must hold any latch.
+     */
+    boolean hasKeys() {
+        return mSearchVecEnd >= mSearchVecStart;
+    }
+
+    int highestPos() {
+        return mSearchVecEnd - mSearchVecStart;
     }
 
     /**
@@ -1068,7 +1084,7 @@ final class TreeNode extends Latch {
     /**
      * @return 2-based insertion pos, which is negative if key not found
      */
-    private int binarySearchLeaf(byte[] key) {
+    int binarySearchLeaf(byte[] key) {
         final byte[] page = mPage;
         final int keyLen = key.length;
         int lowPos = mSearchVecStart;
@@ -1122,7 +1138,7 @@ final class TreeNode extends Latch {
     /**
      * @return 2-based insertion pos, which is negative if key not found
      */
-    private int binarySearchInternal(byte[] key) {
+    int binarySearchInternal(byte[] key) {
         final byte[] page = mPage;
         final int keyLen = key.length;
         int lowPos = mSearchVecStart;
@@ -1178,7 +1194,23 @@ final class TreeNode extends Latch {
     /**
      * @param pos position as provided by binarySearchLeaf; must be positive
      */
-    private byte[] retrieveLeafValue(int pos) {
+    byte[] retrieveLeafKey(int pos) {
+        final byte[] page = mPage;
+
+        int loc = DataIO.readUnsignedShort(page, mSearchVecStart + pos);
+        int header = page[loc++];
+        int keyLen = header >= 0 ? ((header & 0x3f) + 1)
+            : (((header & 0x3f) << 8) | ((page[loc++]) & 0xff));
+        byte[] key = new byte[keyLen];
+        System.arraycopy(page, loc, key, 0, keyLen);
+
+        return key;
+    }
+
+    /**
+     * @param pos position as provided by binarySearchLeaf; must be positive
+     */
+    byte[] retrieveLeafValue(int pos) {
         final byte[] page = mPage;
 
         int loc = DataIO.readUnsignedShort(page, mSearchVecStart + pos);
@@ -1197,9 +1229,8 @@ final class TreeNode extends Latch {
 
     /**
      * @param pos position as provided by binarySearchLeaf; must be positive
-     * @return key and value
      */
-    private byte[][] retrieveLeafEntry(int pos) {
+    void retrieveLeafEntry(int pos, Entry entry) {
         final byte[] page = mPage;
 
         int loc = DataIO.readUnsignedShort(page, mSearchVecStart + pos);
@@ -1208,6 +1239,8 @@ final class TreeNode extends Latch {
             : (((header & 0x3f) << 8) | ((page[loc++]) & 0xff));
         byte[] key = new byte[keyLen];
         System.arraycopy(page, loc, key, 0, keyLen);
+        entry.key = key;
+
         loc += keyLen;
         byte[] value;
         if ((header & 0x40) != 0) {
@@ -1218,8 +1251,7 @@ final class TreeNode extends Latch {
             value = new byte[len];
             System.arraycopy(page, loc, value, 0, len);
         }
-
-        return new byte[][] {key, value};
+        entry.value = value;
     }
 
     /**
@@ -2687,10 +2719,11 @@ final class TreeNode extends Latch {
         verify();
 
         if (isLeaf()) {
+            Entry entry = new Entry();
             for (int pos = mSearchVecEnd - mSearchVecStart; pos >= 0; pos -= 2) {
-                byte[][] entry = retrieveLeafEntry(pos);
+                retrieveLeafEntry(pos, entry);
                 System.out.println(indent + mId + ": " +
-                                   dumpToString(entry[0]) + " = " + dumpToString(entry[1]));
+                                   dumpToString(entry.key) + " = " + dumpToString(entry.value));
             }
             return;
         }
