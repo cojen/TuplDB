@@ -16,6 +16,8 @@
 
 package org.cojen.tupl;
 
+import java.io.IOException;
+
 /**
  * 
  *
@@ -26,21 +28,27 @@ class CursorFrame {
     TreeNode mNode;
     int mNodePos;
 
-    // Previous stack frame. A CursorFrame which is bound to the root TreeNode
-    // has no previous frame.
-    CursorFrame mPrevFrame;
+    // Parent stack frame. A CursorFrame which is bound to the root TreeNode
+    // has no parent frame.
+    CursorFrame mParentFrame;
 
     // Linked list of CursorFrames bound to a TreeNode.
     CursorFrame mPrevSibling;
     CursorFrame mNextSibling;
 
+    // Reference to key which wasn't found. Only used by leaf frames.
+    byte[] mNotFoundKey;
+
     CursorFrame() {
     }
 
-    CursorFrame(CursorFrame prevFrame) {
-        mPrevFrame = prevFrame;
+    CursorFrame(CursorFrame parentFrame) {
+        mParentFrame = parentFrame;
     }
 
+    /**
+     * Acquire a shared latch on this frame's bound node.
+     */
     void acquireShared() {
         TreeNode node = mNode;
         while (true) {
@@ -54,6 +62,9 @@ class CursorFrame {
         }
     }
 
+    /**
+     * Acquire an exclusive latch on this frame's bound node.
+     */
     void acquireExclusive() {
         TreeNode node = mNode;
         while (true) {
@@ -67,7 +78,9 @@ class CursorFrame {
         }
     }
 
-    /*
+    /**
+     * Acquire an exclusive latch on this frame's bound node.
+     */
     void acquireExclusiveUnfair() {
         TreeNode node = mNode;
         while (true) {
@@ -80,9 +93,10 @@ class CursorFrame {
             node = actualNode;
         }
     }
-    */
 
-    // Called with exclusive latch held.
+    /** 
+     * Bind this frame to a tree node. Called with exclusive latch held.
+     */
     void bind(TreeNode node, int nodePos) {
         mNode = node;
         mNodePos = nodePos;
@@ -94,13 +108,10 @@ class CursorFrame {
         node.mLastCursorFrame = this;
     }
 
-    /**
-     * Pop this, the top frame, returning the previous one. Called with
-     * exclusive latch held, which is released.
+    /** 
+     * Unbind this frame from a tree node. Called with exclusive latch held.
      */
-    CursorFrame pop() {
-        TreeNode node = mNode;
-
+    void unbind() {
         CursorFrame prev = mPrevSibling;
         CursorFrame next = mNextSibling;
         if (prev != null) {
@@ -111,11 +122,18 @@ class CursorFrame {
             next.mPrevSibling = prev;
             mNextSibling = null;
         } else {
-            node.mLastCursorFrame = prev;
+            mNode.mLastCursorFrame = prev;
         }
+    }
 
-        prev = mPrevFrame;
-        node.releaseExclusive();
-        return prev;
+    /**
+     * Pop this, the leaf frame, returning the parent frame. Called with
+     * exclusive latch held, which is released.
+     */
+    CursorFrame pop() {
+        unbind();
+        CursorFrame parent = mParentFrame;
+        mNode.releaseExclusive();
+        return parent;
     }
 }

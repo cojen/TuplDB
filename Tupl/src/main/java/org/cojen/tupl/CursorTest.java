@@ -30,11 +30,10 @@ public class CursorTest {
         final PageStore pstore = new DualFilePageStore(file0, file1);
         final int cachedNodes = 1000;
         final TreeNodeStore store = new TreeNodeStore(pstore, 0, cachedNodes);
-        final TreeNode root = store.root();
 
         //root.dump(store, "");
 
-        Cursor c = new Cursor(store, root);
+        Cursor c = new Cursor(store);
 
         System.out.println(c.find("key-5".getBytes()));
         printEntry(c);
@@ -53,13 +52,17 @@ public class CursorTest {
         */
     }
 
-    private static void printEntry(Cursor c) throws Exception {
+    static void printEntry(Cursor c) throws Exception {
         Entry entry = new Entry();
         c.getEntry(entry);
         System.out.println(string(entry.key) + " = " + string(entry.value));
     }
 
-    private static String string(byte[] b) {
+    static String string(byte[] b) {
         return b == null ? "null" : new String(b);
+    }
+
+    static String string(byte[] b, int off, int len) {
+        return b == null ? "null" : new String(b, off, len);
     }
 }

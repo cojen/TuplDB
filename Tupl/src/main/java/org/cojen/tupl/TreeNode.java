@@ -771,7 +771,7 @@ final class TreeNode extends Latch {
     /**
      * Caller must hold exclusive root latch and it must verify that root has split.
      */
-    private void finishSplitRoot(TreeNodeStore store) throws IOException {
+    void finishSplitRoot(TreeNodeStore store) throws IOException {
         // Create a child node and copy this root node state into it. Then update this
         // root node to point to new and split child nodes. New root is always an internal node.
 
@@ -786,6 +786,13 @@ final class TreeNode extends Latch {
         child.mSearchVecStart = mSearchVecStart;
         child.mSearchVecEnd = mSearchVecEnd;
         child.mChildNodes = mChildNodes;
+        child.mLastCursorFrame = mLastCursorFrame;
+
+        // Fix child node cursor frame bindings.
+        for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
+            frame.mNode = child;
+            frame = frame.mPrevSibling;
+        }
 
         Split split = mSplit;
         mSplit = null;
@@ -820,6 +827,21 @@ final class TreeNode extends Latch {
         mRightSegTail = newPage.length - 1;
         mSearchVecStart = searchVecStart;
         mSearchVecEnd = searchVecStart;
+        mLastCursorFrame = null;
+
+        // Add a parent cursor frame for all left and right node cursors.
+        for (CursorFrame frame = left.mLastCursorFrame; frame != null; ) {
+            CursorFrame rootFrame = new CursorFrame();
+            rootFrame.bind(this, 0);
+            frame.mParentFrame = rootFrame;
+            frame = frame.mPrevSibling;
+        }
+        for (CursorFrame frame = right.mLastCursorFrame; frame != null; ) {
+            CursorFrame rootFrame = new CursorFrame();
+            rootFrame.bind(this, 2);
+            frame.mParentFrame = rootFrame;
+            frame = frame.mPrevSibling;
+        }
 
         child.releaseExclusive();
         sibling.releaseExclusive();
@@ -1292,14 +1314,14 @@ final class TreeNode extends Latch {
     /**
      * @param pos compliment of position as provided by binarySearchLeaf; must be positive
      */
-    private void insertLeafEntry(TreeNodeStore store, int pos, byte[] key, byte[] value)
+    void insertLeafEntry(TreeNodeStore store, int pos, byte[] key, byte[] value)
         throws IOException
     {
         insertLeafEntry(store, pos, key, value, calculateEncodedLength(key, value));
     }
 
     /**
-     * @param pos position as provided by binarySearchLeaf; must be positive
+     * @param pos compliment of position as provided by binarySearchLeaf; must be positive
      */
     private void insertLeafEntry(TreeNodeStore store, int pos, byte[] key, byte[] value,
                                  final int encodedLen)
@@ -1402,8 +1424,9 @@ final class TreeNode extends Latch {
      * @param splitChild child node which split
      * @return sub-insert child if key was provided; exclusive latch held
      */
-    private TreeNode insertSplitChildRef(TreeNodeStore store, byte[] key, int keyPos,
-                                         TreeNode splitChild)
+    // FIXME: remove
+    TreeNode insertSplitChildRef(TreeNodeStore store, byte[] key, int keyPos,
+                                 TreeNode splitChild)
         throws IOException
     {
         if (store.shouldMarkDirty(splitChild)) {
@@ -1594,6 +1617,212 @@ final class TreeNode extends Latch {
     }
 
     /**
+     * Insert into an internal node following a child node split. This parent node and
+     * child node must have an exclusive latch held. Child latch is released.
+     *
+     * @param keyPos position to insert split key
+     * @param splitChild child node which split
+     */
+    void insertSplitChildRef(TreeNodeStore store, int keyPos, TreeNode splitChild)
+        throws IOException
+    {
+        if (store.shouldMarkDirty(splitChild)) {
+            // It should be dirty as a result of the split itself.
+            throw new AssertionError("Split child is not already marked dirty");
+        }
+
+        final Split split = splitChild.mSplit;
+        splitChild.mSplit = null;
+        final TreeNode newChild = split.latchSibling(store);
+
+        final TreeNode leftChild;
+        final TreeNode rightChild;
+        int newChildPos = keyPos >> 1;
+        if (split.mSplitRight) {
+            leftChild = splitChild;
+            rightChild = newChild;
+            newChildPos++;
+        } else {
+            leftChild = newChild;
+            rightChild = splitChild;
+        }
+
+        // Positions of frames higher than split key need to be incremented.
+        for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
+            int framePos = frame.mNodePos;
+            if (framePos > keyPos) {
+                frame.mNodePos = framePos + 2;
+            }
+            frame = frame.mPrevSibling;
+        }
+
+        // Positions of frames equal to split key are in the split itself. Only
+        // frames for the right split need to be incremented.
+        for (CursorFrame frame = rightChild.mLastCursorFrame; frame != null; ) {
+            CursorFrame parentFrame = frame.mParentFrame;
+            if (parentFrame.mNode != this) {
+                throw new AssertionError("Invalid cursor frame parent");
+            }
+            frame.mParentFrame.mNodePos += 2;
+            frame = frame.mPrevSibling;
+        }
+
+        // Update references to child node instances.
+        {
+            // FIXME: recycle child node arrays
+            TreeNode[] newChildNodes = new TreeNode[mChildNodes.length + 1];
+            System.arraycopy(mChildNodes, 0, newChildNodes, 0, newChildPos);
+            System.arraycopy(mChildNodes, newChildPos, newChildNodes, newChildPos + 1,
+                             mChildNodes.length - newChildPos);
+            newChildNodes[newChildPos] = newChild;
+            mChildNodes = newChildNodes;
+
+            // Rescale for long ids as encoded in page.
+            newChildPos <<= 3;
+        }
+
+        int searchVecStart = mSearchVecStart;
+        int searchVecEnd = mSearchVecEnd;
+
+        int leftSpace = searchVecStart - mLeftSegTail;
+        int rightSpace = mRightSegTail - searchVecEnd
+            - ((searchVecEnd - searchVecStart) << 2) - 17;
+
+        int encodedLen = split.splitKeyEncodedLength();
+
+        byte[] page = mPage;
+
+        int entryLoc;
+        alloc: {
+            // Need to make room for one new search vector entry (2 bytes) and one new child
+            // id entry (8 bytes). Determine which shift operations minimize movement.
+            if (newChildPos < ((3 * (searchVecEnd - searchVecStart + 2) + keyPos + 8) >> 1)) {
+                // Attaempt to shift search vector left by 10, shift child ids left by 8.
+
+                if ((leftSpace -= 10) >= 0 &&
+                    (entryLoc = allocPageEntry(encodedLen, leftSpace, rightSpace)) >= 0)
+                {
+                    System.arraycopy(page, searchVecStart, page, searchVecStart - 10, keyPos);
+                    System.arraycopy(page, searchVecStart + keyPos, page,
+                                     searchVecStart + keyPos - 8,
+                                     searchVecEnd - searchVecStart + 2 - keyPos + newChildPos);
+                    mSearchVecStart = searchVecStart -= 10;
+                    keyPos += searchVecStart;
+                    mSearchVecEnd = searchVecEnd -= 8;
+                    newChildPos += searchVecEnd + 2;
+                    break alloc;
+                }
+
+                // Need to make space, but restore leftSpace value first.
+                leftSpace += 10;
+            } else {
+                // Attempt to shift search vector left by 2, shift child ids right by 8.
+
+                leftSpace -= 2;
+                rightSpace -= 8;
+
+                if (leftSpace >= 0 && rightSpace >= 0 &&
+                    (entryLoc = allocPageEntry(encodedLen, leftSpace, rightSpace)) >= 0)
+                {
+                    System.arraycopy(page, searchVecStart, page, searchVecStart -= 2, keyPos);
+                    mSearchVecStart = searchVecStart;
+                    keyPos += searchVecStart;
+                    System.arraycopy(page, searchVecEnd + newChildPos + 2,
+                                     page, searchVecEnd + newChildPos + 10,
+                                     ((searchVecEnd - searchVecStart) << 2) + 8 - newChildPos);
+                    newChildPos += searchVecEnd + 2;
+                    break alloc;
+                }
+
+                // Need to make space, but restore space values first.
+                leftSpace += 2;
+                rightSpace += 8;
+            }
+
+            // Compute remaining space surrounding search vector after insert completes.
+            int remaining = leftSpace + rightSpace - encodedLen - 10;
+
+            if (mGarbage > remaining) {
+                // Do full compaction and free up the garbage, or split the node.
+                InSplitResult result;
+                if ((mGarbage + remaining) >= 0) {
+                    result = compactInternal(store, encodedLen, keyPos, newChildPos);
+                } else {
+                    // Node is full so split it.
+                    result = splitInternal
+                        (store, keyPos, splitChild, newChild, newChildPos, encodedLen);
+                }
+                page = result.mPage;
+                keyPos = result.mKeyPos;
+                newChildPos = result.mNewChildPos;
+                entryLoc = result.mEntryLoc;
+                break alloc;
+            }
+
+            int vecLen = searchVecEnd - searchVecStart + 2;
+            int childIdsLen = (vecLen << 2) + 8;
+            int newSearchVecStart;
+
+            if (remaining > 0 || (mRightSegTail & 1) != 0) {
+                // Re-center search vector, biased to the right, ensuring proper alignment.
+                newSearchVecStart =
+                    (mRightSegTail - vecLen - childIdsLen - 9 - (remaining >> 1)) & ~1;
+
+                // Allocate entry from left segment.
+                entryLoc = mLeftSegTail;
+                mLeftSegTail = entryLoc + encodedLen;
+            } else if ((mLeftSegTail & 1) == 0) {
+                // Move search vector left, ensuring proper alignment.
+                newSearchVecStart = mLeftSegTail + ((remaining >> 1) & ~1);
+
+                // Allocate entry from right segment.
+                entryLoc = mRightSegTail - encodedLen + 1;
+                mRightSegTail = entryLoc - 1;
+            } else {
+                // Search vector is misaligned, so do full compaction.
+                InSplitResult result = compactInternal(store, encodedLen, keyPos, newChildPos);
+                page = result.mPage;
+                keyPos = result.mKeyPos;
+                newChildPos = result.mNewChildPos;
+                entryLoc = result.mEntryLoc;
+                break alloc;
+            }
+
+            int newSearchVecEnd = newSearchVecStart + vecLen;
+
+            Utils.arrayCopies(page,
+                              // Move search vector up to new key position.
+                              searchVecStart, newSearchVecStart, keyPos,
+
+                              // Move search vector after new key position, to new child
+                              // id position.
+                              searchVecStart + keyPos,
+                              newSearchVecStart + keyPos + 2,
+                              vecLen - keyPos + newChildPos,
+
+                              // Move search vector after new child id position.
+                              searchVecEnd + 2 + newChildPos,
+                              newSearchVecEnd + 10 + newChildPos,
+                              childIdsLen - newChildPos);
+
+            keyPos += newSearchVecStart;
+            newChildPos += newSearchVecEnd + 2;
+            mSearchVecStart = newSearchVecStart;
+            mSearchVecEnd = newSearchVecEnd;
+        }
+
+        // Write pointer to key entry.
+        DataIO.writeShort(page, keyPos, entryLoc);
+        // Write new child id.
+        DataIO.writeLong(page, newChildPos, newChild.mId);
+        // Write key entry itself.
+        split.copySplitKeyToParent(page, entryLoc);
+
+        leftChild.releaseExclusive();
+        rightChild.releaseExclusive();
+    }
+
+    /**
      * @param pos position as provided by binarySearchLeaf; must be positive
      */
     private boolean updateLeafValue(TreeNodeStore store, int pos, byte[] key, byte[] value)
@@ -1754,7 +1983,7 @@ final class TreeNode extends Latch {
     /**
      * @param pos position as provided by binarySearchInternal; must be positive
      */
-    private void updateChildRefId(int pos, long id) {
+    void updateChildRefId(int pos, long id) {
         DataIO.writeLong(mPage, mSearchVecEnd + 2 + (pos << 2), id);
     }
 
