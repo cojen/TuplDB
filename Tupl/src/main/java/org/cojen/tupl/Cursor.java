@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.ArrayDeque;
+
 import java.util.concurrent.locks.Lock;
 
 /**
@@ -193,16 +195,14 @@ public class Cursor {
             if (node.isLeaf()) {
                 int pos = node.binarySearchLeaf(key);
                 frame.bind(node, pos);
+                if (pos < 0) {
+                    frame.mNotFoundKey = key;
+                }
                 if (!retainLatch) {
                     node.releaseExclusive();
                 }
                 mLeaf = frame;
-                if (pos < 0) {
-                    frame.mNotFoundKey = key;
-                    return false;
-                } else {
-                    return true;
-                }
+                return pos >= 0;
             }
 
             int childPos = node.binarySearchInternal(key);
@@ -551,6 +551,10 @@ public class Cursor {
         throw null;
     }
 
+    // FIXME: Consider defining findNext and findPrevious methods instead of
+    // special insert methods. They compare to the nearest entry, and if not
+    // applicable, they perform a full find instead.
+
     /**
      * Move the cursor to the given key, and store a value only if no
      * corresponding entry exists. True is returned if entry was inserted.
@@ -589,6 +593,105 @@ public class Cursor {
      */
     public synchronized void reset() {
         clearFrames();
+    }
+
+    /**
+     * Verifies that cursor state is correct by performing a find operation.
+     *
+     * @throws NullPointerException if key is null
+     */
+    synchronized void verify() throws IllegalStateException {
+        verify(getKey());
+    }
+
+    /**
+     * Verifies that cursor state is correct by performing a find operation.
+     *
+     * @throws NullPointerException if key is null
+     */
+    synchronized void verify(byte[] key) throws IllegalStateException {
+        ArrayDeque<CursorFrame> frames;
+        {
+            CursorFrame frame = mLeaf;
+            if (frame == null) {
+                return;
+            }
+            frames = new ArrayDeque<CursorFrame>(10);
+            do {
+                frames.addFirst(frame);
+                frame = frame.mParentFrame;
+            } while (frame != null);
+        }
+
+        CursorFrame frame = frames.removeFirst();
+        frame.acquireShared();
+        TreeNode node = frame.mNode;
+
+        if (node != mStore.root()) {
+            node.releaseShared();
+            throw new IllegalStateException("Bottom frame is not at root node");
+        }
+
+        while (true) {
+            if (node.isLeaf()) {
+                int pos = node.binarySearchLeaf(key);
+
+                try {
+                    if (frame.mNodePos != pos) {
+                        throw new IllegalStateException
+                            ("Leaf frame position incorrect: " + frame.mNodePos + " != " + pos);
+                    }
+
+                    if (pos < 0) {
+                        if (frame.mNotFoundKey == null) {
+                            throw new IllegalStateException
+                                ("Leaf frame key is not set; pos=" + pos);
+                        }
+                    } else if (frame.mNotFoundKey != null) {
+                        throw new IllegalStateException
+                            ("Leaf frame key should not be set; pos=" + pos);
+                    }
+                } finally {
+                    node.releaseShared();
+                }
+
+                return;
+            }
+
+            int childPos = node.binarySearchInternal(key);
+
+            if (childPos < 0) {
+                childPos = ~childPos;
+            } else {
+                childPos += 2;
+            }
+
+            CursorFrame next;
+            try {
+                if (frame.mNodePos != childPos) {
+                    throw new IllegalStateException
+                        ("Internal frame position incorrect: " +
+                         frame.mNodePos + " != " + childPos);
+                }
+
+                if (frame.mNotFoundKey != null) {
+                    throw new IllegalStateException("Internal frame key should not be set");
+                }
+
+                next = frames.pollFirst();
+
+                if (next == null) {
+                    throw new IllegalStateException("Top frame is not a leaf node");
+                }
+
+                next.acquireShared();
+            } finally {
+                node.releaseShared();
+            }
+
+            frame = next;
+            node = frame.mNode;
+        }
     }
 
     // Caller must be synchronized.

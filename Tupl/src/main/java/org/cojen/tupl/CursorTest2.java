@@ -63,27 +63,37 @@ public class CursorTest2 {
         c5.store("zzz".getBytes());
 
         final long seed = 892347;
-        final int count = 318;
+        final int count = 400;
 
         Random rnd = new Random(seed);
-        int lowest = Integer.MAX_VALUE;
-        int highest = 0;
+        //int lowest = Integer.MAX_VALUE;
+        //int highest = 0;
         for (int i=0; i<count; i++) {
             int r = rnd.nextInt() & Integer.MAX_VALUE;
+
+            /*
             if (r == 0 || r >= 1000000000 && r < lowest) {
                 lowest = r;
             }
             if (r < 1000000000 && r > highest) {
                 highest = r;
             }
+            */
+
             byte[] key = ("k" + r).getBytes();
             byte[] value = ("v" + r).getBytes();
             c.find(key);
             c.store(value);
+
+            c.verify();
+            c2.verify();
+            c3.verify();
+            c4.verify();
+            c5.verify();
         }
 
-        System.out.println("lowest:  " + lowest);
-        System.out.println("highest: " + highest);
+        //System.out.println("lowest:  " + lowest);
+        //System.out.println("highest: " + highest);
 
         rnd = new Random(seed);
         for (int i=0; i<count; i++) {
@@ -94,20 +104,6 @@ public class CursorTest2 {
                 System.out.println("not found: " + i);
             }
         }
-
-        System.out.println("----------------------");
-
-        System.out.println(c5.previous());
-        CursorTest.printEntry(c5);
-
-        System.out.println(c2.next());
-        CursorTest.printEntry(c2);
-
-        System.out.println(c3.next());
-        CursorTest.printEntry(c3);
-
-        System.out.println(c4.next());
-        CursorTest.printEntry(c4);
 
         //store.commit();
     }
