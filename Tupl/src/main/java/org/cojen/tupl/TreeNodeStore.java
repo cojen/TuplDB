@@ -261,26 +261,28 @@ final class TreeNodeStore {
         byte state = node.mCachedState;
         if (state == mCommitState) {
             return false;
+        } else {
+            doMarkDirty(node);
+            return true;
         }
+    }
 
+    /**
+     * Caller must hold commit lock and exclusive latch on node. Method must
+     * not be called if node is already dirty. Latch is never released by this
+     * method, even if an exception is thrown.
+     */
+    void doMarkDirty(TreeNode node) throws IOException {
         long oldId = node.mId;
         long newId = mPageStore.reservePage();
-
-        if (state == CACHED_CLEAN) {
-            if (oldId != 0) {
-                mPageStore.deletePage(oldId);
-            }
-        } else {
-            if (oldId != 0) {
-                mPageStore.deletePage(oldId);
-            }
+        if (oldId != 0) {
+            mPageStore.deletePage(oldId);
+        }
+        if (node.mCachedState != CACHED_CLEAN) {
             node.write(this);
         }
-
         node.mId = newId;
         node.mCachedState = mCommitState;
-
-        return true;
     }
 
     /**

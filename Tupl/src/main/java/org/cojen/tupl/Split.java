@@ -28,10 +28,11 @@ class Split {
     private final long mSiblingId;
     private volatile TreeNode mSibling;
 
-    // In many cases a copy of the key is not necessary; a simple reference to the
-    // appropriate sub node works fine. This strategy assumes that the sub node will not
-    // be compacted before the split is completed, and it cannot tolerate splits which
-    // themselves must be split.
+    // In many cases a copy of the key is not necessary; a simple reference to
+    // the appropriate sub node works fine. This strategy assumes that the sub
+    // node will not be compacted before the split is completed, and it cannot
+    // tolerate splits which themselves must be split. For this reason, Split
+    // is constructed with a copied key.
     private final byte[] mSplitKey;
 
     /**
@@ -185,6 +186,37 @@ class Split {
             }
         }
         return sibling;
+    }
+
+    /**
+     * @param frame frame affected by split; exclusive latch must be held
+     */
+    void fixFrame(TreeNodeStore store, CursorFrame frame) throws IOException {
+        int pos = frame.mNodePos;
+        if (pos < 0) {
+            // FIXME
+            throw new IOException("negative pos");
+        }
+
+        if (mSplitRight) {
+            int highestPos = frame.mNode.highestPos();
+            if (pos > highestPos) {
+                TreeNode sibling = latchSibling(store);
+                frame.unbind();
+                frame.bind(sibling, pos - highestPos - 2);
+                sibling.releaseExclusive();
+            }
+        } else {
+            TreeNode sibling = latchSibling(store);
+            int highestPos = mSibling.highestPos();
+            if (pos > highestPos) {
+                frame.mNodePos = pos - highestPos - 2;
+            } else {
+                frame.unbind();
+                frame.bind(sibling, pos);
+            }
+            sibling.releaseExclusive();
+        }
     }
 
     /**
