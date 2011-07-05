@@ -308,7 +308,7 @@ public class Cursor {
             pos = (~pos) - 2;
         }
 
-        if (pos < node.highestPos()) {
+        if (pos < node.highestLeafPos()) {
             frame.mNodePos = pos + 2;
             node.releaseExclusive();
             return true;
@@ -325,7 +325,7 @@ public class Cursor {
             node = frame.mNode;
             pos = frame.mNodePos;
 
-            if (pos <= node.highestPos()) {
+            if (pos < node.highestInternalPos()) {
                 pos += 2;
                 frame.mNodePos = pos;
 
@@ -488,26 +488,10 @@ public class Cursor {
                 }
             } while ((frame = frame.mPrevSibling) != null);
 
-            Split split;
-            if ((split = node.mSplit) == null) {
+            if (node.mSplit == null) {
                 node.releaseExclusive();
             } else {
-                // FIXME: move into a new method, to be used also by finishSplit
-                TreeNodeStore store = mStore;
-                frame = node.mLastCursorFrame;
-                do {
-                    // Capture previous frame from linked list before changing the links.
-                    CursorFrame prev = frame.mPrevSibling;
-                    split.fixFrame(store, frame);
-                    frame = prev;
-                } while (frame != null);
-
-                if (node == store.root()) {
-                    node.finishSplitRoot(store);
-                    node.releaseExclusive();
-                } else {
-                    finishSplit(leaf, node, store);
-                }
+                finishSplit(leaf, node, mStore);
             }
         } finally {
             sharedCommitLock.unlock();
@@ -785,30 +769,57 @@ public class Cursor {
      * Caller must hold exclusive latch and it must verify that node has
      * split. Latch is released when method returns.
      */
-    private static void finishSplit(CursorFrame frame, TreeNode node, TreeNodeStore store)
+    private static void finishSplit(final CursorFrame frame,
+                                    final TreeNode node,
+                                    final TreeNodeStore store)
         throws IOException
     {
+        final Split split = node.mSplit;
+
+        // Fix split cursor frames.
+        {
+            CursorFrame f = node.mLastCursorFrame;
+            do {
+                // Capture previous frame from linked list before changing the links.
+                CursorFrame prev = f.mPrevSibling;
+                split.fixFrame(store, f);
+                f = prev;
+            } while (f != null);
+        }
+
+        if (node == store.root()) {
+            node.finishSplitRoot(store);
+            node.releaseExclusive();
+            return;
+        }
+
         CursorFrame parent = frame.mParentFrame;
         node.releaseExclusive();
 
-        // Unfair latch to boost priority of thread trying to finish the split.
-        parent.acquireExclusiveUnfair();
-
-        if (parent.mNode.mSplit != null) {
-            // FIXME: must fix frames too
-            // finishSplit(parent, store);
-            throw new IOException("FIXME");
+        TreeNode parentNode;
+        while (true) {
+            // Unfair latch to boost priority of thread trying to finish the split.
+            parent.acquireExclusiveUnfair();
+            parentNode = parent.mNode;
+            if (parentNode.mSplit == null) {
+                break;
+            }
+            // Split up the tree.
+            finishSplit(parent, parentNode, store);
         }
 
-        TreeNode parentNode = parent.mNode;
         int pos = parent.mNodePos;
-        node = parentNode.mChildNodes[pos >> 1];
-        node.acquireExclusiveUnfair();
+        TreeNode childNode = parentNode.mChildNodes[pos >> 1];
+        childNode.acquireExclusiveUnfair();
 
-        if (node.mSplit == null) {
-            node.releaseExclusive();
+        if (childNode.mSplit == null) {
+            childNode.releaseExclusive();
         } else {
-            parentNode.insertSplitChildRef(store, pos, node);
+            parentNode.insertSplitChildRef(store, pos, childNode);
+            if (parentNode.mSplit != null) {
+                finishSplit(parent, parentNode, store);
+                return;
+            }
         }
 
         parentNode.releaseExclusive();
