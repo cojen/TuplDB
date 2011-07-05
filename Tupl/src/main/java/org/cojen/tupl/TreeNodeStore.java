@@ -227,6 +227,11 @@ final class TreeNodeStore {
 
         int state = node.mCachedState;
         if (state != CACHED_CLEAN) {
+            // TODO: Keep some sort of cache of ids known to be dirty. If
+            // reloaded before commit, then they're still dirty. Without this
+            // optimization, too many pages are allocated when: evictions are
+            // high, write rate is high, and commits are bogged down. A Bloom
+            // filter is not appropriate, because of false positives.
             mSharedCommitLock.lock();
             try {
                 node.write(this);
