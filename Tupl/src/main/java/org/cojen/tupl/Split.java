@@ -192,14 +192,39 @@ class Split {
      * @param frame frame affected by split; exclusive latch must be held
      */
     void fixFrame(TreeNodeStore store, CursorFrame frame) throws IOException {
+        TreeNode node = frame.mNode;
         int pos = frame.mNodePos;
-        if (pos < 0) {
-            // FIXME
-            throw new IOException("negative pos");
+
+        if (node.isLeaf()) {
+            if (pos < 0) {
+                // FIXME
+                throw new IOException("negative pos");
+            }
+
+            if (mSplitRight) {
+                int highestPos = node.highestLeafPos();
+                if (pos > highestPos) {
+                    TreeNode sibling = latchSibling(store);
+                    frame.unbind();
+                    frame.bind(sibling, pos - highestPos - 2);
+                    sibling.releaseExclusive();
+                }
+            } else {
+                TreeNode sibling = latchSibling(store);
+                int highestPos = mSibling.highestLeafPos();
+                if (pos > highestPos) {
+                    frame.mNodePos = pos - highestPos - 2;
+                } else {
+                    frame.unbind();
+                    frame.bind(sibling, pos);
+                }
+                sibling.releaseExclusive();
+            }
+            return;
         }
 
         if (mSplitRight) {
-            int highestPos = frame.mNode.highestPos();
+            int highestPos = node.highestInternalPos();
             if (pos > highestPos) {
                 TreeNode sibling = latchSibling(store);
                 frame.unbind();
@@ -208,7 +233,7 @@ class Split {
             }
         } else {
             TreeNode sibling = latchSibling(store);
-            int highestPos = mSibling.highestPos();
+            int highestPos = mSibling.highestInternalPos();
             if (pos > highestPos) {
                 frame.mNodePos = pos - highestPos - 2;
             } else {

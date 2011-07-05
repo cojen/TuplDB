@@ -1043,8 +1043,12 @@ final class TreeNode extends Latch {
         return mSearchVecEnd >= mSearchVecStart;
     }
 
-    int highestPos() {
+    int highestLeafPos() {
         return mSearchVecEnd - mSearchVecStart;
+    }
+
+    int highestInternalPos() {
+        return mSearchVecEnd - mSearchVecStart + 2;
     }
 
     /**
@@ -1480,7 +1484,7 @@ final class TreeNode extends Latch {
             // Need to make room for one new search vector entry (2 bytes) and one new child
             // id entry (8 bytes). Determine which shift operations minimize movement.
             if (newChildPos < ((3 * (searchVecEnd - searchVecStart + 2) + keyPos + 8) >> 1)) {
-                // Attaempt to shift search vector left by 10, shift child ids left by 8.
+                // Attempt to shift search vector left by 10, shift child ids left by 8.
 
                 if ((leftSpace -= 10) >= 0 &&
                     (entryLoc = allocPageEntry(encodedLen, leftSpace, rightSpace)) >= 0)
@@ -1697,7 +1701,7 @@ final class TreeNode extends Latch {
             // Need to make room for one new search vector entry (2 bytes) and one new child
             // id entry (8 bytes). Determine which shift operations minimize movement.
             if (newChildPos < ((3 * (searchVecEnd - searchVecStart + 2) + keyPos + 8) >> 1)) {
-                // Attaempt to shift search vector left by 10, shift child ids left by 8.
+                // Attempt to shift search vector left by 10, shift child ids left by 8.
 
                 if ((leftSpace -= 10) >= 0 &&
                     (entryLoc = allocPageEntry(encodedLen, leftSpace, rightSpace)) >= 0)
@@ -2692,9 +2696,6 @@ final class TreeNode extends Latch {
         int mKeyPos;
         int mNewChildPos;
         int mEntryLoc;
-
-        InSplitResult() {
-        }
     }
 
     /**
@@ -2945,7 +2946,7 @@ final class TreeNode extends Latch {
      * by this method -- it is only used for debugging.
      */
     void dump(TreeNodeStore store, String indent) throws IOException {
-        verify();
+        verify0();
 
         if (isLeaf()) {
             Entry entry = new Entry();

@@ -30,8 +30,8 @@ public class CursorTest2 {
         file1 = new java.io.File(args[0] + ".1");
 
         final PageStore pstore = new DualFilePageStore(file0, file1);
-        final int cachedNodes = 1000;
-        final TreeNodeStore store = new TreeNodeStore(pstore, 0, cachedNodes);
+        final int cachedNodes = 100000;
+        final TreeNodeStore store = new TreeNodeStore(pstore, cachedNodes, cachedNodes);
 
         Cursor c = new Cursor(store);
         Cursor c2 = new Cursor(store);
@@ -63,37 +63,29 @@ public class CursorTest2 {
         c5.store("zzz".getBytes());
 
         final long seed = 892347;
-        final int count = 400;
+        final int count = 1000000;
 
         Random rnd = new Random(seed);
-        //int lowest = Integer.MAX_VALUE;
-        //int highest = 0;
         for (int i=0; i<count; i++) {
             int r = rnd.nextInt() & Integer.MAX_VALUE;
 
-            /*
-            if (r == 0 || r >= 1000000000 && r < lowest) {
-                lowest = r;
-            }
-            if (r < 1000000000 && r > highest) {
-                highest = r;
-            }
-            */
-
             byte[] key = ("k" + r).getBytes();
             byte[] value = ("v" + r).getBytes();
-            c.find(key);
-            c.store(value);
+            if (!c.find(key)) {
+                c.store(value);
+            }
 
-            c.verify();
-            c2.verify();
-            c3.verify();
-            c4.verify();
-            c5.verify();
+            try {
+                c.verify();
+                c2.verify();
+                c3.verify();
+                c4.verify();
+                c5.verify();
+            } catch (IllegalStateException e) {
+                System.out.println("i: " + i);
+                throw e;
+            }
         }
-
-        //System.out.println("lowest:  " + lowest);
-        //System.out.println("highest: " + highest);
 
         rnd = new Random(seed);
         for (int i=0; i<count; i++) {
