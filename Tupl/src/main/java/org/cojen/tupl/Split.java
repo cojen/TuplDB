@@ -30,9 +30,8 @@ class Split {
 
     // In many cases a copy of the key is not necessary; a simple reference to
     // the appropriate sub node works fine. This strategy assumes that the sub
-    // node will not be compacted before the split is completed, and it cannot
-    // tolerate splits which themselves must be split. For this reason, Split
-    // is constructed with a copied key.
+    // node will not be compacted before the split is completed. For this
+    // reason, Split is always constructed with a copied key.
     private final byte[] mSplitKey;
 
     /**
@@ -55,7 +54,7 @@ class Split {
      * @param node node which was split; shared latch must be held
      * @return original node or sibling
      */
-    TreeNode selectNodeShared(TreeNodeStore store, byte[] key, TreeNode node) throws IOException {
+    TreeNode selectNodeShared(TreeNodeStore store, TreeNode node, byte[] key) throws IOException {
         TreeNode sibling = mSibling;
         sibling.acquireShared();
 
@@ -82,17 +81,97 @@ class Split {
             right = node;
         }
 
-        // Choose right node if split key is less than or equal to search key.
+        int compare = Utils.compareKeys(key, 0, key.length, mSplitKey, 0, mSplitKey.length);
 
-        int compare = Utils.compareKeys(mSplitKey, 0, mSplitKey.length, key, 0, key.length);
-
-        if (compare <= 0) {
-            left.releaseShared();
-            return right;
-        } else {
+        if (compare < 0) {
             right.releaseShared();
             return left;
+        } else {
+            left.releaseShared();
+            return right;
         }
+    }
+
+    /**
+     * Performs a binary search against the split, returning the position
+     * within the original node as if it had not split.
+     */
+    int binarySearch(TreeNodeStore store, TreeNode node, byte[] key) throws IOException {
+        TreeNode sibling = latchSibling(store);
+
+        TreeNode left, right;
+        if (mSplitRight) {
+            left = node;
+            right = sibling;
+        } else {
+            left = sibling;
+            right = node;
+        }
+
+        int compare = Utils.compareKeys(key, 0, key.length, mSplitKey, 0, mSplitKey.length);
+
+        int searchPos;
+        if (compare < 0) {
+            searchPos = left.binarySearch(key);
+        } else {
+            int highestPos = left.highestPos();
+            searchPos = right.binarySearch(key);
+            if (searchPos < 0) {
+                searchPos = searchPos - highestPos - 2;
+            } else {
+                searchPos = highestPos + 2 + searchPos;
+            }
+        }
+
+        sibling.releaseExclusive();
+
+        return searchPos;
+    }
+
+    static class Branch {
+        TreeNode node;
+        int childPos;
+        int unsplitChildPos;
+    }
+
+    /**
+     * Searches for the proper split branch, returning the original position as
+     * if the node wasn't split, the selected branch node (latched exclusively),
+     * and the position in the branch node.
+     */
+    Branch selectBranch(TreeNodeStore store, TreeNode node, byte[] key) throws IOException {
+        TreeNode sibling = latchSibling(store);
+
+        TreeNode left, right;
+        if (mSplitRight) {
+            left = node;
+            right = sibling;
+        } else {
+            left = sibling;
+            right = node;
+        }
+
+        int compare = Utils.compareKeys(key, 0, key.length, mSplitKey, 0, mSplitKey.length);
+
+        Branch branch = new Branch();
+
+        if (compare < 0) {
+            branch.node = left;
+            branch.unsplitChildPos = branch.childPos = left.binarySearch(key);
+            right.releaseExclusive();
+        } else {
+            branch.node = right;
+            branch.childPos = right.binarySearch(key);
+            int highestPos = left.highestPos();
+            if (branch.childPos < 0) {
+                branch.unsplitChildPos = branch.childPos - highestPos - 2;
+            } else {
+                branch.unsplitChildPos = highestPos + 2 + branch.childPos;
+            }
+            left.releaseExclusive();
+        }
+
+        return branch;
     }
 
     /**
@@ -104,7 +183,8 @@ class Split {
      * @param node node which was split; exclusive latch must be held
      * @return original node or sibling
      */
-    TreeNode selectNodeExclusive(TreeNodeStore store, byte[] key, TreeNode node)
+    // FIXME: remove
+    TreeNode selectNodeExclusive(TreeNodeStore store, TreeNode node, byte[] key)
         throws IOException
     {
         TreeNode sibling = latchSibling(store);
@@ -118,16 +198,14 @@ class Split {
             right = node;
         }
 
-        // Choose right node if split key is less than or equal to search key.
+        int compare = Utils.compareKeys(key, 0, key.length, mSplitKey, 0, mSplitKey.length);
 
-        int compare = Utils.compareKeys(mSplitKey, 0, mSplitKey.length, key, 0, key.length);
-
-        if (compare <= 0) {
-            left.releaseExclusive();
-            return right;
-        } else {
+        if (compare < 0) {
             right.releaseExclusive();
             return left;
+        } else {
+            left.releaseExclusive();
+            return right;
         }
     }
 
@@ -140,6 +218,7 @@ class Split {
      * @param node node which was split; exclusive latch must be held
      * @return original node or sibling
      */
+    // FIXME: remove
     TreeNode selectLeftNodeExclusive(TreeNodeStore store, TreeNode node) throws IOException {
         if (mSplitRight) {
             return node;
@@ -158,7 +237,32 @@ class Split {
      * @param node node which was split; exclusive latch must be held
      * @return original node or sibling
      */
+    // FIXME: remove
     TreeNode selectRightNodeExclusive(TreeNodeStore store, TreeNode node) throws IOException {
+        if (!mSplitRight) {
+            return node;
+        }
+        TreeNode sibling = latchSibling(store);
+        node.releaseExclusive();
+        return sibling;
+    }
+
+    /**
+     * Return the left split node, latched exclusively. Other node is unlatched.
+     */
+    TreeNode latchLeft(TreeNodeStore store, TreeNode node) throws IOException {
+        if (mSplitRight) {
+            return node;
+        }
+        TreeNode sibling = latchSibling(store);
+        node.releaseExclusive();
+        return sibling;
+    }
+
+    /**
+     * Return the right split node, latched exclusively. Other node is unlatched.
+     */
+    TreeNode latchRight(TreeNodeStore store, TreeNode node) throws IOException {
         if (!mSplitRight) {
             return node;
         }
@@ -189,58 +293,64 @@ class Split {
     }
 
     /**
-     * @param frame frame affected by split; exclusive latch must be held
+     * @param frame frame affected by split; exclusive latch for sibling must also be held
      */
-    void fixFrame(TreeNodeStore store, CursorFrame frame) throws IOException {
+    void rebindFrame(CursorFrame frame, TreeNode sibling) throws IOException {
         TreeNode node = frame.mNode;
         int pos = frame.mNodePos;
 
-        if (node.isLeaf()) {
-            if (pos < 0) {
-                // FIXME
-                throw new IOException("negative pos");
-            }
+        if (mSplitRight) {
+            int highestPos = node.highestPos();
 
-            if (mSplitRight) {
-                int highestPos = node.highestLeafPos();
+            if (pos >= 0) {
                 if (pos > highestPos) {
-                    TreeNode sibling = latchSibling(store);
                     frame.unbind();
                     frame.bind(sibling, pos - highestPos - 2);
-                    sibling.releaseExclusive();
+                } else {
+                    // Nothing to do.
                 }
-            } else {
-                TreeNode sibling = latchSibling(store);
-                int highestPos = mSibling.highestLeafPos();
+                return;
+            }
+
+            pos = ~pos;
+
+            if (pos <= highestPos) {
+                // Nothing to do.
+                return;
+            }
+
+            if (pos == highestPos + 2) {
+                byte[] key = frame.mNotFoundKey;
+                int compare = Utils.compareKeys
+                    (key, 0, key.length, mSplitKey, 0, mSplitKey.length);
+                if (compare < 0) {
+                    // Nothing to do.
+                    return;
+                }
+            }
+
+            frame.unbind();
+            frame.bind(sibling, ~(pos - highestPos - 2));
+        } else {
+            int highestPos = sibling.highestPos();
+
+            if (pos >= 0) {
                 if (pos > highestPos) {
                     frame.mNodePos = pos - highestPos - 2;
                 } else {
                     frame.unbind();
                     frame.bind(sibling, pos);
                 }
-                sibling.releaseExclusive();
+                return;
             }
-            return;
-        }
 
-        if (mSplitRight) {
-            int highestPos = node.highestInternalPos();
+            pos = ~pos;
             if (pos > highestPos) {
-                TreeNode sibling = latchSibling(store);
-                frame.unbind();
-                frame.bind(sibling, pos - highestPos - 2);
-                sibling.releaseExclusive();
-            }
-        } else {
-            TreeNode sibling = latchSibling(store);
-            int highestPos = mSibling.highestInternalPos();
-            if (pos > highestPos) {
-                frame.mNodePos = pos - highestPos - 2;
+                throw new IOException("FIXME: split left, higher pos");
             } else {
                 frame.unbind();
-                frame.bind(sibling, pos);
+                frame.bind(sibling, ~pos);
             }
-            sibling.releaseExclusive();
         }
     }
 

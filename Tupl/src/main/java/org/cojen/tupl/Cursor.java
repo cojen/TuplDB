@@ -43,7 +43,7 @@ public class Cursor {
      *
      * @throws IllegalStateException if position is undefined
      */
-    public synchronized byte[] getKey() {
+    public synchronized byte[] getKey() throws IOException {
         CursorFrame leaf = leafShared();
         TreeNode node = leaf.mNode;
         int pos = leaf.mNodePos;
@@ -58,7 +58,7 @@ public class Cursor {
      *
      * @throws IllegalStateException if position is undefined
      */
-    public synchronized byte[] getValue() {
+    public synchronized byte[] getValue() throws IOException {
         CursorFrame leaf = leafShared();
         TreeNode node = leaf.mNode;
         int pos = leaf.mNodePos;
@@ -74,7 +74,7 @@ public class Cursor {
      * @param entry entry to fill in; pass null to just check if entry exists
      * @throws IllegalStateException if position is undefined
      */
-    public synchronized boolean getEntry(Entry entry) {
+    public synchronized boolean getEntry(Entry entry) throws IOException {
         CursorFrame leaf = leafShared();
         TreeNode node = leaf.mNode;
         int pos = leaf.mNodePos;
@@ -95,71 +95,71 @@ public class Cursor {
     }
 
     /**
-     * Move the cursor to find the first available entry, unless none
-     * exists. If false is returned, the position is now undefined.
+     * Move the cursor to find the first available entry, unless none exists.
+     *
+     * @return false if no entries exist and position is now undefined
      */
     public synchronized boolean first() throws IOException {
-        CursorFrame frame = clearFrames();
-        if (frame == null) {
-            frame = new CursorFrame();
+        TreeNode node = mStore.root();
+        CursorFrame frame = resetFind(node);
+
+        if (!node.hasKeys()) {
+            node.releaseExclusive();
+            return false;
         }
 
-        TreeNode node = mStore.root();
-        node.acquireExclusive();
-
         while (true) {
-            if (node.isLeaf()) {
-                if (node.hasKeys()) {
-                    frame.bind(node, 0);
-                    node.releaseExclusive();
-                    mLeaf = frame;
-                    return true;
-                } else {
-                    node.releaseExclusive();
-                    return false;
-                }
-            }
-
             frame.bind(node, 0);
 
-            node = latchChild(node, TreeNode.EMPTY_BYTES, 0);
+            if (node.isLeaf()) {
+                node.releaseExclusive();
+                mLeaf = frame;
+                return true;
+            }
+
+            if (node.mSplit != null) {
+                node = node.mSplit.latchLeft(mStore, node);
+            }
+
+            node = latchChild(node, 0);
             frame = new CursorFrame(frame);
         }
     }
 
     /**
-     * Move the cursor to find the last available entry, unless none exists. If
-     * false is returned, the position is now undefined.
+     * Move the cursor to find the last available entry, unless none exists.
+     *
+     * @return false if no entries exist and position is now undefined
      */
     public synchronized boolean last() throws IOException {
-        CursorFrame frame = clearFrames();
-        if (frame == null) {
-            frame = new CursorFrame();
-        }
-
         TreeNode node = mStore.root();
-        node.acquireExclusive();
+        CursorFrame frame = resetFind(node);
+
+        if (!node.hasKeys()) {
+            node.releaseExclusive();
+            return false;
+        }
 
         while (true) {
             int numKeys = node.numKeys();
 
             if (node.isLeaf()) {
-                if (numKeys > 0) {
-                    frame.bind(node, (numKeys - 1) << 1);
-                    node.releaseExclusive();
-                    mLeaf = frame;
-                    return true;
-                } else {
-                    node.releaseExclusive();
-                    return false;
-                }
+                frame.bind(node, (numKeys - 1) << 1);
+                node.releaseExclusive();
+                mLeaf = frame;
+                return true;
             }
 
-            int childPos = numKeys << 1;
+            if (node.mSplit == null) {
+                int childPos = numKeys << 1;
+                frame.bind(node, childPos);
+                node = latchChild(node, childPos);
+            } else {
+                TreeNode right = node.mSplit.latchRight(mStore, node);
+                frame.bind(node, numKeys << 1);
+                node = latchChild(right, right.numKeys() << 1);
+            }
 
-            frame.bind(node, childPos);
-
-            node = latchChild(node, null, childPos);
             frame = new CursorFrame(frame);
         }
     }
@@ -170,6 +170,7 @@ public class Cursor {
      * retained. Key reference is released as soon as cursor position changes
      * or corresponding entry is created.
      *
+     * @return false if entry not found
      * @throws NullPointerException if key is null
      */
     public synchronized boolean find(byte[] key) throws IOException {
@@ -178,22 +179,17 @@ public class Cursor {
 
     // Caller must be synchronized.
     private boolean find(byte[] key, boolean retainLatch) throws IOException {
-        // FIXME: Don't unregister the root frame.
-        CursorFrame frame = clearFrames();
-        if (frame == null) {
-            frame = new CursorFrame();
-        }
-
         TreeNode node = mStore.root();
-        node.acquireExclusive();
-
-        // Note: No need to check if root has split, since root splits are
-        // always completed before releasing the root latch. Also, root node
-        // is not managed in usage list, because it cannot be evicted.
+        CursorFrame frame = resetFind(node);
 
         while (true) {
             if (node.isLeaf()) {
-                int pos = node.binarySearchLeaf(key);
+                int pos;
+                if (node.mSplit == null) {
+                    pos = node.binarySearchLeaf(key);
+                } else {
+                    pos = node.mSplit.binarySearch(mStore, node, key);
+                }
                 frame.bind(node, pos);
                 if (pos < 0) {
                     frame.mNotFoundKey = key;
@@ -205,25 +201,25 @@ public class Cursor {
                 return pos >= 0;
             }
 
-            int childPos = node.binarySearchInternal(key);
-
-            if (childPos < 0) {
-                childPos = ~childPos;
+            if (node.mSplit == null) {
+                int childPos = TreeNode.internalPos(node.binarySearchInternal(key));
+                frame.bind(node, childPos);
+                node = latchChild(node, childPos);
             } else {
-                childPos += 2;
+                Split.Branch branch = node.mSplit.selectBranch(mStore, node, key);
+                frame.bind(node, TreeNode.internalPos(branch.unsplitChildPos));
+                node = latchChild(branch.node, TreeNode.internalPos(branch.childPos));
             }
 
-            frame.bind(node, childPos);
-
-            node = latchChild(node, key, childPos);
             frame = new CursorFrame(frame);
         }
     }
 
     /**
      * Move the cursor to find the first available entry greater than or equal
-     * to the given key. If false is returned, the position is now undefined.
+     * to the given key.
      *
+     * @return false if entry not found and position is now undefined
      * @throws NullPointerException if key is null
      */
     public synchronized boolean findGe(byte[] key) throws IOException {
@@ -237,8 +233,9 @@ public class Cursor {
 
     /**
      * Move the cursor to find the first available entry greater than the given
-     * key. If false is returned, the position is now undefined.
+     * key.
      *
+     * @return false if entry not found and position is now undefined
      * @throws NullPointerException if key is null
      */
     public synchronized boolean findGt(byte[] key) throws IOException {
@@ -248,8 +245,9 @@ public class Cursor {
 
     /**
      * Move the cursor to find the first available entry less than or equal to
-     * the given key. If false is returned, the position is now undefined.
+     * the given key.
      *
+     * @return false if entry not found and position is now undefined
      * @throws NullPointerException if key is null
      */
     public synchronized boolean findLe(byte[] key) throws IOException {
@@ -263,8 +261,9 @@ public class Cursor {
 
     /**
      * Move the cursor to find the first available entry less than the given
-     * key. If false is returned, the position is now undefined.
+     * key.
      *
+     * @return false if entry not found and position is now undefined
      * @throws NullPointerException if key is null
      */
     public synchronized boolean findLt(byte[] key) throws IOException {
@@ -286,9 +285,9 @@ public class Cursor {
     }
 
     /**
-     * Advances to the cursor to the next available entry, unless none
-     * exists. If false is returned, the position is now undefined.
+     * Advances to the cursor to the next available entry, unless none exists.
      *
+     * @return false if no next entry and position is now undefined
      * @throws IllegalStateException if position is undefined
      */
     public synchronized boolean next() throws IOException {
@@ -329,7 +328,7 @@ public class Cursor {
                 pos += 2;
                 frame.mNodePos = pos;
 
-                node = latchChild(node, TreeNode.EMPTY_BYTES, pos);
+                node = latchChild_(node, TreeNode.EMPTY_BYTES, pos);
 
                 while (true) {
                     frame = new CursorFrame(frame);
@@ -343,7 +342,7 @@ public class Cursor {
 
                     frame.bind(node, 0);
 
-                    node = latchChild(node, TreeNode.EMPTY_BYTES, 0);
+                    node = latchChild_(node, TreeNode.EMPTY_BYTES, 0);
                 }
             }
         }
@@ -351,8 +350,9 @@ public class Cursor {
 
     /**
      * Advances to the cursor to the previous available entry, unless none
-     * exists. If false is returned, the position is now undefined.
+     * exists.
      *
+     * @return false if no previous entry and position is now undefined
      * @throws IllegalStateException if position is undefined
      */
     public synchronized boolean previous() throws IOException {
@@ -393,7 +393,7 @@ public class Cursor {
                 pos -= 2;
                 frame.mNodePos = pos;
 
-                node = latchChild(node, null, pos);
+                node = latchChild_(node, null, pos);
 
                 while (true) {
                     frame = new CursorFrame(frame);
@@ -411,7 +411,7 @@ public class Cursor {
 
                     frame.bind(node, childPos);
 
-                    node = latchChild(node, null, childPos);
+                    node = latchChild_(node, null, childPos);
                 }
             }
         }
@@ -474,7 +474,7 @@ public class Cursor {
                     int compare = Utils.compareKeys
                         (frameKey, 0, frameKey.length, key, 0, key.length);
                     if (compare > 0) {
-                        // Position is a compliment, so subtract instead of add.
+                        // Position is a complement, so subtract instead of add.
                         frame.mNodePos = framePos - 2;
                     } else if (compare == 0) {
                         frame.mNodePos = newPos;
@@ -483,10 +483,10 @@ public class Cursor {
                 } else if (framePos >= newPos) {
                     frame.mNodePos = framePos + 2;
                 } else if (framePos < pos) {
-                    // Position is a compliment, so subtract instead of add.
+                    // Position is a complement, so subtract instead of add.
                     frame.mNodePos = framePos - 2;
                 }
-            } while ((frame = frame.mPrevSibling) != null);
+            } while ((frame = frame.mPrevCousin) != null);
 
             if (node.mSplit == null) {
                 node.releaseExclusive();
@@ -576,29 +576,74 @@ public class Cursor {
      * Resets the cursor position to be undefined.
      */
     public synchronized void reset() {
-        clearFrames();
+        CursorFrame frame = mLeaf;
+        if (frame != null) {
+            mLeaf = null;
+            do {
+                frame.acquireExclusive();
+                TreeNode node = frame.mNode;
+                frame = frame.pop();
+                node.releaseExclusive();
+            } while (frame != null);
+        }
+    }
+
+    /**
+     * Resets all frames and latches root node, exclusively. Caller must be
+     * synchronized. Although the normal reset could be called directly, this
+     * variant avoids unlatching the root node, since a find operation would
+     * immediately relatch it.
+     *
+     * @return new or recycled frame
+     */
+    private CursorFrame resetFind(TreeNode root) {
+        CursorFrame frame = mLeaf;
+        if (frame == null) {
+            root.acquireExclusive();
+            return new CursorFrame();
+        } else {
+            mLeaf = null;
+            while (true) {
+                frame.acquireExclusive();
+                TreeNode node = frame.mNode;
+                CursorFrame parent = frame.pop();
+                if (parent != null) {
+                    node.releaseExclusive();
+                    frame = parent;
+                } else {
+                    // Usually the root frame refers to the root node, but it
+                    // can be wrong if the tree height is changing.
+                    if (node != root) {
+                        node.releaseExclusive();
+                        root.acquireExclusive();
+                    }
+                    return frame;
+                }
+            }
+        }
     }
 
     /**
      * Verifies that cursor state is correct by performing a find operation.
      *
-     * @throws NullPointerException if key is null
+     * @return false if unable to verify completely at this time
      */
-    synchronized void verify() throws IllegalStateException {
-        verify(getKey());
+    synchronized boolean verify() throws IOException, IllegalStateException {
+        return verify(getKey());
     }
 
     /**
      * Verifies that cursor state is correct by performing a find operation.
      *
+     * @return false if unable to verify completely at this time
      * @throws NullPointerException if key is null
      */
-    synchronized void verify(byte[] key) throws IllegalStateException {
+    synchronized boolean verify(byte[] key) throws IllegalStateException {
         ArrayDeque<CursorFrame> frames;
         {
             CursorFrame frame = mLeaf;
             if (frame == null) {
-                return;
+                return true;
             }
             frames = new ArrayDeque<CursorFrame>(10);
             do {
@@ -611,9 +656,19 @@ public class Cursor {
         frame.acquireShared();
         TreeNode node = frame.mNode;
 
-        if (node != mStore.root()) {
+        if (node.mSplit != null) {
+            // Cannot verify into split nodes.
             node.releaseShared();
-            throw new IllegalStateException("Bottom frame is not at root node");
+            return false;
+        }
+
+        if (node != mStore.root()) {
+            // FIXME: This is an acceptible temporary problem due to a stale
+            // snapshot. Checking the parent frame(s) handles splits, but
+            // merges might cause issues.
+            //node.releaseShared();
+            //throw new IllegalStateException("Bottom frame is not at root node");
+            System.out.println("Bottom frame is not at root node");
         }
 
         while (true) {
@@ -639,23 +694,21 @@ public class Cursor {
                     node.releaseShared();
                 }
 
-                return;
+                return true;
             }
 
-            int childPos = node.binarySearchInternal(key);
-
-            if (childPos < 0) {
-                childPos = ~childPos;
-            } else {
-                childPos += 2;
-            }
+            int childPos = TreeNode.internalPos(node.binarySearchInternal(key));
 
             CursorFrame next;
             try {
                 if (frame.mNodePos != childPos) {
                     throw new IllegalStateException
                         ("Internal frame position incorrect: " +
-                         frame.mNodePos + " != " + childPos);
+                         frame.mNodePos + " != " + childPos + ", split: " + node.mSplit +
+                         //", fpos: " + fpos +
+                         //", opos: " + frame.mOpos +
+                         //", searchKey: " + CursorTest.string(frame.mSearchKey) +
+                         ", key: " + CursorTest.string(key));
                 }
 
                 if (frame.mNotFoundKey != null) {
@@ -675,76 +728,80 @@ public class Cursor {
 
             frame = next;
             node = frame.mNode;
+
+            if (node.mSplit != null) {
+                // Cannot verify into split nodes.
+                node.releaseShared();
+                return false;
+            }
         }
     }
 
-    // Caller must be synchronized.
-    private CursorFrame clearFrames() {
-        CursorFrame frame = mLeaf;
-        if (frame == null) {
-            return null;
+    /**
+     * Latches and returns leaf frame, not split. Caller must be synchronized.
+     */
+    private CursorFrame leafShared() throws IOException {
+        CursorFrame leaf = mLeaf;
+        if (leaf == null) {
+            throw new IllegalStateException("Position is undefined");
         }
 
-        mLeaf = null;
+        leaf.acquireShared();
+
+        {
+            TreeNode node = leaf.mNode;
+            if (node.mSplit == null) {
+                return leaf;
+            }
+            node.releaseShared();
+        }
 
         while (true) {
-            frame.acquireExclusive();
-            CursorFrame prev = frame.pop();
-            if (prev == null) {
-                frame.mNotFoundKey = null;
-                return frame;
+            leaf.acquireExclusiveUnfair();
+            TreeNode node = leaf.mNode;
+            if (node.mSplit == null) {
+                node.downgrade();
+                return leaf;
             }
-            frame = prev;
+            finishSplit(leaf, node, mStore);
         }
     }
 
     /**
-     * Latches and returns leaf frame. Caller must be synchronized.
+     * Latches and returns leaf frame, not split. Caller must be synchronized.
      */
-    private CursorFrame leafShared() {
+    private CursorFrame leafExclusive() throws IOException {
         CursorFrame leaf = mLeaf;
         if (leaf == null) {
             throw new IllegalStateException("Position is undefined");
         }
-        leaf.acquireShared();
-        return leaf;
-    }
 
-    /**
-     * Latches and returns leaf frame. Caller must be synchronized.
-     */
-    private CursorFrame leafExclusive() {
-        CursorFrame leaf = mLeaf;
-        if (leaf == null) {
-            throw new IllegalStateException("Position is undefined");
-        }
         leaf.acquireExclusive();
-        return leaf;
+
+        while (true) {
+            TreeNode node = leaf.mNode;
+            if (node.mSplit == null) {
+                return leaf;
+            }
+            finishSplit(leaf, node, mStore);
+            leaf.acquireExclusiveUnfair();
+        }
     }
 
     /**
-     * Ensure leaf frame and all previous frames are marked as dirty. Called
-     * without any latch held, but exclusive latch is held as a side-effect.
-     * Caller must be synchronized.
-     *
-     * @return leaf frame
+     * Latches and returns leaf frame, not split. Leaf frame and all previous
+     * frames are marked as dirty. Caller must be synchronized.
      */
     private CursorFrame leafExclusiveDirty() throws IOException {
-        CursorFrame leaf = mLeaf;
-        if (leaf == null) {
-            throw new IllegalStateException("Position is undefined");
-        }
+        CursorFrame leaf = leafExclusive();
         markDirty(leaf, mStore);
         return leaf;
     }
 
     /**
-     * Ensure frame and all previous frames are marked as dirty. Called without
-     * any latch held, but exclusive latch is held as a side-effect. Caller
-     * must be synchronized.
+     * Called with frame latch held.
      */
     private static void markDirty(CursorFrame frame, TreeNodeStore store) throws IOException {
-        frame.acquireExclusive();
         TreeNode node = frame.mNode;
         if (store.shouldMarkDirty(node)) {
             frame = frame.mParentFrame;
@@ -752,6 +809,7 @@ public class Cursor {
                 store.doMarkDirty(node);
             } else {
                 node.releaseExclusive();
+                frame.acquireExclusive();
                 markDirty(frame, store);
                 node = frame.mNode;
                 int childPos = frame.mNodePos;
@@ -774,50 +832,39 @@ public class Cursor {
                                     final TreeNodeStore store)
         throws IOException
     {
-        final Split split = node.mSplit;
-
-        // Fix split cursor frames.
-        {
-            CursorFrame f = node.mLastCursorFrame;
-            do {
-                // Capture previous frame from linked list before changing the links.
-                CursorFrame prev = f.mPrevSibling;
-                split.fixFrame(store, f);
-                f = prev;
-            } while (f != null);
-        }
-
         if (node == store.root()) {
+            node.rebindSplitFrames(store);
             node.finishSplitRoot(store);
             node.releaseExclusive();
             return;
         }
 
-        CursorFrame parent = frame.mParentFrame;
+        CursorFrame parentFrame = frame.mParentFrame;
         node.releaseExclusive();
 
         TreeNode parentNode;
         while (true) {
             // Unfair latch to boost priority of thread trying to finish the split.
-            parent.acquireExclusiveUnfair();
-            parentNode = parent.mNode;
+            parentFrame.acquireExclusiveUnfair();
+            parentNode = parentFrame.mNode;
             if (parentNode.mSplit == null) {
                 break;
             }
             // Split up the tree.
-            finishSplit(parent, parentNode, store);
+            finishSplit(parentFrame, parentNode, store);
         }
 
-        int pos = parent.mNodePos;
+        int pos = parentFrame.mNodePos;
         TreeNode childNode = parentNode.mChildNodes[pos >> 1];
         childNode.acquireExclusiveUnfair();
 
         if (childNode.mSplit == null) {
             childNode.releaseExclusive();
         } else {
+            childNode.rebindSplitFrames(store);
             parentNode.insertSplitChildRef(store, pos, childNode);
             if (parentNode.mSplit != null) {
-                finishSplit(parent, parentNode, store);
+                finishSplit(parentFrame, parentNode, store);
                 return;
             }
         }
@@ -829,7 +876,8 @@ public class Cursor {
      * Parent must be held exclusively, returns child with exclusive latch
      * held, parent latch is released.
      */
-    private TreeNode latchChild(TreeNode parent, byte[] key, int childPos) throws IOException {
+    // FIXME: remove this
+    private TreeNode latchChild_(TreeNode parent, byte[] key, int childPos) throws IOException {
         TreeNode childNode = parent.mChildNodes[childPos >> 1];
         long childId = parent.retrieveChildRefId(childPos);
 
@@ -842,7 +890,12 @@ public class Cursor {
                 break check;
             }
 
-            // FIXME: Don't follow split, finish it.
+            parent.releaseExclusive();
+
+            // FIXME: Must finish split now. Don't let cursor into split
+            // sibling. Simpler strategy might allow cursor into original node,
+            // possibly with an out-of-bounds position. This is the opposite of
+            // what Split.rebindFrame does.
             Split split;
             if ((split = childNode.mSplit) != null) {
                 if (key == null) {
@@ -850,8 +903,55 @@ public class Cursor {
                 } else if (key.length == 0) {
                     childNode = split.selectLeftNodeExclusive(mStore, childNode);
                 } else {
-                    childNode = split.selectNodeExclusive(mStore, key, childNode);
+                    childNode = split.selectNodeExclusive(mStore, childNode, key);
                 }
+            }
+
+            mStore.used(childNode);
+            return childNode;
+        }
+
+        // If this point is reached, child needs to be loaded.
+
+        childNode = mStore.allocLatchedNode();
+        childNode.mId = childId;
+        parent.mChildNodes[childPos >> 1] = childNode;
+
+        // Release parent latch before child has been loaded. Any threads
+        // which wish to access the same child will block until this thread
+        // has finished loading the child and released its exclusive latch.
+        parent.releaseExclusive();
+
+        try {
+            childNode.read(mStore, childId);
+        } catch (IOException e) {
+            // Another thread might access child and see that it is invalid because
+            // id is zero. It will assume it got evicted and will load child again.
+            childNode.mId = 0;
+            childNode.releaseExclusive();
+            reset();
+            throw e;
+        }
+
+        mStore.used(childNode);
+        return childNode;
+    }
+
+    /**
+     * Parent must be held exclusively, returns child with exclusive latch
+     * held, parent latch is released.
+     */
+    private TreeNode latchChild(TreeNode parent, int childPos) throws IOException {
+        TreeNode childNode = parent.mChildNodes[childPos >> 1];
+        long childId = parent.retrieveChildRefId(childPos);
+
+        check: if (childNode != null && childId == childNode.mId) {
+            childNode.acquireExclusive();
+
+            // Need to check again in case evict snuck in.
+            if (childId != childNode.mId) {
+                childNode.releaseExclusive();
+                break check;
             }
 
             parent.releaseExclusive();
@@ -878,7 +978,6 @@ public class Cursor {
             // id is zero. It will assume it got evicted and will load child again.
             childNode.mId = 0;
             childNode.releaseExclusive();
-            reset();
             throw e;
         }
 

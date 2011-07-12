@@ -291,7 +291,8 @@ final class TreeNodeStore {
     }
 
     /**
-     * Indicate that node is most recently used.
+     * Indicate that non-root node is most recently used. Root node is not
+     * managed in usage list and cannot be evicted.
      */
     void used(TreeNode node) {
         // Because this method can be a bottleneck, don't wait for exclusive

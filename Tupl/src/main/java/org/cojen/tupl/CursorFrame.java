@@ -33,8 +33,8 @@ class CursorFrame {
     CursorFrame mParentFrame;
 
     // Linked list of CursorFrames bound to a TreeNode.
-    CursorFrame mPrevSibling;
-    CursorFrame mNextSibling;
+    CursorFrame mPrevCousin;
+    CursorFrame mNextCousin;
 
     // Reference to key which wasn't found. Only used by leaf frames.
     byte[] mNotFoundKey;
@@ -102,8 +102,8 @@ class CursorFrame {
         mNodePos = nodePos;
         CursorFrame last = node.mLastCursorFrame;
         if (last != null) {
-            mPrevSibling = last;
-            last.mNextSibling = this;
+            mPrevCousin = last;
+            last.mNextCousin = this;
         }
         node.mLastCursorFrame = this;
     }
@@ -112,15 +112,15 @@ class CursorFrame {
      * Unbind this frame from a tree node. Called with exclusive latch held.
      */
     void unbind() {
-        CursorFrame prev = mPrevSibling;
-        CursorFrame next = mNextSibling;
+        CursorFrame prev = mPrevCousin;
+        CursorFrame next = mNextCousin;
         if (prev != null) {
-            prev.mNextSibling = next;
-            mPrevSibling = null;
+            prev.mNextCousin = next;
+            mPrevCousin = null;
         }
         if (next != null) {
-            next.mPrevSibling = prev;
-            mNextSibling = null;
+            next.mPrevCousin = prev;
+            mNextCousin = null;
         } else {
             mNode.mLastCursorFrame = prev;
         }
@@ -128,12 +128,14 @@ class CursorFrame {
 
     /**
      * Pop this, the leaf frame, returning the parent frame. Called with
-     * exclusive latch held, which is released.
+     * exclusive latch held, which is retained.
      */
     CursorFrame pop() {
         unbind();
         CursorFrame parent = mParentFrame;
-        mNode.releaseExclusive();
+        mNode = null;
+        mParentFrame = null;
+        mNotFoundKey = null;
         return parent;
     }
 }

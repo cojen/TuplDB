@@ -229,13 +229,7 @@ final class TreeNode extends Latch {
         long childId;
 
         loop: while (true) {
-            childPos = node.binarySearchInternal(key);
-
-            if (childPos < 0) {
-                childPos = ~childPos;
-            } else {
-                childPos += 2;
-            }
+            childPos = internalPos(node.binarySearchInternal(key));
 
             TreeNode childNode = node.mChildNodes[childPos >> 1];
             childId = node.retrieveChildRefId(childPos);
@@ -254,7 +248,7 @@ final class TreeNode extends Latch {
                 }
 
                 if (childNode.mSplit != null) {
-                    childNode = childNode.mSplit.selectNodeShared(store, key, childNode);
+                    childNode = childNode.mSplit.selectNodeShared(store, childNode, key);
                 }
 
                 if (childNode.isLeaf()) {
@@ -288,7 +282,7 @@ final class TreeNode extends Latch {
 
             if (node.mSplit != null) {
                 // Node might have split while shared latch was not held.
-                node = node.mSplit.selectNodeExclusive(store, key, node);
+                node = node.mSplit.selectNodeExclusive(store, node, key);
             }
 
             if (node == store.root()) {
@@ -621,7 +615,7 @@ final class TreeNode extends Latch {
                 // now, insert into the proper side of the split. This might result in
                 // more splits, which will be dealt with later.
                 // FIXME: Support splitting splits. Assertions currently prevent it.
-                node = node.mSplit.selectNodeExclusive(store, key, node);
+                node = node.mSplit.selectNodeExclusive(store, node, key);
             }
 
             if (node == store.root()) {
@@ -791,7 +785,7 @@ final class TreeNode extends Latch {
         // Fix child node cursor frame bindings.
         for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
             frame.mNode = child;
-            frame = frame.mPrevSibling;
+            frame = frame.mPrevCousin;
         }
 
         Split split = mSplit;
@@ -834,13 +828,13 @@ final class TreeNode extends Latch {
             CursorFrame rootFrame = new CursorFrame();
             rootFrame.bind(this, 0);
             frame.mParentFrame = rootFrame;
-            frame = frame.mPrevSibling;
+            frame = frame.mPrevCousin;
         }
         for (CursorFrame frame = right.mLastCursorFrame; frame != null; ) {
             CursorFrame rootFrame = new CursorFrame();
             rootFrame.bind(this, 2);
             frame.mParentFrame = rootFrame;
-            frame = frame.mPrevSibling;
+            frame = frame.mPrevCousin;
         }
 
         child.releaseExclusive();
@@ -869,7 +863,7 @@ final class TreeNode extends Latch {
         // have finished the split.
         doFinish: if (id == node.mId) {
             if (node.mSplit != null) {
-                node = node.mSplit.selectNodeExclusive(store, key, node);
+                node = node.mSplit.selectNodeExclusive(store, node, key);
                 childPos = 0;
             }
 
@@ -890,8 +884,7 @@ final class TreeNode extends Latch {
                 // Another thread moved child nodes around, so find it again.
                 long childId = childNode.mId;
                 childNode.releaseExclusive();
-                childPos = node.binarySearchInternal(key);
-                childPos = childPos < 0 ? ~childPos : (childPos + 2);
+                childPos = internalPos(node.binarySearchInternal(key));
                 childNode = childNodes[childPos >> 1];
                 if (childNode == null) {
                     // If it got evicted, then the split must have finished.
@@ -1043,10 +1036,27 @@ final class TreeNode extends Latch {
         return mSearchVecEnd >= mSearchVecStart;
     }
 
+    /**
+     * Caller must hold any latch.
+     */
+    int highestPos() {
+        int pos = mSearchVecEnd - mSearchVecStart;
+        if (!isLeaf()) {
+            pos += 2;
+        }
+        return pos;
+    }
+
+    /**
+     * Caller must hold any latch.
+     */
     int highestLeafPos() {
         return mSearchVecEnd - mSearchVecStart;
     }
 
+    /**
+     * Caller must hold any latch.
+     */
     int highestInternalPos() {
         return mSearchVecEnd - mSearchVecStart + 2;
     }
@@ -1105,6 +1115,13 @@ final class TreeNode extends Latch {
         if (parentLatch != null) {
             parentLatch.releaseShared();
         }
+    }
+
+    /**
+     * @return 2-based insertion pos, which is negative if key not found
+     */
+    int binarySearch(byte[] key) {
+        return isLeaf() ? binarySearchLeaf(key) : binarySearchInternal(key);
     }
 
     /**
@@ -1202,6 +1219,13 @@ final class TreeNode extends Latch {
         }
 
         return ~(lowPos - mSearchVecStart);
+    }
+
+    /**
+     * Ensure binary search position is positive, for internal node.
+     */
+    static int internalPos(int pos) {
+        return pos < 0 ? ~pos : (pos + 2);
     }
 
     private byte[] retrieveFirstLeafKey() {
@@ -1657,18 +1681,18 @@ final class TreeNode extends Latch {
             if (framePos > keyPos) {
                 frame.mNodePos = framePos + 2;
             }
-            frame = frame.mPrevSibling;
+            frame = frame.mPrevCousin;
         }
 
         // Positions of frames equal to split key are in the split itself. Only
         // frames for the right split need to be incremented.
-        for (CursorFrame frame = rightChild.mLastCursorFrame; frame != null; ) {
-            CursorFrame parentFrame = frame.mParentFrame;
-            if (parentFrame.mNode != this) {
+        for (CursorFrame childFrame = rightChild.mLastCursorFrame; childFrame != null; ) {
+            CursorFrame frame = childFrame.mParentFrame;
+            if (frame.mNode != this) {
                 throw new AssertionError("Invalid cursor frame parent");
             }
-            frame.mParentFrame.mNodePos += 2;
-            frame = frame.mPrevSibling;
+            frame.mNodePos += 2;
+            childFrame = childFrame.mPrevCousin;
         }
 
         // Update references to child node instances.
@@ -1824,6 +1848,25 @@ final class TreeNode extends Latch {
 
         leftChild.releaseExclusive();
         rightChild.releaseExclusive();
+    }
+
+    /**
+     * Rebind cursor frames affected by split to correct node and
+     * position. Caller must hold exclusive latch and it must verify that node
+     * has split.
+     */
+    // FIXME: private and invoke from finishSplitRoot and insertSplitChildRef
+    void rebindSplitFrames(TreeNodeStore store) throws IOException {
+        Split split = mSplit;
+        TreeNode sibling = split.latchSibling(store);
+        CursorFrame frame = mLastCursorFrame;
+        while (frame != null) {
+            // Capture previous frame from linked list before changing the links.
+            CursorFrame prev = frame.mPrevCousin;
+            split.rebindFrame(frame, sibling);
+            frame = prev;
+        }
+        sibling.releaseExclusive();
     }
 
     /**
