@@ -315,6 +315,7 @@ public class Cursor {
 
         while (true) {
             frame = frame.pop();
+            node.releaseExclusive();
             if (frame == null) {
                 mLeaf = null;
                 return false;
@@ -380,6 +381,7 @@ public class Cursor {
 
         while (true) {
             frame = frame.pop();
+            node.releaseExclusive();
             if (frame == null) {
                 mLeaf = null;
                 return false;
