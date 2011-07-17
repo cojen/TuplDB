@@ -141,15 +141,12 @@ public class Cursor {
         }
 
         while (true) {
-            int numKeys = node.numKeys();
-
             if (node.isLeaf()) {
                 int pos;
                 if (node.mSplit == null) {
-                    pos = (numKeys - 1) << 1;
+                    pos = node.highestLeafPos();
                 } else {
-                    // FIXME: wrong position: needs to be sum with sibling
-                    pos = (numKeys - 1) << 1;
+                    pos = node.mSplit.highestLeafPos(mStore, node);
                 }
                 frame.bind(node, pos);
                 node.releaseExclusive();
@@ -157,15 +154,32 @@ public class Cursor {
                 return true;
             }
 
-            if (node.mSplit == null) {
-                int childPos = numKeys << 1;
+            Split split = node.mSplit;
+            if (split == null) {
+                int childPos = node.highestInternalPos();
                 frame.bind(node, childPos);
                 node = latchChild(node, childPos);
             } else {
-                TreeNode right = node.mSplit.latchRight(mStore, node);
-                // FIXME: wrong position: needs to be sum with sibling
-                frame.bind(node, numKeys << 1);
-                node = latchChild(right, right.numKeys() << 1);
+                // Follow highest position of split, binding this frame to the
+                // unsplit node as if it had not split. The binding will be
+                // corrected when split is finished.
+
+                final TreeNode sibling = split.latchSibling(mStore);
+
+                final TreeNode left, right;
+                if (split.mSplitRight) {
+                    left = node;
+                    right = sibling;
+                } else {
+                    left = sibling;
+                    right = node;
+                }
+
+                int highestRightPos = right.highestInternalPos();
+                frame.bind(node, left.highestInternalPos() + 2 + highestRightPos);
+                left.releaseExclusive();
+
+                node = latchChild(right, highestRightPos);
             }
 
             frame = new CursorFrame(frame);
@@ -196,7 +210,7 @@ public class Cursor {
                 if (node.mSplit == null) {
                     pos = node.binarySearchLeaf(key);
                 } else {
-                    pos = node.mSplit.binarySearch(mStore, node, key);
+                    pos = node.mSplit.binarySearchLeaf(mStore, node, key);
                 }
                 frame.bind(node, pos);
                 if (pos < 0) {
