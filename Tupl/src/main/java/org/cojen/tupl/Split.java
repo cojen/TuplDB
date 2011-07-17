@@ -26,6 +26,7 @@ import java.io.IOException;
 class Split {
     final boolean mSplitRight;
     private final long mSiblingId;
+    // FIXME: Add state to sibling to prevent eviction and make this field final.
     private volatile TreeNode mSibling;
 
     // In many cases a copy of the key is not necessary; a simple reference to
@@ -43,6 +44,14 @@ class Split {
         mSibling = sibling;
         mSplitKey = splitKey;
         sibling.releaseExclusive();
+    }
+
+    /**
+     * Compares to the split key, returning <0 if given key is lower, 0 if
+     * equal, >0 if greater.
+     */
+    int compare(byte[] key) {
+        return Utils.compareKeys(key, 0, key.length, mSplitKey, 0, mSplitKey.length);
     }
 
     /**
@@ -81,9 +90,7 @@ class Split {
             right = node;
         }
 
-        int compare = Utils.compareKeys(key, 0, key.length, mSplitKey, 0, mSplitKey.length);
-
-        if (compare < 0) {
+        if (compare(key) < 0) {
             right.releaseShared();
             return left;
         } else {
@@ -108,10 +115,8 @@ class Split {
             right = node;
         }
 
-        int compare = Utils.compareKeys(key, 0, key.length, mSplitKey, 0, mSplitKey.length);
-
         int searchPos;
-        if (compare < 0) {
+        if (compare(key) < 0) {
             searchPos = left.binarySearch(key);
         } else {
             int highestPos = left.highestPos();
@@ -126,52 +131,6 @@ class Split {
         sibling.releaseExclusive();
 
         return searchPos;
-    }
-
-    static class Branch {
-        TreeNode node;
-        int childPos;
-        int unsplitChildPos;
-    }
-
-    /**
-     * Searches for the proper split branch, returning the selected branch node
-     * (latched exclusively), the position in the branch node, and the original
-     * position as if the node wasn't split.
-     */
-    Branch selectBranch(TreeNodeStore store, TreeNode node, byte[] key) throws IOException {
-        TreeNode sibling = latchSibling(store);
-
-        TreeNode left, right;
-        if (mSplitRight) {
-            left = node;
-            right = sibling;
-        } else {
-            left = sibling;
-            right = node;
-        }
-
-        int compare = Utils.compareKeys(key, 0, key.length, mSplitKey, 0, mSplitKey.length);
-
-        Branch branch = new Branch();
-
-        if (compare < 0) {
-            branch.node = left;
-            branch.unsplitChildPos = branch.childPos = left.binarySearch(key);
-            right.releaseExclusive();
-        } else {
-            branch.node = right;
-            branch.childPos = right.binarySearch(key);
-            int highestPos = left.highestPos();
-            if (branch.childPos < 0) {
-                branch.unsplitChildPos = branch.childPos - highestPos - 2;
-            } else {
-                branch.unsplitChildPos = highestPos + 2 + branch.childPos;
-            }
-            left.releaseExclusive();
-        }
-
-        return branch;
     }
 
     /**
@@ -198,9 +157,7 @@ class Split {
             right = node;
         }
 
-        int compare = Utils.compareKeys(key, 0, key.length, mSplitKey, 0, mSplitKey.length);
-
-        if (compare < 0) {
+        if (compare(key) < 0) {
             right.releaseExclusive();
             return left;
         } else {
@@ -321,9 +278,7 @@ class Split {
 
             if (pos == highestPos + 2) {
                 byte[] key = frame.mNotFoundKey;
-                int compare = Utils.compareKeys
-                    (key, 0, key.length, mSplitKey, 0, mSplitKey.length);
-                if (compare < 0) {
+                if (compare(key) < 0) {
                     // Nothing to do.
                     return;
                 }
@@ -354,9 +309,7 @@ class Split {
 
             if (pos == highestPos + 2) {
                 byte[] key = frame.mNotFoundKey;
-                int compare = Utils.compareKeys
-                    (key, 0, key.length, mSplitKey, 0, mSplitKey.length);
-                if (compare < 0) {
+                if (compare(key) < 0) {
                     frame.unbind();
                     frame.bind(sibling, ~pos);
                     return;

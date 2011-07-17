@@ -209,14 +209,43 @@ public class Cursor {
                 return pos >= 0;
             }
 
-            if (node.mSplit == null) {
+            Split split = node.mSplit;
+            if (split == null) {
                 int childPos = TreeNode.internalPos(node.binarySearchInternal(key));
                 frame.bind(node, childPos);
                 node = latchChild(node, childPos);
             } else {
-                Split.Branch branch = node.mSplit.selectBranch(mStore, node, key);
-                frame.bind(node, TreeNode.internalPos(branch.unsplitChildPos));
-                node = latchChild(branch.node, TreeNode.internalPos(branch.childPos));
+                // Follow search into split, binding this frame to the unsplit
+                // node as if it had not split. The binding will be corrected
+                // when split is finished.
+
+                final TreeNode sibling = split.latchSibling(mStore);
+
+                final TreeNode left, right;
+                if (split.mSplitRight) {
+                    left = node;
+                    right = sibling;
+                } else {
+                    left = sibling;
+                    right = node;
+                }
+
+                final TreeNode selected;
+                final int selectedPos;
+
+                if (split.compare(key) < 0) {
+                    selected = left;
+                    selectedPos = TreeNode.internalPos(left.binarySearchInternal(key));
+                    frame.bind(node, selectedPos);
+                    right.releaseExclusive();
+                } else {
+                    selected = right;
+                    selectedPos = TreeNode.internalPos(right.binarySearchInternal(key));
+                    frame.bind(node, left.highestInternalPos() + 2 + selectedPos);
+                    left.releaseExclusive();
+                }
+
+                node = latchChild(selected, selectedPos);
             }
 
             frame = new CursorFrame(frame);
@@ -832,24 +861,25 @@ public class Cursor {
     /**
      * Called with frame latch held.
      */
-    private static void markDirty(CursorFrame frame, TreeNodeStore store) throws IOException {
+    private static void markDirty(final CursorFrame frame, TreeNodeStore store)
+        throws IOException
+    {
         TreeNode node = frame.mNode;
         if (store.shouldMarkDirty(node)) {
-            frame = frame.mParentFrame;
-            if (frame == null) {
+            CursorFrame parentFrame = frame.mParentFrame;
+            if (parentFrame == null) {
                 store.doMarkDirty(node);
             } else {
                 node.releaseExclusive();
-                frame.acquireExclusive();
-                markDirty(frame, store);
+                parentFrame.acquireExclusive();
+                markDirty(parentFrame, store);
+                TreeNode parentNode = parentFrame.mNode;
+                frame.acquireExclusiveUnfair();
                 node = frame.mNode;
-                int childPos = frame.mNodePos;
-                TreeNode childNode = node.mChildNodes[childPos >> 1];
-                childNode.acquireExclusiveUnfair();
-                if (store.markDirty(childNode)) {
-                    node.updateChildRefId(childPos, childNode.mId);
+                if (store.markDirty(node)) {
+                    parentNode.updateChildRefId(parentFrame.mNodePos, node.mId);
                 }
-                node.releaseExclusive();
+                parentNode.releaseExclusive();
             }
         }
     }
@@ -859,8 +889,8 @@ public class Cursor {
      * split. Latch is released when method returns.
      */
     private static void finishSplit(final CursorFrame frame,
-                                    final TreeNode node,
-                                    final TreeNodeStore store)
+                                    TreeNode node,
+                                    TreeNodeStore store)
         throws IOException
     {
         if (node == store.root()) {
@@ -884,14 +914,13 @@ public class Cursor {
             finishSplit(parentFrame, parentNode, store);
         }
 
-        int pos = parentFrame.mNodePos;
-        TreeNode childNode = parentNode.mChildNodes[pos >> 1];
-        childNode.acquireExclusiveUnfair();
+        frame.acquireExclusiveUnfair();
+        node = frame.mNode;
 
-        if (childNode.mSplit == null) {
-            childNode.releaseExclusive();
+        if (node.mSplit == null) {
+            node.releaseExclusive();
         } else {
-            parentNode.insertSplitChildRef(store, pos, childNode);
+            parentNode.insertSplitChildRef(store, parentFrame.mNodePos, node);
             if (parentNode.mSplit != null) {
                 finishSplit(parentFrame, parentNode, store);
                 return;
