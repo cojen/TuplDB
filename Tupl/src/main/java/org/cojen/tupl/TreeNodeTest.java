@@ -91,7 +91,7 @@ public class TreeNodeTest {
             if (fullTest) {
                 System.out.println(i);
             }
-            long k = rnd.nextLong();
+            long k = rnd.nextLong() & Long.MAX_VALUE;
             testInsert(map, fullTest, store, root,
                        "key-".concat(String.valueOf(k)), "value-".concat(String.valueOf(i)));
         }
@@ -112,16 +112,24 @@ public class TreeNodeTest {
         byte[] bkey = key.getBytes();
         byte[] bvalue = value.getBytes();
 
-        boolean inserted = root.store(store, bkey, bvalue);
-        if (!inserted) {
+        Cursor c = new Cursor(store);
+        boolean exists = c.find(bkey);
+        if (!exists) {
+            c.store(bvalue);
+        }
+        c.reset();
+
+        /*
+        if (exists) {
             boolean deleted = root.store(store, bkey, null);
             return;
             //System.out.println(deleted);
             /*
             inserted = root.store(store, bkey, bvalue);
             assertTrue(inserted);
-            */
+            * /
         }
+        */
 
         byte[] fvalue = root.search(store, bkey);
         try {
