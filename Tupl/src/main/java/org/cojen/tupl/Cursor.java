@@ -722,14 +722,13 @@ public class Cursor {
             return false;
         }
 
+        /* This check cannot be reliably performed, because the snapshot of
+         * frames can be stale.
         if (node != mStore.root()) {
-            // FIXME: This is an acceptible temporary problem due to a stale
-            // snapshot. Checking the parent frame(s) handles splits, but
-            // merges might cause issues.
-            //node.releaseShared();
-            //throw new IllegalStateException("Bottom frame is not at root node");
-            System.out.println("Bottom frame is not at root node");
+            node.releaseShared();
+            throw new IllegalStateException("Bottom frame is not at root node");
         }
+        */
 
         while (true) {
             if (node.isLeaf()) {
