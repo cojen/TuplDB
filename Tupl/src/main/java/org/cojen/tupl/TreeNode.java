@@ -615,13 +615,6 @@ final class TreeNode extends Latch {
     /**
      * @return 2-based insertion pos, which is negative if key not found
      */
-    int binarySearch(byte[] key) {
-        return isLeaf() ? binarySearchLeaf(key) : binarySearchInternal(key);
-    }
-
-    /**
-     * @return 2-based insertion pos, which is negative if key not found
-     */
     int binarySearchLeaf(byte[] key) {
         final byte[] page = mPage;
         final int keyLen = key.length;
