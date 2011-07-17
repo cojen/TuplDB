@@ -788,10 +788,9 @@ final class TreeNode extends Latch {
             frame = frame.mPrevCousin;
         }
 
-        Split split = mSplit;
+        final Split split = mSplit;
+        final TreeNode sibling = rebindSplitFrames(store, split);
         mSplit = null;
-
-        TreeNode sibling = split.latchSibling(store);
 
         TreeNode left, right;
         if (split.mSplitRight) {
@@ -1660,8 +1659,8 @@ final class TreeNode extends Latch {
         }
 
         final Split split = splitChild.mSplit;
+        final TreeNode newChild = splitChild.rebindSplitFrames(store, split);
         splitChild.mSplit = null;
-        final TreeNode newChild = split.latchSibling(store);
 
         final TreeNode leftChild;
         final TreeNode rightChild;
@@ -1852,13 +1851,12 @@ final class TreeNode extends Latch {
 
     /**
      * Rebind cursor frames affected by split to correct node and
-     * position. Caller must hold exclusive latch and it must verify that node
-     * has split.
+     * position. Caller must hold exclusive latch.
+     *
+     * @return latched sibling
      */
-    // FIXME: private and invoke from finishSplitRoot and insertSplitChildRef
-    void rebindSplitFrames(TreeNodeStore store) throws IOException {
-        Split split = mSplit;
-        TreeNode sibling = split.latchSibling(store);
+    private TreeNode rebindSplitFrames(TreeNodeStore store, Split split) throws IOException {
+        final TreeNode sibling = split.latchSibling(store);
         CursorFrame frame = mLastCursorFrame;
         while (frame != null) {
             // Capture previous frame from linked list before changing the links.
@@ -1866,7 +1864,7 @@ final class TreeNode extends Latch {
             split.rebindFrame(frame, sibling);
             frame = prev;
         }
-        sibling.releaseExclusive();
+        return sibling;
     }
 
     /**

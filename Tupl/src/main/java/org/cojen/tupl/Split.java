@@ -135,9 +135,9 @@ class Split {
     }
 
     /**
-     * Searches for the proper split branch, returning the original position as
-     * if the node wasn't split, the selected branch node (latched exclusively),
-     * and the position in the branch node.
+     * Searches for the proper split branch, returning the selected branch node
+     * (latched exclusively), the position in the branch node, and the original
+     * position as if the node wasn't split.
      */
     Branch selectBranch(TreeNodeStore store, TreeNode node, byte[] key) throws IOException {
         TreeNode sibling = latchSibling(store);
@@ -303,11 +303,11 @@ class Split {
             int highestPos = node.highestPos();
 
             if (pos >= 0) {
-                if (pos > highestPos) {
+                if (pos <= highestPos) {
+                    // Nothing to do.
+                } else {
                     frame.unbind();
                     frame.bind(sibling, pos - highestPos - 2);
-                } else {
-                    // Nothing to do.
                 }
                 return;
             }
@@ -335,22 +335,35 @@ class Split {
             int highestPos = sibling.highestPos();
 
             if (pos >= 0) {
-                if (pos > highestPos) {
-                    frame.mNodePos = pos - highestPos - 2;
-                } else {
+                if (pos <= highestPos) {
                     frame.unbind();
                     frame.bind(sibling, pos);
+                } else {
+                    frame.mNodePos = pos - highestPos - 2;
                 }
                 return;
             }
 
             pos = ~pos;
-            if (pos > highestPos) {
-                throw new IOException("FIXME: split left, higher pos");
-            } else {
+
+            if (pos <= highestPos) {
                 frame.unbind();
                 frame.bind(sibling, ~pos);
+                return;
             }
+
+            if (pos == highestPos + 2) {
+                byte[] key = frame.mNotFoundKey;
+                int compare = Utils.compareKeys
+                    (key, 0, key.length, mSplitKey, 0, mSplitKey.length);
+                if (compare < 0) {
+                    frame.unbind();
+                    frame.bind(sibling, ~pos);
+                    return;
+                }
+            }
+
+            frame.mNodePos = ~(pos - highestPos - 2);
         }
     }
 
