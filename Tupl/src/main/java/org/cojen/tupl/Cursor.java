@@ -144,7 +144,14 @@ public class Cursor {
             int numKeys = node.numKeys();
 
             if (node.isLeaf()) {
-                frame.bind(node, (numKeys - 1) << 1);
+                int pos;
+                if (node.mSplit == null) {
+                    pos = (numKeys - 1) << 1;
+                } else {
+                    // FIXME: wrong position: needs to be sum with sibling
+                    pos = (numKeys - 1) << 1;
+                }
+                frame.bind(node, pos);
                 node.releaseExclusive();
                 mLeaf = frame;
                 return true;
@@ -156,6 +163,7 @@ public class Cursor {
                 node = latchChild(node, childPos);
             } else {
                 TreeNode right = node.mSplit.latchRight(mStore, node);
+                // FIXME: wrong position: needs to be sum with sibling
                 frame.bind(node, numKeys << 1);
                 node = latchChild(right, right.numKeys() << 1);
             }
@@ -307,6 +315,8 @@ public class Cursor {
             pos = (~pos) - 2;
         }
 
+        // FIXME: check if node is split, and compare to unsplit highest pos
+
         if (pos < node.highestLeafPos()) {
             frame.mNodePos = pos + 2;
             node.releaseExclusive();
@@ -325,25 +335,31 @@ public class Cursor {
             node = frame.mNode;
             pos = frame.mNodePos;
 
+            // FIXME: check if node is split, and compare to unsplit highest pos
+
             if (pos < node.highestInternalPos()) {
                 pos += 2;
                 frame.mNodePos = pos;
+
+                // FIXME: check if node is split, and choose proper child to latch
 
                 node = latchChild_(node, TreeNode.EMPTY_BYTES, pos);
 
                 while (true) {
                     frame = new CursorFrame(frame);
+                    frame.bind(node, 0);
 
                     if (node.isLeaf()) {
-                        frame.bind(node, 0);
                         node.releaseExclusive();
                         mLeaf = frame;
                         return true;
                     }
 
-                    frame.bind(node, 0);
+                    if (node.mSplit != null) {
+                        node = node.mSplit.latchLeft(mStore, node);
+                    }
 
-                    node = latchChild_(node, TreeNode.EMPTY_BYTES, 0);
+                    node = latchChild(node, 0);
                 }
             }
         }
@@ -395,6 +411,8 @@ public class Cursor {
                 pos -= 2;
                 frame.mNodePos = pos;
 
+                // FIXME: check if node is split, and choose proper child to latch
+
                 node = latchChild_(node, null, pos);
 
                 while (true) {
@@ -403,17 +421,28 @@ public class Cursor {
                     int numKeys = node.numKeys();
 
                     if (node.isLeaf()) {
-                        frame.bind(node, (numKeys - 1) << 1);
+                        if (node.mSplit == null) {
+                            pos = (numKeys - 1) << 1;
+                        } else {
+                            // FIXME: wrong position: needs to be sum with sibling
+                            pos = (numKeys - 1) << 1;
+                        }
+                        frame.bind(node, pos);
                         node.releaseExclusive();
                         mLeaf = frame;
                         return true;
                     }
 
-                    int childPos = numKeys << 1;
-
-                    frame.bind(node, childPos);
-
-                    node = latchChild_(node, null, childPos);
+                    if (node.mSplit == null) {
+                        int childPos = numKeys << 1;
+                        frame.bind(node, childPos);
+                        node = latchChild(node, childPos);
+                    } else {
+                        TreeNode right = node.mSplit.latchRight(mStore, node);
+                        // FIXME: wrong position: needs to be sum with sibling
+                        frame.bind(node, numKeys << 1);
+                        node = latchChild(right, right.numKeys() << 1);
+                    }
                 }
             }
         }
@@ -835,7 +864,6 @@ public class Cursor {
         throws IOException
     {
         if (node == store.root()) {
-            node.rebindSplitFrames(store);
             node.finishSplitRoot(store);
             node.releaseExclusive();
             return;
@@ -863,7 +891,6 @@ public class Cursor {
         if (childNode.mSplit == null) {
             childNode.releaseExclusive();
         } else {
-            childNode.rebindSplitFrames(store);
             parentNode.insertSplitChildRef(store, pos, childNode);
             if (parentNode.mSplit != null) {
                 finishSplit(parentFrame, parentNode, store);
@@ -875,8 +902,8 @@ public class Cursor {
     }
 
     /**
-     * Parent must be held exclusively, returns child with exclusive latch
-     * held, parent latch is released.
+     * With parent held exclusively, returns child with exclusive latch held,
+     * and parent latch is released.
      */
     // FIXME: remove this
     private TreeNode latchChild_(TreeNode parent, byte[] key, int childPos) throws IOException {
@@ -940,8 +967,8 @@ public class Cursor {
     }
 
     /**
-     * Parent must be held exclusively, returns child with exclusive latch
-     * held, parent latch is released.
+     * With parent held exclusively, returns child with exclusive latch held,
+     * and parent latch is released.
      */
     private TreeNode latchChild(TreeNode parent, int childPos) throws IOException {
         TreeNode childNode = parent.mChildNodes[childPos >> 1];
