@@ -160,7 +160,7 @@ final class TreeNodeStore {
      * of zero and a clean state.
      */
     TreeNode allocLatchedNode() throws IOException {
-        mCacheLatch.acquireExclusive();
+        mCacheLatch.acquireExclusiveUnfair();
         try {
             int max = mMaxCachedNodeCount;
             if (mCachedNodeCount < max) {
@@ -299,7 +299,7 @@ final class TreeNodeStore {
         // latch. If node is popular, it will get more chances to be identified
         // as most recently used. This strategy works well enough because cache
         // eviction is always a best-guess approach.
-        if (mCacheLatch.tryAcquireExclusive()) {
+        if (mCacheLatch.tryAcquireExclusiveUnfair()) {
             TreeNode moreUsed = node.mMoreUsed;
             if (moreUsed != null) {
                 TreeNode lessUsed = node.mLessUsed;
@@ -340,7 +340,7 @@ final class TreeNodeStore {
         final TreeNode root = mRoot;
 
         // Quick check.
-        root.acquireShared();
+        root.acquireSharedUnfair();
         try {
             if (root.mCachedState == CACHED_CLEAN) {
                 // Root is clean, so nothing to do.
@@ -352,7 +352,7 @@ final class TreeNodeStore {
 
         // Commit lock must be acquired first, to prevent deadlock.
         mPageStore.exclusiveCommitLock().lock();
-        root.acquireExclusive();
+        root.acquireExclusiveUnfair();
         if (root.mCachedState == CACHED_CLEAN) {
             // Root is clean, so nothing to do.
             root.releaseExclusive();
@@ -423,7 +423,7 @@ final class TreeNodeStore {
         for (int mi=0; mi<dirty.size(); mi++) {
             TreeNode node = dirty.get(mi);
             dirty.set(mi, null);
-            node.acquireExclusive();
+            node.acquireExclusiveUnfair();
             if (node.mCachedState != stateToFlush) {
                 node.releaseExclusive();
             } else {

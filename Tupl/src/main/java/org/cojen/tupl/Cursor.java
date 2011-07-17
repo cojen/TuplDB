@@ -360,7 +360,7 @@ public class Cursor {
                 return false;
             }
 
-            frame.acquireExclusive();
+            frame.acquireExclusiveUnfair();
             node = frame.mNode;
             pos = frame.mNodePos;
 
@@ -432,7 +432,7 @@ public class Cursor {
                 return false;
             }
 
-            frame.acquireExclusive();
+            frame.acquireExclusiveUnfair();
             node = frame.mNode;
             pos = frame.mNodePos;
 
@@ -640,7 +640,7 @@ public class Cursor {
         if (frame != null) {
             mLeaf = null;
             do {
-                frame.acquireExclusive();
+                frame.acquireExclusiveUnfair();
                 TreeNode node = frame.mNode;
                 frame = frame.pop();
                 node.releaseExclusive();
@@ -659,12 +659,12 @@ public class Cursor {
     private CursorFrame resetFind(TreeNode root) {
         CursorFrame frame = mLeaf;
         if (frame == null) {
-            root.acquireExclusive();
+            root.acquireExclusiveUnfair();
             return new CursorFrame();
         } else {
             mLeaf = null;
             while (true) {
-                frame.acquireExclusive();
+                frame.acquireExclusiveUnfair();
                 TreeNode node = frame.mNode;
                 CursorFrame parent = frame.pop();
                 if (parent != null) {
@@ -675,7 +675,7 @@ public class Cursor {
                     // can be wrong if the tree height is changing.
                     if (node != root) {
                         node.releaseExclusive();
-                        root.acquireExclusive();
+                        root.acquireExclusiveUnfair();
                     }
                     return frame;
                 }
@@ -713,7 +713,7 @@ public class Cursor {
         }
 
         CursorFrame frame = frames.removeFirst();
-        frame.acquireShared();
+        frame.acquireSharedUnfair();
         TreeNode node = frame.mNode;
 
         if (node.mSplit != null) {
@@ -781,7 +781,7 @@ public class Cursor {
                     throw new IllegalStateException("Top frame is not a leaf node");
                 }
 
-                next.acquireShared();
+                next.acquireSharedUnfair();
             } finally {
                 node.releaseShared();
             }
@@ -806,7 +806,7 @@ public class Cursor {
             throw new IllegalStateException("Position is undefined");
         }
 
-        leaf.acquireShared();
+        leaf.acquireSharedUnfair();
 
         {
             TreeNode node = leaf.mNode;
@@ -836,15 +836,13 @@ public class Cursor {
             throw new IllegalStateException("Position is undefined");
         }
 
-        leaf.acquireExclusive();
-
         while (true) {
+            leaf.acquireExclusiveUnfair();
             TreeNode node = leaf.mNode;
             if (node.mSplit == null) {
                 return leaf;
             }
             finishSplit(leaf, node, mStore);
-            leaf.acquireExclusiveUnfair();
         }
     }
 
@@ -871,7 +869,7 @@ public class Cursor {
                 store.doMarkDirty(node);
             } else {
                 node.releaseExclusive();
-                parentFrame.acquireExclusive();
+                parentFrame.acquireExclusiveUnfair();
                 markDirty(parentFrame, store);
                 TreeNode parentNode = parentFrame.mNode;
                 frame.acquireExclusiveUnfair();
@@ -940,7 +938,7 @@ public class Cursor {
         long childId = parent.retrieveChildRefId(childPos);
 
         check: if (childNode != null && childId == childNode.mId) {
-            childNode.acquireExclusive();
+            childNode.acquireExclusiveUnfair();
 
             // Need to check again in case evict snuck in.
             if (childId != childNode.mId) {
@@ -1004,7 +1002,7 @@ public class Cursor {
         long childId = parent.retrieveChildRefId(childPos);
 
         check: if (childNode != null && childId == childNode.mId) {
-            childNode.acquireExclusive();
+            childNode.acquireExclusiveUnfair();
 
             // Need to check again in case evict snuck in.
             if (childId != childNode.mId) {

@@ -65,7 +65,7 @@ class Split {
      */
     TreeNode selectNodeShared(TreeNodeStore store, TreeNode node, byte[] key) throws IOException {
         TreeNode sibling = mSibling;
-        sibling.acquireShared();
+        sibling.acquireSharedUnfair();
 
         if (mSiblingId != sibling.mId) {
             // Sibling was evicted, which is extremely rare.
