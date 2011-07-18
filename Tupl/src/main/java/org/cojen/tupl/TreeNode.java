@@ -948,15 +948,15 @@ final class TreeNode extends Latch {
         final TreeNode newChild = splitChild.rebindSplitFrames(store, split);
         splitChild.mSplit = null;
 
-        final TreeNode leftChild;
+        //final TreeNode leftChild;
         final TreeNode rightChild;
         int newChildPos = keyPos >> 1;
         if (split.mSplitRight) {
-            leftChild = splitChild;
+            //leftChild = splitChild;
             rightChild = newChild;
             newChildPos++;
         } else {
-            leftChild = newChild;
+            //leftChild = newChild;
             rightChild = splitChild;
         }
 
@@ -1131,8 +1131,8 @@ final class TreeNode extends Latch {
         // Write key entry itself.
         split.copySplitKeyToParent(page, entryLoc);
 
-        leftChild.releaseExclusive();
-        rightChild.releaseExclusive();
+        splitChild.releaseExclusive();
+        newChild.releaseExclusive();
     }
 
     /**
