@@ -176,61 +176,10 @@ class Split {
     }
 
     /**
-     * Allows a search to continue into a split node by selecting the original
-     * node or the sibling. If the original node is returned, its exclusive
-     * lock is still held. If the sibling is returned, it will have an
-     * exclusive latch held and the original node's latch is released.
-     *
-     * @param node node which was split; exclusive latch must be held
-     * @return original node or sibling
-     */
-    // FIXME: remove
-    TreeNode selectLeftNodeExclusive(TreeNodeStore store, TreeNode node) throws IOException {
-        if (mSplitRight) {
-            return node;
-        }
-        TreeNode sibling = latchSibling(store);
-        node.releaseExclusive();
-        return sibling;
-    }
-
-    /**
-     * Allows a search to continue into a split node by selecting the original
-     * node or the sibling. If the original node is returned, its exclusive
-     * lock is still held. If the sibling is returned, it will have an
-     * exclusive latch held and the original node's latch is released.
-     *
-     * @param node node which was split; exclusive latch must be held
-     * @return original node or sibling
-     */
-    // FIXME: remove
-    TreeNode selectRightNodeExclusive(TreeNodeStore store, TreeNode node) throws IOException {
-        if (!mSplitRight) {
-            return node;
-        }
-        TreeNode sibling = latchSibling(store);
-        node.releaseExclusive();
-        return sibling;
-    }
-
-    /**
      * Return the left split node, latched exclusively. Other node is unlatched.
      */
     TreeNode latchLeft(TreeNodeStore store, TreeNode node) throws IOException {
         if (mSplitRight) {
-            return node;
-        }
-        TreeNode sibling = latchSibling(store);
-        node.releaseExclusive();
-        return sibling;
-    }
-
-    /**
-     * Return the right split node, latched exclusively. Other node is unlatched.
-     */
-    // FIXME: remove
-    TreeNode latchRight(TreeNodeStore store, TreeNode node) throws IOException {
-        if (!mSplitRight) {
             return node;
         }
         TreeNode sibling = latchSibling(store);
