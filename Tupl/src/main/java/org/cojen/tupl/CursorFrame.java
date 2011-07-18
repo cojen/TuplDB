@@ -48,14 +48,16 @@ class CursorFrame {
 
     /**
      * Acquire a shared latch on this frame's bound node.
+     *
+     * @return frame node
      */
-    void acquireSharedUnfair() {
+    TreeNode acquireSharedUnfair() {
         TreeNode node = mNode;
         while (true) {
             node.acquireSharedUnfair();
             TreeNode actualNode = mNode;
             if (actualNode == node) {
-                return;
+                return actualNode;
             }
             node.releaseShared();
             node = actualNode;
@@ -64,14 +66,16 @@ class CursorFrame {
 
     /**
      * Acquire an exclusive latch on this frame's bound node.
+     *
+     * @return frame node
      */
-    void acquireExclusiveUnfair() {
+    TreeNode acquireExclusiveUnfair() {
         TreeNode node = mNode;
         while (true) {
             node.acquireExclusiveUnfair();
             TreeNode actualNode = mNode;
             if (actualNode == node) {
-                return;
+                return actualNode;
             }
             node.releaseExclusive();
             node = actualNode;
