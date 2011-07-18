@@ -108,6 +108,16 @@ public class Cursor {
             return false;
         }
 
+        return toFirst(node, frame);
+    }
+
+    /**
+     * Move the cursor to the first subtree entry. Caller must be synchronized.
+     *
+     * @param node latched node
+     * @param frame frame to bind node to
+     */
+    private boolean toFirst(TreeNode node, CursorFrame frame) throws IOException {
         while (true) {
             frame.bind(node, 0);
 
@@ -140,6 +150,16 @@ public class Cursor {
             return false;
         }
 
+        return toLast(node, frame);
+    }
+
+    /**
+     * Move the cursor to the last subtree entry. Caller must be synchronized.
+     *
+     * @param node latched node
+     * @param frame frame to bind node to
+     */
+    private boolean toLast(TreeNode node, CursorFrame frame) throws IOException {
         while (true) {
             if (node.isLeaf()) {
                 int pos;
@@ -373,34 +393,17 @@ public class Cursor {
             }
 
             node = frame.acquireExclusiveUnfair();
-            pos = frame.mNodePos;
 
-            // FIXME: check if node is split, and compare to unsplit highest pos
+            if (node.mSplit != null) {
+                node = finishSplit(frame, node, mStore);
+            }
+
+            pos = frame.mNodePos;
 
             if (pos < node.highestInternalPos()) {
                 pos += 2;
                 frame.mNodePos = pos;
-
-                // FIXME: check if node is split, and choose proper child to latch
-
-                node = latchChild_(node, TreeNode.EMPTY_BYTES, pos);
-
-                while (true) {
-                    frame = new CursorFrame(frame);
-                    frame.bind(node, 0);
-
-                    if (node.isLeaf()) {
-                        node.releaseExclusive();
-                        mLeaf = frame;
-                        return true;
-                    }
-
-                    if (node.mSplit != null) {
-                        node = node.mSplit.latchLeft(mStore, node);
-                    }
-
-                    node = latchChild(node, 0);
-                }
+                return toFirst(latchChild(node, pos), new CursorFrame(frame));
             }
         }
     }
@@ -444,45 +447,17 @@ public class Cursor {
             }
 
             node = frame.acquireExclusiveUnfair();
+
+            if (node.mSplit != null) {
+                node = finishSplit(frame, node, mStore);
+            }
+
             pos = frame.mNodePos;
 
             if (pos > 0) {
                 pos -= 2;
                 frame.mNodePos = pos;
-
-                // FIXME: check if node is split, and choose proper child to latch
-
-                node = latchChild_(node, null, pos);
-
-                while (true) {
-                    frame = new CursorFrame(frame);
-
-                    int numKeys = node.numKeys();
-
-                    if (node.isLeaf()) {
-                        if (node.mSplit == null) {
-                            pos = (numKeys - 1) << 1;
-                        } else {
-                            // FIXME: wrong position: needs to be sum with sibling
-                            pos = (numKeys - 1) << 1;
-                        }
-                        frame.bind(node, pos);
-                        node.releaseExclusive();
-                        mLeaf = frame;
-                        return true;
-                    }
-
-                    if (node.mSplit == null) {
-                        int childPos = numKeys << 1;
-                        frame.bind(node, childPos);
-                        node = latchChild(node, childPos);
-                    } else {
-                        TreeNode right = node.mSplit.latchRight(mStore, node);
-                        // FIXME: wrong position: needs to be sum with sibling
-                        frame.bind(node, numKeys << 1);
-                        node = latchChild(right, right.numKeys() << 1);
-                    }
-                }
+                return toLast(latchChild(node, pos), new CursorFrame(frame));
             }
         }
     }
@@ -917,71 +892,6 @@ public class Cursor {
 
         parentNode.releaseExclusive();
         return node;
-    }
-
-    /**
-     * With parent held exclusively, returns child with exclusive latch held,
-     * and parent latch is released.
-     */
-    // FIXME: remove this
-    private TreeNode latchChild_(TreeNode parent, byte[] key, int childPos) throws IOException {
-        TreeNode childNode = parent.mChildNodes[childPos >> 1];
-        long childId = parent.retrieveChildRefId(childPos);
-
-        check: if (childNode != null && childId == childNode.mId) {
-            childNode.acquireExclusiveUnfair();
-
-            // Need to check again in case evict snuck in.
-            if (childId != childNode.mId) {
-                childNode.releaseExclusive();
-                break check;
-            }
-
-            parent.releaseExclusive();
-
-            // FIXME: Must finish split now. Don't let cursor into split
-            // sibling. Simpler strategy might allow cursor into original node,
-            // possibly with an out-of-bounds position. This is the opposite of
-            // what Split.rebindFrame does.
-            Split split;
-            if ((split = childNode.mSplit) != null) {
-                if (key == null) {
-                    childNode = split.selectRightNodeExclusive(mStore, childNode);
-                } else if (key.length == 0) {
-                    childNode = split.selectLeftNodeExclusive(mStore, childNode);
-                } else {
-                    childNode = split.selectNodeExclusive(mStore, childNode, key);
-                }
-            }
-
-            mStore.used(childNode);
-            return childNode;
-        }
-
-        // If this point is reached, child needs to be loaded.
-
-        childNode = mStore.allocLatchedNode();
-        childNode.mId = childId;
-        parent.mChildNodes[childPos >> 1] = childNode;
-
-        // Release parent latch before child has been loaded. Any threads
-        // which wish to access the same child will block until this thread
-        // has finished loading the child and released its exclusive latch.
-        parent.releaseExclusive();
-
-        try {
-            childNode.read(mStore, childId);
-        } catch (IOException e) {
-            // Another thread might access child and see that it is invalid because
-            // id is zero. It will assume it got evicted and will load child again.
-            childNode.mId = 0;
-            childNode.releaseExclusive();
-            reset();
-            throw e;
-        }
-
-        mStore.used(childNode);
-        return childNode;
     }
 
     /**

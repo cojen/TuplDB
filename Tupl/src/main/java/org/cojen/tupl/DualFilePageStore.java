@@ -476,7 +476,7 @@ class DualFilePageStore implements PageStore {
         try {
             byte[] header = new byte[pageSize()];
 
-            // FIXME: comment is wrong
+            // TODO: comment is stale
             // Although this commit might block writing a few pages, it is
             // necessary to do this with exclusive lock held to prevent
             // foreign allocations from the newly inactive allocator.
