@@ -28,7 +28,7 @@ import java.util.concurrent.locks.Lock;
  *
  * @author Brian S O'Neill
  */
-public class Cursor {
+public final class Cursor {
     private final TreeNodeStore mStore;
 
     // Top stack frame for cursor, always a leaf.
@@ -599,18 +599,45 @@ public class Cursor {
     // count, deleteAll.
 
     /**
+     * Returns a new independent cursor which exactly matches the state of this
+     * one. The original and copied cursor can be acted upon without affecting
+     * each other's state.
+     */
+    public Cursor copy() {
+        Cursor copy = new Cursor(mStore);
+
+        CursorFrame frame;
+        synchronized (this) {
+            frame = mLeaf;
+        }
+
+        if (frame == null) {
+            return copy;
+        }
+
+        CursorFrame frameCopy = new CursorFrame();
+        frame.copyInto(frameCopy);
+
+        synchronized (copy) {
+            copy.mLeaf = frameCopy;
+        }
+
+        return copy;
+    }
+
+    /**
      * Resets the cursor position to be undefined.
      */
-    public synchronized void reset() {
-        CursorFrame frame = mLeaf;
-        if (frame != null) {
+    public void reset() {
+        CursorFrame frame;
+        synchronized (this) {
+            frame = mLeaf;
+            if (frame == null) {
+                return;
+            }
             mLeaf = null;
-            do {
-                TreeNode node = frame.acquireExclusiveUnfair();
-                frame = frame.pop();
-                node.releaseExclusive();
-            } while (frame != null);
         }
+        CursorFrame.popAll(frame);
     }
 
     /**
