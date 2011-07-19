@@ -23,7 +23,7 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-class CursorFrame {
+final class CursorFrame {
     // TreeNode and position this CursorFrame is bound to.
     TreeNode mNode;
     int mNodePos;
@@ -125,5 +125,54 @@ class CursorFrame {
         mParentFrame = null;
         mNotFoundKey = null;
         return parent;
+    }
+
+    /**
+     * Pop given non-null frame and all parent frames.
+     */
+    static void popAll(CursorFrame frame) {
+        do {
+            TreeNode node = frame.acquireExclusiveUnfair();
+            frame = frame.pop();
+            node.releaseExclusive();
+        } while (frame != null);
+    }
+
+    /**
+     * Copy this frame and all parent frames.
+     *
+     * @param dest new frame instance to receive copy
+     */
+    void copyInto(CursorFrame dest) {
+        TreeNode node = acquireExclusiveUnfair();
+        CursorFrame parent = mParentFrame;
+
+        if (parent != null) {
+            CursorFrame parentCopy = new CursorFrame();
+
+            do {
+                node.releaseExclusive();
+                parent.copyInto(parentCopy);
+
+                // Parent can change when tree height is concurrently changing.
+                node = acquireExclusiveUnfair();
+                CursorFrame actualParent = mParentFrame;
+
+                if (actualParent == parent) {
+                    // Parent frame hasn't changed, so use the copy.
+                    dest.mParentFrame = parentCopy;
+                    break;
+                }
+
+                // Get rid of the stale copy and do over, which should be rare.
+                popAll(parentCopy);
+
+                parent = actualParent;
+            } while (parent != null);
+        }
+
+        dest.mNotFoundKey = mNotFoundKey;
+        dest.bind(node, mNodePos);
+        node.releaseExclusive();
     }
 }
