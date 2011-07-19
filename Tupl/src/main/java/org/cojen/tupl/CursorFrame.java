@@ -148,10 +148,9 @@ final class CursorFrame {
         CursorFrame parent = mParentFrame;
 
         if (parent != null) {
+            node.releaseExclusive();
             CursorFrame parentCopy = new CursorFrame();
-
             do {
-                node.releaseExclusive();
                 parent.copyInto(parentCopy);
 
                 // Parent can change when tree height is concurrently changing.
@@ -165,8 +164,8 @@ final class CursorFrame {
                 }
 
                 // Get rid of the stale copy and do over, which should be rare.
+                node.releaseExclusive();
                 popAll(parentCopy);
-
                 parent = actualParent;
             } while (parent != null);
         }
