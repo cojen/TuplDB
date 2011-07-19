@@ -150,16 +150,22 @@ final class CursorFrame {
         if (parent != null) {
             node.releaseExclusive();
             CursorFrame parentCopy = new CursorFrame();
-            do {
-                parent.copyInto(parentCopy);
+
+            while (true) {
+                // Need to check if parent is null, when looping back.
+                if (parent != null) {
+                    parent.copyInto(parentCopy);
+                }
 
                 // Parent can change when tree height is concurrently changing.
                 node = acquireExclusiveUnfair();
-                CursorFrame actualParent = mParentFrame;
+                final CursorFrame actualParent = mParentFrame;
 
                 if (actualParent == parent) {
                     // Parent frame hasn't changed, so use the copy.
-                    dest.mParentFrame = parentCopy;
+                    if (parent != null) {
+                        dest.mParentFrame = parentCopy;
+                    }
                     break;
                 }
 
@@ -167,7 +173,7 @@ final class CursorFrame {
                 node.releaseExclusive();
                 popAll(parentCopy);
                 parent = actualParent;
-            } while (parent != null);
+            }
         }
 
         dest.mNotFoundKey = mNotFoundKey;
