@@ -345,7 +345,18 @@ public final class Cursor {
      * @throws NullPointerException if key is null
      */
     public synchronized boolean find(byte[] key) throws IOException {
-        return find(key, false);
+        // Prevent commits due to avoid deadlocks. If a child node needs to be
+        // loaded, it may evict another node. Eviction acquires the commit lock
+        // while parent latch is held, which is the opposite order used by the
+        // commit method.
+        // FIXME: Does the evict method really need the lock?
+        //final Lock sharedCommitLock = mStore.sharedCommitLock();
+        //sharedCommitLock.lock();
+        //try {
+            return find(key, false);
+        //} finally {
+            //sharedCommitLock.unlock();
+        //}
     }
 
     // Caller must be synchronized.
@@ -835,33 +846,64 @@ public final class Cursor {
      * frames are marked as dirty. Caller must be synchronized.
      */
     private CursorFrame leafExclusiveNotSplitDirty() throws IOException {
-        CursorFrame leaf = leafExclusiveNotSplit();
-        markDirty(leaf, mStore);
+        CursorFrame leaf = mLeaf;
+        if (leaf == null) {
+            throw new IllegalStateException("Position is undefined");
+        }
+        leaf.acquireExclusiveUnfair();
+        notSplitDirty(leaf, mStore);
         return leaf;
     }
 
     /**
-    * Called with frame latch held, not released.
+     * Called with frame latch held, which is retained.
      */
-    private static void markDirty(final CursorFrame frame, TreeNodeStore store)
+    private static void notSplitDirty(final CursorFrame frame, TreeNodeStore store)
         throws IOException
     {
         TreeNode node = frame.mNode;
-        if (store.shouldMarkDirty(node)) {
-            CursorFrame parentFrame = frame.mParentFrame;
-            if (parentFrame == null) {
-                store.doMarkDirty(node);
-            } else {
-                node.releaseExclusive();
-                TreeNode parentNode = parentFrame.acquireExclusiveUnfair();
-                markDirty(parentFrame, store);
-                node = frame.acquireExclusiveUnfair();
-                if (store.markDirty(node)) {
-                    parentNode.updateChildRefId(parentFrame.mNodePos, node.mId);
-                }
-                parentNode.releaseExclusive();
-            }
+
+        if (node.mSplit != null) {
+            // Already dirty, but finish the split.
+            node = finishSplit(frame, node, store, true);
+            return;
         }
+
+        if (!store.shouldMarkDirty(node)) {
+            return;
+        }
+
+        CursorFrame parentFrame = frame.mParentFrame;
+        if (parentFrame == null) {
+            store.doMarkDirty(node);
+            return;
+        }
+
+        // Make sure the parent is not split and dirty too.
+        node.releaseExclusive();
+        parentFrame.acquireExclusiveUnfair();
+        notSplitDirty(parentFrame, store);
+        node = frame.acquireExclusiveUnfair();
+        TreeNode parentNode = parentFrame.mNode;
+
+        if (node.mSplit == null) {
+            if (store.markDirty(node)) {
+                parentNode.updateChildRefId(parentFrame.mNodePos, node.mId);
+            }
+            parentNode.releaseExclusive();
+            return;
+        }
+
+        // Already dirty now, but finish the split. Since parent latch is
+        // already held, no need to call into the regular finishSplit
+        // method. It would release latches and recheck everything.
+        parentNode.insertSplitChildRef(store, parentFrame.mNodePos, node);
+        if (parentNode.mSplit == null) {
+            parentNode.releaseExclusive();
+        } else {
+            finishSplit(parentFrame, parentNode, store, false);
+        }
+        frame.acquireExclusiveUnfair();
     }
 
     /**

@@ -232,12 +232,15 @@ final class TreeNodeStore {
             // optimization, too many pages are allocated when: evictions are
             // high, write rate is high, and commits are bogged down. A Bloom
             // filter is not appropriate, because of false positives.
-            mSharedCommitLock.lock();
-            try {
+
+            // FIXME: Is this lock required? It creates deadlock problems with
+            // Cursor find operations, unless they grab this lock first thing.
+            //mSharedCommitLock.lock();
+            //try {
                 node.write(this);
-            } finally {
-                mSharedCommitLock.unlock();
-            }
+            //} finally {
+                //mSharedCommitLock.unlock();
+            //}
             node.mCachedState = CACHED_CLEAN;
         }
 
