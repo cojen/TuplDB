@@ -19,7 +19,9 @@ package org.cojen.tupl;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
-import java.util.PriorityQueue;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import java.util.concurrent.locks.Lock;
 
@@ -305,23 +307,12 @@ final class TreeNodeStore {
     void commit() throws IOException {
         final TreeNode root = mRoot;
 
-        // Quick check.
-        root.acquireSharedUnfair();
-        try {
-            if (root.mCachedState == CACHED_CLEAN) {
-                // Root is clean, so nothing to do.
-                return;
-            }
-        } finally {
-            root.releaseShared();
-        }
-
         // Commit lock must be acquired first, to prevent deadlock.
         mPageStore.exclusiveCommitLock().lock();
-        root.acquireExclusiveUnfair();
+        root.acquireSharedUnfair();
         if (root.mCachedState == CACHED_CLEAN) {
             // Root is clean, so nothing to do.
-            root.releaseExclusive();
+            root.releaseShared();
             mPageStore.exclusiveCommitLock().unlock();
             return;
         }
@@ -335,7 +326,7 @@ final class TreeNodeStore {
     }
 
     /**
-     * Method is invoked with exclusive commit lock and root node latch held.
+     * Method is invoked with exclusive commit lock and shared root node latch held.
      */
     private byte[] flush() throws IOException {
         final TreeNode root = mRoot;
@@ -344,15 +335,54 @@ final class TreeNodeStore {
         mCommitState = (byte) (CACHED_DIRTY_0 + ((stateToFlush - CACHED_DIRTY_0) ^ 1));
         mPageStore.exclusiveCommitLock().unlock();
 
-        // At this point, dirty nodes which should be flushed will be written
-        // automatically as they are evicted. All remaining dirty nodes are
-        // gathered up concurrently, ordered by id, and explicitly written.
+        // Perform a breadth-first traversal of tree, finding dirty nodes. This
+        // step can effectively deny most concurrent access to the tree, but I
+        // cannot figure out a safe way to find dirty nodes and allow access
+        // back into the tree. Depth first traversal using a cursor allows
+        // concurrent access, but it causes some dirty nodes to get lost. It
+        // might be possible to speed this step up with multiple threads -- at
+        // most one per processor.
 
-        PriorityQueue<Dirty> dirtyQueue = gatherDirtyNodes(stateToFlush);
+        List<Dirty> dirtyList = new ArrayList<Dirty>(Math.min(1000, mMaxCachedNodeCount));
+        dirtyList.add(new Dirty(root, root.mId));
 
-        Dirty dirty;
-        while ((dirty = dirtyQueue.poll()) != null) {
-            TreeNode node = dirty.mNode;
+        for (int mi=0; mi<dirtyList.size(); mi++) {
+            TreeNode node = dirtyList.get(mi).mNode;
+
+            if (node.isLeaf()) {
+                node.releaseShared();
+                continue;
+            }
+
+            TreeNode[] childNodes = node.mChildNodes;
+
+            for (int ci=0; ci<childNodes.length; ci++) {
+                TreeNode childNode = childNodes[ci];
+                if (childNode != null) {
+                    long childId = node.retrieveChildRefIdFromIndex(ci);
+                    if (childId == childNode.mId) {
+                        childNode.acquireSharedUnfair();
+                        if (childId == childNode.mId && childNode.mCachedState == stateToFlush) {
+                            dirtyList.add(new Dirty(childNode, childId));
+                        } else {
+                            childNode.releaseShared();
+                        }
+                    }
+                }
+            }
+
+            node.releaseShared();
+        }
+
+        // Sort nodes by id, which helps make writes more sequentially ordered.
+        Collections.sort(dirtyList);
+
+        // Now write out all the dirty nodes. Some of them will have already
+        // been concurrently written out, so check again.
+
+        for (int mi=0; mi<dirtyList.size(); mi++) {
+            TreeNode node = dirtyList.get(mi).mNode;
+            dirtyList.set(mi, null);
             node.acquireExclusiveUnfair();
             if (node.mCachedState != stateToFlush) {
                 // Was already evicted.
@@ -375,88 +405,14 @@ final class TreeNodeStore {
         return header;
     }
 
-    /**
-     * Performs a depth-first traversal, gathering dirty nodes to flush. Nodes
-     * are ordered by id, which helps make writes more sequentially ordered.
-     * Method is called with root node latched exclusively.
-     */
-    private PriorityQueue<Dirty> gatherDirtyNodes(int state) {
-        // Since tree can be modified during traversal, use CursorFrames.
+    static final class Dirty implements Comparable<Dirty> {
+        TreeNode mNode;
+        long mId;
 
-        PriorityQueue<Dirty> dirty = new PriorityQueue<Dirty>(Math.min(1000, mMaxCachedNodeCount));
-
-        TreeNode node = mRoot;
-
-        CursorFrame parentFrame = null;
-        CursorFrame frame = null;
-
-        traverse: while (true) {
-            if (node.isLeaf()) {
-                dirty.add(new Dirty(node));
-                frame = parentFrame;
-            } else {
-                int ci;
-                if (frame == null) {
-                    dirty.add(new Dirty(node));
-                    ci = 0;
-                } else {
-                    ci = (frame.mNodePos >> 1) + 1;
-                }
-
-                TreeNode[] childNodes = node.mChildNodes;
-
-                for (; ci<childNodes.length; ci++) {
-                    TreeNode childNode = childNodes[ci];
-                    if (childNode == null) {
-                        continue;
-                    }
-                    long childId = node.retrieveChildRefIdFromIndex(ci);
-                    if (childId != childNode.mId) {
-                        continue;
-                    }
-
-                    childNode.acquireExclusiveUnfair();
-
-                    if (childId == childNode.mId && childNode.mCachedState == state) {
-                        if (frame == null) {
-                            frame = new CursorFrame(parentFrame);
-                            frame.bind(node, ci << 1);
-                        } else {
-                            frame.mNodePos = ci << 1;
-                        }
-                        node.releaseExclusive();
-                        parentFrame = frame;
-                        frame = null;
-                        node = childNode;
-                        continue traverse;
-                    }
-
-                    childNode.releaseExclusive();
-                }
-
-                frame = frame == null ? parentFrame : frame.pop();
-            }
-
-            node.releaseExclusive();
-
-            if (frame == null) {
-                break;
-            }
-
-            node = frame.acquireExclusiveUnfair();
-        }
-
-        return dirty;
-    }
-
-    private static class Dirty implements Comparable<Dirty> {
-        final TreeNode mNode;
-        final long mId;
-
-        Dirty(TreeNode node) {
+        Dirty(TreeNode node, long id) {
             mNode = node;
             // Stable copy of id that can be accessed without re-latching.
-            mId = node.mId;
+            mId = id;
         }
 
         @Override
