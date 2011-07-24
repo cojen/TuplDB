@@ -19,8 +19,7 @@ package org.cojen.tupl;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.PriorityQueue;
 
 import java.util.concurrent.locks.Lock;
 
@@ -68,10 +67,11 @@ final class TreeNodeStore {
                  minCachedNodeCount + " > " + maxCachedNodeCount);
         }
 
-        if (maxCachedNodeCount < 2) {
-            // At least two nodes are required for eviction code to function
-            // correctly. It always assumes that the least recently used node
-            // points to a valid more recently used node.
+        if (maxCachedNodeCount < 3) {
+            // One is needed for the root node, and at least two nodes are
+            // required for eviction code to function correctly. It always
+            // assumes that the least recently used node points to a valid,
+            // more recently used node.
             throw new IllegalArgumentException
                 ("Maximum cached node count is too small: " + maxCachedNodeCount);
         }
@@ -81,7 +81,7 @@ final class TreeNodeStore {
         mSpareBufferPool = new BufferPool(store.pageSize(), spareBufferCount);
 
         mCacheLatch = new Latch();
-        mMaxCachedNodeCount = maxCachedNodeCount;
+        mMaxCachedNodeCount = maxCachedNodeCount - 1; // less one for root
 
         mSharedCommitLock = store.sharedCommitLock();
         mSharedCommitLock.lock();
@@ -97,7 +97,7 @@ final class TreeNodeStore {
         // and so nothing special needs to be done to allow them to get used. Since
         // the initial state is clean, evicting these nodes does nothing.
         try {
-            for (int i=minCachedNodeCount; --i>=0; ) {
+            for (int i=minCachedNodeCount; --i>0; ) { // less one for root
                 allocLatchedNode().releaseExclusive();
             }
         } catch (OutOfMemoryError e) {
@@ -186,7 +186,7 @@ final class TreeNodeStore {
                 mMostRecentlyUsed = node;
 
                 if (node.tryAcquireExclusiveUnfair()) {
-                    if (evict(node)) {
+                    if (node.evict(this)) {
                         // Return with latch still held.
                         return node;
                     } else {
@@ -212,43 +212,6 @@ final class TreeNodeStore {
         node.mId = mPageStore.reservePage();
         node.mCachedState = mCommitState;
         return node;
-    }
-
-    /**
-     * Caller must hold exclusive latch on node and commit lock. Latch is never released
-     * by this method, even if an exception is thrown.
-     *
-     * @return false if node cannot be evicted
-     */
-    private boolean evict(TreeNode node) throws IOException {
-        if (!node.canEvict()) {
-            return false;
-        }
-
-        int state = node.mCachedState;
-        if (state != CACHED_CLEAN) {
-            // TODO: Keep some sort of cache of ids known to be dirty. If
-            // reloaded before commit, then they're still dirty. Without this
-            // optimization, too many pages are allocated when: evictions are
-            // high, write rate is high, and commits are bogged down. A Bloom
-            // filter is not appropriate, because of false positives.
-
-            // FIXME: Is this lock required? It creates deadlock problems with
-            // Cursor find operations, unless they grab this lock first thing.
-            //mSharedCommitLock.lock();
-            //try {
-                node.write(this);
-            //} finally {
-                //mSharedCommitLock.unlock();
-            //}
-            node.mCachedState = CACHED_CLEAN;
-        }
-
-        node.mId = 0;
-        // FIXME: child node array should be recycled
-        node.mChildNodes = null;
-
-        return true;
     }
 
     /**
@@ -366,7 +329,7 @@ final class TreeNodeStore {
         mPageStore.commit(new PageStore.CommitCallback() {
             @Override
             public byte[] prepare() throws IOException {
-                return flush(root);
+                return flush();
             }
         });
     }
@@ -374,60 +337,25 @@ final class TreeNodeStore {
     /**
      * Method is invoked with exclusive commit lock and root node latch held.
      */
-    private byte[] flush(TreeNode root) throws IOException {
+    private byte[] flush() throws IOException {
+        final TreeNode root = mRoot;
         final long rootId = root.mId;
         final int stateToFlush = mCommitState;
         mCommitState = (byte) (CACHED_DIRTY_0 + ((stateToFlush - CACHED_DIRTY_0) ^ 1));
         mPageStore.exclusiveCommitLock().unlock();
 
-        // TODO: When cursor based traversal is available, use that instead of
-        // breadth-first traversal.
+        // At this point, dirty nodes which should be flushed will be written
+        // automatically as they are evicted. All remaining dirty nodes are
+        // gathered up concurrently, ordered by id, and explicitly written.
 
-        // Perform a breadth-first traversal of tree, finding dirty nodes.
-        // Because this step can effectively deny all concurrent access to
-        // the tree, acquire latches unfairly to speed it up.
-        List<TreeNode> dirty = new ArrayList<TreeNode>();
-        dirty.add(root);
+        PriorityQueue<Dirty> dirtyQueue = gatherDirtyNodes(stateToFlush);
 
-        for (int mi=0; mi<dirty.size(); mi++) {
-            TreeNode node = dirty.get(mi);
-
-            if (node.isLeaf()) {
-                node.releaseExclusive();
-                continue;
-            }
-
-            // Allow reads that don't load children into the node.
-            node.downgrade();
-
-            TreeNode[] childNodes = node.mChildNodes;
-
-            for (int ci=0; ci<childNodes.length; ci++) {
-                TreeNode childNode = childNodes[ci];
-                if (childNode != null) {
-                    long childId = node.retrieveChildRefIdFromIndex(ci);
-                    if (childId == childNode.mId) {
-                        childNode.acquireExclusiveUnfair();
-                        if (childId == childNode.mId && childNode.mCachedState == stateToFlush) {
-                            dirty.add(childNode);
-                        } else {
-                            childNode.releaseExclusive();
-                        }
-                    }
-                }
-            }
-
-            node.releaseShared();
-        }
-
-        // Now sweep through dirty nodes. This could be performed by scanning
-        // the tree itself, but this leads to race conditions.
-
-        for (int mi=0; mi<dirty.size(); mi++) {
-            TreeNode node = dirty.get(mi);
-            dirty.set(mi, null);
+        Dirty dirty;
+        while ((dirty = dirtyQueue.poll()) != null) {
+            TreeNode node = dirty.mNode;
             node.acquireExclusiveUnfair();
             if (node.mCachedState != stateToFlush) {
+                // Was already evicted.
                 node.releaseExclusive();
             } else {
                 node.mCachedState = CACHED_CLEAN;
@@ -445,5 +373,97 @@ final class TreeNodeStore {
         DataIO.writeLong(header, 4, rootId);
 
         return header;
+    }
+
+    /**
+     * Performs a depth-first traversal, gathering dirty nodes to flush. Nodes
+     * are ordered by id, which helps make writes more sequentially ordered.
+     * Method is called with root node latched exclusively.
+     */
+    private PriorityQueue<Dirty> gatherDirtyNodes(int state) {
+        // Since tree can be modified during traversal, use CursorFrames.
+
+        PriorityQueue<Dirty> dirty = new PriorityQueue<Dirty>(Math.min(1000, mMaxCachedNodeCount));
+
+        TreeNode node = mRoot;
+
+        CursorFrame parentFrame = null;
+        CursorFrame frame = null;
+
+        traverse: while (true) {
+            if (node.isLeaf()) {
+                dirty.add(new Dirty(node));
+                frame = parentFrame;
+            } else {
+                int ci;
+                if (frame == null) {
+                    dirty.add(new Dirty(node));
+                    ci = 0;
+                } else {
+                    ci = (frame.mNodePos >> 1) + 1;
+                }
+
+                TreeNode[] childNodes = node.mChildNodes;
+
+                for (; ci<childNodes.length; ci++) {
+                    TreeNode childNode = childNodes[ci];
+                    if (childNode == null) {
+                        continue;
+                    }
+                    long childId = node.retrieveChildRefIdFromIndex(ci);
+                    if (childId != childNode.mId) {
+                        continue;
+                    }
+
+                    childNode.acquireExclusiveUnfair();
+
+                    if (childId == childNode.mId && childNode.mCachedState == state) {
+                        if (frame == null) {
+                            frame = new CursorFrame(parentFrame);
+                            frame.bind(node, ci << 1);
+                        } else {
+                            frame.mNodePos = ci << 1;
+                        }
+                        node.releaseExclusive();
+                        parentFrame = frame;
+                        frame = null;
+                        node = childNode;
+                        continue traverse;
+                    }
+
+                    childNode.releaseExclusive();
+                }
+
+                frame = frame == null ? parentFrame : frame.pop();
+            }
+
+            node.releaseExclusive();
+
+            if (frame == null) {
+                break;
+            }
+
+            node = frame.acquireExclusiveUnfair();
+        }
+
+        return dirty;
+    }
+
+    private static class Dirty implements Comparable<Dirty> {
+        final TreeNode mNode;
+        final long mId;
+
+        Dirty(TreeNode node) {
+            mNode = node;
+            // Stable copy of id that can be accessed without re-latching.
+            mId = node.mId;
+        }
+
+        @Override
+        public int compareTo(Dirty other) {
+            long a = mId;
+            long b = other.mId;
+            return a < b ? -1 : (a > b ? 1 : 0);
+        }
     }
 }
