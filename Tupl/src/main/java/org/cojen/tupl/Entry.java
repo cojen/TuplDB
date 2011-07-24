@@ -16,8 +16,11 @@
 
 package org.cojen.tupl;
 
+import java.util.Arrays;
+
 /**
- * 
+ * Container for retrieving key and value pair from {@link Cursor#getEntry}
+ * methods.
  *
  * @author Brian S O'Neill
  */
@@ -28,5 +31,55 @@ public class Entry {
     public void clear() {
         key = null;
         value = null;
+    }
+
+    /**
+     * Compares Entry keys, treating null as high.
+     */
+    public int compareKeys(Entry other) {
+        byte[] thisKey = key;
+        byte[] otherKey = other.key;
+        return (thisKey == null)
+            ? (otherKey == null ? 0 : 1)
+            : (otherKey == null
+               ? -1
+               : Utils.compareKeys(thisKey, 0, thisKey.length, otherKey, 0, otherKey.length));
+    }
+
+    /**
+     * Returns a deep copy of this Entry.
+     */
+    public Entry copy() {
+        Entry copy = new Entry();
+        if (key != null) {
+            copy.key = key.clone();
+        }
+        if (value != null) {
+            copy.value = value.clone();
+        }
+        return copy;
+    }
+
+    /**
+     * Computes a hash code from the key and value.
+     */
+    @Override
+    public int hashCode() {
+        return Arrays.hashCode(key) ^ Arrays.hashCode(value);
+    }
+
+    /**
+     * Compares Entry keys and values for equality.
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj instanceof Entry) {
+            Entry other = (Entry) obj;
+            return Arrays.equals(key, other.key) && Arrays.equals(value, other.value);
+        }
+        return false;
     }
 }

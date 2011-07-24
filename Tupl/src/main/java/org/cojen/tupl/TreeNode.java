@@ -482,9 +482,39 @@ final class TreeNode extends Latch {
     }
 
     /**
+     * Caller must hold exclusive latch on node. Latch is never released by
+     * this method, even if an exception is thrown.
+     *
+     * @return false if node cannot be evicted
+     */
+    boolean evict(TreeNodeStore store) throws IOException {
+        if (!canEvict()) {
+            return false;
+        }
+
+        int state = mCachedState;
+        if (state != CACHED_CLEAN) {
+            // TODO: Keep some sort of cache of ids known to be dirty. If
+            // reloaded before commit, then they're still dirty. Without this
+            // optimization, too many pages are allocated when: evictions are
+            // high, write rate is high, and commits are bogged down. A Bloom
+            // filter is not appropriate, because of false positives.
+
+            write(store);
+            mCachedState = CACHED_CLEAN;
+        }
+
+        mId = 0;
+        // FIXME: child node array should be recycled
+        mChildNodes = null;
+
+        return true;
+    }
+
+    /**
      * Caller must hold any latch.
      */
-    boolean canEvict() {
+    private boolean canEvict() {
         if (mLastCursorFrame != null || mSplit != null) {
             return false;
         }

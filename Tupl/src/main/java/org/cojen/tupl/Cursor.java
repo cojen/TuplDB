@@ -24,7 +24,9 @@ import java.util.concurrent.locks.Lock;
 
 /**
  * Maintains a fixed logical position in the tree. Cursors must be {@link
- * #reset reset} when no longer needed to free up memory.
+ * #reset reset} when no longer needed to free up memory. Although not
+ * necessarily practical, multiple threads may safely interact with Cursor
+ * instances. Only one thread has access when the Cursor is synchronized.
  *
  * @author Brian S O'Neill
  */
@@ -39,7 +41,7 @@ public final class Cursor {
     }
 
     /**
-     * Returns a copy of the key at the cursor's position, never null.
+     * Returns a copy of the key at the Cursor's current position, never null.
      *
      * @throws IllegalStateException if position is undefined at invocation time
      */
@@ -53,8 +55,8 @@ public final class Cursor {
     }
 
     /**
-     * Returns a copy of the value at the cursor's position. Null is returned
-     * if entry doesn't exist.
+     * Returns a copy of the value at the Cursor's current position. Null is
+     * returned if entry doesn't exist.
      *
      * @throws IllegalStateException if position is undefined at invocation time
      */
@@ -68,8 +70,9 @@ public final class Cursor {
     }
 
     /**
-     * Returns a copy of the key and value at the cursor's position. False is
-     * returned if entry doesn't exist.
+     * Returns a copy of the key and value at the Cursor's current position. If
+     * entry doesn't exist, value is assigned null and false is returned. A
+     * non-null key is always available, even for entries which don't exist.
      *
      * @param entry entry to fill in; pass null to just check if entry exists
      * @throws IllegalStateException if position is undefined at invocation time
@@ -95,24 +98,37 @@ public final class Cursor {
     }
 
     /**
-     * Move the cursor to find the first available entry, unless none exists.
+     * Returns a copy of the key and value at the Cursor's current
+     * position. Entry value is null if it doesn't exist. A non-null key is
+     * always available, even for entries which don't exist.
+     *
+     * @throws IllegalStateException if position is undefined at invocation time
+     */
+    public Entry getEntry() throws IOException {
+        Entry entry = new Entry();
+        getEntry(entry);
+        return entry;
+    }
+
+    /**
+     * Moves the Cursor to find the first available entry, unless none exists.
      *
      * @return false if no entries exist and position is now undefined
      */
     public synchronized boolean first() throws IOException {
-        TreeNode node = mStore.root();
-        CursorFrame frame = resetForFind(node);
+        TreeNode root = mStore.root();
+        CursorFrame frame = resetForFind(root);
 
-        if (!node.hasKeys()) {
-            node.releaseExclusive();
+        if (!root.hasKeys()) {
+            root.releaseExclusive();
             return false;
         }
 
-        return toFirst(node, frame);
+        return toFirst(root, frame);
     }
 
     /**
-     * Move the cursor to the first subtree entry. Caller must be synchronized.
+     * Moves the Cursor to the first subtree entry. Caller must be synchronized.
      *
      * @param node latched node
      * @param frame frame to bind node to
@@ -137,24 +153,24 @@ public final class Cursor {
     }
 
     /**
-     * Move the cursor to find the last available entry, unless none exists.
+     * Moves the Cursor to find the last available entry, unless none exists.
      *
      * @return false if no entries exist and position is now undefined
      */
     public synchronized boolean last() throws IOException {
-        TreeNode node = mStore.root();
-        CursorFrame frame = resetForFind(node);
+        TreeNode root = mStore.root();
+        CursorFrame frame = resetForFind(root);
 
-        if (!node.hasKeys()) {
-            node.releaseExclusive();
+        if (!root.hasKeys()) {
+            root.releaseExclusive();
             return false;
         }
 
-        return toLast(node, frame);
+        return toLast(root, frame);
     }
 
     /**
-     * Move the cursor to the last subtree entry. Caller must be synchronized.
+     * Moves the Cursor to the last subtree entry. Caller must be synchronized.
      *
      * @param node latched node
      * @param frame frame to bind node to
@@ -207,7 +223,7 @@ public final class Cursor {
     }
 
     /**
-     * Move the cursor by a relative amount of entries. Pass a positive amount
+     * Moves the Cursor by a relative amount of entries. Pass a positive amount
      * for forward movement, and pass a negative amount for reverse
      * movement. The actual movement amount can be less than the requested
      * amount if the start or end is reached. After this happens, the position
@@ -222,7 +238,7 @@ public final class Cursor {
     }
 
     /**
-     * Advances to the cursor to the next available entry, unless none
+     * Advances to the Cursor to the next available entry, unless none
      * exists. Equivalent to:
      *
      * <pre>
@@ -279,7 +295,7 @@ public final class Cursor {
     }
 
     /**
-     * Advances to the cursor to the previous available entry, unless none
+     * Advances to the Cursor to the previous available entry, unless none
      * exists. Equivalent to:
      *
      * <pre>
@@ -336,31 +352,24 @@ public final class Cursor {
     }
 
     /**
-     * Move the cursor to find the given key, returning true if a matching
-     * entry exists. If false is returned, a reference to the key (uncopied) is
-     * retained. The key reference is released when the cursor position changes
+     * Moves the Cursor to find the given key, returning true if a matching
+     * entry exists. If false is returned, an uncopied reference to the key is
+     * retained. The key reference is released when the Cursor position changes
      * or a matching entry is created.
      *
      * @return false if entry not found
      * @throws NullPointerException if key is null
      */
     public synchronized boolean find(byte[] key) throws IOException {
-        // Prevent commits due to avoid deadlocks. If a child node needs to be
-        // loaded, it may evict another node. Eviction acquires the commit lock
-        // while parent latch is held, which is the opposite order used by the
-        // commit method.
-        // FIXME: Does the evict method really need the lock?
-        //final Lock sharedCommitLock = mStore.sharedCommitLock();
-        //sharedCommitLock.lock();
-        //try {
-            return find(key, false);
-        //} finally {
-            //sharedCommitLock.unlock();
-        //}
+        return find(key, false);
     }
 
     // Caller must be synchronized.
     private boolean find(byte[] key, boolean retainLatch) throws IOException {
+        if (key == null) {
+            throw new NullPointerException("Cannot find a null key");
+        }
+
         TreeNode node = mStore.root();
         CursorFrame frame = resetForFind(node);
 
@@ -427,7 +436,7 @@ public final class Cursor {
     }
 
     /**
-     * Move the cursor to find the first available entry greater than or equal
+     * Moves the Cursor to find the first available entry greater than or equal
      * to the given key. Equivalent to:
      *
      * <pre>
@@ -446,8 +455,8 @@ public final class Cursor {
     }
 
     /**
-     * Move the cursor to find the first available entry greater than the given
-     * key. Equivalent to:
+     * Moves the Cursor to find the first available entry greater than the
+     * given key. Equivalent to:
      *
      * <pre>
      * cursor.find(key); return cursor.next();</pre>
@@ -461,7 +470,7 @@ public final class Cursor {
     }
 
     /**
-     * Move the cursor to find the first available entry less than or equal to
+     * Moves the Cursor to find the first available entry less than or equal to
      * the given key. Equivalent to:
      *
      * <pre>
@@ -480,7 +489,7 @@ public final class Cursor {
     }
 
     /**
-     * Move the cursor to find the first available entry less than the given
+     * Moves the Cursor to find the first available entry less than the given
      * key. Equivalent to:
      *
      * <pre>
@@ -496,10 +505,10 @@ public final class Cursor {
 
     /**
      * Optimized version of the regular find method, useful for operating over
-     * a range of contiguous keys. Find the next expected key, returning true
-     * if a matching entry exists anywhere. If false is returned, a reference
-     * to the key (uncopied) is retained. The key reference is released when
-     * the cursor position changes or a matching entry is created.
+     * a range of contiguous keys. Finds the next expected key, returning true
+     * if a matching entry exists anywhere. If false is returned, an uncopied
+     * reference to the key is retained. The key reference is released when the
+     * Cursor position changes or a matching entry is created.
      *
      * @return false if entry not found
      * @throws NullPointerException if key is null
@@ -511,11 +520,10 @@ public final class Cursor {
 
     /**
      * Optimized version of the regular find method, useful for operating over
-     * a range of contiguous keys. Find the previous expected key, returning
-     * true if a matching entry exists anywhere. If false is returned, a
-     * reference to the key (uncopied) is retained. The key reference is
-     * released when the cursor position changes or a matching entry is
-     * created.
+     * a range of contiguous keys. Finds the previous expected key, returning
+     * true if a matching entry exists anywhere. If false is returned, an
+     * uncopied reference to the key is retained. The key reference is released
+     * when the Cursor position changes or a matching entry is created.
      *
      * @return false if entry not found
      * @throws NullPointerException if key is null
@@ -526,9 +534,9 @@ public final class Cursor {
     }
 
     /**
-     * Store a value into the current entry, leaving the position unchanged. An
-     * entry may be inserted, updated or deleted by this method. A null value
-     * deletes the entry.
+     * Stores a value into the current entry, leaving the position
+     * unchanged. An entry may be inserted, updated or deleted by this
+     * method. A null value deletes the entry.
      *
      * @throws IllegalStateException if position is undefined at invocation time
      */
@@ -610,8 +618,8 @@ public final class Cursor {
     // count, deleteAll.
 
     /**
-     * Returns a new independent cursor which exactly matches the state of this
-     * one. The original and copied cursor can be acted upon without affecting
+     * Returns a new independent Cursor which exactly matches the state of this
+     * one. The original and copied Cursor can be acted upon without affecting
      * each other's state.
      */
     public Cursor copy() {
@@ -637,7 +645,14 @@ public final class Cursor {
     }
 
     /**
-     * Resets the cursor position to be undefined.
+     * Returns true if Cursor is currently at a defined position.
+     */
+    public synchronized boolean isPositioned() {
+        return mLeaf != null;
+    }
+
+    /**
+     * Resets the Cursor position to be undefined.
      */
     public void reset() {
         CursorFrame frame;
@@ -686,7 +701,7 @@ public final class Cursor {
     }
 
     /**
-     * Verifies that cursor state is correct by performing a find operation.
+     * Verifies that Cursor state is correct by performing a find operation.
      *
      * @return false if unable to verify completely at this time
      */
@@ -695,7 +710,7 @@ public final class Cursor {
     }
 
     /**
-     * Verifies that cursor state is correct by performing a find operation.
+     * Verifies that Cursor state is correct by performing a find operation.
      *
      * @return false if unable to verify completely at this time
      * @throws NullPointerException if key is null
