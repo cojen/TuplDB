@@ -677,6 +677,59 @@ final class TreeNode extends Latch {
     }
 
     /**
+     * Search a non-empty leaf node, using a starting search position.
+     *
+     * @param midPos 2-based starting position
+     * @return 2-based insertion pos, which is negative if key not found
+     */
+    int binarySearchLeaf(byte[] key, int midPos) {
+        final byte[] page = mPage;
+        final int keyLen = key.length;
+        int lowPos = mSearchVecStart;
+        int highPos = mSearchVecEnd;
+        midPos += lowPos;
+
+        while (true) {
+            compare: {
+                int compareLoc = DataIO.readUnsignedShort(page, midPos);
+                int compareLen = page[compareLoc++];
+                compareLen = compareLen >= 0 ? ((compareLen & 0x3f) + 1)
+                    : (((compareLen & 0x3f) << 8) | ((page[compareLoc++]) & 0xff));
+
+                int minLen = Math.min(compareLen, keyLen);
+                for (int i=0; i<minLen; i++) {
+                    byte cb = page[compareLoc + i];
+                    byte kb = key[i];
+                    if (cb != kb) {
+                        if ((cb & 0xff) < (kb & 0xff)) {
+                            lowPos = midPos + 2;
+                        } else {
+                            highPos = midPos - 2;
+                        }
+                        break compare;
+                    }
+                }
+
+                if (compareLen < keyLen) {
+                    lowPos = midPos + 2;
+                } else if (compareLen > keyLen) {
+                    highPos = midPos - 2;
+                } else {
+                    return midPos - mSearchVecStart;
+                }
+            }
+
+            if (lowPos > highPos) {
+                break;
+            }
+
+            midPos = ((lowPos + highPos) >> 1) & ~1;
+        }
+
+        return ~(lowPos - mSearchVecStart);
+    }
+
+    /**
      * @return negative if page entry is less, zero if equal, more than zero if greater
      */
     static int compareToInternalKey(byte[] page, int entryLoc, byte[] key) {
@@ -725,6 +778,59 @@ final class TreeNode extends Latch {
             } else {
                 return midPos - mSearchVecStart;
             }
+        }
+
+        return ~(lowPos - mSearchVecStart);
+    }
+
+    /**
+     * Search a non-empty internal node, using a starting search position.
+     *
+     * @param midPos 2-based starting position
+     * @return 2-based insertion pos, which is negative if key not found
+     */
+    int binarySearchInternal(byte[] key, int midPos) {
+        final byte[] page = mPage;
+        final int keyLen = key.length;
+        int lowPos = mSearchVecStart;
+        int highPos = mSearchVecEnd;
+        midPos += lowPos;
+
+        while (true) {
+            compare: {
+                int compareLoc = DataIO.readUnsignedShort(page, midPos);
+                int compareLen = page[compareLoc++];
+                compareLen = compareLen >= 0 ? (compareLen + 1)
+                    : (((compareLen & 0x7f) << 8) | ((page[compareLoc++]) & 0xff));
+
+                int minLen = Math.min(compareLen, keyLen);
+                for (int i=0; i<minLen; i++) {
+                    byte cb = page[compareLoc + i];
+                    byte kb = key[i];
+                    if (cb != kb) {
+                        if ((cb & 0xff) < (kb & 0xff)) {
+                            lowPos = midPos + 2;
+                        } else {
+                            highPos = midPos - 2;
+                        }
+                        break compare;
+                    }
+                }
+
+                if (compareLen < keyLen) {
+                    lowPos = midPos + 2;
+                } else if (compareLen > keyLen) {
+                    highPos = midPos - 2;
+                } else {
+                    return midPos - mSearchVecStart;
+                }
+            }
+
+            if (lowPos > highPos) {
+                break;
+            }
+
+            midPos = ((lowPos + highPos) >> 1) & ~1;
         }
 
         return ~(lowPos - mSearchVecStart);
