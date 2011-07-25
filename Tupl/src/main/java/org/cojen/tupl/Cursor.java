@@ -369,10 +369,20 @@ public final class Cursor {
         if (key == null) {
             throw new NullPointerException("Cannot find a null key");
         }
+        TreeNode root = mStore.root();
+        return find(key, root, resetForFind(root), retainLatch);
+    }
 
-        TreeNode node = mStore.root();
-        CursorFrame frame = resetForFind(node);
-
+    /**
+     * @param key non-null key, unchecked
+     * @param node latched unbound node
+     * @param frame frame to bind to
+     * @param retainLatch true to keep leaf frame latched
+     */
+    // Caller must be synchronized.
+    private boolean find(byte[] key, TreeNode node, CursorFrame frame, boolean retainLatch)
+        throws IOException
+    {
         while (true) {
             if (node.isLeaf()) {
                 int pos;
@@ -504,33 +514,94 @@ public final class Cursor {
     }
 
     /**
-     * Optimized version of the regular find method, useful for operating over
-     * a range of contiguous keys. Finds the next expected key, returning true
-     * if a matching entry exists anywhere. If false is returned, an uncopied
-     * reference to the key is retained. The key reference is released when the
-     * Cursor position changes or a matching entry is created.
+     * Optimized version of the regular find method, which can perform fewer
+     * search steps if the given key is in close proximity to the current one.
+     * Even if not in close proximity, the find behavior is still identicial,
+     * although it may perform more slowly.
      *
      * @return false if entry not found
      * @throws NullPointerException if key is null
      */
-    public synchronized boolean findNext(byte[] key) throws IOException {
-        // FIXME
-        throw null;
-    }
+    public synchronized boolean findNearby(byte[] key) throws IOException {
+        if (key == null) {
+            throw new NullPointerException("Cannot find a null key");
+        }
 
-    /**
-     * Optimized version of the regular find method, useful for operating over
-     * a range of contiguous keys. Finds the previous expected key, returning
-     * true if a matching entry exists anywhere. If false is returned, an
-     * uncopied reference to the key is retained. The key reference is released
-     * when the Cursor position changes or a matching entry is created.
-     *
-     * @return false if entry not found
-     * @throws NullPointerException if key is null
-     */
-    public synchronized boolean findPrevious(byte[] key) throws IOException {
-        // FIXME
-        throw null;
+        CursorFrame frame = mLeaf;
+        if (frame == null) {
+            TreeNode root = mStore.root();
+            root.acquireExclusiveUnfair();
+            return find(key, root, new CursorFrame(), false);
+        }
+
+        TreeNode node = frame.acquireExclusiveUnfair();
+        if (node.mSplit != null) {
+            node = finishSplit(frame, node, mStore, true);
+        }
+
+        int startPos = frame.mNodePos;
+        if (startPos < 0) {
+            startPos = ~startPos;
+        }
+
+        int pos = node.binarySearchLeaf(key, startPos);
+
+        if (pos >= 0) {
+            frame.mNotFoundKey = null;
+            frame.mNodePos = pos;
+            node.releaseExclusive();
+            return true;
+        } else if (pos != ~0 && ~pos <= node.highestLeafPos()) {
+            // Not found, but insertion pos is in bounds.
+            frame.mNotFoundKey = key;
+            frame.mNodePos = pos;
+            node.releaseExclusive();
+            return false;
+        }
+
+        // Cannot be certain if position is in leaf node, so pop up.
+
+        final TreeNode root = mStore.root();
+        mLeaf = null;
+
+        while (true) {
+            CursorFrame parent = frame.pop();
+
+            if (parent == null) {
+                // Usually the root frame refers to the root node, but it
+                // can be wrong if the tree height is changing.
+                if (node != root) {
+                    node.releaseExclusive();
+                    root.acquireExclusiveUnfair();
+                    node = root;
+                }
+                break;
+            }
+
+            node.releaseExclusive();
+            frame = parent;
+            node = frame.acquireExclusiveUnfair();
+
+            // Only search inside non-split nodes. It's easier to just pop up
+            // rather than finish or search the split.
+            if (node.mSplit != null) {
+                continue;
+            }
+
+            pos = TreeNode.internalPos(node.binarySearchInternal(key, frame.mNodePos));
+
+            if (pos == 0 || pos >= node.highestInternalPos()) {
+                // Cannot be certain if position is in this node, so pop up.
+                continue;
+            }
+
+            frame.mNodePos = pos;
+            node = latchChild(node, pos);
+            frame = new CursorFrame(frame);
+            break;
+        }
+
+        return find(key, node, frame, false);
     }
 
     /**
@@ -679,24 +750,26 @@ public final class Cursor {
         if (frame == null) {
             root.acquireExclusiveUnfair();
             return new CursorFrame();
-        } else {
-            mLeaf = null;
-            while (true) {
-                TreeNode node = frame.acquireExclusiveUnfair();
-                CursorFrame parent = frame.pop();
-                if (parent != null) {
+        }
+
+        mLeaf = null;
+
+        while (true) {
+            TreeNode node = frame.acquireExclusiveUnfair();
+            CursorFrame parent = frame.pop();
+
+            if (parent == null) {
+                // Usually the root frame refers to the root node, but it
+                // can be wrong if the tree height is changing.
+                if (node != root) {
                     node.releaseExclusive();
-                    frame = parent;
-                } else {
-                    // Usually the root frame refers to the root node, but it
-                    // can be wrong if the tree height is changing.
-                    if (node != root) {
-                        node.releaseExclusive();
-                        root.acquireExclusiveUnfair();
-                    }
-                    return frame;
+                    root.acquireExclusiveUnfair();
                 }
+                return frame;
             }
+
+            node.releaseExclusive();
+            frame = parent;
         }
     }
 
