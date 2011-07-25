@@ -338,10 +338,16 @@ final class TreeNodeStore {
         // Perform a breadth-first traversal of tree, finding dirty nodes. This
         // step can effectively deny most concurrent access to the tree, but I
         // cannot figure out a safe way to find dirty nodes and allow access
-        // back into the tree. Depth first traversal using a cursor allows
+        // back into the tree. Depth-first traversal using a cursor allows
         // concurrent access, but it causes some dirty nodes to get lost. It
         // might be possible to speed this step up with multiple threads -- at
         // most one per processor.
+
+        // One approach for performing depth-first traversal is to remember
+        // internal nodes which were concurrently updated, in a map. When the
+        // traversal sees a clean node, it consults the map instead of
+        // short-circuiting. If the node was written, then it needs to
+        // traversed into, to gather up additional dirty nodes.
 
         List<Dirty> dirtyList = new ArrayList<Dirty>(Math.min(1000, mMaxCachedNodeCount));
         dirtyList.add(new Dirty(root, root.mId));
