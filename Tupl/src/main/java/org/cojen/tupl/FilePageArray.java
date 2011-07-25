@@ -37,6 +37,7 @@ class FilePageArray implements PageArray {
     // Access these fields while synchronized on mFilePool.
     private final RandomAccessFile[] mFilePool;
     private int mFilePoolTop;
+    private long mFileLength;
 
     FilePageArray(File file, boolean readOnly, int pageSize, int openFileCount)
         throws IOException
@@ -60,6 +61,7 @@ class FilePageArray implements PageArray {
                 for (int i=0; i<openFileCount; i++) {
                     mFilePool[i] = open(file, readOnly);
                 }
+                mFileLength = mFilePool[0].length();
             }
 
             int readPageSize = readPageSize(mFilePool[0]);
@@ -92,12 +94,9 @@ class FilePageArray implements PageArray {
 
     @Override
     public long getPageCount() throws IOException {
-        RandomAccessFile file = accessFile();
-        try {
+        synchronized (mFilePool) {
             // Always round page count down. A partial last page effectively doesn't exist.
-            return file.length() / mPageSize;
-        } finally {
-            yieldFile(file);
+            return mFileLength / mPageSize;
         }
     }
 
@@ -107,18 +106,29 @@ class FilePageArray implements PageArray {
             throw new IllegalArgumentException(String.valueOf(count));
         }
 
-        long newLength = count * mPageSize;
+        long endPos = count * mPageSize;
 
-        RandomAccessFile file = accessFile();
-        try {
-            if (allocate && newLength > file.length()) {
-                file.seek(newLength - 1);
-                file.write(-1);
-            } else {
-                file.setLength(newLength);
+        synchronized (mFilePool) {
+            if (endPos > mFileLength) {
+                mFileLength = endPos;
+                if (allocate) {
+                    RandomAccessFile file = accessFile();
+                    try {
+                        file.seek(endPos - 1);
+                        file.write(-1);
+                    } finally {
+                        yieldFile(file);
+                    }
+                }
+            } else if (endPos < mFileLength) {
+                RandomAccessFile file = accessFile();
+                try {
+                    file.setLength(endPos);
+                } finally {
+                    yieldFile(file);
+                }
+                mFileLength = endPos;
             }
-        } finally {
-            yieldFile(file);
         }
     }
 
@@ -186,13 +196,19 @@ class FilePageArray implements PageArray {
         }
 
         int pageSize = mPageSize;
+        long pos = index * pageSize;
 
-        RandomAccessFile file = accessFile();
-        try {
-            file.seek(index * pageSize);
-            file.write(buf, offset, pageSize);
-        } finally {
-            yieldFile(file);
+        synchronized (mFilePool) {
+            if ((pos + pageSize) > mFileLength) {
+                mFileLength = pos + pageSize;
+            }
+            RandomAccessFile file = accessFile();
+            try {
+                file.seek(pos);
+                file.write(buf, offset, pageSize);
+            } finally {
+                yieldFile(file);
+            }
         }
     }
 

@@ -276,9 +276,13 @@ final class TreeNode extends Latch {
 
             // Release shared latch, re-acquire exclusive latch, and start over.
 
-            node.releaseSharedAndAcquireExclusive(parentLatch);
+            node.releaseShared();
+            node.acquireExclusiveUnfair();
             exclusiveHeld = true;
-            parentLatch = null;
+            if (parentLatch != null) {
+                parentLatch.releaseShared();
+                parentLatch = null;
+            }
 
             if (node.mSplit != null) {
                 // Node might have split while shared latch was not held.
@@ -627,19 +631,6 @@ final class TreeNode extends Latch {
             return true;
         }
         return false;
-    }
-
-    /**
-     * Releases shared latch and then acquires exclusive latch. If provided,
-     * parent shared latch is held during this step, because it is the only
-     * remaining latch. It is released when this method returns.
-     */
-    private void releaseSharedAndAcquireExclusive(Latch parentLatch) {
-        releaseShared();
-        acquireExclusiveUnfair();
-        if (parentLatch != null) {
-            parentLatch.releaseShared();
-        }
     }
 
     /**
