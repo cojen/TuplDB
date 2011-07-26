@@ -281,7 +281,7 @@ public final class Cursor {
             node = frame.acquireExclusiveUnfair();
 
             if (node.mSplit != null) {
-                node = finishSplit(frame, node, mStore, true);
+                node = finishSplit(frame, node, mStore);
             }
 
             pos = frame.mNodePos;
@@ -338,7 +338,7 @@ public final class Cursor {
             node = frame.acquireExclusiveUnfair();
 
             if (node.mSplit != null) {
-                node = finishSplit(frame, node, mStore, true);
+                node = finishSplit(frame, node, mStore);
             }
 
             pos = frame.mNodePos;
@@ -536,7 +536,7 @@ public final class Cursor {
 
         TreeNode node = frame.acquireExclusiveUnfair();
         if (node.mSplit != null) {
-            node = finishSplit(frame, node, mStore, true);
+            node = finishSplit(frame, node, mStore);
         }
 
         int startPos = frame.mNodePos;
@@ -561,7 +561,6 @@ public final class Cursor {
 
         // Cannot be certain if position is in leaf node, so pop up.
 
-        final TreeNode root = mStore.root();
         mLeaf = null;
 
         while (true) {
@@ -570,6 +569,7 @@ public final class Cursor {
             if (parent == null) {
                 // Usually the root frame refers to the root node, but it
                 // can be wrong if the tree height is changing.
+                TreeNode root = mStore.root();
                 if (node != root) {
                     node.releaseExclusive();
                     root.acquireExclusiveUnfair();
@@ -675,11 +675,11 @@ public final class Cursor {
                 }
             } while ((frame = frame.mPrevCousin) != null);
 
-            if (node.mSplit == null) {
-                node.releaseExclusive();
-            } else {
-                finishSplit(leaf, node, mStore, false);
+            if (node.mSplit != null) {
+                node = finishSplit(leaf, node, mStore);
             }
+
+            node.releaseExclusive();
         } finally {
             sharedCommitLock.unlock();
         }
@@ -904,7 +904,7 @@ public final class Cursor {
         node = leaf.acquireExclusiveUnfair();
 
         if (node.mSplit != null) {
-            node = finishSplit(leaf, node, mStore, true);
+            node = finishSplit(leaf, node, mStore);
         }
 
         node.downgrade();
@@ -923,7 +923,7 @@ public final class Cursor {
         TreeNode node = leaf.acquireExclusiveUnfair();
 
         if (node.mSplit != null) {
-            node = finishSplit(leaf, node, mStore, true);
+            node = finishSplit(leaf, node, mStore);
         }
 
         return leaf;
@@ -955,7 +955,7 @@ public final class Cursor {
 
         if (node.mSplit != null) {
             // Already dirty, but finish the split.
-            node = finishSplit(frame, node, store, true);
+            node = finishSplit(frame, node, store);
             return;
         }
 
@@ -976,45 +976,38 @@ public final class Cursor {
         node = frame.acquireExclusiveUnfair();
         TreeNode parentNode = parentFrame.mNode;
 
-        if (node.mSplit == null) {
-            if (store.markDirty(node)) {
-                parentNode.updateChildRefId(parentFrame.mNodePos, node.mId);
+        while (node.mSplit != null) {
+            // Already dirty now, but finish the split. Since parent latch is
+            // already held, no need to call into the regular finishSplit
+            // method. It would release latches and recheck everything.
+            parentNode.insertSplitChildRef(store, parentFrame.mNodePos, node);
+            if (parentNode.mSplit != null) {
+                parentNode = finishSplit(parentFrame, parentNode, store);
             }
-            parentNode.releaseExclusive();
-            return;
+            frame.acquireExclusiveUnfair();
+        }
+        
+        if (store.markDirty(node)) {
+            parentNode.updateChildRefId(parentFrame.mNodePos, node.mId);
         }
 
-        // Already dirty now, but finish the split. Since parent latch is
-        // already held, no need to call into the regular finishSplit
-        // method. It would release latches and recheck everything.
-        parentNode.insertSplitChildRef(store, parentFrame.mNodePos, node);
-        if (parentNode.mSplit == null) {
-            parentNode.releaseExclusive();
-        } else {
-            finishSplit(parentFrame, parentNode, store, false);
-        }
-        frame.acquireExclusiveUnfair();
+        parentNode.releaseExclusive();
     }
 
     /**
      * Caller must hold exclusive latch and it must verify that node has split.
      *
-     * @return replacement node or null if latch was not retained
+     * @return replacement node, still latched
      */
     private static TreeNode finishSplit(final CursorFrame frame,
                                         TreeNode node,
-                                        TreeNodeStore store,
-                                        boolean retainLatch)
+                                        TreeNodeStore store)
         throws IOException
     {
         // FIXME: How to acquire shared commit lock without deadlock?
         if (node == store.root()) {
             node.finishSplitRoot(store);
-            if (retainLatch) {
-                return node;
-            }
-            node.releaseExclusive();
-            return null;
+            return node;
         }
 
         final CursorFrame parentFrame = frame.mParentFrame;
@@ -1030,35 +1023,20 @@ public final class Cursor {
         sharedCommitLock.lock();
         try {
             TreeNode parentNode = parentFrame.acquireExclusiveUnfair();
-
-            if (parentNode.mSplit != null) {
-                parentNode = finishSplit(parentFrame, parentNode, store, true);
-            }
-
-            node = frame.acquireExclusiveUnfair();
-
-            if (node.mSplit == null) {
-                parentNode.releaseExclusive();
-                if (retainLatch) {
+            while (true) {
+                if (parentNode.mSplit != null) {
+                    parentNode = finishSplit(parentFrame, parentNode, store);
+                }
+                node = frame.acquireExclusiveUnfair();
+                if (node.mSplit == null) {
+                    parentNode.releaseExclusive();
                     return node;
                 }
-                node.releaseExclusive();
-            } else {
                 parentNode.insertSplitChildRef(store, parentFrame.mNodePos, node);
-                if (parentNode.mSplit == null) {
-                    parentNode.releaseExclusive();
-                } else {
-                    finishSplit(parentFrame, parentNode, store, false);
-                }
-                if (retainLatch) {
-                    return frame.acquireExclusiveUnfair();
-                }
             }
         } finally {
             sharedCommitLock.unlock();
         }
-
-        return null;
     }
 
     /**
