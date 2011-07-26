@@ -931,7 +931,8 @@ public final class Cursor {
 
     /**
      * Latches and returns leaf frame, not split. Leaf frame and all previous
-     * frames are marked as dirty. Caller must be synchronized.
+     * frames are marked as dirty. Caller must be synchronized and hold shared
+     * commit lock, to prevent deadlock.
      */
     private CursorFrame leafExclusiveNotSplitDirty() throws IOException {
         CursorFrame leaf = mLeaf;
@@ -944,7 +945,8 @@ public final class Cursor {
     }
 
     /**
-     * Called with frame latch held, which is retained.
+     * Called with frame latch held, which is retained. Caller must hold shared
+     * commit lock, to prevent deadlock.
      */
     private static void notSplitDirty(final CursorFrame frame, TreeNodeStore store)
         throws IOException
@@ -1005,6 +1007,7 @@ public final class Cursor {
                                         boolean retainLatch)
         throws IOException
     {
+        // FIXME: How to acquire shared commit lock without deadlock?
         if (node == store.root()) {
             node.finishSplitRoot(store);
             if (retainLatch) {
@@ -1016,30 +1019,43 @@ public final class Cursor {
 
         final CursorFrame parentFrame = frame.mParentFrame;
         node.releaseExclusive();
-        TreeNode parentNode = parentFrame.acquireExclusiveUnfair();
 
-        if (parentNode.mSplit != null) {
-            parentNode = finishSplit(parentFrame, parentNode, store, true);
-        }
+        // To avoid deadlock, ensure shared commit lock is held. Not all
+        // callers acquire the shared lock first, since they usually only read
+        // from the tree. Node latch has now been released, which should have
+        // been the only latch held, and so commit lock can be acquired without
+        // deadlock.
 
-        node = frame.acquireExclusiveUnfair();
+        final Lock sharedCommitLock = store.sharedCommitLock();
+        sharedCommitLock.lock();
+        try {
+            TreeNode parentNode = parentFrame.acquireExclusiveUnfair();
 
-        if (node.mSplit == null) {
-            parentNode.releaseExclusive();
-            if (retainLatch) {
-                return node;
+            if (parentNode.mSplit != null) {
+                parentNode = finishSplit(parentFrame, parentNode, store, true);
             }
-            node.releaseExclusive();
-        } else {
-            parentNode.insertSplitChildRef(store, parentFrame.mNodePos, node);
-            if (parentNode.mSplit == null) {
+
+            node = frame.acquireExclusiveUnfair();
+
+            if (node.mSplit == null) {
                 parentNode.releaseExclusive();
+                if (retainLatch) {
+                    return node;
+                }
+                node.releaseExclusive();
             } else {
-                finishSplit(parentFrame, parentNode, store, false);
+                parentNode.insertSplitChildRef(store, parentFrame.mNodePos, node);
+                if (parentNode.mSplit == null) {
+                    parentNode.releaseExclusive();
+                } else {
+                    finishSplit(parentFrame, parentNode, store, false);
+                }
+                if (retainLatch) {
+                    return frame.acquireExclusiveUnfair();
+                }
             }
-            if (retainLatch) {
-                return frame.acquireExclusiveUnfair();
-            }
+        } finally {
+            sharedCommitLock.unlock();
         }
 
         return null;
