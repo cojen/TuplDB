@@ -1448,7 +1448,7 @@ final class TreeNode extends Latch {
     /**
      * @param pos position as provided by binarySearchLeaf; must be positive
      */
-    private void deleteLeafEntry(int pos) {
+    void deleteLeafEntry(int pos) {
         final byte[] page = mPage;
 
         int searchVecStart = mSearchVecStart;

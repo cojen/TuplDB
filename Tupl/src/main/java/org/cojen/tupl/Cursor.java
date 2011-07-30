@@ -615,68 +615,114 @@ public final class Cursor {
         final Lock sharedCommitLock = mStore.sharedCommitLock();
         sharedCommitLock.lock();
         try {
-            final CursorFrame leaf = leafExclusiveNotSplitDirty();
-            TreeNode node = leaf.mNode;
+            final CursorFrame leaf = leafExclusive();
+
+            if (value == null) {
+                // Delete entry.
+
+                if (leaf.mNodePos < 0) {
+                    // Entry doesn't exist, so nothing to do.
+                    leaf.mNode.releaseExclusive();
+                    return;
+                }
+
+                TreeNode node = notSplitDirty(leaf, mStore);
+                final int pos = leaf.mNodePos;
+                final byte[] key = node.retrieveLeafKey(pos);
+
+                node.deleteLeafEntry(pos);
+                int newPos = ~pos;
+
+                leaf.mNodePos = newPos;
+                leaf.mNotFoundKey = key;
+
+                // Fix all cursors bound to the node.
+                CursorFrame frame = node.mLastCursorFrame;
+                do {
+                    if (frame == leaf) {
+                        // Don't need to fix self.
+                        continue;
+                    }
+
+                    int framePos = frame.mNodePos;
+
+                    if (framePos == pos) {
+                        frame.mNodePos = newPos;
+                        frame.mNotFoundKey = key;
+                    } else if (framePos > pos) {
+                        frame.mNodePos = framePos - 2;
+                    } else if (framePos < newPos) {
+                        // Position is a complement, so add instead of subtract.
+                        frame.mNodePos = framePos + 2;
+                    }
+                } while ((frame = frame.mPrevCousin) != null);
+
+                // FIXME: Merge or delete node if too small now.
+
+                node.releaseExclusive();
+                return;
+            }
+
+            // Insert and update always dirty the node.
+            TreeNode node = notSplitDirty(leaf, mStore);
             final int pos = leaf.mNodePos;
 
-            if (pos >= 0) {
-                // FIXME
-                throw new IOException("Only insert is supported");
-            }
+            if (pos < 0) {
+                // Insert entry.
 
-            byte[] key = leaf.mNotFoundKey;
-            if (key == null) {
-                throw new AssertionError();
-            }
-
-            // FIXME: Make sure that mNodePos is updated for all bound cursors
-            // after entries are deleted.
-
-            // FIXME: If mNodePos switches from positive to negative after
-            // delete, create a copy of deleted key.
-
-            int newPos = ~pos;
-            node.insertLeafEntry(mStore, newPos, key, value);
-
-            leaf.mNotFoundKey = null;
-            leaf.mNodePos = newPos;
-
-            // Fix all cursors in this node.
-            CursorFrame frame = node.mLastCursorFrame;
-            do {
-                if (frame == leaf) {
-                    // Don't need to fix self.
-                    continue;
+                final byte[] key = leaf.mNotFoundKey;
+                if (key == null) {
+                    throw new AssertionError();
                 }
 
-                int framePos = frame.mNodePos;
+                int newPos = ~pos;
+                node.insertLeafEntry(mStore, newPos, key, value);
 
-                if (framePos == pos) {
-                    // Other cursor is at same not-found position as this one
-                    // was. If keys are the same, then other cursor switches to
-                    // a found state as well. If key is greater, then position
-                    // needs to be updated.
+                leaf.mNodePos = newPos;
+                leaf.mNotFoundKey = null;
 
-                    byte[] frameKey = frame.mNotFoundKey;
-                    int compare = Utils.compareKeys
-                        (frameKey, 0, frameKey.length, key, 0, key.length);
-                    if (compare > 0) {
+                // Fix all cursors bound to the node.
+                CursorFrame frame = node.mLastCursorFrame;
+                do {
+                    if (frame == leaf) {
+                        // Don't need to fix self.
+                        continue;
+                    }
+
+                    int framePos = frame.mNodePos;
+
+                    if (framePos == pos) {
+                        // Other cursor is at same not-found position as this
+                        // one was. If keys are the same, then other cursor
+                        // switches to a found state as well. If key is
+                        // greater, then position needs to be updated.
+
+                        byte[] frameKey = frame.mNotFoundKey;
+                        int compare = Utils.compareKeys
+                            (frameKey, 0, frameKey.length, key, 0, key.length);
+                        if (compare > 0) {
+                            // Position is a complement, so subtract instead of add.
+                            frame.mNodePos = framePos - 2;
+                        } else if (compare == 0) {
+                            frame.mNodePos = newPos;
+                            frame.mNotFoundKey = null;
+                        }
+                    } else if (framePos >= newPos) {
+                        frame.mNodePos = framePos + 2;
+                    } else if (framePos < pos) {
                         // Position is a complement, so subtract instead of add.
                         frame.mNodePos = framePos - 2;
-                    } else if (compare == 0) {
-                        frame.mNodePos = newPos;
-                        frame.mNotFoundKey = null;
                     }
-                } else if (framePos >= newPos) {
-                    frame.mNodePos = framePos + 2;
-                } else if (framePos < pos) {
-                    // Position is a complement, so subtract instead of add.
-                    frame.mNodePos = framePos - 2;
-                }
-            } while ((frame = frame.mPrevCousin) != null);
+                } while ((frame = frame.mPrevCousin) != null);
 
-            if (node.mSplit != null) {
-                node = finishSplit(leaf, node, mStore);
+                if (node.mSplit != null) {
+                    node = finishSplit(leaf, node, mStore);
+                }
+            } else {
+                // Update entry.
+
+                node.releaseExclusive();
+                throw new IOException("Update unimplemented");
             }
 
             node.releaseExclusive();
@@ -912,69 +958,61 @@ public final class Cursor {
     }
 
     /**
-     * Latches and returns leaf frame, not split. Caller must be synchronized.
+     * Latches and returns leaf frame, which might be split. Caller must be
+     * synchronized.
      */
-    private CursorFrame leafExclusiveNotSplit() throws IOException {
-        CursorFrame leaf = mLeaf;
-        if (leaf == null) {
-            throw new IllegalStateException("Position is undefined");
-        }
-
-        TreeNode node = leaf.acquireExclusiveUnfair();
-
-        if (node.mSplit != null) {
-            node = finishSplit(leaf, node, mStore);
-        }
-
-        return leaf;
-    }
-
-    /**
-     * Latches and returns leaf frame, not split. Leaf frame and all previous
-     * frames are marked as dirty. Caller must be synchronized and hold shared
-     * commit lock, to prevent deadlock.
-     */
-    private CursorFrame leafExclusiveNotSplitDirty() throws IOException {
+    private CursorFrame leafExclusive() {
         CursorFrame leaf = mLeaf;
         if (leaf == null) {
             throw new IllegalStateException("Position is undefined");
         }
         leaf.acquireExclusiveUnfair();
-        notSplitDirty(leaf, mStore);
         return leaf;
     }
 
     /**
-     * Called with frame latch held, which is retained. Caller must hold shared
-     * commit lock, to prevent deadlock.
+     * Latches and returns leaf frame, not split. Caller must be synchronized.
      */
-    private static void notSplitDirty(final CursorFrame frame, TreeNodeStore store)
+    private CursorFrame leafExclusiveNotSplit() throws IOException {
+        CursorFrame leaf = leafExclusive();
+        if (leaf.mNode.mSplit != null) {
+            finishSplit(leaf, leaf.mNode, mStore);
+        }
+        return leaf;
+    }
+
+    /**
+     * Called with exclusive frame latch held, which is retained. Leaf frame is
+     * dirtied, any split is finished, and the same applies to all parent
+     * nodes. Caller must hold shared commit lock, to prevent deadlock.
+     *
+     * @return replacement node, still latched
+     */
+    private static TreeNode notSplitDirty(final CursorFrame frame, TreeNodeStore store)
         throws IOException
     {
         TreeNode node = frame.mNode;
 
         if (node.mSplit != null) {
             // Already dirty, but finish the split.
-            node = finishSplit(frame, node, store);
-            return;
+            return finishSplit(frame, node, store);
         }
 
         if (!store.shouldMarkDirty(node)) {
-            return;
+            return node;
         }
 
         CursorFrame parentFrame = frame.mParentFrame;
         if (parentFrame == null) {
             store.doMarkDirty(node);
-            return;
+            return node;
         }
 
         // Make sure the parent is not split and dirty too.
         node.releaseExclusive();
         parentFrame.acquireExclusiveUnfair();
-        notSplitDirty(parentFrame, store);
+        TreeNode parentNode = notSplitDirty(parentFrame, store);
         node = frame.acquireExclusiveUnfair();
-        TreeNode parentNode = parentFrame.mNode;
 
         while (node.mSplit != null) {
             // Already dirty now, but finish the split. Since parent latch is
@@ -992,6 +1030,7 @@ public final class Cursor {
         }
 
         parentNode.releaseExclusive();
+        return node;
     }
 
     /**
