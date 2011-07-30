@@ -984,7 +984,7 @@ public final class Cursor {
             if (parentNode.mSplit != null) {
                 parentNode = finishSplit(parentFrame, parentNode, store);
             }
-            frame.acquireExclusiveUnfair();
+            node = frame.acquireExclusiveUnfair();
         }
         
         if (store.markDirty(node)) {
