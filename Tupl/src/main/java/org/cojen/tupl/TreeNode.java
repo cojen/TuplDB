@@ -1283,9 +1283,7 @@ final class TreeNode extends Latch {
     /**
      * @param pos position as provided by binarySearchLeaf; must be positive
      */
-    private boolean updateLeafValue(TreeNodeStore store, int pos, byte[] key, byte[] value)
-        throws IOException
-    {
+    void updateLeafValue(TreeNodeStore store, int pos, byte[] value) throws IOException {
         final byte[] page = mPage;
         final int valueLen = value.length;
 
@@ -1297,12 +1295,14 @@ final class TreeNode extends Latch {
         quick: {
             start = loc = DataIO.readUnsignedShort(page, searchVecStart + pos);
             final int header = page[loc++];
+
             if ((header & 0x40) != 0) {
+                // Existing value is empty.
                 if (valueLen == 0) {
                     // No change.
-                    return true;
+                    return;
                 }
-                // Old empty entry becomes garbage.
+                // Old entry becomes garbage.
                 loc += (header >= 0 ?
                         (header & 0x3f) : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
                 keyLen = loc - start;
@@ -1330,7 +1330,7 @@ final class TreeNode extends Latch {
                     if (valueLen == 0) {
                         page[start] |= 0x40;
                         mGarbage += loc + len - valueLoc;
-                        return true;
+                        return;
                     }
                     page[valueLoc++] = (byte) (valueLen - 1);
                 } else {
@@ -1341,7 +1341,7 @@ final class TreeNode extends Latch {
                 mGarbage += loc + len - valueLoc - valueLen;
             }
 
-            return true;
+            return;
         }
 
         // Old entry is garbage.
@@ -1368,50 +1368,49 @@ final class TreeNode extends Latch {
 
             if (mGarbage > remaining) {
                 // Do full compaction and free up the garbage, or split the node.
+                byte[] key = retrieveLeafKey(pos);
                 if ((mGarbage + remaining) >= 0) {
                     createLeafEntry(key, value, compactLeaf(store, encodedLen, pos, false));
                 } else {
                     // Node is full so split it.
                     splitLeafAndCreateEntry(store, key, value, encodedLen, pos, false);
                 }
-                return true;
+                return;
             }
+
+            int vecLen = searchVecEnd - searchVecStart + 2;
+            int newSearchVecStart;
 
             if (remaining > 0 || (mRightSegTail & 1) != 0) {
                 // Re-center search vector, biased to the right, ensuring proper alignment.
-                int vecLen = searchVecEnd - searchVecStart + 2;
-                int newSearchVecStart = (mRightSegTail - vecLen - 1 - (remaining >> 1)) & ~1;
-                System.arraycopy(page, searchVecStart, page, newSearchVecStart, vecLen);
-                pos += newSearchVecStart;
-                mSearchVecStart = newSearchVecStart;
-                mSearchVecEnd = newSearchVecStart + vecLen - 2;
+                newSearchVecStart = (mRightSegTail - vecLen - 1 - (remaining >> 1)) & ~1;
 
                 // Allocate entry from left segment.
                 entryLoc = mLeftSegTail;
                 mLeftSegTail = entryLoc + encodedLen;
             } else if ((mLeftSegTail & 1) == 0) {
                 // Move search vector left, ensuring proper alignment.
-                int newSearchVecStart = mLeftSegTail + ((remaining >> 1) & ~1);
-                int vecLen = searchVecEnd - searchVecStart + 2;
-                System.arraycopy(page, searchVecStart, page, newSearchVecStart, vecLen);
-                pos += newSearchVecStart;
-                mSearchVecStart = newSearchVecStart;
-                mSearchVecEnd = newSearchVecStart + vecLen - 2;
+                newSearchVecStart = mLeftSegTail + ((remaining >> 1) & ~1);
 
                 // Allocate entry from right segment.
                 entryLoc = mRightSegTail - encodedLen + 1;
                 mRightSegTail = entryLoc - 1;
             } else {
                 // Search vector is misaligned, so do full compaction.
+                byte[] key = retrieveLeafKey(pos);
                 createLeafEntry(key, value, compactLeaf(store, encodedLen, pos, false));
-                return true;
+                return;
             }
+
+            System.arraycopy(page, searchVecStart, page, newSearchVecStart, vecLen);
+
+            pos += newSearchVecStart;
+            mSearchVecStart = newSearchVecStart;
+            mSearchVecEnd = newSearchVecStart + vecLen - 2;
         }
 
         updateLeafEntry(page, start, keyLen, value, entryLoc);
         DataIO.writeShort(page, pos, entryLoc);
-
-        return true;
     }
 
     /**
@@ -1698,10 +1697,17 @@ final class TreeNode extends Latch {
                 // Unable to insert new entry into left node. Insert it into the right
                 // node, which should have space now.
                 pos = binarySearchLeaf(key);
-                if (pos >= 0) {
-                    throw new AssertionError("Key exists");
+                if (forInsert) {
+                    if (pos >= 0) {
+                        throw new AssertionError("Key exists");
+                    }
+                    insertLeafEntry(store, ~pos, key, value, encodedLen);
+                } else {
+                    if (pos < 0) {
+                        throw new AssertionError("Key not found");
+                    }
+                    updateLeafValue(store, pos, value);
                 }
-                insertLeafEntry(store, ~pos, key, value, encodedLen);
             } else {
                 // Create new entry and point to it.
                 destLoc -= encodedLen;
@@ -1765,10 +1771,17 @@ final class TreeNode extends Latch {
                 // Unable to insert new entry into new right node. Insert it into the left
                 // node, which should have space now.
                 pos = binarySearchLeaf(key);
-                if (pos >= 0) {
-                    throw new AssertionError("Key exists");
+                if (forInsert) {
+                    if (pos >= 0) {
+                        throw new AssertionError("Key exists");
+                    }
+                    insertLeafEntry(store, ~pos, key, value, encodedLen);
+                } else {
+                    if (pos < 0) {
+                        throw new AssertionError("Key not found");
+                    }
+                    updateLeafValue(store, pos, value);
                 }
-                insertLeafEntry(store, ~pos, key, value, encodedLen);
             } else {
                 // Create new entry and point to it.
                 newNode.createLeafEntry(key, value, destLoc);
