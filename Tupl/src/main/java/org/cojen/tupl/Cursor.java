@@ -663,69 +663,81 @@ public final class Cursor {
                 return;
             }
 
-            // Insert and update always dirty the node.
+            // Update and insert always dirty the node.
             TreeNode node = notSplitDirty(leaf, mStore);
             final int pos = leaf.mNodePos;
 
-            if (pos < 0) {
-                // Insert entry.
+            if (pos >= 0) {
+                // Update entry.
 
-                final byte[] key = leaf.mNotFoundKey;
-                if (key == null) {
-                    throw new AssertionError();
-                }
-
-                int newPos = ~pos;
-                node.insertLeafEntry(mStore, newPos, key, value);
-
-                leaf.mNodePos = newPos;
-                leaf.mNotFoundKey = null;
-
-                // Fix all cursors bound to the node.
-                CursorFrame frame = node.mLastCursorFrame;
-                do {
-                    if (frame == leaf) {
-                        // Don't need to fix self.
-                        continue;
-                    }
-
-                    int framePos = frame.mNodePos;
-
-                    if (framePos == pos) {
-                        // Other cursor is at same not-found position as this
-                        // one was. If keys are the same, then other cursor
-                        // switches to a found state as well. If key is
-                        // greater, then position needs to be updated.
-
-                        byte[] frameKey = frame.mNotFoundKey;
-                        int compare = Utils.compareKeys
-                            (frameKey, 0, frameKey.length, key, 0, key.length);
-                        if (compare > 0) {
-                            // Position is a complement, so subtract instead of add.
-                            frame.mNodePos = framePos - 2;
-                        } else if (compare == 0) {
-                            frame.mNodePos = newPos;
-                            frame.mNotFoundKey = null;
-                        }
-                    } else if (framePos >= newPos) {
-                        frame.mNodePos = framePos + 2;
-                    } else if (framePos < pos) {
-                        // Position is a complement, so subtract instead of add.
-                        frame.mNodePos = framePos - 2;
-                    }
-                } while ((frame = frame.mPrevCousin) != null);
+                node.updateLeafValue(mStore, pos, value);
 
                 if (node.mSplit != null) {
                     node = finishSplit(leaf, node, mStore);
+                } else {
+                    // FIXME: Merge or delete node if too small now.
                 }
-            } else {
-                // Update entry.
 
                 node.releaseExclusive();
-                throw new IOException("Update unimplemented");
+                return;
+            }
+
+            // Insert entry.
+
+            final byte[] key = leaf.mNotFoundKey;
+            if (key == null) {
+                throw new AssertionError();
+            }
+
+            int newPos = ~pos;
+            node.insertLeafEntry(mStore, newPos, key, value);
+
+            leaf.mNodePos = newPos;
+            leaf.mNotFoundKey = null;
+
+            // Fix all cursors bound to the node.
+            CursorFrame frame = node.mLastCursorFrame;
+            do {
+                if (frame == leaf) {
+                    // Don't need to fix self.
+                    continue;
+                }
+
+                int framePos = frame.mNodePos;
+
+                if (framePos == pos) {
+                    // Other cursor is at same not-found position as this one
+                    // was. If keys are the same, then other cursor switches to
+                    // a found state as well. If key is greater, then position
+                    // needs to be updated.
+
+                    byte[] frameKey = frame.mNotFoundKey;
+                    int compare = Utils.compareKeys
+                        (frameKey, 0, frameKey.length, key, 0, key.length);
+                    if (compare > 0) {
+                        // Position is a complement, so subtract instead of add.
+                        frame.mNodePos = framePos - 2;
+                    } else if (compare == 0) {
+                        frame.mNodePos = newPos;
+                        frame.mNotFoundKey = null;
+                    }
+                } else if (framePos >= newPos) {
+                    frame.mNodePos = framePos + 2;
+                } else if (framePos < pos) {
+                    // Position is a complement, so subtract instead of add.
+                    frame.mNodePos = framePos - 2;
+                }
+            } while ((frame = frame.mPrevCousin) != null);
+
+            if (node.mSplit != null) {
+                node = finishSplit(leaf, node, mStore);
             }
 
             node.releaseExclusive();
+        } catch (Throwable e) {
+            // Any unexpected exception can leave the internal state
+            // corrupt. Closing down protects the persisted state.
+            throw Utils.closeOnFailure(mStore, e);
         } finally {
             sharedCommitLock.unlock();
         }
