@@ -16,6 +16,7 @@
 
 package org.cojen.tupl;
 
+import java.io.Closeable;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
@@ -32,7 +33,7 @@ import static org.cojen.tupl.TreeNode.*;
  *
  * @author Brian S O'Neill
  */
-final class TreeNodeStore {
+final class TreeNodeStore implements Closeable {
     private static final int ENCODING_VERSION = 20110514;
 
     private final PageStore mPageStore;
@@ -298,6 +299,11 @@ final class TreeNodeStore {
 
     void writeReservedPage(long id, byte[] page) throws IOException {
         mPageStore.writeReservedPage(id, page);
+    }
+
+    @Override
+    public void close() throws IOException {
+        mPageStore.close();
     }
 
     /**
