@@ -23,10 +23,10 @@ import java.util.ArrayDeque;
 import java.util.concurrent.locks.Lock;
 
 /**
- * Maintains a fixed logical position in the tree. Cursors must be {@link
- * #reset reset} when no longer needed to free up memory. Although not
- * necessarily practical, multiple threads may safely interact with Cursor
- * instances. Only one thread has access when the Cursor is synchronized.
+ * Maintains a logical position in the tree. Cursors must be {@link #reset
+ * reset} when no longer needed to free up memory. Although not necessarily
+ * practical, multiple threads may safely interact with Cursor instances. Only
+ * one thread has access when the Cursor is synchronized.
  *
  * @author Brian S O'Neill
  */
@@ -233,8 +233,14 @@ public final class Cursor {
      * @throws IllegalStateException if position is undefined at invocation time
      */
     public synchronized long move(long amount) throws IOException {
-        // FIXME
-        throw null;
+        // TODO: optimize and also utilize counts embedded in the tree
+        final long originalAmount = amount;
+        if (amount > 0) {
+            while (next() && --amount > 0);
+        } else if (amount < 0) {
+            while (previous() && ++amount < 0);
+        }
+        return originalAmount - amount;
     }
 
     /**
@@ -248,7 +254,6 @@ public final class Cursor {
      * @throws IllegalStateException if position is undefined at invocation time
      */
     public synchronized boolean next() throws IOException {
-        // TODO: call move, and no extra synchronization: return move(1) != 0;
         return next(leafExclusiveNotSplit());
     }
 
@@ -305,7 +310,6 @@ public final class Cursor {
      * @throws IllegalStateException if position is undefined at invocation time
      */
     public synchronized boolean previous() throws IOException {
-        // TODO: call move, and no extra synchronization: return move(-1) != 0;
         return previous(leafExclusiveNotSplit());
     }
 
