@@ -387,6 +387,7 @@ class DualFilePageStore implements PageStore {
 
     @Override
     public void writeReservedPage(long id, byte[] buf, int offset) throws IOException {
+        checkId(id);
         PageArray array = (id & 1) == 0 ? mPageArray0 : mPageArray1;
         try {
             array.writePage(id >> 1, buf, offset);
@@ -397,6 +398,7 @@ class DualFilePageStore implements PageStore {
 
     @Override
     public void deletePage(long id) throws IOException {
+        checkId(id);
         Allocator allocator = (id & 1) == 0 ? mAllocator0 : mAllocator1;
         id >>= 1;
         mCommitLock.readLock().lock();
@@ -544,6 +546,12 @@ class DualFilePageStore implements PageStore {
 
     private IOException closeOnFailure(Throwable e) throws IOException {
         throw Utils.closeOnFailure(this, e);
+    }
+
+    private static void checkId(long id) {
+        if (id <= 1) {
+            throw new IllegalArgumentException("Illegal page id: " + id);
+        }
     }
 
     private static void commitHeader(final PageAllocator allocator,
