@@ -260,6 +260,61 @@ final class TreeNodeStore implements Closeable {
     }
 
     /**
+     * Similar to markDirty method except no new page is reserved, and old page
+     * is not immediately deleted. Caller must hold commit lock and exclusive
+     * latch on node. Latch is never released by this method, even if an
+     * exception is thrown.
+     */
+    void prepareToDelete(TreeNode node) throws IOException {
+        // Hello. My name is Íñigo Montoya. You killed my father. Prepare to die. 
+        byte state = node.mCachedState;
+        if (state != CACHED_CLEAN && state != mCommitState) {
+            node.write(this);
+        }
+    }
+
+    /**
+     * Caller must hold commit lock and exclusive latch on node. Latch is
+     * never released by this method, even if an exception is thrown.
+     */
+    void deleteNode(TreeNode node) throws IOException {
+        long id = node.mId;
+        if (id != 0) {
+            // TODO: Id can immediately be re-used, depending on the cached
+            // state. Also see notes in the TreeNode.evict method.
+            mPageStore.deletePage(id);
+        }
+
+        node.mId = 0;
+        // FIXME: child node array should be recycled
+        node.mChildNodes = null;
+
+        // When node is re-allocated, it will be evicted. Ensure that eviction
+        // doesn't write anything.
+        node.mCachedState = CACHED_CLEAN;
+
+        // Indicate that node is least recently used, allowing it to be
+        // re-allocated immediately without evicting another node.
+        mCacheLatch.acquireExclusiveUnfair();
+        try {
+            TreeNode lessUsed = node.mLessUsed;
+            if (lessUsed != null) {
+                TreeNode moreUsed = node.mMoreUsed;
+                if ((lessUsed.mMoreUsed = moreUsed) == null) {
+                    mMostRecentlyUsed = lessUsed;
+                } else {
+                    moreUsed.mLessUsed = lessUsed;
+                }
+                node.mLessUsed = null;
+                (node.mMoreUsed = mLeastRecentlyUsed).mLessUsed = node;
+                mLeastRecentlyUsed = node;
+            }
+        } finally {
+            mCacheLatch.releaseExclusive();
+        }
+    }
+
+    /**
      * Indicate that non-root node is most recently used. Root node is not
      * managed in usage list and cannot be evicted.
      */

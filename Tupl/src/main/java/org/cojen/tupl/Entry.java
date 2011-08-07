@@ -28,7 +28,7 @@ public class Entry {
     public byte[] key;
     public byte[] value;
 
-    public void clear() {
+    public final void clear() {
         key = null;
         value = null;
     }
@@ -36,7 +36,7 @@ public class Entry {
     /**
      * Compares Entry keys, treating null as high.
      */
-    public int compareKeys(Entry other) {
+    public final int compareKeys(Entry other) {
         byte[] thisKey = key;
         byte[] otherKey = other.key;
         return (thisKey == null)
@@ -49,7 +49,7 @@ public class Entry {
     /**
      * Returns a deep copy of this Entry.
      */
-    public Entry copy() {
+    public final Entry copy() {
         Entry copy = new Entry();
         if (key != null) {
             copy.key = key.clone();
@@ -64,7 +64,7 @@ public class Entry {
      * Computes a hash code from the key and value.
      */
     @Override
-    public int hashCode() {
+    public final int hashCode() {
         return Arrays.hashCode(key) ^ Arrays.hashCode(value);
     }
 
@@ -72,7 +72,7 @@ public class Entry {
      * Compares Entry keys and values for equality.
      */
     @Override
-    public boolean equals(Object obj) {
+    public final boolean equals(Object obj) {
         if (this == obj) {
             return true;
         }
@@ -82,4 +82,33 @@ public class Entry {
         }
         return false;
     }
+
+    // Called by Cursor.
+    byte[] get(CursorFrame leaf, TreeNode node) {
+        int pos = leaf.mNodePos;
+        if (pos < 0) {
+            key = leaf.mNotFoundKey.clone();
+            value = null;
+            return null;
+        } else {
+            node.retrieveLeafEntry(pos, this);
+            return Utils.EMPTY_BYTES;
+        }
+    }
+
+    static final Entry GET_KEY = new Entry() {
+        @Override
+        byte[] get(CursorFrame leaf, TreeNode node) {
+            int pos = leaf.mNodePos;
+            return pos < 0 ? (leaf.mNotFoundKey.clone()) : node.retrieveLeafKey(pos);
+        }
+    };
+
+    static final Entry GET_VALUE = new Entry() {
+        @Override
+        byte[] get(CursorFrame leaf, TreeNode node) {
+            int pos = leaf.mNodePos;
+            return pos < 0 ? null : node.retrieveLeafValue(pos);
+        }
+    };
 }

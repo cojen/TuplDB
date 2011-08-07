@@ -45,13 +45,8 @@ public final class Cursor {
      *
      * @throws IllegalStateException if position is undefined at invocation time
      */
-    public synchronized byte[] getKey() throws IOException {
-        CursorFrame leaf = leafSharedNotSplit();
-        TreeNode node = leaf.mNode;
-        int pos = leaf.mNodePos;
-        byte[] key = pos < 0 ? (leaf.mNotFoundKey.clone()) : node.retrieveLeafKey(pos);
-        node.releaseShared();
-        return key;
+    public byte[] getKey() throws IOException {
+        return get(Entry.GET_KEY);
     }
 
     /**
@@ -60,13 +55,8 @@ public final class Cursor {
      *
      * @throws IllegalStateException if position is undefined at invocation time
      */
-    public synchronized byte[] getValue() throws IOException {
-        CursorFrame leaf = leafSharedNotSplit();
-        TreeNode node = leaf.mNode;
-        int pos = leaf.mNodePos;
-        byte[] value = pos < 0 ? null : node.retrieveLeafValue(pos);
-        node.releaseShared();
-        return value;
+    public byte[] getValue() throws IOException {
+        return get(Entry.GET_VALUE);
     }
 
     /**
@@ -77,24 +67,8 @@ public final class Cursor {
      * @param entry entry to fill in; pass null to just check if entry exists
      * @throws IllegalStateException if position is undefined at invocation time
      */
-    public synchronized boolean getEntry(Entry entry) throws IOException {
-        CursorFrame leaf = leafSharedNotSplit();
-        TreeNode node = leaf.mNode;
-        int pos = leaf.mNodePos;
-        if (pos < 0) {
-            if (entry != null) {
-                entry.key = leaf.mNotFoundKey.clone();
-                entry.value = null;
-            }
-            node.releaseShared();
-            return false;
-        } else {
-            if (entry != null) {
-                node.retrieveLeafEntry(pos, entry);
-            }
-            node.releaseShared();
-            return true;
-        }
+    public boolean getEntry(Entry entry) throws IOException {
+        return get(entry) != null;
     }
 
     /**
@@ -106,8 +80,36 @@ public final class Cursor {
      */
     public Entry getEntry() throws IOException {
         Entry entry = new Entry();
-        getEntry(entry);
+        get(entry);
         return entry;
+    }
+
+    private synchronized byte[] get(Entry entry) throws IOException {
+        CursorFrame leaf = leaf();
+        TreeNode node = leaf.acquireSharedUnfair();
+
+        if (node.mSplit == null) {
+            byte[] result = entry != null ? entry.get(leaf, node)
+                : (leaf.mNodePos < 0 ? null : Utils.EMPTY_BYTES);
+            node.releaseShared();
+            return result;
+        }
+
+        finishSplit: {
+            if (!node.tryUpgrade()) {
+                node.releaseShared();
+                node = leaf.acquireExclusiveUnfair();
+                if (node.mSplit == null) {
+                    break finishSplit;
+                }
+            }
+            node = finishSplit(leaf, node, mStore);
+        }
+
+        byte[] result = entry != null ? entry.get(leaf, node)
+            : (leaf.mNodePos < 0 ? null : Utils.EMPTY_BYTES);
+        node.releaseExclusive();
+        return result;
     }
 
     /**
@@ -622,7 +624,7 @@ public final class Cursor {
             final CursorFrame leaf = leafExclusive();
 
             if (value == null) {
-                // Delete entry.
+                // Delete entry...
 
                 if (leaf.mNodePos < 0) {
                     // Entry doesn't exist, so nothing to do.
@@ -661,9 +663,12 @@ public final class Cursor {
                     }
                 } while ((frame = frame.mPrevCousin) != null);
 
-                // FIXME: Merge or delete node if too small now.
+                if (node.shouldLeafMerge()) {
+                    mergeLeaf(leaf, node);
+                } else {
+                    node.releaseExclusive();
+                }
 
-                node.releaseExclusive();
                 return;
             }
 
@@ -672,21 +677,21 @@ public final class Cursor {
             final int pos = leaf.mNodePos;
 
             if (pos >= 0) {
-                // Update entry.
+                // Update entry...
 
                 node.updateLeafValue(mStore, pos, value);
 
-                if (node.mSplit != null) {
-                    node = finishSplit(leaf, node, mStore);
-                } else {
+                if (node.shouldLeafMerge()) {
                     // FIXME: Merge or delete node if too small now.
+                } else if (node.mSplit != null) {
+                    node = finishSplit(leaf, node, mStore);
                 }
 
                 node.releaseExclusive();
                 return;
             }
 
-            // Insert entry.
+            // Insert entry...
 
             final byte[] key = leaf.mNotFoundKey;
             if (key == null) {
@@ -739,8 +744,12 @@ public final class Cursor {
 
             node.releaseExclusive();
         } catch (Throwable e) {
-            // Any unexpected exception can leave the internal state
-            // corrupt. Closing down protects the persisted state.
+            // Any unexpected exception can corrupt the internal store state.
+            // Closing down protects the persisted state.
+            if (mLeaf == null && e instanceof IllegalStateException) {
+                // Exception is caused by cursor state; store is safe.
+                throw (IllegalStateException) e;
+            }
             throw Utils.closeOnFailure(mStore, e);
         } finally {
             sharedCommitLock.unlock();
@@ -948,28 +957,13 @@ public final class Cursor {
     }
 
     /**
-     * Latches and returns leaf frame, not split. Caller must be synchronized.
+     * Checks that leaf is defined and returns it. Caller must be synchronized.
      */
-    private CursorFrame leafSharedNotSplit() throws IOException {
+    private CursorFrame leaf() {
         CursorFrame leaf = mLeaf;
         if (leaf == null) {
             throw new IllegalStateException("Position is undefined");
         }
-
-        TreeNode node = leaf.acquireSharedUnfair();
-
-        if (node.mSplit == null) {
-            return leaf;
-        }
-
-        node.releaseShared();
-        node = leaf.acquireExclusiveUnfair();
-
-        if (node.mSplit != null) {
-            node = finishSplit(leaf, node, mStore);
-        }
-
-        node.downgrade();
         return leaf;
     }
 
@@ -978,10 +972,7 @@ public final class Cursor {
      * synchronized.
      */
     private CursorFrame leafExclusive() {
-        CursorFrame leaf = mLeaf;
-        if (leaf == null) {
-            throw new IllegalStateException("Position is undefined");
-        }
+        CursorFrame leaf = leaf();
         leaf.acquireExclusiveUnfair();
         return leaf;
     }
@@ -1047,6 +1038,337 @@ public final class Cursor {
 
         parentNode.releaseExclusive();
         return node;
+    }
+
+    /**
+     * Caller must hold exclusive latch, which is released by this method.
+     */
+    private void mergeLeaf(final CursorFrame leaf, TreeNode node) throws IOException {
+        CursorFrame parentFrame = leaf.mParentFrame;
+        node.releaseExclusive();
+
+        if (parentFrame == null) {
+            // Root node cannot merge into anything.
+            return;
+        }
+
+        TreeNode parentNode = parentFrame.acquireExclusiveUnfair();
+
+        if (parentNode.numKeys() <= 0) {
+            // FIXME: This shouldn't be a problem when internal nodes can be rebalanced.
+            System.out.println("tiny internal node: " + (parentNode == mStore.root()));
+            parentNode.releaseExclusive();
+            return;
+        }
+
+        TreeNode leftNode, rightNode;
+        int nodeAvail;
+        while (true) {
+            if (parentNode.mSplit != null) {
+                parentNode = finishSplit(parentFrame, parentNode, mStore);
+            }
+
+            // Latch leaf and siblings in a strict left-to-right order to avoid deadlock.
+            int pos = parentFrame.mNodePos;
+            if (pos == 0) {
+                leftNode = null;
+            } else {
+                leftNode = latchChild(parentNode, pos - 2);
+                if (leftNode.mSplit != null) {
+                    // Finish sibling split.
+                    parentNode.insertSplitChildRef(mStore, pos - 2, leftNode);
+                    continue;
+                }
+            }
+
+            node = leaf.acquireExclusiveUnfair();
+
+            // Double check that node should still merge.
+            if (!node.shouldMerge(nodeAvail = node.availableLeafBytes())) {
+                parentNode.releaseExclusive();
+                if (leftNode != null) {
+                    leftNode.releaseExclusive();
+                }
+                node.releaseExclusive();
+                return;
+            }
+
+            if (pos >= parentNode.highestInternalPos()) {
+                rightNode = null;
+            } else {
+                rightNode = latchChild(parentNode, pos + 2);
+                if (rightNode.mSplit != null) {
+                    // Finish sibling split.
+                    if (leftNode != null) {
+                        leftNode.releaseExclusive();
+                    }
+                    node.releaseExclusive();
+                    parentNode.insertSplitChildRef(mStore, pos + 2, rightNode);
+                    continue;
+                }
+            }
+
+            break;
+        }
+
+        // Select a left and right pair, and then don't operate directly on the
+        // original node and leaf parameters afterwards. The original node ends
+        // up being referenced as a left or right member of the pair.
+
+        int leftAvail = leftNode == null ? 0 : leftNode.availableLeafBytes();
+        int rightAvail = rightNode == null ? 0 : rightNode.availableLeafBytes();
+
+        // Choose adjacent node pair which has the most available space. If
+        // only a rebalance can be performed on the pair, operating on
+        // underutilized nodes continues them on a path to deletion.
+
+        int leftPos;
+        if (leftAvail < rightAvail) {
+            if (leftNode != null) {
+                leftNode.releaseExclusive();
+            }
+            leftPos = parentFrame.mNodePos;
+            leftNode = node;
+            leftAvail = nodeAvail;
+        } else {
+            if (rightNode != null) {
+                rightNode.releaseExclusive();
+            }
+            leftPos = parentFrame.mNodePos - 2;
+            rightNode = node;
+            rightAvail = nodeAvail;
+        }
+
+        // Left node must always be marked dirty. Parent is already expected to be dirty.
+        if (mStore.markDirty(leftNode)) {
+            parentNode.updateChildRefId(leftPos, leftNode.mId);
+        }
+
+        // Determine if both nodes can fit in one node. If so, migrate and
+        // delete the right node.
+        int remaining = leftAvail + rightAvail - node.mPage.length + TreeNode.HEADER_SIZE;
+
+        if (remaining >= 0) {
+            // Migrate the entire contents of the right node into the left
+            // node, and then delete the right node.
+            rightNode.transferLeafToLeftAndDelete(mStore, leftNode);
+            parentNode.deleteChildRef(leftPos + 2);
+        } else {
+            // Rebalance nodes, but don't delete anything. Right node must be dirtied too.
+
+            if (mStore.markDirty(rightNode)) {
+                parentNode.updateChildRefId(leftPos + 2, rightNode.mId);
+            }
+
+            // FIXME: testing
+            if (leftNode.numKeys() == 1 || rightNode.numKeys() == 1) {
+                System.out.println("left avail: " + leftAvail + ", right avail: " + rightAvail +
+                                   ", left pos: " + leftPos);
+                throw new Error("MUST REBALANCE: " + leftNode.numKeys() + ", " + 
+                                rightNode.numKeys());
+            }
+
+            /*
+            System.out.println("left avail: " + leftAvail + ", right avail: " + rightAvail +
+                               ", left pos: " + leftPos + ", mode: " + migrateMode);
+            */
+
+            if (leftNode == node) {
+                // Rebalance towards left node, which is smaller.
+                // FIXME
+            } else {
+                // Rebalance towards right node, which is smaller.
+                // FIXME
+            }
+        }
+
+        mergeInternal(parentFrame, parentNode, leftNode, rightNode);
+    }
+
+    /**
+     * Caller must hold exclusive latch, which is released by this method.
+     */
+    private void mergeInternal(CursorFrame frame, TreeNode node,
+                               TreeNode leftChildNode, TreeNode rightChildNode)
+        throws IOException
+    {
+        up: {
+            if (node.shouldInternalMerge()) {
+                if (node.numKeys() > 0) {
+                    // Continue merging up the tree.
+                    break up;
+                }
+
+                // Delete the root node, eliminating a tree level.
+
+                if (node != mStore.root()) {
+                    throw new AssertionError("Non-root empty node");
+                }
+
+                // Note: By retaining child latches (although one has already
+                // been deleted), another thread is prevented from splitting
+                // the lone child. The lone child will become the new root.
+                node.rootDelete(mStore);
+            }
+
+            leftChildNode.releaseExclusive();
+            rightChildNode.releaseExclusive();
+            node.releaseExclusive();
+            return;
+        }
+
+        leftChildNode.releaseExclusive();
+        rightChildNode.releaseExclusive();
+
+        // At this point, only one node latch is held, and it should merge with
+        // a sibling node. Node is guaranteed to be a internal node.
+
+        CursorFrame parentFrame = frame.mParentFrame;
+        node.releaseExclusive();
+
+        if (parentFrame == null) {
+            // Root node cannot merge into anything.
+            return;
+        }
+
+        TreeNode parentNode = parentFrame.acquireExclusiveUnfair();
+
+        if (parentNode.numKeys() <= 0) {
+            // FIXME: This shouldn't be a problem when internal nodes can be rebalanced.
+            System.out.println("tiny internal node (2): " + (parentNode == mStore.root()));
+            parentNode.releaseExclusive();
+            return;
+        }
+
+        TreeNode leftNode, rightNode;
+        int nodeAvail;
+        while (true) {
+            if (parentNode.mSplit != null) {
+                parentNode = finishSplit(parentFrame, parentNode, mStore);
+            }
+
+            // Latch node and siblings in a strict left-to-right order to avoid deadlock.
+            int pos = parentFrame.mNodePos;
+            if (pos == 0) {
+                leftNode = null;
+            } else {
+                leftNode = latchChild(parentNode, pos - 2);
+                if (leftNode.mSplit != null) {
+                    // Finish sibling split.
+                    parentNode.insertSplitChildRef(mStore, pos - 2, leftNode);
+                    continue;
+                }
+            }
+
+            node = frame.acquireExclusiveUnfair();
+
+            // Double check that node should still merge.
+            if (!node.shouldMerge(nodeAvail = node.availableInternalBytes())) {
+                parentNode.releaseExclusive();
+                if (leftNode != null) {
+                    leftNode.releaseExclusive();
+                }
+                node.releaseExclusive();
+                return;
+            }
+
+            if (pos >= parentNode.highestInternalPos()) {
+                rightNode = null;
+            } else {
+                rightNode = latchChild(parentNode, pos + 2);
+                if (rightNode.mSplit != null) {
+                    // Finish sibling split.
+                    if (leftNode != null) {
+                        leftNode.releaseExclusive();
+                    }
+                    node.releaseExclusive();
+                    parentNode.insertSplitChildRef(mStore, pos + 2, rightNode);
+                    continue;
+                }
+            }
+
+            break;
+        }
+
+        // Select a left and right pair, and then don't operate directly on the
+        // original node and frame parameters afterwards. The original node
+        // ends up being referenced as a left or right member of the pair.
+
+        int leftAvail = leftNode == null ? 0 : leftNode.availableInternalBytes();
+        int rightAvail = rightNode == null ? 0 : rightNode.availableInternalBytes();
+
+        // Choose adjacent node pair which has the most available space. If
+        // only a rebalance can be performed on the pair, operating on
+        // underutilized nodes continues them on a path to deletion.
+
+        int leftPos;
+        if (leftAvail < rightAvail) {
+            if (leftNode != null) {
+                leftNode.releaseExclusive();
+            }
+            leftPos = parentFrame.mNodePos;
+            leftNode = node;
+            leftAvail = nodeAvail;
+        } else {
+            if (rightNode != null) {
+                rightNode.releaseExclusive();
+            }
+            leftPos = parentFrame.mNodePos - 2;
+            rightNode = node;
+            rightAvail = nodeAvail;
+        }
+
+        // Left node must always be marked dirty. Parent is already expected to be dirty.
+        if (mStore.markDirty(leftNode)) {
+            parentNode.updateChildRefId(leftPos, leftNode.mId);
+        }
+
+        // Determine if both nodes plus parent key can fit in one node. If so,
+        // migrate and delete the right node.
+        byte[] parentPage = parentNode.mPage;
+        int parentEntryLoc = DataIO.readUnsignedShort
+            (parentPage, parentNode.mSearchVecStart + leftPos);
+        int parentEntryLen = TreeNode.internalEntryLength(parentPage, parentEntryLoc);
+        int remaining = leftAvail - parentEntryLen
+            + rightAvail - parentPage.length + (TreeNode.HEADER_SIZE - 2);
+
+        if (remaining >= 0) {
+            // Migrate the entire contents of the right node into the left
+            // node, and then delete the right node.
+            rightNode.transferInternalToLeftAndDelete
+                (mStore, leftNode, parentPage, parentEntryLoc, parentEntryLen);
+            parentNode.deleteChildRef(leftPos + 2);
+        } else {
+            // Rebalance nodes, but don't delete anything. Right node must be dirtied too.
+
+            if (mStore.markDirty(rightNode)) {
+                parentNode.updateChildRefId(leftPos + 2, rightNode.mId);
+            }
+
+            // FIXME: testing
+            if (leftNode.numKeys() == 1 || rightNode.numKeys() == 1) {
+                System.out.println("left avail: " + leftAvail + ", right avail: " + rightAvail +
+                                   ", left pos: " + leftPos);
+                throw new Error("MUST REBALANCE: " + leftNode.numKeys() + ", " + 
+                                rightNode.numKeys());
+            }
+
+            /*
+            System.out.println("left avail: " + leftAvail + ", right avail: " + rightAvail +
+                               ", left pos: " + leftPos + ", mode: " + migrateMode);
+            */
+
+            if (leftNode == node) {
+                // Rebalance towards left node, which is smaller.
+                // FIXME
+            } else {
+                // Rebalance towards right node, which is smaller.
+                // FIXME
+            }
+        }
+
+        // Tail call. I could just loop here, but this is simpler.
+        mergeInternal(parentFrame, parentNode, leftNode, rightNode);
     }
 
     /**

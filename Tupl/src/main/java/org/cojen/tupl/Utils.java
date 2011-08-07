@@ -25,6 +25,8 @@ import java.io.IOException;
  * @author Brian S O'Neill
  */
 class Utils {
+    static final byte[] EMPTY_BYTES = new byte[0];
+
     /**
      * Performs multiple array copies, correctly ordered to prevent clobbering. The copies
      * must not overlap, and start1 must be less than start2.

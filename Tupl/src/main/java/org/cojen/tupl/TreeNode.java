@@ -35,7 +35,6 @@ final class TreeNode extends Latch {
     static final byte TYPE_LEAF = 0, TYPE_INTERNAL = 1;
 
     static final int HEADER_SIZE = 12;
-    static final byte[] EMPTY_BYTES = new byte[0];
 
     private static final int FAILED = 0, SUCCESS = 1, SPLIT = 2;
 
@@ -460,8 +459,6 @@ final class TreeNode extends Latch {
             // FIXME: recycle child node arrays
             mChildNodes = new TreeNode[numKeys() + 1];
         }
-
-        //verify0();
     }
 
     /**
@@ -601,17 +598,37 @@ final class TreeNode extends Latch {
     /**
      * Caller must hold any latch.
      */
-    /* Only works for leaf node.
-    int availableBytes() {
-        return mGarbage + mSearchVecStart - mLeftSegTail + mRightSegTail - mSearchVecEnd - 1;
+    int availableLeafBytes() {
+        return mGarbage + mSearchVecStart - mSearchVecEnd
+            - mLeftSegTail + mRightSegTail + (1 - 2);
     }
-    */
 
     /**
      * Caller must hold any latch.
      */
-    int garbageBytes() {
-        return mGarbage;
+    int availableInternalBytes() {
+        return mGarbage + 5 * (mSearchVecStart - mSearchVecEnd)
+            - mLeftSegTail + mRightSegTail + (1 - (5 * 2 + 8));
+    }
+
+    /**
+     * Returns true if leaf is not split and underutilized. If so, it should be
+     * merged with its neighbors, and possibly deleted. Caller must hold any latch.
+     */
+    boolean shouldLeafMerge() {
+        return shouldMerge(availableLeafBytes());
+    }
+
+    /**
+     * Returns true if leaf is not split and underutilized. If so, it should be
+     * merged with its neighbors, and possibly deleted. Caller must hold any latch.
+     */
+    boolean shouldInternalMerge() {
+        return shouldMerge(availableInternalBytes());
+    }
+
+    boolean shouldMerge(int availBytes) {
+        return mSplit == null && availBytes >= ((mPage.length - HEADER_SIZE) >> 1);
     }
 
     /**
@@ -677,17 +694,19 @@ final class TreeNode extends Latch {
     }
 
     /**
-     * Search a non-empty leaf node, using a starting search position.
-     *
      * @param midPos 2-based starting position
      * @return 2-based insertion pos, which is negative if key not found
      */
     int binarySearchLeaf(byte[] key, int midPos) {
-        final byte[] page = mPage;
-        final int keyLen = key.length;
         int lowPos = mSearchVecStart;
         int highPos = mSearchVecEnd;
+        if (lowPos > highPos) {
+            return -1;
+        }
         midPos += lowPos;
+
+        final byte[] page = mPage;
+        final int keyLen = key.length;
 
         while (true) {
             compare: {
@@ -731,7 +750,7 @@ final class TreeNode extends Latch {
 
     /**
      * @return negative if page entry is less, zero if equal, more than zero if greater
-     */
+     * /
     static int compareToInternalKey(byte[] page, int entryLoc, byte[] key) {
         int entryLen = page[entryLoc++];
         entryLen = entryLen >= 0 ? (entryLen + 1)
@@ -739,6 +758,7 @@ final class TreeNode extends Latch {
 
         return Utils.compareKeys(page, entryLoc, entryLen, key, 0, key.length);
     }
+    */
 
     /**
      * @return 2-based insertion pos, which is negative if key not found
@@ -784,17 +804,19 @@ final class TreeNode extends Latch {
     }
 
     /**
-     * Search a non-empty internal node, using a starting search position.
-     *
      * @param midPos 2-based starting position
      * @return 2-based insertion pos, which is negative if key not found
      */
     int binarySearchInternal(byte[] key, int midPos) {
-        final byte[] page = mPage;
-        final int keyLen = key.length;
         int lowPos = mSearchVecStart;
         int highPos = mSearchVecEnd;
+        if (lowPos > highPos) {
+            return -1;
+        }
         midPos += lowPos;
+
+        final byte[] page = mPage;
+        final int keyLen = key.length;
 
         while (true) {
             compare: {
@@ -881,7 +903,7 @@ final class TreeNode extends Latch {
         int loc = DataIO.readUnsignedShort(page, mSearchVecStart + pos);
         int header = page[loc++];
         if ((header & 0x40) != 0) {
-            return EMPTY_BYTES;
+            return Utils.EMPTY_BYTES;
         }
         loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
         int len = page[loc++];
@@ -909,7 +931,7 @@ final class TreeNode extends Latch {
         loc += keyLen;
         byte[] value;
         if ((header & 0x40) != 0) {
-            value = EMPTY_BYTES;
+            value = Utils.EMPTY_BYTES;
         } else {
             int len = page[loc++];
             len = len >= 0 ? (len + 1) : ((((len & 0x7f) << 8) | (page[loc++] & 0xff)) + 129);
@@ -936,7 +958,7 @@ final class TreeNode extends Latch {
     /**
      * @param pos position as provided by binarySearchInternal
      */
-    private byte[] retrieveInternalKey(int pos) {
+    byte[] retrieveInternalKey(int pos) {
         byte[] page = mPage;
         return retrieveInternalKeyAtLocation
             (page, DataIO.readUnsignedShort(page, mSearchVecStart + pos));
@@ -945,7 +967,7 @@ final class TreeNode extends Latch {
     /**
      * @param loc absolute location of internal entry
      */
-    private static byte[] retrieveInternalKeyAtLocation(final byte[] page, int loc) {
+    static byte[] retrieveInternalKeyAtLocation(final byte[] page, int loc) {
         int header = page[loc++];
         int keyLen = header >= 0 ? ((header & 0x7f) + 1)
             : (((header & 0x7f) << 8) | ((page[loc++]) & 0xff));
@@ -955,20 +977,50 @@ final class TreeNode extends Latch {
     }
 
     /**
-     * @param pos compliment of position as provided by binarySearchLeaf; must be positive
+     * @return length of encoded entry at given location
      */
-    void insertLeafEntry(TreeNodeStore store, int pos, byte[] key, byte[] value)
-        throws IOException
-    {
-        insertLeafEntry(store, pos, key, value, calculateEncodedLength(key, value));
+    static int leafEntryLength(byte[] page, final int entryLoc) {
+        int loc = entryLoc;
+        int header = page[loc++];
+        loc += (header >= 0 ? (header & 0x3f) : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
+        if ((header & 0x40) == 0) {
+            int len = page[loc++];
+            loc += len >= 0 ? (len + 1) : ((((len & 0x7f) << 8) | (page[loc] & 0xff)) + 130);
+        }
+        return loc - entryLoc;
+    }
+
+    /**
+     * @return length of encoded entry at given location
+     */
+    static int internalEntryLength(byte[] page, final int entryLoc) {
+        int header = page[entryLoc];
+        return (header >= 0 ? (header & 0x7f)
+                : (((header & 0x7f) << 8) | (page[entryLoc + 1] & 0xff))) + 2;
     }
 
     /**
      * @param pos compliment of position as provided by binarySearchLeaf; must be positive
      */
-    private void insertLeafEntry(TreeNodeStore store, int pos, byte[] key, byte[] value,
-                                 final int encodedLen)
+    void insertLeafEntry(TreeNodeStore store, int pos, byte[] key, byte[] value)
         throws IOException
+    {
+        int encodedLen = calculateEncodedLength(key, value);
+        int entryLoc = createLeafEntry(store, pos, encodedLen);
+        if (entryLoc < 0) {
+            splitLeafAndCreateEntry(store, key, value, encodedLen, pos, true);
+        } else {
+            copyToLeafEntry(key, value, entryLoc);
+        }
+    }
+
+    /**
+     * @param pos compliment of position as provided by binarySearchLeaf; must be positive
+     * @return location for newly allocated entry, already pointed to by search
+     * vector, or -1 if leaf must be split
+     */
+    private int createLeafEntry(TreeNodeStore store, int pos, final int encodedLen)
+        throws InterruptedIOException
     {
         int searchVecStart = mSearchVecStart;
         int searchVecEnd = mSearchVecEnd;
@@ -1010,14 +1062,8 @@ final class TreeNode extends Latch {
             int remaining = leftSpace + rightSpace - encodedLen - 2;
 
             if (mGarbage > remaining) {
-                // Do full compaction and free up the garbage, or split the node.
-                if ((mGarbage + remaining) >= 0) {
-                    createLeafEntry(key, value, compactLeaf(store, encodedLen, pos, true));
-                } else {
-                    // Node is full so split it.
-                    splitLeafAndCreateEntry(store, key, value, encodedLen, pos, true);
-                }
-                return;
+                // Do full compaction and free up the garbage, or else node must be split.
+                return (mGarbage + remaining) < 0 ? -1 : compactLeaf(store, encodedLen, pos, true);
             }
 
             int vecLen = searchVecEnd - searchVecStart + 2;
@@ -1039,8 +1085,7 @@ final class TreeNode extends Latch {
                 mRightSegTail = entryLoc - 1;
             } else {
                 // Search vector is misaligned, so do full compaction.
-                createLeafEntry(key, value, compactLeaf(store, encodedLen, pos, true));
-                return;
+                return compactLeaf(store, encodedLen, pos, true);
             }
 
             Utils.arrayCopies(page,
@@ -1052,8 +1097,9 @@ final class TreeNode extends Latch {
             mSearchVecEnd = newSearchVecStart + vecLen;
         }
 
-        createLeafEntry(key, value, entryLoc);
+        // Write pointer to new allocation.
         DataIO.writeShort(page, pos, entryLoc);
+        return entryLoc;
     }
 
     /**
@@ -1121,14 +1167,39 @@ final class TreeNode extends Latch {
             newChildPos <<= 3;
         }
 
+        InResult result = createInternalEntry
+            (store, keyPos, split.splitKeyEncodedLength(), newChildPos, splitChild);
+
+        // Write new child id.
+        DataIO.writeLong(result.mPage, result.mNewChildLoc, newChild.mId);
+        // Write key entry itself.
+        split.copySplitKeyToParent(result.mPage, result.mEntryLoc);
+
+        splitChild.releaseExclusive();
+        newChild.releaseExclusive();
+    }
+
+    /**
+     * Insert into an internal node following a child node split. This parent node and
+     * child node must have an exclusive latch held. Child latch is released.
+     *
+     * @param keyPos 2-based position
+     * @param newChildPos 8-based position
+     * @param splitChild pass null if split not allowed
+     * @return null if entry must be split, but no split is not allowed
+     */
+    private InResult createInternalEntry(TreeNodeStore store, int keyPos, int encodedLen,
+                                         int newChildPos, TreeNode splitChild)
+        throws IOException
+    {
+        InResult result = null;
+
         int searchVecStart = mSearchVecStart;
         int searchVecEnd = mSearchVecEnd;
 
         int leftSpace = searchVecStart - mLeftSegTail;
         int rightSpace = mRightSegTail - searchVecEnd
             - ((searchVecEnd - searchVecStart) << 2) - 17;
-
-        int encodedLen = split.splitKeyEncodedLength();
 
         byte[] page = mPage;
 
@@ -1143,8 +1214,8 @@ final class TreeNode extends Latch {
                     (entryLoc = allocPageEntry(encodedLen, leftSpace, rightSpace)) >= 0)
                 {
                     System.arraycopy(page, searchVecStart, page, searchVecStart - 10, keyPos);
-                    System.arraycopy(page, searchVecStart + keyPos, page,
-                                     searchVecStart + keyPos - 8,
+                    System.arraycopy(page, searchVecStart + keyPos,
+                                     page, searchVecStart + keyPos - 8,
                                      searchVecEnd - searchVecStart + 2 - keyPos + newChildPos);
                     mSearchVecStart = searchVecStart -= 10;
                     keyPos += searchVecStart;
@@ -1168,7 +1239,7 @@ final class TreeNode extends Latch {
                     mSearchVecStart = searchVecStart;
                     keyPos += searchVecStart;
                     System.arraycopy(page, searchVecEnd + newChildPos + 2,
-                                     page, searchVecEnd + newChildPos + 10,
+                                     page, searchVecEnd + newChildPos + (2 + 8),
                                      ((searchVecEnd - searchVecStart) << 2) + 8 - newChildPos);
                     newChildPos += searchVecEnd + 2;
                     break alloc;
@@ -1184,17 +1255,21 @@ final class TreeNode extends Latch {
 
             if (mGarbage > remaining) {
                 // Do full compaction and free up the garbage, or split the node.
-                InSplitResult result;
                 if ((mGarbage + remaining) >= 0) {
-                    result = compactInternal(store, encodedLen, keyPos, newChildPos);
-                } else {
-                    // Node is full so split it.
-                    result = splitInternal
-                        (store, keyPos, splitChild, newChild, newChildPos, encodedLen);
+                    return compactInternal(store, encodedLen, keyPos, newChildPos);
                 }
+
+                // Node is full so split it.
+
+                if (splitChild == null) {
+                    // Caller doesn't allow split.
+                    return null;
+                }
+
+                result = splitInternal(store, keyPos, splitChild, newChildPos, encodedLen);
                 page = result.mPage;
-                keyPos = result.mKeyPos;
-                newChildPos = result.mNewChildPos;
+                keyPos = result.mKeyLoc;
+                newChildPos = result.mNewChildLoc;
                 entryLoc = result.mEntryLoc;
                 break alloc;
             }
@@ -1220,12 +1295,7 @@ final class TreeNode extends Latch {
                 mRightSegTail = entryLoc - 1;
             } else {
                 // Search vector is misaligned, so do full compaction.
-                InSplitResult result = compactInternal(store, encodedLen, keyPos, newChildPos);
-                page = result.mPage;
-                keyPos = result.mKeyPos;
-                newChildPos = result.mNewChildPos;
-                entryLoc = result.mEntryLoc;
-                break alloc;
+                return compactInternal(store, encodedLen, keyPos, newChildPos);
             }
 
             int newSearchVecEnd = newSearchVecStart + vecLen;
@@ -1253,13 +1323,16 @@ final class TreeNode extends Latch {
 
         // Write pointer to key entry.
         DataIO.writeShort(page, keyPos, entryLoc);
-        // Write new child id.
-        DataIO.writeLong(page, newChildPos, newChild.mId);
-        // Write key entry itself.
-        split.copySplitKeyToParent(page, entryLoc);
 
-        splitChild.releaseExclusive();
-        newChild.releaseExclusive();
+        if (result == null) {
+            result = new InResult();
+            result.mPage = page;
+            result.mKeyLoc = keyPos;
+            result.mNewChildLoc = newChildPos;
+            result.mEntryLoc = entryLoc;
+        }
+
+        return result;
     }
 
     /**
@@ -1347,7 +1420,8 @@ final class TreeNode extends Latch {
         // Old entry is garbage.
         mGarbage += loc - start;
 
-        // What follows is similar to insert method, except the search vector doesn't grow.
+        // What follows is similar to createLeafEntry method, except the search
+        // vector doesn't grow.
 
         int searchVecEnd = mSearchVecEnd;
 
@@ -1370,7 +1444,7 @@ final class TreeNode extends Latch {
                 // Do full compaction and free up the garbage, or split the node.
                 byte[] key = retrieveLeafKey(pos);
                 if ((mGarbage + remaining) >= 0) {
-                    createLeafEntry(key, value, compactLeaf(store, encodedLen, pos, false));
+                    copyToLeafEntry(key, value, compactLeaf(store, encodedLen, pos, false));
                 } else {
                     // Node is full so split it.
                     splitLeafAndCreateEntry(store, key, value, encodedLen, pos, false);
@@ -1398,7 +1472,7 @@ final class TreeNode extends Latch {
             } else {
                 // Search vector is misaligned, so do full compaction.
                 byte[] key = retrieveLeafKey(pos);
-                createLeafEntry(key, value, compactLeaf(store, encodedLen, pos, false));
+                copyToLeafEntry(key, value, compactLeaf(store, encodedLen, pos, false));
                 return;
             }
 
@@ -1470,6 +1544,209 @@ final class TreeNode extends Latch {
     }
 
     /**
+     * Copies all the entries from this node, inserts them into the tail of the
+     * given left node, and then deletes this node. Caller must ensure that
+     * left node has enough room, and that both nodes are latched exclusively.
+     * Caller must also hold commit lock. No latches are released by this method.
+     */
+    void transferLeafToLeftAndDelete(TreeNodeStore store, TreeNode leftNode)
+        throws IOException
+    {
+        store.prepareToDelete(this);
+
+        final byte[] rightPage = mPage;
+        final int searchVecEnd = mSearchVecEnd;
+        final int leftEndPos = leftNode.highestLeafPos() + 2;
+
+        int searchVecStart = mSearchVecStart;
+        while (searchVecStart <= searchVecEnd) {
+            int entryLoc = DataIO.readUnsignedShort(rightPage, searchVecStart);
+            int encodedLen = leafEntryLength(rightPage, entryLoc);
+            int leftEntryLoc = leftNode.createLeafEntry
+                (store, leftNode.highestLeafPos() + 2, encodedLen);
+            // Note: Must access left page each time, since compaction can replace it.
+            System.arraycopy(rightPage, entryLoc, leftNode.mPage, leftEntryLoc, encodedLen);
+            searchVecStart += 2;
+        }
+
+        // All cursors in this node must be moved to left node.
+        CursorFrame frame = mLastCursorFrame;
+        while (frame != null) {
+            // Capture previous frame from linked list before changing the links.
+            CursorFrame prev = frame.mPrevCousin;
+            int framePos = frame.mNodePos;
+            frame.unbind();
+            frame.bind(leftNode, framePos + (framePos < 0 ? (-leftEndPos) : leftEndPos));
+            frame = prev;
+        }
+
+        store.deleteNode(this);
+    }
+
+    /**
+     * Copies all the entries from this node, inserts them into the tail of the
+     * given left node, and then deletes this node. Caller must ensure that
+     * left node has enough room, and that both nodes are latched exclusively.
+     * Caller must also hold commit lock. No latches are released by this method.
+     *
+     * @param parentPage source of entry to merge from parent
+     * @param parentLoc location of parent entry
+     * @param parentLen length of parent entry
+     */
+    void transferInternalToLeftAndDelete(TreeNodeStore store, TreeNode leftNode,
+                                         byte[] parentPage, int parentLoc, int parentLen)
+        throws IOException
+    {
+        store.prepareToDelete(this);
+
+        // Create space to absorb parent key.
+        int leftEndPos = leftNode.highestInternalPos();
+        InResult result = leftNode.createInternalEntry
+            (store, leftEndPos, parentLen, (leftEndPos += 2) << 2, null);
+
+        // Copy child id associated with parent key.
+        final byte[] rightPage = mPage;
+        int rightChildIdsLoc = mSearchVecEnd + 2;
+        System.arraycopy(rightPage, rightChildIdsLoc, result.mPage, result.mNewChildLoc, 8);
+        rightChildIdsLoc += 8;
+
+        // Write parent key.
+        System.arraycopy(parentPage, parentLoc, result.mPage, result.mEntryLoc, parentLen);
+
+        final int searchVecEnd = mSearchVecEnd;
+
+        int searchVecStart = mSearchVecStart;
+        while (searchVecStart <= searchVecEnd) {
+            int entryLoc = DataIO.readUnsignedShort(rightPage, searchVecStart);
+            int encodedLen = internalEntryLength(rightPage, entryLoc);
+
+            // Allocate entry for left node.
+            int pos = leftNode.highestInternalPos();
+            result = leftNode.createInternalEntry(store, pos, encodedLen, (pos + 2) << 2, null);
+
+            // Copy child id.
+            System.arraycopy(rightPage, rightChildIdsLoc, result.mPage, result.mNewChildLoc, 8);
+            rightChildIdsLoc += 8;
+
+            // Copy key.
+            // Note: Must access left page each time, since compaction can replace it.
+            System.arraycopy(rightPage, entryLoc, result.mPage, result.mEntryLoc, encodedLen);
+            searchVecStart += 2;
+        }
+
+        // FIXME: recycle child node arrays
+        int leftLen = leftNode.mChildNodes.length;
+        TreeNode[] newChildNodes = new TreeNode[leftLen + mChildNodes.length];
+        System.arraycopy(leftNode.mChildNodes, 0, newChildNodes, 0, leftLen);
+        System.arraycopy(mChildNodes, 0, newChildNodes, leftLen, mChildNodes.length);
+        leftNode.mChildNodes = newChildNodes;
+
+        // All cursors in this node must be moved to left node.
+        CursorFrame frame = mLastCursorFrame;
+        while (frame != null) {
+            // Capture previous frame from linked list before changing the links.
+            CursorFrame prev = frame.mPrevCousin;
+            int framePos = frame.mNodePos;
+            frame.unbind();
+            // FIXME: Verify that this pos adjustment is correct.
+            System.out.println("new pos: " + (leftEndPos + framePos));
+            frame.bind(leftNode, leftEndPos + framePos);
+            frame = prev;
+        }
+
+        store.deleteNode(this);
+    }
+
+    /**
+     * Delete a parent reference to a merged child.
+     *
+     * @param childPos two-based position
+     */
+    void deleteChildRef(int childPos) {
+        // Fix affected cursors.
+        for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
+            int framePos = frame.mNodePos;
+            if (framePos >= childPos) {
+                frame.mNodePos = framePos - 2;
+            }
+            frame = frame.mPrevCousin;
+        }
+
+        final byte[] page = mPage;
+        int keyPos = childPos == 0 ? 0 : (childPos - 2);
+        int searchVecStart = mSearchVecStart;
+
+        int entryLoc = DataIO.readUnsignedShort(page, searchVecStart + keyPos);
+        // Increment garbage by the size of the encoded entry.
+        mGarbage += internalEntryLength(page, entryLoc);
+
+        // Update references to child node instances.
+        // FIXME: recycle child node arrays
+        childPos >>= 1;
+        TreeNode[] newChildNodes = new TreeNode[mChildNodes.length - 1];
+        System.arraycopy(mChildNodes, 0, newChildNodes, 0, childPos);
+        System.arraycopy(mChildNodes, childPos + 1, newChildNodes, childPos,
+                         newChildNodes.length - childPos);
+        mChildNodes = newChildNodes;
+        // Rescale for long ids as encoded in page.
+        childPos <<= 3;
+
+        int searchVecEnd = mSearchVecEnd;
+
+        // Remove search vector entry (2 bytes) and remove child id entry
+        // (8 bytes). Determine which shift operations minimize movement.
+        if (childPos < (3 * (searchVecEnd - searchVecStart) + keyPos + 8) >> 1) {
+            // Shift child ids right by 8, shift search vector right by 10.
+            System.arraycopy(page, searchVecStart + keyPos + 2,
+                             page, searchVecStart + keyPos + (2 + 8),
+                             searchVecEnd - searchVecStart - keyPos + childPos);
+            System.arraycopy(page, searchVecStart, page, searchVecStart += 10, keyPos);
+            mSearchVecEnd = searchVecEnd + 8;
+        } else {
+            // Shift child ids left by 8, shift search vector right by 2.
+            System.arraycopy(page, searchVecEnd + childPos + (2 + 8),
+                             page, searchVecEnd + childPos + 2,
+                             ((searchVecEnd - searchVecStart) << 2) + 8 - childPos);
+            System.arraycopy(page, searchVecStart, page, searchVecStart += 2, keyPos);
+        }
+
+        mSearchVecStart = searchVecStart;
+    }
+
+    /**
+     * Logically delete this non-leaf root node, after all keys have been
+     * deleted. The state of the lone child node is transferred into the root
+     * node, which might be a leaf. The old child node is then deleted.  Caller
+     * must hold exclusive latches for root node and lone child. No latches are
+     * released by this method.
+     */
+    void rootDelete(TreeNodeStore store) throws IOException {
+        TreeNode child = mChildNodes[0];
+
+        store.prepareToDelete(child);
+
+        mPage = child.mPage;
+        mType = child.mType;
+        mGarbage = child.mGarbage;
+        mLeftSegTail = child.mLeftSegTail;
+        mRightSegTail = child.mRightSegTail;
+        mSearchVecStart = child.mSearchVecStart;
+        mSearchVecEnd = child.mSearchVecEnd;
+        // FIXME: recycle child node arrays
+        mChildNodes = child.mChildNodes;
+        mLastCursorFrame = child.mLastCursorFrame;
+
+        // Fix cursor frame bindings and discard the parent frames.
+        for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
+            frame.mNode = this;
+            frame.mParentFrame = null;
+            frame = frame.mPrevCousin;
+        }
+
+        store.deleteNode(child);
+    }
+
+    /**
      * Calculate encoded key length for leaf.
      */
     private static int calculateEncodedLength(byte[] key, byte[] value) {
@@ -1507,7 +1784,7 @@ final class TreeNode extends Latch {
         return entryLoc;
     }
 
-    private void createLeafEntry(byte[] key, byte[] value, int entryLoc) {
+    private void copyToLeafEntry(byte[] key, byte[] value, int entryLoc) {
         final byte[] page = mPage;
         final int keyLen = key.length;
         final int valueLen = value.length;
@@ -1541,8 +1818,10 @@ final class TreeNode extends Latch {
     }
 
     /**
-     * Compact leaf by reclaiming garbage and moving search vector towards tail. Caller is
-     * responsible for ensuring that new entry will fit after compaction.
+     * Compact leaf by reclaiming garbage and moving search vector towards
+     * tail. Caller is responsible for ensuring that new entry will fit after
+     * compaction. Space is allocated for new entry, and the search vector
+     * points to it.
      *
      * @param encodedLen length of new entry to allocate
      * @param pos normalized search vector position of entry to insert/update
@@ -1701,7 +1980,7 @@ final class TreeNode extends Latch {
                     if (pos >= 0) {
                         throw new AssertionError("Key exists");
                     }
-                    insertLeafEntry(store, ~pos, key, value, encodedLen);
+                    copyToLeafEntry(key, value, createLeafEntry(store, ~pos, encodedLen));
                 } else {
                     if (pos < 0) {
                         throw new AssertionError("Key not found");
@@ -1711,7 +1990,7 @@ final class TreeNode extends Latch {
             } else {
                 // Create new entry and point to it.
                 destLoc -= encodedLen;
-                newNode.createLeafEntry(key, value, destLoc);
+                newNode.copyToLeafEntry(key, value, destLoc);
                 DataIO.writeShort(newPage, newLoc, destLoc);
             }
 
@@ -1775,7 +2054,7 @@ final class TreeNode extends Latch {
                     if (pos >= 0) {
                         throw new AssertionError("Key exists");
                     }
-                    insertLeafEntry(store, ~pos, key, value, encodedLen);
+                    copyToLeafEntry(key, value, createLeafEntry(store, ~pos, encodedLen));
                 } else {
                     if (pos < 0) {
                         throw new AssertionError("Key not found");
@@ -1784,7 +2063,7 @@ final class TreeNode extends Latch {
                 }
             } else {
                 // Create new entry and point to it.
-                newNode.createLeafEntry(key, value, destLoc);
+                newNode.copyToLeafEntry(key, value, destLoc);
                 DataIO.writeShort(newPage, newLoc, destLoc);
                 destLoc += encodedLen;
             }
@@ -1802,9 +2081,9 @@ final class TreeNode extends Latch {
         mSplit = split;
     }
 
-    private InSplitResult splitInternal
+    private InResult splitInternal
         (final TreeNodeStore store, final int keyPos,
-         final TreeNode splitChild, final TreeNode newChild,
+         final TreeNode splitChild,
          final int newChildPos, final int encodedLen)
         throws IOException
     {
@@ -1824,7 +2103,7 @@ final class TreeNode extends Latch {
 
         final byte[] newPage = newNode.mPage;
 
-        final InSplitResult result = new InSplitResult();
+        final InResult result = new InResult();
         result.mPage = newPage;
 
         final int searchVecStart = mSearchVecStart;
@@ -1927,7 +2206,7 @@ final class TreeNode extends Latch {
                                      newPage, newSearchVecLoc, newChildPos);
 
                     // Leave gap for new child id, to be set by caller.
-                    result.mNewChildPos = newSearchVecLoc + newChildPos;
+                    result.mNewChildLoc = newSearchVecLoc + newChildPos;
 
                     int tailChildIdsLen = ((searchVecLoc - searchVecStart) << 2) - newChildPos;
                     System.arraycopy(page, searchVecEnd + 2 + newChildPos,
@@ -2036,7 +2315,7 @@ final class TreeNode extends Latch {
 
                     // Leave gap for new child id, to be set by caller.
                     newDestLoc += headChildIdsLen;
-                    result.mNewChildPos = newDestLoc;
+                    result.mNewChildLoc = newDestLoc;
 
                     int tailChildIdsLen =
                         ((searchVecEnd - searchVecStart) << 2) + 16 - newChildPos;
@@ -2073,20 +2352,21 @@ final class TreeNode extends Latch {
         mGarbage += garbageAccum;
         mSplit = split;
 
-        result.mKeyPos = newKeyLoc;
+        result.mKeyLoc = newKeyLoc;
         return result;
     }
 
     /**
-     * Compact internal node by reclaiming garbage and moving search vector towards
-     * tail. Caller is responsible for ensuring that new entry will fit after compaction.
+     * Compact internal node by reclaiming garbage and moving search vector
+     * towards tail. Caller is responsible for ensuring that new entry will fit
+     * after compaction. Space is allocated for new entry, and the search
+     * vector points to it.
      *
      * @param encodedLen length of new entry to allocate
      * @param keyPos normalized search vector position of key to insert
      * @param childPos normalized search vector position of child node id to insert
      */
-    private InSplitResult compactInternal(TreeNodeStore store,
-                                          int encodedLen, int keyPos, int childPos)
+    private InResult compactInternal(TreeNodeStore store, int encodedLen, int keyPos, int childPos)
         throws InterruptedIOException
     {
         byte[] page = mPage;
@@ -2138,6 +2418,9 @@ final class TreeNode extends Latch {
         // Recycle old page buffer.
         store.addSpareBuffer(page);
 
+        // Write pointer to key entry.
+        DataIO.writeShort(dest, newLoc, destLoc);
+
         mPage = dest;
         mGarbage = 0;
         mLeftSegTail = destLoc + encodedLen;
@@ -2145,10 +2428,10 @@ final class TreeNode extends Latch {
         mSearchVecStart = newSearchVecStart;
         mSearchVecEnd = newSearchVecLoc - 2;
 
-        InSplitResult result = new InSplitResult();
+        InResult result = new InResult();
         result.mPage = dest;
-        result.mKeyPos = newLoc;
-        result.mNewChildPos = newSearchVecLoc + childPos;
+        result.mKeyLoc = newLoc;
+        result.mNewChildLoc = newSearchVecLoc + childPos;
         result.mEntryLoc = destLoc;
 
         return result;
@@ -2158,34 +2441,11 @@ final class TreeNode extends Latch {
      * Provides information necessary to complete split by copying split key, pointer to
      * split key, and pointer to new child id.
      */
-    private static class InSplitResult {
+    private static class InResult {
         byte[] mPage;
-        int mKeyPos;
-        int mNewChildPos;
+        int mKeyLoc;
+        int mNewChildLoc;
         int mEntryLoc;
-    }
-
-    /**
-     * @return length of encoded entry at given location
-     */
-    private static int leafEntryLength(byte[] page, final int entryLoc) {
-        int loc = entryLoc;
-        int header = page[loc++];
-        loc += (header >= 0 ? (header & 0x3f) : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
-        if ((header & 0x40) == 0) {
-            int len = page[loc++];
-            loc += len >= 0 ? (len + 1) : ((((len & 0x7f) << 8) | (page[loc] & 0xff)) + 130);
-        }
-        return loc - entryLoc;
-    }
-
-    /**
-     * @return length of encoded entry at given location
-     */
-    private static int internalEntryLength(byte[] page, final int entryLoc) {
-        int header = page[entryLoc];
-        return (header >= 0 ? (header & 0x7f)
-                : (((header & 0x7f) << 8) | (page[entryLoc + 1] & 0xff))) + 2;
     }
 
     /**
@@ -2415,7 +2675,16 @@ final class TreeNode extends Latch {
     void dump(TreeNodeStore store, String indent) throws IOException {
         verify0();
 
+        if (!hasKeys()) {
+            System.out.println(indent + mId + ": (empty)");
+            return;
+        }
+
         if (isLeaf()) {
+            if (!hasKeys()) {
+                System.out.println(indent + mId + ": (empty)");
+                return;
+            }
             Entry entry = new Entry();
             for (int pos = mSearchVecEnd - mSearchVecStart; pos >= 0; pos -= 2) {
                 retrieveLeafEntry(pos, entry);
