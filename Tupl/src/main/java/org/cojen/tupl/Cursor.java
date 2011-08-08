@@ -149,7 +149,7 @@ public final class Cursor {
                 node = node.mSplit.latchLeft(mStore, node);
             }
 
-            node = latchChild(node, 0);
+            node = latchChild(node, 0, true);
             frame = new CursorFrame(frame);
         }
     }
@@ -196,7 +196,7 @@ public final class Cursor {
             if (split == null) {
                 int childPos = node.highestInternalPos();
                 frame.bind(node, childPos);
-                node = latchChild(node, childPos);
+                node = latchChild(node, childPos, true);
             } else {
                 // Follow highest position of split, binding this frame to the
                 // unsplit node as if it had not split. The binding will be
@@ -217,7 +217,7 @@ public final class Cursor {
                 frame.bind(node, left.highestInternalPos() + 2 + highestRightPos);
                 left.releaseExclusive();
 
-                node = latchChild(right, highestRightPos);
+                node = latchChild(right, highestRightPos, true);
             }
 
             frame = new CursorFrame(frame);
@@ -296,7 +296,7 @@ public final class Cursor {
             if (pos < node.highestInternalPos()) {
                 pos += 2;
                 frame.mNodePos = pos;
-                return toFirst(latchChild(node, pos), new CursorFrame(frame));
+                return toFirst(latchChild(node, pos, true), new CursorFrame(frame));
             }
         }
     }
@@ -352,7 +352,7 @@ public final class Cursor {
             if (pos > 0) {
                 pos -= 2;
                 frame.mNodePos = pos;
-                return toLast(latchChild(node, pos), new CursorFrame(frame));
+                return toLast(latchChild(node, pos, true), new CursorFrame(frame));
             }
         }
     }
@@ -412,7 +412,7 @@ public final class Cursor {
             if (split == null) {
                 int childPos = TreeNode.internalPos(node.binarySearchInternal(key));
                 frame.bind(node, childPos);
-                node = latchChild(node, childPos);
+                node = latchChild(node, childPos, true);
             } else {
                 // Follow search into split, binding this frame to the unsplit
                 // node as if it had not split. The binding will be corrected
@@ -444,7 +444,7 @@ public final class Cursor {
                     left.releaseExclusive();
                 }
 
-                node = latchChild(selected, selectedPos);
+                node = latchChild(selected, selectedPos, true);
             }
 
             frame = new CursorFrame(frame);
@@ -602,7 +602,7 @@ public final class Cursor {
             }
 
             frame.mNodePos = pos;
-            node = latchChild(node, pos);
+            node = latchChild(node, pos, true);
             frame = new CursorFrame(frame);
             break;
         }
@@ -962,7 +962,7 @@ public final class Cursor {
     private CursorFrame leaf() {
         CursorFrame leaf = mLeaf;
         if (leaf == null) {
-            throw new IllegalStateException("Position is undefined");
+            throw new IllegalStateException("Cursor position is undefined");
         }
         return leaf;
     }
@@ -1054,13 +1054,6 @@ public final class Cursor {
 
         TreeNode parentNode = parentFrame.acquireExclusiveUnfair();
 
-        if (parentNode.numKeys() <= 0) {
-            // FIXME: This shouldn't be a problem when internal nodes can be rebalanced.
-            System.out.println("tiny internal node: " + (parentNode == mStore.root()));
-            parentNode.releaseExclusive();
-            return;
-        }
-
         TreeNode leftNode, rightNode;
         int nodeAvail;
         while (true) {
@@ -1068,12 +1061,19 @@ public final class Cursor {
                 parentNode = finishSplit(parentFrame, parentNode, mStore);
             }
 
+            if (parentNode.numKeys() <= 0) {
+                // FIXME: This shouldn't be a problem when internal nodes can be rebalanced.
+                System.out.println("tiny internal node: " + (parentNode == mStore.root()));
+                parentNode.releaseExclusive();
+                return;
+            }
+
             // Latch leaf and siblings in a strict left-to-right order to avoid deadlock.
             int pos = parentFrame.mNodePos;
             if (pos == 0) {
                 leftNode = null;
             } else {
-                leftNode = latchChild(parentNode, pos - 2);
+                leftNode = latchChild(parentNode, pos - 2, false);
                 if (leftNode.mSplit != null) {
                     // Finish sibling split.
                     parentNode.insertSplitChildRef(mStore, pos - 2, leftNode);
@@ -1085,18 +1085,18 @@ public final class Cursor {
 
             // Double check that node should still merge.
             if (!node.shouldMerge(nodeAvail = node.availableLeafBytes())) {
-                parentNode.releaseExclusive();
                 if (leftNode != null) {
                     leftNode.releaseExclusive();
                 }
                 node.releaseExclusive();
+                parentNode.releaseExclusive();
                 return;
             }
 
             if (pos >= parentNode.highestInternalPos()) {
                 rightNode = null;
             } else {
-                rightNode = latchChild(parentNode, pos + 2);
+                rightNode = latchChild(parentNode, pos + 2, false);
                 if (rightNode.mSplit != null) {
                     // Finish sibling split.
                     if (leftNode != null) {
@@ -1211,14 +1211,14 @@ public final class Cursor {
                 node.rootDelete(mStore);
             }
 
-            leftChildNode.releaseExclusive();
             rightChildNode.releaseExclusive();
+            leftChildNode.releaseExclusive();
             node.releaseExclusive();
             return;
         }
-
-        leftChildNode.releaseExclusive();
+            
         rightChildNode.releaseExclusive();
+        leftChildNode.releaseExclusive();
 
         // At this point, only one node latch is held, and it should merge with
         // a sibling node. Node is guaranteed to be a internal node.
@@ -1233,13 +1233,6 @@ public final class Cursor {
 
         TreeNode parentNode = parentFrame.acquireExclusiveUnfair();
 
-        if (parentNode.numKeys() <= 0) {
-            // FIXME: This shouldn't be a problem when internal nodes can be rebalanced.
-            System.out.println("tiny internal node (2): " + (parentNode == mStore.root()));
-            parentNode.releaseExclusive();
-            return;
-        }
-
         TreeNode leftNode, rightNode;
         int nodeAvail;
         while (true) {
@@ -1247,12 +1240,19 @@ public final class Cursor {
                 parentNode = finishSplit(parentFrame, parentNode, mStore);
             }
 
+            if (parentNode.numKeys() <= 0) {
+                // FIXME: This shouldn't be a problem when internal nodes can be rebalanced.
+                System.out.println("tiny internal node (2): " + (parentNode == mStore.root()));
+                parentNode.releaseExclusive();
+                return;
+            }
+
             // Latch node and siblings in a strict left-to-right order to avoid deadlock.
             int pos = parentFrame.mNodePos;
             if (pos == 0) {
                 leftNode = null;
             } else {
-                leftNode = latchChild(parentNode, pos - 2);
+                leftNode = latchChild(parentNode, pos - 2, false);
                 if (leftNode.mSplit != null) {
                     // Finish sibling split.
                     parentNode.insertSplitChildRef(mStore, pos - 2, leftNode);
@@ -1264,18 +1264,18 @@ public final class Cursor {
 
             // Double check that node should still merge.
             if (!node.shouldMerge(nodeAvail = node.availableInternalBytes())) {
-                parentNode.releaseExclusive();
                 if (leftNode != null) {
                     leftNode.releaseExclusive();
                 }
                 node.releaseExclusive();
+                parentNode.releaseExclusive();
                 return;
             }
 
             if (pos >= parentNode.highestInternalPos()) {
                 rightNode = null;
             } else {
-                rightNode = latchChild(parentNode, pos + 2);
+                rightNode = latchChild(parentNode, pos + 2, false);
                 if (rightNode.mSplit != null) {
                     // Finish sibling split.
                     if (leftNode != null) {
@@ -1417,10 +1417,11 @@ public final class Cursor {
     }
 
     /**
-     * With parent held exclusively, returns child with exclusive latch held,
-     * and parent latch is released.
+     * With parent held exclusively, returns child with exclusive latch held.
      */
-    private TreeNode latchChild(TreeNode parent, int childPos) throws IOException {
+    private TreeNode latchChild(TreeNode parent, int childPos, boolean releaseParent)
+        throws IOException
+    {
         TreeNode childNode = parent.mChildNodes[childPos >> 1];
         long childId = parent.retrieveChildRefId(childPos);
 
@@ -1433,7 +1434,9 @@ public final class Cursor {
                 break check;
             }
 
-            parent.releaseExclusive();
+            if (releaseParent) {
+                parent.releaseExclusive();
+            }
 
             mStore.used(childNode);
             return childNode;
@@ -1448,7 +1451,9 @@ public final class Cursor {
         // Release parent latch before child has been loaded. Any threads
         // which wish to access the same child will block until this thread
         // has finished loading the child and released its exclusive latch.
-        parent.releaseExclusive();
+        if (releaseParent) {
+            parent.releaseExclusive();
+        }
 
         try {
             childNode.read(mStore, childId);
