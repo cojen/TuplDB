@@ -221,7 +221,7 @@ final class TreeNodeStore implements Closeable {
      * Caller must hold commit lock and any latch on node.
      */
     boolean shouldMarkDirty(TreeNode node) {
-        return node.mCachedState != mCommitState;
+        return node.mCachedState != mCommitState && node.mId != TreeNode.STUB_ID;
     }
 
     /**
@@ -233,7 +233,7 @@ final class TreeNodeStore implements Closeable {
      */
     boolean markDirty(TreeNode node) throws IOException {
         byte state = node.mCachedState;
-        if (state == mCommitState) {
+        if (state == mCommitState || node.mId == TreeNode.STUB_ID) {
             return false;
         } else {
             doMarkDirty(node);

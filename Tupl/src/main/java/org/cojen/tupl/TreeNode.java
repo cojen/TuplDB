@@ -36,6 +36,8 @@ final class TreeNode extends Latch {
 
     static final int HEADER_SIZE = 12;
 
+    static final int STUB_ID = 1;
+
     private static final int FAILED = 0, SUCCESS = 1, SPLIT = 2;
 
     // These fields are managed exclusively by TreeNodeStore.
@@ -184,13 +186,18 @@ final class TreeNode extends Latch {
             mId = 0;
             mCachedState = CACHED_CLEAN;
             mType = TYPE_LEAF;
-            mGarbage = 0;
-            mLeftSegTail = HEADER_SIZE;
-            mRightSegTail = pageSize - 1;
-            // Search vector location must be even.
-            mSearchVecStart = (HEADER_SIZE + ((pageSize - HEADER_SIZE) >> 1)) & ~1;
-            mSearchVecEnd = mSearchVecStart - 2; // inclusive
+            clearEntries();
         }
+    }
+
+    private void clearEntries() {
+        mGarbage = 0;
+        mLeftSegTail = HEADER_SIZE;
+        int pageSize = mPage.length;
+        mRightSegTail = pageSize - 1;
+        // Search vector location must be even.
+        mSearchVecStart = (HEADER_SIZE + ((pageSize - HEADER_SIZE) >> 1)) & ~1;
+        mSearchVecEnd = mSearchVecStart - 2; // inclusive
     }
 
     /**
@@ -357,6 +364,7 @@ final class TreeNode extends Latch {
         // Create a child node and copy this root node state into it. Then update this
         // root node to point to new and split child nodes. New root is always an internal node.
 
+        // FIXME: Choose parent stub root, if it exists.
         TreeNode child = store.newNodeForSplit();
 
         byte[] newPage = child.mPage;
@@ -518,6 +526,10 @@ final class TreeNode extends Latch {
     private boolean canEvict() {
         if (mLastCursorFrame != null || mSplit != null) {
             return false;
+        }
+
+        if (mId == STUB_ID) {
+            return true;
         }
 
         TreeNode[] childNodes = mChildNodes;
@@ -1654,8 +1666,6 @@ final class TreeNode extends Latch {
             CursorFrame prev = frame.mPrevCousin;
             int framePos = frame.mNodePos;
             frame.unbind();
-            // FIXME: Verify that this pos adjustment is correct.
-            System.out.println("new pos: " + (leftEndPos + framePos));
             frame.bind(leftNode, leftEndPos + framePos);
             frame = prev;
         }
@@ -1720,16 +1730,20 @@ final class TreeNode extends Latch {
     }
 
     /**
-     * Logically delete this non-leaf root node, after all keys have been
-     * deleted. The state of the lone child node is transferred into the root
-     * node, which might be a leaf. The old child node is then deleted.  Caller
-     * must hold exclusive latches for root node and lone child. No latches are
-     * released by this method.
+     * Prepare to delete this non-leaf root node, after all keys have been
+     * deleted. The state of the lone child is swapped with this root node, and
+     * the child node is repurposed into a stub root node. This allows active
+     * cursors to still function normally until they can unbind.
+     *
+     * <p>Caller must hold exclusive latches for root node and lone child. No
+     * latches are released by this method.
      */
-    void rootDelete(TreeNodeStore store) throws IOException {
-        TreeNode child = mChildNodes[0];
+    void prepareRootDelete(TreeNodeStore store) throws IOException {
+        byte[] page = mPage;
+        TreeNode[] childNodes = mChildNodes;
+        CursorFrame lastCursorFrame = mLastCursorFrame;
 
-        store.prepareToDelete(child);
+        TreeNode child = childNodes[0];
 
         mPage = child.mPage;
         mType = child.mType;
@@ -1738,18 +1752,32 @@ final class TreeNode extends Latch {
         mRightSegTail = child.mRightSegTail;
         mSearchVecStart = child.mSearchVecStart;
         mSearchVecEnd = child.mSearchVecEnd;
-        // FIXME: recycle child node arrays
         mChildNodes = child.mChildNodes;
         mLastCursorFrame = child.mLastCursorFrame;
 
-        // Fix cursor frame bindings and discard the parent frames.
+        // Repurpose the child node into a stub root node. Stub is assigned a
+        // reserved id (1) and a clean cached state. It cannot be marked dirty,
+        // but it can be evicted when all cursors have unbound from it.
+        child.mPage = page;
+        child.mId = STUB_ID;
+        child.mCachedState = CACHED_CLEAN;
+        child.mType = TYPE_INTERNAL;
+        child.clearEntries();
+        child.mChildNodes = childNodes;
+        child.mLastCursorFrame = lastCursorFrame;
+        // Lone child of stub root points to actual root.
+        childNodes[0] = this;
+
+        // Fix cursor bindings for this, the real root node.
         for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
             frame.mNode = this;
-            frame.mParentFrame = null;
             frame = frame.mPrevCousin;
         }
-
-        store.deleteNode(child);
+        // Fix cursor bindings for the stub root node.
+        for (CursorFrame frame = lastCursorFrame; frame != null; ) {
+            frame.mNode = child;
+            frame = frame.mPrevCousin;
+        }
     }
 
     /**

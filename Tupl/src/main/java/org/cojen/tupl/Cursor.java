@@ -1062,8 +1062,10 @@ public final class Cursor {
             }
 
             if (parentNode.numKeys() <= 0) {
-                // FIXME: This shouldn't be a problem when internal nodes can be rebalanced.
-                System.out.println("tiny internal node: " + (parentNode == mStore.root()));
+                if (parentNode.mId != TreeNode.STUB_ID) {
+                    // FIXME: This shouldn't be a problem when internal nodes can be rebalanced.
+                    System.out.println("tiny internal node: " + (parentNode == mStore.root()));
+                }
                 parentNode.releaseExclusive();
                 return;
             }
@@ -1153,7 +1155,7 @@ public final class Cursor {
             // node, and then delete the right node.
             rightNode.transferLeafToLeftAndDelete(mStore, leftNode);
             parentNode.deleteChildRef(leftPos + 2);
-        } else {
+        } else if (false) { // FIXME: testing
             // Rebalance nodes, but don't delete anything. Right node must be dirtied too.
 
             if (mStore.markDirty(rightNode)) {
@@ -1208,7 +1210,8 @@ public final class Cursor {
                 // Note: By retaining child latches (although one has already
                 // been deleted), another thread is prevented from splitting
                 // the lone child. The lone child will become the new root.
-                node.rootDelete(mStore);
+                // TODO: Investigate if this creates deadlocks.
+                node.prepareRootDelete(mStore);
             }
 
             rightChildNode.releaseExclusive();
@@ -1232,6 +1235,9 @@ public final class Cursor {
         }
 
         TreeNode parentNode = parentFrame.acquireExclusiveUnfair();
+        if (parentNode.isLeaf()) {
+            throw new Error("parent is leaf!");
+        }
 
         TreeNode leftNode, rightNode;
         int nodeAvail;
@@ -1241,8 +1247,10 @@ public final class Cursor {
             }
 
             if (parentNode.numKeys() <= 0) {
-                // FIXME: This shouldn't be a problem when internal nodes can be rebalanced.
-                System.out.println("tiny internal node (2): " + (parentNode == mStore.root()));
+                if (parentNode.mId != TreeNode.STUB_ID) {
+                    // FIXME: This shouldn't be a problem when internal nodes can be rebalanced.
+                    System.out.println("tiny internal node (2): " + (parentNode == mStore.root()));
+                }
                 parentNode.releaseExclusive();
                 return;
             }
@@ -1318,6 +1326,12 @@ public final class Cursor {
             rightAvail = nodeAvail;
         }
 
+        // FIXME: testing
+        if (leftNode == null || rightNode == null) {
+            System.out.println("fail: " + leftNode + ", " + rightNode);
+            System.exit(1);
+        }
+
         // Left node must always be marked dirty. Parent is already expected to be dirty.
         if (mStore.markDirty(leftNode)) {
             parentNode.updateChildRefId(leftPos, leftNode.mId);
@@ -1338,7 +1352,7 @@ public final class Cursor {
             rightNode.transferInternalToLeftAndDelete
                 (mStore, leftNode, parentPage, parentEntryLoc, parentEntryLen);
             parentNode.deleteChildRef(leftPos + 2);
-        } else {
+        } else if (false) { // FIXME: testing
             // Rebalance nodes, but don't delete anything. Right node must be dirtied too.
 
             if (mStore.markDirty(rightNode)) {
