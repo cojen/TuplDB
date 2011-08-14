@@ -704,6 +704,9 @@ final class TreeNode extends Latch {
             return -1;
         }
         midPos += lowPos;
+        if (midPos > highPos) {
+            return ~2 - highPos + lowPos;
+        }
 
         final byte[] page = mPage;
         final int keyLen = key.length;
@@ -814,6 +817,9 @@ final class TreeNode extends Latch {
             return -1;
         }
         midPos += lowPos;
+        if (midPos > highPos) {
+            return ~2 - highPos + lowPos;
+        }
 
         final byte[] page = mPage;
         final int keyLen = key.length;
