@@ -1016,10 +1016,20 @@ public final class Cursor {
         }
 
         // Make sure the parent is not split and dirty too.
-        node.releaseExclusive();
-        parentFrame.acquireExclusiveUnfair();
-        TreeNode parentNode = notSplitDirty(parentFrame, store);
-        node = frame.acquireExclusiveUnfair();
+        TreeNode parentNode;
+        doParent: {
+            parentNode = parentFrame.tryAcquireExclusiveUnfair();
+            if (parentNode == null) {
+                node.releaseExclusive();
+                parentFrame.acquireExclusiveUnfair();
+            } else if (parentNode.mSplit != null || store.shouldMarkDirty(parentNode)) {
+                node.releaseExclusive();
+            } else {
+                break doParent;
+            }
+            parentNode = notSplitDirty(parentFrame, store);
+            node = frame.acquireExclusiveUnfair();
+        }
 
         while (node.mSplit != null) {
             // Already dirty now, but finish the split. Since parent latch is
@@ -1211,7 +1221,7 @@ public final class Cursor {
                 // been deleted), another thread is prevented from splitting
                 // the lone child. The lone child will become the new root.
                 // TODO: Investigate if this creates deadlocks.
-                node.prepareRootDelete(mStore);
+                node.rootDelete(mStore);
             }
 
             rightChildNode.releaseExclusive();
@@ -1397,7 +1407,14 @@ public final class Cursor {
     {
         // FIXME: How to acquire shared commit lock without deadlock?
         if (node == store.root()) {
-            node.finishSplitRoot(store);
+            TreeNode stub;
+            if (store.hasStub()) {
+                // FIXME: Use tryPopStub first, to avoid deadlock.
+                stub = store.validateStub(store.popStub());
+            } else {
+                stub = null;
+            }
+            node.finishSplitRoot(store, stub);
             return node;
         }
 

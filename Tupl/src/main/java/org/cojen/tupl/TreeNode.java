@@ -359,12 +359,14 @@ final class TreeNode extends Latch {
 
     /**
      * Caller must hold exclusive root latch and it must verify that root has split.
+     *
+     * @param stub Old root node stub, latched exclusively, whose cursors must
+     * transfer into the new root. Stub latch is released by this method.
      */
-    void finishSplitRoot(TreeNodeStore store) throws IOException {
+    void finishSplitRoot(TreeNodeStore store, TreeNode stub) throws IOException {
         // Create a child node and copy this root node state into it. Then update this
         // root node to point to new and split child nodes. New root is always an internal node.
 
-        // FIXME: Choose parent stub root, if it exists.
         TreeNode child = store.newNodeForSplit();
 
         byte[] newPage = child.mPage;
@@ -419,21 +421,33 @@ final class TreeNode extends Latch {
         mLastCursorFrame = null;
 
         // Add a parent cursor frame for all left and right node cursors.
-        for (CursorFrame frame = left.mLastCursorFrame; frame != null; ) {
-            CursorFrame rootFrame = new CursorFrame();
-            rootFrame.bind(this, 0);
-            frame.mParentFrame = rootFrame;
-            frame = frame.mPrevCousin;
-        }
-        for (CursorFrame frame = right.mLastCursorFrame; frame != null; ) {
-            CursorFrame rootFrame = new CursorFrame();
-            rootFrame.bind(this, 2);
-            frame.mParentFrame = rootFrame;
-            frame = frame.mPrevCousin;
-        }
+        addParentFrames(stub, left, 0);
+        addParentFrames(stub, right, 2);
 
         child.releaseExclusive();
         sibling.releaseExclusive();
+
+        if (stub != null) {
+            stub.releaseExclusive();
+        }
+    }
+
+    private void addParentFrames(TreeNode stub, TreeNode child, int pos) {
+        for (CursorFrame frame = child.mLastCursorFrame; frame != null; ) {
+            CursorFrame parentFrame = frame.mParentFrame;
+            if (parentFrame == null) {
+                parentFrame = new CursorFrame();
+            } else {
+                if (parentFrame.mNode != stub) {
+                    throw new AssertionError
+                        ("Stub mismatch: " + parentFrame.mNode + " != " + stub);
+                }
+                parentFrame.unbind();
+            }
+            parentFrame.bind(this, pos);
+            frame.mParentFrame = parentFrame;
+            frame = frame.mPrevCousin;
+        }
     }
 
     /**
@@ -605,6 +619,13 @@ final class TreeNode extends Latch {
      */
     int highestInternalPos() {
         return mSearchVecEnd - mSearchVecStart + 2;
+    }
+
+    /**
+     * Caller must hold any latch.
+     */
+    int availableBytes() {
+        return isLeaf() ? availableLeafBytes() : availableInternalBytes();
     }
 
     /**
@@ -1361,8 +1382,7 @@ final class TreeNode extends Latch {
      */
     private TreeNode rebindSplitFrames(TreeNodeStore store, Split split) throws IOException {
         final TreeNode sibling = split.latchSibling(store);
-        CursorFrame frame = mLastCursorFrame;
-        while (frame != null) {
+        for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
             // Capture previous frame from linked list before changing the links.
             CursorFrame prev = frame.mPrevCousin;
             split.rebindFrame(frame, sibling);
@@ -1588,8 +1608,7 @@ final class TreeNode extends Latch {
         }
 
         // All cursors in this node must be moved to left node.
-        CursorFrame frame = mLastCursorFrame;
-        while (frame != null) {
+        for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
             // Capture previous frame from linked list before changing the links.
             CursorFrame prev = frame.mPrevCousin;
             int framePos = frame.mNodePos;
@@ -1660,8 +1679,7 @@ final class TreeNode extends Latch {
         leftNode.mChildNodes = newChildNodes;
 
         // All cursors in this node must be moved to left node.
-        CursorFrame frame = mLastCursorFrame;
-        while (frame != null) {
+        for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
             // Capture previous frame from linked list before changing the links.
             CursorFrame prev = frame.mPrevCousin;
             int framePos = frame.mNodePos;
@@ -1730,20 +1748,23 @@ final class TreeNode extends Latch {
     }
 
     /**
-     * Prepare to delete this non-leaf root node, after all keys have been
-     * deleted. The state of the lone child is swapped with this root node, and
-     * the child node is repurposed into a stub root node. This allows active
-     * cursors to still function normally until they can unbind.
+     * Delete this non-leaf root node, after all keys have been deleted. The
+     * state of the lone child is swapped with this root node, and the child
+     * node is repurposed into a stub root node. The old page used by the child
+     * node is deleted. This design allows active cursors to still function
+     * normally until they can unbind.
      *
      * <p>Caller must hold exclusive latches for root node and lone child. No
      * latches are released by this method.
      */
-    void prepareRootDelete(TreeNodeStore store) throws IOException {
+    void rootDelete(TreeNodeStore store) throws IOException {
         byte[] page = mPage;
         TreeNode[] childNodes = mChildNodes;
         CursorFrame lastCursorFrame = mLastCursorFrame;
 
         TreeNode child = childNodes[0];
+        store.prepareToDelete(child);
+        long toDelete = child.mId;
 
         mPage = child.mPage;
         mType = child.mType;
@@ -1778,6 +1799,12 @@ final class TreeNode extends Latch {
             frame.mNode = child;
             frame = frame.mPrevCousin;
         }
+
+        store.addStub(child);
+
+        // The page can be deleted earlier in the method, but doing it here
+        // might prevent corruption if an unexpected exception occurs.
+        store.deletePage(toDelete);
     }
 
     /**
@@ -2480,6 +2507,21 @@ final class TreeNode extends Latch {
         int mKeyLoc;
         int mNewChildLoc;
         int mEntryLoc;
+    }
+
+    /**
+     * No latches are acquired by this method -- it is only used for debugging.
+     */
+    @Override
+    public String toString() {
+        return "TreeNode: {id=" + mId +
+            ", isLeaf=" + isLeaf() +
+            ", cachedState=" + mCachedState +
+            ", canEvict=" + canEvict() +
+            ", isSplit=" + (mSplit != null) +
+            ", availableBytes=" + availableBytes() +
+            ", lockState=" + super.toString() +
+            '}';
     }
 
     /**
