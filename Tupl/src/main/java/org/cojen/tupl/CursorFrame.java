@@ -82,6 +82,24 @@ final class CursorFrame {
         }
     }
 
+    /**
+     * Acquire an exclusive latch on this frame's bound node.
+     *
+     * @return frame node, or null if not acquired
+     */
+    TreeNode tryAcquireExclusiveUnfair() {
+        TreeNode node = mNode;
+        while (node.tryAcquireExclusiveUnfair()) {
+            TreeNode actualNode = mNode;
+            if (actualNode == node) {
+                return actualNode;
+            }
+            node.releaseExclusive();
+            node = actualNode;
+        }
+        return null;
+    }
+
     /** 
      * Bind this frame to a tree node. Called with exclusive latch held.
      */

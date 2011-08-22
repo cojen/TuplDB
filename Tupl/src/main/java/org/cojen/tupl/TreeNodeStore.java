@@ -48,10 +48,19 @@ final class TreeNodeStore implements Closeable {
 
     private final Lock mSharedCommitLock;
 
+    // Although tree roots can be created and deleted, the object which refers
+    // to the root remains the same. Internal state is transferred to/from this
+    // object when the tree root changes.
     private final TreeNode mRoot;
 
     // Is either CACHED_DIRTY_0 or CACHED_DIRTY_1. Access is guarded by commit lock.
     private byte mCommitState;
+
+    // Maintain a stack of stubs, which are created when root nodes are
+    // deleted. When a new root is created, a stub is popped, and cursors bound
+    // to it are transferred into the new root. Access to this stack is guarded
+    // by the root node latch.
+    private Stub mStubTail;
 
     TreeNodeStore(PageStore store, int minCachedNodeCount, int maxCachedNodeCount)
         throws IOException
@@ -278,12 +287,7 @@ final class TreeNodeStore implements Closeable {
      * never released by this method, even if an exception is thrown.
      */
     void deleteNode(TreeNode node) throws IOException {
-        long id = node.mId;
-        if (id != 0) {
-            // TODO: Id can immediately be re-used, depending on the cached
-            // state. Also see notes in the TreeNode.evict method.
-            mPageStore.deletePage(id);
-        }
+        deletePage(node.mId);
 
         node.mId = 0;
         // FIXME: child node array should be recycled
@@ -312,6 +316,71 @@ final class TreeNodeStore implements Closeable {
         } finally {
             mCacheLatch.releaseExclusive();
         }
+    }
+
+    /**
+     * Caller must hold commit lock.
+     */
+    void deletePage(long id) throws IOException {
+        if (id != 0) {
+            // TODO: Id can immediately be re-used, depending on the cached
+            // state. Also see notes in the TreeNode.evict method.
+            mPageStore.deletePage(id);
+        }
+    }
+
+    /**
+     * Caller must exclusively hold root latch.
+     */
+    void addStub(TreeNode node) {
+        mStubTail = new Stub(mStubTail, node);
+    }
+
+    /**
+     * Caller must exclusively hold root latch.
+     */
+    boolean hasStub() {
+        return mStubTail != null;
+    }
+
+    /**
+     * Attempts to exclusively latch and pop the tail stub node. Returns null
+     * if latch cannot be immediatly obtained. Caller must exclusively hold
+     * root latch and have checked that a stub exists.
+     */
+    TreeNode tryPopStub() {
+        Stub stub = mStubTail;
+        if (stub.mNode.tryAcquireExclusiveUnfair()) {
+            mStubTail = stub.mParent;
+            return stub.mNode;
+        }
+        return null;
+    }
+
+    /**
+     * Exclusively latches and pops the tail stub node. Caller must exclusively
+     * hold root latch and have checked that a stub exists.
+     */
+    TreeNode popStub() {
+        Stub stub = mStubTail;
+        stub.mNode.acquireExclusiveUnfair();
+        mStubTail = stub.mParent;
+        return stub.mNode;
+    }
+
+    /**
+     * Checks if popped stub is still valid, because it has not been evicted
+     * and it actually has cursors bound to it. Caller must hold exclusive
+     * latch, which is released if node is not valid.
+     *
+     * @return node if valid, null otherwise
+     */
+    TreeNode validateStub(TreeNode node) {
+        if (node.mId == TreeNode.STUB_ID && node.mLastCursorFrame != null) {
+            return node;
+        }
+        node.releaseExclusive();
+        return null;
     }
 
     /**
@@ -487,6 +556,16 @@ final class TreeNodeStore implements Closeable {
             long a = mId;
             long b = other.mId;
             return a < b ? -1 : (a > b ? 1 : 0);
+        }
+    }
+
+    static final class Stub {
+        final Stub mParent;
+        final TreeNode mNode;
+
+        Stub(Stub parent, TreeNode node) {
+            mParent = parent;
+            mNode = node;
         }
     }
 }
