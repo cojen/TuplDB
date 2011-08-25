@@ -133,6 +133,14 @@ final class CursorFrame {
     }
 
     /**
+     * Returns the parent frame. Called with exclusive latch held, which is
+     * retained.
+     */
+    CursorFrame peek() {
+        return mParentFrame;
+    }
+
+    /**
      * Pop this, the leaf frame, returning the parent frame. Called with
      * exclusive latch held, which is retained.
      */
@@ -143,6 +151,17 @@ final class CursorFrame {
         mParentFrame = null;
         mNotFoundKey = null;
         return parent;
+    }
+
+    /**
+     * Pop this, the leaf frame, returning void. Called with exclusive latch
+     * held, which is retained.
+     */
+    void popv() {
+        unbind();
+        mNode = null;
+        mParentFrame = null;
+        mNotFoundKey = null;
     }
 
     /**
