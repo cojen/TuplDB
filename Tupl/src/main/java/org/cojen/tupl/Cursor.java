@@ -126,7 +126,8 @@ public final class Cursor {
             return false;
         }
 
-        return toFirst(root, frame);
+        toFirst(root, frame);
+        return true;
     }
 
     /**
@@ -135,14 +136,14 @@ public final class Cursor {
      * @param node latched node
      * @param frame frame to bind node to
      */
-    private boolean toFirst(TreeNode node, CursorFrame frame) throws IOException {
+    private void toFirst(TreeNode node, CursorFrame frame) throws IOException {
         while (true) {
             frame.bind(node, 0);
 
             if (node.isLeaf()) {
                 node.releaseExclusive();
                 mLeaf = frame;
-                return true;
+                return;
             }
 
             if (node.mSplit != null) {
@@ -168,7 +169,8 @@ public final class Cursor {
             return false;
         }
 
-        return toLast(root, frame);
+        toLast(root, frame);
+        return true;
     }
 
     /**
@@ -177,7 +179,7 @@ public final class Cursor {
      * @param node latched node
      * @param frame frame to bind node to
      */
-    private boolean toLast(TreeNode node, CursorFrame frame) throws IOException {
+    private void toLast(TreeNode node, CursorFrame frame) throws IOException {
         while (true) {
             if (node.isLeaf()) {
                 int pos;
@@ -189,7 +191,7 @@ public final class Cursor {
                 frame.bind(node, pos);
                 node.releaseExclusive();
                 mLeaf = frame;
-                return true;
+                return;
             }
 
             Split split = node.mSplit;
@@ -265,39 +267,122 @@ public final class Cursor {
     // Caller must be synchronized.
     private boolean next(CursorFrame frame) throws IOException {
         TreeNode node = frame.mNode;
-        int pos = frame.mNodePos;
-        if (pos < 0) {
-            frame.mNotFoundKey = null;
-            pos = (~pos) - 2;
-        }
 
-        if (pos < node.highestLeafPos()) {
+        quick: {
+            int pos = frame.mNodePos;
+
+            if (pos < 0) {
+                pos = -3 - pos; // eq: (~pos) - 2;
+                if (pos >= node.highestLeafPos()) {
+                    break quick;
+                }
+                frame.mNotFoundKey = null;
+            } else if (pos >= node.highestLeafPos()) {
+                break quick;
+            }
+
             frame.mNodePos = pos + 2;
             node.releaseExclusive();
             return true;
         }
 
         while (true) {
-            frame = frame.pop();
-            node.releaseExclusive();
-            if (frame == null) {
+            CursorFrame parentFrame = frame.peek();
+
+            if (parentFrame == null) {
+                frame.popv();
+                node.releaseExclusive();
                 mLeaf = null;
                 return false;
             }
 
-            node = frame.acquireExclusiveUnfair();
+            TreeNode parentNode;
+            int parentPos;
 
-            if (node.mSplit != null) {
-                node = finishSplit(frame, node, mStore);
+            latchParent: {
+                splitCheck: {
+                    // Latch coupling up the tree usually works, so give it a
+                    // try. If it works, then there's no need to worry about a
+                    // node merge.
+                    parentNode = parentFrame.tryAcquireExclusiveUnfair();
+
+                    if (parentNode == null) {
+                        // Latch coupling failed, and so acquire parent latch
+                        // without holding child latch. The child might have
+                        // changed, and so it must be checked again.
+                        node.releaseExclusive();
+                        parentNode = parentFrame.acquireExclusiveUnfair();
+                        if (parentNode.mSplit == null) {
+                            break splitCheck;
+                        }
+                    } else {
+                        if (parentNode.mSplit == null) {
+                            frame.popv();
+                            node.releaseExclusive();
+                            parentPos = parentFrame.mNodePos;
+                            break latchParent;
+                        }
+                        node.releaseExclusive();
+                    }
+
+                    // When this point is reached, parent node must be split.
+                    // Parent latch is held, child latch is not held, but the
+                    // frame is still valid.
+
+                    parentNode = finishSplit(parentFrame, parentNode, mStore);
+                }
+
+                // When this point is reached, child must be relatched. Parent
+                // latch is held, and the child frame is still valid.
+
+                parentPos = parentFrame.mNodePos;
+                node = latchChild(parentNode, parentPos, false);
+
+                // Quick check again, in case node got bigger due to merging.
+                // Unlike the earlier quick check, this one must handle
+                // internal nodes too.
+                quick: {
+                    int pos = frame.mNodePos;
+
+                    if (pos < 0) {
+                        pos = -3 - pos; // eq: (~pos) - 2;
+                        if (pos >= node.highestLeafPos()) {
+                            break quick;
+                        }
+                        frame.mNotFoundKey = null;
+                    } else if (pos >= node.highestPos()) {
+                        break quick;
+                    }
+
+                    parentNode.releaseExclusive();
+                    pos += 2;
+                    frame.mNodePos = pos;
+
+                    if (frame == mLeaf) {
+                        node.releaseExclusive();
+                    } else {
+                        toFirst(latchChild(node, pos, true), new CursorFrame(frame));
+                    }
+
+                    return true;
+                }
+
+                frame.popv();
+                node.releaseExclusive();
             }
 
-            pos = frame.mNodePos;
+            // When this point is reached, only the parent latch is held. Child
+            // frame is no longer valid.
 
-            if (pos < node.highestInternalPos()) {
-                pos += 2;
-                frame.mNodePos = pos;
-                return toFirst(latchChild(node, pos, true), new CursorFrame(frame));
+            if (parentPos < parentNode.highestInternalPos()) {
+                parentPos += 2;
+                parentFrame.mNodePos = parentPos;
+                toFirst(latchChild(parentNode, parentPos, true), new CursorFrame(parentFrame));
+                return true;
             }
+
+            frame = parentFrame;
+            node = parentNode;
         }
     }
 
@@ -333,6 +418,7 @@ public final class Cursor {
             return true;
         }
 
+        // FIXME: rewrite similar to next method
         while (true) {
             frame = frame.pop();
             node.releaseExclusive();
@@ -352,7 +438,8 @@ public final class Cursor {
             if (pos > 0) {
                 pos -= 2;
                 frame.mNodePos = pos;
-                return toLast(latchChild(node, pos, true), new CursorFrame(frame));
+                toLast(latchChild(node, pos, true), new CursorFrame(frame));
+                return true;
             }
         }
     }
