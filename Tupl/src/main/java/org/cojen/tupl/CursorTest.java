@@ -23,17 +23,13 @@ package org.cojen.tupl;
  */
 public class CursorTest {
     public static void main(String[] args) throws Exception {
-        java.io.File file0, file1;
-        file0 = new java.io.File(args[0] + ".0");
-        file1 = new java.io.File(args[0] + ".1");
+        java.io.File file = new java.io.File(args[0]);
 
-        final PageStore pstore = new DualFilePageStore(file0, file1);
-        final int cachedNodes = 1000;
-        final TreeNodeStore store = new TreeNodeStore(pstore, 0, cachedNodes);
+        final Database db = new Database
+            (DatabaseConfig.newConfig().setBaseFile(file).setMinCachedNodes(1000));
+        final View view = db.openView("test1");
 
-        //root.dump(store, "");
-
-        Cursor c = new Cursor(store);
+        Cursor c = view.newCursor();
 
         System.out.println(c.find("key-5".getBytes()));
         printEntry(c);
@@ -55,7 +51,7 @@ public class CursorTest {
     static void printEntry(Cursor c) throws Exception {
         Entry entry = new Entry();
         c.getEntry(entry);
-        System.out.println(string(entry.key) + " = " + string(entry.value));
+        System.out.println(string(entry));
     }
 
     static String string(byte[] b) {
@@ -64,5 +60,9 @@ public class CursorTest {
 
     static String string(byte[] b, int off, int len) {
         return b == null ? "null" : new String(b, off, len);
+    }
+
+    static String string(Entry entry) {
+        return string(entry.key) + " = " + string(entry.value);
     }
 }

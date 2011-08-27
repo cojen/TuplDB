@@ -83,8 +83,8 @@ public class Entry {
         return false;
     }
 
-    // Called by Cursor.
-    byte[] get(CursorFrame leaf, TreeNode node) {
+    // Called by TreeCursor.
+    byte[] get(TreeCursorFrame leaf, TreeNode node) {
         int pos = leaf.mNodePos;
         if (pos < 0) {
             key = leaf.mNotFoundKey.clone();
@@ -98,7 +98,7 @@ public class Entry {
 
     static final Entry GET_KEY = new Entry() {
         @Override
-        byte[] get(CursorFrame leaf, TreeNode node) {
+        byte[] get(TreeCursorFrame leaf, TreeNode node) {
             int pos = leaf.mNodePos;
             return pos < 0 ? (leaf.mNotFoundKey.clone()) : node.retrieveLeafKey(pos);
         }
@@ -106,7 +106,7 @@ public class Entry {
 
     static final Entry GET_VALUE = new Entry() {
         @Override
-        byte[] get(CursorFrame leaf, TreeNode node) {
+        byte[] get(TreeCursorFrame leaf, TreeNode node) {
             int pos = leaf.mNodePos;
             return pos < 0 ? null : node.retrieveLeafValue(pos);
         }

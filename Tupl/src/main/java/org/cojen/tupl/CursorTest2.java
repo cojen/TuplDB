@@ -25,18 +25,16 @@ import java.util.Random;
  */
 public class CursorTest2 {
     public static void main(String[] args) throws Exception {
-        java.io.File file0, file1;
-        file0 = new java.io.File(args[0] + ".0");
-        file1 = new java.io.File(args[0] + ".1");
+        java.io.File file = new java.io.File(args[0]);
 
-        final PageStore pstore = new DualFilePageStore(file0, file1);
-        final int cachedNodes = 100000;
-        final TreeNodeStore store = new TreeNodeStore(pstore, cachedNodes, cachedNodes);
+        final Database db = new Database
+            (DatabaseConfig.newConfig().setBaseFile(file).setMinCachedNodes(100000));
+        final View view = db.openView("test2");
 
-        Cursor c = new Cursor(store);
-        Cursor c2 = new Cursor(store);
-        Cursor c3 = new Cursor(store);
-        Cursor c4 = new Cursor(store);
+        Cursor c = view.newCursor();
+        Cursor c2 = view.newCursor();
+        Cursor c3 = view.newCursor();
+        Cursor c4 = view.newCursor();
 
         System.out.println(c.find("hello".getBytes()));
         System.out.println(c2.find("hello".getBytes()));
@@ -58,12 +56,12 @@ public class CursorTest2 {
         System.out.println(c4.next());
         CursorTest.printEntry(c4);
 
-        Cursor c5 = new Cursor(store);
+        Cursor c5 = view.newCursor();
         c5.find("z".getBytes());
         c5.store("zzz".getBytes());
 
         final long seed = 892347;
-        final int count = 1000000;
+        final int count = 100000;
 
         Random rnd = new Random(seed);
         for (int i=0; i<count; i++) {
@@ -75,6 +73,7 @@ public class CursorTest2 {
                 c.store(value);
             }
 
+            /*
             try {
                 c.verify();
                 c2.verify();
@@ -85,6 +84,7 @@ public class CursorTest2 {
                 System.out.println("i: " + i);
                 throw e;
             }
+            */
         }
 
         rnd = new Random(seed);
@@ -97,6 +97,11 @@ public class CursorTest2 {
             }
         }
 
-        //store.commit();
+        db.commit();
+
+        c5.last();
+        do {
+            CursorTest.printEntry(c5);
+        } while (c5.previous());
     }
 }

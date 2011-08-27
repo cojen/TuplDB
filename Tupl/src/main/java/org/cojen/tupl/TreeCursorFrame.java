@@ -23,26 +23,26 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-final class CursorFrame {
-    // TreeNode and position this CursorFrame is bound to.
+final class TreeCursorFrame {
+    // TreeNode and position this TreeCursorFrame is bound to.
     TreeNode mNode;
     int mNodePos;
 
-    // Parent stack frame. A CursorFrame which is bound to the root TreeNode
-    // has no parent frame.
-    CursorFrame mParentFrame;
+    // Parent stack frame. A TreeCursorFrame which is bound to the root
+    // TreeNode has no parent frame.
+    TreeCursorFrame mParentFrame;
 
-    // Linked list of CursorFrames bound to a TreeNode.
-    CursorFrame mPrevCousin;
-    CursorFrame mNextCousin;
+    // Linked list of TreeCursorFrames bound to a TreeNode.
+    TreeCursorFrame mPrevCousin;
+    TreeCursorFrame mNextCousin;
 
     // Reference to key which wasn't found. Only used by leaf frames.
     byte[] mNotFoundKey;
 
-    CursorFrame() {
+    TreeCursorFrame() {
     }
 
-    CursorFrame(CursorFrame parentFrame) {
+    TreeCursorFrame(TreeCursorFrame parentFrame) {
         mParentFrame = parentFrame;
     }
 
@@ -106,7 +106,7 @@ final class CursorFrame {
     void bind(TreeNode node, int nodePos) {
         mNode = node;
         mNodePos = nodePos;
-        CursorFrame last = node.mLastCursorFrame;
+        TreeCursorFrame last = node.mLastCursorFrame;
         if (last != null) {
             mPrevCousin = last;
             last.mNextCousin = this;
@@ -118,8 +118,8 @@ final class CursorFrame {
      * Unbind this frame from a tree node. Called with exclusive latch held.
      */
     void unbind() {
-        CursorFrame prev = mPrevCousin;
-        CursorFrame next = mNextCousin;
+        TreeCursorFrame prev = mPrevCousin;
+        TreeCursorFrame next = mNextCousin;
         if (prev != null) {
             prev.mNextCousin = next;
             mPrevCousin = null;
@@ -136,7 +136,7 @@ final class CursorFrame {
      * Returns the parent frame. Called with exclusive latch held, which is
      * retained.
      */
-    CursorFrame peek() {
+    TreeCursorFrame peek() {
         return mParentFrame;
     }
 
@@ -144,9 +144,9 @@ final class CursorFrame {
      * Pop this, the leaf frame, returning the parent frame. Called with
      * exclusive latch held, which is retained.
      */
-    CursorFrame pop() {
+    TreeCursorFrame pop() {
         unbind();
-        CursorFrame parent = mParentFrame;
+        TreeCursorFrame parent = mParentFrame;
         mNode = null;
         mParentFrame = null;
         mNotFoundKey = null;
@@ -167,7 +167,7 @@ final class CursorFrame {
     /**
      * Pop given non-null frame and all parent frames.
      */
-    static void popAll(CursorFrame frame) {
+    static void popAll(TreeCursorFrame frame) {
         do {
             TreeNode node = frame.acquireExclusiveUnfair();
             frame = frame.pop();
@@ -180,13 +180,13 @@ final class CursorFrame {
      *
      * @param dest new frame instance to receive copy
      */
-    void copyInto(CursorFrame dest) {
+    void copyInto(TreeCursorFrame dest) {
         TreeNode node = acquireExclusiveUnfair();
-        CursorFrame parent = mParentFrame;
+        TreeCursorFrame parent = mParentFrame;
 
         if (parent != null) {
             node.releaseExclusive();
-            CursorFrame parentCopy = new CursorFrame();
+            TreeCursorFrame parentCopy = new TreeCursorFrame();
 
             while (true) {
                 // Need to check if parent is null, when looping back.
@@ -196,7 +196,7 @@ final class CursorFrame {
 
                 // Parent can change when tree height is concurrently changing.
                 node = acquireExclusiveUnfair();
-                final CursorFrame actualParent = mParentFrame;
+                final TreeCursorFrame actualParent = mParentFrame;
 
                 if (actualParent == parent) {
                     // Parent frame hasn't changed, so use the copy.

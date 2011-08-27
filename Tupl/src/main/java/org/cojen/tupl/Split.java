@@ -211,7 +211,7 @@ class Split {
     /**
      * @param frame frame affected by split; exclusive latch for sibling must also be held
      */
-    void rebindFrame(CursorFrame frame, TreeNode sibling) throws IOException {
+    void rebindFrame(TreeCursorFrame frame, TreeNode sibling) throws IOException {
         TreeNode node = frame.mNode;
         int pos = frame.mNodePos;
 
