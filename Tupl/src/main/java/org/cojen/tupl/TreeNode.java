@@ -173,8 +173,8 @@ final class TreeNode extends Latch {
     // References to child nodes currently available. Is null for leaf nodes.
     TreeNode[] mChildNodes;
 
-    // Linked stack of CursorFrames bound to this TreeNode.
-    CursorFrame mLastCursorFrame;
+    // Linked stack of TreeCursorFrames bound to this TreeNode.
+    TreeCursorFrame mLastCursorFrame;
 
     // Set by a partially completed split.
     Split mSplit;
@@ -206,11 +206,11 @@ final class TreeNode extends Latch {
      * @param key search key
      * @return copy of value or null if not found
      */
-    byte[] search(TreeNodeStore store, byte[] key) throws IOException {
+    byte[] search(Tree tree, byte[] key) throws IOException {
         acquireSharedUnfair();
         // Note: No need to check if root has split, since root splits are always
         // completed before releasing the root latch.
-        return isLeaf() ? subSearchLeaf(key) : subSearch(this, null, store, key, false);
+        return isLeaf() ? subSearchLeaf(key) : subSearch(tree, this, null, key, false);
     }
 
     /**
@@ -223,9 +223,8 @@ final class TreeNode extends Latch {
      * @param exclusiveHeld is true if exclusive latch is held on this node
      * @return copy of value or null if not found
      */
-    private static byte[] subSearch(TreeNode node, Latch parentLatch,
-                                    TreeNodeStore store, byte[] key,
-                                    boolean exclusiveHeld)
+    private static byte[] subSearch(Tree tree, TreeNode node, Latch parentLatch,
+                                    byte[] key, boolean exclusiveHeld)
         throws IOException
     {
         // Caller invokes store.used for this TreeNode. Root node is not managed in
@@ -254,12 +253,12 @@ final class TreeNode extends Latch {
                 }
 
                 if (childNode.mSplit != null) {
-                    childNode = childNode.mSplit.selectNodeShared(store, childNode, key);
+                    childNode = childNode.mSplit.selectNodeShared(tree.mStore, childNode, key);
                 }
 
                 if (childNode.isLeaf()) {
                     node.release(exclusiveHeld);
-                    store.used(childNode);
+                    tree.mStore.used(childNode);
                     return childNode.subSearchLeaf(key);
                 } else {
                     // Keep shared latch on this parent node, in case sub search
@@ -267,8 +266,8 @@ final class TreeNode extends Latch {
                     if (exclusiveHeld) {
                         node.downgrade();
                     }
-                    store.used(childNode);
-                    return subSearch(childNode, node, store, key, false);
+                    tree.mStore.used(childNode);
+                    return subSearch(tree, childNode, node, key, false);
                 }
             } // end childCheck
 
@@ -292,10 +291,10 @@ final class TreeNode extends Latch {
 
             if (node.mSplit != null) {
                 // Node might have split while shared latch was not held.
-                node = node.mSplit.selectNodeExclusive(store, node, key);
+                node = node.mSplit.selectNodeExclusive(tree.mStore, node, key);
             }
 
-            if (node == store.root()) {
+            if (node == tree.mRoot) {
                 // This is the root node, and so no parent latch exists. It is
                 // possible that a delete slipped in when the latch was
                 // released, and that the root is now a leaf.
@@ -309,7 +308,7 @@ final class TreeNode extends Latch {
         // If this point is reached, exclusive latch for this node is held and
         // child needs to be loaded. Parent latch has been released.
 
-        TreeNode childNode = store.allocLatchedNode();
+        TreeNode childNode = tree.mStore.allocLatchedNode();
         childNode.mId = childId;
         node.mChildNodes[childPos >> 1] = childNode;
 
@@ -319,7 +318,7 @@ final class TreeNode extends Latch {
         node.releaseExclusive();
 
         try {
-            childNode.read(store, childId);
+            childNode.read(tree.mStore, childId);
         } catch (IOException e) {
             // Another thread might access child and see that it is invalid because
             // id is zero. It will assume it got evicted and will load child again.
@@ -335,7 +334,7 @@ final class TreeNode extends Latch {
             // Keep exclusive latch on internal child, because it will most
             // likely need to load its own child nodes to continue the
             // search. This eliminates the latch upgrade step.
-            return subSearch(childNode, null, store, key, true);
+            return subSearch(tree, childNode, null, key, true);
         }
     }
 
@@ -381,7 +380,7 @@ final class TreeNode extends Latch {
         child.mLastCursorFrame = mLastCursorFrame;
 
         // Fix child node cursor frame bindings.
-        for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
+        for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
             frame.mNode = child;
             frame = frame.mPrevCousin;
         }
@@ -433,10 +432,10 @@ final class TreeNode extends Latch {
     }
 
     private void addParentFrames(TreeNode stub, TreeNode child, int pos) {
-        for (CursorFrame frame = child.mLastCursorFrame; frame != null; ) {
-            CursorFrame parentFrame = frame.mParentFrame;
+        for (TreeCursorFrame frame = child.mLastCursorFrame; frame != null; ) {
+            TreeCursorFrame parentFrame = frame.mParentFrame;
             if (parentFrame == null) {
-                parentFrame = new CursorFrame();
+                parentFrame = new TreeCursorFrame();
             } else {
                 if (parentFrame.mNode != stub) {
                     throw new AssertionError
@@ -955,6 +954,25 @@ final class TreeNode extends Latch {
 
     /**
      * @param pos position as provided by binarySearchLeaf; must be positive
+     * @param value non-null value to compare to
+     */
+    boolean equalsLeafValue(int pos, byte[] value) {
+        final byte[] page = mPage;
+
+        int loc = DataIO.readUnsignedShort(page, mSearchVecStart + pos);
+        int header = page[loc++];
+        if ((header & 0x40) != 0) {
+            return value.length == 0;
+        }
+        loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
+        int len = page[loc++];
+        len = len >= 0 ? (len + 1) : ((((len & 0x7f) << 8) | (page[loc++] & 0xff)) + 129);
+
+        return Utils.compareKeys(page, loc, len, value, 0, value.length) == 0;
+    }
+
+    /**
+     * @param pos position as provided by binarySearchLeaf; must be positive
      */
     void retrieveLeafEntry(int pos, Entry entry) {
         final byte[] page = mPage;
@@ -1173,7 +1191,7 @@ final class TreeNode extends Latch {
         }
 
         // Positions of frames higher than split key need to be incremented.
-        for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
+        for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
             int framePos = frame.mNodePos;
             if (framePos > keyPos) {
                 frame.mNodePos = framePos + 2;
@@ -1183,8 +1201,8 @@ final class TreeNode extends Latch {
 
         // Positions of frames equal to split key are in the split itself. Only
         // frames for the right split need to be incremented.
-        for (CursorFrame childFrame = rightChild.mLastCursorFrame; childFrame != null; ) {
-            CursorFrame frame = childFrame.mParentFrame;
+        for (TreeCursorFrame childFrame = rightChild.mLastCursorFrame; childFrame != null; ) {
+            TreeCursorFrame frame = childFrame.mParentFrame;
             if (frame.mNode != this) {
                 throw new AssertionError("Invalid cursor frame parent");
             }
@@ -1382,9 +1400,9 @@ final class TreeNode extends Latch {
      */
     private TreeNode rebindSplitFrames(TreeNodeStore store, Split split) throws IOException {
         final TreeNode sibling = split.latchSibling(store);
-        for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
+        for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
             // Capture previous frame from linked list before changing the links.
-            CursorFrame prev = frame.mPrevCousin;
+            TreeCursorFrame prev = frame.mPrevCousin;
             split.rebindFrame(frame, sibling);
             frame = prev;
         }
@@ -1608,9 +1626,9 @@ final class TreeNode extends Latch {
         }
 
         // All cursors in this node must be moved to left node.
-        for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
+        for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
             // Capture previous frame from linked list before changing the links.
-            CursorFrame prev = frame.mPrevCousin;
+            TreeCursorFrame prev = frame.mPrevCousin;
             int framePos = frame.mNodePos;
             frame.unbind();
             frame.bind(leftNode, framePos + (framePos < 0 ? (-leftEndPos) : leftEndPos));
@@ -1679,9 +1697,9 @@ final class TreeNode extends Latch {
         leftNode.mChildNodes = newChildNodes;
 
         // All cursors in this node must be moved to left node.
-        for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
+        for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
             // Capture previous frame from linked list before changing the links.
-            CursorFrame prev = frame.mPrevCousin;
+            TreeCursorFrame prev = frame.mPrevCousin;
             int framePos = frame.mNodePos;
             frame.unbind();
             frame.bind(leftNode, leftEndPos + framePos);
@@ -1698,7 +1716,7 @@ final class TreeNode extends Latch {
      */
     void deleteChildRef(int childPos) {
         // Fix affected cursors.
-        for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
+        for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
             int framePos = frame.mNodePos;
             if (framePos >= childPos) {
                 frame.mNodePos = framePos - 2;
@@ -1757,13 +1775,13 @@ final class TreeNode extends Latch {
      * <p>Caller must hold exclusive latches for root node and lone child. No
      * latches are released by this method.
      */
-    void rootDelete(TreeNodeStore store) throws IOException {
+    void rootDelete(Tree tree) throws IOException {
         byte[] page = mPage;
         TreeNode[] childNodes = mChildNodes;
-        CursorFrame lastCursorFrame = mLastCursorFrame;
+        TreeCursorFrame lastCursorFrame = mLastCursorFrame;
 
         TreeNode child = childNodes[0];
-        store.prepareToDelete(child);
+        tree.mStore.prepareToDelete(child);
         long toDelete = child.mId;
 
         mPage = child.mPage;
@@ -1790,21 +1808,21 @@ final class TreeNode extends Latch {
         childNodes[0] = this;
 
         // Fix cursor bindings for this, the real root node.
-        for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
+        for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
             frame.mNode = this;
             frame = frame.mPrevCousin;
         }
         // Fix cursor bindings for the stub root node.
-        for (CursorFrame frame = lastCursorFrame; frame != null; ) {
+        for (TreeCursorFrame frame = lastCursorFrame; frame != null; ) {
             frame.mNode = child;
             frame = frame.mPrevCousin;
         }
 
-        store.addStub(child);
+        tree.addStub(child);
 
         // The page can be deleted earlier in the method, but doing it here
         // might prevent corruption if an unexpected exception occurs.
-        store.deletePage(toDelete);
+        tree.mStore.deletePage(toDelete);
     }
 
     /**

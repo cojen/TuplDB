@@ -29,27 +29,29 @@ import static org.junit.Assert.*;
  */
 public class TreeNodeTest {
     public static void main(String[] args) throws Exception {
-        java.io.File file0, file1;
-        if (args.length > 0) {
-            file0 = new java.io.File(args[0] + ".0");
-            file1 = new java.io.File(args[0] + ".1");
-        } else {
-            file0 = java.io.File.createTempFile("tupl-0-", null);
-            file1 = java.io.File.createTempFile("tupl-1-", null);
-        }
+        java.io.File file = new java.io.File(args[0]);
 
-        final PageStore pstore = new DualFilePageStore(file0, file1);
-        final int cachedNodes = 100000;
-        final TreeNodeStore store = new TreeNodeStore(pstore, cachedNodes, cachedNodes);
-        final TreeNode root = store.root();
+        final Database db = new Database
+            (DatabaseConfig.newConfig().setBaseFile(file).setMinCachedNodes(100000));
+        final View view = db.openView("test1");
 
-        byte[] value = root.search(store, "hello".getBytes());
+        /*
+        BitSet pages = pstore.tracePages();
+        root.tracePages(store, pages);
+        System.out.println(pages);
+        System.out.println("lost: " + (pages.cardinality() - 2));
+        System.out.println(pstore.stats());
+
+        System.exit(0);
+        */
+
+        byte[] value = view.get("hello".getBytes());
         System.out.println(value == null ? null : new String(value));
 
         Map<String, String> map = new TreeMap<String, String>();
         map = null;
 
-        testInsert(map, true, store, root, "hello", "world");
+        testInsert(map, true, view, "hello", "world");
 
         Thread t = new Thread() {
             public void run() {
@@ -57,16 +59,20 @@ public class TreeNodeTest {
                     long lastDuration = 0;
 
                     while (true) {
-                        long delay = 5000L - lastDuration;
+                        long delay = 1000L - lastDuration;
                         if (delay > 0) {
                             Thread.sleep(delay);
                         }
 
                         System.out.println("commit...");
                         long start = System.currentTimeMillis();
-                        store.commit();
+                        db.commit();
                         long end = System.currentTimeMillis();
+                        //System.out.println("...done: " + pstore.stats());
                         System.out.println("...done");
+
+                        //Thread.sleep(500);
+                        //System.exit(0);
 
                         lastDuration = end - start;
                     }
@@ -83,7 +89,13 @@ public class TreeNodeTest {
         Random rnd = new Random(89234723);
 
         for (int i=1; i<100000000; i++) {
+            /*
+            if (i % 100000 == 0) {
+                store.commit();
+            }
+            */
             if (i % 10000 == 0) {
+                //System.out.println("" + i + ": " + pstore.stats());
                 System.out.println(i);
             }
             boolean fullTest = i >= 99999999;
@@ -92,17 +104,22 @@ public class TreeNodeTest {
                 System.out.println(i);
             }
             long k = rnd.nextLong() & Long.MAX_VALUE;
-            testInsert(map, fullTest, store, root,
+            testInsert(map, fullTest, view,
                        "key-".concat(String.valueOf(k)), "value-".concat(String.valueOf(i)));
+            /*
+            if (i % 10 == 0) {
+                Thread.sleep(1);
+            }
+            */
         }
 
         //root.dump(store, "");
 
-        store.commit();
+        db.commit();
     }
 
     private static void testInsert(Map<String, String> map, boolean fullTest,
-                                   TreeNodeStore store, TreeNode root, String key, String value)
+                                   View view, String key, String value)
         throws IOException
     {
         if (map != null) {
@@ -112,29 +129,20 @@ public class TreeNodeTest {
         byte[] bkey = key.getBytes();
         byte[] bvalue = value.getBytes();
 
-        Cursor c = new Cursor(store);
+        Cursor c = view.newCursor();
         boolean exists = c.find(bkey);
         if (!exists) {
             c.store(bvalue);
         }
         c.reset();
 
-        /*
-        if (exists) {
-            boolean deleted = root.store(store, bkey, null);
-            return;
-            //System.out.println(deleted);
-            /*
-            inserted = root.store(store, bkey, bvalue);
-            assertTrue(inserted);
-            * /
-        }
-        */
-
-        byte[] fvalue = root.search(store, bkey);
+        byte[] fvalue = view.get(bkey);
         try {
             compareArrays(bvalue, fvalue);
         } catch (AssertionError e) {
+            System.out.println(CursorTest.string(bkey));
+            System.out.println(CursorTest.string(bvalue));
+            System.out.println(CursorTest.string(fvalue));
             //root.dump(store, "");
             throw e;
         }
@@ -144,7 +152,7 @@ public class TreeNodeTest {
                 //System.out.println(entry);
                 bkey = entry.getKey().getBytes();
                 bvalue = entry.getValue().getBytes();
-                fvalue = root.search(store, bkey);
+                fvalue = view.get(bkey);
                 try {
                     compareArrays(bvalue, fvalue);
                 } catch (AssertionError e) {

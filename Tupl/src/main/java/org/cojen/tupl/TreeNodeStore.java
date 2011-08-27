@@ -22,7 +22,10 @@ import java.io.IOException;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 import java.util.concurrent.locks.Lock;
 
@@ -36,7 +39,7 @@ import static org.cojen.tupl.TreeNode.*;
 final class TreeNodeStore implements Closeable {
     private static final int ENCODING_VERSION = 20110514;
 
-    private final PageStore mPageStore;
+    final PageStore mPageStore;
 
     private final BufferPool mSpareBufferPool;
 
@@ -48,19 +51,13 @@ final class TreeNodeStore implements Closeable {
 
     private final Lock mSharedCommitLock;
 
-    // Although tree roots can be created and deleted, the object which refers
-    // to the root remains the same. Internal state is transferred to/from this
-    // object when the tree root changes.
-    private final TreeNode mRoot;
-
     // Is either CACHED_DIRTY_0 or CACHED_DIRTY_1. Access is guarded by commit lock.
     private byte mCommitState;
 
-    // Maintain a stack of stubs, which are created when root nodes are
-    // deleted. When a new root is created, a stub is popped, and cursors bound
-    // to it are transferred into the new root. Access to this stack is guarded
-    // by the root node latch.
-    private Stub mStubTail;
+    // The root tree, which maps names to other trees.
+    private final Tree mRegistry;
+
+    private final Map<byte[], Tree> mOpenTrees;
 
     TreeNodeStore(PageStore store, int minCachedNodeCount, int maxCachedNodeCount)
         throws IOException
@@ -103,7 +100,8 @@ final class TreeNodeStore implements Closeable {
             mSharedCommitLock.unlock();
         }
 
-        mRoot = loadRoot();
+        mRegistry = new Tree(this, null, loadRegistryRoot());
+        mOpenTrees = new TreeMap<byte[], Tree>(KeyComparator.THE);
 
         // Pre-allocate nodes. They are automatically added to the usage list,
         // and so nothing special needs to be done to allow them to get used. Since
@@ -115,6 +113,13 @@ final class TreeNodeStore implements Closeable {
         } catch (OutOfMemoryError e) {
             mMostRecentlyUsed = null;
             mLeastRecentlyUsed = null;
+
+            try {
+                mPageStore.close();
+            } catch (IOException e2) {
+                // Ignore.
+            }
+
             throw new OutOfMemoryError
                 ("Unable to allocate the minimum required number of cached nodes: " +
                  minCachedNodeCount);
@@ -122,10 +127,10 @@ final class TreeNodeStore implements Closeable {
     }
 
     /**
-     * Loads the root node, or creates one if store is new. Root node is not eligible for
-     * eviction.
+     * Loads the root registry node, or creates one if store is new. Root node
+     * is not eligible for eviction.
      */
-    private TreeNode loadRoot() throws IOException {
+    private TreeNode loadRegistryRoot() throws IOException {
         byte[] header = new byte[12];
         mPageStore.readExtraCommitData(header);
         int version = DataIO.readInt(header, 0);
@@ -147,10 +152,43 @@ final class TreeNodeStore implements Closeable {
     }
 
     /**
-     * Returns the tree root node, which is always the same instance.
+     * Returns a full view into the given named sub database, creating it if
+     * necessary.
      */
-    TreeNode root() {
-        return mRoot;
+    View openView(byte[] nameKey) throws IOException {
+        final Lock commitLock = sharedCommitLock();
+        commitLock.lock();
+        try {
+            synchronized (mOpenTrees) {
+                Tree tree = mOpenTrees.get(nameKey);
+                if (tree != null) {
+                    return tree;
+                }
+            }
+
+            byte[] encodedRootId = mRegistry.get(nameKey);
+
+            TreeNode rootNode;
+            if (encodedRootId == null) {
+                // Create a new empty leaf node.
+                rootNode = new TreeNode(pageSize(), true);
+            } else {
+                rootNode = new TreeNode(pageSize(), false);
+                rootNode.read(this, DataIO.readLong(encodedRootId, 0));
+            }
+
+            synchronized (mOpenTrees) {
+                Tree tree = mOpenTrees.get(nameKey);
+                if (tree == null) {
+                    tree = new Tree(this, nameKey, rootNode);
+                    mOpenTrees.put(nameKey, tree);
+                }
+                return tree;
+            }
+
+        } finally {
+            commitLock.unlock();
+        }
     }
 
     /**
@@ -240,12 +278,12 @@ final class TreeNodeStore implements Closeable {
      *
      * @return true if just made dirty and id changed
      */
-    boolean markDirty(TreeNode node) throws IOException {
+    boolean markDirty(Tree tree, TreeNode node) throws IOException {
         byte state = node.mCachedState;
         if (state == mCommitState || node.mId == TreeNode.STUB_ID) {
             return false;
         } else {
-            doMarkDirty(node);
+            doMarkDirty(tree, node);
             return true;
         }
     }
@@ -255,15 +293,24 @@ final class TreeNodeStore implements Closeable {
      * not be called if node is already dirty. Latch is never released by this
      * method, even if an exception is thrown.
      */
-    void doMarkDirty(TreeNode node) throws IOException {
+    void doMarkDirty(Tree tree, TreeNode node) throws IOException {
         long oldId = node.mId;
         long newId = mPageStore.reservePage();
+
         if (oldId != 0) {
             mPageStore.deletePage(oldId);
         }
+
         if (node.mCachedState != CACHED_CLEAN) {
             node.write(this);
         }
+
+        if (node == tree.mRoot && tree.mNameKey != null) {
+            byte[] newEncodedId = new byte[8];
+            DataIO.writeLong(newEncodedId, 0, newId);
+            mRegistry.store(tree.mNameKey, newEncodedId);
+        }
+
         node.mId = newId;
         node.mCachedState = mCommitState;
     }
@@ -330,60 +377,6 @@ final class TreeNodeStore implements Closeable {
     }
 
     /**
-     * Caller must exclusively hold root latch.
-     */
-    void addStub(TreeNode node) {
-        mStubTail = new Stub(mStubTail, node);
-    }
-
-    /**
-     * Caller must exclusively hold root latch.
-     */
-    boolean hasStub() {
-        return mStubTail != null;
-    }
-
-    /**
-     * Attempts to exclusively latch and pop the tail stub node. Returns null
-     * if latch cannot be immediatly obtained. Caller must exclusively hold
-     * root latch and have checked that a stub exists.
-     */
-    TreeNode tryPopStub() {
-        Stub stub = mStubTail;
-        if (stub.mNode.tryAcquireExclusiveUnfair()) {
-            mStubTail = stub.mParent;
-            return stub.mNode;
-        }
-        return null;
-    }
-
-    /**
-     * Exclusively latches and pops the tail stub node. Caller must exclusively
-     * hold root latch and have checked that a stub exists.
-     */
-    TreeNode popStub() {
-        Stub stub = mStubTail;
-        stub.mNode.acquireExclusiveUnfair();
-        mStubTail = stub.mParent;
-        return stub.mNode;
-    }
-
-    /**
-     * Checks if popped stub is still valid, because it has not been evicted
-     * and it actually has cursors bound to it. Caller must hold exclusive
-     * latch, which is released if node is not valid.
-     *
-     * @return node if valid, null otherwise
-     */
-    TreeNode validateStub(TreeNode node) {
-        if (node.mId == TreeNode.STUB_ID && node.mLastCursorFrame != null) {
-            return node;
-        }
-        node.releaseExclusive();
-        return null;
-    }
-
-    /**
      * Indicate that non-root node is most recently used. Root node is not
      * managed in usage list and cannot be evicted.
      */
@@ -431,11 +424,12 @@ final class TreeNodeStore implements Closeable {
     }
 
     /**
-     * Durably commit all changes to the tree, while allowing changes to be
-     * made concurrently. Only one thread is granted access to this method.
+     * Durably commit all changes to the database, while still allowing
+     * concurrent access. Commit can be called by any thread, although only one
+     * is permitted in at a time.
      */
     void commit() throws IOException {
-        final TreeNode root = mRoot;
+        final TreeNode root = mRegistry.mRoot;
 
         // Commit lock must be acquired first, to prevent deadlock.
         mPageStore.exclusiveCommitLock().lock();
@@ -459,55 +453,26 @@ final class TreeNodeStore implements Closeable {
      * Method is invoked with exclusive commit lock and shared root node latch held.
      */
     private byte[] flush() throws IOException {
-        final TreeNode root = mRoot;
+        // Snapshot of all open trees.
+        Tree[] trees;
+        synchronized (mOpenTrees) {
+            trees = mOpenTrees.values().toArray(new Tree[mOpenTrees.size()]);
+        }
+
+        final TreeNode root = mRegistry.mRoot;
         final long rootId = root.mId;
         final int stateToFlush = mCommitState;
         mCommitState = (byte) (CACHED_DIRTY_0 + ((stateToFlush - CACHED_DIRTY_0) ^ 1));
         mPageStore.exclusiveCommitLock().unlock();
 
-        // Perform a breadth-first traversal of tree, finding dirty nodes. This
-        // step can effectively deny most concurrent access to the tree, but I
-        // cannot figure out a safe way to find dirty nodes and allow access
-        // back into the tree. Depth-first traversal using a cursor allows
-        // concurrent access, but it causes some dirty nodes to get lost. It
-        // might be possible to speed this step up with multiple threads -- at
-        // most one per processor.
+        // Gather all nodes to flush.
 
-        // One approach for performing depth-first traversal is to remember
-        // internal nodes which were concurrently updated, in a map. When the
-        // traversal sees a clean node, it consults the map instead of
-        // short-circuiting. If the node was written, then it needs to
-        // traversed into, to gather up additional dirty nodes.
+        List<DirtyNode> dirtyList = new ArrayList<DirtyNode>(Math.min(1000, mMaxCachedNodeCount));
+        mRegistry.gatherDirtyNodes(dirtyList, stateToFlush);
 
-        List<Dirty> dirtyList = new ArrayList<Dirty>(Math.min(1000, mMaxCachedNodeCount));
-        dirtyList.add(new Dirty(root, root.mId));
-
-        for (int mi=0; mi<dirtyList.size(); mi++) {
-            TreeNode node = dirtyList.get(mi).mNode;
-
-            if (node.isLeaf()) {
-                node.releaseShared();
-                continue;
-            }
-
-            TreeNode[] childNodes = node.mChildNodes;
-
-            for (int ci=0; ci<childNodes.length; ci++) {
-                TreeNode childNode = childNodes[ci];
-                if (childNode != null) {
-                    long childId = node.retrieveChildRefIdFromIndex(ci);
-                    if (childId == childNode.mId) {
-                        childNode.acquireSharedUnfair();
-                        if (childId == childNode.mId && childNode.mCachedState == stateToFlush) {
-                            dirtyList.add(new Dirty(childNode, childId));
-                        } else {
-                            childNode.releaseShared();
-                        }
-                    }
-                }
-            }
-
-            node.releaseShared();
+        for (Tree tree : trees) {
+            tree.mRoot.acquireSharedUnfair();
+            tree.gatherDirtyNodes(dirtyList, stateToFlush);
         }
 
         // Sort nodes by id, which helps make writes more sequentially ordered.
@@ -539,33 +504,5 @@ final class TreeNodeStore implements Closeable {
         DataIO.writeLong(header, 4, rootId);
 
         return header;
-    }
-
-    static final class Dirty implements Comparable<Dirty> {
-        TreeNode mNode;
-        long mId;
-
-        Dirty(TreeNode node, long id) {
-            mNode = node;
-            // Stable copy of id that can be accessed without re-latching.
-            mId = id;
-        }
-
-        @Override
-        public int compareTo(Dirty other) {
-            long a = mId;
-            long b = other.mId;
-            return a < b ? -1 : (a > b ? 1 : 0);
-        }
-    }
-
-    static final class Stub {
-        final Stub mParent;
-        final TreeNode mNode;
-
-        Stub(Stub parent, TreeNode node) {
-            mParent = parent;
-            mNode = node;
-        }
     }
 }
