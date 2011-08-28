@@ -21,7 +21,7 @@ package org.cojen.tupl;
  *
  * @author Brian S O'Neill
  */
-public class DataIO {
+class DataIO {
     public static final int readUnsignedShort(byte[] b, int offset) {
         return ((b[offset] & 0xff) << 8) | ((b[offset + 1] & 0xff));
     }
@@ -44,7 +44,6 @@ public class DataIO {
     }
 
     /**
-     * @param b first encoded byte
      * @return length of variably encoded integer
      */
     public static int lengthOfVarInt(int v) {

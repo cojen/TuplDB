@@ -362,41 +362,122 @@ final class TreeCursor {
      */
     private boolean previous(TreeCursorFrame frame) throws IOException {
         TreeNode node = frame.mNode;
-        int pos = frame.mNodePos;
-        if (pos < 0) {
-            frame.mNotFoundKey = null;
-            pos = ~pos;
-        }
 
-        if ((pos -= 2) >= 0) {
-            frame.mNodePos = pos;
+        quick: {
+            int pos = frame.mNodePos;
+
+            if (pos < 0) {
+                pos = ~pos;
+                if (pos == 0) {
+                    break quick;
+                }
+                frame.mNotFoundKey = null;
+            } else if (pos == 0) {
+                break quick;
+            }
+
+            frame.mNodePos = pos - 2;
             node.releaseExclusive();
             return true;
         }
 
-        // FIXME: rewrite similar to next method
         while (true) {
-            frame = frame.pop();
-            node.releaseExclusive();
-            if (frame == null) {
+            TreeCursorFrame parentFrame = frame.peek();
+
+            if (parentFrame == null) {
+                frame.popv();
+                node.releaseExclusive();
                 mLeaf = null;
                 return false;
             }
 
-            node = frame.acquireExclusiveUnfair();
+            TreeNode parentNode;
+            int parentPos;
 
-            if (node.mSplit != null) {
-                node = finishSplit(frame, node);
+            latchParent: {
+                splitCheck: {
+                    // Latch coupling up the tree usually works, so give it a
+                    // try. If it works, then there's no need to worry about a
+                    // node merge.
+                    parentNode = parentFrame.tryAcquireExclusiveUnfair();
+
+                    if (parentNode == null) {
+                        // Latch coupling failed, and so acquire parent latch
+                        // without holding child latch. The child might have
+                        // changed, and so it must be checked again.
+                        node.releaseExclusive();
+                        parentNode = parentFrame.acquireExclusiveUnfair();
+                        if (parentNode.mSplit == null) {
+                            break splitCheck;
+                        }
+                    } else {
+                        if (parentNode.mSplit == null) {
+                            frame.popv();
+                            node.releaseExclusive();
+                            parentPos = parentFrame.mNodePos;
+                            break latchParent;
+                        }
+                        node.releaseExclusive();
+                    }
+
+                    // When this point is reached, parent node must be split.
+                    // Parent latch is held, child latch is not held, but the
+                    // frame is still valid.
+
+                    parentNode = finishSplit(parentFrame, parentNode);
+                }
+
+                // When this point is reached, child must be relatched. Parent
+                // latch is held, and the child frame is still valid.
+
+                parentPos = parentFrame.mNodePos;
+                node = latchChild(parentNode, parentPos, false);
+
+                // Quick check again, in case node got bigger due to merging.
+                // Unlike the earlier quick check, this one must handle
+                // internal nodes too.
+                quick: {
+                    int pos = frame.mNodePos;
+
+                    if (pos < 0) {
+                        pos = ~pos;
+                        if (pos == 0) {
+                            break quick;
+                        }
+                        frame.mNotFoundKey = null;
+                    } else if (pos == 0) {
+                        break quick;
+                    }
+
+                    parentNode.releaseExclusive();
+                    pos -= 2;
+                    frame.mNodePos = pos;
+
+                    if (frame == mLeaf) {
+                        node.releaseExclusive();
+                    } else {
+                        toLast(latchChild(node, pos, true), new TreeCursorFrame(frame));
+                    }
+
+                    return true;
+                }
+
+                frame.popv();
+                node.releaseExclusive();
             }
 
-            pos = frame.mNodePos;
+            // When this point is reached, only the parent latch is held. Child
+            // frame is no longer valid.
 
-            if (pos > 0) {
-                pos -= 2;
-                frame.mNodePos = pos;
-                toLast(latchChild(node, pos, true), new TreeCursorFrame(frame));
+            if (parentPos > 0) {
+                parentPos -= 2;
+                parentFrame.mNodePos = parentPos;
+                toLast(latchChild(parentNode, parentPos, true), new TreeCursorFrame(parentFrame));
                 return true;
             }
+
+            frame = parentFrame;
+            node = parentNode;
         }
     }
 
@@ -826,12 +907,14 @@ final class TreeCursor {
             node.updateLeafValue(mTree.mStore, pos, value);
 
             if (node.shouldLeafMerge()) {
-                // FIXME: Merge or delete node if too small now.
-            } else if (node.mSplit != null) {
-                node = finishSplit(leaf, node);
+                mergeLeaf(leaf, node);
+            } else {
+                if (node.mSplit != null) {
+                    node = finishSplit(leaf, node);
+                }
+                node.releaseExclusive();
             }
 
-            node.releaseExclusive();
             return;
         }
 
@@ -1459,10 +1542,8 @@ final class TreeCursor {
             rightAvail = nodeAvail;
         }
 
-        // FIXME: testing
         if (leftNode == null || rightNode == null) {
-            System.out.println("fail: " + leftNode + ", " + rightNode);
-            System.exit(1);
+            throw new AssertionError("No sibling node to merge into");
         }
 
         // Left node must always be marked dirty. Parent is already expected to be dirty.
