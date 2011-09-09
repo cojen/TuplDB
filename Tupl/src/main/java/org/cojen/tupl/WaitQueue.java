@@ -69,7 +69,11 @@ class WaitQueue {
             latch.releaseExclusive();
             LockSupport.parkNanos(0);
             latch.acquireExclusiveUnfair();
-            return node.state();
+            int state = node.state();
+            if (state <= 0) {
+                node.remove(this);
+            }
+            return state;
         } else {
             long end = System.nanoTime() + nanosTimeout;
             while (true) {
@@ -183,7 +187,7 @@ class WaitQueue {
         final int state() {
             Thread thread = mWaiter;
             if (thread.isInterrupted()) {
-                thread.interrupted();
+                Thread.interrupted();
                 // Favor signal over interrupt. Caller removes if interrupted.
                 return mNext == this ? 1 : -1;
             } else {
