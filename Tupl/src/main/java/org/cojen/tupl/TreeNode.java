@@ -685,6 +685,7 @@ final class TreeNode extends Latch {
     /**
      * @return 2-based insertion pos, which is negative if key not found
      */
+    // FIXME: Binary search can be optimized by not always starting key compare at first byte.
     int binarySearchLeaf(byte[] key) {
         final byte[] page = mPage;
         final int keyLen = key.length;
@@ -729,6 +730,7 @@ final class TreeNode extends Latch {
      * @param midPos 2-based starting position
      * @return 2-based insertion pos, which is negative if key not found
      */
+    // FIXME: Binary search can be optimized by not always starting key compare at first byte.
     int binarySearchLeaf(byte[] key, int midPos) {
         int lowPos = mSearchVecStart;
         int highPos = mSearchVecEnd;
@@ -798,6 +800,7 @@ final class TreeNode extends Latch {
     /**
      * @return 2-based insertion pos, which is negative if key not found
      */
+    // FIXME: Binary search can be optimized by not always starting key compare at first byte.
     int binarySearchInternal(byte[] key) {
         final byte[] page = mPage;
         final int keyLen = key.length;
@@ -842,6 +845,7 @@ final class TreeNode extends Latch {
      * @param midPos 2-based starting position
      * @return 2-based insertion pos, which is negative if key not found
      */
+    // FIXME: Binary search can be optimized by not always starting key compare at first byte.
     int binarySearchInternal(byte[] key, int midPos) {
         int lowPos = mSearchVecStart;
         int highPos = mSearchVecEnd;

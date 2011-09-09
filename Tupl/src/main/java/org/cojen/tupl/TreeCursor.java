@@ -1689,6 +1689,12 @@ final class TreeCursor {
             parent.releaseExclusive();
         }
 
+        // FIXME: Don't hold latch during load. Instead, use an object for
+        // holding state, and include a "loading" state. As other threads see
+        // this state, they replace the state object with a linked stack of
+        // parked threads. When the load is finished, all waiting threads are
+        // unparked. Move some of this logic into a common TreeNode.load method.
+
         try {
             childNode.read(mTree.mStore, childId);
         } catch (IOException e) {
