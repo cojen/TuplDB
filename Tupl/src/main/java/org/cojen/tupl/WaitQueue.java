@@ -25,8 +25,8 @@ import java.util.concurrent.locks.LockSupport;
  * @see Lock
  */
 class WaitQueue {
-    private Node mHead;
-    private Node mTail;
+    Node mHead;
+    Node mTail;
 
     boolean isEmpty() {
         return mHead == null;
@@ -48,6 +48,7 @@ class WaitQueue {
             mHead = node;
         } else {
             tail.mNext = node;
+            node.mPrev = tail;
         }
         mTail = node;
 
@@ -56,34 +57,33 @@ class WaitQueue {
                 latch.releaseExclusive();
                 LockSupport.park();
                 latch.acquireExclusiveUnfair();
-                if (node.interrupted()) {
-                    return -1;
-                }
-                if (node.mNext == node) {
+                int state = node.state();
+                if (state > 0) {
                     return 1;
+                } else if (state < 0) {
+                    node.remove(this);
+                    return -1;
                 }
             }
         } else if (nanosTimeout == 0) {
             latch.releaseExclusive();
             LockSupport.parkNanos(0);
             latch.acquireExclusiveUnfair();
-            if (node.interrupted()) {
-                return -1;
-            }
-            return node.mNext == node ? 1 : 0;
+            return node.state();
         } else {
             long end = System.nanoTime() + nanosTimeout;
             while (true) {
                 latch.releaseExclusive();
                 LockSupport.parkNanos(nanosTimeout);
                 latch.acquireExclusiveUnfair();
-                if (node.interrupted()) {
-                    return -1;
-                }
-                if (node.mNext == node) {
+                int state = node.state();
+                if (state > 0) {
                     return 1;
-                }
-                if ((nanosTimeout = end - System.nanoTime()) <= 0) {
+                } else if (state < 0) {
+                    node.remove(this);
+                    return -1;
+                } else if ((nanosTimeout = end - System.nanoTime()) <= 0) {
+                    node.remove(this);
                     return 0;
                 }
             }
@@ -99,8 +99,7 @@ class WaitQueue {
             if ((mHead = head.mNext) == null) {
                 mTail = null;
             }
-            head.mNext = head; // signalled state
-            LockSupport.unpark(head.mWaiter);
+            head.signal();
         }
     }
 
@@ -112,8 +111,7 @@ class WaitQueue {
         if (head != null) {
             while (true) {
                 Node next = head.mNext;
-                head.mNext = head; // signalled state
-                LockSupport.unpark(head.mWaiter);
+                head.signal();
                 if (next == null) {
                     mHead = null;
                     mTail = null;
@@ -134,8 +132,7 @@ class WaitQueue {
         if (head instanceof Shared) {
             while (true) {
                 Node next = head.mNext;
-                head.mNext = head; // signalled state
-                LockSupport.unpark(head.mWaiter);
+                head.signal();
                 if (next == null) {
                     mHead = null;
                     mTail = null;
@@ -160,8 +157,7 @@ class WaitQueue {
         if (head != null) {
             while (true) {
                 Node next = head.mNext;
-                head.mNext = head; // signalled state
-                LockSupport.unpark(head.mWaiter);
+                head.signal();
                 if (next == null) {
                     mHead = null;
                     mTail = null;
@@ -178,16 +174,47 @@ class WaitQueue {
 
     static class Node {
         Thread mWaiter;
+        Node mPrev;
         Node mNext;
-        // FIXME: Needs to be double linked, to allow timed out waits to remove themselves.
 
-        final boolean interrupted() {
+        /**
+         * @return -1 if interrupted, 0 if not signalled, 1 if signalled
+         */
+        final int state() {
             Thread thread = mWaiter;
             if (thread.isInterrupted()) {
                 thread.interrupted();
-                return true;
+                // Favor signal over interrupt. Caller removes if interrupted.
+                return mNext == this ? 1 : -1;
+            } else {
+                return mNext == this ? 1 : 0;
             }
-            return false;
+        }
+
+        final void signal() {
+            mNext = this;
+            mPrev = null;
+            LockSupport.unpark(mWaiter);
+        }
+
+        final void remove(WaitQueue queue) {
+            Node prev = mPrev;
+            Node next = mNext;
+            if (prev == null) {
+                if ((queue.mHead = next) == null) {
+                    queue.mTail = null;
+                } else {
+                    next.mPrev = null;
+                }
+            } else {
+                if ((prev.mNext = next) == null) {
+                    queue.mTail = prev;
+                } else {
+                    next.mPrev = prev;
+                }
+                mPrev = null;
+            }
+            mNext = null;
         }
     }
 
