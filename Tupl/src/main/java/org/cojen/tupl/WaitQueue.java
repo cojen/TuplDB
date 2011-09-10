@@ -222,6 +222,6 @@ class WaitQueue {
         }
     }
 
-    static class Shared extends Node {
+    static final class Shared extends Node {
     }
 }

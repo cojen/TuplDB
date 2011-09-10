@@ -18,10 +18,6 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import java.util.ArrayDeque;
-
-import java.util.concurrent.locks.Lock;
-
 /**
  * Maintains a logical position in a {@link View}. Cursors must be {@link
  * #reset reset} when no longer needed to free up memory. Although not

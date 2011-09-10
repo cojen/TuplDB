@@ -27,10 +27,16 @@ public class LockTest {
         Locker locker = new Locker(m);
         byte[] k1 = "hello".getBytes();
         byte[] k2 = "world".getBytes();
+        byte[] k3 = "helloworld".getBytes();
         System.out.println(locker.lockShared(k1, 100));
         System.out.println(locker.lockShared(k1, 100));
         System.out.println(locker.lockShared(k1, 100));
+        System.out.println(locker.lockShared(k2, 100));
+        System.out.println(locker.lockShared(k3, 100));
         locker.unlock();
+        locker.unlock();
+        locker.unlock();
+        locker.unlockAll();
         try {
             locker.unlock();
         } catch (Exception e) {
@@ -42,32 +48,22 @@ public class LockTest {
         System.out.println(locker.lockShared(k1, 100));
         locker.unlock();
         System.out.println(locker.lockShared(k2, 100));
-        try {
-            locker.unlock(k1);
-        } catch (Exception e) {
-            System.out.println(e);
-        }
-        locker.unlock(k2);
+        locker.unlock();
         System.out.println(locker.lockShared(k2, 100));
         System.out.println(locker.lockExclusive(k2, 100));
         System.out.println(locker.lockShared(k2, 100));
-        locker.unlock(k2);
+        locker.unlock();
         System.out.println(locker.lockExclusive(k2, 100));
         System.out.println(locker.lockShared(k2, 100));
         System.out.println(locker.lockUpgradable(k2, 100));
-        try {
-            locker.unlockToShared(k1);
-        } catch (Exception e) {
-            System.out.println(e);
-        }
-        locker.unlockToShared(k2);
+        locker.unlockToShared();
         System.out.println(locker.lockShared(k2, 100));
 
         System.out.println("---");
         Locker locker2 = new Locker(m);
         System.out.println(locker2.lockUpgradable(k2, 100));
         System.out.println(locker2.lockExclusive(k2, 1000000000L));
-        locker.unlock(k2);
+        locker.unlock();
         System.out.println(locker2.lockExclusive(k2, 1000000000L));
     }
 }
