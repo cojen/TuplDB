@@ -94,7 +94,7 @@ class DualFilePageStore implements PageStore {
     // Commit number is the highest one which has been committed.
     private volatile int mCommitNumber;
 
-    private static class Allocator {
+    private static final class Allocator {
         final PageAllocator mPageAllocator;
         final long mIdFlag;
         final ForeignPageQueue mForeignPages;
@@ -140,7 +140,7 @@ class DualFilePageStore implements PageStore {
 
     private boolean mAllowForeignAllocations;
 
-    private static class FPA extends FilePageArray {
+    private static final class FPA extends FilePageArray {
         FPA(File file, boolean readOnly, int pageSize, int openFileCount) throws IOException {
             super(file, readOnly, pageSize, openFileCount);
         }

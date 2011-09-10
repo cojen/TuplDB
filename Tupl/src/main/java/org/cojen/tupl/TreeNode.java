@@ -2524,7 +2524,7 @@ final class TreeNode extends Latch {
      * Provides information necessary to complete split by copying split key, pointer to
      * split key, and pointer to new child id.
      */
-    private static class InResult {
+    private static final class InResult {
         byte[] mPage;
         int mKeyLoc;
         int mNewChildLoc;

@@ -27,9 +27,10 @@ package org.cojen.tupl;
  */
 final class Lock {
     byte[] mKey;
+    int mHashCode;
 
     // Next entry in LockManager hash collision chain.
-    Lock mNext;
+    Lock mLockManagerNext;
 
     // 0xxx...  shared locks held (up to (2^31)-2)
     // 1xxx...  upgradable and shared locks held (up to (2^31)-2)
@@ -515,7 +516,7 @@ final class Lock {
     /**
      * Entry for simple hashtable of Lockers.
      */
-    static class LockerHTEntry {
+    static final class LockerHTEntry {
         Locker mLocker;
         LockerHTEntry mNext;
     }

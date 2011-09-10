@@ -163,7 +163,7 @@ interface PageStore extends Closeable {
      */
     public void readExtraCommitData(byte[] extra) throws IOException;
 
-    public static class Stats {
+    public static final class Stats {
         public long totalPages;
         public long freePages;
 

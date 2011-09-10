@@ -17,17 +17,23 @@
 package org.cojen.tupl;
 
 /**
- * 
+ * Accumulates a scoped stack of locks, bound to arbitrary keys. Locker
+ * instances can only be safely used by one thread at a time. Without proper
+ * synchronization, multiple threads interacting with a Locker instance results
+ * in undefined behavior.
  *
  * @author Brian S O'Neill
  */
 public class Locker {
+    private static final int FIRST_BLOCK_CAPACITY = 10;
+    private static final int HIGHEST_BLOCK_CAPACITY = 80;
+
     private final LockManager mManager;
 
-    private byte[] mLastKey;
-    private int mLastKeyHashCode;
-
     private int mHashCode;
+
+    // Is null if empty; Lock instance if one; Block if more.
+    private Object mTailBlock;
 
     public Locker(LockManager manager) {
         if (manager == null) {
@@ -37,9 +43,9 @@ public class Locker {
     }
 
     /**
-     * Attempt to acquire a shared lock for the current entry, which denies
-     * exclusive locks. If return value is OWNED_*, locker already owns a
-     * strong enough lock, and no extra unlock should be performed.
+     * Attempt to acquire a shared lock for the given key, denying exclusive
+     * locks. If return value is OWNED_*, locker already owns a strong enough
+     * lock, and no extra unlock should be performed.
      *
      * @param key key to lock; instance is not cloned
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
@@ -48,11 +54,11 @@ public class Locker {
      * @throws IllegalStateException if too many shared locks
      */
     public LockResult lockShared(byte[] key, long nanosTimeout) {
-        return mManager.lockShared(this, attempt(key), key, nanosTimeout);
+        return mManager.lockShared(this, key, nanosTimeout);
     }
 
     /**
-     * Attempt to acquire an upgradable lock for the current entry, which
+     * Attempt to acquire an upgradable lock for the given key, denying
      * exclusive and additional upgradable locks. If return value is OWNED_*,
      * locker already owns a strong enough lock, and no extra unlock should be
      * performed. If ILLEGAL is returned, locker holds a shared lock, which
@@ -64,12 +70,12 @@ public class Locker {
      * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      */
     public LockResult lockUpgradable(byte[] key, long nanosTimeout) {
-        return mManager.lockUpgradable(this, attempt(key), key, nanosTimeout);
+        return mManager.lockUpgradable(this, key, nanosTimeout);
     }
 
     /**
-     * Attempt to acquire an exclusive lock for the current entry, which denies
-     * any additional locks. If return value is OWNED_EXCLUSIVE, locker already
+     * Attempt to acquire an exclusive lock for the given key, denying any
+     * additional locks. If return value is OWNED_EXCLUSIVE, locker already
      * owns exclusive lock, and no extra unlock should be performed. If ILLEGAL
      * is returned, locker holds a shared lock, which cannot be upgraded.
      *
@@ -79,76 +85,73 @@ public class Locker {
      * OWNED_EXCLUSIVE
      */
     public LockResult lockExclusive(byte[] key, long nanosTimeout) {
-        return mManager.lockExclusive(this, attempt(key), key, nanosTimeout);
+        return mManager.lockExclusive(this, key, nanosTimeout);
     }
 
     /**
-     * Fully unlocks key associated with last lock attempt. Lock must already
-     * be held.
+     * Fully releases last lock acquired.
      *
-     * @throws IllegalStateException if lock not held or no last attempt
+     * @return unlocked key; instance is not cloned
+     * @throws IllegalStateException if no locks held
      */
-    public void unlock() {
-        mManager.unlock(this, mLastKeyHashCode, lastAttempt());
+    public byte[] unlock() {
+        return mManager.unlock(this, pop());
     }
 
     /**
-     * Fully unlocks given key. Lock must already be held.
+     * Releases last lock acquired, retaining a shared lock.
      *
-     * @param key key to unlock
-     * @throws IllegalStateException if lock not held
+     * @return unlocked key; instance is not cloned
+     * @throws IllegalStateException if no locks held, or if too many shared locks
      */
-    public void unlock(byte[] key) {
-        mManager.unlock(this, LockManager.hashCode(key), key);
+    public byte[] unlockToShared() {
+        Lock lock = peek();
+        try {
+            return mManager.unlockToShared(this, lock);
+        } catch (IllegalStateException e) {
+            // Lock was released as a side effect of hitting shared lock limit.
+            pop();
+            throw e;
+        }
     }
 
     /**
-     * Unlocks key associated with last lock attempt, retaining a shared lock.
-     * Lock must already be held.
+     * Releases last lock acquired, retaining an upgradable lock.
      *
-     * @throws IllegalStateException if lock not held, if too many shared
-     * locks, or no last attempt
+     * @return unlocked key; instance is not cloned
+     * @throws IllegalStateException if no locks held, or if last lock is shared
      */
-    public void unlockToShared() {
-        mManager.unlockToShared(this, mLastKeyHashCode, lastAttempt());
-    }
-
-    /**
-     * Unlocks given key, retaining a shared lock. Lock must already be held.
-     *
-     * @param key key to unlock
-     * @throws IllegalStateException if lock not held or too many shared locks
-     */
-    public void unlockToShared(byte[] key) {
-        mManager.unlockToShared(this, LockManager.hashCode(key), key);
-    }
-
-    /**
-     * Unlocks key associated with last lock attempt, retaining an upgradable
-     * lock. Lock must already be held as exclusive or upgradable.
-     *
-     * @throws IllegalStateException if lock not held or no last attempt
-     */
-    public void unlockToUpgradable() {
-        mManager.unlockToUpgradable(this, mLastKeyHashCode, lastAttempt());
-    }
-
-    /**
-     * Unlocks given key, retaining an upgradable lock. Lock must already be
-     * held as exclusive or upgradable.
-     *
-     * @param key key to unlock
-     * @throws IllegalStateException if lock not held
-     */
-    public void unlockToUpgradable(byte[] key) {
-        mManager.unlockToUpgradable(this, LockManager.hashCode(key), key);
+    public byte[] unlockToUpgradable() {
+        return mManager.unlockToUpgradable(this, peek());
     }
 
     /**
      * Release all locks currently held by this Locker.
      */
     public void unlockAll() {
-        // FIXME
+        Object tailObj = mTailBlock;
+        if (tailObj == null) {
+            return;
+        }
+        if (tailObj instanceof Lock) {
+            mManager.unlock(this, (Lock) tailObj);
+        } else {
+            Block tail = (Block) tailObj;
+            while (true) {
+                Lock[] elements = tail.mElements;
+                for (int i=tail.mSize; --i>=0; ) {
+                    mManager.unlock(this, elements[i]);
+                    elements[i] = null;
+                }
+                Block prev = tail.mPrev;
+                if (prev == null) {
+                    break;
+                }
+                tail.mPrev = null;
+                tail = prev;
+            }
+        }
+        mTailBlock = null;
     }
 
     @Override
@@ -162,16 +165,81 @@ public class Locker {
         return hash;
     }
 
-    private int attempt(byte[] key) {
-        mLastKey = key;
-        return mLastKeyHashCode = LockManager.hashCode(key);
+    void push(Lock lock) {
+        Object tailObj = mTailBlock;
+        if (tailObj == null) {
+            mTailBlock = lock;
+        } else if (tailObj instanceof Lock) {
+            mTailBlock = new Block((Lock) tailObj, lock);
+        } else {
+            Block tail = (Block) tailObj;
+            Lock[] elements = tail.mElements;
+            int size = tail.mSize;
+            if (size < elements.length) {
+                elements[size] = lock;
+                tail.mSize = size + 1;
+            } else {
+                mTailBlock = new Block(tail, lock);
+            }
+        }
     }
 
-    private byte[] lastAttempt() {
-        byte[] key = mLastKey;
-        if (key == null) {
-            throw new IllegalStateException("No last lock attempt");
+    private Lock pop() {
+        Object tailObj = mTailBlock;
+        if (tailObj == null) {
+            throw new IllegalStateException("No locks held");
         }
-        return key;
+        if (tailObj instanceof Lock) {
+            mTailBlock = null;
+            return (Lock) tailObj;
+        }
+        Block tail = (Block) tailObj;
+        Lock[] elements = tail.mElements;
+        int size = tail.mSize;
+        Lock lock = elements[--size];
+        elements[size] = null;
+        if (size == 0) {
+            mTailBlock = tail.mPrev;
+            tail.mPrev = null;
+        } else {
+            tail.mSize = size;
+        }
+        return lock;
+    }
+
+    private Lock peek() {
+        Object tailObj = mTailBlock;
+        if (tailObj == null) {
+            throw new IllegalStateException("No locks held");
+        }
+        if (tailObj instanceof Lock) {
+            return (Lock) tailObj;
+        }
+        Block tail = (Block) tailObj;
+        return tail.mElements[tail.mSize - 1];
+    }
+
+    static final class Block {
+        private Block mPrev;
+
+        Lock[] mElements;
+        int mSize;
+
+        Block(Lock first, Lock second) {
+            Lock[] elements = new Lock[FIRST_BLOCK_CAPACITY];
+            elements[0] = first;
+            elements[1] = second;
+            mElements = elements;
+            mSize = 2;
+        }
+
+        Block(Block prev, Lock first) {
+            int capacity = prev.mElements.length;
+            if (capacity < HIGHEST_BLOCK_CAPACITY) {
+                capacity <<= 1;
+            }
+            (mElements = new Lock[capacity])[0] = first;
+            mSize = 1;
+        }
     }
 }
