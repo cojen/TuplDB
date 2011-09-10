@@ -410,14 +410,19 @@ public class LockTest {
     public void delayedAcquire() {
         Locker locker = new Locker(mManager);
         Locker locker2 = new Locker(mManager);
+        long end;
 
-        assertEquals(LockResult.ACQUIRED, locker.lockUpgradable(k1, -1));
-        long end = scheduleUnlock(locker, 1000);
-        assertEquals(LockResult.ACQUIRED, locker2.lockUpgradable(k1, MEDIUM_TIMEOUT));
-        assertEquals(LockResult.TIMED_OUT_LOCK, locker.lockUpgradable(k1, 0));
+        // Exclusive locks blocked...
+
+        // Exclusive lock blocked by shared lock.
+        assertEquals(LockResult.ACQUIRED, locker.lockShared(k1, -1));
+        end = scheduleUnlock(locker, 1000);
+        assertEquals(LockResult.ACQUIRED, locker2.lockExclusive(k1, MEDIUM_TIMEOUT));
+        assertEquals(LockResult.TIMED_OUT_LOCK, locker.lockShared(k1, 0));
         locker2.unlock();
         assertTrue(System.nanoTime() >= end);
 
+        // Exclusive lock blocked by upgradable lock.
         assertEquals(LockResult.ACQUIRED, locker.lockUpgradable(k1, -1));
         end = scheduleUnlock(locker, 1000);
         assertEquals(LockResult.ACQUIRED, locker2.lockExclusive(k1, MEDIUM_TIMEOUT));
@@ -425,13 +430,7 @@ public class LockTest {
         locker2.unlock();
         assertTrue(System.nanoTime() >= end);
 
-        assertEquals(LockResult.ACQUIRED, locker.lockExclusive(k1, -1));
-        end = scheduleUnlock(locker, 1000);
-        assertEquals(LockResult.ACQUIRED, locker2.lockUpgradable(k1, MEDIUM_TIMEOUT));
-        assertEquals(LockResult.TIMED_OUT_LOCK, locker.lockUpgradable(k1, 0));
-        locker2.unlock();
-        assertTrue(System.nanoTime() >= end);
-
+        // Exclusive lock blocked by exclusive lock.
         assertEquals(LockResult.ACQUIRED, locker.lockExclusive(k1, -1));
         end = scheduleUnlock(locker, 1000);
         assertEquals(LockResult.ACQUIRED, locker2.lockExclusive(k1, MEDIUM_TIMEOUT));
@@ -439,6 +438,34 @@ public class LockTest {
         locker2.unlock();
         assertTrue(System.nanoTime() >= end);
 
+        // Upgradable locks blocked...
+
+        // Upgradable lock blocked by upgradable lock.
+        assertEquals(LockResult.ACQUIRED, locker.lockUpgradable(k1, -1));
+        end = scheduleUnlock(locker, 1000);
+        assertEquals(LockResult.ACQUIRED, locker2.lockUpgradable(k1, MEDIUM_TIMEOUT));
+        assertEquals(LockResult.TIMED_OUT_LOCK, locker.lockUpgradable(k1, 0));
+        locker2.unlock();
+        assertTrue(System.nanoTime() >= end);
+
+        // Upgradable lock blocked by upgradable lock, granted via downgrade to shared.
+        assertEquals(LockResult.ACQUIRED, locker.lockUpgradable(k1, -1));
+        end = scheduleUnlockToShared(locker, 1000);
+        assertEquals(LockResult.ACQUIRED, locker2.lockUpgradable(k1, MEDIUM_TIMEOUT));
+        assertEquals(LockResult.OWNED_SHARED, locker.lockShared(k1, 0));
+        locker2.unlock();
+        locker.unlock();
+        assertTrue(System.nanoTime() >= end);
+
+        // Upgradable lock blocked by exclusive lock.
+        assertEquals(LockResult.ACQUIRED, locker.lockExclusive(k1, -1));
+        end = scheduleUnlock(locker, 1000);
+        assertEquals(LockResult.ACQUIRED, locker2.lockUpgradable(k1, MEDIUM_TIMEOUT));
+        assertEquals(LockResult.TIMED_OUT_LOCK, locker.lockUpgradable(k1, 0));
+        locker2.unlock();
+        assertTrue(System.nanoTime() >= end);
+
+        // Upgradable lock blocked by exclusive lock, granted via downgrade to shared.
         assertEquals(LockResult.ACQUIRED, locker.lockExclusive(k1, -1));
         end = scheduleUnlockToShared(locker, 1000);
         assertEquals(LockResult.ACQUIRED, locker2.lockUpgradable(k1, MEDIUM_TIMEOUT));
@@ -447,6 +474,18 @@ public class LockTest {
         locker.unlock();
         assertTrue(System.nanoTime() >= end);
 
+        // Shared locks blocked...
+
+        // Shared lock blocked by exclusive lock.
+        assertEquals(LockResult.ACQUIRED, locker.lockExclusive(k1, -1));
+        end = scheduleUnlock(locker, 1000);
+        assertEquals(LockResult.ACQUIRED, locker2.lockShared(k1, MEDIUM_TIMEOUT));
+        assertEquals(LockResult.ACQUIRED, locker.lockShared(k1, 0));
+        locker.unlock();
+        locker2.unlock();
+        assertTrue(System.nanoTime() >= end);
+
+        // Shared lock blocked by exclusive lock, granted via downgrade to shared.
         assertEquals(LockResult.ACQUIRED, locker.lockExclusive(k1, -1));
         end = scheduleUnlockToShared(locker, 1000);
         assertEquals(LockResult.ACQUIRED, locker2.lockShared(k1, MEDIUM_TIMEOUT));
@@ -455,18 +494,12 @@ public class LockTest {
         locker2.unlock();
         assertTrue(System.nanoTime() >= end);
 
+        // Shared lock blocked by exclusive lock, granted via downgrade to upgradable.
         assertEquals(LockResult.ACQUIRED, locker.lockExclusive(k1, -1));
         end = scheduleUnlockToUpgradable(locker, 1000);
         assertEquals(LockResult.ACQUIRED, locker2.lockShared(k1, MEDIUM_TIMEOUT));
         assertEquals(LockResult.OWNED_UPGRADABLE, locker.lockShared(k1, 0));
         locker.unlock();
-        locker2.unlock();
-        assertTrue(System.nanoTime() >= end);
-
-        assertEquals(LockResult.ACQUIRED, locker.lockShared(k1, -1));
-        end = scheduleUnlock(locker, 1000);
-        assertEquals(LockResult.ACQUIRED, locker2.lockExclusive(k1, MEDIUM_TIMEOUT));
-        assertEquals(LockResult.TIMED_OUT_LOCK, locker.lockShared(k1, 0));
         locker2.unlock();
         assertTrue(System.nanoTime() >= end);
     }
