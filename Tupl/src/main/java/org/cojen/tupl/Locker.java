@@ -234,6 +234,7 @@ public class Locker {
         }
 
         Block(Block prev, Lock first) {
+            mPrev = prev;
             int capacity = prev.mElements.length;
             if (capacity < HIGHEST_BLOCK_CAPACITY) {
                 capacity <<= 1;

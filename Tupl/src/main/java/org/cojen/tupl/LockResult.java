@@ -69,17 +69,23 @@ public enum LockResult {
         mType = type;
     }
 
+    /**
+     * @return true if lock request timed out
+     */
     public boolean isTimedOut() {
         return mType == 1;
     }
 
     /**
-     * @return true if acquired or owned
+     * @return true if lock was just acquired or already owned
      */
     public boolean isGranted() {
         return mType >= 2;
     }
 
+    /**
+     * @return true if lock was already owned when requested
+     */
     public boolean isOwned() {
         return mType == 3;
     }
