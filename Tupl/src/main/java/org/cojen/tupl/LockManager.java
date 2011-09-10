@@ -31,6 +31,17 @@ public final class LockManager {
         this(Runtime.getRuntime().availableProcessors() * 16);
     }
 
+    /**
+     * @return number of locks actively held, at any level
+     */
+    public int numLocksHeld() {
+        int count = 0;
+        for (LockHT ht : mHashTables) {
+            count += ht.size();
+        }
+        return count;
+    }
+
     private LockManager(int numHashTables) {
         // Round up to power of 2.
         numHashTables = Integer.highestOneBit(numHashTables - 1) << 1;
@@ -151,9 +162,11 @@ public final class LockManager {
     final static int hashCode(byte[] key) {
         int hash = 0;
         for (int i=key.length; --i>=0; ) {
-            hash = hash * 31 + (key[i] & 0xff);
+            hash = hash * 31 + key[i];
         }
-        return hash;
+        // Scramble the hashcode a bit, just like HashMap does.
+        hash ^= (hash >>> 20) ^ (hash >>> 12);
+        return hash ^ (hash >>> 7) ^ (hash >>> 4);
     }
 
     private LockHT getLockHT(int hash) {
@@ -177,6 +190,14 @@ public final class LockManager {
             mEntries = new Lock[16];
             mGrowThreshold = (int) (mEntries.length * LOAD_FACTOR);
             mLatch = new Latch();
+        }
+
+        int size() {
+            Latch latch = mLatch;
+            latch.acquireExclusiveUnfair();
+            int size = mSize;
+            latch.releaseExclusive();
+            return size;
         }
 
         /**

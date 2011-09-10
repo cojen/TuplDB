@@ -31,15 +31,42 @@ public class LockTest {
 
     private static final byte[] k1, k2;
 
-    private static final long SHORT_TIMEOUT = 1000000L; // 1 millis
+    private static final long ONE_MILLIS_IN_NANOS = 1000000L;
+
+    private static final long SHORT_TIMEOUT = ONE_MILLIS_IN_NANOS;
+    private static final long MEDIUM_TIMEOUT = ONE_MILLIS_IN_NANOS * 10000;
 
     static {
         k1 = key("hello");
         k2 = key("world");
     }
 
-    static byte[] key(String str) {
+    public static byte[] key(String str) {
         return str.getBytes();
+    }
+
+    public static void sleep(long millis) {
+        if (millis == 0) {
+            return;
+        }
+        long start = System.nanoTime();
+        do {
+            try {
+                Thread.sleep(millis);
+            } catch (InterruptedException e) {
+            }
+            millis -= (System.nanoTime() - start) / 1000000;
+        } while (millis > 0);
+    }
+
+    public static void selfInterrupt(final long delayMillis) {
+        final Thread thread = Thread.currentThread();
+        new Thread() {
+            public void run() {
+                LockTest.sleep(delayMillis);
+                thread.interrupt();
+            }
+        }.start();
     }
 
     private LockManager mManager;
@@ -53,11 +80,15 @@ public class LockTest {
     public void basicShared() {
         Locker locker = new Locker(mManager);
         assertEquals(LockResult.ACQUIRED, locker.lockShared(k1, -1));
+        assertEquals(1, mManager.numLocksHeld());
         assertEquals(LockResult.OWNED_SHARED, locker.lockShared(k1, -1));
+        assertEquals(1, mManager.numLocksHeld());
         assertEquals(LockResult.ACQUIRED, locker.lockShared(k2, -1));
         assertEquals(LockResult.OWNED_SHARED, locker.lockShared(k1, -1));
         assertEquals(LockResult.OWNED_SHARED, locker.lockShared(k2, -1));
+        assertEquals(2, mManager.numLocksHeld());
         locker.unlockAll();
+        assertEquals(0, mManager.numLocksHeld());
 
         assertEquals(LockResult.ACQUIRED, locker.lockShared(k1, -1));
         assertEquals(LockResult.ACQUIRED, locker.lockShared(k2, -1));
@@ -95,17 +126,24 @@ public class LockTest {
 
         assertEquals(LockResult.ILLEGAL, locker.lockUpgradable(k1, -1));
         assertEquals(LockResult.ILLEGAL, locker.lockExclusive(k1, -1));
+
+        locker.unlockAll();
+        locker2.unlockAll();
     }
 
     @Test
     public void basicUpgradable() {
         Locker locker = new Locker(mManager);
         assertEquals(LockResult.ACQUIRED, locker.lockUpgradable(k1, -1));
+        assertEquals(1, mManager.numLocksHeld());
         assertEquals(LockResult.OWNED_UPGRADABLE, locker.lockUpgradable(k1, -1));
+        assertEquals(1, mManager.numLocksHeld());
         assertEquals(LockResult.ACQUIRED, locker.lockUpgradable(k2, -1));
         assertEquals(LockResult.OWNED_UPGRADABLE, locker.lockUpgradable(k1, -1));
         assertEquals(LockResult.OWNED_UPGRADABLE, locker.lockUpgradable(k2, -1));
+        assertEquals(2, mManager.numLocksHeld());
         locker.unlockAll();
+        assertEquals(0, mManager.numLocksHeld());
 
         assertEquals(LockResult.ACQUIRED, locker.lockUpgradable(k1, -1));
         assertEquals(LockResult.ACQUIRED, locker.lockUpgradable(k2, -1));
@@ -164,17 +202,24 @@ public class LockTest {
         assertEquals(LockResult.OWNED_SHARED, locker.lockShared(k1, -1));
         assertEquals(LockResult.ILLEGAL, locker.lockUpgradable(k1, -1));
         assertEquals(LockResult.ILLEGAL, locker.lockExclusive(k1, -1));
+
+        locker.unlockAll();
+        locker2.unlockAll();
     }
 
     @Test
     public void basicExclusive() {
         Locker locker = new Locker(mManager);
         assertEquals(LockResult.ACQUIRED, locker.lockExclusive(k1, -1));
+        assertEquals(1, mManager.numLocksHeld());
         assertEquals(LockResult.OWNED_EXCLUSIVE, locker.lockExclusive(k1, -1));
+        assertEquals(1, mManager.numLocksHeld());
         assertEquals(LockResult.ACQUIRED, locker.lockExclusive(k2, -1));
         assertEquals(LockResult.OWNED_EXCLUSIVE, locker.lockExclusive(k1, -1));
         assertEquals(LockResult.OWNED_EXCLUSIVE, locker.lockExclusive(k2, -1));
+        assertEquals(2, mManager.numLocksHeld());
         locker.unlockAll();
+        assertEquals(0, mManager.numLocksHeld());
 
         assertEquals(LockResult.ACQUIRED, locker.lockExclusive(k1, -1));
         assertEquals(LockResult.ACQUIRED, locker.lockExclusive(k2, -1));
@@ -225,6 +270,9 @@ public class LockTest {
         
         assertEquals(LockResult.OWNED_SHARED, locker.lockShared(k1, -1));
         assertEquals(LockResult.ILLEGAL, locker.lockExclusive(k1, -1));
+
+        locker.unlockAll();
+        locker2.unlockAll();
     }
 
     @Test
@@ -233,6 +281,7 @@ public class LockTest {
         for (int i=0; i<1000; i++) {
             assertEquals(LockResult.ACQUIRED, locker.lockExclusive(key("k" + i), -1));
         }
+        assertEquals(1000, mManager.numLocksHeld());
         locker.unlockAll();
         for (int i=0; i<1000; i++) {
             assertEquals(LockResult.ACQUIRED, locker.lockExclusive(key("k" + i), -1));
@@ -246,5 +295,212 @@ public class LockTest {
         for (int i=0; i<1000; i++) {
             assertEquals(LockResult.ACQUIRED, locker.lockExclusive(key("k" + i), -1));
         }
+        locker.unlockAll();
+    }
+
+    @Test
+    public void blockedNoWait() {
+        blocked(0);
+    }
+
+    @Test
+    public void blockedTimedWait() {
+        blocked(SHORT_TIMEOUT);
+    }
+
+    private void blocked(long nanosTimeout) {
+        Locker locker = new Locker(mManager);
+        Locker locker2 = new Locker(mManager);
+
+        locker.lockShared(k1, -1);
+
+        assertEquals(LockResult.TIMED_OUT_LOCK, locker2.lockExclusive(k1, nanosTimeout));
+
+        locker.unlock();
+
+        assertEquals(LockResult.ACQUIRED, locker2.lockExclusive(k1, -1));
+        locker2.unlock();
+
+        locker.lockUpgradable(k1, -1);
+
+        assertEquals(LockResult.TIMED_OUT_LOCK, locker2.lockUpgradable(k1, nanosTimeout));
+        assertEquals(LockResult.TIMED_OUT_LOCK, locker2.lockExclusive(k1, nanosTimeout));
+
+        locker.unlock();
+
+        assertEquals(LockResult.ACQUIRED, locker2.lockUpgradable(k1, -1));
+        locker2.unlock();
+
+        locker.lockExclusive(k1, -1);
+
+        assertEquals(LockResult.TIMED_OUT_LOCK, locker2.lockShared(k1, nanosTimeout));
+        assertEquals(LockResult.TIMED_OUT_LOCK, locker2.lockUpgradable(k1, nanosTimeout));
+        assertEquals(LockResult.TIMED_OUT_LOCK, locker2.lockExclusive(k1, nanosTimeout));
+
+        locker.unlock();
+
+        assertEquals(LockResult.ACQUIRED, locker2.lockShared(k1, -1));
+        locker2.unlock();
+
+        locker.unlockAll();
+        locker2.unlockAll();
+    }
+
+    @Test
+    public void interrupts() {
+        interrupts(-1);
+    }
+
+    @Test
+    public void interruptsTimedWait() {
+        interrupts(10000 * ONE_MILLIS_IN_NANOS);
+    }
+
+    private void interrupts(long nanosTimeout) {
+        Locker locker = new Locker(mManager);
+        Locker locker2 = new Locker(mManager);
+
+        locker.lockShared(k1, -1);
+
+        selfInterrupt(1000);
+        assertEquals(LockResult.INTERRUPTED, locker2.lockExclusive(k1, nanosTimeout));
+        assertFalse(Thread.interrupted());
+
+        locker.unlock();
+
+        assertEquals(LockResult.ACQUIRED, locker2.lockExclusive(k1, -1));
+        locker2.unlock();
+
+        locker.lockUpgradable(k1, -1);
+
+        selfInterrupt(1000);
+        assertEquals(LockResult.INTERRUPTED, locker2.lockUpgradable(k1, nanosTimeout));
+        assertFalse(Thread.interrupted());
+        selfInterrupt(1000);
+        assertEquals(LockResult.INTERRUPTED, locker2.lockExclusive(k1, nanosTimeout));
+        assertFalse(Thread.interrupted());
+
+        locker.unlock();
+
+        assertEquals(LockResult.ACQUIRED, locker2.lockUpgradable(k1, -1));
+        locker2.unlock();
+
+        locker.lockExclusive(k1, -1);
+
+        selfInterrupt(1000);
+        assertEquals(LockResult.INTERRUPTED, locker2.lockShared(k1, nanosTimeout));
+        assertFalse(Thread.interrupted());
+        selfInterrupt(1000);
+        assertEquals(LockResult.INTERRUPTED, locker2.lockUpgradable(k1, nanosTimeout));
+        assertFalse(Thread.interrupted());
+        selfInterrupt(1000);
+        assertEquals(LockResult.INTERRUPTED, locker2.lockExclusive(k1, nanosTimeout));
+        assertFalse(Thread.interrupted());
+
+        locker.unlock();
+
+        assertEquals(LockResult.ACQUIRED, locker2.lockShared(k1, -1));
+        locker2.unlock();
+
+        locker.unlockAll();
+        locker2.unlockAll();
+    }
+
+    @Test
+    public void delayedAcquire() {
+        Locker locker = new Locker(mManager);
+        Locker locker2 = new Locker(mManager);
+
+        assertEquals(LockResult.ACQUIRED, locker.lockUpgradable(k1, -1));
+        long end = scheduleUnlock(locker, 1000);
+        assertEquals(LockResult.ACQUIRED, locker2.lockUpgradable(k1, MEDIUM_TIMEOUT));
+        assertEquals(LockResult.TIMED_OUT_LOCK, locker.lockUpgradable(k1, 0));
+        locker2.unlock();
+        assertTrue(System.nanoTime() >= end);
+
+        assertEquals(LockResult.ACQUIRED, locker.lockUpgradable(k1, -1));
+        end = scheduleUnlock(locker, 1000);
+        assertEquals(LockResult.ACQUIRED, locker2.lockExclusive(k1, MEDIUM_TIMEOUT));
+        assertEquals(LockResult.TIMED_OUT_LOCK, locker.lockUpgradable(k1, 0));
+        locker2.unlock();
+        assertTrue(System.nanoTime() >= end);
+
+        assertEquals(LockResult.ACQUIRED, locker.lockExclusive(k1, -1));
+        end = scheduleUnlock(locker, 1000);
+        assertEquals(LockResult.ACQUIRED, locker2.lockUpgradable(k1, MEDIUM_TIMEOUT));
+        assertEquals(LockResult.TIMED_OUT_LOCK, locker.lockUpgradable(k1, 0));
+        locker2.unlock();
+        assertTrue(System.nanoTime() >= end);
+
+        assertEquals(LockResult.ACQUIRED, locker.lockExclusive(k1, -1));
+        end = scheduleUnlock(locker, 1000);
+        assertEquals(LockResult.ACQUIRED, locker2.lockExclusive(k1, MEDIUM_TIMEOUT));
+        assertEquals(LockResult.TIMED_OUT_LOCK, locker.lockUpgradable(k1, 0));
+        locker2.unlock();
+        assertTrue(System.nanoTime() >= end);
+
+        assertEquals(LockResult.ACQUIRED, locker.lockExclusive(k1, -1));
+        end = scheduleUnlockToShared(locker, 1000);
+        assertEquals(LockResult.ACQUIRED, locker2.lockUpgradable(k1, MEDIUM_TIMEOUT));
+        assertEquals(LockResult.OWNED_SHARED, locker.lockShared(k1, 0));
+        locker2.unlock();
+        locker.unlock();
+        assertTrue(System.nanoTime() >= end);
+
+        assertEquals(LockResult.ACQUIRED, locker.lockExclusive(k1, -1));
+        end = scheduleUnlockToShared(locker, 1000);
+        assertEquals(LockResult.ACQUIRED, locker2.lockShared(k1, MEDIUM_TIMEOUT));
+        assertEquals(LockResult.OWNED_SHARED, locker.lockShared(k1, 0));
+        locker.unlock();
+        locker2.unlock();
+        assertTrue(System.nanoTime() >= end);
+
+        assertEquals(LockResult.ACQUIRED, locker.lockExclusive(k1, -1));
+        end = scheduleUnlockToUpgradable(locker, 1000);
+        assertEquals(LockResult.ACQUIRED, locker2.lockShared(k1, MEDIUM_TIMEOUT));
+        assertEquals(LockResult.OWNED_UPGRADABLE, locker.lockShared(k1, 0));
+        locker.unlock();
+        locker2.unlock();
+        assertTrue(System.nanoTime() >= end);
+
+        assertEquals(LockResult.ACQUIRED, locker.lockShared(k1, -1));
+        end = scheduleUnlock(locker, 1000);
+        assertEquals(LockResult.ACQUIRED, locker2.lockExclusive(k1, MEDIUM_TIMEOUT));
+        assertEquals(LockResult.TIMED_OUT_LOCK, locker.lockShared(k1, 0));
+        locker2.unlock();
+        assertTrue(System.nanoTime() >= end);
+    }
+
+    private long scheduleUnlock(final Locker locker, final long delayMillis) {
+        return schedule(locker, delayMillis, 0);
+    }
+
+    private long scheduleUnlockToShared(final Locker locker, final long delayMillis) {
+        return schedule(locker, delayMillis, 1);
+    }
+
+    private long scheduleUnlockToUpgradable(final Locker locker, final long delayMillis) {
+        return schedule(locker, delayMillis, 2);
+    }
+
+    private long schedule(final Locker locker, final long delayMillis, final int type) {
+        long end = System.nanoTime() + delayMillis * ONE_MILLIS_IN_NANOS;
+        new Thread() {
+            public void run() {
+                LockTest.sleep(delayMillis);
+                switch (type) {
+                default:
+                    locker.unlock();
+                    break;
+                case 1:
+                    locker.unlockToShared();
+                    break;
+                case 2:
+                    locker.unlockToUpgradable();
+                    break;
+                }
+            }
+        }.start();
+        return end;
     }
 }
