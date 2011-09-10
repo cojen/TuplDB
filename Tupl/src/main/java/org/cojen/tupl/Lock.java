@@ -34,7 +34,7 @@ final class Lock {
 
     // 0xxx...  shared locks held (up to (2^31)-2)
     // 1xxx...  upgradable and shared locks held (up to (2^31)-2)
-    // 1111...  exclusive lock held
+    // 1111...  exclusive lock held (~0)
     int mLockCount;
 
     // Exclusive or upgradable locker.
@@ -286,18 +286,20 @@ final class Lock {
             int count = mLockCount;
             if (count != ~0) {
                 // Unlocking upgradable lock.
-                return (mLockCount = count & 0x7fffffff) == 0;
+                return (mLockCount = count & 0x7fffffff) == 0 && queueU == null;
             } else {
                 // Unlocking exclusive lock.
                 mLockCount = 0;
                 WaitQueue queueSX = mQueueSX;
-                if (queueSX != null) {
+                if (queueSX == null) {
+                    return queueU == null;
+                } else {
                     // Signal all shared lock waiters. Queue doesn't contain
                     // any exclusive lock waiters, because they would need to
                     // acquire upgradable lock first, which was held.
                     queueSX.signalAll();
+                    return false;
                 }
-                return true;
             }
         } else {
             int count = mLockCount;
@@ -324,8 +326,8 @@ final class Lock {
 
             mLockCount = --count;
 
+            WaitQueue queueSX = mQueueSX;
             if (count == 0x80000000) {
-                WaitQueue queueSX = mQueueSX;
                 if (queueSX != null) {
                     // Signal any exclusive lock waiter. Queue shouldn't contain
                     // any shared lock waiters, because no exclusive lock is
@@ -334,7 +336,7 @@ final class Lock {
                 }
                 return false;
             } else {
-                return count == 0;
+                return count == 0 && queueSX == null && mQueueU == null;
             }
         }
     }
