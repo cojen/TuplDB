@@ -106,6 +106,8 @@ public class Locker {
      * @throws IllegalStateException if no locks held, or if too many shared locks
      */
     public byte[] unlockToShared() {
+        // Peek outside of try block, because its IllegalStateException should
+        // not be handled here.
         Lock lock = peek();
         try {
             return mManager.unlockToShared(this, lock);

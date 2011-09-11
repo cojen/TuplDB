@@ -31,17 +31,6 @@ public final class LockManager {
         this(Runtime.getRuntime().availableProcessors() * 16);
     }
 
-    /**
-     * @return number of locks actively held, at any level
-     */
-    public int numLocksHeld() {
-        int count = 0;
-        for (LockHT ht : mHashTables) {
-            count += ht.size();
-        }
-        return count;
-    }
-
     private LockManager(int numHashTables) {
         // Round up to power of 2.
         numHashTables = Integer.highestOneBit(numHashTables - 1) << 1;
@@ -50,6 +39,17 @@ public final class LockManager {
             mHashTables[i] = new LockHT();
         }
         mHashTableMask = numHashTables - 1;
+    }
+
+    /**
+     * @return total number of locks actively held, of any type
+     */
+    public int numLocksHeld() {
+        int count = 0;
+        for (LockHT ht : mHashTables) {
+            count += ht.size();
+        }
+        return count;
     }
 
     final LockResult lockShared(Locker locker, byte[] key, long nanosTimeout) {
