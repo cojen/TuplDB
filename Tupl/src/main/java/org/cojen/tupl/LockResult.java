@@ -20,6 +20,7 @@ package org.cojen.tupl;
  * 
  *
  * @author Brian S O'Neill
+ * @see Locker
  */
 public enum LockResult {
     /** Lock rejection caused by illegal lock mode upgrade. */
@@ -29,7 +30,7 @@ public enum LockResult {
     INTERRUPTED(0),
 
     /** Lock rejection caused by wait timeout, not deadlock. */
-    TIMED_OUT_LATCH(1),
+    //TIMED_OUT_LATCH(1),
 
     /** Lock rejection caused by wait timeout or deadlock. */
     TIMED_OUT_LOCK(1),

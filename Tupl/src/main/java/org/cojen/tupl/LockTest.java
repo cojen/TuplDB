@@ -289,6 +289,27 @@ public class LockTest {
     }
 
     @Test
+    public void upgrade() {
+        Locker locker = new Locker(mManager);
+        Locker locker2 = new Locker(mManager);
+
+        assertEquals(LockResult.ACQUIRED, locker.lockShared(k1, -1));
+        assertEquals(LockResult.ACQUIRED, locker2.lockUpgradable(k1, -1));
+        assertEquals(LockResult.TIMED_OUT_LOCK, locker2.lockExclusive(k1, SHORT_TIMEOUT));
+        scheduleUnlock(locker, 1000);
+        assertEquals(LockResult.UPGRADED, locker2.lockExclusive(k1, MEDIUM_TIMEOUT));
+        assertEquals(LockResult.OWNED_EXCLUSIVE, locker2.lockExclusive(k1, -1));
+        assertEquals(LockResult.TIMED_OUT_LOCK, locker.lockShared(k1, SHORT_TIMEOUT));
+        assertEquals(LockResult.TIMED_OUT_LOCK, locker.lockUpgradable(k1, SHORT_TIMEOUT));
+        scheduleUnlockToUpgradable(locker2, 1000);
+        assertEquals(LockResult.ACQUIRED, locker.lockShared(k1, MEDIUM_TIMEOUT));
+        assertEquals(LockResult.OWNED_UPGRADABLE, locker2.lockUpgradable(k1, -1));
+
+        locker.unlockAll();
+        locker2.unlockAll();
+    }
+
+    @Test
     public void pileOfLocks() {
         Locker locker = new Locker(mManager);
         for (int i=0; i<1000; i++) {
