@@ -18,9 +18,10 @@ package org.cojen.tupl;
 
 /**
  * Accumulates a scoped stack of locks, bound to arbitrary keys. Locker
- * instances can only be safely used by one thread at a time. Without proper
- * synchronization, multiple threads interacting with a Locker instance results
- * in undefined behavior.
+ * instances can only be safely used by one thread at a time. Lockers can be
+ * exchanged by threads, as long as a happens-before relationship is
+ * established. Without proper exclusion, multiple threads interacting with a
+ * Locker instance results in undefined behavior.
  *
  * @author Brian S O'Neill
  */
@@ -156,11 +157,12 @@ public class Locker {
 
     @Override
     public final int hashCode() {
-        // Caching the default hashcode doubles the performance of this method,
-        // when using the HotSpot client or server VM.
         int hash = mHashCode;
         if (hash == 0) {
-            hash = mHashCode = super.hashCode();
+            // Scramble the hashcode a bit, just like HashMap does.
+            hash = super.hashCode();
+            hash ^= (hash >>> 20) ^ (hash >>> 12);
+            return mHashCode = hash ^ (hash >>> 7) ^ (hash >>> 4);
         }
         return hash;
     }
