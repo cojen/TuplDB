@@ -100,10 +100,13 @@ class WaitQueue {
     void signalOne() {
         Node head = mHead;
         if (head != null) {
-            if ((mHead = head.mNext) == null) {
-                mTail = null;
-            }
+            Node next = head.mNext;
             head.signal();
+            if ((mHead = next) == null) {
+                mTail = null;
+            } else {
+                next.mPrev = null;
+            }
         }
     }
 
@@ -128,50 +131,37 @@ class WaitQueue {
 
     /**
      * Signals all shared waiters in the queue until an exclusive waiter is
-     * reached. Exclusive latch must be held, which is still held when method
-     * returns.
+     * reached. If an exclusive waiter is seen at the head of the queue, it is
+     * signalled instead, if allowed. Exclusive latch must be held, which is
+     * still held when method returns.
      */
-    void signalShared() {
-        Node head = mHead;
-        if (head instanceof Shared) {
-            while (true) {
-                Node next = head.mNext;
-                head.signal();
-                if (next == null) {
-                    mHead = null;
-                    mTail = null;
-                    return;
-                }
-                if (!(next instanceof Shared)) {
-                    mHead = next;
-                    return;
-                }
-                head = next;
-            }
-        }
-    }
-
-    /**
-     * Signals all shared waiters in the queue until an exclusive waiter is
-     * reached. If only an exclusive waiter is seen, it is signalled instead.
-     * Exclusive latch must be held, which is still held when method returns.
-     */
-    void signalSharedOrOneExclusive() {
+    void signalShared(boolean allowSignalExclusive) {
         Node head = mHead;
         if (head != null) {
-            while (true) {
+            if (head instanceof Shared) {
+                while (true) {
+                    Node next = head.mNext;
+                    head.signal();
+                    if (next == null) {
+                        mHead = null;
+                        mTail = null;
+                        return;
+                    }
+                    if (!(next instanceof Shared)) {
+                        next.mPrev = null;
+                        mHead = next;
+                        return;
+                    }
+                    head = next;
+                }
+            } else if (allowSignalExclusive) {
                 Node next = head.mNext;
                 head.signal();
-                if (next == null) {
-                    mHead = null;
+                if ((mHead = next) == null) {
                     mTail = null;
-                    return;
+                } else {
+                    next.mPrev = null;
                 }
-                if (!(next instanceof Shared)) {
-                    mHead = next;
-                    return;
-                }
-                head = next;
             }
         }
     }

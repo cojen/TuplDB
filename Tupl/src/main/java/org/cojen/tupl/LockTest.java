@@ -16,6 +16,11 @@
 
 package org.cojen.tupl;
 
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -70,10 +75,18 @@ public class LockTest {
     }
 
     private LockManager mManager;
+    private ExecutorService mExecutor;
 
     @Before
     public void setup() {
         mManager = new LockManager();
+    }
+
+    @After
+    public void teardown() {
+        if (mExecutor != null) {
+            mExecutor.shutdown();
+        }
     }
 
     @Test
@@ -535,5 +548,120 @@ public class LockTest {
             }
         }.start();
         return end;
+    }
+
+    @Test
+    public void fifo() throws Exception {
+        mExecutor = Executors.newCachedThreadPool();
+
+        final int count = 10;
+
+        Locker[] lockers = new Locker[count];
+        for (int i=0; i<count; i++) {
+            lockers[i] = new Locker(mManager);
+        }
+        Future<LockResult>[] futures = new Future[count];
+
+        // Upgradable locks acquired in fifo order.
+        synchronized (lockers[0]) {
+            lockers[0].lockUpgradable(k1, -1);
+        }
+        for (int i=1; i<lockers.length; i++) {
+            // Sleep between attempts, to ensure proper enqueue ordering while
+            // threads are concurrently starting.
+            sleep(100);
+            futures[i] = lockUpgradable(lockers[i], k1);
+        }
+        for (int i=1; i<lockers.length; i++) {
+            Locker last = lockers[i - 1];
+            synchronized (last) {
+                last.unlock();
+            }
+            assertEquals(LockResult.ACQUIRED, futures[i].get());
+        }
+
+        // Clean up.
+        for (int i=0; i<count; i++) {
+            synchronized (lockers[i]) {
+                lockers[i].unlockAll();
+            }
+        }
+
+        // Shared lock, enqueue exclusive lock, remaining shared locks must wait.
+        synchronized (lockers[0]) {
+            lockers[0].lockShared(k1, -1);
+        }
+        synchronized (lockers[1]) {
+            assertEquals(LockResult.TIMED_OUT_LOCK, lockers[1].lockExclusive(k1, SHORT_TIMEOUT));
+        }
+        futures[1] = lockExclusive(lockers[1], k1);
+        sleep(100);
+        synchronized (lockers[2]) {
+            assertEquals(LockResult.TIMED_OUT_LOCK, lockers[2].lockShared(k1, SHORT_TIMEOUT));
+        }
+        for (int i=2; i<lockers.length; i++) {
+            sleep(100);
+            futures[i] = lockShared(lockers[i], k1);
+        }
+        // Now release first shared lock.
+        synchronized (lockers[0]) {
+            lockers[0].unlock();
+        }
+        // Exclusive lock is now available.
+        assertEquals(LockResult.ACQUIRED, futures[1].get());
+        // Verify shared locks not held.
+        sleep(100);
+        for (int i=2; i<lockers.length; i++) {
+            assertFalse(futures[i].isDone());
+        }
+        // Release exclusive and let shared in.
+        synchronized (lockers[1]) {
+            lockers[1].unlock();
+        }
+        // Shared locks all acquired now.
+        for (int i=2; i<lockers.length; i++) {
+            assertEquals(LockResult.ACQUIRED, futures[i].get());
+        }
+
+        // Clean up.
+        for (int i=0; i<count; i++) {
+            synchronized (lockers[i]) {
+                lockers[i].unlockAll();
+            }
+        }
+    }
+
+    private Future<LockResult> lockShared(final Locker locker, final byte[] key) {
+        return lockAsync(locker, key, 0);
+    }
+
+    private Future<LockResult> lockUpgradable(final Locker locker, final byte[] key) {
+        return lockAsync(locker, key, 1);
+    }
+
+    private Future<LockResult> lockExclusive(final Locker locker, final byte[] key) {
+        return lockAsync(locker, key, 2);
+    }
+
+    private Future<LockResult> lockAsync(final Locker locker, final byte[] key, final int type) {
+        return mExecutor.submit(new Callable<LockResult>() {
+            public LockResult call() {
+                LockResult result;
+                synchronized (locker) {
+                    switch (type) {
+                    default:
+                        result = locker.lockShared(key, MEDIUM_TIMEOUT);
+                        break;
+                    case 1:
+                        result = locker.lockUpgradable(key, MEDIUM_TIMEOUT);
+                        break;
+                    case 2:
+                        result = locker.lockExclusive(key, MEDIUM_TIMEOUT);
+                        break;
+                    }
+                }
+                return result;
+            }
+        });
     }
 }

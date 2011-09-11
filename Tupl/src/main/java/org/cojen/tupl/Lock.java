@@ -108,7 +108,7 @@ final class Lock {
             // should still be adjusted.
 
             if (mQueueSX == null) {
-                mQueueSX = queueSX;
+                mQueueSX = queueSX = new WaitQueue();
             }
         }
     }
@@ -187,7 +187,7 @@ final class Lock {
             // should still be adjusted.
 
             if (mQueueU == null) {
-                mQueueU = queueU;
+                mQueueU = queueU = new WaitQueue();
             }
         }
     }
@@ -264,7 +264,7 @@ final class Lock {
             // should still be adjusted.
 
             if (mQueueSX == null) {
-                mQueueSX = queueSX;
+                mQueueSX = queueSX = new WaitQueue();
             }
         }
     }
@@ -332,7 +332,7 @@ final class Lock {
                     // Signal any exclusive lock waiter. Queue shouldn't contain
                     // any shared lock waiters, because no exclusive lock is
                     // held. In case there are any, signal them instead.
-                    queueSX.signalSharedOrOneExclusive();
+                    queueSX.signalShared(true);
                 }
                 return false;
             } else {
@@ -398,7 +398,7 @@ final class Lock {
         mLockCount = 0x80000000;
         WaitQueue queueSX = mQueueSX;
         if (queueSX != null) {
-            queueSX.signalShared();
+            queueSX.signalShared(false);
         }
     }
 
