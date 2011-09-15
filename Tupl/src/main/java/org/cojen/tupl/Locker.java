@@ -28,19 +28,36 @@ package org.cojen.tupl;
 public class Locker {
     private static final int FIRST_BLOCK_CAPACITY = 10;
     private static final int HIGHEST_BLOCK_CAPACITY = 80;
+    private static final int INITIAL_SCOPE_STACK_CAPACITY = 4;
 
-    private final LockManager mManager;
+    final LockManager mManager;
 
     private int mHashCode;
 
     // Is null if empty; Lock instance if one; Block if more.
-    private Object mTailBlock;
+    Object mTailBlock;
+    Object mHeadBlock;
+
+    // The logical type of the scope stack is: Stack<Stack<Lock>>
+    // Is null if empty; saved tail if one; Object[] if more.
+    private Object mScopeTailStack;
+    private Object mScopeHeadStack;
+    private int mScopeStackSize;
 
     public Locker(LockManager manager) {
         if (manager == null) {
             throw new IllegalArgumentException("LockManager is null");
         }
         mManager = manager;
+    }
+
+    /**
+     * Check the lock ownership for the given key.
+     *
+     * @return UNOWNED, OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     */
+    public final LockResult check(byte[] key) {
+        return mManager.check(this, key);
     }
 
     /**
@@ -54,7 +71,7 @@ public class Locker {
      * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      * @throws IllegalStateException if too many shared locks
      */
-    public LockResult lockShared(byte[] key, long nanosTimeout) {
+    public final LockResult lockShared(byte[] key, long nanosTimeout) {
         return mManager.lockShared(this, key, nanosTimeout);
     }
 
@@ -70,7 +87,7 @@ public class Locker {
      * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED,
      * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      */
-    public LockResult lockUpgradable(byte[] key, long nanosTimeout) {
+    public final LockResult lockUpgradable(byte[] key, long nanosTimeout) {
         return mManager.lockUpgradable(this, key, nanosTimeout);
     }
 
@@ -85,7 +102,7 @@ public class Locker {
      * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED, UPGRADED, or
      * OWNED_EXCLUSIVE
      */
-    public LockResult lockExclusive(byte[] key, long nanosTimeout) {
+    public final LockResult lockExclusive(byte[] key, long nanosTimeout) {
         return mManager.lockExclusive(this, key, nanosTimeout);
     }
 
@@ -95,7 +112,7 @@ public class Locker {
      * @return unlocked key; instance is not cloned
      * @throws IllegalStateException if no locks held
      */
-    public byte[] unlock() {
+    public final byte[] unlock() {
         return mManager.unlock(this, pop());
     }
 
@@ -105,7 +122,7 @@ public class Locker {
      * @return unlocked key; instance is not cloned
      * @throws IllegalStateException if no locks held, or if too many shared locks
      */
-    public byte[] unlockToShared() {
+    public final byte[] unlockToShared() {
         // Peek outside of try block, because its IllegalStateException should
         // not be handled here.
         Lock lock = peek();
@@ -124,37 +141,139 @@ public class Locker {
      * @return unlocked key; instance is not cloned
      * @throws IllegalStateException if no locks held, or if last lock is shared
      */
-    public byte[] unlockToUpgradable() {
+    public final byte[] unlockToUpgradable() {
         return mManager.unlockToUpgradable(this, peek());
     }
 
     /**
-     * Release all locks currently held by this Locker.
+     * Release all locks held by this Locker, and exit all scopes.
      */
-    public void unlockAll() {
-        Object tailObj = mTailBlock;
-        if (tailObj == null) {
-            return;
+    public final void reset() {
+        scopeUnlockAll();
+
+        Object scopeTailStack = mScopeTailStack;
+        if (scopeTailStack != null) {
+            if (scopeTailStack instanceof Object[]) {
+                Object[] elements = (Object[]) scopeTailStack;
+                for (int i=mScopeStackSize; --i>=0; ) {
+                    unlockAll(elements[i]);
+                }
+            } else {
+                unlockAll(scopeTailStack);
+            }
+            mScopeTailStack = null;
+            mScopeHeadStack = null;
+            mScopeStackSize = 0;
         }
-        if (tailObj instanceof Lock) {
-            mManager.unlock(this, (Lock) tailObj);
+    }
+
+    public final void scopeEnter() {
+        // Move the current stack of locks to scope stack.
+
+        Object tail = mTailBlock;
+        Object head = mHeadBlock;
+        int size = mScopeStackSize;
+
+        if (size == 0) {
+            mScopeTailStack = tail;
+            mScopeHeadStack = head;
+        } else if (size == 1) {
+            Object[] tailElements = new Object[INITIAL_SCOPE_STACK_CAPACITY];
+            tailElements[0] = mScopeTailStack;
+            tailElements[1] = tail;
+            mScopeTailStack = tailElements;
+            Object[] headElements = new Object[INITIAL_SCOPE_STACK_CAPACITY];
+            headElements[0] = mScopeHeadStack;
+            headElements[1] = head;
+            mScopeHeadStack = headElements;
         } else {
-            Block tail = (Block) tailObj;
-            while (true) {
-                Lock[] elements = tail.mElements;
-                for (int i=tail.mSize; --i>=0; ) {
-                    mManager.unlock(this, elements[i]);
-                    elements[i] = null;
+            Object[] tailElements = (Object[]) mScopeTailStack;
+            Object[] headElements = (Object[]) mScopeHeadStack;
+            if (size >= tailElements.length) {
+                Object[] newTailElements = new Object[tailElements.length << 1];
+                System.arraycopy(tailElements, 0, newTailElements, 0, size);
+                mScopeTailStack = tailElements = newTailElements;
+                Object[] newHeadElements = new Object[headElements.length << 1];
+                System.arraycopy(headElements, 0, newHeadElements, 0, size);
+                mScopeHeadStack = headElements = newHeadElements;
+            }
+            tailElements[size] = tail;
+            headElements[size] = head;
+        }
+
+        mScopeStackSize = size + 1;
+        mTailBlock = null;
+    }
+
+    /**
+     * Release all locks held by this Locker, within the current scope. If not
+     * in a scope, all held locks are released.
+     */
+    public final void scopeUnlockAll() {
+        unlockAll(mTailBlock);
+        mTailBlock = null;
+        mHeadBlock = null;
+    }
+
+    /**
+     * Release all non-exclusive locks held by this Locker, within the current
+     * scope. If not in a scope, all held non-exclusive locks are released.
+     */
+    public final void scopeUnlockAllNonExclusive() {
+        // FIXME
+        throw null;
+        // FIXME: Collapse non-exclusive locks within Blocks, possibly moving
+        // to previous Block. Is this efficient? Should a new stack be built
+        // and then reversed?
+        // if (mManager.unlockIfNonExclusive(this, lock)) ...
+    }
+
+    /**
+     * Exit the current scope, releasing all held locks. If requested, the
+     * locks can instead be promoted to an enclosing scope. If no enclosing
+     * scope exists, held locks are released.
+     *
+     * @param promote when true, promote all locks to enclosing scope, if one exists
+     * @return false if last scope exited and all locks released
+     */
+    public final boolean scopeExit(boolean promote) {
+        Object lastTail = mTailBlock;
+
+        if (!promote) {
+            unlockAll(lastTail);
+            return popScope();
+        }
+
+        Object lastHead = mHeadBlock;
+
+        if (!popScope()) {
+            unlockAll(lastTail);
+            return false;
+        }
+
+        if (lastHead != null) {
+            if (lastHead instanceof Lock) {
+                push((Lock) lastHead);
+            } else {
+                Object tail = mTailBlock;
+                if (tail == null) {
+                    mTailBlock = lastTail;
+                    mHeadBlock = lastHead;
+                } else {
+                    Block lastHeadBlock = (Block) lastHead;
+                    if (tail instanceof Lock) {
+                        Block newHead = lastHeadBlock.prepend((Lock) tail);
+                        if (newHead != null) {
+                            mHeadBlock = newHead;
+                        }
+                    } else {
+                        lastHeadBlock.prepend((Block) tail);
+                    }
                 }
-                Block prev = tail.mPrev;
-                if (prev == null) {
-                    break;
-                }
-                tail.mPrev = null;
-                tail = prev;
             }
         }
-        mTailBlock = null;
+
+        return true;
     }
 
     @Override
@@ -169,22 +288,25 @@ public class Locker {
         return hash;
     }
 
+    private void unlockAll(Object tailObj) {
+        if (tailObj instanceof Lock) {
+            mManager.unlock(this, (Lock) tailObj);
+        } else {
+            Block tail = (Block) tailObj;
+            while (tail != null) {
+                tail = tail.unlockAll(this);
+            }
+        }
+    }
+
     void push(Lock lock) {
         Object tailObj = mTailBlock;
         if (tailObj == null) {
-            mTailBlock = lock;
+            mHeadBlock = mTailBlock = lock;
         } else if (tailObj instanceof Lock) {
-            mTailBlock = new Block((Lock) tailObj, lock);
+            mHeadBlock = mTailBlock = new ArrayBlock((Lock) tailObj, lock);
         } else {
-            Block tail = (Block) tailObj;
-            Lock[] elements = tail.mElements;
-            int size = tail.mSize;
-            if (size < elements.length) {
-                elements[size] = lock;
-                tail.mSize = size + 1;
-            } else {
-                mTailBlock = new Block(tail, lock);
-            }
+            ((Block) tailObj).pushLock(this, lock);
         }
     }
 
@@ -195,20 +317,10 @@ public class Locker {
         }
         if (tailObj instanceof Lock) {
             mTailBlock = null;
+            mHeadBlock = null;
             return (Lock) tailObj;
         }
-        Block tail = (Block) tailObj;
-        Lock[] elements = tail.mElements;
-        int size = tail.mSize;
-        Lock lock = elements[--size];
-        elements[size] = null;
-        if (size == 0) {
-            mTailBlock = tail.mPrev;
-            tail.mPrev = null;
-        } else {
-            tail.mSize = size;
-        }
-        return lock;
+        return ((Block) tailObj).popLock(this);
     }
 
     private Lock peek() {
@@ -219,17 +331,118 @@ public class Locker {
         if (tailObj instanceof Lock) {
             return (Lock) tailObj;
         }
-        Block tail = (Block) tailObj;
-        return tail.mElements[tail.mSize - 1];
+        return ((Block) tailObj).last();
     }
 
-    static final class Block {
-        private Block mPrev;
+    private boolean popScope() {
+        int size = mScopeStackSize - 1;
+        if (size < 0) {
+            return false;
+        }
+        Object scopeTailStack = mScopeTailStack;
+        if (scopeTailStack instanceof Object[]) {
+            mTailBlock = ((Object[]) scopeTailStack)[size];
+            mHeadBlock = ((Object[]) mScopeHeadStack)[size];
+        } else {
+            mTailBlock = scopeTailStack;
+            mHeadBlock = mScopeHeadStack;
+        }
+        mScopeStackSize = size;
+        return true;
+    }
 
-        Lock[] mElements;
-        int mSize;
+    static abstract class Block {
+        Block mPrev;
 
-        Block(Lock first, Lock second) {
+        abstract int capacity();
+
+        abstract int size();
+
+        abstract Lock last();
+
+        abstract void pushLock(Locker locker, Lock lock);
+
+        abstract Lock popLock(Locker locker);
+
+        /**
+         * @return previous Block or null if none left
+         */
+        abstract Block unlockAll(Locker locker);
+
+        /**
+         * @return null if prepended into this Block, else new head Block
+         */
+        abstract Block prepend(Lock lock);
+
+        abstract void prepend(Block block);
+
+        abstract int copyTo(Lock[] elements, int offset);
+    }
+
+    static final class TinyBlock extends Block {
+        private Lock mElement;
+
+        TinyBlock(Lock element) {
+            mElement = element;
+        }
+
+        int capacity() {
+            return 1;
+        }
+
+        int size() {
+            return 1;
+        }
+
+        Lock last() {
+            return mElement;
+        }
+
+        void pushLock(Locker locker, Lock lock) {
+            locker.mTailBlock = new ArrayBlock(this, lock);
+        }
+
+        Lock popLock(Locker locker) {
+            Lock lock = mElement;
+            mElement = null;
+            if ((locker.mTailBlock = mPrev) == null) {
+                locker.mHeadBlock = null;
+            } else {
+                mPrev = null;
+            }
+            return lock;
+        }
+
+        Block unlockAll(Locker locker) {
+            locker.mManager.unlock(locker, mElement);
+            mElement = null;
+            Block prev = mPrev;
+            mPrev = null;
+            return prev;
+        }
+
+        Block prepend(Lock lock) {
+            return mPrev = new TinyBlock(lock);
+        }
+
+        void prepend(Block block) {
+            mPrev = block;
+        }
+
+        int copyTo(Lock[] elements, int offset) {
+            if (offset < elements.length) {
+                elements[offset] = mElement;
+                return 1;
+            }
+            return 0;
+        }
+    }
+
+    static final class ArrayBlock extends Block {
+        private Lock[] mElements;
+        private int mSize;
+
+        ArrayBlock(Lock first, Lock second) {
             Lock[] elements = new Lock[FIRST_BLOCK_CAPACITY];
             elements[0] = first;
             elements[1] = second;
@@ -237,14 +450,103 @@ public class Locker {
             mSize = 2;
         }
 
-        Block(Block prev, Lock first) {
+        ArrayBlock(Block prev, Lock first) {
             mPrev = prev;
-            int capacity = prev.mElements.length;
-            if (capacity < HIGHEST_BLOCK_CAPACITY) {
+            int capacity = prev.capacity();
+            if (capacity < FIRST_BLOCK_CAPACITY) {
+                capacity = FIRST_BLOCK_CAPACITY;
+            } else if (capacity < HIGHEST_BLOCK_CAPACITY) {
                 capacity <<= 1;
             }
             (mElements = new Lock[capacity])[0] = first;
             mSize = 1;
+        }
+
+        int capacity() {
+            return mElements.length;
+        }
+
+        int size() {
+            return mSize;
+        }
+
+        Lock last() {
+            return mElements[mSize - 1];
+        }
+
+        void pushLock(Locker locker, Lock lock) {
+            Lock[] elements = mElements;
+            int size = mSize;
+            if (size < elements.length) {
+                elements[size] = lock;
+                mSize = size + 1;
+            } else {
+                locker.mTailBlock = new ArrayBlock(this, lock);
+            }
+        }
+
+        Lock popLock(Locker locker) {
+            Lock[] elements = mElements;
+            int size = mSize;
+            Lock lock = elements[--size];
+            elements[size] = null;
+            if (size == 0) {
+                if ((locker.mTailBlock = mPrev) == null) {
+                    locker.mHeadBlock = null;
+                } else {
+                    mPrev = null;
+                }
+            } else {
+                mSize = size;
+            }
+            return lock;
+        }
+
+        Block unlockAll(Locker locker) {
+            Lock[] elements = mElements;
+            LockManager manager = locker.mManager;
+            for (int i=mSize; --i>=0; ) {
+                manager.unlock(locker, elements[i]);
+                elements[i] = null;
+            }
+            Block prev = mPrev;
+            mPrev = null;
+            return prev;
+        }
+
+        Block prepend(Lock lock) {
+            Lock[] elements = mElements;
+            int size = mSize;
+            if (size < elements.length) {
+                System.arraycopy(elements, 0, elements, 1, size);
+                elements[0] = lock;
+                mSize = size + 1;
+                return null;
+            } else {
+                return mPrev = new TinyBlock(lock);
+            }
+        }
+
+        void prepend(Block block) {
+            Lock[] elements = mElements;
+            int size = mSize;
+            int otherSize = block.size();
+            if (size + otherSize <= elements.length) {
+                System.arraycopy(elements, 0, elements, otherSize, size);
+                block.copyTo(elements, 0);
+                mSize = size + otherSize;
+            } else {
+                mPrev = block;
+            }
+        }
+
+        int copyTo(Lock[] elements, int offset) {
+            int size = mSize;
+            if (offset + size <= elements.length) {
+                System.arraycopy(mElements, 0, elements, offset, size);
+                return size;
+            }
+            return 0;
         }
     }
 }

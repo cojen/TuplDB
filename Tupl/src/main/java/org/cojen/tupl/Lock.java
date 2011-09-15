@@ -16,6 +16,8 @@
 
 package org.cojen.tupl;
 
+import static org.cojen.tupl.LockResult.*;
+
 /**
  * Partially reentrant shared/upgradable/exclusive lock, with fair acquisition
  * methods. Locks are owned by Lockers, not Threads. Implementation relies on
@@ -50,6 +52,18 @@ final class Lock {
     WaitQueue mQueueSX;
 
     /**
+     * Called with any latch held, which is retained.
+     *
+     * @return UNOWNED, OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     */
+    LockResult check(Locker locker) {
+        int count = mLockCount;
+        return mLocker == locker
+            ? (count == ~0 ? OWNED_EXCLUSIVE : OWNED_UPGRADABLE)
+            : ((count != 0 && isSharedLocker(locker)) ? OWNED_SHARED : UNOWNED);
+    }
+
+    /**
      * Called with exclusive latch held, which is retained.
      *
      * @return INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED, OWNED_SHARED,
@@ -58,23 +72,22 @@ final class Lock {
      */
     LockResult lockShared(Latch latch, Locker locker, long nanosTimeout) {
         if (mLocker == locker) {
-            return mLockCount == ~0 ? LockResult.OWNED_EXCLUSIVE : LockResult.OWNED_UPGRADABLE;
+            return mLockCount == ~0 ? OWNED_EXCLUSIVE : OWNED_UPGRADABLE;
         }
 
         WaitQueue queueSX = mQueueSX;
-        if (queueSX != null) {
+        quick: {
+            if (queueSX == null) {
+                LockResult r = tryLockShared(locker);
+                if (r != null) {
+                    return r;
+                }
+                mQueueSX = queueSX = new WaitQueue();
+                break quick;
+            }
             if (nanosTimeout == 0) {
-                return LockResult.TIMED_OUT_LOCK;
+                return TIMED_OUT_LOCK;
             }
-        } else {
-            LockResult r = tryLockShared(locker);
-            if (r != null) {
-                return r;
-            }
-            if (nanosTimeout == 0) {
-                return LockResult.TIMED_OUT_LOCK;
-            }
-            mQueueSX = queueSX = new WaitQueue();
         }
 
         while (true) {
@@ -88,14 +101,14 @@ final class Lock {
             }
 
             if (w < 1) {
-                return w == 0 ? LockResult.TIMED_OUT_LOCK : LockResult.INTERRUPTED;
+                return w == 0 ? TIMED_OUT_LOCK : INTERRUPTED;
             }
 
             // Because latch was released while waiting on condition, check
             // everything again.
 
             if (mLocker == locker) {
-                return mLockCount == ~0 ? LockResult.OWNED_EXCLUSIVE : LockResult.OWNED_UPGRADABLE;
+                return mLockCount == ~0 ? OWNED_EXCLUSIVE : OWNED_UPGRADABLE;
             }
 
             LockResult r = tryLockShared(locker);
@@ -121,29 +134,28 @@ final class Lock {
      */
     LockResult lockUpgradable(Latch latch, Locker locker, long nanosTimeout) {
         if (mLocker == locker) {
-            return mLockCount == ~0 ? LockResult.OWNED_EXCLUSIVE : LockResult.OWNED_UPGRADABLE;
+            return mLockCount == ~0 ? OWNED_EXCLUSIVE : OWNED_UPGRADABLE;
         }
 
         int count = mLockCount;
         if (count != 0 && isSharedLocker(locker)) {
-            return LockResult.ILLEGAL;
+            return ILLEGAL;
         }
 
         WaitQueue queueU = mQueueU;
-        if (queueU != null) {
+        quick: {
+            if (queueU == null) {
+                if (count >= 0) {
+                    mLockCount = count | 0x80000000;
+                    mLocker = locker;
+                    return ACQUIRED;
+                }
+                mQueueU = queueU = new WaitQueue();
+                break quick;
+            }
             if (nanosTimeout == 0) {
-                return LockResult.TIMED_OUT_LOCK;
+                return TIMED_OUT_LOCK;
             }
-        } else {
-            if (count >= 0) {
-                mLockCount = count | 0x80000000;
-                mLocker = locker;
-                return LockResult.ACQUIRED;
-            }
-            if (nanosTimeout == 0) {
-                return LockResult.TIMED_OUT_LOCK;
-            }
-            mQueueU = queueU = new WaitQueue();
         }
 
         while (true) {
@@ -157,14 +169,14 @@ final class Lock {
             }
 
             if (w < 1) {
-                return w == 0 ? LockResult.TIMED_OUT_LOCK : LockResult.INTERRUPTED;
+                return w == 0 ? TIMED_OUT_LOCK : INTERRUPTED;
             }
 
             // Because latch was released while waiting on condition, check
             // everything again.
 
             if (mLocker == locker) {
-                return mLockCount == ~0 ? LockResult.OWNED_EXCLUSIVE : LockResult.OWNED_UPGRADABLE;
+                return mLockCount == ~0 ? OWNED_EXCLUSIVE : OWNED_UPGRADABLE;
             }
 
             count = mLockCount;
@@ -173,13 +185,13 @@ final class Lock {
                 if (queueU != null) {
                     queueU.signalOne();
                 }
-                return LockResult.ILLEGAL;
+                return ILLEGAL;
             }
 
             if (count >= 0) {
                 mLockCount = count | 0x80000000;
                 mLocker = locker;
-                return LockResult.ACQUIRED;
+                return ACQUIRED;
             }
 
             // Signal was bogus or lock was grabbed by another thread, so retry.
@@ -200,32 +212,26 @@ final class Lock {
      */
     LockResult lockExclusive(Latch latch, Locker locker, long nanosTimeout) {
         final LockResult ur = lockUpgradable(latch, locker, nanosTimeout);
-        if (!ur.isGranted() || ur == LockResult.OWNED_EXCLUSIVE) {
+        if (!ur.isGranted() || ur == OWNED_EXCLUSIVE) {
             return ur;
         }
 
         WaitQueue queueSX = mQueueSX;
-        if (queueSX != null) {
-            if (nanosTimeout == 0) {
-                if (ur == LockResult.ACQUIRED) {
-                    unlock(locker);
+        quick: {
+            if (queueSX == null) {
+                if (mLockCount == 0x80000000) {
+                    mLockCount = ~0;
+                    return ur == OWNED_UPGRADABLE ? UPGRADED : ACQUIRED;
                 }
-                return LockResult.TIMED_OUT_LOCK;
-            }
-        } else {
-            int count = mLockCount;
-            if (count == 0x80000000) {
-                mLockCount = ~0;
-                return ur == LockResult.OWNED_UPGRADABLE
-                    ? LockResult.UPGRADED : LockResult.ACQUIRED;
+                mQueueSX = queueSX = new WaitQueue();
+                break quick;
             }
             if (nanosTimeout == 0) {
-                if (ur == LockResult.ACQUIRED) {
+                if (ur == ACQUIRED) {
                     unlock(locker);
                 }
-                return LockResult.TIMED_OUT_LOCK;
+                return TIMED_OUT_LOCK;
             }
-            mQueueSX = queueSX = new WaitQueue();
         }
 
         while (true) {
@@ -239,10 +245,10 @@ final class Lock {
             }
 
             if (w < 1) {
-                if (ur == LockResult.ACQUIRED) {
+                if (ur == ACQUIRED) {
                     unlock(locker);
                 }
-                return w == 0 ? LockResult.TIMED_OUT_LOCK : LockResult.INTERRUPTED;
+                return w == 0 ? TIMED_OUT_LOCK : INTERRUPTED;
             }
 
             // Because latch was released while waiting on condition, check
@@ -255,8 +261,7 @@ final class Lock {
                 } else if (count != ~0) {
                     break acquired;
                 }
-                return ur == LockResult.OWNED_UPGRADABLE
-                    ? LockResult.UPGRADED : LockResult.ACQUIRED;
+                return ur == OWNED_UPGRADABLE ? UPGRADED : ACQUIRED;
             }
 
             // Signal was bogus or lock was grabbed by another thread, so retry.
@@ -402,6 +407,22 @@ final class Lock {
         }
     }
 
+    /**
+     * Called with exclusive latch held, which is retained.
+     */
+    boolean unlockIfNonExclusive(Locker locker) {
+        if (mLockCount == ~0) {
+            // Retain exclusive lock. Since this method is only called via
+            // Locker.scopeUnlockAllNonExclusive, lock is already known to be
+            // held at some level. No need to check if mLocker field matches.
+            return false;
+        } else {
+            // Unlock upgradable or shared lock.
+            unlock(locker);
+            return true;
+        }
+    }
+
     private boolean isSharedLocker(Locker locker) {
         Object sharedObj = mSharedLockersObj;
         if (sharedObj == locker) {
@@ -422,13 +443,13 @@ final class Lock {
             return null;
         }
         if (count != 0 && isSharedLocker(locker)) {
-            return LockResult.OWNED_SHARED;
+            return OWNED_SHARED;
         }
         if ((count & 0x7fffffff) >= 0x7ffffffe) {
             throw new IllegalStateException("Too many shared locks held");
         }
         addSharedLocker(count, locker);
-        return LockResult.ACQUIRED;
+        return ACQUIRED;
     }
 
     private void addSharedLocker(int count, Locker locker) {
