@@ -52,6 +52,18 @@ public final class LockManager {
         return count;
     }
 
+    final LockResult check(Locker locker, byte[] key) {
+        int hash = hashCode(key);
+        LockHT ht = getLockHT(hash);
+        Latch latch = ht.mLatch;
+        latch.acquireSharedUnfair();
+        try {
+            return ht.lockFor(key, hash).check(locker);
+        } finally {
+            latch.releaseShared();
+        }
+    }
+
     final LockResult lockShared(Locker locker, byte[] key, long nanosTimeout) {
         int hash = hashCode(key);
         LockHT ht = getLockHT(hash);
@@ -157,6 +169,17 @@ public final class LockManager {
             latch.releaseExclusive();
         }
         return key;
+    }
+
+    final boolean unlockIfNonExclusive(Locker locker, Lock lock) {
+        LockHT ht = getLockHT(lock.mHashCode);
+        Latch latch = ht.mLatch;
+        latch.acquireExclusiveUnfair();
+        try {
+            return lock.unlockIfNonExclusive(locker);
+        } finally {
+            latch.releaseExclusive();
+        }
     }
 
     final static int hashCode(byte[] key) {

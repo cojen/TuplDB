@@ -61,7 +61,10 @@ public enum LockResult {
      * Exclusive lock is already owned, so no extra unlock should be performed.
      * This result is possible when trying to acquire any type of lock.
      */
-    OWNED_EXCLUSIVE(3);
+    OWNED_EXCLUSIVE(3),
+
+    /** Result from lock check indicating that locker doesn't own the lock. */
+    UNOWNED(0);
 
     // 1: timed out, 2: acquired, 3: owned
     private final int mType;
