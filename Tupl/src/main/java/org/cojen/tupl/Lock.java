@@ -363,7 +363,8 @@ final class Lock {
             if (count != ~0) {
                 // Unlocking upgradable lock into shared.
                 if ((count &= 0x7fffffff) >= 0x7ffffffe) {
-                    mLockCount = count;
+                    // Retain upgradable lock when this happens.
+                    // mLockCount = count;
                     throw new IllegalStateException("Too many shared locks held");
                 }
                 addSharedLocker(count, locker);

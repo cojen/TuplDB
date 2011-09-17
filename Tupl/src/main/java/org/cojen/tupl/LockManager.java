@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.util.Arrays;
 
+import static org.cojen.tupl.LockResult.*;
+
 /**
  * 
  *
@@ -81,8 +83,8 @@ public final class LockManager {
             }
         }
 
-        if (result == LockResult.ACQUIRED) {
-            locker.push(lock);
+        if (result == ACQUIRED) {
+            locker.push(lock, 0);
         }
 
         return result;
@@ -105,8 +107,8 @@ public final class LockManager {
             }
         }
 
-        if (result == LockResult.ACQUIRED) {
-            locker.push(lock);
+        if (result == ACQUIRED) {
+            locker.push(lock, 0);
         }
 
         return result;
@@ -129,8 +131,10 @@ public final class LockManager {
             }
         }
 
-        if (result == LockResult.ACQUIRED) {
-            locker.push(lock);
+        if (result == ACQUIRED) {
+            locker.push(lock, 0);
+        } else if (result == UPGRADED) {
+            locker.push(lock, 1);
         }
 
         return result;

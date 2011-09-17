@@ -44,10 +44,6 @@ import java.util.zip.CRC32;
  * close. This prevents further damage if the in-memory state is now inconsistent with the
  * persistent state. The PageStore must be re-opened to restore to a clean state.
  *
- * <p>Commit operations on FilePageStore can take a long time to finish, since new writes
- * are being made into the same file which is being durably written. Use {@link
- * DualFilePageStore} to reduce the impact concurrent writes have on commit performance.
- *
  * @author Brian S O'Neill
  */
 class DualFilePageStore implements PageStore {
