@@ -963,9 +963,7 @@ public class LockTest {
         for (int i=0; i<4; i++) {
             assertEquals(ACQUIRED, locker.lockExclusive(key("v" + i), -1));
         }
-        System.out.println("x");
         assertTrue(locker.scopeExit(true));
-        System.out.println("y");
         assertEquals(OWNED_EXCLUSIVE, locker.check(k1));
         for (int i=0; i<4; i++) {
             assertEquals(OWNED_EXCLUSIVE, locker.check(key("v" + i)));
@@ -981,6 +979,29 @@ public class LockTest {
         }
         assertTrue(locker.scopeExit(false));
         assertFalse(locker.scopeExit(false));
+
+        for (int i=0; i<9; i++) {
+            assertEquals(ACQUIRED, locker.lockExclusive(key("k" + i), -1));
+        }
+        locker.scopeEnter();
+        for (int i=0; i<4; i++) {
+            assertEquals(ACQUIRED, locker.lockUpgradable(key("v" + i), -1));
+        }
+        locker.scopeExit(true);
+        for (int i=0; i<9; i++) {
+            assertEquals(OWNED_EXCLUSIVE, locker.check(key("k" + i)));
+        }
+        for (int i=0; i<4; i++) {
+            assertEquals(OWNED_UPGRADABLE, locker.check(key("v" + i)));
+        }
+        assertEquals(false, locker.scopeExit(true));
+        for (int i=0; i<9; i++) {
+            assertEquals(UNOWNED, locker.check(key("k" + i)));
+        }
+        for (int i=0; i<4; i++) {
+            assertEquals(UNOWNED, locker.check(key("v" + i)));
+        }
+
     }
 
     private long scheduleUnlock(final Locker locker, final long delayMillis) {
