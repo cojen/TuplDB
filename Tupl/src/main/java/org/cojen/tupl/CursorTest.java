@@ -27,7 +27,7 @@ public class CursorTest {
 
         final Database db = new Database
             (DatabaseConfig.newConfig().setBaseFile(file).setMinCachedNodes(1000));
-        final View view = db.openView("test1");
+        final OrderedView view = db.openOrderedView("test1");
 
         Cursor c = view.newCursor();
 

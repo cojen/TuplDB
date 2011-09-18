@@ -155,7 +155,7 @@ final class TreeNodeStore implements Closeable {
      * Returns a full view into the given named sub database, creating it if
      * necessary.
      */
-    View openView(byte[] nameKey) throws IOException {
+    OrderedView openOrderedView(byte[] nameKey) throws IOException {
         final Lock commitLock = sharedCommitLock();
         commitLock.lock();
         try {

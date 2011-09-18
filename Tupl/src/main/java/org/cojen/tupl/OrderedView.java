@@ -23,7 +23,7 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-public interface View {
+public interface OrderedView {
     /**
      * @return a new unpositioned cursor
      */
@@ -104,34 +104,34 @@ public interface View {
      * Returns a sub-view, backed by this one, whose keys are greater than or
      * equal to the given key.
      */
-    public View viewGe(byte[] key);
+    public OrderedView viewGe(byte[] key);
 
     /**
      * Returns a sub-view, backed by this one, whose keys are greater than the
      * given key.
      */
-    public View viewGt(byte[] key);
+    public OrderedView viewGt(byte[] key);
 
     /**
      * Returns a sub-view, backed by this one, whose keys are less than or
      * equal to the given key.
      */
-    public View viewLe(byte[] key);
+    public OrderedView viewLe(byte[] key);
 
     /**
      * Returns a sub-view, backed by this one, whose keys are less than the
      * given key.
      */
-    public View viewLt(byte[] key);
+    public OrderedView viewLt(byte[] key);
 
     /**
      * Returns a sub-view, backed by this one, whose keys all start with the
      * given prefix.
      */
-    public View viewPrefix(byte[] keyPrefix);
+    public OrderedView viewPrefix(byte[] keyPrefix);
 
     /**
      * Returns a view, backed by this one, whose natural order is reversed.
      */
-    public View viewReverse();
+    public OrderedView viewReverse();
 }
