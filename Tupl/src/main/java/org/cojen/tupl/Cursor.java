@@ -19,8 +19,8 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 /**
- * Maintains a logical position in a {@link View}. Cursors must be {@link
- * #reset reset} when no longer needed to free up memory. Although not
+ * Maintains a logical position in an {@link OrderedView}. Cursors must be
+ * {@link #reset reset} when no longer needed to free up memory. Although not
  * necessarily practical, multiple threads may safely interact with Cursor
  * instances.
  *

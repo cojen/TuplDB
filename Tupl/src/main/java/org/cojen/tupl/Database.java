@@ -70,19 +70,19 @@ public class Database implements Closeable {
      * Returns a full view into the given named sub database, creating it if
      * necessary.
      */
-    public View openView(byte[] name) throws IOException {
+    public OrderedView openOrderedView(byte[] name) throws IOException {
         byte[] nameKey = new byte[1 + name.length];
         nameKey[0] = DB_TYPE_USER;
         System.arraycopy(name, 0, nameKey, 1, name.length);
-        return mNodeStore.openView(nameKey);
+        return mNodeStore.openOrderedView(nameKey);
     }
 
     /**
      * Returns a full view into the given named sub database, creating it if
      * necessary. Name is UTF-8 encoded.
      */
-    public View openView(String name) throws IOException {
-        return openView(name.getBytes("UTF-8"));
+    public OrderedView openOrderedView(String name) throws IOException {
+        return openOrderedView(name.getBytes("UTF-8"));
     }
 
     /**

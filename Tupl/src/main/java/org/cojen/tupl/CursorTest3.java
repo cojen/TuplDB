@@ -29,7 +29,7 @@ public class CursorTest3 {
 
         final Database db = new Database
             (DatabaseConfig.newConfig().setBaseFile(file).setMinCachedNodes(1000));
-        final View view = db.openView("test3");
+        final OrderedView view = db.openOrderedView("test3");
 
         final int threadCount = Integer.parseInt(args[1]);
 

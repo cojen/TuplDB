@@ -29,7 +29,7 @@ public class CursorTest4 {
 
         final Database db = new Database
             (DatabaseConfig.newConfig().setBaseFile(file).setMinCachedNodes(10000));
-        final View view = db.openView("test4");
+        final OrderedView view = db.openOrderedView("test4");
 
         final int count = 1000000;
 

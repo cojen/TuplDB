@@ -33,7 +33,7 @@ public class TreeNodeTest {
 
         final Database db = new Database
             (DatabaseConfig.newConfig().setBaseFile(file).setMinCachedNodes(100000));
-        final View view = db.openView("test1");
+        final OrderedView view = db.openOrderedView("test1");
 
         /*
         BitSet pages = pstore.tracePages();
@@ -119,7 +119,7 @@ public class TreeNodeTest {
     }
 
     private static void testInsert(Map<String, String> map, boolean fullTest,
-                                   View view, String key, String value)
+                                   OrderedView view, String key, String value)
         throws IOException
     {
         if (map != null) {

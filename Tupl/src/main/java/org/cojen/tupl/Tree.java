@@ -25,7 +25,7 @@ import java.util.List;
  *
  * @author Brian S O'Neill
  */
-final class Tree implements View {
+final class Tree implements OrderedView {
     final TreeNodeStore mStore;
 
     // Name is null for the registry tree.
@@ -133,37 +133,37 @@ final class Tree implements View {
     }
 
     @Override
-    public View viewGe(byte[] key) {
+    public OrderedView viewGe(byte[] key) {
         // FIXME
         throw null;
     }
 
     @Override
-    public View viewGt(byte[] key) {
+    public OrderedView viewGt(byte[] key) {
         // FIXME
         throw null;
     }
 
     @Override
-    public View viewLe(byte[] key) {
+    public OrderedView viewLe(byte[] key) {
         // FIXME
         throw null;
     }
 
     @Override
-    public View viewLt(byte[] key) {
+    public OrderedView viewLt(byte[] key) {
         // FIXME
         throw null;
     }
 
     @Override
-    public View viewPrefix(byte[] keyPrefix) {
+    public OrderedView viewPrefix(byte[] keyPrefix) {
         // FIXME
         throw null;
     }
 
     @Override
-    public View viewReverse() {
+    public OrderedView viewReverse() {
         // FIXME
         throw null;
     }
