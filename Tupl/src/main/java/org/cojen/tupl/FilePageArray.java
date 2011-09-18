@@ -37,6 +37,8 @@ class FilePageArray implements PageArray {
     // Access these fields while synchronized on mFilePool.
     private final RandomAccessFile[] mFilePool;
     private int mFilePoolTop;
+
+    private final Object mFileLengthLock;
     private long mFileLength;
 
     FilePageArray(File file, boolean readOnly, int pageSize, int openFileCount)
@@ -57,11 +59,13 @@ class FilePageArray implements PageArray {
             file = file.getCanonicalFile();
             mFile = file;
 
-            synchronized (mFilePool) {
-                for (int i=0; i<openFileCount; i++) {
-                    mFilePool[i] = open(file, readOnly);
+            synchronized (mFileLengthLock = new Object()) {
+                synchronized (mFilePool) {
+                    for (int i=0; i<openFileCount; i++) {
+                        mFilePool[i] = open(file, readOnly);
+                    }
+                    mFileLength = mFilePool[0].length();
                 }
-                mFileLength = mFilePool[0].length();
             }
 
             int readPageSize = readPageSize(mFilePool[0]);
@@ -108,10 +112,10 @@ class FilePageArray implements PageArray {
 
         long endPos = count * mPageSize;
 
-        synchronized (mFilePool) {
+        synchronized (mFileLengthLock) {
             if (endPos > mFileLength) {
                 mFileLength = endPos;
-                if (allocate) {
+                if (allocate && (count & 31) == 0) {
                     RandomAccessFile file = accessFile();
                     try {
                         file.seek(endPos - 1);
@@ -198,17 +202,18 @@ class FilePageArray implements PageArray {
         int pageSize = mPageSize;
         long pos = index * pageSize;
 
-        synchronized (mFilePool) {
+        synchronized (mFileLengthLock) {
             if ((pos + pageSize) > mFileLength) {
                 mFileLength = pos + pageSize;
             }
-            RandomAccessFile file = accessFile();
-            try {
-                file.seek(pos);
-                file.write(buf, offset, pageSize);
-            } finally {
-                yieldFile(file);
-            }
+        }
+
+        RandomAccessFile file = accessFile();
+        try {
+            file.seek(pos);
+            file.write(buf, offset, pageSize);
+        } finally {
+            yieldFile(file);
         }
     }
 
