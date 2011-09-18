@@ -459,6 +459,22 @@ final class TreeNodeStore implements Closeable {
             trees = mOpenTrees.values().toArray(new Tree[mOpenTrees.size()]);
         }
 
+        /* FIXME: This code does not properly account for concurrent splits. Dirty
+           nodes might not get written into the commit, and this has also been observed:
+          
+           java.lang.AssertionError: Split child is not already marked dirty
+             at org.cojen.tupl.TreeNode.insertSplitChildRef(TreeNode.java:1178)
+             at org.cojen.tupl.TreeCursor.finishSplit(TreeCursor.java:1647)
+             at org.cojen.tupl.TreeCursor.finishSplit(TreeCursor.java:1640)
+             at org.cojen.tupl.TreeCursor.store(TreeCursor.java:969)
+             at org.cojen.tupl.TreeCursor.store(TreeCursor.java:746)
+             at org.cojen.tupl.FullCursor.store(FullCursor.java:114)
+             at org.cojen.tupl.TreeNodeTest.testInsert(TreeNodeTest.java:135)
+             at org.cojen.tupl.TreeNodeTest.main(TreeNodeTest.java:107)
+
+           A cursor based approach instead of breadth-first traversal might help.
+        */ 
+
         final TreeNode root = mRegistry.mRoot;
         final long rootId = root.mId;
         final int stateToFlush = mCommitState;

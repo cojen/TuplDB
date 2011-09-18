@@ -982,7 +982,8 @@ final class TreeCursor {
         try {
             throw Utils.closeOnFailure(mTree.mStore, e);
         } finally {
-            reset();
+            // FIXME: this can deadlock, because exception can be thrown at anytime
+            //reset();
         }
     }
 
