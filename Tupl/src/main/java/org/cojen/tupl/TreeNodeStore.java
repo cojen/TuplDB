@@ -54,8 +54,10 @@ final class TreeNodeStore implements Closeable {
     // Is either CACHED_DIRTY_0 or CACHED_DIRTY_1. Access is guarded by commit lock.
     private byte mCommitState;
 
-    // The root tree, which maps names to other trees.
+    // The root tree, which maps ids to other trees.
     private final Tree mRegistry;
+    // Maps names to ids.
+    private final Tree mRegistryNameMap;
 
     private final Map<byte[], Tree> mOpenTrees;
 
@@ -124,6 +126,22 @@ final class TreeNodeStore implements Closeable {
                 ("Unable to allocate the minimum required number of cached nodes: " +
                  minCachedNodeCount);
         }
+
+        // Open mRegistryNameMap.
+        {
+            byte[] encodedRootId = mRegistry.get(Utils.EMPTY_BYTES);
+
+            TreeNode rootNode;
+            if (encodedRootId == null) {
+                // Create a new empty leaf node.
+                rootNode = new TreeNode(store.pageSize(), true);
+            } else {
+                rootNode = new TreeNode(store.pageSize(), false);
+                rootNode.read(this, DataIO.readLong(encodedRootId, 0));
+            }
+            
+            mRegistryNameMap = new Tree(this, Utils.EMPTY_BYTES, rootNode);
+        }
     }
 
     /**
@@ -166,10 +184,28 @@ final class TreeNodeStore implements Closeable {
                 }
             }
 
-            byte[] encodedRootId = mRegistry.get(nameKey);
+            byte[] id = mRegistryNameMap.get(nameKey);
+
+            if (id == null) {
+                synchronized (mOpenTrees) {
+                    id = mRegistryNameMap.get(nameKey);
+                    if (id == null) {
+                        do {
+                            id = Utils.randomId(8);
+                        } while (!mRegistry.insert(id, Utils.EMPTY_BYTES));
+
+                        if (!mRegistryNameMap.insert(nameKey, id)) {
+                            mRegistry.delete(id);
+                            throw new IOException("Unable to insert view name");
+                        }
+                    }
+                }
+            }
+
+            byte[] encodedRootId = mRegistry.get(id);
 
             TreeNode rootNode;
-            if (encodedRootId == null) {
+            if (encodedRootId == null || encodedRootId.length == 0) {
                 // Create a new empty leaf node.
                 rootNode = new TreeNode(pageSize(), true);
             } else {
@@ -180,7 +216,7 @@ final class TreeNodeStore implements Closeable {
             synchronized (mOpenTrees) {
                 Tree tree = mOpenTrees.get(nameKey);
                 if (tree == null) {
-                    tree = new Tree(this, nameKey, rootNode);
+                    tree = new Tree(this, id, rootNode);
                     mOpenTrees.put(nameKey, tree);
                 }
                 return tree;
@@ -305,10 +341,10 @@ final class TreeNodeStore implements Closeable {
             node.write(this);
         }
 
-        if (node == tree.mRoot && tree.mNameKey != null) {
+        if (node == tree.mRoot && tree.mId != null) {
             byte[] newEncodedId = new byte[8];
             DataIO.writeLong(newEncodedId, 0, newId);
-            mRegistry.store(tree.mNameKey, newEncodedId);
+            mRegistry.store(tree.mId, newEncodedId);
         }
 
         node.mId = newId;
@@ -485,6 +521,9 @@ final class TreeNodeStore implements Closeable {
 
         List<DirtyNode> dirtyList = new ArrayList<DirtyNode>(Math.min(1000, mMaxCachedNodeCount));
         mRegistry.gatherDirtyNodes(dirtyList, stateToFlush);
+
+        mRegistryNameMap.mRoot.acquireSharedUnfair();
+        mRegistryNameMap.gatherDirtyNodes(dirtyList, stateToFlush);
 
         for (Tree tree : trees) {
             tree.mRoot.acquireSharedUnfair();

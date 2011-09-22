@@ -19,6 +19,10 @@ package org.cojen.tupl;
 import java.io.Closeable;
 import java.io.IOException;
 
+import java.lang.ref.SoftReference;
+
+import java.security.SecureRandom;
+
 /**
  * 
  *
@@ -26,6 +30,19 @@ import java.io.IOException;
  */
 class Utils {
     static final byte[] EMPTY_BYTES = new byte[0];
+
+    private static volatile SoftReference<SecureRandom> cRndRef;
+
+    static byte[] randomId(int size) {
+        SoftReference<SecureRandom> rndRef = cRndRef;
+        SecureRandom rnd;
+        if (rndRef == null || (rnd = rndRef.get()) == null) {
+            cRndRef = new SoftReference<SecureRandom>(rnd = new SecureRandom());
+        }
+        byte[] id = new byte[size];
+        rnd.nextBytes(id);
+        return id;
+    }
 
     /**
      * Performs multiple array copies, correctly ordered to prevent clobbering. The copies

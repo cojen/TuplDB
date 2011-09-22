@@ -28,8 +28,8 @@ import java.util.List;
 final class Tree implements OrderedView {
     final TreeNodeStore mStore;
 
-    // Name is null for the registry tree.
-    final byte[] mNameKey;
+    // Id is null for the registry tree, and empty for registry name map.
+    final byte[] mId;
 
     // Although tree roots can be created and deleted, the object which refers
     // to the root remains the same. Internal state is transferred to/from this
@@ -42,9 +42,9 @@ final class Tree implements OrderedView {
     // by the root node latch.
     private Stub mStubTail;
 
-    Tree(TreeNodeStore store, byte[] nameKey, TreeNode root) {
+    Tree(TreeNodeStore store, byte[] id, TreeNode root) {
         mStore = store;
-        mNameKey = nameKey;
+        mId = id;
         mRoot = root;
     }
 
@@ -82,6 +82,7 @@ final class Tree implements OrderedView {
         try {
             cursor.findAndStore(key, value);
         } finally {
+            // FIXME: this can deadlock, because exception can be thrown at anytime
             cursor.reset();
         }
     }
@@ -92,6 +93,7 @@ final class Tree implements OrderedView {
         try {
             return cursor.findAndInsert(key, value);
         } finally {
+            // FIXME: this can deadlock, because exception can be thrown at anytime
             cursor.reset();
         }
     }
@@ -102,6 +104,7 @@ final class Tree implements OrderedView {
         try {
             return cursor.findAndReplace(key, value);
         } finally {
+            // FIXME: this can deadlock, because exception can be thrown at anytime
             cursor.reset();
         }
     }
@@ -112,6 +115,7 @@ final class Tree implements OrderedView {
         try {
             return cursor.findAndUpdate(key, oldValue, newValue);
         } finally {
+            // FIXME: this can deadlock, because exception can be thrown at anytime
             cursor.reset();
         }
     }
