@@ -25,11 +25,17 @@ import java.util.List;
  *
  * @author Brian S O'Neill
  */
-final class Tree implements OrderedView {
+final class Tree implements Index {
     final TreeNodeStore mStore;
 
-    // Id is null for the registry tree, and empty for registry name map.
-    final byte[] mId;
+    // Id is zero for registry and registry key map.
+    final long mId;
+
+    // Id is null for registry, and empty for registry key map.
+    final byte[] mIdBytes;
+
+    // Name is null for registry and registry key map.
+    final byte[] mName;
 
     // Although tree roots can be created and deleted, the object which refers
     // to the root remains the same. Internal state is transferred to/from this
@@ -42,10 +48,22 @@ final class Tree implements OrderedView {
     // by the root node latch.
     private Stub mStubTail;
 
-    Tree(TreeNodeStore store, byte[] id, TreeNode root) {
+    Tree(TreeNodeStore store, long id, byte[] idBytes, byte[] name, TreeNode root) {
         mStore = store;
         mId = id;
+        mIdBytes = idBytes;
+        mName = name;
         mRoot = root;
+    }
+
+    @Override
+    public long getId() {
+        return mId;
+    }
+
+    @Override
+    public byte[] getName() {
+        return mName.clone();
     }
 
     @Override

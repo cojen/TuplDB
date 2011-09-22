@@ -27,9 +27,9 @@ public class CursorTest {
 
         final Database db = new Database
             (DatabaseConfig.newConfig().setBaseFile(file).setMinCachedNodes(1000));
-        final OrderedView view = db.openOrderedView("test1");
+        final Index index = db.openIndex("test1");
 
-        Cursor c = view.newCursor();
+        Cursor c = index.newCursor();
 
         System.out.println(c.find("key-5".getBytes()));
         printEntry(c);

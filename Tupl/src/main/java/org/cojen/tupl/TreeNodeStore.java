@@ -39,6 +39,9 @@ import static org.cojen.tupl.TreeNode.*;
 final class TreeNodeStore implements Closeable {
     private static final int ENCODING_VERSION = 20110514;
 
+    private static final byte KEY_TYPE_INDEX_NAME = 0;
+    private static final byte KEY_TYPE_INDEX_ID = 1;
+
     final PageStore mPageStore;
 
     private final BufferPool mSpareBufferPool;
@@ -54,11 +57,11 @@ final class TreeNodeStore implements Closeable {
     // Is either CACHED_DIRTY_0 or CACHED_DIRTY_1. Access is guarded by commit lock.
     private byte mCommitState;
 
-    // The root tree, which maps ids to other trees.
+    // The root tree, which maps tree ids to other tree root node ids.
     private final Tree mRegistry;
-    // Maps names to ids.
-    private final Tree mRegistryNameMap;
-
+    // Maps tree name keys to ids.
+    private final Tree mRegistryKeyMap;
+    // Maps tree names to open trees.
     private final Map<byte[], Tree> mOpenTrees;
 
     TreeNodeStore(PageStore store, int minCachedNodeCount, int maxCachedNodeCount)
@@ -102,7 +105,7 @@ final class TreeNodeStore implements Closeable {
             mSharedCommitLock.unlock();
         }
 
-        mRegistry = new Tree(this, null, loadRegistryRoot());
+        mRegistry = new Tree(this, 0, null, null, loadRegistryRoot());
         mOpenTrees = new TreeMap<byte[], Tree>(KeyComparator.THE);
 
         // Pre-allocate nodes. They are automatically added to the usage list,
@@ -116,18 +119,12 @@ final class TreeNodeStore implements Closeable {
             mMostRecentlyUsed = null;
             mLeastRecentlyUsed = null;
 
-            try {
-                mPageStore.close();
-            } catch (IOException e2) {
-                // Ignore.
-            }
-
             throw new OutOfMemoryError
                 ("Unable to allocate the minimum required number of cached nodes: " +
                  minCachedNodeCount);
         }
 
-        // Open mRegistryNameMap.
+        // Open mRegistryKeyMap.
         {
             byte[] encodedRootId = mRegistry.get(Utils.EMPTY_BYTES);
 
@@ -140,7 +137,7 @@ final class TreeNodeStore implements Closeable {
                 rootNode.read(this, DataIO.readLong(encodedRootId, 0));
             }
             
-            mRegistryNameMap = new Tree(this, Utils.EMPTY_BYTES, rootNode);
+            mRegistryKeyMap = new Tree(this, 0, Utils.EMPTY_BYTES, null, rootNode);
         }
     }
 
@@ -170,39 +167,55 @@ final class TreeNodeStore implements Closeable {
     }
 
     /**
-     * Returns a full view into the given named sub database, creating it if
-     * necessary.
+     * Returns the given named index, creating it if necessary.
      */
-    OrderedView openOrderedView(byte[] nameKey) throws IOException {
+    Index openIndex(byte[] name) throws IOException {
         final Lock commitLock = sharedCommitLock();
         commitLock.lock();
         try {
             synchronized (mOpenTrees) {
-                Tree tree = mOpenTrees.get(nameKey);
+                Tree tree = mOpenTrees.get(name);
                 if (tree != null) {
                     return tree;
                 }
             }
 
-            byte[] id = mRegistryNameMap.get(nameKey);
+            byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, name);
+            byte[] treeIdBytes = mRegistryKeyMap.get(nameKey);
+            long treeId;
 
-            if (id == null) {
+            if (treeIdBytes != null) {
+                treeId = DataIO.readLong(treeIdBytes, 0);
+            } else {
                 synchronized (mOpenTrees) {
-                    id = mRegistryNameMap.get(nameKey);
-                    if (id == null) {
-                        do {
-                            id = Utils.randomId(8);
-                        } while (!mRegistry.insert(id, Utils.EMPTY_BYTES));
+                    treeIdBytes = mRegistryKeyMap.get(nameKey);
+                    if (treeIdBytes != null) {
+                        treeId = DataIO.readLong(treeIdBytes, 0);
+                    } else {
+                        treeIdBytes = new byte[8];
 
-                        if (!mRegistryNameMap.insert(nameKey, id)) {
-                            mRegistry.delete(id);
-                            throw new IOException("Unable to insert view name");
+                        do {
+                            treeId = Utils.randomId();
+                            DataIO.writeLong(treeIdBytes, 0, treeId);
+                        } while (!mRegistry.insert(treeIdBytes, Utils.EMPTY_BYTES));
+
+                        if (!mRegistryKeyMap.insert(nameKey, treeIdBytes)) {
+                            mRegistry.delete(treeIdBytes);
+                            throw new IOException("Unable to insert index name");
+                        }
+
+                        byte[] idKey = newKey(KEY_TYPE_INDEX_ID, treeIdBytes);
+
+                        if (!mRegistryKeyMap.insert(idKey, name)) {
+                            mRegistryKeyMap.delete(nameKey);
+                            mRegistry.delete(treeIdBytes);
+                            throw new IOException("Unable to insert index id");
                         }
                     }
                 }
             }
 
-            byte[] encodedRootId = mRegistry.get(id);
+            byte[] encodedRootId = mRegistry.get(treeIdBytes);
 
             TreeNode rootNode;
             if (encodedRootId == null || encodedRootId.length == 0) {
@@ -214,17 +227,25 @@ final class TreeNodeStore implements Closeable {
             }
 
             synchronized (mOpenTrees) {
-                Tree tree = mOpenTrees.get(nameKey);
+                Tree tree = mOpenTrees.get(name);
                 if (tree == null) {
-                    tree = new Tree(this, id, rootNode);
-                    mOpenTrees.put(nameKey, tree);
+                    tree = new Tree(this, treeId, treeIdBytes, name, rootNode);
+                    mOpenTrees.put(name, tree);
                 }
                 return tree;
             }
-
+        } catch (Throwable e) {
+            throw Utils.closeOnFailure(this, e);
         } finally {
             commitLock.unlock();
         }
+    }
+
+    private static byte[] newKey(byte type, byte[] payload) {
+        byte[] key = new byte[1 + payload.length];
+        key[0] = type;
+        System.arraycopy(payload, 0, key, 1, payload.length);
+        return key;
     }
 
     /**
@@ -341,10 +362,10 @@ final class TreeNodeStore implements Closeable {
             node.write(this);
         }
 
-        if (node == tree.mRoot && tree.mId != null) {
+        if (node == tree.mRoot && tree.mIdBytes != null) {
             byte[] newEncodedId = new byte[8];
             DataIO.writeLong(newEncodedId, 0, newId);
-            mRegistry.store(tree.mId, newEncodedId);
+            mRegistry.store(tree.mIdBytes, newEncodedId);
         }
 
         node.mId = newId;
@@ -522,8 +543,8 @@ final class TreeNodeStore implements Closeable {
         List<DirtyNode> dirtyList = new ArrayList<DirtyNode>(Math.min(1000, mMaxCachedNodeCount));
         mRegistry.gatherDirtyNodes(dirtyList, stateToFlush);
 
-        mRegistryNameMap.mRoot.acquireSharedUnfair();
-        mRegistryNameMap.gatherDirtyNodes(dirtyList, stateToFlush);
+        mRegistryKeyMap.mRoot.acquireSharedUnfair();
+        mRegistryKeyMap.gatherDirtyNodes(dirtyList, stateToFlush);
 
         for (Tree tree : trees) {
             tree.mRoot.acquireSharedUnfair();
