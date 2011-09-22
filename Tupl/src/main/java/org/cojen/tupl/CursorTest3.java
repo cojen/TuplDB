@@ -29,7 +29,7 @@ public class CursorTest3 {
 
         final Database db = new Database
             (DatabaseConfig.newConfig().setBaseFile(file).setMinCachedNodes(1000));
-        final OrderedView view = db.openOrderedView("test3");
+        final Index index = db.openIndex("test3");
 
         final int threadCount = Integer.parseInt(args[1]);
 
@@ -74,7 +74,7 @@ public class CursorTest3 {
         Thread monitor = new Thread() {
             public void run() {
                 try {
-                    Cursor c = view.newCursor();
+                    Cursor c = index.newCursor();
                     Entry e = new Entry();
                     while (true) {
                         if (c.last()) {
@@ -102,7 +102,7 @@ public class CursorTest3 {
         monitor.setDaemon(true);
         //monitor.start();
 
-        Cursor c1 = view.newCursor();
+        Cursor c1 = index.newCursor();
         System.out.println("initial find: " + c1.find("k1000".getBytes()));
 
         Thread[] threads = new Thread[threadCount];
@@ -113,7 +113,7 @@ public class CursorTest3 {
                         Cursor c = null;
                         for (int n; (n = next.getAndIncrement()) < count; ) {
                             if (c == null) {
-                                c = view.newCursor();
+                                c = index.newCursor();
                             } else {
                                 //c.verify();
                                 //Cursor copy = c.copy();
@@ -157,7 +157,7 @@ public class CursorTest3 {
 
         System.out.println("find value now: " + CursorTest.string(c1.getEntry()));
 
-        Cursor c2 = view.newCursor();
+        Cursor c2 = index.newCursor();
         for (int i=0; i<count; i++) {
             byte[] key = ("k" + i).getBytes();
             byte[] value = ("x" + i).getBytes();

@@ -29,7 +29,6 @@ import java.util.concurrent.locks.Lock;
  */
 public class Database implements Closeable {
     private static final int DEFAULT_CACHED_NODES = 1000;
-    private static final byte DB_TYPE_USER = 0;
 
     private final TreeNodeStore mNodeStore;
 
@@ -67,22 +66,18 @@ public class Database implements Closeable {
     }
 
     /**
-     * Returns a full view into the given named sub database, creating it if
-     * necessary.
+     * Returns the given named index, creating it if necessary.
      */
-    public OrderedView openOrderedView(byte[] name) throws IOException {
-        byte[] nameKey = new byte[1 + name.length];
-        nameKey[0] = DB_TYPE_USER;
-        System.arraycopy(name, 0, nameKey, 1, name.length);
-        return mNodeStore.openOrderedView(nameKey);
+    public Index openIndex(byte[] name) throws IOException {
+        return mNodeStore.openIndex(name.clone());
     }
 
     /**
-     * Returns a full view into the given named sub database, creating it if
-     * necessary. Name is UTF-8 encoded.
+     * Returns the given named index, creating it if necessary. Name is UTF-8
+     * encoded.
      */
-    public OrderedView openOrderedView(String name) throws IOException {
-        return openOrderedView(name.getBytes("UTF-8"));
+    public Index openIndex(String name) throws IOException {
+        return mNodeStore.openIndex(name.getBytes("UTF-8"));
     }
 
     /**

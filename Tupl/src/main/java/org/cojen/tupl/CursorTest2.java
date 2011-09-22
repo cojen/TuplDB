@@ -29,12 +29,12 @@ public class CursorTest2 {
 
         final Database db = new Database
             (DatabaseConfig.newConfig().setBaseFile(file).setMinCachedNodes(100000));
-        final OrderedView view = db.openOrderedView("test2");
+        final Index index = db.openIndex("test2");
 
-        Cursor c = view.newCursor();
-        Cursor c2 = view.newCursor();
-        Cursor c3 = view.newCursor();
-        Cursor c4 = view.newCursor();
+        Cursor c = index.newCursor();
+        Cursor c2 = index.newCursor();
+        Cursor c3 = index.newCursor();
+        Cursor c4 = index.newCursor();
 
         System.out.println(c.find("hello".getBytes()));
         System.out.println(c2.find("hello".getBytes()));
@@ -56,7 +56,7 @@ public class CursorTest2 {
         System.out.println(c4.next());
         CursorTest.printEntry(c4);
 
-        Cursor c5 = view.newCursor();
+        Cursor c5 = index.newCursor();
         c5.find("z".getBytes());
         c5.store("zzz".getBytes());
 

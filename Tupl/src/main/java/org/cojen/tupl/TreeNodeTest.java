@@ -33,7 +33,7 @@ public class TreeNodeTest {
 
         final Database db = new Database
             (DatabaseConfig.newConfig().setBaseFile(file).setMinCachedNodes(100000));
-        final OrderedView view = db.openOrderedView("test1");
+        final Index index = db.openIndex("test1");
 
         /*
         BitSet pages = pstore.tracePages();
@@ -45,13 +45,13 @@ public class TreeNodeTest {
         System.exit(0);
         */
 
-        byte[] value = view.get("hello".getBytes());
+        byte[] value = index.get("hello".getBytes());
         System.out.println(value == null ? null : new String(value));
 
         Map<String, String> map = new TreeMap<String, String>();
         map = null;
 
-        testInsert(map, true, view, "hello", "world");
+        testInsert(map, true, index, "hello", "world");
 
         Thread t = new Thread() {
             public void run() {
@@ -104,7 +104,7 @@ public class TreeNodeTest {
                 System.out.println(i);
             }
             long k = rnd.nextLong() & Long.MAX_VALUE;
-            testInsert(map, fullTest, view,
+            testInsert(map, fullTest, index,
                        "key-".concat(String.valueOf(k)), "value-".concat(String.valueOf(i)));
             /*
             if (i % 10 == 0) {
@@ -119,7 +119,7 @@ public class TreeNodeTest {
     }
 
     private static void testInsert(Map<String, String> map, boolean fullTest,
-                                   OrderedView view, String key, String value)
+                                   Index index, String key, String value)
         throws IOException
     {
         if (map != null) {
@@ -129,14 +129,14 @@ public class TreeNodeTest {
         byte[] bkey = key.getBytes();
         byte[] bvalue = value.getBytes();
 
-        Cursor c = view.newCursor();
+        Cursor c = index.newCursor();
         boolean exists = c.find(bkey);
         if (!exists) {
             c.store(bvalue);
         }
         c.reset();
 
-        byte[] fvalue = view.get(bkey);
+        byte[] fvalue = index.get(bkey);
         try {
             compareArrays(bvalue, fvalue);
         } catch (AssertionError e) {
@@ -152,7 +152,7 @@ public class TreeNodeTest {
                 //System.out.println(entry);
                 bkey = entry.getKey().getBytes();
                 bvalue = entry.getValue().getBytes();
-                fvalue = view.get(bkey);
+                fvalue = index.get(bkey);
                 try {
                     compareArrays(bvalue, fvalue);
                 } catch (AssertionError e) {

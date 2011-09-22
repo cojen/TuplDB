@@ -29,13 +29,13 @@ public class CursorTest4 {
 
         final Database db = new Database
             (DatabaseConfig.newConfig().setBaseFile(file).setMinCachedNodes(10000));
-        final OrderedView view = db.openOrderedView("test4");
+        final Index index = db.openIndex("test4");
 
         final int count = 1000000;
 
         // Fill with even keys, never deleted.
         {
-            Cursor c = view.newCursor();
+            Cursor c = index.newCursor();
             for (int i=0; i<count; i+=2) {
                 byte[] key = toKey(i);
                 byte[] value = ("v" + i).getBytes();
@@ -65,7 +65,7 @@ public class CursorTest4 {
                 while (true) {
                     //sem.acquire();
 
-                    Cursor c = view.newCursor();
+                    Cursor c = index.newCursor();
                     Entry e = new Entry();
                     c.first();
 
@@ -115,7 +115,7 @@ public class CursorTest4 {
         while (true) {
             // Concurrently insert odd keys...
             {
-                Cursor c = view.newCursor();
+                Cursor c = index.newCursor();
                 for (int i=1; i<count; i+=2) {
                     byte[] key = toKey(i);
                     byte[] value = ("v" + i).getBytes();
@@ -130,7 +130,7 @@ public class CursorTest4 {
             // Concurrently delete odd keys...
             {
                 //sem.acquire();
-                Cursor c = view.newCursor();
+                Cursor c = index.newCursor();
                 for (int i=1; i<count; i+=2) {
                     byte[] key = toKey(i);
                     byte[] value = ("v" + i).getBytes();
