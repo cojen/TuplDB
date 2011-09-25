@@ -197,9 +197,10 @@ abstract class PageQueue {
      * Allocates a page from the free list or by growing the underlying page
      * array. No page allocations are permanent until after commit is called.
      *
+     * @param grow hint to ensure space is allocated for larger count
      * @return allocated page or 0 if none available
      */
-    public long allocPage() throws IOException {
+    public long allocPage(boolean grow) throws IOException {
         long pageId;
         long oldFreeListHeadId;
 
@@ -208,7 +209,7 @@ abstract class PageQueue {
         mAllocLock.lock();
         try {
             if (mFreeListHeadId == 0) {
-                return createPage();
+                return createPage(grow);
             }
 
             pageId = mFreeListHeadFirstPageId;
@@ -287,6 +288,34 @@ abstract class PageQueue {
             // returns to the caller.
         } finally {
             mDeleteLock.unlock();
+        }
+    }
+
+    /**
+     * Preallocates pages for use later. Preallocation is not permanent until
+     * after commit is called.
+     */
+    public void preallocate(long pageCount) throws IOException {
+        if (pageCount <= 0) {
+            return;
+        }
+
+        mAllocLock.lock();
+        try {
+            pageCount -= (mFreePageCount + mFreeListPageCount);
+        } finally {
+            mAllocLock.unlock();
+        }
+
+        while (--pageCount >= 0) {
+            long pageId;
+            mAllocLock.lock();
+            try {
+                pageId = createPage(pageCount == 0);
+            } finally {
+                mAllocLock.unlock();
+            }
+            deletePage(pageId);
         }
     }
 
@@ -571,8 +600,10 @@ abstract class PageQueue {
     /**
      * Expand the underlying page store to create a new page, or return zero if
      * not allowed. Method is invoked with allocation lock held.
+     *
+     * @param grow hint to ensure space is allocated for larger count
      */
-    abstract long createPage() throws IOException;
+    abstract long createPage(boolean grow) throws IOException;
 
     /**
      * Perform an optional page validation check. Method is invoked with

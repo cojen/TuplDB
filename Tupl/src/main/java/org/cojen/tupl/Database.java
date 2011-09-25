@@ -81,14 +81,24 @@ public class Database implements Closeable {
     }
 
     /**
+     * Preallocates pages for use later.
+     */
+    public void preallocate(long bytes) throws IOException {
+        mNodeStore.preallocate(bytes);
+    }
+
+    /**
      * Durably commit all changes to the database, while still allowing
      * concurrent access. Commit can be called by any thread, although only one
      * is permitted in at a time.
      */
     public void commit() throws IOException {
-        mNodeStore.commit();
+        mNodeStore.commit(false);
     }
 
+    /**
+     * Close the database without committing recent changes.
+     */
     @Override
     public void close() throws IOException {
         mNodeStore.close();

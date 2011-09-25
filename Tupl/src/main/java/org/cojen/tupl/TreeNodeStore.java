@@ -433,6 +433,51 @@ final class TreeNodeStore implements Closeable {
         }
     }
 
+    void preallocate(long bytes) throws IOException {
+        int pageSize = pageSize();
+        long pageCount = (bytes + pageSize - 1) / pageSize;
+
+        if (pageCount <= 0) {
+            return;
+        }
+
+        // Assume DualFilePageStore is in use, so preallocate over two commits.
+        long firstCount = pageCount / 2;
+        pageCount -= firstCount;
+
+        final byte firstCommitState;
+        mPageStore.sharedCommitLock().lock();
+        try {
+            firstCommitState = mCommitState;
+            mPageStore.preallocate(firstCount);
+        } finally {
+            mPageStore.sharedCommitLock().unlock();
+        }
+
+        commit(true);
+
+        if (pageCount <= 0) {
+            return;
+        }
+
+        mPageStore.sharedCommitLock().lock();
+        try {
+            while (mCommitState == firstCommitState) {
+                // Another commit snuck in. Upgradable lock is not used, so
+                // unlock, commit and retry.
+                mPageStore.sharedCommitLock().unlock();
+                commit(true);
+                mPageStore.sharedCommitLock().lock();
+            }
+
+            mPageStore.preallocate(pageCount);
+        } finally {
+            mPageStore.sharedCommitLock().unlock();
+        }
+
+        commit(true);
+    }
+
     /**
      * Indicate that non-root node is most recently used. Root node is not
      * managed in usage list and cannot be evicted.
@@ -485,13 +530,13 @@ final class TreeNodeStore implements Closeable {
      * concurrent access. Commit can be called by any thread, although only one
      * is permitted in at a time.
      */
-    void commit() throws IOException {
+    void commit(boolean force) throws IOException {
         final TreeNode root = mRegistry.mRoot;
 
         // Commit lock must be acquired first, to prevent deadlock.
         mPageStore.exclusiveCommitLock().lock();
         root.acquireSharedUnfair();
-        if (root.mCachedState == CACHED_CLEAN) {
+        if (!force && root.mCachedState == CACHED_CLEAN) {
             // Root is clean, so nothing to do.
             root.releaseShared();
             mPageStore.exclusiveCommitLock().unlock();

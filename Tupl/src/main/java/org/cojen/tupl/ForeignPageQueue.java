@@ -40,7 +40,7 @@ class ForeignPageQueue extends PageQueue {
     }
 
     @Override
-    long createPage() throws IOException {
+    long createPage(boolean grow) throws IOException {
         return 0;
     }
 
