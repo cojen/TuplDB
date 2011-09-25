@@ -119,10 +119,9 @@ class PageAllocator extends PageQueue {
     }
 
     @Override
-    long createPage() throws IOException {
+    long createPage(boolean grow) throws IOException {
         long id = mTotalPageCount++;
-        // Force file to grow, distributing the cost of allocation.
-        pageArray().setPageCount(id + 1, true);
+        pageArray().setPageCount(id + 1, grow);
         return id;
     }
 
@@ -133,7 +132,7 @@ class PageAllocator extends PageQueue {
 
     @Override
     long allocQueuePage() throws IOException {
-        return allocPage();
+        return allocPage(false);
     }
 
     @Override

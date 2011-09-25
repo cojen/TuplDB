@@ -140,6 +140,12 @@ interface PageStore extends Closeable {
     public void deletePage(long id) throws IOException;
 
     /**
+     * Preallocates pages for use later. Preallocation is not permanent until
+     * after commit is called.
+     */
+    public void preallocate(long pageCount) throws IOException;
+
+    /**
      * Access the shared commit lock, which prevents commits while held.
      */
     public Lock sharedCommitLock();

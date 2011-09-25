@@ -105,7 +105,7 @@ class FilePageArray implements PageArray {
     }
 
     @Override
-    public void setPageCount(long count, boolean allocate) throws IOException {
+    public void setPageCount(long count, boolean grow) throws IOException {
         if (count < 0) {
             throw new IllegalArgumentException(String.valueOf(count));
         }
@@ -115,7 +115,7 @@ class FilePageArray implements PageArray {
         synchronized (mFileLengthLock) {
             if (endPos > mFileLength) {
                 mFileLength = endPos;
-                if (allocate && (count & 31) == 0) {
+                if (grow && (count & 31) == 0) {
                     RandomAccessFile file = accessFile();
                     try {
                         file.seek(endPos - 1);

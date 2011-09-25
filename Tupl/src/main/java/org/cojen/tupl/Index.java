@@ -22,7 +22,13 @@ package org.cojen.tupl;
  * @author Brian S O'Neill
  */
 public interface Index extends OrderedView {
+    /**
+     * @return randomly assigned, unique non-zero identifier for this index
+     */
     public long getId();
 
+    /**
+     * @return unique user-specified index name
+     */
     public byte[] getName();
 }
