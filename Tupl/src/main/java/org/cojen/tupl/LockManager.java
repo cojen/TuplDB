@@ -16,8 +16,6 @@
 
 package org.cojen.tupl;
 
-import java.util.Arrays;
-
 import static org.cojen.tupl.LockResult.*;
 
 /**
@@ -25,11 +23,11 @@ import static org.cojen.tupl.LockResult.*;
  *
  * @author Brian S O'Neill
  */
-public final class LockManager {
+final class LockManager {
     private final LockHT[] mHashTables;
     private final int mHashTableMask;
 
-    public LockManager() {
+    LockManager() {
         this(Runtime.getRuntime().availableProcessors() * 16);
     }
 
@@ -54,20 +52,20 @@ public final class LockManager {
         return count;
     }
 
-    final LockResult check(Locker locker, byte[] key) {
-        int hash = hashCode(key);
+    final LockResult check(Locker locker, long indexId, byte[] key) {
+        int hash = hashCode(indexId, key);
         LockHT ht = getLockHT(hash);
         Latch latch = ht.mLatch;
         latch.acquireSharedUnfair();
         try {
-            return ht.lockFor(key, hash).check(locker);
+            return ht.lockFor(indexId, key, hash).check(locker);
         } finally {
             latch.releaseShared();
         }
     }
 
-    final LockResult lockShared(Locker locker, byte[] key, long nanosTimeout) {
-        int hash = hashCode(key);
+    final LockResult lockShared(Locker locker, long indexId, byte[] key, long nanosTimeout) {
+        int hash = hashCode(indexId, key);
         LockHT ht = getLockHT(hash);
 
         Lock lock;
@@ -76,7 +74,7 @@ public final class LockManager {
             Latch latch = ht.mLatch;
             latch.acquireExclusiveUnfair();
             try {
-                lock = ht.lockFor(key, hash);
+                lock = ht.lockFor(indexId, key, hash);
                 result = lock.lockShared(latch, locker, nanosTimeout);
             } finally {
                 latch.releaseExclusive();
@@ -90,8 +88,8 @@ public final class LockManager {
         return result;
     }
 
-    final LockResult lockUpgradable(Locker locker, byte[] key, long nanosTimeout) {
-        int hash = hashCode(key);
+    final LockResult lockUpgradable(Locker locker, long indexId, byte[] key, long nanosTimeout) {
+        int hash = hashCode(indexId, key);
         LockHT ht = getLockHT(hash);
 
         Lock lock;
@@ -100,7 +98,7 @@ public final class LockManager {
             Latch latch = ht.mLatch;
             latch.acquireExclusiveUnfair();
             try {
-                lock = ht.lockFor(key, hash);
+                lock = ht.lockFor(indexId, key, hash);
                 result = lock.lockUpgradable(latch, locker, nanosTimeout);
             } finally {
                 latch.releaseExclusive();
@@ -114,8 +112,8 @@ public final class LockManager {
         return result;
     }
 
-    final LockResult lockExclusive(Locker locker, byte[] key, long nanosTimeout) {
-        int hash = hashCode(key);
+    final LockResult lockExclusive(Locker locker, long indexId, byte[] key, long nanosTimeout) {
+        int hash = hashCode(indexId, key);
         LockHT ht = getLockHT(hash);
 
         Lock lock;
@@ -124,7 +122,7 @@ public final class LockManager {
             Latch latch = ht.mLatch;
             latch.acquireExclusiveUnfair();
             try {
-                lock = ht.lockFor(key, hash);
+                lock = ht.lockFor(indexId, key, hash);
                 result = lock.lockExclusive(latch, locker, nanosTimeout);
             } finally {
                 latch.releaseExclusive();
@@ -140,39 +138,31 @@ public final class LockManager {
         return result;
     }
 
-    final byte[] unlock(Locker locker, Lock lock) {
+    final void unlock(Locker locker, Lock lock) {
         int hash = lock.mHashCode;
-        byte[] key = lock.mKey;
-        getLockHT(hash).unlock(locker, key, hash);
-        return key;
+        getLockHT(hash).unlock(locker, lock.mIndexId, lock.mKey, hash);
     }
 
-    final byte[] unlockToShared(Locker locker, Lock lock) {
-        int hash = lock.mHashCode;
-        byte[] key = lock.mKey;
-        LockHT ht = getLockHT(hash);
+    final void unlockToShared(Locker locker, Lock lock) {
+        LockHT ht = getLockHT(lock.mHashCode);
         Latch latch = ht.mLatch;
         latch.acquireExclusiveUnfair();
         try {
-            ht.get(key, hash).unlockToShared(locker);
+            lock.unlockToShared(locker);
         } finally {
             latch.releaseExclusive();
         }
-        return key;
     }
 
-    final byte[] unlockToUpgradable(Locker locker, Lock lock) {
-        int hash = lock.mHashCode;
-        byte[] key = lock.mKey;
-        LockHT ht = getLockHT(hash);
+    final void unlockToUpgradable(Locker locker, Lock lock) {
+        LockHT ht = getLockHT(lock.mHashCode);
         Latch latch = ht.mLatch;
         latch.acquireExclusiveUnfair();
         try {
-            ht.get(key, hash).unlockToUpgradable(locker);
+            lock.unlockToUpgradable(locker);
         } finally {
             latch.releaseExclusive();
         }
-        return key;
     }
 
     final boolean unlockIfNonExclusive(Locker locker, Lock lock) {
@@ -186,8 +176,8 @@ public final class LockManager {
         }
     }
 
-    final static int hashCode(byte[] key) {
-        int hash = 0;
+    final static int hashCode(long indexId, byte[] key) {
+        int hash = ((int) indexId) ^ ((int) (indexId >>> 32));
         for (int i=key.length; --i>=0; ) {
             hash = hash * 31 + key[i];
         }
@@ -230,25 +220,11 @@ public final class LockManager {
         /**
          * Caller must hold latch.
          */
-        Lock get(byte[] key, int hash) {
+        Lock lockFor(long indexId, byte[] key, int hash) {
             Lock[] entries = mEntries;
             int index = hash & (entries.length - 1);
             for (Lock e = entries[index]; e != null; e = e.mLockManagerNext) {
-                if (hash == e.mHashCode && Arrays.equals(e.mKey, key)) {
-                    return e;
-                }
-            }
-            throw new IllegalStateException("Lock not held");
-        }
-
-        /**
-         * Caller must hold latch.
-         */
-        Lock lockFor(byte[] key, int hash) {
-            Lock[] entries = mEntries;
-            int index = hash & (entries.length - 1);
-            for (Lock e = entries[index]; e != null; e = e.mLockManagerNext) {
-                if (hash == e.mHashCode && Arrays.equals(e.mKey, key)) {
+                if (e.matches(indexId, key, hash)) {
                     return e;
                 }
             }
@@ -274,6 +250,7 @@ public final class LockManager {
             }
 
             Lock lock = new Lock();
+            lock.mIndexId = indexId;
             lock.mKey = key;
             lock.mHashCode = hash;
             lock.mLockManagerNext = entries[index];
@@ -282,14 +259,14 @@ public final class LockManager {
             return lock;
         }
 
-        void unlock(Locker locker, byte[] key, int hash) {
+        void unlock(Locker locker, long indexId, byte[] key, int hash) {
             Latch latch = mLatch;
             latch.acquireExclusiveUnfair();
             try {
                 Lock[] entries = mEntries;
                 int index = hash & (entries.length - 1);
                 for (Lock e = entries[index], prev = null; e != null; e = e.mLockManagerNext) {
-                    if (hash == e.mHashCode && Arrays.equals(e.mKey, key)) {
+                    if (e.matches(indexId, key, hash)) {
                         if (e.unlock(locker)) {
                             // Remove last use of lock.
                             if (prev == null) {

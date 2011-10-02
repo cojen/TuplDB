@@ -42,7 +42,7 @@ public class Locker {
     private Object mScopeHeadStack;
     private int mScopeStackSize;
 
-    public Locker(LockManager manager) {
+    Locker(LockManager manager) {
         if (manager == null) {
             throw new IllegalArgumentException("LockManager is null");
         }
@@ -54,8 +54,8 @@ public class Locker {
      *
      * @return UNOWNED, OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      */
-    public final LockResult check(byte[] key) {
-        return mManager.check(this, key);
+    public final LockResult check(long indexId, byte[] key) {
+        return mManager.check(this, indexId, key);
     }
 
     /**
@@ -69,8 +69,8 @@ public class Locker {
      * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      * @throws IllegalStateException if too many shared locks
      */
-    public final LockResult lockShared(byte[] key, long nanosTimeout) {
-        return mManager.lockShared(this, key, nanosTimeout);
+    public final LockResult lockShared(long indexId, byte[] key, long nanosTimeout) {
+        return mManager.lockShared(this, indexId, key, nanosTimeout);
     }
 
     /**
@@ -85,8 +85,8 @@ public class Locker {
      * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED,
      * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      */
-    public final LockResult lockUpgradable(byte[] key, long nanosTimeout) {
-        return mManager.lockUpgradable(this, key, nanosTimeout);
+    public final LockResult lockUpgradable(long indexId, byte[] key, long nanosTimeout) {
+        return mManager.lockUpgradable(this, indexId, key, nanosTimeout);
     }
 
     /**
@@ -100,8 +100,36 @@ public class Locker {
      * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED, UPGRADED, or
      * OWNED_EXCLUSIVE
      */
-    public final LockResult lockExclusive(byte[] key, long nanosTimeout) {
-        return mManager.lockExclusive(this, key, nanosTimeout);
+    public final LockResult lockExclusive(long indexId, byte[] key, long nanosTimeout) {
+        return mManager.lockExclusive(this, indexId, key, nanosTimeout);
+    }
+
+    /**
+     * Returns the index of the last lock acquired.
+     *
+     * @return locked index id
+     * @throws IllegalStateException if no locks held
+     */
+    public final long lastLockedIndex() {
+        return peek().mIndexId;
+    }
+
+    /**
+     * Returns the key of the last lock acquired.
+     *
+     * @return locked key; instance is not cloned
+     * @throws IllegalStateException if no locks held
+     */
+    public final byte[] lastLockedKey() {
+        return peek().mKey;
+    }
+
+    private Lock peek() {
+        Object tailObj = mTailBlock;
+        if (tailObj == null) {
+            throw new IllegalStateException("No locks held");
+        }
+        return (tailObj instanceof Lock) ? ((Lock) tailObj) : (((Block) tailObj).last());
     }
 
     /**
@@ -109,11 +137,10 @@ public class Locker {
      * upgrade, for a lock not immediately acquired, unlock is not
      * allowed. Instead, an IllegalStateException is thrown.
      *
-     * @return unlocked key; instance is not cloned
      * @throws IllegalStateException if no locks held, or if unlocking a
      * non-immediate upgrade
      */
-    public final byte[] unlock() {
+    public final void unlock() {
         Object tailObj = mTailBlock;
         if (tailObj == null) {
             throw new IllegalStateException("No locks held");
@@ -121,9 +148,10 @@ public class Locker {
         if (tailObj instanceof Lock) {
             mTailBlock = null;
             mHeadBlock = null;
-            return mManager.unlock(this, (Lock) tailObj);
+            mManager.unlock(this, (Lock) tailObj);
+        } else {
+            ((Block) tailObj).unlockLast(this);
         }
-        return ((Block) tailObj).unlockLast(this);
     }
 
     /**
@@ -131,36 +159,36 @@ public class Locker {
      * operation was an upgrade, for a lock not immediately acquired, unlock is
      * not allowed. Instead, an IllegalStateException is thrown.
      *
-     * @return unlocked key; instance is not cloned
      * @throws IllegalStateException if no locks held, or if too many shared
      * locks, or if unlocking a non-immediate upgrade
      */
-    public final byte[] unlockToShared() {
+    public final void unlockToShared() {
         Object tailObj = mTailBlock;
         if (tailObj == null) {
             throw new IllegalStateException("No locks held");
         }
         if (tailObj instanceof Lock) {
-            return mManager.unlockToShared(this, (Lock) tailObj);
+            mManager.unlockToShared(this, (Lock) tailObj);
+        } else {
+            ((Block) tailObj).unlockLastToShared(this);
         }
-        return ((Block) tailObj).unlockLastToShared(this);
     }
 
     /**
      * Releases last lock acquired or upgraded, retaining an upgradable lock.
      *
-     * @return unlocked key; instance is not cloned
      * @throws IllegalStateException if no locks held, or if last lock is shared
      */
-    public final byte[] unlockToUpgradable() {
+    public final void unlockToUpgradable() {
         Object tailObj = mTailBlock;
         if (tailObj == null) {
             throw new IllegalStateException("No locks held");
         }
         if (tailObj instanceof Lock) {
-            return mManager.unlockToUpgradable(this, (Lock) tailObj);
+            mManager.unlockToUpgradable(this, (Lock) tailObj);
+        } else {
+            ((Block) tailObj).unlockLastToUpgradable(this);
         }
-        return ((Block) tailObj).unlockLastToUpgradable(this);
     }
 
     /**
@@ -368,11 +396,13 @@ public class Locker {
 
         abstract void pushLock(Locker locker, Lock lock, int upgrade);
 
-        abstract byte[] unlockLast(Locker locker);
+        abstract Lock last();
 
-        abstract byte[] unlockLastToShared(Locker locker);
+        abstract void unlockLast(Locker locker);
 
-        abstract byte[] unlockLastToUpgradable(Locker locker);
+        abstract void unlockLastToShared(Locker locker);
+
+        abstract void unlockLastToUpgradable(Locker locker);
 
         /**
          * @return previous Block or null if none left
@@ -421,8 +451,13 @@ public class Locker {
         }
 
         @Override
-        byte[] unlockLast(Locker locker) {
-            byte[] key = locker.mManager.unlock(locker, mElement);
+        Lock last() {
+            return mElement;
+        }
+
+        @Override
+        void unlockLast(Locker locker) {
+            locker.mManager.unlock(locker, mElement);
 
             // Only pop lock if unlock succeeded.
             mElement = null;
@@ -431,18 +466,16 @@ public class Locker {
             } else {
                 mPrev = null;
             }
-
-            return key;
         }
 
         @Override
-        byte[] unlockLastToShared(Locker locker) {
-            return locker.mManager.unlockToShared(locker, mElement);
+        void unlockLastToShared(Locker locker) {
+            locker.mManager.unlockToShared(locker, mElement);
         }
 
         @Override
-        byte[] unlockLastToUpgradable(Locker locker) {
-            return locker.mManager.unlockToUpgradable(locker, mElement);
+        void unlockLastToUpgradable(Locker locker) {
+            locker.mManager.unlockToUpgradable(locker, mElement);
         }
 
         @Override
@@ -540,7 +573,12 @@ public class Locker {
         }
 
         @Override
-        byte[] unlockLast(Locker locker) {
+        Lock last() {
+            return mElements[mSize - 1];
+        }
+
+        @Override
+        void unlockLast(Locker locker) {
             int size = mSize - 1;
 
             long upgrades = mUpgrades;
@@ -550,7 +588,7 @@ public class Locker {
             }
 
             Lock[] elements = mElements;
-            byte[] key = locker.mManager.unlock(locker, elements[size]);
+            locker.mManager.unlock(locker, elements[size]);
 
             // Only pop lock if unlock succeeded.
             elements[size] = null;
@@ -564,24 +602,22 @@ public class Locker {
                 mUpgrades &= upgrades & ~mask;
                 mSize = size;
             }
-
-            return key;
         }
 
         @Override
-        byte[] unlockLastToShared(Locker locker) {
+        void unlockLastToShared(Locker locker) {
             int size = mSize - 1;
             if ((mUpgrades & (1L << size)) != 0) {
                 throw new IllegalStateException("Cannot unlock non-immediate upgrade");
             }
-            return locker.mManager.unlockToShared(locker, mElements[size]);
+            locker.mManager.unlockToShared(locker, mElements[size]);
         }
 
         @Override
-        byte[] unlockLastToUpgradable(Locker locker) {
+        void unlockLastToUpgradable(Locker locker) {
             Lock[] elements = mElements;
             int size = mSize;
-            byte[] key = locker.mManager.unlockToUpgradable(locker, elements[--size]);
+            locker.mManager.unlockToUpgradable(locker, elements[--size]);
 
             long upgrades = mUpgrades;
             long mask = 1L << size;
@@ -599,8 +635,6 @@ public class Locker {
                     mSize = size;
                 }
             }
-
-            return key;
         }
 
         @Override
