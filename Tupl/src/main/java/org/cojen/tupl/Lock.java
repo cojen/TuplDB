@@ -16,6 +16,8 @@
 
 package org.cojen.tupl;
 
+import java.util.Arrays;
+
 import static org.cojen.tupl.LockResult.*;
 
 /**
@@ -28,6 +30,7 @@ import static org.cojen.tupl.LockResult.*;
  * @see LockManager
  */
 final class Lock {
+    long mIndexId;
     byte[] mKey;
     int mHashCode;
 
@@ -422,6 +425,10 @@ final class Lock {
             unlock(locker);
             return true;
         }
+    }
+
+    boolean matches(long indexId, byte[] key, int hash) {
+        return mHashCode == hash && mIndexId == indexId && Arrays.equals(mKey, key);
     }
 
     private boolean isSharedLocker(Locker locker) {

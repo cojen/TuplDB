@@ -58,12 +58,17 @@ public interface OrderedView {
     public byte[] get(byte[] key) throws IOException;
 
     /**
+     * Unconditionally associates a value with the given key.
+     *
      * @param key non-null key
      * @param value value to store; pass null to delete
      */
     public void store(byte[] key, byte[] value) throws IOException;
 
     /**
+     * Associates a value with the given key, unless a corresponding value
+     * already exists.
+     *
      * @param key non-null key
      * @param value value to insert, which can be null
      * @return false if entry already exists
@@ -71,6 +76,9 @@ public interface OrderedView {
     public boolean insert(byte[] key, byte[] value) throws IOException;
 
     /**
+     * Associates a value with the given key, but only if a corresponding value
+     * already exists.
+     *
      * @param key non-null key
      * @param value value to insert; pass null to delete
      * @return false if no existing entry
@@ -78,6 +86,9 @@ public interface OrderedView {
     public boolean replace(byte[] key, byte[] value) throws IOException;
 
     /**
+     * Associates a value with the given key, but only if given old value
+     * matches.
+     *
      * @param key non-null key
      * @param oldValue expected existing value, which can be null
      * @param newValue new value to update to; pass null to delete
@@ -86,18 +97,26 @@ public interface OrderedView {
     public boolean update(byte[] key, byte[] oldValue, byte[] newValue) throws IOException;
 
     /**
+     * Unconditionally removes the entry associated with the given key.
+     *
      * @param key non-null key
      * @return false if no existing entry
      */
     public boolean delete(byte[] key) throws IOException;
 
     /**
+     * Removes the entry associated with the given key, but only if given value
+     * matches.
+     *
      * @param key non-null key
      * @param value expected existing value, which can be null
      * @return false if existing value doesn't match
      */
     public boolean remove(byte[] key, byte[] value) throws IOException;
 
+    /**
+     * Unconditionally removes all entries.
+     */
     public void clear() throws IOException;
 
     /**
