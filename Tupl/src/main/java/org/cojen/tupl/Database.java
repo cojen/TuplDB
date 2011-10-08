@@ -81,6 +81,20 @@ public class Database implements Closeable {
     }
 
     /**
+     * Returns an index by its identifier, returning null if not found.
+     *
+     * @throws IllegalArgumentException if id is zero
+     */
+    public Index indexById(long id) throws IOException {
+        if (id == 0) {
+            throw new IllegalArgumentException("Invalid id: " + id);
+        }
+
+        // FIXME
+        throw null;
+    }
+
+    /**
      * Preallocates pages for use later.
      */
     public void preallocate(long bytes) throws IOException {

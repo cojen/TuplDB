@@ -29,6 +29,7 @@ public class DatabaseConfig {
     int mMaxCache;
     boolean mReadOnly;
     int mPageSize;
+    UndoLog.RollbackHandler mRollbackHandler;
 
     public static DatabaseConfig newConfig() {
         return new DatabaseConfig();
@@ -59,6 +60,11 @@ public class DatabaseConfig {
 
     public DatabaseConfig setPageSize(int size) {
         mPageSize = size;
+        return this;
+    }
+
+    public DatabaseConfig setRollbackHandler(UndoLog.RollbackHandler handler) {
+        mRollbackHandler = handler;
         return this;
     }
 }

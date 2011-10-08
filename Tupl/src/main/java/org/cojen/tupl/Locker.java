@@ -26,7 +26,7 @@ package org.cojen.tupl;
  * @author Brian S O'Neill
  */
 public class Locker {
-    private static final int INITIAL_SCOPE_STACK_CAPACITY = 4;
+    static final int INITIAL_SCOPE_STACK_CAPACITY = 4;
 
     final LockManager mManager;
 
@@ -70,7 +70,7 @@ public class Locker {
      * @throws IllegalStateException if too many shared locks
      */
     public final LockResult lockShared(long indexId, byte[] key, long nanosTimeout) {
-        return mManager.lockShared(this, indexId, key, nanosTimeout);
+        return mManager.lockShared(this, indexId, key, nanosTimeout, true);
     }
 
     /**
@@ -86,7 +86,7 @@ public class Locker {
      * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      */
     public final LockResult lockUpgradable(long indexId, byte[] key, long nanosTimeout) {
-        return mManager.lockUpgradable(this, indexId, key, nanosTimeout);
+        return mManager.lockUpgradable(this, indexId, key, nanosTimeout, true);
     }
 
     /**
@@ -101,7 +101,50 @@ public class Locker {
      * OWNED_EXCLUSIVE
      */
     public final LockResult lockExclusive(long indexId, byte[] key, long nanosTimeout) {
-        return mManager.lockExclusive(this, indexId, key, nanosTimeout);
+        return mManager.lockExclusive(this, indexId, key, nanosTimeout, true);
+    }
+
+    /**
+     * Variant of {@link lockShared} which returns UNOWNED if lock is not
+     * contended. Caller is responsible for holding a coarse latch which
+     * prevents other threads from accessing the key when UNOWNED.
+     *
+     * @param key key to lock; instance is not cloned
+     * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
+     * @return UNOWNED, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED, OWNED_SHARED,
+     * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     * @throws IllegalStateException if too many shared locks
+     */
+    public final LockResult quickLockShared(long indexId, byte[] key, long nanosTimeout) {
+        return mManager.lockShared(this, indexId, key, nanosTimeout, false);
+    }
+
+    /**
+     * Variant of {@link lockUpgradable} which returns UNOWNED if lock is not
+     * contended. Caller is responsible for holding a coarse latch which
+     * prevents other threads from accessing the key when UNOWNED.
+     *
+     * @param key key to lock; instance is not cloned
+     * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
+     * @return UNOWNED, ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED,
+     * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     */
+    public final LockResult quickLockUpgradable(long indexId, byte[] key, long nanosTimeout) {
+        return mManager.lockUpgradable(this, indexId, key, nanosTimeout, false);
+    }
+
+    /**
+     * Variant of {@link lockExclusive} which returns UNOWNED if lock is not
+     * contended. Caller is responsible for holding a coarse latch which
+     * prevents other threads from accessing the key when UNOWNED.
+     *
+     * @param key key to lock; instance is not cloned
+     * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
+     * @return UNOWNED, ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED,
+     * UPGRADED, or OWNED_EXCLUSIVE
+     */
+    public final LockResult quickLockExclusive(long indexId, byte[] key, long nanosTimeout) {
+        return mManager.lockExclusive(this, indexId, key, nanosTimeout, false);
     }
 
     /**
@@ -194,7 +237,7 @@ public class Locker {
     /**
      * Release all locks held by this Locker, and exit all scopes.
      */
-    public final void reset() {
+    final void reset() {
         scopeUnlockAll();
 
         Object scopeTailStack = mScopeTailStack;
@@ -213,7 +256,7 @@ public class Locker {
         }
     }
 
-    public final void scopeEnter() {
+    final void scopeEnter() {
         // Move the current stack of locks to scope stack.
 
         Object tail = mTailBlock;
@@ -239,9 +282,9 @@ public class Locker {
                 Object[] headElements = (Object[]) mScopeHeadStack;
                 if (size >= tailElements.length) {
                     Object[] newTailElements = new Object[tailElements.length << 1];
+                    Object[] newHeadElements = new Object[headElements.length << 1];
                     System.arraycopy(tailElements, 0, newTailElements, 0, size);
                     mScopeTailStack = tailElements = newTailElements;
-                    Object[] newHeadElements = new Object[headElements.length << 1];
                     System.arraycopy(headElements, 0, newHeadElements, 0, size);
                     mScopeHeadStack = headElements = newHeadElements;
                 }
@@ -258,7 +301,7 @@ public class Locker {
      * Release all locks held by this Locker, within the current scope. If not
      * in a scope, all held locks are released.
      */
-    public final void scopeUnlockAll() {
+    final void scopeUnlockAll() {
         unlockAll(mTailBlock);
         mTailBlock = null;
         mHeadBlock = null;
@@ -268,7 +311,7 @@ public class Locker {
      * Release all non-exclusive locks held by this Locker, within the current
      * scope. If not in a scope, all held non-exclusive locks are released.
      */
-    public final void scopeUnlockAllNonExclusive() {
+    final void scopeUnlockAllNonExclusive() {
         // FIXME
         throw null;
         // FIXME: Collapse non-exclusive locks within Blocks, possibly moving
@@ -285,7 +328,7 @@ public class Locker {
      * @param promote when true, promote all locks to enclosing scope, if one exists
      * @return false if last scope exited and all locks released
      */
-    public final boolean scopeExit(boolean promote) {
+    final boolean scopeExit(boolean promote) {
         Object lastTail = mTailBlock;
 
         if (!promote) {
