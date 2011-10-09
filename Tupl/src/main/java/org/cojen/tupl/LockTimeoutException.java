@@ -24,10 +24,6 @@ import java.util.concurrent.TimeUnit;
  * @author Brian S O'Neill
  */
 public class LockTimeoutException extends LockFailureException {
-    public static void main(String[] args) throws Exception {
-        throw new LockTimeoutException(Long.parseLong(args[0]));
-    }
-
     private final long mNanosTimeout;
 
     private TimeUnit mUnit;
