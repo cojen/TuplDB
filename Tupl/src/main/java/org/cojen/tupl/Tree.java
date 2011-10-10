@@ -27,6 +27,7 @@ import java.util.List;
  */
 final class Tree implements Index {
     final TreeNodeStore mStore;
+    final LockManager mLockManager;
 
     // Id is zero for registry and registry key map.
     final long mId;
@@ -50,6 +51,7 @@ final class Tree implements Index {
 
     Tree(TreeNodeStore store, long id, byte[] idBytes, byte[] name, TreeNode root) {
         mStore = store;
+        mLockManager = store.mLockManager;
         mId = id;
         mIdBytes = idBytes;
         mName = name;
@@ -67,35 +69,43 @@ final class Tree implements Index {
     }
 
     @Override
-    public Cursor newCursor() {
-        return new FullCursor(new TreeCursor(this));
+    public Cursor newCursor(Transaction txn) {
+        return new FullCursor(new TreeCursor(this), txn);
     }
 
     @Override
-    public long count() throws IOException {
+    public long count(Transaction txn) throws IOException {
         // FIXME
         throw null;
     }
 
     @Override
-    public boolean exists(byte[] key) throws IOException {
+    public boolean exists(Transaction txn, byte[] key) throws IOException {
         // FIXME
         throw null;
     }
 
     @Override
-    public boolean exists(byte[] key, byte[] value) throws IOException {
+    public boolean exists(Transaction txn, byte[] key, byte[] value) throws IOException {
         // FIXME
         throw null;
     }
 
     @Override
-    public byte[] get(byte[] key) throws IOException {
-        return mRoot.search(this, key);
+    public byte[] get(Transaction txn, byte[] key) throws IOException {
+        Locker locker = lockForRead(txn, null, key, true);
+        try {
+            return mRoot.search(this, key);
+        } finally {
+            if (locker != null) {
+                locker.unlock();
+            }
+        }
     }
 
     @Override
-    public void store(byte[] key, byte[] value) throws IOException {
+    public void store(Transaction txn, byte[] key, byte[] value) throws IOException {
+        // FIXME: txn
         TreeCursor cursor = new TreeCursor(this);
         try {
             cursor.findAndStore(key, value);
@@ -106,7 +116,8 @@ final class Tree implements Index {
     }
 
     @Override
-    public boolean insert(byte[] key, byte[] value) throws IOException {
+    public boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException {
+        // FIXME: txn
         TreeCursor cursor = new TreeCursor(this);
         try {
             return cursor.findAndInsert(key, value);
@@ -117,7 +128,8 @@ final class Tree implements Index {
     }
 
     @Override
-    public boolean replace(byte[] key, byte[] value) throws IOException {
+    public boolean replace(Transaction txn, byte[] key, byte[] value) throws IOException {
+        // FIXME: txn
         TreeCursor cursor = new TreeCursor(this);
         try {
             return cursor.findAndReplace(key, value);
@@ -128,7 +140,10 @@ final class Tree implements Index {
     }
 
     @Override
-    public boolean update(byte[] key, byte[] oldValue, byte[] newValue) throws IOException {
+    public boolean update(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
+        throws IOException
+    {
+        // FIXME: txn
         TreeCursor cursor = new TreeCursor(this);
         try {
             return cursor.findAndUpdate(key, oldValue, newValue);
@@ -139,17 +154,17 @@ final class Tree implements Index {
     }
 
     @Override
-    public boolean delete(byte[] key) throws IOException {
-        return replace(key, null);
+    public boolean delete(Transaction txn, byte[] key) throws IOException {
+        return replace(txn, key, null);
     }
 
     @Override
-    public boolean remove(byte[] key, byte[] value) throws IOException {
-        return update(key, value, null);
+    public boolean remove(Transaction txn, byte[] key, byte[] value) throws IOException {
+        return update(txn, key, value, null);
     }
 
     @Override
-    public void clear() throws IOException {
+    public void clear(Transaction txn) throws IOException {
         // FIXME
         throw null;
     }
@@ -188,6 +203,28 @@ final class Tree implements Index {
     public OrderedView viewReverse() {
         // FIXME
         throw null;
+    }
+
+    /**
+     * Returns true if a shared lock can be immediately granted. Caller must
+     * hold a coarse latch to prevent this state from changing.
+     *
+     * @param locker optional locker
+     */
+    boolean isLockAvailable(Locker locker, byte[] key) {
+        return mLockManager.isAvailable(locker, mId, key);
+    }
+
+    /**
+     * @param txn optional transaction instance
+     * @param key non-null key instance
+     * @param cloneKey true if key should be cloned if actually used
+     * @return non-null Locker instance if caller should unlock when read is done
+     */
+    Locker lockForRead(Transaction txn, LockMode lockMode, byte[] key, boolean cloneKey)
+        throws LockFailureException
+    {
+        return mLockManager.lockForRead(txn, lockMode, mId, key, cloneKey);
     }
 
     /**

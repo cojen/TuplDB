@@ -25,99 +25,115 @@ import java.io.IOException;
  */
 public interface OrderedView {
     /**
+     * @param txn optional transaction
      * @return a new unpositioned cursor
      */
-    public Cursor newCursor();
+    public Cursor newCursor(Transaction txn);
 
-    public long count() throws IOException;
+    /**
+     * @param txn optional transaction
+     */
+    public long count(Transaction txn) throws IOException;
 
     /**
      * Returns true if an entry exists for the given key.
      *
+     * @param txn optional transaction
      * @param key non-null key
      * @return true if non-null value exists for the given key
      */
-    public boolean exists(byte[] key) throws IOException;
+    public boolean exists(Transaction txn, byte[] key) throws IOException;
 
     /**
      * Returns true if a matching key-value entry exists.
      *
+     * @param txn optional transaction
      * @param key non-null key
      * @param value value to compare to, which can be null
      * @return true if entry matches given key and value
      */
-    public boolean exists(byte[] key, byte[] value) throws IOException;
+    public boolean exists(Transaction txn, byte[] key, byte[] value) throws IOException;
 
     /**
      * Returns a copy of the value for the given key, or null if no matching
      * entry exists.
      *
+     * @param txn optional transaction
      * @param key non-null key
      * @return copy of value, or null if entry doesn't exist
      */
-    public byte[] get(byte[] key) throws IOException;
+    public byte[] get(Transaction txn, byte[] key) throws IOException;
 
     /**
      * Unconditionally associates a value with the given key.
      *
+     * @param txn optional transaction
      * @param key non-null key
      * @param value value to store; pass null to delete
      */
-    public void store(byte[] key, byte[] value) throws IOException;
+    public void store(Transaction txn, byte[] key, byte[] value) throws IOException;
 
     /**
      * Associates a value with the given key, unless a corresponding value
      * already exists.
      *
+     * @param txn optional transaction
      * @param key non-null key
      * @param value value to insert, which can be null
      * @return false if entry already exists
      */
-    public boolean insert(byte[] key, byte[] value) throws IOException;
+    public boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException;
 
     /**
      * Associates a value with the given key, but only if a corresponding value
      * already exists.
      *
+     * @param txn optional transaction
      * @param key non-null key
      * @param value value to insert; pass null to delete
      * @return false if no existing entry
      */
-    public boolean replace(byte[] key, byte[] value) throws IOException;
+    public boolean replace(Transaction txn, byte[] key, byte[] value) throws IOException;
 
     /**
      * Associates a value with the given key, but only if given old value
      * matches.
      *
+     * @param txn optional transaction
      * @param key non-null key
      * @param oldValue expected existing value, which can be null
      * @param newValue new value to update to; pass null to delete
      * @return false if existing value doesn't match
      */
-    public boolean update(byte[] key, byte[] oldValue, byte[] newValue) throws IOException;
+    public boolean update(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
+        throws IOException;
 
     /**
      * Unconditionally removes the entry associated with the given key.
      *
+     * @param txn optional transaction
      * @param key non-null key
      * @return false if no existing entry
      */
-    public boolean delete(byte[] key) throws IOException;
+    public boolean delete(Transaction txn, byte[] key) throws IOException;
 
     /**
      * Removes the entry associated with the given key, but only if given value
      * matches.
      *
+     * @param txn optional transaction
      * @param key non-null key
      * @param value expected existing value, which can be null
      * @return false if existing value doesn't match
      */
-    public boolean remove(byte[] key, byte[] value) throws IOException;
+    public boolean remove(Transaction txn, byte[] key, byte[] value) throws IOException;
 
     /**
      * Unconditionally removes all entries.
+     *
+     * @param txn optional transaction
      */
-    public void clear() throws IOException;
+    public void clear(Transaction txn) throws IOException;
 
     /**
      * Returns a sub-view, backed by this one, whose keys are greater than or

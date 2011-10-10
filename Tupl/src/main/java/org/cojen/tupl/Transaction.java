@@ -28,13 +28,18 @@ import java.io.IOException;
  */
 public class Transaction extends Locker {
     final DurabilityMode mDurabilityMode;
-    //private final UndoLog mUndo;
-    //private final RedoLog mRedo;
 
+    // FIXME: One shared RedoLog instance. UndoLog instances created for each scope.
+    //private final RedoLog mRedo;
+    //private final UndoLog mUndo;
+
+    // FIXME: move saved scope state into linked UndoLog instances
     private LockMode mLockMode;
     // Is null if empty; LockMode instance if one; LockMode[] if more.
     private Object mLockModeStack;
     private int mLockModeStackSize;
+
+    // FIXME: support lock timeout
 
     Transaction(LockManager manager, DurabilityMode durabilityMode, LockMode lockMode) {
         super(manager);

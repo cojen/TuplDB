@@ -82,33 +82,4 @@ public class Entry {
         }
         return false;
     }
-
-    // Called by TreeCursor.
-    byte[] get(TreeCursorFrame leaf, TreeNode node) {
-        int pos = leaf.mNodePos;
-        if (pos < 0) {
-            key = leaf.mNotFoundKey.clone();
-            value = null;
-            return null;
-        } else {
-            node.retrieveLeafEntry(pos, this);
-            return Utils.EMPTY_BYTES;
-        }
-    }
-
-    static final Entry GET_KEY = new Entry() {
-        @Override
-        byte[] get(TreeCursorFrame leaf, TreeNode node) {
-            int pos = leaf.mNodePos;
-            return pos < 0 ? (leaf.mNotFoundKey.clone()) : node.retrieveLeafKey(pos);
-        }
-    };
-
-    static final Entry GET_VALUE = new Entry() {
-        @Override
-        byte[] get(TreeCursorFrame leaf, TreeNode node) {
-            int pos = leaf.mNodePos;
-            return pos < 0 ? null : node.retrieveLeafValue(pos);
-        }
-    };
 }

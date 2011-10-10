@@ -74,17 +74,17 @@ public class CursorTest3 {
         Thread monitor = new Thread() {
             public void run() {
                 try {
-                    Cursor c = index.newCursor();
+                    Cursor c = index.newCursor(null);
                     Entry e = new Entry();
                     while (true) {
                         if (c.last()) {
-                            c.getEntry(e);
+                            c.get(e);
                             System.out.println("last:     " + CursorTest.string(e));
                             if (c.previous()) {
-                                c.getEntry(e);
+                                c.get(e);
                                 System.out.println("previous: " + CursorTest.string(e));
                                 if (c.next()) {
-                                    c.getEntry(e);
+                                    c.get(e);
                                     System.out.println("next:     " + CursorTest.string(e));
                                 }
                             }
@@ -102,7 +102,7 @@ public class CursorTest3 {
         monitor.setDaemon(true);
         //monitor.start();
 
-        Cursor c1 = index.newCursor();
+        Cursor c1 = index.newCursor(null);
         System.out.println("initial find: " + c1.find("k1000".getBytes()));
 
         Thread[] threads = new Thread[threadCount];
@@ -113,7 +113,7 @@ public class CursorTest3 {
                         Cursor c = null;
                         for (int n; (n = next.getAndIncrement()) < count; ) {
                             if (c == null) {
-                                c = index.newCursor();
+                                c = index.newCursor(null);
                             } else {
                                 //c.verify();
                                 //Cursor copy = c.copy();
@@ -155,9 +155,11 @@ public class CursorTest3 {
 
         //store.root().dump(store, "");
 
-        System.out.println("find value now: " + CursorTest.string(c1.getEntry()));
+        Entry e = new Entry();
+        c1.get(e);
+        System.out.println("find value now: " + CursorTest.string(e));
 
-        Cursor c2 = index.newCursor();
+        Cursor c2 = index.newCursor(null);
         for (int i=0; i<count; i++) {
             byte[] key = ("k" + i).getBytes();
             byte[] value = ("x" + i).getBytes();
@@ -168,7 +170,8 @@ public class CursorTest3 {
             }
         }
 
-        System.out.println("find value now: " + CursorTest.string(c1.getEntry()));
+        c1.get(e);
+        System.out.println("find value now: " + CursorTest.string(e));
         //System.out.println("c1: " + c1.verify());
         //System.out.println("c2: " + c2.verify());
 

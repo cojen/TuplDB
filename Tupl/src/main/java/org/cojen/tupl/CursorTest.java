@@ -29,7 +29,7 @@ public class CursorTest {
             (DatabaseConfig.newConfig().setBaseFile(file).setMinCachedNodes(1000));
         final Index index = db.openIndex("test1");
 
-        Cursor c = index.newCursor();
+        Cursor c = index.newCursor(null);
 
         System.out.println(c.find("key-5".getBytes()));
         printEntry(c);
@@ -50,7 +50,7 @@ public class CursorTest {
 
     static void printEntry(Cursor c) throws Exception {
         Entry entry = new Entry();
-        c.getEntry(entry);
+        c.get(entry);
         System.out.println(string(entry));
     }
 

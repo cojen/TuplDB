@@ -16,14 +16,12 @@
 
 package org.cojen.tupl;
 
-import java.io.IOException;
-
 /**
  * 
  *
  * @author Brian S O'Neill
  */
-public class CorruptPageStoreException extends IOException {
+public class CorruptPageStoreException extends DatabaseException {
     public CorruptPageStoreException(String message) {
         super(message);
     }

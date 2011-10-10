@@ -27,6 +27,8 @@ final class LockManager {
     private final LockHT[] mHashTables;
     private final int mHashTableMask;
 
+    private final ThreadLocal<Locker> mLocalLocker;
+
     LockManager() {
         this(Runtime.getRuntime().availableProcessors() * 16);
     }
@@ -39,6 +41,8 @@ final class LockManager {
             mHashTables[i] = new LockHT();
         }
         mHashTableMask = numHashTables - 1;
+
+        mLocalLocker = new ThreadLocal<Locker>();
     }
 
     /**
@@ -50,6 +54,25 @@ final class LockManager {
             count += ht.size();
         }
         return count;
+    }
+
+    /**
+     * Returns true if a shared lock can be immediately granted. Caller must
+     * hold a coarse latch to prevent this state from changing.
+     *
+     * @param locker optional locker
+     */
+    final boolean isAvailable(Locker locker, long indexId, byte[] key) {
+        int hash = hashCode(indexId, key);
+        LockHT ht = getLockHT(hash);
+        Latch latch = ht.mLatch;
+        latch.acquireSharedUnfair();
+        try {
+            Lock lock = ht.lockFor(indexId, key, hash, false);
+            return lock == null ? true : lock.isAvailable(locker);
+        } finally {
+            latch.releaseShared();
+        }
     }
 
     final LockResult check(Locker locker, long indexId, byte[] key) {
@@ -65,10 +88,7 @@ final class LockManager {
         }
     }
 
-    final LockResult lockShared(Locker locker,
-                                long indexId, byte[] key, long nanosTimeout,
-                                boolean create)
-    {
+    final LockResult tryLockShared(Locker locker, long indexId, byte[] key, long nanosTimeout) {
         int hash = hashCode(indexId, key);
         LockHT ht = getLockHT(hash);
 
@@ -78,11 +98,8 @@ final class LockManager {
             Latch latch = ht.mLatch;
             latch.acquireExclusiveUnfair();
             try {
-                lock = ht.lockFor(indexId, key, hash, create);
-                if (lock == null) {
-                    return UNOWNED;
-                }
-                result = lock.lockShared(latch, locker, nanosTimeout);
+                lock = ht.lockFor(indexId, key, hash, true);
+                result = lock.tryLockShared(latch, locker, nanosTimeout);
             } finally {
                 latch.releaseExclusive();
             }
@@ -95,9 +112,8 @@ final class LockManager {
         return result;
     }
 
-    final LockResult lockUpgradable(Locker locker,
-                                    long indexId, byte[] key, long nanosTimeout,
-                                    boolean create)
+    final LockResult tryLockUpgradable(Locker locker,
+                                       long indexId, byte[] key, long nanosTimeout)
     {
         int hash = hashCode(indexId, key);
         LockHT ht = getLockHT(hash);
@@ -108,11 +124,8 @@ final class LockManager {
             Latch latch = ht.mLatch;
             latch.acquireExclusiveUnfair();
             try {
-                lock = ht.lockFor(indexId, key, hash, create);
-                if (lock == null) {
-                    return UNOWNED;
-                }
-                result = lock.lockUpgradable(latch, locker, nanosTimeout);
+                lock = ht.lockFor(indexId, key, hash, true);
+                result = lock.tryLockUpgradable(latch, locker, nanosTimeout);
             } finally {
                 latch.releaseExclusive();
             }
@@ -125,10 +138,7 @@ final class LockManager {
         return result;
     }
 
-    final LockResult lockExclusive(Locker locker,
-                                   long indexId, byte[] key, long nanosTimeout,
-                                   boolean create)
-    {
+    final LockResult tryLockExclusive(Locker locker, long indexId, byte[] key, long nanosTimeout) {
         int hash = hashCode(indexId, key);
         LockHT ht = getLockHT(hash);
 
@@ -138,11 +148,8 @@ final class LockManager {
             Latch latch = ht.mLatch;
             latch.acquireExclusiveUnfair();
             try {
-                lock = ht.lockFor(indexId, key, hash, create);
-                if (lock == null) {
-                    return UNOWNED;
-                }
-                result = lock.lockExclusive(latch, locker, nanosTimeout);
+                lock = ht.lockFor(indexId, key, hash, true);
+                result = lock.tryLockExclusive(latch, locker, nanosTimeout);
             } finally {
                 latch.releaseExclusive();
             }
@@ -193,6 +200,55 @@ final class LockManager {
         } finally {
             latch.releaseExclusive();
         }
+    }
+
+    /**
+     * @param txn optional transaction instance
+     * @param key non-null key instance
+     * @param cloneKey true if key should be cloned if actually used
+     * @return non-null Locker instance if caller should unlock when read is done
+     */
+    final Locker lockForRead(Transaction txn, LockMode lockMode,
+                             long indexId, byte[] key, boolean cloneKey)
+        throws LockFailureException
+    {
+        if (txn == null) {
+            if (cloneKey) {
+                key = key.clone();
+            }
+            Locker locker = localLocker();
+            // FIXME: Use default timeout, as known by this LockManager.
+            locker.lockShared(indexId, key, -1);
+            return locker;
+        }
+
+        if (lockMode == null) {
+            lockMode = txn.lockMode();
+        }
+
+        switch (lockMode) {
+        default: // No read lock requested by READ_UNCOMMITTED or UNSAFE.
+            return null;
+
+        case READ_COMMITTED:
+            return txn.lockShared(indexId, key, -1) == LockResult.ACQUIRED ? txn : null;
+
+        case REPEATABLE_READ:
+            txn.lockShared(indexId, cloneKey ? key.clone() : key, -1);
+            return null;
+
+        case UPGRADABLE_READ:
+            txn.lockUpgradable(indexId, cloneKey ? key.clone() : key, -1);
+            return null;
+        }
+    }
+
+    final Locker localLocker() {
+        Locker locker = mLocalLocker.get();
+        if (locker == null) {
+            mLocalLocker.set(locker = new Locker(this));
+        }
+        return locker;
     }
 
     final static int hashCode(long indexId, byte[] key) {

@@ -63,14 +63,35 @@ public class Locker {
      * locks. If return value is OWNED_*, locker already owns a strong enough
      * lock, and no extra unlock should be performed.
      *
-     * @param key key to lock; instance is not cloned
+     * @param key non-null key to lock; instance is not cloned
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
      * @return INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED, OWNED_SHARED,
      * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      * @throws IllegalStateException if too many shared locks
      */
-    public final LockResult lockShared(long indexId, byte[] key, long nanosTimeout) {
-        return mManager.lockShared(this, indexId, key, nanosTimeout, true);
+    public final LockResult tryLockShared(long indexId, byte[] key, long nanosTimeout) {
+        return mManager.tryLockShared(this, indexId, key, nanosTimeout);
+    }
+
+    /**
+     * Attempt to acquire a shared lock for the given key, denying exclusive
+     * locks. If return value is OWNED_*, locker already owns a strong enough
+     * lock, and no extra unlock should be performed.
+     *
+     * @param key non-null key to lock; instance is not cloned
+     * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
+     * @return ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     * @throws IllegalStateException if too many shared locks
+     * @throws LockFailureException if interrupted or timed out
+     */
+    public final LockResult lockShared(long indexId, byte[] key, long nanosTimeout)
+        throws LockFailureException
+    {
+        LockResult result = mManager.tryLockShared(this, indexId, key, nanosTimeout);
+        if (result.isGranted()) {
+            return result;
+        }
+        throw failed(result, nanosTimeout);
     }
 
     /**
@@ -80,13 +101,34 @@ public class Locker {
      * performed. If ILLEGAL is returned, locker holds a shared lock, which
      * cannot be upgraded.
      *
-     * @param key key to lock; instance is not cloned
+     * @param key non-null key to lock; instance is not cloned
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
      * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED,
      * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      */
-    public final LockResult lockUpgradable(long indexId, byte[] key, long nanosTimeout) {
-        return mManager.lockUpgradable(this, indexId, key, nanosTimeout, true);
+    public final LockResult tryLockUpgradable(long indexId, byte[] key, long nanosTimeout) {
+        return mManager.tryLockUpgradable(this, indexId, key, nanosTimeout);
+    }
+
+    /**
+     * Attempt to acquire an upgradable lock for the given key, denying
+     * exclusive and additional upgradable locks. If return value is OWNED_*,
+     * locker already owns a strong enough lock, and no extra unlock should be
+     * performed.
+     *
+     * @param key non-null key to lock; instance is not cloned
+     * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
+     * @return ACQUIRED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     * @throws LockFailureException if interrupted, timed out, or illegal upgrade
+     */
+    public final LockResult lockUpgradable(long indexId, byte[] key, long nanosTimeout)
+        throws LockFailureException
+    {
+        LockResult result = mManager.tryLockUpgradable(this, indexId, key, nanosTimeout);
+        if (result.isGranted()) {
+            return result;
+        }
+        throw failed(result, nanosTimeout);
     }
 
     /**
@@ -95,60 +137,49 @@ public class Locker {
      * owns exclusive lock, and no extra unlock should be performed. If ILLEGAL
      * is returned, locker holds a shared lock, which cannot be upgraded.
      *
-     * @param key key to lock; instance is not cloned
+     * @param key non-null key to lock; instance is not cloned
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
      * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED, UPGRADED, or
      * OWNED_EXCLUSIVE
      */
-    public final LockResult lockExclusive(long indexId, byte[] key, long nanosTimeout) {
-        return mManager.lockExclusive(this, indexId, key, nanosTimeout, true);
+    public final LockResult tryLockExclusive(long indexId, byte[] key, long nanosTimeout) {
+        return mManager.tryLockExclusive(this, indexId, key, nanosTimeout);
     }
 
     /**
-     * Variant of {@link lockShared} which returns UNOWNED if lock is not
-     * contended. Caller is responsible for holding a coarse latch which
-     * prevents other threads from accessing the key when UNOWNED.
+     * Attempt to acquire an exclusive lock for the given key, denying any
+     * additional locks. If return value is OWNED_EXCLUSIVE, locker already
+     * owns exclusive lock, and no extra unlock should be performed.
      *
-     * @param key key to lock; instance is not cloned
+     * @param key non-null key to lock; instance is not cloned
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
-     * @return UNOWNED, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED, OWNED_SHARED,
-     * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
-     * @throws IllegalStateException if too many shared locks
+     * @return ACQUIRED, UPGRADED, or OWNED_EXCLUSIVE
+     * @throws LockFailureException if interrupted, timed out, or illegal upgrade
      */
-    public final LockResult quickLockShared(long indexId, byte[] key, long nanosTimeout) {
-        return mManager.lockShared(this, indexId, key, nanosTimeout, false);
+    public final LockResult lockExclusive(long indexId, byte[] key, long nanosTimeout)
+        throws LockFailureException
+    {
+        LockResult result = mManager.tryLockExclusive(this, indexId, key, nanosTimeout);
+        if (result.isGranted()) {
+            return result;
+        }
+        throw failed(result, nanosTimeout);
+    }
+
+    private static LockFailureException failed(LockResult result, long nanosTimeout) {
+        if (result.isTimedOut()) {
+            return new LockTimeoutException(nanosTimeout);
+        } else if (result == LockResult.ILLEGAL) {
+            return new IllegalUpgradeException();
+        } else if (result == LockResult.INTERRUPTED) {
+            return new LockInterruptedException();
+        } else {
+            return new LockFailureException();
+        }
     }
 
     /**
-     * Variant of {@link lockUpgradable} which returns UNOWNED if lock is not
-     * contended. Caller is responsible for holding a coarse latch which
-     * prevents other threads from accessing the key when UNOWNED.
-     *
-     * @param key key to lock; instance is not cloned
-     * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
-     * @return UNOWNED, ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED,
-     * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
-     */
-    public final LockResult quickLockUpgradable(long indexId, byte[] key, long nanosTimeout) {
-        return mManager.lockUpgradable(this, indexId, key, nanosTimeout, false);
-    }
-
-    /**
-     * Variant of {@link lockExclusive} which returns UNOWNED if lock is not
-     * contended. Caller is responsible for holding a coarse latch which
-     * prevents other threads from accessing the key when UNOWNED.
-     *
-     * @param key key to lock; instance is not cloned
-     * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
-     * @return UNOWNED, ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED,
-     * UPGRADED, or OWNED_EXCLUSIVE
-     */
-    public final LockResult quickLockExclusive(long indexId, byte[] key, long nanosTimeout) {
-        return mManager.lockExclusive(this, indexId, key, nanosTimeout, false);
-    }
-
-    /**
-     * Returns the index of the last lock acquired.
+     * Returns the index id of the last lock acquired.
      *
      * @return locked index id
      * @throws IllegalStateException if no locks held

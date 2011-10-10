@@ -64,6 +64,8 @@ final class TreeNodeStore implements Closeable {
     // Maps tree names to open trees.
     private final Map<byte[], Tree> mOpenTrees;
 
+    final LockManager mLockManager = new LockManager();
+
     TreeNodeStore(PageStore store, int minCachedNodeCount, int maxCachedNodeCount)
         throws IOException
     {
@@ -126,7 +128,7 @@ final class TreeNodeStore implements Closeable {
 
         // Open mRegistryKeyMap.
         {
-            byte[] encodedRootId = mRegistry.get(Utils.EMPTY_BYTES);
+            byte[] encodedRootId = mRegistry.get(null, Utils.EMPTY_BYTES);
 
             TreeNode rootNode;
             if (encodedRootId == null) {
@@ -181,14 +183,14 @@ final class TreeNodeStore implements Closeable {
             }
 
             byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, name);
-            byte[] treeIdBytes = mRegistryKeyMap.get(nameKey);
+            byte[] treeIdBytes = mRegistryKeyMap.get(null, nameKey);
             long treeId;
 
             if (treeIdBytes != null) {
                 treeId = DataIO.readLong(treeIdBytes, 0);
             } else {
                 synchronized (mOpenTrees) {
-                    treeIdBytes = mRegistryKeyMap.get(nameKey);
+                    treeIdBytes = mRegistryKeyMap.get(null, nameKey);
                     if (treeIdBytes != null) {
                         treeId = DataIO.readLong(treeIdBytes, 0);
                     } else {
@@ -197,25 +199,25 @@ final class TreeNodeStore implements Closeable {
                         do {
                             treeId = Utils.randomId();
                             DataIO.writeLong(treeIdBytes, 0, treeId);
-                        } while (!mRegistry.insert(treeIdBytes, Utils.EMPTY_BYTES));
+                        } while (!mRegistry.insert(null, treeIdBytes, Utils.EMPTY_BYTES));
 
-                        if (!mRegistryKeyMap.insert(nameKey, treeIdBytes)) {
-                            mRegistry.delete(treeIdBytes);
+                        if (!mRegistryKeyMap.insert(null, nameKey, treeIdBytes)) {
+                            mRegistry.delete(null, treeIdBytes);
                             throw new IOException("Unable to insert index name");
                         }
 
                         byte[] idKey = newKey(KEY_TYPE_INDEX_ID, treeIdBytes);
 
-                        if (!mRegistryKeyMap.insert(idKey, name)) {
-                            mRegistryKeyMap.delete(nameKey);
-                            mRegistry.delete(treeIdBytes);
+                        if (!mRegistryKeyMap.insert(null, idKey, name)) {
+                            mRegistryKeyMap.delete(null, nameKey);
+                            mRegistry.delete(null, treeIdBytes);
                             throw new IOException("Unable to insert index id");
                         }
                     }
                 }
             }
 
-            byte[] encodedRootId = mRegistry.get(treeIdBytes);
+            byte[] encodedRootId = mRegistry.get(null, treeIdBytes);
 
             TreeNode rootNode;
             if (encodedRootId == null || encodedRootId.length == 0) {
@@ -365,7 +367,7 @@ final class TreeNodeStore implements Closeable {
         if (node == tree.mRoot && tree.mIdBytes != null) {
             byte[] newEncodedId = new byte[8];
             DataIO.writeLong(newEncodedId, 0, newId);
-            mRegistry.store(tree.mIdBytes, newEncodedId);
+            mRegistry.store(null, tree.mIdBytes, newEncodedId);
         }
 
         node.mId = newId;
