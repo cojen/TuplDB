@@ -23,33 +23,49 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-public interface UndoLog {
-    /**
-     * Add an entry to the end of the log. Entries are seen again when this log
-     * instance is explicitly rolled back, and they can be seen again when the
-     * database is re-opened. For this reason, entries must encode enough
-     * information to be applicable outside the context of their original log
-     * instance.
-     *
-     * @param entry non-null log entry data
-     * @throws IllegalArgumentException if entry is null
-     * @throws IllegalStateException if log is closed
-     */
-    public void add(byte[] entry) throws IOException;
+class UndoLog {
+    /*
+      Key format:   txnId: long, seqId: int
+      Value format: op: byte, indexId: long, keyLength: varInt, key: bytes, ...
+    */
+
+    private static final byte OP_STORE = 1, OP_DELETE = 2;
 
     /**
-     * @param entry non-null log entry data
-     * @param offset offset to start of entry data
-     * @param length length of entry, from offset
-     * @throws IllegalArgumentException if entry is null, or if offset/length is invalid
-     * @throws IllegalStateException if log is closed
+     * @param value value which is being replaced; pass null if none exists
      */
-    public void add(byte[] entry, int offset, int length) throws IOException;
+    public void undoStore(long txnId, long indexId, byte[] key, byte[] value) throws IOException {
+        if (key == null) {
+            throw new NullPointerException("Key is null");
+        }
+
+        /*
+        if (value == null) {
+            writeOp(RedoLog.OP_STORE, txnId);
+            writeLong(indexId);
+            writeUnsignedVarInt(key.length);
+            writeBytes(key);
+        } else {
+            writeOp(RedoLog.OP_DELETE, txnId);
+            writeLong(indexId);
+            writeUnsignedVarInt(key.length);
+            writeBytes(key);
+            writeUnsignedVarInt(value.length);
+            writeBytes(value);
+        }
+        */
+
+        // FIXME:
+        throw null;
+    }
 
     /**
      * Closes this log instance, discarding all entries.
      */
-    public void commit() throws IOException;
+    public void commit() throws IOException {
+        // FIXME:
+        throw null;
+    }
 
     /**
      * Closes this log instance and passes all log entries to the database
@@ -57,7 +73,10 @@ public interface UndoLog {
      *
      * @throws IllegalStateException if log is closed
      */
-    public void rollback();
+    public void rollback() {
+        // FIXME:
+        throw null;
+    }
 
     public static interface RollbackHandler {
         /**

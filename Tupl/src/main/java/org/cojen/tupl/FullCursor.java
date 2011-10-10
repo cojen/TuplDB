@@ -25,37 +25,28 @@ import java.io.IOException;
  */
 final class FullCursor implements Cursor {
     private final TreeCursor mCursor;
+    private Transaction mTxn;
 
-    FullCursor(TreeCursor cursor) {
+    FullCursor(TreeCursor cursor, Transaction txn) {
         mCursor = cursor;
+        mTxn = txn;
     }
 
     @Override
-    public synchronized byte[] getKey() throws IOException {
-        return mCursor.get(Entry.GET_KEY);
+    public synchronized boolean get(Entry entry) throws IOException {
+        return mCursor.get(mTxn, entry);
     }
 
-    @Override
-    public synchronized byte[] getValue() throws IOException {
-        return mCursor.get(Entry.GET_VALUE);
-    }
-
-    @Override
-    public synchronized boolean getEntry(Entry entry) throws IOException {
-        return mCursor.get(entry) != null;
-    }
-
-    @Override
-    public Entry getEntry() throws IOException {
-        Entry entry = new Entry();
-        synchronized (this) {
-            mCursor.get(entry);
-        }
-        return entry;
-    }
+    // FIXME: Support transactions.
 
     @Override
     public synchronized boolean first() throws IOException {
+        return mCursor.first();
+    }
+
+    @Override
+    public synchronized boolean first(Entry entry) throws IOException {
+        // FIXME: entry
         return mCursor.first();
     }
 
@@ -65,7 +56,19 @@ final class FullCursor implements Cursor {
     }
 
     @Override
+    public synchronized boolean last(Entry entry) throws IOException {
+        // FIXME: entry
+        return mCursor.last();
+    }
+
+    @Override
     public synchronized long move(long amount) throws IOException {
+        return mCursor.move(amount);
+    }
+
+    @Override
+    public synchronized long move(long amount, Entry entry) throws IOException {
+        // FIXME: entry
         return mCursor.move(amount);
     }
 
@@ -75,7 +78,19 @@ final class FullCursor implements Cursor {
     }
 
     @Override
+    public synchronized boolean next(Entry entry) throws IOException {
+        // FIXME: entry
+        return mCursor.next();
+    }
+
+    @Override
     public synchronized boolean previous() throws IOException {
+        return mCursor.previous();
+    }
+
+    @Override
+    public synchronized boolean previous(Entry entry) throws IOException {
+        // FIXME: entry
         return mCursor.previous();
     }
 
@@ -115,8 +130,13 @@ final class FullCursor implements Cursor {
     }
 
     @Override
+    public synchronized void link(Transaction txn) {
+        mTxn = txn;
+    }
+
+    @Override
     public synchronized Cursor copy() {
-        return new FullCursor(mCursor.copy());
+        return new FullCursor(mCursor.copy(), mTxn);
     }
 
     @Override

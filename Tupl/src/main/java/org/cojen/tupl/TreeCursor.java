@@ -28,7 +28,7 @@ import java.util.concurrent.locks.Lock;
  * @author Brian S O'Neill
  */
 final class TreeCursor {
-    private final Tree mTree;
+    final Tree mTree;
 
     // Top stack frame for cursor, always a leaf.
     private TreeCursorFrame mLeaf;
@@ -38,36 +38,136 @@ final class TreeCursor {
     }
 
     /**
-     * Copies the key, value, or both, depending on the Entry type.
+     * Copies the key and value into the optional entry.
      *
+     * @param txn optional transaction; not used if entry is null
      * @throws IllegalStateException if position is undefined at invocation time
      */
-    byte[] get(Entry entry) throws IOException {
+    boolean get(Transaction txn, Entry entry) throws IOException {
         TreeCursorFrame leaf = leaf();
         TreeNode node = leaf.acquireSharedUnfair();
 
-        if (node.mSplit == null) {
-            byte[] result = entry != null ? entry.get(leaf, node)
-                : (leaf.mNodePos < 0 ? null : Utils.EMPTY_BYTES);
-            node.releaseShared();
-            return result;
-        }
-
-        finishSplit: {
+        splitCheck: if (node.mSplit != null) {
             if (!node.tryUpgrade()) {
                 node.releaseShared();
                 node = leaf.acquireExclusiveUnfair();
                 if (node.mSplit == null) {
-                    break finishSplit;
+                    break splitCheck;
                 }
             }
             node = finishSplit(leaf, node);
         }
 
-        byte[] result = entry != null ? entry.get(leaf, node)
-            : (leaf.mNodePos < 0 ? null : Utils.EMPTY_BYTES);
-        node.releaseExclusive();
-        return result;
+        int pos = leaf.mNodePos;
+
+        if (entry == null) {
+            node.releaseShared();
+            return pos >= 0;
+        }
+
+        final LockMode lockMode;
+        if (txn == null) {
+            lockMode = LockMode.READ_COMMITTED;
+        } else if ((lockMode = txn.lockMode()).noReadLock) {
+            try {
+                if (pos >= 0) {
+                    node.retrieveLeafEntry(pos, entry);
+                    return true;
+                } else {
+                    entry.key = leaf.mNotFoundKey.clone();
+                    entry.value = null;
+                    return false;
+                }
+            } finally {
+                node.releaseShared();
+            }
+        }
+
+        // Get the key first, because it must be locked. After being locked,
+        // the value might have changed.
+
+        byte[] key = pos >= 0 ? node.retrieveLeafKey(pos) : leaf.mNotFoundKey.clone();
+
+        lockIt: {
+            // Attempt to lock key while node latch is held. This is deadlock
+            // prone, and so only perform a quick check at first.
+
+            try {
+                switch (lockMode) {
+                default:
+                    // No read lock requested, but this case should never be reached.
+                    break lockIt;
+
+                case READ_COMMITTED:
+                    // Quickly check that entry is valid without a full lock.
+                    if (mTree.isLockAvailable(txn, key)) {
+                        break lockIt;
+                    }
+                    break;
+
+                case REPEATABLE_READ:
+                    key = key.clone();
+                    if (txn.tryLockShared(mTree.mId, key, 0).isGranted()) {
+                        break lockIt;
+                    }
+                    break;
+
+                case UPGRADABLE_READ:
+                    key = key.clone();
+                    if (txn.tryLockUpgradable(mTree.mId, key, 0).isGranted()) {
+                        break lockIt;
+                    }
+                    break;
+                }
+            } catch (OutOfMemoryError e) {
+                node.releaseShared();
+                throw e;
+            }
+
+            // This point is reached when a lock cannot be immediately
+            // granted. Release the latch, lock the key, and then relatch.
+
+            node.releaseShared();
+            Locker locker = mTree.lockForRead(txn, lockMode, key, false);
+            try {
+                // Acquire node latch again, and perform split check again.
+                node = leaf.acquireSharedUnfair();
+
+                splitCheck: if (node.mSplit != null) {
+                    if (!node.tryUpgrade()) {
+                        node.releaseShared();
+                        node = leaf.acquireExclusiveUnfair();
+                        if (node.mSplit == null) {
+                            break splitCheck;
+                        }
+                    }
+                    node = finishSplit(leaf, node);
+                }
+
+                pos = leaf.mNodePos;
+                try {
+                    entry.value = pos >= 0 ? node.retrieveLeafValue(pos) : null;
+                    entry.key = key;
+                } finally {
+                    node.releaseShared();
+                }
+
+                return pos >= 0;
+            } finally {
+                if (locker != null) {
+                    locker.unlock();
+                }
+            }
+        }
+
+        try {
+            entry.value = pos >= 0 ? node.retrieveLeafValue(pos) : null;
+            entry.key = key;
+        } finally {
+            node.releaseShared();
+        }
+
+        return pos >= 0;
     }
 
     /**
@@ -1063,7 +1163,9 @@ final class TreeCursor {
      * @return false if unable to verify completely at this time
      */
     boolean verify() throws IOException, IllegalStateException {
-        return verify(get(Entry.GET_KEY));
+        Entry entry = new Entry();
+        get(null, entry);
+        return verify(entry.key);
     }
 
     /**

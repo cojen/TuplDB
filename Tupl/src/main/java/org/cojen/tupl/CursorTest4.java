@@ -35,7 +35,7 @@ public class CursorTest4 {
 
         // Fill with even keys, never deleted.
         {
-            Cursor c = index.newCursor();
+            Cursor c = index.newCursor(null);
             for (int i=0; i<count; i+=2) {
                 byte[] key = toKey(i);
                 byte[] value = ("v" + i).getBytes();
@@ -65,14 +65,14 @@ public class CursorTest4 {
                 while (true) {
                     //sem.acquire();
 
-                    Cursor c = index.newCursor();
+                    Cursor c = index.newCursor(null);
                     Entry e = new Entry();
                     c.first();
 
                     int i = 0;
                     do {
                         try {
-                            c.getEntry(e);
+                            c.get(e);
                         } catch (NullPointerException ex) {
                             ex.printStackTrace(System.out);
                             break;
@@ -115,7 +115,7 @@ public class CursorTest4 {
         while (true) {
             // Concurrently insert odd keys...
             {
-                Cursor c = index.newCursor();
+                Cursor c = index.newCursor(null);
                 for (int i=1; i<count; i+=2) {
                     byte[] key = toKey(i);
                     byte[] value = ("v" + i).getBytes();
@@ -130,7 +130,7 @@ public class CursorTest4 {
             // Concurrently delete odd keys...
             {
                 //sem.acquire();
-                Cursor c = index.newCursor();
+                Cursor c = index.newCursor(null);
                 for (int i=1; i<count; i+=2) {
                     byte[] key = toKey(i);
                     byte[] value = ("v" + i).getBytes();

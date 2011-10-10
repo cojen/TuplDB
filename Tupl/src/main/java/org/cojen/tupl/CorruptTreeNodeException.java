@@ -16,14 +16,12 @@
 
 package org.cojen.tupl;
 
-import java.io.IOException;
-
 /**
  * 
  *
  * @author Brian S O'Neill
  */
-public class CorruptTreeNodeException extends IOException {
+public class CorruptTreeNodeException extends DatabaseException {
     public CorruptTreeNodeException(String message) {
         super(message);
     }

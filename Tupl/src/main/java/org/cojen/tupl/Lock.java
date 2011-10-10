@@ -55,6 +55,13 @@ final class Lock {
     WaitQueue mQueueSX;
 
     /**
+     * @param locker optional locker
+     */
+    boolean isAvailable(Locker locker) {
+        return mLockCount >= 0 || mLocker == locker;
+    }
+
+    /**
      * Called with any latch held, which is retained.
      *
      * @return UNOWNED, OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
@@ -73,7 +80,7 @@ final class Lock {
      * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      * @throws IllegalStateException if too many shared locks
      */
-    LockResult lockShared(Latch latch, Locker locker, long nanosTimeout) {
+    LockResult tryLockShared(Latch latch, Locker locker, long nanosTimeout) {
         if (mLocker == locker) {
             return mLockCount == ~0 ? OWNED_EXCLUSIVE : OWNED_UPGRADABLE;
         }
@@ -135,7 +142,7 @@ final class Lock {
      * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED,
      * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      */
-    LockResult lockUpgradable(Latch latch, Locker locker, long nanosTimeout) {
+    LockResult tryLockUpgradable(Latch latch, Locker locker, long nanosTimeout) {
         if (mLocker == locker) {
             return mLockCount == ~0 ? OWNED_EXCLUSIVE : OWNED_UPGRADABLE;
         }
@@ -213,8 +220,8 @@ final class Lock {
      * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED, UPGRADED, or
      * OWNED_EXCLUSIVE
      */
-    LockResult lockExclusive(Latch latch, Locker locker, long nanosTimeout) {
-        final LockResult ur = lockUpgradable(latch, locker, nanosTimeout);
+    LockResult tryLockExclusive(Latch latch, Locker locker, long nanosTimeout) {
+        final LockResult ur = tryLockUpgradable(latch, locker, nanosTimeout);
         if (!ur.isGranted() || ur == OWNED_EXCLUSIVE) {
             return ur;
         }

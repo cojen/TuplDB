@@ -36,7 +36,7 @@ public enum LockMode {
      * by an upgradable lock is modified, the lock is first upgraded to be
      * exclusive.
      */
-    UPGRADABLE_READ,
+    UPGRADABLE_READ(false),
 
     /**
      * Lock mode which acquires shared locks when reading entries and retains
@@ -44,25 +44,31 @@ public enum LockMode {
      * entries guarded by a shared lock is {@link LockResult.ILLEGAL
      * illegal}. Consider using {@link UPGRADABLE_READ} instead.
      */
-    REPEATABLE_READ,
+    REPEATABLE_READ(false),
 
     /**
      * Lock mode which acquires shared locks when reading entries and releases
      * them as soon as possible.
      */
-    READ_COMMITTED,
+    READ_COMMITTED(false),
 
     /**
      * Lock mode which never acquires locks when reading entries.
      * Modifications made by concurrent transactions are visible for reading,
      * but they might get rolled back.
      */
-    READ_UNCOMMITTED,
+    READ_UNCOMMITTED(true),
 
     /**
      * Lock mode which never acquires locks. This mode bypasses all
      * transactional safety, permitting modifications even when locked by other
      * transactions. These modifications are immediately committed.
      */
-    UNSAFE;
+    UNSAFE(true);
+
+    final boolean noReadLock;
+
+    private LockMode(boolean noReadLock) {
+        this.noReadLock = noReadLock;
+    }
 }

@@ -45,7 +45,7 @@ public class TreeNodeTest {
         System.exit(0);
         */
 
-        byte[] value = index.get("hello".getBytes());
+        byte[] value = index.get(null, "hello".getBytes());
         System.out.println(value == null ? null : new String(value));
 
         Map<String, String> map = new TreeMap<String, String>();
@@ -129,14 +129,14 @@ public class TreeNodeTest {
         byte[] bkey = key.getBytes();
         byte[] bvalue = value.getBytes();
 
-        Cursor c = index.newCursor();
+        Cursor c = index.newCursor(null);
         boolean exists = c.find(bkey);
         if (!exists) {
             c.store(bvalue);
         }
         c.reset();
 
-        byte[] fvalue = index.get(bkey);
+        byte[] fvalue = index.get(null, bkey);
         try {
             compareArrays(bvalue, fvalue);
         } catch (AssertionError e) {
@@ -152,7 +152,7 @@ public class TreeNodeTest {
                 //System.out.println(entry);
                 bkey = entry.getKey().getBytes();
                 bvalue = entry.getValue().getBytes();
-                fvalue = index.get(bkey);
+                fvalue = index.get(null, bkey);
                 try {
                     compareArrays(bvalue, fvalue);
                 } catch (AssertionError e) {
