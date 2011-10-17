@@ -31,7 +31,7 @@ public class CursorTest {
 
         Cursor c = index.newCursor(null);
 
-        System.out.println(c.find("key-5".getBytes()));
+        c.find("key-5".getBytes());
         printEntry(c);
         c.next();
         printEntry(c);
@@ -48,10 +48,8 @@ public class CursorTest {
         */
     }
 
-    static void printEntry(Cursor c) throws Exception {
-        Entry entry = new Entry();
-        c.get(entry);
-        System.out.println(string(entry));
+    static void printEntry(Cursor cursor) throws Exception {
+        System.out.println(string(cursor));
     }
 
     static String string(byte[] b) {
@@ -62,7 +60,7 @@ public class CursorTest {
         return b == null ? "null" : new String(b, off, len);
     }
 
-    static String string(Entry entry) {
-        return string(entry.key) + " = " + string(entry.value);
+    static String string(Cursor cursor) {
+        return string(cursor.key()) + " = " + string(cursor.value());
     }
 }

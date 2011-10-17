@@ -41,6 +41,7 @@ public interface OrderedView {
      * @param txn optional transaction
      * @param key non-null key
      * @return true if non-null value exists for the given key
+     * @throws NullPointerException if key is null
      */
     public boolean exists(Transaction txn, byte[] key) throws IOException;
 
@@ -51,6 +52,7 @@ public interface OrderedView {
      * @param key non-null key
      * @param value value to compare to, which can be null
      * @return true if entry matches given key and value
+     * @throws NullPointerException if key is null
      */
     public boolean exists(Transaction txn, byte[] key, byte[] value) throws IOException;
 
@@ -61,6 +63,7 @@ public interface OrderedView {
      * @param txn optional transaction
      * @param key non-null key
      * @return copy of value, or null if entry doesn't exist
+     * @throws NullPointerException if key is null
      */
     public byte[] get(Transaction txn, byte[] key) throws IOException;
 
@@ -70,6 +73,7 @@ public interface OrderedView {
      * @param txn optional transaction
      * @param key non-null key
      * @param value value to store; pass null to delete
+     * @throws NullPointerException if key is null
      */
     public void store(Transaction txn, byte[] key, byte[] value) throws IOException;
 
@@ -81,6 +85,7 @@ public interface OrderedView {
      * @param key non-null key
      * @param value value to insert, which can be null
      * @return false if entry already exists
+     * @throws NullPointerException if key is null
      */
     public boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException;
 
@@ -92,6 +97,7 @@ public interface OrderedView {
      * @param key non-null key
      * @param value value to insert; pass null to delete
      * @return false if no existing entry
+     * @throws NullPointerException if key is null
      */
     public boolean replace(Transaction txn, byte[] key, byte[] value) throws IOException;
 
@@ -104,6 +110,7 @@ public interface OrderedView {
      * @param oldValue expected existing value, which can be null
      * @param newValue new value to update to; pass null to delete
      * @return false if existing value doesn't match
+     * @throws NullPointerException if key is null
      */
     public boolean update(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException;
@@ -114,6 +121,7 @@ public interface OrderedView {
      * @param txn optional transaction
      * @param key non-null key
      * @return false if no existing entry
+     * @throws NullPointerException if key is null
      */
     public boolean delete(Transaction txn, byte[] key) throws IOException;
 
@@ -125,6 +133,7 @@ public interface OrderedView {
      * @param key non-null key
      * @param value expected existing value, which can be null
      * @return false if existing value doesn't match
+     * @throws NullPointerException if key is null
      */
     public boolean remove(Transaction txn, byte[] key, byte[] value) throws IOException;
 

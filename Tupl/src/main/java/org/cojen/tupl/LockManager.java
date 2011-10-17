@@ -202,45 +202,18 @@ final class LockManager {
         }
     }
 
-    /**
-     * @param txn optional transaction instance
-     * @param key non-null key instance
-     * @param cloneKey true if key should be cloned if actually used
-     * @return non-null Locker instance if caller should unlock when read is done
-     */
-    final Locker lockForRead(Transaction txn, LockMode lockMode,
-                             long indexId, byte[] key, boolean cloneKey)
-        throws LockFailureException
-    {
-        if (txn == null) {
-            if (cloneKey) {
-                key = key.clone();
-            }
-            Locker locker = localLocker();
-            // FIXME: Use default timeout, as known by this LockManager.
-            locker.lockShared(indexId, key, -1);
-            return locker;
-        }
+    final Locker lockSharedLocal(long indexId, byte[] key) throws LockFailureException {
+        Locker locker = localLocker();
+        // FIXME: Use default timeout, as known by this LockManager.
+        locker.lockShared(indexId, key, -1);
+        return locker;
+    }
 
-        if (lockMode == null) {
-            lockMode = txn.lockMode();
-        }
-
-        switch (lockMode) {
-        default: // No read lock requested by READ_UNCOMMITTED or UNSAFE.
-            return null;
-
-        case READ_COMMITTED:
-            return txn.lockShared(indexId, key, -1) == LockResult.ACQUIRED ? txn : null;
-
-        case REPEATABLE_READ:
-            txn.lockShared(indexId, cloneKey ? key.clone() : key, -1);
-            return null;
-
-        case UPGRADABLE_READ:
-            txn.lockUpgradable(indexId, cloneKey ? key.clone() : key, -1);
-            return null;
-        }
+    final Locker lockExclusiveLocal(long indexId, byte[] key) throws LockFailureException {
+        Locker locker = localLocker();
+        // FIXME: Use default timeout, as known by this LockManager.
+        locker.lockExclusive(indexId, key, -1);
+        return locker;
     }
 
     final Locker localLocker() {

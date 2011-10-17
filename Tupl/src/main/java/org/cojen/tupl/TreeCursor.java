@@ -19,6 +19,7 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 import java.util.ArrayDeque;
+import java.util.Arrays;
 
 import java.util.concurrent.locks.Lock;
 
@@ -27,22 +28,28 @@ import java.util.concurrent.locks.Lock;
  *
  * @author Brian S O'Neill
  */
-final class TreeCursor {
+final class TreeCursor implements Cursor {
     final Tree mTree;
+    private Transaction mTxn;
 
     // Top stack frame for cursor, always a leaf.
     private TreeCursorFrame mLeaf;
 
-    TreeCursor(Tree tree) {
+    byte[] mKey;
+    byte[] mValue;
+
+    TreeCursor(Tree tree, Transaction txn) {
         mTree = tree;
+        mTxn = txn;
     }
 
+    // FIXME: remove or make private
     /**
      * Copies the key and value into the optional entry.
      *
      * @param txn optional transaction; not used if entry is null
      * @throws IllegalStateException if position is undefined at invocation time
-     */
+     * /
     boolean get(Transaction txn, Entry entry) throws IOException {
         TreeCursorFrame leaf = leaf();
         TreeNode node = leaf.acquireSharedUnfair();
@@ -60,6 +67,7 @@ final class TreeCursor {
 
         int pos = leaf.mNodePos;
 
+        // FIXME: is this logic correct?
         if (entry == null) {
             node.releaseShared();
             return pos >= 0;
@@ -74,7 +82,8 @@ final class TreeCursor {
                     node.retrieveLeafEntry(pos, entry);
                     return true;
                 } else {
-                    entry.key = leaf.mNotFoundKey.clone();
+                    entry.key = leaf.mNotFoundKey;
+                    entry.mKeyReadOnly = true;
                     entry.value = null;
                     return false;
                 }
@@ -83,10 +92,12 @@ final class TreeCursor {
             }
         }
 
+        entry.mKeyReadOnly = true;
+
         // Get the key first, because it must be locked. After being locked,
         // the value might have changed.
 
-        byte[] key = pos >= 0 ? node.retrieveLeafKey(pos) : leaf.mNotFoundKey.clone();
+        byte[] key = pos >= 0 ? node.retrieveLeafKey(pos) : leaf.mNotFoundKey;
 
         lockIt: {
             // Attempt to lock key while node latch is held. This is deadlock
@@ -95,7 +106,8 @@ final class TreeCursor {
             try {
                 switch (lockMode) {
                 default:
-                    // No read lock requested, but this case should never be reached.
+                    // No read lock requested, but this case should never be
+                    // reached. It was handled earlier.
                     break lockIt;
 
                 case READ_COMMITTED:
@@ -106,14 +118,12 @@ final class TreeCursor {
                     break;
 
                 case REPEATABLE_READ:
-                    key = key.clone();
                     if (txn.tryLockShared(mTree.mId, key, 0).isGranted()) {
                         break lockIt;
                     }
                     break;
 
                 case UPGRADABLE_READ:
-                    key = key.clone();
                     if (txn.tryLockUpgradable(mTree.mId, key, 0).isGranted()) {
                         break lockIt;
                     }
@@ -128,7 +138,7 @@ final class TreeCursor {
             // granted. Release the latch, lock the key, and then relatch.
 
             node.releaseShared();
-            Locker locker = mTree.lockForRead(txn, lockMode, key, false);
+            Locker locker = mTree.lockShared(txn, lockMode, key);
             try {
                 // Acquire node latch again, and perform split check again.
                 node = leaf.acquireSharedUnfair();
@@ -169,23 +179,30 @@ final class TreeCursor {
 
         return pos >= 0;
     }
+    */
 
-    /**
-     * Moves the cursor to find the first available entry, unless none exists.
-     *
-     * @return false if no entries exist and position is now undefined
-     */
-    public boolean first() throws IOException {
+    @Override
+    public byte[] key() {
+        return mKey;
+    }
+
+    @Override
+    public byte[] value() {
+        return mValue;
+    }
+
+    @Override
+    public LockResult first() throws IOException {
         TreeNode root = mTree.mRoot;
         TreeCursorFrame frame = resetForFind(root);
-
         if (!root.hasKeys()) {
             root.releaseExclusive();
-            return false;
+            mKey = null;
+            mValue = null;
+            return LockResult.UNOWNED;
+        } else {
+            return toFirst(root, frame);
         }
-
-        toFirst(root, frame);
-        return true;
     }
 
     /**
@@ -194,14 +211,16 @@ final class TreeCursor {
      * @param node latched node
      * @param frame frame to bind node to
      */
-    private void toFirst(TreeNode node, TreeCursorFrame frame) throws IOException {
+    private LockResult toFirst(TreeNode node, TreeCursorFrame frame) throws IOException {
+        // FIXME: txn and LockResult
         while (true) {
             frame.bind(node, 0);
 
             if (node.isLeaf()) {
+                node.retrieveLeafEntry(0, this);
                 node.releaseExclusive();
                 mLeaf = frame;
-                return;
+                return LockResult.UNOWNED;
             }
 
             if (node.mSplit != null) {
@@ -213,22 +232,18 @@ final class TreeCursor {
         }
     }
 
-    /**
-     * Moves the cursor to find the last available entry, unless none exists.
-     *
-     * @return false if no entries exist and position is now undefined
-     */
-    public boolean last() throws IOException {
+    @Override
+    public LockResult last() throws IOException {
         TreeNode root = mTree.mRoot;
         TreeCursorFrame frame = resetForFind(root);
-
         if (!root.hasKeys()) {
             root.releaseExclusive();
-            return false;
+            mKey = null;
+            mValue = null;
+            return LockResult.UNOWNED;
+        } else {
+            return toLast(root, frame);
         }
-
-        toLast(root, frame);
-        return true;
     }
 
     /**
@@ -237,7 +252,8 @@ final class TreeCursor {
      * @param node latched node
      * @param frame frame to bind node to
      */
-    private void toLast(TreeNode node, TreeCursorFrame frame) throws IOException {
+    private LockResult toLast(TreeNode node, TreeCursorFrame frame) throws IOException {
+        // FIXME: txn and LockResult
         while (true) {
             if (node.isLeaf()) {
                 int pos;
@@ -247,9 +263,10 @@ final class TreeCursor {
                     pos = node.mSplit.highestLeafPos(mTree.mStore, node);
                 }
                 frame.bind(node, pos);
+                node.retrieveLeafEntry(pos, this);
                 node.releaseExclusive();
                 mLeaf = frame;
-                return;
+                return LockResult.UNOWNED;
             }
 
             Split split = node.mSplit;
@@ -284,45 +301,38 @@ final class TreeCursor {
         }
     }
 
-    /**
-     * Moves the cursor by a relative amount of entries. Pass a positive amount
-     * for forward movement, and pass a negative amount for reverse
-     * movement. The actual movement amount can be less than the requested
-     * amount if the start or end is reached. After this happens, the position
-     * is undefined.
-     *
-     * @return actual amount moved; if less, position is now undefined
-     * @throws IllegalStateException if position is undefined at invocation time
-     */
-    public long move(long amount) throws IOException {
+    @Override
+    public LockResult move(long amount) throws IOException {
         // TODO: optimize and also utilize counts embedded in the tree
-        final long originalAmount = amount;
+
+        // FIXME: Skipped entries should be locked no higher than
+        // READ_COMMITTED and released immediately.
+
         if (amount > 0) {
-            while (next() && --amount > 0);
+            do {
+                next();
+            } while (--amount > 0);
         } else if (amount < 0) {
-            while (previous() && ++amount < 0);
+            do {
+                previous();
+            } while (++amount < 0);
         }
-        return originalAmount - amount;
+
+        // FIXME: LockResult
+        return LockResult.UNOWNED;
     }
 
-    /**
-     * Advances to the cursor to the next available entry, unless none
-     * exists. Equivalent to:
-     *
-     * <pre>
-     * return cursor.move(1) != 0;</pre>
-     *
-     * @return false if no next entry and position is now undefined
-     * @throws IllegalStateException if position is undefined at invocation time
-     */
-    public boolean next() throws IOException {
+    @Override
+    public LockResult next() throws IOException {
         return next(leafExclusiveNotSplit());
     }
 
     /**
      * @param frame leaf frame, not split, with exclusive latch
      */
-    private boolean next(TreeCursorFrame frame) throws IOException {
+    private LockResult next(TreeCursorFrame frame) throws IOException {
+        // FIXME: txn and LockResult
+
         TreeNode node = frame.mNode;
 
         quick: {
@@ -338,9 +348,10 @@ final class TreeCursor {
                 break quick;
             }
 
-            frame.mNodePos = pos + 2;
+            frame.mNodePos = (pos += 2);
+            node.retrieveLeafEntry(pos, this);
             node.releaseExclusive();
-            return true;
+            return LockResult.UNOWNED;
         }
 
         while (true) {
@@ -350,7 +361,9 @@ final class TreeCursor {
                 frame.popv();
                 node.releaseExclusive();
                 mLeaf = null;
-                return false;
+                mKey = null;
+                mValue = null;
+                return LockResult.UNOWNED;
             }
 
             TreeNode parentNode;
@@ -417,11 +430,11 @@ final class TreeCursor {
 
                     if (frame == mLeaf) {
                         node.releaseExclusive();
+                        return LockResult.UNOWNED;
                     } else {
-                        toFirst(latchChild(node, pos, true), new TreeCursorFrame(frame));
+                        return toFirst(latchChild(node, pos, true),
+                                       new TreeCursorFrame(frame));
                     }
-
-                    return true;
                 }
 
                 frame.popv();
@@ -434,8 +447,8 @@ final class TreeCursor {
             if (parentPos < parentNode.highestInternalPos()) {
                 parentPos += 2;
                 parentFrame.mNodePos = parentPos;
-                toFirst(latchChild(parentNode, parentPos, true), new TreeCursorFrame(parentFrame));
-                return true;
+                return toFirst(latchChild(parentNode, parentPos, true),
+                               new TreeCursorFrame(parentFrame));
             }
 
             frame = parentFrame;
@@ -443,24 +456,17 @@ final class TreeCursor {
         }
     }
 
-    /**
-     * Advances to the cursor to the previous available entry, unless none
-     * exists. Equivalent to:
-     *
-     * <pre>
-     * return cursor.move(-1) != 0;</pre>
-     *
-     * @return false if no previous entry and position is now undefined
-     * @throws IllegalStateException if position is undefined at invocation time
-     */
-    public boolean previous() throws IOException {
+    @Override
+    public LockResult previous() throws IOException {
         return previous(leafExclusiveNotSplit());
     }
 
     /**
      * @param frame leaf frame, not split, with exclusive latch
      */
-    private boolean previous(TreeCursorFrame frame) throws IOException {
+    private LockResult previous(TreeCursorFrame frame) throws IOException {
+        // FIXME: txn and LockResult
+
         TreeNode node = frame.mNode;
 
         quick: {
@@ -476,9 +482,10 @@ final class TreeCursor {
                 break quick;
             }
 
-            frame.mNodePos = pos - 2;
+            frame.mNodePos = pos -= 2;
+            node.retrieveLeafEntry(pos, this);
             node.releaseExclusive();
-            return true;
+            return LockResult.UNOWNED;
         }
 
         while (true) {
@@ -488,7 +495,9 @@ final class TreeCursor {
                 frame.popv();
                 node.releaseExclusive();
                 mLeaf = null;
-                return false;
+                mKey = null;
+                mValue = null;
+                return LockResult.UNOWNED;
             }
 
             TreeNode parentNode;
@@ -555,11 +564,11 @@ final class TreeCursor {
 
                     if (frame == mLeaf) {
                         node.releaseExclusive();
+                        return LockResult.UNOWNED;
                     } else {
-                        toLast(latchChild(node, pos, true), new TreeCursorFrame(frame));
+                        return toLast(latchChild(node, pos, true),
+                                      new TreeCursorFrame(frame));
                     }
-
-                    return true;
                 }
 
                 frame.popv();
@@ -572,8 +581,8 @@ final class TreeCursor {
             if (parentPos > 0) {
                 parentPos -= 2;
                 parentFrame.mNodePos = parentPos;
-                toLast(latchChild(parentNode, parentPos, true), new TreeCursorFrame(parentFrame));
-                return true;
+                return toLast(latchChild(parentNode, parentPos, true),
+                              new TreeCursorFrame(parentFrame));
             }
 
             frame = parentFrame;
@@ -581,269 +590,293 @@ final class TreeCursor {
         }
     }
 
-    /**
-     * Moves the cursor to find the given key, returning true if a matching
-     * entry exists. If false is returned, an uncopied reference to the key is
-     * retained. The key reference is released when the cursor position changes
-     * or a matching entry is created.
-     *
-     * @return false if entry not found
-     * @throws NullPointerException if key is null
-     */
-    public boolean find(byte[] key) throws IOException {
-        return find(key, false);
+    private static final int
+        VARIANT_REGULAR = 0,
+        VARIANT_NEARBY  = 1,
+        VARIANT_RETAIN  = 2, // retain node latch
+        VARIANT_NO_LOCK = 3, // retain node latch, don't lock entry
+        VARIANT_CHECK   = 4; // retain node latch, don't lock entry, don't copy entry
+
+    @Override
+    public LockResult find(byte[] key) throws IOException {
+        return find(key, VARIANT_REGULAR);
     }
 
-    private boolean find(byte[] key, boolean retainLatch) throws IOException {
-        if (key == null) {
-            throw new NullPointerException("Cannot find a null key");
-        }
-        TreeNode root = mTree.mRoot;
-        return find(key, root, resetForFind(root), retainLatch);
-    }
-
-    /**
-     * @param key non-null key, unchecked
-     * @param node latched unbound node
-     * @param frame frame to bind to
-     * @param retainLatch true to keep leaf frame latched
-     */
-    private boolean find(byte[] key, TreeNode node, TreeCursorFrame frame, boolean retainLatch)
-        throws IOException
-    {
-        while (true) {
-            if (node.isLeaf()) {
-                int pos;
-                if (node.mSplit == null) {
-                    pos = node.binarySearchLeaf(key);
-                } else {
-                    pos = node.mSplit.binarySearchLeaf(mTree.mStore, node, key);
-                }
-                frame.bind(node, pos);
-                if (pos < 0) {
-                    frame.mNotFoundKey = key;
-                }
-                if (!retainLatch) {
-                    node.releaseExclusive();
-                }
-                mLeaf = frame;
-                return pos >= 0;
-            }
-
-            Split split = node.mSplit;
-            if (split == null) {
-                int childPos = TreeNode.internalPos(node.binarySearchInternal(key));
-                frame.bind(node, childPos);
-                node = latchChild(node, childPos, true);
-            } else {
-                // Follow search into split, binding this frame to the unsplit
-                // node as if it had not split. The binding will be corrected
-                // when split is finished.
-
-                final TreeNode sibling = split.latchSibling(mTree.mStore);
-
-                final TreeNode left, right;
-                if (split.mSplitRight) {
-                    left = node;
-                    right = sibling;
-                } else {
-                    left = sibling;
-                    right = node;
-                }
-
-                final TreeNode selected;
-                final int selectedPos;
-
-                if (split.compare(key) < 0) {
-                    selected = left;
-                    selectedPos = TreeNode.internalPos(left.binarySearchInternal(key));
-                    frame.bind(node, selectedPos);
-                    right.releaseExclusive();
-                } else {
-                    selected = right;
-                    selectedPos = TreeNode.internalPos(right.binarySearchInternal(key));
-                    frame.bind(node, left.highestInternalPos() + 2 + selectedPos);
-                    left.releaseExclusive();
-                }
-
-                node = latchChild(selected, selectedPos, true);
-            }
-
-            frame = new TreeCursorFrame(frame);
-        }
-    }
-
-    /**
-     * Moves the cursor to find the first available entry greater than or equal
-     * to the given key. Equivalent to:
-     *
-     * <pre>
-     * return cursor.find(key) ? true : cursor.next();</pre>
-     *
-     * @return false if entry not found and position is now undefined
-     * @throws NullPointerException if key is null
-     */
-    public boolean findGe(byte[] key) throws IOException {
-        if (find(key, true)) {
+    @Override
+    public LockResult findGe(byte[] key) throws IOException {
+        // If isolation level is read committed, then key must be
+        // locked. Otherwise, an uncommitted delete could be observed.
+        LockResult result = find(key, VARIANT_RETAIN);
+        if (mValue != null) {
             mLeaf.mNode.releaseExclusive();
-            return true;
+            return result;
         } else {
+            if (result == LockResult.ACQUIRED) {
+                mTxn.unlock();
+            }
             return next(mLeaf);
         }
     }
 
-    /**
-     * Moves the cursor to find the first available entry greater than the
-     * given key. Equivalent to:
-     *
-     * <pre>
-     * cursor.find(key); return cursor.next();</pre>
-     *
-     * @return false if entry not found and position is now undefined
-     * @throws NullPointerException if key is null
-     */
-    public boolean findGt(byte[] key) throws IOException {
-        find(key, true);
+    @Override
+    public LockResult findGt(byte[] key) throws IOException {
+        // Never lock the requested key.
+        find(key, VARIANT_CHECK);
         return next(mLeaf);
     }
 
-    /**
-     * Moves the cursor to find the first available entry less than or equal to
-     * the given key. Equivalent to:
-     *
-     * <pre>
-     * return cursor.find(key) ? true : cursor.previous();</pre>
-     *
-     * @return false if entry not found and position is now undefined
-     * @throws NullPointerException if key is null
-     */
-    public boolean findLe(byte[] key) throws IOException {
-        if (find(key, true)) {
+    @Override
+    public LockResult findLe(byte[] key) throws IOException {
+        // If isolation level is read committed, then key must be
+        // locked. Otherwise, an uncommitted delete could be observed.
+        LockResult result = find(key, VARIANT_RETAIN);
+        if (mValue != null) {
             mLeaf.mNode.releaseExclusive();
-            return true;
+            return result;
         } else {
+            if (result == LockResult.ACQUIRED) {
+                mTxn.unlock();
+            }
             return previous(mLeaf);
         }
     }
 
-    /**
-     * Moves the cursor to find the first available entry less than the given
-     * key. Equivalent to:
-     *
-     * <pre>
-     * cursor.find(key); return cursor.previous();</pre>
-     *
-     * @return false if entry not found and position is now undefined
-     * @throws NullPointerException if key is null
-     */
-    public boolean findLt(byte[] key) throws IOException {
-        find(key, true);
+    @Override
+    public LockResult findLt(byte[] key) throws IOException {
+        // Never lock the requested key.
+        find(key, VARIANT_CHECK);
         return previous(mLeaf);
     }
 
-    /**
-     * Optimized version of the regular find method, which can perform fewer
-     * search steps if the given key is in close proximity to the current one.
-     * Even if not in close proximity, the find behavior is still identicial,
-     * although it may perform more slowly.
-     *
-     * @return false if entry not found
-     * @throws NullPointerException if key is null
-     */
-    public boolean findNearby(byte[] key) throws IOException {
+    @Override
+    public LockResult findNearby(byte[] key) throws IOException {
+        return find(key, VARIANT_NEARBY);
+    }
+
+    private LockResult find(byte[] key, int variant) throws IOException {
         if (key == null) {
             throw new NullPointerException("Cannot find a null key");
         }
 
-        TreeCursorFrame frame = mLeaf;
-        if (frame == null) {
-            TreeNode root = mTree.mRoot;
-            root.acquireExclusiveUnfair();
-            return find(key, root, new TreeCursorFrame(), false);
-        }
+        LockResult result;
+        Locker locker;
 
-        TreeNode node = frame.acquireExclusiveUnfair();
-        if (node.mSplit != null) {
-            node = finishSplit(frame, node);
-        }
+        if (variant == VARIANT_NO_LOCK) {
+            result = LockResult.UNOWNED;
+            locker = null;
+        } else {
+            Transaction txn = mTxn;
+            if (txn == null) {
+                result = LockResult.UNOWNED;
+                locker = variant == VARIANT_CHECK ? null : mTree.lockSharedLocal(key);
+            } else {
+                switch (txn.lockMode()) {
+                default: // no read lock requested by READ_UNCOMMITTED or UNSAFE
+                    result = LockResult.UNOWNED;
+                    locker = null;
+                    break;
 
-        int startPos = frame.mNodePos;
-        if (startPos < 0) {
-            startPos = ~startPos;
-        }
+                    // FIXME: lock timeouts (overload methods such that timeout param is optional)
+                case READ_COMMITTED:
+                    if ((result = txn.lockShared(mTree.mId, key, -1)) == LockResult.ACQUIRED) {
+                        result = LockResult.UNOWNED;
+                        locker = txn;
+                    } else {
+                        locker = null;
+                    }
+                    break;
 
-        int pos = node.binarySearchLeaf(key, startPos);
+                case REPEATABLE_READ:
+                    result = txn.lockShared(mTree.mId, key, -1);
+                    locker = null;
+                    break;
 
-        if (pos >= 0) {
-            frame.mNotFoundKey = null;
-            frame.mNodePos = pos;
-            node.releaseExclusive();
-            return true;
-        } else if (pos != ~0 && ~pos <= node.highestLeafPos()) {
-            // Not found, but insertion pos is in bounds.
-            frame.mNotFoundKey = key;
-            frame.mNodePos = pos;
-            node.releaseExclusive();
-            return false;
-        }
-
-        // Cannot be certain if position is in leaf node, so pop up.
-
-        mLeaf = null;
-
-        while (true) {
-            TreeCursorFrame parent = frame.pop();
-
-            if (parent == null) {
-                // Usually the root frame refers to the root node, but it
-                // can be wrong if the tree height is changing.
-                TreeNode root = mTree.mRoot;
-                if (node != root) {
-                    node.releaseExclusive();
-                    root.acquireExclusiveUnfair();
-                    node = root;
+                case UPGRADABLE_READ:
+                    result = txn.lockUpgradable(mTree.mId, key, -1);
+                    locker = null;
+                    break;
                 }
-                break;
             }
-
-            node.releaseExclusive();
-            frame = parent;
-            node = frame.acquireExclusiveUnfair();
-
-            // Only search inside non-split nodes. It's easier to just pop up
-            // rather than finish or search the split.
-            if (node.mSplit != null) {
-                continue;
-            }
-
-            pos = TreeNode.internalPos(node.binarySearchInternal(key, frame.mNodePos));
-
-            if (pos == 0 || pos >= node.highestInternalPos()) {
-                // Cannot be certain if position is in this node, so pop up.
-                continue;
-            }
-
-            frame.mNodePos = pos;
-            node = latchChild(node, pos, true);
-            frame = new TreeCursorFrame(frame);
-            break;
         }
 
-        return find(key, node, frame, false);
+        try {
+            mKey = key;
+
+            TreeNode node = mTree.mRoot;
+            TreeCursorFrame frame;
+
+            nearby: if (variant == VARIANT_NEARBY) {
+                frame = mLeaf;
+                if (frame == null) {
+                    node.acquireExclusiveUnfair();
+                    frame = new TreeCursorFrame();
+                    break nearby;
+                }
+
+                node = frame.acquireExclusiveUnfair();
+                if (node.mSplit != null) {
+                    node = finishSplit(frame, node);
+                }
+
+                int startPos = frame.mNodePos;
+                if (startPos < 0) {
+                    startPos = ~startPos;
+                }
+
+                int pos = node.binarySearchLeaf(key, startPos);
+
+                if (pos >= 0) {
+                    frame.mNotFoundKey = null;
+                    frame.mNodePos = pos;
+                    node.retrieveLeafValue(pos);
+                    node.releaseExclusive();
+                    return result;
+                } else if (pos != ~0 && ~pos <= node.highestLeafPos()) {
+                    // Not found, but insertion pos is in bounds.
+                    frame.mNotFoundKey = key;
+                    frame.mNodePos = pos;
+                    mValue = null;
+                    node.releaseExclusive();
+                    return result;
+                }
+
+                // Cannot be certain if position is in leaf node, so pop up.
+
+                mLeaf = null;
+
+                while (true) {
+                    TreeCursorFrame parent = frame.pop();
+
+                    if (parent == null) {
+                        // Usually the root frame refers to the root node, but
+                        // it can be wrong if the tree height is changing.
+                        TreeNode root = mTree.mRoot;
+                        if (node != root) {
+                            node.releaseExclusive();
+                            root.acquireExclusiveUnfair();
+                            node = root;
+                        }
+                        break;
+                    }
+
+                    node.releaseExclusive();
+                    frame = parent;
+                    node = frame.acquireExclusiveUnfair();
+
+                    // Only search inside non-split nodes. It's easier to just
+                    // pop up rather than finish or search the split.
+                    if (node.mSplit != null) {
+                        continue;
+                    }
+
+                    pos = TreeNode.internalPos(node.binarySearchInternal(key, frame.mNodePos));
+
+                    if (pos == 0 || pos >= node.highestInternalPos()) {
+                        // Cannot be certain if position is in this node, so pop up.
+                        continue;
+                    }
+
+                    frame.mNodePos = pos;
+                    node = latchChild(node, pos, true);
+                    frame = new TreeCursorFrame(frame);
+                    break;
+                }
+            } else {
+                // Regular variant always discards existing frames.
+                frame = resetForFind(node);
+            }
+
+            while (true) {
+                if (node.isLeaf()) {
+                    int pos;
+                    if (node.mSplit == null) {
+                        pos = node.binarySearchLeaf(key);
+                    } else {
+                        pos = node.mSplit.binarySearchLeaf(mTree.mStore, node, key);
+                    }
+                    frame.bind(node, pos);
+                    if (pos < 0) {
+                        frame.mNotFoundKey = key;
+                        mValue = null;
+                    } else {
+                        mValue = variant == VARIANT_CHECK ? null : node.retrieveLeafValue(pos);
+                    }
+                    mLeaf = frame;
+                    if (variant < VARIANT_RETAIN) {
+                        node.releaseExclusive();
+                    }
+                    return result;
+                }
+
+                Split split = node.mSplit;
+                if (split == null) {
+                    int childPos = TreeNode.internalPos(node.binarySearchInternal(key));
+                    frame.bind(node, childPos);
+                    node = latchChild(node, childPos, true);
+                } else {
+                    // Follow search into split, binding this frame to the
+                    // unsplit node as if it had not split. The binding will be
+                    // corrected when split is finished.
+
+                    final TreeNode sibling = split.latchSibling(mTree.mStore);
+
+                    final TreeNode left, right;
+                    if (split.mSplitRight) {
+                        left = node;
+                        right = sibling;
+                    } else {
+                        left = sibling;
+                        right = node;
+                    }
+
+                    final TreeNode selected;
+                    final int selectedPos;
+
+                    if (split.compare(key) < 0) {
+                        selected = left;
+                        selectedPos = TreeNode.internalPos(left.binarySearchInternal(key));
+                        frame.bind(node, selectedPos);
+                        right.releaseExclusive();
+                    } else {
+                        selected = right;
+                        selectedPos = TreeNode.internalPos(right.binarySearchInternal(key));
+                        frame.bind(node, left.highestInternalPos() + 2 + selectedPos);
+                        left.releaseExclusive();
+                    }
+
+                    node = latchChild(selected, selectedPos, true);
+                }
+
+                frame = new TreeCursorFrame(frame);
+            }
+        } finally {
+            if (locker != null) {
+                locker.unlock();
+            }
+        }
     }
 
-    /**
-     * Stores a value into the current entry, leaving the position
-     * unchanged. An entry may be inserted, updated or deleted by this
-     * method. A null value deletes the entry.
-     *
-     * @throws IllegalStateException if position is undefined at invocation time
-     */
+    @Override
     public void store(byte[] value) throws IOException {
-        final Lock sharedCommitLock = mTree.mStore.sharedCommitLock();
+        byte[] key = mKey;
+        if (key == null) {
+            throw new IllegalStateException("Cursor position is undefined");
+        }
+
+        Lock sharedCommitLock = mTree.mStore.sharedCommitLock();
         sharedCommitLock.lock();
         try {
-            store(leafExclusive(), value);
+            final Transaction txn = mTxn;
+            final Locker locker = mTree.lockExclusive(txn, key);
+            try {
+                final TreeCursorFrame leaf = leafExclusive();
+                // FIXME: undo log (unless txn == null | UNSAFE), redo log (unless NO_LOG)
+                store(leaf, value);
+            } finally {
+                if (locker != null) {
+                    locker.unlock();
+                }
+            }
         } catch (Throwable e) {
             throw handleStoreException(e);
         } finally {
@@ -858,28 +891,18 @@ final class TreeCursor {
         final Lock sharedCommitLock = mTree.mStore.sharedCommitLock();
         sharedCommitLock.lock();
         try {
-            find(key, true);
-            store(mLeaf, value);
-        } catch (Throwable e) {
-            throw handleStoreException(e);
-        } finally {
-            sharedCommitLock.unlock();
-        }
-    }
-
-    /**
-     * Atomic find and insert operation.
-     */
-    boolean findAndInsert(byte[] key, byte[] value) throws IOException {
-        final Lock sharedCommitLock = mTree.mStore.sharedCommitLock();
-        sharedCommitLock.lock();
-        try {
-            if (find(key, true)) {
-                mLeaf.mNode.releaseExclusive();
-                return false;
-            } else {
-                store(mLeaf, value);
-                return true;
+            final Transaction txn = mTxn;
+            final Locker locker = mTree.lockExclusive(txn, key);
+            try {
+                // Find with no lock because it has already been acquired.
+                find(key, VARIANT_NO_LOCK);
+                final TreeCursorFrame leaf = mLeaf;
+                // FIXME: undo log (unless txn == null | UNSAFE), redo log (unless NO_LOG)
+                store(leaf, value);
+            } finally {
+                if (locker != null) {
+                    locker.unlock();
+                }
             }
         } catch (Throwable e) {
             throw handleStoreException(e);
@@ -888,19 +911,62 @@ final class TreeCursor {
         }
     }
 
+    static final byte[] MODIFY_INSERT = new byte[0], MODIFY_REPLACE = new byte[0];
+
     /**
-     * Atomic find and replace operation.
+     * Atomic find and modify operation.
+     *
+     * @param oldValue MODIFY_INSERT, MODIFY_INSERT, else update mode
      */
-    boolean findAndReplace(byte[] key, byte[] value) throws IOException {
+    boolean findAndModify(byte[] key, byte[] oldValue, byte[] newValue) throws IOException {
         final Lock sharedCommitLock = mTree.mStore.sharedCommitLock();
         sharedCommitLock.lock();
         try {
-            if (find(key, true)) {
-                store(mLeaf, value);
-                return true;
+            // Note: Acquire exclusive lock instead of performing upgrade
+            // sequence. The upgrade would need to be performed with the node
+            // latch held, which is deadlock prone.
+
+            final Transaction txn = mTxn;
+            if (txn == null) {
+                Locker locker = mTree.lockExclusiveLocal(key);
+                try {
+                    return doFindAndModify(txn, key, oldValue, newValue);
+                } finally {
+                    locker.unlock();
+                }
+            }
+
+            LockResult result;
+
+            LockMode mode = txn.lockMode();
+            if (mode == LockMode.UNSAFE) {
+                // Indicate that no unlock should be performed.
+                result = LockResult.OWNED_EXCLUSIVE;
             } else {
-                mLeaf.mNode.releaseExclusive();
+                // FIXME: lock timeouts (overload methods such that timeout param is optional)
+                result = txn.lockExclusive(mTree.mId, key, -1);
+                if (result == LockResult.ACQUIRED &&
+                    (mode == LockMode.REPEATABLE_READ || mode == LockMode.UPGRADABLE_READ))
+                {
+                    // Downgrade to upgradable when no modification is made, to
+                    // preserve repeatable semantics and allow upgrade later.
+                    result = LockResult.UPGRADED;
+                }
+            }
+
+            try {
+                if (doFindAndModify(txn, key, oldValue, newValue)) {
+                    // Indicate that no unlock should be performed.
+                    result = LockResult.OWNED_EXCLUSIVE;
+                    return true;
+                }
                 return false;
+            } finally {
+                if (result == LockResult.ACQUIRED) {
+                    txn.unlock();
+                } else if (result == LockResult.UPGRADED) {
+                    txn.unlockToUpgradable();
+                }
             }
         } catch (Throwable e) {
             throw handleStoreException(e);
@@ -909,15 +975,42 @@ final class TreeCursor {
         }
     }
 
-    /**
-     * Atomic find and update operation.
-     */
-    boolean findAndUpdate(byte[] key, byte[] oldValue, byte[] newValue) throws IOException {
-        final Lock sharedCommitLock = mTree.mStore.sharedCommitLock();
-        sharedCommitLock.lock();
-        try {
-            if (find(key, true)) {
-                if (oldValue != null && mLeaf.mNode.equalsLeafValue(mLeaf.mNodePos, oldValue)) {
+    private boolean doFindAndModify(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
+        throws IOException
+    {
+        // Find with no lock because caller must already acquire exclusive lock.
+        find(key, VARIANT_NO_LOCK);
+
+        if (oldValue == MODIFY_INSERT) {
+            // insert mode
+
+            if (mValue != null) {
+                mLeaf.mNode.releaseExclusive();
+                return false;
+            }
+
+            // FIXME: undo log (unless txn == null | UNSAFE), redo log (unless NO_LOG)
+
+            store(mLeaf, newValue);
+            return true;
+        } else if (oldValue == MODIFY_REPLACE) {
+            // replace mode
+
+            if (mValue == null) {
+                mLeaf.mNode.releaseExclusive();
+                return false;
+            }
+
+            // FIXME: undo log...
+
+            store(mLeaf, newValue);
+            return true;
+        } else {
+            // update mode
+
+            if (mValue != null) {
+                if (Arrays.equals(oldValue, mValue)) {
+                    // FIXME: undo log...
                     store(mLeaf, newValue);
                     return true;
                 } else {
@@ -928,6 +1021,7 @@ final class TreeCursor {
                 if (newValue == null) {
                     mLeaf.mNode.releaseExclusive();
                 } else {
+                    // FIXME: undo log...
                     store(mLeaf, newValue);
                 }
                 return true;
@@ -935,10 +1029,6 @@ final class TreeCursor {
                 mLeaf.mNode.releaseExclusive();
                 return false;
             }
-        } catch (Throwable e) {
-            throw handleStoreException(e);
-        } finally {
-            sharedCommitLock.unlock();
         }
     }
 
@@ -1087,13 +1177,14 @@ final class TreeCursor {
         }
     }
 
-    /**
-     * Returns a new independent cursor which exactly matches the state of this
-     * one. The original and copied cursor can be acted upon without affecting
-     * each other's state.
-     */
+    @Override
+    public void link(Transaction txn) {
+        mTxn = txn;
+    }
+
+    @Override
     public TreeCursor copy() {
-        TreeCursor copy = new TreeCursor(mTree);
+        TreeCursor copy = new TreeCursor(mTree, mTxn);
         TreeCursorFrame frame = mLeaf;
         if (frame != null) {
             TreeCursorFrame frameCopy = new TreeCursorFrame();
@@ -1103,22 +1194,15 @@ final class TreeCursor {
         return copy;
     }
 
-    /**
-     * Returns true if cursor is currently at a defined position.
-     */
-    public boolean isPositioned() {
-        return mLeaf != null;
-    }
-
-    /**
-     * Resets the cursor position to be undefined.
-     */
+    @Override
     public void reset() {
         TreeCursorFrame frame = mLeaf;
         if (frame == null) {
             return;
         }
         mLeaf = null;
+        mKey = null;
+        mValue = null;
         TreeCursorFrame.popAll(frame);
     }
 
@@ -1163,9 +1247,7 @@ final class TreeCursor {
      * @return false if unable to verify completely at this time
      */
     boolean verify() throws IOException, IllegalStateException {
-        Entry entry = new Entry();
-        get(null, entry);
-        return verify(entry.key);
+        return verify(mKey);
     }
 
     /**

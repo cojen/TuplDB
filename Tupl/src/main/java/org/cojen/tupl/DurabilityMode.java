@@ -35,15 +35,26 @@ public enum DurabilityMode {
      * Durability mode which permits the operating system to lazily flush
      * modifications to non-volatile storage. This mode is vulnerable to power
      * failures and operating system crashes. These events can cause recently
-     * committed transactions to get lost.
+     * committed transactions to get lost. A shutdown hook durably flushes
+     * modifications when the process exits cleanly.
      */
     NO_SYNC,
 
     /**
+     * Durability mode which writes modifications to the file system when the
+     * in process buffer is full. This mode is vulnerable to power failures,
+     * operating system crashes, and process crashes. These events can cause
+     * recently committed transactions to get lost. A shutdown hook durably
+     * flushes modifications when the process exits cleanly.
+     */
+    NO_FLUSH,
+
+    /**
      * Weakest durability mode, which doesn't write anything to the redo
      * log. An unlogged transaction does not become durable until a checkpoint
-     * is performed. In addition to the vulnerabilities of NO_SYNC mode, NO_LOG
-     * mode can lose recently committed transactions when the process exits.
+     * is performed. In addition to the vulnerabilities of NO_FLUSH mode,
+     * NO_LOG mode can lose recently committed transactions when the process
+     * exits. No shutdown is installed to perform a checkpoint.
      */
     NO_LOG;
 }

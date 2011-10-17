@@ -17,6 +17,7 @@
 package org.cojen.tupl;
 
 import java.io.BufferedOutputStream;
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -31,7 +32,7 @@ import java.util.zip.Adler32;
  *
  * @author Brian S O'Neill
  */
-class RedoLog implements RedoLogVisitor {
+class RedoLog implements Closeable, RedoLogVisitor {
     private static final long MAGIC_NUMBER = 431399725605778814L;
     private static final int ENCODING_VERSION = 20111001;
 
@@ -39,29 +40,32 @@ class RedoLog implements RedoLogVisitor {
         /** timestamp: long */
         OP_TIMESTAMP = 1,
 
-        /** txnId: long */
-        //OP_TXN_BEGIN = 2,
-
-        /** txnId: long, parentTxnId: long */
-        //OP_TXN_BEGIN_NESTED = 3,
+        /** timestamp: long */
+        OP_CLOSE = 2,
 
         /** txnId: long */
-        //OP_TXN_CONTINUE = 4,
+        //OP_TXN_BEGIN = 3,
 
         /** txnId: long, parentTxnId: long */
-        //OP_TXN_CONTINUE_NESTED = 5,
+        //OP_TXN_BEGIN_NESTED = 4,
 
         /** txnId: long */
-        OP_TXN_ROLLBACK = 6,
+        //OP_TXN_CONTINUE = 5,
 
         /** txnId: long, parentTxnId: long */
-        OP_TXN_ROLLBACK_NESTED = 7,
+        //OP_TXN_CONTINUE_NESTED = 6,
+
+        /** txnId: long */
+        OP_TXN_ROLLBACK = 7,
+
+        /** txnId: long, parentTxnId: long */
+        OP_TXN_ROLLBACK_NESTED = 8,
 
         /** txnId: long, checksum: int */
-        OP_TXN_COMMIT = 8,
+        OP_TXN_COMMIT = 9,
 
         /** txnId: long, parentTxnId: long */
-        OP_TXN_COMMIT_NESTED = 9,
+        OP_TXN_COMMIT_NESTED = 10,
 
         /** indexId: long, keyLength: varInt, key: bytes,
             valueLength: varInt, value: bytes,
@@ -125,6 +129,16 @@ class RedoLog implements RedoLogVisitor {
         mOut = out;
         mBuffer = new byte[4096];
         mChecksum = new Adler32();
+
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            public void run() {
+                try {
+                    close();
+                } catch (Throwable e) {
+                    Utils.rethrow(e);
+                }
+            }
+        });
     }
 
     void replay(RedoLogVisitor visitor) throws IOException {
@@ -132,29 +146,55 @@ class RedoLog implements RedoLogVisitor {
         throw null;
     }
 
-    public synchronized void store(long indexId, byte[] key, byte[] value) throws IOException {
+    public synchronized void close() throws IOException {
+        if (!mChannel.isOpen()) {
+            return;
+        }
+        writeOp(OP_CLOSE, System.currentTimeMillis());
+        writeChecksum(DurabilityMode.SYNC);
+        mChannel.force(true);
+        mChannel.close();
+    }
+
+    public void store(long indexId, byte[] key, byte[] value, DurabilityMode mode)
+        throws IOException
+    {
         if (key == null) {
             throw new NullPointerException("Key is null");
         }
 
-        if (value == null) {
-            writeOp(OP_DELETE, indexId);
-            writeUnsignedVarInt(key.length);
-            writeBytes(key);
-        } else {
-            writeOp(OP_STORE, indexId);
-            writeUnsignedVarInt(key.length);
-            writeBytes(key);
-            writeUnsignedVarInt(value.length);
-            writeBytes(value);
+        boolean sync;
+        synchronized (this) {
+            if (value == null) {
+                writeOp(OP_DELETE, indexId);
+                writeUnsignedVarInt(key.length);
+                writeBytes(key);
+            } else {
+                writeOp(OP_STORE, indexId);
+                writeUnsignedVarInt(key.length);
+                writeBytes(key);
+                writeUnsignedVarInt(value.length);
+                writeBytes(value);
+            }
+
+            sync = writeChecksum(mode);
         }
 
-        writeChecksumAndFlush();
+        if (sync) {
+            mChannel.force(false);
+        }
     }
 
-    public synchronized void clear(long indexId) throws IOException {
-        writeOp(OP_CLEAR, indexId);
-        writeChecksumAndFlush();
+    public void clear(long indexId, DurabilityMode mode) throws IOException {
+        boolean sync;
+        synchronized (this) {
+            writeOp(OP_CLEAR, indexId);
+            sync = writeChecksum(mode);
+        }
+
+        if (sync) {
+            mChannel.force(false);
+        }
     }
 
     public void txnBegin(long txnId, long parentTxnId) throws IOException {
@@ -170,13 +210,14 @@ class RedoLog implements RedoLogVisitor {
         }
     }
 
-    public void txnCommit(long txnId, long parentTxnId, boolean durable)
+    public void txnCommit(long txnId, long parentTxnId, DurabilityMode mode)
         throws IOException
     {
+        boolean sync;
         synchronized (this) {
             if (parentTxnId == 0) {
                 writeOp(OP_TXN_COMMIT, txnId);
-                writeChecksumAndFlush();
+                sync = writeChecksum(mode);
             } else {
                 writeOp(OP_TXN_COMMIT_NESTED, txnId);
                 writeLong(parentTxnId);
@@ -185,7 +226,7 @@ class RedoLog implements RedoLogVisitor {
             }
         }
 
-        if (durable) {
+        if (sync) {
             mChannel.force(false);
         }
     }
@@ -291,10 +332,16 @@ class RedoLog implements RedoLogVisitor {
         }
     }
 
-    // Caller must be synchronized.
-    private void writeChecksumAndFlush() throws IOException {
+    // Caller must be synchronized. Returns true if caller should sync.
+    private boolean writeChecksum(DurabilityMode mode) throws IOException {
         writeInt((int) mChecksum.getValue());
-        flush();
+        if (mode == DurabilityMode.SYNC) {
+            flush();
+            return true;
+        } else if (mode == DurabilityMode.NO_SYNC) {
+            flush();
+        }
+        return false;
     }
 
     // Caller must be synchronized.

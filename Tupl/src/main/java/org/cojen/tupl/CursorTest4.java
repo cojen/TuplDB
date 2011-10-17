@@ -66,43 +66,36 @@ public class CursorTest4 {
                     //sem.acquire();
 
                     Cursor c = index.newCursor(null);
-                    Entry e = new Entry();
-                    c.first();
+                    c.last();
 
-                    int i = 0;
+                    int i = count - 2;
                     do {
-                        try {
-                            c.get(e);
-                        } catch (NullPointerException ex) {
-                            ex.printStackTrace(System.out);
-                            break;
-                        }
-
-                        int key = DataIO.readInt(e.key, 0);
+                        int key = DataIO.readInt(c.key(), 0);
 
                         if ((key & 1) != 0) {
                             // Skip odd keys.
                             continue;
                         }
 
-                        if (key < i) {
-                            System.out.println("backwards: " + key + " < " + i);
+                        if (key > i) {
+                            System.out.println("forwards: " + key + " > " + i);
                             break;
                         }
 
-                        String value = CursorTest.string(e.value);
+                        String value = CursorTest.string(c.value());
                         if (key != i || !value.equals("v" + i)) {
                             System.out.println("skipped: " + i + ", " + key);
                             break;
                         }
 
-                        i += 2;
-                    } while (c.next());
+                        i -= 2;
+                        c.previous();
+                    } while (c.value() != null);
 
                     c.reset();
 
-                    if (i != count) {
-                        System.out.println("not reached end: " + i);
+                    if (i != -2) {
+                        System.out.println("not reached start: " + i);
                     }
 
                     //sem.release();
@@ -151,7 +144,7 @@ public class CursorTest4 {
         return k;
     }
 
-    static String string(Entry entry) {
-        return DataIO.readInt(entry.key, 0) + " = " + CursorTest.string(entry.value);
+    static String string(Cursor cursor) {
+        return DataIO.readInt(cursor.key(), 0) + " = " + CursorTest.string(cursor.value());
     }
 }

@@ -130,7 +130,8 @@ public class TreeNodeTest {
         byte[] bvalue = value.getBytes();
 
         Cursor c = index.newCursor(null);
-        boolean exists = c.find(bkey);
+        c.find(bkey);
+        boolean exists = c.value() != null;
         if (!exists) {
             c.store(bvalue);
         }

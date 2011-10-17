@@ -75,17 +75,16 @@ public class CursorTest3 {
             public void run() {
                 try {
                     Cursor c = index.newCursor(null);
-                    Entry e = new Entry();
                     while (true) {
-                        if (c.last()) {
-                            c.get(e);
-                            System.out.println("last:     " + CursorTest.string(e));
-                            if (c.previous()) {
-                                c.get(e);
-                                System.out.println("previous: " + CursorTest.string(e));
-                                if (c.next()) {
-                                    c.get(e);
-                                    System.out.println("next:     " + CursorTest.string(e));
+                        c.last();
+                        if (c.value() != null) {
+                            System.out.println("last:     " + CursorTest.string(c));
+                            c.previous();
+                            if (c.value() != null) {
+                                System.out.println("previous: " + CursorTest.string(c));
+                                c.next();
+                                if (c.value() != null) {
+                                    System.out.println("next:     " + CursorTest.string(c));
                                 }
                             }
                         }
@@ -103,7 +102,8 @@ public class CursorTest3 {
         //monitor.start();
 
         Cursor c1 = index.newCursor(null);
-        System.out.println("initial find: " + c1.find("k1000".getBytes()));
+        c1.find("k1000".getBytes());
+        System.out.println("initial find: " + CursorTest.string(c1));
 
         Thread[] threads = new Thread[threadCount];
         for (int i=0; i<threadCount; i++) {
@@ -155,9 +155,7 @@ public class CursorTest3 {
 
         //store.root().dump(store, "");
 
-        Entry e = new Entry();
-        c1.get(e);
-        System.out.println("find value now: " + CursorTest.string(e));
+        //System.out.println("find value now: " + CursorTest.string(c));
 
         Cursor c2 = index.newCursor(null);
         for (int i=0; i<count; i++) {
@@ -170,8 +168,7 @@ public class CursorTest3 {
             }
         }
 
-        c1.get(e);
-        System.out.println("find value now: " + CursorTest.string(e));
+        //System.out.println("find value now: " + CursorTest.string(e));
         //System.out.println("c1: " + c1.verify());
         //System.out.println("c2: " + c2.verify());
 

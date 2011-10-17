@@ -20,199 +20,145 @@ import java.io.IOException;
 
 /**
  * Maintains a logical position in an {@link Index}. Cursors must be {@link
- * #reset reset} when no longer needed to free up memory. Although not
- * necessarily practical, multiple threads may safely interact with Cursor
- * instances.
+ * #reset reset} when no longer needed to free up memory. Cursor instances can
+ * only be safely used by one thread at a time. Cursors can be exchanged by
+ * threads, as long as a happens-before relationship is established. Without
+ * proper exclusion, multiple threads interacting with a Cursor instance
+ * results in undefined behavior.
  *
  * @author Brian S O'Neill
  */
 public interface Cursor {
     /**
-     * Returns a copy of the key and value at the Cursor's current position. If
-     * entry doesn't exist, value is assigned null and false is returned. A
-     * non-null key is always available, even for entries which don't exist.
-     *
-     * @param entry entry to fill in; pass null to just check if entry exists
-     * @throws IllegalStateException if position is undefined at invocation time
+     * Returns an uncopied reference to the current key, or null if Cursor is
+     * unpositioned. Array contents must not be modified.
      */
-    public boolean get(Entry entry) throws IOException;
-
-    // FIXME: Remove all the move methods which don't accept an entry.
+    public byte[] key();
 
     /**
-     * Moves the Cursor to find the first available entry, unless none exists.
-     *
-     * @return false if no entries exist and position is now undefined
+     * Returns an uncopied reference to the current value, which might be
+     * null. Array contents can be safely modified.
      */
-    public boolean first() throws IOException;
+    public byte[] value();
 
     /**
-     * Moves the Cursor to find the first available entry, unless none exists.
+     * Moves the Cursor to find the first available entry. Cursor key and value
+     * are set to null if no entries exist, and position is now undefined.
      *
-     * @param entry optional entry to fill in
-     * @return false if no entries exist and position is now undefined
+     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
+     * OWNED_EXCLUSIVE
      */
-    public boolean first(Entry entry) throws IOException;
+    public LockResult first() throws IOException;
 
     /**
-     * Moves the Cursor to find the last available entry, unless none exists.
+     * Moves the Cursor to find the last available entry. Cursor key and value
+     * are set to null if no entries exist, and position is now undefined.
      *
-     * @return false if no entries exist and position is now undefined
+     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
+     * OWNED_EXCLUSIVE
      */
-    public boolean last() throws IOException;
-
-    /**
-     * Moves the Cursor to find the last available entry, unless none exists.
-     *
-     * @param entry optional entry to fill in
-     * @return false if no entries exist and position is now undefined
-     */
-    public boolean last(Entry entry) throws IOException;
+    public LockResult last() throws IOException;
 
     /**
      * Moves the Cursor by a relative amount of entries. Pass a positive amount
      * for forward movement, and pass a negative amount for reverse
-     * movement. The actual movement amount can be less than the requested
-     * amount if the start or end is reached. After this happens, the position
-     * is undefined.
+     * movement. If less than the given amount are available, the Cursor key
+     * and value are set to null, and position is now undefined.
      *
-     * @return actual amount moved; if less, position is now undefined
+     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
+     * OWNED_EXCLUSIVE
      * @throws IllegalStateException if position is undefined at invocation time
      */
-    public long move(long amount) throws IOException;
+    public LockResult move(long amount) throws IOException;
 
     /**
-     * Moves the Cursor by a relative amount of entries. Pass a positive amount
-     * for forward movement, and pass a negative amount for reverse
-     * movement. The actual movement amount can be less than the requested
-     * amount if the start or end is reached. After this happens, the position
-     * is undefined.
+     * Advances to the Cursor to the next available entry. Cursor key and value
+     * are set to null if no next entry exists, and position is now undefined.
      *
-     * @param entry optional entry to fill in
-     * @return actual amount moved; if less, position is now undefined
+     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
+     * OWNED_EXCLUSIVE
      * @throws IllegalStateException if position is undefined at invocation time
      */
-    public long move(long amount, Entry entry) throws IOException;
+    public LockResult next() throws IOException;
 
     /**
-     * Advances to the Cursor to the next available entry, unless none
-     * exists. Equivalent to:
+     * Advances to the Cursor to the previous available entry. Cursor key and value
+     * are set to null if no previous entry exists, and position is now undefined.
      *
-     * <pre>
-     * return cursor.move(1) != 0;</pre>
-     *
-     * @return false if no next entry and position is now undefined
+     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
+     * OWNED_EXCLUSIVE
      * @throws IllegalStateException if position is undefined at invocation time
      */
-    public boolean next() throws IOException;
+    public LockResult previous() throws IOException;
 
     /**
-     * Advances to the Cursor to the next available entry, unless none
-     * exists. Equivalent to:
+     * Moves the Cursor to find the given key. Ownership of the key instance
+     * transfers to the Cursor, and it should no longer be modified after
+     * calling this method.
      *
-     * <pre>
-     * return cursor.move(1, entry) != 0;</pre>
-     *
-     * @param entry optional entry to fill in
-     * @return false if no next entry and position is now undefined
-     * @throws IllegalStateException if position is undefined at invocation time
-     */
-    public boolean next(Entry entry) throws IOException;
-
-    /**
-     * Advances to the Cursor to the previous available entry, unless none
-     * exists. Equivalent to:
-     *
-     * <pre>
-     * return cursor.move(-1) != 0;</pre>
-     *
-     * @return false if no previous entry and position is now undefined
-     * @throws IllegalStateException if position is undefined at invocation time
-     */
-    public boolean previous() throws IOException;
-
-    /**
-     * Advances to the Cursor to the previous available entry, unless none
-     * exists. Equivalent to:
-     *
-     * <pre>
-     * return cursor.move(-1, entry) != 0;</pre>
-     *
-     * @param entry optional entry to fill in
-     * @return false if no previous entry and position is now undefined
-     * @throws IllegalStateException if position is undefined at invocation time
-     */
-    public boolean previous(Entry entry) throws IOException;
-
-    /**
-     * Moves the Cursor to find the given key, returning true if a matching
-     * entry exists. If false is returned, an uncopied reference to the key is
-     * retained. The key reference is released when the Cursor position changes
-     * or a matching entry is created.
-     *
-     * @return false if entry not found
+     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
+     * OWNED_EXCLUSIVE
      * @throws NullPointerException if key is null
      */
-    public boolean find(byte[] key) throws IOException;
+    public LockResult find(byte[] key) throws IOException;
 
     /**
      * Moves the Cursor to find the first available entry greater than or equal
-     * to the given key. Equivalent to:
+     * to the given key. Ownership of the key instance transfers to the Cursor,
+     * and it should no longer be modified after calling this method.
      *
-     * <pre>
-     * return cursor.find(key) ? true : cursor.next();</pre>
-     *
-     * @return false if entry not found and position is now undefined
+     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
+     * OWNED_EXCLUSIVE
      * @throws NullPointerException if key is null
      */
-    public boolean findGe(byte[] key) throws IOException;
+    public LockResult findGe(byte[] key) throws IOException;
 
     /**
      * Moves the Cursor to find the first available entry greater than the
-     * given key. Equivalent to:
+     * given key. Ownership of the key instance transfers to the Cursor, and it
+     * should no longer be modified after calling this method.
      *
-     * <pre>
-     * cursor.find(key); return cursor.next();</pre>
-     *
-     * @return false if entry not found and position is now undefined
+     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
+     * OWNED_EXCLUSIVE
      * @throws NullPointerException if key is null
      */
-    public boolean findGt(byte[] key) throws IOException;
+    public LockResult findGt(byte[] key) throws IOException;
 
     /**
      * Moves the Cursor to find the first available entry less than or equal to
-     * the given key. Equivalent to:
+     * the given key. Ownership of the key instance transfers to the Cursor,
+     * and it should no longer be modified after calling this method.
      *
-     * <pre>
-     * return cursor.find(key) ? true : cursor.previous();</pre>
-     *
-     * @return false if entry not found and position is now undefined
+     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
+     * OWNED_EXCLUSIVE
      * @throws NullPointerException if key is null
      */
-    public boolean findLe(byte[] key) throws IOException;
+    public LockResult findLe(byte[] key) throws IOException;
 
     /**
      * Moves the Cursor to find the first available entry less than the given
-     * key. Equivalent to:
+     * key. Ownership of the key instance transfers to the Cursor, and it
+     * should no longer be modified after calling this method.
      *
-     * <pre>
-     * cursor.find(key); return cursor.previous();</pre>
-     *
-     * @return false if entry not found and position is now undefined
+     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
+     * OWNED_EXCLUSIVE
      * @throws NullPointerException if key is null
      */
-    public boolean findLt(byte[] key) throws IOException;
+    public LockResult findLt(byte[] key) throws IOException;
 
     /**
      * Optimized version of the regular find method, which can perform fewer
-     * search steps if the given key is in close proximity to the current one.
-     * Even if not in close proximity, the find behavior is still identicial,
-     * although it may perform more slowly.
+     * search steps if the given key is in close proximity to the current
+     * one. Even if not in close proximity, the find behavior is still
+     * identicial, although it may perform more slowly.
      *
-     * @return false if entry not found
+     * <p>Ownership of the key instance transfers to the Cursor, and it should
+     * no longer be modified after calling this method.
+     *
+     * OWNED_EXCLUSIVE
      * @throws NullPointerException if key is null
      */
-    public boolean findNearby(byte[] key) throws IOException;
+    public LockResult findNearby(byte[] key) throws IOException;
 
     /**
      * Stores a value into the current entry, leaving the position
@@ -235,11 +181,6 @@ public interface Cursor {
      * acted upon without affecting each other's state.
      */
     public Cursor copy();
-
-    /**
-     * Returns true if Cursor is currently at a defined position.
-     */
-    public boolean isPositioned();
 
     /**
      * Resets the Cursor position to be undefined.
