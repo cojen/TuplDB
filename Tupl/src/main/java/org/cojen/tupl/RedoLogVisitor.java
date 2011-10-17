@@ -29,12 +29,12 @@ interface RedoLogVisitor {
      * @param key non-null key
      * @param value value to store; null to delete
      */
-    void store(long indexId, byte[] key, byte[] value) throws IOException;
+    void store(long indexId, byte[] key, byte[] value, DurabilityMode mode) throws IOException;
 
     /**
      * @param indexId non-zero index id
      */
-    void clear(long indexId) throws IOException;
+    void clear(long indexId, DurabilityMode mode) throws IOException;
 
     /**
      * @param txnId non-zero transaction id
@@ -52,7 +52,7 @@ interface RedoLogVisitor {
      * @param txnId non-zero transaction id
      * @param parentTxnId parent transaction id; zero if none
      */
-    void txnCommit(long txnId, long parentTxnId, boolean durable) throws IOException;
+    void txnCommit(long txnId, long parentTxnId, DurabilityMode mode) throws IOException;
 
     /**
      * @param txnId non-zero transaction id

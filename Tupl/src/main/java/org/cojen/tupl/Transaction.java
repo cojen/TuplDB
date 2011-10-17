@@ -39,7 +39,7 @@ public class Transaction extends Locker {
     private Object mLockModeStack;
     private int mLockModeStackSize;
 
-    // FIXME: support lock timeout
+    // FIXME: support scoped lock timeout
 
     Transaction(LockManager manager, DurabilityMode durabilityMode, LockMode lockMode) {
         super(manager);

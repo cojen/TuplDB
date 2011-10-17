@@ -36,10 +36,17 @@ public class CursorTest2 {
         Cursor c3 = index.newCursor(null);
         Cursor c4 = index.newCursor(null);
 
-        System.out.println(c.find("hello".getBytes()));
-        System.out.println(c2.find("hello".getBytes()));
-        System.out.println(c3.find("hellox".getBytes()));
-        System.out.println(c4.find("hell".getBytes()));
+        c.find("hello".getBytes());
+        CursorTest.printEntry(c);
+
+        c2.find("hello".getBytes());
+        CursorTest.printEntry(c2);
+
+        c3.find("hellox".getBytes());
+        CursorTest.printEntry(c3);
+
+        c4.find("hell".getBytes());
+        CursorTest.printEntry(c4);
 
         c.store("world".getBytes());
 
@@ -49,11 +56,11 @@ public class CursorTest2 {
         CursorTest.printEntry(c4);
 
         System.out.println("---");
-        System.out.println(c3.previous());
+        c3.previous();
         CursorTest.printEntry(c3);
 
         System.out.println("---");
-        System.out.println(c4.next());
+        c4.next();
         CursorTest.printEntry(c4);
 
         Cursor c5 = index.newCursor(null);
@@ -69,7 +76,8 @@ public class CursorTest2 {
 
             byte[] key = ("k" + r).getBytes();
             byte[] value = ("v" + r).getBytes();
-            if (!c.find(key)) {
+            c.find(key);
+            if (c.value() == null) {
                 c.store(value);
             }
 
@@ -92,7 +100,8 @@ public class CursorTest2 {
             int r = rnd.nextInt() & Integer.MAX_VALUE;
             byte[] key = ("k" + r).getBytes();
             byte[] value = ("v" + r).getBytes();
-            if (!c.find(key)) {
+            c.find(key);
+            if (c.value() == null) {
                 System.out.println("not found: " + i);
             }
         }
@@ -102,6 +111,7 @@ public class CursorTest2 {
         c5.last();
         do {
             CursorTest.printEntry(c5);
-        } while (c5.previous());
+            c5.previous();
+        } while (c5.value() != null);
     }
 }

@@ -70,7 +70,7 @@ final class Tree implements Index {
 
     @Override
     public Cursor newCursor(Transaction txn) {
-        return new FullCursor(new TreeCursor(this), txn);
+        return new TreeCursor(this, txn);
     }
 
     @Override
@@ -93,7 +93,7 @@ final class Tree implements Index {
 
     @Override
     public byte[] get(Transaction txn, byte[] key) throws IOException {
-        Locker locker = lockForRead(txn, null, key, true);
+        Locker locker = lockShared(txn, null, key);
         try {
             return mRoot.search(this, key);
         } finally {
@@ -105,8 +105,7 @@ final class Tree implements Index {
 
     @Override
     public void store(Transaction txn, byte[] key, byte[] value) throws IOException {
-        // FIXME: txn
-        TreeCursor cursor = new TreeCursor(this);
+        TreeCursor cursor = new TreeCursor(this, txn);
         try {
             cursor.findAndStore(key, value);
         } finally {
@@ -117,10 +116,9 @@ final class Tree implements Index {
 
     @Override
     public boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException {
-        // FIXME: txn
-        TreeCursor cursor = new TreeCursor(this);
+        TreeCursor cursor = new TreeCursor(this, txn);
         try {
-            return cursor.findAndInsert(key, value);
+            return cursor.findAndModify(key, TreeCursor.MODIFY_INSERT, value);
         } finally {
             // FIXME: this can deadlock, because exception can be thrown at anytime
             cursor.reset();
@@ -129,10 +127,9 @@ final class Tree implements Index {
 
     @Override
     public boolean replace(Transaction txn, byte[] key, byte[] value) throws IOException {
-        // FIXME: txn
-        TreeCursor cursor = new TreeCursor(this);
+        TreeCursor cursor = new TreeCursor(this, txn);
         try {
-            return cursor.findAndReplace(key, value);
+            return cursor.findAndModify(key, TreeCursor.MODIFY_REPLACE, value);
         } finally {
             // FIXME: this can deadlock, because exception can be thrown at anytime
             cursor.reset();
@@ -143,10 +140,9 @@ final class Tree implements Index {
     public boolean update(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException
     {
-        // FIXME: txn
-        TreeCursor cursor = new TreeCursor(this);
+        TreeCursor cursor = new TreeCursor(this, txn);
         try {
-            return cursor.findAndUpdate(key, oldValue, newValue);
+            return cursor.findAndModify(key, oldValue, newValue);
         } finally {
             // FIXME: this can deadlock, because exception can be thrown at anytime
             cursor.reset();
@@ -218,13 +214,62 @@ final class Tree implements Index {
     /**
      * @param txn optional transaction instance
      * @param key non-null key instance
-     * @param cloneKey true if key should be cloned if actually used
      * @return non-null Locker instance if caller should unlock when read is done
      */
-    Locker lockForRead(Transaction txn, LockMode lockMode, byte[] key, boolean cloneKey)
+    Locker lockShared(Transaction txn, LockMode lockMode, byte[] key)
         throws LockFailureException
     {
-        return mLockManager.lockForRead(txn, lockMode, mId, key, cloneKey);
+        if (txn == null) {
+            return lockSharedLocal(key);
+        }
+
+        if (lockMode == null) {
+            lockMode = txn.lockMode();
+        }
+
+        switch (lockMode) {
+        default: // No read lock requested by READ_UNCOMMITTED or UNSAFE.
+            return null;
+
+            // FIXME: Lock timeouts (overload methods such that timeout param is optional).
+
+        case READ_COMMITTED:
+            return txn.lockShared(mId, key, -1) == LockResult.ACQUIRED ? txn : null;
+
+        case REPEATABLE_READ:
+            txn.lockShared(mId, key, -1);
+            return null;
+
+        case UPGRADABLE_READ:
+            txn.lockUpgradable(mId, key, -1);
+            return null;
+        }
+    }
+
+    /**
+     * @param txn optional transaction instance
+     * @param key non-null key instance
+     * @return non-null Locker instance if caller should unlock when write is done
+     */
+    Locker lockExclusive(Transaction txn, byte[] key) throws LockFailureException {
+        if (txn == null) {
+            return lockExclusiveLocal(key);
+        }
+
+        if (txn.lockMode() != LockMode.UNSAFE) {
+            // FIXME: Lock timeouts (overload methods such that timeout param is optional).
+            txn.lockExclusive(mId, key, -1);
+        }
+
+        return null;
+    }
+
+    Locker lockSharedLocal(byte[] key) throws LockFailureException {
+        return mLockManager.lockSharedLocal(mId, key);
+    }
+
+    Locker lockExclusiveLocal(byte[] key) throws LockFailureException {
+        return mLockManager.lockExclusiveLocal(mId, key);
     }
 
     /**

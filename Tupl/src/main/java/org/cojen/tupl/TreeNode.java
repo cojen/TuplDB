@@ -960,6 +960,7 @@ final class TreeNode extends Latch {
      * @param pos position as provided by binarySearchLeaf; must be positive
      * @param value non-null value to compare to
      */
+    /*
     boolean equalsLeafValue(int pos, byte[] value) {
         final byte[] page = mPage;
 
@@ -974,11 +975,12 @@ final class TreeNode extends Latch {
 
         return Utils.compareKeys(page, loc, len, value, 0, value.length) == 0;
     }
+    */
 
     /**
      * @param pos position as provided by binarySearchLeaf; must be positive
      */
-    void retrieveLeafEntry(int pos, Entry entry) {
+    void retrieveLeafEntry(int pos, TreeCursor cursor) {
         final byte[] page = mPage;
 
         int loc = DataIO.readUnsignedShort(page, mSearchVecStart + pos);
@@ -987,7 +989,7 @@ final class TreeNode extends Latch {
             : (((header & 0x3f) << 8) | ((page[loc++]) & 0xff));
         byte[] key = new byte[keyLen];
         System.arraycopy(page, loc, key, 0, keyLen);
-        entry.key = key;
+        cursor.mKey = key;
 
         loc += keyLen;
         byte[] value;
@@ -999,7 +1001,7 @@ final class TreeNode extends Latch {
             value = new byte[len];
             System.arraycopy(page, loc, value, 0, len);
         }
-        entry.value = value;
+        cursor.mValue = value;
     }
 
     /**
@@ -2770,6 +2772,7 @@ final class TreeNode extends Latch {
      * Prints the contents of tree rooted at this node. No latches are acquired
      * by this method -- it is only used for debugging.
      */
+    /* FIXME
     void dump(TreeNodeStore store, String indent) throws IOException {
         verify0();
 
@@ -2820,6 +2823,7 @@ final class TreeNode extends Latch {
             }
         }
     }
+    */
 
     private static String dumpToString(byte[] bytes) {
         for (byte b : bytes) {
