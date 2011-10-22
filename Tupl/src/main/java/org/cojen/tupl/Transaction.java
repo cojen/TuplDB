@@ -40,11 +40,17 @@ public class Transaction extends Locker {
     private int mLockModeStackSize;
 
     // FIXME: support scoped lock timeout
+    private long mLockTimeoutNanos;
 
-    Transaction(LockManager manager, DurabilityMode durabilityMode, LockMode lockMode) {
+    Transaction(LockManager manager,
+                DurabilityMode durabilityMode,
+                LockMode lockMode,
+                long timeoutNanos)
+    {
         super(manager);
         mDurabilityMode = durabilityMode;
         mLockMode = lockMode;
+        mLockTimeoutNanos = timeoutNanos;
     }
 
     /**
@@ -58,8 +64,7 @@ public class Transaction extends Locker {
      * @throws LockFailureException if interrupted or timed out
      */
     public final LockResult lockShared(long indexId, byte[] key) throws LockFailureException {
-        // FIXME: timeout
-        return super.lockShared(indexId, key, -1);
+        return super.lockShared(indexId, key, mLockTimeoutNanos);
     }
 
     /**
@@ -73,8 +78,7 @@ public class Transaction extends Locker {
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
      */
     public final LockResult lockUpgradable(long indexId, byte[] key) throws LockFailureException {
-        // FIXME: timeout
-        return super.lockUpgradable(indexId, key, -1);
+        return super.lockUpgradable(indexId, key, mLockTimeoutNanos);
     }
 
     /**
@@ -87,8 +91,7 @@ public class Transaction extends Locker {
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
      */
     public final LockResult lockExclusive(long indexId, byte[] key) throws LockFailureException {
-        // FIXME: timeout
-        return super.lockExclusive(indexId, key, -1);
+        return super.lockExclusive(indexId, key, mLockTimeoutNanos);
     }
 
     /**
@@ -108,7 +111,7 @@ public class Transaction extends Locker {
     }
 
     /**
-     * Returns the lock mode in currently in effect.
+     * Returns the lock mode currently in effect.
      */
     public final LockMode lockMode() {
         return mLockMode;

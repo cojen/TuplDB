@@ -32,6 +32,10 @@ public class Database implements Closeable {
 
     private final TreeNodeStore mNodeStore;
 
+    private final DurabilityMode mDurabilityMode;
+    private final long mDefaultLockTimeoutNanos;
+    private final LockManager mLockManager;
+
     public Database(DatabaseConfig config) throws IOException {
         File baseFile = config.mBaseFile;
         if (baseFile == null) {
@@ -62,7 +66,11 @@ public class Database implements Closeable {
             }
         }
 
-        mNodeStore = new TreeNodeStore(pageStore, minCache, maxCache);
+        mDurabilityMode = config.mDurabilityMode;
+        mDefaultLockTimeoutNanos = config.mLockTimeoutNanos;
+        mLockManager = new LockManager(mDefaultLockTimeoutNanos);
+
+        mNodeStore = new TreeNodeStore(mLockManager, pageStore, minCache, maxCache);
     }
 
     /**
@@ -78,6 +86,19 @@ public class Database implements Closeable {
      */
     public Index openIndex(String name) throws IOException {
         return mNodeStore.openIndex(name.getBytes("UTF-8"));
+    }
+
+    public Transaction newTransaction() {
+        return new Transaction
+            (mLockManager, mDurabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
+    }
+
+    public Transaction newTransaction(DurabilityMode durabilityMode) {
+        if (durabilityMode == null) {
+            durabilityMode = mDurabilityMode;
+        }
+        return new Transaction
+            (mLockManager, durabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
     }
 
     /**
