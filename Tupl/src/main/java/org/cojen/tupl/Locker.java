@@ -16,6 +16,8 @@
 
 package org.cojen.tupl;
 
+import static org.cojen.tupl.LockManager.hashCode;
+
 /**
  * Accumulates a scoped stack of locks, bound to arbitrary keys. Locker
  * instances can only be safely used by one thread at a time. Lockers can be
@@ -55,7 +57,7 @@ public class Locker {
      * @return UNOWNED, OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      */
     public final LockResult check(long indexId, byte[] key) {
-        return mManager.check(this, indexId, key);
+        return mManager.check(this, indexId, key, hashCode(indexId, key));
     }
 
     /**
@@ -70,7 +72,7 @@ public class Locker {
      * @throws IllegalStateException if too many shared locks
      */
     public final LockResult tryLockShared(long indexId, byte[] key, long nanosTimeout) {
-        return mManager.tryLockShared(this, indexId, key, nanosTimeout);
+        return mManager.tryLockShared(this, indexId, key, hashCode(indexId, key), nanosTimeout);
     }
 
     /**
@@ -87,7 +89,8 @@ public class Locker {
     public final LockResult lockShared(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {
-        LockResult result = mManager.tryLockShared(this, indexId, key, nanosTimeout);
+        LockResult result = mManager.tryLockShared
+            (this, indexId, key, hashCode(indexId, key), nanosTimeout);
         if (result.isGranted()) {
             return result;
         }
@@ -107,7 +110,8 @@ public class Locker {
      * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      */
     public final LockResult tryLockUpgradable(long indexId, byte[] key, long nanosTimeout) {
-        return mManager.tryLockUpgradable(this, indexId, key, nanosTimeout);
+        return mManager.tryLockUpgradable
+            (this, indexId, key, hashCode(indexId, key), nanosTimeout);
     }
 
     /**
@@ -124,7 +128,8 @@ public class Locker {
     public final LockResult lockUpgradable(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {
-        LockResult result = mManager.tryLockUpgradable(this, indexId, key, nanosTimeout);
+        LockResult result = mManager.tryLockUpgradable
+            (this, indexId, key, hashCode(indexId, key), nanosTimeout);
         if (result.isGranted()) {
             return result;
         }
@@ -143,7 +148,7 @@ public class Locker {
      * OWNED_EXCLUSIVE
      */
     public final LockResult tryLockExclusive(long indexId, byte[] key, long nanosTimeout) {
-        return mManager.tryLockExclusive(this, indexId, key, nanosTimeout);
+        return mManager.tryLockExclusive(this, indexId, key, hashCode(indexId, key), nanosTimeout);
     }
 
     /**
@@ -159,7 +164,8 @@ public class Locker {
     public final LockResult lockExclusive(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {
-        LockResult result = mManager.tryLockExclusive(this, indexId, key, nanosTimeout);
+        LockResult result = mManager.tryLockExclusive
+            (this, indexId, key, hashCode(indexId, key), nanosTimeout);
         if (result.isGranted()) {
             return result;
         }

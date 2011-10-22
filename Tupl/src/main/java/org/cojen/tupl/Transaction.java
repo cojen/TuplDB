@@ -48,6 +48,50 @@ public class Transaction extends Locker {
     }
 
     /**
+     * Attempt to acquire a shared lock for the given key, denying exclusive
+     * locks. If return value is OWNED_*, locker already owns a strong enough
+     * lock, and no extra unlock should be performed.
+     *
+     * @param key non-null key to lock; instance is not cloned
+     * @return ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     * @throws IllegalStateException if too many shared locks
+     * @throws LockFailureException if interrupted or timed out
+     */
+    public final LockResult lockShared(long indexId, byte[] key) throws LockFailureException {
+        // FIXME: timeout
+        return super.lockShared(indexId, key, -1);
+    }
+
+    /**
+     * Attempt to acquire an upgradable lock for the given key, denying
+     * exclusive and additional upgradable locks. If return value is OWNED_*,
+     * locker already owns a strong enough lock, and no extra unlock should be
+     * performed.
+     *
+     * @param key non-null key to lock; instance is not cloned
+     * @return ACQUIRED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     * @throws LockFailureException if interrupted, timed out, or illegal upgrade
+     */
+    public final LockResult lockUpgradable(long indexId, byte[] key) throws LockFailureException {
+        // FIXME: timeout
+        return super.lockUpgradable(indexId, key, -1);
+    }
+
+    /**
+     * Attempt to acquire an exclusive lock for the given key, denying any
+     * additional locks. If return value is OWNED_EXCLUSIVE, locker already
+     * owns exclusive lock, and no extra unlock should be performed.
+     *
+     * @param key non-null key to lock; instance is not cloned
+     * @return ACQUIRED, UPGRADED, or OWNED_EXCLUSIVE
+     * @throws LockFailureException if interrupted, timed out, or illegal upgrade
+     */
+    public final LockResult lockExclusive(long indexId, byte[] key) throws LockFailureException {
+        // FIXME: timeout
+        return super.lockExclusive(indexId, key, -1);
+    }
+
+    /**
      * Set the lock mode for the current scope. Transactions begin in {@link
      * LockMode.UPGRADABLE_READ} mode, and newly entered scopes begin at the
      * outer scope's current mode. Exiting a scope reverts the lock mode.

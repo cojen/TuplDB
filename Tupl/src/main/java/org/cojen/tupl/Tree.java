@@ -93,7 +93,7 @@ final class Tree implements Index {
 
     @Override
     public byte[] get(Transaction txn, byte[] key) throws IOException {
-        Locker locker = lockShared(txn, null, key);
+        Locker locker = lockForRead(txn, key);
         try {
             return mRoot.search(this, key);
         } finally {
@@ -208,7 +208,7 @@ final class Tree implements Index {
      * @param locker optional locker
      */
     boolean isLockAvailable(Locker locker, byte[] key) {
-        return mLockManager.isAvailable(locker, mId, key);
+        return mLockManager.isAvailable(locker, mId, key, LockManager.hashCode(mId, key));
     }
 
     /**
@@ -216,32 +216,24 @@ final class Tree implements Index {
      * @param key non-null key instance
      * @return non-null Locker instance if caller should unlock when read is done
      */
-    Locker lockShared(Transaction txn, LockMode lockMode, byte[] key)
-        throws LockFailureException
-    {
+    private Locker lockForRead(Transaction txn, byte[] key) throws LockFailureException {
         if (txn == null) {
             return lockSharedLocal(key);
         }
 
-        if (lockMode == null) {
-            lockMode = txn.lockMode();
-        }
-
-        switch (lockMode) {
+        switch (txn.lockMode()) {
         default: // No read lock requested by READ_UNCOMMITTED or UNSAFE.
             return null;
 
-            // FIXME: Lock timeouts (overload methods such that timeout param is optional).
-
         case READ_COMMITTED:
-            return txn.lockShared(mId, key, -1) == LockResult.ACQUIRED ? txn : null;
+            return txn.lockShared(mId, key) == LockResult.ACQUIRED ? txn : null;
 
         case REPEATABLE_READ:
-            txn.lockShared(mId, key, -1);
+            txn.lockShared(mId, key);
             return null;
 
         case UPGRADABLE_READ:
-            txn.lockUpgradable(mId, key, -1);
+            txn.lockUpgradable(mId, key);
             return null;
         }
     }
@@ -257,8 +249,7 @@ final class Tree implements Index {
         }
 
         if (txn.lockMode() != LockMode.UNSAFE) {
-            // FIXME: Lock timeouts (overload methods such that timeout param is optional).
-            txn.lockExclusive(mId, key, -1);
+            txn.lockExclusive(mId, key);
         }
 
         return null;
