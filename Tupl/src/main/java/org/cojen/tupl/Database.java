@@ -77,7 +77,7 @@ public class Database implements Closeable {
      * Returns the given named index, creating it if necessary.
      */
     public Index openIndex(byte[] name) throws IOException {
-        return mNodeStore.openIndex(name.clone());
+        return mNodeStore.openIndex(name.clone(), true);
     }
 
     /**
@@ -85,7 +85,7 @@ public class Database implements Closeable {
      * encoded.
      */
     public Index openIndex(String name) throws IOException {
-        return mNodeStore.openIndex(name.getBytes("UTF-8"));
+        return mNodeStore.openIndex(name.getBytes("UTF-8"), true);
     }
 
     public Transaction newTransaction() {
@@ -110,9 +110,7 @@ public class Database implements Closeable {
         if (id == 0) {
             throw new IllegalArgumentException("Invalid id: " + id);
         }
-
-        // FIXME
-        throw null;
+        return mNodeStore.indexById(id);
     }
 
     /**
