@@ -62,8 +62,7 @@ final class LockManager {
      *
      * @param locker optional locker
      */
-    final boolean isAvailable(Locker locker, long indexId, byte[] key) {
-        int hash = hashCode(indexId, key);
+    final boolean isAvailable(Locker locker, long indexId, byte[] key, int hash) {
         LockHT ht = getLockHT(hash);
         Latch latch = ht.mLatch;
         latch.acquireSharedUnfair();
@@ -75,8 +74,7 @@ final class LockManager {
         }
     }
 
-    final LockResult check(Locker locker, long indexId, byte[] key) {
-        int hash = hashCode(indexId, key);
+    final LockResult check(Locker locker, long indexId, byte[] key, int hash) {
         LockHT ht = getLockHT(hash);
         Latch latch = ht.mLatch;
         latch.acquireSharedUnfair();
@@ -88,8 +86,9 @@ final class LockManager {
         }
     }
 
-    final LockResult tryLockShared(Locker locker, long indexId, byte[] key, long nanosTimeout) {
-        int hash = hashCode(indexId, key);
+    final LockResult tryLockShared(Locker locker, long indexId, byte[] key, int hash,
+                                   long nanosTimeout)
+    {
         LockHT ht = getLockHT(hash);
 
         Lock lock;
@@ -112,10 +111,9 @@ final class LockManager {
         return result;
     }
 
-    final LockResult tryLockUpgradable(Locker locker,
-                                       long indexId, byte[] key, long nanosTimeout)
+    final LockResult tryLockUpgradable(Locker locker, long indexId, byte[] key, int hash,
+                                       long nanosTimeout)
     {
-        int hash = hashCode(indexId, key);
         LockHT ht = getLockHT(hash);
 
         Lock lock;
@@ -138,8 +136,9 @@ final class LockManager {
         return result;
     }
 
-    final LockResult tryLockExclusive(Locker locker, long indexId, byte[] key, long nanosTimeout) {
-        int hash = hashCode(indexId, key);
+    final LockResult tryLockExclusive(Locker locker, long indexId, byte[] key, int hash,
+                                      long nanosTimeout)
+    {
         LockHT ht = getLockHT(hash);
 
         Lock lock;

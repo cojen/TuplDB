@@ -38,148 +38,12 @@ final class TreeCursor implements Cursor {
     byte[] mKey;
     byte[] mValue;
 
+    // FIXME: Define mKeyHashCode, and reduce number of calls to LockManager.hashCode.
+
     TreeCursor(Tree tree, Transaction txn) {
         mTree = tree;
         mTxn = txn;
     }
-
-    // FIXME: remove or make private
-    /**
-     * Copies the key and value into the optional entry.
-     *
-     * @param txn optional transaction; not used if entry is null
-     * @throws IllegalStateException if position is undefined at invocation time
-     * /
-    boolean get(Transaction txn, Entry entry) throws IOException {
-        TreeCursorFrame leaf = leaf();
-        TreeNode node = leaf.acquireSharedUnfair();
-
-        splitCheck: if (node.mSplit != null) {
-            if (!node.tryUpgrade()) {
-                node.releaseShared();
-                node = leaf.acquireExclusiveUnfair();
-                if (node.mSplit == null) {
-                    break splitCheck;
-                }
-            }
-            node = finishSplit(leaf, node);
-        }
-
-        int pos = leaf.mNodePos;
-
-        // FIXME: is this logic correct?
-        if (entry == null) {
-            node.releaseShared();
-            return pos >= 0;
-        }
-
-        final LockMode lockMode;
-        if (txn == null) {
-            lockMode = LockMode.READ_COMMITTED;
-        } else if ((lockMode = txn.lockMode()).noReadLock) {
-            try {
-                if (pos >= 0) {
-                    node.retrieveLeafEntry(pos, entry);
-                    return true;
-                } else {
-                    entry.key = leaf.mNotFoundKey;
-                    entry.mKeyReadOnly = true;
-                    entry.value = null;
-                    return false;
-                }
-            } finally {
-                node.releaseShared();
-            }
-        }
-
-        entry.mKeyReadOnly = true;
-
-        // Get the key first, because it must be locked. After being locked,
-        // the value might have changed.
-
-        byte[] key = pos >= 0 ? node.retrieveLeafKey(pos) : leaf.mNotFoundKey;
-
-        lockIt: {
-            // Attempt to lock key while node latch is held. This is deadlock
-            // prone, and so only perform a quick check at first.
-
-            try {
-                switch (lockMode) {
-                default:
-                    // No read lock requested, but this case should never be
-                    // reached. It was handled earlier.
-                    break lockIt;
-
-                case READ_COMMITTED:
-                    // Quickly check that entry is valid without a full lock.
-                    if (mTree.isLockAvailable(txn, key)) {
-                        break lockIt;
-                    }
-                    break;
-
-                case REPEATABLE_READ:
-                    if (txn.tryLockShared(mTree.mId, key, 0).isGranted()) {
-                        break lockIt;
-                    }
-                    break;
-
-                case UPGRADABLE_READ:
-                    if (txn.tryLockUpgradable(mTree.mId, key, 0).isGranted()) {
-                        break lockIt;
-                    }
-                    break;
-                }
-            } catch (OutOfMemoryError e) {
-                node.releaseShared();
-                throw e;
-            }
-
-            // This point is reached when a lock cannot be immediately
-            // granted. Release the latch, lock the key, and then relatch.
-
-            node.releaseShared();
-            Locker locker = mTree.lockShared(txn, lockMode, key);
-            try {
-                // Acquire node latch again, and perform split check again.
-                node = leaf.acquireSharedUnfair();
-
-                splitCheck: if (node.mSplit != null) {
-                    if (!node.tryUpgrade()) {
-                        node.releaseShared();
-                        node = leaf.acquireExclusiveUnfair();
-                        if (node.mSplit == null) {
-                            break splitCheck;
-                        }
-                    }
-                    node = finishSplit(leaf, node);
-                }
-
-                pos = leaf.mNodePos;
-                try {
-                    entry.value = pos >= 0 ? node.retrieveLeafValue(pos) : null;
-                    entry.key = key;
-                } finally {
-                    node.releaseShared();
-                }
-
-                return pos >= 0;
-            } finally {
-                if (locker != null) {
-                    locker.unlock();
-                }
-            }
-        }
-
-        try {
-            entry.value = pos >= 0 ? node.retrieveLeafValue(pos) : null;
-            entry.key = key;
-        } finally {
-            node.releaseShared();
-        }
-
-        return pos >= 0;
-    }
-    */
 
     @Override
     public byte[] key() {
@@ -200,9 +64,18 @@ final class TreeCursor implements Cursor {
             mKey = null;
             mValue = null;
             return LockResult.UNOWNED;
-        } else {
-            return toFirst(root, frame);
         }
+
+        Transaction txn = mTxn;
+        LockResult result = toFirst(txn, root, frame);
+        if (result != null || (result = lockCurrentIfExists(txn)) != null) {
+            return result;
+        }
+
+        // If this point is reached, then entry was deleted after latch was
+        // released. Move to next entry, which is consistent with findGe.
+        // First means, "find greater than or equal to lowest possible key".
+        return next();
     }
 
     /**
@@ -210,17 +83,21 @@ final class TreeCursor implements Cursor {
      *
      * @param node latched node
      * @param frame frame to bind node to
+     * @return null if lock was required but could not be obtained
      */
-    private LockResult toFirst(TreeNode node, TreeCursorFrame frame) throws IOException {
-        // FIXME: txn and LockResult
+    private LockResult toFirst(Transaction txn, TreeNode node, TreeCursorFrame frame)
+        throws IOException
+    {
         while (true) {
             frame.bind(node, 0);
 
             if (node.isLeaf()) {
-                node.retrieveLeafEntry(0, this);
-                node.releaseExclusive();
-                mLeaf = frame;
-                return LockResult.UNOWNED;
+                try {
+                    return tryCopyCurrent(txn, node, 0);
+                } finally {
+                    node.releaseExclusive();
+                    mLeaf = frame;
+                }
             }
 
             if (node.mSplit != null) {
@@ -241,9 +118,18 @@ final class TreeCursor implements Cursor {
             mKey = null;
             mValue = null;
             return LockResult.UNOWNED;
-        } else {
-            return toLast(root, frame);
         }
+
+        Transaction txn = mTxn;
+        LockResult result = toLast(txn, root, frame);
+        if (result != null || (result = lockCurrentIfExists(txn)) != null) {
+            return result;
+        }
+
+        // If this point is reached, then entry was deleted after latch was
+        // released. Move to previous entry, which is consistent with findLe.
+        // Last means, "find less than or equal to highest possible key".
+        return previous();
     }
 
     /**
@@ -251,22 +137,26 @@ final class TreeCursor implements Cursor {
      *
      * @param node latched node
      * @param frame frame to bind node to
+     * @return null if lock was required but could not be obtained
      */
-    private LockResult toLast(TreeNode node, TreeCursorFrame frame) throws IOException {
-        // FIXME: txn and LockResult
+    private LockResult toLast(Transaction txn, TreeNode node, TreeCursorFrame frame)
+        throws IOException
+    {
         while (true) {
             if (node.isLeaf()) {
-                int pos;
-                if (node.mSplit == null) {
-                    pos = node.highestLeafPos();
-                } else {
-                    pos = node.mSplit.highestLeafPos(mTree.mStore, node);
+                try {
+                    int pos;
+                    if (node.mSplit == null) {
+                        pos = node.highestLeafPos();
+                    } else {
+                        pos = node.mSplit.highestLeafPos(mTree.mStore, node);
+                    }
+                    frame.bind(node, pos);
+                    return tryCopyCurrent(txn, node, pos);
+                } finally {
+                    node.releaseExclusive();
+                    mLeaf = frame;
                 }
-                frame.bind(node, pos);
-                node.retrieveLeafEntry(pos, this);
-                node.releaseExclusive();
-                mLeaf = frame;
-                return LockResult.UNOWNED;
             }
 
             Split split = node.mSplit;
@@ -324,15 +214,26 @@ final class TreeCursor implements Cursor {
 
     @Override
     public LockResult next() throws IOException {
-        return next(leafExclusiveNotSplit());
+        return next(mTxn, leafExclusiveNotSplit());
     }
 
     /**
      * @param frame leaf frame, not split, with exclusive latch
      */
-    private LockResult next(TreeCursorFrame frame) throws IOException {
-        // FIXME: txn and LockResult
+    private LockResult next(Transaction txn, TreeCursorFrame frame) throws IOException {
+        while (true) {
+            LockResult result = toNext(txn, frame);
+            if (result != null || (result = lockCurrentIfExists(txn)) != null) {
+                return result;
+            }
+        }
+    }
 
+    /**
+     * @param frame leaf frame, not split, with exclusive latch
+     * @return null if lock was required but could not be obtained
+     */
+    private LockResult toNext(Transaction txn, TreeCursorFrame frame) throws IOException {
         TreeNode node = frame.mNode;
 
         quick: {
@@ -349,9 +250,12 @@ final class TreeCursor implements Cursor {
             }
 
             frame.mNodePos = (pos += 2);
-            node.retrieveLeafEntry(pos, this);
-            node.releaseExclusive();
-            return LockResult.UNOWNED;
+
+            try {
+                return tryCopyCurrent(txn, node, pos);
+            } finally {
+                node.releaseExclusive();
+            }
         }
 
         while (true) {
@@ -425,14 +329,17 @@ final class TreeCursor implements Cursor {
                     }
 
                     parentNode.releaseExclusive();
-                    pos += 2;
-                    frame.mNodePos = pos;
+                    frame.mNodePos = (pos += 2);
 
                     if (frame == mLeaf) {
-                        node.releaseExclusive();
-                        return LockResult.UNOWNED;
+                        try {
+                            return tryCopyCurrent(txn, node, pos);
+                        } finally {
+                            node.releaseExclusive();
+                        }
                     } else {
-                        return toFirst(latchChild(node, pos, true),
+                        return toFirst(txn,
+                                       latchChild(node, pos, true),
                                        new TreeCursorFrame(frame));
                     }
                 }
@@ -445,9 +352,9 @@ final class TreeCursor implements Cursor {
             // frame is no longer valid.
 
             if (parentPos < parentNode.highestInternalPos()) {
-                parentPos += 2;
-                parentFrame.mNodePos = parentPos;
-                return toFirst(latchChild(parentNode, parentPos, true),
+                parentFrame.mNodePos = (parentPos += 2);
+                return toFirst(txn,
+                               latchChild(parentNode, parentPos, true),
                                new TreeCursorFrame(parentFrame));
             }
 
@@ -458,15 +365,26 @@ final class TreeCursor implements Cursor {
 
     @Override
     public LockResult previous() throws IOException {
-        return previous(leafExclusiveNotSplit());
+        return previous(mTxn, leafExclusiveNotSplit());
     }
 
     /**
      * @param frame leaf frame, not split, with exclusive latch
      */
-    private LockResult previous(TreeCursorFrame frame) throws IOException {
-        // FIXME: txn and LockResult
+    private LockResult previous(Transaction txn, TreeCursorFrame frame) throws IOException {
+        while (true) {
+            LockResult result = toPrevious(txn, frame);
+            if (result != null || (result = lockCurrentIfExists(txn)) != null) {
+                return result;
+            }
+        }
+    }
 
+    /**
+     * @param frame leaf frame, not split, with exclusive latch
+     * @return null if lock was required but could not be obtained
+     */
+    private LockResult toPrevious(Transaction txn, TreeCursorFrame frame) throws IOException {
         TreeNode node = frame.mNode;
 
         quick: {
@@ -482,10 +400,13 @@ final class TreeCursor implements Cursor {
                 break quick;
             }
 
-            frame.mNodePos = pos -= 2;
-            node.retrieveLeafEntry(pos, this);
-            node.releaseExclusive();
-            return LockResult.UNOWNED;
+            frame.mNodePos = (pos -= 2);
+
+            try {
+                return tryCopyCurrent(txn, node, pos);
+            } finally {
+                node.releaseExclusive();
+            }
         }
 
         while (true) {
@@ -559,14 +480,17 @@ final class TreeCursor implements Cursor {
                     }
 
                     parentNode.releaseExclusive();
-                    pos -= 2;
-                    frame.mNodePos = pos;
+                    frame.mNodePos = (pos -= 2);
 
                     if (frame == mLeaf) {
-                        node.releaseExclusive();
-                        return LockResult.UNOWNED;
+                        try {
+                            return tryCopyCurrent(txn, node, pos);
+                        } finally {
+                            node.releaseExclusive();
+                        }
                     } else {
-                        return toLast(latchChild(node, pos, true),
+                        return toLast(txn,
+                                      latchChild(node, pos, true),
                                       new TreeCursorFrame(frame));
                     }
                 }
@@ -579,15 +503,151 @@ final class TreeCursor implements Cursor {
             // frame is no longer valid.
 
             if (parentPos > 0) {
-                parentPos -= 2;
-                parentFrame.mNodePos = parentPos;
-                return toLast(latchChild(parentNode, parentPos, true),
+                parentFrame.mNodePos = (parentPos -= 2);
+                return toLast(txn,
+                              latchChild(parentNode, parentPos, true),
                               new TreeCursorFrame(parentFrame));
             }
 
             frame = parentFrame;
             node = parentNode;
         }
+    }
+
+    /**
+     * Try to copy the current entry, locking it if required. Null is returned
+     * if lock is not immediately available and only the key was copied.
+     *
+     * @return null, UNOWNED, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED,
+     * OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     * @param txn optional
+     * @param node latched node
+     */
+    private LockResult tryCopyCurrent(Transaction txn, TreeNode node, int pos) {
+        final LockMode mode;
+        if (txn == null) {
+            mode = LockMode.READ_COMMITTED;
+        } else if ((mode = txn.lockMode()).noReadLock) {
+            node.retrieveLeafEntry(pos, this);
+            return LockResult.UNOWNED;
+        }
+
+        // Copy key for now, because lock might not be available. Value might
+        // change after latch is released. Assign a value of null, in case lock
+        // cannot be granted at all. This prevents uncommited value from being
+        // exposed.
+        mKey = node.retrieveLeafKey(pos);
+        mValue = null;
+
+        LockResult result;
+
+        switch (mode) {
+        default:
+            if (mTree.isLockAvailable(txn, mKey)) {
+                // No need to acquire full lock.
+                mValue = node.retrieveLeafValue(pos);
+                return LockResult.UNOWNED;
+            } else {
+                return null;
+            }
+
+        case REPEATABLE_READ:
+            result = txn.tryLockShared(mTree.mId, mKey, 0);
+            break;
+
+        case UPGRADABLE_READ:
+            result = txn.tryLockUpgradable(mTree.mId, mKey, 0);
+            break;
+        }
+
+        if (result.isGranted()) {
+            mValue = node.retrieveLeafValue(pos);
+            return result;
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * With node latch not held, lock the current key. Returns the lock result
+     * if entry exists, null otherwise.
+     *
+     * @param txn optional
+     * @return null if current entry has been deleted
+     */
+    private LockResult lockCurrentIfExists(Transaction txn) throws IOException {
+        if (txn == null) {
+            Locker locker = mTree.lockSharedLocal(mKey);
+            try {
+                if (copyValueIfExists()) {
+                    return LockResult.UNOWNED;
+                }
+            } finally {
+                locker.unlock();
+            }
+        } else {
+            LockResult result;
+
+            switch (txn.lockMode()) {
+                // Default case should only capture READ_COMMITTED, since
+                // no-lock modes were already handled.
+            default:
+                if ((result = txn.lockShared(mTree.mId, mKey)) == LockResult.ACQUIRED) {
+                    result = LockResult.UNOWNED;
+                }
+                break;
+
+            case REPEATABLE_READ:
+                result = txn.lockShared(mTree.mId, mKey);
+                break;
+
+            case UPGRADABLE_READ:
+                result = txn.lockUpgradable(mTree.mId, mKey);
+                break;
+            }
+
+            if (copyValueIfExists()) {
+                if (result == LockResult.UNOWNED) {
+                    txn.unlock();
+                }
+                return result;
+            }
+
+            if (result == LockResult.UNOWNED || result == LockResult.ACQUIRED) {
+                txn.unlock();
+            }
+        }
+
+        // Entry does not exist, and lock has been released if was just acquired.
+        return null;
+    }
+
+    private boolean copyValueIfExists() throws IOException {
+        TreeCursorFrame frame = leaf();
+        TreeNode node = frame.acquireSharedUnfair();
+        try {
+            splitCheck: if (node.mSplit != null) {
+                if (!node.tryUpgrade()) {
+                    node.releaseShared();
+                    node = frame.acquireExclusiveUnfair();
+                    if (node.mSplit == null) {
+                        break splitCheck;
+                    }
+                }
+                node = finishSplit(frame, node);
+            }
+
+            int pos = frame.mNodePos;
+
+            if (pos >= 0) {
+                node.retrieveLeafValue(pos);
+                return true;
+            }
+        } finally {
+            node.releaseShared();
+        }
+
+        return false;
     }
 
     private static final int
@@ -599,61 +659,65 @@ final class TreeCursor implements Cursor {
 
     @Override
     public LockResult find(byte[] key) throws IOException {
-        return find(key, VARIANT_REGULAR);
+        return find(mTxn, key, VARIANT_REGULAR);
     }
 
     @Override
     public LockResult findGe(byte[] key) throws IOException {
         // If isolation level is read committed, then key must be
         // locked. Otherwise, an uncommitted delete could be observed.
-        LockResult result = find(key, VARIANT_RETAIN);
+        Transaction txn = mTxn;
+        LockResult result = find(txn, key, VARIANT_RETAIN);
         if (mValue != null) {
             mLeaf.mNode.releaseExclusive();
             return result;
         } else {
             if (result == LockResult.ACQUIRED) {
-                mTxn.unlock();
+                txn.unlock();
             }
-            return next(mLeaf);
+            return next(txn, mLeaf);
         }
     }
 
     @Override
     public LockResult findGt(byte[] key) throws IOException {
         // Never lock the requested key.
-        find(key, VARIANT_CHECK);
-        return next(mLeaf);
+        Transaction txn = mTxn;
+        find(txn, key, VARIANT_CHECK);
+        return next(txn, mLeaf);
     }
 
     @Override
     public LockResult findLe(byte[] key) throws IOException {
         // If isolation level is read committed, then key must be
         // locked. Otherwise, an uncommitted delete could be observed.
-        LockResult result = find(key, VARIANT_RETAIN);
+        Transaction txn = mTxn;
+        LockResult result = find(txn, key, VARIANT_RETAIN);
         if (mValue != null) {
             mLeaf.mNode.releaseExclusive();
             return result;
         } else {
             if (result == LockResult.ACQUIRED) {
-                mTxn.unlock();
+                txn.unlock();
             }
-            return previous(mLeaf);
+            return previous(txn, mLeaf);
         }
     }
 
     @Override
     public LockResult findLt(byte[] key) throws IOException {
         // Never lock the requested key.
-        find(key, VARIANT_CHECK);
-        return previous(mLeaf);
+        Transaction txn = mTxn;
+        find(txn, key, VARIANT_CHECK);
+        return previous(txn, mLeaf);
     }
 
     @Override
     public LockResult findNearby(byte[] key) throws IOException {
-        return find(key, VARIANT_NEARBY);
+        return find(mTxn, key, VARIANT_NEARBY);
     }
 
-    private LockResult find(byte[] key, int variant) throws IOException {
+    private LockResult find(Transaction txn, byte[] key, int variant) throws IOException {
         if (key == null) {
             throw new NullPointerException("Cannot find a null key");
         }
@@ -665,7 +729,6 @@ final class TreeCursor implements Cursor {
             result = LockResult.UNOWNED;
             locker = null;
         } else {
-            Transaction txn = mTxn;
             if (txn == null) {
                 result = LockResult.UNOWNED;
                 locker = variant == VARIANT_CHECK ? null : mTree.lockSharedLocal(key);
@@ -676,9 +739,8 @@ final class TreeCursor implements Cursor {
                     locker = null;
                     break;
 
-                    // FIXME: lock timeouts (overload methods such that timeout param is optional)
                 case READ_COMMITTED:
-                    if ((result = txn.lockShared(mTree.mId, key, -1)) == LockResult.ACQUIRED) {
+                    if ((result = txn.lockShared(mTree.mId, key)) == LockResult.ACQUIRED) {
                         result = LockResult.UNOWNED;
                         locker = txn;
                     } else {
@@ -687,12 +749,12 @@ final class TreeCursor implements Cursor {
                     break;
 
                 case REPEATABLE_READ:
-                    result = txn.lockShared(mTree.mId, key, -1);
+                    result = txn.lockShared(mTree.mId, key);
                     locker = null;
                     break;
 
                 case UPGRADABLE_READ:
-                    result = txn.lockUpgradable(mTree.mId, key, -1);
+                    result = txn.lockUpgradable(mTree.mId, key);
                     locker = null;
                     break;
                 }
@@ -895,7 +957,7 @@ final class TreeCursor implements Cursor {
             final Locker locker = mTree.lockExclusive(txn, key);
             try {
                 // Find with no lock because it has already been acquired.
-                find(key, VARIANT_NO_LOCK);
+                find(null, key, VARIANT_NO_LOCK);
                 final TreeCursorFrame leaf = mLeaf;
                 // FIXME: undo log (unless txn == null | UNSAFE), redo log (unless NO_LOG)
                 store(leaf, value);
@@ -943,8 +1005,7 @@ final class TreeCursor implements Cursor {
                 // Indicate that no unlock should be performed.
                 result = LockResult.OWNED_EXCLUSIVE;
             } else {
-                // FIXME: lock timeouts (overload methods such that timeout param is optional)
-                result = txn.lockExclusive(mTree.mId, key, -1);
+                result = txn.lockExclusive(mTree.mId, key);
                 if (result == LockResult.ACQUIRED &&
                     (mode == LockMode.REPEATABLE_READ || mode == LockMode.UPGRADABLE_READ))
                 {
@@ -979,7 +1040,7 @@ final class TreeCursor implements Cursor {
         throws IOException
     {
         // Find with no lock because caller must already acquire exclusive lock.
-        find(key, VARIANT_NO_LOCK);
+        find(null, key, VARIANT_NO_LOCK);
 
         if (oldValue == MODIFY_INSERT) {
             // insert mode
