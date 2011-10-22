@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -64,6 +65,7 @@ final class TreeNodeStore implements Closeable {
     private final Tree mRegistryKeyMap;
     // Maps tree names to open trees.
     private final Map<byte[], Tree> mOpenTrees;
+    private final Map<Long, Tree> mOpenTreesById;
 
     TreeNodeStore(LockManager lockManager,
                   PageStore store, int minCachedNodeCount, int maxCachedNodeCount)
@@ -111,6 +113,7 @@ final class TreeNodeStore implements Closeable {
 
         mRegistry = new Tree(this, 0, null, null, loadRegistryRoot());
         mOpenTrees = new TreeMap<byte[], Tree>(KeyComparator.THE);
+        mOpenTreesById = new HashMap<Long, Tree>();
 
         // Pre-allocate nodes. They are automatically added to the usage list,
         // and so nothing special needs to be done to allow them to get used. Since
@@ -171,9 +174,9 @@ final class TreeNodeStore implements Closeable {
     }
 
     /**
-     * Returns the given named index, creating it if necessary.
+     * Returns the given named index, creating it if allowed.
      */
-    Index openIndex(byte[] name) throws IOException {
+    Index openIndex(byte[] name, boolean create) throws IOException {
         final Lock commitLock = sharedCommitLock();
         commitLock.lock();
         try {
@@ -190,31 +193,31 @@ final class TreeNodeStore implements Closeable {
 
             if (treeIdBytes != null) {
                 treeId = DataIO.readLong(treeIdBytes, 0);
-            } else {
-                synchronized (mOpenTrees) {
-                    treeIdBytes = mRegistryKeyMap.get(null, nameKey);
-                    if (treeIdBytes != null) {
-                        treeId = DataIO.readLong(treeIdBytes, 0);
-                    } else {
-                        treeIdBytes = new byte[8];
+            } else if (!create) {
+                return null;
+            } else synchronized (mOpenTrees) {
+                treeIdBytes = mRegistryKeyMap.get(null, nameKey);
+                if (treeIdBytes != null) {
+                    treeId = DataIO.readLong(treeIdBytes, 0);
+                } else {
+                    treeIdBytes = new byte[8];
 
-                        do {
-                            treeId = Utils.randomId();
-                            DataIO.writeLong(treeIdBytes, 0, treeId);
-                        } while (!mRegistry.insert(null, treeIdBytes, Utils.EMPTY_BYTES));
+                    do {
+                        treeId = Utils.randomId();
+                        DataIO.writeLong(treeIdBytes, 0, treeId);
+                    } while (!mRegistry.insert(null, treeIdBytes, Utils.EMPTY_BYTES));
 
-                        if (!mRegistryKeyMap.insert(null, nameKey, treeIdBytes)) {
-                            mRegistry.delete(null, treeIdBytes);
-                            throw new IOException("Unable to insert index name");
-                        }
+                    if (!mRegistryKeyMap.insert(null, nameKey, treeIdBytes)) {
+                        mRegistry.delete(null, treeIdBytes);
+                        throw new DatabaseException("Unable to insert index name");
+                    }
 
-                        byte[] idKey = newKey(KEY_TYPE_INDEX_ID, treeIdBytes);
+                    byte[] idKey = newKey(KEY_TYPE_INDEX_ID, treeIdBytes);
 
-                        if (!mRegistryKeyMap.insert(null, idKey, name)) {
-                            mRegistryKeyMap.delete(null, nameKey);
-                            mRegistry.delete(null, treeIdBytes);
-                            throw new IOException("Unable to insert index id");
-                        }
+                    if (!mRegistryKeyMap.insert(null, idKey, name)) {
+                        mRegistryKeyMap.delete(null, nameKey);
+                        mRegistry.delete(null, treeIdBytes);
+                        throw new DatabaseException("Unable to insert index id");
                     }
                 }
             }
@@ -235,6 +238,7 @@ final class TreeNodeStore implements Closeable {
                 if (tree == null) {
                     tree = new Tree(this, treeId, treeIdBytes, name, rootNode);
                     mOpenTrees.put(name, tree);
+                    mOpenTreesById.put(treeId, tree);
                 }
                 return tree;
             }
@@ -243,6 +247,44 @@ final class TreeNodeStore implements Closeable {
         } finally {
             commitLock.unlock();
         }
+    }
+
+    Index indexById(Long treeId) throws IOException {
+        Index index;
+
+        final Lock commitLock = sharedCommitLock();
+        commitLock.lock();
+        try {
+            synchronized (mOpenTrees) {
+                Tree tree = mOpenTreesById.get(treeId);
+                if (tree != null) {
+                    return tree;
+                }
+            }
+
+            byte[] idKey = new byte[9];
+            idKey[0] = KEY_TYPE_INDEX_ID;
+            DataIO.writeLong(idKey, 1, treeId);
+
+            byte[] name = mRegistryKeyMap.get(null, idKey);
+
+            if (name == null) {
+                return null;
+            }
+
+            index = openIndex(name, false);
+        } catch (Throwable e) {
+            throw Utils.closeOnFailure(this, e);
+        } finally {
+            commitLock.unlock();
+        }
+
+        if (index == null) {
+            // Registry needs to be repaired to fix this.
+            throw new DatabaseException("Unable to find index in registry");
+        }
+
+        return index;
     }
 
     private static byte[] newKey(byte type, byte[] payload) {
