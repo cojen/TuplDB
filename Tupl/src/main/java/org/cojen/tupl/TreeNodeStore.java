@@ -42,6 +42,7 @@ final class TreeNodeStore implements Closeable {
     private static final byte KEY_TYPE_INDEX_NAME = 0;
     private static final byte KEY_TYPE_INDEX_ID = 1;
 
+    final LockManager mLockManager;
     final PageStore mPageStore;
 
     private final BufferPool mSpareBufferPool;
@@ -64,16 +65,16 @@ final class TreeNodeStore implements Closeable {
     // Maps tree names to open trees.
     private final Map<byte[], Tree> mOpenTrees;
 
-    final LockManager mLockManager = new LockManager();
-
-    TreeNodeStore(PageStore store, int minCachedNodeCount, int maxCachedNodeCount)
+    TreeNodeStore(LockManager lockManager,
+                  PageStore store, int minCachedNodeCount, int maxCachedNodeCount)
         throws IOException
     {
-        this(store, minCachedNodeCount, maxCachedNodeCount,
+        this(lockManager, store, minCachedNodeCount, maxCachedNodeCount,
              Runtime.getRuntime().availableProcessors());
     }
 
-    TreeNodeStore(PageStore store, int minCachedNodeCount, int maxCachedNodeCount,
+    TreeNodeStore(LockManager lockManager,
+                  PageStore store, int minCachedNodeCount, int maxCachedNodeCount,
                   int spareBufferCount)
         throws IOException
     {
@@ -92,6 +93,7 @@ final class TreeNodeStore implements Closeable {
                 ("Maximum cached node count is too small: " + maxCachedNodeCount);
         }
 
+        mLockManager = lockManager;
         mPageStore = store;
 
         mSpareBufferPool = new BufferPool(store.pageSize(), spareBufferCount);

@@ -24,16 +24,20 @@ import static org.cojen.tupl.LockResult.*;
  * @author Brian S O'Neill
  */
 final class LockManager {
+    private final long mDefaultTimeoutNanos;
+
     private final LockHT[] mHashTables;
     private final int mHashTableMask;
 
     private final ThreadLocal<Locker> mLocalLocker;
 
-    LockManager() {
-        this(Runtime.getRuntime().availableProcessors() * 16);
+    LockManager(long timeoutNanos) {
+        this(timeoutNanos, Runtime.getRuntime().availableProcessors() * 16);
     }
 
-    private LockManager(int numHashTables) {
+    private LockManager(long timeoutNanos, int numHashTables) {
+        mDefaultTimeoutNanos = timeoutNanos;
+
         // Round up to power of 2.
         numHashTables = Integer.highestOneBit(numHashTables - 1) << 1;
         mHashTables = new LockHT[numHashTables];
@@ -203,15 +207,13 @@ final class LockManager {
 
     final Locker lockSharedLocal(long indexId, byte[] key) throws LockFailureException {
         Locker locker = localLocker();
-        // FIXME: Use default timeout, as known by this LockManager.
-        locker.lockShared(indexId, key, -1);
+        locker.lockShared(indexId, key, mDefaultTimeoutNanos);
         return locker;
     }
 
     final Locker lockExclusiveLocal(long indexId, byte[] key) throws LockFailureException {
         Locker locker = localLocker();
-        // FIXME: Use default timeout, as known by this LockManager.
-        locker.lockExclusive(indexId, key, -1);
+        locker.lockExclusive(indexId, key, mDefaultTimeoutNanos);
         return locker;
     }
 
