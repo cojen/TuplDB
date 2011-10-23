@@ -49,6 +49,7 @@ public final class Database implements Closeable {
     final DurabilityMode mDurabilityMode;
     final long mDefaultLockTimeoutNanos;
     final LockManager mLockManager;
+    final RedoLog mRedoLog;
     final PageStore mPageStore;
 
     private final BufferPool mSpareBufferPool;
@@ -82,8 +83,8 @@ public final class Database implements Closeable {
         }
 
         String basePath = baseFile.getPath();
-        File file0 = new File(basePath + ".0.db");
-        File file1 = new File(basePath + ".1.db");
+        File file0 = new File(basePath + ".db.0");
+        File file1 = new File(basePath + ".db.1");
 
         DualFilePageStore pageStore;
         if (config.mPageSize <= 0) {
@@ -120,6 +121,9 @@ public final class Database implements Closeable {
         mDurabilityMode = config.mDurabilityMode;
         mDefaultLockTimeoutNanos = config.mLockTimeoutNanos;
         mLockManager = new LockManager(mDefaultLockTimeoutNanos);
+
+        // FIXME: Init with proper log number.
+        mRedoLog = new RedoLog(baseFile, 0);
 
         mPageStore = pageStore;
 

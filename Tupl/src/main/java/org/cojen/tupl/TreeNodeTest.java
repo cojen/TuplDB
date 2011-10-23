@@ -32,7 +32,11 @@ public class TreeNodeTest {
         java.io.File file = new java.io.File(args[0]);
 
         final Database db = new Database
-            (DatabaseConfig.newConfig().setBaseFile(file).setMinCachedNodes(100000));
+            (DatabaseConfig
+             .newConfig()
+             .setBaseFile(file)
+             .setMinCachedNodes(100000)
+             .setDurabilityMode(DurabilityMode.NO_FLUSH));
         final Index index = db.openIndex("test1");
 
         /*

@@ -263,6 +263,10 @@ final class Tree implements Index {
         return mLockManager.lockExclusiveLocal(mId, key);
     }
 
+    void redoStore(byte[] key, byte[] value) throws IOException {
+        mDatabase.mRedoLog.store(mId, key, value, mDatabase.mDurabilityMode);
+    }
+
     /**
      * @see Database#markDirty
      */
