@@ -42,7 +42,7 @@ public enum DurabilityMode {
 
     /**
      * Durability mode which writes modifications to the file system when the
-     * in process buffer is full. This mode is vulnerable to power failures,
+     * in-process buffer is full. This mode is vulnerable to power failures,
      * operating system crashes, and process crashes. These events can cause
      * recently committed transactions to get lost. A shutdown hook durably
      * flushes modifications when the process exits cleanly.

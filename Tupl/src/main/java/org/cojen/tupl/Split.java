@@ -63,7 +63,7 @@ class Split {
      * @param node node which was split; shared latch must be held
      * @return original node or sibling
      */
-    TreeNode selectNodeShared(TreeNodeStore store, TreeNode node, byte[] key) throws IOException {
+    TreeNode selectNodeShared(Database db, TreeNode node, byte[] key) throws IOException {
         TreeNode sibling = mSibling;
         sibling.acquireSharedUnfair();
 
@@ -73,8 +73,8 @@ class Split {
                 sibling = mSibling;
                 if (mSiblingId != sibling.mId) {
                     sibling.releaseShared();
-                    sibling = store.allocLatchedNode();
-                    sibling.read(store, mSiblingId);
+                    sibling = db.allocLatchedNode();
+                    sibling.read(db, mSiblingId);
                     sibling.downgrade();
                     mSibling = sibling;
                 }
@@ -108,10 +108,10 @@ class Split {
      * @param node node which was split; exclusive latch must be held
      * @return original node or sibling
      */
-    TreeNode selectNodeExclusive(TreeNodeStore store, TreeNode node, byte[] key)
+    TreeNode selectNodeExclusive(Database db, TreeNode node, byte[] key)
         throws IOException
     {
-        TreeNode sibling = latchSibling(store);
+        TreeNode sibling = latchSibling(db);
 
         TreeNode left, right;
         if (mSplitRight) {
@@ -135,8 +135,8 @@ class Split {
      * Performs a binary search against the split, returning the position
      * within the original node as if it had not split.
      */
-    int binarySearchLeaf(TreeNodeStore store, TreeNode node, byte[] key) throws IOException {
-        TreeNode sibling = latchSibling(store);
+    int binarySearchLeaf(Database db, TreeNode node, byte[] key) throws IOException {
+        TreeNode sibling = latchSibling(db);
 
         TreeNode left, right;
         if (mSplitRight) {
@@ -168,8 +168,8 @@ class Split {
     /**
      * Returns the highest position within the original node as if it had not split.
      */
-    int highestLeafPos(TreeNodeStore store, TreeNode node) throws IOException {
-        TreeNode sibling = latchSibling(store);
+    int highestLeafPos(Database db, TreeNode node) throws IOException {
+        TreeNode sibling = latchSibling(db);
         int pos = node.highestLeafPos() + sibling.highestLeafPos() + 2;
         sibling.releaseExclusive();
         return pos;
@@ -178,11 +178,11 @@ class Split {
     /**
      * Return the left split node, latched exclusively. Other node is unlatched.
      */
-    TreeNode latchLeft(TreeNodeStore store, TreeNode node) throws IOException {
+    TreeNode latchLeft(Database db, TreeNode node) throws IOException {
         if (mSplitRight) {
             return node;
         }
-        TreeNode sibling = latchSibling(store);
+        TreeNode sibling = latchSibling(db);
         node.releaseExclusive();
         return sibling;
     }
@@ -190,7 +190,7 @@ class Split {
     /**
      * @return sibling with exclusive latch held
      */
-    TreeNode latchSibling(TreeNodeStore store) throws IOException {
+    TreeNode latchSibling(Database db) throws IOException {
         TreeNode sibling = mSibling;
         sibling.acquireExclusiveUnfair();
         if (mSiblingId != sibling.mId) {
@@ -199,8 +199,8 @@ class Split {
                 sibling = mSibling;
                 if (mSiblingId != sibling.mId) {
                     sibling.releaseExclusive();
-                    sibling = store.allocLatchedNode();
-                    sibling.read(store, mSiblingId);
+                    sibling = db.allocLatchedNode();
+                    sibling.read(db, mSiblingId);
                     mSibling = sibling;
                 }
             }
