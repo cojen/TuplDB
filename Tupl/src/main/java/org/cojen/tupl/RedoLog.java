@@ -25,8 +25,6 @@ import java.io.IOException;
 
 import java.nio.channels.FileChannel;
 
-import java.util.zip.Adler32;
-
 /**
  * 
  *
@@ -41,42 +39,42 @@ class RedoLog implements Closeable, RedoLogVisitor {
         OP_TIMESTAMP = 1,
 
         /** timestamp: long */
-        OP_CLOSE = 2,
+        OP_SHUTDOWN = 2,
+
+        /** timestamp: long */
+        OP_CLOSE = 3,
 
         /** txnId: long */
-        //OP_TXN_BEGIN = 3,
+        //OP_TXN_BEGIN = 4,
 
         /** txnId: long, parentTxnId: long */
-        //OP_TXN_BEGIN_NESTED = 4,
+        //OP_TXN_BEGIN_NESTED = 5,
 
         /** txnId: long */
-        //OP_TXN_CONTINUE = 5,
+        //OP_TXN_CONTINUE = 6,
 
         /** txnId: long, parentTxnId: long */
-        //OP_TXN_CONTINUE_NESTED = 6,
+        //OP_TXN_CONTINUE_NESTED = 7,
 
         /** txnId: long */
-        OP_TXN_ROLLBACK = 7,
+        OP_TXN_ROLLBACK = 8,
 
         /** txnId: long, parentTxnId: long */
-        OP_TXN_ROLLBACK_NESTED = 8,
+        OP_TXN_ROLLBACK_NESTED = 9,
 
-        /** txnId: long, checksum: int */
-        OP_TXN_COMMIT = 9,
+        /** txnId: long */
+        OP_TXN_COMMIT = 10,
 
         /** txnId: long, parentTxnId: long */
-        OP_TXN_COMMIT_NESTED = 10,
+        OP_TXN_COMMIT_NESTED = 11,
 
-        /** indexId: long, keyLength: varInt, key: bytes,
-            valueLength: varInt, value: bytes,
-            checksum: int */
+        /** indexId: long, keyLength: varInt, key: bytes, valueLength: varInt, value: bytes */
         OP_STORE = 16,
 
-        /** indexId: long, keyLength: varInt, key: bytes,
-            checksum: int */
+        /** indexId: long, keyLength: varInt, key: bytes */
         OP_DELETE = 17,
 
-        /** indexId: long, checksum: int */
+        /** indexId: long */
         OP_CLEAR = 18,
 
         /** txnId: long, indexId: long, keyLength: varInt, key: bytes,
@@ -89,51 +87,32 @@ class RedoLog implements Closeable, RedoLogVisitor {
         /** txnId: long, indexId: long */
         //OP_TXN_CLEAR = 21,
 
-        /** length: varInt, data: bytes, checksum: int */
+        /** length: varInt, data: bytes */
         OP_CUSTOM = (byte) 128,
 
         /** txnId: long, length: varInt, data: bytes */
         OP_TXN_CUSTOM = (byte) 129;
 
-    public static RedoLog create(File file, long logNumber) throws IOException {
-        if (file.exists()) {
-            throw new FileNotFoundException("File already exists: " + file.getPath());
-        }
-        FileOutputStream out = new FileOutputStream(file);
-        RedoLog log = new RedoLog(file, out);
-        synchronized (log) {
-            log.writeLong(MAGIC_NUMBER);
-            log.writeInt(ENCODING_VERSION);
-            log.writeLong(logNumber);
-            log.timestamp();
-            log.flush();
-        }
-        return log;
-    }
+    private File mBaseFile;
 
-    public static RedoLog open(File file, long number, boolean readOnly) throws IOException {
-        // FIXME: only support read? no append? checksum becomes a mess if append is supported
-        throw null;
-    }
-
-    private final File mFile;
-    private final FileChannel mChannel;
-    private final FileOutputStream mOut;
     private final byte[] mBuffer;
     private int mBufferPos;
-    private final Adler32 mChecksum;
 
-    RedoLog(File file, FileOutputStream out) throws IOException {
-        mFile = file;
-        mChannel = out == null ? null : out.getChannel();
-        mOut = out;
+    private FileOutputStream mOut;
+    private FileChannel mChannel;
+
+    private boolean mAlwaysFlush;
+
+    RedoLog(File baseFile, long logNumber) throws IOException {
+        mBaseFile = baseFile;
         mBuffer = new byte[4096];
-        mChecksum = new Adler32();
+
+        open(logNumber);
 
         Runtime.getRuntime().addShutdownHook(new Thread() {
             public void run() {
                 try {
-                    close();
+                    shutdown(OP_SHUTDOWN);
                 } catch (Throwable e) {
                     Utils.rethrow(e);
                 }
@@ -146,14 +125,37 @@ class RedoLog implements Closeable, RedoLogVisitor {
         throw null;
     }
 
+    private synchronized void open(long logNumber) throws IOException {
+        File file = new File(mBaseFile.getPath() + ".redo." + logNumber);
+        if (file.exists()) {
+            throw new FileNotFoundException("File already exists: " + file.getPath());
+        }
+
+        mOut = new FileOutputStream(file);
+        mChannel = mOut.getChannel();
+
+        writeLong(MAGIC_NUMBER);
+        writeInt(ENCODING_VERSION);
+        writeLong(logNumber);
+        timestamp();
+        flush();
+    }
+
     public synchronized void close() throws IOException {
+        shutdown(OP_CLOSE);
+    }
+
+    synchronized void shutdown(byte op) throws IOException {
+        mAlwaysFlush = true;
         if (!mChannel.isOpen()) {
             return;
         }
-        writeOp(OP_CLOSE, System.currentTimeMillis());
-        writeChecksum(DurabilityMode.SYNC);
+        writeOp(op, System.currentTimeMillis());
+        conditionalFlush(DurabilityMode.SYNC);
         mChannel.force(true);
-        mChannel.close();
+        if (op == OP_CLOSE) {
+            mChannel.close();
+        }
     }
 
     public void store(long indexId, byte[] key, byte[] value, DurabilityMode mode)
@@ -177,7 +179,7 @@ class RedoLog implements Closeable, RedoLogVisitor {
                 writeBytes(value);
             }
 
-            sync = writeChecksum(mode);
+            sync = conditionalFlush(mode);
         }
 
         if (sync) {
@@ -189,7 +191,7 @@ class RedoLog implements Closeable, RedoLogVisitor {
         boolean sync;
         synchronized (this) {
             writeOp(OP_CLEAR, indexId);
-            sync = writeChecksum(mode);
+            sync = conditionalFlush(mode);
         }
 
         if (sync) {
@@ -217,7 +219,7 @@ class RedoLog implements Closeable, RedoLogVisitor {
         synchronized (this) {
             if (parentTxnId == 0) {
                 writeOp(OP_TXN_COMMIT, txnId);
-                sync = writeChecksum(mode);
+                sync = conditionalFlush(mode);
             } else {
                 writeOp(OP_TXN_COMMIT_NESTED, txnId);
                 writeLong(parentTxnId);
@@ -333,15 +335,22 @@ class RedoLog implements Closeable, RedoLogVisitor {
     }
 
     // Caller must be synchronized. Returns true if caller should sync.
-    private boolean writeChecksum(DurabilityMode mode) throws IOException {
-        writeInt((int) mChecksum.getValue());
-        if (mode == DurabilityMode.SYNC) {
+    private boolean conditionalFlush(DurabilityMode mode) throws IOException {
+        switch (mode) {
+        default:
+            return false;
+        case NO_FLUSH:
+            if (mAlwaysFlush) {
+                flush();
+            }
+            return false;
+        case SYNC:
             flush();
             return true;
-        } else if (mode == DurabilityMode.NO_SYNC) {
+        case NO_SYNC:
             flush();
+            return false;
         }
-        return false;
     }
 
     // Caller must be synchronized.
@@ -351,7 +360,6 @@ class RedoLog implements Closeable, RedoLogVisitor {
 
     // Caller must be synchronized.
     private void flush(byte[] buffer, int pos) throws IOException {
-        mChecksum.update(buffer, 0, pos);
         mOut.write(buffer, 0, pos);
         mBufferPos = 0;
     }

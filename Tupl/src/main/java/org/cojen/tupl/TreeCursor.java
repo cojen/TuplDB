@@ -931,7 +931,7 @@ final class TreeCursor implements Cursor {
             final Transaction txn = mTxn;
             final Locker locker = mTree.lockExclusive(txn, key);
             try {
-                store(txn, leafExclusive(), value);
+                store(txn, key, leafExclusive(), value);
             } finally {
                 if (locker != null) {
                     locker.unlock();
@@ -956,7 +956,7 @@ final class TreeCursor implements Cursor {
             try {
                 // Find with no lock because it has already been acquired.
                 find(null, key, VARIANT_NO_LOCK);
-                store(txn, mLeaf, value);
+                store(txn, key, mLeaf, value);
             } finally {
                 if (locker != null) {
                     locker.unlock();
@@ -1046,7 +1046,7 @@ final class TreeCursor implements Cursor {
                 return false;
             }
 
-            store(txn, mLeaf, newValue);
+            store(txn, key, mLeaf, newValue);
             return true;
         } else if (oldValue == MODIFY_REPLACE) {
             // replace mode
@@ -1056,14 +1056,14 @@ final class TreeCursor implements Cursor {
                 return false;
             }
 
-            store(txn, mLeaf, newValue);
+            store(txn, key, mLeaf, newValue);
             return true;
         } else {
             // update mode
 
             if (mValue != null) {
                 if (Arrays.equals(oldValue, mValue)) {
-                    store(txn, mLeaf, newValue);
+                    store(txn, key, mLeaf, newValue);
                     return true;
                 } else {
                     mLeaf.mNode.releaseExclusive();
@@ -1073,7 +1073,7 @@ final class TreeCursor implements Cursor {
                 if (newValue == null) {
                     mLeaf.mNode.releaseExclusive();
                 } else {
-                    store(txn, mLeaf, newValue);
+                    store(txn, key, mLeaf, newValue);
                 }
                 return true;
             } else {
@@ -1088,11 +1088,9 @@ final class TreeCursor implements Cursor {
      *
      * @param leaf leaf frame, latched exclusively, which is released by this method
      */
-    private void store(Transaction txn, final TreeCursorFrame leaf, byte[] value)
+    private void store(Transaction txn, final byte[] key, final TreeCursorFrame leaf, byte[] value)
         throws IOException
     {
-        // FIXME: undo log (unless txn == null | UNSAFE), redo log (unless NO_LOG)
-
         if (value == null) {
             // Delete entry...
 
@@ -1104,16 +1102,16 @@ final class TreeCursor implements Cursor {
 
             TreeNode node = notSplitDirty(leaf);
             final int pos = leaf.mNodePos;
-            final byte[] key = node.retrieveLeafKey(pos);
 
             if (txn == null) {
-                // FIXME: redo log
+                mTree.redoStore(key, null);
             } else {
                 if (txn.lockMode() != LockMode.UNSAFE) {
                     // FIXME: undo log
                 }
                 if (txn.mDurabilityMode != DurabilityMode.NO_LOG) {
-                    // FIXME: redo log
+                    // FIXME: txn id
+                    mTree.redoStore(key, null);
                 }
             }
 
@@ -1160,6 +1158,18 @@ final class TreeCursor implements Cursor {
         if (pos >= 0) {
             // Update entry...
 
+            if (txn == null) {
+                mTree.redoStore(key, value);
+            } else {
+                if (txn.lockMode() != LockMode.UNSAFE) {
+                    // FIXME: undo log
+                }
+                if (txn.mDurabilityMode != DurabilityMode.NO_LOG) {
+                    // FIXME: txn id
+                    mTree.redoStore(key, value);
+                }
+            }
+
             node.updateLeafValue(mTree.mDatabase, pos, value);
 
             if (node.shouldLeafMerge()) {
@@ -1176,9 +1186,16 @@ final class TreeCursor implements Cursor {
 
         // Insert entry...
 
-        final byte[] key = leaf.mNotFoundKey;
-        if (key == null) {
-            throw new AssertionError();
+        if (txn == null) {
+            mTree.redoStore(key, value);
+        } else {
+            if (txn.lockMode() != LockMode.UNSAFE) {
+                // FIXME: undo log
+            }
+            if (txn.mDurabilityMode != DurabilityMode.NO_LOG) {
+                // FIXME: txn id
+                mTree.redoStore(key, value);
+            }
         }
 
         int newPos = ~pos;
