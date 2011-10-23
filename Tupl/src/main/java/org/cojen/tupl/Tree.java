@@ -26,7 +26,7 @@ import java.util.List;
  * @author Brian S O'Neill
  */
 final class Tree implements Index {
-    final TreeNodeStore mStore;
+    final Database mDatabase;
     final LockManager mLockManager;
 
     // Id is zero for registry and registry key map.
@@ -49,9 +49,9 @@ final class Tree implements Index {
     // by the root node latch.
     private Stub mStubTail;
 
-    Tree(TreeNodeStore store, long id, byte[] idBytes, byte[] name, TreeNode root) {
-        mStore = store;
-        mLockManager = store.mLockManager;
+    Tree(Database db, long id, byte[] idBytes, byte[] name, TreeNode root) {
+        mDatabase = db;
+        mLockManager = db.mLockManager;
         mId = id;
         mIdBytes = idBytes;
         mName = name;
@@ -264,10 +264,10 @@ final class Tree implements Index {
     }
 
     /**
-     * @see TreeNodeStore#markDirty
+     * @see Database#markDirty
      */
     boolean markDirty(TreeNode node) throws IOException {
-        return mStore.markDirty(this, node);
+        return mDatabase.markDirty(this, node);
     }
 
     /**
