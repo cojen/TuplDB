@@ -145,13 +145,15 @@ class RedoLog implements Closeable, RedoLogVisitor {
         shutdown(OP_CLOSE);
     }
 
-    synchronized void shutdown(byte op) throws IOException {
-        mAlwaysFlush = true;
-        if (!mChannel.isOpen()) {
-            return;
+    void shutdown(byte op) throws IOException {
+        synchronized (this) {
+            mAlwaysFlush = true;
+            if (!mChannel.isOpen()) {
+                return;
+            }
+            writeOp(op, System.currentTimeMillis());
+            flush();
         }
-        writeOp(op, System.currentTimeMillis());
-        conditionalFlush(DurabilityMode.SYNC);
         mChannel.force(true);
         if (op == OP_CLOSE) {
             mChannel.close();

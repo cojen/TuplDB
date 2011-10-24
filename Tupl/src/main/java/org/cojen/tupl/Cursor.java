@@ -155,6 +155,7 @@ public interface Cursor {
      * <p>Ownership of the key instance transfers to the Cursor, and it should
      * no longer be modified after calling this method.
      *
+     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
      * OWNED_EXCLUSIVE
      * @throws NullPointerException if key is null
      */
