@@ -27,8 +27,8 @@ public class CursorTest3 {
     public static void main(String[] args) throws Exception {
         java.io.File file = new java.io.File(args[0]);
 
-        final Database db = new Database
-            (DatabaseConfig.newConfig().setBaseFile(file).setMinCachedNodes(1000));
+        final Database db = Database.open
+            (new DatabaseConfig().setBaseFile(file).setMinCachedNodes(1000));
         final Index index = db.openIndex("test3");
 
         final int threadCount = Integer.parseInt(args[1]);
@@ -36,7 +36,7 @@ public class CursorTest3 {
         final int count = 1000000;
         final AtomicInteger next = new AtomicInteger();
 
-        Thread committer = new Thread() {
+        Thread checkpointer = new Thread() {
             public void run() {
                 try {
                     long lastDuration = 0;
@@ -47,9 +47,9 @@ public class CursorTest3 {
                             Thread.sleep(delay);
                         }
 
-                        System.out.println("commit...");
+                        System.out.println("checkpoint...");
                         long start = System.currentTimeMillis();
-                        db.commit();
+                        db.checkpoint();
                         long end = System.currentTimeMillis();
                         //System.out.println("...done: " + pstore.stats());
                         System.out.println("...done");
@@ -68,8 +68,8 @@ public class CursorTest3 {
             }
         };
 
-        committer.setDaemon(true);
-        //committer.start();
+        checkpointer.setDaemon(true);
+        //checkpointer.start();
 
         Thread monitor = new Thread() {
             public void run() {
@@ -172,13 +172,13 @@ public class CursorTest3 {
         //System.out.println("c1: " + c1.verify());
         //System.out.println("c2: " + c2.verify());
 
-        if (committer.isAlive()) {
-            System.out.println("last commit...");
+        if (checkpointer.isAlive()) {
+            System.out.println("last checkpoint...");
             long start = System.currentTimeMillis();
-            db.commit();
+            db.checkpoint();
             long end = System.currentTimeMillis();
             //System.out.println("...done: " + pstore.stats());
-            System.out.println("...last commit done");
+            System.out.println("...last checkpoint done");
         }
     }
 }

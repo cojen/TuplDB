@@ -27,8 +27,8 @@ public class CursorTest2 {
     public static void main(String[] args) throws Exception {
         java.io.File file = new java.io.File(args[0]);
 
-        final Database db = new Database
-            (DatabaseConfig.newConfig().setBaseFile(file).setMinCachedNodes(100000));
+        final Database db = Database.open
+            (new DatabaseConfig().setBaseFile(file).setMinCachedNodes(100000));
         final Index index = db.openIndex("test2");
 
         Cursor c = index.newCursor(null);
@@ -106,7 +106,7 @@ public class CursorTest2 {
             }
         }
 
-        db.commit();
+        db.checkpoint();
 
         c5.last();
         do {

@@ -16,6 +16,8 @@
 
 package org.cojen.tupl;
 
+import java.io.EOFException;
+
 /**
  * 
  *
@@ -92,6 +94,54 @@ class DataIO {
                    | ((b[++offset] & 0xff) << 16)
                    | ((b[++offset] & 0xff) << 8)
                    | (b[offset + 1] & 0xff));
+        }
+    }
+
+    /**
+     * Reads an integer as encoded by writeUnsignedVarInt.
+     */
+    public static int readUnsignedVarInt(byte[] b, int start, int end) throws EOFException {
+        if (start >= end) {
+            throw new EOFException();
+        }
+        int v = b[start];
+        if (v >= 0) {
+            return v;
+        }
+        switch ((v >> 4) & 0x07) {
+        case 0x00: case 0x01: case 0x02: case 0x03:
+            if (++start >= end) {
+                throw new EOFException();
+            }
+            return (1 << 7)
+                + (((v & 0x3f) << 8)
+                   | (b[start] & 0xff));
+        case 0x04: case 0x05:
+            if (start + 2 >= end) {
+                throw new EOFException();
+            }
+            return ((1 << 14) + (1 << 7))
+                + (((v & 0x1f) << 16)
+                   | ((b[++start] & 0xff) << 8)
+                   | (b[start + 1] & 0xff));
+        case 0x06:
+            if (start + 3 >= end) {
+                throw new EOFException();
+            }
+            return ((1 << 21) + (1 << 14) + (1 << 7))
+                + (((v & 0x0f) << 24)
+                   | ((b[++start] & 0xff) << 16)
+                   | ((b[++start] & 0xff) << 8)
+                   | (b[start + 1] & 0xff));
+        default:
+            if (start + 4 >= end) {
+                throw new EOFException();
+            }
+            return ((1 << 28) + (1 << 21) + (1 << 14) + (1 << 7)) 
+                + ((b[++start] << 24)
+                   | ((b[++start] & 0xff) << 16)
+                   | ((b[++start] & 0xff) << 8)
+                   | (b[start + 1] & 0xff));
         }
     }
 

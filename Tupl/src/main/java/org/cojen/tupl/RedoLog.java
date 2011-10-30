@@ -16,10 +16,11 @@
 
 package org.cojen.tupl;
 
-import java.io.BufferedOutputStream;
+import java.io.BufferedInputStream;
 import java.io.Closeable;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
@@ -30,7 +31,7 @@ import java.nio.channels.FileChannel;
  *
  * @author Brian S O'Neill
  */
-class RedoLog implements Closeable, RedoLogVisitor {
+class RedoLog implements Closeable {
     private static final long MAGIC_NUMBER = 431399725605778814L;
     private static final int ENCODING_VERSION = 20111001;
 
@@ -44,29 +45,32 @@ class RedoLog implements Closeable, RedoLogVisitor {
         /** timestamp: long */
         OP_CLOSE = 3,
 
-        /** txnId: long */
-        //OP_TXN_BEGIN = 4,
-
-        /** txnId: long, parentTxnId: long */
-        //OP_TXN_BEGIN_NESTED = 5,
+        /** timestamp: long */
+        OP_END_FILE = 4,
 
         /** txnId: long */
-        //OP_TXN_CONTINUE = 6,
+        //OP_TXN_BEGIN = 5,
 
         /** txnId: long, parentTxnId: long */
-        //OP_TXN_CONTINUE_NESTED = 7,
+        //OP_TXN_BEGIN_NESTED = 6,
 
         /** txnId: long */
-        OP_TXN_ROLLBACK = 8,
+        //OP_TXN_CONTINUE = 7,
 
         /** txnId: long, parentTxnId: long */
-        OP_TXN_ROLLBACK_NESTED = 9,
+        //OP_TXN_CONTINUE_NESTED = 8,
 
         /** txnId: long */
-        OP_TXN_COMMIT = 10,
+        OP_TXN_ROLLBACK = 9,
 
         /** txnId: long, parentTxnId: long */
-        OP_TXN_COMMIT_NESTED = 11,
+        OP_TXN_ROLLBACK_NESTED = 10,
+
+        /** txnId: long */
+        OP_TXN_COMMIT = 11,
+
+        /** txnId: long, parentTxnId: long */
+        OP_TXN_COMMIT_NESTED = 12,
 
         /** indexId: long, keyLength: varInt, key: bytes, valueLength: varInt, value: bytes */
         OP_STORE = 16,
@@ -82,63 +86,169 @@ class RedoLog implements Closeable, RedoLogVisitor {
         OP_TXN_STORE = 19,
 
         /** txnId: long, indexId: long, keyLength: varInt, key: bytes */
-        OP_TXN_DELETE = 20,
+        OP_TXN_DELETE = 20;
 
         /** txnId: long, indexId: long */
         //OP_TXN_CLEAR = 21,
 
         /** length: varInt, data: bytes */
-        OP_CUSTOM = (byte) 128,
+        //OP_CUSTOM = (byte) 128,
 
         /** txnId: long, length: varInt, data: bytes */
-        OP_TXN_CUSTOM = (byte) 129;
+        //OP_TXN_CUSTOM = (byte) 129;
 
-    private File mBaseFile;
+    private final File mBaseFile;
 
     private final byte[] mBuffer;
     private int mBufferPos;
 
+    private long mLogId;
     private FileOutputStream mOut;
     private FileChannel mChannel;
 
+    private boolean mReplayMode;
+
     private boolean mAlwaysFlush;
 
-    RedoLog(File baseFile, long logNumber) throws IOException {
+    private Thread mShutdownHook;
+
+    /**
+     * RedoLog starts in replay mode.
+     */
+    RedoLog(File baseFile, long logId) throws IOException {
         mBaseFile = baseFile;
         mBuffer = new byte[4096];
 
-        open(logNumber);
+        synchronized (this) {
+            mLogId = logId;
+            mReplayMode = true;
 
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            public void run() {
-                try {
-                    shutdown(OP_SHUTDOWN);
-                } catch (Throwable e) {
-                    Utils.rethrow(e);
+            mShutdownHook = new Thread() {
+                @Override
+                public void run() {
+                    try {
+                        shutdown(OP_SHUTDOWN);
+                    } catch (Throwable e) {
+                        Utils.rethrow(e);
+                    }
                 }
-            }
-        });
+            };
+
+            Runtime.getRuntime().addShutdownHook(mShutdownHook);
+        }
     }
 
-    void replay(RedoLogVisitor visitor) throws IOException {
-        // FIXME
-        throw null;
+    synchronized boolean isReplayMode() {
+        return mReplayMode;
     }
 
-    private synchronized void open(long logNumber) throws IOException {
-        File file = new File(mBaseFile.getPath() + ".redo." + logNumber);
-        if (file.exists()) {
-            throw new FileNotFoundException("File already exists: " + file.getPath());
+    /**
+     * @return false if file not found and replay mode is deactivated
+     */
+    synchronized boolean replay(RedoLogVisitor visitor) throws IOException {
+        if (!mReplayMode) {
+            throw new IllegalStateException();
         }
 
-        mOut = new FileOutputStream(file);
-        mChannel = mOut.getChannel();
+        File file = fileFor(mLogId);
 
-        writeLong(MAGIC_NUMBER);
-        writeInt(ENCODING_VERSION);
-        writeLong(logNumber);
-        timestamp();
+        DataIn in;
+        try {
+            in = new DataIn(new FileInputStream(file));
+        } catch (FileNotFoundException e) {
+            mReplayMode = false;
+            openFile(mLogId);
+            return false;
+        }
+
+        try {
+            replay(in, visitor);
+        } finally {
+            try {
+                in.close();
+            } catch (IOException e) {
+                // Ignore.
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @return old log file id, which is one less than new one
+     */
+    synchronized long openNewFile() throws IOException {
+        if (mOut != null) {
+            writeOp(OP_END_FILE, System.currentTimeMillis());
+            doFlush();
+        }
+        long logId = mLogId;
+        openFile(logId + 1);
+        return logId;
+    }
+
+    void deleteOldFile(long logId) {
+        fileFor(logId).delete();
+    }
+
+    private synchronized void openFile(long logId) throws IOException {
+        final File file = fileFor(logId);
+        if (file.exists()) {
+            if (mReplayMode) {
+                mLogId = logId;
+                return;
+            }
+            throw new FileNotFoundException("Log file already exists: " + file.getPath());
+        }
+
+        mReplayMode = false;
+
+        final FileOutputStream oldOut = mOut;
+        final FileOutputStream out = new FileOutputStream(file);
+
+        try {
+            mOut = out;
+            mChannel = out.getChannel();
+
+            writeLong(MAGIC_NUMBER);
+            writeInt(ENCODING_VERSION);
+            writeLong(logId);
+            timestamp();
+            doFlush();
+        } catch (IOException e) {
+            mChannel = ((mOut = oldOut) == null) ? null : oldOut.getChannel();
+            try {
+                out.close();
+            } catch (IOException e2) {
+                // Ignore.
+            }
+            file.delete();
+
+            throw e;
+        }
+
+        if (oldOut != null) {
+            try {
+                oldOut.close();
+            } catch (IOException e) {
+                // Ignore.
+            }
+        }
+
+        mLogId = logId;
+    }
+
+    private File fileFor(long logId) {
+        return new File(mBaseFile.getPath() + ".redo." + logId);
+    }
+
+    public synchronized void flush() throws IOException {
+        doFlush();
+    }
+
+    public void sync() throws IOException {
         flush();
+        mChannel.force(false);
     }
 
     public synchronized void close() throws IOException {
@@ -148,16 +258,35 @@ class RedoLog implements Closeable, RedoLogVisitor {
     void shutdown(byte op) throws IOException {
         synchronized (this) {
             mAlwaysFlush = true;
-            if (!mChannel.isOpen()) {
+
+            if (op == OP_CLOSE) {
+                Thread hook = mShutdownHook;
+                if (hook != null) {
+                    try {
+                        Runtime.getRuntime().removeShutdownHook(hook);
+                    } catch (IllegalStateException e) {
+                        // Ignore.
+                    }
+                }
+            }
+
+            mShutdownHook = null;
+
+            if (mChannel == null || !mChannel.isOpen()) {
                 return;
             }
+
             writeOp(op, System.currentTimeMillis());
-            flush();
+            doFlush();
+
+            if (op == OP_CLOSE) {
+                mChannel.force(true);
+                mChannel.close();
+                return;
+            }
         }
+
         mChannel.force(true);
-        if (op == OP_CLOSE) {
-            mChannel.close();
-        }
     }
 
     public void store(long indexId, byte[] key, byte[] value, DurabilityMode mode)
@@ -199,10 +328,6 @@ class RedoLog implements Closeable, RedoLogVisitor {
         if (sync) {
             mChannel.force(false);
         }
-    }
-
-    public void txnBegin(long txnId, long parentTxnId) throws IOException {
-        // No-op.
     }
 
     public synchronized void txnRollback(long txnId, long parentTxnId) throws IOException {
@@ -266,7 +391,7 @@ class RedoLog implements Closeable, RedoLogVisitor {
         byte[] buffer = mBuffer;
         int pos = mBufferPos;
         if (pos > buffer.length - 4) {
-            flush(buffer, pos);
+            doFlush(buffer, pos);
             pos = 0;
         }
         DataIO.writeInt(buffer, pos, v);
@@ -278,7 +403,7 @@ class RedoLog implements Closeable, RedoLogVisitor {
         byte[] buffer = mBuffer;
         int pos = mBufferPos;
         if (pos > buffer.length - 8) {
-            flush(buffer, pos);
+            doFlush(buffer, pos);
             pos = 0;
         }
         DataIO.writeLong(buffer, pos, v);
@@ -290,7 +415,7 @@ class RedoLog implements Closeable, RedoLogVisitor {
         byte[] buffer = mBuffer;
         int pos = mBufferPos;
         if (pos >= buffer.length - 9) {
-            flush(buffer, pos);
+            doFlush(buffer, pos);
             pos = 0;
         }
         buffer[pos] = op;
@@ -303,7 +428,7 @@ class RedoLog implements Closeable, RedoLogVisitor {
         byte[] buffer = mBuffer;
         int pos = mBufferPos;
         if (pos > buffer.length - 5) {
-            flush(buffer, pos);
+            doFlush(buffer, pos);
             pos = 0;
         }
         mBufferPos = DataIO.writeUnsignedVarInt(buffer, pos, v);
@@ -329,7 +454,7 @@ class RedoLog implements Closeable, RedoLogVisitor {
             }
             int remaining = buffer.length - pos;
             System.arraycopy(bytes, offset, buffer, pos, remaining);
-            flush(buffer, buffer.length);
+            doFlush(buffer, buffer.length);
             pos = 0;
             offset += remaining;
             length -= remaining;
@@ -343,26 +468,102 @@ class RedoLog implements Closeable, RedoLogVisitor {
             return false;
         case NO_FLUSH:
             if (mAlwaysFlush) {
-                flush();
+                doFlush();
             }
             return false;
         case SYNC:
-            flush();
+            doFlush();
             return true;
         case NO_SYNC:
-            flush();
+            doFlush();
             return false;
         }
     }
 
     // Caller must be synchronized.
-    private void flush() throws IOException {
-        flush(mBuffer, mBufferPos);
+    private void doFlush() throws IOException {
+        doFlush(mBuffer, mBufferPos);
     }
 
     // Caller must be synchronized.
-    private void flush(byte[] buffer, int pos) throws IOException {
+    private void doFlush(byte[] buffer, int pos) throws IOException {
         mOut.write(buffer, 0, pos);
         mBufferPos = 0;
+    }
+
+    private void replay(DataIn in, RedoLogVisitor visitor) throws IOException {
+        if (in.readLong() != MAGIC_NUMBER) {
+            throw new DatabaseException("Incorrect magic number in log file");
+        }
+        int version = in.readInt();
+        if (version != ENCODING_VERSION) {
+            throw new DatabaseException("Unsupported encoding version: " + version);
+        }
+        long id = in.readLong();
+        if (id != mLogId) {
+            throw new DatabaseException
+                ("Expected log identifier of " + mLogId + ", but actual is: " + id);
+        }
+
+        int op;
+        while ((op = in.read()) >= 0) {
+            op = op & 0xff;
+            switch (op) {
+            default:
+                throw new DatabaseException("Unknown log operation: " + op);
+
+            case OP_TIMESTAMP:
+                visitor.timestamp(in.readLong());
+                break;
+
+            case OP_SHUTDOWN:
+                visitor.shutdown(in.readLong());
+                break;
+
+            case OP_CLOSE:
+                visitor.close(in.readLong());
+                break;
+
+            case OP_END_FILE:
+                visitor.endFile(in.readLong());
+                break;
+
+            case OP_TXN_ROLLBACK:
+                visitor.txnRollback(in.readLong(), 0);
+                break;
+
+            case OP_TXN_ROLLBACK_NESTED:
+                visitor.txnRollback(in.readLong(), in.readLong());
+                break;
+
+            case OP_TXN_COMMIT:
+                visitor.txnCommit(in.readLong(), 0);
+                break;
+
+            case OP_TXN_COMMIT_NESTED:
+                visitor.txnCommit(in.readLong(), in.readLong());
+                break;
+
+            case OP_STORE:
+                visitor.store(in.readLong(), in.readBytes(), in.readBytes());
+                break;
+
+            case OP_DELETE:
+                visitor.store(in.readLong(), in.readBytes(), null);
+                break;
+
+            case OP_CLEAR:
+                visitor.clear(in.readLong());
+                break;
+
+            case OP_TXN_STORE:
+                visitor.txnStore(in.readLong(), in.readLong(), in.readBytes(), in.readBytes());
+                break;
+
+            case OP_TXN_DELETE:
+                visitor.txnStore(in.readLong(), in.readLong(), in.readBytes(), null);
+                break;
+            }
+        }
     }
 }

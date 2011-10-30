@@ -51,6 +51,11 @@ public class Locker {
         mManager = manager;
     }
 
+    // Constructor used by Transaction.BOGUS.
+    Locker() {
+        mManager = null;
+    }
+
     /**
      * Check the lock ownership for the given key.
      *
