@@ -22,17 +22,19 @@ package org.cojen.tupl;
  * relatively slow. Weak modes are faster, but transactions committed in one of
  * these modes can get lost.
  *
+ * <p>Mode strengths: {@code SYNC > NO_SYNC > NO_FLUSH > NO_LOG}
+ *
  * @author Brian S O'Neill
  */
 public enum DurabilityMode {
     /**
-     * Strongest durability mode, which ensures all modifications are flushed
+     * Strongest durability mode, which ensures all modifications are persisted
      * to non-volatile storage.
      */
     SYNC,
 
     /**
-     * Durability mode which permits the operating system to lazily flush
+     * Durability mode which permits the operating system to lazily persist
      * modifications to non-volatile storage. This mode is vulnerable to power
      * failures and operating system crashes. These events can cause recently
      * committed transactions to get lost.

@@ -27,11 +27,21 @@ import java.io.IOException;
  * @author Brian S O'Neill
  */
 public class Transaction extends Locker {
+    /**
+     * Transaction instance which isn't a transaction at all. It always
+     * operates in an {@link LockMode#UNSAFE unsafe} lock mode and a {@link
+     * DurabilityMode#NO_LOG no-log} durability mode. For safe auto-commit
+     * transactions, pass null for the transaction argument.
+     */
+    public static final Transaction BOGUS = new Transaction();
+
     final DurabilityMode mDurabilityMode;
 
-    // FIXME: One shared RedoLog instance. UndoLog instances created for each scope.
-    //private final RedoLog mRedo;
+    // FIXME: One UndoLog instance created for each scope.
     //private final UndoLog mUndo;
+
+    // FIXME: New id for each scope.
+    final long mId;
 
     // FIXME: move saved scope state into linked UndoLog instances
     private LockMode mLockMode;
@@ -44,13 +54,23 @@ public class Transaction extends Locker {
 
     Transaction(LockManager manager,
                 DurabilityMode durabilityMode,
+                long id,
                 LockMode lockMode,
                 long timeoutNanos)
     {
         super(manager);
         mDurabilityMode = durabilityMode;
+        mId = id;
         mLockMode = lockMode;
         mLockTimeoutNanos = timeoutNanos;
+    }
+
+    private Transaction() {
+        super();
+        mDurabilityMode = DurabilityMode.NO_LOG;
+        mId = 0;
+        mLockMode = LockMode.UNSAFE;
+        mLockTimeoutNanos = 0;
     }
 
     /**
@@ -96,7 +116,7 @@ public class Transaction extends Locker {
 
     /**
      * Set the lock mode for the current scope. Transactions begin in {@link
-     * LockMode.UPGRADABLE_READ} mode, and newly entered scopes begin at the
+     * LockMode#UPGRADABLE_READ} mode, and newly entered scopes begin at the
      * outer scope's current mode. Exiting a scope reverts the lock mode.
      *
      * @param mode new lock mode

@@ -24,35 +24,37 @@ import java.io.IOException;
  * @author Brian S O'Neill
  */
 interface RedoLogVisitor {
+    public void timestamp(long timestamp) throws IOException;
+
+    public void shutdown(long timestamp) throws IOException;
+
+    public void close(long timestamp) throws IOException;
+
+    public void endFile(long timestamp) throws IOException;
+
     /**
      * @param indexId non-zero index id
      * @param key non-null key
      * @param value value to store; null to delete
      */
-    void store(long indexId, byte[] key, byte[] value, DurabilityMode mode) throws IOException;
+    public void store(long indexId, byte[] key, byte[] value) throws IOException;
 
     /**
      * @param indexId non-zero index id
      */
-    void clear(long indexId, DurabilityMode mode) throws IOException;
+    public void clear(long indexId) throws IOException;
 
     /**
      * @param txnId non-zero transaction id
      * @param parentTxnId parent transaction id; zero if none
      */
-    void txnBegin(long txnId, long parentTxnId) throws IOException;
+    public void txnRollback(long txnId, long parentTxnId) throws IOException;
 
     /**
      * @param txnId non-zero transaction id
      * @param parentTxnId parent transaction id; zero if none
      */
-    void txnRollback(long txnId, long parentTxnId) throws IOException;
-
-    /**
-     * @param txnId non-zero transaction id
-     * @param parentTxnId parent transaction id; zero if none
-     */
-    void txnCommit(long txnId, long parentTxnId, DurabilityMode mode) throws IOException;
+    public void txnCommit(long txnId, long parentTxnId) throws IOException;
 
     /**
      * @param txnId non-zero transaction id
@@ -60,5 +62,5 @@ interface RedoLogVisitor {
      * @param key non-null key
      * @param value value to store; null to delete
      */
-    void txnStore(long txnId, long indexId, byte[] key, byte[] value) throws IOException;
+    public void txnStore(long txnId, long indexId, byte[] key, byte[] value) throws IOException;
 }

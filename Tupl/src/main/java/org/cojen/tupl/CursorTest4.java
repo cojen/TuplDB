@@ -27,8 +27,8 @@ public class CursorTest4 {
     public static void main(String[] args) throws Exception {
         java.io.File file = new java.io.File(args[0]);
 
-        final Database db = new Database
-            (DatabaseConfig.newConfig().setBaseFile(file).setMinCachedNodes(10000));
+        final Database db = Database.open
+            (new DatabaseConfig().setBaseFile(file).setMinCachedNodes(10000));
         final Index index = db.openIndex("test4");
 
         final int count = 1000000;
@@ -45,8 +45,8 @@ public class CursorTest4 {
             c.reset();
         }
 
-        System.out.println("commit");
-        db.commit();
+        System.out.println("checkpoint");
+        db.checkpoint();
 
         // FIXME: Testing with no concurrent deletes.
         //final Semaphore sem = new Semaphore(1, true);

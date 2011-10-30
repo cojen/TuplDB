@@ -18,6 +18,7 @@ package org.cojen.tupl;
 
 import java.io.Closeable;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
@@ -28,6 +29,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+
+import java.util.concurrent.atomic.AtomicLong;
 
 import java.util.concurrent.locks.Lock;
 
@@ -42,6 +45,12 @@ public final class Database implements Closeable {
     private static final int DEFAULT_CACHED_NODES = 1000;
 
     private static final int ENCODING_VERSION = 20110514;
+
+    private static final int I_ENCODING_VERSION = 0;
+    private static final int I_ROOT_PAGE_ID = I_ENCODING_VERSION + 4;
+    private static final int I_TRANSACTION_ID = I_ROOT_PAGE_ID + 8;
+    private static final int I_REDO_LOG_ID = I_TRANSACTION_ID + 8;
+    private static final int HEADER_SIZE = I_REDO_LOG_ID + 8;
 
     private static final byte KEY_TYPE_INDEX_NAME = 0;
     private static final byte KEY_TYPE_INDEX_ID = 1;
@@ -73,24 +82,21 @@ public final class Database implements Closeable {
     private final Map<byte[], Tree> mOpenTrees;
     private final Map<Long, Tree> mOpenTreesById;
 
-    public Database(DatabaseConfig config) throws IOException {
+    private final AtomicLong mTxnId;
+
+    private final Object mCheckpointLock = new Object();
+
+    public static Database open(DatabaseConfig config) throws IOException {
+        return new Database(config);
+    }
+
+    private Database(DatabaseConfig config) throws IOException {
         File baseFile = config.mBaseFile;
         if (baseFile == null) {
             throw new IllegalArgumentException("No base file provided");
         }
         if (baseFile.isDirectory()) {
             throw new IllegalArgumentException("Base file is a directory: " + baseFile);
-        }
-
-        String basePath = baseFile.getPath();
-        File file0 = new File(basePath + ".db.0");
-        File file1 = new File(basePath + ".db.1");
-
-        DualFilePageStore pageStore;
-        if (config.mPageSize <= 0) {
-            pageStore = new DualFilePageStore(file0, file1, config.mReadOnly);
-        } else {
-            pageStore = new DualFilePageStore(file0, file1, config.mReadOnly, config.mPageSize);
         }
 
         int minCache = config.mMinCache;
@@ -118,63 +124,102 @@ public final class Database implements Closeable {
                 ("Maximum cached node count is too small: " + maxCache);
         }
 
+        mCacheLatch = new Latch();
+        mMaxCachedNodeCount = maxCache - 1; // less one for root
+
         mDurabilityMode = config.mDurabilityMode;
         mDefaultLockTimeoutNanos = config.mLockTimeoutNanos;
         mLockManager = new LockManager(mDefaultLockTimeoutNanos);
 
-        // FIXME: Init with proper log number.
-        mRedoLog = new RedoLog(baseFile, 0);
+        String basePath = baseFile.getPath();
+        File file0 = new File(basePath + ".db.0");
+        File file1 = new File(basePath + ".db.1");
 
-        mPageStore = pageStore;
-
-        int spareBufferCount = Runtime.getRuntime().availableProcessors();
-        mSpareBufferPool = new BufferPool(pageStore.pageSize(), spareBufferCount);
-
-        mCacheLatch = new Latch();
-        mMaxCachedNodeCount = maxCache - 1; // less one for root
-
-        mSharedCommitLock = pageStore.sharedCommitLock();
-        mSharedCommitLock.lock();
-        try {
-            mCommitState = CACHED_DIRTY_0;
-        } finally {
-            mSharedCommitLock.unlock();
+        if (config.mPageSize <= 0) {
+            mPageStore = new DualFilePageStore(file0, file1, config.mReadOnly);
+        } else {
+            mPageStore = new DualFilePageStore(file0, file1, config.mReadOnly, config.mPageSize);
         }
 
-        mRegistry = new Tree(this, 0, null, null, loadRegistryRoot());
-        mOpenTrees = new TreeMap<byte[], Tree>(KeyComparator.THE);
-        mOpenTreesById = new HashMap<Long, Tree>();
-
-        // Pre-allocate nodes. They are automatically added to the usage list,
-        // and so nothing special needs to be done to allow them to get used. Since
-        // the initial state is clean, evicting these nodes does nothing.
         try {
-            for (int i=minCache; --i>0; ) { // less one for root
-                allocLatchedNode().releaseExclusive();
+            int spareBufferCount = Runtime.getRuntime().availableProcessors();
+            mSpareBufferPool = new BufferPool(mPageStore.pageSize(), spareBufferCount);
+
+            mSharedCommitLock = mPageStore.sharedCommitLock();
+            mSharedCommitLock.lock();
+            try {
+                mCommitState = CACHED_DIRTY_0;
+            } finally {
+                mSharedCommitLock.unlock();
             }
-        } catch (OutOfMemoryError e) {
-            mMostRecentlyUsed = null;
-            mLeastRecentlyUsed = null;
 
-            throw new OutOfMemoryError
-                ("Unable to allocate the minimum required number of cached nodes: " +
-                 minCache);
-        }
+            byte[] header = new byte[HEADER_SIZE];
+            mPageStore.readExtraCommitData(header);
 
-        // Open mRegistryKeyMap.
-        {
-            byte[] encodedRootId = mRegistry.get(null, Utils.EMPTY_BYTES);
+            mRegistry = new Tree(this, 0, null, null, loadRegistryRoot(header));
+            mOpenTrees = new TreeMap<byte[], Tree>(KeyComparator.THE);
+            mOpenTreesById = new HashMap<Long, Tree>();
 
-            TreeNode rootNode;
-            if (encodedRootId == null) {
-                // Create a new empty leaf node.
-                rootNode = new TreeNode(pageStore.pageSize(), true);
-            } else {
-                rootNode = new TreeNode(pageStore.pageSize(), false);
-                rootNode.read(this, DataIO.readLong(encodedRootId, 0));
+            mTxnId = new AtomicLong(DataIO.readLong(header, I_TRANSACTION_ID));
+            long redoLogId = DataIO.readLong(header, I_REDO_LOG_ID);
+
+            // Initialized, but not open yet.
+            mRedoLog = new RedoLog(baseFile, redoLogId);
+
+            // Pre-allocate nodes. They are automatically added to the usage
+            // list, and so nothing special needs to be done to allow them to
+            // get used. Since the initial state is clean, evicting these nodes
+            // does nothing.
+            try {
+                for (int i=minCache; --i>0; ) { // less one for root
+                    allocLatchedNode().releaseExclusive();
+                }
+            } catch (OutOfMemoryError e) {
+                mMostRecentlyUsed = null;
+                mLeastRecentlyUsed = null;
+
+                throw new OutOfMemoryError
+                    ("Unable to allocate the minimum required number of cached nodes: " +
+                     minCache);
             }
+
+            // Open mRegistryKeyMap.
+            {
+                byte[] encodedRootId = mRegistry.get(Transaction.BOGUS, Utils.EMPTY_BYTES);
+
+                TreeNode rootNode;
+                if (encodedRootId == null) {
+                    // Create a new empty leaf node.
+                    rootNode = new TreeNode(mPageStore.pageSize(), true);
+                } else {
+                    rootNode = new TreeNode(mPageStore.pageSize(), false);
+                    rootNode.read(this, DataIO.readLong(encodedRootId, 0));
+                }
             
-            mRegistryKeyMap = new Tree(this, 0, Utils.EMPTY_BYTES, null, rootNode);
+                mRegistryKeyMap = new Tree(this, 0, Utils.EMPTY_BYTES, null, rootNode);
+            }
+
+            if (mRedoLog.replay(new RedoLogApplier(this))) {
+                // Make sure old redo log is deleted. Process might have exited
+                // before it got deleted after last checkpoint.
+                mRedoLog.deleteOldFile(redoLogId - 1);
+
+                // Checkpoint now to ensure all old redo log entries are durable.
+                checkpoint(true);
+
+                if (mRedoLog.isReplayMode()) {
+                    // Last checkpoint was interrupted, so apply next log file too.
+                    mRedoLog.replay(new RedoLogApplier(this));
+                    checkpoint(true);
+                }
+            }
+        } catch (Throwable e) {
+            try {
+                close();
+            } catch (IOException e2) {
+                // Ignore.
+            }
+            throw Utils.rethrow(e);
         }
     }
 
@@ -194,16 +239,26 @@ public final class Database implements Closeable {
     }
 
     public Transaction newTransaction() {
-        return new Transaction
-            (mLockManager, mDurabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
+        return doNewTransaction(mDurabilityMode);
     }
 
     public Transaction newTransaction(DurabilityMode durabilityMode) {
-        if (durabilityMode == null) {
-            durabilityMode = mDurabilityMode;
-        }
+        return doNewTransaction(durabilityMode == null ? mDurabilityMode : durabilityMode);
+    }
+
+    private Transaction doNewTransaction(DurabilityMode durabilityMode) {
         return new Transaction
-            (mLockManager, durabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
+            (mLockManager, durabilityMode, nextTransactionId(),
+             LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
+    }
+
+    long nextTransactionId() {
+        mSharedCommitLock.lock();
+        try {
+            return mTxnId.incrementAndGet();
+        } finally {
+            mSharedCommitLock.unlock();
+        }
     }
 
     /**
@@ -277,7 +332,7 @@ public final class Database implements Closeable {
             mPageStore.sharedCommitLock().unlock();
         }
 
-        commit(true);
+        checkpoint(true);
 
         if (pageCount <= 0) {
             return;
@@ -289,7 +344,7 @@ public final class Database implements Closeable {
                 // Another commit snuck in. Upgradable lock is not used, so
                 // unlock, commit and retry.
                 mPageStore.sharedCommitLock().unlock();
-                commit(true);
+                checkpoint(true);
                 mPageStore.sharedCommitLock().lock();
             }
 
@@ -298,34 +353,58 @@ public final class Database implements Closeable {
             mPageStore.sharedCommitLock().unlock();
         }
 
-        commit(true);
+        checkpoint(true);
     }
 
     /**
-     * Durably commit all changes to the database, while still allowing
-     * concurrent access. Commit can be called by any thread, although only one
-     * is permitted in at a time.
+     * Flushes, but does not sync, all non-flushed transactions. Transactions
+     * committed with {@link DurabilityMode#NO_FLUSH no-flush} effectively
+     * become {@link DurabilityMode#NO_SYNC no-sync} durable.
      */
-    public void commit() throws IOException {
-        commit(false);
+    public void flush() throws IOException {
+        mRedoLog.flush();
     }
 
     /**
-     * Close the database without committing recent changes.
+     * Persists all non-flushed and non-sync'd transactions. Transactions
+     * committed with {@link DurabilityMode#NO_FLUSH no-flush} and {@link
+     * DurabilityMode#NO_SYNC no-sync} effectively become {@link
+     * DurabilityMode#SYNC sync} durable.
+     */
+    public void sync() throws IOException {
+        mRedoLog.sync();
+    }
+
+    /**
+     * Durably sync and checkpoint all changes to the database. In addition to
+     * ensuring that all transactions are durable, checkpointing ensures that
+     * non-transactional modifications are durable.
+     */
+    public void checkpoint() throws IOException {
+        checkpoint(false);
+    }
+
+    /**
+     * Closes the database, ensuring durability of committed transactions. No
+     * checkpoint is performed by this method, and so non-transactional
+     * modifications can be lost.
      */
     @Override
     public void close() throws IOException {
-        mPageStore.close();
+        if (mRedoLog != null) {
+            mRedoLog.close();
+        }
+        if (mPageStore != null) {
+            mPageStore.close();
+        }
     }
 
     /**
      * Loads the root registry node, or creates one if store is new. Root node
      * is not eligible for eviction.
      */
-    private TreeNode loadRegistryRoot() throws IOException {
-        byte[] header = new byte[12];
-        mPageStore.readExtraCommitData(header);
-        int version = DataIO.readInt(header, 0);
+    private TreeNode loadRegistryRoot(byte[] header) throws IOException {
+        int version = DataIO.readInt(header, I_ENCODING_VERSION);
 
         if (version == 0) {
             // Assume store is new and return a new empty leaf node.
@@ -336,7 +415,7 @@ public final class Database implements Closeable {
             throw new CorruptPageStoreException("Unknown encoding version: " + version);
         }
 
-        long rootId = DataIO.readLong(header, 4);
+        long rootId = DataIO.readLong(header, I_ROOT_PAGE_ID);
 
         TreeNode root = new TreeNode(pageSize(), false);
         root.read(this, rootId);
@@ -372,10 +451,10 @@ public final class Database implements Closeable {
                     do {
                         treeId = Utils.randomId();
                         DataIO.writeLong(treeIdBytes, 0, treeId);
-                    } while (!mRegistry.insert(null, treeIdBytes, Utils.EMPTY_BYTES));
+                    } while (!mRegistry.insert(Transaction.BOGUS, treeIdBytes, Utils.EMPTY_BYTES));
 
                     if (!mRegistryKeyMap.insert(null, nameKey, treeIdBytes)) {
-                        mRegistry.delete(null, treeIdBytes);
+                        mRegistry.delete(Transaction.BOGUS, treeIdBytes);
                         throw new DatabaseException("Unable to insert index name");
                     }
 
@@ -383,13 +462,13 @@ public final class Database implements Closeable {
 
                     if (!mRegistryKeyMap.insert(null, idKey, name)) {
                         mRegistryKeyMap.delete(null, nameKey);
-                        mRegistry.delete(null, treeIdBytes);
+                        mRegistry.delete(Transaction.BOGUS, treeIdBytes);
                         throw new DatabaseException("Unable to insert index id");
                     }
                 }
             }
 
-            byte[] encodedRootId = mRegistry.get(null, treeIdBytes);
+            byte[] encodedRootId = mRegistry.get(Transaction.BOGUS, treeIdBytes);
 
             TreeNode rootNode;
             if (encodedRootId == null || encodedRootId.length == 0) {
@@ -540,7 +619,7 @@ public final class Database implements Closeable {
         if (node == tree.mRoot && tree.mIdBytes != null) {
             byte[] newEncodedId = new byte[8];
             DataIO.writeLong(newEncodedId, 0, newId);
-            mRegistry.store(null, tree.mIdBytes, newEncodedId);
+            mRegistry.store(Transaction.BOGUS, tree.mIdBytes, newEncodedId);
         }
 
         node.mId = newId;
@@ -650,41 +729,55 @@ public final class Database implements Closeable {
         mPageStore.writeReservedPage(id, page);
     }
 
-    /**
-     * Durably commit all changes to the database, while still allowing
-     * concurrent access. Commit can be called by any thread, although only one
-     * is permitted in at a time.
-     */
-    private void commit(boolean force) throws IOException {
-        final TreeNode root = mRegistry.mRoot;
+    private void checkpoint(boolean force) throws IOException {
+        // Checkpoint lock ensures consistent state between page store and logs.
+        synchronized (mCheckpointLock) {
+            final TreeNode root = mRegistry.mRoot;
 
-        // Commit lock must be acquired first, to prevent deadlock.
-        mPageStore.exclusiveCommitLock().lock();
-        root.acquireSharedUnfair();
-        if (!force && root.mCachedState == CACHED_CLEAN) {
-            // Root is clean, so nothing to do.
-            root.releaseShared();
-            mPageStore.exclusiveCommitLock().unlock();
-            return;
-        }
+            // Commit lock must be acquired first, to prevent deadlock.
+            mPageStore.exclusiveCommitLock().lock();
 
-        mPageStore.commit(new PageStore.CommitCallback() {
-            @Override
-            public byte[] prepare() throws IOException {
-                return flush();
+            root.acquireSharedUnfair();
+            if (!force && root.mCachedState == CACHED_CLEAN) {
+                // Root is clean, so nothing to do.
+                root.releaseShared();
+                mPageStore.exclusiveCommitLock().unlock();
+                return;
             }
-        });
+
+            final long redoLogId;
+            try {
+                redoLogId = mRedoLog.openNewFile();
+            } catch (IOException e) {
+                root.releaseShared();
+                mPageStore.exclusiveCommitLock().unlock();
+                throw e;
+            }
+
+            mPageStore.commit(new PageStore.CommitCallback() {
+                @Override
+                public byte[] prepare() throws IOException {
+                    return flush(redoLogId);
+                }
+            });
+
+            // Note: The delete step can get skipped if process exits at this
+            // point. File is deleted again when database is re-opened.
+            mRedoLog.deleteOldFile(redoLogId);
+        }
     }
 
     /**
      * Method is invoked with exclusive commit lock and shared root node latch held.
      */
-    private byte[] flush() throws IOException {
+    private byte[] flush(final long redoLogId) throws IOException {
         // Snapshot of all open trees.
         Tree[] trees;
         synchronized (mOpenTrees) {
             trees = mOpenTrees.values().toArray(new Tree[mOpenTrees.size()]);
         }
+
+        final long txnId = mTxnId.get();
 
         /* FIXME: This code does not properly account for concurrent splits. Dirty
            nodes might not get written into the commit, and this has also been observed:
@@ -745,9 +838,12 @@ public final class Database implements Closeable {
             }
         }
 
-        byte[] header = new byte[12];
-        DataIO.writeInt(header, 0, ENCODING_VERSION);
-        DataIO.writeLong(header, 4, rootId);
+        byte[] header = new byte[HEADER_SIZE];
+        DataIO.writeInt(header, I_ENCODING_VERSION, ENCODING_VERSION);
+        DataIO.writeLong(header, I_ROOT_PAGE_ID, rootId);
+        DataIO.writeLong(header, I_TRANSACTION_ID, txnId);
+        // Add one to redoLogId, indicating the active log id.
+        DataIO.writeLong(header, I_REDO_LOG_ID, redoLogId + 1);
 
         return header;
     }

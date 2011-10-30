@@ -17,7 +17,7 @@
 package org.cojen.tupl;
 
 /**
- * Various lock modes for use within transactions. Except for {@link UNSAFE},
+ * Various lock modes for use within transactions. Except for {@link #UNSAFE},
  * all modes follow the same policy when modifying entries. They all differ
  * with respect to entries which are being read.
  *
@@ -26,6 +26,8 @@ package org.cojen.tupl;
  * transaction scopes are released for uncommitted modifications. Scopes which
  * are committed transfer exclusive locks to the parent scope, and all other
  * acquired locks are released.
+ *
+ * <p>Mode strengths: {@code UPGRADABLE_READ > REPEATABLE_READ > READ_COMMITTED > READ_UNCOMMITTED > UNSAFE}
  *
  * @author Brian S O'Neill
  */
@@ -41,8 +43,8 @@ public enum LockMode {
     /**
      * Lock mode which acquires shared locks when reading entries and retains
      * them to the end of the transaction or scope. Attempting to modify
-     * entries guarded by a shared lock is {@link LockResult.ILLEGAL
-     * illegal}. Consider using {@link UPGRADABLE_READ} instead.
+     * entries guarded by a shared lock is {@link LockResult#ILLEGAL
+     * illegal}. Consider using {@link #UPGRADABLE_READ} instead.
      */
     REPEATABLE_READ(false),
 

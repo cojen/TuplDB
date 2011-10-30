@@ -35,10 +35,6 @@ public class DatabaseConfig {
     int mPageSize;
     UndoLog.RollbackHandler mRollbackHandler;
 
-    public static DatabaseConfig newConfig() {
-        return new DatabaseConfig();
-    }
-
     public DatabaseConfig() {
         setDurabilityMode(null);
         setLockTimeout(1, TimeUnit.SECONDS);

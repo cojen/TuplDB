@@ -25,8 +25,8 @@ public class CursorTest {
     public static void main(String[] args) throws Exception {
         java.io.File file = new java.io.File(args[0]);
 
-        final Database db = new Database
-            (DatabaseConfig.newConfig().setBaseFile(file).setMinCachedNodes(1000));
+        final Database db = Database.open
+            (new DatabaseConfig().setBaseFile(file).setMinCachedNodes(1000));
         final Index index = db.openIndex("test1");
 
         Cursor c = index.newCursor(null);

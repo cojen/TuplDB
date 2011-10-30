@@ -31,9 +31,8 @@ public class TreeNodeTest {
     public static void main(String[] args) throws Exception {
         java.io.File file = new java.io.File(args[0]);
 
-        final Database db = new Database
-            (DatabaseConfig
-             .newConfig()
+        final Database db = Database.open
+            (new DatabaseConfig()
              .setBaseFile(file)
              .setMinCachedNodes(100000)
              .setDurabilityMode(DurabilityMode.NO_FLUSH));
@@ -68,9 +67,9 @@ public class TreeNodeTest {
                             Thread.sleep(delay);
                         }
 
-                        System.out.println("commit...");
+                        System.out.println("checkpoint...");
                         long start = System.currentTimeMillis();
-                        db.commit();
+                        db.checkpoint();
                         long end = System.currentTimeMillis();
                         //System.out.println("...done: " + pstore.stats());
                         System.out.println("...done");
@@ -95,7 +94,7 @@ public class TreeNodeTest {
         for (int i=1; i<100000000; i++) {
             /*
             if (i % 100000 == 0) {
-                store.commit();
+                db.checkpoint();
             }
             */
             if (i % 10000 == 0) {
@@ -119,7 +118,7 @@ public class TreeNodeTest {
 
         //root.dump(store, "");
 
-        db.commit();
+        db.checkpoint();
     }
 
     private static void testInsert(Map<String, String> map, boolean fullTest,
