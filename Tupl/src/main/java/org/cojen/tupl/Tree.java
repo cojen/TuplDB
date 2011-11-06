@@ -29,13 +29,13 @@ final class Tree implements Index {
     final Database mDatabase;
     final LockManager mLockManager;
 
-    // Id is zero for registry and registry key map.
+    // Id range is [0, 255] for all internal trees.
     final long mId;
 
-    // Id is null for registry, and empty for registry key map.
+    // Id is null for registry and empty for all other internal trees.
     final byte[] mIdBytes;
 
-    // Name is null for registry and registry key map.
+    // Name is null for internal trees.
     final byte[] mName;
 
     // Although tree roots can be created and deleted, the object which refers

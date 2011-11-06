@@ -25,7 +25,7 @@ import java.io.IOException;
  */
 public interface OrderedView {
     /**
-     * @param txn optional transaction
+     * @param txn optional transaction for Cursor to link to
      * @return a new unpositioned cursor
      */
     public Cursor newCursor(Transaction txn);

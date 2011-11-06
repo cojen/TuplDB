@@ -91,16 +91,7 @@ public class DatabaseConfig {
      * @param unit required unit if timeout is more than zero
      */
     public DatabaseConfig setLockTimeout(long timeout, TimeUnit unit) {
-        if (timeout < 0) {
-            mLockTimeoutNanos = -1;
-        } else if (timeout == 0) {
-            mLockTimeoutNanos = 0;
-        } else {
-            if ((timeout = unit.toNanos(timeout)) < 0) {
-                timeout = 0;
-            }
-            mLockTimeoutNanos = timeout;
-        }
+        mLockTimeoutNanos = Utils.toNanos(timeout, unit);
         return this;
     }
 
