@@ -43,11 +43,11 @@ class RedoLogApplier implements RedoLogVisitor {
     }
 
     public void store(long indexId, byte[] key, byte[] value) throws IOException {
-        mDb.indexById(indexId).store(Transaction.BOGUS, key, value);
+        mDb.anyIndexById(indexId).store(Transaction.BOGUS, key, value);
     }
 
     public void clear(long indexId) throws IOException {
-        mDb.indexById(indexId).clear(Transaction.BOGUS);
+        mDb.anyIndexById(indexId).clear(Transaction.BOGUS);
     }
 
     public void txnRollback(long txnId, long parentTxnId) throws IOException {

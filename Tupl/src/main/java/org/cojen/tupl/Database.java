@@ -55,6 +55,8 @@ public final class Database implements Closeable {
     private static final byte KEY_TYPE_INDEX_NAME = 0;
     private static final byte KEY_TYPE_INDEX_ID = 1;
 
+    private static final int REGISTRY_ID = 0, REGISTRY_KEY_MAP_ID = 1, MAX_RESERVED_ID = 255;
+
     final DurabilityMode mDurabilityMode;
     final long mDefaultLockTimeoutNanos;
     final LockManager mLockManager;
@@ -156,7 +158,7 @@ public final class Database implements Closeable {
             byte[] header = new byte[HEADER_SIZE];
             mPageStore.readExtraCommitData(header);
 
-            mRegistry = new Tree(this, 0, null, null, loadRegistryRoot(header));
+            mRegistry = new Tree(this, REGISTRY_ID, null, null, loadRegistryRoot(header));
             mOpenTrees = new TreeMap<byte[], Tree>(KeyComparator.THE);
             mOpenTreesById = new HashMap<Long, Tree>();
 
@@ -196,7 +198,8 @@ public final class Database implements Closeable {
                     rootNode.read(this, DataIO.readLong(encodedRootId, 0));
                 }
             
-                mRegistryKeyMap = new Tree(this, 0, Utils.EMPTY_BYTES, null, rootNode);
+                mRegistryKeyMap = new Tree
+                    (this, REGISTRY_KEY_MAP_ID, Utils.EMPTY_BYTES, null, rootNode);
             }
 
             if (mRedoLog.replay(new RedoLogApplier(this))) {
@@ -252,13 +255,22 @@ public final class Database implements Closeable {
              LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
     }
 
+    /**
+     * @return non-zero transaction id
+     */
     long nextTransactionId() {
-        mSharedCommitLock.lock();
-        try {
-            return mTxnId.incrementAndGet();
-        } finally {
-            mSharedCommitLock.unlock();
-        }
+        long id;
+        do {
+            // Hold commit lock to ensure that highest transaction id is
+            // persisted correctly by checkpoint.
+            mSharedCommitLock.lock();
+            try {
+                id = mTxnId.incrementAndGet();
+            } finally {
+                mSharedCommitLock.unlock();
+            }
+        } while (id == 0);
+        return id;
     }
 
     /**
@@ -267,7 +279,7 @@ public final class Database implements Closeable {
      * @throws IllegalArgumentException if id is zero
      */
     public Index indexById(long id) throws IOException {
-        if (id == 0) {
+        if (id >= REGISTRY_ID && id <= MAX_RESERVED_ID) {
             throw new IllegalArgumentException("Invalid id: " + id);
         }
 
@@ -306,6 +318,16 @@ public final class Database implements Closeable {
         }
 
         return index;
+    }
+
+    /**
+     * Allows access to internal indexes which can use the redo log.
+     */
+    Index anyIndexById(long id) throws IOException {
+        if (id == REGISTRY_KEY_MAP_ID) {
+            return mRegistryKeyMap;
+        }
+        return indexById(id);
     }
 
     /**
@@ -449,7 +471,7 @@ public final class Database implements Closeable {
                     treeIdBytes = new byte[8];
 
                     do {
-                        treeId = Utils.randomId();
+                        treeId = Utils.randomId(REGISTRY_ID, MAX_RESERVED_ID);
                         DataIO.writeLong(treeIdBytes, 0, treeId);
                     } while (!mRegistry.insert(Transaction.BOGUS, treeIdBytes, Utils.EMPTY_BYTES));
 
@@ -645,7 +667,7 @@ public final class Database implements Closeable {
      * never released by this method, even if an exception is thrown.
      */
     void deleteNode(TreeNode node) throws IOException {
-        deletePage(node.mId);
+        deletePage(node.mId, node.mCachedState);
 
         node.mId = 0;
         // FIXME: child node array should be recycled
@@ -679,11 +701,15 @@ public final class Database implements Closeable {
     /**
      * Caller must hold commit lock.
      */
-    void deletePage(long id) throws IOException {
+    void deletePage(long id, int cachedState) throws IOException {
         if (id != 0) {
-            // TODO: Id can immediately be re-used, depending on the cached
-            // state. Also see notes in the TreeNode.evict method.
-            mPageStore.deletePage(id);
+            if (cachedState == mCommitState) {
+                // Newly reserved page was never used, so recycle it.
+                mPageStore.recyclePage(id);
+            } else {
+                // Old data must survive until after checkpoint.
+                mPageStore.deletePage(id);
+            }
         }
     }
 

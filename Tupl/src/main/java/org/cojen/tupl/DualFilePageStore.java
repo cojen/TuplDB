@@ -69,6 +69,9 @@ class DualFilePageStore implements PageStore {
 
     private static final long MAGIC_NUMBER = 7359069613485731323L;
 
+    private static final int MAX_RECYCLE_BIN_SIZE = 8192;
+    private static final int INITIAL_RECYCLE_BIN_SIZE = 128;
+
     // Indexes of entries in header node.
     private static final int I_MAGIC_NUMBER = 0;
     private static final int I_FILE_UID = 8;
@@ -140,6 +143,11 @@ class DualFilePageStore implements PageStore {
     private Allocator mInactiveAllocator;
 
     private boolean mAllowForeignAllocations;
+
+    private final Object mRecycleBinLock = new Object();
+    private long[] mRecycleBin;
+    private int mRecycleBinPos;
+    private long[] mRecycleBinSpare;
 
     private static final class FPA extends FilePageArray {
         FPA(File file, boolean readOnly, int pageSize, int openFileCount) throws IOException {
@@ -366,9 +374,12 @@ class DualFilePageStore implements PageStore {
 
     @Override
     public long reservePage() throws IOException {
+        long id = reserveRecycledPage();
+        if (id != 0) {
+            return id;
+        }
         mCommitLock.readLock().lock();
         try {
-            long id;
             if (mAllowForeignAllocations && (id = mInactiveAllocator.allocForeignPage()) != 0) {
                 return id;
             } else {
@@ -379,6 +390,22 @@ class DualFilePageStore implements PageStore {
         } finally {
             mCommitLock.readLock().unlock();
         }
+    }
+
+    @Override
+    public long reserveRecycledPage() throws IOException {
+        synchronized (mRecycleBinLock) {
+            long[] bin = mRecycleBin;
+            if (bin != null) {
+                int pos = mRecycleBinPos;
+                if (pos > 0) {
+                    long id = bin[--pos];
+                    mRecycleBinPos = pos;
+                    return id;
+                }
+            }
+        }
+        return 0;
     }
 
     @Override
@@ -411,6 +438,40 @@ class DualFilePageStore implements PageStore {
             }
         } catch (Throwable e) {
             throw closeOnFailure(e);
+        } finally {
+            mCommitLock.readLock().unlock();
+        }
+    }
+
+    @Override
+    public void recyclePage(long id) throws IOException {
+        checkId(id);
+        mCommitLock.readLock().lock();
+        try {
+            doRecycle: synchronized (mRecycleBinLock) {
+                long[] bin = mRecycleBin;
+                if (bin == null) {
+                    mRecycleBin = bin = new long[INITIAL_RECYCLE_BIN_SIZE];
+                    bin[0] = id;
+                    mRecycleBinPos = 1;
+                } else {
+                    int pos = mRecycleBinPos;
+                    if (pos >= bin.length) {
+                        if (bin.length >= MAX_RECYCLE_BIN_SIZE) {
+                            break doRecycle;
+                        }
+                        long[] newBin = new long[bin.length * 2];
+                        System.arraycopy(bin, 0, newBin, 0, bin.length);
+                        mRecycleBin = bin = newBin;
+                    }
+                    bin[pos] = id;
+                    mRecycleBinPos = pos + 1;
+                }
+                return;
+            }
+
+            // Delete outside synchronized block.
+            deletePage(id);
         } finally {
             mCommitLock.readLock().unlock();
         }
@@ -457,9 +518,20 @@ class DualFilePageStore implements PageStore {
         } finally {
             mCommitLock.readLock().unlock();
         }
- 
+
         mCommitLock.writeLock().lock();
         mCommitLock.readLock().lock();
+
+        // Swap recycle bins.
+        long[] bin;
+        int binPos;
+        synchronized (mRecycleBinLock) {
+            bin = mRecycleBin;
+            binPos = mRecycleBinPos;
+            mRecycleBin = mRecycleBinSpare;
+            mRecycleBinPos = 0;
+            mRecycleBinSpare = bin;
+        }
 
         final Allocator lastAllocator = mActiveAllocator;
 
@@ -489,12 +561,21 @@ class DualFilePageStore implements PageStore {
         // during the flush.
 
         try {
+            // Finish emptying recycle bin, by deleting all pages into the last
+            // allocator. This ensures that recycled pages are not lost.
+            if (bin != null) for (int i=0; i<binPos; i++) {
+                long id = bin[i];
+                Allocator allocator = (id & 1) == 0 ? mAllocator0 : mAllocator1;
+                id >>= 1;
+                if (allocator == lastAllocator) {
+                    allocator.mPageAllocator.deletePage(id);
+                } else {
+                    lastAllocator.mForeignPages.deletePage(id);
+                }
+            }
+
             byte[] header = new byte[pageSize()];
 
-            // TODO: comment is stale
-            // Although this commit might block writing a few pages, it is
-            // necessary to do this with exclusive lock held to prevent
-            // foreign allocations from the newly inactive allocator.
             lastAllocator.mForeignPages.commit
                 (header, I_ALLOCATOR_HEADER + lastAllocator.mPageAllocator.headerSize(), null);
 

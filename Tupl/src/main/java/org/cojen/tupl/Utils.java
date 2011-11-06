@@ -21,6 +21,8 @@ import java.io.IOException;
 
 import java.security.SecureRandom;
 
+import java.util.concurrent.TimeUnit;
+
 /**
  * 
  *
@@ -30,13 +32,19 @@ class Utils {
     static final byte[] EMPTY_BYTES = new byte[0];
 
     /**
-     * @return non-zero random id
+     * @param restrictStart inclusive
+     * @param restrictEnd inclusive
      */
-    static long randomId() {
+    static long randomId(long restrictStart, long restrictEnd) {
         SecureRandom rnd = new SecureRandom();
         long id;
-        while ((id = rnd.nextLong()) == 0);
+        while ((id = rnd.nextLong()) >= restrictStart && id <= restrictEnd);
         return id;
+    }
+
+    static long toNanos(long timeout, TimeUnit unit) {
+        return timeout < 0 ? -1 :
+            (timeout == 0 ? 0 : (((timeout = unit.toNanos(timeout)) < 0) ? 0 : timeout));
     }
 
     /**

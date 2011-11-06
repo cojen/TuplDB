@@ -1789,6 +1789,7 @@ final class TreeNode extends Latch {
         TreeNode child = childNodes[0];
         tree.mDatabase.prepareToDelete(child);
         long toDelete = child.mId;
+        int toDeleteState = child.mCachedState;
 
         mPage = child.mPage;
         mType = child.mType;
@@ -1828,7 +1829,7 @@ final class TreeNode extends Latch {
 
         // The page can be deleted earlier in the method, but doing it here
         // might prevent corruption if an unexpected exception occurs.
-        tree.mDatabase.deletePage(toDelete);
+        tree.mDatabase.deletePage(toDelete, toDeleteState);
     }
 
     /**

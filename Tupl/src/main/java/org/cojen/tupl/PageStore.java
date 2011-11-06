@@ -140,6 +140,18 @@ interface PageStore extends Closeable {
     public void deletePage(long id) throws IOException;
 
     /**
+     * Recycles a page for immediate re-use. Recycle should only be called for
+     * pages whose contents are known to be unused. If recycle "bin" is full,
+     * page might get deleted instead. Recycle bin is also emptied by commit.
+     */
+    public void recyclePage(long id) throws IOException;
+
+    /**
+     * Return a recycled page, or zero if none available.
+     */
+    public long reserveRecycledPage() throws IOException;
+
+    /**
      * Preallocates pages for use later. Preallocation is not permanent until
      * after commit is called.
      */
