@@ -41,7 +41,7 @@ final class Tree implements Index {
     // Although tree roots can be created and deleted, the object which refers
     // to the root remains the same. Internal state is transferred to/from this
     // object when the tree root changes.
-    final TreeNode mRoot;
+    final Node mRoot;
 
     // Maintain a stack of stubs, which are created when root nodes are
     // deleted. When a new root is created, a stub is popped, and cursors bound
@@ -49,7 +49,7 @@ final class Tree implements Index {
     // by the root node latch.
     private Stub mStubTail;
 
-    Tree(Database db, long id, byte[] idBytes, byte[] name, TreeNode root) {
+    Tree(Database db, long id, byte[] idBytes, byte[] name, Node root) {
         mDatabase = db;
         mLockManager = db.mLockManager;
         mId = id;
@@ -270,14 +270,14 @@ final class Tree implements Index {
     /**
      * @see Database#markDirty
      */
-    boolean markDirty(TreeNode node) throws IOException {
+    boolean markDirty(Node node) throws IOException {
         return mDatabase.markDirty(this, node);
     }
 
     /**
      * Caller must exclusively hold root latch.
      */
-    void addStub(TreeNode node) {
+    void addStub(Node node) {
         mStubTail = new Stub(mStubTail, node);
     }
 
@@ -293,7 +293,7 @@ final class Tree implements Index {
      * if latch cannot be immediatly obtained. Caller must exclusively hold
      * root latch and have checked that a stub exists.
      */
-    TreeNode tryPopStub() {
+    Node tryPopStub() {
         Stub stub = mStubTail;
         if (stub.mNode.tryAcquireExclusiveUnfair()) {
             mStubTail = stub.mParent;
@@ -306,7 +306,7 @@ final class Tree implements Index {
      * Exclusively latches and pops the tail stub node. Caller must exclusively
      * hold root latch and have checked that a stub exists.
      */
-    TreeNode popStub() {
+    Node popStub() {
         Stub stub = mStubTail;
         stub.mNode.acquireExclusiveUnfair();
         mStubTail = stub.mParent;
@@ -320,8 +320,8 @@ final class Tree implements Index {
      *
      * @return node if valid, null otherwise
      */
-    TreeNode validateStub(TreeNode node) {
-        if (node.mId == TreeNode.STUB_ID && node.mLastCursorFrame != null) {
+    Node validateStub(Node node) {
+        if (node.mId == Node.STUB_ID && node.mLastCursorFrame != null) {
             return node;
         }
         node.releaseExclusive();
@@ -330,9 +330,9 @@ final class Tree implements Index {
 
     static final class Stub {
         final Stub mParent;
-        final TreeNode mNode;
+        final Node mNode;
 
-        Stub(Stub parent, TreeNode node) {
+        Stub(Stub parent, Node node) {
             mParent = parent;
             mNode = node;
         }
@@ -361,17 +361,17 @@ final class Tree implements Index {
         dirtyList.add(new DirtyNode(mRoot, mRoot.mId));
 
         for (; mi<dirtyList.size(); mi++) {
-            TreeNode node = dirtyList.get(mi).mNode;
+            Node node = dirtyList.get(mi).mNode;
 
             if (node.isLeaf()) {
                 node.releaseShared();
                 continue;
             }
 
-            TreeNode[] childNodes = node.mChildNodes;
+            Node[] childNodes = node.mChildNodes;
 
             for (int ci=0; ci<childNodes.length; ci++) {
-                TreeNode childNode = childNodes[ci];
+                Node childNode = childNodes[ci];
                 if (childNode != null) {
                     long childId = node.retrieveChildRefIdFromIndex(ci);
                     if (childId == childNode.mId) {

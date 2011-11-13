@@ -34,7 +34,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import java.util.concurrent.locks.Lock;
 
-import static org.cojen.tupl.TreeNode.*;
+import static org.cojen.tupl.Node.*;
 
 /**
  * 
@@ -68,8 +68,8 @@ public final class Database implements Closeable {
     private final Latch mCacheLatch;
     private final int mMaxCachedNodeCount;
     private int mCachedNodeCount;
-    private TreeNode mMostRecentlyUsed;
-    private TreeNode mLeastRecentlyUsed;
+    private Node mMostRecentlyUsed;
+    private Node mLeastRecentlyUsed;
 
     private final Lock mSharedCommitLock;
 
@@ -189,12 +189,12 @@ public final class Database implements Closeable {
             {
                 byte[] encodedRootId = mRegistry.get(Transaction.BOGUS, Utils.EMPTY_BYTES);
 
-                TreeNode rootNode;
+                Node rootNode;
                 if (encodedRootId == null) {
                     // Create a new empty leaf node.
-                    rootNode = new TreeNode(mPageStore.pageSize(), true);
+                    rootNode = new Node(mPageStore.pageSize(), true);
                 } else {
-                    rootNode = new TreeNode(mPageStore.pageSize(), false);
+                    rootNode = new Node(mPageStore.pageSize(), false);
                     rootNode.read(this, DataIO.readLong(encodedRootId, 0));
                 }
             
@@ -425,12 +425,12 @@ public final class Database implements Closeable {
      * Loads the root registry node, or creates one if store is new. Root node
      * is not eligible for eviction.
      */
-    private TreeNode loadRegistryRoot(byte[] header) throws IOException {
+    private Node loadRegistryRoot(byte[] header) throws IOException {
         int version = DataIO.readInt(header, I_ENCODING_VERSION);
 
         if (version == 0) {
             // Assume store is new and return a new empty leaf node.
-            return new TreeNode(pageSize(), true);
+            return new Node(pageSize(), true);
         }
 
         if (version != ENCODING_VERSION) {
@@ -439,7 +439,7 @@ public final class Database implements Closeable {
 
         long rootId = DataIO.readLong(header, I_ROOT_PAGE_ID);
 
-        TreeNode root = new TreeNode(pageSize(), false);
+        Node root = new Node(pageSize(), false);
         root.read(this, rootId);
         return root;
     }
@@ -492,12 +492,12 @@ public final class Database implements Closeable {
 
             byte[] encodedRootId = mRegistry.get(Transaction.BOGUS, treeIdBytes);
 
-            TreeNode rootNode;
+            Node rootNode;
             if (encodedRootId == null || encodedRootId.length == 0) {
                 // Create a new empty leaf node.
-                rootNode = new TreeNode(pageSize(), true);
+                rootNode = new Node(pageSize(), true);
             } else {
-                rootNode = new TreeNode(pageSize(), false);
+                rootNode = new Node(pageSize(), false);
                 rootNode.read(this, DataIO.readLong(encodedRootId, 0));
             }
 
@@ -539,15 +539,15 @@ public final class Database implements Closeable {
     }
 
     /**
-     * Returns a new or recycled TreeNode instance, latched exclusively, with an id
+     * Returns a new or recycled Node instance, latched exclusively, with an id
      * of zero and a clean state.
      */
-    TreeNode allocLatchedNode() throws IOException {
+    Node allocLatchedNode() throws IOException {
         mCacheLatch.acquireExclusiveUnfair();
         try {
             int max = mMaxCachedNodeCount;
             if (mCachedNodeCount < max) {
-                TreeNode node = new TreeNode(pageSize(), false);
+                Node node = new Node(pageSize(), false);
                 node.acquireExclusiveUnfair();
 
                 mCachedNodeCount++;
@@ -562,7 +562,7 @@ public final class Database implements Closeable {
             }
 
             do {
-                TreeNode node = mLeastRecentlyUsed;
+                Node node = mLeastRecentlyUsed;
                 (mLeastRecentlyUsed = node.mMoreUsed).mLessUsed = null;
                 node.mMoreUsed = null;
                 (node.mLessUsed = mMostRecentlyUsed).mMoreUsed = node;
@@ -590,8 +590,8 @@ public final class Database implements Closeable {
      * Returns a new reserved node, latched exclusively and marked dirty. Caller
      * must hold commit lock.
      */
-    TreeNode newNodeForSplit() throws IOException {
-        TreeNode node = allocLatchedNode();
+    Node newNodeForSplit() throws IOException {
+        Node node = allocLatchedNode();
         node.mId = mPageStore.reservePage();
         node.mCachedState = mCommitState;
         return node;
@@ -600,8 +600,8 @@ public final class Database implements Closeable {
     /**
      * Caller must hold commit lock and any latch on node.
      */
-    boolean shouldMarkDirty(TreeNode node) {
-        return node.mCachedState != mCommitState && node.mId != TreeNode.STUB_ID;
+    boolean shouldMarkDirty(Node node) {
+        return node.mCachedState != mCommitState && node.mId != Node.STUB_ID;
     }
 
     /**
@@ -611,9 +611,9 @@ public final class Database implements Closeable {
      *
      * @return true if just made dirty and id changed
      */
-    boolean markDirty(Tree tree, TreeNode node) throws IOException {
+    boolean markDirty(Tree tree, Node node) throws IOException {
         byte state = node.mCachedState;
-        if (state == mCommitState || node.mId == TreeNode.STUB_ID) {
+        if (state == mCommitState || node.mId == Node.STUB_ID) {
             return false;
         } else {
             doMarkDirty(tree, node);
@@ -626,7 +626,7 @@ public final class Database implements Closeable {
      * not be called if node is already dirty. Latch is never released by this
      * method, even if an exception is thrown.
      */
-    void doMarkDirty(Tree tree, TreeNode node) throws IOException {
+    void doMarkDirty(Tree tree, Node node) throws IOException {
         long oldId = node.mId;
         long newId = mPageStore.reservePage();
 
@@ -654,7 +654,7 @@ public final class Database implements Closeable {
      * latch on node. Latch is never released by this method, even if an
      * exception is thrown.
      */
-    void prepareToDelete(TreeNode node) throws IOException {
+    void prepareToDelete(Node node) throws IOException {
         // Hello. My name is Íñigo Montoya. You killed my father. Prepare to die. 
         byte state = node.mCachedState;
         if (state != CACHED_CLEAN && state != mCommitState) {
@@ -666,7 +666,7 @@ public final class Database implements Closeable {
      * Caller must hold commit lock and exclusive latch on node. Latch is
      * never released by this method, even if an exception is thrown.
      */
-    void deleteNode(TreeNode node) throws IOException {
+    void deleteNode(Node node) throws IOException {
         deletePage(node.mId, node.mCachedState);
 
         node.mId = 0;
@@ -681,9 +681,9 @@ public final class Database implements Closeable {
         // re-allocated immediately without evicting another node.
         mCacheLatch.acquireExclusiveUnfair();
         try {
-            TreeNode lessUsed = node.mLessUsed;
+            Node lessUsed = node.mLessUsed;
             if (lessUsed != null) {
-                TreeNode moreUsed = node.mMoreUsed;
+                Node moreUsed = node.mMoreUsed;
                 if ((lessUsed.mMoreUsed = moreUsed) == null) {
                     mMostRecentlyUsed = lessUsed;
                 } else {
@@ -717,15 +717,15 @@ public final class Database implements Closeable {
      * Indicate that non-root node is most recently used. Root node is not
      * managed in usage list and cannot be evicted.
      */
-    void used(TreeNode node) {
+    void used(Node node) {
         // Because this method can be a bottleneck, don't wait for exclusive
         // latch. If node is popular, it will get more chances to be identified
         // as most recently used. This strategy works well enough because cache
         // eviction is always a best-guess approach.
         if (mCacheLatch.tryAcquireExclusiveUnfair()) {
-            TreeNode moreUsed = node.mMoreUsed;
+            Node moreUsed = node.mMoreUsed;
             if (moreUsed != null) {
-                TreeNode lessUsed = node.mLessUsed;
+                Node lessUsed = node.mLessUsed;
                 if ((moreUsed.mLessUsed = lessUsed) == null) {
                     mLeastRecentlyUsed = moreUsed;
                 } else {
@@ -758,7 +758,7 @@ public final class Database implements Closeable {
     private void checkpoint(boolean force) throws IOException {
         // Checkpoint lock ensures consistent state between page store and logs.
         synchronized (mCheckpointLock) {
-            final TreeNode root = mRegistry.mRoot;
+            final Node root = mRegistry.mRoot;
 
             // Commit lock must be acquired first, to prevent deadlock.
             mPageStore.exclusiveCommitLock().lock();
@@ -821,7 +821,7 @@ public final class Database implements Closeable {
            A cursor based approach instead of breadth-first traversal might help.
         */ 
 
-        final TreeNode root = mRegistry.mRoot;
+        final Node root = mRegistry.mRoot;
         final long rootId = root.mId;
         final int stateToFlush = mCommitState;
         mCommitState = (byte) (CACHED_DIRTY_0 + ((stateToFlush - CACHED_DIRTY_0) ^ 1));
@@ -847,7 +847,7 @@ public final class Database implements Closeable {
         // been concurrently written out, so check again.
 
         for (int mi=0; mi<dirtyList.size(); mi++) {
-            TreeNode node = dirtyList.get(mi).mNode;
+            Node node = dirtyList.get(mi).mNode;
             dirtyList.set(mi, null);
             node.acquireExclusiveUnfair();
             if (node.mCachedState != stateToFlush) {
