@@ -24,15 +24,15 @@ import java.io.IOException;
  * @author Brian S O'Neill
  */
 final class TreeCursorFrame {
-    // TreeNode and position this TreeCursorFrame is bound to.
-    TreeNode mNode;
+    // Node and position this TreeCursorFrame is bound to.
+    Node mNode;
     int mNodePos;
 
     // Parent stack frame. A TreeCursorFrame which is bound to the root
-    // TreeNode has no parent frame.
+    // Node has no parent frame.
     TreeCursorFrame mParentFrame;
 
-    // Linked list of TreeCursorFrames bound to a TreeNode.
+    // Linked list of TreeCursorFrames bound to a Node.
     TreeCursorFrame mPrevCousin;
     TreeCursorFrame mNextCousin;
 
@@ -51,11 +51,11 @@ final class TreeCursorFrame {
      *
      * @return frame node
      */
-    TreeNode acquireSharedUnfair() {
-        TreeNode node = mNode;
+    Node acquireSharedUnfair() {
+        Node node = mNode;
         while (true) {
             node.acquireSharedUnfair();
-            TreeNode actualNode = mNode;
+            Node actualNode = mNode;
             if (actualNode == node) {
                 return actualNode;
             }
@@ -69,11 +69,11 @@ final class TreeCursorFrame {
      *
      * @return frame node
      */
-    TreeNode acquireExclusiveUnfair() {
-        TreeNode node = mNode;
+    Node acquireExclusiveUnfair() {
+        Node node = mNode;
         while (true) {
             node.acquireExclusiveUnfair();
-            TreeNode actualNode = mNode;
+            Node actualNode = mNode;
             if (actualNode == node) {
                 return actualNode;
             }
@@ -87,10 +87,10 @@ final class TreeCursorFrame {
      *
      * @return frame node, or null if not acquired
      */
-    TreeNode tryAcquireExclusiveUnfair() {
-        TreeNode node = mNode;
+    Node tryAcquireExclusiveUnfair() {
+        Node node = mNode;
         while (node.tryAcquireExclusiveUnfair()) {
-            TreeNode actualNode = mNode;
+            Node actualNode = mNode;
             if (actualNode == node) {
                 return actualNode;
             }
@@ -103,7 +103,7 @@ final class TreeCursorFrame {
     /** 
      * Bind this frame to a tree node. Called with exclusive latch held.
      */
-    void bind(TreeNode node, int nodePos) {
+    void bind(Node node, int nodePos) {
         mNode = node;
         mNodePos = nodePos;
         TreeCursorFrame last = node.mLastCursorFrame;
@@ -169,7 +169,7 @@ final class TreeCursorFrame {
      */
     static void popAll(TreeCursorFrame frame) {
         do {
-            TreeNode node = frame.acquireExclusiveUnfair();
+            Node node = frame.acquireExclusiveUnfair();
             frame = frame.pop();
             node.releaseExclusive();
         } while (frame != null);
@@ -181,7 +181,7 @@ final class TreeCursorFrame {
      * @param dest new frame instance to receive copy
      */
     void copyInto(TreeCursorFrame dest) {
-        TreeNode node = acquireExclusiveUnfair();
+        Node node = acquireExclusiveUnfair();
         TreeCursorFrame parent = mParentFrame;
 
         if (parent != null) {

@@ -27,7 +27,7 @@ class Split {
     final boolean mSplitRight;
     private final long mSiblingId;
     // FIXME: Add state to sibling to prevent eviction and make this field final.
-    private volatile TreeNode mSibling;
+    private volatile Node mSibling;
 
     // In many cases a copy of the key is not necessary; a simple reference to
     // the appropriate sub node works fine. This strategy assumes that the sub
@@ -38,7 +38,7 @@ class Split {
     /**
      * @param sibling must have exclusive lock when called; is released as a side-effect
      */
-    Split(boolean splitRight, TreeNode sibling, byte[] splitKey) {
+    Split(boolean splitRight, Node sibling, byte[] splitKey) {
         mSplitRight = splitRight;
         mSiblingId = sibling.mId;
         mSibling = sibling;
@@ -63,8 +63,8 @@ class Split {
      * @param node node which was split; shared latch must be held
      * @return original node or sibling
      */
-    TreeNode selectNodeShared(Database db, TreeNode node, byte[] key) throws IOException {
-        TreeNode sibling = mSibling;
+    Node selectNodeShared(Database db, Node node, byte[] key) throws IOException {
+        Node sibling = mSibling;
         sibling.acquireSharedUnfair();
 
         if (mSiblingId != sibling.mId) {
@@ -81,7 +81,7 @@ class Split {
             }
         }
 
-        TreeNode left, right;
+        Node left, right;
         if (mSplitRight) {
             left = node;
             right = sibling;
@@ -108,12 +108,12 @@ class Split {
      * @param node node which was split; exclusive latch must be held
      * @return original node or sibling
      */
-    TreeNode selectNodeExclusive(Database db, TreeNode node, byte[] key)
+    Node selectNodeExclusive(Database db, Node node, byte[] key)
         throws IOException
     {
-        TreeNode sibling = latchSibling(db);
+        Node sibling = latchSibling(db);
 
-        TreeNode left, right;
+        Node left, right;
         if (mSplitRight) {
             left = node;
             right = sibling;
@@ -135,10 +135,10 @@ class Split {
      * Performs a binary search against the split, returning the position
      * within the original node as if it had not split.
      */
-    int binarySearchLeaf(Database db, TreeNode node, byte[] key) throws IOException {
-        TreeNode sibling = latchSibling(db);
+    int binarySearchLeaf(Database db, Node node, byte[] key) throws IOException {
+        Node sibling = latchSibling(db);
 
-        TreeNode left, right;
+        Node left, right;
         if (mSplitRight) {
             left = node;
             right = sibling;
@@ -168,8 +168,8 @@ class Split {
     /**
      * Returns the highest position within the original node as if it had not split.
      */
-    int highestLeafPos(Database db, TreeNode node) throws IOException {
-        TreeNode sibling = latchSibling(db);
+    int highestLeafPos(Database db, Node node) throws IOException {
+        Node sibling = latchSibling(db);
         int pos = node.highestLeafPos() + sibling.highestLeafPos() + 2;
         sibling.releaseExclusive();
         return pos;
@@ -178,11 +178,11 @@ class Split {
     /**
      * Return the left split node, latched exclusively. Other node is unlatched.
      */
-    TreeNode latchLeft(Database db, TreeNode node) throws IOException {
+    Node latchLeft(Database db, Node node) throws IOException {
         if (mSplitRight) {
             return node;
         }
-        TreeNode sibling = latchSibling(db);
+        Node sibling = latchSibling(db);
         node.releaseExclusive();
         return sibling;
     }
@@ -190,8 +190,8 @@ class Split {
     /**
      * @return sibling with exclusive latch held
      */
-    TreeNode latchSibling(Database db) throws IOException {
-        TreeNode sibling = mSibling;
+    Node latchSibling(Database db) throws IOException {
+        Node sibling = mSibling;
         sibling.acquireExclusiveUnfair();
         if (mSiblingId != sibling.mId) {
             // Sibling was evicted, which is extremely rare.
@@ -211,8 +211,8 @@ class Split {
     /**
      * @param frame frame affected by split; exclusive latch for sibling must also be held
      */
-    void rebindFrame(TreeCursorFrame frame, TreeNode sibling) throws IOException {
-        TreeNode node = frame.mNode;
+    void rebindFrame(TreeCursorFrame frame, Node sibling) throws IOException {
+        Node node = frame.mNode;
         int pos = frame.mNodePos;
 
         if (mSplitRight) {

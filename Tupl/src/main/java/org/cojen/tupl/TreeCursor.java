@@ -57,7 +57,7 @@ final class TreeCursor implements Cursor {
 
     @Override
     public LockResult first() throws IOException {
-        TreeNode root = mTree.mRoot;
+        Node root = mTree.mRoot;
         TreeCursorFrame frame = resetForFind(root);
         if (!root.hasKeys()) {
             root.releaseExclusive();
@@ -85,7 +85,7 @@ final class TreeCursor implements Cursor {
      * @param frame frame to bind node to
      * @return null if lock was required but could not be obtained
      */
-    private LockResult toFirst(Transaction txn, TreeNode node, TreeCursorFrame frame)
+    private LockResult toFirst(Transaction txn, Node node, TreeCursorFrame frame)
         throws IOException
     {
         while (true) {
@@ -111,7 +111,7 @@ final class TreeCursor implements Cursor {
 
     @Override
     public LockResult last() throws IOException {
-        TreeNode root = mTree.mRoot;
+        Node root = mTree.mRoot;
         TreeCursorFrame frame = resetForFind(root);
         if (!root.hasKeys()) {
             root.releaseExclusive();
@@ -139,7 +139,7 @@ final class TreeCursor implements Cursor {
      * @param frame frame to bind node to
      * @return null if lock was required but could not be obtained
      */
-    private LockResult toLast(Transaction txn, TreeNode node, TreeCursorFrame frame)
+    private LockResult toLast(Transaction txn, Node node, TreeCursorFrame frame)
         throws IOException
     {
         while (true) {
@@ -169,9 +169,9 @@ final class TreeCursor implements Cursor {
                 // unsplit node as if it had not split. The binding will be
                 // corrected when split is finished.
 
-                final TreeNode sibling = split.latchSibling(mTree.mDatabase);
+                final Node sibling = split.latchSibling(mTree.mDatabase);
 
-                final TreeNode left, right;
+                final Node left, right;
                 if (split.mSplitRight) {
                     left = node;
                     right = sibling;
@@ -234,7 +234,7 @@ final class TreeCursor implements Cursor {
      * @return null if lock was required but could not be obtained
      */
     private LockResult toNext(Transaction txn, TreeCursorFrame frame) throws IOException {
-        TreeNode node = frame.mNode;
+        Node node = frame.mNode;
 
         quick: {
             int pos = frame.mNodePos;
@@ -270,7 +270,7 @@ final class TreeCursor implements Cursor {
                 return LockResult.UNOWNED;
             }
 
-            TreeNode parentNode;
+            Node parentNode;
             int parentPos;
 
             latchParent: {
@@ -385,7 +385,7 @@ final class TreeCursor implements Cursor {
      * @return null if lock was required but could not be obtained
      */
     private LockResult toPrevious(Transaction txn, TreeCursorFrame frame) throws IOException {
-        TreeNode node = frame.mNode;
+        Node node = frame.mNode;
 
         quick: {
             int pos = frame.mNodePos;
@@ -421,7 +421,7 @@ final class TreeCursor implements Cursor {
                 return LockResult.UNOWNED;
             }
 
-            TreeNode parentNode;
+            Node parentNode;
             int parentPos;
 
             latchParent: {
@@ -523,7 +523,7 @@ final class TreeCursor implements Cursor {
      * @param txn optional
      * @param node latched node
      */
-    private LockResult tryCopyCurrent(Transaction txn, TreeNode node, int pos) {
+    private LockResult tryCopyCurrent(Transaction txn, Node node, int pos) {
         final LockMode mode;
         if (txn == null) {
             mode = LockMode.READ_COMMITTED;
@@ -624,7 +624,7 @@ final class TreeCursor implements Cursor {
 
     private boolean copyValueIfExists() throws IOException {
         TreeCursorFrame frame = leaf();
-        TreeNode node = frame.acquireSharedUnfair();
+        Node node = frame.acquireSharedUnfair();
         try {
             splitCheck: if (node.mSplit != null) {
                 if (!node.tryUpgrade()) {
@@ -764,7 +764,7 @@ final class TreeCursor implements Cursor {
         try {
             mKey = key;
 
-            TreeNode node = mTree.mRoot;
+            Node node = mTree.mRoot;
             TreeCursorFrame frame;
 
             nearby: if (variant == VARIANT_NEARBY) {
@@ -812,7 +812,7 @@ final class TreeCursor implements Cursor {
                     if (parent == null) {
                         // Usually the root frame refers to the root node, but
                         // it can be wrong if the tree height is changing.
-                        TreeNode root = mTree.mRoot;
+                        Node root = mTree.mRoot;
                         if (node != root) {
                             node.releaseExclusive();
                             root.acquireExclusiveUnfair();
@@ -831,7 +831,7 @@ final class TreeCursor implements Cursor {
                         continue;
                     }
 
-                    pos = TreeNode.internalPos(node.binarySearchInternal(key, frame.mNodePos));
+                    pos = Node.internalPos(node.binarySearchInternal(key, frame.mNodePos));
 
                     if (pos == 0 || pos >= node.highestInternalPos()) {
                         // Cannot be certain if position is in this node, so pop up.
@@ -872,7 +872,7 @@ final class TreeCursor implements Cursor {
 
                 Split split = node.mSplit;
                 if (split == null) {
-                    int childPos = TreeNode.internalPos(node.binarySearchInternal(key));
+                    int childPos = Node.internalPos(node.binarySearchInternal(key));
                     frame.bind(node, childPos);
                     node = latchChild(node, childPos, true);
                 } else {
@@ -880,9 +880,9 @@ final class TreeCursor implements Cursor {
                     // unsplit node as if it had not split. The binding will be
                     // corrected when split is finished.
 
-                    final TreeNode sibling = split.latchSibling(mTree.mDatabase);
+                    final Node sibling = split.latchSibling(mTree.mDatabase);
 
-                    final TreeNode left, right;
+                    final Node left, right;
                     if (split.mSplitRight) {
                         left = node;
                         right = sibling;
@@ -891,17 +891,17 @@ final class TreeCursor implements Cursor {
                         right = node;
                     }
 
-                    final TreeNode selected;
+                    final Node selected;
                     final int selectedPos;
 
                     if (split.compare(key) < 0) {
                         selected = left;
-                        selectedPos = TreeNode.internalPos(left.binarySearchInternal(key));
+                        selectedPos = Node.internalPos(left.binarySearchInternal(key));
                         frame.bind(node, selectedPos);
                         right.releaseExclusive();
                     } else {
                         selected = right;
-                        selectedPos = TreeNode.internalPos(right.binarySearchInternal(key));
+                        selectedPos = Node.internalPos(right.binarySearchInternal(key));
                         frame.bind(node, left.highestInternalPos() + 2 + selectedPos);
                         left.releaseExclusive();
                     }
@@ -1100,7 +1100,7 @@ final class TreeCursor implements Cursor {
                 return;
             }
 
-            TreeNode node = notSplitDirty(leaf);
+            Node node = notSplitDirty(leaf);
             final int pos = leaf.mNodePos;
 
             if (txn == null) {
@@ -1152,7 +1152,7 @@ final class TreeCursor implements Cursor {
         }
 
         // Update and insert always dirty the node.
-        TreeNode node = notSplitDirty(leaf);
+        Node node = notSplitDirty(leaf);
         final int pos = leaf.mNodePos;
 
         if (pos >= 0) {
@@ -1296,7 +1296,7 @@ final class TreeCursor implements Cursor {
      *
      * @return new or recycled frame
      */
-    private TreeCursorFrame resetForFind(TreeNode root) {
+    private TreeCursorFrame resetForFind(Node root) {
         TreeCursorFrame frame = mLeaf;
         if (frame == null) {
             root.acquireExclusiveUnfair();
@@ -1306,7 +1306,7 @@ final class TreeCursor implements Cursor {
         mLeaf = null;
 
         while (true) {
-            TreeNode node = frame.acquireExclusiveUnfair();
+            Node node = frame.acquireExclusiveUnfair();
             TreeCursorFrame parent = frame.pop();
 
             if (parent == null) {
@@ -1354,7 +1354,7 @@ final class TreeCursor implements Cursor {
         }
 
         TreeCursorFrame frame = frames.removeFirst();
-        TreeNode node = frame.acquireSharedUnfair();
+        Node node = frame.acquireSharedUnfair();
 
         if (node.mSplit != null) {
             // Cannot verify into split nodes.
@@ -1396,7 +1396,7 @@ final class TreeCursor implements Cursor {
                 return true;
             }
 
-            int childPos = TreeNode.internalPos(node.binarySearchInternal(key));
+            int childPos = Node.internalPos(node.binarySearchInternal(key));
 
             TreeCursorFrame next;
             try {
@@ -1470,8 +1470,8 @@ final class TreeCursor implements Cursor {
      *
      * @return replacement node, still latched
      */
-    private TreeNode notSplitDirty(final TreeCursorFrame frame) throws IOException {
-        TreeNode node = frame.mNode;
+    private Node notSplitDirty(final TreeCursorFrame frame) throws IOException {
+        Node node = frame.mNode;
 
         if (node.mSplit != null) {
             // Already dirty, but finish the split.
@@ -1490,7 +1490,7 @@ final class TreeCursor implements Cursor {
         }
 
         // Make sure the parent is not split and dirty too.
-        TreeNode parentNode;
+        Node parentNode;
         doParent: {
             parentNode = parentFrame.tryAcquireExclusiveUnfair();
             if (parentNode == null) {
@@ -1527,7 +1527,7 @@ final class TreeCursor implements Cursor {
     /**
      * Caller must hold exclusive latch, which is released by this method.
      */
-    private void mergeLeaf(final TreeCursorFrame leaf, TreeNode node) throws IOException {
+    private void mergeLeaf(final TreeCursorFrame leaf, Node node) throws IOException {
         TreeCursorFrame parentFrame = leaf.mParentFrame;
         node.releaseExclusive();
 
@@ -1536,9 +1536,9 @@ final class TreeCursor implements Cursor {
             return;
         }
 
-        TreeNode parentNode = parentFrame.acquireExclusiveUnfair();
+        Node parentNode = parentFrame.acquireExclusiveUnfair();
 
-        TreeNode leftNode, rightNode;
+        Node leftNode, rightNode;
         int nodeAvail;
         while (true) {
             if (parentNode.mSplit != null) {
@@ -1546,7 +1546,7 @@ final class TreeCursor implements Cursor {
             }
 
             if (parentNode.numKeys() <= 0) {
-                if (parentNode.mId != TreeNode.STUB_ID) {
+                if (parentNode.mId != Node.STUB_ID) {
                     // FIXME: This shouldn't be a problem when internal nodes can be rebalanced.
                     System.out.println("tiny internal node: " + (parentNode == mTree.mRoot));
                 }
@@ -1632,7 +1632,7 @@ final class TreeCursor implements Cursor {
 
         // Determine if both nodes can fit in one node. If so, migrate and
         // delete the right node.
-        int remaining = leftAvail + rightAvail - node.mPage.length + TreeNode.HEADER_SIZE;
+        int remaining = leftAvail + rightAvail - node.mPage.length + Node.HEADER_SIZE;
 
         if (remaining >= 0) {
             // Migrate the entire contents of the right node into the left
@@ -1674,8 +1674,8 @@ final class TreeCursor implements Cursor {
     /**
      * Caller must hold exclusive latch, which is released by this method.
      */
-    private void mergeInternal(TreeCursorFrame frame, TreeNode node,
-                               TreeNode leftChildNode, TreeNode rightChildNode)
+    private void mergeInternal(TreeCursorFrame frame, Node node,
+                               Node leftChildNode, Node rightChildNode)
         throws IOException
     {
         up: {
@@ -1718,12 +1718,12 @@ final class TreeCursor implements Cursor {
             return;
         }
 
-        TreeNode parentNode = parentFrame.acquireExclusiveUnfair();
+        Node parentNode = parentFrame.acquireExclusiveUnfair();
         if (parentNode.isLeaf()) {
             throw new Error("parent is leaf!");
         }
 
-        TreeNode leftNode, rightNode;
+        Node leftNode, rightNode;
         int nodeAvail;
         while (true) {
             if (parentNode.mSplit != null) {
@@ -1731,7 +1731,7 @@ final class TreeCursor implements Cursor {
             }
 
             if (parentNode.numKeys() <= 0) {
-                if (parentNode.mId != TreeNode.STUB_ID) {
+                if (parentNode.mId != Node.STUB_ID) {
                     // FIXME: This shouldn't be a problem when internal nodes can be rebalanced.
                     System.out.println("tiny internal node (2): " + (parentNode == mTree.mRoot));
                 }
@@ -1824,9 +1824,9 @@ final class TreeCursor implements Cursor {
         byte[] parentPage = parentNode.mPage;
         int parentEntryLoc = DataIO.readUnsignedShort
             (parentPage, parentNode.mSearchVecStart + leftPos);
-        int parentEntryLen = TreeNode.internalEntryLength(parentPage, parentEntryLoc);
+        int parentEntryLen = Node.internalEntryLength(parentPage, parentEntryLoc);
         int remaining = leftAvail - parentEntryLen
-            + rightAvail - parentPage.length + (TreeNode.HEADER_SIZE - 2);
+            + rightAvail - parentPage.length + (Node.HEADER_SIZE - 2);
 
         if (remaining >= 0) {
             // Migrate the entire contents of the right node into the left
@@ -1872,13 +1872,13 @@ final class TreeCursor implements Cursor {
      *
      * @return replacement node, still latched
      */
-    private TreeNode finishSplit(final TreeCursorFrame frame, TreeNode node) throws IOException {
+    private Node finishSplit(final TreeCursorFrame frame, Node node) throws IOException {
         Tree tree = mTree;
         Database db = tree.mDatabase;
 
         // FIXME: How to acquire shared commit lock without deadlock?
         if (node == tree.mRoot) {
-            TreeNode stub;
+            Node stub;
             if (tree.hasStub()) {
                 // FIXME: Use tryPopStub first, to avoid deadlock.
                 stub = tree.validateStub(tree.popStub());
@@ -1901,7 +1901,7 @@ final class TreeCursor implements Cursor {
         final Lock sharedCommitLock = db.sharedCommitLock();
         sharedCommitLock.lock();
         try {
-            TreeNode parentNode = parentFrame.acquireExclusiveUnfair();
+            Node parentNode = parentFrame.acquireExclusiveUnfair();
             while (true) {
                 if (parentNode.mSplit != null) {
                     parentNode = finishSplit(parentFrame, parentNode);
@@ -1921,10 +1921,10 @@ final class TreeCursor implements Cursor {
     /**
      * With parent held exclusively, returns child with exclusive latch held.
      */
-    private TreeNode latchChild(TreeNode parent, int childPos, boolean releaseParent)
+    private Node latchChild(Node parent, int childPos, boolean releaseParent)
         throws IOException
     {
-        TreeNode childNode = parent.mChildNodes[childPos >> 1];
+        Node childNode = parent.mChildNodes[childPos >> 1];
         long childId = parent.retrieveChildRefId(childPos);
 
         check: if (childNode != null && childId == childNode.mId) {
@@ -1961,7 +1961,7 @@ final class TreeCursor implements Cursor {
         // holding state, and include a "loading" state. As other threads see
         // this state, they replace the state object with a linked stack of
         // parked threads. When the load is finished, all waiting threads are
-        // unparked. Move some of this logic into a common TreeNode.load method.
+        // unparked. Move some of this logic into a common Node.load method.
 
         try {
             childNode.read(mTree.mDatabase, childId);

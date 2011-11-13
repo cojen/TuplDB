@@ -22,10 +22,10 @@ package org.cojen.tupl;
  * @author Brian S O'Neill
  */
 final class DirtyNode implements Comparable<DirtyNode> {
-    TreeNode mNode;
+    Node mNode;
     long mId;
 
-    DirtyNode(TreeNode node, long id) {
+    DirtyNode(Node node, long id) {
         mNode = node;
         // Stable copy of id that can be accessed without re-latching.
         mId = id;
