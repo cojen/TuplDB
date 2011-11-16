@@ -38,8 +38,7 @@ final class LockManager {
     private LockManager(long timeoutNanos, int numHashTables) {
         mDefaultTimeoutNanos = timeoutNanos;
 
-        // Round up to power of 2.
-        numHashTables = Integer.highestOneBit(numHashTables - 1) << 1;
+        numHashTables = Utils.roundUpPower2(numHashTables);
         mHashTables = new LockHT[numHashTables];
         for (int i=0; i<numHashTables; i++) {
             mHashTables[i] = new LockHT();

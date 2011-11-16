@@ -31,7 +31,7 @@ import java.nio.channels.FileChannel;
  *
  * @author Brian S O'Neill
  */
-class RedoLog implements Closeable {
+final class RedoLog implements Closeable {
     private static final long MAGIC_NUMBER = 431399725605778814L;
     private static final int ENCODING_VERSION = 20111001;
 

@@ -46,25 +46,6 @@ class DataIO {
     }
 
     /**
-     * @return length of variably encoded integer
-     */
-    public static int lengthOfVarInt(int v) {
-        if (v >= 0) {
-            return 1;
-        }
-        switch ((v >> 4) & 0x07) {
-        case 0x00: case 0x01: case 0x02: case 0x03:
-            return 2;
-        case 0x04: case 0x05:
-            return 3;
-        case 0x06:
-            return 4;
-        default:
-            return 5;
-        }
-    }
-
-    /**
      * Reads an integer as encoded by writeUnsignedVarInt.
      */
     public static int readUnsignedVarInt(byte[] b, int offset) {
@@ -271,6 +252,25 @@ class DataIO {
         b[offset + 7] = (byte)w;
     }
 
+    public static int calcUnsignedVarIntLength(int v) {
+        if (v < (1 << 7)) {
+            return v < 0 ? 5 : 1;
+        }
+        v -= (1 << 7);
+        if (v < (1 << 14)) {
+            return 2;
+        }
+        v -= (1 << 14);
+        if (v < (1 << 21)) {
+            return 3;
+        }
+        v -= (1 << 21);
+        if (v < (1 << 28)) {
+            return 4;
+        }
+        return 5;
+    }
+
     /**
      * Write the given integer using 1 to 5 bytes. Values closer to zero are
      * encoded in fewer bytes.
@@ -348,6 +348,41 @@ class DataIO {
             v <<= 1;
         }
         return writeUnsignedVarInt(b, offset, v);
+    }
+
+    public static int calcUnsignedVarLongLength(long v) {
+        if (v < (1L << 7)) {
+            return v < 0 ? 9 : 1;
+        }
+        v -= (1L << 7);
+        if (v < (1L << 14)) {
+            return 2;
+        }
+        v -= (1L << 14);
+        if (v < (1L << 21)) {
+            return 3;
+        }
+        v -= (1L << 21);
+        if (v < (1L << 28)) {
+            return 4;
+        }
+        v -= (1L << 28);
+        if (v < (1L << 35)) {
+            return 5;
+        }
+        v -= (1L << 35);
+        if (v < (1L << 42)) {
+            return 6;
+        }
+        v -= (1L << 42);
+        if (v < (1L << 49)) {
+            return 7;
+        }
+        v -= (1L << 49);
+        if (v < (1L << 56)) {
+            return 8;
+        }
+        return 9;
     }
 
     /**
@@ -434,41 +469,6 @@ class DataIO {
         return offset;
     }
 
-    public static int calcUnsignedVarLongLength(long v) {
-        if (v < (1L << 7)) {
-            return v < 0 ? 9 : 1;
-        }
-        v -= (1L << 7);
-        if (v < (1L << 14)) {
-            return 2;
-        }
-        v -= (1L << 14);
-        if (v < (1L << 21)) {
-            return 3;
-        }
-        v -= (1L << 21);
-        if (v < (1L << 28)) {
-            return 4;
-        }
-        v -= (1L << 28);
-        if (v < (1L << 35)) {
-            return 5;
-        }
-        v -= (1L << 35);
-        if (v < (1L << 42)) {
-            return 6;
-        }
-        v -= (1L << 42);
-        if (v < (1L << 49)) {
-            return 7;
-        }
-        v -= (1L << 49);
-        if (v < (1L << 56)) {
-            return 8;
-        }
-        return 9;
-    }
-
     static String toHex(byte[] b) {
         return toHex(b, 0, b.length);
     }
@@ -487,17 +487,35 @@ class DataIO {
             bob.append(": ");
 
             for (int j=0; j<16; j+=2) {
-                String pair = "000".concat
-                    (Integer.toHexString(readUnsignedShort(b, offset + i + j)));
-                pair = pair.substring(pair.length() - 4);
-                bob.append(pair);
-                bob.append(' ');
+                int pos = i + j;
+                if (pos >= length - 1) {
+                    if (pos >= length) {
+                        bob.append("     ");
+                    } else {
+                        int v = b[offset + pos] & 0xff;
+                        if (v < 0x10) {
+                            bob.append('0');
+                        }
+                        bob.append(Integer.toHexString(v));
+                        bob.append("   ");
+                    }
+                } else {
+                    String pair = "000".concat
+                        (Integer.toHexString(readUnsignedShort(b, offset + pos)));
+                    pair = pair.substring(pair.length() - 4);
+                    bob.append(pair);
+                    bob.append(' ');
+                }
             }
             
             bob.append(' ');
 
             for (int j=0; j<16; j++) {
-                char c = (char) (b[offset + i + j] & 0xff);
+                int pos = i + j;
+                if (pos >= length) {
+                    break;
+                }
+                char c = (char) (b[offset + pos] & 0xff);
                 bob.append(Character.isISOControl(c) ? '.' : c);
             }
         }

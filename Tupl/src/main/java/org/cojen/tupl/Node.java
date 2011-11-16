@@ -32,9 +32,10 @@ final class Node extends Latch {
     // Note: Changing these values affects how Database handles the commit flag.
     static final byte CACHED_CLEAN = 0, CACHED_DIRTY_0 = 1, CACHED_DIRTY_1 = 2;
 
-    static final byte TYPE_LEAF = 0, TYPE_INTERNAL = 1;
+    static final byte TYPE_UNDO_STACK = 1, TYPE_TREE_LEAF = 2, TYPE_TREE_INTERNAL = 3;
 
-    static final int HEADER_SIZE = 12;
+    // Tree node header size.
+    static final int TN_HEADER_SIZE = 12;
 
     static final int STUB_ID = 1;
 
@@ -45,9 +46,18 @@ final class Node extends Latch {
     Node mLessUsed; // points to less recently used node
 
     /*
-      All node types have a similar structure and support a maximum page size of 65536
-      bytes. The ushort type is an unsigned byte pair, and the ulong type is eight
-      bytes. All multibyte types are big endian encoded.
+      Nodes define the contents of Trees and UndoStacks. All node types start
+      with a two byte header.
+
+      +----------------------------------------+
+      | byte:   node type                      |  header
+      | byte:   reserved (must be 0)           |
+      -                                        -
+
+      There are two types of tree nodes, having a similar structure and
+      supporting a maximum page size of 65536 bytes. The ushort type is an
+      unsigned byte pair, and the ulong type is eight bytes. All multibyte
+      types are big endian encoded.
 
       +----------------------------------------+
       | byte:   node type                      |  header
@@ -185,18 +195,18 @@ final class Node extends Latch {
         if (newEmptyRoot) {
             mId = 0;
             mCachedState = CACHED_CLEAN;
-            mType = TYPE_LEAF;
+            mType = TYPE_TREE_LEAF;
             clearEntries();
         }
     }
 
     private void clearEntries() {
         mGarbage = 0;
-        mLeftSegTail = HEADER_SIZE;
+        mLeftSegTail = TN_HEADER_SIZE;
         int pageSize = mPage.length;
         mRightSegTail = pageSize - 1;
         // Search vector location must be even.
-        mSearchVecStart = (HEADER_SIZE + ((pageSize - HEADER_SIZE) >> 1)) & ~1;
+        mSearchVecStart = (TN_HEADER_SIZE + ((pageSize - TN_HEADER_SIZE) >> 1)) & ~1;
         mSearchVecEnd = mSearchVecStart - 2; // inclusive
     }
 
@@ -366,7 +376,7 @@ final class Node extends Latch {
         // Create a child node and copy this root node state into it. Then update this
         // root node to point to new and split child nodes. New root is always an internal node.
 
-        Node child = db.newNodeForSplit();
+        Node child = db.newDirtyNode();
 
         byte[] newPage = child.mPage;
         child.mPage = mPage;
@@ -398,12 +408,12 @@ final class Node extends Latch {
             right = child;
         }
 
-        int keyLen = split.copySplitKeyToParent(newPage, HEADER_SIZE);
+        int keyLen = split.copySplitKeyToParent(newPage, TN_HEADER_SIZE);
 
         // Create new single-element search vector.
         final int searchVecStart =
-            ((newPage.length - HEADER_SIZE - keyLen - (2 + 8 + 8)) >> 1) & ~1;
-        DataIO.writeShort(newPage, searchVecStart, HEADER_SIZE);
+            ((newPage.length - TN_HEADER_SIZE - keyLen - (2 + 8 + 8)) >> 1) & ~1;
+        DataIO.writeShort(newPage, searchVecStart, TN_HEADER_SIZE);
         DataIO.writeLong(newPage, searchVecStart + 2, left.mId);
         DataIO.writeLong(newPage, searchVecStart + 2 + 8, right.mId);
 
@@ -411,9 +421,9 @@ final class Node extends Latch {
         mChildNodes = new Node[] {left, right};
 
         mPage = newPage;
-        mType = TYPE_INTERNAL;
+        mType = TYPE_TREE_INTERNAL;
         mGarbage = 0;
-        mLeftSegTail = HEADER_SIZE + keyLen;
+        mLeftSegTail = TN_HEADER_SIZE + keyLen;
         mRightSegTail = newPage.length - 1;
         mSearchVecStart = searchVecStart;
         mSearchVecEnd = searchVecStart;
@@ -462,23 +472,26 @@ final class Node extends Latch {
         mCachedState = CACHED_CLEAN;
 
         byte type = page[0];
-        if (type != TYPE_INTERNAL && type != TYPE_LEAF) {
-            throw new CorruptNodeException("Unknown type: " + type);
+        mType = type;
+
+        // For undo stack node, this is top entry pointer.
+        mGarbage = DataIO.readUnsignedShort(page, 2);
+
+        if (type != TYPE_UNDO_STACK) {
+            mLeftSegTail = DataIO.readUnsignedShort(page, 4);
+            mRightSegTail = DataIO.readUnsignedShort(page, 6);
+            mSearchVecStart = DataIO.readUnsignedShort(page, 8);
+            mSearchVecEnd = DataIO.readUnsignedShort(page, 10);
+            if (type == TYPE_TREE_INTERNAL) {
+                // FIXME: recycle child node arrays
+                mChildNodes = new Node[numKeys() + 1];
+            } else if (type != TYPE_TREE_LEAF) {
+                throw new CorruptNodeException("Unknown type: " + type);
+            }
         }
+
         if (page[1] != 0) {
             throw new CorruptNodeException("Illegal reserved byte: " + page[1]);
-        }
-
-        mType = type;
-        mGarbage = DataIO.readUnsignedShort(page, 2);
-        mLeftSegTail = DataIO.readUnsignedShort(page, 4);
-        mRightSegTail = DataIO.readUnsignedShort(page, 6);
-        mSearchVecStart = DataIO.readUnsignedShort(page, 8);
-        mSearchVecEnd = DataIO.readUnsignedShort(page, 10);
-
-        if (type == TYPE_INTERNAL) {
-            // FIXME: recycle child node arrays
-            mChildNodes = new Node[numKeys() + 1];
         }
     }
 
@@ -494,11 +507,16 @@ final class Node extends Latch {
 
         page[0] = mType;
         page[1] = 0; // reserved
+
+        // For undo stack node, this is top entry pointer.
         DataIO.writeShort(page, 2, mGarbage);
-        DataIO.writeShort(page, 4, mLeftSegTail);
-        DataIO.writeShort(page, 6, mRightSegTail);
-        DataIO.writeShort(page, 8, mSearchVecStart);
-        DataIO.writeShort(page, 10, mSearchVecEnd);
+
+        if (mType != TYPE_UNDO_STACK) {
+            DataIO.writeShort(page, 4, mLeftSegTail);
+            DataIO.writeShort(page, 6, mRightSegTail);
+            DataIO.writeShort(page, 8, mSearchVecStart);
+            DataIO.writeShort(page, 10, mSearchVecEnd);
+        }
 
         db.writeReservedPage(mId, page);
     }
@@ -578,7 +596,7 @@ final class Node extends Latch {
      * Caller must hold any latch.
      */
     boolean isLeaf() {
-        return mType == TYPE_LEAF;
+        return mType == TYPE_TREE_LEAF;
     }
 
     /**
@@ -660,7 +678,7 @@ final class Node extends Latch {
     }
 
     boolean shouldMerge(int availBytes) {
-        return mSplit == null && availBytes >= ((mPage.length - HEADER_SIZE) >> 1);
+        return mSplit == null && availBytes >= ((mPage.length - TN_HEADER_SIZE) >> 1);
     }
 
     /**
@@ -1807,7 +1825,7 @@ final class Node extends Latch {
         child.mPage = page;
         child.mId = STUB_ID;
         child.mCachedState = CACHED_CLEAN;
-        child.mType = TYPE_INTERNAL;
+        child.mType = TYPE_TREE_INTERNAL;
         child.clearEntries();
         child.mChildNodes = childNodes;
         child.mLastCursorFrame = lastCursorFrame;
@@ -1934,7 +1952,7 @@ final class Node extends Latch {
 
         // Copy into a fresh buffer.
 
-        int destLoc = HEADER_SIZE;
+        int destLoc = TN_HEADER_SIZE;
         int newSearchVecLoc = newSearchVecStart;
         int newLoc = 0;
         final int searchVecEnd = mSearchVecEnd;
@@ -1996,8 +2014,8 @@ final class Node extends Latch {
 
         byte[] page = mPage;
 
-        Node newNode = db.newNodeForSplit();
-        newNode.mType = TYPE_LEAF;
+        Node newNode = db.newDirtyNode();
+        newNode.mType = TYPE_TREE_LEAF;
         newNode.mGarbage = 0;
 
         byte[] newPage = newNode.mPage;
@@ -2022,8 +2040,8 @@ final class Node extends Latch {
             // Split into new left node.
 
             int destLoc = newPage.length;
-            int newSearchVecLoc = HEADER_SIZE;
-            int newSize = HEADER_SIZE;
+            int newSearchVecLoc = TN_HEADER_SIZE;
+            int newSize = TN_HEADER_SIZE;
 
             int searchVecLoc = searchVecStart;
             for (; newSize < size; searchVecLoc += 2, newSearchVecLoc += 2) {
@@ -2080,9 +2098,9 @@ final class Node extends Latch {
                 DataIO.writeShort(newPage, newLoc, destLoc);
             }
 
-            newNode.mLeftSegTail = HEADER_SIZE;
+            newNode.mLeftSegTail = TN_HEADER_SIZE;
             newNode.mRightSegTail = destLoc - 1;
-            newNode.mSearchVecStart = HEADER_SIZE;
+            newNode.mSearchVecStart = TN_HEADER_SIZE;
             newNode.mSearchVecEnd = newSearchVecLoc - 2;
 
             // Split key is copied from this, the right node.
@@ -2090,9 +2108,9 @@ final class Node extends Latch {
         } else {
             // Split into new right node.
 
-            int destLoc = HEADER_SIZE;
+            int destLoc = TN_HEADER_SIZE;
             int newSearchVecLoc = newPage.length;
-            int newSize = HEADER_SIZE;
+            int newSize = TN_HEADER_SIZE;
 
             int searchVecLoc = searchVecEnd;
             for (; newSize < size; searchVecLoc -= 2) {
@@ -2183,8 +2201,8 @@ final class Node extends Latch {
 
         final byte[] page = mPage;
 
-        final Node newNode = db.newNodeForSplit();
-        newNode.mType = TYPE_INTERNAL;
+        final Node newNode = db.newDirtyNode();
+        newNode.mType = TYPE_TREE_INTERNAL;
         newNode.mGarbage = 0;
 
         final byte[] newPage = newNode.mPage;
@@ -2221,7 +2239,7 @@ final class Node extends Latch {
             int size = 5 * (searchVecEnd - searchVecStart) + (1 + 8 + 8)
                 + mLeftSegTail + page.length - mRightSegTail - mGarbage;
 
-            int newSize = HEADER_SIZE;
+            int newSize = TN_HEADER_SIZE;
 
             // Adjust sizes for extra child id -- always one more than number of keys.
             size -= 8;
@@ -2235,7 +2253,7 @@ final class Node extends Latch {
                 // minimize fragmentation to ensure that split is successful.
 
                 int destLoc = newPage.length;
-                int newSearchVecLoc = HEADER_SIZE;
+                int newSearchVecLoc = TN_HEADER_SIZE;
 
                 int searchVecLoc = searchVecStart;
                 while (true) {
@@ -2301,7 +2319,7 @@ final class Node extends Latch {
                     // Split references to child node instances. New child node has already
                     // been placed into mChildNodes by caller.
                     // FIXME: recycle child node arrays
-                    int leftLen = ((newSearchVecLoc - HEADER_SIZE) >> 1) + 1;
+                    int leftLen = ((newSearchVecLoc - TN_HEADER_SIZE) >> 1) + 1;
                     Node[] leftChildNodes = new Node[leftLen];
                     Node[] rightChildNodes = new Node[mChildNodes.length - leftLen];
                     System.arraycopy(mChildNodes, 0, leftChildNodes, 0, leftLen);
@@ -2311,9 +2329,9 @@ final class Node extends Latch {
                     mChildNodes = rightChildNodes;
                 }
 
-                newNode.mLeftSegTail = HEADER_SIZE;
+                newNode.mLeftSegTail = TN_HEADER_SIZE;
                 newNode.mRightSegTail = destLoc - encodedLen - 1;
-                newNode.mSearchVecStart = HEADER_SIZE;
+                newNode.mSearchVecStart = TN_HEADER_SIZE;
                 newNode.mSearchVecEnd = newSearchVecLoc - 2;
 
                 // Prune off the left end of this node by shifting vector towards child ids.
@@ -2328,7 +2346,7 @@ final class Node extends Latch {
                 // First copy keys and not the child ids. After keys are copied, shift to
                 // make room for child ids and copy them in place.
 
-                int destLoc = HEADER_SIZE;
+                int destLoc = TN_HEADER_SIZE;
                 int newSearchVecLoc = newPage.length;
 
                 int searchVecLoc = searchVecEnd + 2;
@@ -2471,7 +2489,7 @@ final class Node extends Latch {
 
         // Copy into a fresh buffer.
 
-        int destLoc = HEADER_SIZE;
+        int destLoc = TN_HEADER_SIZE;
         int newSearchVecLoc = newSearchVecStart;
         int newLoc = 0;
         final int searchVecEnd = mSearchVecEnd;
@@ -2569,7 +2587,7 @@ final class Node extends Latch {
     void verify0() throws CorruptNodeException {
         final byte[] page = mPage;
 
-        if (mLeftSegTail < HEADER_SIZE) {
+        if (mLeftSegTail < TN_HEADER_SIZE) {
             throw new CorruptNodeException("Left segment tail: " + mLeftSegTail);
         }
         if (mSearchVecStart < mLeftSegTail) {
@@ -2612,7 +2630,7 @@ final class Node extends Latch {
             }
         }
 
-        int used = HEADER_SIZE + mRightSegTail + 1 - mLeftSegTail;
+        int used = TN_HEADER_SIZE + mRightSegTail + 1 - mLeftSegTail;
 
         int lastKeyLoc = 0;
         int lastKeyLen = 0;
@@ -2620,7 +2638,7 @@ final class Node extends Latch {
         for (int i = mSearchVecStart; i <= mSearchVecEnd; i += 2) {
             int loc = DataIO.readUnsignedShort(page, i);
 
-            if (loc < HEADER_SIZE || loc >= page.length ||
+            if (loc < TN_HEADER_SIZE || loc >= page.length ||
                 (loc >= mLeftSegTail && loc <= mRightSegTail))
             {
                 throw new CorruptNodeException("Entry location: " + loc);
