@@ -44,7 +44,7 @@ import static org.cojen.tupl.Node.*;
 public final class Database implements Closeable {
     private static final int DEFAULT_CACHED_NODES = 1000;
 
-    private static final int ENCODING_VERSION = 20110514;
+    private static final int ENCODING_VERSION = 20111111;
 
     private static final int I_ENCODING_VERSION = 0;
     private static final int I_ROOT_PAGE_ID = I_ENCODING_VERSION + 4;
@@ -590,7 +590,7 @@ public final class Database implements Closeable {
      * Returns a new reserved node, latched exclusively and marked dirty. Caller
      * must hold commit lock.
      */
-    Node newNodeForSplit() throws IOException {
+    Node newDirtyNode() throws IOException {
         Node node = allocLatchedNode();
         node.mId = mPageStore.reservePage();
         node.mCachedState = mCommitState;
@@ -764,7 +764,10 @@ public final class Database implements Closeable {
             mPageStore.exclusiveCommitLock().lock();
 
             root.acquireSharedUnfair();
-            if (!force && root.mCachedState == CACHED_CLEAN) {
+
+            // If root id is 0, then nothing has ever been written. Override
+            // the force option to prevent writing a pointer to a bogus page.
+            if ((root.mId == 0 || !force) && root.mCachedState == CACHED_CLEAN) {
                 // Root is clean, so nothing to do.
                 root.releaseShared();
                 mPageStore.exclusiveCommitLock().unlock();

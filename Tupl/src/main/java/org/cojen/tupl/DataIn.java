@@ -111,7 +111,7 @@ class DataIn extends InputStream {
     public int readUnsignedVarInt() throws IOException {
         tryRequire(5);
         int v = DataIO.readUnsignedVarInt(mBuffer, mStart, mEnd);
-        mStart += DataIO.lengthOfVarInt(v);
+        mStart += DataIO.calcUnsignedVarIntLength(v);
         return v;
     }
 

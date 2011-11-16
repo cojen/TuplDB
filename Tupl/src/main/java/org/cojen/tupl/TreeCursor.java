@@ -1632,7 +1632,7 @@ final class TreeCursor implements Cursor {
 
         // Determine if both nodes can fit in one node. If so, migrate and
         // delete the right node.
-        int remaining = leftAvail + rightAvail - node.mPage.length + Node.HEADER_SIZE;
+        int remaining = leftAvail + rightAvail - node.mPage.length + Node.TN_HEADER_SIZE;
 
         if (remaining >= 0) {
             // Migrate the entire contents of the right node into the left
@@ -1826,7 +1826,7 @@ final class TreeCursor implements Cursor {
             (parentPage, parentNode.mSearchVecStart + leftPos);
         int parentEntryLen = Node.internalEntryLength(parentPage, parentEntryLoc);
         int remaining = leftAvail - parentEntryLen
-            + rightAvail - parentPage.length + (Node.HEADER_SIZE - 2);
+            + rightAvail - parentPage.length + (Node.TN_HEADER_SIZE - 2);
 
         if (remaining >= 0) {
             // Migrate the entire contents of the right node into the left
