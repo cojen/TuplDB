@@ -208,7 +208,7 @@ final class Tree implements Index {
      * @param locker optional locker
      */
     boolean isLockAvailable(Locker locker, byte[] key) {
-        return mLockManager.isAvailable(locker, mId, key, LockManager.hashCode(mId, key));
+        return mLockManager.isAvailable(locker, mId, key, LockManager.hash(mId, key));
     }
 
     /**
