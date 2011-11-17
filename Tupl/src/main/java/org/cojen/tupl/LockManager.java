@@ -224,7 +224,7 @@ final class LockManager {
         return locker;
     }
 
-    final static int hashCode(long indexId, byte[] key) {
+    final static int hash(long indexId, byte[] key) {
         int hash = ((int) indexId) ^ ((int) (indexId >>> 32));
         for (int i=key.length; --i>=0; ) {
             hash = hash * 31 + key[i];
