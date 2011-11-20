@@ -46,7 +46,7 @@ final class Node extends Latch {
     Node mLessUsed; // points to less recently used node
 
     /*
-      Nodes define the contents of Trees and UndoStacks. All node types start
+      Nodes define the contents of Trees and UndoLogs. All node types start
       with a two byte header.
 
       +----------------------------------------+
@@ -1020,6 +1020,55 @@ final class Node extends Latch {
             System.arraycopy(page, loc, value, 0, len);
         }
         cursor.mValue = value;
+    }
+
+    /**
+     * Caller must hold commit lock and any latch on node.
+     *
+     * @param pos position as provided by binarySearchLeaf; must be positive
+     */
+    void undoPushLeafEntry(Transaction txn, long indexId, int pos) throws IOException {
+        final byte[] page = mPage;
+
+        final int start = DataIO.readUnsignedShort(page, mSearchVecStart + pos);
+        int header = page[start];
+        int loc = start + 1;
+        int len = header >= 0 ? ((header & 0x3f) + 1)
+            : (((header & 0x3f) << 8) | ((page[loc++]) & 0xff));
+        loc += len;
+        if ((header & 0x40) == 0) {
+            len = page[loc++];
+            len = len >= 0 ? (len + 1) : ((((len & 0x7f) << 8) | (page[loc++] & 0xff)) + 129);
+            loc += len;
+        }
+
+        txn.undoStore(indexId, page, start, loc - start);
+    }
+
+    /**
+     * @param entry encoded by undoPushLeafEntry
+     * @return key and value
+     */
+    static byte[][] decodeUndoEntry(byte[] entry) {
+        int loc = 0;
+        int header = entry[loc++];
+        int keyLen = header >= 0 ? ((header & 0x3f) + 1)
+            : (((header & 0x3f) << 8) | ((entry[loc++]) & 0xff));
+        byte[] key = new byte[keyLen];
+        System.arraycopy(entry, loc, key, 0, keyLen);
+
+        loc += keyLen;
+        byte[] value;
+        if ((header & 0x40) != 0) {
+            value = Utils.EMPTY_BYTES;
+        } else {
+            int len = entry[loc++];
+            len = len >= 0 ? (len + 1) : ((((len & 0x7f) << 8) | (entry[loc++] & 0xff)) + 129);
+            value = new byte[len];
+            System.arraycopy(entry, loc, value, 0, len);
+        }
+
+        return new byte[][] {key, value};
     }
 
     /**
