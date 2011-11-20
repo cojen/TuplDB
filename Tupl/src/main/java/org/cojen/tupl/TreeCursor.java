@@ -1107,11 +1107,10 @@ final class TreeCursor implements Cursor {
                 mTree.redoStore(key, null);
             } else {
                 if (txn.lockMode() != LockMode.UNSAFE) {
-                    // FIXME: undo log
+                    node.undoPushLeafEntry(txn, mTree.mId, pos);
                 }
                 if (txn.mDurabilityMode != DurabilityMode.NO_LOG) {
-                    // FIXME: txn id
-                    mTree.redoStore(key, null);
+                    txn.redoStore(mTree.mId, key, null);
                 }
             }
 
@@ -1162,11 +1161,10 @@ final class TreeCursor implements Cursor {
                 mTree.redoStore(key, value);
             } else {
                 if (txn.lockMode() != LockMode.UNSAFE) {
-                    // FIXME: undo log
+                    node.undoPushLeafEntry(txn, mTree.mId, pos);
                 }
                 if (txn.mDurabilityMode != DurabilityMode.NO_LOG) {
-                    // FIXME: txn id
-                    mTree.redoStore(key, value);
+                    txn.redoStore(mTree.mId, key, value);
                 }
             }
 
@@ -1190,11 +1188,10 @@ final class TreeCursor implements Cursor {
             mTree.redoStore(key, value);
         } else {
             if (txn.lockMode() != LockMode.UNSAFE) {
-                // FIXME: undo log
+                txn.undoDelete(mTree.mId, key);
             }
             if (txn.mDurabilityMode != DurabilityMode.NO_LOG) {
-                // FIXME: txn id
-                mTree.redoStore(key, value);
+                txn.redoStore(mTree.mId, key, value);
             }
         }
 

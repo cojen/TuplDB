@@ -33,7 +33,6 @@ public class DatabaseConfig {
     long mLockTimeoutNanos;
     boolean mReadOnly;
     int mPageSize;
-    UndoLog.RollbackHandler mRollbackHandler;
 
     public DatabaseConfig() {
         setDurabilityMode(null);
@@ -102,11 +101,6 @@ public class DatabaseConfig {
 
     public DatabaseConfig setPageSize(int size) {
         mPageSize = size;
-        return this;
-    }
-
-    public DatabaseConfig setRollbackHandler(UndoLog.RollbackHandler handler) {
-        mRollbackHandler = handler;
         return this;
     }
 }

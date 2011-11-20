@@ -18,9 +18,13 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.concurrent.TimeUnit;
+
+import java.util.concurrent.locks.Lock;
+
 /**
- * Transaction instances can only be safely used by one thread at a
- * time. Transactions can be exchanged by threads, as long as a happens-before
+ * Transaction instances can only be safely used by one thread at a time.
+ * Transactions can be exchanged by threads, as long as a happens-before
  * relationship is established. Without proper exclusion, multiple threads
  * interacting with a Transaction instance results in undefined behavior.
  *
@@ -35,42 +39,39 @@ public class Transaction extends Locker {
      */
     public static final Transaction BOGUS = new Transaction();
 
+    private final Database mDatabase;
     final DurabilityMode mDurabilityMode;
 
-    // FIXME: One UndoLog instance created for each scope.
-    //private final UndoLog mUndo;
+    LockMode mLockMode;
+    long mLockTimeoutNanos;
+    long mTxnId;
+    long mSavepoint;
 
-    // FIXME: New id for each scope.
-    final long mId;
+    // TODO: Define autoCommit(boolean) method.
+    // Note: UndoLog is never created for auto-commit transactions.
+    private UndoLog mUndoLog;
 
-    // FIXME: move saved scope state into linked UndoLog instances
-    private LockMode mLockMode;
-    // Is null if empty; LockMode instance if one; LockMode[] if more.
-    private Object mLockModeStack;
-    private int mLockModeStackSize;
+    private volatile Object mBorked;
 
-    // FIXME: support scoped lock timeout
-    private long mLockTimeoutNanos;
-
-    Transaction(LockManager manager,
+    Transaction(Database db,
                 DurabilityMode durabilityMode,
-                long id,
                 LockMode lockMode,
                 long timeoutNanos)
     {
-        super(manager);
+        super(db.mLockManager);
+        mDatabase = db;
         mDurabilityMode = durabilityMode;
-        mId = id;
         mLockMode = lockMode;
         mLockTimeoutNanos = timeoutNanos;
     }
 
+    // Constructor for BOGUS transaction.
     private Transaction() {
         super();
+        mDatabase = null;
         mDurabilityMode = DurabilityMode.NO_LOG;
-        mId = 0;
         mLockMode = LockMode.UNSAFE;
-        mLockTimeoutNanos = 0;
+        mBorked = this;
     }
 
     /**
@@ -131,81 +132,241 @@ public class Transaction extends Locker {
     }
 
     /**
-     * Returns the lock mode currently in effect.
+     * Returns the current lock mode.
      */
     public final LockMode lockMode() {
         return mLockMode;
     }
 
     /**
-     * Commit all modifications made within the current transaction scope. The
-     * current scope is still valid following a commit.
+     * Set the lock timeout for the current scope. A negative timeout is
+     * infinite.
      */
-    public final void commit() throws IOException {
-        // FIXME
-        throw null;
+    public final void lockTimeout(long timeout, TimeUnit unit) {
+        mLockTimeoutNanos = Utils.toNanos(timeout, unit);
     }
 
     /**
-     * Enter a new transaction scope.
+     * Returns the current lock timeout, in nanoseconds.
      */
-    public final void enter() throws IOException {
-        super.scopeEnter();
+    public final long lockTimeoutNanos() {
+        return mLockTimeoutNanos;
+    }
 
-        Object last = mLockModeStack;
-        if (last == null) {
-            mLockModeStack = mLockMode;
-            mLockModeStackSize = 1;
-        } else {
-            try {
-                if (last instanceof LockMode) {
-                    LockMode lastMode = (LockMode) last;
-                    LockMode[] stack;
-                    stack = new LockMode[INITIAL_SCOPE_STACK_CAPACITY];
-                    stack[0] = lastMode;
-                    stack[1] = mLockMode;
-                    mLockModeStack = stack;
-                    mLockModeStackSize = 2;
-                } else {
-                    LockMode[] stack = (LockMode[]) last;
-                    int size = mLockModeStackSize;
-                    if (size >= stack.length) {
-                        LockMode[] newStack = new LockMode[stack.length << 1];
-                        System.arraycopy(stack, 0, newStack, 0, size);
-                        mLockModeStack = stack = newStack;
-                    }
-                    stack[size] = mLockMode;
-                    mLockModeStackSize = size + 1;
-                }
-            } catch (Throwable e) {
+    /**
+     * Commit all modifications made within the current transaction scope. The
+     * current scope is still valid after this method is called, unless an
+     * exception is thrown.
+     */
+    public final void commit() throws IOException {
+        check();
+
+        try {
+            Scope parentScope = mParentScope;
+            long txnId = mTxnId;
+            if (txnId != 0) {
+                long parentTxnId = parentScope == null ? 0 : parentScope.mTxnId;
+                mDatabase.mRedoLog.txnCommit(txnId, parentTxnId, mDurabilityMode);
+                // FIXME: Undo log won't log next active transaction.
+                mTxnId = 0;
+            }
+
+            // TODO: Shared lock only if truncate will do anything.
+            UndoLog undo = mUndoLog;
+            if (undo != null) {
+                final Lock sharedCommitLock = mDatabase.sharedCommitLock();
+                sharedCommitLock.lock();
                 try {
-                    super.scopeExit(false);
+                    undo.truncate(mSavepoint);
                 } finally {
-                    throw Utils.rethrow(e);
+                    sharedCommitLock.unlock();
                 }
             }
-        }
 
-        // FIXME
-        throw null;
+            if (parentScope == null) {
+                super.scopeUnlockAll();
+            } else {
+                // Retain locks for modifications which aren't truly committed yet.
+                super.scopeUnlockAllNonExclusive();
+            }
+        } catch (Throwable e) {
+            throw borked(e);
+        }
+    }
+
+    /**
+     * Enter a nested transaction scope.
+     */
+    public final void enter() throws IOException {
+        check();
+
+        Scope parentScope = super.scopeEnter();
+        parentScope.mLockMode = mLockMode;
+        parentScope.mLockTimeoutNanos = mLockTimeoutNanos;
+        parentScope.mTxnId = mTxnId;
+        parentScope.mSavepoint = mSavepoint;
+
+        // Next transaction id is assigned on demand.
+        mTxnId = 0;
+
+        UndoLog undo = mUndoLog;
+        mSavepoint = undo == null ? 0 : undo.savepoint();
     }
 
     /**
      * Exit the current transaction scope, rolling back all uncommitted
-     * modifications made within.
-     *
-     * @throws IllegalStateException if no current scope
+     * modifications made within. The transaction is still valid after this
+     * method is called, unless an exception is thrown.
      */
     public final void exit() throws IOException {
+        check();
+
+        try {
+            Scope parentScope = mParentScope;
+            long txnId = mTxnId;
+            if (txnId != 0) {
+                long parentTxnId = parentScope == null ? 0 : parentScope.mTxnId;
+                mDatabase.mRedoLog.txnRollback(txnId, parentTxnId);
+            }
+
+            // TODO: Shared lock only if rollback will do anything.
+            UndoLog undo = mUndoLog;
+            if (undo != null) {
+                final Lock sharedCommitLock = mDatabase.sharedCommitLock();
+                sharedCommitLock.lock();
+                try {
+                    undo.rollback(mSavepoint);
+                } finally {
+                    sharedCommitLock.unlock();
+                }
+            }
+
+            if (parentScope == null) {
+                // FIXME: Undo log won't log next active transaction.
+                mTxnId = 0;
+                mSavepoint = 0;
+            } else {
+                mLockMode = parentScope.mLockMode;
+                mLockTimeoutNanos = parentScope.mLockTimeoutNanos;
+                mTxnId = parentScope.mTxnId;
+                mSavepoint = parentScope.mSavepoint;
+            }
+
+            super.scopeExit(true);
+        } catch (Throwable e) {
+            throw borked(e);
+        }
+    }
+
+    /**
+     * Exit all transaction scopes, rolling back all uncommitted modifications.
+     * The transaction is still valid after this method is called, unless an
+     * exception is thrown.
+     */
+    public final void exitAll() throws IOException {
+        check();
         // FIXME
         throw null;
     }
 
     /**
-     * Exit all transaction scopes, rolling back all uncommitted modifications.
+     * Caller must hold commit lock.
+     *
+     * @param value pass null for redo delete
      */
-    public final void exitAll() throws IOException {
-        // FIXME
-        throw null;
+    final void redoStore(long indexId, byte[] key, byte[] value) throws IOException {
+        check();
+
+        try {
+            // Transaction id only required when redo log entries are written.
+            // When using DurabilityMode.NO_LOG, undo log is still used.
+            long txnId = mTxnId;
+            if (txnId == 0) {
+                Scope parentScope = mParentScope;
+                if (parentScope != null) {
+                    if (parentScope.mTxnId == 0) {
+                        ensureTxnId(parentScope);
+                    } else {
+                        UndoLog undo = mUndoLog;
+                        if (undo != null) {
+                            // Log old transaction id for transition.
+                            undo.pushTransactionId(parentScope.mTxnId);
+                        }
+                    }
+                }
+                mTxnId = txnId = mDatabase.nextTransactionId();
+            }
+
+            mDatabase.mRedoLog.txnStore(txnId, indexId, key, value);
+        } catch (Throwable e) {
+            throw borked(e);
+        }
+    }
+
+    private void ensureTxnId(Scope scope) {
+        Scope parentScope = scope.mParent;
+        if (parentScope != null && parentScope.mTxnId == 0) {
+            ensureTxnId(parentScope);
+        }
+        scope.mTxnId = mDatabase.nextTransactionId();
+    }
+
+    /**
+     * Caller must hold commit lock.
+     *
+     * @param payload key/value entry, as encoded by leaf node
+     */
+    final void undoStore(long indexId, byte[] payload, int off, int len) throws IOException {
+        check();
+        try {
+            undoLog().push(indexId, UndoLog.OP_STORE, payload, off, len);
+        } catch (Throwable e) {
+            throw borked(e);
+        }
+    }
+
+    /**
+     * Caller must hold commit lock.
+     */
+    final void undoDelete(long indexId, byte[] key) throws IOException {
+        check();
+        try {
+            undoLog().push(indexId, UndoLog.OP_DELETE, key, 0, key.length);
+        } catch (Throwable e) {
+            throw borked(e);
+        }
+    }
+
+    /**
+     * Caller must hold commit lock.
+     */
+    private UndoLog undoLog() {
+        UndoLog undo = mUndoLog;
+        if (undo == null) {
+            mUndoLog = undo = new UndoLog(mDatabase);
+        }
+        return undo;
+    }
+
+    private RuntimeException borked(Throwable e) {
+        // Because this transaction is now borked, user cannot commit or
+        // rollback. Locks cannot be released, ensuring other transactions
+        // cannot see the partial changes made by this transaction. A restart
+        // is required, which then performs a clean rollback.
+        if (mBorked != null) {
+            mBorked = e;
+        }
+        return Utils.rethrow(e);
+    }
+
+    private void check() throws DatabaseException {
+        Object borked = mBorked;
+        if (borked != null) {
+            if (borked == BOGUS) {
+                throw new DatabaseException("Transaction is bogus");
+            } else {
+                throw new DatabaseException("Invalid transaction, caused by: " + borked);
+            }
+        }
     }
 }

@@ -28,8 +28,6 @@ import static org.cojen.tupl.LockManager.hash;
  * @author Brian S O'Neill
  */
 public class Locker {
-    static final int INITIAL_SCOPE_STACK_CAPACITY = 4;
-
     final LockManager mManager;
 
     private int mHashCode;
@@ -38,11 +36,7 @@ public class Locker {
     Object mTailBlock;
     Object mHeadBlock;
 
-    // The logical type of the scope stack is: Stack<Stack<Lock>>
-    // Is null if empty; saved tail if one; Object[] if more.
-    private Object mScopeTailStack;
-    private Object mScopeHeadStack;
-    private int mScopeStackSize;
+    Scope mParentScope;
 
     Locker(LockManager manager) {
         if (manager == null) {
@@ -190,7 +184,7 @@ public class Locker {
     }
 
     /**
-     * Returns the index id of the last lock acquired.
+     * Returns the index id of the last lock acquired, within the current scope.
      *
      * @return locked index id
      * @throws IllegalStateException if no locks held
@@ -200,7 +194,7 @@ public class Locker {
     }
 
     /**
-     * Returns the key of the last lock acquired.
+     * Returns the key of the last lock acquired, within the current scope.
      *
      * @return locked key; instance is not cloned
      * @throws IllegalStateException if no locks held
@@ -218,9 +212,9 @@ public class Locker {
     }
 
     /**
-     * Fully releases last lock acquired. If the last lock operation was an
-     * upgrade, for a lock not immediately acquired, unlock is not
-     * allowed. Instead, an IllegalStateException is thrown.
+     * Fully releases last lock acquired, within the current scope. If the last
+     * lock operation was an upgrade, for a lock not immediately acquired,
+     * unlock is not allowed. Instead, an IllegalStateException is thrown.
      *
      * @throws IllegalStateException if no locks held, or if unlocking a
      * non-immediate upgrade
@@ -240,9 +234,10 @@ public class Locker {
     }
 
     /**
-     * Releases last lock acquired, retaining a shared lock. If the last lock
-     * operation was an upgrade, for a lock not immediately acquired, unlock is
-     * not allowed. Instead, an IllegalStateException is thrown.
+     * Releases last lock acquired, within the current scope, retaining a
+     * shared lock. If the last lock operation was an upgrade, for a lock not
+     * immediately acquired, unlock is not allowed. Instead, an
+     * IllegalStateException is thrown.
      *
      * @throws IllegalStateException if no locks held, or if too many shared
      * locks, or if unlocking a non-immediate upgrade
@@ -260,7 +255,8 @@ public class Locker {
     }
 
     /**
-     * Releases last lock acquired or upgraded, retaining an upgradable lock.
+     * Releases last lock acquired or upgraded, within the current scope,
+     * retaining an upgradable lock.
      *
      * @throws IllegalStateException if no locks held, or if last lock is shared
      */
@@ -282,61 +278,27 @@ public class Locker {
     final void reset() {
         scopeUnlockAll();
 
-        Object scopeTailStack = mScopeTailStack;
-        if (scopeTailStack != null) {
-            if (scopeTailStack instanceof Object[]) {
-                Object[] elements = (Object[]) scopeTailStack;
-                for (int i=mScopeStackSize; --i>=0; ) {
-                    unlockAll(elements[i]);
-                }
-            } else {
-                unlockAll(scopeTailStack);
-            }
-            mScopeTailStack = null;
-            mScopeHeadStack = null;
-            mScopeStackSize = 0;
+        Scope parentScope = mParentScope;
+        if (parentScope != null) {
+            do {
+                unlockAll(parentScope.mTailBlock);
+                parentScope = parentScope.mParent;
+            } while (parentScope != null);
+            mParentScope = null;
         }
     }
 
-    final void scopeEnter() {
-        // Move the current stack of locks to scope stack.
-
-        Object tail = mTailBlock;
-        Object head = mHeadBlock;
-        int size = mScopeStackSize;
-
-        if (size == 0) {
-            mScopeTailStack = tail;
-            mScopeHeadStack = head;
-        } else {
-            Object scopeTailStack = mScopeTailStack;
-            if (size == 1 && !(scopeTailStack instanceof Object[])) {
-                Object[] tailElements = new Object[INITIAL_SCOPE_STACK_CAPACITY];
-                Object[] headElements = new Object[INITIAL_SCOPE_STACK_CAPACITY];
-                tailElements[0] = scopeTailStack;
-                tailElements[1] = tail;
-                headElements[0] = mScopeHeadStack;
-                headElements[1] = head;
-                mScopeTailStack = tailElements;
-                mScopeHeadStack = headElements;
-            } else {
-                Object[] tailElements = (Object[]) scopeTailStack;
-                Object[] headElements = (Object[]) mScopeHeadStack;
-                if (size >= tailElements.length) {
-                    Object[] newTailElements = new Object[tailElements.length << 1];
-                    Object[] newHeadElements = new Object[headElements.length << 1];
-                    System.arraycopy(tailElements, 0, newTailElements, 0, size);
-                    mScopeTailStack = tailElements = newTailElements;
-                    System.arraycopy(headElements, 0, newHeadElements, 0, size);
-                    mScopeHeadStack = headElements = newHeadElements;
-                }
-                tailElements[size] = tail;
-                headElements[size] = head;
-            }
-        }
-
-        mScopeStackSize = size + 1;
+    /**
+     * @return new parent scope
+     */
+    final Scope scopeEnter() {
+        Scope scope = new Scope();
+        scope.mParent = mParentScope;
+        scope.mTailBlock = mTailBlock;
+        scope.mHeadBlock = mHeadBlock;
         mTailBlock = null;
+        mHeadBlock = null;
+        return mParentScope = scope;
     }
 
     /**
@@ -368,9 +330,9 @@ public class Locker {
      * scope exists, held locks are released.
      *
      * @param promote when true, promote all locks to enclosing scope, if one exists
-     * @return false if last scope exited and all locks released
+     * @return old parent scope
      */
-    final boolean scopeExit(boolean promote) {
+    final Scope scopeExit(boolean promote) {
         Object lastTail = mTailBlock;
 
         if (!promote) {
@@ -380,9 +342,10 @@ public class Locker {
 
         Object lastHead = mHeadBlock;
 
-        if (!popScope()) {
+        Scope parent = popScope();
+        if (parent == null) {
             unlockAll(lastTail);
-            return false;
+            return parent;
         }
 
         if (lastHead != null) {
@@ -404,7 +367,7 @@ public class Locker {
             }
         }
 
-        return true;
+        return parent;
     }
 
     @Override
@@ -433,7 +396,7 @@ public class Locker {
     /**
      * @param upgraded only 0 or 1 allowed
      */
-    void push(Lock lock, int upgrade) {
+    final void push(Lock lock, int upgrade) {
         Object tailObj = mTailBlock;
         if (tailObj == null) {
             mHeadBlock = mTailBlock = upgrade == 0 ? lock : new ArrayBlock(lock);
@@ -447,29 +410,20 @@ public class Locker {
         }
     }
 
-    private boolean popScope() {
-        int size = mScopeStackSize - 1;
-        if (size < 0) {
+    /**
+     * @return old parent scope
+     */
+    private Scope popScope() {
+        Scope parent = mParentScope;
+        if (parent == null) {
             mTailBlock = null;
             mHeadBlock = null;
-            return false;
-        }
-        Object scopeTailStack = mScopeTailStack;
-        if (scopeTailStack instanceof Object[]) {
-            Object[] tailStackArray = (Object[]) scopeTailStack;
-            Object[] headStackArray = (Object[]) mScopeHeadStack;
-            mTailBlock = tailStackArray[size];
-            mHeadBlock = headStackArray[size];
-            tailStackArray[size] = null;
-            headStackArray[size] = null;
         } else {
-            mTailBlock = scopeTailStack;
-            mHeadBlock = mScopeHeadStack;
-            mScopeTailStack = null;
-            mScopeHeadStack = null;
+            mTailBlock = parent.mTailBlock;
+            mHeadBlock = parent.mHeadBlock;
+            mParentScope = parent.mParent;
         }
-        mScopeStackSize = size;
-        return true;
+        return parent;
     }
 
     static abstract class Block {
@@ -784,5 +738,17 @@ public class Locker {
             System.arraycopy(mElements, 0, elements, 0, mSize);
             return mUpgrades;
         }
+    }
+
+    static class Scope {
+        Scope mParent;
+        Object mTailBlock;
+        Object mHeadBlock;
+
+        // Used by Transaction subclass.
+        LockMode mLockMode;
+        long mLockTimeoutNanos;
+        long mTxnId;
+        long mSavepoint;
     }
 }

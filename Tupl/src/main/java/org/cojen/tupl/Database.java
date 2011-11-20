@@ -251,24 +251,19 @@ public final class Database implements Closeable {
 
     private Transaction doNewTransaction(DurabilityMode durabilityMode) {
         return new Transaction
-            (mLockManager, durabilityMode, nextTransactionId(),
-             LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
+            (this, durabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
     }
 
     /**
+     * Caller must hold commit lock. This ensures that highest transaction id
+     * is persisted correctly by checkpoint.
+     *
      * @return non-zero transaction id
      */
     long nextTransactionId() {
         long id;
         do {
-            // Hold commit lock to ensure that highest transaction id is
-            // persisted correctly by checkpoint.
-            mSharedCommitLock.lock();
-            try {
-                id = mTxnId.incrementAndGet();
-            } finally {
-                mSharedCommitLock.unlock();
-            }
+            id = mTxnId.incrementAndGet();
         } while (id == 0);
         return id;
     }
@@ -428,20 +423,20 @@ public final class Database implements Closeable {
     private Node loadRegistryRoot(byte[] header) throws IOException {
         int version = DataIO.readInt(header, I_ENCODING_VERSION);
 
-        if (version == 0) {
-            // Assume store is new and return a new empty leaf node.
-            return new Node(pageSize(), true);
+        if (version != 0) {
+            if (version != ENCODING_VERSION) {
+                throw new CorruptPageStoreException("Unknown encoding version: " + version);
+            }
+            long rootId = DataIO.readLong(header, I_ROOT_PAGE_ID);
+            if (rootId != 0) {
+                Node root = new Node(pageSize(), false);
+                root.read(this, rootId);
+                return root;
+            }
         }
 
-        if (version != ENCODING_VERSION) {
-            throw new CorruptPageStoreException("Unknown encoding version: " + version);
-        }
-
-        long rootId = DataIO.readLong(header, I_ROOT_PAGE_ID);
-
-        Node root = new Node(pageSize(), false);
-        root.read(this, rootId);
-        return root;
+        // Assume store is new and return a new empty leaf node.
+        return new Node(pageSize(), true);
     }
 
     private Index openIndex(byte[] name, boolean create) throws IOException {
@@ -765,9 +760,7 @@ public final class Database implements Closeable {
 
             root.acquireSharedUnfair();
 
-            // If root id is 0, then nothing has ever been written. Override
-            // the force option to prevent writing a pointer to a bogus page.
-            if ((root.mId == 0 || !force) && root.mCachedState == CACHED_CLEAN) {
+            if (!force && root.mCachedState == CACHED_CLEAN) {
                 // Root is clean, so nothing to do.
                 root.releaseShared();
                 mPageStore.exclusiveCommitLock().unlock();
