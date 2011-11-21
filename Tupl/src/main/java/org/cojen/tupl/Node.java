@@ -2662,7 +2662,7 @@ final class Node extends Latch {
                 throw new CorruptNodeException("Child ids end: " + childIdsEnd);
             }
 
-            LIHashTable childIds = new LIHashTable(9);
+            LHashTable.Int childIds = new LHashTable.Int(512);
 
             for (int i = childIdsStart; i < childIdsEnd; i += 8) {
                 long childId = DataIO.readLong(page, i);
@@ -2671,7 +2671,7 @@ final class Node extends Latch {
                     throw new CorruptNodeException("Illegal child id: " + childId);
                 }
 
-                LIHashTable.Entry e = childIds.insert(childId);
+                LHashTable.IntEntry e = childIds.insert(childId);
                 if (e.value != 0) {
                     throw new CorruptNodeException("Duplicate child id: " + childId);
                 }
