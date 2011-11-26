@@ -213,7 +213,7 @@ public final class Database implements Closeable {
                 // Checkpoint now to ensure all old redo log entries are durable.
                 checkpoint(true);
 
-                if (mRedoLog.isReplayMode()) {
+                while (mRedoLog.isReplayMode()) {
                     // Last checkpoint was interrupted, so apply next log file too.
                     redoReplay();
                     checkpoint(true);
@@ -230,16 +230,19 @@ public final class Database implements Closeable {
     }
 
     private boolean redoReplay() throws IOException {
-        long redoTxnId = mRedoLog.replay(this);
-        if (redoTxnId == 0) {
+        RedoLogTxnScanner scanner = new RedoLogTxnScanner();
+        if (!mRedoLog.replay(scanner) || !mRedoLog.replay(new RedoLogApplier(this, scanner))) {
             return false;
         }
-        synchronized (mTxnIdLock) {
+
+        long redoTxnId = scanner.highestTxnId();
+        if (redoTxnId != 0) synchronized (mTxnIdLock) {
             // Subtract for modulo comparison.
             if (mTxnId == 0 || (redoTxnId - mTxnId) > 0) {
                 mTxnId = redoTxnId;
             }
         }
+
         return true;
     }
 
