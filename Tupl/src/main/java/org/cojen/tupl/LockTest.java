@@ -741,35 +741,35 @@ public class LockTest {
 
         Locker locker = new Locker(mManager);
 
-        assertFalse(locker.scopeExit(false));
-        assertFalse(locker.scopeExit(true));
+        assertNull(locker.scopeExit(false));
+        assertNull(locker.scopeExit(true));
 
         locker.scopeEnter();
-        assertTrue(locker.scopeExit(false));
-        assertFalse(locker.scopeExit(true));
+        assertNotNull(locker.scopeExit(false));
+        assertNull(locker.scopeExit(true));
 
         locker.scopeEnter();
-        assertTrue(locker.scopeExit(true));
-        assertFalse(locker.scopeExit(false));
+        assertNotNull(locker.scopeExit(true));
+        assertNull(locker.scopeExit(false));
 
         locker.scopeEnter();
         locker.scopeEnter();
-        assertTrue(locker.scopeExit(false));
-        assertTrue(locker.scopeExit(true));
-        assertFalse(locker.scopeExit(false));
+        assertNotNull(locker.scopeExit(false));
+        assertNotNull(locker.scopeExit(true));
+        assertNull(locker.scopeExit(false));
 
         assertEquals(ACQUIRED, locker.tryLockExclusive(0, k1, -1));
         locker.scopeEnter();
         assertEquals(OWNED_EXCLUSIVE, locker.tryLockExclusive(0, k1, -1));
-        assertTrue(locker.scopeExit(false));
+        assertNotNull(locker.scopeExit(false));
         assertEquals(OWNED_EXCLUSIVE, locker.tryLockExclusive(0, k1, -1));
-        assertFalse(locker.scopeExit(false));
+        assertNull(locker.scopeExit(false));
         assertEquals(UNOWNED, locker.check(0, k1));
 
         assertEquals(ACQUIRED, locker.tryLockExclusive(0, k1, -1));
         locker.scopeEnter();
         assertEquals(ACQUIRED, locker.tryLockExclusive(0, k2, -1));
-        assertTrue(locker.scopeExit(false));
+        assertNotNull(locker.scopeExit(false));
         assertEquals(UNOWNED, locker.check(0, k2));
         assertEquals(OWNED_EXCLUSIVE, locker.check(0, k1));
         locker.reset();
@@ -778,7 +778,7 @@ public class LockTest {
         assertEquals(ACQUIRED, locker.tryLockUpgradable(0, k1, -1));
         locker.scopeEnter();
         assertEquals(UPGRADED, locker.tryLockExclusive(0, k1, -1));
-        assertTrue(locker.scopeExit(false));
+        assertNotNull(locker.scopeExit(false));
         // Outer scope was downgraded to original lock strength.
         assertEquals(OWNED_UPGRADABLE, locker.check(0, k1));
         locker.reset();
@@ -793,7 +793,7 @@ public class LockTest {
         assertEquals(UNOWNED, locker.check(0, k1));
         assertEquals(UNOWNED, locker.check(0, k2));
         assertEquals(UNOWNED, locker.check(0, k3));
-        assertFalse(locker.scopeExit(false));
+        assertNull(locker.scopeExit(false));
 
         assertEquals(ACQUIRED, locker.tryLockExclusive(0, k1, -1));
         locker.scopeEnter();
@@ -804,18 +804,18 @@ public class LockTest {
         assertEquals(UNOWNED, locker.check(0, k1));
         assertEquals(UNOWNED, locker.check(0, k2));
         assertEquals(UNOWNED, locker.check(0, k3));
-        assertFalse(locker.scopeExit(false));
+        assertNull(locker.scopeExit(false));
 
         assertEquals(ACQUIRED, locker.tryLockExclusive(0, k1, -1));
         locker.scopeEnter();
         assertEquals(ACQUIRED, locker.tryLockExclusive(0, k2, -1));
         locker.scopeEnter();
         assertEquals(ACQUIRED, locker.tryLockExclusive(0, k3, -1));
-        assertTrue(locker.scopeExit(true));
+        assertNotNull(locker.scopeExit(true));
         assertEquals(OWNED_EXCLUSIVE, locker.check(0, k3));
-        assertTrue(locker.scopeExit(true));
+        assertNotNull(locker.scopeExit(true));
         assertEquals(OWNED_EXCLUSIVE, locker.check(0, k2));
-        assertFalse(locker.scopeExit(true));
+        assertNull(locker.scopeExit(true));
         assertEquals(UNOWNED, locker.check(0, k1));
         assertEquals(UNOWNED, locker.check(0, k2));
         assertEquals(UNOWNED, locker.check(0, k3));
@@ -824,10 +824,10 @@ public class LockTest {
         locker.scopeEnter();
         assertEquals(ACQUIRED, locker.tryLockExclusive(0, k2, -1));
         assertEquals(ACQUIRED, locker.tryLockExclusive(0, k3, -1));
-        assertTrue(locker.scopeExit(true));
+        assertNotNull(locker.scopeExit(true));
         assertEquals(OWNED_EXCLUSIVE, locker.check(0, k3));
         assertEquals(OWNED_EXCLUSIVE, locker.check(0, k2));
-        assertFalse(locker.scopeExit(true));
+        assertNull(locker.scopeExit(true));
         assertEquals(UNOWNED, locker.check(0, k1));
         assertEquals(UNOWNED, locker.check(0, k2));
         assertEquals(UNOWNED, locker.check(0, k3));
@@ -838,11 +838,11 @@ public class LockTest {
         locker.scopeEnter();
         assertEquals(ACQUIRED, locker.tryLockExclusive(0, k3, -1));
         assertEquals(ACQUIRED, locker.tryLockExclusive(0, k4, -1));
-        assertTrue(locker.scopeExit(true));
+        assertNotNull(locker.scopeExit(true));
         assertEquals(OWNED_EXCLUSIVE, locker.check(0, k3));
         assertEquals(OWNED_EXCLUSIVE, locker.check(0, k4));
-        assertTrue(locker.scopeExit(true));
-        assertFalse(locker.scopeExit(true));
+        assertNotNull(locker.scopeExit(true));
+        assertNull(locker.scopeExit(true));
         assertEquals(UNOWNED, locker.check(0, k1));
         assertEquals(UNOWNED, locker.check(0, k2));
         assertEquals(UNOWNED, locker.check(0, k3));
@@ -854,12 +854,12 @@ public class LockTest {
         for (int i=0; i<8; i++) {
             assertEquals(ACQUIRED, locker.tryLockExclusive(0, key("k" + i), -1));
         }
-        assertTrue(locker.scopeExit(true));
+        assertNotNull(locker.scopeExit(true));
         assertEquals(OWNED_EXCLUSIVE, locker.check(0, k1));
         for (int i=0; i<8; i++) {
             assertEquals(OWNED_EXCLUSIVE, locker.check(0, key("k" + i)));
         }
-        assertFalse(locker.scopeExit(true));
+        assertNull(locker.scopeExit(true));
         assertEquals(UNOWNED, locker.check(0, k1));
         for (int i=0; i<8; i++) {
             assertEquals(UNOWNED, locker.check(0, key("k" + i)));
@@ -874,12 +874,12 @@ public class LockTest {
         for (int i=0; i<8; i++) {
             assertEquals(ACQUIRED, locker.tryLockExclusive(0, key("a" + i), -1));
         }
-        assertTrue(locker.scopeExit(true));
+        assertNotNull(locker.scopeExit(true));
         for (int i=0; i<8; i++) {
             assertEquals(OWNED_EXCLUSIVE, locker.check(0, key("k" + i)));
             assertEquals(OWNED_EXCLUSIVE, locker.check(0, key("a" + i)));
         }
-        assertFalse(locker.scopeExit(true));
+        assertNull(locker.scopeExit(true));
         for (int i=0; i<8; i++) {
             assertEquals(UNOWNED, locker.check(0, key("k" + i)));
             assertEquals(UNOWNED, locker.check(0, key("a" + i)));
@@ -894,14 +894,14 @@ public class LockTest {
             assertEquals(ACQUIRED, locker.tryLockExclusive(0, key("k" + i), -1));
         }
         for (int q=0; q<2; q++) {
-            assertTrue(locker.scopeExit(true));
+            assertNotNull(locker.scopeExit(true));
             assertEquals(OWNED_EXCLUSIVE, locker.check(0, k1));
             assertEquals(OWNED_EXCLUSIVE, locker.check(0, k2));
             for (int i=0; i<8; i++) {
                 assertEquals(OWNED_EXCLUSIVE, locker.check(0, key("k" + i)));
             }
         }
-        assertFalse(locker.scopeExit(true));
+        assertNull(locker.scopeExit(true));
         assertEquals(UNOWNED, locker.check(0, k1));
         assertEquals(UNOWNED, locker.check(0, k2));
         for (int i=0; i<8; i++) {
@@ -933,7 +933,7 @@ public class LockTest {
                 for (int i=0; i<8; i++) {
                     assertEquals(ACQUIRED, locker.tryLockExclusive(0, key("k" + i), -1));
                 }
-                assertTrue(locker.scopeExit(true));
+                assertNotNull(locker.scopeExit(true));
                 for (int i=0; i<8; i++) {
                     locker.unlock();
                 }
@@ -1003,7 +1003,7 @@ public class LockTest {
         for (int i=0; i<8; i++) {
             assertEquals(ACQUIRED, locker.tryLockExclusive(0, key("k" + i), -1));
         }
-        assertTrue(locker.scopeExit(true));
+        assertNotNull(locker.scopeExit(true));
         for (int i=8; --i>=0; ) {
             locker.unlock();
             assertEquals(UNOWNED, locker.check(0, key("k" + i)));
@@ -1012,7 +1012,7 @@ public class LockTest {
         for (int i=0; i<4; i++) {
             assertEquals(ACQUIRED, locker.tryLockExclusive(0, key("v" + i), -1));
         }
-        assertTrue(locker.scopeExit(true));
+        assertNotNull(locker.scopeExit(true));
         assertEquals(OWNED_EXCLUSIVE, locker.check(0, k1));
         for (int i=0; i<4; i++) {
             assertEquals(OWNED_EXCLUSIVE, locker.check(0, key("v" + i)));
@@ -1026,8 +1026,8 @@ public class LockTest {
         for (int i=0; i<8; i++) {
             assertEquals(UNOWNED, locker.check(0, key("k" + i)));
         }
-        assertTrue(locker.scopeExit(false));
-        assertFalse(locker.scopeExit(false));
+        assertNotNull(locker.scopeExit(false));
+        assertNull(locker.scopeExit(false));
 
         for (int i=0; i<9; i++) {
             assertEquals(ACQUIRED, locker.tryLockExclusive(0, key("k" + i), -1));
@@ -1043,7 +1043,7 @@ public class LockTest {
         for (int i=0; i<4; i++) {
             assertEquals(OWNED_UPGRADABLE, locker.check(0, key("v" + i)));
         }
-        assertEquals(false, locker.scopeExit(true));
+        assertNull(locker.scopeExit(true));
         for (int i=0; i<9; i++) {
             assertEquals(UNOWNED, locker.check(0, key("k" + i)));
         }

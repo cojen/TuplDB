@@ -30,8 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import java.util.concurrent.atomic.AtomicLong;
-
 import java.util.concurrent.locks.Lock;
 
 import static org.cojen.tupl.Node.*;
@@ -84,7 +82,10 @@ public final class Database implements Closeable {
     private final Map<byte[], Tree> mOpenTrees;
     private final Map<Long, Tree> mOpenTreesById;
 
-    private final AtomicLong mTxnId;
+    private final Object mTxnIdLock = new Object();
+    // The following fields are guarded by mTxnIdLock.
+    private long mTxnId;
+    private UndoLog mTopUndoLog;
 
     private final Object mCheckpointLock = new Object();
 
@@ -162,7 +163,9 @@ public final class Database implements Closeable {
             mOpenTrees = new TreeMap<byte[], Tree>(KeyComparator.THE);
             mOpenTreesById = new HashMap<Long, Tree>();
 
-            mTxnId = new AtomicLong(DataIO.readLong(header, I_TRANSACTION_ID));
+            synchronized (mTxnIdLock) {
+                mTxnId = DataIO.readLong(header, I_TRANSACTION_ID);
+            }
             long redoLogId = DataIO.readLong(header, I_REDO_LOG_ID);
 
             // Initialized, but not open yet.
@@ -202,9 +205,9 @@ public final class Database implements Closeable {
                     (this, REGISTRY_KEY_MAP_ID, Utils.EMPTY_BYTES, null, rootNode);
             }
 
-            if (mRedoLog.replay(new RedoLogApplier(this))) {
+            if (redoReplay()) {
                 // Make sure old redo log is deleted. Process might have exited
-                // before it got deleted after last checkpoint.
+                // before last checkpoint could delete it.
                 mRedoLog.deleteOldFile(redoLogId - 1);
 
                 // Checkpoint now to ensure all old redo log entries are durable.
@@ -212,7 +215,7 @@ public final class Database implements Closeable {
 
                 if (mRedoLog.isReplayMode()) {
                     // Last checkpoint was interrupted, so apply next log file too.
-                    mRedoLog.replay(new RedoLogApplier(this));
+                    redoReplay();
                     checkpoint(true);
                 }
             }
@@ -224,6 +227,20 @@ public final class Database implements Closeable {
             }
             throw Utils.rethrow(e);
         }
+    }
+
+    private boolean redoReplay() throws IOException {
+        long redoTxnId = mRedoLog.replay(this);
+        if (redoTxnId == 0) {
+            return false;
+        }
+        synchronized (mTxnIdLock) {
+            // Subtract for modulo comparison.
+            if (mTxnId == 0 || (redoTxnId - mTxnId) > 0) {
+                mTxnId = redoTxnId;
+            }
+        }
+        return true;
     }
 
     /**
@@ -258,14 +275,58 @@ public final class Database implements Closeable {
      * Caller must hold commit lock. This ensures that highest transaction id
      * is persisted correctly by checkpoint.
      *
+     * @param txnId pass zero to select a transaction id
+     * @return non-zero transaction id
+     */
+    long register(UndoLog undo, long txnId) {
+        synchronized (mTxnIdLock) {
+            UndoLog top = mTopUndoLog;
+            if (top != null) {
+                undo.mPrev = top;
+                top.mNext = undo;
+            }
+            mTopUndoLog = undo;
+
+            while (txnId == 0) {
+                txnId = ++mTxnId;
+            }
+            return txnId;
+        }
+    }
+
+    /**
+     * Caller must hold commit lock. This ensures that highest transaction id
+     * is persisted correctly by checkpoint.
+     *
      * @return non-zero transaction id
      */
     long nextTransactionId() {
-        long id;
+        long txnId;
         do {
-            id = mTxnId.incrementAndGet();
-        } while (id == 0);
-        return id;
+            synchronized (mTxnIdLock) {
+                txnId = ++mTxnId;
+            }
+        } while (txnId == 0);
+        return txnId;
+    }
+
+    void unregister(UndoLog log) {
+        synchronized (mTxnIdLock) {
+            UndoLog prev = log.mPrev;
+            UndoLog next = log.mNext;
+            if (prev != null) {
+                prev.mNext = next;
+                // Keep previous link, to allow concurrent commit to follow
+                // links of detached UndoLogs.
+                //log.mPrev = null;
+            }
+            if (next != null) {
+                next.mPrev = prev;
+                log.mNext = null;
+            } else if (log == mTopUndoLog) {
+                mTopUndoLog = prev;
+            }
+        }
     }
 
     /**
@@ -607,12 +668,27 @@ public final class Database implements Closeable {
      * @return true if just made dirty and id changed
      */
     boolean markDirty(Tree tree, Node node) throws IOException {
-        byte state = node.mCachedState;
-        if (state == mCommitState || node.mId == Node.STUB_ID) {
+        if (node.mCachedState == mCommitState || node.mId == Node.STUB_ID) {
             return false;
         } else {
             doMarkDirty(tree, node);
             return true;
+        }
+    }
+
+    /**
+     * Caller must hold commit lock and exclusive latch on node. Method does
+     * nothing if node is already dirty. Latch is never released by this method,
+     * even if an exception is thrown.
+     */
+    void markUndoLogDirty(Node node) throws IOException {
+        if (node.mCachedState != mCommitState) {
+            long oldId = node.mId;
+            long newId = mPageStore.reservePage();
+            mPageStore.deletePage(oldId);
+            node.write(this);
+            node.mId = newId;
+            node.mCachedState = mCommitState;
         }
     }
 
@@ -624,21 +700,17 @@ public final class Database implements Closeable {
     void doMarkDirty(Tree tree, Node node) throws IOException {
         long oldId = node.mId;
         long newId = mPageStore.reservePage();
-
         if (oldId != 0) {
             mPageStore.deletePage(oldId);
         }
-
         if (node.mCachedState != CACHED_CLEAN) {
             node.write(this);
         }
-
         if (node == tree.mRoot && tree.mIdBytes != null) {
             byte[] newEncodedId = new byte[8];
             DataIO.writeLong(newEncodedId, 0, newId);
             mRegistry.store(Transaction.BOGUS, tree.mIdBytes, newEncodedId);
         }
-
         node.mId = newId;
         node.mCachedState = mCommitState;
     }

@@ -749,6 +749,7 @@ public class Locker {
         LockMode mLockMode;
         long mLockTimeoutNanos;
         long mTxnId;
+        boolean mHasRedo;
         long mSavepoint;
     }
 }

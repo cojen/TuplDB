@@ -24,7 +24,7 @@ import java.io.IOException;
  * only be safely used by one thread at a time. Cursors can be exchanged by
  * threads, as long as a happens-before relationship is established. Without
  * proper exclusion, multiple threads interacting with a Cursor instance
- * results in undefined behavior.
+ * may cause database corruption.
  *
  * @author Brian S O'Neill
  */

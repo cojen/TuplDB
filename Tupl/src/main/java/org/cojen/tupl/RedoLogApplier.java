@@ -25,43 +25,45 @@ import java.io.IOException;
  */
 class RedoLogApplier implements RedoLogVisitor {
     private final Database mDb;
+    private final RedoLogTxnScanner mScanner;
 
-    RedoLogApplier(Database db) {
+    RedoLogApplier(Database db, RedoLogTxnScanner scanner) {
         mDb = db;
+        mScanner = scanner;
     }
 
-    public void timestamp(long timestamp) {
-    }
+    @Override
+    public void timestamp(long timestamp) {}
 
-    public void shutdown(long timestamp) {
-    }
+    @Override
+    public void shutdown(long timestamp) {}
 
-    public void close(long timestamp) {
-    }
+    @Override
+    public void close(long timestamp) {}
 
-    public void endFile(long timestamp) {
-    }
+    @Override
+    public void endFile(long timestamp) {}
 
+    @Override
     public void store(long indexId, byte[] key, byte[] value) throws IOException {
         mDb.anyIndexById(indexId).store(Transaction.BOGUS, key, value);
     }
 
+    @Override
     public void clear(long indexId) throws IOException {
         mDb.anyIndexById(indexId).clear(Transaction.BOGUS);
     }
 
-    public void txnRollback(long txnId, long parentTxnId) throws IOException {
-        // FIXME
-        throw null;
-    }
+    @Override
+    public void txnRollback(long txnId, long parentTxnId) {}
 
-    public void txnCommit(long txnId, long parentTxnId) throws IOException {
-        // FIXME
-        throw null;
-    }
+    @Override
+    public void txnCommit(long txnId, long parentTxnId) {}
 
+    @Override
     public void txnStore(long txnId, long indexId, byte[] key, byte[] value) throws IOException {
-        // FIXME
-        throw null;
+        if (mScanner.isCommitted(txnId)) {
+            mDb.anyIndexById(indexId).store(Transaction.BOGUS, key, value);
+        }
     }
 }
