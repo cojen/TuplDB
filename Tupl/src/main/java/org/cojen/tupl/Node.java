@@ -32,7 +32,7 @@ final class Node extends Latch {
     // Note: Changing these values affects how Database handles the commit flag.
     static final byte CACHED_CLEAN = 0, CACHED_DIRTY_0 = 1, CACHED_DIRTY_1 = 2;
 
-    static final byte TYPE_UNDO_STACK = 1, TYPE_TREE_LEAF = 2, TYPE_TREE_INTERNAL = 3;
+    static final byte TYPE_UNDO_LOG = 1, TYPE_TREE_LEAF = 2, TYPE_TREE_INTERNAL = 3;
 
     // Tree node header size.
     static final int TN_HEADER_SIZE = 12;
@@ -477,7 +477,7 @@ final class Node extends Latch {
         // For undo stack node, this is top entry pointer.
         mGarbage = DataIO.readUnsignedShort(page, 2);
 
-        if (type != TYPE_UNDO_STACK) {
+        if (type != TYPE_UNDO_LOG) {
             mLeftSegTail = DataIO.readUnsignedShort(page, 4);
             mRightSegTail = DataIO.readUnsignedShort(page, 6);
             mSearchVecStart = DataIO.readUnsignedShort(page, 8);
@@ -511,7 +511,7 @@ final class Node extends Latch {
         // For undo stack node, this is top entry pointer.
         DataIO.writeShort(page, 2, mGarbage);
 
-        if (mType != TYPE_UNDO_STACK) {
+        if (mType != TYPE_UNDO_LOG) {
             DataIO.writeShort(page, 4, mLeftSegTail);
             DataIO.writeShort(page, 6, mRightSegTail);
             DataIO.writeShort(page, 8, mSearchVecStart);

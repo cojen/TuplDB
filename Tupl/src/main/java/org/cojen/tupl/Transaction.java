@@ -26,7 +26,7 @@ import java.util.concurrent.locks.Lock;
  * Transaction instances can only be safely used by one thread at a time.
  * Transactions can be exchanged by threads, as long as a happens-before
  * relationship is established. Without proper exclusion, multiple threads
- * interacting with a Transaction instance results in undefined behavior.
+ * interacting with a Transaction instance may cause database corruption.
  *
  * @author Brian S O'Neill
  */
@@ -45,13 +45,15 @@ public class Transaction extends Locker {
     LockMode mLockMode;
     long mLockTimeoutNanos;
     long mTxnId;
+    boolean mHasRedo;
     long mSavepoint;
 
-    // TODO: Define autoCommit(boolean) method.
-    // Note: UndoLog is never created for auto-commit transactions.
     private UndoLog mUndoLog;
 
-    private volatile Object mBorked;
+    // Exception thrown during critcal operation.
+    private Object mBorked;
+
+    // TODO: Define autoCommit(boolean) method.
 
     Transaction(Database db,
                 DurabilityMode durabilityMode,
@@ -156,31 +158,23 @@ public class Transaction extends Locker {
     /**
      * Commit all modifications made within the current transaction scope. The
      * current scope is still valid after this method is called, unless an
-     * exception is thrown.
+     * exception is thrown. Call exit to fully release transaction resources.
      */
     public final void commit() throws IOException {
         check();
 
         try {
             Scope parentScope = mParentScope;
-            long txnId = mTxnId;
-            if (txnId != 0) {
+            if (mHasRedo) {
                 long parentTxnId = parentScope == null ? 0 : parentScope.mTxnId;
-                mDatabase.mRedoLog.txnCommit(txnId, parentTxnId, mDurabilityMode);
-                // FIXME: Undo log won't log next active transaction.
-                mTxnId = 0;
+                mDatabase.mRedoLog.txnCommit(mTxnId, parentTxnId, mDurabilityMode);
+                mHasRedo = false;
             }
 
-            // TODO: Shared lock only if truncate will do anything.
             UndoLog undo = mUndoLog;
             if (undo != null) {
-                final Lock sharedCommitLock = mDatabase.sharedCommitLock();
-                sharedCommitLock.lock();
-                try {
-                    undo.truncate(mSavepoint);
-                } finally {
-                    sharedCommitLock.unlock();
-                }
+                // Active transaction id is cleared as a side-effect.
+                undo.truncate(mSavepoint);
             }
 
             if (parentScope == null) {
@@ -189,6 +183,9 @@ public class Transaction extends Locker {
                 // Retain locks for modifications which aren't truly committed yet.
                 super.scopeUnlockAllNonExclusive();
             }
+
+            // Next transaction id is assigned on demand.
+            mTxnId = 0;
         } catch (Throwable e) {
             throw borked(e);
         }
@@ -204,13 +201,18 @@ public class Transaction extends Locker {
         parentScope.mLockMode = mLockMode;
         parentScope.mLockTimeoutNanos = mLockTimeoutNanos;
         parentScope.mTxnId = mTxnId;
-        parentScope.mSavepoint = mSavepoint;
+        parentScope.mHasRedo = mHasRedo;
+
+        UndoLog undo = mUndoLog;
+        if (undo != null) {
+            parentScope.mSavepoint = mSavepoint;
+            // Active transaction id is cleared as a side-effect.
+            mSavepoint = undo.savepoint();
+        }
 
         // Next transaction id is assigned on demand.
         mTxnId = 0;
-
-        UndoLog undo = mUndoLog;
-        mSavepoint = undo == null ? 0 : undo.savepoint();
+        mHasRedo = false;
     }
 
     /**
@@ -223,36 +225,34 @@ public class Transaction extends Locker {
 
         try {
             Scope parentScope = mParentScope;
-            long txnId = mTxnId;
-            if (txnId != 0) {
+            if (mHasRedo) {
                 long parentTxnId = parentScope == null ? 0 : parentScope.mTxnId;
-                mDatabase.mRedoLog.txnRollback(txnId, parentTxnId);
+                mDatabase.mRedoLog.txnRollback(mTxnId, parentTxnId);
+                mHasRedo = false;
             }
 
-            // TODO: Shared lock only if rollback will do anything.
             UndoLog undo = mUndoLog;
             if (undo != null) {
-                final Lock sharedCommitLock = mDatabase.sharedCommitLock();
-                sharedCommitLock.lock();
-                try {
-                    undo.rollback(mSavepoint);
-                } finally {
-                    sharedCommitLock.unlock();
-                }
+                // Active transaction id is cleared as a side-effect.
+                undo.rollback(mSavepoint);
             }
 
+            super.scopeExit(true);
+
             if (parentScope == null) {
-                // FIXME: Undo log won't log next active transaction.
                 mTxnId = 0;
                 mSavepoint = 0;
+                if (undo != null) {
+                    mDatabase.unregister(undo);
+                    mUndoLog = null;
+                }
             } else {
                 mLockMode = parentScope.mLockMode;
                 mLockTimeoutNanos = parentScope.mLockTimeoutNanos;
                 mTxnId = parentScope.mTxnId;
+                mHasRedo = parentScope.mHasRedo;
                 mSavepoint = parentScope.mSavepoint;
             }
-
-            super.scopeExit(true);
         } catch (Throwable e) {
             throw borked(e);
         }
@@ -278,35 +278,33 @@ public class Transaction extends Locker {
         check();
 
         try {
-            // Transaction id only required when redo log entries are written.
-            // When using DurabilityMode.NO_LOG, undo log is still used.
             long txnId = mTxnId;
             if (txnId == 0) {
                 Scope parentScope = mParentScope;
-                if (parentScope != null) {
-                    if (parentScope.mTxnId == 0) {
-                        ensureTxnId(parentScope);
-                    } else {
-                        UndoLog undo = mUndoLog;
-                        if (undo != null) {
-                            // Log old transaction id for transition.
-                            undo.pushTransactionId(parentScope.mTxnId);
-                        }
-                    }
+                if (parentScope != null && parentScope.mTxnId == 0) {
+                    assignTxnId(parentScope);
                 }
-                mTxnId = txnId = mDatabase.nextTransactionId();
+                UndoLog undo = mUndoLog;
+                if (undo == null) {
+                    txnId = mDatabase.nextTransactionId();
+                } else if ((txnId = undo.activeTransactionId()) == 0) {
+                    txnId = mDatabase.nextTransactionId();
+                    undo.activeTransactionId(txnId);
+                }
+                mTxnId = txnId;
             }
 
             mDatabase.mRedoLog.txnStore(txnId, indexId, key, value);
+            mHasRedo = true;
         } catch (Throwable e) {
             throw borked(e);
         }
     }
 
-    private void ensureTxnId(Scope scope) {
+    private void assignTxnId(Scope scope) {
         Scope parentScope = scope.mParent;
         if (parentScope != null && parentScope.mTxnId == 0) {
-            ensureTxnId(parentScope);
+            assignTxnId(parentScope);
         }
         scope.mTxnId = mDatabase.nextTransactionId();
     }
@@ -340,10 +338,18 @@ public class Transaction extends Locker {
     /**
      * Caller must hold commit lock.
      */
-    private UndoLog undoLog() {
+    private UndoLog undoLog() throws IOException {
         UndoLog undo = mUndoLog;
         if (undo == null) {
-            mUndoLog = undo = new UndoLog(mDatabase);
+            undo = UndoLog.newUndoLog(mDatabase, mTxnId);
+            mTxnId = undo.activeTransactionId();
+            mUndoLog = undo;
+        } else if (undo.activeTransactionId() == 0) {
+            long txnId = mTxnId;
+            if (txnId == 0) {
+                mTxnId = txnId = mDatabase.nextTransactionId();
+            }
+            undo.activeTransactionId(txnId);
         }
         return undo;
     }

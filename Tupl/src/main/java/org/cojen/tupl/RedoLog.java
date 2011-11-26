@@ -52,25 +52,25 @@ final class RedoLog implements Closeable {
         //OP_TXN_BEGIN = 5,
 
         /** txnId: long, parentTxnId: long */
-        //OP_TXN_BEGIN_NESTED = 6,
+        //OP_TXN_BEGIN_CHILD = 6,
 
         /** txnId: long */
         //OP_TXN_CONTINUE = 7,
 
         /** txnId: long, parentTxnId: long */
-        //OP_TXN_CONTINUE_NESTED = 8,
+        //OP_TXN_CONTINUE_CHILD = 8,
 
         /** txnId: long */
         OP_TXN_ROLLBACK = 9,
 
         /** txnId: long, parentTxnId: long */
-        OP_TXN_ROLLBACK_NESTED = 10,
+        OP_TXN_ROLLBACK_CHILD = 10,
 
         /** txnId: long */
         OP_TXN_COMMIT = 11,
 
         /** txnId: long, parentTxnId: long */
-        OP_TXN_COMMIT_NESTED = 12,
+        OP_TXN_COMMIT_CHILD = 12,
 
         /** indexId: long, keyLength: varInt, key: bytes, valueLength: varInt, value: bytes */
         OP_STORE = 16,
@@ -140,6 +140,15 @@ final class RedoLog implements Closeable {
 
     synchronized boolean isReplayMode() {
         return mReplayMode;
+    }
+
+    /**
+     * @return 0 if file not found and replay mode is deactivated; highest txn id otherwise
+     */
+    synchronized long replay(Database db) throws IOException {
+        RedoLogTxnScanner scanner = new RedoLogTxnScanner();
+        return (replay(scanner) && replay(new RedoLogApplier(db, scanner)))
+            ? scanner.highestTxnId() : 0;
     }
 
     /**
@@ -334,7 +343,7 @@ final class RedoLog implements Closeable {
         if (parentTxnId == 0) {
             writeOp(OP_TXN_ROLLBACK, txnId);
         } else {
-            writeOp(OP_TXN_ROLLBACK_NESTED, txnId);
+            writeOp(OP_TXN_ROLLBACK_CHILD, txnId);
             writeLong(parentTxnId);
         }
     }
@@ -348,9 +357,9 @@ final class RedoLog implements Closeable {
                 writeOp(OP_TXN_COMMIT, txnId);
                 sync = conditionalFlush(mode);
             } else {
-                writeOp(OP_TXN_COMMIT_NESTED, txnId);
+                writeOp(OP_TXN_COMMIT_CHILD, txnId);
                 writeLong(parentTxnId);
-                // No need for nested transactions to be durable.
+                // No need for child transactions to be durable.
                 return;
             }
         }
@@ -532,7 +541,7 @@ final class RedoLog implements Closeable {
                 visitor.txnRollback(in.readLong(), 0);
                 break;
 
-            case OP_TXN_ROLLBACK_NESTED:
+            case OP_TXN_ROLLBACK_CHILD:
                 visitor.txnRollback(in.readLong(), in.readLong());
                 break;
 
@@ -540,7 +549,7 @@ final class RedoLog implements Closeable {
                 visitor.txnCommit(in.readLong(), 0);
                 break;
 
-            case OP_TXN_COMMIT_NESTED:
+            case OP_TXN_COMMIT_CHILD:
                 visitor.txnCommit(in.readLong(), in.readLong());
                 break;
 

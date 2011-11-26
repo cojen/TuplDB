@@ -26,17 +26,15 @@ import java.util.concurrent.locks.Lock;
  * @author Brian S O'Neill
  */
 final class UndoLog {
+    // Linked list of UndoLogs registered with Database.
+    UndoLog mPrev;
+    UndoLog mNext;
+
     /*
       FIXME: notes
 
-      - Link UndoLog instances together for registration
-      - Consider using registration lock also for assigning txnId (no atomic long)
-      - Mark node as dirty whenever making changes to it
+      - Define "master" UndoLog with pointers to other logs or copy mBuffer
       - Checkpoint first iterates all UndoLogs and sets commit state (mark phase)
-      - All marked UndoLogs are converted to Node form and flushed
-      - Consider using Node latches for concurrency control during flush
-      - Index id is encoded as an op on top, at checkpoint
-      - Transaction id is encoded as an op on top, at checkpoint
     */
 
     /*
@@ -69,10 +67,6 @@ final class UndoLog {
       Popping entries off the stack involves reading the opcode and moving
       forwards. Payloads which don't fit into the node spill over into the
       lower node(s).
-      
-      During payload break up, node allocation might fail, leaving the undo
-      stack broken. To handle this case, opcode 0 is reserved for partially
-      written entries which must be discarded.
     */
 
     private static final int HEADER_SIZE = 12;
@@ -80,17 +74,25 @@ final class UndoLog {
     // Must be power of two.
     private static final int INITIAL_BUFFER_SIZE = 128;
 
+    // Copy to another log from master log. Payload is active transaction id,
+    // index id, buffer size (short type), and serialized buffer.
+    private static final byte OP_LOG_COPY = (byte) 1;
+
+    // Reference to another log from master log. Payload is active transaction
+    // id, index id, and node id.
+    private static final byte OP_LOG_REF = (byte) 2;
+
     // Payload is active transaction id.
-    private static final byte OP_TRANSACTION = (byte) 1;
+    private static final byte OP_TRANSACTION = (byte) 3;
 
     // Payload is active index id.
-    private static final byte OP_INDEX = (byte) 2;
+    private static final byte OP_INDEX = (byte) 4;
 
     // Payload is key to delete to undo an insert.
-    static final byte OP_DELETE = (byte) 3;
+    static final byte OP_DELETE = (byte) 5;
 
     // Payload is key and value to store to undo an update or delete.
-    static final byte OP_STORE = (byte) 4;
+    static final byte OP_STORE = (byte) 6;
 
     private final Database mDatabase;
 
@@ -104,16 +106,78 @@ final class UndoLog {
     // Number of bytes currently pushed into log.
     private long mLength;
 
+    private long mActiveTxnId;
     private long mActiveIndexId;
 
-    UndoLog(Database db) {
+    private UndoLog(Database db) {
         mDatabase = db;
     }
 
     /**
-     * Caller must hold commit lock.
+     * Returns a new registered UndoLog.
      *
-     * @param op non-zero opcode
+     * @param txnId pass zero to select a transaction id
+     */
+    static UndoLog newUndoLog(Database db, long txnId) {
+        UndoLog log = new UndoLog(db);
+        log.mActiveTxnId = db.register(log, txnId);
+        return log;
+    }
+
+    /**
+     * Returns a new master UndoLog, for recording all registered UndoLogs.
+     */
+    static UndoLog newMasterLog(Database db) throws IOException {
+        UndoLog log = new UndoLog(db);
+        log.persistReady();
+        return log;
+    }
+
+    /**
+     * Ensures all entries are stored in persistable nodes. Caller must hold
+     * commit lock.
+     */
+    private void persistReady() throws IOException {
+        Node node;
+        byte[] buffer = mBuffer;
+        if (buffer == null) {
+            mNode = node = newDirtyNode(0);
+            // Set pointer to top entry (none at the moment).
+            node.mGarbage = node.mPage.length;
+        } else if (mNode == null) {
+            mNode = node = newDirtyNode(0);
+            int pos = mBufferPos;
+            int size = buffer.length - pos;
+            byte[] page = node.mPage;
+            int newPos = page.length - size;
+            System.arraycopy(buffer, pos, page, newPos, size);
+            // Set pointer to top entry.
+            node.mGarbage = newPos;
+            mBuffer = null;
+            mBufferPos = 0;
+        }
+    }
+
+    /**
+     * Caller must hold commit lock.
+     */
+    final long activeTransactionId() {
+        return mActiveTxnId;
+    }
+
+    /**
+     * Caller must hold commit lock.
+     */
+    final void activeTransactionId(long txnId) throws IOException {
+        long active = mActiveTxnId;
+        if (txnId != active) {
+            pushTransactionId(active);
+            mActiveTxnId = txnId;
+        }
+    }
+
+    /**
+     * Caller must hold commit lock.
      */
     void push(long indexId, byte op, byte[] payload) throws IOException {
         push(indexId, op, payload, 0, payload.length);
@@ -121,8 +185,6 @@ final class UndoLog {
 
     /**
      * Caller must hold commit lock.
-     *
-     * @param op non-zero opcode
      */
     void push(final long indexId,
               final byte op, final byte[] payload, final int off, final int len)
@@ -141,8 +203,6 @@ final class UndoLog {
 
     /**
      * Caller must hold commit lock.
-     *
-     * @param op non-zero opcode
      */
     private void push(final byte op, final byte[] payload, final int off, final int len,
                       int varIntLen)
@@ -151,9 +211,12 @@ final class UndoLog {
         final int encodedLen = 1 + varIntLen + len;
         mLength += encodedLen;
 
-        // Try to push into a local buffer first.
         Node node = mNode;
-        quick: if (node == null) {
+        if (node != null) {
+            // Push into allocated node, which must be marked dirty.
+            mDatabase.markUndoLogDirty(node);
+        } else quick: {
+            // Try to push into a local buffer before allocating a node.
             byte[] buffer = mBuffer;
             int pos;
             if (buffer == null) {
@@ -248,49 +311,60 @@ final class UndoLog {
         push(OP_INDEX, payload, 0, 8, 1);
     }
 
-    final void pushTransactionId(long txnId) throws IOException {
+    private void pushTransactionId(long txnId) throws IOException {
         byte[] payload = new byte[8];
         DataIO.writeLong(payload, 0, txnId);
         push(OP_TRANSACTION, payload, 0, 8, 1);
     }
 
     final long savepoint() {
+        mActiveTxnId = 0;
         return mLength;
     }
 
     /**
      * Truncate all log entries to the given savepoint. Pass zero to truncate
-     * everything. Caller must hold commit lock.
+     * everything. Caller does not need to hold commit lock.
      */
     final void truncate(long savepoint) throws IOException {
-        Node node = mNode;
-        if (node == null) {
-            mBufferPos = mBuffer.length - (int) savepoint;
-        } else if (savepoint == 0) {
-            while ((node = popNode(node)) != null);
-        } else {
-            int pageSize = mDatabase.pageSize();
-            long amount = mLength - savepoint;
-            while (true) {
-                int size = pageSize - node.mGarbage;
-                if (size >= amount) {
-                    node.mGarbage += (int) amount;
-                    break;
-                }
-                node = popNode(node);
+        if (savepoint < mLength) {
+            final Lock sharedCommitLock = mDatabase.sharedCommitLock();
+            sharedCommitLock.lock();
+            try {
+                Node node = mNode;
                 if (node == null) {
-                    throw new CorruptNodeException("Remainder of undo log is missing");
+                    mBufferPos = mBuffer.length - (int) savepoint;
+                } else if (savepoint == 0) {
+                    while ((node = popNode(node)) != null);
+                } else {
+                    int pageSize = mDatabase.pageSize();
+                    long amount = mLength - savepoint;
+                    while (true) {
+                        int size = pageSize - node.mGarbage;
+                        if (size >= amount) {
+                            node.mGarbage += (int) amount;
+                            break;
+                        }
+                        node = popNode(node);
+                        if (node == null) {
+                            throw new CorruptNodeException("Remainder of undo log is missing");
+                        }
+                        amount -= size;
+                    }
                 }
-                amount -= size;
+                mLength = savepoint;
+                mActiveIndexId = 0;
+            } finally {
+                sharedCommitLock.unlock();
             }
         }
-        mLength = savepoint;
-        mActiveIndexId = 0;
+
+        mActiveTxnId = 0;
     }
 
     /**
      * Rollback all log entries to the given savepoint. Pass zero to rollback
-     * everything. Caller must hold commit lock.
+     * everything. Caller does not need to hold commit lock.
      */
     final void rollback(long savepoint) throws IOException {
         // Implementation could be optimized somewhat, resulting in less
@@ -298,39 +372,47 @@ final class UndoLog {
         // necessary, since most transactions are expected to commit.
 
         if (savepoint < mLength) {
-            byte[] opRef = new byte[1];
-            Index activeIndex = null;
-            do {
-                byte[] entry = pop(opRef);
+            final Lock sharedCommitLock = mDatabase.sharedCommitLock();
+            sharedCommitLock.lock();
+            try {
+                byte[] opRef = new byte[1];
+                Index activeIndex = null;
+                do {
+                    byte[] entry = pop(opRef);
 
-                switch (opRef[0]) {
-                default:
-                    throw new DatabaseException("Unknown undo log entry type: " + opRef[0]);
+                    switch (opRef[0]) {
+                    default:
+                        throw new DatabaseException("Unknown undo log entry type: " + opRef[0]);
 
-                case OP_TRANSACTION:
-                    // Ignore.
-                    break;
+                    case OP_TRANSACTION:
+                        // Ignore.
+                        break;
 
-                case OP_INDEX:
-                    mActiveIndexId = DataIO.readLong(entry, 1);
-                    activeIndex = null;
-                    break;
+                    case OP_INDEX:
+                        mActiveIndexId = DataIO.readLong(entry, 1);
+                        activeIndex = null;
+                        break;
 
-                case OP_DELETE:
-                    activeIndex = findIndex(activeIndex);
-                    activeIndex.delete(Transaction.BOGUS, entry);
-                    break;
+                    case OP_DELETE:
+                        activeIndex = findIndex(activeIndex);
+                        activeIndex.delete(Transaction.BOGUS, entry);
+                        break;
 
-                case OP_STORE:
-                    activeIndex = findIndex(activeIndex);
-                    {
-                        byte[][] pair = Node.decodeUndoEntry(entry);
-                        activeIndex.store(Transaction.BOGUS, pair[0], pair[1]);
+                    case OP_STORE:
+                        activeIndex = findIndex(activeIndex);
+                        {
+                            byte[][] pair = Node.decodeUndoEntry(entry);
+                            activeIndex.store(Transaction.BOGUS, pair[0], pair[1]);
+                        }
+                        break;
                     }
-                    break;
-                }
-            } while (savepoint < mLength);
+                } while (savepoint < mLength);
+            } finally {
+                sharedCommitLock.unlock();
+            }
         }
+
+        mActiveTxnId = 0;
     }
 
     private Index findIndex(Index activeIndex) throws IOException {
@@ -414,7 +496,7 @@ final class UndoLog {
     }
 
     /**
-     * @return null if none left
+     * @return current mNode; null if none left
      */
     private Node popNode(Node parent) throws IOException {
         Node lowerNode = latchLowerNode(parent);
@@ -462,8 +544,48 @@ final class UndoLog {
      */
     private Node newDirtyNode(long lowerNodeId) throws IOException {
         Node node = mDatabase.newDirtyNode();
-        node.mType = Node.TYPE_UNDO_STACK;
+        node.mType = Node.TYPE_UNDO_LOG;
         DataIO.writeLong(node.mPage, 4, lowerNodeId);
         return node;
+    }
+
+    /**
+     * Caller must hold exclusive commit lock.
+     *
+     * @param workspace temporary buffer, allocated on demand
+     * @return new workspace instance
+     */
+    final byte[] writeToMaster(UndoLog master, byte[] workspace) throws IOException {
+        Node node = mNode;
+        if (node == null) {
+            byte[] buffer = mBuffer;
+            if (buffer == null) {
+                return workspace;
+            }
+            int pos = mBufferPos;
+            int bsize = buffer.length - pos;
+            if (bsize == 0) {
+                return workspace;
+            }
+            // TODO: Consider calling persistReady if UndoLog is still in a buffer next time.
+            final int psize = (8 + 8 + 2) + bsize;
+            if (workspace == null || workspace.length < psize) {
+                workspace = new byte[Math.min(INITIAL_BUFFER_SIZE, Utils.roundUpPower2(psize))];
+            }
+            DataIO.writeLong(workspace, 0, mActiveTxnId);
+            DataIO.writeLong(workspace, 8, mActiveIndexId);
+            DataIO.writeShort(workspace, (8 + 8), bsize);
+            System.arraycopy(workspace, (8 + 8 + 2), buffer, pos, bsize);
+            push(OP_LOG_COPY, workspace, 0, psize, DataIO.calcUnsignedVarIntLength(psize));
+        } else {
+            if (workspace == null) {
+                workspace = new byte[INITIAL_BUFFER_SIZE];
+            }
+            DataIO.writeLong(workspace, 0, mActiveTxnId);
+            DataIO.writeLong(workspace, 8, mActiveIndexId);
+            DataIO.writeLong(workspace, (8 + 8), node.mId);
+            push(OP_LOG_REF, workspace, 0, (8 + 8 + 8), 1);
+        }
+        return workspace;
     }
 }
