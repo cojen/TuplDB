@@ -143,15 +143,6 @@ final class RedoLog implements Closeable {
     }
 
     /**
-     * @return 0 if file not found and replay mode is deactivated; highest txn id otherwise
-     */
-    synchronized long replay(Database db) throws IOException {
-        RedoLogTxnScanner scanner = new RedoLogTxnScanner();
-        return (replay(scanner) && replay(new RedoLogApplier(db, scanner)))
-            ? scanner.highestTxnId() : 0;
-    }
-
-    /**
      * @return false if file not found and replay mode is deactivated
      */
     synchronized boolean replay(RedoLogVisitor visitor) throws IOException {
