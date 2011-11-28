@@ -110,7 +110,7 @@ final class Tree implements Index {
             cursor.findAndStore(key, value);
         } finally {
             // FIXME: this can deadlock, because exception can be thrown at anytime
-            cursor.reset();
+            cursor.close();
         }
     }
 
@@ -121,7 +121,7 @@ final class Tree implements Index {
             return cursor.findAndModify(key, TreeCursor.MODIFY_INSERT, value);
         } finally {
             // FIXME: this can deadlock, because exception can be thrown at anytime
-            cursor.reset();
+            cursor.close();
         }
     }
 
@@ -132,7 +132,7 @@ final class Tree implements Index {
             return cursor.findAndModify(key, TreeCursor.MODIFY_REPLACE, value);
         } finally {
             // FIXME: this can deadlock, because exception can be thrown at anytime
-            cursor.reset();
+            cursor.close();
         }
     }
 
@@ -145,7 +145,7 @@ final class Tree implements Index {
             return cursor.findAndModify(key, oldValue, newValue);
         } finally {
             // FIXME: this can deadlock, because exception can be thrown at anytime
-            cursor.reset();
+            cursor.close();
         }
     }
 

@@ -51,7 +51,7 @@ public class Locker {
     }
 
     /**
-     * Check the lock ownership for the given key.
+     * Checks the lock ownership for the given key.
      *
      * @return UNOWNED, OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      */
@@ -60,7 +60,7 @@ public class Locker {
     }
 
     /**
-     * Attempt to acquire a shared lock for the given key, denying exclusive
+     * Attempts to acquire a shared lock for the given key, denying exclusive
      * locks. If return value is OWNED_*, locker already owns a strong enough
      * lock, and no extra unlock should be performed.
      *
@@ -75,7 +75,7 @@ public class Locker {
     }
 
     /**
-     * Attempt to acquire a shared lock for the given key, denying exclusive
+     * Attempts to acquire a shared lock for the given key, denying exclusive
      * locks. If return value is OWNED_*, locker already owns a strong enough
      * lock, and no extra unlock should be performed.
      *
@@ -97,7 +97,7 @@ public class Locker {
     }
 
     /**
-     * Attempt to acquire an upgradable lock for the given key, denying
+     * Attempts to acquire an upgradable lock for the given key, denying
      * exclusive and additional upgradable locks. If return value is OWNED_*,
      * locker already owns a strong enough lock, and no extra unlock should be
      * performed. If ILLEGAL is returned, locker holds a shared lock, which
@@ -114,7 +114,7 @@ public class Locker {
     }
 
     /**
-     * Attempt to acquire an upgradable lock for the given key, denying
+     * Attempts to acquire an upgradable lock for the given key, denying
      * exclusive and additional upgradable locks. If return value is OWNED_*,
      * locker already owns a strong enough lock, and no extra unlock should be
      * performed.
@@ -136,7 +136,7 @@ public class Locker {
     }
 
     /**
-     * Attempt to acquire an exclusive lock for the given key, denying any
+     * Attempts to acquire an exclusive lock for the given key, denying any
      * additional locks. If return value is OWNED_EXCLUSIVE, locker already
      * owns exclusive lock, and no extra unlock should be performed. If ILLEGAL
      * is returned, locker holds a shared lock, which cannot be upgraded.
@@ -151,7 +151,7 @@ public class Locker {
     }
 
     /**
-     * Attempt to acquire an exclusive lock for the given key, denying any
+     * Attempts to acquire an exclusive lock for the given key, denying any
      * additional locks. If return value is OWNED_EXCLUSIVE, locker already
      * owns exclusive lock, and no extra unlock should be performed.
      *
@@ -273,7 +273,7 @@ public class Locker {
     }
 
     /**
-     * Release all locks held by this Locker, and exit all scopes.
+     * Releases all locks held by this Locker, and exits all scopes.
      */
     final void reset() {
         scopeUnlockAll();
@@ -302,7 +302,7 @@ public class Locker {
     }
 
     /**
-     * Release all locks held by this Locker, within the current scope. If not
+     * Releases all locks held by this Locker, within the current scope. If not
      * in a scope, all held locks are released.
      */
     final void scopeUnlockAll() {
@@ -312,7 +312,7 @@ public class Locker {
     }
 
     /**
-     * Release all non-exclusive locks held by this Locker, within the current
+     * Releases all non-exclusive locks held by this Locker, within the current
      * scope. If not in a scope, all held non-exclusive locks are released.
      */
     final void scopeUnlockAllNonExclusive() {
@@ -325,7 +325,7 @@ public class Locker {
     }
 
     /**
-     * Exit the current scope, releasing all held locks. If requested, the
+     * Exits the current scope, releasing all held locks. If requested, the
      * locks can instead be promoted to an enclosing scope. If no enclosing
      * scope exists, held locks are released.
      *

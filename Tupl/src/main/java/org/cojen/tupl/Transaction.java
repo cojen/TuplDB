@@ -16,6 +16,7 @@
 
 package org.cojen.tupl;
 
+import java.io.Closeable;
 import java.io.IOException;
 
 import java.util.concurrent.TimeUnit;
@@ -23,14 +24,16 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 
 /**
- * Transaction instances can only be safely used by one thread at a time.
- * Transactions can be exchanged by threads, as long as a happens-before
- * relationship is established. Without proper exclusion, multiple threads
- * interacting with a Transaction instance may cause database corruption.
+ * Defines a logical unit of work. Transactions must be {@link #close closed}
+ * when no longer needed to free up resources. Transaction instances can only
+ * be safely used by one thread at a time. Instances can be exchanged by
+ * threads, as long as a happens-before relationship is established. Without
+ * proper exclusion, multiple threads interacting with a Transaction instance
+ * may cause database corruption.
  *
  * @author Brian S O'Neill
  */
-public class Transaction extends Locker {
+public final class Transaction extends Locker implements Closeable {
     /**
      * Transaction instance which isn't a transaction at all. It always
      * operates in an {@link LockMode#UNSAFE unsafe} lock mode and a {@link
@@ -50,7 +53,7 @@ public class Transaction extends Locker {
 
     private UndoLog mUndoLog;
 
-    // Exception thrown during critcal operation.
+    // Is an exception if transaction is borked, BOGUS if bogus.
     private Object mBorked;
 
     // TODO: Define autoCommit(boolean) method.
@@ -77,7 +80,7 @@ public class Transaction extends Locker {
     }
 
     /**
-     * Attempt to acquire a shared lock for the given key, denying exclusive
+     * Attempts to acquire a shared lock for the given key, denying exclusive
      * locks. If return value is OWNED_*, locker already owns a strong enough
      * lock, and no extra unlock should be performed.
      *
@@ -91,7 +94,7 @@ public class Transaction extends Locker {
     }
 
     /**
-     * Attempt to acquire an upgradable lock for the given key, denying
+     * Attempts to acquire an upgradable lock for the given key, denying
      * exclusive and additional upgradable locks. If return value is OWNED_*,
      * locker already owns a strong enough lock, and no extra unlock should be
      * performed.
@@ -105,7 +108,7 @@ public class Transaction extends Locker {
     }
 
     /**
-     * Attempt to acquire an exclusive lock for the given key, denying any
+     * Attempts to acquire an exclusive lock for the given key, denying any
      * additional locks. If return value is OWNED_EXCLUSIVE, locker already
      * owns exclusive lock, and no extra unlock should be performed.
      *
@@ -118,7 +121,7 @@ public class Transaction extends Locker {
     }
 
     /**
-     * Set the lock mode for the current scope. Transactions begin in {@link
+     * Sets the lock mode for the current scope. Transactions begin in {@link
      * LockMode#UPGRADABLE_READ} mode, and newly entered scopes begin at the
      * outer scope's current mode. Exiting a scope reverts the lock mode.
      *
@@ -141,7 +144,7 @@ public class Transaction extends Locker {
     }
 
     /**
-     * Set the lock timeout for the current scope. A negative timeout is
+     * Sets the lock timeout for the current scope. A negative timeout is
      * infinite.
      */
     public final void lockTimeout(long timeout, TimeUnit unit) {
@@ -156,7 +159,7 @@ public class Transaction extends Locker {
     }
 
     /**
-     * Commit all modifications made within the current transaction scope. The
+     * Commits all modifications made within the current transaction scope. The
      * current scope is still valid after this method is called, unless an
      * exception is thrown. Call exit to fully release transaction resources.
      */
@@ -192,7 +195,7 @@ public class Transaction extends Locker {
     }
 
     /**
-     * Enter a nested transaction scope.
+     * Enters a nested transaction scope.
      */
     public final void enter() throws IOException {
         check();
@@ -216,7 +219,7 @@ public class Transaction extends Locker {
     }
 
     /**
-     * Exit the current transaction scope, rolling back all uncommitted
+     * Exits the current transaction scope, rolling back all uncommitted
      * modifications made within. The transaction is still valid after this
      * method is called, unless an exception is thrown.
      */
@@ -259,14 +262,18 @@ public class Transaction extends Locker {
     }
 
     /**
-     * Exit all transaction scopes, rolling back all uncommitted modifications.
-     * The transaction is still valid after this method is called, unless an
-     * exception is thrown.
+     * Exits all transaction scopes, rolling back all uncommitted
+     * modifications. Transaction is automatically re-opened on demand.
      */
-    public final void exitAll() throws IOException {
+    public final void close() throws IOException {
         check();
-        // FIXME
-        throw null;
+
+        try {
+            // FIXME
+            throw null;
+        } catch (Throwable e) {
+            throw borked(e);
+        }
     }
 
     /**
