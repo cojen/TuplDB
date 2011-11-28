@@ -138,7 +138,7 @@ public class TreeNodeTest {
         if (!exists) {
             c.store(bvalue);
         }
-        c.reset();
+        c.close();
 
         byte[] fvalue = index.get(null, bkey);
         try {

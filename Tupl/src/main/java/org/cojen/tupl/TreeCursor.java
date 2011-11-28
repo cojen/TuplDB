@@ -58,7 +58,7 @@ final class TreeCursor implements Cursor {
     @Override
     public LockResult first() throws IOException {
         Node root = mTree.mRoot;
-        TreeCursorFrame frame = resetForFind(root);
+        TreeCursorFrame frame = reset(root);
         if (!root.hasKeys()) {
             root.releaseExclusive();
             mKey = null;
@@ -112,7 +112,7 @@ final class TreeCursor implements Cursor {
     @Override
     public LockResult last() throws IOException {
         Node root = mTree.mRoot;
-        TreeCursorFrame frame = resetForFind(root);
+        TreeCursorFrame frame = reset(root);
         if (!root.hasKeys()) {
             root.releaseExclusive();
             mKey = null;
@@ -845,7 +845,7 @@ final class TreeCursor implements Cursor {
                 }
             } else {
                 // Regular variant always discards existing frames.
-                frame = resetForFind(node);
+                frame = reset(node);
             }
 
             while (true) {
@@ -1253,7 +1253,7 @@ final class TreeCursor implements Cursor {
             throw Utils.closeOnFailure(mTree.mDatabase, e);
         } finally {
             // FIXME: this can deadlock, because exception can be thrown at anytime
-            //reset();
+            //close();
         }
     }
 
@@ -1275,7 +1275,7 @@ final class TreeCursor implements Cursor {
     }
 
     @Override
-    public void reset() {
+    public void close() {
         TreeCursorFrame frame = mLeaf;
         if (frame == null) {
             return;
@@ -1293,7 +1293,7 @@ final class TreeCursor implements Cursor {
      *
      * @return new or recycled frame
      */
-    private TreeCursorFrame resetForFind(Node root) {
+    private TreeCursorFrame reset(Node root) {
         TreeCursorFrame frame = mLeaf;
         if (frame == null) {
             root.acquireExclusiveUnfair();
