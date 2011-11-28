@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.List;
+
 import java.util.concurrent.locks.Lock;
 
 /**
@@ -29,13 +31,6 @@ final class UndoLog {
     // Linked list of UndoLogs registered with Database.
     UndoLog mPrev;
     UndoLog mNext;
-
-    /*
-      FIXME: notes
-
-      - Define "master" UndoLog with pointers to other logs or copy mBuffer
-      - Checkpoint first iterates all UndoLogs and sets commit state (mark phase)
-    */
 
     /*
       UndoLog is persisted in Nodes. All multibyte types are big endian encoded.
@@ -50,7 +45,7 @@ final class UndoLog {
       -                                        -
       |                                        |
       +----------------------------------------+
-      | stack entries                          |
+      | log stack entries                      |
       -                                        -
       |                                        |
       +----------------------------------------+
@@ -69,6 +64,7 @@ final class UndoLog {
       lower node(s).
     */
 
+    private static final int I_LOWER_NODE_ID = 4;
     private static final int HEADER_SIZE = 12;
 
     // Must be power of two.
@@ -100,8 +96,8 @@ final class UndoLog {
     private int mBufferPos;
 
     // Top node, always latched. This prevents it from being evicted. Nodes are
-    // not used for stacks which fit into local buffer.
-    private Node mNode;
+    // not used for logs which fit into local buffer.
+    Node mNode;
 
     // Number of bytes currently pushed into log.
     private long mLength;
@@ -109,28 +105,20 @@ final class UndoLog {
     private long mActiveTxnId;
     private long mActiveIndexId;
 
-    private UndoLog(Database db) {
+    /**
+     * Create a new registered UndoLog.
+     */
+    UndoLog(Database db, long txnId) {
         mDatabase = db;
+        mActiveTxnId = db.register(this, txnId);
     }
 
     /**
-     * Returns a new registered UndoLog.
-     *
-     * @param txnId pass zero to select a transaction id
+     * Create a new master UndoLog. Caller must hold commit lock.
      */
-    static UndoLog newUndoLog(Database db, long txnId) {
-        UndoLog log = new UndoLog(db);
-        log.mActiveTxnId = db.register(log, txnId);
-        return log;
-    }
-
-    /**
-     * Returns a new master UndoLog, for recording all registered UndoLogs.
-     */
-    static UndoLog newMasterLog(Database db) throws IOException {
-        UndoLog log = new UndoLog(db);
-        log.persistReady();
-        return log;
+    UndoLog(Database db) throws IOException {
+        mDatabase = db;
+        persistReady();
     }
 
     /**
@@ -176,18 +164,24 @@ final class UndoLog {
         }
     }
 
+    private void pushTransactionId(long txnId) throws IOException {
+        byte[] payload = new byte[8];
+        DataIO.writeLong(payload, 0, txnId);
+        doPush(OP_TRANSACTION, payload, 0, 8, 1);
+    }
+
     /**
      * Caller must hold commit lock.
      */
-    void push(long indexId, byte op, byte[] payload) throws IOException {
+    final void push(long indexId, byte op, byte[] payload) throws IOException {
         push(indexId, op, payload, 0, payload.length);
     }
 
     /**
      * Caller must hold commit lock.
      */
-    void push(final long indexId,
-              final byte op, final byte[] payload, final int off, final int len)
+    final void push(final long indexId,
+                    final byte op, final byte[] payload, final int off, final int len)
         throws IOException
     {
         long activeIndexId = mActiveIndexId;
@@ -198,14 +192,20 @@ final class UndoLog {
             mActiveIndexId = indexId;
         }
 
-        push(op, payload, off, len, DataIO.calcUnsignedVarIntLength(len));
+        doPush(op, payload, off, len, DataIO.calcUnsignedVarIntLength(len));
+    }
+
+    private void pushIndexId(long indexId) throws IOException {
+        byte[] payload = new byte[8];
+        DataIO.writeLong(payload, 0, indexId);
+        doPush(OP_INDEX, payload, 0, 8, 1);
     }
 
     /**
      * Caller must hold commit lock.
      */
-    private void push(final byte op, final byte[] payload, final int off, final int len,
-                      int varIntLen)
+    private void doPush(final byte op, final byte[] payload, final int off, final int len,
+                        int varIntLen)
         throws IOException
     {
         final int encodedLen = 1 + varIntLen + len;
@@ -305,21 +305,32 @@ final class UndoLog {
         }
     }
 
-    private void pushIndexId(long indexId) throws IOException {
-        byte[] payload = new byte[8];
-        DataIO.writeLong(payload, 0, indexId);
-        push(OP_INDEX, payload, 0, 8, 1);
+    /**
+     * Caller does not need to hold commit lock.
+     */
+    final long savepoint() throws IOException {
+        final Lock sharedCommitLock = mDatabase.sharedCommitLock();
+        sharedCommitLock.lock();
+        try {
+            mActiveTxnId = 0;
+            return mLength;
+        } finally {
+            sharedCommitLock.unlock();
+        }
     }
 
-    private void pushTransactionId(long txnId) throws IOException {
-        byte[] payload = new byte[8];
-        DataIO.writeLong(payload, 0, txnId);
-        push(OP_TRANSACTION, payload, 0, 8, 1);
-    }
-
-    final long savepoint() {
-        mActiveTxnId = 0;
-        return mLength;
+    /**
+     * Should only be called after all log entries have been truncated or
+     * rolled back. Caller does not need to hold commit lock.
+     */
+    final void unregister() throws IOException {
+        final Lock sharedCommitLock = mDatabase.sharedCommitLock();
+        sharedCommitLock.lock();
+        try {
+            mDatabase.unregister(this);
+        } finally {
+            sharedCommitLock.unlock();
+        }
     }
 
     /**
@@ -509,12 +520,12 @@ final class UndoLog {
      * @return null if none
      */
     private Node latchLowerNode(Node parent) throws IOException {
-        long lowerNodeId = DataIO.readLong(parent.mPage, 4);
-        Node lowerNode;
+        long lowerNodeId = DataIO.readLong(parent.mPage, I_LOWER_NODE_ID);
         if (lowerNodeId == 0) {
             return null;
         }
 
+        Node lowerNode;
         Node[] childNodes = parent.mChildNodes;
         if (childNodes != null) {
             lowerNode = childNodes[0];
@@ -545,13 +556,57 @@ final class UndoLog {
     private Node newDirtyNode(long lowerNodeId) throws IOException {
         Node node = mDatabase.newDirtyNode();
         node.mType = Node.TYPE_UNDO_LOG;
-        DataIO.writeLong(node.mPage, 4, lowerNodeId);
+        DataIO.writeLong(node.mPage, I_LOWER_NODE_ID, lowerNodeId);
         return node;
     }
 
+    final void gatherDirtyNodes(List<DirtyNode> dirtyList, int dirtyState) {
+        Node node = mNode;
+        if (node == null) {
+            return;
+        }
+
+        // All node latches must be released except the first.
+        boolean release = false;
+
+        try {
+            while (true) {
+                if (node.mCachedState == dirtyState) {
+                    dirtyList.add(new DirtyNode(node, node.mId));
+                }
+
+                long lowerNodeId = DataIO.readLong(node.mPage, I_LOWER_NODE_ID);
+                if (lowerNodeId == 0) {
+                    break;
+                }
+
+                Node[] childNodes = node.mChildNodes;
+                if (childNodes == null) {
+                    break;
+                }
+
+                Node lowerNode = childNodes[0];
+                lowerNode.acquireExclusiveUnfair();
+                if (lowerNodeId != lowerNode.mId) {
+                    // Node and all remaining lower nodes were already evicted.
+                    lowerNode.releaseExclusive();
+                    break;
+                }
+
+                if (release) {
+                    node.releaseExclusive();
+                }
+                node = lowerNode;
+                release = true;
+            }
+        } finally {
+            if (release) {
+                node.releaseExclusive();
+            }
+        }
+    }
+
     /**
-     * Caller must hold exclusive commit lock.
-     *
      * @param workspace temporary buffer, allocated on demand
      * @return new workspace instance
      */
@@ -575,8 +630,9 @@ final class UndoLog {
             DataIO.writeLong(workspace, 0, mActiveTxnId);
             DataIO.writeLong(workspace, 8, mActiveIndexId);
             DataIO.writeShort(workspace, (8 + 8), bsize);
-            System.arraycopy(workspace, (8 + 8 + 2), buffer, pos, bsize);
-            push(OP_LOG_COPY, workspace, 0, psize, DataIO.calcUnsignedVarIntLength(psize));
+            System.arraycopy(buffer, pos, workspace, (8 + 8 + 2), bsize);
+            master.doPush(OP_LOG_COPY, workspace, 0, psize,
+                          DataIO.calcUnsignedVarIntLength(psize));
         } else {
             if (workspace == null) {
                 workspace = new byte[INITIAL_BUFFER_SIZE];
@@ -584,7 +640,7 @@ final class UndoLog {
             DataIO.writeLong(workspace, 0, mActiveTxnId);
             DataIO.writeLong(workspace, 8, mActiveIndexId);
             DataIO.writeLong(workspace, (8 + 8), node.mId);
-            push(OP_LOG_REF, workspace, 0, (8 + 8 + 8), 1);
+            master.doPush(OP_LOG_REF, workspace, 0, (8 + 8 + 8), 1);
         }
         return workspace;
     }

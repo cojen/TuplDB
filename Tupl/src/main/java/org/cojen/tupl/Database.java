@@ -42,13 +42,14 @@ import static org.cojen.tupl.Node.*;
 public final class Database implements Closeable {
     private static final int DEFAULT_CACHED_NODES = 1000;
 
-    private static final int ENCODING_VERSION = 20111111;
+    private static final int ENCODING_VERSION = 20111127;
 
-    private static final int I_ENCODING_VERSION = 0;
-    private static final int I_ROOT_PAGE_ID = I_ENCODING_VERSION + 4;
-    private static final int I_TRANSACTION_ID = I_ROOT_PAGE_ID + 8;
-    private static final int I_REDO_LOG_ID = I_TRANSACTION_ID + 8;
-    private static final int HEADER_SIZE = I_REDO_LOG_ID + 8;
+    private static final int I_ENCODING_VERSION        = 0;
+    private static final int I_ROOT_PAGE_ID            = I_ENCODING_VERSION + 4;
+    private static final int I_MASTER_UNDO_LOG_PAGE_ID = I_ROOT_PAGE_ID + 8;
+    private static final int I_TRANSACTION_ID          = I_MASTER_UNDO_LOG_PAGE_ID + 8;
+    private static final int I_REDO_LOG_ID             = I_TRANSACTION_ID + 8;
+    private static final int HEADER_SIZE               = I_REDO_LOG_ID + 8;
 
     private static final byte KEY_TYPE_INDEX_NAME = 0;
     private static final byte KEY_TYPE_INDEX_ID = 1;
@@ -86,6 +87,7 @@ public final class Database implements Closeable {
     // The following fields are guarded by mTxnIdLock.
     private long mTxnId;
     private UndoLog mTopUndoLog;
+    private int mUndoLogCount;
 
     private final Object mCheckpointLock = new Object();
 
@@ -289,6 +291,7 @@ public final class Database implements Closeable {
                 top.mNext = undo;
             }
             mTopUndoLog = undo;
+            mUndoLogCount++;
 
             while (txnId == 0) {
                 txnId = ++mTxnId;
@@ -313,15 +316,16 @@ public final class Database implements Closeable {
         return txnId;
     }
 
+    /**
+     * Called only by UndoLog.
+     */
     void unregister(UndoLog log) {
         synchronized (mTxnIdLock) {
             UndoLog prev = log.mPrev;
             UndoLog next = log.mNext;
             if (prev != null) {
                 prev.mNext = next;
-                // Keep previous link, to allow concurrent commit to follow
-                // links of detached UndoLogs.
-                //log.mPrev = null;
+                log.mPrev = null;
             }
             if (next != null) {
                 next.mPrev = prev;
@@ -329,6 +333,7 @@ public final class Database implements Closeable {
             } else if (log == mTopUndoLog) {
                 mTopUndoLog = prev;
             }
+            mUndoLogCount--;
         }
     }
 
@@ -842,6 +847,12 @@ public final class Database implements Closeable {
                 return;
             }
 
+            // TODO: I don't like all this activity with exclusive commit lock
+            // held. New RedoLog file can probably be created optimistically.
+            // UndoLog can be refactored to store into a special Tree, but this
+            // requires more features to be added to Tree first. Specifically,
+            // large values and appending to them.
+
             final long redoLogId;
             try {
                 redoLogId = mRedoLog.openNewFile();
@@ -851,12 +862,43 @@ public final class Database implements Closeable {
                 throw e;
             }
 
+            // List of nodes which must flushed.
+            final List<DirtyNode> dirtyList = new ArrayList<DirtyNode>
+                (Math.min(1000, mMaxCachedNodeCount));
+
+            final UndoLog masterUndoLog;
+            final long masterUndoLogId;
+            synchronized (mTxnIdLock) {
+                int count = mUndoLogCount;
+                if (count == 0) {
+                    masterUndoLog = null;
+                    masterUndoLogId = 0;
+                } else {
+                    final int stateToFlush = mCommitState;
+                    masterUndoLog = new UndoLog(this);
+                    byte[] workspace = null;
+                    for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
+                        workspace = log.writeToMaster(masterUndoLog, workspace);
+                        log.gatherDirtyNodes(dirtyList, stateToFlush);
+                    }
+                    masterUndoLog.gatherDirtyNodes(dirtyList, stateToFlush);
+                    masterUndoLogId = masterUndoLog.mNode.mId;
+                    masterUndoLog.mNode.releaseExclusive();
+                }
+            }
+
             mPageStore.commit(new PageStore.CommitCallback() {
                 @Override
                 public byte[] prepare() throws IOException {
-                    return flush(redoLogId);
+                    return flush(dirtyList, redoLogId, masterUndoLogId);
                 }
             });
+
+            if (masterUndoLog != null) {
+                // Delete the master undo log, which won't take effect until the next checkpoint.
+                masterUndoLog.mNode.acquireExclusiveUnfair();
+                masterUndoLog.truncate(0);
+            }
 
             // Note: The delete step can get skipped if process exits at this
             // point. File is deleted again when database is re-opened.
@@ -867,14 +909,21 @@ public final class Database implements Closeable {
     /**
      * Method is invoked with exclusive commit lock and shared root node latch held.
      */
-    private byte[] flush(final long redoLogId) throws IOException {
+    private byte[] flush(final List<DirtyNode> dirtyList,
+                         final long redoLogId,
+                         final long masterUndoLogId)
+        throws IOException
+    {
         // Snapshot of all open trees.
         Tree[] trees;
         synchronized (mOpenTrees) {
             trees = mOpenTrees.values().toArray(new Tree[mOpenTrees.size()]);
         }
 
-        final long txnId = mTxnId.get();
+        final long txnId;
+        synchronized (mTxnIdLock) {
+            txnId = mTxnId;
+        }
 
         /* FIXME: This code does not properly account for concurrent splits. Dirty
            nodes might not get written into the commit, and this has also been observed:
@@ -898,9 +947,8 @@ public final class Database implements Closeable {
         mCommitState = (byte) (CACHED_DIRTY_0 + ((stateToFlush - CACHED_DIRTY_0) ^ 1));
         mPageStore.exclusiveCommitLock().unlock();
 
-        // Gather all nodes to flush.
+        // Gather all tree nodes to flush...
 
-        List<DirtyNode> dirtyList = new ArrayList<DirtyNode>(Math.min(1000, mMaxCachedNodeCount));
         mRegistry.gatherDirtyNodes(dirtyList, stateToFlush);
 
         mRegistryKeyMap.mRoot.acquireSharedUnfair();
@@ -938,6 +986,7 @@ public final class Database implements Closeable {
         byte[] header = new byte[HEADER_SIZE];
         DataIO.writeInt(header, I_ENCODING_VERSION, ENCODING_VERSION);
         DataIO.writeLong(header, I_ROOT_PAGE_ID, rootId);
+        DataIO.writeLong(header, I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
         DataIO.writeLong(header, I_TRANSACTION_ID, txnId);
         // Add one to redoLogId, indicating the active log id.
         DataIO.writeLong(header, I_REDO_LOG_ID, redoLogId + 1);

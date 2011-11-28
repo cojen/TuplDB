@@ -62,17 +62,17 @@ abstract class PageQueue {
 
     // Indexes of entries in header.
     private static final int I_FREE_PAGE_COUNT = 4;
-    private static final int I_FREE_LIST_PAGE_COUNT = I_FREE_PAGE_COUNT + 8;
-    private static final int I_FIRST_FREE_LIST_ID = I_FREE_LIST_PAGE_COUNT + 8;
-    private static final int I_FIRST_FREE_OFFSET = I_FIRST_FREE_LIST_ID + 8;
+    private static final int I_FREE_LIST_PAGE_COUNT     = I_FREE_PAGE_COUNT + 8;
+    private static final int I_FIRST_FREE_LIST_ID       = I_FREE_LIST_PAGE_COUNT + 8;
+    private static final int I_FIRST_FREE_OFFSET        = I_FIRST_FREE_LIST_ID + 8;
     private static final int I_FIRST_FREE_FIRST_PAGE_ID = I_FIRST_FREE_OFFSET + 4;
-    private static final int HEADER_SIZE = I_FIRST_FREE_FIRST_PAGE_ID + 8;
+    private static final int HEADER_SIZE                = I_FIRST_FREE_FIRST_PAGE_ID + 8;
 
     // Indexes of entries in free list node.
-    private static final int I_NEXT_FREE_LIST_ID = 0;
-    private static final int I_NEXT_FREE_OFFSET = I_NEXT_FREE_LIST_ID + 8;
+    private static final int I_NEXT_FREE_LIST_ID       = 0;
+    private static final int I_NEXT_FREE_OFFSET        = I_NEXT_FREE_LIST_ID + 8;
     private static final int I_NEXT_FREE_FIRST_PAGE_ID = I_NEXT_FREE_OFFSET + 4;
-    private static final int I_FREE_NODE_START = I_NEXT_FREE_FIRST_PAGE_ID + 8;
+    private static final int I_FREE_NODE_START         = I_NEXT_FREE_FIRST_PAGE_ID + 8;
 
     private final PageArray mPageArray;
 
