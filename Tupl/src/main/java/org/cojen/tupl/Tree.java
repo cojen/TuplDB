@@ -342,7 +342,7 @@ final class Tree implements Index {
      * Gather all dirty pages which should be committed. Caller must acquire
      * shared latch on root node, which is released by this method.
      */
-    void gatherDirtyNodes(List<DirtyNode> dirtyList, int dirtyState) throws IOException {
+    void gatherDirtyNodes(List<DirtyNode> dirtyList, int dirtyState) {
         // Perform a breadth-first traversal of tree, finding dirty nodes. This
         // step can effectively deny most concurrent access to the tree, but I
         // cannot figure out a safe way to find dirty nodes and allow access

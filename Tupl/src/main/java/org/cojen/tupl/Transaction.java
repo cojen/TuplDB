@@ -243,7 +243,7 @@ public class Transaction extends Locker {
                 mTxnId = 0;
                 mSavepoint = 0;
                 if (undo != null) {
-                    mDatabase.unregister(undo);
+                    undo.unregister();
                     mUndoLog = null;
                 }
             } else {
@@ -341,7 +341,7 @@ public class Transaction extends Locker {
     private UndoLog undoLog() throws IOException {
         UndoLog undo = mUndoLog;
         if (undo == null) {
-            undo = UndoLog.newUndoLog(mDatabase, mTxnId);
+            undo = new UndoLog(mDatabase, mTxnId);
             mTxnId = undo.activeTransactionId();
             mUndoLog = undo;
         } else if (undo.activeTransactionId() == 0) {

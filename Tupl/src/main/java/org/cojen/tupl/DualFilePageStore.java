@@ -73,13 +73,13 @@ class DualFilePageStore implements PageStore {
     private static final int INITIAL_RECYCLE_BIN_SIZE = 128;
 
     // Indexes of entries in header node.
-    private static final int I_MAGIC_NUMBER = 0;
-    private static final int I_FILE_UID = 8;
-    private static final int I_PAGE_SIZE = I_FILE_UID + 8;
-    private static final int I_COMMIT_NUMBER = I_PAGE_SIZE + 4;
-    private static final int I_CHECKSUM = I_COMMIT_NUMBER + 4;
+    private static final int I_MAGIC_NUMBER     = 0;
+    private static final int I_FILE_UID         = I_MAGIC_NUMBER + 8;
+    private static final int I_PAGE_SIZE        = I_FILE_UID + 8;
+    private static final int I_COMMIT_NUMBER    = I_PAGE_SIZE + 4;
+    private static final int I_CHECKSUM         = I_COMMIT_NUMBER + 4;
     private static final int I_ALLOCATOR_HEADER = I_CHECKSUM + 4;
-    private static final int I_EXTRA_DATA = 256;
+    private static final int I_EXTRA_DATA       = 256;
 
     private static final int MINIMUM_PAGE_SIZE = 512;
     static final int DEFAULT_PAGE_SIZE = 4096;

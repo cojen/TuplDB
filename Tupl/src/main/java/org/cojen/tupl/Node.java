@@ -474,7 +474,7 @@ final class Node extends Latch {
         byte type = page[0];
         mType = type;
 
-        // For undo stack node, this is top entry pointer.
+        // For undo log node, this is top entry pointer.
         mGarbage = DataIO.readUnsignedShort(page, 2);
 
         if (type != TYPE_UNDO_LOG) {
@@ -508,7 +508,7 @@ final class Node extends Latch {
         page[0] = mType;
         page[1] = 0; // reserved
 
-        // For undo stack node, this is top entry pointer.
+        // For undo log node, this is top entry pointer.
         DataIO.writeShort(page, 2, mGarbage);
 
         if (mType != TYPE_UNDO_LOG) {
