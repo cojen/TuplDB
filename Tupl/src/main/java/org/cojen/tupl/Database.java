@@ -340,7 +340,7 @@ public final class Database implements Closeable {
     /**
      * Returns an index by its identifier, returning null if not found.
      *
-     * @throws IllegalArgumentException if id is zero
+     * @throws IllegalArgumentException if id is reserved
      */
     public Index indexById(long id) throws IOException {
         if (id >= REGISTRY_ID && id <= MAX_RESERVED_ID) {
