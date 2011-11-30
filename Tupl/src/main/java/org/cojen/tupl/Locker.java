@@ -394,7 +394,7 @@ public class Locker {
     }
 
     /**
-     * @param upgraded only 0 or 1 allowed
+     * @param upgrade only 0 or 1 allowed
      */
     final void push(Lock lock, int upgrade) {
         Object tailObj = mTailBlock;

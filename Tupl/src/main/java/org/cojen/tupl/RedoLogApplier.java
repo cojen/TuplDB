@@ -26,10 +26,12 @@ import java.io.IOException;
 class RedoLogApplier implements RedoLogVisitor {
     private final Database mDb;
     private final RedoLogTxnScanner mScanner;
+    private final LHashTable.Obj<UndoLog> mUndoLogs;
 
-    RedoLogApplier(Database db, RedoLogTxnScanner scanner) {
+    RedoLogApplier(Database db, RedoLogTxnScanner scanner, LHashTable.Obj<UndoLog> undoLogs) {
         mDb = db;
         mScanner = scanner;
+        mUndoLogs = undoLogs;
     }
 
     @Override
@@ -55,15 +57,34 @@ class RedoLogApplier implements RedoLogVisitor {
     }
 
     @Override
-    public void txnRollback(long txnId, long parentTxnId) {}
+    public void txnRollback(long txnId, long parentTxnId) throws IOException {
+        processUndo(txnId, parentTxnId, false);
+    }
 
     @Override
-    public void txnCommit(long txnId, long parentTxnId) {}
+    public void txnCommit(long txnId, long parentTxnId) throws IOException {
+        processUndo(txnId, parentTxnId, true);
+    }
 
     @Override
     public void txnStore(long txnId, long indexId, byte[] key, byte[] value) throws IOException {
         if (mScanner.isCommitted(txnId)) {
             mDb.anyIndexById(indexId).store(Transaction.BOGUS, key, value);
+        }
+    }
+
+    private void processUndo(long txnId, long parentTxnId, boolean commit) throws IOException {
+        LHashTable.ObjEntry<UndoLog> entry;
+        UndoLog log;
+        if (mUndoLogs != null
+            && (entry = mUndoLogs.get(txnId)) != null
+            && (log = entry.value) != null
+            && (commit
+                ? log.truncateScope(txnId, parentTxnId)
+                : log.rollbackScope(txnId, parentTxnId)))
+        {
+            mUndoLogs.remove(txnId);
+            mUndoLogs.insert(log.activeTransactionId()).value = log;
         }
     }
 }
