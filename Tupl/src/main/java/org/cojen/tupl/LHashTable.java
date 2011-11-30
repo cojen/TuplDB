@@ -57,6 +57,7 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
     private int mSize;
     private int mGrowThreshold;
 
+    @SuppressWarnings({"rawtypes", "unchecked"})
     LHashTable(int capacity) {
         capacity = Utils.roundUpPower2(capacity);
         mEntries = (E[]) new Entry[capacity];
@@ -147,6 +148,15 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
         return null;
     }
 
+    public <X extends Exception> void traverse(Vistor<E, X> v) throws X {
+        E[] entries = mEntries;
+        for (int i=0; i<entries.length; i++) {
+            for (E e = entries[i]; e != null; e = e.next) {
+                v.visit(e);
+            }
+        }
+    }
+
     protected abstract E newEntry();
 
     private E newEntry(long key, E next) {
@@ -156,6 +166,7 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
         return e;
     }
 
+    @SuppressWarnings({"rawtypes", "unchecked"})
     private boolean grow() {
         if (mSize < mGrowThreshold) {
             return false;
@@ -188,4 +199,9 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
         public long key;
         E next;
     }
+
+    public static interface Vistor<E extends Entry<E>, X extends Exception> {
+        void visit(E e) throws X;
+    }
+
 }

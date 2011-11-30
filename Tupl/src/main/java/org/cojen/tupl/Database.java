@@ -207,7 +207,22 @@ public final class Database implements Closeable {
                     (this, REGISTRY_KEY_MAP_ID, Utils.EMPTY_BYTES, null, rootNode);
             }
 
-            if (redoReplay()) {
+            // Perform recovery by examining redo and undo logs.
+
+            UndoLog masterUndoLog;
+            LHashTable.Obj<UndoLog> undoLogs;
+            {
+                long nodeId = DataIO.readLong(header, I_MASTER_UNDO_LOG_PAGE_ID);
+                if (nodeId == 0) {
+                    masterUndoLog = null;
+                    undoLogs = null;
+                } else {
+                    masterUndoLog = UndoLog.recoverMasterUndoLog(this, nodeId);
+                    undoLogs = masterUndoLog.recoverLogs();
+                }
+            }
+
+            if (redoReplay(undoLogs)) {
                 // Make sure old redo log is deleted. Process might have exited
                 // before last checkpoint could delete it.
                 mRedoLog.deleteOldFile(redoLogId - 1);
@@ -217,9 +232,15 @@ public final class Database implements Closeable {
 
                 while (mRedoLog.isReplayMode()) {
                     // Last checkpoint was interrupted, so apply next log file too.
-                    redoReplay();
+                    redoReplay(undoLogs);
                     checkpoint(true);
                 }
+            }
+
+            if (masterUndoLog != null) {
+                // Rollback all remaining undo logs. They were never explicitly
+                // rolled back. This also deletes the master undo log.
+                masterUndoLog.rollbackRemaining(undoLogs);
             }
         } catch (Throwable e) {
             try {
@@ -231,9 +252,11 @@ public final class Database implements Closeable {
         }
     }
 
-    private boolean redoReplay() throws IOException {
+    private boolean redoReplay(LHashTable.Obj<UndoLog> undoLogs) throws IOException {
         RedoLogTxnScanner scanner = new RedoLogTxnScanner();
-        if (!mRedoLog.replay(scanner) || !mRedoLog.replay(new RedoLogApplier(this, scanner))) {
+        if (!mRedoLog.replay(scanner) ||
+            !mRedoLog.replay(new RedoLogApplier(this, scanner, undoLogs)))
+        {
             return false;
         }
 
@@ -875,7 +898,7 @@ public final class Database implements Closeable {
                     masterUndoLogId = 0;
                 } else {
                     final int stateToFlush = mCommitState;
-                    masterUndoLog = new UndoLog(this);
+                    masterUndoLog = UndoLog.newMasterUndoLog(this);
                     byte[] workspace = null;
                     for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
                         workspace = log.writeToMaster(masterUndoLog, workspace);
@@ -883,6 +906,7 @@ public final class Database implements Closeable {
                     }
                     masterUndoLog.gatherDirtyNodes(dirtyList, stateToFlush);
                     masterUndoLogId = masterUndoLog.mNode.mId;
+                    // Release latch to allow flush to acquire and release it.
                     masterUndoLog.mNode.releaseExclusive();
                 }
             }
@@ -895,7 +919,8 @@ public final class Database implements Closeable {
             });
 
             if (masterUndoLog != null) {
-                // Delete the master undo log, which won't take effect until the next checkpoint.
+                // Delete the master undo log, which won't take effect until
+                // the next checkpoint.
                 masterUndoLog.mNode.acquireExclusiveUnfair();
                 masterUndoLog.truncate(0);
             }

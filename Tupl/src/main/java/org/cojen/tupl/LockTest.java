@@ -655,6 +655,7 @@ public class LockTest {
     }
 
     @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
     public void fifo() throws Exception {
         mExecutor = Executors.newCachedThreadPool();
 

@@ -161,7 +161,8 @@ public final class Transaction extends Locker implements Closeable {
     /**
      * Commits all modifications made within the current transaction scope. The
      * current scope is still valid after this method is called, unless an
-     * exception is thrown. Call exit to fully release transaction resources.
+     * exception is thrown. Call exit or close to fully release transaction
+     * resources.
      */
     public final void commit() throws IOException {
         check();
@@ -174,17 +175,18 @@ public final class Transaction extends Locker implements Closeable {
                 mHasRedo = false;
             }
 
-            UndoLog undo = mUndoLog;
-            if (undo != null) {
-                // Active transaction id is cleared as a side-effect.
-                undo.truncate(mSavepoint);
-            }
-
             if (parentScope == null) {
                 super.scopeUnlockAll();
             } else {
                 // Retain locks for modifications which aren't truly committed yet.
                 super.scopeUnlockAllNonExclusive();
+            }
+
+            // Safe to truncate obsolete log entries after releasing locks.
+            UndoLog undo = mUndoLog;
+            if (undo != null) {
+                // Active transaction id is cleared as a side-effect.
+                undo.truncate(mSavepoint);
             }
 
             // Next transaction id is assigned on demand.
@@ -240,7 +242,8 @@ public final class Transaction extends Locker implements Closeable {
                 undo.rollback(mSavepoint);
             }
 
-            super.scopeExit(true);
+            // Exit and release all locks obtained in this scope.
+            super.scopeExit(false);
 
             if (parentScope == null) {
                 mTxnId = 0;
@@ -348,7 +351,7 @@ public final class Transaction extends Locker implements Closeable {
     private UndoLog undoLog() throws IOException {
         UndoLog undo = mUndoLog;
         if (undo == null) {
-            undo = new UndoLog(mDatabase, mTxnId);
+            undo = UndoLog.newUndoLog(mDatabase, mTxnId);
             mTxnId = undo.activeTransactionId();
             mUndoLog = undo;
         } else if (undo.activeTransactionId() == 0) {
