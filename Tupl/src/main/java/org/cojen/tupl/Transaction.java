@@ -168,7 +168,7 @@ public final class Transaction extends Locker implements Closeable {
         check();
 
         try {
-            Scope parentScope = mParentScope;
+            ParentScope parentScope = mParentScope;
             if (mHasRedo) {
                 long parentTxnId = parentScope == null ? 0 : parentScope.mTxnId;
                 mDatabase.mRedoLog.txnCommit(mTxnId, parentTxnId, mDurabilityMode);
@@ -178,8 +178,7 @@ public final class Transaction extends Locker implements Closeable {
             if (parentScope == null) {
                 super.scopeUnlockAll();
             } else {
-                // Retain locks for modifications which aren't truly committed yet.
-                super.scopeUnlockAllNonExclusive();
+                super.promote();
             }
 
             // Safe to truncate obsolete log entries after releasing locks.
@@ -202,7 +201,7 @@ public final class Transaction extends Locker implements Closeable {
     public final void enter() throws IOException {
         check();
 
-        Scope parentScope = super.scopeEnter();
+        ParentScope parentScope = super.scopeEnter();
         parentScope.mLockMode = mLockMode;
         parentScope.mLockTimeoutNanos = mLockTimeoutNanos;
         parentScope.mTxnId = mTxnId;
@@ -229,7 +228,7 @@ public final class Transaction extends Locker implements Closeable {
         check();
 
         try {
-            Scope parentScope = mParentScope;
+            ParentScope parentScope = mParentScope;
             if (mHasRedo) {
                 long parentTxnId = parentScope == null ? 0 : parentScope.mTxnId;
                 mDatabase.mRedoLog.txnRollback(mTxnId, parentTxnId);
@@ -243,7 +242,7 @@ public final class Transaction extends Locker implements Closeable {
             }
 
             // Exit and release all locks obtained in this scope.
-            super.scopeExit(false);
+            super.scopeExit();
 
             if (parentScope == null) {
                 mTxnId = 0;
@@ -290,7 +289,7 @@ public final class Transaction extends Locker implements Closeable {
         try {
             long txnId = mTxnId;
             if (txnId == 0) {
-                Scope parentScope = mParentScope;
+                ParentScope parentScope = mParentScope;
                 if (parentScope != null && parentScope.mTxnId == 0) {
                     assignTxnId(parentScope);
                 }
@@ -311,8 +310,8 @@ public final class Transaction extends Locker implements Closeable {
         }
     }
 
-    private void assignTxnId(Scope scope) {
-        Scope parentScope = scope.mParent;
+    private void assignTxnId(ParentScope scope) {
+        ParentScope parentScope = scope.mParentScope;
         if (parentScope != null && parentScope.mTxnId == 0) {
             assignTxnId(parentScope);
         }

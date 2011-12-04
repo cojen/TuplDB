@@ -421,6 +421,7 @@ final class Lock {
     /**
      * Called with exclusive latch held, which is retained.
      */
+    /*
     boolean unlockIfNonExclusive(Locker locker) {
         if (mLockCount == ~0) {
             // Retain exclusive lock. Since this method is only called via
@@ -433,6 +434,7 @@ final class Lock {
             return true;
         }
     }
+    */
 
     boolean matches(long indexId, byte[] key, int hash) {
         return mHashCode == hash && mIndexId == indexId && Arrays.equals(mKey, key);
