@@ -23,20 +23,19 @@ import static org.cojen.tupl.LockManager.hash;
  * instances can only be safely used by one thread at a time. Lockers can be
  * exchanged by threads, as long as a happens-before relationship is
  * established. Without proper exclusion, multiple threads interacting with a
- * Locker instance results in undefined behavior.
+ * Locker instance may cause database corruption.
  *
  * @author Brian S O'Neill
  */
-public class Locker {
+class Locker {
     final LockManager mManager;
 
     private int mHashCode;
 
+    ParentScope mParentScope;
+
     // Is null if empty; Lock instance if one; Block if more.
     Object mTailBlock;
-    Object mHeadBlock;
-
-    Scope mParentScope;
 
     Locker(LockManager manager) {
         if (manager == null) {
@@ -226,7 +225,6 @@ public class Locker {
         }
         if (tailObj instanceof Lock) {
             mTailBlock = null;
-            mHeadBlock = null;
             mManager.unlock(this, (Lock) tailObj);
         } else {
             ((Block) tailObj).unlockLast(this);
@@ -276,29 +274,45 @@ public class Locker {
      * Releases all locks held by this Locker, and exits all scopes.
      */
     final void reset() {
+        mParentScope = null;
         scopeUnlockAll();
-
-        Scope parentScope = mParentScope;
-        if (parentScope != null) {
-            do {
-                unlockAll(parentScope.mTailBlock);
-                parentScope = parentScope.mParent;
-            } while (parentScope != null);
-            mParentScope = null;
-        }
+        mTailBlock = null;
     }
 
     /**
      * @return new parent scope
      */
-    final Scope scopeEnter() {
-        Scope scope = new Scope();
-        scope.mParent = mParentScope;
-        scope.mTailBlock = mTailBlock;
-        scope.mHeadBlock = mHeadBlock;
-        mTailBlock = null;
-        mHeadBlock = null;
-        return mParentScope = scope;
+    final ParentScope scopeEnter() {
+        ParentScope scope = new ParentScope();
+        scope.mParentScope = mParentScope;
+        Object tailObj = mTailBlock;
+        scope.mTailBlock = tailObj;
+        if (tailObj != null) {
+            scope.mTailBlockSize = (tailObj instanceof Block) ? (((Block) tailObj).mSize) : 1;
+        }
+        mParentScope = scope;
+        return scope;
+    }
+
+    /**
+     * Promote all locks acquired within this scope to the parent scope.
+     */
+    final void promote() {
+        Object tailObj = mTailBlock;
+        if (tailObj != null) {
+            ParentScope parent = mParentScope;
+            if (tailObj instanceof Lock) {
+                if (parent.mTailBlock == null) {
+                    Lock tailLock = (Lock) tailObj;
+                    parent.mTailBlock = tailLock;
+                    mTailBlock = null;
+                }
+            } else {
+                Block tail = (Block) tailObj;
+                parent.mTailBlock = tail;
+                parent.mTailBlockSize = tail.mSize;
+            }
+        }
     }
 
     /**
@@ -306,68 +320,60 @@ public class Locker {
      * in a scope, all held locks are released.
      */
     final void scopeUnlockAll() {
-        unlockAll(mTailBlock);
-        mTailBlock = null;
-        mHeadBlock = null;
+        ParentScope parent = mParentScope;
+        Object parentTailObj;
+        if (parent == null || (parentTailObj = parent.mTailBlock) == null) {
+            // Unlock everything.
+            Object tailObj = mTailBlock;
+            if (tailObj instanceof Lock) {
+                mManager.unlock(this, (Lock) tailObj);
+                mTailBlock = null;
+            } else {
+                Block tail = (Block) tailObj;
+                if (tail != null) {
+                    while (true) {
+                        tail.unlockToSavepoint(this, 0);
+                        if (tail.isFirstBlock()) {
+                            break;
+                        }
+                        tail = tail.pop();
+                    }
+                    mTailBlock = tail;
+                }
+            }
+        } else if (parentTailObj instanceof Lock) {
+            Object tailObj = mTailBlock;
+            if (tailObj instanceof Block) {
+                Block tail = (Block) tailObj;
+                while (true) {
+                    if (tail.isFirstBlock()) {
+                        tail.unlockToSavepoint(this, 1);
+                        break;
+                    }
+                    tail.unlockToSavepoint(this, 0);
+                    tail = tail.pop();
+                }
+                mTailBlock = tail;
+            }
+        } else {
+            Block tail = (Block) mTailBlock;
+            while (tail != parentTailObj) {
+                tail.unlockToSavepoint(this, 0);
+                tail = tail.pop();
+            }
+            tail.unlockToSavepoint(this, parent.mTailBlockSize);
+            mTailBlock = tail;
+        }
     }
 
     /**
-     * Releases all non-exclusive locks held by this Locker, within the current
-     * scope. If not in a scope, all held non-exclusive locks are released.
-     */
-    final void scopeUnlockAllNonExclusive() {
-        // FIXME
-        throw null;
-        // FIXME: Collapse non-exclusive locks within Blocks, possibly moving
-        // to previous Block. Is this efficient? Should a new stack be built
-        // and then reversed?
-        // if (mManager.unlockIfNonExclusive(this, lock)) ...
-    }
-
-    /**
-     * Exits the current scope, releasing all held locks. If requested, the
-     * locks can instead be promoted to an enclosing scope. If no enclosing
-     * scope exists, held locks are released.
+     * Exits the current scope, releasing all held locks.
      *
-     * @param promote when true, promote all locks to enclosing scope, if one exists
      * @return old parent scope
      */
-    final Scope scopeExit(boolean promote) {
-        Object lastTail = mTailBlock;
-
-        if (!promote) {
-            unlockAll(lastTail);
-            return popScope();
-        }
-
-        Object lastHead = mHeadBlock;
-
-        Scope parent = popScope();
-        if (parent == null) {
-            unlockAll(lastTail);
-            return parent;
-        }
-
-        if (lastHead != null) {
-            if (lastHead instanceof Lock) {
-                push((Lock) lastHead, 0);
-            } else {
-                Object tail = mTailBlock;
-                if (tail == null) {
-                    mHeadBlock = lastHead;
-                } else {
-                    Block lastHeadBlock = (Block) lastHead;
-                    if (tail instanceof Lock) {
-                        mHeadBlock = lastHeadBlock.prepend((Lock) tail);
-                    } else if (lastHeadBlock.prepend((Block) tail) && tail == mHeadBlock) {
-                        mHeadBlock = lastHead;
-                    }
-                }
-                mTailBlock = lastTail;
-            }
-        }
-
-        return parent;
+    final ParentScope scopeExit() {
+        scopeUnlockAll();
+        return popScope();
     }
 
     @Override
@@ -382,28 +388,18 @@ public class Locker {
         return hash;
     }
 
-    private void unlockAll(Object tailObj) {
-        if (tailObj instanceof Lock) {
-            mManager.unlock(this, (Lock) tailObj);
-        } else {
-            Block tail = (Block) tailObj;
-            while (tail != null) {
-                tail = tail.unlockAll(this);
-            }
-        }
-    }
-
     /**
      * @param upgrade only 0 or 1 allowed
      */
     final void push(Lock lock, int upgrade) {
         Object tailObj = mTailBlock;
         if (tailObj == null) {
-            mHeadBlock = mTailBlock = upgrade == 0 ? lock : new ArrayBlock(lock);
+            mTailBlock = upgrade == 0 ? lock : new Block(lock);
         } else if (tailObj instanceof Lock) {
-            // Don't push lock upgrade if it applies to the last acquisition.
-            if (tailObj != lock) {
-                mHeadBlock = mTailBlock = new ArrayBlock((Lock) tailObj, lock, upgrade);
+            // Don't push lock upgrade if it applies to the last acquisition
+            // within this scope. This is required for unlockLast.
+            if (tailObj != lock || mParentScope != null) {
+                mTailBlock = new Block((Lock) tailObj, lock, upgrade);
             }
         } else {
             ((Block) tailObj).pushLock(this, lock, upgrade);
@@ -413,210 +409,89 @@ public class Locker {
     /**
      * @return old parent scope
      */
-    private Scope popScope() {
-        Scope parent = mParentScope;
+    private ParentScope popScope() {
+        ParentScope parent = mParentScope;
         if (parent == null) {
             mTailBlock = null;
-            mHeadBlock = null;
         } else {
             mTailBlock = parent.mTailBlock;
-            mHeadBlock = parent.mHeadBlock;
-            mParentScope = parent.mParent;
+            mParentScope = parent.mParentScope;
         }
         return parent;
     }
 
-    static abstract class Block {
-        Block mPrev;
-
-        abstract int capacity();
-
-        abstract int size();
-
-        abstract void pushLock(Locker locker, Lock lock, int upgrade);
-
-        abstract Lock last();
-
-        abstract void unlockLast(Locker locker);
-
-        abstract void unlockLastToShared(Locker locker);
-
-        abstract void unlockLastToUpgradable(Locker locker);
-
-        /**
-         * @return previous Block or null if none left
-         */
-        abstract Block unlockAll(Locker locker);
-
-        /**
-         * @return new head Block
-         */
-        abstract Block prepend(Lock lock);
-
-        /**
-         * @return if block was absorbed into this one
-         */
-        abstract boolean prepend(Block block);
-
-        /**
-         * @return upgrades
-         */
-        abstract long copyTo(Lock[] elements);
-    }
-
-    static final class TinyBlock extends Block {
-        private Lock mElement;
-
-        TinyBlock(Lock element) {
-            mElement = element;
-        }
-
-        @Override
-        int capacity() {
-            return 1;
-        }
-
-        @Override
-        int size() {
-            return 1;
-        }
-
-        @Override
-        void pushLock(Locker locker, Lock lock, int upgrade) {
-            // Don't push lock upgrade if it applies to the last acquisition.
-            if (mElement != lock) {
-                locker.mTailBlock = new ArrayBlock(this, lock, upgrade);
-            }
-        }
-
-        @Override
-        Lock last() {
-            return mElement;
-        }
-
-        @Override
-        void unlockLast(Locker locker) {
-            locker.mManager.unlock(locker, mElement);
-
-            // Only pop lock if unlock succeeded.
-            mElement = null;
-            if ((locker.mTailBlock = mPrev) == null) {
-                locker.mHeadBlock = null;
-            } else {
-                mPrev = null;
-            }
-        }
-
-        @Override
-        void unlockLastToShared(Locker locker) {
-            locker.mManager.unlockToShared(locker, mElement);
-        }
-
-        @Override
-        void unlockLastToUpgradable(Locker locker) {
-            locker.mManager.unlockToUpgradable(locker, mElement);
-        }
-
-        @Override
-        Block unlockAll(Locker locker) {
-            locker.mManager.unlock(locker, mElement);
-            mElement = null;
-            Block prev = mPrev;
-            mPrev = null;
-            return prev;
-        }
-
-        @Override
-        Block prepend(Lock lock) {
-            return mPrev = new TinyBlock(lock);
-        }
-
-        @Override
-        boolean prepend(Block block) {
-            mPrev = block;
-            return false;
-        }
-
-        @Override
-        long copyTo(Lock[] elements) {
-            elements[0] = mElement;
-            return 0;
-        }
-    }
-
-    static final class ArrayBlock extends Block {
+    static final class Block {
         private static final int FIRST_BLOCK_CAPACITY = 8;
+        // Limited by number of bits available in mUpgrades.
         private static final int HIGHEST_BLOCK_CAPACITY = 64;
 
-        private Lock[] mElements;
+        private Lock[] mLocks;
         private long mUpgrades;
-        private int mSize;
+        int mSize;
+
+        private Block mPrev;
 
         // Always creates first as an upgrade.
-        ArrayBlock(Lock first) {
-            (mElements = new Lock[FIRST_BLOCK_CAPACITY])[0] = first;
+        Block(Lock first) {
+            (mLocks = new Lock[FIRST_BLOCK_CAPACITY])[0] = first;
             mUpgrades = 1;
             mSize = 1;
         }
 
         // First is never an upgrade.
-        ArrayBlock(Lock first, Lock second, int upgrade) {
-            Lock[] elements = new Lock[FIRST_BLOCK_CAPACITY];
-            elements[0] = first;
-            elements[1] = second;
-            mElements = elements;
+        Block(Lock first, Lock second, int upgrade) {
+            Lock[] locks = new Lock[FIRST_BLOCK_CAPACITY];
+            locks[0] = first;
+            locks[1] = second;
+            mLocks = locks;
             mUpgrades = upgrade << 1;
             mSize = 2;
         }
 
-        ArrayBlock(Block prev, Lock first, int upgrade) {
+        private Block(Block prev, Lock first, int upgrade) {
             mPrev = prev;
-            int capacity = prev.capacity();
+            int capacity = prev.mLocks.length;
             if (capacity < FIRST_BLOCK_CAPACITY) {
                 capacity = FIRST_BLOCK_CAPACITY;
             } else if (capacity < HIGHEST_BLOCK_CAPACITY) {
                 capacity <<= 1;
             }
-            (mElements = new Lock[capacity])[0] = first;
+            (mLocks = new Lock[capacity])[0] = first;
             mUpgrades = upgrade;
             mSize = 1;
         }
 
-        @Override
-        int capacity() {
-            return mElements.length;
-        }
-
-        @Override
-        int size() {
-            return mSize;
-        }
-
-        @Override
         void pushLock(Locker locker, Lock lock, int upgrade) {
-            Lock[] elements = mElements;
+            Lock[] locks = mLocks;
             int size = mSize;
 
-            // Don't push lock upgrade if it applies to the last acquisition.
-            if (upgrade != 0 && size > 0 && elements[size - 1] == lock) {
+            // Don't push lock upgrade if it applies to the last acquisition
+            // within this scope. This is required for unlockLast.
+            ParentScope parent;
+            if (upgrade != 0 && size != 0
+                && ((parent = locker.mParentScope) == null || parent.mTailBlockSize != size)
+                && locks[size - 1] == lock)
+            {
                 return;
             }
 
-            if (size < elements.length) {
-                elements[size] = lock;
+            if (size < locks.length) {
+                locks[size] = lock;
                 mUpgrades |= ((long) upgrade) << size;
                 mSize = size + 1;
             } else {
-                locker.mTailBlock = new ArrayBlock(this, lock, upgrade);
+                locker.mTailBlock = new Block(this, lock, upgrade);
             }
         }
 
-        @Override
         Lock last() {
-            return mElements[mSize - 1];
+            return mLocks[mSize - 1];
         }
 
-        @Override
+        boolean isFirstBlock() {
+            return mPrev == null;
+        }
+
         void unlockLast(Locker locker) {
             int size = mSize - 1;
 
@@ -626,49 +501,41 @@ public class Locker {
                 throw new IllegalStateException("Cannot unlock non-immediate upgrade");
             }
 
-            Lock[] elements = mElements;
-            locker.mManager.unlock(locker, elements[size]);
+            Lock[] locks = mLocks;
+            locker.mManager.unlock(locker, locks[size]);
 
             // Only pop lock if unlock succeeded.
-            elements[size] = null;
+            locks[size] = null;
             if (size == 0) {
-                if ((locker.mTailBlock = mPrev) == null) {
-                    locker.mHeadBlock = null;
-                } else {
-                    mPrev = null;
-                }
+                locker.mTailBlock = mPrev;
+                mPrev = null;
             } else {
                 mUpgrades &= upgrades & ~mask;
                 mSize = size;
             }
         }
 
-        @Override
         void unlockLastToShared(Locker locker) {
             int size = mSize - 1;
             if ((mUpgrades & (1L << size)) != 0) {
                 throw new IllegalStateException("Cannot unlock non-immediate upgrade");
             }
-            locker.mManager.unlockToShared(locker, mElements[size]);
+            locker.mManager.unlockToShared(locker, mLocks[size]);
         }
 
-        @Override
         void unlockLastToUpgradable(Locker locker) {
-            Lock[] elements = mElements;
+            Lock[] locks = mLocks;
             int size = mSize;
-            locker.mManager.unlockToUpgradable(locker, elements[--size]);
+            locker.mManager.unlockToUpgradable(locker, locks[--size]);
 
             long upgrades = mUpgrades;
             long mask = 1L << size;
             if ((upgrades & mask) != 0) {
                 // Pop upgrade off stack, but only if unlock succeeded.
-                elements[size] = null;
+                locks[size] = null;
                 if (size == 0) {
-                    if ((locker.mTailBlock = mPrev) == null) {
-                        locker.mHeadBlock = null;
-                    } else {
-                        mPrev = null;
-                    }
+                    locker.mTailBlock = mPrev;
+                    mPrev = null;
                 } else {
                     mUpgrades = upgrades & ~mask;
                     mSize = size;
@@ -676,76 +543,46 @@ public class Locker {
             }
         }
 
-        @Override
-        Block unlockAll(Locker locker) {
-            Lock[] elements = mElements;
-            LockManager manager = locker.mManager;
-            int i = mSize - 1;
-            long mask = 1L << i;
-            long upgrades = mUpgrades;
-            while (true) {
-                Lock element = elements[i];
-                if ((upgrades & mask) != 0) {
-                    manager.unlockToUpgradable(locker, element);
-                } else {
-                    manager.unlock(locker, element);
+        void unlockToSavepoint(Locker locker, int targetSize) {
+            int size = mSize;
+            if (size > targetSize) {
+                Lock[] locks = mLocks;
+                LockManager manager = locker.mManager;
+                size--;
+                long mask = 1L << size;
+                long upgrades = mUpgrades;
+                while (true) {
+                    Lock lock = locks[size];
+                    if ((upgrades & mask) != 0) {
+                        manager.unlockToUpgradable(locker, lock);
+                    } else {
+                        manager.unlock(locker, lock);
+                    }
+                    locks[size] = null;
+                    if (size == targetSize) {
+                        break;
+                    }
+                    size--;
+                    mask >>= 1;
                 }
-                elements[i] = null;
-                if (--i < 0) {
-                    break;
-                }
-                mask >>= 1;
+                mUpgrades = upgrades & ~(~0L << size);
+                mSize = size;
             }
+        }
+
+        Block pop() {
             Block prev = mPrev;
             mPrev = null;
             return prev;
         }
-
-        @Override
-        Block prepend(Lock lock) {
-            Lock[] elements = mElements;
-            int size = mSize;
-            if (size < elements.length) {
-                System.arraycopy(elements, 0, elements, 1, size);
-                elements[0] = lock;
-                mUpgrades <<= 1;
-                mSize = size + 1;
-                return this;
-            } else {
-                return mPrev = new TinyBlock(lock);
-            }
-        }
-
-        @Override
-        boolean prepend(Block block) {
-            Lock[] elements = mElements;
-            int size = mSize;
-            int otherSize = block.size();
-            if (size + otherSize <= elements.length) {
-                System.arraycopy(elements, 0, elements, otherSize, size);
-                mUpgrades = (mUpgrades << otherSize) | block.copyTo(elements);
-                mSize = size + otherSize;
-                mPrev = block.mPrev;
-                return true;
-            } else {
-                mPrev = block;
-                return false;
-            }
-        }
-
-        @Override
-        long copyTo(Lock[] elements) {
-            System.arraycopy(mElements, 0, elements, 0, mSize);
-            return mUpgrades;
-        }
     }
 
-    static class Scope {
-        Scope mParent;
+    static final class ParentScope {
+        ParentScope mParentScope;
         Object mTailBlock;
-        Object mHeadBlock;
+        int mTailBlockSize;
 
-        // Used by Transaction subclass.
+        // These fields are used by Transaction.
         LockMode mLockMode;
         long mLockTimeoutNanos;
         long mTxnId;

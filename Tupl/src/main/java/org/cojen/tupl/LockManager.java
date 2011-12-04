@@ -193,6 +193,7 @@ final class LockManager {
         }
     }
 
+    /*
     final boolean unlockIfNonExclusive(Locker locker, Lock lock) {
         LockHT ht = getLockHT(lock.mHashCode);
         Latch latch = ht.mLatch;
@@ -203,6 +204,7 @@ final class LockManager {
             latch.releaseExclusive();
         }
     }
+    */
 
     final Locker lockSharedLocal(long indexId, byte[] key) throws LockFailureException {
         Locker locker = localLocker();
