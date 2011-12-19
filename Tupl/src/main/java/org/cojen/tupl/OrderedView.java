@@ -143,39 +143,4 @@ public interface OrderedView {
      * @param txn optional transaction
      */
     public void clear(Transaction txn) throws IOException;
-
-    /**
-     * Returns a sub-view, backed by this one, whose keys are greater than or
-     * equal to the given key.
-     */
-    public OrderedView viewGe(byte[] key);
-
-    /**
-     * Returns a sub-view, backed by this one, whose keys are greater than the
-     * given key.
-     */
-    public OrderedView viewGt(byte[] key);
-
-    /**
-     * Returns a sub-view, backed by this one, whose keys are less than or
-     * equal to the given key.
-     */
-    public OrderedView viewLe(byte[] key);
-
-    /**
-     * Returns a sub-view, backed by this one, whose keys are less than the
-     * given key.
-     */
-    public OrderedView viewLt(byte[] key);
-
-    /**
-     * Returns a sub-view, backed by this one, whose keys all start with the
-     * given prefix.
-     */
-    public OrderedView viewPrefix(byte[] keyPrefix);
-
-    /**
-     * Returns a view, backed by this one, whose natural order is reversed.
-     */
-    public OrderedView viewReverse();
 }
