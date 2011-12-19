@@ -150,8 +150,8 @@ class DualFilePageStore implements PageStore {
     private long[] mRecycleBinSpare;
 
     private static final class FPA extends FilePageArray {
-        FPA(File file, boolean readOnly, int pageSize, int openFileCount) throws IOException {
-            super(file, readOnly, pageSize, openFileCount);
+        FPA(File file, String mode, int pageSize, int openFileCount) throws IOException {
+            super(file, mode, pageSize, openFileCount);
         }
 
         @Override
@@ -207,8 +207,9 @@ class DualFilePageStore implements PageStore {
 
         try {
             // FPA is an inner class which can read the existing page size.
-            mPageArray0 = new FPA(file0, readOnly, pageSize, openFileCount);
-            mPageArray1 = new FPA(file1, readOnly, pageSize, openFileCount);
+            String mode = readOnly ? "r" : "rw";
+            mPageArray0 = new FPA(file0, mode, pageSize, openFileCount);
+            mPageArray1 = new FPA(file1, mode, pageSize, openFileCount);
 
             if (mPageArray0.getPageCount() == 0 && mPageArray1.getPageCount() == 0) {
                 // Newly created files.
@@ -392,8 +393,7 @@ class DualFilePageStore implements PageStore {
         }
     }
 
-    @Override
-    public long reserveRecycledPage() throws IOException {
+    private long reserveRecycledPage() throws IOException {
         synchronized (mRecycleBinLock) {
             long[] bin = mRecycleBin;
             if (bin != null) {

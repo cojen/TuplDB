@@ -41,7 +41,7 @@ class FilePageArray implements PageArray {
     private final Object mFileLengthLock;
     private long mFileLength;
 
-    FilePageArray(File file, boolean readOnly, int pageSize, int openFileCount)
+    FilePageArray(File file, String mode, int pageSize, int openFileCount)
         throws IOException
     {
         if (pageSize < 1) {
@@ -52,7 +52,7 @@ class FilePageArray implements PageArray {
                 ("Open file count must be at least 1: " + openFileCount);
         }
 
-        mReadOnly = readOnly;
+        mReadOnly = "r".equals(mode);
         mFilePool = new RandomAccessFile[openFileCount];
 
         try {
@@ -62,7 +62,7 @@ class FilePageArray implements PageArray {
             synchronized (mFileLengthLock = new Object()) {
                 synchronized (mFilePool) {
                     for (int i=0; i<openFileCount; i++) {
-                        mFilePool[i] = open(file, readOnly);
+                        mFilePool[i] = open(file, mode);
                     }
                     mFileLength = mFilePool[0].length();
                 }
@@ -281,9 +281,9 @@ class FilePageArray implements PageArray {
         }
     }
 
-    private static RandomAccessFile open(File file, boolean readOnly) throws IOException {
+    private static RandomAccessFile open(File file, String mode) throws IOException {
         try {
-            return new RandomAccessFile(file, readOnly ? "r" : "rw");
+            return new RandomAccessFile(file, mode);
         } catch (FileNotFoundException e) {
             String message = null;
 
@@ -291,7 +291,7 @@ class FilePageArray implements PageArray {
                 message = "File is a directory";
             } else if (!file.isFile()) {
                 message = "Not a normal file";
-            } else if (readOnly) {
+            } else if ("r".equals(mode)) {
                 if (!file.exists()) {
                     message = "File does not exist";
                 } else if (!file.canRead()) {
