@@ -16,12 +16,17 @@
 
 package org.cojen.tupl;
 
+import java.io.IOException;
+
 /**
- * 
+ * Mapping of keys to values, ordered by key, in lexicographical
+ * order. Although Java bytes are signed, they are treated as unsigned for
+ * ordering purposes. The natural order of an index cannot be changed.
  *
  * @author Brian S O'Neill
+ * @see Database
  */
-public interface Index extends OrderedView {
+public interface Index {
     /**
      * @return randomly assigned, unique non-zero identifier for this index
      */
@@ -31,4 +36,150 @@ public interface Index extends OrderedView {
      * @return unique user-specified index name
      */
     public byte[] getName();
+
+    /**
+     * @param txn optional transaction for Cursor to link to
+     * @return a new unpositioned cursor
+     */
+    public Cursor newCursor(Transaction txn);
+
+    /**
+     * Counts the number of non-null values.
+     *
+     * @param txn optional transaction
+     */
+    public long count(Transaction txn) throws IOException;
+
+    /**
+     * Counts the number of non-null values within a given range.
+     *
+     * @param txn optional transaction
+     * @param start key range start; pass null for open range
+     * @param end key range end; pass null for open range
+     */
+    public long count(Transaction txn,
+                      byte[] start, boolean startInclusive,
+                      byte[] end, boolean endInclusive)
+        throws IOException;
+
+    /**
+     * Returns true if an entry exists for the given key.
+     *
+     * @param txn optional transaction
+     * @param key non-null key
+     * @return true if non-null value exists for the given key
+     * @throws NullPointerException if key is null
+     */
+    public boolean exists(Transaction txn, byte[] key) throws IOException;
+
+    /**
+     * Returns true if a matching key-value entry exists.
+     *
+     * @param txn optional transaction
+     * @param key non-null key
+     * @param value value to compare to, which can be null
+     * @return true if entry matches given key and value
+     * @throws NullPointerException if key is null
+     */
+    public boolean exists(Transaction txn, byte[] key, byte[] value) throws IOException;
+
+    /**
+     * Returns a copy of the value for the given key, or null if no matching
+     * entry exists.
+     *
+     * @param txn optional transaction
+     * @param key non-null key
+     * @return copy of value, or null if entry doesn't exist
+     * @throws NullPointerException if key is null
+     */
+    public byte[] get(Transaction txn, byte[] key) throws IOException;
+
+    /**
+     * Unconditionally associates a value with the given key.
+     *
+     * @param txn optional transaction
+     * @param key non-null key
+     * @param value value to store; pass null to delete
+     * @throws NullPointerException if key is null
+     */
+    public void store(Transaction txn, byte[] key, byte[] value) throws IOException;
+
+    /**
+     * Associates a value with the given key, unless a corresponding value
+     * already exists.
+     *
+     * @param txn optional transaction
+     * @param key non-null key
+     * @param value value to insert, which can be null
+     * @return false if entry already exists
+     * @throws NullPointerException if key is null
+     */
+    public boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException;
+
+    /**
+     * Associates a value with the given key, but only if a corresponding value
+     * already exists.
+     *
+     * @param txn optional transaction
+     * @param key non-null key
+     * @param value value to insert; pass null to delete
+     * @return false if no existing entry
+     * @throws NullPointerException if key is null
+     */
+    public boolean replace(Transaction txn, byte[] key, byte[] value) throws IOException;
+
+    /**
+     * Associates a value with the given key, but only if given old value
+     * matches.
+     *
+     * @param txn optional transaction
+     * @param key non-null key
+     * @param oldValue expected existing value, which can be null
+     * @param newValue new value to update to; pass null to delete
+     * @return false if existing value doesn't match
+     * @throws NullPointerException if key is null
+     */
+    public boolean update(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
+        throws IOException;
+
+    /**
+     * Unconditionally removes the entry associated with the given key.
+     *
+     * @param txn optional transaction
+     * @param key non-null key
+     * @return false if no existing entry
+     * @throws NullPointerException if key is null
+     */
+    public boolean delete(Transaction txn, byte[] key) throws IOException;
+
+    /**
+     * Removes the entry associated with the given key, but only if given value
+     * matches.
+     *
+     * @param txn optional transaction
+     * @param key non-null key
+     * @param value expected existing value, which can be null
+     * @return false if existing value doesn't match
+     * @throws NullPointerException if key is null
+     */
+    public boolean remove(Transaction txn, byte[] key, byte[] value) throws IOException;
+
+    /**
+     * Unconditionally removes all entries.
+     *
+     * @param txn optional transaction
+     */
+    public void clear(Transaction txn) throws IOException;
+
+    /**
+     * Unconditionally removes a range of entries.
+     *
+     * @param txn optional transaction
+     * @param start key range start; pass null for open range
+     * @param end key range end; pass null for open range
+     */
+    public void clear(Transaction txn,
+                      byte[] start, boolean startInclusive,
+                      byte[] end, boolean endInclusive)
+        throws IOException;
 }

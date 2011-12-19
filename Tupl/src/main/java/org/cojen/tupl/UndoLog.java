@@ -817,8 +817,10 @@ final class UndoLog {
     /**
      * Rollback all remaining undo log entries and delete this master log.
      */
-    void rollbackRemaining(LHashTable.Obj<UndoLog> logs) throws IOException {
-        if (logs.size() > 0) {
+    boolean rollbackRemaining(LHashTable.Obj<UndoLog> logs) throws IOException {
+        boolean any = logs.size() > 0;
+
+        if (any) {
             logs.traverse(new LHashTable.Vistor<LHashTable.ObjEntry<UndoLog>, IOException>() {
                 public void visit(LHashTable.ObjEntry<UndoLog> entry) throws IOException {
                     entry.value.rollback(0);
@@ -828,6 +830,8 @@ final class UndoLog {
 
         // Delete this master log.
         truncate(0);
+
+        return any;
     }
 
     private static void setActiveIds(UndoLog log, byte[] masterLogEntry) {

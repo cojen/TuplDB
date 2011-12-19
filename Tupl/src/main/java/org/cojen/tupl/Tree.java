@@ -80,6 +80,16 @@ final class Tree implements Index {
     }
 
     @Override
+    public long count(Transaction txn,
+                      byte[] start, boolean startInclusive,
+                      byte[] end, boolean endInclusive)
+        throws IOException
+    {
+        // FIXME
+        throw null;
+    }
+
+    @Override
     public boolean exists(Transaction txn, byte[] key) throws IOException {
         // FIXME
         throw null;
@@ -161,6 +171,16 @@ final class Tree implements Index {
 
     @Override
     public void clear(Transaction txn) throws IOException {
+        // FIXME
+        throw null;
+    }
+
+    @Override
+    public void clear(Transaction txn,
+                      byte[] start, boolean startInclusive,
+                      byte[] end, boolean endInclusive)
+        throws IOException
+    {
         // FIXME
         throw null;
     }
