@@ -165,42 +165,6 @@ final class Tree implements Index {
         throw null;
     }
 
-    @Override
-    public OrderedView viewGe(byte[] key) {
-        // FIXME
-        throw null;
-    }
-
-    @Override
-    public OrderedView viewGt(byte[] key) {
-        // FIXME
-        throw null;
-    }
-
-    @Override
-    public OrderedView viewLe(byte[] key) {
-        // FIXME
-        throw null;
-    }
-
-    @Override
-    public OrderedView viewLt(byte[] key) {
-        // FIXME
-        throw null;
-    }
-
-    @Override
-    public OrderedView viewPrefix(byte[] keyPrefix) {
-        // FIXME
-        throw null;
-    }
-
-    @Override
-    public OrderedView viewReverse() {
-        // FIXME
-        throw null;
-    }
-
     /**
      * Returns true if a shared lock can be immediately granted. Caller must
      * hold a coarse latch to prevent this state from changing.
