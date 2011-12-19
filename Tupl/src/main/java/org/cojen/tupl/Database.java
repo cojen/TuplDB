@@ -137,13 +137,12 @@ public final class Database implements Closeable {
         mLockManager = new LockManager(mDefaultLockTimeoutNanos);
 
         String basePath = baseFile.getPath();
-        File file0 = new File(basePath + ".db.0");
-        File file1 = new File(basePath + ".db.1");
+        File file = new File(basePath + ".db");
 
         if (config.mPageSize <= 0) {
-            mPageStore = new DualFilePageStore(file0, file1, config.mReadOnly);
+            mPageStore = new FilePageStore(file, config.mReadOnly);
         } else {
-            mPageStore = new DualFilePageStore(file0, file1, config.mReadOnly, config.mPageSize);
+            mPageStore = new FilePageStore(file, config.mReadOnly, config.mPageSize);
         }
 
         try {
@@ -423,46 +422,10 @@ public final class Database implements Closeable {
     public void preallocate(long bytes) throws IOException {
         int pageSize = pageSize();
         long pageCount = (bytes + pageSize - 1) / pageSize;
-
-        if (pageCount <= 0) {
-            return;
-        }
-
-        // Assume DualFilePageStore is in use, so preallocate over two commits.
-        long firstCount = pageCount / 2;
-        pageCount -= firstCount;
-
-        final byte firstCommitState;
-        mPageStore.sharedCommitLock().lock();
-        try {
-            firstCommitState = mCommitState;
-            mPageStore.preallocate(firstCount);
-        } finally {
-            mPageStore.sharedCommitLock().unlock();
-        }
-
-        checkpoint(true);
-
-        if (pageCount <= 0) {
-            return;
-        }
-
-        mPageStore.sharedCommitLock().lock();
-        try {
-            while (mCommitState == firstCommitState) {
-                // Another commit snuck in. Upgradable lock is not used, so
-                // unlock, commit and retry.
-                mPageStore.sharedCommitLock().unlock();
-                checkpoint(true);
-                mPageStore.sharedCommitLock().lock();
-            }
-
+        if (pageCount > 0) {
             mPageStore.preallocate(pageCount);
-        } finally {
-            mPageStore.sharedCommitLock().unlock();
+            checkpoint(true);
         }
-
-        checkpoint(true);
     }
 
     /**
