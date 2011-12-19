@@ -76,7 +76,6 @@ class FilePageStore implements PageStore {
     private static final int I_EXTRA_DATA       = 256;
 
     private static final int MINIMUM_PAGE_SIZE = 512;
-    static final int DEFAULT_PAGE_SIZE = 4096;
 
     private final PageArray mPageArray;
     private final PageManager mPageManager;
@@ -84,14 +83,6 @@ class FilePageStore implements PageStore {
     private final ReadWriteLock mCommitLock;
     // Commit number is the highest one which has been committed.
     private volatile int mCommitNumber;
-
-    public FilePageStore(File file) throws IOException {
-        this(file, false);
-    }
-
-    public FilePageStore(File file, boolean readOnly) throws IOException {
-        this(file, readOnly, DEFAULT_PAGE_SIZE);
-    }
 
     public FilePageStore(File file, boolean readOnly, int pageSize) throws IOException {
         this(file, readOnly, pageSize, 32);

@@ -56,6 +56,8 @@ public final class Database implements Closeable {
 
     private static final int REGISTRY_ID = 0, REGISTRY_KEY_MAP_ID = 1, MAX_RESERVED_ID = 255;
 
+    private static final int DEFAULT_PAGE_SIZE = 4096;
+
     final DurabilityMode mDurabilityMode;
     final long mDefaultLockTimeoutNanos;
     final LockManager mLockManager;
@@ -139,11 +141,11 @@ public final class Database implements Closeable {
         String basePath = baseFile.getPath();
         File file = new File(basePath + ".db");
 
-        if (config.mPageSize <= 0) {
-            mPageStore = new FilePageStore(file, config.mReadOnly);
-        } else {
-            mPageStore = new FilePageStore(file, config.mReadOnly, config.mPageSize);
+        int pageSize = config.mPageSize;
+        if (pageSize <= 0) {
+            pageSize = DEFAULT_PAGE_SIZE;
         }
+        mPageStore = new FilePageStore(file, config.mReadOnly, pageSize);
 
         try {
             int spareBufferCount = Runtime.getRuntime().availableProcessors();
@@ -221,6 +223,9 @@ public final class Database implements Closeable {
                 }
             }
 
+            // TODO: Recovery should only need to perform at most one checkpoint.
+            // The current approach is fine, but it's just a bit messy.
+
             if (redoReplay(undoLogs)) {
                 // Make sure old redo log is deleted. Process might have exited
                 // before last checkpoint could delete it.
@@ -239,7 +244,11 @@ public final class Database implements Closeable {
             if (masterUndoLog != null) {
                 // Rollback all remaining undo logs. They were never explicitly
                 // rolled back. This also deletes the master undo log.
-                masterUndoLog.rollbackRemaining(undoLogs);
+                if (masterUndoLog.rollbackRemaining(undoLogs)) {
+                    // Checkpoint again to ensure that undo logs don't get
+                    // re-applied following a restart.
+                    checkpoint(true);
+                }
             }
         } catch (Throwable e) {
             try {

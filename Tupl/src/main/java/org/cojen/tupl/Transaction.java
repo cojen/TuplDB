@@ -31,6 +31,11 @@ import java.util.concurrent.locks.Lock;
  * proper exclusion, multiple threads interacting with a Transaction instance
  * may cause database corruption.
  *
+ * <p>Transactions also contain various methods for directly controlling locks,
+ * although their use is not required. Methods which operate upon transactions
+ * acquire and release locks automatically. Direct control over locks is
+ * provided for advanced use cases. These methods are documented as such.
+ *
  * @author Brian S O'Neill
  */
 public final class Transaction extends Locker implements Closeable {
@@ -77,47 +82,6 @@ public final class Transaction extends Locker implements Closeable {
         mDurabilityMode = DurabilityMode.NO_LOG;
         mLockMode = LockMode.UNSAFE;
         mBorked = this;
-    }
-
-    /**
-     * Attempts to acquire a shared lock for the given key, denying exclusive
-     * locks. If return value is OWNED_*, locker already owns a strong enough
-     * lock, and no extra unlock should be performed.
-     *
-     * @param key non-null key to lock; instance is not cloned
-     * @return ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
-     * @throws IllegalStateException if too many shared locks
-     * @throws LockFailureException if interrupted or timed out
-     */
-    public final LockResult lockShared(long indexId, byte[] key) throws LockFailureException {
-        return super.lockShared(indexId, key, mLockTimeoutNanos);
-    }
-
-    /**
-     * Attempts to acquire an upgradable lock for the given key, denying
-     * exclusive and additional upgradable locks. If return value is OWNED_*,
-     * locker already owns a strong enough lock, and no extra unlock should be
-     * performed.
-     *
-     * @param key non-null key to lock; instance is not cloned
-     * @return ACQUIRED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
-     * @throws LockFailureException if interrupted, timed out, or illegal upgrade
-     */
-    public final LockResult lockUpgradable(long indexId, byte[] key) throws LockFailureException {
-        return super.lockUpgradable(indexId, key, mLockTimeoutNanos);
-    }
-
-    /**
-     * Attempts to acquire an exclusive lock for the given key, denying any
-     * additional locks. If return value is OWNED_EXCLUSIVE, locker already
-     * owns exclusive lock, and no extra unlock should be performed.
-     *
-     * @param key non-null key to lock; instance is not cloned
-     * @return ACQUIRED, UPGRADED, or OWNED_EXCLUSIVE
-     * @throws LockFailureException if interrupted, timed out, or illegal upgrade
-     */
-    public final LockResult lockExclusive(long indexId, byte[] key) throws LockFailureException {
-        return super.lockExclusive(indexId, key, mLockTimeoutNanos);
     }
 
     /**
@@ -276,6 +240,53 @@ public final class Transaction extends Locker implements Closeable {
         } catch (Throwable e) {
             throw borked(e);
         }
+    }
+
+    /**
+     * Attempts to acquire a shared lock for the given key, denying exclusive
+     * locks. If return value is OWNED_*, locker already owns a strong enough
+     * lock, and no extra unlock should be performed.
+     *
+     * <p><i>Note: This method is intended for advanced use cases.</i>
+     *
+     * @param key non-null key to lock; instance is not cloned
+     * @return ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     * @throws IllegalStateException if too many shared locks
+     * @throws LockFailureException if interrupted or timed out
+     */
+    public final LockResult lockShared(long indexId, byte[] key) throws LockFailureException {
+        return super.lockShared(indexId, key, mLockTimeoutNanos);
+    }
+
+    /**
+     * Attempts to acquire an upgradable lock for the given key, denying
+     * exclusive and additional upgradable locks. If return value is OWNED_*,
+     * locker already owns a strong enough lock, and no extra unlock should be
+     * performed.
+     *
+     * <p><i>Note: This method is intended for advanced use cases.</i>
+     *
+     * @param key non-null key to lock; instance is not cloned
+     * @return ACQUIRED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     * @throws LockFailureException if interrupted, timed out, or illegal upgrade
+     */
+    public final LockResult lockUpgradable(long indexId, byte[] key) throws LockFailureException {
+        return super.lockUpgradable(indexId, key, mLockTimeoutNanos);
+    }
+
+    /**
+     * Attempts to acquire an exclusive lock for the given key, denying any
+     * additional locks. If return value is OWNED_EXCLUSIVE, locker already
+     * owns exclusive lock, and no extra unlock should be performed.
+     *
+     * <p><i>Note: This method is intended for advanced use cases.</i>
+     *
+     * @param key non-null key to lock; instance is not cloned
+     * @return ACQUIRED, UPGRADED, or OWNED_EXCLUSIVE
+     * @throws LockFailureException if interrupted, timed out, or illegal upgrade
+     */
+    public final LockResult lockExclusive(long indexId, byte[] key) throws LockFailureException {
+        return super.lockExclusive(indexId, key, mLockTimeoutNanos);
     }
 
     /**

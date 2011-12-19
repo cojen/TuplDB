@@ -50,18 +50,11 @@ class Locker {
     }
 
     /**
-     * Checks the lock ownership for the given key.
-     *
-     * @return UNOWNED, OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
-     */
-    public final LockResult check(long indexId, byte[] key) {
-        return mManager.check(this, indexId, key, hash(indexId, key));
-    }
-
-    /**
      * Attempts to acquire a shared lock for the given key, denying exclusive
      * locks. If return value is OWNED_*, locker already owns a strong enough
      * lock, and no extra unlock should be performed.
+     *
+     * <p><i>Note: This method is intended for advanced use cases.</i>
      *
      * @param key non-null key to lock; instance is not cloned
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
@@ -77,6 +70,8 @@ class Locker {
      * Attempts to acquire a shared lock for the given key, denying exclusive
      * locks. If return value is OWNED_*, locker already owns a strong enough
      * lock, and no extra unlock should be performed.
+     *
+     * <p><i>Note: This method is intended for advanced use cases.</i>
      *
      * @param key non-null key to lock; instance is not cloned
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
@@ -102,6 +97,8 @@ class Locker {
      * performed. If ILLEGAL is returned, locker holds a shared lock, which
      * cannot be upgraded.
      *
+     * <p><i>Note: This method is intended for advanced use cases.</i>
+     *
      * @param key non-null key to lock; instance is not cloned
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
      * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED,
@@ -117,6 +114,8 @@ class Locker {
      * exclusive and additional upgradable locks. If return value is OWNED_*,
      * locker already owns a strong enough lock, and no extra unlock should be
      * performed.
+     *
+     * <p><i>Note: This method is intended for advanced use cases.</i>
      *
      * @param key non-null key to lock; instance is not cloned
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
@@ -140,6 +139,8 @@ class Locker {
      * owns exclusive lock, and no extra unlock should be performed. If ILLEGAL
      * is returned, locker holds a shared lock, which cannot be upgraded.
      *
+     * <p><i>Note: This method is intended for advanced use cases.</i>
+     *
      * @param key non-null key to lock; instance is not cloned
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
      * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED, UPGRADED, or
@@ -153,6 +154,8 @@ class Locker {
      * Attempts to acquire an exclusive lock for the given key, denying any
      * additional locks. If return value is OWNED_EXCLUSIVE, locker already
      * owns exclusive lock, and no extra unlock should be performed.
+     *
+     * <p><i>Note: This method is intended for advanced use cases.</i>
      *
      * @param key non-null key to lock; instance is not cloned
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
@@ -183,7 +186,20 @@ class Locker {
     }
 
     /**
+     * Checks the lock ownership for the given key.
+     *
+     * <p><i>Note: This method is intended for advanced use cases.</i>
+     *
+     * @return UNOWNED, OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     */
+    public final LockResult lockCheck(long indexId, byte[] key) {
+        return mManager.check(this, indexId, key, hash(indexId, key));
+    }
+
+    /**
      * Returns the index id of the last lock acquired, within the current scope.
+     *
+     * <p><i>Note: This method is intended for advanced use cases.</i>
      *
      * @return locked index id
      * @throws IllegalStateException if no locks held
@@ -194,6 +210,8 @@ class Locker {
 
     /**
      * Returns the key of the last lock acquired, within the current scope.
+     *
+     * <p><i>Note: This method is intended for advanced use cases.</i>
      *
      * @return locked key; instance is not cloned
      * @throws IllegalStateException if no locks held
@@ -214,6 +232,8 @@ class Locker {
      * Fully releases last lock acquired, within the current scope. If the last
      * lock operation was an upgrade, for a lock not immediately acquired,
      * unlock is not allowed. Instead, an IllegalStateException is thrown.
+     *
+     * <p><i>Note: This method is intended for advanced use cases.</i>
      *
      * @throws IllegalStateException if no locks held, or if unlocking a
      * non-immediate upgrade
@@ -237,6 +257,8 @@ class Locker {
      * immediately acquired, unlock is not allowed. Instead, an
      * IllegalStateException is thrown.
      *
+     * <p><i>Note: This method is intended for advanced use cases.</i>
+     *
      * @throws IllegalStateException if no locks held, or if too many shared
      * locks, or if unlocking a non-immediate upgrade
      */
@@ -255,6 +277,8 @@ class Locker {
     /**
      * Releases last lock acquired or upgraded, within the current scope,
      * retaining an upgradable lock.
+     *
+     * <p><i>Note: This method is intended for advanced use cases.</i>
      *
      * @throws IllegalStateException if no locks held, or if last lock is shared
      */
