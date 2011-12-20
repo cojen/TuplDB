@@ -51,7 +51,7 @@ public class LockTimeoutException extends LockFailureException {
             unitStr = unitStr.substring(0, unitStr.length() - 1);
         }
 
-        return new StringBuffer().append(timeout).append(' ').append(unitStr).toString();
+        return "Waited " + timeout + ' ' + unitStr;
     }
 
     public long getTimeout() {

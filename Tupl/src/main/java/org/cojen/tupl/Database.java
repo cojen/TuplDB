@@ -42,6 +42,17 @@ import static org.cojen.tupl.Node.*;
 public final class Database implements Closeable {
     private static final int DEFAULT_CACHED_NODES = 1000;
 
+    // Approximate byte overhead per node. Influenced by many factors,
+    // including pointer size and child node references. This estimate assumes
+    // 32-bit pointers.
+    private static final int NODE_OVERHEAD = 80;
+
+    private static int nodeCountFromBytes(long bytes, int pageSize) {
+         pageSize += NODE_OVERHEAD;
+         long count = (bytes + pageSize - 1) / pageSize;
+         return count <= Integer.MAX_VALUE ? (int) count : Integer.MAX_VALUE;
+    }
+
     private static final int ENCODING_VERSION = 20111127;
 
     private static final int I_ENCODING_VERSION        = 0;
@@ -106,20 +117,32 @@ public final class Database implements Closeable {
             throw new IllegalArgumentException("Base file is a directory: " + baseFile);
         }
 
-        int minCache = config.mMinCache;
-        int maxCache = config.mMaxCache;
-
-        if (maxCache == 0) {
-            maxCache = minCache;
-            if (maxCache == 0) {
-                minCache = maxCache = DEFAULT_CACHED_NODES;
-            }
+        int pageSize = config.mPageSize;
+        if (pageSize <= 0) {
+            pageSize = DEFAULT_PAGE_SIZE;
         }
 
-        if (minCache > maxCache) {
-            throw new IllegalArgumentException
-                ("Minimum cached node count exceeds maximum count: " +
-                 minCache + " > " + maxCache);
+        int minCache, maxCache;
+        cacheSize: {
+            long minCachedBytes = config.mMinCachedBytes;
+            long maxCachedBytes = config.mMaxCachedBytes;
+
+            if (maxCachedBytes == 0) {
+                maxCachedBytes = minCachedBytes;
+                if (maxCachedBytes == 0) {
+                    minCache = maxCache = DEFAULT_CACHED_NODES;
+                    break cacheSize;
+                }
+            }
+
+            if (minCachedBytes > maxCachedBytes) {
+                throw new IllegalArgumentException
+                    ("Minimum cache size exceeds maximum: " +
+                     minCachedBytes + " > " + maxCachedBytes);
+            }
+
+            minCache = nodeCountFromBytes(minCachedBytes, pageSize);
+            maxCache = nodeCountFromBytes(maxCachedBytes, pageSize);
         }
 
         if (maxCache < 3) {
@@ -141,10 +164,6 @@ public final class Database implements Closeable {
         String basePath = baseFile.getPath();
         File file = new File(basePath + ".db");
 
-        int pageSize = config.mPageSize;
-        if (pageSize <= 0) {
-            pageSize = DEFAULT_PAGE_SIZE;
-        }
         mPageStore = new FilePageStore(file, config.mReadOnly, pageSize);
 
         try {
@@ -280,7 +299,28 @@ public final class Database implements Closeable {
     }
 
     /**
+     * Returns the given named index, return null if not found.
+     *
+     * @return shared Index instance; null if not found
+     */
+    public Index findIndex(byte[] name) throws IOException {
+        return openIndex(name.clone(), false);
+    }
+
+    /**
+     * Returns the given named index, return null if not found. Name is UTF-8
+     * encoded.
+     *
+     * @return shared Index instance; null if not found
+     */
+    public Index findIndex(String name) throws IOException {
+        return openIndex(name.getBytes("UTF-8"), false);
+    }
+
+    /**
      * Returns the given named index, creating it if necessary.
+     *
+     * @return shared Index instance
      */
     public Index openIndex(byte[] name) throws IOException {
         return openIndex(name.clone(), true);
@@ -289,15 +329,25 @@ public final class Database implements Closeable {
     /**
      * Returns the given named index, creating it if necessary. Name is UTF-8
      * encoded.
+     *
+     * @return shared Index instance
      */
     public Index openIndex(String name) throws IOException {
         return openIndex(name.getBytes("UTF-8"), true);
     }
 
+    /**
+     * Returns a new Transaction with the {@link DatabaseConfig
+     * #setDurabilityMode default} durability mode.
+     */
     public Transaction newTransaction() {
         return doNewTransaction(mDurabilityMode);
     }
 
+    /**
+     * Returns a new Transaction with the given durability mode. If null, the
+     * default is used.
+     */
     public Transaction newTransaction(DurabilityMode durabilityMode) {
         return doNewTransaction(durabilityMode == null ? mDurabilityMode : durabilityMode);
     }

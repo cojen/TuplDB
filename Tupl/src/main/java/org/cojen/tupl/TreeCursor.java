@@ -541,29 +541,34 @@ final class TreeCursor implements Cursor {
 
         LockResult result;
 
-        switch (mode) {
-        default:
-            if (mTree.isLockAvailable(txn, mKey)) {
-                // No need to acquire full lock.
+        try {
+            switch (mode) {
+            default:
+                if (mTree.isLockAvailable(txn, mKey)) {
+                    // No need to acquire full lock.
+                    mValue = node.retrieveLeafValue(pos);
+                    return LockResult.UNOWNED;
+                } else {
+                    return null;
+                }
+
+            case REPEATABLE_READ:
+                result = txn.tryLockShared(mTree.mId, mKey, 0);
+                break;
+
+            case UPGRADABLE_READ:
+                result = txn.tryLockUpgradable(mTree.mId, mKey, 0);
+                break;
+            }
+
+            if (result.isGranted()) {
                 mValue = node.retrieveLeafValue(pos);
-                return LockResult.UNOWNED;
+                return result;
             } else {
                 return null;
             }
-
-        case REPEATABLE_READ:
-            result = txn.tryLockShared(mTree.mId, mKey, 0);
-            break;
-
-        case UPGRADABLE_READ:
-            result = txn.tryLockUpgradable(mTree.mId, mKey, 0);
-            break;
-        }
-
-        if (result.isGranted()) {
-            mValue = node.retrieveLeafValue(pos);
-            return result;
-        } else {
+        } catch (DeadlockException e) {
+            // Not expected with timeout of zero anyhow.
             return null;
         }
     }

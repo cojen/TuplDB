@@ -27,8 +27,8 @@ import java.util.concurrent.TimeUnit;
  */
 public class DatabaseConfig {
     File mBaseFile;
-    int mMinCache;
-    int mMaxCache;
+    long mMinCachedBytes;
+    long mMaxCachedBytes;
     DurabilityMode mDurabilityMode;
     long mLockTimeoutNanos;
     boolean mReadOnly;
@@ -48,24 +48,28 @@ public class DatabaseConfig {
     }
 
     /**
-     * Set the minimum number of cached nodes, overriding the default.
+     * Set the minimum cache size, overriding the default.
+     *
+     * @param minBytes cache size, in bytes
      */
-    public DatabaseConfig setMinCachedNodes(int min) {
-        mMinCache = min;
+    public DatabaseConfig setMinCacheSize(long minBytes) {
+        mMinCachedBytes = minBytes;
         return this;
     }
 
     /**
-     * Set the maximum number of cached nodes, overriding the default.
+     * Set the maximum cache size, overriding the default.
+     *
+     * @param minBytes cache size, in bytes
      */
-    public DatabaseConfig setMaxCachedNodes(int max) {
-        mMaxCache = max;
+    public DatabaseConfig setMaxCacheSize(long maxBytes) {
+        mMaxCachedBytes = maxBytes;
         return this;
     }
 
     /**
      * Set the default transaction durability mode, which is {@link
-     * DurabilityMode#SYNC SYNC} if not set.
+     * DurabilityMode#SYNC SYNC} if not overridden.
      */
     public DatabaseConfig setDurabilityMode(DurabilityMode durabilityMode) {
         if (durabilityMode == null) {
@@ -77,7 +81,7 @@ public class DatabaseConfig {
 
     /**
      * Set the default lock acquisition timeout, which is 1 second if not
-     * set. A negative timeout is infinite.
+     * overridden. A negative timeout is infinite.
      */
     public DatabaseConfig setLockTimeoutMillis(long timeoutMillis) {
         return setLockTimeout(timeoutMillis, TimeUnit.MILLISECONDS);
@@ -85,7 +89,7 @@ public class DatabaseConfig {
 
     /**
      * Set the default lock acquisition timeout, which is 1 second if not
-     * set. A negative timeout is infinite.
+     * overridden. A negative timeout is infinite.
      *
      * @param unit required unit if timeout is more than zero
      */
