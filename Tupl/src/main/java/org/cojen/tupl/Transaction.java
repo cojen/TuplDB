@@ -253,6 +253,8 @@ public final class Transaction extends Locker implements Closeable {
      * @return ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      * @throws IllegalStateException if too many shared locks
      * @throws LockFailureException if interrupted or timed out
+     * @throws DeadlockException if deadlock was detected after waiting full
+     * non-zero timeout
      */
     public final LockResult lockShared(long indexId, byte[] key) throws LockFailureException {
         return super.lockShared(indexId, key, mLockTimeoutNanos);
@@ -269,6 +271,8 @@ public final class Transaction extends Locker implements Closeable {
      * @param key non-null key to lock; instance is not cloned
      * @return ACQUIRED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
+     * @throws DeadlockException if deadlock was detected after waiting full
+     * non-zero timeout
      */
     public final LockResult lockUpgradable(long indexId, byte[] key) throws LockFailureException {
         return super.lockUpgradable(indexId, key, mLockTimeoutNanos);
@@ -284,6 +288,8 @@ public final class Transaction extends Locker implements Closeable {
      * @param key non-null key to lock; instance is not cloned
      * @return ACQUIRED, UPGRADED, or OWNED_EXCLUSIVE
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
+     * @throws DeadlockException if deadlock was detected after waiting full
+     * non-zero timeout
      */
     public final LockResult lockExclusive(long indexId, byte[] key) throws LockFailureException {
         return super.lockExclusive(indexId, key, mLockTimeoutNanos);

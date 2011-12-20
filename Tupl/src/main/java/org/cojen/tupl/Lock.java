@@ -74,7 +74,9 @@ final class Lock {
     }
 
     /**
-     * Called with exclusive latch held, which is retained.
+     * Called with exclusive latch held, which is retained. If return value is
+     * TIMED_OUT_LOCK and timeout was non-zero, the locker's mWaitingFor field
+     * is set to this Lock as a side-effect.
      *
      * @return INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED, OWNED_SHARED,
      * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
@@ -100,6 +102,8 @@ final class Lock {
             }
         }
 
+        locker.mWaitingFor = this;
+
         while (true) {
             // Await for shared lock.
             int w = queueSX.await(latch, new WaitQueue.Shared(), nanosTimeout);
@@ -111,18 +115,25 @@ final class Lock {
             }
 
             if (w < 1) {
-                return w == 0 ? TIMED_OUT_LOCK : INTERRUPTED;
+                if (w == 0) {
+                    return TIMED_OUT_LOCK;
+                } else {
+                    locker.mWaitingFor = null;
+                    return INTERRUPTED;
+                }
             }
 
             // Because latch was released while waiting on condition, check
             // everything again.
 
             if (mLocker == locker) {
+                locker.mWaitingFor = null;
                 return mLockCount == ~0 ? OWNED_EXCLUSIVE : OWNED_UPGRADABLE;
             }
 
             LockResult r = tryLockShared(locker);
             if (r != null) {
+                locker.mWaitingFor = null;
                 return r;
             }
 
@@ -137,7 +148,9 @@ final class Lock {
     }
 
     /**
-     * Called with exclusive latch held, which is retained.
+     * Called with exclusive latch held, which is retained. If return value is
+     * TIMED_OUT_LOCK and timeout was non-zero, the locker's mWaitingFor field
+     * is set to this Lock as a side-effect.
      *
      * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED,
      * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
@@ -168,6 +181,8 @@ final class Lock {
             }
         }
 
+        locker.mWaitingFor = this;
+
         while (true) {
             // Await for exclusive lock.
             int w = queueU.await(latch, new WaitQueue.Node(), nanosTimeout);
@@ -179,13 +194,19 @@ final class Lock {
             }
 
             if (w < 1) {
-                return w == 0 ? TIMED_OUT_LOCK : INTERRUPTED;
+                if (w == 0) {
+                    return TIMED_OUT_LOCK;
+                } else {
+                    locker.mWaitingFor = null;
+                    return INTERRUPTED;
+                }
             }
 
             // Because latch was released while waiting on condition, check
             // everything again.
 
             if (mLocker == locker) {
+                locker.mWaitingFor = null;
                 return mLockCount == ~0 ? OWNED_EXCLUSIVE : OWNED_UPGRADABLE;
             }
 
@@ -195,12 +216,14 @@ final class Lock {
                 if (queueU != null) {
                     queueU.signalOne();
                 }
+                locker.mWaitingFor = null;
                 return ILLEGAL;
             }
 
             if (count >= 0) {
                 mLockCount = count | 0x80000000;
                 mLocker = locker;
+                locker.mWaitingFor = null;
                 return ACQUIRED;
             }
 
@@ -215,7 +238,9 @@ final class Lock {
     }
 
     /**
-     * Called with exclusive latch held, which is retained.
+     * Called with exclusive latch held, which is retained. If return value is
+     * TIMED_OUT_LOCK and timeout was non-zero, the locker's mWaitingFor field
+     * is set to this Lock as a side-effect.
      *
      * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED, UPGRADED, or
      * OWNED_EXCLUSIVE
@@ -244,6 +269,8 @@ final class Lock {
             }
         }
 
+        locker.mWaitingFor = this;
+
         while (true) {
             // Await for exclusive lock.
             int w = queueSX.await(latch, new WaitQueue.Node(), nanosTimeout);
@@ -258,7 +285,12 @@ final class Lock {
                 if (ur == ACQUIRED) {
                     unlock(locker);
                 }
-                return w == 0 ? TIMED_OUT_LOCK : INTERRUPTED;
+                if (w == 0) {
+                    return TIMED_OUT_LOCK;
+                } else {
+                    locker.mWaitingFor = null;
+                    return INTERRUPTED;
+                }
             }
 
             // Because latch was released while waiting on condition, check
@@ -271,6 +303,7 @@ final class Lock {
                 } else if (count != ~0) {
                     break acquired;
                 }
+                locker.mWaitingFor = null;
                 return ur == OWNED_UPGRADABLE ? UPGRADED : ACQUIRED;
             }
 

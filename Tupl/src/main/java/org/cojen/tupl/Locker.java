@@ -37,6 +37,9 @@ class Locker {
     // Is null if empty; Lock instance if one; Block if more.
     Object mTailBlock;
 
+    // Locker is currently waiting to acquire this lock. Used for deadlock detection.
+    Lock mWaitingFor;
+
     Locker(LockManager manager) {
         if (manager == null) {
             throw new IllegalArgumentException("LockManager is null");
@@ -61,9 +64,18 @@ class Locker {
      * @return INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED, OWNED_SHARED,
      * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      * @throws IllegalStateException if too many shared locks
+     * @throws DeadlockException if deadlock was detected after waiting full
+     * non-zero timeout
      */
-    public final LockResult tryLockShared(long indexId, byte[] key, long nanosTimeout) {
-        return mManager.tryLockShared(this, indexId, key, hash(indexId, key), nanosTimeout);
+    public final LockResult tryLockShared(long indexId, byte[] key, long nanosTimeout)
+        throws DeadlockException
+    {
+        LockResult result = mManager.tryLockShared
+            (this, indexId, key, hash(indexId, key), nanosTimeout);
+        if (result == LockResult.TIMED_OUT_LOCK) {
+            detectDeadlock(indexId, key, nanosTimeout);
+        }
+        return result;
     }
 
     /**
@@ -77,7 +89,9 @@ class Locker {
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
      * @return ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      * @throws IllegalStateException if too many shared locks
-     * @throws LockFailureException if interrupted or timed out
+     * @throws LockFailureException if interrupted or timed out.
+     * @throws DeadlockException if deadlock was detected after waiting full
+     * non-zero timeout
      */
     public final LockResult lockShared(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
@@ -87,7 +101,7 @@ class Locker {
         if (result.isGranted()) {
             return result;
         }
-        throw failed(result, nanosTimeout);
+        throw failed(result, indexId, key, nanosTimeout);
     }
 
     /**
@@ -103,10 +117,18 @@ class Locker {
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
      * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED,
      * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     * @throws DeadlockException if deadlock was detected after waiting full
+     * non-zero timeout
      */
-    public final LockResult tryLockUpgradable(long indexId, byte[] key, long nanosTimeout) {
-        return mManager.tryLockUpgradable
+    public final LockResult tryLockUpgradable(long indexId, byte[] key, long nanosTimeout)
+        throws DeadlockException
+    {
+        LockResult result = mManager.tryLockUpgradable
             (this, indexId, key, hash(indexId, key), nanosTimeout);
+        if (result == LockResult.TIMED_OUT_LOCK) {
+            detectDeadlock(indexId, key, nanosTimeout);
+        }
+        return result;
     }
 
     /**
@@ -121,6 +143,8 @@ class Locker {
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
      * @return ACQUIRED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
+     * @throws DeadlockException if deadlock was detected after waiting full
+     * non-zero timeout
      */
     public final LockResult lockUpgradable(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
@@ -130,7 +154,7 @@ class Locker {
         if (result.isGranted()) {
             return result;
         }
-        throw failed(result, nanosTimeout);
+        throw failed(result, indexId, key, nanosTimeout);
     }
 
     /**
@@ -145,9 +169,19 @@ class Locker {
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
      * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED, UPGRADED, or
      * OWNED_EXCLUSIVE
+     * @throws DeadlockException if deadlock was detected after waiting full
+     * non-zero timeout
      */
-    public final LockResult tryLockExclusive(long indexId, byte[] key, long nanosTimeout) {
-        return mManager.tryLockExclusive(this, indexId, key, hash(indexId, key), nanosTimeout);
+    public final LockResult tryLockExclusive(long indexId, byte[] key, long nanosTimeout)
+        throws DeadlockException
+    {
+        LockResult result = mManager.tryLockExclusive
+            (this, indexId, key, hash(indexId, key), nanosTimeout);
+        if (result == LockResult.TIMED_OUT_LOCK) {
+            detectDeadlock(indexId, key, nanosTimeout);
+        }
+        mWaitingFor = null;
+        return result;
     }
 
     /**
@@ -161,6 +195,8 @@ class Locker {
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
      * @return ACQUIRED, UPGRADED, or OWNED_EXCLUSIVE
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
+     * @throws DeadlockException if deadlock was detected after waiting full
+     * non-zero timeout
      */
     public final LockResult lockExclusive(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
@@ -170,18 +206,37 @@ class Locker {
         if (result.isGranted()) {
             return result;
         }
-        throw failed(result, nanosTimeout);
+        throw failed(result, indexId, key, nanosTimeout);
     }
 
-    private static LockFailureException failed(LockResult result, long nanosTimeout) {
+    private LockFailureException failed(LockResult result,
+                                        long indexId, byte[] key, long nanosTimeout)
+        throws DeadlockException
+    {
+        switch (result) {
+        case TIMED_OUT_LOCK:
+            detectDeadlock(indexId, key, nanosTimeout);
+            break;
+        case ILLEGAL:
+            return new IllegalUpgradeException();
+        case INTERRUPTED:
+            return new LockInterruptedException();
+        }
         if (result.isTimedOut()) {
             return new LockTimeoutException(nanosTimeout);
-        } else if (result == LockResult.ILLEGAL) {
-            return new IllegalUpgradeException();
-        } else if (result == LockResult.INTERRUPTED) {
-            return new LockInterruptedException();
-        } else {
-            return new LockFailureException();
+        }
+        return new LockFailureException();
+    }
+
+    private void detectDeadlock(long indexId, byte[] key, long nanosTimeout)
+        throws DeadlockException
+    {
+        if (mWaitingFor != null) {
+            try {
+                new DeadlockDetector(this, indexId, key, nanosTimeout);
+            } finally {
+                mWaitingFor = null;
+            }
         }
     }
 

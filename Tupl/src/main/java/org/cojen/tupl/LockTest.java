@@ -94,7 +94,7 @@ public class LockTest {
     }
 
     @Test
-    public void basicShared() {
+    public void basicShared() throws Exception {
         try {
             Locker locker = new Locker(null);
             fail();
@@ -161,7 +161,7 @@ public class LockTest {
     }
 
     @Test
-    public void basicUpgradable() {
+    public void basicUpgradable() throws Exception {
         Locker locker = new Locker(mManager);
         assertEquals(ACQUIRED, locker.tryLockUpgradable(0, k1, -1));
         assertEquals(1, mManager.numLocksHeld());
@@ -245,7 +245,7 @@ public class LockTest {
     }
 
     @Test
-    public void basicExclusive() {
+    public void basicExclusive() throws Exception {
         Locker locker = new Locker(mManager);
         assertEquals(ACQUIRED, locker.tryLockExclusive(0, k1, -1));
         assertEquals(1, mManager.numLocksHeld());
@@ -324,7 +324,7 @@ public class LockTest {
     }
 
     @Test
-    public void isolatedIndexes() {
+    public void isolatedIndexes() throws Exception {
         Locker locker = new Locker(mManager);
         assertEquals(ACQUIRED, locker.tryLockExclusive(1, k1, -1));
         assertEquals(ACQUIRED, locker.tryLockExclusive(2, k1, -1));
@@ -339,7 +339,7 @@ public class LockTest {
     }
 
     @Test
-    public void upgrade() {
+    public void upgrade() throws Exception {
         Locker locker = new Locker(mManager);
         Locker locker2 = new Locker(mManager);
 
@@ -360,7 +360,7 @@ public class LockTest {
     }
 
     @Test
-    public void downgrade() {
+    public void downgrade() throws Exception {
         Locker locker = new Locker(mManager);
 
         assertEquals(ACQUIRED, locker.tryLockUpgradable(0, k1, -1));
@@ -425,7 +425,7 @@ public class LockTest {
     }
 
     @Test
-    public void pileOfLocks() {
+    public void pileOfLocks() throws Exception {
         Locker locker = new Locker(mManager);
         for (int i=0; i<1000; i++) {
             assertEquals(ACQUIRED, locker.tryLockExclusive(0, key("k" + i), -1));
@@ -449,16 +449,16 @@ public class LockTest {
     }
 
     @Test
-    public void blockedNoWait() {
+    public void blockedNoWait() throws Exception {
         blocked(0);
     }
 
     @Test
-    public void blockedTimedWait() {
+    public void blockedTimedWait() throws Exception {
         blocked(SHORT_TIMEOUT);
     }
 
-    private void blocked(long nanosTimeout) {
+    private void blocked(long nanosTimeout) throws Exception {
         Locker locker = new Locker(mManager);
         Locker locker2 = new Locker(mManager);
 
@@ -497,16 +497,16 @@ public class LockTest {
     }
 
     @Test
-    public void interrupts() {
+    public void interrupts() throws Exception {
         interrupts(-1);
     }
 
     @Test
-    public void interruptsTimedWait() {
+    public void interruptsTimedWait() throws Exception {
         interrupts(10000 * ONE_MILLIS_IN_NANOS);
     }
 
-    private void interrupts(long nanosTimeout) {
+    private void interrupts(long nanosTimeout) throws Exception {
         Locker locker = new Locker(mManager);
         Locker locker2 = new Locker(mManager);
 
@@ -557,7 +557,7 @@ public class LockTest {
     }
 
     @Test
-    public void delayedAcquire() {
+    public void delayedAcquire() throws Exception {
         Locker locker = new Locker(mManager);
         Locker locker2 = new Locker(mManager);
         long end;
@@ -737,7 +737,7 @@ public class LockTest {
     }
 
     @Test
-    public void scoping() {
+    public void scoping() throws Exception {
         // Lots o' sub tests, many of which were created to improve code coverage.
 
         Locker locker = new Locker(mManager);
@@ -1063,7 +1063,7 @@ public class LockTest {
     }
 
     @Test
-    public void promote() {
+    public void promote() throws Exception {
         Locker locker = new Locker(mManager);
 
         locker.scopeEnter();
@@ -1161,7 +1161,7 @@ public class LockTest {
                                          final int type)
     {
         return mExecutor.submit(new Callable<LockResult>() {
-            public LockResult call() {
+            public LockResult call() throws Exception {
                 LockResult result;
                 synchronized (locker) {
                     switch (type) {
