@@ -279,6 +279,21 @@ public final class Database implements Closeable {
         }
     }
 
+    // FIXME: testing
+    void trace() throws IOException {
+        java.util.BitSet pages = mPageStore.tracePages();
+        mRegistry.mRoot.tracePages(this, pages);
+        mRegistryKeyMap.mRoot.tracePages(this, pages);
+        synchronized (mOpenTrees) {
+            for (Tree tree : mOpenTrees.values()) {
+                tree.mRoot.tracePages(this, pages);
+            }
+        }
+        System.out.println(pages);
+        System.out.println("lost: " + pages.cardinality());
+        System.out.println(mPageStore.stats());
+    }
+
     private boolean redoReplay(LHashTable.Obj<UndoLog> undoLogs) throws IOException {
         RedoLogTxnScanner scanner = new RedoLogTxnScanner();
         if (!mRedoLog.replay(scanner) ||

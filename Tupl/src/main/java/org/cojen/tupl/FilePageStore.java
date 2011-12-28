@@ -56,9 +56,9 @@ class FilePageStore implements PageStore {
     | int:  page size                          |
     | int:  commit number                      |
     | int:  checksum                           |
-    | page manager header (64 bytes)           |
+    | page manager header (52 bytes)           |
     +------------------------------------------+
-    | reserved (172 bytes)                     |
+    | reserved (160 bytes)                     |
     +------------------------------------------+
     | extra data (256 bytes)                   |
     +------------------------------------------+
@@ -189,8 +189,8 @@ class FilePageStore implements PageStore {
     @Override
     public BitSet tracePages() throws IOException {
         BitSet pages = new BitSet();
-        mPageManager.markAllPages(pages, 1, 0);
-        mPageManager.traceFreePages(pages, 1, 0, 1, 0);
+        mPageManager.markAllPages(pages);
+        mPageManager.traceFreePages(pages);
         return pages;
     }
 
@@ -275,8 +275,15 @@ class FilePageStore implements PageStore {
 
     @Override
     public void recyclePage(long id) throws IOException {
-        // FIXME: Recycle functionality belongs in PageManager.
-        deletePage(id);
+        checkId(id);
+        mCommitLock.readLock().lock();
+        try {
+            mPageManager.recyclePage(id);
+        } catch (Throwable e) {
+            throw closeOnFailure(e);
+        } finally {
+            mCommitLock.readLock().unlock();
+        }
     }
 
     @Override
