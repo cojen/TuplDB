@@ -979,7 +979,7 @@ final class TreeCursor implements Cursor {
     /**
      * Atomic find and modify operation.
      *
-     * @param oldValue MODIFY_INSERT, MODIFY_INSERT, else update mode
+     * @param oldValue MODIFY_INSERT, MODIFY_REPLACE, else update mode
      */
     boolean findAndModify(byte[] key, byte[] oldValue, byte[] newValue) throws IOException {
         final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
