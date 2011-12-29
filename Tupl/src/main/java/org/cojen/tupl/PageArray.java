@@ -42,10 +42,15 @@ interface PageArray extends Closeable, Flushable {
     /**
      * Set the total count of pages, truncating or growing the array as necessary.
      *
-     * @param grow hint to ensure space is allocated for larger count
      * @throws IllegalArgumentException if count is negative
      */
-    public void setPageCount(long count, boolean grow) throws IOException;
+    public void setPageCount(long count) throws IOException;
+
+    /**
+     * Force all pages to be allocated. Page allocation is automatic, but it
+     * might be delayed until a write is actually performed.
+     */
+    public void allocatePages() throws IOException;
 
     /**
      * @param index zero-based page index to read

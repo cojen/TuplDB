@@ -97,7 +97,7 @@ final class PageManager {
                     // Truncate extra uncommitted pages.
                     System.out.println("Page count is too large: "
                                        + actualPageCount + " > " + mTotalPageCount);
-                    array.setPageCount(mTotalPageCount, false);
+                    array.setPageCount(mTotalPageCount);
                 }
             } else if (actualPageCount < mTotalPageCount) {
                 System.out.println("Page count is too small: " + actualPageCount + " < " +
@@ -129,10 +129,9 @@ final class PageManager {
      * Allocates a page from the free list or by growing the underlying page
      * array. No page allocations are permanent until after commit is called.
      *
-     * @param grow hint to ensure space is allocated for larger count
      * @return non-zero page id
      */
-    public long allocPage(boolean grow) throws IOException {
+    public long allocPage() throws IOException {
         final Lock lock = mRemoveLock;
         lock.lock();
         long pageId = mRegularFreeList.remove(lock);
@@ -140,7 +139,7 @@ final class PageManager {
             return pageId;
         }
         try {
-            return createPage(grow);
+            return createPage();
         } finally {
             lock.unlock();
         }
@@ -178,16 +177,22 @@ final class PageManager {
         addTo(stats);
         pageCount -= stats.freePages;
 
-        while (--pageCount >= 0) {
+        if (pageCount <= 0) {
+            return;
+        }
+
+        do {
             long pageId;
             mRemoveLock.lock();
             try {
-                pageId = createPage(pageCount == 0);
+                pageId = createPage();
             } finally {
                 mRemoveLock.unlock();
             }
             recyclePage(pageId);
-        }
+        } while (--pageCount > 0);
+
+        mPageArray.allocatePages();
     }
 
     /**
@@ -208,6 +213,9 @@ final class PageManager {
         } finally {
             fullUnlock();
         }
+
+        // Allocate pages before forcing user thread to do this as it writes.
+        mPageArray.allocatePages();
 
         Object state = ready == null ? null : ready.started();
 
@@ -275,12 +283,10 @@ final class PageManager {
     /**
      * Expand the underlying page store to create a new page. Method is
      * invoked with remove lock held.
-     *
-     * @param grow hint to ensure space is allocated for larger count
      */
-    private long createPage(boolean grow) throws IOException {
+    private long createPage() throws IOException {
         long id = mTotalPageCount++;
-        mPageArray.setPageCount(id + 1, grow);
+        mPageArray.setPageCount(id + 1);
         return id;
     }
 

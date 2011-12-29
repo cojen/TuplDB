@@ -491,7 +491,7 @@ public final class Database implements Closeable {
     }
 
     /**
-     * Preallocates pages for use later.
+     * Preallocates pages for immediate use.
      */
     public void preallocate(long bytes) throws IOException {
         int pageSize = pageSize();

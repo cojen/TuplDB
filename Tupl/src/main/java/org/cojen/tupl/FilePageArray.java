@@ -29,9 +29,10 @@ import java.io.RandomAccessFile;
  * @author Brian S O'Neill
  */
 class FilePageArray implements PageArray {
-    private final File mFile;
+    private static final int READ_ONLY = 1, NO_SYNC = 2, SYNC = 3;
 
-    private final boolean mReadOnly;
+    private final File mFile;
+    private final int mMode;
     private final int mPageSize;
 
     // Access these fields while synchronized on mFilePool.
@@ -40,6 +41,7 @@ class FilePageArray implements PageArray {
 
     private final Object mFileLengthLock;
     private long mFileLength;
+    private RandomAccessFile mAllocationFile;
 
     FilePageArray(File file, String mode, int pageSize, int openFileCount)
         throws IOException
@@ -52,12 +54,14 @@ class FilePageArray implements PageArray {
                 ("Open file count must be at least 1: " + openFileCount);
         }
 
-        mReadOnly = "r".equals(mode);
+        mFile = file;
+        mMode = "r".equals(mode) ? READ_ONLY : ("rw".equals(mode) ? NO_SYNC : SYNC);
+        mPageSize = pageSize;
+
         mFilePool = new RandomAccessFile[openFileCount];
 
         try {
             file = file.getCanonicalFile();
-            mFile = file;
 
             synchronized (mFileLengthLock = new Object()) {
                 synchronized (mFilePool) {
@@ -67,28 +71,14 @@ class FilePageArray implements PageArray {
                     mFileLength = mFilePool[0].length();
                 }
             }
-
-            int readPageSize = readPageSize(mFilePool[0]);
-            if (readPageSize > 0) {
-                pageSize = readPageSize;
-            }
         } catch (Throwable e) {
             throw Utils.closeOnFailure(this, e);
         }
-
-        mPageSize = pageSize;
-    }
-
-    /**
-     * @return 0 to use default
-     */
-    protected int readPageSize(RandomAccessFile raf) throws IOException {
-        return 0;
     }
 
     @Override
     public boolean isReadOnly() {
-        return mReadOnly;
+        return mMode == READ_ONLY;
     }
 
     @Override
@@ -105,26 +95,22 @@ class FilePageArray implements PageArray {
     }
 
     @Override
-    public void setPageCount(long count, boolean grow) throws IOException {
+    public void setPageCount(long count) throws IOException {
         if (count < 0) {
             throw new IllegalArgumentException(String.valueOf(count));
+        }
+
+        if (isReadOnly()) {
+            return;
         }
 
         long endPos = count * mPageSize;
 
         synchronized (mFileLengthLock) {
-            if (endPos > mFileLength) {
+            long originalLength = mFileLength;
+            if (endPos > originalLength) {
                 mFileLength = endPos;
-                if (grow && (count & 31) == 0) {
-                    RandomAccessFile file = accessFile();
-                    try {
-                        file.seek(endPos - 1);
-                        file.write(-1);
-                    } finally {
-                        yieldFile(file);
-                    }
-                }
-            } else if (endPos < mFileLength) {
+            } else if (endPos < originalLength) {
                 RandomAccessFile file = accessFile();
                 try {
                     file.setLength(endPos);
@@ -132,6 +118,39 @@ class FilePageArray implements PageArray {
                     yieldFile(file);
                 }
                 mFileLength = endPos;
+            }
+        }
+    }
+
+    @Override
+    public void allocatePages() throws IOException {
+        if (isReadOnly()) {
+            return;
+        }
+
+        synchronized (mFileLengthLock) {
+            final RandomAccessFile file = accessFile();
+            try {
+                if (file.length() >= mFileLength) {
+                    return;
+                }
+
+                RandomAccessFile allocFile;
+                if (mMode == NO_SYNC) {
+                    allocFile = file;
+                } else {
+                    allocFile = mAllocationFile;
+                    if (allocFile == null) {
+                        mAllocationFile = allocFile = new RandomAccessFile(mFile, "rw");
+                    }
+                }
+
+                // Writing to the end of the file is more effective at forcing
+                // the file system to allocate than simply setting the length.
+                allocFile.seek(mFileLength - 1);
+                allocFile.write(-1);
+            } finally {
+                yieldFile(file);
             }
         }
     }
@@ -219,6 +238,10 @@ class FilePageArray implements PageArray {
 
     @Override
     public void flush() throws IOException {
+        if (isReadOnly()) {
+            return;
+        }
+
         RandomAccessFile file = accessFile();
         try {
             file.getFD().sync();
@@ -241,6 +264,17 @@ class FilePageArray implements PageArray {
                         if (ex == null) {
                             ex = e;
                         }
+                    }
+                }
+            }
+
+            RandomAccessFile file = mAllocationFile;
+            if (file != null) {
+                try {
+                    file.close();
+                } catch (IOException e) {
+                    if (ex == null) {
+                        ex = e;
                     }
                 }
             }
