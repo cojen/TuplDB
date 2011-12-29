@@ -123,7 +123,7 @@ final class PageQueue implements IntegerRef {
     void init() throws IOException {
         mAppendLock.lock();
         try {
-            mRemoveStoppedId = mAppendHeadId = mAppendTailId = mManager.allocPage(false);
+            mRemoveStoppedId = mAppendHeadId = mAppendTailId = mManager.allocPage();
         } finally {
             mAppendLock.unlock();
         }
@@ -258,7 +258,7 @@ final class PageQueue implements IntegerRef {
 
         mDrainInProgress = true;
         try {
-            long newTailId = mManager.allocPage(false);
+            long newTailId = mManager.allocPage();
             long firstPageId = appendHeap.remove();
 
             byte[] tailBuf = mAppendTail;

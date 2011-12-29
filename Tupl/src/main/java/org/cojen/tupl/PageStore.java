@@ -147,8 +147,7 @@ interface PageStore extends Closeable {
     public void recyclePage(long id) throws IOException;
 
     /**
-     * Preallocates pages for use later. Preallocation is not permanent until
-     * after commit is called.
+     * Preallocates pages for immediate use.
      */
     public void preallocate(long pageCount) throws IOException;
 

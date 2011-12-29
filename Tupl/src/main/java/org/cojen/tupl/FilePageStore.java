@@ -235,9 +235,7 @@ class FilePageStore implements PageStore {
     public long reservePage() throws IOException {
         mCommitLock.readLock().lock();
         try {
-            // Force file to grow, distributing the cost of allocation.
-            // FIXME: force grow disabled for now, rwd mode is a problem
-            return mPageManager.allocPage(false);
+            return mPageManager.allocPage();
         } catch (Throwable e) {
             throw closeOnFailure(e);
         } finally {
