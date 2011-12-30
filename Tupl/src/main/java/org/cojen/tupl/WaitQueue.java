@@ -56,7 +56,7 @@ class WaitQueue {
             while (true) {
                 latch.releaseExclusive();
                 LockSupport.park();
-                latch.acquireExclusiveUnfair();
+                latch.acquireExclusive();
                 int state = node.state();
                 if (state > 0) {
                     return 1;
@@ -68,7 +68,7 @@ class WaitQueue {
         } else if (nanosTimeout == 0) {
             latch.releaseExclusive();
             LockSupport.parkNanos(0);
-            latch.acquireExclusiveUnfair();
+            latch.acquireExclusive();
             int state = node.state();
             if (state <= 0) {
                 node.remove(this);
@@ -79,7 +79,7 @@ class WaitQueue {
             while (true) {
                 latch.releaseExclusive();
                 LockSupport.parkNanos(nanosTimeout);
-                latch.acquireExclusiveUnfair();
+                latch.acquireExclusive();
                 int state = node.state();
                 if (state > 0) {
                     return 1;

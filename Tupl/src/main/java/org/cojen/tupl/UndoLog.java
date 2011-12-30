@@ -654,7 +654,7 @@ final class UndoLog {
         Node[] childNodes = parent.mChildNodes;
         if (childNodes != null) {
             lowerNode = childNodes[0];
-            lowerNode.acquireExclusiveUnfair();
+            lowerNode.acquireExclusive();
             if (lowerNodeId == lowerNode.mId) {
                 return lowerNode;
             }
@@ -711,7 +711,7 @@ final class UndoLog {
                 }
 
                 Node lowerNode = childNodes[0];
-                lowerNode.acquireExclusiveUnfair();
+                lowerNode.acquireExclusive();
                 if (lowerNodeId != lowerNode.mId) {
                     // Node and all remaining lower nodes were already evicted.
                     lowerNode.releaseExclusive();

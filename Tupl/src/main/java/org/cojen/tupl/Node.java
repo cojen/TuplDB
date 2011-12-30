@@ -217,7 +217,7 @@ final class Node extends Latch {
      * @return copy of value or null if not found
      */
     byte[] search(Tree tree, byte[] key) throws IOException {
-        acquireSharedUnfair();
+        acquireShared();
         // Note: No need to check if root has split, since root splits are always
         // completed before releasing the root latch.
         return isLeaf() ? subSearchLeaf(key) : subSearch(tree, this, null, key, false);
@@ -250,7 +250,7 @@ final class Node extends Latch {
             childId = node.retrieveChildRefId(childPos);
 
             childCheck: if (childNode != null && childId == childNode.mId) {
-                childNode.acquireSharedUnfair();
+                childNode.acquireShared();
 
                 // Need to check again in case evict snuck in.
                 if (childId != childNode.mId) {
@@ -292,7 +292,7 @@ final class Node extends Latch {
             // Release shared latch, re-acquire exclusive latch, and start over.
 
             node.releaseShared();
-            node.acquireExclusiveUnfair();
+            node.acquireExclusive();
             exclusiveHeld = true;
             if (parentLatch != null) {
                 parentLatch.releaseShared();
@@ -568,7 +568,7 @@ final class Node extends Latch {
             for (int i=0; i<childNodes.length; i++) {
                 Node child = mChildNodes[i];
                 if (child != null) {
-                    if (child.tryAcquireSharedUnfair()) {
+                    if (child.tryAcquireShared()) {
                         long childId = retrieveChildRefIdFromIndex(i);
                         try {
                             if (childId == child.mId && mCachedState != CACHED_CLEAN) {
@@ -2620,7 +2620,7 @@ final class Node extends Latch {
      * Verifies the integrity of this node.
      */
     public void verify() throws CorruptNodeException {
-        acquireSharedUnfair();
+        acquireShared();
         try {
             verify0();
         } catch (IndexOutOfBoundsException e) {
