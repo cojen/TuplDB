@@ -19,7 +19,7 @@ package org.cojen.tupl;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer;
 
 /**
- * Non-reentrant read/write latch, supporting fair and unfair acquisition methods.
+ * Non-reentrant read/write latch, using unfair acquisition.
  *
  * @author Brian S O'Neill
  */
@@ -27,20 +27,11 @@ class Latch extends AbstractQueuedSynchronizer {
     // In the inherited state field, high bit is set if exclusive latch is
     // held, and low bits count shared latches. Limited to (2^31)-1 shared latches.
 
-    private static final int FAIR = 0, UNFAIR = 1;
-
-    /**
-     * Attempt to acquire the exclusive latch.
-     */
-    public final boolean tryAcquireExclusive() {
-        return !hasQueuedThreads() && compareAndSetState(0, 0x80000001);
-    }
-
     /**
      * Attempt to acquire the exclusive latch, barging ahead of any waiting
      * threads if possible.
      */
-    public final boolean tryAcquireExclusiveUnfair() {
+    public final boolean tryAcquireExclusive() {
         return compareAndSetState(0, 0x80000001);
     }
 
@@ -48,29 +39,22 @@ class Latch extends AbstractQueuedSynchronizer {
      * Attempt to acquire the exclusive latch, aborting if interrupted.
      */
     public final boolean tryAcquireExclusiveNanos(long nanosTimeout) throws InterruptedException {
-        return tryAcquireNanos(FAIR, nanosTimeout);
-    }
-
-    /**
-     * Acquire the exclusive latch.
-     */
-    public final void acquireExclusive() {
-        acquire(FAIR);
+        return tryAcquireNanos(0, nanosTimeout);
     }
 
     /**
      * Acquire the exclusive latch, barging ahead of any waiting threads if
      * possible.
      */
-    public final void acquireExclusiveUnfair() {
-        acquire(UNFAIR);
+    public final void acquireExclusive() {
+        acquire(0);
     }
 
     /**
      * Acquire the exclusive latch, aborting if interrupted.
      */
     public final void acquireExclusiveInterruptibly() throws InterruptedException {
-        acquireInterruptibly(FAIR);
+        acquireInterruptibly(0);
     }
 
     /**
@@ -104,17 +88,10 @@ class Latch extends AbstractQueuedSynchronizer {
     }
 
     /**
-     * Attempt to acquire a shared latch.
-     */
-    public final boolean tryAcquireShared() {
-        return tryAcquireShared(FAIR) >= 0;
-    }
-
-    /**
      * Attempt to acquire a shared latch, barging ahead of any waiting threads
      * if possible.
      */
-    public final boolean tryAcquireSharedUnfair() {
+    public final boolean tryAcquireShared() {
         int state;
         while ((state = getState()) >= 0) {
             if (compareAndSetState(state, state + 1)) {
@@ -128,28 +105,21 @@ class Latch extends AbstractQueuedSynchronizer {
      * Attempt to acquire a shared latch, aborting if interrupted.
      */
     public final boolean tryAcquireSharedNanos(long nanosTimeout) throws InterruptedException {
-        return tryAcquireSharedNanos(FAIR, nanosTimeout);
-    }
-
-    /**
-     * Acquire a shared latch.
-     */
-    public final void acquireShared() {
-        acquireShared(FAIR);
+        return tryAcquireSharedNanos(0, nanosTimeout);
     }
 
     /**
      * Acquire a shared latch, barging ahead of any waiting threads if possible.
      */
-    public final void acquireSharedUnfair() {
-        acquireShared(UNFAIR);
+    public final void acquireShared() {
+        acquireShared(0);
     }
 
     /**
      * Acquire a shared latch, aborting if interrupted.
      */
     public final void acquireSharedInterruptibly() throws InterruptedException {
-        acquireSharedInterruptibly(FAIR);
+        acquireSharedInterruptibly(0);
     }
 
     /**
@@ -169,26 +139,23 @@ class Latch extends AbstractQueuedSynchronizer {
     }
 
     @Override
-    protected final boolean tryAcquire(int mode) {
-        return (mode != FAIR || (getState() == 0 && !shouldWait()))
-            && compareAndSetState(0, 0x80000001);
+    protected final boolean tryAcquire(int x) {
+        return compareAndSetState(0, 0x80000001);
     }
 
     @Override
-    protected final int tryAcquireShared(int mode) {
-        int state = getState();
-        if (state >= 0 && (mode != FAIR || !shouldWait())) {
-            do {
-                if (compareAndSetState(state, state + 1)) {
-                    return 1;
-                }
-            } while ((state = getState()) >= 0);
+    protected final int tryAcquireShared(int x) {
+        int state;
+        while ((state = getState()) >= 0) {
+            if (compareAndSetState(state, state + 1)) {
+                return 1;
+            }
         }
         return -1;
     }
 
     @Override
-    protected final boolean tryReleaseShared(int arg) {
+    protected final boolean tryReleaseShared(int x) {
         while (true) {
             int state = getState();
             if (compareAndSetState(state, state - 1)) {
@@ -201,10 +168,5 @@ class Latch extends AbstractQueuedSynchronizer {
     protected final boolean tryRelease(int newState) {
         setState(newState);
         return true;
-    }
-
-    private boolean shouldWait() {
-        // TODO: How to support calling hasQueuedPredecessors in jdk 1.7?
-        return hasQueuedThreads() && getFirstQueuedThread() != Thread.currentThread();
     }
 }

@@ -68,7 +68,7 @@ final class LockManager {
     final boolean isAvailable(Locker locker, long indexId, byte[] key, int hash) {
         LockHT ht = getLockHT(hash);
         Latch latch = ht.mLatch;
-        latch.acquireSharedUnfair();
+        latch.acquireShared();
         try {
             Lock lock = ht.lockFor(indexId, key, hash, false);
             return lock == null ? true : lock.isAvailable(locker);
@@ -80,7 +80,7 @@ final class LockManager {
     final LockResult check(Locker locker, long indexId, byte[] key, int hash) {
         LockHT ht = getLockHT(hash);
         Latch latch = ht.mLatch;
-        latch.acquireSharedUnfair();
+        latch.acquireShared();
         try {
             Lock lock = ht.lockFor(indexId, key, hash, false);
             return lock == null ? LockResult.UNOWNED : lock.check(locker);
@@ -98,7 +98,7 @@ final class LockManager {
         LockResult result;
         {
             Latch latch = ht.mLatch;
-            latch.acquireExclusiveUnfair();
+            latch.acquireExclusive();
             try {
                 lock = ht.lockFor(indexId, key, hash, true);
                 result = lock.tryLockShared(latch, locker, nanosTimeout);
@@ -123,7 +123,7 @@ final class LockManager {
         LockResult result;
         {
             Latch latch = ht.mLatch;
-            latch.acquireExclusiveUnfair();
+            latch.acquireExclusive();
             try {
                 lock = ht.lockFor(indexId, key, hash, true);
                 result = lock.tryLockUpgradable(latch, locker, nanosTimeout);
@@ -148,7 +148,7 @@ final class LockManager {
         LockResult result;
         {
             Latch latch = ht.mLatch;
-            latch.acquireExclusiveUnfair();
+            latch.acquireExclusive();
             try {
                 lock = ht.lockFor(indexId, key, hash, true);
                 result = lock.tryLockExclusive(latch, locker, nanosTimeout);
@@ -174,7 +174,7 @@ final class LockManager {
     final void unlockToShared(Locker locker, Lock lock) {
         LockHT ht = getLockHT(lock.mHashCode);
         Latch latch = ht.mLatch;
-        latch.acquireExclusiveUnfair();
+        latch.acquireExclusive();
         try {
             lock.unlockToShared(locker);
         } finally {
@@ -185,7 +185,7 @@ final class LockManager {
     final void unlockToUpgradable(Locker locker, Lock lock) {
         LockHT ht = getLockHT(lock.mHashCode);
         Latch latch = ht.mLatch;
-        latch.acquireExclusiveUnfair();
+        latch.acquireExclusive();
         try {
             lock.unlockToUpgradable(locker);
         } finally {
@@ -197,7 +197,7 @@ final class LockManager {
     final boolean unlockIfNonExclusive(Locker locker, Lock lock) {
         LockHT ht = getLockHT(lock.mHashCode);
         Latch latch = ht.mLatch;
-        latch.acquireExclusiveUnfair();
+        latch.acquireExclusive();
         try {
             return lock.unlockIfNonExclusive(locker);
         } finally {
@@ -261,7 +261,7 @@ final class LockManager {
 
         int size() {
             Latch latch = mLatch;
-            latch.acquireExclusiveUnfair();
+            latch.acquireExclusive();
             int size = mSize;
             latch.releaseExclusive();
             return size;
@@ -316,7 +316,7 @@ final class LockManager {
 
         void unlock(Locker locker, long indexId, byte[] key, int hash) {
             Latch latch = mLatch;
-            latch.acquireExclusiveUnfair();
+            latch.acquireExclusive();
             try {
                 Lock[] entries = mEntries;
                 int index = hash & (entries.length - 1);

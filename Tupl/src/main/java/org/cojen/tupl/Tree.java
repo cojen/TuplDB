@@ -279,7 +279,7 @@ final class Tree implements Index {
      */
     Node tryPopStub() {
         Stub stub = mStubTail;
-        if (stub.mNode.tryAcquireExclusiveUnfair()) {
+        if (stub.mNode.tryAcquireExclusive()) {
             mStubTail = stub.mParent;
             return stub.mNode;
         }
@@ -292,7 +292,7 @@ final class Tree implements Index {
      */
     Node popStub() {
         Stub stub = mStubTail;
-        stub.mNode.acquireExclusiveUnfair();
+        stub.mNode.acquireExclusive();
         mStubTail = stub.mParent;
         return stub.mNode;
     }
@@ -359,7 +359,7 @@ final class Tree implements Index {
                 if (childNode != null) {
                     long childId = node.retrieveChildRefIdFromIndex(ci);
                     if (childId == childNode.mId) {
-                        childNode.acquireSharedUnfair();
+                        childNode.acquireShared();
                         if (childId == childNode.mId && childNode.mCachedState == dirtyState) {
                             dirtyList.add(new DirtyNode(childNode, childId));
                         } else {

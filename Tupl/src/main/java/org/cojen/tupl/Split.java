@@ -65,7 +65,7 @@ class Split {
      */
     Node selectNodeShared(Database db, Node node, byte[] key) throws IOException {
         Node sibling = mSibling;
-        sibling.acquireSharedUnfair();
+        sibling.acquireShared();
 
         if (mSiblingId != sibling.mId) {
             // Sibling was evicted, which is extremely rare.
@@ -192,7 +192,7 @@ class Split {
      */
     Node latchSibling(Database db) throws IOException {
         Node sibling = mSibling;
-        sibling.acquireExclusiveUnfair();
+        sibling.acquireExclusive();
         if (mSiblingId != sibling.mId) {
             // Sibling was evicted, which is extremely rare.
             synchronized (this) {

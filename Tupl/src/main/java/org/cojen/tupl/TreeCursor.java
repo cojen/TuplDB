@@ -278,14 +278,14 @@ final class TreeCursor implements Cursor {
                     // Latch coupling up the tree usually works, so give it a
                     // try. If it works, then there's no need to worry about a
                     // node merge.
-                    parentNode = parentFrame.tryAcquireExclusiveUnfair();
+                    parentNode = parentFrame.tryAcquireExclusive();
 
                     if (parentNode == null) {
                         // Latch coupling failed, and so acquire parent latch
                         // without holding child latch. The child might have
                         // changed, and so it must be checked again.
                         node.releaseExclusive();
-                        parentNode = parentFrame.acquireExclusiveUnfair();
+                        parentNode = parentFrame.acquireExclusive();
                         if (parentNode.mSplit == null) {
                             break splitCheck;
                         }
@@ -429,14 +429,14 @@ final class TreeCursor implements Cursor {
                     // Latch coupling up the tree usually works, so give it a
                     // try. If it works, then there's no need to worry about a
                     // node merge.
-                    parentNode = parentFrame.tryAcquireExclusiveUnfair();
+                    parentNode = parentFrame.tryAcquireExclusive();
 
                     if (parentNode == null) {
                         // Latch coupling failed, and so acquire parent latch
                         // without holding child latch. The child might have
                         // changed, and so it must be checked again.
                         node.releaseExclusive();
-                        parentNode = parentFrame.acquireExclusiveUnfair();
+                        parentNode = parentFrame.acquireExclusive();
                         if (parentNode.mSplit == null) {
                             break splitCheck;
                         }
@@ -629,12 +629,12 @@ final class TreeCursor implements Cursor {
 
     private boolean copyValueIfExists() throws IOException {
         TreeCursorFrame frame = leaf();
-        Node node = frame.acquireSharedUnfair();
+        Node node = frame.acquireShared();
         try {
             splitCheck: if (node.mSplit != null) {
                 if (!node.tryUpgrade()) {
                     node.releaseShared();
-                    node = frame.acquireExclusiveUnfair();
+                    node = frame.acquireExclusive();
                     if (node.mSplit == null) {
                         break splitCheck;
                     }
@@ -775,12 +775,12 @@ final class TreeCursor implements Cursor {
             nearby: if (variant == VARIANT_NEARBY) {
                 frame = mLeaf;
                 if (frame == null) {
-                    node.acquireExclusiveUnfair();
+                    node.acquireExclusive();
                     frame = new TreeCursorFrame();
                     break nearby;
                 }
 
-                node = frame.acquireExclusiveUnfair();
+                node = frame.acquireExclusive();
                 if (node.mSplit != null) {
                     node = finishSplit(frame, node);
                 }
@@ -820,7 +820,7 @@ final class TreeCursor implements Cursor {
                         Node root = mTree.mRoot;
                         if (node != root) {
                             node.releaseExclusive();
-                            root.acquireExclusiveUnfair();
+                            root.acquireExclusive();
                             node = root;
                         }
                         break;
@@ -828,7 +828,7 @@ final class TreeCursor implements Cursor {
 
                     node.releaseExclusive();
                     frame = parent;
-                    node = frame.acquireExclusiveUnfair();
+                    node = frame.acquireExclusive();
 
                     // Only search inside non-split nodes. It's easier to just
                     // pop up rather than finish or search the split.
@@ -1301,14 +1301,14 @@ final class TreeCursor implements Cursor {
     private TreeCursorFrame reset(Node root) {
         TreeCursorFrame frame = mLeaf;
         if (frame == null) {
-            root.acquireExclusiveUnfair();
+            root.acquireExclusive();
             return new TreeCursorFrame();
         }
 
         mLeaf = null;
 
         while (true) {
-            Node node = frame.acquireExclusiveUnfair();
+            Node node = frame.acquireExclusive();
             TreeCursorFrame parent = frame.pop();
 
             if (parent == null) {
@@ -1316,7 +1316,7 @@ final class TreeCursor implements Cursor {
                 // can be wrong if the tree height is changing.
                 if (node != root) {
                     node.releaseExclusive();
-                    root.acquireExclusiveUnfair();
+                    root.acquireExclusive();
                 }
                 return frame;
             }
@@ -1356,7 +1356,7 @@ final class TreeCursor implements Cursor {
         }
 
         TreeCursorFrame frame = frames.removeFirst();
-        Node node = frame.acquireSharedUnfair();
+        Node node = frame.acquireShared();
 
         if (node.mSplit != null) {
             // Cannot verify into split nodes.
@@ -1418,7 +1418,7 @@ final class TreeCursor implements Cursor {
                     throw new IllegalStateException("Top frame is not a leaf node");
                 }
 
-                next.acquireSharedUnfair();
+                next.acquireShared();
             } finally {
                 node.releaseShared();
             }
@@ -1450,7 +1450,7 @@ final class TreeCursor implements Cursor {
      */
     private TreeCursorFrame leafExclusive() {
         TreeCursorFrame leaf = leaf();
-        leaf.acquireExclusiveUnfair();
+        leaf.acquireExclusive();
         return leaf;
     }
 
@@ -1494,17 +1494,17 @@ final class TreeCursor implements Cursor {
         // Make sure the parent is not split and dirty too.
         Node parentNode;
         doParent: {
-            parentNode = parentFrame.tryAcquireExclusiveUnfair();
+            parentNode = parentFrame.tryAcquireExclusive();
             if (parentNode == null) {
                 node.releaseExclusive();
-                parentFrame.acquireExclusiveUnfair();
+                parentFrame.acquireExclusive();
             } else if (parentNode.mSplit != null || db.shouldMarkDirty(parentNode)) {
                 node.releaseExclusive();
             } else {
                 break doParent;
             }
             parentNode = notSplitDirty(parentFrame);
-            node = frame.acquireExclusiveUnfair();
+            node = frame.acquireExclusive();
         }
 
         while (node.mSplit != null) {
@@ -1515,7 +1515,7 @@ final class TreeCursor implements Cursor {
             if (parentNode.mSplit != null) {
                 parentNode = finishSplit(parentFrame, parentNode);
             }
-            node = frame.acquireExclusiveUnfair();
+            node = frame.acquireExclusive();
         }
         
         if (db.markDirty(mTree, node)) {
@@ -1538,7 +1538,7 @@ final class TreeCursor implements Cursor {
             return;
         }
 
-        Node parentNode = parentFrame.acquireExclusiveUnfair();
+        Node parentNode = parentFrame.acquireExclusive();
 
         Node leftNode, rightNode;
         int nodeAvail;
@@ -1569,7 +1569,7 @@ final class TreeCursor implements Cursor {
                 }
             }
 
-            node = leaf.acquireExclusiveUnfair();
+            node = leaf.acquireExclusive();
 
             // Double check that node should still merge.
             if (!node.shouldMerge(nodeAvail = node.availableLeafBytes())) {
@@ -1720,7 +1720,7 @@ final class TreeCursor implements Cursor {
             return;
         }
 
-        Node parentNode = parentFrame.acquireExclusiveUnfair();
+        Node parentNode = parentFrame.acquireExclusive();
         if (parentNode.isLeaf()) {
             throw new Error("parent is leaf!");
         }
@@ -1754,7 +1754,7 @@ final class TreeCursor implements Cursor {
                 }
             }
 
-            node = frame.acquireExclusiveUnfair();
+            node = frame.acquireExclusive();
 
             // Double check that node should still merge.
             if (!node.shouldMerge(nodeAvail = node.availableInternalBytes())) {
@@ -1903,12 +1903,12 @@ final class TreeCursor implements Cursor {
         final Lock sharedCommitLock = db.sharedCommitLock();
         sharedCommitLock.lock();
         try {
-            Node parentNode = parentFrame.acquireExclusiveUnfair();
+            Node parentNode = parentFrame.acquireExclusive();
             while (true) {
                 if (parentNode.mSplit != null) {
                     parentNode = finishSplit(parentFrame, parentNode);
                 }
-                node = frame.acquireExclusiveUnfair();
+                node = frame.acquireExclusive();
                 if (node.mSplit == null) {
                     parentNode.releaseExclusive();
                     return node;
@@ -1930,7 +1930,7 @@ final class TreeCursor implements Cursor {
         long childId = parent.retrieveChildRefId(childPos);
 
         check: if (childNode != null && childId == childNode.mId) {
-            childNode.acquireExclusiveUnfair();
+            childNode.acquireExclusive();
 
             // Need to check again in case evict snuck in.
             if (childId != childNode.mId) {

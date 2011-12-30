@@ -667,12 +667,12 @@ public final class Database implements Closeable {
      * of zero and a clean state.
      */
     Node allocLatchedNode() throws IOException {
-        mCacheLatch.acquireExclusiveUnfair();
+        mCacheLatch.acquireExclusive();
         try {
             int max = mMaxCachedNodeCount;
             if (mCachedNodeCount < max) {
                 Node node = new Node(pageSize(), false);
-                node.acquireExclusiveUnfair();
+                node.acquireExclusive();
 
                 mCachedNodeCount++;
                 if ((node.mLessUsed = mMostRecentlyUsed) == null) {
@@ -692,7 +692,7 @@ public final class Database implements Closeable {
                 (node.mLessUsed = mMostRecentlyUsed).mMoreUsed = node;
                 mMostRecentlyUsed = node;
 
-                if (node.tryAcquireExclusiveUnfair()) {
+                if (node.tryAcquireExclusive()) {
                     if (node.evict(this)) {
                         // Return with latch still held.
                         return node;
@@ -814,7 +814,7 @@ public final class Database implements Closeable {
 
         // Indicate that node is least recently used, allowing it to be
         // re-allocated immediately without evicting another node.
-        mCacheLatch.acquireExclusiveUnfair();
+        mCacheLatch.acquireExclusive();
         try {
             Node lessUsed = node.mLessUsed;
             if (lessUsed != null) {
@@ -857,7 +857,7 @@ public final class Database implements Closeable {
         // latch. If node is popular, it will get more chances to be identified
         // as most recently used. This strategy works well enough because cache
         // eviction is always a best-guess approach.
-        if (mCacheLatch.tryAcquireExclusiveUnfair()) {
+        if (mCacheLatch.tryAcquireExclusive()) {
             Node moreUsed = node.mMoreUsed;
             if (moreUsed != null) {
                 Node lessUsed = node.mLessUsed;
@@ -898,7 +898,7 @@ public final class Database implements Closeable {
             // Commit lock must be acquired first, to prevent deadlock.
             mPageStore.exclusiveCommitLock().lock();
 
-            root.acquireSharedUnfair();
+            root.acquireShared();
 
             if (!force && root.mCachedState == CACHED_CLEAN) {
                 // Root is clean, so nothing to do.
@@ -958,7 +958,7 @@ public final class Database implements Closeable {
             if (masterUndoLog != null) {
                 // Delete the master undo log, which won't take effect until
                 // the next checkpoint.
-                masterUndoLog.mNode.acquireExclusiveUnfair();
+                masterUndoLog.mNode.acquireExclusive();
                 masterUndoLog.truncate(0);
             }
 
@@ -1013,11 +1013,11 @@ public final class Database implements Closeable {
 
         mRegistry.gatherDirtyNodes(dirtyList, stateToFlush);
 
-        mRegistryKeyMap.mRoot.acquireSharedUnfair();
+        mRegistryKeyMap.mRoot.acquireShared();
         mRegistryKeyMap.gatherDirtyNodes(dirtyList, stateToFlush);
 
         for (Tree tree : trees) {
-            tree.mRoot.acquireSharedUnfair();
+            tree.mRoot.acquireShared();
             tree.gatherDirtyNodes(dirtyList, stateToFlush);
         }
 
@@ -1030,7 +1030,7 @@ public final class Database implements Closeable {
         for (int mi=0; mi<dirtyList.size(); mi++) {
             Node node = dirtyList.get(mi).mNode;
             dirtyList.set(mi, null);
-            node.acquireExclusiveUnfair();
+            node.acquireExclusive();
             if (node.mCachedState != stateToFlush) {
                 // Was already evicted.
                 node.releaseExclusive();

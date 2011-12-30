@@ -51,10 +51,10 @@ final class TreeCursorFrame {
      *
      * @return frame node
      */
-    Node acquireSharedUnfair() {
+    Node acquireShared() {
         Node node = mNode;
         while (true) {
-            node.acquireSharedUnfair();
+            node.acquireShared();
             Node actualNode = mNode;
             if (actualNode == node) {
                 return actualNode;
@@ -69,10 +69,10 @@ final class TreeCursorFrame {
      *
      * @return frame node
      */
-    Node acquireExclusiveUnfair() {
+    Node acquireExclusive() {
         Node node = mNode;
         while (true) {
-            node.acquireExclusiveUnfair();
+            node.acquireExclusive();
             Node actualNode = mNode;
             if (actualNode == node) {
                 return actualNode;
@@ -87,9 +87,9 @@ final class TreeCursorFrame {
      *
      * @return frame node, or null if not acquired
      */
-    Node tryAcquireExclusiveUnfair() {
+    Node tryAcquireExclusive() {
         Node node = mNode;
-        while (node.tryAcquireExclusiveUnfair()) {
+        while (node.tryAcquireExclusive()) {
             Node actualNode = mNode;
             if (actualNode == node) {
                 return actualNode;
@@ -169,7 +169,7 @@ final class TreeCursorFrame {
      */
     static void popAll(TreeCursorFrame frame) {
         do {
-            Node node = frame.acquireExclusiveUnfair();
+            Node node = frame.acquireExclusive();
             frame = frame.pop();
             node.releaseExclusive();
         } while (frame != null);
@@ -181,7 +181,7 @@ final class TreeCursorFrame {
      * @param dest new frame instance to receive copy
      */
     void copyInto(TreeCursorFrame dest) {
-        Node node = acquireExclusiveUnfair();
+        Node node = acquireExclusive();
         TreeCursorFrame parent = mParentFrame;
 
         if (parent != null) {
@@ -195,7 +195,7 @@ final class TreeCursorFrame {
                 }
 
                 // Parent can change when tree height is concurrently changing.
-                node = acquireExclusiveUnfair();
+                node = acquireExclusive();
                 final TreeCursorFrame actualParent = mParentFrame;
 
                 if (actualParent == parent) {
