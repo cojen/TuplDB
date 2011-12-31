@@ -173,6 +173,15 @@ public interface Cursor extends Closeable {
     public void store(byte[] value) throws IOException;
 
     /**
+     * Appends data to the current entry's value, creating it if necessary.
+     *
+     * @param data non-null data to append
+     * @throws NullPointerException if data is null
+     * @throws IllegalStateException if position is undefined at invocation time
+     */
+    //public void append(byte[] data) throws IOException;
+
+    /**
      * Link to a transaction, which can be null for auto-commit mode.
      */
     public void link(Transaction txn);

@@ -311,7 +311,7 @@ final class PageQueue implements IntegerRef {
             DataIO.writeLong(header, offset + I_REMOVE_HEAD_FIRST_PAGE_ID, mRemoveHeadFirstPageId);
         }
 
-        // Post-commit, all appendd pages are eligible to be removed.
+        // Post-commit, all appended pages are eligible to be removed.
         DataIO.writeLong(header, offset + I_APPEND_HEAD_ID, mAppendTailId);
 
         // Increase counts now, but not all pages are not available until after
@@ -332,7 +332,7 @@ final class PageQueue implements IntegerRef {
         long newAppendHeadId = DataIO.readLong(header, offset + I_APPEND_HEAD_ID);
 
         if (mRemoveHeadId == 0 && mRemoveStoppedId != newAppendHeadId) {
-            // Allow removing of previously appendd pages.
+            // Allow removing of previously appended pages.
             mManager.pageArray().readPage(mRemoveStoppedId, mRemoveHead);
             mRemoveHeadId = mRemoveStoppedId;
             mRemoveHeadOffset = I_NODE_START;

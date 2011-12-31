@@ -34,18 +34,46 @@ public class TreeNodeTest {
         final Database db = Database.open
             (new DatabaseConfig()
              .setBaseFile(file)
-             .setMinCacheSize(400000000)
+             .setMinCacheSize(400_000_000)
              .setDurabilityMode(DurabilityMode.NO_FLUSH));
+        //db.preallocate(500_000_000L);
         final Index index = db.openIndex("test1");
 
-        /*
-        BitSet pages = pstore.tracePages();
-        root.tracePages(store, pages);
-        System.out.println(pages);
-        System.out.println("lost: " + (pages.cardinality() - 2));
-        System.out.println(pstore.stats());
+        if (false) {
+            db.trace();
+            System.exit(0);
+        }
 
-        System.exit(0);
+        /* FIXME: observed defect, after ctrl-break: (spurious wakeup problem?)
+         java.lang.AssertionError: Split child is not already marked dirty
+          at org.cojen.tupl.TreeNode.insertSplitChildRef(TreeNode.java:1178)
+          at org.cojen.tupl.TreeCursor.finishSplit(TreeCursor.java:1647)
+          at org.cojen.tupl.TreeCursor.finishSplit(TreeCursor.java:1640)
+          at org.cojen.tupl.TreeCursor.store(TreeCursor.java:969)
+          at org.cojen.tupl.TreeCursor.store(TreeCursor.java:746)
+          at org.cojen.tupl.FullCursor.store(FullCursor.java:114)
+          at org.cojen.tupl.TreeNodeTest.testInsert(TreeNodeTest.java:135)
+          at org.cojen.tupl.TreeNodeTest.main(TreeNodeTest.java:107)
+
+         ...followed by this after re-opening: (page is blank!)
+         java.lang.ArrayIndexOutOfBoundsException: -2
+          at org.cojen.tupl.DataIO.readUnsignedShort(DataIO.java:26)
+          at org.cojen.tupl.TreeNode.splitLeafAndCreateEntry(TreeNode.java:2098)
+          at org.cojen.tupl.TreeNode.insertLeafEntry(TreeNode.java:1072)
+          at org.cojen.tupl.TreeCursor.store(TreeCursor.java:929)
+          at org.cojen.tupl.TreeCursor.store(TreeCursor.java:746)
+          at org.cojen.tupl.FullCursor.store(FullCursor.java:114)
+          at org.cojen.tupl.TreeNodeTest.testInsert(TreeNodeTest.java:135)
+          at org.cojen.tupl.TreeNodeTest.main(TreeNodeTest.java:54)
+
+          Ctrl-break was hit during a checkpoint, and so cause might be a checkpoint
+          race condition, made worse by the thread dump.
+
+          Problem seems to occur just from killing the process. It might be a
+          bug with file length in FilePageArray.
+
+          Is it possible that dirty nodes got written out after fsync? Is there
+          a race between the sorted sweep and eviction? Race with splits?
         */
 
         byte[] value = index.get(null, "hello".getBytes());
@@ -91,7 +119,8 @@ public class TreeNodeTest {
 
         Random rnd = new Random(89234723);
 
-        for (int i=1; i<100000000; i++) {
+        long start = System.currentTimeMillis();
+        for (int i=1; i<10_000_000; i++) {
             /*
             if (i % 100000 == 0) {
                 db.checkpoint();
@@ -119,6 +148,10 @@ public class TreeNodeTest {
         //root.dump(store, "");
 
         db.checkpoint();
+
+        long end = System.currentTimeMillis();
+
+        System.out.println("duration: " + new org.joda.time.Duration(end - start));
     }
 
     private static void testInsert(Map<String, String> map, boolean fullTest,
@@ -132,7 +165,7 @@ public class TreeNodeTest {
         byte[] bkey = key.getBytes();
         byte[] bvalue = value.getBytes();
 
-        Cursor c = index.newCursor(null);
+        Cursor c = index.newCursor(Transaction.BOGUS);
         c.find(bkey);
         boolean exists = c.value() != null;
         if (!exists) {
@@ -140,6 +173,7 @@ public class TreeNodeTest {
         }
         c.close();
 
+        /*
         byte[] fvalue = index.get(null, bkey);
         try {
             compareArrays(bvalue, fvalue);
@@ -166,6 +200,7 @@ public class TreeNodeTest {
                 }
             }
         }
+        */
     }
 
     private static void compareArrays(byte[] a, byte[] b) {
