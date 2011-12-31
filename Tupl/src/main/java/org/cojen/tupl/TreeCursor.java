@@ -1540,6 +1540,9 @@ final class TreeCursor implements Cursor {
 
         Node parentNode = parentFrame.acquireExclusive();
 
+        // FIXME: This code does not guarantee that parent node is dirty. Node
+        // might have been flushed.
+
         Node leftNode, rightNode;
         int nodeAvail;
         while (true) {
@@ -1912,6 +1915,12 @@ final class TreeCursor implements Cursor {
                 if (node.mSplit == null) {
                     parentNode.releaseExclusive();
                     return node;
+                }
+                // Account for parent node getting flushed.
+                if (!db.markDirtyQuick(parentNode)) {
+                    // FIXME: This can be caused by checkpoint, because caller
+                    // didn't acquire shared commit lock.
+                    throw new AssertionError("Parent node must be dirtied");
                 }
                 parentNode.insertSplitChildRef(db, parentFrame.mNodePos, node);
             }

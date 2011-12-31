@@ -31,12 +31,15 @@ public class DatabaseConfig {
     long mMaxCachedBytes;
     DurabilityMode mDurabilityMode;
     long mLockTimeoutNanos;
+    long mFlushThresholdBytes;
+    boolean mFileSync;
     boolean mReadOnly;
     int mPageSize;
 
     public DatabaseConfig() {
         setDurabilityMode(null);
         setLockTimeout(1, TimeUnit.SECONDS);
+        setFlushThreshold(-1);
     }
 
     /**
@@ -95,6 +98,22 @@ public class DatabaseConfig {
      */
     public DatabaseConfig setLockTimeout(long timeout, TimeUnit unit) {
         mLockTimeoutNanos = Utils.toNanos(timeout, unit);
+        return this;
+    }
+
+    public DatabaseConfig setFlushThreshold(long thresholdBytes) {
+        mFlushThresholdBytes = thresholdBytes;
+        return this;
+    }
+
+    /**
+     * Set true to ensure all writes the main database file are immediately
+     * durable. This option typically reduces overall performance, but
+     * checkpoints complete more quickly. As a result, the main database file
+     * requires less pre-allocated pages and is smaller.
+     */
+    public DatabaseConfig setFileSync(boolean fileSync) {
+        mFileSync = fileSync;
         return this;
     }
 

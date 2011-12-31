@@ -89,7 +89,7 @@ public final class Database implements Closeable {
     private Node mFlushBarrier;
     // Hops from most recently used. Is zero when flush barrier is the most recently used.
     private int mFlushBarrierDistance;
-    private final int mFlushBarrierTargetDistance = 10000; // FIXME: testing
+    private final int mFlushBarrierTargetDistance;
 
     private final Lock mSharedCommitLock;
 
@@ -165,6 +165,17 @@ public final class Database implements Closeable {
         mCacheLatch = new Latch();
         mMaxCachedNodeCount = maxCache - 1; // less one for root
 
+        {
+            long threshold = config.mFlushThresholdBytes;
+            if (threshold < 0) {
+                mFlushBarrierTargetDistance = Integer.MAX_VALUE;
+            } else {
+                long targetDistance = (threshold + pageSize - 1) / pageSize;
+                targetDistance = Math.max(1, Math.min(targetDistance, Integer.MAX_VALUE));
+                mFlushBarrierTargetDistance = (int) targetDistance;
+            }
+        }
+
         mDurabilityMode = config.mDurabilityMode;
         mDefaultLockTimeoutNanos = config.mLockTimeoutNanos;
         mLockManager = new LockManager(mDefaultLockTimeoutNanos);
@@ -172,7 +183,7 @@ public final class Database implements Closeable {
         String basePath = baseFile.getPath();
         File file = new File(basePath + ".db");
 
-        mPageStore = new FilePageStore(file, config.mReadOnly, pageSize);
+        mPageStore = new FilePageStore(file, config.mFileSync, config.mReadOnly, pageSize);
 
         try {
             int spareBufferCount = Runtime.getRuntime().availableProcessors();
@@ -779,7 +790,7 @@ public final class Database implements Closeable {
             // flush nodes being split, since they aren't ready yet. They
             // cannot be evicted either in this state.
             if (barrier.mCachedState == mCommitState &&
-                barrier.mSplit != null && barrier.mId != STUB_ID)
+                barrier.mSplit == null && barrier.mId != STUB_ID)
             {
                 return barrier;
             }
