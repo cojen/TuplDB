@@ -237,7 +237,7 @@ class FilePageArray implements PageArray {
     }
 
     @Override
-    public void flush(boolean metadata) throws IOException {
+    public void sync(boolean metadata) throws IOException {
         if (isReadOnly()) {
             return;
         }

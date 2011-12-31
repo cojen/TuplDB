@@ -84,11 +84,13 @@ class FilePageStore implements PageStore {
     // Commit number is the highest one which has been committed.
     private volatile int mCommitNumber;
 
-    public FilePageStore(File file, boolean readOnly, int pageSize) throws IOException {
-        this(file, readOnly, pageSize, 32);
+    FilePageStore(File file, boolean fileSync, boolean readOnly, int pageSize)
+        throws IOException
+    {
+        this(file, fileSync, readOnly, pageSize, 32);
     }
 
-    public FilePageStore(File file, boolean readOnly, int pageSize, int openFileCount)
+    FilePageStore(File file, boolean fileSync, boolean readOnly, int pageSize, int openFileCount)
         throws IOException
     {
         if (pageSize < MINIMUM_PAGE_SIZE) {
@@ -99,9 +101,7 @@ class FilePageStore implements PageStore {
         mCommitLock = new ReentrantReadWriteLock(true);
 
         try {
-            // If not read-only, writes are always durable. Caching at the node
-            // storage layer is expected to delay writes.
-            String mode = readOnly ? "r" : "rw"; // FIXME: testing not rwd
+            String mode = readOnly ? "r" : (fileSync ? "rwd" : "rw");
             mPageArray = new FilePageArray(file, mode, pageSize, openFileCount);
 
             if (mPageArray.getPageCount() == 0) {
@@ -384,9 +384,9 @@ class FilePageStore implements PageStore {
 
         // Ensure all writes are flushed before flushing the header. There's
         // otherwise no ordering guarantees.
-        array.flush(false);
+        array.sync(false);
         array.writePage(commitNumber & 1, header);
-        array.flush(true);
+        array.sync(true);
 
         mCommitNumber = commitNumber;
     }

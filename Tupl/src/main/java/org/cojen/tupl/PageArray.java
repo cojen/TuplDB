@@ -107,5 +107,5 @@ interface PageArray extends Closeable {
      *
      * @param metadata pass true to flush all file metadata
      */
-    public void flush(boolean metadata) throws IOException;
+    public void sync(boolean metadata) throws IOException;
 }
