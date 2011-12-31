@@ -101,7 +101,7 @@ class FilePageStore implements PageStore {
         try {
             // If not read-only, writes are always durable. Caching at the node
             // storage layer is expected to delay writes.
-            String mode = readOnly ? "r" : "rwd";
+            String mode = readOnly ? "r" : "rw"; // FIXME: testing not rwd
             mPageArray = new FilePageArray(file, mode, pageSize, openFileCount);
 
             if (mPageArray.getPageCount() == 0) {
@@ -319,18 +319,11 @@ class FilePageStore implements PageStore {
 
         try {
             final byte[] header = new byte[pageSize()];
-            mPageManager.commit(header, I_MANAGER_HEADER, new PageManager.CommitReady() {
-                @Override
-                public Object started() throws IOException {
-                    // Invoke the callback to ensure all dirty pages get written.
-                    return callback == null ? null : callback.prepare();
-                }
-
-                @Override
-                public void finished(Object state, int offset) throws IOException {
-                    commitHeader(header, commitNumber, (byte[]) state);
-                }
-            });
+            mPageManager.commitStart(header, I_MANAGER_HEADER);
+            // Invoke the callback to ensure all dirty pages get written.
+            byte[] extra = callback == null ? null : callback.prepare();
+            commitHeader(header, commitNumber, extra);
+            mPageManager.commitEnd(header, I_MANAGER_HEADER);
         } catch (Throwable e) {
             throw closeOnFailure(e);
         } finally {
@@ -391,9 +384,9 @@ class FilePageStore implements PageStore {
 
         // Ensure all writes are flushed before flushing the header. There's
         // otherwise no ordering guarantees.
-        array.flush();
+        array.flush(false);
         array.writePage(commitNumber & 1, header);
-        array.flush();
+        array.flush(true);
 
         mCommitNumber = commitNumber;
     }

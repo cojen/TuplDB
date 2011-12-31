@@ -17,7 +17,6 @@
 package org.cojen.tupl;
 
 import java.io.Closeable;
-import java.io.Flushable;
 import java.io.IOException;
 
 /**
@@ -26,7 +25,7 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-interface PageArray extends Closeable, Flushable {
+interface PageArray extends Closeable {
     public boolean isReadOnly();
 
     /**
@@ -105,7 +104,8 @@ interface PageArray extends Closeable, Flushable {
 
     /**
      * Durably flushes all writes to the underlying device.
+     *
+     * @param metadata pass true to flush all file metadata
      */
-    @Override
-    public void flush() throws IOException;
+    public void flush(boolean metadata) throws IOException;
 }

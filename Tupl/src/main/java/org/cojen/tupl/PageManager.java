@@ -196,14 +196,12 @@ final class PageManager {
     }
 
     /**
-     * Makes changes permanent for page allocations and deletions. The
-     * underlying page array is not flushed, however.
+     * Initiates the process for making page allocations and deletions permanent.
      *
-     * @param header destination for writing allocator root structure
+     * @param header destination for writing page manager structures
      * @param offset offset into header
-     * @param ready if provided, invoked during the commit operation
      */
-    public void commit(byte[] header, int offset, CommitReady ready) throws IOException {
+    public void commitStart(byte[] header, int offset) throws IOException {
         fullLock();
         try {
             mRegularFreeList.commitStart(header, offset + I_REGULAR_QUEUE);
@@ -216,21 +214,20 @@ final class PageManager {
 
         // Allocate pages before forcing user thread to do this as it writes.
         mPageArray.allocatePages();
+    }
 
-        Object state = ready == null ? null : ready.started();
-
-        // FIXME: Is full lock required? Are two callbacks required? Is
-        // commitStart and commitEnd sufficient?
-        fullLock();
+    /**
+     * Finishes the commit process. Must pass in header and offset used by commitStart.
+     *
+     * @param header contains page manager structures
+     * @param offset offset into header
+     */
+    public void commitEnd(byte[] header, int offset) throws IOException {
+        mRemoveLock.lock();
         try {
-            if (ready != null) {
-                ready.finished(state, offset + HEADER_SIZE);
-            }
-
-            // FIXME: Only remove lock is required.
             mRegularFreeList.commitEnd(header, offset + I_REGULAR_QUEUE);
         } finally {
-            fullUnlock();
+            mRemoveLock.unlock();
         }
     }
 
@@ -295,29 +292,5 @@ final class PageManager {
      */
     boolean isPageOutOfBounds(long id) {
         return id <= 1 || id >= mTotalPageCount;
-    }
-
-    static interface CommitReady {
-        /**
-         * Called when commit is underway. Implementation is expected to flush
-         * all unwritten pages. No locks are held during this time, and so
-         * pages can continue to be allocated and deleted. These allocations
-         * and deletions will not take effect until the next commit.
-         *
-         * @return optional state to pass into finished method
-         */
-        public Object started() throws IOException;
-
-        /**
-         * Called after header content has been prepared. Implementation is
-         * expected to only write the header. This method is invoked with locks
-         * held, preventing page allocation and deletion. Although current
-         * thread owns these locks, implementation of this method must not
-         * allocate or delete pages.
-         *
-         * @param state state returned by started method
-         * @param offset new header offset
-         */
-        public void finished(Object state, int offset) throws IOException;
     }
 }

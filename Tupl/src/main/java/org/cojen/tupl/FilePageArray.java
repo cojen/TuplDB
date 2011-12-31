@@ -237,14 +237,14 @@ class FilePageArray implements PageArray {
     }
 
     @Override
-    public void flush() throws IOException {
+    public void flush(boolean metadata) throws IOException {
         if (isReadOnly()) {
             return;
         }
 
         RandomAccessFile file = accessFile();
         try {
-            file.getFD().sync();
+            file.getChannel().force(metadata);
         } finally {
             yieldFile(file);
         }

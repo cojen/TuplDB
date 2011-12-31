@@ -114,6 +114,7 @@ class Utils {
     }
 
     static IOException closeOnFailure(Closeable c, Throwable e) throws IOException {
+        e.printStackTrace(System.out);
         try {
             c.close();
         } catch (IOException e2) {

@@ -1481,7 +1481,7 @@ final class TreeCursor implements Cursor {
         }
 
         Database db = mTree.mDatabase;
-        if (!db.shouldMarkDirty(node)) {
+        if (db.markDirtyQuick(node)) {
             return node;
         }
 
@@ -1498,7 +1498,7 @@ final class TreeCursor implements Cursor {
             if (parentNode == null) {
                 node.releaseExclusive();
                 parentFrame.acquireExclusive();
-            } else if (parentNode.mSplit != null || db.shouldMarkDirty(parentNode)) {
+            } else if (parentNode.mSplit != null || !db.markDirtyQuick(parentNode)) {
                 node.releaseExclusive();
             } else {
                 break doParent;

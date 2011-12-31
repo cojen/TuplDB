@@ -82,6 +82,14 @@ public final class Database implements Closeable {
     private int mCachedNodeCount;
     private Node mMostRecentlyUsed;
     private Node mLeastRecentlyUsed;
+    // Node somewhere in between least and most recently used. All nodes less
+    // recently used than the barrier are in the "flush zone". If dirty, they
+    // must be written and state be switched to flushed. All other nodes are in
+    // the "safe zone", and they aren't immediately flushed.
+    private Node mFlushBarrier;
+    // Hops from most recently used. Is zero when flush barrier is the most recently used.
+    private int mFlushBarrierDistance;
+    private final int mFlushBarrierTargetDistance = 10000; // FIXME: testing
 
     private final Lock mSharedCommitLock;
 
@@ -204,6 +212,7 @@ public final class Database implements Closeable {
             } catch (OutOfMemoryError e) {
                 mMostRecentlyUsed = null;
                 mLeastRecentlyUsed = null;
+                mFlushBarrier = null;
 
                 throw new OutOfMemoryError
                     ("Unable to allocate the minimum required number of cached nodes: " +
@@ -667,7 +676,9 @@ public final class Database implements Closeable {
      * of zero and a clean state.
      */
     Node allocLatchedNode() throws IOException {
-        mCacheLatch.acquireExclusive();
+        Node toFlush;
+        final Latch cacheLatch = mCacheLatch;
+        cacheLatch.acquireExclusive();
         try {
             int max = mMaxCachedNodeCount;
             if (mCachedNodeCount < max) {
@@ -677,8 +688,11 @@ public final class Database implements Closeable {
                 mCachedNodeCount++;
                 if ((node.mLessUsed = mMostRecentlyUsed) == null) {
                     mLeastRecentlyUsed = node;
+                    node.mInSafeZone = true;
+                    mFlushBarrier = node;
                 } else {
                     mMostRecentlyUsed.mMoreUsed = node;
+                    toFlush = adjustFlushBarrierMRU(node);
                 }
                 mMostRecentlyUsed = node;
 
@@ -687,10 +701,18 @@ public final class Database implements Closeable {
 
             do {
                 Node node = mLeastRecentlyUsed;
+                toFlush = adjustFlushBarrierMRU(node);
                 (mLeastRecentlyUsed = node.mMoreUsed).mLessUsed = null;
                 node.mMoreUsed = null;
                 (node.mLessUsed = mMostRecentlyUsed).mMoreUsed = node;
                 mMostRecentlyUsed = node;
+
+                if (toFlush != null) {
+                    cacheLatch.releaseExclusive();
+                    flushNode(toFlush);
+                    toFlush = null;                    
+                    cacheLatch.acquireExclusive();
+                }
 
                 if (node.tryAcquireExclusive()) {
                     if (node.evict(this)) {
@@ -702,12 +724,97 @@ public final class Database implements Closeable {
                 }
             } while (--max > 0);
         } finally {
-            mCacheLatch.releaseExclusive();
+            cacheLatch.releaseExclusive();
+        }
+
+        if (toFlush != null) {
+            flushNode(toFlush);
         }
 
         // FIXME: Throw a better exception. Also, try all nodes again, but with
         // stronger latch request before giving up.
         throw new IllegalStateException("Cache is full");
+    }
+
+    /**
+     * Adjust the flush barrier before a node becomes most recently used. A node
+     * may need to flush as a result. Caller must hold cache latch.
+     *
+     * @param moving node which will move to most recently used position
+     * @return optionally return latched node which must be flushed
+     */
+    private Node adjustFlushBarrierMRU(Node moving) {
+        Node barrier = mFlushBarrier;
+        if (barrier == moving) {
+            // Moving node is the barrier itself. Choose another barrier.
+            mFlushBarrier = barrier.mMoreUsed;
+            return null;
+        }
+
+        if (moving.mInSafeZone) {
+            // Movement within safe zone changes nothing.
+            return null;
+        }
+
+        moving.mInSafeZone = true;
+
+        int distance = mFlushBarrierDistance;
+        if (distance < mFlushBarrierTargetDistance) {
+            // Safe zone is in a growing phase.
+            mFlushBarrierDistance = distance + 1;
+            return null;
+        }
+
+        mFlushBarrier = barrier.mMoreUsed;
+        // Old barrier is now a candidate to be flushed.
+        barrier.mInSafeZone = false;
+
+        // Caller must flush the node if dirty, but it must be latched. If
+        // latch attempt fails, give up. This potentially allows some nodes in
+        // the flush zone to survive. They'll get flushed by the next
+        // checkpoint and be marked clean.
+        if (barrier.tryAcquireExclusive()) {
+            // Only flush dirty nodes which aren't being committed. They're
+            // already being flushed (properly) by the checkpoint. Also, don't
+            // flush nodes being split, since they aren't ready yet. They
+            // cannot be evicted either in this state.
+            if (barrier.mCachedState == mCommitState &&
+                barrier.mSplit != null && barrier.mId != STUB_ID)
+            {
+                return barrier;
+            }
+            barrier.releaseExclusive();
+        }
+
+        return null;
+    }
+
+    /**
+     * Caller must have acquired exclusive latch and verified node is dirty.
+     */
+    private void flushNode(Node node) throws IOException {
+        node.write(this);
+        // Move from dirty state to flushed state.
+        node.mCachedState -= 2;
+        node.releaseExclusive();
+    }
+
+    /**
+     * Adjust the flush barrier before a node becomes least recently used.
+     * Caller must hold cache latch.
+     *
+     * @param moving node which will move to least recently used position
+     */
+    private void adjustFlushBarrierLRU(Node moving) {
+        int distance = mFlushBarrierDistance;
+        if (moving.mInSafeZone && distance < mCachedNodeCount) {
+            moving.mInSafeZone = false;
+            mFlushBarrierDistance = distance - 1;
+            Node barrier = mFlushBarrier;
+            if (barrier == moving) {
+                mFlushBarrier = barrier.mMoreUsed;
+            }
+        }
     }
 
     /**
@@ -729,6 +836,32 @@ public final class Database implements Closeable {
     }
 
     /**
+     * Caller must hold commit lock and exclusive latch on node.
+     *
+     * @return false if node still needs to be dirtied and receive a new id
+     */
+    boolean markDirtyQuick(Node node) {
+        int nodeState = node.mCachedState;
+        int test = nodeState ^ mCommitState;
+        if (test == 0 || node.mId == Node.STUB_ID) {
+            // Xor result of 0 means dirty state matches and nothing to do.
+            return true;
+        }
+        if (test == 6) { // 0xb0110
+            // Xor result of 6 indicates that node state is flushed and bit 0
+            // matches too. No need to allocate a new id, just flip state back
+            // to dirty. Note that this allows a node in the "flush zone" to be
+            // unflushed, but typically these nodes are recently used anyhow.
+            // They're often already in the safe zone. State values are carefully
+            // chosen, and so adding 2 is all that's required to become dirty.
+            node.mCachedState = (byte) (nodeState + 2);
+            return true;
+        }
+        // Node state is either clean or bit 0 doesn't match.
+        return false;
+    }
+
+    /**
      * Caller must hold commit lock and exclusive latch on node. Method does
      * nothing if node is already dirty. Latch is never released by this method,
      * even if an exception is thrown.
@@ -736,7 +869,7 @@ public final class Database implements Closeable {
      * @return true if just made dirty and id changed
      */
     boolean markDirty(Tree tree, Node node) throws IOException {
-        if (node.mCachedState == mCommitState || node.mId == Node.STUB_ID) {
+        if (markDirtyQuick(node)) {
             return false;
         } else {
             doMarkDirty(tree, node);
@@ -750,14 +883,21 @@ public final class Database implements Closeable {
      * even if an exception is thrown.
      */
     void markUndoLogDirty(Node node) throws IOException {
-        if (node.mCachedState != mCommitState) {
-            long oldId = node.mId;
-            long newId = mPageStore.reservePage();
-            mPageStore.deletePage(oldId);
-            node.write(this);
-            node.mId = newId;
-            node.mCachedState = mCommitState;
+        int nodeState = node.mCachedState;
+        int test = nodeState ^ mCommitState;
+        if (test == 0) {
+            return;
         }
+        if (test == 6) {
+            node.mCachedState = (byte) (nodeState + 2);
+            return;
+        }
+        long oldId = node.mId;
+        long newId = mPageStore.reservePage();
+        mPageStore.deletePage(oldId);
+        node.write(this);
+        node.mId = newId;
+        node.mCachedState = mCommitState;
     }
 
     /**
@@ -771,7 +911,9 @@ public final class Database implements Closeable {
         if (oldId != 0) {
             mPageStore.deletePage(oldId);
         }
-        if (node.mCachedState != CACHED_CLEAN) {
+        if (node.isDirty()) {
+            // Need to write old node contents when node is dirty and state
+            // differs from commit state.
             node.write(this);
         }
         if (node == tree.mRoot && tree.mIdBytes != null) {
@@ -791,9 +933,11 @@ public final class Database implements Closeable {
      */
     void prepareToDelete(Node node) throws IOException {
         // Hello. My name is Íñigo Montoya. You killed my father. Prepare to die. 
-        byte state = node.mCachedState;
-        if (state != CACHED_CLEAN && state != mCommitState) {
+        byte nodeState = node.mCachedState;
+        if (nodeState >= CACHED_DIRTY_0 && nodeState != mCommitState) {
             node.write(this);
+            // Switch to flushed state.
+            node.mCachedState = (byte) (nodeState - 2);
         }
     }
 
@@ -814,10 +958,12 @@ public final class Database implements Closeable {
 
         // Indicate that node is least recently used, allowing it to be
         // re-allocated immediately without evicting another node.
-        mCacheLatch.acquireExclusive();
+        final Latch cacheLatch = mCacheLatch;
+        cacheLatch.acquireExclusive();
         try {
             Node lessUsed = node.mLessUsed;
             if (lessUsed != null) {
+                adjustFlushBarrierLRU(node);
                 Node moreUsed = node.mMoreUsed;
                 if ((lessUsed.mMoreUsed = moreUsed) == null) {
                     mMostRecentlyUsed = lessUsed;
@@ -829,7 +975,7 @@ public final class Database implements Closeable {
                 mLeastRecentlyUsed = node;
             }
         } finally {
-            mCacheLatch.releaseExclusive();
+            cacheLatch.releaseExclusive();
         }
     }
 
@@ -838,7 +984,9 @@ public final class Database implements Closeable {
      */
     void deletePage(long id, int cachedState) throws IOException {
         if (id != 0) {
-            if (cachedState == mCommitState) {
+            // Test that cached state is flushed or dirty, and that bit 0 matches.
+            int test = cachedState ^ mCommitState;
+            if (test == 0 || test == 6) {
                 // Newly reserved page was never used, so recycle it.
                 mPageStore.recyclePage(id);
             } else {
@@ -852,14 +1000,20 @@ public final class Database implements Closeable {
      * Indicate that non-root node is most recently used. Root node is not
      * managed in usage list and cannot be evicted.
      */
-    void used(Node node) {
+    void used(Node node) throws IOException {
         // Because this method can be a bottleneck, don't wait for exclusive
         // latch. If node is popular, it will get more chances to be identified
         // as most recently used. This strategy works well enough because cache
         // eviction is always a best-guess approach.
-        if (mCacheLatch.tryAcquireExclusive()) {
-            Node moreUsed = node.mMoreUsed;
-            if (moreUsed != null) {
+        final Latch cacheLatch = mCacheLatch;
+        if (cacheLatch.tryAcquireExclusive()) {
+            Node toFlush;
+            try {
+                Node moreUsed = node.mMoreUsed;
+                if (moreUsed == null) {
+                    return;
+                }
+                toFlush = adjustFlushBarrierMRU(node);
                 Node lessUsed = node.mLessUsed;
                 if ((moreUsed.mLessUsed = lessUsed) == null) {
                     mLeastRecentlyUsed = moreUsed;
@@ -869,8 +1023,13 @@ public final class Database implements Closeable {
                 node.mMoreUsed = null;
                 (node.mLessUsed = mMostRecentlyUsed).mMoreUsed = node;
                 mMostRecentlyUsed = node;
+            } finally {
+                cacheLatch.releaseExclusive();
             }
-            mCacheLatch.releaseExclusive();
+
+            if (toFlush != null) {
+                flushNode(toFlush);
+            }
         }
     }
 
@@ -1006,7 +1165,7 @@ public final class Database implements Closeable {
         final Node root = mRegistry.mRoot;
         final long rootId = root.mId;
         final int stateToFlush = mCommitState;
-        mCommitState = (byte) (CACHED_DIRTY_0 + ((stateToFlush - CACHED_DIRTY_0) ^ 1));
+        mCommitState = (byte) (stateToFlush ^ 1);
         mPageStore.exclusiveCommitLock().unlock();
 
         // Gather all tree nodes to flush...
@@ -1022,7 +1181,8 @@ public final class Database implements Closeable {
         }
 
         // Sort nodes by id, which helps make writes more sequentially ordered.
-        Collections.sort(dirtyList);
+        // FIXME: testing
+        //Collections.sort(dirtyList);
 
         // Now write out all the dirty nodes. Some of them will have already
         // been concurrently written out, so check again.
@@ -1032,7 +1192,7 @@ public final class Database implements Closeable {
             dirtyList.set(mi, null);
             node.acquireExclusive();
             if (node.mCachedState != stateToFlush) {
-                // Was already evicted.
+                // Was already flushed.
                 node.releaseExclusive();
             } else {
                 node.mCachedState = CACHED_CLEAN;

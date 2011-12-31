@@ -129,6 +129,9 @@ final class Tree implements Index {
         TreeCursor cursor = new TreeCursor(this, txn);
         try {
             return cursor.findAndModify(key, TreeCursor.MODIFY_INSERT, value);
+        } catch (Throwable e) {
+            e.printStackTrace(System.out);
+            throw e;
         } finally {
             // FIXME: this can deadlock, because exception can be thrown at anytime
             cursor.close();
@@ -354,19 +357,51 @@ final class Tree implements Index {
 
             Node[] childNodes = node.mChildNodes;
 
-            for (int ci=0; ci<childNodes.length; ci++) {
+            childScan: for (int ci=0; ci<childNodes.length; ci++) {
                 Node childNode = childNodes[ci];
-                if (childNode != null) {
-                    long childId = node.retrieveChildRefIdFromIndex(ci);
-                    if (childId == childNode.mId) {
-                        childNode.acquireShared();
-                        if (childId == childNode.mId && childNode.mCachedState == dirtyState) {
-                            dirtyList.add(new DirtyNode(childNode, childId));
+                if (childNode == null) {
+                    continue childScan;
+                }
+
+                long childId = node.retrieveChildRefIdFromIndex(ci);
+                if (childId != childNode.mId) {
+                    continue childScan;
+                }
+
+                childNode.acquireShared();
+                if (childId == childNode.mId) {
+                    int test = childNode.mCachedState ^ dirtyState;
+                    if (test == 0) {
+                        dirtyList.add(new DirtyNode(childNode, childId));
+                        // Retain shared latch.
+                        continue childScan;
+                    }
+                    if (test == 6) {
+                        // Matched dirty state earlier, but it was flushed already.
+                        if (childNode.tryUpgrade()) {
+                            childNode.mCachedState = Node.CACHED_CLEAN;
                         } else {
+                            // Failed to upgrade the lock, so do over.
                             childNode.releaseShared();
+                            childNode.acquireExclusive();
+                            if (childId == childNode.mId) {
+                                test = childNode.mCachedState ^ dirtyState;
+                                if (test == 0) {
+                                    dirtyList.add(new DirtyNode(childNode, childId));
+                                    childNode.downgrade();
+                                    // Retain shared latch.
+                                    continue childScan;
+                                }
+                                if (test == 6) {
+                                    childNode.mCachedState = Node.CACHED_CLEAN;
+                                }
+                            }
                         }
+                        childNode.releaseExclusive();
+                        continue childScan;
                     }
                 }
+                childNode.releaseShared();
             }
 
             node.releaseShared();
