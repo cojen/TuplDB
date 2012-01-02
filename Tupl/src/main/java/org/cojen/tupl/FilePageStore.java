@@ -285,10 +285,10 @@ class FilePageStore implements PageStore {
     }
 
     @Override
-    public void preallocate(long pageCount) throws IOException {
+    public void allocatePages(long pageCount) throws IOException {
         mCommitLock.readLock().lock();
         try {
-            mPageManager.preallocate(pageCount);
+            mPageManager.allocatePages(pageCount);
         } catch (Throwable e) {
             throw closeOnFailure(e);
         } finally {

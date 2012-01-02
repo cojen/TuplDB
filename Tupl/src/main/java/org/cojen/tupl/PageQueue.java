@@ -179,7 +179,15 @@ final class PageQueue implements IntegerRef {
             final byte[] head = mRemoveHead;
             if (mRemoveHeadOffset < head.length) {
                 // Pass this as an IntegerRef to mRemoveHeadOffset.
-                long delta = DataIO.readUnsignedVarLong(head, this);
+                long delta;
+                try {
+                    delta = DataIO.readUnsignedVarLong(head, this);
+                } catch (IndexOutOfBoundsException e) {
+                    // FIXME: bug observed here
+                    System.out.println(DataIO.toHex(head));
+                    System.out.println(mRemoveHeadOffset);
+                    throw e;
+                }
                 if (delta > 0) {
                     mRemoveHeadFirstPageId = pageId + delta;
                     return pageId;

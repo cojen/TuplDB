@@ -685,7 +685,7 @@ final class UndoLog {
         return node;
     }
 
-    final void gatherDirtyNodes(List<DirtyNode> dirtyList, int dirtyState) {
+    final void gatherDirtyNodes(DirtyList dirtyList, int dirtyState) {
         Node node = mNode;
         if (node == null) {
             return;
@@ -698,7 +698,7 @@ final class UndoLog {
             while (true) {
                 int test = node.mCachedState ^ dirtyState;
                 if (test == 0) {
-                    dirtyList.add(new DirtyNode(node, node.mId));
+                    dirtyList.append(node);
                 } else if (test == 6) {
                     // Matched dirty state earlier, but it got flushed already.
                     node.mCachedState = Node.CACHED_CLEAN;
