@@ -1481,7 +1481,7 @@ final class TreeCursor implements Cursor {
         }
 
         Database db = mTree.mDatabase;
-        if (db.markDirtyQuick(node)) {
+        if (!db.shouldMarkDirty(node)) {
             return node;
         }
 
@@ -1498,7 +1498,7 @@ final class TreeCursor implements Cursor {
             if (parentNode == null) {
                 node.releaseExclusive();
                 parentFrame.acquireExclusive();
-            } else if (parentNode.mSplit != null || !db.markDirtyQuick(parentNode)) {
+            } else if (parentNode.mSplit != null || db.shouldMarkDirty(parentNode)) {
                 node.releaseExclusive();
             } else {
                 break doParent;
@@ -1539,9 +1539,6 @@ final class TreeCursor implements Cursor {
         }
 
         Node parentNode = parentFrame.acquireExclusive();
-
-        // FIXME: This code does not guarantee that parent node is dirty. Node
-        // might have been flushed.
 
         Node leftNode, rightNode;
         int nodeAvail;
@@ -1915,12 +1912,6 @@ final class TreeCursor implements Cursor {
                 if (node.mSplit == null) {
                     parentNode.releaseExclusive();
                     return node;
-                }
-                // Account for parent node getting flushed.
-                if (!db.markDirtyQuick(parentNode)) {
-                    // FIXME: This can be caused by checkpoint, because caller
-                    // didn't acquire shared commit lock.
-                    throw new AssertionError("Parent node must be dirtied");
                 }
                 parentNode.insertSplitChildRef(db, parentFrame.mNodePos, node);
             }

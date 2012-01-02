@@ -344,7 +344,9 @@ final class Tree implements Index {
         // short-circuiting. If the node was written, then it needs to be
         // traversed into, to gather up additional dirty nodes.
 
-        // TODO: Don't bother appending root if it isn't dirty.
+        if (mRoot.mCachedState != dirtyState) {
+            return;
+        }
 
         dirtyList.append(mRoot);
         DirtyList.Block iterator = dirtyList.mTail;
@@ -360,51 +362,19 @@ final class Tree implements Index {
 
                 Node[] childNodes = node.mChildNodes;
 
-                childScan: for (int ci=0; ci<childNodes.length; ci++) {
+                for (int ci=0; ci<childNodes.length; ci++) {
                     Node childNode = childNodes[ci];
-                    if (childNode == null) {
-                        continue childScan;
-                    }
-
-                    long childId = node.retrieveChildRefIdFromIndex(ci);
-                    if (childId != childNode.mId) {
-                        continue childScan;
-                    }
-
-                    childNode.acquireShared();
-                    if (childId == childNode.mId) {
-                        int test = childNode.mCachedState ^ dirtyState;
-                        if (test == 0) {
-                            dirtyList.append(childNode);
-                            // Retain shared latch.
-                            continue childScan;
-                        }
-                        if (test == 6) {
-                            // Matched dirty state earlier, but it was flushed already.
-                            if (childNode.tryUpgrade()) {
-                                childNode.mCachedState = Node.CACHED_CLEAN;
+                    if (childNode != null) {
+                        long childId = node.retrieveChildRefIdFromIndex(ci);
+                        if (childId == childNode.mId) {
+                            childNode.acquireShared();
+                            if (childId == childNode.mId && childNode.mCachedState == dirtyState) {
+                                dirtyList.append(childNode);
                             } else {
-                                // Failed to upgrade the lock, so do over.
                                 childNode.releaseShared();
-                                childNode.acquireExclusive();
-                                if (childId == childNode.mId) {
-                                    test = childNode.mCachedState ^ dirtyState;
-                                    if (test == 0) {
-                                        dirtyList.append(childNode);
-                                        childNode.downgrade();
-                                        // Retain shared latch.
-                                        continue childScan;
-                                    }
-                                    if (test == 6) {
-                                        childNode.mCachedState = Node.CACHED_CLEAN;
-                                    }
-                                }
                             }
-                            childNode.releaseExclusive();
-                            continue childScan;
                         }
                     }
-                    childNode.releaseShared();
                 }
             }
 

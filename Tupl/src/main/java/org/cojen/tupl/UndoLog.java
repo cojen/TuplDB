@@ -696,12 +696,8 @@ final class UndoLog {
 
         try {
             while (true) {
-                int test = node.mCachedState ^ dirtyState;
-                if (test == 0) {
+                if (node.mCachedState == dirtyState) {
                     dirtyList.append(node);
-                } else if (test == 6) {
-                    // Matched dirty state earlier, but it got flushed already.
-                    node.mCachedState = Node.CACHED_CLEAN;
                 }
 
                 long lowerNodeId = DataIO.readLong(node.mPage, I_LOWER_NODE_ID);
@@ -717,7 +713,7 @@ final class UndoLog {
                 Node lowerNode = childNodes[0];
                 lowerNode.acquireExclusive();
                 if (lowerNodeId != lowerNode.mId) {
-                    // Node and all remaining lower nodes were already flushed.
+                    // Node and all remaining lower nodes were already evicted.
                     lowerNode.releaseExclusive();
                     break;
                 }
