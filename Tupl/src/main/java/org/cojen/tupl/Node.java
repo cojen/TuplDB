@@ -29,17 +29,12 @@ import java.util.concurrent.locks.Lock;
  * @author Brian S O'Neill
  */
 final class Node extends Latch {
-    /* Note: Changing these values affects how the Database class handles the
-       commit flag. It only needs to flip bit 0 to switch between
-       CACHED_DIRTY_0 and CACHED_DIRTY_1. Also, node can be checked if it's
-       dirty just using >= operator. Flush check is made with bit mask.
-    */
+    // Note: Changing these values affects how the Database class handles the
+    // commit flag. It only needs to flip bit 0 to switch dirty states.
     static final byte
         CACHED_CLEAN     = 0, // 0b0000
-        CACHED_FLUSHED_0 = 2, // 0b0010
-        CACHED_FLUSHED_1 = 3, // 0b0011
-        CACHED_DIRTY_0   = 4, // 0b0100
-        CACHED_DIRTY_1   = 5; // 0b0101
+        CACHED_DIRTY_0   = 2, // 0b0010
+        CACHED_DIRTY_1   = 3; // 0b0011
 
     static final byte TYPE_UNDO_LOG = 1, TYPE_TREE_LEAF = 2, TYPE_TREE_INTERNAL = 3;
 
@@ -51,7 +46,6 @@ final class Node extends Latch {
     // These fields are managed exclusively by Database class.
     Node mMoreUsed; // points to more recently used node
     Node mLessUsed; // points to less recently used node
-    boolean mInSafeZone;
 
     /*
       Nodes define the contents of Trees and UndoLogs. All node types start
@@ -540,7 +534,7 @@ final class Node extends Latch {
             return false;
         }
 
-        if (isDirty()) {
+        if (mCachedState != CACHED_CLEAN) {
             // TODO: Keep some sort of cache of ids known to be dirty. If
             // reloaded before commit, then they're still dirty. Without this
             // optimization, too many pages are allocated when: evictions are
@@ -578,7 +572,7 @@ final class Node extends Latch {
                     if (child.tryAcquireShared()) {
                         long childId = retrieveChildRefIdFromIndex(i);
                         try {
-                            if (childId == child.mId && isDirty()) {
+                            if (childId == child.mId && mCachedState != CACHED_CLEAN) {
                                 // Cannot evict if a child is dirty. It must be
                                 // evicted first.
                                 // FIXME: Retry evict with child instead.
@@ -597,13 +591,6 @@ final class Node extends Latch {
         }
 
         return true;
-    }
-
-    /**
-     * Caller must hold any latch.
-     */
-    boolean isDirty() {
-        return mCachedState >= CACHED_DIRTY_0;
     }
 
     /**

@@ -31,7 +31,6 @@ public class DatabaseConfig {
     long mMaxCachedBytes;
     DurabilityMode mDurabilityMode;
     long mLockTimeoutNanos;
-    long mFlushThresholdBytes;
     boolean mFileSync;
     boolean mReadOnly;
     int mPageSize;
@@ -39,7 +38,6 @@ public class DatabaseConfig {
     public DatabaseConfig() {
         setDurabilityMode(null);
         setLockTimeout(1, TimeUnit.SECONDS);
-        setFlushThreshold(-1);
     }
 
     /**
@@ -98,11 +96,6 @@ public class DatabaseConfig {
      */
     public DatabaseConfig setLockTimeout(long timeout, TimeUnit unit) {
         mLockTimeoutNanos = Utils.toNanos(timeout, unit);
-        return this;
-    }
-
-    public DatabaseConfig setFlushThreshold(long thresholdBytes) {
-        mFlushThresholdBytes = thresholdBytes;
         return this;
     }
 
