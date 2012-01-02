@@ -329,7 +329,7 @@ final class Tree implements Index {
      * Gather all dirty pages which should be committed. Caller must acquire
      * shared latch on root node, which is released by this method.
      */
-    void gatherDirtyNodes(List<DirtyNode> dirtyList, int dirtyState) {
+    void gatherDirtyNodes(DirtyList dirtyList, int dirtyState) {
         // Perform a breadth-first traversal of tree, finding dirty nodes. This
         // step can effectively deny most concurrent access to the tree, but I
         // cannot figure out a safe way to find dirty nodes and allow access
@@ -344,67 +344,78 @@ final class Tree implements Index {
         // short-circuiting. If the node was written, then it needs to be
         // traversed into, to gather up additional dirty nodes.
 
-        int mi = dirtyList.size();
-        dirtyList.add(new DirtyNode(mRoot, mRoot.mId));
+        // TODO: Don't bother appending root if it isn't dirty.
 
-        for (; mi<dirtyList.size(); mi++) {
-            Node node = dirtyList.get(mi).mNode;
+        dirtyList.append(mRoot);
+        DirtyList.Block iterator = dirtyList.mTail;
+        int iteratorPos = iterator.mLastPos;
 
-            if (node.isLeaf()) {
-                node.releaseShared();
-                continue;
-            }
+        while (true) {
+            Node node = iterator.mNodes[iteratorPos];
 
-            Node[] childNodes = node.mChildNodes;
-
-            childScan: for (int ci=0; ci<childNodes.length; ci++) {
-                Node childNode = childNodes[ci];
-                if (childNode == null) {
-                    continue childScan;
+            nodeScan: {
+                if (node.isLeaf()) {
+                    break nodeScan;
                 }
 
-                long childId = node.retrieveChildRefIdFromIndex(ci);
-                if (childId != childNode.mId) {
-                    continue childScan;
-                }
+                Node[] childNodes = node.mChildNodes;
 
-                childNode.acquireShared();
-                if (childId == childNode.mId) {
-                    int test = childNode.mCachedState ^ dirtyState;
-                    if (test == 0) {
-                        dirtyList.add(new DirtyNode(childNode, childId));
-                        // Retain shared latch.
+                childScan: for (int ci=0; ci<childNodes.length; ci++) {
+                    Node childNode = childNodes[ci];
+                    if (childNode == null) {
                         continue childScan;
                     }
-                    if (test == 6) {
-                        // Matched dirty state earlier, but it was flushed already.
-                        if (childNode.tryUpgrade()) {
-                            childNode.mCachedState = Node.CACHED_CLEAN;
-                        } else {
-                            // Failed to upgrade the lock, so do over.
-                            childNode.releaseShared();
-                            childNode.acquireExclusive();
-                            if (childId == childNode.mId) {
-                                test = childNode.mCachedState ^ dirtyState;
-                                if (test == 0) {
-                                    dirtyList.add(new DirtyNode(childNode, childId));
-                                    childNode.downgrade();
-                                    // Retain shared latch.
-                                    continue childScan;
-                                }
-                                if (test == 6) {
-                                    childNode.mCachedState = Node.CACHED_CLEAN;
+
+                    long childId = node.retrieveChildRefIdFromIndex(ci);
+                    if (childId != childNode.mId) {
+                        continue childScan;
+                    }
+
+                    childNode.acquireShared();
+                    if (childId == childNode.mId) {
+                        int test = childNode.mCachedState ^ dirtyState;
+                        if (test == 0) {
+                            dirtyList.append(childNode);
+                            // Retain shared latch.
+                            continue childScan;
+                        }
+                        if (test == 6) {
+                            // Matched dirty state earlier, but it was flushed already.
+                            if (childNode.tryUpgrade()) {
+                                childNode.mCachedState = Node.CACHED_CLEAN;
+                            } else {
+                                // Failed to upgrade the lock, so do over.
+                                childNode.releaseShared();
+                                childNode.acquireExclusive();
+                                if (childId == childNode.mId) {
+                                    test = childNode.mCachedState ^ dirtyState;
+                                    if (test == 0) {
+                                        dirtyList.append(childNode);
+                                        childNode.downgrade();
+                                        // Retain shared latch.
+                                        continue childScan;
+                                    }
+                                    if (test == 6) {
+                                        childNode.mCachedState = Node.CACHED_CLEAN;
+                                    }
                                 }
                             }
+                            childNode.releaseExclusive();
+                            continue childScan;
                         }
-                        childNode.releaseExclusive();
-                        continue childScan;
                     }
+                    childNode.releaseShared();
                 }
-                childNode.releaseShared();
             }
 
             node.releaseShared();
+
+            if (++iteratorPos > iterator.mLastPos) {
+                if ((iterator = iterator.mNext) == null) {
+                    break;
+                }
+                iteratorPos = 0;
+            }
         }
     }
 }

@@ -18,13 +18,9 @@ package org.cojen.tupl;
 
 import java.io.Closeable;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -517,7 +513,7 @@ public final class Database implements Closeable {
         int pageSize = pageSize();
         long pageCount = (bytes + pageSize - 1) / pageSize;
         if (pageCount > 0) {
-            mPageStore.preallocate(pageCount);
+            mPageStore.allocatePages(pageCount);
             checkpoint(true);
         }
     }
@@ -1061,6 +1057,9 @@ public final class Database implements Closeable {
     }
 
     private void checkpoint(boolean force) throws IOException {
+        // Ensures all pages are allocated by the file system.
+        mPageStore.allocatePages(0);
+
         // Checkpoint lock ensures consistent state between page store and logs.
         synchronized (mCheckpointLock) {
             final Node root = mRegistry.mRoot;
@@ -1093,8 +1092,7 @@ public final class Database implements Closeable {
             }
 
             // List of nodes which must flushed.
-            final List<DirtyNode> dirtyList = new ArrayList<DirtyNode>
-                (Math.min(1000, mMaxCachedNodeCount));
+            final DirtyList dirtyList = new DirtyList();
 
             final UndoLog masterUndoLog;
             final long masterUndoLogId;
@@ -1141,7 +1139,7 @@ public final class Database implements Closeable {
     /**
      * Method is invoked with exclusive commit lock and shared root node latch held.
      */
-    private byte[] flush(final List<DirtyNode> dirtyList,
+    private byte[] flush(final DirtyList dirtyList,
                          final long redoLogId,
                          final long masterUndoLogId)
         throws IOException
@@ -1191,16 +1189,15 @@ public final class Database implements Closeable {
             tree.gatherDirtyNodes(dirtyList, stateToFlush);
         }
 
-        // Sort nodes by id, which helps make writes more sequentially ordered.
-        // FIXME: testing
-        //Collections.sort(dirtyList);
-
         // Now write out all the dirty nodes. Some of them will have already
         // been concurrently written out, so check again.
 
-        for (int mi=0; mi<dirtyList.size(); mi++) {
-            Node node = dirtyList.get(mi).mNode;
-            dirtyList.set(mi, null);
+        Node[] dirtyNodes = dirtyList.sorted();
+
+        if (dirtyNodes != null) for (int i=0; i<dirtyNodes.length; i++) {
+            Node node = dirtyNodes[i];
+            dirtyNodes[i] = null;
+
             node.acquireExclusive();
             if (node.mCachedState != stateToFlush) {
                 // Was already flushed.

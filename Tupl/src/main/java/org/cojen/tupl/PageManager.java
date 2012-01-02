@@ -166,31 +166,34 @@ final class PageManager {
     }
 
     /**
-     * Preallocates pages for immediate use.
+     * Allocates pages for immediate use. Even if requested page count is zero,
+     * this method ensures the file system has allocated all pages.
      */
-    public void preallocate(long pageCount) throws IOException {
-        if (pageCount <= 0) {
-            return;
-        }
-
-        PageStore.Stats stats = new PageStore.Stats();
-        addTo(stats);
-        pageCount -= stats.freePages;
-
-        if (pageCount <= 0) {
-            return;
-        }
-
-        do {
-            long pageId;
-            mRemoveLock.lock();
-            try {
-                pageId = createPage();
-            } finally {
-                mRemoveLock.unlock();
+    public void allocatePages(long pageCount) throws IOException {
+        createPages: {
+            if (pageCount <= 0) {
+                break createPages;
             }
-            recyclePage(pageId);
-        } while (--pageCount > 0);
+
+            PageStore.Stats stats = new PageStore.Stats();
+            addTo(stats);
+            pageCount -= stats.freePages;
+
+            if (pageCount <= 0) {
+                break createPages;
+            }
+
+            do {
+                long pageId;
+                mRemoveLock.lock();
+                try {
+                    pageId = createPage();
+                } finally {
+                    mRemoveLock.unlock();
+                }
+                recyclePage(pageId);
+            } while (--pageCount > 0);
+        }
 
         mPageArray.allocatePages();
     }
@@ -211,9 +214,6 @@ final class PageManager {
         } finally {
             fullUnlock();
         }
-
-        // Allocate pages before forcing user thread to do this as it writes.
-        mPageArray.allocatePages();
     }
 
     /**

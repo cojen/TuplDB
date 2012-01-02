@@ -112,7 +112,7 @@ public class DatabaseConfig {
      * checkpoints complete more quickly. As a result, the main database file
      * requires less pre-allocated pages and is smaller.
      */
-    public DatabaseConfig setFileSync(boolean fileSync) {
+    public DatabaseConfig setFileWriteSync(boolean fileSync) {
         mFileSync = fileSync;
         return this;
     }

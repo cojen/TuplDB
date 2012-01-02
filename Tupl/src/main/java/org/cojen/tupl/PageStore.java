@@ -147,9 +147,10 @@ interface PageStore extends Closeable {
     public void recyclePage(long id) throws IOException;
 
     /**
-     * Preallocates pages for immediate use.
+     * Allocates pages for immediate use. Even if requested page count is zero,
+     * this method ensures the file system has allocated all pages.
      */
-    public void preallocate(long pageCount) throws IOException;
+    public void allocatePages(long pageCount) throws IOException;
 
     /**
      * Access the shared commit lock, which prevents commits while held.
