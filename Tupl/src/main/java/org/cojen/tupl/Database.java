@@ -1175,7 +1175,8 @@ public final class Database implements Closeable {
         final long rootId = root.mId;
         final int stateToFlush = mCommitState;
         mCommitState = (byte) (stateToFlush ^ 1);
-        mPageStore.exclusiveCommitLock().unlock();
+        // FIXME: testing
+        //mPageStore.exclusiveCommitLock().unlock();
 
         // Gather all tree nodes to flush...
 
@@ -1188,6 +1189,9 @@ public final class Database implements Closeable {
             tree.mRoot.acquireShared();
             tree.gatherDirtyNodes(dirtyList, stateToFlush);
         }
+
+        // FIXME: Testing: Lock held during node gathering, to eliminate race condition.
+        mPageStore.exclusiveCommitLock().unlock();
 
         // Now write out all the dirty nodes. Some of them will have already
         // been concurrently written out, so check again.
