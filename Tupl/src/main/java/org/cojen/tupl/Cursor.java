@@ -16,12 +16,11 @@
 
 package org.cojen.tupl;
 
-import java.io.Closeable;
 import java.io.IOException;
 
 /**
  * Maintains a logical position in an {@link Index}. Cursors must be {@link
- * #close closed} when no longer needed to free up resources. Cursor instances
+ * #reset reset} when no longer needed to free up resources. Cursor instances
  * can only be safely used by one thread at a time. Instances can be exchanged
  * by threads, as long as a happens-before relationship is established. Without
  * proper exclusion, multiple threads interacting with a Cursor instance may
@@ -29,7 +28,7 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-public interface Cursor extends Closeable {
+public interface Cursor {
     /**
      * Returns an uncopied reference to the current key, or null if Cursor is
      * unpositioned. Array contents must not be modified.
@@ -194,9 +193,7 @@ public interface Cursor extends Closeable {
     public Cursor copy();
 
     /**
-     * Closes Cursor and moves it to an undefined position. Cursor is
-     * automatically re-opened on demand.
+     * Resets Cursor and moves it to an undefined position.
      */
-    @Override
-    public void close();
+    public void reset();
 }

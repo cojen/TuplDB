@@ -42,7 +42,7 @@ public class CursorTest4 {
                 c.findNearby(key);
                 c.store(value);
             }
-            c.close();
+            c.reset();
         }
 
         System.out.println("checkpoint");
@@ -92,7 +92,7 @@ public class CursorTest4 {
                         c.previous();
                     } while (c.value() != null);
 
-                    c.close();
+                    c.reset();
 
                     if (i != -2) {
                         System.out.println("not reached start: " + i);
@@ -115,7 +115,7 @@ public class CursorTest4 {
                     c.findNearby(key);
                     c.store(value);
                 }
-                c.close();
+                c.reset();
             }
 
             System.out.println("inserted odd");
@@ -130,7 +130,7 @@ public class CursorTest4 {
                     c.findNearby(key);
                     c.store(null);
                 }
-                c.close();
+                c.reset();
                 //sem.release();
             }
 

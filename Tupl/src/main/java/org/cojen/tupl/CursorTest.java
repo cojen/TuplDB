@@ -37,7 +37,7 @@ public class CursorTest {
         printEntry(c);
         c.previous();
         printEntry(c);
-        c.close();
+        c.reset();
 
         /*
         if (c.first()) {

@@ -1280,7 +1280,7 @@ final class TreeCursor implements Cursor {
     }
 
     @Override
-    public void close() {
+    public void reset() {
         TreeCursorFrame frame = mLeaf;
         if (frame == null) {
             return;
