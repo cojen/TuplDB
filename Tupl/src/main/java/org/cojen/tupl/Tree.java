@@ -345,6 +345,7 @@ final class Tree implements Index {
         // traversed into, to gather up additional dirty nodes.
 
         if (mRoot.mCachedState != dirtyState) {
+            mRoot.releaseShared();
             return;
         }
 
