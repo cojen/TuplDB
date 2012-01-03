@@ -234,8 +234,45 @@ public final class Transaction extends Locker {
         check();
 
         try {
-            // FIXME
-            throw null;
+            ParentScope parentScope = mParentScope;
+            if (parentScope == null) {
+                if (mHasRedo) {
+                    mDatabase.mRedoLog.txnRollback(mTxnId, 0);
+                    mHasRedo = false;
+                }
+            } else {
+                long txnId = mTxnId;
+                boolean hasRedo = mHasRedo;
+                do {
+                    long parentTxnId = parentScope.mTxnId;
+                    if (hasRedo) {
+                        mDatabase.mRedoLog.txnRollback(txnId, parentTxnId);
+                    }
+                    txnId = parentTxnId;
+                    hasRedo = parentScope.mHasRedo;
+                    parentScope = parentScope.mParentScope;
+                } while (parentScope != null);
+                if (hasRedo) {
+                    mDatabase.mRedoLog.txnRollback(txnId, 0);
+                }
+                mHasRedo = false;
+            }
+
+            UndoLog undo = mUndoLog;
+            if (undo != null) {
+                // Active transaction id is cleared as a side-effect.
+                undo.rollback(0);
+            }
+
+            // Exit and release all locks.
+            super.scopeExitAll();
+
+            mTxnId = 0;
+            mSavepoint = 0;
+            if (undo != null) {
+                undo.unregister();
+                mUndoLog = null;
+            }
         } catch (Throwable e) {
             throw borked(e);
         }
