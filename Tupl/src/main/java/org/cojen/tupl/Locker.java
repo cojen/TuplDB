@@ -350,15 +350,6 @@ class Locker {
     }
 
     /**
-     * Releases all locks held by this Locker, and exits all scopes.
-     */
-    final void reset() {
-        mParentScope = null;
-        scopeUnlockAll();
-        mTailBlock = null;
-    }
-
-    /**
      * @return new parent scope
      */
     final ParentScope scopeEnter() {
@@ -453,6 +444,15 @@ class Locker {
     final ParentScope scopeExit() {
         scopeUnlockAll();
         return popScope();
+    }
+
+    /**
+     * Releases all locks held by this Locker, and exits all scopes.
+     */
+    final void scopeExitAll() {
+        mParentScope = null;
+        scopeUnlockAll();
+        mTailBlock = null;
     }
 
     @Override

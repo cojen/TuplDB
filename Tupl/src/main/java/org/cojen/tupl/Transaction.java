@@ -16,7 +16,6 @@
 
 package org.cojen.tupl;
 
-import java.io.Closeable;
 import java.io.IOException;
 
 import java.util.concurrent.TimeUnit;
@@ -24,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 
 /**
- * Defines a logical unit of work. Transactions must be {@link #close closed}
+ * Defines a logical unit of work. Transactions must be {@link #reset reset}
  * when no longer needed to free up resources. Transaction instances can only
  * be safely used by one thread at a time. Instances can be exchanged by
  * threads, as long as a happens-before relationship is established. Without
@@ -38,7 +37,7 @@ import java.util.concurrent.locks.Lock;
  *
  * @author Brian S O'Neill
  */
-public final class Transaction extends Locker implements Closeable {
+public final class Transaction extends Locker {
     /**
      * Transaction instance which isn't a transaction at all. It always
      * operates in an {@link LockMode#UNSAFE unsafe} lock mode and a {@link
@@ -125,7 +124,7 @@ public final class Transaction extends Locker implements Closeable {
     /**
      * Commits all modifications made within the current transaction scope. The
      * current scope is still valid after this method is called, unless an
-     * exception is thrown. Call exit or close to fully release transaction
+     * exception is thrown. Call exit or reset to fully release transaction
      * resources.
      */
     public final void commit() throws IOException {
@@ -229,9 +228,9 @@ public final class Transaction extends Locker implements Closeable {
 
     /**
      * Exits all transaction scopes, rolling back all uncommitted
-     * modifications. Transaction is automatically re-opened on demand.
+     * modifications.
      */
-    public final void close() throws IOException {
+    public final void reset() throws IOException {
         check();
 
         try {
