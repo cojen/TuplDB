@@ -769,12 +769,13 @@ final class TreeCursor implements Cursor {
         try {
             mKey = key;
 
-            Node node = mTree.mRoot;
+            Node node;
             TreeCursorFrame frame;
 
             nearby: if (variant == VARIANT_NEARBY) {
                 frame = mLeaf;
                 if (frame == null) {
+                    node = mTree.mRoot;
                     node.acquireExclusive();
                     frame = new TreeCursorFrame();
                     break nearby;
@@ -795,7 +796,7 @@ final class TreeCursor implements Cursor {
                 if (pos >= 0) {
                     frame.mNotFoundKey = null;
                     frame.mNodePos = pos;
-                    node.retrieveLeafValue(pos);
+                    mValue = node.retrieveLeafValue(pos);
                     node.releaseExclusive();
                     return result;
                 } else if (pos != ~0 && ~pos <= node.highestLeafPos()) {
@@ -850,6 +851,7 @@ final class TreeCursor implements Cursor {
                 }
             } else {
                 // Regular variant always discards existing frames.
+                node = mTree.mRoot;
                 frame = reset(node);
             }
 
@@ -916,6 +918,75 @@ final class TreeCursor implements Cursor {
 
                 frame = new TreeCursorFrame(frame);
             }
+        } finally {
+            if (locker != null) {
+                locker.unlock();
+            }
+        }
+    }
+
+    @Override
+    public LockResult reload() throws IOException {
+        byte[] key = mKey;
+        if (key == null) {
+            throw new IllegalStateException("Cursor position is undefined");
+        }
+
+        LockResult result;
+        Locker locker;
+
+        Transaction txn = mTxn;
+        if (txn == null) {
+            result = LockResult.UNOWNED;
+            locker = mTree.lockSharedLocal(key);
+        } else {
+            switch (txn.lockMode()) {
+            default: // no read lock requested by READ_UNCOMMITTED or UNSAFE
+                result = LockResult.UNOWNED;
+                locker = null;
+                break;
+
+            case READ_COMMITTED:
+                if ((result = txn.lockShared(mTree.mId, key)) == LockResult.ACQUIRED) {
+                    result = LockResult.UNOWNED;
+                    locker = txn;
+                } else {
+                    locker = null;
+                }
+                break;
+
+            case REPEATABLE_READ:
+                result = txn.lockShared(mTree.mId, key);
+                locker = null;
+                break;
+
+            case UPGRADABLE_READ:
+                result = txn.lockUpgradable(mTree.mId, key);
+                locker = null;
+                break;
+            }
+        }
+
+        try {
+            TreeCursorFrame frame = mLeaf;
+            Node node = frame.acquireShared();
+            if (node.mSplit == null) {
+                int pos = frame.mNodePos;
+                mValue = pos >= 0 ? node.retrieveLeafValue(pos) : null;
+                node.releaseShared();
+            } else {
+                if (!node.tryUpgrade()) {
+                    node.releaseShared();
+                    node = frame.acquireExclusive();
+                }
+                if (node.mSplit != null) {
+                    node = finishSplit(frame, node);
+                }
+                int pos = frame.mNodePos;
+                mValue = pos >= 0 ? node.retrieveLeafValue(pos) : null;
+                node.releaseExclusive();
+            }
+            return result;
         } finally {
             if (locker != null) {
                 locker.unlock();
