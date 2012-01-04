@@ -92,9 +92,10 @@ public interface Cursor {
     public LockResult previous() throws IOException;
 
     /**
-     * Moves the Cursor to find the given key. Ownership of the key instance
-     * transfers to the Cursor, and it should no longer be modified after
-     * calling this method.
+     * Moves the Cursor to find the given key.
+     *
+     * <p>Ownership of the key instance transfers to the Cursor, and it should
+     * no longer be modified after calling this method.
      *
      * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
      * OWNED_EXCLUSIVE
@@ -104,8 +105,10 @@ public interface Cursor {
 
     /**
      * Moves the Cursor to find the first available entry greater than or equal
-     * to the given key. Ownership of the key instance transfers to the Cursor,
-     * and it should no longer be modified after calling this method.
+     * to the given key.
+     *
+     * <p>Ownership of the key instance transfers to the Cursor, and it should
+     * no longer be modified after calling this method.
      *
      * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
      * OWNED_EXCLUSIVE
@@ -115,8 +118,10 @@ public interface Cursor {
 
     /**
      * Moves the Cursor to find the first available entry greater than the
-     * given key. Ownership of the key instance transfers to the Cursor, and it
-     * should no longer be modified after calling this method.
+     * given key.
+     *
+     * <p>Ownership of the key instance transfers to the Cursor, and it should
+     * no longer be modified after calling this method.
      *
      * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
      * OWNED_EXCLUSIVE
@@ -126,8 +131,10 @@ public interface Cursor {
 
     /**
      * Moves the Cursor to find the first available entry less than or equal to
-     * the given key. Ownership of the key instance transfers to the Cursor,
-     * and it should no longer be modified after calling this method.
+     * the given key.
+     *
+     * <p>Ownership of the key instance transfers to the Cursor, and it should
+     * no longer be modified after calling this method.
      *
      * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
      * OWNED_EXCLUSIVE
@@ -137,8 +144,10 @@ public interface Cursor {
 
     /**
      * Moves the Cursor to find the first available entry less than the given
-     * key. Ownership of the key instance transfers to the Cursor, and it
-     * should no longer be modified after calling this method.
+     * key.
+     *
+     * <p>Ownership of the key instance transfers to the Cursor, and it should
+     * no longer be modified after calling this method.
      *
      * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
      * OWNED_EXCLUSIVE
@@ -160,6 +169,14 @@ public interface Cursor {
      * @throws NullPointerException if key is null
      */
     public LockResult findNearby(byte[] key) throws IOException;
+
+    /**
+     * Reloads the value at the cursor's current position. Cursor value is set
+     * to null if entry no longer exists, but the position remains the same.
+     *
+     * @throws IllegalStateException if position is undefined at invocation time
+     */
+    public LockResult reload() throws IOException;
 
     /**
      * Stores a value into the current entry, leaving the position
