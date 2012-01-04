@@ -20,7 +20,13 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
- * Used internally by Locker.
+ * Used internally by Locker. Only detects deadlocks caused by independent
+ * threads. A thread "self deadlock" caused by separate lockers in the same
+ * thread is not detected. This is because there is only one thread blocked.
+ * The detector relies on multiple threads to be blocked waiting on a lock.
+ * Lockers aren't registered with any specific thread, and therefore locks
+ * cannot be owned by threads. If this policy changes, then the detector could
+ * see that the thread is self deadlocked.
  *
  * @author Brian S O'Neill
  */
