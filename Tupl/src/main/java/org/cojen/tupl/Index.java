@@ -92,7 +92,7 @@ public interface Index {
      * @return copy of value, or null if entry doesn't exist
      * @throws NullPointerException if key is null
      */
-    public byte[] get(Transaction txn, byte[] key) throws IOException;
+    public byte[] load(Transaction txn, byte[] key) throws IOException;
 
     /**
      * Unconditionally associates a value with the given key.

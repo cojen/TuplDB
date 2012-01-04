@@ -208,7 +208,7 @@ public final class Database implements Closeable {
 
             // Open mRegistryKeyMap.
             {
-                byte[] encodedRootId = mRegistry.get(Transaction.BOGUS, Utils.EMPTY_BYTES);
+                byte[] encodedRootId = mRegistry.load(Transaction.BOGUS, Utils.EMPTY_BYTES);
 
                 Node rootNode;
                 if (encodedRootId == null) {
@@ -455,7 +455,7 @@ public final class Database implements Closeable {
             idKey[0] = KEY_TYPE_INDEX_ID;
             DataIO.writeLong(idKey, 1, id);
 
-            byte[] name = mRegistryKeyMap.get(null, idKey);
+            byte[] name = mRegistryKeyMap.load(null, idKey);
 
             if (name == null) {
                 return null;
@@ -576,7 +576,7 @@ public final class Database implements Closeable {
             }
 
             byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, name);
-            byte[] treeIdBytes = mRegistryKeyMap.get(null, nameKey);
+            byte[] treeIdBytes = mRegistryKeyMap.load(null, nameKey);
             long treeId;
 
             if (treeIdBytes != null) {
@@ -584,7 +584,7 @@ public final class Database implements Closeable {
             } else if (!create) {
                 return null;
             } else synchronized (mOpenTrees) {
-                treeIdBytes = mRegistryKeyMap.get(null, nameKey);
+                treeIdBytes = mRegistryKeyMap.load(null, nameKey);
                 if (treeIdBytes != null) {
                     treeId = DataIO.readLong(treeIdBytes, 0);
                 } else {
@@ -610,7 +610,7 @@ public final class Database implements Closeable {
                 }
             }
 
-            byte[] encodedRootId = mRegistry.get(Transaction.BOGUS, treeIdBytes);
+            byte[] encodedRootId = mRegistry.load(Transaction.BOGUS, treeIdBytes);
 
             Node rootNode;
             if (encodedRootId == null || encodedRootId.length == 0) {
