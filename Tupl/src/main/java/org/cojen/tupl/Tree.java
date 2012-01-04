@@ -102,7 +102,7 @@ final class Tree implements Index {
     }
 
     @Override
-    public byte[] get(Transaction txn, byte[] key) throws IOException {
+    public byte[] load(Transaction txn, byte[] key) throws IOException {
         Locker locker = lockForRead(txn, key);
         try {
             return mRoot.search(this, key);

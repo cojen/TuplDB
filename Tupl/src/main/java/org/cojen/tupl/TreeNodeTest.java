@@ -76,7 +76,7 @@ public class TreeNodeTest {
           a race between the sorted sweep and eviction? Race with splits?
         */
 
-        byte[] value = index.get(null, "hello".getBytes());
+        byte[] value = index.load(null, "hello".getBytes());
         System.out.println(value == null ? null : new String(value));
 
         Map<String, String> map = new TreeMap<String, String>();
