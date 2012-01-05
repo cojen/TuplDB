@@ -38,7 +38,7 @@ class WaitQueue {
      *
      * @param node newly allocated node
      * @param nanosTimeout negative for infinite
-     * @return -1 if interrupted, 0 if timed out, 1 if signalled
+     * @return -1 if interrupted, 0 if timed out, 1 if signaled
      */
     int await(Latch latch, Node node, long nanosTimeout) {
         node.mWaiter = Thread.currentThread();
@@ -57,20 +57,17 @@ class WaitQueue {
                 latch.releaseExclusive();
                 LockSupport.park();
                 latch.acquireExclusive();
-                int state = node.state();
-                if (state > 0) {
-                    return 1;
-                } else if (state < 0) {
-                    node.remove(this);
-                    return -1;
+                int state = node.resumed(this);
+                if (state != 0) {
+                    return state;
                 }
             }
         } else if (nanosTimeout == 0) {
             latch.releaseExclusive();
             LockSupport.parkNanos(0);
             latch.acquireExclusive();
-            int state = node.state();
-            if (state <= 0) {
+            int state = node.resumed(this);
+            if (state == 0) {
                 node.remove(this);
             }
             return state;
@@ -80,13 +77,11 @@ class WaitQueue {
                 latch.releaseExclusive();
                 LockSupport.parkNanos(nanosTimeout);
                 latch.acquireExclusive();
-                int state = node.state();
-                if (state > 0) {
-                    return 1;
-                } else if (state < 0) {
-                    node.remove(this);
-                    return -1;
-                } else if ((nanosTimeout = end - System.nanoTime()) <= 0) {
+                int state = node.resumed(this);
+                if (state != 0) {
+                    return state;
+                }
+                if ((nanosTimeout = end - System.nanoTime()) <= 0) {
                     node.remove(this);
                     return 0;
                 }
@@ -95,75 +90,39 @@ class WaitQueue {
     }
 
     /**
-     * Exclusive latch must be held, which is still held when method returns.
+     * Signals the first waiter, unless queue is empty. Exclusive latch must be
+     * held, which is still held when method returns.
      */
-    void signalOne() {
+    void signal() {
         Node head = mHead;
         if (head != null) {
-            Node next = head.mNext;
             head.signal();
-            if ((mHead = next) == null) {
-                mTail = null;
-            } else {
-                next.mPrev = null;
-            }
         }
     }
 
     /**
-     * Exclusive latch must be held, which is still held when method returns.
+     * Signals the first waiter if it is a shared waiter. Exclusive latch must
+     * be held, which is still held when method returns.
      */
-    void signalAll() {
+    void signalShared() {
         Node head = mHead;
-        if (head != null) {
-            while (true) {
-                Node next = head.mNext;
-                head.signal();
-                if (next == null) {
-                    mHead = null;
-                    mTail = null;
-                    return;
-                }
-                head = next;
-            }
+        if (head instanceof Shared) {
+            head.signal();
         }
     }
 
     /**
-     * Signals all shared waiters in the queue until an exclusive waiter is
-     * reached. If an exclusive waiter is seen at the head of the queue, it is
-     * signalled instead, if allowed. Exclusive latch must be held, which is
-     * still held when method returns.
+     * Same as signalShared, except returns false if queue is empty.
      */
-    void signalShared(boolean allowSignalExclusive) {
+    boolean signalNextShared() {
         Node head = mHead;
-        if (head != null) {
-            if (head instanceof Shared) {
-                while (true) {
-                    Node next = head.mNext;
-                    head.signal();
-                    if (next == null) {
-                        mHead = null;
-                        mTail = null;
-                        return;
-                    }
-                    if (!(next instanceof Shared)) {
-                        next.mPrev = null;
-                        mHead = next;
-                        return;
-                    }
-                    head = next;
-                }
-            } else if (allowSignalExclusive) {
-                Node next = head.mNext;
-                head.signal();
-                if ((mHead = next) == null) {
-                    mTail = null;
-                } else {
-                    next.mPrev = null;
-                }
-            }
+        if (head == null) {
+            return false;
         }
+        if (head instanceof Shared) {
+            head.signal();
+        }
+        return true;
     }
 
     static class Node {
@@ -172,23 +131,28 @@ class WaitQueue {
         Node mNext;
 
         /**
-         * @return -1 if interrupted, 0 if not signalled, 1 if signalled
+         * Called by thread which was parked after it resumes. Caller is
+         * responsible for removing node from queue if return value is 0.
+         *
+         * @return -1 if interrupted, 0 if not signaled, 1 if signaled
          */
-        final int state() {
+        final int resumed(WaitQueue queue) {
             Thread thread = mWaiter;
+            if (thread == null) {
+                remove(queue);
+                return 1;
+            }
             if (thread.isInterrupted()) {
                 Thread.interrupted();
-                // Favor signal over interrupt. Caller removes if interrupted.
-                return mNext == this ? 1 : -1;
-            } else {
-                return mNext == this ? 1 : 0;
+                remove(queue);
+                return -1;
             }
+            return 0;
         }
 
         final void signal() {
-            mNext = this;
-            mPrev = null;
             LockSupport.unpark(mWaiter);
+            mWaiter = null;
         }
 
         final void remove(WaitQueue queue) {

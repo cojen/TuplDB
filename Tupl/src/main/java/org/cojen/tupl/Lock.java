@@ -109,7 +109,8 @@ final class Lock {
             int w = queueSX.await(latch, new WaitQueue.Shared(), nanosTimeout);
             queueSX = mQueueSX;
 
-            if (queueSX != null && queueSX.isEmpty()) {
+            // After consuming one signal, next shared waiter must be signaled, and so on.
+            if (queueSX != null && !queueSX.signalNextShared()) {
                 // Indicate that last signal has been consumed, and also free memory.
                 mQueueSX = null;
             }
@@ -214,7 +215,7 @@ final class Lock {
             if (count != 0 && isSharedLocker(locker)) {
                 // Signal that another waiter can get the lock instead.
                 if (queueU != null) {
-                    queueU.signalOne();
+                    queueU.signal();
                 }
                 locker.mWaitingFor = null;
                 return ILLEGAL;
@@ -329,7 +330,7 @@ final class Lock {
             WaitQueue queueU = mQueueU;
             if (queueU != null) {
                 // Signal at most one upgradable lock waiter.
-                queueU.signalOne();
+                queueU.signal();
             }
             int count = mLockCount;
             if (count != ~0) {
@@ -342,10 +343,10 @@ final class Lock {
                 if (queueSX == null) {
                     return queueU == null;
                 } else {
-                    // Signal all shared lock waiters. Queue doesn't contain
+                    // Signal first shared lock waiter. Queue doesn't contain
                     // any exclusive lock waiters, because they would need to
                     // acquire upgradable lock first, which was held.
-                    queueSX.signalAll();
+                    queueSX.signal();
                     return false;
                 }
             }
@@ -380,7 +381,7 @@ final class Lock {
                     // Signal any exclusive lock waiter. Queue shouldn't contain
                     // any shared lock waiters, because no exclusive lock is
                     // held. In case there are any, signal them instead.
-                    queueSX.signalShared(true);
+                    queueSX.signal();
                 }
                 return false;
             } else {
@@ -400,7 +401,7 @@ final class Lock {
             WaitQueue queueU = mQueueU;
             if (queueU != null) {
                 // Signal at most one upgradable lock waiter.
-                queueU.signalOne();
+                queueU.signal();
             }
             int count = mLockCount;
             if (count != ~0) {
@@ -416,10 +417,10 @@ final class Lock {
                 addSharedLocker(0, locker);
                 WaitQueue queueSX = mQueueSX;
                 if (queueSX != null) {
-                    // Signal all shared lock waiters. Queue doesn't contain
+                    // Signal first shared lock waiter. Queue doesn't contain
                     // any exclusive lock waiters, because they would need to
                     // acquire upgradable lock first, which was held.
-                    queueSX.signalAll();
+                    queueSX.signal();
                 }
             }
         } else if (mLockCount == 0 || !isSharedLocker(locker)) {
@@ -447,7 +448,7 @@ final class Lock {
         mLockCount = 0x80000000;
         WaitQueue queueSX = mQueueSX;
         if (queueSX != null) {
-            queueSX.signalShared(false);
+            queueSX.signalShared();
         }
     }
 
