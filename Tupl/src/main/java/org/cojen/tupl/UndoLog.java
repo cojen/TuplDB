@@ -346,36 +346,20 @@ final class UndoLog {
     }
 
     /**
-     * Truncate all log entries to the given savepoint. Pass zero to truncate
-     * everything. Caller does not need to hold commit lock.
+     * Truncate all log entries. Caller does not need to hold commit lock.
      */
-    final void truncate(long savepoint) throws IOException {
-        if (savepoint < mLength) {
+    final void truncate() throws IOException {
+        if (mLength > 0) {
             final Lock sharedCommitLock = mDatabase.sharedCommitLock();
             sharedCommitLock.lock();
             try {
                 Node node = mNode;
                 if (node == null) {
-                    mBufferPos = mBuffer.length - (int) savepoint;
-                } else if (savepoint == 0) {
-                    while ((node = popNode(node)) != null);
+                    mBufferPos = mBuffer.length;
                 } else {
-                    int pageSize = mDatabase.pageSize();
-                    long amount = mLength - savepoint;
-                    while (true) {
-                        int size = pageSize - node.mGarbage;
-                        if (size >= amount) {
-                            node.mGarbage += (int) amount;
-                            break;
-                        }
-                        node = popNode(node);
-                        if (node == null) {
-                            throw new CorruptNodeException("Remainder of undo log is missing");
-                        }
-                        amount -= size;
-                    }
+                    while ((node = popNode(node)) != null);
                 }
-                mLength = savepoint;
+                mLength = 0;
                 mActiveIndexId = 0;
             } finally {
                 sharedCommitLock.unlock();
@@ -829,7 +813,7 @@ final class UndoLog {
         }
 
         // Delete this master log.
-        truncate(0);
+        truncate();
 
         return any;
     }
