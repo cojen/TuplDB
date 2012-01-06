@@ -960,7 +960,7 @@ public final class Database implements Closeable {
                 // Delete the master undo log, which won't take effect until
                 // the next checkpoint.
                 masterUndoLog.mNode.acquireExclusive();
-                masterUndoLog.truncate(0);
+                masterUndoLog.truncate();
             }
 
             // Note: The delete step can get skipped if process exits at this

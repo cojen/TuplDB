@@ -138,17 +138,20 @@ public final class Transaction extends Locker {
                 mHasRedo = false;
             }
 
+            UndoLog undo = mUndoLog;
             if (parentScope == null) {
                 super.scopeUnlockAll();
+                // Safe to truncate obsolete log entries after releasing locks.
+                if (undo != null) {
+                    // Active transaction id is cleared as a side-effect.
+                    undo.truncate();
+                }
             } else {
                 super.promote();
-            }
-
-            // Safe to truncate obsolete log entries after releasing locks.
-            UndoLog undo = mUndoLog;
-            if (undo != null) {
-                // Active transaction id is cleared as a side-effect.
-                undo.truncate(mSavepoint);
+                if (undo != null) {
+                    // Active transaction id is cleared as a side-effect.
+                    mSavepoint = undo.savepoint();
+                }
             }
 
             // Next transaction id is assigned on demand.
