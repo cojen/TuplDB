@@ -33,9 +33,9 @@ public class TreeNodeTest {
 
         final Database db = Database.open
             (new DatabaseConfig()
-             .setBaseFile(file)
-             .setMinCacheSize(400_000_000)
-             .setDurabilityMode(DurabilityMode.NO_FLUSH));
+             .baseFile(file)
+             .minCacheSize(800_000_000)
+             .durabilityMode(DurabilityMode.NO_FLUSH));
         //db.preallocate(500_000_000L);
         final Index index = db.openIndex("test1");
 

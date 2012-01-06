@@ -28,7 +28,7 @@ public class CursorTest2 {
         java.io.File file = new java.io.File(args[0]);
 
         final Database db = Database.open
-            (new DatabaseConfig().setBaseFile(file).setMinCacheSize(400000000L));
+            (new DatabaseConfig().baseFile(file).minCacheSize(400000000L));
         final Index index = db.openIndex("test2");
 
         Cursor c = index.newCursor(null);
