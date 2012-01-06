@@ -28,7 +28,7 @@ public class CursorTest3 {
         java.io.File file = new java.io.File(args[0]);
 
         final Database db = Database.open
-            (new DatabaseConfig().setBaseFile(file));
+            (new DatabaseConfig().baseFile(file));
         final Index index = db.openIndex("test3");
 
         final int threadCount = Integer.parseInt(args[1]);

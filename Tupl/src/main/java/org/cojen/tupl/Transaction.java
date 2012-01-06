@@ -115,10 +115,10 @@ public final class Transaction extends Locker {
     }
 
     /**
-     * Returns the current lock timeout, in nanoseconds.
+     * Returns the current lock timeout, in the given unit.
      */
-    public final long lockTimeoutNanos() {
-        return mLockTimeoutNanos;
+    public final long lockTimeout(TimeUnit unit) {
+        return unit.convert(mLockTimeoutNanos, TimeUnit.NANOSECONDS);
     }
 
     /**

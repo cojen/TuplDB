@@ -36,14 +36,14 @@ public class DatabaseConfig {
     int mPageSize;
 
     public DatabaseConfig() {
-        setDurabilityMode(null);
-        setLockTimeout(1, TimeUnit.SECONDS);
+        durabilityMode(null);
+        lockTimeout(1, TimeUnit.SECONDS);
     }
 
     /**
      * Set the base file name for the database, which is required.
      */
-    public DatabaseConfig setBaseFile(File file) {
+    public DatabaseConfig baseFile(File file) {
         mBaseFile = file;
         return this;
     }
@@ -53,7 +53,7 @@ public class DatabaseConfig {
      *
      * @param minBytes cache size, in bytes
      */
-    public DatabaseConfig setMinCacheSize(long minBytes) {
+    public DatabaseConfig minCacheSize(long minBytes) {
         mMinCachedBytes = minBytes;
         return this;
     }
@@ -61,9 +61,9 @@ public class DatabaseConfig {
     /**
      * Set the maximum cache size, overriding the default.
      *
-     * @param minBytes cache size, in bytes
+     * @param maxBytes cache size, in bytes
      */
-    public DatabaseConfig setMaxCacheSize(long maxBytes) {
+    public DatabaseConfig maxCacheSize(long maxBytes) {
         mMaxCachedBytes = maxBytes;
         return this;
     }
@@ -72,7 +72,7 @@ public class DatabaseConfig {
      * Set the default transaction durability mode, which is {@link
      * DurabilityMode#SYNC SYNC} if not overridden.
      */
-    public DatabaseConfig setDurabilityMode(DurabilityMode durabilityMode) {
+    public DatabaseConfig durabilityMode(DurabilityMode durabilityMode) {
         if (durabilityMode == null) {
             durabilityMode = DurabilityMode.SYNC;
         }
@@ -83,18 +83,10 @@ public class DatabaseConfig {
     /**
      * Set the default lock acquisition timeout, which is 1 second if not
      * overridden. A negative timeout is infinite.
-     */
-    public DatabaseConfig setLockTimeoutMillis(long timeoutMillis) {
-        return setLockTimeout(timeoutMillis, TimeUnit.MILLISECONDS);
-    }
-
-    /**
-     * Set the default lock acquisition timeout, which is 1 second if not
-     * overridden. A negative timeout is infinite.
      *
      * @param unit required unit if timeout is more than zero
      */
-    public DatabaseConfig setLockTimeout(long timeout, TimeUnit unit) {
+    public DatabaseConfig lockTimeout(long timeout, TimeUnit unit) {
         mLockTimeoutNanos = Utils.toNanos(timeout, unit);
         return this;
     }
@@ -105,17 +97,17 @@ public class DatabaseConfig {
      * checkpoints complete more quickly. As a result, the main database file
      * requires less pre-allocated pages and is smaller.
      */
-    public DatabaseConfig setFileWriteSync(boolean fileSync) {
+    public DatabaseConfig fileWriteSync(boolean fileSync) {
         mFileSync = fileSync;
         return this;
     }
 
-    public DatabaseConfig setReadOnly(boolean readOnly) {
+    public DatabaseConfig readOnly(boolean readOnly) {
         mReadOnly = readOnly;
         return this;
     }
 
-    public DatabaseConfig setPageSize(int size) {
+    public DatabaseConfig pageSize(int size) {
         mPageSize = size;
         return this;
     }

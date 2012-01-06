@@ -26,7 +26,7 @@ public class CursorTest {
         java.io.File file = new java.io.File(args[0]);
 
         final Database db = Database.open
-            (new DatabaseConfig().setBaseFile(file));
+            (new DatabaseConfig().baseFile(file));
         final Index index = db.openIndex("test1");
 
         Cursor c = index.newCursor(null);
