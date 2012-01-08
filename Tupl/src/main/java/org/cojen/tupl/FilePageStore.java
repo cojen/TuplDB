@@ -382,11 +382,32 @@ class FilePageStore implements PageStore {
         // from working because the old pages would get overwritten.
         setHeaderChecksum(header);
 
-        // Ensure all writes are flushed before flushing the header. There's
-        // otherwise no ordering guarantees.
-        array.sync(false);
-        array.writePage(commitNumber & 1, header);
-        array.sync(true);
+        // Boost thread priorty during sync, to ensure it completes quickly.
+        // Some file systems don't sync on a "snapshot", but continue sync'ng
+        // pages which are dirtied during the sync itself.
+        final Thread t = Thread.currentThread();
+        final int original = t.getPriority();
+        try {
+            if (original != Thread.MAX_PRIORITY) {
+                try {
+                    t.setPriority(Thread.MAX_PRIORITY);
+                } catch (SecurityException e) {
+                }
+            }
+
+            // Ensure all writes are flushed before flushing the header. There's
+            // otherwise no ordering guarantees.
+            array.sync(false);
+            array.writePage(commitNumber & 1, header);
+            array.sync(true);
+        } finally {
+            if (t.getPriority() != original) {
+                try {
+                    t.setPriority(original);
+                } catch (SecurityException e) {
+                }
+            }
+        }
 
         mCommitNumber = commitNumber;
     }
