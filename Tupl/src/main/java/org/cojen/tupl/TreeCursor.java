@@ -645,7 +645,7 @@ final class TreeCursor implements Cursor {
             int pos = frame.mNodePos;
 
             if (pos >= 0) {
-                node.retrieveLeafValue(pos);
+                mValue = node.retrieveLeafValue(pos);
                 return true;
             }
         } finally {
