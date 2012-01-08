@@ -18,6 +18,7 @@ package org.cojen.tupl;
 
 import java.io.File;
 
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -31,6 +32,8 @@ public class DatabaseConfig {
     long mMaxCachedBytes;
     DurabilityMode mDurabilityMode;
     long mLockTimeoutNanos;
+    long mCheckpointRateNanos;
+    ScheduledExecutorService mCheckpointExecutor;
     boolean mFileSync;
     boolean mReadOnly;
     int mPageSize;
@@ -38,6 +41,7 @@ public class DatabaseConfig {
     public DatabaseConfig() {
         durabilityMode(null);
         lockTimeout(1, TimeUnit.SECONDS);
+        checkpointRate(1, TimeUnit.SECONDS);
     }
 
     /**
@@ -92,12 +96,31 @@ public class DatabaseConfig {
     }
 
     /**
-     * Set true to ensure all writes the main database file are immediately
-     * durable. This option typically reduces overall performance, but
-     * checkpoints complete more quickly. As a result, the main database file
-     * requires less pre-allocated pages and is smaller.
+     * Set the rate at which {@link Database#checkpoint checkpoints} are
+     * automatically performed. Default rate is 1 second. Pass a negative value
+     * to disable automatic checkpoints.
      */
-    public DatabaseConfig fileWriteSync(boolean fileSync) {
+    public DatabaseConfig checkpointRate(long rate, TimeUnit unit) {
+        mCheckpointRateNanos = Utils.toNanos(rate, unit);
+        return this;
+    }
+
+    /**
+     * Set an executor which runs automatic checkpoints. If not set, a
+     * dedicated thread is created to run checkpoints.
+     */
+    public DatabaseConfig checkpointExecutor(ScheduledExecutorService executor) {
+        mCheckpointExecutor = executor;
+        return this;
+    }
+
+    /**
+     * Set true to ensure all writes the main database file are immediately
+     * durable, although not checkpointed. This option typically reduces
+     * overall performance, but checkpoints complete more quickly. As a result,
+     * the main database file requires less pre-allocated pages and is smaller.
+     */
+    public DatabaseConfig syncWrites(boolean fileSync) {
         mFileSync = fileSync;
         return this;
     }

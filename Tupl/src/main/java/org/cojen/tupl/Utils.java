@@ -132,6 +132,11 @@ class Utils {
         throw new CorruptPageStoreException(e);
     }
 
+    static void uncaught(Throwable e) {
+        Thread t = Thread.currentThread();
+        t.getUncaughtExceptionHandler().uncaughtException(t, e);
+    }
+
     static RuntimeException rethrow(Throwable e) {
         Utils.<RuntimeException>castAndThrow(e);
         return null;
