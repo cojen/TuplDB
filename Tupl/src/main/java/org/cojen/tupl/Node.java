@@ -926,19 +926,6 @@ final class Node extends Latch {
         return pos < 0 ? ~pos : (pos + 2);
     }
 
-    private byte[] retrieveFirstLeafKey() {
-        final byte[] page = mPage;
-
-        int loc = DataIO.readUnsignedShort(page, mSearchVecStart);
-        int keyLen = page[loc++];
-        keyLen = keyLen >= 0 ? ((keyLen & 0x3f) + 1)
-            : (((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff));
-        byte[] key = new byte[keyLen];
-        System.arraycopy(page, loc, key, 0, keyLen);
-
-        return key;
-    }
-
     /**
      * @param pos position as provided by binarySearchLeaf; must be positive
      */
@@ -946,9 +933,9 @@ final class Node extends Latch {
         final byte[] page = mPage;
 
         int loc = DataIO.readUnsignedShort(page, mSearchVecStart + pos);
-        int header = page[loc++];
-        int keyLen = header >= 0 ? ((header & 0x3f) + 1)
-            : (((header & 0x3f) << 8) | ((page[loc++]) & 0xff));
+        int keyLen = page[loc++];
+        keyLen = keyLen >= 0 ? ((keyLen & 0x3f) + 1)
+            : (((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff));
         byte[] key = new byte[keyLen];
         System.arraycopy(page, loc, key, 0, keyLen);
 
@@ -2154,7 +2141,7 @@ final class Node extends Latch {
             newNode.mSearchVecEnd = newSearchVecLoc - 2;
 
             // Split key is copied from this, the right node.
-            split = new Split(false, newNode, retrieveFirstLeafKey());
+            split = new Split(false, newNode, retrieveLeafKey(0));
         } else {
             // Split into new right node.
 
@@ -2228,7 +2215,7 @@ final class Node extends Latch {
             newNode.mSearchVecEnd = newPage.length - 2;
 
             // Split key is copied from the new right node.
-            split = new Split(true, newNode, newNode.retrieveFirstLeafKey());
+            split = new Split(true, newNode, newNode.retrieveLeafKey(0));
         }
 
         mGarbage += garbageAccum;
