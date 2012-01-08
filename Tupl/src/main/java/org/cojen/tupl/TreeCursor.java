@@ -1621,7 +1621,7 @@ final class TreeCursor implements Cursor {
             if (parentNode.numKeys() <= 0) {
                 if (parentNode.mId != Node.STUB_ID) {
                     // FIXME: This shouldn't be a problem when internal nodes can be rebalanced.
-                    System.out.println("tiny internal node: " + (parentNode == mTree.mRoot));
+                    //System.out.println("tiny internal node: " + (parentNode == mTree.mRoot));
                 }
                 parentNode.releaseExclusive();
                 return;
@@ -1674,8 +1674,8 @@ final class TreeCursor implements Cursor {
         // original node and leaf parameters afterwards. The original node ends
         // up being referenced as a left or right member of the pair.
 
-        int leftAvail = leftNode == null ? 0 : leftNode.availableLeafBytes();
-        int rightAvail = rightNode == null ? 0 : rightNode.availableLeafBytes();
+        int leftAvail = leftNode == null ? -1 : leftNode.availableLeafBytes();
+        int rightAvail = rightNode == null ? -1 : rightNode.availableLeafBytes();
 
         // Choose adjacent node pair which has the most available space. If
         // only a rebalance can be performed on the pair, operating on
@@ -1753,16 +1753,12 @@ final class TreeCursor implements Cursor {
     {
         up: {
             if (node.shouldInternalMerge()) {
-                if (node.numKeys() > 0) {
+                if (node.numKeys() > 0 || node != mTree.mRoot) {
                     // Continue merging up the tree.
                     break up;
                 }
 
-                // Delete the root node, eliminating a tree level.
-
-                if (node != mTree.mRoot) {
-                    throw new AssertionError("Non-root empty node");
-                }
+                // Delete the empty root node, eliminating a tree level.
 
                 // Note: By retaining child latches (although one has already
                 // been deleted), another thread is prevented from splitting
@@ -1793,7 +1789,7 @@ final class TreeCursor implements Cursor {
 
         Node parentNode = parentFrame.acquireExclusive();
         if (parentNode.isLeaf()) {
-            throw new Error("parent is leaf!");
+            throw new AssertionError("Parent node is a leaf");
         }
 
         Node leftNode, rightNode;
@@ -1806,7 +1802,7 @@ final class TreeCursor implements Cursor {
             if (parentNode.numKeys() <= 0) {
                 if (parentNode.mId != Node.STUB_ID) {
                     // FIXME: This shouldn't be a problem when internal nodes can be rebalanced.
-                    System.out.println("tiny internal node (2): " + (parentNode == mTree.mRoot));
+                    //System.out.println("tiny internal node (2): " + (parentNode == mTree.mRoot));
                 }
                 parentNode.releaseExclusive();
                 return;
@@ -1859,8 +1855,8 @@ final class TreeCursor implements Cursor {
         // original node and frame parameters afterwards. The original node
         // ends up being referenced as a left or right member of the pair.
 
-        int leftAvail = leftNode == null ? 0 : leftNode.availableInternalBytes();
-        int rightAvail = rightNode == null ? 0 : rightNode.availableInternalBytes();
+        int leftAvail = leftNode == null ? -1 : leftNode.availableInternalBytes();
+        int rightAvail = rightNode == null ? -1 : rightNode.availableInternalBytes();
 
         // Choose adjacent node pair which has the most available space. If
         // only a rebalance can be performed on the pair, operating on

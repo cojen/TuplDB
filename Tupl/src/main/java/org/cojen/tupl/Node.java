@@ -671,7 +671,7 @@ final class Node extends Latch {
     }
 
     /**
-     * Returns true if leaf is not split and underutilized. If so, it should be
+     * Returns true if non-leaf is not split and underutilized. If so, it should be
      * merged with its neighbors, and possibly deleted. Caller must hold any latch.
      */
     boolean shouldInternalMerge() {
