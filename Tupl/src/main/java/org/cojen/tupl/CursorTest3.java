@@ -36,41 +36,6 @@ public class CursorTest3 {
         final int count = 1000000;
         final AtomicInteger next = new AtomicInteger();
 
-        Thread checkpointer = new Thread() {
-            public void run() {
-                try {
-                    long lastDuration = 0;
-
-                    while (true) {
-                        long delay = 1000L - lastDuration;
-                        if (delay > 0) {
-                            Thread.sleep(delay);
-                        }
-
-                        System.out.println("checkpoint...");
-                        long start = System.currentTimeMillis();
-                        db.checkpoint();
-                        long end = System.currentTimeMillis();
-                        //System.out.println("...done: " + pstore.stats());
-                        System.out.println("...done");
-
-                        //Thread.sleep(500);
-                        //System.exit(0);
-
-                        lastDuration = end - start;
-                    }
-                } catch (Throwable e) {
-                    synchronized (System.err) {
-                        e.printStackTrace();
-                    }
-                    System.exit(1);
-                }
-            }
-        };
-
-        checkpointer.setDaemon(true);
-        //checkpointer.start();
-
         Thread monitor = new Thread() {
             public void run() {
                 try {
@@ -171,14 +136,5 @@ public class CursorTest3 {
         //System.out.println("find value now: " + CursorTest.string(e));
         //System.out.println("c1: " + c1.verify());
         //System.out.println("c2: " + c2.verify());
-
-        if (checkpointer.isAlive()) {
-            System.out.println("last checkpoint...");
-            long start = System.currentTimeMillis();
-            db.checkpoint();
-            long end = System.currentTimeMillis();
-            //System.out.println("...done: " + pstore.stats());
-            System.out.println("...last checkpoint done");
-        }
     }
 }

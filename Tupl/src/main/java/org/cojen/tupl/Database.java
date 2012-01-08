@@ -26,6 +26,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledExecutorService;
+
 import java.util.concurrent.locks.Lock;
 
 import static org.cojen.tupl.Node.*;
@@ -65,6 +68,8 @@ public final class Database implements Closeable {
 
     private static final int DEFAULT_PAGE_SIZE = 4096;
 
+    private static int cThreadCounter;
+
     final DurabilityMode mDurabilityMode;
     final long mDefaultLockTimeoutNanos;
     final LockManager mLockManager;
@@ -100,8 +105,39 @@ public final class Database implements Closeable {
 
     private final Object mCheckpointLock = new Object();
 
+    private volatile Checkpointer mCheckpointer;
+
     public static Database open(DatabaseConfig config) throws IOException {
-        return new Database(config);
+        Database db = new Database(config);
+
+        long checkpointRateNanos = config.mCheckpointRateNanos;
+        if (checkpointRateNanos >= 0) {
+            ScheduledExecutorService executor = config.mCheckpointExecutor;
+            start: {
+                if (executor != null) {
+                    try {
+                        db.mCheckpointer = Checkpointer.start(db, checkpointRateNanos, executor);
+                        break start;
+                    } catch (RejectedExecutionException e) {
+                        // Use dedicated thread.
+                    }
+                }
+
+                db.mCheckpointer = Checkpointer.create(db, checkpointRateNanos);
+
+                int num;
+                synchronized (Database.class) {
+                    num = ++cThreadCounter;
+                }
+
+                Thread t = new Thread(db.mCheckpointer);
+                t.setDaemon(true);
+                t.setName("Checkpointer-" + (num & 0xffffffffL));
+                t.start();
+            }
+        }
+
+        return db;
     }
 
     private Database(DatabaseConfig config) throws IOException {
@@ -533,6 +569,11 @@ public final class Database implements Closeable {
      */
     @Override
     public void close() throws IOException {
+        Checkpointer c = mCheckpointer;
+        if (c != null) {
+            c.cancel();
+            c = null;
+        }
         if (mRedoLog != null) {
             mRedoLog.close();
         }

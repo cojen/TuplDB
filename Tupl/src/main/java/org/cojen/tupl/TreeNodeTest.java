@@ -34,7 +34,8 @@ public class TreeNodeTest {
         final Database db = Database.open
             (new DatabaseConfig()
              .baseFile(file)
-             .minCacheSize(800_000_000)
+             .minCacheSize(400_000_000)
+             //.syncWrites(true)
              .durabilityMode(DurabilityMode.NO_FLUSH));
         //db.preallocate(500_000_000L);
         final Index index = db.openIndex("test1");
@@ -84,48 +85,10 @@ public class TreeNodeTest {
 
         testInsert(map, true, index, "hello", "world");
 
-        Thread t = new Thread() {
-            public void run() {
-                try {
-                    long lastDuration = 0;
-
-                    while (true) {
-                        long delay = 1000L - lastDuration;
-                        if (delay > 0) {
-                            Thread.sleep(delay);
-                        }
-
-                        System.out.println("checkpoint...");
-                        long start = System.currentTimeMillis();
-                        db.checkpoint();
-                        long end = System.currentTimeMillis();
-                        //System.out.println("...done: " + pstore.stats());
-                        System.out.println("...done");
-
-                        //Thread.sleep(500);
-                        //System.exit(0);
-
-                        lastDuration = end - start;
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace(System.out);
-                    System.exit(1);
-                }
-            }
-        };
-
-        t.setDaemon(true);
-        t.start();
-
         Random rnd = new Random(89234723);
 
         long start = System.currentTimeMillis();
         for (int i=1; i<10_000_000; i++) {
-            /*
-            if (i % 100000 == 0) {
-                db.checkpoint();
-            }
-            */
             if (i % 10000 == 0) {
                 //System.out.println("" + i + ": " + pstore.stats());
                 System.out.println(i);
@@ -165,6 +128,7 @@ public class TreeNodeTest {
         byte[] bkey = key.getBytes();
         byte[] bvalue = value.getBytes();
 
+        /*
         Cursor c = index.newCursor(Transaction.BOGUS);
         c.find(bkey);
         boolean exists = c.value() != null;
@@ -172,6 +136,9 @@ public class TreeNodeTest {
             c.store(bvalue);
         }
         c.close();
+        */
+
+        index.store(Transaction.BOGUS, bkey, bvalue);
 
         /*
         byte[] fvalue = index.get(null, bkey);
