@@ -32,7 +32,7 @@ public interface Cursor {
     /**
      * Empty marker which indicates that value exists but has not been loaded.
      */
-    public static byte[] NOT_LOADED = new byte[0];
+    public static final byte[] NOT_LOADED = new byte[0];
 
     /**
      * Returns an uncopied reference to the current key, or null if Cursor is
@@ -196,7 +196,9 @@ public interface Cursor {
     /**
      * Stores a value into the current entry, leaving the position
      * unchanged. An entry may be inserted, updated or deleted by this
-     * method. A null value deletes the entry.
+     * method. A null value deletes the entry. Unless an exception is thrown,
+     * the object returned by the {@link #value} method will be the same
+     * instance as was provided to this method.
      *
      * @param value value to store; pass null to delete
      * @throws IllegalStateException if position is undefined at invocation time
