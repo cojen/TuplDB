@@ -117,6 +117,7 @@ final class Tree implements Index {
     public void store(Transaction txn, byte[] key, byte[] value) throws IOException {
         TreeCursor cursor = new TreeCursor(this, txn);
         try {
+            cursor.autoload(false);
             cursor.findAndStore(key, value);
         } finally {
             // FIXME: this can deadlock, because exception can be thrown at anytime
@@ -128,6 +129,7 @@ final class Tree implements Index {
     public boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException {
         TreeCursor cursor = new TreeCursor(this, txn);
         try {
+            cursor.autoload(false);
             return cursor.findAndModify(key, TreeCursor.MODIFY_INSERT, value);
         } catch (Throwable e) {
             e.printStackTrace(System.out);
@@ -142,6 +144,7 @@ final class Tree implements Index {
     public boolean replace(Transaction txn, byte[] key, byte[] value) throws IOException {
         TreeCursor cursor = new TreeCursor(this, txn);
         try {
+            cursor.autoload(false);
             return cursor.findAndModify(key, TreeCursor.MODIFY_REPLACE, value);
         } finally {
             // FIXME: this can deadlock, because exception can be thrown at anytime
@@ -174,7 +177,21 @@ final class Tree implements Index {
 
     @Override
     public void clear(Transaction txn) throws IOException {
-        // FIXME
+        if (txn == null) {
+            TreeCursor cursor = new TreeCursor(this, null);
+            try {
+                cursor.autoload(false);
+                cursor.first();
+                cursor.clearTo(null, false);
+            } finally {
+                cursor.reset();
+            }
+            return;
+        }
+
+        // FIXME: Ensure LockMode is UPGRADABLE_READ, unless UNSAFE.
+        // FIXME: Optimize for LockMode.UNSAFE.
+
         throw null;
     }
 
@@ -184,6 +201,24 @@ final class Tree implements Index {
                       byte[] end, boolean endInclusive)
         throws IOException
     {
+        if (txn == null) {
+            TreeCursor cursor = new TreeCursor(this, null);
+            try {
+                cursor.autoload(false);
+                if (start == null) {
+                    cursor.first();
+                } else if (startInclusive) {
+                    cursor.findGe(start);
+                } else {
+                    cursor.findGt(start);
+                }
+                cursor.clearTo(end, endInclusive);
+            } finally {
+                cursor.reset();
+            }
+            return;
+        }
+
         // FIXME
         throw null;
     }

@@ -165,14 +165,16 @@ public interface Index {
     public boolean remove(Transaction txn, byte[] key, byte[] value) throws IOException;
 
     /**
-     * Unconditionally removes all entries.
+     * Removes all entries. If transaction is null, only entries which can be
+     * locked are removed, and each removal is automatically committed.
      *
      * @param txn optional transaction
      */
     public void clear(Transaction txn) throws IOException;
 
     /**
-     * Unconditionally removes a range of entries.
+     * Removes a range of entries. If transaction is null, only entries which
+     * can be locked are removed, and each removal is automatically committed.
      *
      * @param txn optional transaction
      * @param start key range start; pass null for open range

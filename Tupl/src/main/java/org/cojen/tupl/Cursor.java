@@ -30,20 +30,33 @@ import java.io.IOException;
  */
 public interface Cursor {
     /**
+     * Empty marker which indicates that value exists but has not been loaded.
+     */
+    public static byte[] NOT_LOADED = new byte[0];
+
+    /**
      * Returns an uncopied reference to the current key, or null if Cursor is
      * unpositioned. Array contents must not be modified.
      */
     public byte[] key();
 
     /**
-     * Returns an uncopied reference to the current value, which might be
-     * null. Array contents can be safely modified.
+     * Returns an uncopied reference to the current value, which might be null
+     * or {@link #NOT_LOADED}. Array contents can be safely modified.
      */
     public byte[] value();
 
     /**
+     * By default, values are loaded automatically, as they are seen. When
+     * disabled, values must be {@link Cursor#load manually loaded}.
+     *
+     * @param mode false to disable
+     */
+    public void autoload(boolean mode);
+
+    /**
      * Moves the Cursor to find the first available entry. Cursor key and value
-     * are set to null if no entries exist, and position is now undefined.
+     * are set to null if no entries exist, and position will be undefined.
      *
      * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
      * OWNED_EXCLUSIVE
@@ -52,7 +65,7 @@ public interface Cursor {
 
     /**
      * Moves the Cursor to find the last available entry. Cursor key and value
-     * are set to null if no entries exist, and position is now undefined.
+     * are set to null if no entries exist, and position will be undefined.
      *
      * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
      * OWNED_EXCLUSIVE
@@ -63,7 +76,7 @@ public interface Cursor {
      * Moves the Cursor by a relative amount of entries. Pass a positive amount
      * for forward movement, and pass a negative amount for reverse
      * movement. If less than the given amount are available, the Cursor key
-     * and value are set to null, and position is now undefined.
+     * and value are set to null, and position will be undefined.
      *
      * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
      * OWNED_EXCLUSIVE
@@ -73,7 +86,7 @@ public interface Cursor {
 
     /**
      * Advances to the Cursor to the next available entry. Cursor key and value
-     * are set to null if no next entry exists, and position is now undefined.
+     * are set to null if no next entry exists, and position will be undefined.
      *
      * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
      * OWNED_EXCLUSIVE
@@ -82,8 +95,9 @@ public interface Cursor {
     public LockResult next() throws IOException;
 
     /**
-     * Advances to the Cursor to the previous available entry. Cursor key and value
-     * are set to null if no previous entry exists, and position is now undefined.
+     * Advances to the Cursor to the previous available entry. Cursor key and
+     * value are set to null if no previous entry exists, and position will be
+     * undefined.
      *
      * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
      * OWNED_EXCLUSIVE
@@ -171,12 +185,13 @@ public interface Cursor {
     public LockResult findNearby(byte[] key) throws IOException;
 
     /**
-     * Reloads the value at the cursor's current position. Cursor value is set
-     * to null if entry no longer exists, but the position remains the same.
+     * Loads or reloads the value at the cursor's current position. Cursor
+     * value is set to null if entry no longer exists, but the position remains
+     * the same.
      *
      * @throws IllegalStateException if position is undefined at invocation time
      */
-    public LockResult reload() throws IOException;
+    public LockResult load() throws IOException;
 
     /**
      * Stores a value into the current entry, leaving the position
