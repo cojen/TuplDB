@@ -191,15 +191,15 @@ final class Node extends Latch {
     // Set by a partially completed split.
     Split mSplit;
 
-    Node(int pageSize, boolean newEmptyRoot) {
+    Node(int pageSize) {
         mPage = new byte[pageSize];
+    }
 
-        if (newEmptyRoot) {
-            mId = 0;
-            mCachedState = CACHED_CLEAN;
-            mType = TYPE_TREE_LEAF;
-            clearEntries();
-        }
+    void asEmptyRoot() {
+        mId = 0;
+        mCachedState = CACHED_CLEAN;
+        mType = TYPE_TREE_LEAF;
+        clearEntries();
     }
 
     private void clearEntries() {
@@ -378,7 +378,7 @@ final class Node extends Latch {
         // Create a child node and copy this root node state into it. Then update this
         // root node to point to new and split child nodes. New root is always an internal node.
 
-        Node child = db.newDirtyNode();
+        Node child = db.allocDirtyNode();
 
         byte[] newPage = child.mPage;
         child.mPage = mPage;
@@ -437,6 +437,9 @@ final class Node extends Latch {
 
         child.releaseExclusive();
         sibling.releaseExclusive();
+
+        // Split complete, so allow new node to be evictable.
+        db.makeEvictable(sibling);
 
         if (stub != null) {
             stub.releaseExclusive();
@@ -1295,6 +1298,9 @@ final class Node extends Latch {
 
         splitChild.releaseExclusive();
         newChild.releaseExclusive();
+
+        // Split complete, so allow new node to be evictable.
+        db.makeEvictable(newChild);
     }
 
     /**
@@ -1459,7 +1465,7 @@ final class Node extends Latch {
      *
      * @return latched sibling
      */
-    private Node rebindSplitFrames(Database db, Split split) throws IOException {
+    private Node rebindSplitFrames(Database db, Split split) {
         final Node sibling = split.latchSibling(db);
         for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
             // Capture previous frame from linked list before changing the links.
@@ -2051,7 +2057,7 @@ final class Node extends Latch {
 
         byte[] page = mPage;
 
-        Node newNode = db.newDirtyNode();
+        Node newNode = db.allocUnevictableNode();
         newNode.mType = TYPE_TREE_LEAF;
         newNode.mGarbage = 0;
 
@@ -2238,7 +2244,7 @@ final class Node extends Latch {
 
         final byte[] page = mPage;
 
-        final Node newNode = db.newDirtyNode();
+        final Node newNode = db.allocUnevictableNode();
         newNode.mType = TYPE_TREE_INTERNAL;
         newNode.mGarbage = 0;
 
@@ -2728,7 +2734,7 @@ final class Node extends Latch {
         long childId = retrieveChildRefIdFromIndex(mChildNodes.length - 1);
 
         if (child == null || childId != child.mId) {
-            child = new Node(db.pageSize(), false);
+            child = new Node(db.pageSize());
             child.read(db, childId);
         }
 
@@ -2739,7 +2745,7 @@ final class Node extends Latch {
             childId = retrieveChildRefId(pos);
 
             if (child == null || childId != child.mId) {
-                child = new Node(db.pageSize(), false);
+                child = new Node(db.pageSize());
                 child.read(db, childId);
             }
 
@@ -2762,7 +2768,7 @@ final class Node extends Latch {
         long childId = retrieveChildRefIdFromIndex(mChildNodes.length - 1);
 
         if (child == null || childId != child.mId) {
-            child = new Node(db.pageSize(), false);
+            child = new Node(db.pageSize());
             child.read(db, childId);
         }
 
@@ -2773,7 +2779,7 @@ final class Node extends Latch {
             childId = retrieveChildRefId(pos);
 
             if (child == null || childId != child.mId) {
-                child = new Node(db.pageSize(), false);
+                child = new Node(db.pageSize());
                 child.read(db, childId);
             }
 
@@ -2805,7 +2811,7 @@ final class Node extends Latch {
         long childId = retrieveChildRefIdFromIndex(mChildNodes.length - 1);
 
         if (child == null || childId != child.mId) {
-            child = new Node(db.pageSize(), false);
+            child = new Node(db.pageSize());
             child.read(db, childId);
         }
 
@@ -2816,7 +2822,7 @@ final class Node extends Latch {
             childId = retrieveChildRefId(pos);
 
             if (child == null || childId != child.mId) {
-                child = new Node(db.pageSize(), false);
+                child = new Node(db.pageSize());
                 child.read(db, childId);
             }
 
@@ -2855,7 +2861,7 @@ final class Node extends Latch {
         long childId = retrieveChildRefIdFromIndex(mChildNodes.length - 1);
 
         if (child == null || childId != child.mId) {
-            child = new Node(db.pageSize(), false);
+            child = new Node(db.pageSize());
             child.read(db, childId);
         }
 
@@ -2870,7 +2876,7 @@ final class Node extends Latch {
             childId = retrieveChildRefId(pos);
 
             if (child == null || childId != child.mId) {
-                child = new Node(db.pageSize(), false);
+                child = new Node(db.pageSize());
                 child.read(db, childId);
             }
 
