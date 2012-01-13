@@ -744,16 +744,21 @@ public final class Database implements Closeable {
                 mMostRecentlyUsed = node;
 
                 if (node.tryAcquireExclusive()) {
-                    if (node.evict(this)) {
-                        if (!evictable) {
-                            // Detach from linked list.
-                            (mMostRecentlyUsed = node.mLessUsed).mMoreUsed = null;
-                            node.mLessUsed = null;
+                    try {
+                        if (node.evict(this)) {
+                            if (!evictable) {
+                                // Detach from linked list.
+                                (mMostRecentlyUsed = node.mLessUsed).mMoreUsed = null;
+                                node.mLessUsed = null;
+                            }
+                            // Return with latch still held.
+                            return node;
+                        } else {
+                            node.releaseExclusive();
                         }
-                        // Return with latch still held.
-                        return node;
-                    } else {
+                    } catch (IOException e) {
                         node.releaseExclusive();
+                        throw e;
                     }
                 }
             } while (--max > 0);
@@ -772,9 +777,14 @@ public final class Database implements Closeable {
      */
     Node allocDirtyNode() throws IOException {
         Node node = allocLatchedNode(true);
-        node.mId = mPageStore.reservePage();
-        node.mCachedState = mCommitState;
-        return node;
+        try {
+            node.mId = mPageStore.reservePage();
+            node.mCachedState = mCommitState;
+            return node;
+        } catch (IOException e) {
+            node.releaseExclusive();
+            throw e;
+        }
     }
 
     /**
@@ -783,9 +793,15 @@ public final class Database implements Closeable {
      */
     Node allocUnevictableNode() throws IOException {
         Node node = allocLatchedNode(false);
-        node.mId = mPageStore.reservePage();
-        node.mCachedState = mCommitState;
-        return node;
+        try {
+            node.mId = mPageStore.reservePage();
+            node.mCachedState = mCommitState;
+            return node;
+        } catch (IOException e) {
+            makeEvictable(node);
+            node.releaseExclusive();
+            throw e;
+        }
     }
 
     /**

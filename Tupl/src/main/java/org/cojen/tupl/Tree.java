@@ -133,7 +133,7 @@ final class Tree implements Index {
             return cursor.findAndModify(key, TreeCursor.MODIFY_INSERT, value);
         } catch (Throwable e) {
             e.printStackTrace(System.out);
-            throw e;
+            throw Utils.rethrow(e);
         } finally {
             // FIXME: this can deadlock, because exception can be thrown at anytime
             cursor.reset();

@@ -650,15 +650,18 @@ final class TreeCursor implements Cursor {
         TreeCursorFrame frame = leaf();
         Node node = frame.acquireShared();
         try {
-            splitCheck: if (node.mSplit != null) {
-                if (!node.tryUpgrade()) {
-                    node.releaseShared();
-                    node = frame.acquireExclusive();
-                    if (node.mSplit == null) {
-                        break splitCheck;
+            if (node.mSplit != null) {
+                doSplit: {
+                    if (!node.tryUpgrade()) {
+                        node.releaseShared();
+                        node = frame.acquireExclusive();
+                        if (node.mSplit == null) {
+                            break doSplit;
+                        }
                     }
+                    node = finishSplit(frame, node);
                 }
-                node = finishSplit(frame, node);
+                node.downgrade();
             }
 
             int pos = frame.mNodePos;
