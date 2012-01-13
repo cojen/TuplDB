@@ -40,6 +40,10 @@ import static org.cojen.tupl.Node.*;
  */
 public final class Database implements Closeable {
     private static final int DEFAULT_CACHED_NODES = 1000;
+    // +2 for registry and key map root nodes, +1 for one user index, and +2
+    // for usage list to function correctly. It always assumes that the least
+    // recently used node points to a valid, more recently used node.
+    private static final int MIN_CACHED_NODES = 5;
 
     // Approximate byte overhead per node. Influenced by many factors,
     // including pointer size and child node references. This estimate assumes
@@ -175,19 +179,13 @@ public final class Database implements Closeable {
 
             minCache = nodeCountFromBytes(minCachedBytes, pageSize);
             maxCache = nodeCountFromBytes(maxCachedBytes, pageSize);
-        }
 
-        if (maxCache < 3) {
-            // One is needed for the root node, and at least two nodes are
-            // required for eviction code to function correctly. It always
-            // assumes that the least recently used node points to a valid,
-            // more recently used node.
-            throw new IllegalArgumentException
-                ("Maximum cached node count is too small: " + maxCache);
+            minCache = Math.max(MIN_CACHED_NODES, minCache);
+            maxCache = Math.max(MIN_CACHED_NODES, maxCache);
         }
 
         mCacheLatch = new Latch();
-        mMaxCachedNodeCount = maxCache - 1; // less one for root
+        mMaxCachedNodeCount = maxCache;
 
         mDurabilityMode = config.mDurabilityMode;
         mDefaultLockTimeoutNanos = config.mLockTimeoutNanos;
@@ -199,6 +197,23 @@ public final class Database implements Closeable {
         mPageStore = new FilePageStore(file, config.mFileSync, config.mReadOnly, pageSize);
 
         try {
+            // Pre-allocate nodes. They are automatically added to the usage
+            // list, and so nothing special needs to be done to allow them to
+            // get used. Since the initial state is clean, evicting these
+            // nodes does nothing.
+            try {
+                for (int i=minCache; --i>=0; ) {
+                    allocLatchedNode(true).releaseExclusive();
+                }
+            } catch (OutOfMemoryError e) {
+                mMostRecentlyUsed = null;
+                mLeastRecentlyUsed = null;
+
+                throw new OutOfMemoryError
+                    ("Unable to allocate the minimum required number of cached nodes: " +
+                     minCache);
+            }
+
             int spareBufferCount = Runtime.getRuntime().availableProcessors();
             mSpareBufferPool = new BufferPool(mPageStore.pageSize(), spareBufferCount);
 
@@ -225,36 +240,11 @@ public final class Database implements Closeable {
             // Initialized, but not open yet.
             mRedoLog = new RedoLog(baseFile, redoLogId);
 
-            // Pre-allocate nodes. They are automatically added to the usage
-            // list, and so nothing special needs to be done to allow them to
-            // get used. Since the initial state is clean, evicting these nodes
-            // does nothing.
-            try {
-                for (int i=minCache; --i>0; ) { // less one for root
-                    allocLatchedNode().releaseExclusive();
-                }
-            } catch (OutOfMemoryError e) {
-                mMostRecentlyUsed = null;
-                mLeastRecentlyUsed = null;
-
-                throw new OutOfMemoryError
-                    ("Unable to allocate the minimum required number of cached nodes: " +
-                     minCache);
-            }
-
-            // Open mRegistryKeyMap.
+            // Open or create mRegistryKeyMap.
             {
                 byte[] encodedRootId = mRegistry.load(Transaction.BOGUS, Utils.EMPTY_BYTES);
-
-                Node rootNode;
-                if (encodedRootId == null) {
-                    // Create a new empty leaf node.
-                    rootNode = new Node(mPageStore.pageSize(), true);
-                } else {
-                    rootNode = new Node(mPageStore.pageSize(), false);
-                    rootNode.read(this, DataIO.readLong(encodedRootId, 0));
-                }
-            
+                long rootId = encodedRootId == null ? 0 : DataIO.readLong(encodedRootId, 0);
+                Node rootNode = loadTreeRoot(rootId);
                 mRegistryKeyMap = new Tree
                     (this, REGISTRY_KEY_MAP_ID, Utils.EMPTY_BYTES, null, rootNode);
             }
@@ -583,26 +573,46 @@ public final class Database implements Closeable {
     }
 
     /**
+     * @param rootId pass zero to create
+     * @return unlatched and unevictable root node
+     */
+    private Node loadTreeRoot(long rootId) throws IOException {
+        Node rootNode = allocLatchedNode(false);
+        try {
+            if (rootId == 0) {
+                rootNode.asEmptyRoot();
+            } else {
+                try {
+                    rootNode.read(this, rootId);
+                } catch (IOException e) {
+                    makeEvictable(rootNode);
+                    throw e;
+                }
+            }
+        } finally {
+            rootNode.releaseExclusive();
+        }
+        return rootNode;
+    }
+
+    /**
      * Loads the root registry node, or creates one if store is new. Root node
      * is not eligible for eviction.
      */
     private Node loadRegistryRoot(byte[] header) throws IOException {
         int version = DataIO.readInt(header, I_ENCODING_VERSION);
 
-        if (version != 0) {
+        long rootId;
+        if (version == 0) {
+            rootId = 0;
+        } else {
             if (version != ENCODING_VERSION) {
                 throw new CorruptPageStoreException("Unknown encoding version: " + version);
             }
-            long rootId = DataIO.readLong(header, I_ROOT_PAGE_ID);
-            if (rootId != 0) {
-                Node root = new Node(pageSize(), false);
-                root.read(this, rootId);
-                return root;
-            }
+            rootId = DataIO.readLong(header, I_ROOT_PAGE_ID);
         }
 
-        // Assume store is new and return a new empty leaf node.
-        return new Node(pageSize(), true);
+        return loadTreeRoot(rootId);
     }
 
     private Index openIndex(byte[] name, boolean create) throws IOException {
@@ -652,15 +662,9 @@ public final class Database implements Closeable {
             }
 
             byte[] encodedRootId = mRegistry.load(Transaction.BOGUS, treeIdBytes);
-
-            Node rootNode;
-            if (encodedRootId == null || encodedRootId.length == 0) {
-                // Create a new empty leaf node.
-                rootNode = new Node(pageSize(), true);
-            } else {
-                rootNode = new Node(pageSize(), false);
-                rootNode.read(this, DataIO.readLong(encodedRootId, 0));
-            }
+            long rootId = (encodedRootId == null || encodedRootId.length == 0) ? 0
+                : DataIO.readLong(encodedRootId, 0);
+            Node rootNode = loadTreeRoot(rootId);
 
             synchronized (mOpenTrees) {
                 Tree tree = mOpenTrees.get(name);
@@ -704,23 +708,32 @@ public final class Database implements Closeable {
      * of zero and a clean state.
      */
     Node allocLatchedNode() throws IOException {
+        return allocLatchedNode(true);
+    }
+
+    private Node allocLatchedNode(boolean evictable) throws IOException {
         final Latch cacheLatch = mCacheLatch;
         cacheLatch.acquireExclusive();
-        try {
+        alloc: try {
             int max = mMaxCachedNodeCount;
             if (mCachedNodeCount < max) {
-                Node node = new Node(pageSize(), false);
+                Node node = new Node(pageSize());
                 node.acquireExclusive();
-
                 mCachedNodeCount++;
-                if ((node.mLessUsed = mMostRecentlyUsed) == null) {
-                    mLeastRecentlyUsed = node;
-                } else {
-                    mMostRecentlyUsed.mMoreUsed = node;
+                if (evictable) {
+                    if ((node.mLessUsed = mMostRecentlyUsed) == null) {
+                        mLeastRecentlyUsed = node;
+                    } else {
+                        mMostRecentlyUsed.mMoreUsed = node;
+                    }
+                    mMostRecentlyUsed = node;
                 }
-                mMostRecentlyUsed = node;
-
                 return node;
+            }
+
+            if (!evictable && mLeastRecentlyUsed.mMoreUsed == mMostRecentlyUsed) {
+                // Cannot allow list to shrink to less than two elements.
+                break alloc;
             }
 
             do {
@@ -732,6 +745,11 @@ public final class Database implements Closeable {
 
                 if (node.tryAcquireExclusive()) {
                     if (node.evict(this)) {
+                        if (!evictable) {
+                            // Detach from linked list.
+                            (mMostRecentlyUsed = node.mLessUsed).mMoreUsed = null;
+                            node.mLessUsed = null;
+                        }
                         // Return with latch still held.
                         return node;
                     } else {
@@ -745,18 +763,46 @@ public final class Database implements Closeable {
 
         // FIXME: Throw a better exception. Also, try all nodes again, but with
         // stronger latch request before giving up.
-        throw new IllegalStateException("Cache is full");
+        throw new DatabaseException("Cache is full");
     }
 
     /**
-     * Returns a new reserved node, latched exclusively and marked dirty. Caller
-     * must hold commit lock.
+     * Returns a new or recycled Node instance, latched exclusively and marked
+     * dirty. Caller must hold commit lock.
      */
-    Node newDirtyNode() throws IOException {
-        Node node = allocLatchedNode();
+    Node allocDirtyNode() throws IOException {
+        Node node = allocLatchedNode(true);
         node.mId = mPageStore.reservePage();
         node.mCachedState = mCommitState;
         return node;
+    }
+
+    /**
+     * Returns a new or recycled Node instance, latched exclusively, marked
+     * dirty and unevictable. Caller must hold commit lock.
+     */
+    Node allocUnevictableNode() throws IOException {
+        Node node = allocLatchedNode(false);
+        node.mId = mPageStore.reservePage();
+        node.mCachedState = mCommitState;
+        return node;
+    }
+
+    /**
+     * Allow a Node which was allocated as unevictable to be evictable.
+     */
+    void makeEvictable(Node node) {
+        final Latch cacheLatch = mCacheLatch;
+        cacheLatch.acquireExclusive();
+        try {
+            if (node.mMoreUsed != null || node.mLessUsed != null) {
+                throw new IllegalStateException();
+            }
+            (node.mLessUsed = mMostRecentlyUsed).mMoreUsed = node;
+            mMostRecentlyUsed = node;
+        } finally {
+            cacheLatch.releaseExclusive();
+        }
     }
 
     /**

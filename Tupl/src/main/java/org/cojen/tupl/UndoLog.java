@@ -141,11 +141,11 @@ final class UndoLog {
         Node node;
         byte[] buffer = mBuffer;
         if (buffer == null) {
-            mNode = node = newDirtyNode(0);
+            mNode = node = allocDirtyNode(0);
             // Set pointer to top entry (none at the moment).
             node.mGarbage = node.mPage.length;
         } else if (mNode == null) {
-            mNode = node = newDirtyNode(0);
+            mNode = node = allocDirtyNode(0);
             int pos = mBufferPos;
             int size = buffer.length - pos;
             byte[] page = node.mPage;
@@ -239,7 +239,7 @@ final class UndoLog {
                     mBufferPos = pos = newCap;
                 } else {
                     // Required capacity is large, so just use a node.
-                    mNode = node = newDirtyNode(0);
+                    mNode = node = allocDirtyNode(0);
                     // Set pointer to top entry (none at the moment).
                     node.mGarbage = pageSize;
                     break quick;
@@ -257,7 +257,7 @@ final class UndoLog {
                         mBufferPos = pos = newPos;
                     } else {
                         // Required capacity is large, so just use a node.
-                        mNode = node = newDirtyNode(0);
+                        mNode = node = allocDirtyNode(0);
                         byte[] page = node.mPage;
                         int newPos = page.length - size;
                         System.arraycopy(buffer, pos, page, newPos, size);
@@ -306,7 +306,7 @@ final class UndoLog {
             Node newNode;
             {
                 Node[] childNodes = new Node[] {node};
-                newNode = newDirtyNode(node.mId);
+                newNode = allocDirtyNode(node.mId);
                 newNode.mChildNodes = childNodes;
                 newNode.mGarbage = pos = page.length;
                 available = pos - HEADER_SIZE;
@@ -662,8 +662,8 @@ final class UndoLog {
     /**
      * Caller must hold commit lock.
      */
-    private Node newDirtyNode(long lowerNodeId) throws IOException {
-        Node node = mDatabase.newDirtyNode();
+    private Node allocDirtyNode(long lowerNodeId) throws IOException {
+        Node node = mDatabase.allocDirtyNode();
         node.mType = Node.TYPE_UNDO_LOG;
         DataIO.writeLong(node.mPage, I_LOWER_NODE_ID, lowerNodeId);
         return node;

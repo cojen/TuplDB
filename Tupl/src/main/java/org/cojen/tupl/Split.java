@@ -16,8 +16,6 @@
 
 package org.cojen.tupl;
 
-import java.io.IOException;
-
 /**
  * Short-lived object for capturing the state of a partially completed node split.
  *
@@ -26,8 +24,7 @@ import java.io.IOException;
 class Split {
     final boolean mSplitRight;
     private final long mSiblingId;
-    // FIXME: Add state to sibling to prevent eviction and make this field final.
-    private volatile Node mSibling;
+    private final Node mSibling;
 
     // In many cases a copy of the key is not necessary; a simple reference to
     // the appropriate sub node works fine. This strategy assumes that the sub
@@ -63,23 +60,9 @@ class Split {
      * @param node node which was split; shared latch must be held
      * @return original node or sibling
      */
-    Node selectNodeShared(Database db, Node node, byte[] key) throws IOException {
+    Node selectNodeShared(Database db, Node node, byte[] key) {
         Node sibling = mSibling;
         sibling.acquireShared();
-
-        if (mSiblingId != sibling.mId) {
-            // Sibling was evicted, which is extremely rare.
-            synchronized (this) {
-                sibling = mSibling;
-                if (mSiblingId != sibling.mId) {
-                    sibling.releaseShared();
-                    sibling = db.allocLatchedNode();
-                    sibling.read(db, mSiblingId);
-                    sibling.downgrade();
-                    mSibling = sibling;
-                }
-            }
-        }
 
         Node left, right;
         if (mSplitRight) {
@@ -108,9 +91,7 @@ class Split {
      * @param node node which was split; exclusive latch must be held
      * @return original node or sibling
      */
-    Node selectNodeExclusive(Database db, Node node, byte[] key)
-        throws IOException
-    {
+    Node selectNodeExclusive(Database db, Node node, byte[] key) {
         Node sibling = latchSibling(db);
 
         Node left, right;
@@ -135,7 +116,7 @@ class Split {
      * Performs a binary search against the split, returning the position
      * within the original node as if it had not split.
      */
-    int binarySearchLeaf(Database db, Node node, byte[] key) throws IOException {
+    int binarySearchLeaf(Database db, Node node, byte[] key) {
         Node sibling = latchSibling(db);
 
         Node left, right;
@@ -168,7 +149,7 @@ class Split {
     /**
      * Returns the highest position within the original node as if it had not split.
      */
-    int highestLeafPos(Database db, Node node) throws IOException {
+    int highestLeafPos(Database db, Node node) {
         Node sibling = latchSibling(db);
         int pos = node.highestLeafPos() + sibling.highestLeafPos() + 2;
         sibling.releaseExclusive();
@@ -178,7 +159,7 @@ class Split {
     /**
      * Return the left split node, latched exclusively. Other node is unlatched.
      */
-    Node latchLeft(Database db, Node node) throws IOException {
+    Node latchLeft(Database db, Node node) {
         if (mSplitRight) {
             return node;
         }
@@ -190,28 +171,16 @@ class Split {
     /**
      * @return sibling with exclusive latch held
      */
-    Node latchSibling(Database db) throws IOException {
+    Node latchSibling(Database db) {
         Node sibling = mSibling;
         sibling.acquireExclusive();
-        if (mSiblingId != sibling.mId) {
-            // Sibling was evicted, which is extremely rare.
-            synchronized (this) {
-                sibling = mSibling;
-                if (mSiblingId != sibling.mId) {
-                    sibling.releaseExclusive();
-                    sibling = db.allocLatchedNode();
-                    sibling.read(db, mSiblingId);
-                    mSibling = sibling;
-                }
-            }
-        }
         return sibling;
     }
 
     /**
      * @param frame frame affected by split; exclusive latch for sibling must also be held
      */
-    void rebindFrame(TreeCursorFrame frame, Node sibling) throws IOException {
+    void rebindFrame(TreeCursorFrame frame, Node sibling) {
         Node node = frame.mNode;
         int pos = frame.mNodePos;
 
