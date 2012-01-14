@@ -56,16 +56,16 @@ class FilePageStore implements PageStore {
     | int:  page size                          |
     | int:  commit number                      |
     | int:  checksum                           |
-    | page manager header (52 bytes)           |
+    | page manager header (96 bytes)           |
     +------------------------------------------+
-    | reserved (160 bytes)                     |
+    | reserved (140 bytes)                     |
     +------------------------------------------+
     | extra data (256 bytes)                   |
     +------------------------------------------+
 
     */
 
-    private static final long MAGIC_NUMBER = 8308863022278414252L;
+    private static final long MAGIC_NUMBER = 6529720411368701212L;
 
     // Indexes of entries in header node.
     private static final int I_MAGIC_NUMBER     = 0;
@@ -362,7 +362,10 @@ class FilePageStore implements PageStore {
         }
     }
 
-    void commitHeader(final byte[] header, final int commitNumber, final byte[] extra)
+    /**
+     * @param header array length is full page
+     */
+    private void commitHeader(final byte[] header, final int commitNumber, final byte[] extra)
         throws IOException
     {
         final PageArray array = mPageArray;
@@ -381,6 +384,12 @@ class FilePageStore implements PageStore {
         // returning uncommitted pages. This would prevent rollback
         // from working because the old pages would get overwritten.
         setHeaderChecksum(header);
+
+        // Write multiple header copies in the page, in case special recovery is required.
+        int dupCount = header.length / MINIMUM_PAGE_SIZE;
+        for (int i=1; i<dupCount; i++) {
+            System.arraycopy(header, 0, header, i * MINIMUM_PAGE_SIZE, MINIMUM_PAGE_SIZE);
+        }
 
         // Boost thread priorty during sync, to ensure it completes quickly.
         // Some file systems don't sync on a "snapshot", but continue sync'ng

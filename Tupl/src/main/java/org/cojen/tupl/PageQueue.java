@@ -159,7 +159,7 @@ final class PageQueue implements IntegerRef {
      * @param lock lock to be released by this method, unless return value is 0
      * @return 0 if queue is empty or if remaining pages are off limits
      */
-    long remove(Lock lock) throws IOException {
+    long tryRemove(Lock lock) throws IOException {
         if (mRemoveHeadId == 0) {
             return 0;
         }
@@ -179,15 +179,7 @@ final class PageQueue implements IntegerRef {
             final byte[] head = mRemoveHead;
             if (mRemoveHeadOffset < head.length) {
                 // Pass this as an IntegerRef to mRemoveHeadOffset.
-                long delta;
-                try {
-                    delta = DataIO.readUnsignedVarLong(head, this);
-                } catch (IndexOutOfBoundsException e) {
-                    // FIXME: bug observed here
-                    System.out.println(DataIO.toHex(head));
-                    System.out.println(mRemoveHeadOffset);
-                    throw e;
-                }
+                long delta = DataIO.readUnsignedVarLong(head, this);
                 if (delta > 0) {
                     mRemoveHeadFirstPageId = pageId + delta;
                     return pageId;
@@ -253,6 +245,20 @@ final class PageQueue implements IntegerRef {
             // which is called by drainAppendHeap itself. The IdHeap has
             // padding for one more id, which gets drained when control returns
             // to the caller.
+        } finally {
+            mAppendLock.unlock();
+        }
+    }
+
+    /**
+     * Removes a page which was recently appended.
+     *
+     * @return 0 if none available
+     */
+    long tryUnappend() {
+        mAppendLock.lock();
+        try {
+            return mAppendHeap.tryRemove();
         } finally {
             mAppendLock.unlock();
         }
