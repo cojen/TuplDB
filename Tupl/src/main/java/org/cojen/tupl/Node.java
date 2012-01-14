@@ -320,24 +320,7 @@ final class Node extends Latch {
         // If this point is reached, exclusive latch for this node is held and
         // child needs to be loaded. Parent latch has been released.
 
-        Node childNode = tree.mDatabase.allocLatchedNode();
-        childNode.mId = childId;
-        node.mChildNodes[childPos >> 1] = childNode;
-
-        // Release parent latch before child has been loaded. Any threads
-        // which wish to access the same child will block until this thread
-        // has finished loading the child and released its exclusive latch.
-        node.releaseExclusive();
-
-        try {
-            childNode.read(tree.mDatabase, childId);
-        } catch (IOException e) {
-            // Another thread might access child and see that it is invalid because
-            // id is zero. It will assume it got evicted and will load child again.
-            childNode.mId = 0;
-            childNode.releaseExclusive();
-            throw e;
-        }
+        Node childNode = node.loadChild(tree.mDatabase, childPos, childId, true);
 
         if (childNode.isLeaf()) {
             childNode.downgrade();
@@ -366,6 +349,50 @@ final class Node extends Latch {
         byte[] value = retrieveLeafValue(childPos);
         releaseShared();
         return value;
+    }
+
+    /**
+     * With this parent node held exclusively, loads child with exclusive latch
+     * held. Caller must ensure that child is not already loaded. If an
+     * exception is thrown, parent and child latches are always released.
+     */
+    Node loadChild(Database db, int childPos, long childId, boolean releaseParent)
+        throws IOException
+    {
+        Node childNode;
+        try {
+            childNode = db.allocLatchedNode();
+            childNode.mId = childId;
+            mChildNodes[childPos >> 1] = childNode;
+        } catch (IOException e) {
+            releaseExclusive();
+            throw e;
+        }
+
+        // Release parent latch before child has been loaded. Any threads
+        // which wish to access the same child will block until this thread
+        // has finished loading the child and released its exclusive latch.
+        if (releaseParent) {
+            releaseExclusive();
+        }
+
+        // FIXME: Don't hold latch during load. Instead, use an object for
+        // holding state, and include a "loading" state. As other threads see
+        // this state, they replace the state object with a linked stack of
+        // parked threads. When the load is finished, all waiting threads are
+        // unparked. Without this change, latch blockage can reach the root.
+
+        try {
+            childNode.read(db, childId);
+        } catch (IOException e) {
+            // Another thread might access child and see that it is invalid because
+            // id is zero. It will assume it got evicted and will load child again.
+            childNode.mId = 0;
+            childNode.releaseExclusive();
+            throw e;
+        }
+
+        return childNode;
     }
 
     /**

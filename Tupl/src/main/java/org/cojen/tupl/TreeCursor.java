@@ -2071,6 +2071,9 @@ final class TreeCursor implements Cursor {
 
     /**
      * With parent held exclusively, returns child with exclusive latch held.
+     * If an exception is thrown, parent and child latches are always released.
+     *
+     * @return child node, possibly split
      */
     private Node latchChild(Node parent, int childPos, boolean releaseParent)
         throws IOException
@@ -2078,54 +2081,20 @@ final class TreeCursor implements Cursor {
         Node childNode = parent.mChildNodes[childPos >> 1];
         long childId = parent.retrieveChildRefId(childPos);
 
-        check: if (childNode != null && childId == childNode.mId) {
+        if (childNode != null && childId == childNode.mId) {
             childNode.acquireExclusive();
-
             // Need to check again in case evict snuck in.
             if (childId != childNode.mId) {
                 childNode.releaseExclusive();
-                break check;
+            } else {
+                if (releaseParent) {
+                    parent.releaseExclusive();
+                }
+                mTree.mDatabase.used(childNode);
+                return childNode;
             }
-
-            if (releaseParent) {
-                parent.releaseExclusive();
-            }
-
-            mTree.mDatabase.used(childNode);
-            return childNode;
         }
-
-        // If this point is reached, child needs to be loaded.
-
-        childNode = mTree.mDatabase.allocLatchedNode();
-        childNode.mId = childId;
-        parent.mChildNodes[childPos >> 1] = childNode;
-
-        // Release parent latch before child has been loaded. Any threads
-        // which wish to access the same child will block until this thread
-        // has finished loading the child and released its exclusive latch.
-        if (releaseParent) {
-            parent.releaseExclusive();
-        }
-
-        // FIXME: Don't hold latch during load. Instead, use an object for
-        // holding state, and include a "loading" state. As other threads see
-        // this state, they replace the state object with a linked stack of
-        // parked threads. When the load is finished, all waiting threads are
-        // unparked. Move some of this logic into a common Node.load method.
-
-        try {
-            childNode.read(mTree.mDatabase, childId);
-        } catch (IOException e) {
-            // Another thread might access child and see that it is invalid because
-            // id is zero. It will assume it got evicted and will load child again.
-            childNode.mId = 0;
-            childNode.releaseExclusive();
-            throw e;
-        }
-
-        mTree.mDatabase.used(childNode);
-        return childNode;
+                
+        return parent.loadChild(mTree.mDatabase, childPos, childId, releaseParent);
     }
 }
-
