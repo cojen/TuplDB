@@ -641,22 +641,27 @@ public final class Database implements Closeable {
                 } else {
                     treeIdBytes = new byte[8];
 
-                    do {
-                        treeId = Utils.randomId(REGISTRY_ID, MAX_RESERVED_ID);
-                        DataIO.writeLong(treeIdBytes, 0, treeId);
-                    } while (!mRegistry.insert(Transaction.BOGUS, treeIdBytes, Utils.EMPTY_BYTES));
+                    try {
+                        do {
+                            treeId = Utils.randomId(REGISTRY_ID, MAX_RESERVED_ID);
+                            DataIO.writeLong(treeIdBytes, 0, treeId);
+                        } while (!mRegistry.insert(Transaction.BOGUS, treeIdBytes,
+                                                   Utils.EMPTY_BYTES));
 
-                    if (!mRegistryKeyMap.insert(null, nameKey, treeIdBytes)) {
-                        mRegistry.delete(Transaction.BOGUS, treeIdBytes);
-                        throw new DatabaseException("Unable to insert index name");
-                    }
+                        if (!mRegistryKeyMap.insert(null, nameKey, treeIdBytes)) {
+                            mRegistry.delete(Transaction.BOGUS, treeIdBytes);
+                            throw new DatabaseException("Unable to insert index name");
+                        }
 
-                    byte[] idKey = newKey(KEY_TYPE_INDEX_ID, treeIdBytes);
+                        byte[] idKey = newKey(KEY_TYPE_INDEX_ID, treeIdBytes);
 
-                    if (!mRegistryKeyMap.insert(null, idKey, name)) {
-                        mRegistryKeyMap.delete(null, nameKey);
-                        mRegistry.delete(Transaction.BOGUS, treeIdBytes);
-                        throw new DatabaseException("Unable to insert index id");
+                        if (!mRegistryKeyMap.insert(null, idKey, name)) {
+                            mRegistryKeyMap.delete(null, nameKey);
+                            mRegistry.delete(Transaction.BOGUS, treeIdBytes);
+                            throw new DatabaseException("Unable to insert index id");
+                        }
+                    } catch (IOException e) {
+                        throw Utils.closeOnFailure(this, e);
                     }
                 }
             }
@@ -675,8 +680,6 @@ public final class Database implements Closeable {
                 }
                 return tree;
             }
-        } catch (Throwable e) {
-            throw Utils.closeOnFailure(this, e);
         } finally {
             commitLock.unlock();
         }
