@@ -29,7 +29,7 @@ import java.util.concurrent.locks.Lock;
  * @author Brian S O'Neill
  */
 final class TreeCursor implements Cursor {
-    final Tree mTree;
+    private final Tree mTree;
     private Transaction mTxn;
 
     // Top stack frame for cursor, always a leaf.

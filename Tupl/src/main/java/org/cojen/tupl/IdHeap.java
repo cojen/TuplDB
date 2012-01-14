@@ -37,6 +37,9 @@ final class IdHeap {
         return mSize;
     }
 
+    /**
+     * @param id non-zero id
+     */
     public void add(long id) {
         long[] ids = mIds;
         int pos = mSize;
@@ -54,19 +57,35 @@ final class IdHeap {
         mSize++;
     }
 
+    /*
     public long peek() {
         if (mSize <= 0) {
             throw new NoSuchElementException();
         }
         return mIds[0];
     }
+    */
 
+    /**
+     * @throws NoSuchElementException if empty
+     */
     public long remove() {
-        final int size = mSize;
-        int pos = size - 1;
-        if (pos < 0) {
+        long id = tryRemove();
+        if (id == 0) {
             throw new NoSuchElementException();
         }
+        return id;
+    }
+
+    /**
+     * @return 0 if empty
+     */
+    public long tryRemove() {
+        final int size = mSize;
+        if (size <= 0) {
+            return 0;
+        }
+        int pos = size - 1;
         long[] ids = mIds;
         long result = ids[0];
         if (pos != 0) {
