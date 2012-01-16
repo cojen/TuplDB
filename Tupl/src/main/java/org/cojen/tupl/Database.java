@@ -942,6 +942,9 @@ public final class Database implements Closeable {
      */
     void deletePage(long id, int cachedState) throws IOException {
         if (id != 0) {
+            // FIXME: recyle or its check appears to be broken for some unknown reason
+            mPageStore.deletePage(id);
+            /*
             if (cachedState == mCommitState) {
                 // Newly reserved page was never used, so recycle it.
                 mPageStore.recyclePage(id);
@@ -949,6 +952,7 @@ public final class Database implements Closeable {
                 // Old data must survive until after checkpoint.
                 mPageStore.deletePage(id);
             }
+            */
         }
     }
 
