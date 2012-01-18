@@ -199,13 +199,7 @@ final class PageQueue implements IntegerRef {
                 mRemoveHeadFirstPageId = 0;
                 mRemoveStoppedId = nextId;
             } else {
-                if (mManager.isPageOutOfBounds(nextId)) {
-                    throw new CorruptPageStoreException("Invalid node id in free list: " + nextId);
-                }
-                mManager.pageArray().readPage(nextId, head);
-                mRemoveHeadId = nextId;
-                mRemoveHeadOffset = I_NODE_START;
-                mRemoveHeadFirstPageId = DataIO.readLong(head, I_FIRST_PAGE_ID);
+                loadRemoveNode(nextId);
             }
 
             mRemoveNodeCount--;
@@ -220,6 +214,18 @@ final class PageQueue implements IntegerRef {
         mManager.deletePage(oldHeadId);
 
         return pageId;
+    }
+
+    // Caller must hold remove lock.
+    private void loadRemoveNode(long id) throws IOException {
+        if (mManager.isPageOutOfBounds(id)) {
+            throw new CorruptPageStoreException("Invalid node id in free list: " + id);
+        }
+        byte[] head = mRemoveHead;
+        mManager.pageArray().readPage(id, head);
+        mRemoveHeadId = id;
+        mRemoveHeadOffset = I_NODE_START;
+        mRemoveHeadFirstPageId = DataIO.readLong(head, I_FIRST_PAGE_ID);
     }
 
     /**
@@ -347,10 +353,7 @@ final class PageQueue implements IntegerRef {
 
         if (mRemoveHeadId == 0 && mRemoveStoppedId != newAppendHeadId) {
             // Allow removing of previously appended pages.
-            mManager.pageArray().readPage(mRemoveStoppedId, mRemoveHead);
-            mRemoveHeadId = mRemoveStoppedId;
-            mRemoveHeadOffset = I_NODE_START;
-            mRemoveHeadFirstPageId = DataIO.readLong(mRemoveHead, I_FIRST_PAGE_ID);
+            loadRemoveNode(mRemoveStoppedId);
             mRemoveStoppedId = 0;
         }
 
