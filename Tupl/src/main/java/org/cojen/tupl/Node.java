@@ -602,7 +602,7 @@ final class Node extends Latch {
                     if (child.tryAcquireShared()) {
                         long childId = retrieveChildRefIdFromIndex(i);
                         try {
-                            if (childId == child.mId && mCachedState != CACHED_CLEAN) {
+                            if (childId == child.mId && child.mCachedState != CACHED_CLEAN) {
                                 // Cannot evict if a child is dirty. It must be
                                 // evicted first.
                                 // FIXME: Retry evict with child instead.
