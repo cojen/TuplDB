@@ -194,6 +194,10 @@ public final class Database implements Closeable {
         String basePath = baseFile.getPath();
         File file = new File(basePath + ".db");
 
+        if (!config.mReadOnly && config.mMkdirs) {
+            file.getParentFile().mkdirs();
+        }
+
         mPageStore = new FilePageStore(file, config.mFileSync, config.mReadOnly, pageSize);
 
         try {

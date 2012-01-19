@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class DatabaseConfig {
     File mBaseFile;
+    boolean mMkdirs;
     long mMinCachedBytes;
     long mMaxCachedBytes;
     DurabilityMode mDurabilityMode;
@@ -49,6 +50,15 @@ public class DatabaseConfig {
      */
     public DatabaseConfig baseFile(File file) {
         mBaseFile = file;
+        return this;
+    }
+
+    /**
+     * Set true to create directories for the base file, if they don't already
+     * exist. Default is false.
+     */
+    public DatabaseConfig createBaseFilePath(boolean mkdirs) {
+        mMkdirs = mkdirs;
         return this;
     }
 
