@@ -40,6 +40,7 @@ public class DatabaseConfig {
     int mPageSize;
 
     public DatabaseConfig() {
+        createBaseFilePath(true);
         durabilityMode(null);
         lockTimeout(1, TimeUnit.SECONDS);
         checkpointRate(1, TimeUnit.SECONDS);
@@ -55,7 +56,7 @@ public class DatabaseConfig {
 
     /**
      * Set true to create directories for the base file, if they don't already
-     * exist. Default is false.
+     * exist. Default is true.
      */
     public DatabaseConfig createBaseFilePath(boolean mkdirs) {
         mMkdirs = mkdirs;
