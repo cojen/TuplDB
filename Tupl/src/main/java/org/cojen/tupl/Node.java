@@ -2105,7 +2105,6 @@ final class Node extends Latch {
         // consideration the variable size of the entries. If the guess is wrong, the new
         // entry is inserted into original node, which now has space.
 
-        Split split;
         if ((pos - searchVecStart) < (searchVecEnd - pos)) {
             // Split into new left node.
 
@@ -2145,6 +2144,7 @@ final class Node extends Latch {
 
             // Prune off the left end of this node.
             mSearchVecStart = searchVecLoc;
+            mGarbage += garbageAccum;
 
             if (newLoc == 0) {
                 // Unable to insert new entry into left node. Insert it into the right
@@ -2174,7 +2174,7 @@ final class Node extends Latch {
             newNode.mSearchVecEnd = newSearchVecLoc - 2;
 
             // Split key is copied from this, the right node.
-            split = new Split(false, newNode, retrieveLeafKey(0));
+            mSplit = new Split(false, newNode, retrieveLeafKey(0));
         } else {
             // Split into new right node.
 
@@ -2219,6 +2219,7 @@ final class Node extends Latch {
 
             // Prune off the right end of this node.
             mSearchVecEnd = searchVecLoc;
+            mGarbage += garbageAccum;
 
             if (newLoc == 0) {
                 // Unable to insert new entry into new right node. Insert it into the left
@@ -2248,11 +2249,8 @@ final class Node extends Latch {
             newNode.mSearchVecEnd = newPage.length - 2;
 
             // Split key is copied from the new right node.
-            split = new Split(true, newNode, newNode.retrieveLeafKey(0));
+            mSplit = new Split(true, newNode, newNode.retrieveLeafKey(0));
         }
-
-        mGarbage += garbageAccum;
-        mSplit = split;
     }
 
     private InResult splitInternal
