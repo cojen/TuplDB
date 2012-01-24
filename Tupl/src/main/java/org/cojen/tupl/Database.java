@@ -946,7 +946,6 @@ public final class Database implements Closeable {
      */
     void deletePage(long id, int cachedState) throws IOException {
         if (id != 0) {
-            mPageStore.deletePage(id);
             if (cachedState == mCommitState) {
                 // Newly reserved page was never used, so recycle it.
                 mPageStore.recyclePage(id);
