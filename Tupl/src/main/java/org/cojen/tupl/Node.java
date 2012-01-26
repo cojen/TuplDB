@@ -597,7 +597,7 @@ final class Node extends Latch {
         Node[] childNodes = mChildNodes;
         if (childNodes != null) {
             for (int i=0; i<childNodes.length; i++) {
-                Node child = mChildNodes[i];
+                Node child = childNodes[i];
                 if (child != null) {
                     if (child.tryAcquireShared()) {
                         long childId = retrieveChildRefIdFromIndex(i);
