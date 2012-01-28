@@ -23,10 +23,6 @@ import java.io.InterruptedIOException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 /**
  * Implementation which maps pages to a single file.
  *
@@ -43,7 +39,7 @@ class FilePageArray implements PageArray {
     private final RandomAccessFile[] mFilePool;
     private int mFilePoolTop;
 
-    private final ReadWriteLock mFileLengthLock;
+    private final Object mFileLengthLock;
     private long mFileLength;
     private RandomAccessFile mAllocationFile;
 
@@ -67,17 +63,13 @@ class FilePageArray implements PageArray {
         try {
             file = file.getCanonicalFile();
 
-            mFileLengthLock = new ReentrantReadWriteLock();
-            mFileLengthLock.writeLock().lock();
-            try {
+            synchronized (mFileLengthLock = new Object()) {
                 synchronized (mFilePool) {
                     for (int i=0; i<openFileCount; i++) {
                         mFilePool[i] = open(file, mode);
                     }
                     mFileLength = mFilePool[0].length();
                 }
-            } finally {
-                mFileLengthLock.writeLock().unlock();
             }
         } catch (Throwable e) {
             throw Utils.closeOnFailure(this, e);
@@ -114,8 +106,7 @@ class FilePageArray implements PageArray {
 
         long endPos = count * mPageSize;
 
-        mFileLengthLock.writeLock().lock();
-        try {
+        synchronized (mFileLengthLock) {
             long originalLength = mFileLength;
             if (endPos > originalLength) {
                 mFileLength = endPos;
@@ -128,8 +119,6 @@ class FilePageArray implements PageArray {
                 }
                 mFileLength = endPos;
             }
-        } finally {
-            mFileLengthLock.writeLock().unlock();
         }
     }
 
@@ -139,44 +128,29 @@ class FilePageArray implements PageArray {
             return;
         }
 
-        while (true) {
-            alloc: {
-                mFileLengthLock.readLock().lock();
-                try {
-                    final RandomAccessFile file = accessFile();
-                    try {
-                        if (file.length() >= mFileLength) {
-                            return;
-                        }
-
-                        RandomAccessFile allocFile;
-                        if (mMode == NO_SYNC) {
-                            allocFile = file;
-                        } else if ((allocFile = mAllocationFile) == null) {
-                            // Open file and retry.
-                            break alloc;
-                        }
-
-                        // Writing to the end of the file is more effective at forcing
-                        // the file system to allocate than simply setting the length.
-                        allocFile.seek(mFileLength - 1);
-                        allocFile.write(-1);
-                        return;
-                    } finally {
-                        yieldFile(file);
-                    }
-                } finally {
-                    mFileLengthLock.readLock().unlock();
-                }
-            }
-
-            mFileLengthLock.writeLock().lock();
+        synchronized (mFileLengthLock) {
+            final RandomAccessFile file = accessFile();
             try {
-                if (mAllocationFile == null) {
-                    mAllocationFile = new RandomAccessFile(mFile, "rw");
+                if (file.length() >= mFileLength) {
+                    return;
                 }
+
+                RandomAccessFile allocFile;
+                if (mMode == NO_SYNC) {
+                    allocFile = file;
+                } else {
+                    allocFile = mAllocationFile;
+                    if (allocFile == null) {
+                        mAllocationFile = allocFile = new RandomAccessFile(mFile, "rw");
+                    }
+                }
+
+                // Writing to the end of the file is more effective at forcing
+                // the file system to allocate than simply setting the length.
+                allocFile.seek(mFileLength - 1);
+                allocFile.write(-1);
             } finally {
-                mFileLengthLock.writeLock().unlock();
+                yieldFile(file);
             }
         }
     }
@@ -247,24 +221,9 @@ class FilePageArray implements PageArray {
         int pageSize = mPageSize;
         long pos = index * pageSize;
 
-        lengthAdjust: {
-            Lock readLock = mFileLengthLock.readLock();
-            readLock.lock();
-            try {
-                if ((pos + pageSize) <= mFileLength) {
-                    break lengthAdjust;
-                }
-            } finally {
-                readLock.unlock();
-            }
-
-            mFileLengthLock.writeLock().lock();
-            try {
-                if ((pos + pageSize) > mFileLength) {
-                    mFileLength = pos + pageSize;
-                }
-            } finally {
-                mFileLengthLock.writeLock().unlock();
+        synchronized (mFileLengthLock) {
+            if ((pos + pageSize) > mFileLength) {
+                mFileLength = pos + pageSize;
             }
         }
 
