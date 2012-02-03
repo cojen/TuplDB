@@ -88,7 +88,7 @@ class FilePageArray implements PageArray {
 
     @Override
     public long getPageCount() throws IOException {
-        synchronized (mFilePool) {
+        synchronized (mFileLengthLock) {
             // Always round page count down. A partial last page effectively doesn't exist.
             return mFileLength / mPageSize;
         }
