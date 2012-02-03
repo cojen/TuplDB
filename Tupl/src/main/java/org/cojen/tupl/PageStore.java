@@ -79,50 +79,28 @@ interface PageStore extends Closeable {
         throws IOException;
 
     /**
-     * Writes a page, but doesn't commit it. A written page is immediately
-     * readable even if not committed. An uncommitted page can be deleted, but
-     * it remains readable until after a commit.
-     *
-     * @param buf data to write
-     * @return page id; never zero or one
-     */
-    public long writePage(byte[] buf) throws IOException;
-
-    /**
-     * Writes a page, but doesn't commit it. A written page is immediately
-     * readable even if not committed. An uncommitted page can be deleted, but
-     * it remains readable until after a commit.
-     *
-     * @param buf data to write
-     * @param offset offset into data buffer
-     * @return page id; never zero or one
-     */
-    public long writePage(byte[] buf, int offset) throws IOException;
-
-    /**
-     * Reserves a page to be written later. Reserved page cannot be written
-     * to after a commit.
+     * Allocates a page to be written to.
      *
      * @return page id; never zero or one
      */
-    public long reservePage() throws IOException;
+    public long allocPage() throws IOException;
 
     /**
-     * Writes to a previously reserved page, but doesn't commit it. A written
-     * page is immediately readable even if not committed. An uncommitted
-     * page can be deleted, but it remains readable until after a commit.
+     * Writes to an allocated page, but doesn't commit it. A written page is
+     * immediately readable even if not committed. An uncommitted page can be
+     * deleted, but it remains readable until after a commit.
      *
      * @param id previously reserved page id
      * @param buf data to write
      * @throws IllegalArgumentException if id verification is supported and id
      * was not reserved
      */
-    public void writeReservedPage(long id, byte[] buf) throws IOException;
+    public void writePage(long id, byte[] buf) throws IOException;
 
     /**
-     * Writes to a previously reserved page, but doesn't commit it. A written
-     * page is immediately readable even if not committed. An uncommitted
-     * page can be deleted, but it remains readable until after a commit.
+     * Writes to an allocated page, but doesn't commit it. A written page is
+     * immediately readable even if not committed. An uncommitted page can be
+     * deleted, but it remains readable until after a commit.
      *
      * @param id previously reserved page id
      * @param buf data to write
@@ -130,7 +108,7 @@ interface PageStore extends Closeable {
      * @throws IllegalArgumentException if id verification is supported and id
      * was not reserved
      */
-    public void writeReservedPage(long id, byte[] buf, int offset) throws IOException;
+    public void writePage(long id, byte[] buf, int offset) throws IOException;
 
     /**
      * Deletes a page, but doesn't commit it. Deleted pages are not used for

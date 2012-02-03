@@ -550,7 +550,7 @@ final class Node extends Latch {
             DataIO.writeShort(page, 10, mSearchVecEnd);
         }
 
-        db.writeReservedPage(mId, page);
+        db.writePage(mId, page);
     }
 
     /**

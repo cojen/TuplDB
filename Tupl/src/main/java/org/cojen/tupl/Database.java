@@ -785,7 +785,7 @@ public final class Database implements Closeable {
     Node allocDirtyNode() throws IOException {
         Node node = allocLatchedNode(true);
         try {
-            node.mId = mPageStore.reservePage();
+            node.mId = mPageStore.allocPage();
             node.mCachedState = mCommitState;
             return node;
         } catch (IOException e) {
@@ -801,7 +801,7 @@ public final class Database implements Closeable {
     Node allocUnevictableNode() throws IOException {
         Node node = allocLatchedNode(false);
         try {
-            node.mId = mPageStore.reservePage();
+            node.mId = mPageStore.allocPage();
             node.mCachedState = mCommitState;
             return node;
         } catch (IOException e) {
@@ -859,7 +859,7 @@ public final class Database implements Closeable {
     void markUndoLogDirty(Node node) throws IOException {
         if (node.mCachedState != mCommitState) {
             long oldId = node.mId;
-            long newId = mPageStore.reservePage();
+            long newId = mPageStore.allocPage();
             mPageStore.deletePage(oldId);
             node.write(this);
             node.mId = newId;
@@ -874,7 +874,7 @@ public final class Database implements Closeable {
      */
     void doMarkDirty(Tree tree, Node node) throws IOException {
         long oldId = node.mId;
-        long newId = mPageStore.reservePage();
+        long newId = mPageStore.allocPage();
         if (oldId != 0) {
             mPageStore.deletePage(oldId);
         }
@@ -995,8 +995,8 @@ public final class Database implements Closeable {
         mPageStore.readPage(id, page);
     }
 
-    void writeReservedPage(long id, byte[] page) throws IOException {
-        mPageStore.writeReservedPage(id, page);
+    void writePage(long id, byte[] page) throws IOException {
+        mPageStore.writePage(id, page);
     }
 
     private void checkpoint(boolean force) throws IOException {
