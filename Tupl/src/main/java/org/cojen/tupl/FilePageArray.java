@@ -147,8 +147,10 @@ class FilePageArray implements PageArray {
 
                 // Writing to the end of the file is more effective at forcing
                 // the file system to allocate than simply setting the length.
+                /* FIXME: race condition with writePage
                 allocFile.seek(mFileLength - 1);
                 allocFile.write(-1);
+                */
             } finally {
                 yieldFile(file);
             }
