@@ -220,19 +220,7 @@ class FilePageStore implements PageStore {
     }
 
     @Override
-    public long writePage(byte[] buf) throws IOException {
-        return writePage(buf, 0);
-    }
-
-    @Override
-    public long writePage(byte[] buf, int offset) throws IOException {
-        long id = reservePage();
-        writeReservedPage(id, buf, offset);
-        return id;
-    }
-
-    @Override
-    public long reservePage() throws IOException {
+    public long allocPage() throws IOException {
         mCommitLock.readLock().lock();
         try {
             return mPageManager.allocPage();
@@ -244,12 +232,12 @@ class FilePageStore implements PageStore {
     }
 
     @Override
-    public void writeReservedPage(long id, byte[] buf) throws IOException {
-        writeReservedPage(id, buf, 0);
+    public void writePage(long id, byte[] buf) throws IOException {
+        writePage(id, buf, 0);
     }
 
     @Override
-    public void writeReservedPage(long id, byte[] buf, int offset) throws IOException {
+    public void writePage(long id, byte[] buf, int offset) throws IOException {
         checkId(id);
         try {
             mPageArray.writePage(id, buf, offset);
