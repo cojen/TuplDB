@@ -1697,7 +1697,8 @@ final class Node extends Latch {
      * Copies all the entries from this node, inserts them into the tail of the
      * given left node, and then deletes this node. Caller must ensure that
      * left node has enough room, and that both nodes are latched exclusively.
-     * Caller must also hold commit lock. No latches are released by this method.
+     * Caller must also hold commit lock. This node is always released as a
+     * side effect, but left node is never released by this method.
      */
     void transferLeafToLeftAndDelete(Database db, Node leftNode)
         throws IOException
@@ -1736,7 +1737,8 @@ final class Node extends Latch {
      * Copies all the entries from this node, inserts them into the tail of the
      * given left node, and then deletes this node. Caller must ensure that
      * left node has enough room, and that both nodes are latched exclusively.
-     * Caller must also hold commit lock. No latches are released by this method.
+     * Caller must also hold commit lock. This node is always released as a
+     * side effect, but left node is never released by this method.
      *
      * @param parentPage source of entry to merge from parent
      * @param parentLoc location of parent entry

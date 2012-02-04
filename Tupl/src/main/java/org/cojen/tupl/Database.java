@@ -906,21 +906,27 @@ public final class Database implements Closeable {
 
     /**
      * Caller must hold commit lock and exclusive latch on node. Latch is
-     * never released by this method, even if an exception is thrown.
+     * always released by this method, even if an exception is thrown.
      */
     void deleteNode(Node node) throws IOException {
-        deletePage(node.mId, node.mCachedState);
+        try {
+            deletePage(node.mId, node.mCachedState);
 
-        node.mId = 0;
-        // FIXME: child node array should be recycled
-        node.mChildNodes = null;
+            node.mId = 0;
+            // FIXME: child node array should be recycled
+            node.mChildNodes = null;
 
-        // When node is re-allocated, it will be evicted. Ensure that eviction
-        // doesn't write anything.
-        node.mCachedState = CACHED_CLEAN;
+            // When node is re-allocated, it will be evicted. Ensure that eviction
+            // doesn't write anything.
+            node.mCachedState = CACHED_CLEAN;
+        } finally {
+            node.releaseExclusive();
+        }
 
         // Indicate that node is least recently used, allowing it to be
-        // re-allocated immediately without evicting another node.
+        // re-allocated immediately without evicting another node. Node must be
+        // unlatched at this point, to prevent it from being immediately
+        // promoted to most recently used by allocLatchedNode.
         final Latch cacheLatch = mCacheLatch;
         cacheLatch.acquireExclusive();
         try {

@@ -1793,6 +1793,7 @@ final class TreeCursor implements Cursor {
             // Migrate the entire contents of the right node into the left
             // node, and then delete the right node.
             rightNode.transferLeafToLeftAndDelete(mTree.mDatabase, leftNode);
+            rightNode = null;
             parentNode.deleteChildRef(leftPos + 2);
         } else if (false) { // FIXME: testing
             // Rebalance nodes, but don't delete anything. Right node must be dirtied too.
@@ -1842,20 +1843,24 @@ final class TreeCursor implements Cursor {
 
                 // Delete the empty root node, eliminating a tree level.
 
-                // Note: By retaining child latches (although one has already
+                // Note: By retaining child latches (although right might have
                 // been deleted), another thread is prevented from splitting
                 // the lone child. The lone child will become the new root.
                 // TODO: Investigate if this creates deadlocks.
                 node.rootDelete(mTree);
             }
 
-            rightChildNode.releaseExclusive();
+            if (rightChildNode != null) {
+                rightChildNode.releaseExclusive();
+            }
             leftChildNode.releaseExclusive();
             node.releaseExclusive();
             return;
         }
-            
-        rightChildNode.releaseExclusive();
+
+        if (rightChildNode != null) {
+            rightChildNode.releaseExclusive();
+        }
         leftChildNode.releaseExclusive();
 
         // At this point, only one node latch is held, and it should merge with
@@ -1984,6 +1989,7 @@ final class TreeCursor implements Cursor {
             // node, and then delete the right node.
             rightNode.transferInternalToLeftAndDelete
                 (mTree.mDatabase, leftNode, parentPage, parentEntryLoc, parentEntryLen);
+            rightNode = null;
             parentNode.deleteChildRef(leftPos + 2);
         } else if (false) { // FIXME: testing
             // Rebalance nodes, but don't delete anything. Right node must be dirtied too.
