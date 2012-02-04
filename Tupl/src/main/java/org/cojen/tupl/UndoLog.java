@@ -621,7 +621,6 @@ final class UndoLog {
     private Node popNode(Node parent) throws IOException {
         Node lowerNode = latchLowerNode(parent);
         mDatabase.deleteNode(parent);
-        parent.releaseExclusive();
         return mNode = lowerNode;
     }
 
