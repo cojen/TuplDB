@@ -1324,7 +1324,7 @@ final class TreeCursor implements Cursor {
                 }
             }
 
-            node.updateLeafValue(mTree.mDatabase, pos, value);
+            node.updateLeafValue(mTree, pos, value);
 
             if (node.shouldLeafMerge()) {
                 mergeLeaf(leaf, node);
@@ -1353,7 +1353,7 @@ final class TreeCursor implements Cursor {
         }
 
         int newPos = ~pos;
-        node.insertLeafEntry(mTree.mDatabase, newPos, key, value);
+        node.insertLeafEntry(mTree, newPos, key, value);
 
         leaf.mNodePos = newPos;
         leaf.mNotFoundKey = null;
@@ -1664,7 +1664,7 @@ final class TreeCursor implements Cursor {
             // Already dirty now, but finish the split. Since parent latch is
             // already held, no need to call into the regular finishSplit
             // method. It would release latches and recheck everything.
-            parentNode.insertSplitChildRef(db, parentFrame.mNodePos, node);
+            parentNode.insertSplitChildRef(mTree, parentFrame.mNodePos, node);
             if (parentNode.mSplit != null) {
                 parentNode = finishSplit(parentFrame, parentNode);
             }
@@ -1717,7 +1717,7 @@ final class TreeCursor implements Cursor {
                 leftNode = latchChild(parentNode, pos - 2, false);
                 if (leftNode.mSplit != null) {
                     // Finish sibling split.
-                    parentNode.insertSplitChildRef(mTree.mDatabase, pos - 2, leftNode);
+                    parentNode.insertSplitChildRef(mTree, pos - 2, leftNode);
                     continue;
                 }
             }
@@ -1744,7 +1744,7 @@ final class TreeCursor implements Cursor {
                         leftNode.releaseExclusive();
                     }
                     node.releaseExclusive();
-                    parentNode.insertSplitChildRef(mTree.mDatabase, pos + 2, rightNode);
+                    parentNode.insertSplitChildRef(mTree, pos + 2, rightNode);
                     continue;
                 }
             }
@@ -1792,7 +1792,7 @@ final class TreeCursor implements Cursor {
         if (remaining >= 0) {
             // Migrate the entire contents of the right node into the left
             // node, and then delete the right node.
-            rightNode.transferLeafToLeftAndDelete(mTree.mDatabase, leftNode);
+            rightNode.transferLeafToLeftAndDelete(mTree, leftNode);
             rightNode = null;
             parentNode.deleteChildRef(leftPos + 2);
         } else if (false) { // FIXME: testing
@@ -1903,7 +1903,7 @@ final class TreeCursor implements Cursor {
                 leftNode = latchChild(parentNode, pos - 2, false);
                 if (leftNode.mSplit != null) {
                     // Finish sibling split.
-                    parentNode.insertSplitChildRef(mTree.mDatabase, pos - 2, leftNode);
+                    parentNode.insertSplitChildRef(mTree, pos - 2, leftNode);
                     continue;
                 }
             }
@@ -1930,7 +1930,7 @@ final class TreeCursor implements Cursor {
                         leftNode.releaseExclusive();
                     }
                     node.releaseExclusive();
-                    parentNode.insertSplitChildRef(mTree.mDatabase, pos + 2, rightNode);
+                    parentNode.insertSplitChildRef(mTree, pos + 2, rightNode);
                     continue;
                 }
             }
@@ -1988,7 +1988,7 @@ final class TreeCursor implements Cursor {
             // Migrate the entire contents of the right node into the left
             // node, and then delete the right node.
             rightNode.transferInternalToLeftAndDelete
-                (mTree.mDatabase, leftNode, parentPage, parentEntryLoc, parentEntryLen);
+                (mTree, leftNode, parentPage, parentEntryLoc, parentEntryLen);
             rightNode = null;
             parentNode.deleteChildRef(leftPos + 2);
         } else if (false) { // FIXME: testing
@@ -2031,7 +2031,6 @@ final class TreeCursor implements Cursor {
      */
     private Node finishSplit(final TreeCursorFrame frame, Node node) throws IOException {
         Tree tree = mTree;
-        Database db = tree.mDatabase;
 
         // FIXME: How to acquire shared commit lock without deadlock?
         if (node == tree.mRoot) {
@@ -2042,7 +2041,7 @@ final class TreeCursor implements Cursor {
             } else {
                 stub = null;
             }
-            node.finishSplitRoot(db, stub);
+            node.finishSplitRoot(tree, stub);
             return node;
         }
 
@@ -2055,7 +2054,7 @@ final class TreeCursor implements Cursor {
         // been the only latch held, and so commit lock can be acquired without
         // deadlock.
 
-        final Lock sharedCommitLock = db.sharedCommitLock();
+        final Lock sharedCommitLock = tree.mDatabase.sharedCommitLock();
         sharedCommitLock.lock();
         try {
             Node parentNode = parentFrame.acquireExclusive();
@@ -2068,7 +2067,7 @@ final class TreeCursor implements Cursor {
                     parentNode.releaseExclusive();
                     return node;
                 }
-                parentNode.insertSplitChildRef(db, parentFrame.mNodePos, node);
+                parentNode.insertSplitChildRef(tree, parentFrame.mNodePos, node);
             }
         } finally {
             sharedCommitLock.unlock();

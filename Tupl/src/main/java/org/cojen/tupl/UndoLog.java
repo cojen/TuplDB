@@ -662,7 +662,7 @@ final class UndoLog {
      * Caller must hold commit lock.
      */
     private Node allocDirtyNode(long lowerNodeId) throws IOException {
-        Node node = mDatabase.allocDirtyNode();
+        Node node = mDatabase.allocDirtyNode(null);
         node.mType = Node.TYPE_UNDO_LOG;
         DataIO.writeLong(node.mPage, I_LOWER_NODE_ID, lowerNodeId);
         return node;

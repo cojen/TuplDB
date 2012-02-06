@@ -20,22 +20,44 @@ import java.io.IOException;
 
 import java.util.List;
 
+import java.security.SecureRandom;
+
 /**
  * 
  *
  * @author Brian S O'Neill
  */
 final class Tree implements Index {
+    // Reserved internal tree ids.
+    static final int
+        REGISTRY_ID = 0,
+        REGISTRY_KEY_MAP_ID = 1,
+        MAX_RESERVED_ID = 0xff;
+
+    static boolean isInternal(long id) {
+        return (id & ~0xff) == 0;
+    }
+
+    /**
+     * Returns a random id outside the internal id range.
+     */
+    static long randomId() {
+        SecureRandom rnd = new SecureRandom();
+        long id;
+        while (isInternal(id = rnd.nextLong()));
+        return id;
+    }
+
     final Database mDatabase;
     final LockManager mLockManager;
 
     // Id range is [0, 255] for all internal trees.
     final long mId;
 
-    // Id is null for registry and empty for all other internal trees.
+    // Id is null for registry.
     final byte[] mIdBytes;
 
-    // Name is null for internal trees.
+    // Name is null for all internal trees.
     final byte[] mName;
 
     // Although tree roots can be created and deleted, the object which refers

@@ -152,6 +152,22 @@ final class PageManager {
     }
 
     /**
+     * Tries to allocates a page from the free list, returning zero if
+     * empty. No page allocations are permanent until after commit is called.
+     *
+     * @return page id; zero if free list is empty
+     */
+    public long tryAllocPage() throws IOException {
+        final Lock lock = mRemoveLock;
+        lock.lock();
+        long pageId = mRegularFreeList.tryRemove(lock);
+        if (pageId == 0) {
+            lock.unlock();
+        }
+        return pageId;
+    }
+
+    /**
      * Deletes a page to be reused after commit is called. No page deletions
      * are permanent until after commit is called.
      *

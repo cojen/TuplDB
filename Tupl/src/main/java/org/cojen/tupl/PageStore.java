@@ -86,6 +86,14 @@ interface PageStore extends Closeable {
     public long allocPage() throws IOException;
 
     /**
+     * Tries to allocates a page to be written to, but without ever creating a
+     * new page.
+     *
+     * @return page id; never one; zero if no pages are available
+     */
+    public long tryAllocPage() throws IOException;
+
+    /**
      * Writes to an allocated page, but doesn't commit it. A written page is
      * immediately readable even if not committed. An uncommitted page can be
      * deleted, but it remains readable until after a commit.

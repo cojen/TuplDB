@@ -56,7 +56,7 @@ public final class Database implements Closeable {
          return count <= Integer.MAX_VALUE ? (int) count : Integer.MAX_VALUE;
     }
 
-    private static final int ENCODING_VERSION = 20111127;
+    private static final int ENCODING_VERSION = 20120204;
 
     private static final int I_ENCODING_VERSION        = 0;
     private static final int I_ROOT_PAGE_ID            = I_ENCODING_VERSION + 4;
@@ -67,8 +67,6 @@ public final class Database implements Closeable {
 
     private static final byte KEY_TYPE_INDEX_NAME = 0;
     private static final byte KEY_TYPE_INDEX_ID = 1;
-
-    private static final int REGISTRY_ID = 0, REGISTRY_KEY_MAP_ID = 1, MAX_RESERVED_ID = 255;
 
     private static final int DEFAULT_PAGE_SIZE = 4096;
 
@@ -232,7 +230,7 @@ public final class Database implements Closeable {
             byte[] header = new byte[HEADER_SIZE];
             mPageStore.readExtraCommitData(header);
 
-            mRegistry = new Tree(this, REGISTRY_ID, null, null, loadRegistryRoot(header));
+            mRegistry = new Tree(this, Tree.REGISTRY_ID, null, null, loadRegistryRoot(header));
             mOpenTrees = new TreeMap<byte[], Tree>(KeyComparator.THE);
             mOpenTreesById = new HashMap<Long, Tree>();
 
@@ -244,14 +242,7 @@ public final class Database implements Closeable {
             // Initialized, but not open yet.
             mRedoLog = new RedoLog(baseFile, redoLogId);
 
-            // Open or create mRegistryKeyMap.
-            {
-                byte[] encodedRootId = mRegistry.load(Transaction.BOGUS, Utils.EMPTY_BYTES);
-                long rootId = encodedRootId == null ? 0 : DataIO.readLong(encodedRootId, 0);
-                Node rootNode = loadTreeRoot(rootId);
-                mRegistryKeyMap = new Tree
-                    (this, REGISTRY_KEY_MAP_ID, Utils.EMPTY_BYTES, null, rootNode);
-            }
+            mRegistryKeyMap = openInternalTree(Tree.REGISTRY_KEY_MAP_ID, true);
 
             // Perform recovery by examining redo and undo logs.
 
@@ -465,7 +456,7 @@ public final class Database implements Closeable {
      * @throws IllegalArgumentException if id is reserved
      */
     public Index indexById(long id) throws IOException {
-        if (id >= REGISTRY_ID && id <= MAX_RESERVED_ID) {
+        if (Tree.isInternal(id)) {
             throw new IllegalArgumentException("Invalid id: " + id);
         }
 
@@ -510,7 +501,7 @@ public final class Database implements Closeable {
      * Allows access to internal indexes which can use the redo log.
      */
     Index anyIndexById(long id) throws IOException {
-        if (id == REGISTRY_KEY_MAP_ID) {
+        if (id == Tree.REGISTRY_KEY_MAP_ID) {
             return mRegistryKeyMap;
         }
         return indexById(id);
@@ -619,6 +610,28 @@ public final class Database implements Closeable {
         return loadTreeRoot(rootId);
     }
 
+    private Tree openInternalTree(long treeId, boolean create) throws IOException {
+        final Lock commitLock = sharedCommitLock();
+        commitLock.lock();
+        try {
+            byte[] treeIdBytes = new byte[8];
+            DataIO.writeLong(treeIdBytes, 0, treeId);
+            byte[] rootIdBytes = mRegistry.load(Transaction.BOGUS, treeIdBytes);
+            long rootId;
+            if (rootIdBytes != null) {
+                rootId = DataIO.readLong(rootIdBytes, 0);
+            } else {
+                if (!create) {
+                    return null;
+                }
+                rootId = 0;
+            }
+            return new Tree(this, treeId, treeIdBytes, null, loadTreeRoot(rootId));
+        } finally {
+            commitLock.unlock();
+        }
+    }
+
     private Index openIndex(byte[] name, boolean create) throws IOException {
         final Lock commitLock = sharedCommitLock();
         commitLock.lock();
@@ -647,7 +660,7 @@ public final class Database implements Closeable {
 
                     try {
                         do {
-                            treeId = Utils.randomId(REGISTRY_ID, MAX_RESERVED_ID);
+                            treeId = Tree.randomId();
                             DataIO.writeLong(treeIdBytes, 0, treeId);
                         } while (!mRegistry.insert(Transaction.BOGUS, treeIdBytes,
                                                    Utils.EMPTY_BYTES));
@@ -670,9 +683,9 @@ public final class Database implements Closeable {
                 }
             }
 
-            byte[] encodedRootId = mRegistry.load(Transaction.BOGUS, treeIdBytes);
-            long rootId = (encodedRootId == null || encodedRootId.length == 0) ? 0
-                : DataIO.readLong(encodedRootId, 0);
+            byte[] rootIdBytes = mRegistry.load(Transaction.BOGUS, treeIdBytes);
+            long rootId = (rootIdBytes == null || rootIdBytes.length == 0) ? 0
+                : DataIO.readLong(rootIdBytes, 0);
             Node rootNode = loadTreeRoot(rootId);
 
             synchronized (mOpenTrees) {
@@ -781,8 +794,10 @@ public final class Database implements Closeable {
     /**
      * Returns a new or recycled Node instance, latched exclusively and marked
      * dirty. Caller must hold commit lock.
+     *
+     * @param forTree tree which is allocating the node
      */
-    Node allocDirtyNode() throws IOException {
+    Node allocDirtyNode(Tree forTree) throws IOException {
         Node node = allocLatchedNode(true);
         try {
             node.mId = mPageStore.allocPage();
@@ -797,8 +812,10 @@ public final class Database implements Closeable {
     /**
      * Returns a new or recycled Node instance, latched exclusively, marked
      * dirty and unevictable. Caller must hold commit lock.
+     *
+     * @param forTree tree which is allocating the node
      */
-    Node allocUnevictableNode() throws IOException {
+    Node allocUnevictableNode(Tree forTree) throws IOException {
         Node node = allocLatchedNode(false);
         try {
             node.mId = mPageStore.allocPage();
