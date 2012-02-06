@@ -232,6 +232,18 @@ class FilePageStore implements PageStore {
     }
 
     @Override
+    public long tryAllocPage() throws IOException {
+        mCommitLock.readLock().lock();
+        try {
+            return mPageManager.tryAllocPage();
+        } catch (Throwable e) {
+            throw closeOnFailure(e);
+        } finally {
+            mCommitLock.readLock().unlock();
+        }
+    }
+
+    @Override
     public void writePage(long id, byte[] buf) throws IOException {
         writePage(id, buf, 0);
     }

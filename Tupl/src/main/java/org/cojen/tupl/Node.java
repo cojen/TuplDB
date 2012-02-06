@@ -401,11 +401,12 @@ final class Node extends Latch {
      * @param stub Old root node stub, latched exclusively, whose cursors must
      * transfer into the new root. Stub latch is released by this method.
      */
-    void finishSplitRoot(Database db, Node stub) throws IOException {
+    void finishSplitRoot(Tree tree, Node stub) throws IOException {
         // Create a child node and copy this root node state into it. Then update this
         // root node to point to new and split child nodes. New root is always an internal node.
 
-        Node child = db.allocDirtyNode();
+        Database db = tree.mDatabase;
+        Node child = db.allocDirtyNode(tree);
 
         byte[] newPage = child.mPage;
         child.mPage = mPage;
@@ -1150,13 +1151,13 @@ final class Node extends Latch {
     /**
      * @param pos compliment of position as provided by binarySearchLeaf; must be positive
      */
-    void insertLeafEntry(Database db, int pos, byte[] key, byte[] value)
+    void insertLeafEntry(Tree tree, int pos, byte[] key, byte[] value)
         throws IOException
     {
         int encodedLen = calculateEncodedLength(key, value);
-        int entryLoc = createLeafEntry(db, pos, encodedLen);
+        int entryLoc = createLeafEntry(tree, pos, encodedLen);
         if (entryLoc < 0) {
-            splitLeafAndCreateEntry(db, key, value, encodedLen, pos, true);
+            splitLeafAndCreateEntry(tree, key, value, encodedLen, pos, true);
         } else {
             copyToLeafEntry(key, value, entryLoc);
         }
@@ -1167,7 +1168,7 @@ final class Node extends Latch {
      * @return location for newly allocated entry, already pointed to by search
      * vector, or -1 if leaf must be split
      */
-    private int createLeafEntry(Database db, int pos, final int encodedLen)
+    private int createLeafEntry(Tree tree, int pos, final int encodedLen)
         throws InterruptedIOException
     {
         int searchVecStart = mSearchVecStart;
@@ -1211,7 +1212,7 @@ final class Node extends Latch {
 
             if (mGarbage > remaining) {
                 // Do full compaction and free up the garbage, or else node must be split.
-                return (mGarbage + remaining) < 0 ? -1 : compactLeaf(db, encodedLen, pos, true);
+                return (mGarbage + remaining) < 0 ? -1 : compactLeaf(tree, encodedLen, pos, true);
             }
 
             int vecLen = searchVecEnd - searchVecStart + 2;
@@ -1233,7 +1234,7 @@ final class Node extends Latch {
                 mRightSegTail = entryLoc - 1;
             } else {
                 // Search vector is misaligned, so do full compaction.
-                return compactLeaf(db, encodedLen, pos, true);
+                return compactLeaf(tree, encodedLen, pos, true);
             }
 
             Utils.arrayCopies(page,
@@ -1257,9 +1258,10 @@ final class Node extends Latch {
      * @param keyPos position to insert split key
      * @param splitChild child node which split
      */
-    void insertSplitChildRef(Database db, int keyPos, Node splitChild)
+    void insertSplitChildRef(Tree tree, int keyPos, Node splitChild)
         throws IOException
     {
+        Database db = tree.mDatabase;
         if (db.shouldMarkDirty(splitChild)) {
             // It should be dirty as a result of the split itself.
             throw new AssertionError("Split child is not already marked dirty");
@@ -1316,7 +1318,7 @@ final class Node extends Latch {
         }
 
         InResult result = createInternalEntry
-            (db, keyPos, split.splitKeyEncodedLength(), newChildPos, splitChild);
+            (tree, keyPos, split.splitKeyEncodedLength(), newChildPos, splitChild);
 
         // Write new child id.
         DataIO.writeLong(result.mPage, result.mNewChildLoc, newChild.mId);
@@ -1339,7 +1341,7 @@ final class Node extends Latch {
      * @param splitChild pass null if split not allowed
      * @return null if entry must be split, but no split is not allowed
      */
-    private InResult createInternalEntry(Database db, int keyPos, int encodedLen,
+    private InResult createInternalEntry(Tree tree, int keyPos, int encodedLen,
                                          int newChildPos, Node splitChild)
         throws IOException
     {
@@ -1407,7 +1409,7 @@ final class Node extends Latch {
             if (mGarbage > remaining) {
                 // Do full compaction and free up the garbage, or split the node.
                 if ((mGarbage + remaining) >= 0) {
-                    return compactInternal(db, encodedLen, keyPos, newChildPos);
+                    return compactInternal(tree, encodedLen, keyPos, newChildPos);
                 }
 
                 // Node is full so split it.
@@ -1417,7 +1419,7 @@ final class Node extends Latch {
                     return null;
                 }
 
-                result = splitInternal(db, keyPos, splitChild, newChildPos, encodedLen);
+                result = splitInternal(tree, keyPos, splitChild, newChildPos, encodedLen);
                 page = result.mPage;
                 keyPos = result.mKeyLoc;
                 newChildPos = result.mNewChildLoc;
@@ -1446,7 +1448,7 @@ final class Node extends Latch {
                 mRightSegTail = entryLoc - 1;
             } else {
                 // Search vector is misaligned, so do full compaction.
-                return compactInternal(db, encodedLen, keyPos, newChildPos);
+                return compactInternal(tree, encodedLen, keyPos, newChildPos);
             }
 
             int newSearchVecEnd = newSearchVecStart + vecLen;
@@ -1506,7 +1508,7 @@ final class Node extends Latch {
     /**
      * @param pos position as provided by binarySearchLeaf; must be positive
      */
-    void updateLeafValue(Database db, int pos, byte[] value) throws IOException {
+    void updateLeafValue(Tree tree, int pos, byte[] value) throws IOException {
         final byte[] page = mPage;
         final int valueLen = value.length;
 
@@ -1594,10 +1596,10 @@ final class Node extends Latch {
                 // Do full compaction and free up the garbage, or split the node.
                 byte[] key = retrieveLeafKey(pos);
                 if ((mGarbage + remaining) >= 0) {
-                    copyToLeafEntry(key, value, compactLeaf(db, encodedLen, pos, false));
+                    copyToLeafEntry(key, value, compactLeaf(tree, encodedLen, pos, false));
                 } else {
                     // Node is full so split it.
-                    splitLeafAndCreateEntry(db, key, value, encodedLen, pos, false);
+                    splitLeafAndCreateEntry(tree, key, value, encodedLen, pos, false);
                 }
                 return;
             }
@@ -1622,7 +1624,7 @@ final class Node extends Latch {
             } else {
                 // Search vector is misaligned, so do full compaction.
                 byte[] key = retrieveLeafKey(pos);
-                copyToLeafEntry(key, value, compactLeaf(db, encodedLen, pos, false));
+                copyToLeafEntry(key, value, compactLeaf(tree, encodedLen, pos, false));
                 return;
             }
 
@@ -1700,10 +1702,10 @@ final class Node extends Latch {
      * Caller must also hold commit lock. This node is always released as a
      * side effect, but left node is never released by this method.
      */
-    void transferLeafToLeftAndDelete(Database db, Node leftNode)
+    void transferLeafToLeftAndDelete(Tree tree, Node leftNode)
         throws IOException
     {
-        db.prepareToDelete(this);
+        tree.mDatabase.prepareToDelete(this);
 
         final byte[] rightPage = mPage;
         final int searchVecEnd = mSearchVecEnd;
@@ -1714,7 +1716,7 @@ final class Node extends Latch {
             int entryLoc = DataIO.readUnsignedShort(rightPage, searchVecStart);
             int encodedLen = leafEntryLength(rightPage, entryLoc);
             int leftEntryLoc = leftNode.createLeafEntry
-                (db, leftNode.highestLeafPos() + 2, encodedLen);
+                (tree, leftNode.highestLeafPos() + 2, encodedLen);
             // Note: Must access left page each time, since compaction can replace it.
             System.arraycopy(rightPage, entryLoc, leftNode.mPage, leftEntryLoc, encodedLen);
             searchVecStart += 2;
@@ -1730,7 +1732,7 @@ final class Node extends Latch {
             frame = prev;
         }
 
-        db.deleteNode(this);
+        tree.mDatabase.deleteNode(this);
     }
 
     /**
@@ -1744,16 +1746,16 @@ final class Node extends Latch {
      * @param parentLoc location of parent entry
      * @param parentLen length of parent entry
      */
-    void transferInternalToLeftAndDelete(Database db, Node leftNode,
+    void transferInternalToLeftAndDelete(Tree tree, Node leftNode,
                                          byte[] parentPage, int parentLoc, int parentLen)
         throws IOException
     {
-        db.prepareToDelete(this);
+        tree.mDatabase.prepareToDelete(this);
 
         // Create space to absorb parent key.
         int leftEndPos = leftNode.highestInternalPos();
         InResult result = leftNode.createInternalEntry
-            (db, leftEndPos, parentLen, (leftEndPos += 2) << 2, null);
+            (tree, leftEndPos, parentLen, (leftEndPos += 2) << 2, null);
 
         // Copy child id associated with parent key.
         final byte[] rightPage = mPage;
@@ -1773,7 +1775,7 @@ final class Node extends Latch {
 
             // Allocate entry for left node.
             int pos = leftNode.highestInternalPos();
-            result = leftNode.createInternalEntry(db, pos, encodedLen, (pos + 2) << 2, null);
+            result = leftNode.createInternalEntry(tree, pos, encodedLen, (pos + 2) << 2, null);
 
             // Copy child id.
             System.arraycopy(rightPage, rightChildIdsLoc, result.mPage, result.mNewChildLoc, 8);
@@ -1802,7 +1804,7 @@ final class Node extends Latch {
             frame = prev;
         }
 
-        db.deleteNode(this);
+        tree.mDatabase.deleteNode(this);
     }
 
     /**
@@ -2003,7 +2005,7 @@ final class Node extends Latch {
      * @param pos normalized search vector position of entry to insert/update
      * @return location for newly allocated entry, already pointed to by search vector
      */
-    private int compactLeaf(Database db, int encodedLen, int pos, boolean forInsert)
+    private int compactLeaf(Tree tree, int encodedLen, int pos, boolean forInsert)
         throws InterruptedIOException
     {
         byte[] page = mPage;
@@ -2029,6 +2031,7 @@ final class Node extends Latch {
         int newLoc = 0;
         final int searchVecEnd = mSearchVecEnd;
 
+        Database db = tree.mDatabase;
         byte[] dest = db.removeSpareBuffer();
 
         for (; searchVecLoc <= searchVecEnd; searchVecLoc += 2, newSearchVecLoc += 2) {
@@ -2068,7 +2071,7 @@ final class Node extends Latch {
      * @param encodedLen length of new entry to allocate
      * @param pos normalized search vector position of entry to insert/update
      */
-    private void splitLeafAndCreateEntry(Database db, byte[] key, byte[] value,
+    private void splitLeafAndCreateEntry(Tree tree, byte[] key, byte[] value,
                                          int encodedLen, int pos, boolean forInsert)
         throws IOException
     {
@@ -2086,7 +2089,7 @@ final class Node extends Latch {
 
         byte[] page = mPage;
 
-        Node newNode = db.allocUnevictableNode();
+        Node newNode = tree.mDatabase.allocUnevictableNode(tree);
         newNode.mType = TYPE_TREE_LEAF;
         newNode.mGarbage = 0;
 
@@ -2156,12 +2159,12 @@ final class Node extends Latch {
                     if (pos >= 0) {
                         throw new AssertionError("Key exists");
                     }
-                    copyToLeafEntry(key, value, createLeafEntry(db, ~pos, encodedLen));
+                    copyToLeafEntry(key, value, createLeafEntry(tree, ~pos, encodedLen));
                 } else {
                     if (pos < 0) {
                         throw new AssertionError("Key not found");
                     }
-                    updateLeafValue(db, pos, value);
+                    updateLeafValue(tree, pos, value);
                 }
             } else {
                 // Create new entry and point to it.
@@ -2231,12 +2234,12 @@ final class Node extends Latch {
                     if (pos >= 0) {
                         throw new AssertionError("Key exists");
                     }
-                    copyToLeafEntry(key, value, createLeafEntry(db, ~pos, encodedLen));
+                    copyToLeafEntry(key, value, createLeafEntry(tree, ~pos, encodedLen));
                 } else {
                     if (pos < 0) {
                         throw new AssertionError("Key not found");
                     }
-                    updateLeafValue(db, pos, value);
+                    updateLeafValue(tree, pos, value);
                 }
             } else {
                 // Create new entry and point to it.
@@ -2256,7 +2259,7 @@ final class Node extends Latch {
     }
 
     private InResult splitInternal
-        (final Database db, final int keyPos,
+        (final Tree tree, final int keyPos,
          final Node splitChild,
          final int newChildPos, final int encodedLen)
         throws IOException
@@ -2271,7 +2274,7 @@ final class Node extends Latch {
 
         final byte[] page = mPage;
 
-        final Node newNode = db.allocUnevictableNode();
+        final Node newNode = tree.mDatabase.allocUnevictableNode(tree);
         newNode.mType = TYPE_TREE_INTERNAL;
         newNode.mGarbage = 0;
 
@@ -2540,7 +2543,7 @@ final class Node extends Latch {
      * @param keyPos normalized search vector position of key to insert
      * @param childPos normalized search vector position of child node id to insert
      */
-    private InResult compactInternal(Database db, int encodedLen, int keyPos, int childPos)
+    private InResult compactInternal(Tree tree, int encodedLen, int keyPos, int childPos)
         throws InterruptedIOException
     {
         byte[] page = mPage;
@@ -2564,6 +2567,7 @@ final class Node extends Latch {
         int newLoc = 0;
         final int searchVecEnd = mSearchVecEnd;
 
+        Database db = tree.mDatabase;
         byte[] dest = db.removeSpareBuffer();
 
         for (; searchVecLoc <= searchVecEnd; searchVecLoc += 2, newSearchVecLoc += 2) {
