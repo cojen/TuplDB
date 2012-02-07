@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 
 import java.util.BitSet;
+import java.util.EnumSet;
 import java.util.UUID;
 
 import java.util.concurrent.locks.Lock;
@@ -84,13 +85,13 @@ class FilePageStore implements PageStore {
     // Commit number is the highest one which has been committed.
     private volatile int mCommitNumber;
 
-    FilePageStore(File file, boolean fileSync, boolean readOnly, int pageSize)
+    FilePageStore(File file, EnumSet<OpenOption> options, int pageSize)
         throws IOException
     {
-        this(file, fileSync, readOnly, pageSize, 32);
+        this(file, options, pageSize, 32);
     }
 
-    FilePageStore(File file, boolean fileSync, boolean readOnly, int pageSize, int openFileCount)
+    FilePageStore(File file, EnumSet<OpenOption> options, int pageSize, int openFileCount)
         throws IOException
     {
         if (pageSize < MINIMUM_PAGE_SIZE) {
@@ -98,18 +99,29 @@ class FilePageStore implements PageStore {
                 ("Page size must be at least " + MINIMUM_PAGE_SIZE + ": " + pageSize);
         }
 
+        if (!file.exists() &&
+            !options.contains(OpenOption.CREATE) &&
+            !options.contains(OpenOption.FORCE_CREATE))
+        {
+            throw new DatabaseException("File does not exist: " + file);
+        }
+
         mCommitLock = new ReentrantReadWriteLock(true);
 
         try {
-            String mode = readOnly ? "r" : (fileSync ? "rwd" : "rw");
+            String mode = options.contains(OpenOption.READ_ONLY) ? "r"
+                : (options.contains(OpenOption.SYNC) ? "rwd" : "rw");
             mPageArray = new FilePageArray(file, mode, pageSize, openFileCount);
 
-            if (mPageArray.getPageCount() == 0) {
-                // Newly created file.
-                mPageManager = new PageManager(mPageArray);
-                mCommitNumber = 0;
-                commit(null);
-            } else {
+            open: {
+                if (mPageArray.getPageCount() == 0) {
+                    // Newly created file.
+                    mPageManager = new PageManager(mPageArray);
+                    mCommitNumber = 0;
+                    commit(null);
+                    break open;
+                }
+
                 // Opened an existing file.
 
                 byte[] header;
@@ -134,6 +146,14 @@ class FilePageStore implements PageStore {
                         commitNumber1 = DataIO.readInt(header1, I_COMMIT_NUMBER);
                     } catch (CorruptPageStoreException e) {
                         if (ex0 != null) {
+                            // File is completely unusable.
+                            if (options.contains(OpenOption.FORCE_CREATE)) {
+                                // Re-create it.
+                                mPageManager = new PageManager(mPageArray);
+                                mCommitNumber = 0;
+                                commit(null);
+                                break open;
+                            }
                             throw ex0;
                         }
                         header = header0;
@@ -144,8 +164,7 @@ class FilePageStore implements PageStore {
                     int pageSize1 = DataIO.readInt(header1, I_PAGE_SIZE);
                     if (pageSize != pageSize1) {
                         throw new CorruptPageStoreException
-                            ("Mismatched page sizes: " +
-                             pageSize + " != " + pageSize1);
+                            ("Mismatched page sizes: " + pageSize + " != " + pageSize1);
                     }
 
                     if (header0 == null) {
