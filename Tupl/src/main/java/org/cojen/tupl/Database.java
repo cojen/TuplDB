@@ -21,6 +21,7 @@ import java.io.File;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -151,6 +152,15 @@ public final class Database implements Closeable {
             throw new IllegalArgumentException("Base file is a directory: " + baseFile);
         }
 
+        File dataFile = config.mDataFile;
+        if (dataFile == null) {
+            dataFile = new File(baseFile.getPath() + ".db");
+        } else {
+            if (dataFile.isDirectory()) {
+                throw new IllegalArgumentException("Data file is a directory: " + dataFile);
+            }
+        }
+
         int pageSize = config.mPageSize;
         if (pageSize <= 0) {
             pageSize = DEFAULT_PAGE_SIZE;
@@ -189,14 +199,25 @@ public final class Database implements Closeable {
         mDefaultLockTimeoutNanos = config.mLockTimeoutNanos;
         mLockManager = new LockManager(mDefaultLockTimeoutNanos);
 
-        String basePath = baseFile.getPath();
-        File file = new File(basePath + ".db");
-
         if (!config.mReadOnly && config.mMkdirs) {
-            file.getParentFile().mkdirs();
+            baseFile.getParentFile().mkdirs();
+            dataFile.getParentFile().mkdirs();
         }
 
-        mPageStore = new FilePageStore(file, config.mFileSync, config.mReadOnly, pageSize);
+        EnumSet<OpenOption> options = EnumSet.noneOf(OpenOption.class);
+        if (config.mReadOnly) {
+            options.add(OpenOption.READ_ONLY);
+        }
+        if (config.mFileSync) {
+            options.add(OpenOption.SYNC);
+        }
+        if (config.mForceCreate) {
+            options.add(OpenOption.FORCE_CREATE);
+        } else {
+            options.add(OpenOption.CREATE);
+        }
+
+        mPageStore = new FilePageStore(dataFile, options, pageSize);
 
         try {
             // Pre-allocate nodes. They are automatically added to the usage

@@ -29,6 +29,8 @@ import java.util.concurrent.TimeUnit;
 public class DatabaseConfig {
     File mBaseFile;
     boolean mMkdirs;
+    File mDataFile;
+    boolean mForceCreate;
     long mMinCachedBytes;
     long mMaxCachedBytes;
     DurabilityMode mDurabilityMode;
@@ -47,7 +49,8 @@ public class DatabaseConfig {
     }
 
     /**
-     * Set the base file name for the database, which is required.
+     * Set the base file name for the database, which is required. The base
+     * file must reside in an ordinary file directory.
      */
     public DatabaseConfig baseFile(File file) {
         mBaseFile = file;
@@ -60,6 +63,27 @@ public class DatabaseConfig {
      */
     public DatabaseConfig createBaseFilePath(boolean mkdirs) {
         mMkdirs = mkdirs;
+        return this;
+    }
+
+    /**
+     * Set the data file for the database, which by default resides in the same
+     * directory as the base file. The data file can be in a separate
+     * directory, and it can even be a raw block device.
+     */
+    public DatabaseConfig dataFile(File file) {
+        mDataFile = file;
+        return this;
+    }
+
+    /**
+     * Set true to force the database to be created if the data file appears to
+     * be new. By default, the database is created if the data file doesn't
+     * exist or is empty. When using a raw block device for the data file, this
+     * option must be set initially to format it.
+     */
+    public DatabaseConfig forceCreate(boolean create) {
+        mForceCreate = create;
         return this;
     }
 
