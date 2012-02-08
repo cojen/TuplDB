@@ -114,10 +114,10 @@ class FilePageStore implements PageStore {
             mPageArray = new FilePageArray(file, mode, pageSize, openFileCount);
 
             open: {
-                if (mPageArray.getPageCount() == 0) {
+                if (mPageArray.isEmpty()) {
                     // Newly created file.
                     mPageManager = new PageManager(mPageArray);
-                    mCommitNumber = 0;
+                    mCommitNumber = -1;
                     commit(null);
                     break open;
                 }
@@ -127,18 +127,26 @@ class FilePageStore implements PageStore {
                 byte[] header;
                 findHeader: {
                     byte[] header0, header1;
+                    int pageSize0;
                     int commitNumber0, commitNumber1;
                     CorruptPageStoreException ex0;
 
                     try {
                         header0 = readHeader(0);
                         commitNumber0 = DataIO.readInt(header0, I_COMMIT_NUMBER);
-                        pageSize = DataIO.readInt(header0, I_PAGE_SIZE);
+                        pageSize0 = DataIO.readInt(header0, I_PAGE_SIZE);
                         ex0 = null;
                     } catch (CorruptPageStoreException e) {
                         header0 = null;
-                        commitNumber0 = 0;
+                        commitNumber0 = -1;
+                        pageSize0 = pageSize;
                         ex0 = e;
+                    }
+
+                    if (pageSize0 != pageSize) {
+                        throw new DatabaseException
+                            ("Actual page size does not match configured page size: "
+                             + pageSize0 + " != " + pageSize);
                     }
 
                     try {
@@ -150,7 +158,7 @@ class FilePageStore implements PageStore {
                             if (options.contains(OpenOption.FORCE_CREATE)) {
                                 // Re-create it.
                                 mPageManager = new PageManager(mPageArray);
-                                mCommitNumber = 0;
+                                mCommitNumber = -1;
                                 commit(null);
                                 break open;
                             }
@@ -162,9 +170,9 @@ class FilePageStore implements PageStore {
                     }
 
                     int pageSize1 = DataIO.readInt(header1, I_PAGE_SIZE);
-                    if (pageSize != pageSize1) {
+                    if (pageSize0 != pageSize1) {
                         throw new CorruptPageStoreException
-                            ("Mismatched page sizes: " + pageSize + " != " + pageSize1);
+                            ("Mismatched page sizes: " + pageSize0 + " != " + pageSize1);
                     }
 
                     if (header0 == null) {

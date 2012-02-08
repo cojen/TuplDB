@@ -28,6 +28,8 @@ import java.io.IOException;
 interface PageArray extends Closeable {
     public boolean isReadOnly();
 
+    public boolean isEmpty();
+
     /**
      * Returns the fixed size of all pages in the array, in bytes.
      */

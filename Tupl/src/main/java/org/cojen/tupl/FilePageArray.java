@@ -82,6 +82,13 @@ class FilePageArray implements PageArray {
     }
 
     @Override
+    public boolean isEmpty() {
+        synchronized (mFileLengthLock) {
+            return mFileLength == 0;
+        }
+    }
+
+    @Override
     public int pageSize() {
         return mPageSize;
     }
@@ -114,6 +121,8 @@ class FilePageArray implements PageArray {
                 RandomAccessFile file = accessFile();
                 try {
                     file.setLength(endPos);
+                } catch (IOException e) {
+                    // Ignore. File might actually be a fixed size device.
                 } finally {
                     yieldFile(file);
                 }
