@@ -17,6 +17,10 @@
 package org.cojen.tupl;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.Writer;
+
+import java.util.Properties;
 
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -42,7 +46,7 @@ public class DatabaseConfig {
     int mPageSize;
 
     public DatabaseConfig() {
-        createBaseFilePath(true);
+        createFilePath(true);
         durabilityMode(null);
         lockTimeout(1, TimeUnit.SECONDS);
         checkpointRate(1, TimeUnit.SECONDS);
@@ -58,10 +62,10 @@ public class DatabaseConfig {
     }
 
     /**
-     * Set true to create directories for the base file, if they don't already
-     * exist. Default is true.
+     * Set true to create directories for the base and data file, if they don't
+     * already exist. Default is true.
      */
-    public DatabaseConfig createBaseFilePath(boolean mkdirs) {
+    public DatabaseConfig createFilePath(boolean mkdirs) {
         mMkdirs = mkdirs;
         return this;
     }
@@ -168,5 +172,27 @@ public class DatabaseConfig {
     public DatabaseConfig pageSize(int size) {
         mPageSize = size;
         return this;
+    }
+
+    void writeInfo(Writer w) throws IOException {
+        Properties props = new Properties();
+        set(props, "baseFile", mBaseFile);
+        set(props, "createFilePath", mMkdirs);
+        set(props, "dataFile", mDataFile);
+        set(props, "forceCreate", mForceCreate);
+        set(props, "minCacheSize", mMinCachedBytes);
+        set(props, "maxCacheSize", mMaxCachedBytes);
+        set(props, "durabilityMode", mDurabilityMode);
+        set(props, "lockTimeoutNanos", mLockTimeoutNanos);
+        set(props, "checkpointRateNanos", mCheckpointRateNanos);
+        set(props, "syncWrites", mFileSync);
+        set(props, "pageSize", mPageSize);
+        props.store(w, DatabaseConfig.class.getName());
+    }
+
+    private static void set(Properties props, String name, Object value) {
+        if (value != null) {
+            props.setProperty(name, String.valueOf(value));
+        }
     }
 }
