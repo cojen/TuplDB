@@ -16,10 +16,13 @@
 
 package org.cojen.tupl;
 
+import java.io.BufferedWriter;
 import java.io.Closeable;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.InterruptedIOException;
 import java.io.IOException;
+import java.io.Writer;
 
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -163,7 +166,7 @@ public final class Database implements Closeable {
 
         int pageSize = config.mPageSize;
         if (pageSize <= 0) {
-            pageSize = DEFAULT_PAGE_SIZE;
+            config.pageSize(pageSize = DEFAULT_PAGE_SIZE);
         }
 
         int minCache, maxCache;
@@ -202,6 +205,13 @@ public final class Database implements Closeable {
         if (!config.mReadOnly && config.mMkdirs) {
             baseFile.getParentFile().mkdirs();
             dataFile.getParentFile().mkdirs();
+        }
+
+        if (!config.mReadOnly) {
+            // Write the info file which is just a copy of the config values.
+            Writer w = new BufferedWriter(new FileWriter(baseFile.getPath() + ".info"));
+            config.writeInfo(w);
+            w.close();
         }
 
         EnumSet<OpenOption> options = EnumSet.noneOf(OpenOption.class);
