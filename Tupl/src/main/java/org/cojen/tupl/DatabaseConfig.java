@@ -16,6 +16,8 @@
 
 package org.cojen.tupl;
 
+import java.lang.management.ManagementFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.Writer;
@@ -175,7 +177,23 @@ public class DatabaseConfig {
     }
 
     void writeInfo(Writer w) throws IOException {
+        String pid = ManagementFactory.getRuntimeMXBean().getName();
+        String user;
+        try {
+            user = System.getProperty("user.name");
+        } catch (SecurityException e) {
+            user = null;
+        }
+
         Properties props = new Properties();
+
+        if (pid != null) {
+            set(props, "lastOpenedByProcess", pid);
+        }
+        if (user != null) {
+            set(props, "lastOpenedByUser", user);
+        }
+
         set(props, "baseFile", mBaseFile);
         set(props, "createFilePath", mMkdirs);
         set(props, "dataFile", mDataFile);
@@ -187,7 +205,8 @@ public class DatabaseConfig {
         set(props, "checkpointRateNanos", mCheckpointRateNanos);
         set(props, "syncWrites", mFileSync);
         set(props, "pageSize", mPageSize);
-        props.store(w, DatabaseConfig.class.getName());
+
+        props.store(w, Database.class.getName());
     }
 
     private static void set(Properties props, String name, Object value) {
