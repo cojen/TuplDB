@@ -76,6 +76,8 @@ public final class Database implements Closeable {
 
     private static int cThreadCounter;
 
+    private final LockedFile mInfoFile;
+
     final DurabilityMode mDurabilityMode;
     final long mDefaultLockTimeoutNanos;
     final LockManager mLockManager;
@@ -207,12 +209,9 @@ public final class Database implements Closeable {
             dataFile.getParentFile().mkdirs();
         }
 
-        if (!config.mReadOnly) {
-            // Write the info file which is just a copy of the config values.
-            Writer w = new BufferedWriter(new FileWriter(baseFile.getPath() + ".info"));
-            config.writeInfo(w);
-            w.close();
-        }
+        // Attempt to create and lock the info file, which mostly lists the config values.
+        mInfoFile = new LockedFile(new File(baseFile.getPath() + ".info"), config.mReadOnly);
+        mInfoFile.write(config);
 
         EnumSet<OpenOption> options = EnumSet.noneOf(OpenOption.class);
         if (config.mReadOnly) {
@@ -595,6 +594,9 @@ public final class Database implements Closeable {
         }
         if (mPageStore != null) {
             mPageStore.close();
+        }
+        if (mInfoFile != null) {
+            mInfoFile.close();
         }
     }
 
