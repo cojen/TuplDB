@@ -60,7 +60,7 @@ public final class Database implements Closeable {
          return count <= Integer.MAX_VALUE ? (int) count : Integer.MAX_VALUE;
     }
 
-    private static final int ENCODING_VERSION = 20120204;
+    private static final int ENCODING_VERSION = 20120212;
 
     private static final int I_ENCODING_VERSION        = 0;
     private static final int I_ROOT_PAGE_ID            = I_ENCODING_VERSION + 4;
