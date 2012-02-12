@@ -36,7 +36,29 @@ final class Node extends Latch {
         CACHED_DIRTY_0   = 2, // 0b0010
         CACHED_DIRTY_1   = 3; // 0b0011
 
-    static final byte TYPE_UNDO_LOG = 1, TYPE_TREE_LEAF = 2, TYPE_TREE_INTERNAL = 3;
+    /*
+      Node type encoding strategy:
+
+      bits 7..4: major type   0001 (undo log), 0100 (branch), 1000 (leaf)
+      bits 3..1: sub type     for leaf: 000 (bud), 001 (normal)
+                              for branch: 001 (6 byte child pointers), 010 (8 byte pointers)
+      bit  0:    endianness   0 (little), 1 (big)
+
+      TN == Tree Node
+
+      A bud is a leaf which doesn't contain any values. This is an optimization
+      for indexes which are just a set of keys.
+
+      Note that leaf type is always negative. If type encoding changes, the
+      isLeaf method might need to be updated.
+
+     */
+
+    static final byte
+        TYPE_UNDO_LOG  = (byte) 0x11, // 0b0001_000_1
+        TYPE_TN_BRANCH = (byte) 0x45, // 0b0100_010_1
+        TYPE_TN_BUD    = (byte) 0x81, // 0b1000_000_1
+        TYPE_TN_LEAF   = (byte) 0x83; // 0b1000_001_1
 
     // Tree node header size.
     static final int TN_HEADER_SIZE = 12;
@@ -198,7 +220,7 @@ final class Node extends Latch {
     void asEmptyRoot() {
         mId = 0;
         mCachedState = CACHED_CLEAN;
-        mType = TYPE_TREE_LEAF;
+        mType = TYPE_TN_LEAF;
         clearEntries();
     }
 
@@ -451,7 +473,7 @@ final class Node extends Latch {
         mChildNodes = new Node[] {left, right};
 
         mPage = newPage;
-        mType = TYPE_TREE_INTERNAL;
+        mType = TYPE_TN_BRANCH;
         mGarbage = 0;
         mLeftSegTail = TN_HEADER_SIZE + keyLen;
         mRightSegTail = newPage.length - 1;
@@ -515,10 +537,10 @@ final class Node extends Latch {
             mRightSegTail = DataIO.readUnsignedShort(page, 6);
             mSearchVecStart = DataIO.readUnsignedShort(page, 8);
             mSearchVecEnd = DataIO.readUnsignedShort(page, 10);
-            if (type == TYPE_TREE_INTERNAL) {
+            if (type == TYPE_TN_BRANCH) {
                 // FIXME: recycle child node arrays
                 mChildNodes = new Node[numKeys() + 1];
-            } else if (type != TYPE_TREE_LEAF) {
+            } else if (type != TYPE_TN_LEAF) {
                 throw new CorruptNodeException("Unknown type: " + type);
             }
         }
@@ -628,7 +650,7 @@ final class Node extends Latch {
      * Caller must hold any latch.
      */
     boolean isLeaf() {
-        return mType == TYPE_TREE_LEAF;
+        return mType < 0;
     }
 
     /**
@@ -1899,7 +1921,7 @@ final class Node extends Latch {
         child.mPage = page;
         child.mId = STUB_ID;
         child.mCachedState = CACHED_CLEAN;
-        child.mType = TYPE_TREE_INTERNAL;
+        child.mType = TYPE_TN_BRANCH;
         child.clearEntries();
         child.mChildNodes = childNodes;
         child.mLastCursorFrame = lastCursorFrame;
@@ -2090,7 +2112,7 @@ final class Node extends Latch {
         byte[] page = mPage;
 
         Node newNode = tree.mDatabase.allocUnevictableNode(tree);
-        newNode.mType = TYPE_TREE_LEAF;
+        newNode.mType = TYPE_TN_LEAF;
         newNode.mGarbage = 0;
 
         byte[] newPage = newNode.mPage;
@@ -2275,7 +2297,7 @@ final class Node extends Latch {
         final byte[] page = mPage;
 
         final Node newNode = tree.mDatabase.allocUnevictableNode(tree);
-        newNode.mType = TYPE_TREE_INTERNAL;
+        newNode.mType = TYPE_TN_BRANCH;
         newNode.mGarbage = 0;
 
         final byte[] newPage = newNode.mPage;
