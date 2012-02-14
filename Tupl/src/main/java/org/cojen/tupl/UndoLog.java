@@ -22,6 +22,8 @@ import java.util.List;
 
 import java.util.concurrent.locks.Lock;
 
+import static org.cojen.tupl.DataUtils.*;
+
 /**
  * Specialized stack used by UndoLog.
  *
@@ -178,7 +180,7 @@ final class UndoLog {
 
     private void pushTransactionId(long txnId) throws IOException {
         byte[] payload = new byte[8];
-        DataIO.writeLong(payload, 0, txnId);
+        writeLong(payload, 0, txnId);
         doPush(OP_TRANSACTION, payload, 0, 8, 1);
     }
 
@@ -204,12 +206,12 @@ final class UndoLog {
             mActiveIndexId = indexId;
         }
 
-        doPush(op, payload, off, len, DataIO.calcUnsignedVarIntLength(len));
+        doPush(op, payload, off, len, calcUnsignedVarIntLength(len));
     }
 
     private void pushIndexId(long indexId) throws IOException {
         byte[] payload = new byte[8];
-        DataIO.writeLong(payload, 0, indexId);
+        writeLong(payload, 0, indexId);
         doPush(OP_INDEX, payload, 0, 8, 1);
     }
 
@@ -297,7 +299,7 @@ final class UndoLog {
             node.mGarbage = pos;
 
             if (remaining <= 0 && available >= (1 + varIntLen)) {
-                DataIO.writeUnsignedVarInt(page, pos -= varIntLen, len);
+                writeUnsignedVarInt(page, pos -= varIntLen, len);
                 page[--pos] = op;
                 node.mGarbage = pos;
                 break;
@@ -399,7 +401,7 @@ final class UndoLog {
                         break;
 
                     case OP_INDEX:
-                        mActiveIndexId = DataIO.readLong(entry, 0);
+                        mActiveIndexId = readLong(entry, 0);
                         activeIndex = null;
                         break;
 
@@ -456,13 +458,13 @@ final class UndoLog {
                 throw new DatabaseException("Unknown undo log entry type: " + opRef[0]);
 
             case OP_TRANSACTION:
-                if ((mActiveTxnId = DataIO.readLong(entry, 0)) == parentTxnId) {
+                if ((mActiveTxnId = readLong(entry, 0)) == parentTxnId) {
                     break loop;
                 }
                 break;
 
             case OP_INDEX:
-                mActiveIndexId = DataIO.readLong(entry, 0);
+                mActiveIndexId = readLong(entry, 0);
                 break;
 
             case OP_DELETE:
@@ -507,13 +509,13 @@ final class UndoLog {
                 throw new DatabaseException("Unknown undo log entry type: " + opRef[0]);
 
             case OP_TRANSACTION:
-                if ((mActiveTxnId = DataIO.readLong(entry, 0)) == parentTxnId) {
+                if ((mActiveTxnId = readLong(entry, 0)) == parentTxnId) {
                     break loop;
                 }
                 break;
 
             case OP_INDEX:
-                mActiveIndexId = DataIO.readLong(entry, 0);
+                mActiveIndexId = readLong(entry, 0);
                 activeIndex = null;
                 break;
 
@@ -565,8 +567,8 @@ final class UndoLog {
                 return null;
             }
             opRef[0] = buffer[pos++];
-            int payloadLen = DataIO.readUnsignedVarInt(buffer, pos);
-            int varIntLen = DataIO.calcUnsignedVarIntLength(payloadLen);
+            int payloadLen = readUnsignedVarInt(buffer, pos);
+            int varIntLen = calcUnsignedVarIntLength(payloadLen);
             pos += varIntLen;
             byte[] entry = new byte[payloadLen];
             System.arraycopy(buffer, pos, entry, 0, payloadLen);
@@ -581,8 +583,8 @@ final class UndoLog {
         int payloadLen;
         {
             opRef[0] = page[pos++];
-            payloadLen = DataIO.readUnsignedVarInt(page, pos);
-            int varIntLen = DataIO.calcUnsignedVarIntLength(payloadLen);
+            payloadLen = readUnsignedVarInt(page, pos);
+            int varIntLen = calcUnsignedVarIntLength(payloadLen);
             pos += varIntLen;
             mLength -= 1 + varIntLen + payloadLen;
         }
@@ -628,7 +630,7 @@ final class UndoLog {
      * @return null if none
      */
     private Node latchLowerNode(Node parent) throws IOException {
-        long lowerNodeId = DataIO.readLong(parent.mPage, I_LOWER_NODE_ID);
+        long lowerNodeId = readLong(parent.mPage, I_LOWER_NODE_ID);
         if (lowerNodeId == 0) {
             return null;
         }
@@ -654,7 +656,7 @@ final class UndoLog {
                                    byte op, byte[] payload, int off, int len)
     {
         dest[destPos] = op;
-        int payloadPos = DataIO.writeUnsignedVarInt(dest, destPos + 1, len);
+        int payloadPos = writeUnsignedVarInt(dest, destPos + 1, len);
         System.arraycopy(payload, off, dest, payloadPos, len);
     }
 
@@ -664,7 +666,7 @@ final class UndoLog {
     private Node allocDirtyNode(long lowerNodeId) throws IOException {
         Node node = mDatabase.allocDirtyNode(null);
         node.mType = Node.TYPE_UNDO_LOG;
-        DataIO.writeLong(node.mPage, I_LOWER_NODE_ID, lowerNodeId);
+        writeLong(node.mPage, I_LOWER_NODE_ID, lowerNodeId);
         return node;
     }
 
@@ -683,7 +685,7 @@ final class UndoLog {
                     dirtyList.append(node);
                 }
 
-                long lowerNodeId = DataIO.readLong(node.mPage, I_LOWER_NODE_ID);
+                long lowerNodeId = readLong(node.mPage, I_LOWER_NODE_ID);
                 if (lowerNodeId == 0) {
                     break;
                 }
@@ -736,24 +738,24 @@ final class UndoLog {
                 workspace = new byte[Math.min(INITIAL_BUFFER_SIZE, Utils.roundUpPower2(psize))];
             }
             writeActiveIds(workspace);
-            DataIO.writeShort(workspace, (8 + 8), bsize);
+            writeShort(workspace, (8 + 8), bsize);
             System.arraycopy(buffer, pos, workspace, (8 + 8 + 2), bsize);
             master.doPush(OP_LOG_COPY, workspace, 0, psize,
-                          DataIO.calcUnsignedVarIntLength(psize));
+                          calcUnsignedVarIntLength(psize));
         } else {
             if (workspace == null) {
                 workspace = new byte[INITIAL_BUFFER_SIZE];
             }
             writeActiveIds(workspace);
-            DataIO.writeLong(workspace, (8 + 8), node.mId);
+            writeLong(workspace, (8 + 8), node.mId);
             master.doPush(OP_LOG_REF, workspace, 0, (8 + 8 + 8), 1);
         }
         return workspace;
     }
 
     private void writeActiveIds(byte[] workspace) {
-        DataIO.writeLong(workspace, 0, mActiveTxnId);
-        DataIO.writeLong(workspace, 8, mActiveIndexId);
+        writeLong(workspace, 0, mActiveTxnId);
+        writeLong(workspace, 8, mActiveIndexId);
     }
 
     /**
@@ -776,7 +778,7 @@ final class UndoLog {
 
             case OP_LOG_COPY: {
                 setActiveIds(log, entry);
-                int bsize = DataIO.readUnsignedShort(entry, (8 + 8));
+                int bsize = readUnsignedShort(entry, (8 + 8));
                 byte[] buffer = new byte[bsize];
                 System.arraycopy(entry, (8 + 8 + 2), buffer, 0, bsize);
                 log.mBuffer = buffer;
@@ -786,7 +788,7 @@ final class UndoLog {
 
             case OP_LOG_REF:
                 setActiveIds(log, entry);
-                long nodeId = DataIO.readLong(entry, (8 + 8));
+                long nodeId = readLong(entry, (8 + 8));
                 log.mNode = readUndoLogNode(mDatabase, nodeId);
                 break;
             }
@@ -818,8 +820,8 @@ final class UndoLog {
     }
 
     private static void setActiveIds(UndoLog log, byte[] masterLogEntry) {
-        log.mActiveTxnId = DataIO.readLong(masterLogEntry, 0);
-        log.mActiveIndexId = DataIO.readLong(masterLogEntry, 8);
+        log.mActiveTxnId = readLong(masterLogEntry, 0);
+        log.mActiveIndexId = readLong(masterLogEntry, 8);
     }
 
     private static Node readUndoLogNode(Database db, long nodeId) throws IOException {

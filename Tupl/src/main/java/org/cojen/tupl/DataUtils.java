@@ -23,7 +23,7 @@ import java.io.EOFException;
  *
  * @author Brian S O'Neill
  */
-class DataIO {
+class DataUtils {
     public static final int readUnsignedShort(byte[] b, int offset) {
         return ((b[offset] & 0xff) << 8) | ((b[offset + 1] & 0xff));
     }

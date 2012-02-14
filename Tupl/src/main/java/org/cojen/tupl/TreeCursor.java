@@ -1978,7 +1978,7 @@ final class TreeCursor implements Cursor {
         // Determine if both nodes plus parent key can fit in one node. If so,
         // migrate and delete the right node.
         byte[] parentPage = parentNode.mPage;
-        int parentEntryLoc = DataIO.readUnsignedShort
+        int parentEntryLoc = DataUtils.readUnsignedShort
             (parentPage, parentNode.mSearchVecStart + leftPos);
         int parentEntryLen = Node.internalEntryLength(parentPage, parentEntryLoc);
         int remaining = leftAvail - parentEntryLen

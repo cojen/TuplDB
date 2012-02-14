@@ -35,6 +35,7 @@ import java.util.concurrent.ScheduledExecutorService;
 
 import java.util.concurrent.locks.Lock;
 
+import static org.cojen.tupl.DataUtils.*;
 import static org.cojen.tupl.Node.*;
 
 /**
@@ -265,9 +266,9 @@ public final class Database implements Closeable {
             mOpenTreesById = new HashMap<Long, Tree>();
 
             synchronized (mTxnIdLock) {
-                mTxnId = DataIO.readLong(header, I_TRANSACTION_ID);
+                mTxnId = readLong(header, I_TRANSACTION_ID);
             }
-            long redoLogId = DataIO.readLong(header, I_REDO_LOG_ID);
+            long redoLogId = readLong(header, I_REDO_LOG_ID);
 
             // Initialized, but not open yet.
             mRedoLog = new RedoLog(baseFile, redoLogId);
@@ -279,7 +280,7 @@ public final class Database implements Closeable {
             UndoLog masterUndoLog;
             LHashTable.Obj<UndoLog> undoLogs;
             {
-                long nodeId = DataIO.readLong(header, I_MASTER_UNDO_LOG_PAGE_ID);
+                long nodeId = readLong(header, I_MASTER_UNDO_LOG_PAGE_ID);
                 if (nodeId == 0) {
                     masterUndoLog = null;
                     undoLogs = null;
@@ -504,7 +505,7 @@ public final class Database implements Closeable {
 
             byte[] idKey = new byte[9];
             idKey[0] = KEY_TYPE_INDEX_ID;
-            DataIO.writeLong(idKey, 1, id);
+            writeLong(idKey, 1, id);
 
             byte[] name = mRegistryKeyMap.load(null, idKey);
 
@@ -628,7 +629,7 @@ public final class Database implements Closeable {
      * is not eligible for eviction.
      */
     private Node loadRegistryRoot(byte[] header) throws IOException {
-        int version = DataIO.readInt(header, I_ENCODING_VERSION);
+        int version = readInt(header, I_ENCODING_VERSION);
 
         long rootId;
         if (version == 0) {
@@ -637,7 +638,7 @@ public final class Database implements Closeable {
             if (version != ENCODING_VERSION) {
                 throw new CorruptPageStoreException("Unknown encoding version: " + version);
             }
-            rootId = DataIO.readLong(header, I_ROOT_PAGE_ID);
+            rootId = readLong(header, I_ROOT_PAGE_ID);
         }
 
         return loadTreeRoot(rootId);
@@ -648,11 +649,11 @@ public final class Database implements Closeable {
         commitLock.lock();
         try {
             byte[] treeIdBytes = new byte[8];
-            DataIO.writeLong(treeIdBytes, 0, treeId);
+            writeLong(treeIdBytes, 0, treeId);
             byte[] rootIdBytes = mRegistry.load(Transaction.BOGUS, treeIdBytes);
             long rootId;
             if (rootIdBytes != null) {
-                rootId = DataIO.readLong(rootIdBytes, 0);
+                rootId = readLong(rootIdBytes, 0);
             } else {
                 if (!create) {
                     return null;
@@ -681,20 +682,20 @@ public final class Database implements Closeable {
             long treeId;
 
             if (treeIdBytes != null) {
-                treeId = DataIO.readLong(treeIdBytes, 0);
+                treeId = readLong(treeIdBytes, 0);
             } else if (!create) {
                 return null;
             } else synchronized (mOpenTrees) {
                 treeIdBytes = mRegistryKeyMap.load(null, nameKey);
                 if (treeIdBytes != null) {
-                    treeId = DataIO.readLong(treeIdBytes, 0);
+                    treeId = readLong(treeIdBytes, 0);
                 } else {
                     treeIdBytes = new byte[8];
 
                     try {
                         do {
                             treeId = Tree.randomId();
-                            DataIO.writeLong(treeIdBytes, 0, treeId);
+                            writeLong(treeIdBytes, 0, treeId);
                         } while (!mRegistry.insert(Transaction.BOGUS, treeIdBytes,
                                                    Utils.EMPTY_BYTES));
 
@@ -718,7 +719,7 @@ public final class Database implements Closeable {
 
             byte[] rootIdBytes = mRegistry.load(Transaction.BOGUS, treeIdBytes);
             long rootId = (rootIdBytes == null || rootIdBytes.length == 0) ? 0
-                : DataIO.readLong(rootIdBytes, 0);
+                : readLong(rootIdBytes, 0);
             Node rootNode = loadTreeRoot(rootId);
 
             synchronized (mOpenTrees) {
@@ -933,7 +934,7 @@ public final class Database implements Closeable {
         }
         if (node == tree.mRoot && tree.mIdBytes != null) {
             byte[] newEncodedId = new byte[8];
-            DataIO.writeLong(newEncodedId, 0, newId);
+            writeLong(newEncodedId, 0, newId);
             mRegistry.store(Transaction.BOGUS, tree.mIdBytes, newEncodedId);
         }
         node.mId = newId;
@@ -1217,12 +1218,12 @@ public final class Database implements Closeable {
         }
 
         byte[] header = new byte[HEADER_SIZE];
-        DataIO.writeInt(header, I_ENCODING_VERSION, ENCODING_VERSION);
-        DataIO.writeLong(header, I_ROOT_PAGE_ID, rootId);
-        DataIO.writeLong(header, I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
-        DataIO.writeLong(header, I_TRANSACTION_ID, txnId);
+        writeInt(header, I_ENCODING_VERSION, ENCODING_VERSION);
+        writeLong(header, I_ROOT_PAGE_ID, rootId);
+        writeLong(header, I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
+        writeLong(header, I_TRANSACTION_ID, txnId);
         // Add one to redoLogId, indicating the active log id.
-        DataIO.writeLong(header, I_REDO_LOG_ID, redoLogId + 1);
+        writeLong(header, I_REDO_LOG_ID, redoLogId + 1);
 
         return header;
     }
