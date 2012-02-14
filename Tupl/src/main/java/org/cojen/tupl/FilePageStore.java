@@ -31,6 +31,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import java.util.zip.CRC32;
 
+import static org.cojen.tupl.DataUtils.*;
+
 /**
  * Low-level support for storing fixed size pages in a single file. Page size should be a
  * multiple of the file system allocation unit, which is typically 4096 bytes. The minimum
@@ -133,8 +135,8 @@ class FilePageStore implements PageStore {
 
                     try {
                         header0 = readHeader(0);
-                        commitNumber0 = DataIO.readInt(header0, I_COMMIT_NUMBER);
-                        pageSize0 = DataIO.readInt(header0, I_PAGE_SIZE);
+                        commitNumber0 = readInt(header0, I_COMMIT_NUMBER);
+                        pageSize0 = readInt(header0, I_PAGE_SIZE);
                         ex0 = null;
                     } catch (CorruptPageStoreException e) {
                         header0 = null;
@@ -151,7 +153,7 @@ class FilePageStore implements PageStore {
 
                     try {
                         header1 = readHeader(1);
-                        commitNumber1 = DataIO.readInt(header1, I_COMMIT_NUMBER);
+                        commitNumber1 = readInt(header1, I_COMMIT_NUMBER);
                     } catch (CorruptPageStoreException e) {
                         if (ex0 != null) {
                             // File is completely unusable.
@@ -169,7 +171,7 @@ class FilePageStore implements PageStore {
                         break findHeader;
                     }
 
-                    int pageSize1 = DataIO.readInt(header1, I_PAGE_SIZE);
+                    int pageSize1 = readInt(header1, I_PAGE_SIZE);
                     if (pageSize0 != pageSize1) {
                         throw new CorruptPageStoreException
                             ("Mismatched page sizes: " + pageSize0 + " != " + pageSize1);
@@ -397,9 +399,9 @@ class FilePageStore implements PageStore {
     {
         final PageArray array = mPageArray;
 
-        DataIO.writeLong(header, I_MAGIC_NUMBER, MAGIC_NUMBER);
-        DataIO.writeInt (header, I_PAGE_SIZE, array.pageSize());
-        DataIO.writeInt (header, I_COMMIT_NUMBER, commitNumber);
+        writeLong(header, I_MAGIC_NUMBER, MAGIC_NUMBER);
+        writeInt (header, I_PAGE_SIZE, array.pageSize());
+        writeInt (header, I_COMMIT_NUMBER, commitNumber);
 
         if (extra != null) {
             // Exception is thrown if extra data exceeds header length.
@@ -450,11 +452,11 @@ class FilePageStore implements PageStore {
 
     private static int setHeaderChecksum(byte[] header) {
         // Clear checksum field before computing.
-        DataIO.writeInt(header, I_CHECKSUM, 0);
+        writeInt(header, I_CHECKSUM, 0);
         CRC32 crc = new CRC32();
         crc.update(header, 0, MINIMUM_PAGE_SIZE);
         int checksum = (int) crc.getValue();
-        DataIO.writeInt(header, I_CHECKSUM, checksum);
+        writeInt(header, I_CHECKSUM, checksum);
         return checksum;
     }
 
@@ -467,12 +469,12 @@ class FilePageStore implements PageStore {
             throw new CorruptPageStoreException("File is smaller than expected");
         }
 
-        long magic = DataIO.readLong(header, I_MAGIC_NUMBER);
+        long magic = readLong(header, I_MAGIC_NUMBER);
         if (magic != MAGIC_NUMBER) {
             throw new CorruptPageStoreException("Wrong magic number: " + magic);
         }
 
-        int checksum = DataIO.readInt(header, I_CHECKSUM);
+        int checksum = readInt(header, I_CHECKSUM);
 
         int newChecksum = setHeaderChecksum(header);
         if (newChecksum != checksum) {

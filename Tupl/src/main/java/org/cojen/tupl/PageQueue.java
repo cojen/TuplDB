@@ -24,6 +24,8 @@ import java.util.BitSet;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import static org.cojen.tupl.DataUtils.*;
+
 /**
  * Used by PageManager to implement free lists.
  *
@@ -133,21 +135,21 @@ final class PageQueue implements IntegerRef {
      * Initialize a restored queue. Caller must hold append and remove locks.
      */
     void init(byte[] header, int offset) throws IOException {
-        mRemovePageCount = DataIO.readLong(header, offset + I_REMOVE_PAGE_COUNT);
-        mRemoveNodeCount = DataIO.readLong(header, offset + I_REMOVE_NODE_COUNT);
+        mRemovePageCount = readLong(header, offset + I_REMOVE_PAGE_COUNT);
+        mRemoveNodeCount = readLong(header, offset + I_REMOVE_NODE_COUNT);
 
-        mRemoveHeadId = DataIO.readLong(header, offset + I_REMOVE_HEAD_ID);
-        mRemoveHeadOffset = DataIO.readInt(header, offset + I_REMOVE_HEAD_OFFSET);
-        mRemoveHeadFirstPageId = DataIO.readLong(header, offset + I_REMOVE_HEAD_FIRST_PAGE_ID);
+        mRemoveHeadId = readLong(header, offset + I_REMOVE_HEAD_ID);
+        mRemoveHeadOffset = readInt(header, offset + I_REMOVE_HEAD_OFFSET);
+        mRemoveHeadFirstPageId = readLong(header, offset + I_REMOVE_HEAD_FIRST_PAGE_ID);
 
-        mAppendHeadId = mAppendTailId = DataIO.readLong(header, offset + I_APPEND_HEAD_ID);
+        mAppendHeadId = mAppendTailId = readLong(header, offset + I_APPEND_HEAD_ID);
 
         if (mRemoveHeadId == 0) {
             mRemoveStoppedId = mAppendHeadId;
         } else {
             mManager.pageArray().readPage(mRemoveHeadId, mRemoveHead);
             if (mRemoveHeadFirstPageId == 0) {
-                mRemoveHeadFirstPageId = DataIO.readLong(mRemoveHead, I_FIRST_PAGE_ID);
+                mRemoveHeadFirstPageId = readLong(mRemoveHead, I_FIRST_PAGE_ID);
             }
         }
     }
@@ -179,7 +181,7 @@ final class PageQueue implements IntegerRef {
             final byte[] head = mRemoveHead;
             if (mRemoveHeadOffset < head.length) {
                 // Pass this as an IntegerRef to mRemoveHeadOffset.
-                long delta = DataIO.readUnsignedVarLong(head, this);
+                long delta = readUnsignedVarLong(head, this);
                 if (delta > 0) {
                     mRemoveHeadFirstPageId = pageId + delta;
                     return pageId;
@@ -190,7 +192,7 @@ final class PageQueue implements IntegerRef {
             oldHeadId = mRemoveHeadId;
 
             // Move to the next node in the list.
-            long nextId = DataIO.readLong(head, I_NEXT_NODE_ID);
+            long nextId = readLong(head, I_NEXT_NODE_ID);
 
             if (nextId == mAppendHeadId) {
                 // Cannot remove from the append list. Those pages are off limits.
@@ -225,7 +227,7 @@ final class PageQueue implements IntegerRef {
         mManager.pageArray().readPage(id, head);
         mRemoveHeadId = id;
         mRemoveHeadOffset = I_NODE_START;
-        mRemoveHeadFirstPageId = DataIO.readLong(head, I_FIRST_PAGE_ID);
+        mRemoveHeadFirstPageId = readLong(head, I_FIRST_PAGE_ID);
     }
 
     /**
@@ -282,8 +284,8 @@ final class PageQueue implements IntegerRef {
             long firstPageId = appendHeap.remove();
 
             byte[] tailBuf = mAppendTail;
-            DataIO.writeLong(tailBuf, I_NEXT_NODE_ID, newTailId);
-            DataIO.writeLong(tailBuf, I_FIRST_PAGE_ID, firstPageId);
+            writeLong(tailBuf, I_NEXT_NODE_ID, newTailId);
+            writeLong(tailBuf, I_FIRST_PAGE_ID, firstPageId);
 
             int end = appendHeap.drain(firstPageId,
                                        tailBuf,
@@ -317,22 +319,22 @@ final class PageQueue implements IntegerRef {
             drainAppendHeap(appendHeap);
         }
 
-        DataIO.writeLong(header, offset+I_REMOVE_PAGE_COUNT, mRemovePageCount + mAppendPageCount);
-        DataIO.writeLong(header, offset+I_REMOVE_NODE_COUNT, mRemoveNodeCount + mAppendNodeCount);
+        writeLong(header, offset+I_REMOVE_PAGE_COUNT, mRemovePageCount + mAppendPageCount);
+        writeLong(header, offset+I_REMOVE_NODE_COUNT, mRemoveNodeCount + mAppendNodeCount);
 
         if (mRemoveHeadId == 0 && mAppendPageCount > 0) {
-            DataIO.writeLong(header, offset + I_REMOVE_HEAD_ID, mAppendHeadId);
-            DataIO.writeInt (header, offset + I_REMOVE_HEAD_OFFSET, I_NODE_START);
+            writeLong(header, offset + I_REMOVE_HEAD_ID, mAppendHeadId);
+            writeInt (header, offset + I_REMOVE_HEAD_OFFSET, I_NODE_START);
             // First page is defined in node itself, and init method reads it.
-            DataIO.writeLong(header, offset + I_REMOVE_HEAD_FIRST_PAGE_ID, 0);
+            writeLong(header, offset + I_REMOVE_HEAD_FIRST_PAGE_ID, 0);
         } else {
-            DataIO.writeLong(header, offset + I_REMOVE_HEAD_ID, mRemoveHeadId);
-            DataIO.writeInt (header, offset + I_REMOVE_HEAD_OFFSET, mRemoveHeadOffset);
-            DataIO.writeLong(header, offset + I_REMOVE_HEAD_FIRST_PAGE_ID, mRemoveHeadFirstPageId);
+            writeLong(header, offset + I_REMOVE_HEAD_ID, mRemoveHeadId);
+            writeInt (header, offset + I_REMOVE_HEAD_OFFSET, mRemoveHeadOffset);
+            writeLong(header, offset + I_REMOVE_HEAD_FIRST_PAGE_ID, mRemoveHeadFirstPageId);
         }
 
         // Post-commit, all appended pages are eligible to be removed.
-        DataIO.writeLong(header, offset + I_APPEND_HEAD_ID, mAppendTailId);
+        writeLong(header, offset + I_APPEND_HEAD_ID, mAppendTailId);
 
         // Increase counts now, but not all pages are not available until after
         // commitEnd is called.
@@ -349,7 +351,7 @@ final class PageQueue implements IntegerRef {
      * @param header header with contents filled in by commitStart
      */
     void commitEnd(byte[] header, int offset) throws IOException {
-        long newAppendHeadId = DataIO.readLong(header, offset + I_APPEND_HEAD_ID);
+        long newAppendHeadId = readLong(header, offset + I_APPEND_HEAD_ID);
 
         if (mRemoveHeadId == 0 && mRemoveStoppedId != newAppendHeadId) {
             // Allow removing of previously appended pages.
@@ -415,7 +417,7 @@ final class PageQueue implements IntegerRef {
             clearPageBit(pages, pageId);
 
             if (nodeOffsetRef.offset < node.length) {
-                long delta = DataIO.readUnsignedVarLong(node, nodeOffsetRef);
+                long delta = readUnsignedVarLong(node, nodeOffsetRef);
                 if (delta > 0) {
                     pageId += delta;
                     continue;
@@ -428,13 +430,13 @@ final class PageQueue implements IntegerRef {
             count++;
             clearPageBit(pages, nodeId);
 
-            nodeId = DataIO.readLong(node, I_NEXT_NODE_ID);
+            nodeId = readLong(node, I_NEXT_NODE_ID);
             if (nodeId == mAppendHeadId) {
                 break;
             }
 
             mManager.pageArray().readPage(nodeId, node);
-            pageId = DataIO.readLong(node, I_FIRST_PAGE_ID);
+            pageId = readLong(node, I_FIRST_PAGE_ID);
             nodeOffsetRef.offset = I_NODE_START;
         }
 
