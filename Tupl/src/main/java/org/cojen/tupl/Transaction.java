@@ -122,6 +122,30 @@ public final class Transaction extends Locker {
     }
 
     /**
+     * Returns the fixed durability mode of this transaction.
+     */
+    public final DurabilityMode durabilityMode() {
+        return mDurabilityMode;
+    }
+
+    /**
+     * Checks the validity of the transaction.
+     *
+     * @throws DatabaseException if transaction is bogus or was invalidated by
+     * an earlier exception
+     */
+    public final void check() throws DatabaseException {
+        Object borked = mBorked;
+        if (borked != null) {
+            if (borked == BOGUS) {
+                throw new DatabaseException("Transaction is bogus");
+            } else {
+                throw new DatabaseException("Invalid transaction, caused by: " + borked);
+            }
+        }
+    }
+
+    /**
      * Commits all modifications made within the current transaction scope. The
      * current scope is still valid after this method is called, unless an
      * exception is thrown. Call exit or reset to fully release transaction
@@ -428,16 +452,5 @@ public final class Transaction extends Locker {
             mBorked = e;
         }
         return Utils.rethrow(e);
-    }
-
-    private void check() throws DatabaseException {
-        Object borked = mBorked;
-        if (borked != null) {
-            if (borked == BOGUS) {
-                throw new DatabaseException("Transaction is bogus");
-            } else {
-                throw new DatabaseException("Invalid transaction, caused by: " + borked);
-            }
-        }
     }
 }
