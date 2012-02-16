@@ -61,7 +61,11 @@ class FilePageArray implements PageArray {
         mFilePool = new RandomAccessFile[openFileCount];
 
         try {
-            file = file.getCanonicalFile();
+            try {
+                file = file.getCanonicalFile();
+            } catch (IOException e) {
+                // Ignore.
+            }
 
             synchronized (mFileLengthLock = new Object()) {
                 synchronized (mFilePool) {
