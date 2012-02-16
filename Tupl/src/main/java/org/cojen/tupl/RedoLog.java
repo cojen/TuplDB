@@ -33,7 +33,7 @@ import java.nio.channels.FileChannel;
  */
 final class RedoLog implements Closeable {
     private static final long MAGIC_NUMBER = 431399725605778814L;
-    private static final int ENCODING_VERSION = 20111001;
+    private static final int ENCODING_VERSION = 20120105;
 
     private static final byte
         /** timestamp: long */
@@ -85,11 +85,31 @@ final class RedoLog implements Closeable {
             valueLength: varInt, value: bytes */
         OP_TXN_STORE = 19,
 
+        /** txnId: long, indexId: long, keyLength: varInt, key: bytes,
+            valueLength: varInt, value: bytes */
+        OP_TXN_STORE_COMMIT = 20,
+
+        /** txnId: long, parentTxnId: long, indexId: long, keyLength: varInt, key: bytes,
+            valueLength: varInt, value: bytes */
+        OP_TXN_STORE_COMMIT_CHILD = 21,
+
         /** txnId: long, indexId: long, keyLength: varInt, key: bytes */
-        OP_TXN_DELETE = 20;
+        OP_TXN_DELETE = 22,
+
+        /** txnId: long, indexId: long, keyLength: varInt, key: bytes */
+        OP_TXN_DELETE_COMMIT = 23,
+
+        /** txnId: long, parentTxnId: long, indexId: long, keyLength: varInt, key: bytes */
+        OP_TXN_DELETE_COMMIT_CHILD = 24;
 
         /** txnId: long, indexId: long */
-        //OP_TXN_CLEAR = 21,
+        //OP_TXN_CLEAR = 25,
+
+        /** txnId: long, indexId: long */
+        //OP_TXN_CLEAR_COMMIT = 26,
+
+        /** txnId: long, parentTxnId: long, indexId: long */
+        //OP_TXN_CLEAR_COMMIT_CHILD = 27,
 
         /** length: varInt, data: bytes */
         //OP_CUSTOM = (byte) 128,
@@ -560,8 +580,34 @@ final class RedoLog implements Closeable {
                 visitor.txnStore(in.readLong(), in.readLong(), in.readBytes(), in.readBytes());
                 break;
 
+            case OP_TXN_STORE_COMMIT:
+                long txnId = in.readLong();
+                visitor.txnStore(txnId, in.readLong(), in.readBytes(), in.readBytes());
+                visitor.txnCommit(txnId, 0);
+                break;
+
+            case OP_TXN_STORE_COMMIT_CHILD:
+                txnId = in.readLong();
+                long parentTxnId = in.readLong();
+                visitor.txnStore(txnId, in.readLong(), in.readBytes(), in.readBytes());
+                visitor.txnCommit(txnId, parentTxnId);
+                break;
+
             case OP_TXN_DELETE:
                 visitor.txnStore(in.readLong(), in.readLong(), in.readBytes(), null);
+                break;
+
+            case OP_TXN_DELETE_COMMIT:
+                txnId = in.readLong();
+                visitor.txnStore(txnId, in.readLong(), in.readBytes(), null);
+                visitor.txnCommit(txnId, 0);
+                break;
+
+            case OP_TXN_DELETE_COMMIT_CHILD:
+                txnId = in.readLong();
+                parentTxnId = in.readLong();
+                visitor.txnStore(txnId, in.readLong(), in.readBytes(), null);
+                visitor.txnCommit(txnId, parentTxnId);
                 break;
             }
         }
