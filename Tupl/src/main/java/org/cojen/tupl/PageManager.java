@@ -190,8 +190,7 @@ final class PageManager {
     }
 
     /**
-     * Allocates pages for immediate use. Even if requested page count is zero,
-     * this method ensures the file system has allocated all pages.
+     * Allocates pages for immediate use.
      */
     public void allocatePages(long pageCount) throws IOException {
         createPages: {
@@ -218,8 +217,6 @@ final class PageManager {
                 recyclePage(pageId);
             } while (--pageCount > 0);
         }
-
-        mPageArray.allocatePages();
     }
 
     /**
