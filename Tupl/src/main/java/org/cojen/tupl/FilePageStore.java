@@ -111,9 +111,7 @@ class FilePageStore implements PageStore {
         mCommitLock = new ReentrantReadWriteLock(true);
 
         try {
-            String mode = options.contains(OpenOption.READ_ONLY) ? "r"
-                : (options.contains(OpenOption.SYNC) ? "rwd" : "rw");
-            mPageArray = new FilePageArray(file, mode, pageSize, openFileCount);
+            mPageArray = new PageArray(pageSize, file, options);
 
             open: {
                 if (mPageArray.isEmpty()) {

@@ -219,7 +219,7 @@ public final class Database implements Closeable {
             options.add(OpenOption.READ_ONLY);
         }
         if (config.mFileSync) {
-            options.add(OpenOption.SYNC);
+            options.add(OpenOption.SYNC_IO);
         }
         if (config.mForceCreate) {
             options.add(OpenOption.FORCE_CREATE);
@@ -1057,9 +1057,6 @@ public final class Database implements Closeable {
     }
 
     private void checkpoint(boolean force) throws IOException {
-        // Ensures all pages are allocated by the file system.
-        mPageStore.allocatePages(0);
-
         // Checkpoint lock ensures consistent state between page store and logs.
         synchronized (mCheckpointLock) {
             final Node root = mRegistry.mRoot;
