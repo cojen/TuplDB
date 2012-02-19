@@ -21,11 +21,39 @@ import java.io.InputStream;
 import java.io.IOException;
 
 /**
- * Simple buffered input stream used by RedoLog.
+ * Simple buffered input stream.
  *
  * @author Brian S O'Neill
  */
 class DataIn extends InputStream {
+    /**
+     * @return actual amount read, which can be more than min
+     */
+    static int readRequired(InputStream in, int min, byte[] buf, int off, int len)
+        throws IOException
+    {
+        int amt = in.read(buf, off, len);
+        if (amt >= min) {
+            return amt;
+        }
+        if (amt <= 0) {
+            throw new EOFException();
+        }
+        int total = amt;
+        while (true) {
+            off += amt;
+            len -= amt;
+            amt = in.read(buf, off, len);
+            if (amt <= 0) {
+                throw new EOFException();
+            }
+            total += amt;
+            if (total >= min) {
+                return total;
+            }
+        }
+    }
+
     private final InputStream mIn;
     private final byte[] mBuffer;
 
@@ -33,8 +61,12 @@ class DataIn extends InputStream {
     private int mEnd;
 
     DataIn(InputStream in) {
+        this(in, 4096);
+    }
+
+    DataIn(InputStream in, int bufferSize) {
         mIn = in;
-        mBuffer = new byte[4096];
+        mBuffer = new byte[bufferSize];
     }
 
     @Override

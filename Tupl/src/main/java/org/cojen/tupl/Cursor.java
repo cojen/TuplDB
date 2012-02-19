@@ -27,6 +27,7 @@ import java.io.IOException;
  * cause database corruption.
  *
  * @author Brian S O'Neill
+ * @see Index#newCursor
  */
 public interface Cursor {
     /**

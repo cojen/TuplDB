@@ -36,6 +36,7 @@ import java.util.concurrent.locks.Lock;
  * provided for advanced use cases. These methods are documented as such.
  *
  * @author Brian S O'Neill
+ * @see Database#newTransaction
  */
 public final class Transaction extends Locker {
     /**

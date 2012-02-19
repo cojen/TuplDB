@@ -20,8 +20,10 @@ import java.io.BufferedWriter;
 import java.io.Closeable;
 import java.io.File;
 import java.io.FileWriter;
+import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.Writer;
 
 import java.util.EnumSet;
@@ -116,6 +118,8 @@ public final class Database implements Closeable {
 
     private volatile Checkpointer mCheckpointer;
 
+    private final TempFileManager mTempFileManager;
+
     public static Database open(DatabaseConfig config) throws IOException {
         Database db = new Database(config);
 
@@ -151,21 +155,7 @@ public final class Database implements Closeable {
 
     private Database(DatabaseConfig config) throws IOException {
         File baseFile = config.mBaseFile;
-        if (baseFile == null) {
-            throw new IllegalArgumentException("No base file provided");
-        }
-        if (baseFile.isDirectory()) {
-            throw new IllegalArgumentException("Base file is a directory: " + baseFile);
-        }
-
-        File dataFile = config.mDataFile;
-        if (dataFile == null) {
-            dataFile = new File(baseFile.getPath() + ".db");
-        } else {
-            if (dataFile.isDirectory()) {
-                throw new IllegalArgumentException("Data file is a directory: " + dataFile);
-            }
-        }
+        File dataFile = config.dataFile();
 
         int pageSize = config.mPageSize;
         if (pageSize <= 0) {
@@ -214,20 +204,8 @@ public final class Database implements Closeable {
         mInfoFile = new LockedFile(new File(baseFile.getPath() + ".info"), config.mReadOnly);
         mInfoFile.write(config);
 
-        EnumSet<OpenOption> options = EnumSet.noneOf(OpenOption.class);
-        if (config.mReadOnly) {
-            options.add(OpenOption.READ_ONLY);
-        }
-        if (config.mFileSync) {
-            options.add(OpenOption.SYNC_IO);
-        }
-        if (config.mForceCreate) {
-            options.add(OpenOption.FORCE_CREATE);
-        } else {
-            options.add(OpenOption.CREATE);
-        }
-
-        mPageStore = new FilePageStore(dataFile, options, pageSize);
+        EnumSet<OpenOption> options = config.createOpenOptions();
+        mPageStore = new PageStore(dataFile, options, pageSize);
 
         try {
             // Pre-allocate nodes. They are automatically added to the usage
@@ -317,6 +295,8 @@ public final class Database implements Closeable {
                     checkpoint(true);
                 }
             }
+
+            mTempFileManager = new TempFileManager(baseFile);
         } catch (Throwable e) {
             try {
                 close();
@@ -548,6 +528,35 @@ public final class Database implements Closeable {
             mPageStore.allocatePages(pageCount);
             checkpoint(true);
         }
+    }
+
+    /**
+     * Support for capturing a snapshot (hot backup) of the database, while
+     * still allowing concurrent modifications. The snapshot contains all data
+     * up to the last checkpoint. Call #restoreFromSnapshot to recreate a
+     * Database from the snapshot.
+     *
+     * @param out snapshot destination; does not require extra buffering
+     * @return a snapshot control object, which must be closed when no longer needed
+     */
+    public Snapshot beginSnapshot(OutputStream out) throws IOException {
+        int cluster = Math.max(1, 65536 / pageSize());
+        return mPageStore.beginSnapshot(mTempFileManager, cluster, out);
+    }
+
+    /**
+     * @param in snapshot source; does not require extra buffering; not auto-closed
+     */
+    public static Database restoreFromSnapshot(DatabaseConfig config, InputStream in)
+        throws IOException
+    {
+        File dataFile = config.dataFile();
+        if (!config.mReadOnly && config.mMkdirs) {
+            dataFile.getParentFile().mkdirs();
+        }
+        EnumSet<OpenOption> options = config.createOpenOptions();
+        PageStore.restoreFromSnapshot(dataFile, options, in).close();
+        return Database.open(config);
     }
 
     /**
