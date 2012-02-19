@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Writer;
 
+import java.util.EnumSet;
 import java.util.Properties;
 
 import java.util.concurrent.ScheduledExecutorService;
@@ -174,6 +175,45 @@ public class DatabaseConfig {
     public DatabaseConfig pageSize(int size) {
         mPageSize = size;
         return this;
+    }
+
+    /**
+     * Checks that base and data files are valid and returns the applicable
+     * data file.
+     */
+    File dataFile() {
+        if (mBaseFile == null) {
+            throw new IllegalArgumentException("No base file provided");
+        }
+        if (mBaseFile.isDirectory()) {
+            throw new IllegalArgumentException("Base file is a directory: " + mBaseFile);
+        }
+
+        File dataFile = mDataFile;
+        if (dataFile == null) {
+            dataFile = new File(mBaseFile.getPath() + ".db");
+        }
+        if (dataFile.isDirectory()) {
+            throw new IllegalArgumentException("Data file is a directory: " + dataFile);
+        }
+
+        return dataFile;
+    }
+
+    EnumSet<OpenOption> createOpenOptions() {
+        EnumSet<OpenOption> options = EnumSet.noneOf(OpenOption.class);
+        if (mReadOnly) {
+            options.add(OpenOption.READ_ONLY);
+        }
+        if (mFileSync) {
+            options.add(OpenOption.SYNC_IO);
+        }
+        if (mForceCreate) {
+            options.add(OpenOption.FORCE_CREATE);
+        } else {
+            options.add(OpenOption.CREATE);
+        }
+        return options;
     }
 
     void writeInfo(Writer w) throws IOException {

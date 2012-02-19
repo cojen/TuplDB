@@ -94,7 +94,7 @@ final class PageManager {
             mRegularFreeList.init();
             //mRecycleFreeList.init();
         } else {
-            mTotalPageCount = DataUtils.readLong(header, offset + I_TOTAL_PAGE_COUNT);
+            mTotalPageCount = readTotalPageCount(header, offset + I_TOTAL_PAGE_COUNT);
 
             long actualPageCount = array.getPageCount();
             if (actualPageCount > mTotalPageCount) {
@@ -121,6 +121,10 @@ final class PageManager {
                 fullUnlock();
             }
         }
+    }
+
+    static long readTotalPageCount(byte[] header, int offset) {
+        return DataUtils.readLong(header, offset + I_TOTAL_PAGE_COUNT);
     }
 
     public int headerSize() {

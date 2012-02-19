@@ -391,32 +391,11 @@ final class UndoLog {
                     if (entry == null) {
                         break;
                     }
-
-                    switch (opRef[0]) {
-                    default:
-                        throw new DatabaseException("Unknown undo log entry type: " + opRef[0]);
-
-                    case OP_TRANSACTION:
+                    byte op = opRef[0];
+                    if (op == OP_TRANSACTION) {
                         // Ignore.
-                        break;
-
-                    case OP_INDEX:
-                        mActiveIndexId = readLong(entry, 0);
-                        activeIndex = null;
-                        break;
-
-                    case OP_DELETE:
-                        activeIndex = findIndex(activeIndex);
-                        activeIndex.delete(Transaction.BOGUS, entry);
-                        break;
-
-                    case OP_STORE:
-                        activeIndex = findIndex(activeIndex);
-                        {
-                            byte[][] pair = Node.decodeUndoEntry(entry);
-                            activeIndex.store(Transaction.BOGUS, pair[0], pair[1]);
-                        }
-                        break;
+                    } else {
+                        activeIndex = undo(activeIndex, op, entry);
                     }
                 } while (savepoint < mLength);
             } finally {
@@ -496,45 +475,59 @@ final class UndoLog {
 
         byte[] opRef = new byte[1];
         Index activeIndex = null;
-        loop: while (true) {
+        while (true) {
             byte[] entry = pop(opRef);
-
             if (entry == null) {
                 mActiveTxnId = 0;
-                break loop;
+                break;
             }
-
-            switch (opRef[0]) {
-            default:
-                throw new DatabaseException("Unknown undo log entry type: " + opRef[0]);
-
-            case OP_TRANSACTION:
+            byte op = opRef[0];
+            if (op == OP_TRANSACTION) {
                 if ((mActiveTxnId = readLong(entry, 0)) == parentTxnId) {
-                    break loop;
+                    break;
                 }
-                break;
-
-            case OP_INDEX:
-                mActiveIndexId = readLong(entry, 0);
-                activeIndex = null;
-                break;
-
-            case OP_DELETE:
-                activeIndex = findIndex(activeIndex);
-                activeIndex.delete(Transaction.BOGUS, entry);
-                break;
-
-            case OP_STORE:
-                activeIndex = findIndex(activeIndex);
-                {
-                    byte[][] pair = Node.decodeUndoEntry(entry);
-                    activeIndex.store(Transaction.BOGUS, pair[0], pair[1]);
-                }
-                break;
+            } else {
+                activeIndex = undo(activeIndex, op, entry);
             }
         }
 
         return true;
+    }
+
+    /**
+     * @param activeIndex active index, possibly null
+     * @param op undo op, not OP_TRANSACTION
+     * @return new active index, possibly null
+     */
+    private Index undo(Index activeIndex, byte op, byte[] entry) throws IOException {
+        switch (op) {
+        default:
+            throw new DatabaseException("Unknown undo log entry type: " + op);
+
+        case OP_TRANSACTION:
+            // Caller should have already handled this
+            throw new AssertionError();
+
+        case OP_INDEX:
+            mActiveIndexId = readLong(entry, 0);
+            activeIndex = null;
+            break;
+
+        case OP_DELETE:
+            activeIndex = findIndex(activeIndex);
+            activeIndex.delete(Transaction.BOGUS, entry);
+            break;
+
+        case OP_STORE:
+            activeIndex = findIndex(activeIndex);
+            {
+                byte[][] pair = Node.decodeUndoEntry(entry);
+                activeIndex.store(Transaction.BOGUS, pair[0], pair[1]);
+            }
+            break;
+        }
+
+        return activeIndex;
     }
 
     private Index findIndex(Index activeIndex) throws IOException {
