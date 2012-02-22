@@ -87,8 +87,9 @@ class PageStore implements Closeable {
     private final PageManager mPageManager;
 
     private final ReadWriteLock mCommitLock;
+    private final Latch mHeaderLatch;
     // Commit number is the highest one which has been committed.
-    private volatile int mCommitNumber;
+    private int mCommitNumber;
 
     PageStore(File file, EnumSet<OpenOption> options, int pageSize)
         throws IOException
@@ -112,6 +113,7 @@ class PageStore implements Closeable {
         }
 
         mCommitLock = new ReentrantReadWriteLock(true);
+        mHeaderLatch = new Latch();
 
         try {
             mPageArray = new PageArray(pageSize, file, options);
@@ -127,7 +129,8 @@ class PageStore implements Closeable {
 
                 // Opened an existing file.
 
-                byte[] header;
+                final byte[] header;
+                final int commitNumber;
                 findHeader: {
                     byte[] header0, header1;
                     int pageSize0;
@@ -168,7 +171,7 @@ class PageStore implements Closeable {
                             throw ex0;
                         }
                         header = header0;
-                        mCommitNumber = commitNumber0;
+                        commitNumber = commitNumber0;
                         break findHeader;
                     }
 
@@ -180,22 +183,26 @@ class PageStore implements Closeable {
 
                     if (header0 == null) {
                         header = header1;
-                        mCommitNumber = commitNumber1;
+                        commitNumber = commitNumber1;
                     } else {
                         // Modulo comparison.
                         int diff = commitNumber1 - commitNumber0;
                         if (diff > 0) {
                             header = header1;
-                            mCommitNumber = commitNumber1;
+                            commitNumber = commitNumber1;
                         } else if (diff < 0) {
                             header = header0;
-                            mCommitNumber = commitNumber0;
+                            commitNumber = commitNumber0;
                         } else {
                             throw new CorruptPageStoreException
                                 ("Both headers have same commit number: " + commitNumber0);
                         }
                     }
                 }
+
+                mHeaderLatch.acquireExclusive();
+                mCommitNumber = commitNumber;
+                mHeaderLatch.releaseExclusive();
 
                 mPageManager = new PageManager(mPageArray, header, I_MANAGER_HEADER);
             }
@@ -425,7 +432,9 @@ class PageStore implements Closeable {
         mCommitLock.writeLock().lock();
         mCommitLock.readLock().lock();
 
+        mHeaderLatch.acquireShared();
         final int commitNumber = mCommitNumber + 1;
+        mHeaderLatch.releaseShared();
 
         // Downgrade and keep read lock. This prevents another commit from
         // starting concurrently.
@@ -462,11 +471,11 @@ class PageStore implements Closeable {
      */
     public void readExtraCommitData(byte[] extra) throws IOException {
         try {
-            mCommitLock.readLock().lock();
+            mHeaderLatch.acquireShared();
             try {
                 mPageArray.readPartial(mCommitNumber & 1, I_EXTRA_DATA, extra, 0, extra.length);
             } finally {
-                mCommitLock.readLock().unlock();
+                mHeaderLatch.releaseShared();
             }
         } catch (Throwable e) {
             throw closeOnFailure(e);
@@ -486,13 +495,13 @@ class PageStore implements Closeable {
     Snapshot beginSnapshot(TempFileManager tfm, int cluster, OutputStream out) throws IOException {
         byte[] header = new byte[MINIMUM_PAGE_SIZE];
         try {
-            mCommitLock.readLock().lock();
+            mHeaderLatch.acquireShared();
             try {
                 mPageArray.readPartial(mCommitNumber & 1, 0, header, 0, header.length);
                 long pageCount = PageManager.readTotalPageCount(header, I_MANAGER_HEADER);
                 return mPageArray.beginSnapshot(tfm, pageCount, cluster, out);
             } finally {
-                mCommitLock.readLock().unlock();
+                mHeaderLatch.releaseShared();
             }
         } catch (Throwable e) {
             throw closeOnFailure(e);
@@ -564,8 +573,15 @@ class PageStore implements Closeable {
             // Ensure all writes are flushed before flushing the header. There's
             // otherwise no ordering guarantees.
             array.sync(false);
-            array.writePage(commitNumber & 1, header);
-            array.sync(true);
+
+            mHeaderLatch.acquireExclusive();
+            try {
+                array.writePage(commitNumber & 1, header);
+                array.sync(true);
+                mCommitNumber = commitNumber;
+            } finally {
+                mHeaderLatch.releaseExclusive();
+            }
         } finally {
             if (t.getPriority() != original) {
                 try {
@@ -574,8 +590,6 @@ class PageStore implements Closeable {
                 }
             }
         }
-
-        mCommitNumber = commitNumber;
     }
 
     private static int setHeaderChecksum(byte[] header) {
