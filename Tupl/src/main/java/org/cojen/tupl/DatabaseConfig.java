@@ -37,7 +37,6 @@ public class DatabaseConfig {
     File mBaseFile;
     boolean mMkdirs;
     File mDataFile;
-    boolean mForceCreate;
     long mMinCachedBytes;
     long mMaxCachedBytes;
     DurabilityMode mDurabilityMode;
@@ -80,17 +79,6 @@ public class DatabaseConfig {
      */
     public DatabaseConfig dataFile(File file) {
         mDataFile = file;
-        return this;
-    }
-
-    /**
-     * Set true to force the database to be created if the data file appears to
-     * be new. By default, the database is created if the data file doesn't
-     * exist or is empty. When using a raw block device for the data file, this
-     * option must be set initially to format it.
-     */
-    public DatabaseConfig forceCreate(boolean create) {
-        mForceCreate = create;
         return this;
     }
 
@@ -208,11 +196,7 @@ public class DatabaseConfig {
         if (mFileSync) {
             options.add(OpenOption.SYNC_IO);
         }
-        if (mForceCreate) {
-            options.add(OpenOption.FORCE_CREATE);
-        } else {
-            options.add(OpenOption.CREATE);
-        }
+        options.add(OpenOption.CREATE);
         return options;
     }
 
@@ -237,7 +221,6 @@ public class DatabaseConfig {
         set(props, "baseFile", mBaseFile);
         set(props, "createFilePath", mMkdirs);
         set(props, "dataFile", mDataFile);
-        set(props, "forceCreate", mForceCreate);
         set(props, "minCacheSize", mMinCachedBytes);
         set(props, "maxCacheSize", mMaxCachedBytes);
         set(props, "durabilityMode", mDurabilityMode);

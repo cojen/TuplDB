@@ -36,20 +36,8 @@ class TempFileManager {
     TempFileManager(File baseFile) throws IOException {
         mBaseFile = baseFile;
 
-        // Clean up old files.
-        String prefix = baseFile.getName() + ".temp.";
-        for (File file : baseFile.getParentFile().listFiles()) {
-            String name = file.getName();
-            if (name.startsWith(prefix)) {
-                String suffix = name.substring(prefix.length());
-                try {
-                    Long.parseLong(suffix);
-                } catch (NumberFormatException e) {
-                    continue;
-                }
-                file.delete();
-            }
-        }
+        // Delete old files.
+        Utils.deleteNumberedFiles(baseFile, ".temp.");
 
         Runtime.getRuntime().addShutdownHook(new Thread() {
             public void run() {
