@@ -120,40 +120,27 @@ public final class Database implements Closeable {
 
     private final TempFileManager mTempFileManager;
 
+    /**
+     * Open a database, creating it if necessary.
+     */
     public static Database open(DatabaseConfig config) throws IOException {
-        Database db = new Database(config);
-
-        long checkpointRateNanos = config.mCheckpointRateNanos;
-        if (checkpointRateNanos >= 0) {
-            ScheduledExecutorService executor = config.mCheckpointExecutor;
-            start: {
-                if (executor != null) {
-                    try {
-                        db.mCheckpointer = Checkpointer.start(db, checkpointRateNanos, executor);
-                        break start;
-                    } catch (RejectedExecutionException e) {
-                        // Use dedicated thread.
-                    }
-                }
-
-                db.mCheckpointer = Checkpointer.create(db, checkpointRateNanos);
-
-                int num;
-                synchronized (Database.class) {
-                    num = ++cThreadCounter;
-                }
-
-                Thread t = new Thread(db.mCheckpointer);
-                t.setDaemon(true);
-                t.setName("Checkpointer-" + (num & 0xffffffffL));
-                t.start();
-            }
-        }
-
+        Database db = new Database(config, false);
+        db.startCheckpointer(config);
         return db;
     }
 
-    private Database(DatabaseConfig config) throws IOException {
+    /**
+     * Delete the contents of an existing database, and replace it with an
+     * empty one. When using a raw block device for the data file, this method
+     * must be used to format it.
+     */
+    public static Database destroy(DatabaseConfig config) throws IOException {
+        Database db = new Database(config, true);
+        db.startCheckpointer(config);
+        return db;
+    }
+
+    private Database(DatabaseConfig config, boolean destroy) throws IOException {
         File baseFile = config.mBaseFile;
         File dataFile = config.dataFile();
 
@@ -205,7 +192,11 @@ public final class Database implements Closeable {
         mInfoFile.write(config);
 
         EnumSet<OpenOption> options = config.createOpenOptions();
-        mPageStore = new PageStore(dataFile, options, pageSize);
+        if (destroy) {
+            // Delete old redo log files.
+            Utils.deleteNumberedFiles(baseFile, ".redo.");
+        }
+        mPageStore = new PageStore(dataFile, options, destroy, pageSize);
 
         try {
             // Pre-allocate nodes. They are automatically added to the usage
@@ -305,6 +296,35 @@ public final class Database implements Closeable {
             }
             throw Utils.rethrow(e);
         }
+    }
+
+    private void startCheckpointer(DatabaseConfig config) {
+        long checkpointRateNanos = config.mCheckpointRateNanos;
+        if (checkpointRateNanos < 0) {
+            return;
+        }
+
+        ScheduledExecutorService executor = config.mCheckpointExecutor;
+        if (executor != null) {
+            try {
+                mCheckpointer = Checkpointer.start(this, checkpointRateNanos, executor);
+                return;
+            } catch (RejectedExecutionException e) {
+                // Use dedicated thread.
+            }
+        }
+
+        mCheckpointer = Checkpointer.create(this, checkpointRateNanos);
+
+        int num;
+        synchronized (Database.class) {
+            num = ++cThreadCounter;
+        }
+
+        Thread t = new Thread(mCheckpointer);
+        t.setDaemon(true);
+        t.setName("Checkpointer-" + (num & 0xffffffffL));
+        t.start();
     }
 
     // FIXME: testing
@@ -555,6 +575,8 @@ public final class Database implements Closeable {
             dataFile.getParentFile().mkdirs();
         }
         EnumSet<OpenOption> options = config.createOpenOptions();
+        // Delete old redo log files.
+        Utils.deleteNumberedFiles(config.mBaseFile, ".redo.");
         PageStore.restoreFromSnapshot(dataFile, options, in).close();
         return Database.open(config);
     }

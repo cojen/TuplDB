@@ -22,5 +22,5 @@ package org.cojen.tupl;
  * @author Brian S O'Neill
  */
 enum OpenOption {
-    READ_ONLY, CREATE, FORCE_CREATE, SYNC_IO, DIRECT_IO, RANDOM, SEQUENTIAL,
+    READ_ONLY, CREATE, SYNC_IO, DIRECT_IO, RANDOM, SEQUENTIAL,
 }

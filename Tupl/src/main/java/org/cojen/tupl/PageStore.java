@@ -91,13 +91,14 @@ class PageStore implements Closeable {
     // Commit number is the highest one which has been committed.
     private int mCommitNumber;
 
-    PageStore(File file, EnumSet<OpenOption> options, int pageSize)
+    PageStore(File file, EnumSet<OpenOption> options, boolean destroy, int pageSize)
         throws IOException
     {
-        this(file, options, pageSize, 32);
+        this(file, options, destroy, pageSize, 32);
     }
 
-    PageStore(File file, EnumSet<OpenOption> options, int pageSize, int openFileCount)
+    PageStore(File file, EnumSet<OpenOption> options, boolean destroy,
+              int pageSize, int openFileCount)
         throws IOException
     {
         if (pageSize < MINIMUM_PAGE_SIZE) {
@@ -105,10 +106,7 @@ class PageStore implements Closeable {
                 ("Page size must be at least " + MINIMUM_PAGE_SIZE + ": " + pageSize);
         }
 
-        if (!file.exists() &&
-            !options.contains(OpenOption.CREATE) &&
-            !options.contains(OpenOption.FORCE_CREATE))
-        {
+        if (!options.contains(OpenOption.CREATE) && !file.exists()) {
             throw new DatabaseException("File does not exist: " + file);
         }
 
@@ -119,11 +117,14 @@ class PageStore implements Closeable {
             mPageArray = new PageArray(pageSize, file, options);
 
             open: {
-                if (mPageArray.isEmpty()) {
+                if (destroy || mPageArray.isEmpty()) {
                     // Newly created file.
                     mPageManager = new PageManager(mPageArray);
                     mCommitNumber = -1;
+                    // Commit twice to ensure both headers have valid data.
                     commit(null);
+                    commit(null);
+                    mPageArray.setPageCount(2);
                     break open;
                 }
 
@@ -161,13 +162,6 @@ class PageStore implements Closeable {
                     } catch (CorruptPageStoreException e) {
                         if (ex0 != null) {
                             // File is completely unusable.
-                            if (options.contains(OpenOption.FORCE_CREATE)) {
-                                // Re-create it.
-                                mPageManager = new PageManager(mPageArray);
-                                mCommitNumber = -1;
-                                commit(null);
-                                break open;
-                            }
                             throw ex0;
                         }
                         header = header0;
@@ -515,7 +509,7 @@ class PageStore implements Closeable {
         throws IOException
     {
         int pageSize = PageArray.restoreFromSnapshot(file, options, in);
-        return new PageStore(file, options, pageSize);
+        return new PageStore(file, options, false, pageSize);
     }
 
     private IOException closeOnFailure(Throwable e) throws IOException {

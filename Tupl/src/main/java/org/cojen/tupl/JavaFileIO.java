@@ -48,7 +48,6 @@ class JavaFileIO implements FileIO {
     private final RandomAccessFile[] mFilePool;
     private int mFilePoolTop;
     private final boolean mReadOnly;
-    private final Latch mLengthLatch;
 
     private JavaFileIO(File file, EnumSet<OpenOption> options, int openFileCount)
         throws IOException
@@ -57,10 +56,7 @@ class JavaFileIO implements FileIO {
         if ((mReadOnly = options.contains(OpenOption.READ_ONLY))) {
             mode = "r";
         } else {
-            if (!options.contains(OpenOption.CREATE)
-                && !options.contains(OpenOption.FORCE_CREATE)
-                && !file.exists())
-            {
+            if (!options.contains(OpenOption.CREATE) && !file.exists()) {
                 throw new FileNotFoundException(file.getPath());
             }
             mode = options.contains(OpenOption.SYNC_IO) ? "rwd" : "rw";
@@ -81,8 +77,6 @@ class JavaFileIO implements FileIO {
         } catch (Throwable e) {
             throw Utils.closeOnFailure(this, e);
         }
-
-        mLengthLatch = new Latch();
     }
 
     public boolean isReadOnly() {
@@ -99,16 +93,13 @@ class JavaFileIO implements FileIO {
     }
 
     public void setLength(long length) throws IOException {
-        mLengthLatch.acquireExclusive();
+        RandomAccessFile file = accessFile();
         try {
-            RandomAccessFile file = accessFile();
-            try {
-                file.setLength(length);
-            } finally {
-                yieldFile(file);
-            }
+            file.setLength(length);
+        } catch (IOException e) {
+            // Ignore.
         } finally {
-            mLengthLatch.releaseExclusive();
+            yieldFile(file);
         }
     }
 
@@ -127,17 +118,12 @@ class JavaFileIO implements FileIO {
     }
 
     public void write(long pos, byte[] buf, int offset, int length) throws IOException {
-        mLengthLatch.acquireShared();
+        RandomAccessFile file = accessFile();
         try {
-            RandomAccessFile file = accessFile();
-            try {
-                file.seek(pos);
-                file.write(buf, offset, length);
-            } finally {
-                yieldFile(file);
-            }
+            file.seek(pos);
+            file.write(buf, offset, length);
         } finally {
-            mLengthLatch.releaseShared();
+            yieldFile(file);
         }
     }
 

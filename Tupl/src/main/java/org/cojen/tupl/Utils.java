@@ -17,6 +17,7 @@
 package org.cojen.tupl;
 
 import java.io.Closeable;
+import java.io.File;
 import java.io.IOException;
 
 import java.util.concurrent.TimeUnit;
@@ -98,6 +99,26 @@ class Utils {
             }
         }
         return alen - blen;
+    }
+
+    /**
+     * Deletes all files in the base file's directory which are named like
+     * "base<pattern><number>". For example, mybase.redo.123
+     */
+    static void deleteNumberedFiles(File baseFile, String pattern) throws IOException {
+        String prefix = baseFile.getName() + pattern;
+        for (File file : baseFile.getParentFile().listFiles()) {
+            String name = file.getName();
+            if (name.startsWith(prefix)) {
+                String suffix = name.substring(prefix.length());
+                try {
+                    Long.parseLong(suffix);
+                } catch (NumberFormatException e) {
+                    continue;
+                }
+                file.delete();
+            }
+        }
     }
 
     static IOException closeOnFailure(Closeable c, Throwable e) throws IOException {

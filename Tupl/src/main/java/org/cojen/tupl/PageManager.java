@@ -313,9 +313,7 @@ final class PageManager {
      * invoked with remove lock held.
      */
     private long createPage() throws IOException {
-        long id = mTotalPageCount++;
-        mPageArray.setPageCount(id + 1);
-        return id;
+        return mTotalPageCount++;
     }
 
     /**
