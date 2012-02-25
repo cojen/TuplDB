@@ -278,23 +278,17 @@ class PageArray implements Closeable {
             throw new DatabaseException("Invalid snapshot: " + failMessage);
         }
 
-        byte[] buffer = new byte[8 + pageSize * cluster];
+        DataIn din = new DataIn(in, 8 + pageSize * cluster);
         long remainingPageCount = snapshotPageCount;
 
         while (remainingPageCount > 0) {
-            int amt = DataIn.readRequired(in, 8, buffer, 0, buffer.length);
-            long clusterIndex = DataUtils.readLong(buffer, 0);
+            long clusterIndex = din.readLong();
             long index = clusterIndex * cluster;
             int count = (int) Math.min(cluster, snapshotPageCount - index);
             if (count <= 0) {
                 throw new DatabaseException("Invalid data packet index: " + index);
             }
-            int len = pageSize * count;
-            int rem = len - amt;
-            if (rem > 0) {
-                DataIn.readRequired(in, rem, buffer, amt, rem);
-            }
-            fio.write(index * pageSize, buffer, 8, len);
+            din.readAndWriteTo(fio, index * pageSize, count * pageSize);
             remainingPageCount -= count;
         }
 
