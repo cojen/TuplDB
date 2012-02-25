@@ -26,34 +26,6 @@ import java.io.IOException;
  * @author Brian S O'Neill
  */
 class DataIn extends InputStream {
-    /**
-     * @return actual amount read, which can be more than min
-     */
-    static int readRequired(InputStream in, int min, byte[] buf, int off, int len)
-        throws IOException
-    {
-        int amt = in.read(buf, off, len);
-        if (amt >= min) {
-            return amt;
-        }
-        if (amt <= 0) {
-            throw new EOFException();
-        }
-        int total = amt;
-        while (true) {
-            off += amt;
-            len -= amt;
-            amt = in.read(buf, off, len);
-            if (amt <= 0) {
-                throw new EOFException();
-            }
-            total += amt;
-            if (total >= min) {
-                return total;
-            }
-        }
-    }
-
     private final InputStream mIn;
     private final byte[] mBuffer;
 
@@ -181,7 +153,7 @@ class DataIn extends InputStream {
 
     public boolean tryRequire(int amount) throws IOException {
         int avail = mEnd - mStart;
-        if (avail >= amount) {
+        if ((amount -= avail) <= 0) {
             return true;
         }
 
@@ -201,5 +173,12 @@ class DataIn extends InputStream {
                 return true;
             }
         }
+    }
+
+    void readAndWriteTo(FileIO fio, long offset, int length) throws IOException {
+        require(length);
+        int start = mStart;
+        fio.write(offset, mBuffer, start, length);
+        mStart = start + length;
     }
 }
