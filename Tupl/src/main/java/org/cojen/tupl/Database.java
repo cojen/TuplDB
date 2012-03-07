@@ -362,7 +362,7 @@ public final class Database implements Closeable {
     }
 
     /**
-     * Returns the given named index, return null if not found.
+     * Returns the given named index, returning null if not found.
      *
      * @return shared Index instance; null if not found
      */
@@ -371,7 +371,7 @@ public final class Database implements Closeable {
     }
 
     /**
-     * Returns the given named index, return null if not found. Name is UTF-8
+     * Returns the given named index, returning null if not found. Name is UTF-8
      * encoded.
      *
      * @return shared Index instance; null if not found
@@ -400,8 +400,8 @@ public final class Database implements Closeable {
     }
 
     /**
-     * Returns a new Transaction with the {@link DatabaseConfig
-     * #setDurabilityMode default} durability mode.
+     * Returns a new Transaction with the {@link DatabaseConfig#durabilityMode default}
+     * durability mode.
      */
     public Transaction newTransaction() {
         return doNewTransaction(mDurabilityMode);
@@ -409,7 +409,7 @@ public final class Database implements Closeable {
 
     /**
      * Returns a new Transaction with the given durability mode. If null, the
-     * default is used.
+     * {@link DatabaseConfig#durabilityMode default} is used.
      */
     public Transaction newTransaction(DurabilityMode durabilityMode) {
         return doNewTransaction(durabilityMode == null ? mDurabilityMode : durabilityMode);
@@ -553,8 +553,8 @@ public final class Database implements Closeable {
     /**
      * Support for capturing a snapshot (hot backup) of the database, while
      * still allowing concurrent modifications. The snapshot contains all data
-     * up to the last checkpoint. Call #restoreFromSnapshot to recreate a
-     * Database from the snapshot.
+     * up to the last checkpoint. Call {@link #restoreFromSnapshot restoreFromSnapshot}
+     * to recreate a Database from the snapshot.
      *
      * @param out snapshot destination; does not require extra buffering
      * @return a snapshot control object, which must be closed when no longer needed

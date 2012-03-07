@@ -23,7 +23,7 @@ import java.io.IOException;
  * 
  *
  * @author Brian S O'Neill
- * @see Database#beginSnapshot
+ * @see Database#beginSnapshot Database.beginSnapshot
  */
 public interface Snapshot extends Closeable {
     /**

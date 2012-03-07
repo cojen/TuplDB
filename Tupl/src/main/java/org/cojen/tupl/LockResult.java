@@ -20,7 +20,7 @@ package org.cojen.tupl;
  * 
  *
  * @author Brian S O'Neill
- * @see Locker
+ * @see Transaction
  */
 public enum LockResult {
     /** Lock rejection caused by illegal lock mode upgrade. */
