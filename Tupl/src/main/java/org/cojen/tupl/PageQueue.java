@@ -173,7 +173,7 @@ final class PageQueue implements IntegerRef {
             pageId = mRemoveHeadFirstPageId;
 
             if (mManager.isPageOutOfBounds(pageId)) {
-                throw new CorruptPageStoreException("Invalid page id in free list: " + pageId);
+                throw new CorruptDatabaseException("Invalid page id in free list: " + pageId);
             }
 
             mRemovePageCount--;
@@ -221,7 +221,7 @@ final class PageQueue implements IntegerRef {
     // Caller must hold remove lock.
     private void loadRemoveNode(long id) throws IOException {
         if (mManager.isPageOutOfBounds(id)) {
-            throw new CorruptPageStoreException("Invalid node id in free list: " + id);
+            throw new CorruptDatabaseException("Invalid node id in free list: " + id);
         }
         byte[] head = mRemoveHead;
         mManager.pageArray().readPage(id, head);
@@ -450,12 +450,12 @@ final class PageQueue implements IntegerRef {
         return count;
     }
 
-    private static void clearPageBit(BitSet pages, long pageId) throws CorruptPageStoreException {
+    private static void clearPageBit(BitSet pages, long pageId) throws CorruptDatabaseException {
         int index = (int) pageId;
         if (pages.get(index)) {
             pages.clear(index);
         } else if (index < pages.size()) {
-            throw new CorruptPageStoreException("Doubly freed page: " + pageId);
+            throw new CorruptDatabaseException("Doubly freed page: " + pageId);
         }
     }
 
