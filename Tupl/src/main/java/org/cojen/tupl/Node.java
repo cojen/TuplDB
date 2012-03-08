@@ -67,9 +67,13 @@ final class Node extends Latch {
 
     static final int STUB_ID = 1;
 
-    // These fields are managed exclusively by Database class.
+    // Links within usage list, guarded by Database.mUsageLatch.
     Node mMoreUsed; // points to more recently used node
     Node mLessUsed; // points to less recently used node
+
+    // Links within dirty list, guarded by OrderedPageAllocator.
+    Node mNextDirty;
+    Node mPrevDirty;
 
     /*
       Nodes define the contents of Trees and UndoLogs. All node types start
@@ -543,7 +547,7 @@ final class Node extends Latch {
                 // FIXME: recycle child node arrays
                 mChildNodes = new Node[numKeys() + 1];
             } else if (type != TYPE_TN_LEAF) {
-                throw new CorruptNodeException("Unknown type: " + type);
+                throw new CorruptNodeException("Unknown type: " + type + ", id: " + id);
             }
         }
 

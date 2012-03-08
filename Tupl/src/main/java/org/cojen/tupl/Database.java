@@ -55,7 +55,7 @@ public final class Database implements Closeable {
     // Approximate byte overhead per node. Influenced by many factors,
     // including pointer size and child node references. This estimate assumes
     // 32-bit pointers.
-    private static final int NODE_OVERHEAD = 80;
+    private static final int NODE_OVERHEAD = 100;
 
     private static int nodeCountFromBytes(long bytes, int pageSize) {
          pageSize += NODE_OVERHEAD;
@@ -89,9 +89,9 @@ public final class Database implements Closeable {
 
     private final BufferPool mSpareBufferPool;
 
-    private final Latch mCacheLatch;
-    private final int mMaxCachedNodeCount;
-    private int mCachedNodeCount;
+    private final Latch mUsageLatch;
+    private final int mMaxNodeCount;
+    private int mNodeCount;
     private Node mMostRecentlyUsed;
     private Node mLeastRecentlyUsed;
 
@@ -107,6 +107,8 @@ public final class Database implements Closeable {
     // Maps tree names to open trees.
     private final Map<byte[], Tree> mOpenTrees;
     private final Map<Long, Tree> mOpenTreesById;
+
+    private final OrderedPageAllocator mAllocator;
 
     private final Object mTxnIdLock = new Object();
     // The following fields are guarded by mTxnIdLock.
@@ -175,8 +177,8 @@ public final class Database implements Closeable {
             maxCache = Math.max(MIN_CACHED_NODES, maxCache);
         }
 
-        mCacheLatch = new Latch();
-        mMaxCachedNodeCount = maxCache;
+        mUsageLatch = new Latch();
+        mMaxNodeCount = maxCache;
 
         mDurabilityMode = config.mDurabilityMode;
         mDefaultLockTimeoutNanos = config.mLockTimeoutNanos;
@@ -243,6 +245,9 @@ public final class Database implements Closeable {
             mRedoLog = new RedoLog(baseFile, redoLogId);
 
             mRegistryKeyMap = openInternalTree(Tree.REGISTRY_KEY_MAP_ID, true);
+
+            mAllocator = new OrderedPageAllocator
+                (mPageStore, openInternalTree(Tree.PAGE_ALLOCATOR, true));
 
             // Perform recovery by examining redo and undo logs.
 
@@ -796,15 +801,18 @@ public final class Database implements Closeable {
         return allocLatchedNode(true);
     }
 
+    /**
+     * @param evictable true if allocated node can be automatically evicted
+     */
     private Node allocLatchedNode(boolean evictable) throws IOException {
-        final Latch cacheLatch = mCacheLatch;
-        cacheLatch.acquireExclusive();
+        final Latch usageLatch = mUsageLatch;
+        usageLatch.acquireExclusive();
         alloc: try {
-            int max = mMaxCachedNodeCount;
-            if (mCachedNodeCount < max) {
+            int max = mMaxNodeCount;
+            if (mNodeCount < max) {
                 Node node = new Node(pageSize());
                 node.acquireExclusive();
-                mCachedNodeCount++;
+                mNodeCount++;
                 if (evictable) {
                     if ((node.mLessUsed = mMostRecentlyUsed) == null) {
                         mLeastRecentlyUsed = node;
@@ -848,7 +856,7 @@ public final class Database implements Closeable {
                 }
             } while (--max > 0);
         } finally {
-            cacheLatch.releaseExclusive();
+            usageLatch.releaseExclusive();
         }
 
         // FIXME: Throw a better exception. Also, try all nodes again, but with
@@ -865,8 +873,7 @@ public final class Database implements Closeable {
     Node allocDirtyNode(Tree forTree) throws IOException {
         Node node = allocLatchedNode(true);
         try {
-            node.mId = mPageStore.allocPage();
-            node.mCachedState = mCommitState;
+            dirty(node, mAllocator.allocPage(forTree, node));
             return node;
         } catch (IOException e) {
             node.releaseExclusive();
@@ -883,8 +890,7 @@ public final class Database implements Closeable {
     Node allocUnevictableNode(Tree forTree) throws IOException {
         Node node = allocLatchedNode(false);
         try {
-            node.mId = mPageStore.allocPage();
-            node.mCachedState = mCommitState;
+            dirty(node, mAllocator.allocPage(forTree, node));
             return node;
         } catch (IOException e) {
             makeEvictable(node);
@@ -894,11 +900,12 @@ public final class Database implements Closeable {
     }
 
     /**
-     * Allow a Node which was allocated as unevictable to be evictable.
+     * Allow a Node which was allocated as unevictable to be evictable,
+     * starting off as the most recently used.
      */
     void makeEvictable(Node node) {
-        final Latch cacheLatch = mCacheLatch;
-        cacheLatch.acquireExclusive();
+        final Latch usageLatch = mUsageLatch;
+        usageLatch.acquireExclusive();
         try {
             if (node.mMoreUsed != null || node.mLessUsed != null) {
                 throw new IllegalStateException();
@@ -906,7 +913,7 @@ public final class Database implements Closeable {
             (node.mLessUsed = mMostRecentlyUsed).mMoreUsed = node;
             mMostRecentlyUsed = node;
         } finally {
-            cacheLatch.releaseExclusive();
+            usageLatch.releaseExclusive();
         }
     }
 
@@ -941,11 +948,10 @@ public final class Database implements Closeable {
     void markUndoLogDirty(Node node) throws IOException {
         if (node.mCachedState != mCommitState) {
             long oldId = node.mId;
-            long newId = mPageStore.allocPage();
+            long newId = mAllocator.allocPage(null, node);
             mPageStore.deletePage(oldId);
             node.write(this);
-            node.mId = newId;
-            node.mCachedState = mCommitState;
+            dirty(node, newId);
         }
     }
 
@@ -956,7 +962,8 @@ public final class Database implements Closeable {
      */
     void doMarkDirty(Tree tree, Node node) throws IOException {
         long oldId = node.mId;
-        long newId = mPageStore.allocPage();
+        long newId = mAllocator.allocPage(tree, node);
+        //used(node);
         if (oldId != 0) {
             mPageStore.deletePage(oldId);
         }
@@ -968,6 +975,13 @@ public final class Database implements Closeable {
             writeLong(newEncodedId, 0, newId);
             mRegistry.store(Transaction.BOGUS, tree.mIdBytes, newEncodedId);
         }
+        dirty(node, newId);
+    }
+
+    /**
+     * Caller must hold commit lock and exclusive latch on node.
+     */
+    private void dirty(Node node, long newId) {
         node.mId = newId;
         node.mCachedState = mCommitState;
     }
@@ -1009,8 +1023,8 @@ public final class Database implements Closeable {
         // re-allocated immediately without evicting another node. Node must be
         // unlatched at this point, to prevent it from being immediately
         // promoted to most recently used by allocLatchedNode.
-        final Latch cacheLatch = mCacheLatch;
-        cacheLatch.acquireExclusive();
+        final Latch usageLatch = mUsageLatch;
+        usageLatch.acquireExclusive();
         try {
             Node lessUsed = node.mLessUsed;
             if (lessUsed != null) {
@@ -1025,7 +1039,7 @@ public final class Database implements Closeable {
                 mLeastRecentlyUsed = node;
             }
         } finally {
-            cacheLatch.releaseExclusive();
+            usageLatch.releaseExclusive();
         }
     }
 
@@ -1046,15 +1060,23 @@ public final class Database implements Closeable {
 
     /**
      * Indicate that non-root node is most recently used. Root node is not
-     * managed in usage list and cannot be evicted.
+     * managed in usage list and cannot be evicted. Caller must hold any latch
+     * on node. Latch is never released by this method, even if an exception is
+     * thrown.
      */
     void used(Node node) {
+        // Node latch is only required for this check. Dirty nodes are evicted
+        // in FIFO order, which helps spread out the write workload.
+        if (node.mCachedState != CACHED_CLEAN) {
+            return;
+        }
+
         // Because this method can be a bottleneck, don't wait for exclusive
         // latch. If node is popular, it will get more chances to be identified
         // as most recently used. This strategy works well enough because cache
         // eviction is always a best-guess approach.
-        final Latch cacheLatch = mCacheLatch;
-        if (cacheLatch.tryAcquireExclusive()) {
+        final Latch usageLatch = mUsageLatch;
+        if (usageLatch.tryAcquireExclusive()) {
             Node moreUsed = node.mMoreUsed;
             if (moreUsed != null) {
                 Node lessUsed = node.mLessUsed;
@@ -1067,7 +1089,7 @@ public final class Database implements Closeable {
                 (node.mLessUsed = mMostRecentlyUsed).mMoreUsed = node;
                 mMostRecentlyUsed = node;
             }
-            cacheLatch.releaseExclusive();
+            usageLatch.releaseExclusive();
         }
     }
 
@@ -1119,9 +1141,6 @@ public final class Database implements Closeable {
                 throw e;
             }
 
-            // List of nodes which must flushed.
-            final DirtyList dirtyList = new DirtyList();
-
             final UndoLog masterUndoLog;
             final long masterUndoLogId;
             synchronized (mTxnIdLock) {
@@ -1135,9 +1154,7 @@ public final class Database implements Closeable {
                     byte[] workspace = null;
                     for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
                         workspace = log.writeToMaster(masterUndoLog, workspace);
-                        log.gatherDirtyNodes(dirtyList, stateToFlush);
                     }
-                    masterUndoLog.gatherDirtyNodes(dirtyList, stateToFlush);
                     masterUndoLogId = masterUndoLog.mNode.mId;
                     // Release latch to allow flush to acquire and release it.
                     masterUndoLog.mNode.releaseExclusive();
@@ -1147,7 +1164,7 @@ public final class Database implements Closeable {
             mPageStore.commit(new PageStore.CommitCallback() {
                 @Override
                 public byte[] prepare() throws IOException {
-                    return flush(dirtyList, redoLogId, masterUndoLogId);
+                    return flush(redoLogId, masterUndoLogId);
                 }
             });
 
@@ -1161,87 +1178,37 @@ public final class Database implements Closeable {
             // Note: The delete step can get skipped if process exits at this
             // point. File is deleted again when database is re-opened.
             mRedoLog.deleteOldFile(redoLogId);
+
+            // Deleted pages are now available for new allocations.
+            mAllocator.fill();
         }
     }
 
     /**
-     * Method is invoked with exclusive commit lock and shared root node latch held.
+     * Method is invoked with exclusive commit lock and shared root node latch
+     * held. Both are released by this method.
      */
-    private byte[] flush(final DirtyList dirtyList,
-                         final long redoLogId,
-                         final long masterUndoLogId)
-        throws IOException
-    {
-        // Snapshot of all open trees.
-        Tree[] trees;
-        synchronized (mOpenTrees) {
-            trees = mOpenTrees.values().toArray(new Tree[mOpenTrees.size()]);
-        }
-
+    private byte[] flush(final long redoLogId, final long masterUndoLogId) throws IOException {
         final long txnId;
         synchronized (mTxnIdLock) {
             txnId = mTxnId;
         }
-
-        /* FIXME: This code does not properly account for concurrent splits. Dirty
-           nodes might not get written into the commit, and this has also been observed:
-          
-           java.lang.AssertionError: Split child is not already marked dirty
-             at org.cojen.tupl.TreeNode.insertSplitChildRef(TreeNode.java:1178)
-             at org.cojen.tupl.TreeCursor.finishSplit(TreeCursor.java:1647)
-             at org.cojen.tupl.TreeCursor.finishSplit(TreeCursor.java:1640)
-             at org.cojen.tupl.TreeCursor.store(TreeCursor.java:969)
-             at org.cojen.tupl.TreeCursor.store(TreeCursor.java:746)
-             at org.cojen.tupl.FullCursor.store(FullCursor.java:114)
-             at org.cojen.tupl.TreeNodeTest.testInsert(TreeNodeTest.java:135)
-             at org.cojen.tupl.TreeNodeTest.main(TreeNodeTest.java:107)
-
-           A cursor based approach instead of breadth-first traversal might help.
-        */ 
-
         final Node root = mRegistry.mRoot;
         final long rootId = root.mId;
         final int stateToFlush = mCommitState;
         mCommitState = (byte) (stateToFlush ^ 1);
-        // FIXME: testing
-        //mPageStore.exclusiveCommitLock().unlock();
-
-        // Gather all tree nodes to flush...
-
-        mRegistry.gatherDirtyNodes(dirtyList, stateToFlush);
-
-        mRegistryKeyMap.mRoot.acquireShared();
-        mRegistryKeyMap.gatherDirtyNodes(dirtyList, stateToFlush);
-
-        for (Tree tree : trees) {
-            tree.mRoot.acquireShared();
-            tree.gatherDirtyNodes(dirtyList, stateToFlush);
-        }
-
-        // FIXME: Testing: Lock held during node gathering, to eliminate race condition.
+        root.releaseShared();
         mPageStore.exclusiveCommitLock().unlock();
 
-        // Now write out all the dirty nodes. Some of them will have already
-        // been concurrently written out, so check again.
-
-        Node[] dirtyNodes = dirtyList.sorted();
-
-        if (dirtyNodes != null) for (int i=0; i<dirtyNodes.length; i++) {
-            Node node = dirtyNodes[i];
-            dirtyNodes[i] = null;
-
-            node.acquireExclusive();
-            if (node.mCachedState != stateToFlush) {
-                // Was already flushed.
-                node.releaseExclusive();
-            } else {
-                node.mCachedState = CACHED_CLEAN;
-                node.downgrade();
-                try {
-                    node.write(this);
-                } finally {
-                    node.releaseShared();
-                }
+        mAllocator.beginDirtyIteration();
+        Node node;
+        while ((node = mAllocator.removeNextDirtyNode(stateToFlush)) != null) {
+            node.mCachedState = CACHED_CLEAN;
+            node.downgrade();
+            try {
+                node.write(this);
+            } finally {
+                node.releaseShared();
             }
         }
 

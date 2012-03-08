@@ -32,6 +32,7 @@ final class Tree implements Index {
     static final int
         REGISTRY_ID = 0,
         REGISTRY_KEY_MAP_ID = 1,
+        PAGE_ALLOCATOR = 2,
         MAX_RESERVED_ID = 0xff;
 
     static boolean isInternal(long id) {
@@ -379,71 +380,6 @@ final class Tree implements Index {
         Stub(Stub parent, Node node) {
             mParent = parent;
             mNode = node;
-        }
-    }
-
-    /**
-     * Gather all dirty pages which should be committed. Caller must acquire
-     * shared latch on root node, which is released by this method.
-     */
-    void gatherDirtyNodes(DirtyList dirtyList, int dirtyState) {
-        // Perform a breadth-first traversal of tree, finding dirty nodes. This
-        // step can effectively deny most concurrent access to the tree, but I
-        // cannot figure out a safe way to find dirty nodes and allow access
-        // back into the tree. Depth-first traversal using a cursor allows
-        // concurrent access, but it causes some dirty nodes to get lost. It
-        // might be possible to speed this step up with multiple threads -- at
-        // most one per processor.
-
-        // One approach for performing depth-first traversal is to remember
-        // internal nodes which were concurrently updated, in a map. When the
-        // traversal sees a clean node, it consults the map instead of
-        // short-circuiting. If the node was written, then it needs to be
-        // traversed into, to gather up additional dirty nodes.
-
-        if (mRoot.mCachedState != dirtyState) {
-            mRoot.releaseShared();
-            return;
-        }
-
-        dirtyList.append(mRoot);
-        DirtyList.Block iterator = dirtyList.mTail;
-        int iteratorPos = iterator.mLastPos;
-
-        while (true) {
-            Node node = iterator.mNodes[iteratorPos];
-
-            nodeScan: {
-                if (node.isLeaf()) {
-                    break nodeScan;
-                }
-
-                Node[] childNodes = node.mChildNodes;
-
-                for (int ci=0; ci<childNodes.length; ci++) {
-                    Node childNode = childNodes[ci];
-                    if (childNode != null) {
-                        long childId = node.retrieveChildRefIdFromIndex(ci);
-                        if (childId == childNode.mId) {
-                            childNode.acquireShared();
-                            if (childId == childNode.mId && childNode.mCachedState == dirtyState) {
-                                dirtyList.append(childNode);
-                            } else {
-                                childNode.releaseShared();
-                            }
-                        }
-                    }
-                }
-            }
-
-            node.releaseShared();
-
-            if (++iteratorPos > iterator.mLastPos) {
-                if ((iterator = iterator.mNext) == null) {
-                    break;
-                }
-                iteratorPos = 0;
-            }
         }
     }
 }

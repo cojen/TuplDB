@@ -171,6 +171,16 @@ final class PageManager {
         return pageId;
     }
 
+    public long allocPageCount() {
+        final Lock lock = mRemoveLock;
+        lock.lock();
+        try {
+            return mRegularFreeList.removePageCount();
+        } finally {
+            lock.unlock();
+        }
+    }
+
     /**
      * Deletes a page to be reused after commit is called. No page deletions
      * are permanent until after commit is called.

@@ -231,6 +231,13 @@ final class PageQueue implements IntegerRef {
     }
 
     /**
+     * Caller must hold remove lock.
+     */
+    long removePageCount() {
+        return mRemovePageCount;
+    }
+
+    /**
      * Append a page which has been deleted.
      *
      * @throws IllegalArgumentException if id is less than or equal to one

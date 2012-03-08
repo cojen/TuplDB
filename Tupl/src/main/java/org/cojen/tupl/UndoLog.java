@@ -663,52 +663,6 @@ final class UndoLog {
         return node;
     }
 
-    final void gatherDirtyNodes(DirtyList dirtyList, int dirtyState) {
-        Node node = mNode;
-        if (node == null) {
-            return;
-        }
-
-        // All node latches must be released except the first.
-        boolean release = false;
-
-        try {
-            while (true) {
-                if (node.mCachedState == dirtyState) {
-                    dirtyList.append(node);
-                }
-
-                long lowerNodeId = readLong(node.mPage, I_LOWER_NODE_ID);
-                if (lowerNodeId == 0) {
-                    break;
-                }
-
-                Node[] childNodes = node.mChildNodes;
-                if (childNodes == null) {
-                    break;
-                }
-
-                Node lowerNode = childNodes[0];
-                lowerNode.acquireExclusive();
-                if (lowerNodeId != lowerNode.mId) {
-                    // Node and all remaining lower nodes were already evicted.
-                    lowerNode.releaseExclusive();
-                    break;
-                }
-
-                if (release) {
-                    node.releaseExclusive();
-                }
-                node = lowerNode;
-                release = true;
-            }
-        } finally {
-            if (release) {
-                node.releaseExclusive();
-            }
-        }
-    }
-
     /**
      * @param workspace temporary buffer, allocated on demand
      * @return new workspace instance

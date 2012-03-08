@@ -321,6 +321,13 @@ class PageStore implements Closeable {
     }
 
     /**
+     * Returns the amount of recycled pages available for allocation.
+     */
+    public long allocPageCount() {
+        return mPageManager.allocPageCount();
+    }
+
+    /**
      * Writes to an allocated page, but doesn't commit it. A written page is
      * immediately readable even if not committed. An uncommitted page can be
      * deleted, but it remains readable until after a commit.
