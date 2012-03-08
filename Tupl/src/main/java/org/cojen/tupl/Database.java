@@ -672,7 +672,7 @@ public final class Database implements Closeable {
             rootId = 0;
         } else {
             if (version != ENCODING_VERSION) {
-                throw new CorruptPageStoreException("Unknown encoding version: " + version);
+                throw new CorruptDatabaseException("Unknown encoding version: " + version);
             }
             rootId = readLong(header, I_ROOT_PAGE_ID);
         }

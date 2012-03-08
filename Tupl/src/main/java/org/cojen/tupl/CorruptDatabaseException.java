@@ -21,12 +21,12 @@ package org.cojen.tupl;
  *
  * @author Brian S O'Neill
  */
-public class CorruptPageStoreException extends DatabaseException {
-    public CorruptPageStoreException(String message) {
+public class CorruptDatabaseException extends DatabaseException {
+    public CorruptDatabaseException(String message) {
         super(message);
     }
 
-    public CorruptPageStoreException(Throwable cause) {
+    public CorruptDatabaseException(Throwable cause) {
         super(cause);
     }
 }

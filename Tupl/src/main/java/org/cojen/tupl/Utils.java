@@ -137,7 +137,7 @@ class Utils {
         if (e instanceof IOException) {
             throw (IOException) e;
         }
-        throw new CorruptPageStoreException(e);
+        throw new CorruptDatabaseException(e);
     }
 
     static void uncaught(Throwable e) {

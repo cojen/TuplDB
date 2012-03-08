@@ -547,12 +547,12 @@ final class Node extends Latch {
                 // FIXME: recycle child node arrays
                 mChildNodes = new Node[numKeys() + 1];
             } else if (type != TYPE_TN_LEAF) {
-                throw new CorruptNodeException("Unknown type: " + type + ", id: " + id);
+                throw new CorruptDatabaseException("Unknown node type: " + type + ", id: " + id);
             }
         }
 
         if (page[1] != 0) {
-            throw new CorruptNodeException("Illegal reserved byte: " + page[1]);
+            throw new CorruptDatabaseException("Illegal reserved byte in node: " + page[1]);
         }
     }
 
@@ -2671,12 +2671,12 @@ final class Node extends Latch {
     /**
      * Verifies the integrity of this node.
      */
-    public void verify() throws CorruptNodeException {
+    public void verify() throws CorruptDatabaseException {
         acquireShared();
         try {
             verify0();
         } catch (IndexOutOfBoundsException e) {
-            throw new CorruptNodeException(e);
+            throw new CorruptDatabaseException(e);
         } finally {
             releaseShared();
         }
@@ -2685,25 +2685,25 @@ final class Node extends Latch {
     /**
      * Caller must hold any latch.
      */
-    void verify0() throws CorruptNodeException {
+    void verify0() throws CorruptDatabaseException {
         final byte[] page = mPage;
 
         if (mLeftSegTail < TN_HEADER_SIZE) {
-            throw new CorruptNodeException("Left segment tail: " + mLeftSegTail);
+            throw new CorruptDatabaseException("Left segment tail: " + mLeftSegTail);
         }
         if (mSearchVecStart < mLeftSegTail) {
-            throw new CorruptNodeException("Search vector start: " + mSearchVecStart);
+            throw new CorruptDatabaseException("Search vector start: " + mSearchVecStart);
         }
         if (mSearchVecEnd < (mSearchVecStart - 2)) {
-            throw new CorruptNodeException("Search vector end: " + mSearchVecEnd);
+            throw new CorruptDatabaseException("Search vector end: " + mSearchVecEnd);
         }
         if (mRightSegTail < mSearchVecEnd || mRightSegTail > (page.length - 1)) {
-            throw new CorruptNodeException("Right segment tail: " + mRightSegTail);
+            throw new CorruptDatabaseException("Right segment tail: " + mRightSegTail);
         }
 
         if (!isLeaf()) {
             if (numKeys() + 1 != mChildNodes.length) {
-                throw new CorruptNodeException
+                throw new CorruptDatabaseException
                     ("Wrong number of child nodes: " +
                      (numKeys() + 1) + " != " + mChildNodes.length);
             }
@@ -2711,7 +2711,7 @@ final class Node extends Latch {
             int childIdsStart = mSearchVecEnd + 2;
             int childIdsEnd = childIdsStart + ((childIdsStart - mSearchVecStart) << 2) + 8;
             if (childIdsEnd > (mRightSegTail + 1)) {
-                throw new CorruptNodeException("Child ids end: " + childIdsEnd);
+                throw new CorruptDatabaseException("Child ids end: " + childIdsEnd);
             }
 
             LHashTable.Int childIds = new LHashTable.Int(512);
@@ -2720,12 +2720,12 @@ final class Node extends Latch {
                 long childId = readLong(page, i);
 
                 if (childId < 0 || childId == 0 || childId == 1) {
-                    throw new CorruptNodeException("Illegal child id: " + childId);
+                    throw new CorruptDatabaseException("Illegal child id: " + childId);
                 }
 
                 LHashTable.IntEntry e = childIds.insert(childId);
                 if (e.value != 0) {
-                    throw new CorruptNodeException("Duplicate child id: " + childId);
+                    throw new CorruptDatabaseException("Duplicate child id: " + childId);
                 }
                 e.value = 1;
             }
@@ -2742,7 +2742,7 @@ final class Node extends Latch {
             if (loc < TN_HEADER_SIZE || loc >= page.length ||
                 (loc >= mLeftSegTail && loc <= mRightSegTail))
             {
-                throw new CorruptNodeException("Entry location: " + loc);
+                throw new CorruptDatabaseException("Entry location: " + loc);
             }
 
             int keyLen;
@@ -2764,7 +2764,7 @@ final class Node extends Latch {
             if (lastKeyLoc != 0) {
                 int result = Utils.compareKeys(page, lastKeyLoc, lastKeyLen, page, loc, keyLen);
                 if (result >= 0) {
-                    throw new CorruptNodeException("Key order: " + result);
+                    throw new CorruptDatabaseException("Key order: " + result);
                 }
             }
 
@@ -2775,7 +2775,7 @@ final class Node extends Latch {
         int garbage = page.length - used;
 
         if (mGarbage != garbage) {
-            throw new CorruptNodeException("Garbage: " + mGarbage + " != " + garbage);
+            throw new CorruptDatabaseException("Garbage: " + mGarbage + " != " + garbage);
         }
     }
 
@@ -2857,7 +2857,7 @@ final class Node extends Latch {
         }
 
         if (!bits.get((int) mId)) {
-            throw new CorruptNodeException("Page already seen: " + mId);
+            throw new CorruptDatabaseException("Page already seen: " + mId);
         }
         bits.clear((int) mId);
 

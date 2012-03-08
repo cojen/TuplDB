@@ -136,14 +136,14 @@ class PageStore implements Closeable {
                     byte[] header0, header1;
                     int pageSize0;
                     int commitNumber0, commitNumber1;
-                    CorruptPageStoreException ex0;
+                    CorruptDatabaseException ex0;
 
                     try {
                         header0 = readHeader(0);
                         commitNumber0 = readInt(header0, I_COMMIT_NUMBER);
                         pageSize0 = readInt(header0, I_PAGE_SIZE);
                         ex0 = null;
-                    } catch (CorruptPageStoreException e) {
+                    } catch (CorruptDatabaseException e) {
                         header0 = null;
                         commitNumber0 = -1;
                         pageSize0 = pageSize;
@@ -159,7 +159,7 @@ class PageStore implements Closeable {
                     try {
                         header1 = readHeader(1);
                         commitNumber1 = readInt(header1, I_COMMIT_NUMBER);
-                    } catch (CorruptPageStoreException e) {
+                    } catch (CorruptDatabaseException e) {
                         if (ex0 != null) {
                             // File is completely unusable.
                             throw ex0;
@@ -171,7 +171,7 @@ class PageStore implements Closeable {
 
                     int pageSize1 = readInt(header1, I_PAGE_SIZE);
                     if (pageSize0 != pageSize1) {
-                        throw new CorruptPageStoreException
+                        throw new CorruptDatabaseException
                             ("Mismatched page sizes: " + pageSize0 + " != " + pageSize1);
                     }
 
@@ -188,7 +188,7 @@ class PageStore implements Closeable {
                             header = header0;
                             commitNumber = commitNumber0;
                         } else {
-                            throw new CorruptPageStoreException
+                            throw new CorruptDatabaseException
                                 ("Both headers have same commit number: " + commitNumber0);
                         }
                     }
@@ -609,19 +609,19 @@ class PageStore implements Closeable {
         try {
             mPageArray.readPartial(id, 0, header, 0, header.length);
         } catch (EOFException e) {
-            throw new CorruptPageStoreException("File is smaller than expected");
+            throw new CorruptDatabaseException("File is smaller than expected");
         }
 
         long magic = readLong(header, I_MAGIC_NUMBER);
         if (magic != MAGIC_NUMBER) {
-            throw new CorruptPageStoreException("Wrong magic number: " + magic);
+            throw new CorruptDatabaseException("Wrong magic number: " + magic);
         }
 
         int checksum = readInt(header, I_CHECKSUM);
 
         int newChecksum = setHeaderChecksum(header);
         if (newChecksum != checksum) {
-            throw new CorruptPageStoreException
+            throw new CorruptDatabaseException
                 ("Header checksum mismatch: " + newChecksum + " != " + checksum);
         }
 

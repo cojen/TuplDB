@@ -601,7 +601,7 @@ final class UndoLog {
             }
 
             if (node == null) {
-                throw new CorruptNodeException("Remainder of undo log is missing");
+                throw new CorruptDatabaseException("Remainder of undo log is missing");
             }
 
             page = node.mPage;
@@ -775,7 +775,7 @@ final class UndoLog {
         Node node = db.allocLatchedNode();
         node.read(db, nodeId);
         if (node.mType != Node.TYPE_UNDO_LOG) {
-            throw new CorruptNodeException("Not an undo log node type: " + node.mType);
+            throw new CorruptDatabaseException("Not an undo log node type: " + node.mType);
         }
         return node;
     }
