@@ -41,7 +41,8 @@ import static org.cojen.tupl.DataUtils.*;
 import static org.cojen.tupl.Node.*;
 
 /**
- * 
+ * Main database class, containing a collection of transactional indexes. Call
+ * {@link #open open} to obtain a Database instance.
  *
  * @author Brian S O'Neill
  */

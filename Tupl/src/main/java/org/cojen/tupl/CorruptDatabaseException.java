@@ -17,7 +17,8 @@
 package org.cojen.tupl;
 
 /**
- * 
+ * Exception thrown when the internal structure of the {@link Database
+ * database} is corrupt.
  *
  * @author Brian S O'Neill
  */

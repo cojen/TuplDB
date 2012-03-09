@@ -29,7 +29,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 
+ * Configuration options used when {@link Database#open opening} a database.
  *
  * @author Brian S O'Neill
  */

@@ -19,7 +19,8 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 /**
- * 
+ * Exception thrown which indicates a {@link Database database} problem not due
+ * to general I/O problems.
  *
  * @author Brian S O'Neill
  */
