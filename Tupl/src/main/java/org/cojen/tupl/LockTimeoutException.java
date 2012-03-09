@@ -19,7 +19,9 @@ package org.cojen.tupl;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 
+ * Exception thrown when a lock request by a {@link Transaction transaction}
+ * timed out. The timeout can be specified {@link DatabaseConfig#lockTimeout
+ * globally} or per {@link Transaction#lockTimeout transaction}.
  *
  * @author Brian S O'Neill
  */

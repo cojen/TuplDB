@@ -23,12 +23,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 
 /**
- * Defines a logical unit of work. Transactions must be {@link #reset reset}
- * when no longer needed to free up resources. Transaction instances can only
- * be safely used by one thread at a time. Instances can be exchanged by
- * threads, as long as a happens-before relationship is established. Without
- * proper exclusion, multiple threads interacting with a Transaction instance
- * may cause database corruption.
+ * Defines a logical unit of work. Transaction instances can only be safely
+ * used by one thread at a time, and they must be {@link #reset reset} when no
+ * longer needed to free up resources. Instances can be exchanged by threads,
+ * as long as a happens-before relationship is established. Without proper
+ * exclusion, multiple threads interacting with a Transaction instance may
+ * cause database corruption.
  *
  * <p>Transactions also contain various methods for directly controlling locks,
  * although their use is not required. Methods which operate upon transactions

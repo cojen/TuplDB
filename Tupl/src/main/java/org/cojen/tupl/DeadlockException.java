@@ -17,7 +17,11 @@
 package org.cojen.tupl;
 
 /**
- * 
+ * Exception thrown when a lock request by a {@link Transaction transaction}
+ * timed out due to a deadlock. Deadlocks can be prevented by locking records
+ * in a consistent order. Cases of "self deadlock" when using multiple
+ * transactions in one thread are not detected, and a regular timeout exception
+ * is thrown instead.
  *
  * @author Brian S O'Neill
  */

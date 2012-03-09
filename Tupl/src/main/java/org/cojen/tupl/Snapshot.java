@@ -20,7 +20,7 @@ import java.io.Closeable;
 import java.io.IOException;
 
 /**
- * 
+ * Control object used to capture a database snapshot.
  *
  * @author Brian S O'Neill
  * @see Database#beginSnapshot Database.beginSnapshot
