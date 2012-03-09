@@ -19,12 +19,12 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 /**
- * Maintains a logical position in an {@link Index}. Cursors must be {@link
- * #reset reset} when no longer needed to free up resources. Cursor instances
- * can only be safely used by one thread at a time. Instances can be exchanged
- * by threads, as long as a happens-before relationship is established. Without
- * proper exclusion, multiple threads interacting with a Cursor instance may
- * cause database corruption.
+ * Maintains a logical position in an {@link Index}. Cursor instances can only
+ * be safely used by one thread at a time, and they must be {@link #reset
+ * reset} when no longer needed. Instances can be exchanged by threads, as long
+ * as a happens-before relationship is established. Without proper exclusion,
+ * multiple threads interacting with a Cursor instance may cause database
+ * corruption.
  *
  * @author Brian S O'Neill
  * @see Index#newCursor Index.newCursor
