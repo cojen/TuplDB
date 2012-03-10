@@ -91,9 +91,9 @@ final class OrderedPageAllocator {
     /**
      * @param forNode node which needs a new page; must be latched
      */
-    long allocPage(final Tree forIndex, final Node forNode) throws IOException {
+    long allocPage(final Tree forTree, final Node forNode) throws IOException {
         allocLocal: {
-            synchronized (this) {
+            if (forNode != null) synchronized (this) {
                 // Move or add node to the end of the dirty list. Allocations
                 // are in order, and the list maintains the order.
                 move: {
@@ -127,7 +127,7 @@ final class OrderedPageAllocator {
                 }
             }
 
-            if (isInternal(forIndex) || mReadyState == EMPTY) {
+            if (isInternal(forTree) || mReadyState == EMPTY) {
                 // Avoid cyclic dependency when allocating pages for internal
                 // trees. Latch deadlock is highly likely, especially for the
                 // page index itself and the registry.
@@ -171,16 +171,16 @@ final class OrderedPageAllocator {
         return mSource.allocPage();
     }
 
-    void deletePage(long id) throws IOException {
-        // Page cannot be re-used until after checkpoint.
-        mSource.deletePage(id);
-    }
-
-    void recyclePage(long id) throws IOException {
-        byte[] key = new byte[8];
-        DataUtils.writeLong(key, 0, id);
-        mLocalPages.store(Transaction.BOGUS, key, Utils.EMPTY_BYTES);
-        makeReady();
+    void recyclePage(Tree fromTree, long id) throws IOException {
+        if (isInternal(fromTree)) {
+            // Avoid deadlock-prone cyclic dependency.
+            mSource.deletePage(id);
+        } else {
+            byte[] key = new byte[8];
+            DataUtils.writeLong(key, 0, id);
+            mLocalPages.store(Transaction.BOGUS, key, Utils.EMPTY_BYTES);
+            makeReady();
+        }
     }
 
     /**

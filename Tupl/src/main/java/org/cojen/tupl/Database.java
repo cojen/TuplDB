@@ -964,7 +964,6 @@ public final class Database implements Closeable {
     void doMarkDirty(Tree tree, Node node) throws IOException {
         long oldId = node.mId;
         long newId = mAllocator.allocPage(tree, node);
-        //used(node);
         if (oldId != 0) {
             mPageStore.deletePage(oldId);
         }
@@ -1005,9 +1004,9 @@ public final class Database implements Closeable {
      * Caller must hold commit lock and exclusive latch on node. Latch is
      * always released by this method, even if an exception is thrown.
      */
-    void deleteNode(Node node) throws IOException {
+    void deleteNode(Tree fromTree, Node node) throws IOException {
         try {
-            deletePage(node.mId, node.mCachedState);
+            deletePage(fromTree, node.mId, node.mCachedState);
 
             node.mId = 0;
             // FIXME: child node array should be recycled
@@ -1047,11 +1046,11 @@ public final class Database implements Closeable {
     /**
      * Caller must hold commit lock.
      */
-    void deletePage(long id, int cachedState) throws IOException {
+    void deletePage(Tree fromTree, long id, int cachedState) throws IOException {
         if (id != 0) {
             if (cachedState == mCommitState) {
                 // Newly reserved page was never used, so recycle it.
-                mPageStore.recyclePage(id);
+                mAllocator.recyclePage(fromTree, id);
             } else {
                 // Old data must survive until after checkpoint.
                 mPageStore.deletePage(id);

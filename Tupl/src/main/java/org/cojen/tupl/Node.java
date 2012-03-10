@@ -1759,7 +1759,7 @@ final class Node extends Latch {
             frame = prev;
         }
 
-        tree.mDatabase.deleteNode(this);
+        tree.mDatabase.deleteNode(tree, this);
     }
 
     /**
@@ -1831,7 +1831,7 @@ final class Node extends Latch {
             frame = prev;
         }
 
-        tree.mDatabase.deleteNode(this);
+        tree.mDatabase.deleteNode(tree, this);
     }
 
     /**
@@ -1948,7 +1948,7 @@ final class Node extends Latch {
 
         // The page can be deleted earlier in the method, but doing it here
         // might prevent corruption if an unexpected exception occurs.
-        tree.mDatabase.deletePage(toDelete, toDeleteState);
+        tree.mDatabase.deletePage(tree, toDelete, toDeleteState);
     }
 
     /**

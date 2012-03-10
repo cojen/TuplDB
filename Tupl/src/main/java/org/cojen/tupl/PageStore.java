@@ -332,10 +332,8 @@ class PageStore implements Closeable {
      * immediately readable even if not committed. An uncommitted page can be
      * deleted, but it remains readable until after a commit.
      *
-     * @param id previously reserved page id
+     * @param id previously allocated page id
      * @param buf data to write
-     * @throws IllegalArgumentException if id verification is supported and id
-     * was not reserved
      */
     public void writePage(long id, byte[] buf) throws IOException {
         writePage(id, buf, 0);
@@ -346,11 +344,9 @@ class PageStore implements Closeable {
      * immediately readable even if not committed. An uncommitted page can be
      * deleted, but it remains readable until after a commit.
      *
-     * @param id previously reserved page id
+     * @param id previously allocated page id
      * @param buf data to write
      * @param offset offset into data buffer
-     * @throws IllegalArgumentException if id verification is supported and id
-     * was not reserved
      */
     public void writePage(long id, byte[] buf, int offset) throws IOException {
         checkId(id);
@@ -371,23 +367,6 @@ class PageStore implements Closeable {
         mCommitLock.readLock().lock();
         try {
             mPageManager.deletePage(id);
-        } catch (Throwable e) {
-            throw closeOnFailure(e);
-        } finally {
-            mCommitLock.readLock().unlock();
-        }
-    }
-
-    /**
-     * Recycles a page for immediate re-use. Recycle should only be called for
-     * pages whose contents are known to be unused. If recycle "bin" is full,
-     * page might get deleted instead. Recycle bin is also emptied by commit.
-     */
-    public void recyclePage(long id) throws IOException {
-        checkId(id);
-        mCommitLock.readLock().lock();
-        try {
-            mPageManager.recyclePage(id);
         } catch (Throwable e) {
             throw closeOnFailure(e);
         } finally {
@@ -457,7 +436,7 @@ class PageStore implements Closeable {
 
     public static interface CommitCallback {
         /**
-         * Write all reserved pages which should be committed and return extra
+         * Write all allocated pages which should be committed and return extra
          * data. Extra commit data is stored in PageStore header.
          *
          * @return optional extra data to commit, up to 256 bytes
