@@ -21,6 +21,7 @@ package org.cojen.tupl;
  *
  * @author Brian S O'Neill
  */
+@org.junit.Ignore
 class LatchTest {
     static int count;
 

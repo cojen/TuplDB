@@ -27,6 +27,7 @@ import static org.junit.Assert.*;
  *
  * @author Brian S O'Neill
  */
+@org.junit.Ignore
 public class TreeNodeTest {
     public static void main(String[] args) throws Exception {
         java.io.File file = new java.io.File(args[0]);
@@ -34,10 +35,10 @@ public class TreeNodeTest {
         final Database db = Database.open
             (new DatabaseConfig()
              .baseFile(file)
-             .minCacheSize(400_000_000)
+             .minCacheSize(400000000)
              //.syncWrites(true)
              .durabilityMode(DurabilityMode.NO_FLUSH));
-        //db.preallocate(500_000_000L);
+        //db.preallocate(500000000L);
         final Index index = db.openIndex("test1");
 
         if (false) {
@@ -56,7 +57,7 @@ public class TreeNodeTest {
         Random rnd = new Random(89234723);
 
         long start = System.currentTimeMillis();
-        for (int i=1; i<10_000_000; i++) {
+        for (int i=1; i<10000000; i++) {
             if (i % 10000 == 0) {
                 //System.out.println("" + i + ": " + pstore.stats());
                 System.out.println(i);
@@ -82,7 +83,7 @@ public class TreeNodeTest {
 
         long end = System.currentTimeMillis();
 
-        System.out.println("duration: " + new org.joda.time.Duration(end - start));
+        System.out.println("duration: " + (end - start));
     }
 
     private static void testInsert(Map<String, String> map, boolean fullTest,
