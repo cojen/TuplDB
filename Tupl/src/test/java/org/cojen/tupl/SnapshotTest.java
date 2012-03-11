@@ -23,6 +23,7 @@ import java.io.*;
  *
  * @author Brian S O'Neill
  */
+@org.junit.Ignore
 public class SnapshotTest {
     public static void main(String[] args) throws Exception {
         File base = new File(args[0]);

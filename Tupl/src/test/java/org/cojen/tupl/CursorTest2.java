@@ -23,6 +23,7 @@ import java.util.Random;
  *
  * @author Brian S O'Neill
  */
+@org.junit.Ignore
 public class CursorTest2 {
     public static void main(String[] args) throws Exception {
         java.io.File file = new java.io.File(args[0]);
