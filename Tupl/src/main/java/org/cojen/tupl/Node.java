@@ -2126,12 +2126,12 @@ final class Node extends Latch {
         final int searchVecEnd = mSearchVecEnd;
         pos += searchVecStart;
 
-        // Amount of bytes used in unsplit node, including the page header.
-        int size = searchVecEnd - searchVecStart + 1
-            + mLeftSegTail + page.length - mRightSegTail - mGarbage;
+        // Amount of bytes available in unsplit node.
+        int avail = availableLeafBytes();
 
         int garbageAccum = 0;
         int newLoc = 0;
+        int newAvail = newPage.length - TN_HEADER_SIZE;
 
         // Guess which way to split by examining search position. This doesn't take into
         // consideration the variable size of the entries. If the guess is wrong, the new
@@ -2142,26 +2142,41 @@ final class Node extends Latch {
 
             int destLoc = newPage.length;
             int newSearchVecLoc = TN_HEADER_SIZE;
-            int newSize = TN_HEADER_SIZE;
 
             int searchVecLoc = searchVecStart;
-            for (; newSize < size; searchVecLoc += 2, newSearchVecLoc += 2) {
+            for (; newAvail < avail; searchVecLoc += 2, newSearchVecLoc += 2) {
                 int entryLoc = readUnsignedShort(page, searchVecLoc);
                 int entryLen = leafEntryLength(page, entryLoc);
 
                 if (searchVecLoc == pos) {
-                    newLoc = newSearchVecLoc;
                     if (forInsert) {
-                        // Reserve slot in vector for new entry and account for size increase.
+                        if ((newAvail -= encodedLen + 2) < 0) {
+                            // Inserted entry doesn't fit into new node.
+                            break;
+                        }
+                        // Reserve slot in vector for new entry.
+                        newLoc = newSearchVecLoc;
                         newSearchVecLoc += 2;
-                        newSize += encodedLen + 2;
+                        if (newAvail <= avail) {
+                            // Balanced enough.
+                            break;
+                        }
                     } else {
-                        // Don't copy entry to update, but account for size change.
-                        garbageAccum += entryLen;
-                        size -= entryLen;
-                        newSize += encodedLen;
+                        if ((newAvail -= encodedLen) < 0) {
+                            // Updated entry doesn't fit into new node.
+                            break;
+                        }
+                        // Don't copy old entry, don't adjust garbageAccum, and
+                        // don't adjust avail. Caller is expected to have
+                        // already marked old entry as garbage.
+                        newLoc = newSearchVecLoc;
                         continue;
                     }
+                }
+
+                if ((newAvail -= entryLen + 2) < 0) {
+                    // Entry doesn't fit into new node.
+                    break;
                 }
 
                 // Copy entry and point to it.
@@ -2170,8 +2185,7 @@ final class Node extends Latch {
                 writeShort(newPage, newSearchVecLoc, destLoc);
 
                 garbageAccum += entryLen;
-                size -= entryLen + 2;
-                newSize += entryLen + 2;
+                avail += entryLen + 2;
             }
 
             // Prune off the left end of this node.
@@ -2211,32 +2225,44 @@ final class Node extends Latch {
             // Split into new right node.
 
             int destLoc = TN_HEADER_SIZE;
-            int newSearchVecLoc = newPage.length;
-            int newSize = TN_HEADER_SIZE;
+            int newSearchVecLoc = newPage.length - 2;
 
             int searchVecLoc = searchVecEnd;
-            for (; newSize < size; searchVecLoc -= 2) {
-                newSearchVecLoc -= 2;
-
+            for (; newAvail > avail; searchVecLoc -= 2, newSearchVecLoc -= 2) {
                 int entryLoc = readUnsignedShort(page, searchVecLoc);
                 int entryLen = leafEntryLength(page, entryLoc);
 
                 if (forInsert) {
                     if (searchVecLoc + 2 == pos) {
+                        if ((newAvail -= encodedLen + 2) < 0) {
+                            // Inserted entry doesn't fit into new node.
+                            break;
+                        }
+                        // Reserve spot in vector for new entry.
                         newLoc = newSearchVecLoc;
-                        // Reserve spot in vector for new entry and account for size increase.
                         newSearchVecLoc -= 2;
-                        newSize += encodedLen + 2;
+                        if (newAvail <= avail) {
+                            // Balanced enough.
+                            break;
+                        }
                     }
                 } else {
                     if (searchVecLoc == pos) {
+                        if ((newAvail -= encodedLen) < 0) {
+                            // Updated entry doesn't fit into new node.
+                            break;
+                        }
+                        // Don't copy old entry, don't adjust garbageAccum, and
+                        // don't adjust avail. Caller is expected to have
+                        // already marked old entry as garbage.
                         newLoc = newSearchVecLoc;
-                        // Don't copy entry to update, but account for size change.
-                        garbageAccum += entryLen;
-                        size -= entryLen;
-                        newSize += encodedLen;
                         continue;
                     }
+                }
+
+                if ((newAvail -= entryLen + 2) < 0) {
+                    // Entry doesn't fit into new node.
+                    break;
                 }
 
                 // Copy entry and point to it.
@@ -2245,8 +2271,7 @@ final class Node extends Latch {
                 destLoc += entryLen;
 
                 garbageAccum += entryLen;
-                size -= entryLen + 2;
-                newSize += entryLen + 2;
+                avail += entryLen + 2;
             }
 
             // Prune off the right end of this node.
@@ -2256,6 +2281,7 @@ final class Node extends Latch {
             if (newLoc == 0) {
                 // Unable to insert new entry into new right node. Insert it into the left
                 // node, which should have space now.
+                // FIXME: Not necessarily! A double split is required.
                 pos = binarySearchLeaf(key);
                 if (forInsert) {
                     if (pos >= 0) {
@@ -2277,7 +2303,7 @@ final class Node extends Latch {
 
             newNode.mLeftSegTail = destLoc;
             newNode.mRightSegTail = newPage.length - 1;
-            newNode.mSearchVecStart = newSearchVecLoc;
+            newNode.mSearchVecStart = newSearchVecLoc + 2;
             newNode.mSearchVecEnd = newPage.length - 2;
 
             // Split key is copied from the new right node.
@@ -2323,6 +2349,8 @@ final class Node extends Latch {
         // correct. For these reasons, it isn't worth the trouble to create a special case
         // to charge ahead with the wrong guess. Leaf node splits are more frequent, and
         // incorrect guesses are easily corrected due to the simpler leaf node structure.
+
+        // FIXME: test with large keys
 
         // -2: left
         // -1: guess left
