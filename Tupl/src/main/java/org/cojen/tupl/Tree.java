@@ -212,10 +212,19 @@ final class Tree implements Index {
             return;
         }
 
-        // FIXME: Ensure LockMode is UPGRADABLE_READ, unless UNSAFE.
-        // FIXME: Optimize for LockMode.UNSAFE.
+        if (txn.lockMode() == LockMode.UNSAFE) {
+            // FIXME: Optimize for LockMode.UNSAFE.
+            throw null;
+        }
 
-        throw null;
+        txn.enter();
+        try {
+            txn.lockMode(LockMode.UPGRADABLE_READ);
+            // FIXME
+            throw null;
+        } finally {
+            txn.exit();
+        }
     }
 
     @Override
