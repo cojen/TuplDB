@@ -21,6 +21,7 @@ package org.cojen.tupl;
  * was interrupted by another thread.
  *
  * @author Brian S O'Neill
+ * @see LockResult#INTERRUPTED
  */
 public class LockInterruptedException extends LockFailureException {
     public LockInterruptedException() {

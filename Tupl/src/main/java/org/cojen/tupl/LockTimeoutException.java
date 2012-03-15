@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit;
  * globally} or per {@link Transaction#lockTimeout transaction}.
  *
  * @author Brian S O'Neill
+ * @see LockResult#TIMED_OUT_LOCK
  */
 public class LockTimeoutException extends LockFailureException {
     private final long mNanosTimeout;

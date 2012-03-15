@@ -54,7 +54,7 @@ class Locker {
 
     /**
      * Attempts to acquire a shared lock for the given key, denying exclusive
-     * locks. If return value is {@link LockResult#isOwned owned}, locker
+     * locks. If return value is {@link LockResult#isOwned owned}, transaction
      * already owns a strong enough lock, and no extra unlock should be
      * performed.
      *
@@ -81,7 +81,7 @@ class Locker {
 
     /**
      * Attempts to acquire a shared lock for the given key, denying exclusive
-     * locks. If return value is {@link LockResult#isOwned owned}, locker
+     * locks. If return value is {@link LockResult#isOwned owned}, transaction
      * already owns a strong enough lock, and no extra unlock should be
      * performed.
      *
@@ -108,10 +108,10 @@ class Locker {
 
     /**
      * Attempts to acquire an upgradable lock for the given key, denying
-     * exclusive and additional upgradable locks. If return value is
-     * {@link LockResult#isOwned owned}, locker already owns a strong enough lock, and
-     * no extra unlock should be performed. If ILLEGAL is returned, locker
-     * holds a shared lock, which cannot be upgraded.
+     * exclusive and additional upgradable locks. If return value is {@link
+     * LockResult#isOwned owned}, transaction already owns a strong enough
+     * lock, and no extra unlock should be performed. If ILLEGAL is returned,
+     * transaction holds a shared lock, which cannot be upgraded.
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
@@ -135,9 +135,9 @@ class Locker {
 
     /**
      * Attempts to acquire an upgradable lock for the given key, denying
-     * exclusive and additional upgradable locks. If return value is
-     * {@link LockResult#isOwned owned}, locker already owns a strong enough lock,
-     * and no extra unlock should be performed.
+     * exclusive and additional upgradable locks. If return value is {@link
+     * LockResult#isOwned owned}, transaction already owns a strong enough
+     * lock, and no extra unlock should be performed.
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
@@ -161,9 +161,10 @@ class Locker {
 
     /**
      * Attempts to acquire an exclusive lock for the given key, denying any
-     * additional locks. If return value is {@link LockResult#isOwned owned}, locker already
-     * owns exclusive lock, and no extra unlock should be performed. If ILLEGAL
-     * is returned, locker holds a shared lock, which cannot be upgraded.
+     * additional locks. If return value is {@link LockResult#isOwned owned},
+     * transaction already owns exclusive lock, and no extra unlock should be
+     * performed. If ILLEGAL is returned, transaction holds a shared lock,
+     * which cannot be upgraded.
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
@@ -188,8 +189,9 @@ class Locker {
 
     /**
      * Attempts to acquire an exclusive lock for the given key, denying any
-     * additional locks. If return value is {@link LockResult#isOwned owned}, locker already
-     * owns exclusive lock, and no extra unlock should be performed.
+     * additional locks. If return value is {@link LockResult#isOwned owned},
+     * transaction already owns exclusive lock, and no extra unlock should be
+     * performed.
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *

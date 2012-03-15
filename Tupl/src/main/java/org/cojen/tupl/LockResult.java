@@ -17,22 +17,34 @@
 package org.cojen.tupl;
 
 /**
- * 
+ * Result code returned by transactional operations which acquire locks.
  *
  * @author Brian S O'Neill
  * @see Transaction
+ * @see Cursor
  */
 public enum LockResult {
-    /** Lock rejection caused by illegal lock mode upgrade. */
+    /**
+     * Lock rejection caused by illegal lock mode upgrade.
+     * @see IllegalUpgradeException
+     */
     ILLEGAL(0),
 
-    /** Lock rejection caused by thread interruption. */
+    /**
+     * Lock rejection caused by thread interruption.
+     *
+     * @see LockInterruptedException
+     */
     INTERRUPTED(0),
 
     /** Lock rejection caused by wait timeout, not deadlock. */
     //TIMED_OUT_LATCH(1),
 
-    /** Lock rejection caused by wait timeout or deadlock. */
+    /**
+     * Lock rejection caused by wait timeout or deadlock.
+     *
+     * @see LockTimeoutException
+     */
     TIMED_OUT_LOCK(1),
 
     /** Lock rejection caused by deadlock. */
