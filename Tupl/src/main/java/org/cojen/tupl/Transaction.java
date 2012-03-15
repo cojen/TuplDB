@@ -33,7 +33,20 @@ import java.util.concurrent.locks.Lock;
  * <p>Transactions also contain various methods for directly controlling locks,
  * although their use is not required. Methods which operate upon transactions
  * acquire and release locks automatically. Direct control over locks is
- * provided for advanced use cases. These methods are documented as such.
+ * provided for advanced use cases. One such use is record filtering:
+ *
+ * <pre>
+ * Transaction txn = ...
+ * Cursor c = index.newCursor(txn);
+ * for (LockResult result = c.first(); c.key() != null; result = c.next()) {
+ *     if (shouldDiscard(c.value()) && result == LockResult.ACQUIRED) {
+ *         // Unlock record which doesn't belong in the transaction.
+ *         txn.unlock();
+ *         continue;
+ *     }
+ *     ...
+ * }
+ * </pre>
  *
  * @author Brian S O'Neill
  * @see Database#newTransaction Database.newTransaction
@@ -308,7 +321,7 @@ public final class Transaction extends Locker {
 
     /**
      * Attempts to acquire a shared lock for the given key, denying exclusive
-     * locks. If return value is {@link LockResult#isOwned owned}, locker
+     * locks. If return value is {@link LockResult#isOwned owned}, transaction
      * already owns a strong enough lock, and no extra unlock should be
      * performed.
      *
@@ -327,9 +340,9 @@ public final class Transaction extends Locker {
 
     /**
      * Attempts to acquire an upgradable lock for the given key, denying
-     * exclusive and additional upgradable locks. If return value is
-     * {@link LockResult#isOwned owned}, locker already owns a strong enough lock, and
-     * no extra unlock should be performed.
+     * exclusive and additional upgradable locks. If return value is {@link
+     * LockResult#isOwned owned}, transaction already owns a strong enough
+     * lock, and no extra unlock should be performed.
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
@@ -346,7 +359,7 @@ public final class Transaction extends Locker {
     /**
      * Attempts to acquire an exclusive lock for the given key, denying any
      * additional locks. If return value is {@link LockResult#isOwned owned},
-     * locker already owns exclusive lock, and no extra unlock should be
+     * transaction already owns exclusive lock, and no extra unlock should be
      * performed.
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
