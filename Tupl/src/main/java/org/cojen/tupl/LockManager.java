@@ -27,7 +27,7 @@ final class LockManager {
     private final long mDefaultTimeoutNanos;
 
     private final LockHT[] mHashTables;
-    private final int mHashTableMask;
+    private final int mHashTableShift;
 
     private final ThreadLocal<Locker> mLocalLocker;
 
@@ -43,7 +43,7 @@ final class LockManager {
         for (int i=0; i<numHashTables; i++) {
             mHashTables[i] = new LockHT();
         }
-        mHashTableMask = numHashTables - 1;
+        mHashTableShift = Integer.numberOfLeadingZeros(numHashTables - 1);
 
         mLocalLocker = new ThreadLocal<Locker>();
     }
@@ -237,7 +237,7 @@ final class LockManager {
     }
 
     private LockHT getLockHT(int hash) {
-        return mHashTables[hash & mHashTableMask];
+        return mHashTables[hash >>> mHashTableShift];
     }
 
     /**

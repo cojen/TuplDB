@@ -837,23 +837,14 @@ public final class Database implements Closeable {
                 (node.mLessUsed = mMostRecentlyUsed).mMoreUsed = node;
                 mMostRecentlyUsed = node;
 
-                if (node.tryAcquireExclusive()) {
-                    try {
-                        if (node.evict(this)) {
-                            if (!evictable) {
-                                // Detach from linked list.
-                                (mMostRecentlyUsed = node.mLessUsed).mMoreUsed = null;
-                                node.mLessUsed = null;
-                            }
-                            // Return with latch still held.
-                            return node;
-                        } else {
-                            node.releaseExclusive();
-                        }
-                    } catch (IOException e) {
-                        node.releaseExclusive();
-                        throw e;
+                if (node.tryAcquireExclusive() && (node = Node.evict(node, this)) != null) {
+                    if (!evictable) {
+                        // Detach from linked list.
+                        (mMostRecentlyUsed = node.mLessUsed).mMoreUsed = null;
+                        node.mLessUsed = null;
                     }
+                    // Return with latch still held.
+                    return node;
                 }
             } while (--max > 0);
         } finally {

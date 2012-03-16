@@ -220,8 +220,19 @@ final class Tree implements Index {
         txn.enter();
         try {
             txn.lockMode(LockMode.UPGRADABLE_READ);
-            // FIXME
-            throw null;
+            TreeCursor cursor = new TreeCursor(this, txn);
+            try {
+                cursor.autoload(false);
+                cursor.first();
+                while (cursor.key() != null) {
+                    cursor.store(null);
+                    cursor.next();
+                }
+            } finally {
+                // FIXME: this can deadlock, because exception can be thrown at anytime
+                cursor.reset();
+            }
+            txn.commit();
         } finally {
             txn.exit();
         }
@@ -251,8 +262,62 @@ final class Tree implements Index {
             return;
         }
 
-        // FIXME
-        throw null;
+        if (txn.lockMode() == LockMode.UNSAFE) {
+            // FIXME: Optimize for LockMode.UNSAFE.
+            throw null;
+        }
+
+        txn.enter();
+        try {
+            txn.lockMode(LockMode.UPGRADABLE_READ);
+            TreeCursor cursor = new TreeCursor(this, txn);
+            try {
+                cursor.autoload(false);
+
+                if (start == null) {
+                    cursor.first();
+                } else if (startInclusive) {
+                    cursor.findGe(start);
+                } else {
+                    cursor.findGt(start);
+                }
+
+                if (end == null) {
+                    while (cursor.key() != null) {
+                        cursor.store(null);
+                        cursor.next();
+                    }
+                } else if (endInclusive) {
+                    byte[] key;
+                    while ((key = cursor.key()) != null) {
+                        int compare = Utils.compareKeys(key, 0, key.length, end, 0, end.length);
+                        if (compare > 0) {
+                            break;
+                        }
+                        cursor.store(null);
+                        if (compare >= 0) {
+                            break;
+                        }
+                        cursor.next();
+                    }
+                } else {
+                    byte[] key;
+                    while ((key = cursor.key()) != null) {
+                        if (Utils.compareKeys(key, 0, key.length, end, 0, end.length) >= 0) {
+                            break;
+                        }
+                        cursor.store(null);
+                        cursor.next();
+                    }
+                }
+            } finally {
+                // FIXME: this can deadlock, because exception can be thrown at anytime
+                cursor.reset();
+            }
+            txn.commit();
+        } finally {
+            txn.exit();
+        }
     }
 
     /**
