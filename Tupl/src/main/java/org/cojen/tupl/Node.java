@@ -583,72 +583,101 @@ final class Node extends Latch {
     }
 
     /**
-     * Caller must hold exclusive latch on node. Latch is never released by
-     * this method, even if an exception is thrown.
+     * Caller must hold exclusive latch on node. Latch is released by this
+     * method when null is returned or an exception is thrown. If another node
+     * is returned, it is latched exclusively and original is released.
      *
-     * @return false if node cannot be evicted
+     * @return original or another node to be evicted; null if cannot evict
      */
-    boolean evict(Database db) throws IOException {
-        if (!canEvict()) {
-            return false;
-        }
+    static Node evict(Node node, Database db) throws IOException {
+        check: if (node.mType == TYPE_UNDO_LOG) while (true) {
+            Node[] childNodes = node.mChildNodes;
+            if (childNodes != null && childNodes.length > 0) {
+                Node child = childNodes[0];
+                if (child != null) {
+                    long childId = DataUtils.readLong(node.mPage, UndoLog.I_LOWER_NODE_ID);
+                    // Check id match before lock attempt, as a quick short
+                    // circuit if child has already been evicted.
+                    if (childId == child.mId) {
+                        if (child.tryAcquireExclusive()) {
+                            // Check again in case another evict snuck in.
+                            if (childId == child.mId && child.mCachedState != CACHED_CLEAN) {
+                                // Try evicting the child instead.
+                                node.releaseExclusive();
+                                node = child;
+                                continue;
+                            }
+                            child.releaseExclusive();
+                        } else {
+                            // If latch cannot be acquired, assume child is still
+                            // in use, and so the parent node should be kept.
+                            node.releaseExclusive();
+                            return null;
+                        }
+                    }
+                }
+            }
+            break;
+        } else {
+            if (node.mLastCursorFrame != null || node.mSplit != null) {
+                node.releaseExclusive();
+                return null;
+            }
 
-        if (mCachedState != CACHED_CLEAN) {
-            // TODO: Keep some sort of cache of ids known to be dirty. If
-            // reloaded before commit, then they're still dirty. Without this
-            // optimization, too many pages are allocated when: evictions are
-            // high, write rate is high, and commits are bogged down. A Bloom
-            // filter is not appropriate, because of false positives.
+            if (node.mId == STUB_ID) {
+                break check;
+            }
 
-            write(db);
-            mCachedState = CACHED_CLEAN;
-        }
-
-        mId = 0;
-        // FIXME: child node array should be recycled
-        mChildNodes = null;
-
-        return true;
-    }
-
-    /**
-     * Caller must hold any latch.
-     */
-    private boolean canEvict() {
-        if (mLastCursorFrame != null || mSplit != null) {
-            return false;
-        }
-
-        if (mId == STUB_ID) {
-            return true;
-        }
-
-        Node[] childNodes = mChildNodes;
-        if (childNodes != null) {
-            for (int i=0; i<childNodes.length; i++) {
+            Node[] childNodes = node.mChildNodes;
+            if (childNodes != null) for (int i=0; i<childNodes.length; i++) {
                 Node child = childNodes[i];
                 if (child != null) {
                     if (child.tryAcquireShared()) {
-                        long childId = retrieveChildRefIdFromIndex(i);
                         try {
+                            long childId = node.retrieveChildRefIdFromIndex(i);
                             if (childId == child.mId && child.mCachedState != CACHED_CLEAN) {
-                                // Cannot evict if a child is dirty. It must be
-                                // evicted first.
-                                return false;
+                                // Cannot evict if a child is dirty. Child must
+                                // be evicted first.
+                                // FIXME: try evicting child instead
+                                node.releaseExclusive();
+                                return null;
                             }
                         } finally {
                             child.releaseShared();
                         }
                     } else {
-                        // If latch cannot be acquired, assume child is still in
-                        // use, and so this parent node should be kept.
-                        return false;
+                        // If latch cannot be acquired, assume child is still
+                        // in use, and so the parent node should be kept.
+                        node.releaseExclusive();
+                        return null;
                     }
                 }
             }
         }
 
-        return true;
+        if (node.mCachedState != CACHED_CLEAN) {
+            // TODO: Keep some sort of cache of ids known to be dirty. If
+            // reloaded before commit, then they're still dirty. Without this
+            // optimization, too many pages are allocated when: evictions are
+            // high, write rate is high, and commits are bogged down. A Bloom
+            // filter is not appropriate, because of false positives. A random
+            // evicting cache works well -- it has no collision chains. Evict
+            // whatever else was there in the slot. An array of longs should suffice.
+
+            try {
+                node.write(db);
+                node.mCachedState = CACHED_CLEAN;
+            } catch (IOException e) {
+                node.releaseExclusive();
+                throw e;
+            }
+        }
+
+        node.mId = 0;
+        // FIXME: child node array should be recycled
+        node.mChildNodes = null;
+
+        return node;
     }
 
     /**
@@ -2144,7 +2173,7 @@ final class Node extends Latch {
             int newSearchVecLoc = TN_HEADER_SIZE;
 
             int searchVecLoc = searchVecStart;
-            for (; newAvail < avail; searchVecLoc += 2, newSearchVecLoc += 2) {
+            for (; newAvail > avail; searchVecLoc += 2, newSearchVecLoc += 2) {
                 int entryLoc = readUnsignedShort(page, searchVecLoc);
                 int entryLen = leafEntryLength(page, entryLoc);
 
@@ -2687,9 +2716,8 @@ final class Node extends Latch {
     @Override
     public String toString() {
         return "Node: {id=" + mId +
-            ", isLeaf=" + isLeaf() +
+            ", type=" + mType +
             ", cachedState=" + mCachedState +
-            ", canEvict=" + canEvict() +
             ", isSplit=" + (mSplit != null) +
             ", availableBytes=" + availableBytes() +
             ", lockState=" + super.toString() +

@@ -66,7 +66,7 @@ final class UndoLog {
       lower node(s).
     */
 
-    private static final int I_LOWER_NODE_ID = 4;
+    static final int I_LOWER_NODE_ID = 4;
     private static final int HEADER_SIZE = 12;
 
     // Must be power of two.
@@ -636,6 +636,7 @@ final class UndoLog {
             if (lowerNodeId == lowerNode.mId) {
                 return lowerNode;
             }
+            lowerNode.releaseExclusive();
         }
 
         // Node was evicted, so reload it.
