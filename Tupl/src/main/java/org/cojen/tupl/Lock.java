@@ -103,10 +103,11 @@ final class Lock {
         }
 
         locker.mWaitingFor = this;
+        long nanosEnd = nanosTimeout < 0 ? 0 : (System.nanoTime() + nanosTimeout);
 
         while (true) {
             // Await for shared lock.
-            int w = queueSX.await(latch, new WaitQueue.Shared(), nanosTimeout);
+            int w = queueSX.await(latch, new WaitQueue.Shared(), nanosTimeout, nanosEnd);
             queueSX = mQueueSX;
 
             // After consuming one signal, next shared waiter must be signaled, and so on.
@@ -139,8 +140,10 @@ final class Lock {
             }
 
             // Signal was bogus or lock was grabbed by another thread, so retry.
-            // FIXME: Although retry is expected to be very rare, the timeout
-            // should still be adjusted.
+
+            if (nanosTimeout >= 0 && (nanosTimeout = nanosEnd - System.nanoTime()) <= 0) {
+                return TIMED_OUT_LOCK;
+            }
 
             if (mQueueSX == null) {
                 mQueueSX = queueSX = new WaitQueue();
@@ -183,10 +186,11 @@ final class Lock {
         }
 
         locker.mWaitingFor = this;
+        long nanosEnd = nanosTimeout < 0 ? 0 : (System.nanoTime() + nanosTimeout);
 
         while (true) {
             // Await for exclusive lock.
-            int w = queueU.await(latch, new WaitQueue.Node(), nanosTimeout);
+            int w = queueU.await(latch, new WaitQueue.Node(), nanosTimeout, nanosEnd);
             queueU = mQueueU;
 
             if (queueU != null && queueU.isEmpty()) {
@@ -229,8 +233,10 @@ final class Lock {
             }
 
             // Signal was bogus or lock was grabbed by another thread, so retry.
-            // FIXME: Although retry is expected to be very rare, the timeout
-            // should still be adjusted.
+
+            if (nanosTimeout >= 0 && (nanosTimeout = nanosEnd - System.nanoTime()) <= 0) {
+                return TIMED_OUT_LOCK;
+            }
 
             if (mQueueU == null) {
                 mQueueU = queueU = new WaitQueue();
@@ -271,10 +277,11 @@ final class Lock {
         }
 
         locker.mWaitingFor = this;
+        long nanosEnd = nanosTimeout < 0 ? 0 : (System.nanoTime() + nanosTimeout);
 
         while (true) {
             // Await for exclusive lock.
-            int w = queueSX.await(latch, new WaitQueue.Node(), nanosTimeout);
+            int w = queueSX.await(latch, new WaitQueue.Node(), nanosTimeout, nanosEnd);
             queueSX = mQueueSX;
 
             if (queueSX != null && queueSX.isEmpty()) {
@@ -309,8 +316,10 @@ final class Lock {
             }
 
             // Signal was bogus or lock was grabbed by another thread, so retry.
-            // FIXME: Although retry is expected to be very rare, the timeout
-            // should still be adjusted.
+
+            if (nanosTimeout >= 0 && (nanosTimeout = nanosEnd - System.nanoTime()) <= 0) {
+                return TIMED_OUT_LOCK;
+            }
 
             if (mQueueSX == null) {
                 mQueueSX = queueSX = new WaitQueue();
