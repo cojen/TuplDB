@@ -37,10 +37,11 @@ class WaitQueue {
      * which is still held when method returns.
      *
      * @param node newly allocated node
-     * @param nanosTimeout negative for infinite
+     * @param nanosTimeout relative nanosecond time to wait; infinite if <0
+     * @param nanosEnd absolute nanosecond time to wait until; used only with >0 timeout
      * @return -1 if interrupted, 0 if timed out, 1 if signaled
      */
-    int await(Latch latch, Node node, long nanosTimeout) {
+    int await(Latch latch, Node node, long nanosTimeout, long nanosEnd) {
         node.mWaiter = Thread.currentThread();
 
         Node tail = mTail;
@@ -62,17 +63,7 @@ class WaitQueue {
                     return state;
                 }
             }
-        } else if (nanosTimeout == 0) {
-            latch.releaseExclusive();
-            LockSupport.parkNanos(0);
-            latch.acquireExclusive();
-            int state = node.resumed(this);
-            if (state == 0) {
-                node.remove(this);
-            }
-            return state;
         } else {
-            long end = System.nanoTime() + nanosTimeout;
             while (true) {
                 latch.releaseExclusive();
                 LockSupport.parkNanos(nanosTimeout);
@@ -81,7 +72,7 @@ class WaitQueue {
                 if (state != 0) {
                     return state;
                 }
-                if ((nanosTimeout = end - System.nanoTime()) <= 0) {
+                if (nanosTimeout == 0 || (nanosTimeout = nanosEnd - System.nanoTime()) <= 0) {
                     node.remove(this);
                     return 0;
                 }
