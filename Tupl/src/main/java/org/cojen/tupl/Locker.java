@@ -65,8 +65,7 @@ class Locker {
      * @return INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED, OWNED_SHARED,
      * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      * @throws IllegalStateException if too many shared locks
-     * @throws DeadlockException if deadlock was detected after waiting full
-     * non-zero timeout
+     * @throws DeadlockException if deadlock was detected after waiting full timeout
      */
     public final LockResult tryLockShared(long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException
@@ -91,9 +90,8 @@ class Locker {
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
      * @return ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      * @throws IllegalStateException if too many shared locks
-     * @throws LockFailureException if interrupted or timed out.
-     * @throws DeadlockException if deadlock was detected after waiting full
-     * non-zero timeout
+     * @throws LockFailureException if interrupted or timed out
+     * @throws DeadlockException if deadlock was detected after waiting full timeout
      */
     public final LockResult lockShared(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
@@ -119,8 +117,7 @@ class Locker {
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
      * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED,
      * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
-     * @throws DeadlockException if deadlock was detected after waiting full
-     * non-zero timeout
+     * @throws DeadlockException if deadlock was detected after waiting full timeout
      */
     public final LockResult tryLockUpgradable(long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException
@@ -145,8 +142,7 @@ class Locker {
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
      * @return ACQUIRED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
-     * @throws DeadlockException if deadlock was detected after waiting full
-     * non-zero timeout
+     * @throws DeadlockException if deadlock was detected after waiting full timeout
      */
     public final LockResult lockUpgradable(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
@@ -172,8 +168,7 @@ class Locker {
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
      * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED, UPGRADED, or
      * OWNED_EXCLUSIVE
-     * @throws DeadlockException if deadlock was detected after waiting full
-     * non-zero timeout
+     * @throws DeadlockException if deadlock was detected after waiting full timeout
      */
     public final LockResult tryLockExclusive(long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException
@@ -199,8 +194,7 @@ class Locker {
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
      * @return ACQUIRED, UPGRADED, or OWNED_EXCLUSIVE
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
-     * @throws DeadlockException if deadlock was detected after waiting full
-     * non-zero timeout
+     * @throws DeadlockException if deadlock was detected after waiting full timeout
      */
     public final LockResult lockExclusive(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
