@@ -48,10 +48,10 @@ final class Lock {
     // Locker instance if one shared locker, or else a hashtable for more.
     Object mSharedLockersObj;
 
-    // Waiters for upgradable lock. Contains only Node instances.
+    // Waiters for upgradable lock. Contains only WaitQueue.Node instances.
     WaitQueue mQueueU;
 
-    // Waiters for shared and exclusive locks. Contains Node and Shared instances.
+    // Waiters for shared and exclusive locks. Contains WaitQueue.Node and Shared instances.
     WaitQueue mQueueSX;
 
     /**
