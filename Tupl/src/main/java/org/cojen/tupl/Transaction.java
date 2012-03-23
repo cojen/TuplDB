@@ -76,6 +76,16 @@ public final class Transaction extends Locker {
 
     // TODO: Define autoCommit(boolean) method.
 
+    // FIXME: Add abort method which can be called by any thread. Transaction
+    // is borked as a result, and the field needs to be volatile to signal the
+    // abort action. Rollback is performed by the original thread, to avoid any
+    // other race conditions. If transaction is waiting for a lock, it's
+    // possible to wake up all threads in the wait queue, but which thread is
+    // the correct one? A bogus signal can be injected into all of them, and
+    // all threads need to check the lock state again anyhow. If the
+    // mWaitingFor field was cleared, this indicates that transaction was
+    // aborted. Define a new LockResult code: ABORTED
+
     Transaction(Database db,
                 DurabilityMode durabilityMode,
                 LockMode lockMode,
