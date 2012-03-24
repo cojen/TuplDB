@@ -42,7 +42,7 @@ final class Node extends Latch {
       Node type encoding strategy:
 
       bits 7..4: major type   0001 (undo log), 0100 (branch), 1000 (leaf)
-      bits 3..1: sub type     for leaf: 000 (bud), 001 (normal)
+      bits 3..1: sub type     for leaf: 000 (normal)
                               for branch: 001 (6 byte child pointers), 010 (8 byte pointers)
       bit  0:    endianness   0 (little), 1 (big)
 
@@ -59,8 +59,7 @@ final class Node extends Latch {
     static final byte
         TYPE_UNDO_LOG  = (byte) 0x11, // 0b0001_000_1
         TYPE_TN_BRANCH = (byte) 0x45, // 0b0100_010_1
-        TYPE_TN_BUD    = (byte) 0x81, // 0b1000_000_1
-        TYPE_TN_LEAF   = (byte) 0x83; // 0b1000_001_1
+        TYPE_TN_LEAF   = (byte) 0x81; // 0b1000_000_1
 
     // Tree node header size.
     static final int TN_HEADER_SIZE = 12;
@@ -147,30 +146,33 @@ final class Node extends Latch {
       segments. Entries in the search vector are ushort pointers into the segments. No
       distinction is made between the segments because the pointers are absolute.
 
-      Key-value pairs entries start with a one byte header:
+      Entries start with a one byte key header:
 
-      0x00..0x3f: key is 1..64 bytes, value is >0 bytes.
-      0x40..0x7f: key is 1..64 bytes, value is 0 bytes.
-      0x80..0xbf: key is 0..16383 bytes, value is >0 bytes.
-      0xc0..0xff: key is 0..16383 bytes, value is 0 bytes.
+      0b0pxx_xxxx: key is 1..64 bytes
+      0b1pxx_xxxx: key is 0..16383 bytes
+
+      When the 'p' bit is zero, the entry is a normal key. Otherwise, it
+      indicates that the key starts with the node key prefix.
 
       For keys 1..64 bytes in length, the length is defined as ((header & 0x3f) + 1). For
       keys 0..16383 bytes in length, a second header byte is used. The second byte is
       unsigned, and the length is defined as (((header & 0x3f) << 8) | header2). The key
       contents immediately follow the header byte(s).
 
-      Special support for zero-length values is provided as an optimization for supporting
-      non-unique indexes. Such an index has no use for encoding values.
+      The value follows the key, and its header encodes the entry length:
 
-      If a value exists, it immediately follows the key. The value header encodes its length:
+      0b0xxx_xxxx: value is 0..127 bytes
+      0b1e0x_xxxx: value/entry is 1..8192 bytes
+      0b1e10_xxxx: value/entry is 1..1048576 bytes
+      0b1111_1111: tombstone value (null)
 
-      0x00..0x7f: value is 1..128 bytes
-      0x80..0xff: value is 129..32896 bytes
+      When the 'e' bit is zero, the entry is a normal value. Otherwise, it is
+      an extended value, whose exact format is to be TBD.
 
-      For values 1..128 bytes in length, the length is defined as ((header & 0x7f) +
-      1). For values 129..32896 bytes in length, a second header byte is used. The length
-      is then defined as ((((header & 0x7f) << 8) | header2) + 129). The value contents
-      immediately follow the header byte(s).
+      For entries 1..8192 bytes in length, a second header byte is used. The
+      length is then defined as ((((h0 & 0x1f) << 8) | h1) + 1). For larger
+      entries, the length is ((((h0 & 0x0f) << 16) | (h1 << 8) | h2) + 1).
+      Node limit is currently 65536 bytes, which limits maximum entry length.
 
       The "values" for internal nodes are actually identifiers for child nodes. The number
       of child nodes is always one more than the number of keys. For this reason, the
@@ -1031,51 +1033,39 @@ final class Node extends Latch {
 
     /**
      * @param pos position as provided by binarySearchLeaf; must be positive
+     * @return null if tombstone
      */
     byte[] retrieveLeafValue(int pos) {
         final byte[] page = mPage;
-
         int loc = readUnsignedShort(page, mSearchVecStart + pos);
         int header = page[loc++];
-        if ((header & 0x40) != 0) {
-            return Utils.EMPTY_BYTES;
-        }
         loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
+        return retrieveLeafValueAtLoc(page, loc);
+    }
+
+    private static byte[] retrieveLeafValueAtLoc(byte[] page, int loc) {
         int len = page[loc++];
-        len = len >= 0 ? (len + 1) : ((((len & 0x7f) << 8) | (page[loc++] & 0xff)) + 129);
+        if (len < 0) {
+            if ((len & 0x20) == 0) {
+                len = 1 + (((len & 0x1f) << 8) | (page[loc++] & 0xff));
+            } else if (len != -1) {
+                len = 1 + (((len & 0x0f) << 16)
+                           | ((page[loc++] & 0xff) << 8) | (page[loc++] & 0xff));
+            } else {
+                // tombstone
+                return null;
+            }
+        }
         byte[] value = new byte[len];
         System.arraycopy(page, loc, value, 0, len);
-
         return value;
     }
-
-    /**
-     * @param pos position as provided by binarySearchLeaf; must be positive
-     * @param value non-null value to compare to
-     */
-    /*
-    boolean equalsLeafValue(int pos, byte[] value) {
-        final byte[] page = mPage;
-
-        int loc = readUnsignedShort(page, mSearchVecStart + pos);
-        int header = page[loc++];
-        if ((header & 0x40) != 0) {
-            return value.length == 0;
-        }
-        loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
-        int len = page[loc++];
-        len = len >= 0 ? (len + 1) : ((((len & 0x7f) << 8) | (page[loc++] & 0xff)) + 129);
-
-        return Utils.compareKeys(page, loc, len, value, 0, value.length) == 0;
-    }
-    */
 
     /**
      * @param pos position as provided by binarySearchLeaf; must be positive
      */
     void retrieveLeafEntry(int pos, TreeCursor cursor) {
         final byte[] page = mPage;
-
         int loc = readUnsignedShort(page, mSearchVecStart + pos);
         int header = page[loc++];
         int keyLen = header >= 0 ? ((header & 0x3f) + 1)
@@ -1083,18 +1073,7 @@ final class Node extends Latch {
         byte[] key = new byte[keyLen];
         System.arraycopy(page, loc, key, 0, keyLen);
         cursor.mKey = key;
-
-        loc += keyLen;
-        byte[] value;
-        if ((header & 0x40) != 0) {
-            value = Utils.EMPTY_BYTES;
-        } else {
-            int len = page[loc++];
-            len = len >= 0 ? (len + 1) : ((((len & 0x7f) << 8) | (page[loc++] & 0xff)) + 129);
-            value = new byte[len];
-            System.arraycopy(page, loc, value, 0, len);
-        }
-        cursor.mValue = value;
+        cursor.mValue = retrieveLeafValueAtLoc(page, loc + keyLen);
     }
 
     /**
@@ -1104,20 +1083,8 @@ final class Node extends Latch {
      */
     void undoPushLeafEntry(Transaction txn, long indexId, int pos) throws IOException {
         final byte[] page = mPage;
-
-        final int start = readUnsignedShort(page, mSearchVecStart + pos);
-        int header = page[start];
-        int loc = start + 1;
-        int len = header >= 0 ? ((header & 0x3f) + 1)
-            : (((header & 0x3f) << 8) | ((page[loc++]) & 0xff));
-        loc += len;
-        if ((header & 0x40) == 0) {
-            len = page[loc++];
-            len = len >= 0 ? (len + 1) : ((((len & 0x7f) << 8) | (page[loc++] & 0xff)) + 129);
-            loc += len;
-        }
-
-        txn.undoStore(indexId, page, start, loc - start);
+        final int entryLoc = readUnsignedShort(page, mSearchVecStart + pos);
+        txn.undoStore(indexId, page, entryLoc, leafEntryLengthAtLoc(page, entryLoc));
     }
 
     /**
@@ -1131,19 +1098,7 @@ final class Node extends Latch {
             : (((header & 0x3f) << 8) | ((entry[loc++]) & 0xff));
         byte[] key = new byte[keyLen];
         System.arraycopy(entry, loc, key, 0, keyLen);
-
-        loc += keyLen;
-        byte[] value;
-        if ((header & 0x40) != 0) {
-            value = Utils.EMPTY_BYTES;
-        } else {
-            int len = entry[loc++];
-            len = len >= 0 ? (len + 1) : ((((len & 0x7f) << 8) | (entry[loc++] & 0xff)) + 129);
-            value = new byte[len];
-            System.arraycopy(entry, loc, value, 0, len);
-        }
-
-        return new byte[][] {key, value};
+        return new byte[][] {key, retrieveLeafValueAtLoc(entry, loc + keyLen)};
     }
 
     /**
@@ -1165,14 +1120,14 @@ final class Node extends Latch {
      */
     byte[] retrieveInternalKey(int pos) {
         byte[] page = mPage;
-        return retrieveInternalKeyAtLocation
+        return retrieveInternalKeyAtLoc
             (page, readUnsignedShort(page, mSearchVecStart + pos));
     }
 
     /**
      * @param loc absolute location of internal entry
      */
-    static byte[] retrieveInternalKeyAtLocation(final byte[] page, int loc) {
+    static byte[] retrieveInternalKeyAtLoc(final byte[] page, int loc) {
         int header = page[loc++];
         int keyLen = header >= 0 ? ((header & 0x7f) + 1)
             : (((header & 0x7f) << 8) | ((page[loc++]) & 0xff));
@@ -1184,13 +1139,20 @@ final class Node extends Latch {
     /**
      * @return length of encoded entry at given location
      */
-    static int leafEntryLength(byte[] page, final int entryLoc) {
+    static int leafEntryLengthAtLoc(byte[] page, final int entryLoc) {
         int loc = entryLoc;
         int header = page[loc++];
         loc += (header >= 0 ? (header & 0x3f) : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
-        if ((header & 0x40) == 0) {
-            int len = page[loc++];
-            loc += len >= 0 ? (len + 1) : ((((len & 0x7f) << 8) | (page[loc] & 0xff)) + 130);
+        int len = page[loc++];
+        if (len >= 0) {
+            loc += len;
+        } else {
+            if ((len & 0x20) == 0) {
+                loc += 2 + (((len & 0x1f) << 8) | (page[loc] & 0xff));
+            } else if (len != -1) {
+                loc += 3 +
+                    (((len & 0x0f) << 16) | ((page[loc] & 0xff) << 8) | (page[loc + 1] & 0xff));
+            }
         }
         return loc - entryLoc;
     }
@@ -1198,7 +1160,7 @@ final class Node extends Latch {
     /**
      * @return length of encoded entry at given location
      */
-    static int internalEntryLength(byte[] page, final int entryLoc) {
+    static int internalEntryLengthAtLoc(byte[] page, final int entryLoc) {
         int header = page[entryLoc];
         return (header >= 0 ? (header & 0x7f)
                 : (((header & 0x7f) << 8) | (page[entryLoc + 1] & 0xff))) + 2;
@@ -1210,7 +1172,7 @@ final class Node extends Latch {
     void insertLeafEntry(Tree tree, int pos, byte[] key, byte[] value)
         throws IOException
     {
-        int encodedLen = calculateEncodedLength(key, value);
+        int encodedLen = calculateLeafKeyEntryLength(key) + calculateLeafValueEntryLength(value);
         int entryLoc = createLeafEntry(tree, pos, encodedLen);
         if (entryLoc < 0) {
             splitLeafAndCreateEntry(tree, key, value, encodedLen, pos, true);
@@ -1566,67 +1528,54 @@ final class Node extends Latch {
      */
     void updateLeafValue(Tree tree, int pos, byte[] value) throws IOException {
         final byte[] page = mPage;
-        final int valueLen = value.length;
-
-        int searchVecStart = mSearchVecStart;
+        final int searchVecStart = mSearchVecStart;
 
         final int start;
         final int keyLen;
-        int loc;
         quick: {
+            int loc;
             start = loc = readUnsignedShort(page, searchVecStart + pos);
             final int header = page[loc++];
+            loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
 
-            if ((header & 0x40) != 0) {
-                // Existing value is empty.
-                if (valueLen == 0) {
-                    // No change.
-                    return;
+            final int valueHeaderLoc = loc;
+
+            // Note: Similar to retrieveLeafValueAtLoc.
+            int len = page[loc++];
+            if (len < 0) {
+                if ((len & 0x20) == 0) {
+                    len = 1 + (((len & 0x1f) << 8) | (page[loc++] & 0xff));
+                } else if (len != -1) {
+                    len = 1 + (((len & 0x0f) << 16)
+                               | ((page[loc++] & 0xff) << 8) | (page[loc++] & 0xff));
+                } else {
+                    // tombstone
+                    len = 0;
                 }
-                // Old entry becomes garbage.
-                loc += (header >= 0 ?
-                        (header & 0x3f) : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
-                keyLen = loc - start;
-                break quick;
             }
 
-            loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
-            int valueLoc = loc;
-            int len = page[loc++];
-            len = len >= 0 ? (len + 1) : ((((len & 0x7f) << 8) | (page[loc++] & 0xff)) + 129);
-
+            final int valueLen = value.length;
             if (valueLen > len) {
                 // Old entry is too small, and so it becomes garbage.
-                loc += len;
-                keyLen = valueLoc - start;
+                keyLen = valueHeaderLoc - start;
+                mGarbage += loc + len - start;
                 break quick;
             }
 
             if (valueLen == len) {
-                // Copy new value with no garbage created.
-                System.arraycopy(value, 0, page, loc, valueLen);
-            } else {
-                // Copy new value and remainder of old value becomes garbage.
-                if (valueLen <= 128) {
-                    if (valueLen == 0) {
-                        page[start] |= 0x40;
-                        mGarbage += loc + len - valueLoc;
-                        return;
-                    }
-                    page[valueLoc++] = (byte) (valueLen - 1);
+                // Quick copy with no garbage created.
+                if (valueLen == 0) {
+                    // Ensure tombstone is replaced.
+                    page[valueHeaderLoc] = 0;
                 } else {
-                    page[valueLoc++] = (byte) (0x80 | ((valueLen - 129) >> 8));
-                    page[valueLoc++] = (byte) (valueLen - 129);
+                    System.arraycopy(value, 0, page, loc, valueLen);
                 }
-                System.arraycopy(value, 0, page, valueLoc, valueLen);
-                mGarbage += loc + len - valueLoc - valueLen;
+            } else {
+                mGarbage += loc + len - copyToLeafValue(page, value, valueHeaderLoc) - valueLen;
             }
 
             return;
         }
-
-        // Old entry is garbage.
-        mGarbage += loc - start;
 
         // What follows is similar to createLeafEntry method, except the search
         // vector doesn't grow.
@@ -1636,7 +1585,7 @@ final class Node extends Latch {
         int leftSpace = searchVecStart - mLeftSegTail;
         int rightSpace = mRightSegTail - searchVecEnd - 1;
 
-        final int encodedLen = keyLen + (valueLen == 0 ? 0 : (valueLen <= 128 ? 1 : 2)) + valueLen;
+        final int encodedLen = keyLen + calculateLeafValueEntryLength(value);
 
         int entryLoc;
         alloc: {
@@ -1691,32 +1640,11 @@ final class Node extends Latch {
             mSearchVecEnd = newSearchVecStart + vecLen - 2;
         }
 
-        updateLeafEntry(page, start, keyLen, value, entryLoc);
+        // Copy existing key, and then copy value.
+        System.arraycopy(page, start, page, entryLoc, keyLen);
+        copyToLeafValue(page, value, entryLoc + keyLen);
+
         writeShort(page, pos, entryLoc);
-    }
-
-    /**
-     * @param keyLen includes length of header
-     * @param value length must not be zero
-     */
-    private void updateLeafEntry(byte[] keySource, int keyStart, int keyLen,
-                                 byte[] value, int entryLoc)
-    {
-        final byte[] page = mPage;
-
-        // Copy existing key and indicate that value is non-empty.
-        System.arraycopy(keySource, keyStart, page, entryLoc, keyLen);
-        page[entryLoc] &= ~0x40;
-        entryLoc += keyLen;
-
-        final int valueLen = value.length;
-        if (valueLen <= 128) {
-            page[entryLoc++] = (byte) (valueLen - 1);
-        } else {
-            page[entryLoc++] = (byte) (0x80 | ((valueLen - 129) >> 8));
-            page[entryLoc++] = (byte) (valueLen - 129);
-        }
-        System.arraycopy(value, 0, page, entryLoc, valueLen);
     }
 
     /**
@@ -1735,7 +1663,7 @@ final class Node extends Latch {
         int searchVecStart = mSearchVecStart;
         int entryLoc = readUnsignedShort(page, searchVecStart + pos);
         // Increment garbage by the size of the encoded entry.
-        mGarbage += leafEntryLength(page, entryLoc);
+        mGarbage += leafEntryLengthAtLoc(page, entryLoc);
 
         int searchVecEnd = mSearchVecEnd;
 
@@ -1770,7 +1698,7 @@ final class Node extends Latch {
         int searchVecStart = mSearchVecStart;
         while (searchVecStart <= searchVecEnd) {
             int entryLoc = readUnsignedShort(rightPage, searchVecStart);
-            int encodedLen = leafEntryLength(rightPage, entryLoc);
+            int encodedLen = leafEntryLengthAtLoc(rightPage, entryLoc);
             int leftEntryLoc = leftNode.createLeafEntry
                 (tree, leftNode.highestLeafPos() + 2, encodedLen);
             // Note: Must access left page each time, since compaction can replace it.
@@ -1827,7 +1755,7 @@ final class Node extends Latch {
         int searchVecStart = mSearchVecStart;
         while (searchVecStart <= searchVecEnd) {
             int entryLoc = readUnsignedShort(rightPage, searchVecStart);
-            int encodedLen = internalEntryLength(rightPage, entryLoc);
+            int encodedLen = internalEntryLengthAtLoc(rightPage, entryLoc);
 
             // Allocate entry for left node.
             int pos = leftNode.highestInternalPos();
@@ -1884,7 +1812,7 @@ final class Node extends Latch {
 
         int entryLoc = readUnsignedShort(page, searchVecStart + keyPos);
         // Increment garbage by the size of the encoded entry.
-        mGarbage += internalEntryLength(page, entryLoc);
+        mGarbage += internalEntryLengthAtLoc(page, entryLoc);
 
         // Update references to child node instances.
         // FIXME: recycle child node arrays
@@ -1983,20 +1911,28 @@ final class Node extends Latch {
     /**
      * Calculate encoded key length for leaf.
      */
-    private static int calculateEncodedLength(byte[] key, byte[] value) {
-        int keyLen = key.length;
-        int valueLen = value.length;
-        return ((keyLen <= 64 & keyLen > 0) ? 1 : 2) + keyLen
-            + (valueLen == 0 ? 0 : (valueLen <= 128 ? 1 : 2)) + valueLen;
+    private static int calculateLeafKeyEntryLength(byte[] key) {
+        int len = key.length;
+        return len + ((len <= 64 & len > 0) ? 1 : 2);
+    }
+
+    /**
+     * Calculate encoded value entry length for leaf.
+     */
+    private static int calculateLeafValueEntryLength(byte[] value) {
+        int len = value.length;
+        return len + ((len <= 127) ? 1 : ((len <= 8192) ? 2 : 3));
     }
 
     /**
      * Calculate encoded key length for internal node.
      */
+    /*
     private static int calculateEncodedLength(byte[] key) {
         int keyLen = key.length;
         return ((keyLen <= 128 & keyLen > 0) ? 1 : 2) + keyLen;
     }
+    */
 
     /**
      * @return -1 if not enough contiguous space surrounding search vector
@@ -2020,35 +1956,36 @@ final class Node extends Latch {
 
     private void copyToLeafEntry(byte[] key, byte[] value, int entryLoc) {
         final byte[] page = mPage;
-        final int keyLen = key.length;
-        final int valueLen = value.length;
 
-        if (valueLen == 0) {
-            if (keyLen <= 64 && keyLen > 0) {
-                page[entryLoc++] = (byte) (0x40 | (keyLen - 1));
-            } else {
-                page[entryLoc++] = (byte) (0xc0 | (keyLen >> 8));
-                page[entryLoc++] = (byte) keyLen;
-            }
-            System.arraycopy(key, 0, page, entryLoc, keyLen);
+        final int len = key.length;
+        if (len <= 64 && len > 0) {
+            page[entryLoc++] = (byte) (len - 1);
         } else {
-            if (keyLen <= 64 && keyLen > 0) {
-                page[entryLoc++] = (byte) (keyLen - 1);
-            } else {
-                page[entryLoc++] = (byte) (0x80 | (keyLen >> 8));
-                page[entryLoc++] = (byte) keyLen;
-            }
-            System.arraycopy(key, 0, page, entryLoc, keyLen);
-            entryLoc += keyLen;
-
-            if (valueLen <= 128) {
-                page[entryLoc++] = (byte) (valueLen - 1);
-            } else {
-                page[entryLoc++] = (byte) (0x80 | ((valueLen - 129) >> 8));
-                page[entryLoc++] = (byte) (valueLen - 129);
-            }
-            System.arraycopy(value, 0, page, entryLoc, valueLen);
+            page[entryLoc++] = (byte) (0x80 | (len >> 8));
+            page[entryLoc++] = (byte) len;
         }
+        System.arraycopy(key, 0, page, entryLoc, len);
+
+        copyToLeafValue(page, value, entryLoc + len);
+    }
+
+    /**
+     * @return page location for first byte of value (first location after header)
+     */
+    private static int copyToLeafValue(byte[] page, byte[] value, int valueLoc) {
+        final int len = value.length;
+        if (len <= 127) {
+            page[valueLoc++] = (byte) len;
+        } else if (len <= 8192) {
+            page[valueLoc++] = (byte) (0x80 | ((len - 1) >> 8));
+            page[valueLoc++] = (byte) (len - 1);
+        } else {
+            page[valueLoc++] = (byte) (0xa0 | ((len - 1) >> 16));
+            page[valueLoc++] = (byte) ((len - 1) >> 8);
+            page[valueLoc++] = (byte) (len - 1);
+        }
+        System.arraycopy(value, 0, page, valueLoc, len);
+        return valueLoc;
     }
 
     /**
@@ -2101,7 +2038,7 @@ final class Node extends Latch {
             }
             writeShort(dest, newSearchVecLoc, destLoc);
             int sourceLoc = readUnsignedShort(page, searchVecLoc);
-            int len = leafEntryLength(page, sourceLoc);
+            int len = leafEntryLengthAtLoc(page, sourceLoc);
             System.arraycopy(page, sourceLoc, dest, destLoc, len);
             destLoc += len;
         }
@@ -2175,7 +2112,7 @@ final class Node extends Latch {
             int searchVecLoc = searchVecStart;
             for (; newAvail > avail; searchVecLoc += 2, newSearchVecLoc += 2) {
                 int entryLoc = readUnsignedShort(page, searchVecLoc);
-                int entryLen = leafEntryLength(page, entryLoc);
+                int entryLen = leafEntryLengthAtLoc(page, entryLoc);
 
                 if (searchVecLoc == pos) {
                     if (forInsert) {
@@ -2259,7 +2196,7 @@ final class Node extends Latch {
             int searchVecLoc = searchVecEnd;
             for (; newAvail > avail; searchVecLoc -= 2, newSearchVecLoc -= 2) {
                 int entryLoc = readUnsignedShort(page, searchVecLoc);
-                int entryLen = leafEntryLength(page, entryLoc);
+                int entryLen = leafEntryLengthAtLoc(page, entryLoc);
 
                 if (forInsert) {
                     if (searchVecLoc + 2 == pos) {
@@ -2422,7 +2359,7 @@ final class Node extends Latch {
                     }
 
                     int entryLoc = readUnsignedShort(page, searchVecLoc);
-                    int entryLen = internalEntryLength(page, entryLoc);
+                    int entryLen = internalEntryLengthAtLoc(page, entryLoc);
 
                     searchVecLoc += 2;
 
@@ -2437,7 +2374,7 @@ final class Node extends Latch {
 
                         if (newKeyLoc != 0) {
                             split = new Split(false, newNode,
-                                              retrieveInternalKeyAtLocation(page, entryLoc));
+                                              retrieveInternalKeyAtLoc(page, entryLoc));
                             break;
                         }
 
@@ -2518,7 +2455,7 @@ final class Node extends Latch {
                     searchVecLoc -= 2;
 
                     int entryLoc = readUnsignedShort(page, searchVecLoc);
-                    int entryLen = internalEntryLength(page, entryLoc);
+                    int entryLen = internalEntryLengthAtLoc(page, entryLoc);
 
                     // Size change must incorporate child id, although they are copied later.
                     int sizeChange = entryLen + (2 + 8);
@@ -2531,7 +2468,7 @@ final class Node extends Latch {
 
                         if (newKeyLoc != 0) {
                             split = new Split(true, newNode,
-                                              retrieveInternalKeyAtLocation(page, entryLoc));
+                                              retrieveInternalKeyAtLoc(page, entryLoc));
                             break;
                         }
 
@@ -2661,7 +2598,7 @@ final class Node extends Latch {
             }
             writeShort(dest, newSearchVecLoc, destLoc);
             int sourceLoc = readUnsignedShort(page, searchVecLoc);
-            int len = internalEntryLength(page, sourceLoc);
+            int len = internalEntryLengthAtLoc(page, sourceLoc);
             System.arraycopy(page, sourceLoc, dest, destLoc, len);
             destLoc += len;
         }
@@ -2804,13 +2741,13 @@ final class Node extends Latch {
             int keyLen;
 
             if (isLeaf()) {
-                used += leafEntryLength(page, loc);
+                used += leafEntryLengthAtLoc(page, loc);
 
                 keyLen = page[loc++];
                 keyLen = keyLen >= 0 ? ((keyLen & 0x3f) + 1)
                     : (((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff));
             } else {
-                used += internalEntryLength(page, loc);
+                used += internalEntryLengthAtLoc(page, loc);
 
                 keyLen = page[loc++];
                 keyLen = keyLen >= 0 ? (keyLen + 1)
@@ -2948,7 +2885,6 @@ final class Node extends Latch {
      * Prints the contents of tree rooted at this node. No latches are acquired
      * by this method -- it is only used for debugging.
      */
-    /* FIXME
     void dump(Database db, String indent) throws IOException {
         verify0();
 
@@ -2962,11 +2898,11 @@ final class Node extends Latch {
                 System.out.println(indent + mId + ": (empty)");
                 return;
             }
-            Entry entry = new Entry();
             for (int pos = mSearchVecEnd - mSearchVecStart; pos >= 0; pos -= 2) {
-                retrieveLeafEntry(pos, entry);
+                byte[] key = retrieveLeafKey(pos);
+                byte[] value = retrieveLeafValue(pos);
                 System.out.println(indent + mId + ": " +
-                                   dumpToString(entry.key) + " = " + dumpToString(entry.value));
+                                   dumpToString(key) + " = " + dumpToString(value));
             }
             return;
         }
@@ -2999,9 +2935,11 @@ final class Node extends Latch {
             }
         }
     }
-    */
 
     private static String dumpToString(byte[] bytes) {
+        if (bytes == null) {
+            return "null";
+        }
         for (byte b : bytes) {
             if (b < '-' || b > 'z') {
                 throw new AssertionError(Arrays.toString(bytes));
