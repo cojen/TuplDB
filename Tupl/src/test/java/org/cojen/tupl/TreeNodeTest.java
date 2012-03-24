@@ -77,7 +77,7 @@ public class TreeNodeTest {
             */
         }
 
-        //root.dump(store, "");
+        //((Tree) index).mRoot.dump(db, "");
 
         db.checkpoint();
 

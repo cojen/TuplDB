@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit;
  *
  * @author Brian S O'Neill
  */
-public class DatabaseConfig {
+public class DatabaseConfig implements Cloneable {
     File mBaseFile;
     boolean mMkdirs;
     File mDataFile;
@@ -163,6 +163,15 @@ public class DatabaseConfig {
     public DatabaseConfig pageSize(int size) {
         mPageSize = size;
         return this;
+    }
+
+    @Override
+    public DatabaseConfig clone() {
+        try {
+            return (DatabaseConfig) super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw Utils.rethrow(e);
+        }
     }
 
     /**

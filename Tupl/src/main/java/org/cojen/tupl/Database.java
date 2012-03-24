@@ -64,7 +64,11 @@ public final class Database implements Closeable {
          return count <= Integer.MAX_VALUE ? (int) count : Integer.MAX_VALUE;
     }
 
-    private static final int ENCODING_VERSION = 20120212;
+    private static long byteCountFromNodes(int nodes, int pageSize) {
+        return nodes * (long) (pageSize + NODE_OVERHEAD);
+    }
+
+    private static final int ENCODING_VERSION = 20120324;
 
     private static final int I_ENCODING_VERSION        = 0;
     private static final int I_ROOT_PAGE_ID            = I_ENCODING_VERSION + 4;
@@ -127,6 +131,7 @@ public final class Database implements Closeable {
      * Open a database, creating it if necessary.
      */
     public static Database open(DatabaseConfig config) throws IOException {
+        config = config.clone();
         Database db = new Database(config, false);
         db.startCheckpointer(config);
         return db;
@@ -138,11 +143,15 @@ public final class Database implements Closeable {
      * must be used to format it.
      */
     public static Database destroy(DatabaseConfig config) throws IOException {
+        config = config.clone();
         Database db = new Database(config, true);
         db.startCheckpointer(config);
         return db;
     }
 
+    /**
+     * @param config cloned config
+     */
     private Database(DatabaseConfig config, boolean destroy) throws IOException {
         File baseFile = config.mBaseFile;
         File dataFile = config.dataFile();
@@ -177,6 +186,10 @@ public final class Database implements Closeable {
             minCache = Math.max(MIN_CACHED_NODES, minCache);
             maxCache = Math.max(MIN_CACHED_NODES, maxCache);
         }
+
+        // Update config such that info file is correct.
+        config.mMinCachedBytes = byteCountFromNodes(minCache, pageSize);
+        config.mMaxCachedBytes = byteCountFromNodes(maxCache, pageSize);
 
         mUsageLatch = new Latch();
         mMaxNodeCount = maxCache;

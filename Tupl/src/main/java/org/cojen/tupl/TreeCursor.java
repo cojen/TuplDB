@@ -1980,7 +1980,7 @@ final class TreeCursor implements Cursor {
         byte[] parentPage = parentNode.mPage;
         int parentEntryLoc = DataUtils.readUnsignedShort
             (parentPage, parentNode.mSearchVecStart + leftPos);
-        int parentEntryLen = Node.internalEntryLength(parentPage, parentEntryLoc);
+        int parentEntryLen = Node.internalEntryLengthAtLoc(parentPage, parentEntryLoc);
         int remaining = leftAvail - parentEntryLen
             + rightAvail - parentPage.length + (Node.TN_HEADER_SIZE - 2);
 
