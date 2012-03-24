@@ -642,6 +642,9 @@ final class UndoLog {
         // Node was evicted, so reload it.
         lowerNode = mDatabase.allocLatchedNode();
         lowerNode.read(mDatabase, lowerNodeId);
+        if (lowerNode.mType != Node.TYPE_UNDO_LOG) {
+            throw new CorruptDatabaseException("Not an undo log node type: " + lowerNode.mType);
+        }
 
         return lowerNode;
     }
