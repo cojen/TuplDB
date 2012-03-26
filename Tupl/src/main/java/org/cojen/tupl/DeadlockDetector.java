@@ -40,16 +40,18 @@ class DeadlockDetector {
     private final Locker mOrigin;
     private final Set<Locker> mLockers;
 
-    private boolean mGuilty;
+    boolean mGuilty;
 
-    DeadlockDetector(Locker locker, long indexId, byte[] key, long nanosTimeout)
-        throws DeadlockException
-    {
+    DeadlockDetector(Locker locker, long indexId, byte[] key) {
         mOrigin = locker;
         mLockers = new LinkedHashSet<Locker>();
-        if (scan(locker)) {
-            throw new DeadlockException(nanosTimeout, mGuilty);
-        }
+    }
+
+    /**
+     * @return true if deadlock was found
+     */
+    boolean scan() {
+        return scan(mOrigin);
     }
 
     /**
@@ -88,11 +90,15 @@ class DeadlockDetector {
                 found |= scan(owner);
             }
 
-            if (shared != null) {
+            scanShared: if (shared != null) {
                 if (shared instanceof Locker) {
                     // Tail call.
                     locker = (Locker) shared;
                     continue outer;
+                }
+
+                if (!(shared instanceof Lock.LockerHTEntry[])) {
+                    break scanShared;
                 }
 
                 Lock.LockerHTEntry[] entries = (Lock.LockerHTEntry[]) shared;

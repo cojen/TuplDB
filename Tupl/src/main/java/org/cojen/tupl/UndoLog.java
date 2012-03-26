@@ -89,8 +89,11 @@ final class UndoLog {
     // Payload is key to delete to undo an insert.
     static final byte OP_DELETE = (byte) 5;
 
-    // Payload is key and value to store to undo an update or delete.
-    static final byte OP_STORE = (byte) 6;
+    // Payload is key and value to store to undo an update.
+    static final byte OP_UPDATE = (byte) 6;
+
+    // Payload is key and value to store to undo a delete.
+    static final byte OP_INSERT = (byte) 7;
 
     private final Database mDatabase;
 
@@ -447,8 +450,12 @@ final class UndoLog {
                 break;
 
             case OP_DELETE:
-            case OP_STORE:
+            case OP_UPDATE:
                 // Ignore.
+                break;
+
+            case OP_INSERT:
+                // FIXME: OP_INSERT must delete tombstone
                 break;
             }
         }
@@ -518,7 +525,7 @@ final class UndoLog {
             activeIndex.delete(Transaction.BOGUS, entry);
             break;
 
-        case OP_STORE:
+        case OP_UPDATE: case OP_INSERT:
             activeIndex = findIndex(activeIndex);
             {
                 byte[][] pair = Node.decodeUndoEntry(entry);

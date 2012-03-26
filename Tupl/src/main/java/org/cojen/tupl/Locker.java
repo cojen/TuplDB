@@ -70,8 +70,13 @@ class Locker {
     public final LockResult tryLockShared(long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException
     {
-        LockResult result = mManager.tryLockShared
-            (this, indexId, key, hash(indexId, key), nanosTimeout);
+        return tryLockShared(indexId, key, hash(indexId, key), nanosTimeout);
+    }
+
+    final LockResult tryLockShared(long indexId, byte[] key, int hash, long nanosTimeout)
+        throws DeadlockException
+    {
+        LockResult result = mManager.tryLockShared(this, indexId, key, hash, nanosTimeout);
         if (result == LockResult.TIMED_OUT_LOCK) {
             detectDeadlock(indexId, key, nanosTimeout);
         }
@@ -96,8 +101,13 @@ class Locker {
     public final LockResult lockShared(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {
-        LockResult result = mManager.tryLockShared
-            (this, indexId, key, hash(indexId, key), nanosTimeout);
+        return lockShared(indexId, key, hash(indexId, key), nanosTimeout);
+    }
+
+    final LockResult lockShared(long indexId, byte[] key, int hash, long nanosTimeout)
+        throws LockFailureException
+    {
+        LockResult result = mManager.tryLockShared(this, indexId, key, hash, nanosTimeout);
         if (result.isGranted()) {
             return result;
         }
@@ -122,8 +132,13 @@ class Locker {
     public final LockResult tryLockUpgradable(long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException
     {
-        LockResult result = mManager.tryLockUpgradable
-            (this, indexId, key, hash(indexId, key), nanosTimeout);
+        return tryLockUpgradable(indexId, key, hash(indexId, key), nanosTimeout);
+    }
+
+    final LockResult tryLockUpgradable(long indexId, byte[] key, int hash, long nanosTimeout)
+        throws DeadlockException
+    {
+        LockResult result = mManager.tryLockUpgradable(this, indexId, key, hash, nanosTimeout);
         if (result == LockResult.TIMED_OUT_LOCK) {
             detectDeadlock(indexId, key, nanosTimeout);
         }
@@ -147,8 +162,13 @@ class Locker {
     public final LockResult lockUpgradable(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {
-        LockResult result = mManager.tryLockUpgradable
-            (this, indexId, key, hash(indexId, key), nanosTimeout);
+        return lockUpgradable(indexId, key, hash(indexId, key), nanosTimeout);
+    }
+
+    final LockResult lockUpgradable(long indexId, byte[] key, int hash, long nanosTimeout)
+        throws LockFailureException
+    {
+        LockResult result = mManager.tryLockUpgradable(this, indexId, key, hash, nanosTimeout);
         if (result.isGranted()) {
             return result;
         }
@@ -173,8 +193,13 @@ class Locker {
     public final LockResult tryLockExclusive(long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException
     {
-        LockResult result = mManager.tryLockExclusive
-            (this, indexId, key, hash(indexId, key), nanosTimeout);
+        return tryLockExclusive(indexId, key, hash(indexId, key), nanosTimeout);
+    }
+
+    final LockResult tryLockExclusive(long indexId, byte[] key, int hash, long nanosTimeout)
+        throws DeadlockException
+    {
+        LockResult result = mManager.tryLockExclusive(this, indexId, key, hash, nanosTimeout);
         if (result == LockResult.TIMED_OUT_LOCK) {
             detectDeadlock(indexId, key, nanosTimeout);
         }
@@ -199,8 +224,13 @@ class Locker {
     public final LockResult lockExclusive(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {
-        LockResult result = mManager.tryLockExclusive
-            (this, indexId, key, hash(indexId, key), nanosTimeout);
+        return lockExclusive(indexId, key, hash(indexId, key), nanosTimeout);
+    }
+
+    final LockResult lockExclusive(long indexId, byte[] key, int hash, long nanosTimeout)
+        throws LockFailureException
+    {
+        LockResult result = mManager.tryLockExclusive(this, indexId, key, hash, nanosTimeout);
         if (result.isGranted()) {
             return result;
         }
@@ -231,7 +261,10 @@ class Locker {
     {
         if (mWaitingFor != null) {
             try {
-                new DeadlockDetector(this, indexId, key, nanosTimeout);
+                DeadlockDetector detector = new DeadlockDetector(this, indexId, key);
+                if (detector.scan()) {
+                    throw new DeadlockException(nanosTimeout, detector.mGuilty);
+                }
             } finally {
                 mWaitingFor = null;
             }
