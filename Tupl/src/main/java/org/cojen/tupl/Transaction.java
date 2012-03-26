@@ -347,6 +347,10 @@ public final class Transaction extends Locker {
         return super.lockShared(indexId, key, mLockTimeoutNanos);
     }
 
+    final LockResult lockShared(long indexId, byte[] key, int hash) throws LockFailureException {
+        return super.lockShared(indexId, key, hash, mLockTimeoutNanos);
+    }
+
     /**
      * Attempts to acquire an upgradable lock for the given key, denying
      * exclusive and additional upgradable locks. If return value is {@link
@@ -364,6 +368,12 @@ public final class Transaction extends Locker {
         return super.lockUpgradable(indexId, key, mLockTimeoutNanos);
     }
 
+    final LockResult lockUpgradable(long indexId, byte[] key, int hash)
+        throws LockFailureException
+    {
+        return super.lockUpgradable(indexId, key, hash, mLockTimeoutNanos);
+    }
+
     /**
      * Attempts to acquire an exclusive lock for the given key, denying any
      * additional locks. If return value is {@link LockResult#isOwned owned},
@@ -379,6 +389,12 @@ public final class Transaction extends Locker {
      */
     public final LockResult lockExclusive(long indexId, byte[] key) throws LockFailureException {
         return super.lockExclusive(indexId, key, mLockTimeoutNanos);
+    }
+
+    final LockResult lockExclusive(long indexId, byte[] key, int hash)
+        throws LockFailureException
+    {
+        return super.lockExclusive(indexId, key, hash, mLockTimeoutNanos);
     }
 
     /**
@@ -424,12 +440,15 @@ public final class Transaction extends Locker {
     /**
      * Caller must hold commit lock.
      *
+     * @param op OP_UPDATE or OP_INSERT
      * @param payload key/value entry, as encoded by leaf node
      */
-    final void undoStore(long indexId, byte[] payload, int off, int len) throws IOException {
+    final void undoStore(long indexId, byte op, byte[] payload, int off, int len)
+        throws IOException
+    {
         check();
         try {
-            undoLog().push(indexId, UndoLog.OP_STORE, payload, off, len);
+            undoLog().push(indexId, op, payload, off, len);
         } catch (Throwable e) {
             throw borked(e);
         }

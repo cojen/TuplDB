@@ -206,15 +206,32 @@ final class LockManager {
     }
     */
 
-    final Locker lockSharedLocal(long indexId, byte[] key) throws LockFailureException {
+    /**
+     * Mark a lock as referencing a tombstoned entry. Caller must ensure that
+     * lock is already exclusively held.
+     */
+    final void tombstoned(Locker locker, Tree tree, byte[] key, int hash) {
+        LockHT ht = getLockHT(hash);
+        Latch latch = ht.mLatch;
+        latch.acquireExclusive();
+        try {
+            ht.lockFor(tree.mId, key, hash, false).mSharedLockersObj = tree;
+        } finally {
+            latch.releaseExclusive();
+        }
+    }
+
+    final Locker lockSharedLocal(long indexId, byte[] key, int hash) throws LockFailureException {
         Locker locker = localLocker();
-        locker.lockShared(indexId, key, mDefaultTimeoutNanos);
+        locker.lockShared(indexId, key, hash, mDefaultTimeoutNanos);
         return locker;
     }
 
-    final Locker lockExclusiveLocal(long indexId, byte[] key) throws LockFailureException {
+    final Locker lockExclusiveLocal(long indexId, byte[] key, int hash)
+        throws LockFailureException
+    {
         Locker locker = localLocker();
-        locker.lockExclusive(indexId, key, mDefaultTimeoutNanos);
+        locker.lockExclusive(indexId, key, hash, mDefaultTimeoutNanos);
         return locker;
     }
 

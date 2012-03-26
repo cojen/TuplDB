@@ -46,6 +46,9 @@ final class Lock {
     Locker mLocker;
 
     // Locker instance if one shared locker, or else a hashtable for more.
+    // Field is re-used for indicating that exclusive lock has tombstoned an
+    // entry, and it should be deleted when transaction commits. A C-style
+    // union type would be handy. Object is a Tree if entry is tombstoned.
     Object mSharedLockersObj;
 
     // Waiters for upgradable lock. Contains only WaitQueue.Node instances.
@@ -347,6 +350,7 @@ final class Lock {
                 return (mLockCount = count & 0x7fffffff) == 0 && queueU == null;
             } else {
                 // Unlocking exclusive lock.
+                deleteTombstone();
                 mLockCount = 0;
                 WaitQueue queueSX = mQueueSX;
                 if (queueSX == null) {
@@ -423,6 +427,7 @@ final class Lock {
                 addSharedLocker(count, locker);
             } else {
                 // Unlocking exclusive lock into shared.
+                deleteTombstone();
                 addSharedLocker(0, locker);
                 WaitQueue queueSX = mQueueSX;
                 if (queueSX != null) {
@@ -454,10 +459,36 @@ final class Lock {
             // Already upgradable.
             return;
         }
+        deleteTombstone();
         mLockCount = 0x80000000;
         WaitQueue queueSX = mQueueSX;
         if (queueSX != null) {
             queueSX.signalShared();
+        }
+    }
+
+    /**
+     * Called to complete a delete operation, when an exclusive lock is
+     * downgraded or released.
+     */
+    private void deleteTombstone() {
+        // FIXME: Unlock due to rollback can be optimized. It never needs to
+        // actually delete tombstones, because the undo actions replaced
+        // them. Calling Cursor.deleteTombstone performs a pointless search.
+        Object obj = mSharedLockersObj;
+        if (obj instanceof Tree) {
+            TreeCursor c = new TreeCursor((Tree) obj, null);
+            try {
+                c.deleteTombstone(mKey);
+            } catch (java.io.IOException e) {
+                // Exception indicates that database is borked. Tombstone will
+                // get cleaned up when database is re-opened.
+                // FIXME: Define a borked mode for Database, and hand it the exception.
+                e.printStackTrace();
+            } finally {
+                mSharedLockersObj = null;
+                c.reset();
+            }
         }
     }
 

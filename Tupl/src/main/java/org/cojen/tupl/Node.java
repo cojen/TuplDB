@@ -1033,6 +1033,18 @@ final class Node extends Latch {
 
     /**
      * @param pos position as provided by binarySearchLeaf; must be positive
+     * @return Cursor.NOT_LOADED if value exists, null if tombstone
+     */
+    byte[] hasLeafValue(int pos) {
+        final byte[] page = mPage;
+        int loc = readUnsignedShort(page, mSearchVecStart + pos);
+        int header = page[loc++];
+        loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
+        return page[loc] == -1 ? null : Cursor.NOT_LOADED;
+    }
+
+    /**
+     * @param pos position as provided by binarySearchLeaf; must be positive
      * @return null if tombstone
      */
     byte[] retrieveLeafValue(int pos) {
@@ -1045,6 +1057,9 @@ final class Node extends Latch {
 
     private static byte[] retrieveLeafValueAtLoc(byte[] page, int loc) {
         int len = page[loc++];
+        if (len == 0) {
+            return Utils.EMPTY_BYTES;
+        }
         if (len < 0) {
             if ((len & 0x20) == 0) {
                 len = 1 + (((len & 0x1f) << 8) | (page[loc++] & 0xff));
@@ -1079,12 +1094,13 @@ final class Node extends Latch {
     /**
      * Caller must hold commit lock and any latch on node.
      *
+     * @param op OP_UPDATE or OP_INSERT
      * @param pos position as provided by binarySearchLeaf; must be positive
      */
-    void undoPushLeafEntry(Transaction txn, long indexId, int pos) throws IOException {
+    void undoPushLeafEntry(Transaction txn, long indexId, byte op, int pos) throws IOException {
         final byte[] page = mPage;
         final int entryLoc = readUnsignedShort(page, mSearchVecStart + pos);
-        txn.undoStore(indexId, page, entryLoc, leafEntryLengthAtLoc(page, entryLoc));
+        txn.undoStore(indexId, op, page, entryLoc, leafEntryLengthAtLoc(page, entryLoc));
     }
 
     /**
@@ -1652,6 +1668,43 @@ final class Node extends Latch {
      */
     void updateChildRefId(int pos, long id) {
         writeLong(mPage, mSearchVecEnd + 2 + (pos << 2), id);
+    }
+
+    /**
+     * Special variant of updateLeafValue which replaces the value with a
+     * tombstone. When read back, it is interpreted as null. Tombstones are
+     * used by transactional deletes, to ensure that they are not visible by
+     * cursors in other transactions. They need to acquire a lock first. When
+     * the original transaction commits, it deletes all the tombstoned entries
+     * it created.
+     *
+     * @param pos position as provided by binarySearchLeaf; must be positive
+     */
+    void tombstoneLeafValue(int pos) {
+        final byte[] page = mPage;
+
+        int loc = readUnsignedShort(page, mSearchVecStart + pos);
+        final int header = page[loc++];
+        loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
+
+        final int valueHeaderLoc = loc;
+
+        // Note: Similar to retrieveLeafValueAtLoc.
+        int len = page[loc++];
+        if (len < 0) {
+            if ((len & 0x20) == 0) {
+                len = 1 + (((len & 0x1f) << 8) | (page[loc++] & 0xff));
+            } else if (len != -1) {
+                len = 1 + (((len & 0x0f) << 16)
+                           | ((page[loc++] & 0xff) << 8) | (page[loc++] & 0xff));
+            } else {
+                // Already a tombstone.
+                return;
+            }
+        }
+
+        page[valueHeaderLoc] = (byte) -1;
+        mGarbage += loc + len - valueHeaderLoc - 1;
     }
 
     /**

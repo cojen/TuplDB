@@ -126,7 +126,7 @@ final class Tree implements Index {
 
     @Override
     public byte[] load(Transaction txn, byte[] key) throws IOException {
-        Locker locker = lockForRead(txn, key);
+        Locker locker = lockForLoad(txn, key);
         try {
             return mRoot.search(this, key);
         } finally {
@@ -326,8 +326,8 @@ final class Tree implements Index {
      *
      * @param locker optional locker
      */
-    boolean isLockAvailable(Locker locker, byte[] key) {
-        return mLockManager.isAvailable(locker, mId, key, LockManager.hash(mId, key));
+    boolean isLockAvailable(Locker locker, byte[] key, int hash) {
+        return mLockManager.isAvailable(locker, mId, key, hash);
     }
 
     /**
@@ -335,9 +335,9 @@ final class Tree implements Index {
      * @param key non-null key instance
      * @return non-null Locker instance if caller should unlock when read is done
      */
-    private Locker lockForRead(Transaction txn, byte[] key) throws LockFailureException {
+    private Locker lockForLoad(Transaction txn, byte[] key) throws LockFailureException {
         if (txn == null) {
-            return lockSharedLocal(key);
+            return mLockManager.lockSharedLocal(mId, key, LockManager.hash(mId, key));
         }
 
         switch (txn.lockMode()) {
@@ -362,24 +362,24 @@ final class Tree implements Index {
      * @param key non-null key instance
      * @return non-null Locker instance if caller should unlock when write is done
      */
-    Locker lockExclusive(Transaction txn, byte[] key) throws LockFailureException {
+    Locker lockExclusive(Transaction txn, byte[] key, int hash) throws LockFailureException {
         if (txn == null) {
-            return lockExclusiveLocal(key);
+            return lockExclusiveLocal(key, hash);
         }
 
         if (txn.lockMode() != LockMode.UNSAFE) {
-            txn.lockExclusive(mId, key);
+            txn.lockExclusive(mId, key, hash);
         }
 
         return null;
     }
 
-    Locker lockSharedLocal(byte[] key) throws LockFailureException {
-        return mLockManager.lockSharedLocal(mId, key);
+    Locker lockSharedLocal(byte[] key, int hash) throws LockFailureException {
+        return mLockManager.lockSharedLocal(mId, key, hash);
     }
 
-    Locker lockExclusiveLocal(byte[] key) throws LockFailureException {
-        return mLockManager.lockExclusiveLocal(mId, key);
+    Locker lockExclusiveLocal(byte[] key, int hash) throws LockFailureException {
+        return mLockManager.lockExclusiveLocal(mId, key, hash);
     }
 
     void redoStore(byte[] key, byte[] value) throws IOException {
