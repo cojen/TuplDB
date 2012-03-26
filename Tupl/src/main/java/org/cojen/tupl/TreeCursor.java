@@ -574,7 +574,7 @@ final class TreeCursor implements Cursor {
             mode = LockMode.READ_COMMITTED;
         } else if ((mode = txn.lockMode()).noReadLock) {
             if (mKeyOnly) {
-                mKey = node.retrieveLeafKey(pos);
+                mKey = node.retrieveKey(pos);
                 mKeyHash = 0;
                 mValue = node.hasLeafValue(pos);
             } else {
@@ -587,7 +587,7 @@ final class TreeCursor implements Cursor {
         // change after latch is released. Assign NOT_LOADED, in case lock
         // cannot be granted at all. This prevents uncommited value from being
         // exposed.
-        mKey = node.retrieveLeafKey(pos);
+        mKey = node.retrieveKey(pos);
         mKeyHash = 0;
         mValue = NOT_LOADED;
 
@@ -879,7 +879,7 @@ final class TreeCursor implements Cursor {
                     startPos = ~startPos;
                 }
 
-                int pos = node.binarySearchLeaf(key, startPos);
+                int pos = node.binarySearch(key, startPos);
 
                 if (pos >= 0) {
                     frame.mNotFoundKey = null;
@@ -925,7 +925,7 @@ final class TreeCursor implements Cursor {
                         continue;
                     }
 
-                    pos = Node.internalPos(node.binarySearchInternal(key, frame.mNodePos));
+                    pos = Node.internalPos(node.binarySearch(key, frame.mNodePos));
 
                     if (pos == 0 || pos >= node.highestInternalPos()) {
                         // Cannot be certain if position is in this node, so pop up.
@@ -947,9 +947,9 @@ final class TreeCursor implements Cursor {
                 if (node.isLeaf()) {
                     int pos;
                     if (node.mSplit == null) {
-                        pos = node.binarySearchLeaf(key);
+                        pos = node.binarySearch(key);
                     } else {
-                        pos = node.mSplit.binarySearchLeaf(mTree.mDatabase, node, key);
+                        pos = node.mSplit.binarySearch(mTree.mDatabase, node, key);
                     }
                     frame.bind(node, pos);
                     if (pos < 0) {
@@ -968,7 +968,7 @@ final class TreeCursor implements Cursor {
 
                 Split split = node.mSplit;
                 if (split == null) {
-                    int childPos = Node.internalPos(node.binarySearchInternal(key));
+                    int childPos = Node.internalPos(node.binarySearch(key));
                     frame.bind(node, childPos);
                     node = latchChild(node, childPos, true);
                 } else {
@@ -992,12 +992,12 @@ final class TreeCursor implements Cursor {
 
                     if (split.compare(key) < 0) {
                         selected = left;
-                        selectedPos = Node.internalPos(left.binarySearchInternal(key));
+                        selectedPos = Node.internalPos(left.binarySearch(key));
                         frame.bind(node, selectedPos);
                         right.releaseExclusive();
                     } else {
                         selected = right;
-                        selectedPos = Node.internalPos(right.binarySearchInternal(key));
+                        selectedPos = Node.internalPos(right.binarySearch(key));
                         frame.bind(node, left.highestInternalPos() + 2 + selectedPos);
                         left.releaseExclusive();
                     }
@@ -1628,7 +1628,7 @@ final class TreeCursor implements Cursor {
 
         while (true) {
             if (node.isLeaf()) {
-                int pos = node.binarySearchLeaf(key);
+                int pos = node.binarySearch(key);
 
                 try {
                     if (frame.mNodePos != pos) {
@@ -1652,7 +1652,7 @@ final class TreeCursor implements Cursor {
                 return true;
             }
 
-            int childPos = Node.internalPos(node.binarySearchInternal(key));
+            int childPos = Node.internalPos(node.binarySearch(key));
 
             TreeCursorFrame next;
             try {

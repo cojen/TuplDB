@@ -182,20 +182,6 @@ final class Node extends Latch {
       Child node identifiers are encoded immediately following the search vector. Free space
       management must account for this, treating it as an extention to the search vector.
 
-      Key entries for internal nodes start with a one byte header:
-
-      0x00..0x7f: key is 1..128 bytes
-      0x80..0xff: key is 0..32767 bytes
-
-      For keys 1..128 bytes in length, the length is defined as (header + 1). For
-      keys 0..32767 bytes in length, a second header byte is used. The length is then
-      defined as (((header & 0x7f) << 8) | header2). The key contents immediately follow
-      the header byte(s).
-
-      Note that internal nodes can support keys larger than leaf nodes, but this extra
-      length cannot be used. The maximum key length is limited by leaf encoding. A future
-      encoding format might support very large keys.
-
      */
 
     // Raw contents of node.
@@ -276,7 +262,7 @@ final class Node extends Latch {
         long childId;
 
         loop: while (true) {
-            childPos = internalPos(node.binarySearchInternal(key));
+            childPos = internalPos(node.binarySearch(key));
 
             Node childNode = node.mChildNodes[childPos >> 1];
             childId = node.retrieveChildRefId(childPos);
@@ -371,7 +357,7 @@ final class Node extends Latch {
      * @return copy of value or null if not found
      */
     private byte[] subSearchLeaf(byte[] key) {
-        int childPos = binarySearchLeaf(key);
+        int childPos = binarySearch(key);
         if (childPos < 0) {
             releaseShared();
             return null;
@@ -794,7 +780,7 @@ final class Node extends Latch {
      * @return 2-based insertion pos, which is negative if key not found
      */
     // FIXME: Binary search can be optimized by not always starting key compare at first byte.
-    int binarySearchLeaf(byte[] key) {
+    int binarySearch(byte[] key) {
         final byte[] page = mPage;
         final int keyLen = key.length;
         int lowPos = mSearchVecStart;
@@ -839,7 +825,7 @@ final class Node extends Latch {
      * @return 2-based insertion pos, which is negative if key not found
      */
     // FIXME: Binary search can be optimized by not always starting key compare at first byte.
-    int binarySearchLeaf(byte[] key, int midPos) {
+    int binarySearch(byte[] key, int midPos) {
         int lowPos = mSearchVecStart;
         int highPos = mSearchVecEnd;
         if (lowPos > highPos) {
@@ -894,121 +880,6 @@ final class Node extends Latch {
     }
 
     /**
-     * @return negative if page entry is less, zero if equal, more than zero if greater
-     * /
-    static int compareToInternalKey(byte[] page, int entryLoc, byte[] key) {
-        int entryLen = page[entryLoc++];
-        entryLen = entryLen >= 0 ? (entryLen + 1)
-            : (((entryLen & 0x7f) << 8) | ((page[entryLoc++]) & 0xff));
-
-        return Utils.compareKeys(page, entryLoc, entryLen, key, 0, key.length);
-    }
-    */
-
-    /**
-     * @return 2-based insertion pos, which is negative if key not found
-     */
-    // FIXME: Binary search can be optimized by not always starting key compare at first byte.
-    int binarySearchInternal(byte[] key) {
-        final byte[] page = mPage;
-        final int keyLen = key.length;
-        int lowPos = mSearchVecStart;
-        int highPos = mSearchVecEnd;
-
-        outer: while (lowPos <= highPos) {
-            int midPos = ((lowPos + highPos) >> 1) & ~1;
-
-            int compareLoc = readUnsignedShort(page, midPos);
-            int compareLen = page[compareLoc++];
-            compareLen = compareLen >= 0 ? (compareLen + 1)
-                : (((compareLen & 0x7f) << 8) | ((page[compareLoc++]) & 0xff));
-
-            int minLen = Math.min(compareLen, keyLen);
-            for (int i=0; i<minLen; i++) {
-                byte cb = page[compareLoc + i];
-                byte kb = key[i];
-                if (cb != kb) {
-                    if ((cb & 0xff) < (kb & 0xff)) {
-                        lowPos = midPos + 2;
-                    } else {
-                        highPos = midPos - 2;
-                    }
-                    continue outer;
-                }
-            }
-
-            if (compareLen < keyLen) {
-                lowPos = midPos + 2;
-            } else if (compareLen > keyLen) {
-                highPos = midPos - 2;
-            } else {
-                return midPos - mSearchVecStart;
-            }
-        }
-
-        return ~(lowPos - mSearchVecStart);
-    }
-
-    /**
-     * @param midPos 2-based starting position
-     * @return 2-based insertion pos, which is negative if key not found
-     */
-    // FIXME: Binary search can be optimized by not always starting key compare at first byte.
-    int binarySearchInternal(byte[] key, int midPos) {
-        int lowPos = mSearchVecStart;
-        int highPos = mSearchVecEnd;
-        if (lowPos > highPos) {
-            return -1;
-        }
-        midPos += lowPos;
-        if (midPos > highPos) {
-            return ~2 - highPos + lowPos;
-        }
-
-        final byte[] page = mPage;
-        final int keyLen = key.length;
-
-        while (true) {
-            compare: {
-                int compareLoc = readUnsignedShort(page, midPos);
-                int compareLen = page[compareLoc++];
-                compareLen = compareLen >= 0 ? (compareLen + 1)
-                    : (((compareLen & 0x7f) << 8) | ((page[compareLoc++]) & 0xff));
-
-                int minLen = Math.min(compareLen, keyLen);
-                for (int i=0; i<minLen; i++) {
-                    byte cb = page[compareLoc + i];
-                    byte kb = key[i];
-                    if (cb != kb) {
-                        if ((cb & 0xff) < (kb & 0xff)) {
-                            lowPos = midPos + 2;
-                        } else {
-                            highPos = midPos - 2;
-                        }
-                        break compare;
-                    }
-                }
-
-                if (compareLen < keyLen) {
-                    lowPos = midPos + 2;
-                } else if (compareLen > keyLen) {
-                    highPos = midPos - 2;
-                } else {
-                    return midPos - mSearchVecStart;
-                }
-            }
-
-            if (lowPos > highPos) {
-                break;
-            }
-
-            midPos = ((lowPos + highPos) >> 1) & ~1;
-        }
-
-        return ~(lowPos - mSearchVecStart);
-    }
-
-    /**
      * Ensure binary search position is positive, for internal node.
      */
     static int internalPos(int pos) {
@@ -1016,23 +887,27 @@ final class Node extends Latch {
     }
 
     /**
-     * @param pos position as provided by binarySearchLeaf; must be positive
+     * @param pos position as provided by binarySearch; must be positive
      */
-    byte[] retrieveLeafKey(int pos) {
+    byte[] retrieveKey(int pos) {
         final byte[] page = mPage;
+        return retrieveKeyAtLoc(page, readUnsignedShort(page, mSearchVecStart + pos));
+    }
 
-        int loc = readUnsignedShort(page, mSearchVecStart + pos);
+    /**
+     * @param loc absolute location of entry
+     */
+    static byte[] retrieveKeyAtLoc(final byte[] page, int loc) {
         int keyLen = page[loc++];
         keyLen = keyLen >= 0 ? ((keyLen & 0x3f) + 1)
             : (((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff));
         byte[] key = new byte[keyLen];
         System.arraycopy(page, loc, key, 0, keyLen);
-
         return key;
     }
 
     /**
-     * @param pos position as provided by binarySearchLeaf; must be positive
+     * @param pos position as provided by binarySearch; must be positive
      * @return Cursor.NOT_LOADED if value exists, null if tombstone
      */
     byte[] hasLeafValue(int pos) {
@@ -1044,7 +919,7 @@ final class Node extends Latch {
     }
 
     /**
-     * @param pos position as provided by binarySearchLeaf; must be positive
+     * @param pos position as provided by binarySearch; must be positive
      * @return null if tombstone
      */
     byte[] retrieveLeafValue(int pos) {
@@ -1077,7 +952,7 @@ final class Node extends Latch {
     }
 
     /**
-     * @param pos position as provided by binarySearchLeaf; must be positive
+     * @param pos position as provided by binarySearch; must be positive
      */
     void retrieveLeafEntry(int pos, TreeCursor cursor) {
         final byte[] page = mPage;
@@ -1095,7 +970,7 @@ final class Node extends Latch {
      * Caller must hold commit lock and any latch on node.
      *
      * @param op OP_UPDATE or OP_INSERT
-     * @param pos position as provided by binarySearchLeaf; must be positive
+     * @param pos position as provided by binarySearch; must be positive
      */
     void undoPushLeafEntry(Transaction txn, long indexId, byte op, int pos) throws IOException {
         final byte[] page = mPage;
@@ -1118,7 +993,7 @@ final class Node extends Latch {
     }
 
     /**
-     * @param pos position as provided by binarySearchInternal; must be positive
+     * @param pos position as provided by binarySearch; must be positive
      */
     long retrieveChildRefId(int pos) {
         return readLong(mPage, mSearchVecEnd + 2 + (pos << 2));
@@ -1129,27 +1004,6 @@ final class Node extends Latch {
      */
     long retrieveChildRefIdFromIndex(int index) {
         return readLong(mPage, mSearchVecEnd + 2 + (index << 3));
-    }
-
-    /**
-     * @param pos position as provided by binarySearchInternal
-     */
-    byte[] retrieveInternalKey(int pos) {
-        byte[] page = mPage;
-        return retrieveInternalKeyAtLoc
-            (page, readUnsignedShort(page, mSearchVecStart + pos));
-    }
-
-    /**
-     * @param loc absolute location of internal entry
-     */
-    static byte[] retrieveInternalKeyAtLoc(final byte[] page, int loc) {
-        int header = page[loc++];
-        int keyLen = header >= 0 ? ((header & 0x7f) + 1)
-            : (((header & 0x7f) << 8) | ((page[loc++]) & 0xff));
-        byte[] key = new byte[keyLen];
-        System.arraycopy(page, loc, key, 0, keyLen);
-        return key;
     }
 
     /**
@@ -1178,17 +1032,17 @@ final class Node extends Latch {
      */
     static int internalEntryLengthAtLoc(byte[] page, final int entryLoc) {
         int header = page[entryLoc];
-        return (header >= 0 ? (header & 0x7f)
-                : (((header & 0x7f) << 8) | (page[entryLoc + 1] & 0xff))) + 2;
+        return (header >= 0 ? (header & 0x3f)
+                : (((header & 0x3f) << 8) | (page[entryLoc + 1] & 0xff))) + 2;
     }
 
     /**
-     * @param pos compliment of position as provided by binarySearchLeaf; must be positive
+     * @param pos compliment of position as provided by binarySearch; must be positive
      */
     void insertLeafEntry(Tree tree, int pos, byte[] key, byte[] value)
         throws IOException
     {
-        int encodedLen = calculateLeafKeyEntryLength(key) + calculateLeafValueEntryLength(value);
+        int encodedLen = calculateKeyLength(key) + calculateLeafValueLength(value);
         int entryLoc = createLeafEntry(tree, pos, encodedLen);
         if (entryLoc < 0) {
             splitLeafAndCreateEntry(tree, key, value, encodedLen, pos, true);
@@ -1198,7 +1052,7 @@ final class Node extends Latch {
     }
 
     /**
-     * @param pos compliment of position as provided by binarySearchLeaf; must be positive
+     * @param pos compliment of position as provided by binarySearch; must be positive
      * @return location for newly allocated entry, already pointed to by search
      * vector, or -1 if leaf must be split
      */
@@ -1540,7 +1394,7 @@ final class Node extends Latch {
     }
 
     /**
-     * @param pos position as provided by binarySearchLeaf; must be positive
+     * @param pos position as provided by binarySearch; must be positive
      */
     void updateLeafValue(Tree tree, int pos, byte[] value) throws IOException {
         final byte[] page = mPage;
@@ -1601,7 +1455,7 @@ final class Node extends Latch {
         int leftSpace = searchVecStart - mLeftSegTail;
         int rightSpace = mRightSegTail - searchVecEnd - 1;
 
-        final int encodedLen = keyLen + calculateLeafValueEntryLength(value);
+        final int encodedLen = keyLen + calculateLeafValueLength(value);
 
         int entryLoc;
         alloc: {
@@ -1615,7 +1469,7 @@ final class Node extends Latch {
 
             if (mGarbage > remaining) {
                 // Do full compaction and free up the garbage, or split the node.
-                byte[] key = retrieveLeafKey(pos);
+                byte[] key = retrieveKey(pos);
                 if ((mGarbage + remaining) >= 0) {
                     copyToLeafEntry(key, value, compactLeaf(tree, encodedLen, pos, false));
                 } else {
@@ -1644,7 +1498,7 @@ final class Node extends Latch {
                 mRightSegTail = entryLoc - 1;
             } else {
                 // Search vector is misaligned, so do full compaction.
-                byte[] key = retrieveLeafKey(pos);
+                byte[] key = retrieveKey(pos);
                 copyToLeafEntry(key, value, compactLeaf(tree, encodedLen, pos, false));
                 return;
             }
@@ -1664,7 +1518,7 @@ final class Node extends Latch {
     }
 
     /**
-     * @param pos position as provided by binarySearchInternal; must be positive
+     * @param pos position as provided by binarySearch; must be positive
      */
     void updateChildRefId(int pos, long id) {
         writeLong(mPage, mSearchVecEnd + 2 + (pos << 2), id);
@@ -1678,7 +1532,7 @@ final class Node extends Latch {
      * the original transaction commits, it deletes all the tombstoned entries
      * it created.
      *
-     * @param pos position as provided by binarySearchLeaf; must be positive
+     * @param pos position as provided by binarySearch; must be positive
      */
     void tombstoneLeafValue(int pos) {
         final byte[] page = mPage;
@@ -1708,7 +1562,7 @@ final class Node extends Latch {
     }
 
     /**
-     * @param pos position as provided by binarySearchLeaf; must be positive
+     * @param pos position as provided by binarySearch; must be positive
      */
     void deleteLeafEntry(int pos) {
         final byte[] page = mPage;
@@ -1962,30 +1816,20 @@ final class Node extends Latch {
     }
 
     /**
-     * Calculate encoded key length for leaf.
+     * Calculate encoded key length, including header.
      */
-    private static int calculateLeafKeyEntryLength(byte[] key) {
+    static int calculateKeyLength(byte[] key) {
         int len = key.length;
         return len + ((len <= 64 & len > 0) ? 1 : 2);
     }
 
     /**
-     * Calculate encoded value entry length for leaf.
+     * Calculate encoded value length for leaf, including header.
      */
-    private static int calculateLeafValueEntryLength(byte[] value) {
+    private static int calculateLeafValueLength(byte[] value) {
         int len = value.length;
         return len + ((len <= 127) ? 1 : ((len <= 8192) ? 2 : 3));
     }
-
-    /**
-     * Calculate encoded key length for internal node.
-     */
-    /*
-    private static int calculateEncodedLength(byte[] key) {
-        int keyLen = key.length;
-        return ((keyLen <= 128 & keyLen > 0) ? 1 : 2) + keyLen;
-    }
-    */
 
     /**
      * @return -1 if not enough contiguous space surrounding search vector
@@ -2214,7 +2058,7 @@ final class Node extends Latch {
             if (newLoc == 0) {
                 // Unable to insert new entry into left node. Insert it into the right
                 // node, which should have space now.
-                pos = binarySearchLeaf(key);
+                pos = binarySearch(key);
                 if (forInsert) {
                     if (pos >= 0) {
                         throw new AssertionError("Key exists");
@@ -2239,7 +2083,7 @@ final class Node extends Latch {
             newNode.mSearchVecEnd = newSearchVecLoc - 2;
 
             // Split key is copied from this, the right node.
-            mSplit = new Split(false, newNode, retrieveLeafKey(0));
+            mSplit = new Split(false, newNode, retrieveKey(0));
         } else {
             // Split into new right node.
 
@@ -2301,7 +2145,7 @@ final class Node extends Latch {
                 // Unable to insert new entry into new right node. Insert it into the left
                 // node, which should have space now.
                 // FIXME: Not necessarily! A double split is required.
-                pos = binarySearchLeaf(key);
+                pos = binarySearch(key);
                 if (forInsert) {
                     if (pos >= 0) {
                         throw new AssertionError("Key exists");
@@ -2326,7 +2170,7 @@ final class Node extends Latch {
             newNode.mSearchVecEnd = newPage.length - 2;
 
             // Split key is copied from the new right node.
-            mSplit = new Split(true, newNode, newNode.retrieveLeafKey(0));
+            mSplit = new Split(true, newNode, newNode.retrieveKey(0));
         }
     }
 
@@ -2426,8 +2270,7 @@ final class Node extends Latch {
                         // New node has accumlated enough entries and split key has been found.
 
                         if (newKeyLoc != 0) {
-                            split = new Split(false, newNode,
-                                              retrieveInternalKeyAtLoc(page, entryLoc));
+                            split = new Split(false, newNode, retrieveKeyAtLoc(page, entryLoc));
                             break;
                         }
 
@@ -2520,8 +2363,7 @@ final class Node extends Latch {
                         // New node has accumlated enough entries and split key has been found.
 
                         if (newKeyLoc != 0) {
-                            split = new Split(true, newNode,
-                                              retrieveInternalKeyAtLoc(page, entryLoc));
+                            split = new Split(true, newNode, retrieveKeyAtLoc(page, entryLoc));
                             break;
                         }
 
@@ -2795,17 +2637,13 @@ final class Node extends Latch {
 
             if (isLeaf()) {
                 used += leafEntryLengthAtLoc(page, loc);
-
-                keyLen = page[loc++];
-                keyLen = keyLen >= 0 ? ((keyLen & 0x3f) + 1)
-                    : (((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff));
             } else {
                 used += internalEntryLengthAtLoc(page, loc);
-
-                keyLen = page[loc++];
-                keyLen = keyLen >= 0 ? (keyLen + 1)
-                    : (((keyLen & 0x7f) << 8) | ((page[loc++]) & 0xff));
             }
+
+            keyLen = page[loc++];
+            keyLen = keyLen >= 0 ? ((keyLen & 0x3f) + 1)
+                : (((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff));
 
             if (lastKeyLoc != 0) {
                 int result = Utils.compareKeys(page, lastKeyLoc, lastKeyLen, page, loc, keyLen);
@@ -2952,7 +2790,7 @@ final class Node extends Latch {
                 return;
             }
             for (int pos = mSearchVecEnd - mSearchVecStart; pos >= 0; pos -= 2) {
-                byte[] key = retrieveLeafKey(pos);
+                byte[] key = retrieveKey(pos);
                 byte[] value = retrieveLeafValue(pos);
                 System.out.println(indent + mId + ": " +
                                    dumpToString(key) + " = " + dumpToString(value));
@@ -2973,7 +2811,7 @@ final class Node extends Latch {
         }
 
         for (int pos = mSearchVecEnd - mSearchVecStart; pos >= 0; pos -= 2) {
-            System.out.println(indent + mId + ": " + dumpToString(retrieveInternalKey(pos)));
+            System.out.println(indent + mId + ": " + dumpToString(retrieveKey(pos)));
 
             child = mChildNodes[pos >> 1];
             childId = retrieveChildRefId(pos);
