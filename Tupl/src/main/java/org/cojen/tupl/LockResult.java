@@ -93,16 +93,16 @@ public enum LockResult {
     }
 
     /**
-     * @return true if lock was just acquired or already owned
+     * @return true if lock was just acquired or was already owned
      */
-    public boolean isGranted() {
+    public boolean isHeld() {
         return mType >= 2;
     }
 
     /**
      * @return true if lock was already owned when requested
      */
-    public boolean isOwned() {
+    public boolean alreadyOwned() {
         return mType == 3;
     }
 }

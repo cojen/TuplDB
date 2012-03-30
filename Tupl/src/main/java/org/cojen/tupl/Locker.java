@@ -54,7 +54,7 @@ class Locker {
 
     /**
      * Attempts to acquire a shared lock for the given key, denying exclusive
-     * locks. If return value is {@link LockResult#isOwned owned}, transaction
+     * locks. If return value is {@link LockResult#alreadyOwned owned}, transaction
      * already owns a strong enough lock, and no extra unlock should be
      * performed.
      *
@@ -85,7 +85,7 @@ class Locker {
 
     /**
      * Attempts to acquire a shared lock for the given key, denying exclusive
-     * locks. If return value is {@link LockResult#isOwned owned}, transaction
+     * locks. If return value is {@link LockResult#alreadyOwned owned}, transaction
      * already owns a strong enough lock, and no extra unlock should be
      * performed.
      *
@@ -108,16 +108,28 @@ class Locker {
         throws LockFailureException
     {
         LockResult result = mManager.tryLockShared(this, indexId, key, hash, nanosTimeout);
-        if (result.isGranted()) {
+        if (result.isHeld()) {
             return result;
         }
         throw failed(result, indexId, key, nanosTimeout);
     }
 
     /**
+     * NT == No Timeout or deadlock exception thrown
+     *
+     * @return TIMED_OUT_LOCK, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     */
+    final LockResult lockSharedNT(long indexId, byte[] key, int hash, long nanosTimeout)
+        throws LockFailureException
+    {
+        LockResult result = mManager.tryLockShared(this, indexId, key, hash, nanosTimeout);
+        return result.isHeld() ? result : nt(result, indexId, key, nanosTimeout);
+    }
+
+    /**
      * Attempts to acquire an upgradable lock for the given key, denying
      * exclusive and additional upgradable locks. If return value is {@link
-     * LockResult#isOwned owned}, transaction already owns a strong enough
+     * LockResult#alreadyOwned owned}, transaction already owns a strong enough
      * lock, and no extra unlock should be performed. If ILLEGAL is returned,
      * transaction holds a shared lock, which cannot be upgraded.
      *
@@ -148,7 +160,7 @@ class Locker {
     /**
      * Attempts to acquire an upgradable lock for the given key, denying
      * exclusive and additional upgradable locks. If return value is {@link
-     * LockResult#isOwned owned}, transaction already owns a strong enough
+     * LockResult#alreadyOwned owned}, transaction already owns a strong enough
      * lock, and no extra unlock should be performed.
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
@@ -169,15 +181,27 @@ class Locker {
         throws LockFailureException
     {
         LockResult result = mManager.tryLockUpgradable(this, indexId, key, hash, nanosTimeout);
-        if (result.isGranted()) {
+        if (result.isHeld()) {
             return result;
         }
         throw failed(result, indexId, key, nanosTimeout);
     }
 
     /**
+     * NT == No Timeout or deadlock exception thrown
+     *
+     * @return TIMED_OUT_LOCK, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     */
+    final LockResult lockUpgradableNT(long indexId, byte[] key, int hash, long nanosTimeout)
+        throws LockFailureException
+    {
+        LockResult result = mManager.tryLockUpgradable(this, indexId, key, hash, nanosTimeout);
+        return result.isHeld() ? result : nt(result, indexId, key, nanosTimeout);
+    }
+
+    /**
      * Attempts to acquire an exclusive lock for the given key, denying any
-     * additional locks. If return value is {@link LockResult#isOwned owned},
+     * additional locks. If return value is {@link LockResult#alreadyOwned owned},
      * transaction already owns exclusive lock, and no extra unlock should be
      * performed. If ILLEGAL is returned, transaction holds a shared lock,
      * which cannot be upgraded.
@@ -209,7 +233,7 @@ class Locker {
 
     /**
      * Attempts to acquire an exclusive lock for the given key, denying any
-     * additional locks. If return value is {@link LockResult#isOwned owned},
+     * additional locks. If return value is {@link LockResult#alreadyOwned owned},
      * transaction already owns exclusive lock, and no extra unlock should be
      * performed.
      *
@@ -231,10 +255,22 @@ class Locker {
         throws LockFailureException
     {
         LockResult result = mManager.tryLockExclusive(this, indexId, key, hash, nanosTimeout);
-        if (result.isGranted()) {
+        if (result.isHeld()) {
             return result;
         }
         throw failed(result, indexId, key, nanosTimeout);
+    }
+
+    /**
+     * NT == No Timeout or deadlock exception thrown
+     *
+     * @return TIMED_OUT_LOCK, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     */
+    final LockResult lockExclusiveNT(long indexId, byte[] key, int hash, long nanosTimeout)
+        throws LockFailureException
+    {
+        LockResult result = mManager.tryLockExclusive(this, indexId, key, hash, nanosTimeout);
+        return result.isHeld() ? result : nt(result, indexId, key, nanosTimeout);
     }
 
     private LockFailureException failed(LockResult result,
@@ -254,6 +290,18 @@ class Locker {
             return new LockTimeoutException(nanosTimeout);
         }
         return new LockFailureException();
+    }
+
+    private LockResult nt(LockResult result, long indexId, byte[] key, long nanosTimeout)
+        throws LockFailureException
+    {
+        switch (result) {
+        case ILLEGAL:
+            throw new IllegalUpgradeException();
+        case INTERRUPTED:
+            throw new LockInterruptedException();
+        }
+        return result;
     }
 
     private void detectDeadlock(long indexId, byte[] key, long nanosTimeout)
