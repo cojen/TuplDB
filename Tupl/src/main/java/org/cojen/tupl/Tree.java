@@ -88,7 +88,8 @@ final class Tree implements Index {
 
     @Override
     public byte[] getName() {
-        return mName.clone();
+        byte[] name = mName;
+        return name == null ? null : name.clone();
     }
 
     @Override
