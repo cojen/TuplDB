@@ -257,7 +257,7 @@ final class Lock {
      */
     LockResult tryLockExclusive(Latch latch, Locker locker, long nanosTimeout) {
         final LockResult ur = tryLockUpgradable(latch, locker, nanosTimeout);
-        if (!ur.isGranted() || ur == OWNED_EXCLUSIVE) {
+        if (!ur.isHeld() || ur == OWNED_EXCLUSIVE) {
             return ur;
         }
 
