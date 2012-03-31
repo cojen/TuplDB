@@ -65,6 +65,18 @@ final class TreeCursor implements Cursor {
         mKeyOnly = !mode;
     }
 
+    @Override
+    public int compareKeyTo(byte[] rkey) {
+        byte[] lkey = mKey;
+        return Utils.compareKeys(lkey, 0, lkey.length, rkey, 0, rkey.length);
+    }
+
+    @Override
+    public int compareKeyTo(byte[] rkey, int offset, int length) {
+        byte[] lkey = mKey;
+        return Utils.compareKeys(lkey, 0, lkey.length, rkey, offset, length);
+    }
+
     private int keyHash() {
         int hash = mKeyHash;
         if (hash == 0) {
@@ -1427,6 +1439,7 @@ final class TreeCursor implements Cursor {
      * Called by Tree.clear method when using auto-commit transaction. Lock
      * acquisition is lenient. If record cannot be locked, it is skipped.
      */
+    /*
     long clearTo(byte[] end, boolean inclusive) throws IOException {
         byte[] key = mKey;
         if (key == null) {
@@ -1475,6 +1488,7 @@ final class TreeCursor implements Cursor {
 
         return count;
     }
+    */
 
     /**
      * Atomic find and store operation.

@@ -79,7 +79,7 @@ final class RedoLog implements Closeable {
         OP_DELETE = 17,
 
         /** indexId: long */
-        OP_CLEAR = 18,
+        //OP_CLEAR = 18,
 
         /** txnId: long, indexId: long, keyLength: varInt, key: bytes,
             valueLength: varInt, value: bytes */
@@ -338,18 +338,6 @@ final class RedoLog implements Closeable {
         }
     }
 
-    public void clear(long indexId, DurabilityMode mode) throws IOException {
-        boolean sync;
-        synchronized (this) {
-            writeOp(OP_CLEAR, indexId);
-            sync = conditionalFlush(mode);
-        }
-
-        if (sync) {
-            mChannel.force(false);
-        }
-    }
-
     public synchronized void txnRollback(long txnId, long parentTxnId) throws IOException {
         if (parentTxnId == 0) {
             writeOp(OP_TXN_ROLLBACK, txnId);
@@ -570,10 +558,6 @@ final class RedoLog implements Closeable {
 
             case OP_DELETE:
                 visitor.store(in.readLong(), in.readBytes(), null);
-                break;
-
-            case OP_CLEAR:
-                visitor.clear(in.readLong());
                 break;
 
             case OP_TXN_STORE:
