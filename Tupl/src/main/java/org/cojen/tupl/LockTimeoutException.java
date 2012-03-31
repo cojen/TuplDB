@@ -43,18 +43,13 @@ public class LockTimeoutException extends LockFailureException {
     public String getMessage() {
         if (mNanosTimeout == 0) {
             return "Never waited";
-        }
-        if (mNanosTimeout < 0) {
+        } else if (mNanosTimeout < 0) {
             return "Infinite wait";
+        } else {
+            StringBuilder b = new StringBuilder("Waited ");
+            appendTimeout(b, getTimeout(), getUnit());
+            return b.toString();
         }
-
-        String unitStr = getUnit().toString().toLowerCase();
-        long timeout = getTimeout();
-        if (timeout == 1) {
-            unitStr = unitStr.substring(0, unitStr.length() - 1);
-        }
-
-        return "Waited " + timeout + ' ' + unitStr;
     }
 
     public long getTimeout() {
@@ -66,10 +61,10 @@ public class LockTimeoutException extends LockFailureException {
         if (unit != null) {
             return unit;
         }
+        return mUnit = inferUnit(TimeUnit.NANOSECONDS, mNanosTimeout);
+    }
 
-        unit = TimeUnit.NANOSECONDS;
-        long value = mNanosTimeout;
-
+    static TimeUnit inferUnit(TimeUnit unit, long value) {
         infer: {
             if (value == 0) break infer;
             if ((value - (value /= 1000) * 1000) != 0) break infer;
@@ -86,6 +81,22 @@ public class LockTimeoutException extends LockFailureException {
             unit = TimeUnit.DAYS;
         }
 
-        return mUnit = unit;
+        return unit;
+    }
+
+    static void appendTimeout(StringBuilder b, long timeout, TimeUnit unit) {
+        if (timeout == 0) {
+            b.append('0');
+        } else if (timeout < 0) {
+            b.append("infinite");
+        } else {
+            b.append(timeout);
+            b.append(' ');
+            String unitStr = unit.toString().toLowerCase();
+            if (timeout == 1) {
+                unitStr = unitStr.substring(0, unitStr.length() - 1);
+            }
+            b.append(unitStr);
+        }
     }
 }
