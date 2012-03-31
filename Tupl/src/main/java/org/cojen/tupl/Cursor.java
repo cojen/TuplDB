@@ -66,6 +66,28 @@ public interface Cursor {
     public void autoload(boolean mode);
 
     /**
+     * Compare the current key to the one given.
+     *
+     * @param rkey key to compare to
+     * @return a negative integer, zero, or a positive integer as current key
+     * is less than, equal to, or greater than the rkey.
+     * @throws NullPointerException if current key or rkey is null
+     */
+    public int compareKeyTo(byte[] rkey);
+
+    /**
+     * Compare the current key to the one given.
+     *
+     * @param rkey key to compare to
+     * @param offset offset into rkey
+     * @param length length of rkey
+     * @return a negative integer, zero, or a positive integer as current key
+     * is less than, equal to, or greater than the rkey.
+     * @throws NullPointerException if current key or rkey is null
+     */
+    public int compareKeyTo(byte[] rkey, int offset, int length);
+
+    /**
      * Moves the Cursor to find the first available entry. Cursor key and value
      * are set to null if no entries exist, and position will be undefined.
      *
