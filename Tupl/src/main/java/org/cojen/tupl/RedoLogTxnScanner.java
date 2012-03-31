@@ -59,9 +59,6 @@ class RedoLogTxnScanner implements RedoLogVisitor {
     public void store(long indexId, byte[] key, byte[] value) {}
 
     @Override
-    public void clear(long indexId) {}
-
-    @Override
     public void txnRollback(long txnId, long parentTxnId) {
         checkHighest(txnId, parentTxnId);
 

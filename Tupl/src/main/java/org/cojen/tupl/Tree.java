@@ -199,6 +199,7 @@ final class Tree implements Index {
         return update(txn, key, value, null);
     }
 
+    /*
     @Override
     public void clear(Transaction txn) throws IOException {
         if (txn == null) {
@@ -320,6 +321,7 @@ final class Tree implements Index {
             txn.exit();
         }
     }
+    */
 
     /**
      * Returns true if a shared lock can be immediately granted. Caller must

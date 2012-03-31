@@ -40,11 +40,6 @@ interface RedoLogVisitor {
     public void store(long indexId, byte[] key, byte[] value) throws IOException;
 
     /**
-     * @param indexId non-zero index id
-     */
-    public void clear(long indexId) throws IOException;
-
-    /**
      * @param txnId non-zero transaction id
      * @param parentTxnId parent transaction id; zero if none
      */

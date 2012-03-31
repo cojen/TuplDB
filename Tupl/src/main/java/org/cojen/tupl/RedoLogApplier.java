@@ -52,11 +52,6 @@ class RedoLogApplier implements RedoLogVisitor {
     }
 
     @Override
-    public void clear(long indexId) throws IOException {
-        mDb.anyIndexById(indexId).clear(Transaction.BOGUS);
-    }
-
-    @Override
     public void txnRollback(long txnId, long parentTxnId) throws IOException {
         processUndo(txnId, parentTxnId, false);
     }
