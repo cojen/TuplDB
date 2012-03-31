@@ -497,4 +497,33 @@ public final class Transaction extends Locker {
         }
         return Utils.rethrow(e);
     }
+
+    @Override
+    public String toString() {
+        StringBuilder b = new StringBuilder(getClass().getName());
+
+        if (this == BOGUS) {
+            return b.append('.').append("BOGUS").toString();
+        }
+
+        b.append('@').append(Integer.toHexString(hashCode()));
+
+        b.append(" {");
+        b.append("id").append(": ").append(mTxnId);
+        b.append(", ");
+        b.append("durabilityMode").append(": ").append(mDurabilityMode);
+        b.append(", ");
+        b.append("lockMode").append(": ").append(mLockMode);
+        b.append(", lockTimeout").append(": ");
+        TimeUnit unit = LockTimeoutException.inferUnit(TimeUnit.NANOSECONDS, mLockTimeoutNanos);
+        LockTimeoutException.appendTimeout(b, lockTimeout(unit), unit);
+
+        Object borked = mBorked;
+        if (borked != null) {
+            b.append(", ");
+            b.append("invalid").append(": ").append(borked);
+        }
+
+        return b.append('}').toString();
+    }
 }
