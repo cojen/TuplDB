@@ -41,9 +41,9 @@ final class Node extends Latch {
     /*
       Node type encoding strategy:
 
-      bits 7..4: major type   0001 (undo log), 0100 (branch), 1000 (leaf)
+      bits 7..4: major type   0001 (undo log), 0100 (internal), 1000 (leaf)
       bits 3..1: sub type     for leaf: 000 (normal)
-                              for branch: 001 (6 byte child pointers), 010 (8 byte pointers)
+                              for internal: 001 (6 byte child pointers), 010 (8 byte pointers)
       bit  0:    endianness   0 (little), 1 (big)
 
       TN == Tree Node
@@ -57,9 +57,9 @@ final class Node extends Latch {
      */
 
     static final byte
-        TYPE_UNDO_LOG  = (byte) 0x11, // 0b0001_000_1
-        TYPE_TN_BRANCH = (byte) 0x45, // 0b0100_010_1
-        TYPE_TN_LEAF   = (byte) 0x81; // 0b1000_000_1
+        TYPE_UNDO_LOG    = (byte) 0x11, // 0b0001_000_1
+        TYPE_TN_INTERNAL = (byte) 0x45, // 0b0100_010_1
+        TYPE_TN_LEAF     = (byte) 0x81; // 0b1000_000_1
 
     // Tree node header size.
     static final int TN_HEADER_SIZE = 12;
@@ -467,7 +467,7 @@ final class Node extends Latch {
         mChildNodes = new Node[] {left, right};
 
         mPage = newPage;
-        mType = TYPE_TN_BRANCH;
+        mType = TYPE_TN_INTERNAL;
         mGarbage = 0;
         mLeftSegTail = TN_HEADER_SIZE + keyLen;
         mRightSegTail = newPage.length - 1;
@@ -531,7 +531,7 @@ final class Node extends Latch {
             mRightSegTail = readUnsignedShort(page, 6);
             mSearchVecStart = readUnsignedShort(page, 8);
             mSearchVecEnd = readUnsignedShort(page, 10);
-            if (type == TYPE_TN_BRANCH) {
+            if (type == TYPE_TN_INTERNAL) {
                 // FIXME: recycle child node arrays
                 mChildNodes = new Node[numKeys() + 1];
             } else if (type != TYPE_TN_LEAF) {
@@ -1790,7 +1790,7 @@ final class Node extends Latch {
         child.mPage = page;
         child.mId = STUB_ID;
         child.mCachedState = CACHED_CLEAN;
-        child.mType = TYPE_TN_BRANCH;
+        child.mType = TYPE_TN_INTERNAL;
         child.clearEntries();
         child.mChildNodes = childNodes;
         child.mLastCursorFrame = lastCursorFrame;
@@ -2191,7 +2191,7 @@ final class Node extends Latch {
         final byte[] page = mPage;
 
         final Node newNode = tree.mDatabase.allocUnevictableNode(tree);
-        newNode.mType = TYPE_TN_BRANCH;
+        newNode.mType = TYPE_TN_INTERNAL;
         newNode.mGarbage = 0;
 
         final byte[] newPage = newNode.mPage;
