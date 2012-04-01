@@ -779,12 +779,14 @@ final class Node extends Latch {
     /**
      * @return 2-based insertion pos, which is negative if key not found
      */
-    // FIXME: Binary search can be optimized by not always starting key compare at first byte.
     int binarySearch(byte[] key) {
         final byte[] page = mPage;
         final int keyLen = key.length;
         int lowPos = mSearchVecStart;
         int highPos = mSearchVecEnd;
+
+        int lowMatch = 0;
+        int highMatch = 0;
 
         outer: while (lowPos <= highPos) {
             int midPos = ((lowPos + highPos) >> 1) & ~1;
@@ -795,14 +797,17 @@ final class Node extends Latch {
                 : (((compareLen & 0x3f) << 8) | ((page[compareLoc++]) & 0xff));
 
             int minLen = Math.min(compareLen, keyLen);
-            for (int i=0; i<minLen; i++) {
+            int i = Math.min(lowMatch, highMatch);
+            for (; i<minLen; i++) {
                 byte cb = page[compareLoc + i];
                 byte kb = key[i];
                 if (cb != kb) {
                     if ((cb & 0xff) < (kb & 0xff)) {
                         lowPos = midPos + 2;
+                        lowMatch = i;
                     } else {
                         highPos = midPos - 2;
+                        highMatch = i;
                     }
                     continue outer;
                 }
@@ -810,8 +815,10 @@ final class Node extends Latch {
 
             if (compareLen < keyLen) {
                 lowPos = midPos + 2;
+                lowMatch = i;
             } else if (compareLen > keyLen) {
                 highPos = midPos - 2;
+                highMatch = i;
             } else {
                 return midPos - mSearchVecStart;
             }
@@ -824,7 +831,6 @@ final class Node extends Latch {
      * @param midPos 2-based starting position
      * @return 2-based insertion pos, which is negative if key not found
      */
-    // FIXME: Binary search can be optimized by not always starting key compare at first byte.
     int binarySearch(byte[] key, int midPos) {
         int lowPos = mSearchVecStart;
         int highPos = mSearchVecEnd;
@@ -839,6 +845,9 @@ final class Node extends Latch {
         final byte[] page = mPage;
         final int keyLen = key.length;
 
+        int lowMatch = 0;
+        int highMatch = 0;
+
         while (true) {
             compare: {
                 int compareLoc = readUnsignedShort(page, midPos);
@@ -847,14 +856,17 @@ final class Node extends Latch {
                     : (((compareLen & 0x3f) << 8) | ((page[compareLoc++]) & 0xff));
 
                 int minLen = Math.min(compareLen, keyLen);
-                for (int i=0; i<minLen; i++) {
+                int i = Math.min(lowMatch, highMatch);
+                for (; i<minLen; i++) {
                     byte cb = page[compareLoc + i];
                     byte kb = key[i];
                     if (cb != kb) {
                         if ((cb & 0xff) < (kb & 0xff)) {
                             lowPos = midPos + 2;
+                            lowMatch = i;
                         } else {
                             highPos = midPos - 2;
+                            highMatch = i;
                         }
                         break compare;
                     }
@@ -862,8 +874,10 @@ final class Node extends Latch {
 
                 if (compareLen < keyLen) {
                     lowPos = midPos + 2;
+                    lowMatch = i;
                 } else if (compareLen > keyLen) {
                     highPos = midPos - 2;
+                    highMatch = i;
                 } else {
                     return midPos - mSearchVecStart;
                 }
