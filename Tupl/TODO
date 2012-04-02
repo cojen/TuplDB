@@ -1,6 +1,7 @@
 
 - Fix undo log corruption with long transactions. Possibly caused by eviction.
 - Apparent storage leak when deleting records.
+- Use 6-byte pointers in internal nodes.
 - Support large values.
 - Support key prefix compression.
 - Support closing indexes. Requires latch sweep and stubbing of cursors.
