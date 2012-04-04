@@ -27,11 +27,17 @@ import java.io.IOException;
  */
 public interface Snapshot extends Closeable {
     /**
+     * Returns total amount of bytes expected to be written to the snapshot
+     * stream.
+     */
+    public long length();
+
+    /**
      * Writes out snapshot data, and then closes this object. Snapshot aborts
      * if the OutputStream throws an exception or if another thread closes this
      * Snapshot instance.
      */
-    public void finish() throws IOException;
+    public void write() throws IOException;
 
     /**
      * Can be called by another thread to abort the snapshot, causing any
