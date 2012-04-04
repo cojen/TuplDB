@@ -693,7 +693,7 @@ final class UndoLog {
             // TODO: Consider calling persistReady if UndoLog is still in a buffer next time.
             final int psize = (8 + 8 + 2) + bsize;
             if (workspace == null || workspace.length < psize) {
-                workspace = new byte[Math.min(INITIAL_BUFFER_SIZE, Utils.roundUpPower2(psize))];
+                workspace = new byte[Math.max(INITIAL_BUFFER_SIZE, Utils.roundUpPower2(psize))];
             }
             writeActiveIds(workspace);
             writeShort(workspace, (8 + 8), bsize);

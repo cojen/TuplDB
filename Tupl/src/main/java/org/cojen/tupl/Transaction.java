@@ -514,7 +514,8 @@ public final class Transaction extends Locker {
         b.append("durabilityMode").append(": ").append(mDurabilityMode);
         b.append(", ");
         b.append("lockMode").append(": ").append(mLockMode);
-        b.append(", lockTimeout").append(": ");
+        b.append(", ");
+        b.append("lockTimeout").append(": ");
         TimeUnit unit = LockTimeoutException.inferUnit(TimeUnit.NANOSECONDS, mLockTimeoutNanos);
         LockTimeoutException.appendTimeout(b, lockTimeout(unit), unit);
 
