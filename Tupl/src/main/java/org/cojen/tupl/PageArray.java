@@ -230,13 +230,12 @@ class PageArray implements Closeable {
         FileIO fio = JavaFileIO.open(file, options);
         try {
             return restoreFromSnapshot(fio, in);
-        } catch (IOException e) {
+        } finally {
             try {
                 fio.close();
-            } catch (IOException e2) {
+            } catch (IOException e) {
                 // Ignore.
             }
-            throw e;
         }
     }
 
