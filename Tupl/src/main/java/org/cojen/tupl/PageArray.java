@@ -371,13 +371,6 @@ class PageArray implements Closeable {
                 mTempFileManager.register(mTempFile, mBitMap);
                 // Try to pre-allocate space for the bit map.
                 mBitMap.clear(((pageCount + cluster - 1) / cluster) - 1);
-                        
-                DataUtils.writeLong(mBuffer, 0, SNAPSHOT_MAGIC_NUMBER);
-                DataUtils.writeInt(mBuffer, 8, SNAPSHOT_ENCODING_VERSION);
-                DataUtils.writeInt(mBuffer, 12, mPageSize);
-                DataUtils.writeLong(mBuffer, 16, mSnapshotPageCount);
-                DataUtils.writeInt(mBuffer, 24, mCluster);
-                mOut.write(mBuffer, 0, HEADER_SIZE);
             } catch (IOException e) {
                 abort(e);
                 throw e;
@@ -385,28 +378,54 @@ class PageArray implements Closeable {
         }
 
         @Override
-        public void finish() throws IOException {
+        public long length() {
+            long payload = mSnapshotPageCount * mPageSize;
+            int packetSize = mCluster * mPageSize;
+            long packets = (payload + packetSize - 1) / packetSize;
+            return HEADER_SIZE + payload + (packets * 8);
+        }
+
+        @Override
+        public void write() throws IOException {
+            final long count = mSnapshotPageCount;
+            final int cluster = mCluster;
+
             try {
-                final long count = mSnapshotPageCount;
-                final int cluster = mCluster;
+                // Write the header.
+                mSnapshotLatch.acquireExclusive();
+                try {
+                    if (mClosed) {
+                        throw aborted(mAbortCause);
+                    }
+                    try {
+                        DataUtils.writeLong(mBuffer, 0, SNAPSHOT_MAGIC_NUMBER);
+                        DataUtils.writeInt(mBuffer, 8, SNAPSHOT_ENCODING_VERSION);
+                        DataUtils.writeInt(mBuffer, 12, mPageSize);
+                        DataUtils.writeLong(mBuffer, 16, count);
+                        DataUtils.writeInt(mBuffer, 24, cluster);
+                        mOut.write(mBuffer, 0, HEADER_SIZE);
+                    } catch (IOException e) {
+                        abort(e);
+                        throw e;
+                    }
+                } finally {
+                    mSnapshotLatch.releaseExclusive();
+                }
+
+                // Write the clusters.
                 for (long index = 0; index < count; index += cluster) {
                     mSnapshotLatch.acquireExclusive();
-                    if (!mClosed) {
-                        mProgress = index + cluster - 1;
-                        try {
-                            writeCluster(index);
-                        } catch (IOException e) {
-                            abort(e);
-                            throw e;
-                        }
-                    } else {
+                    if (mClosed) {
                         IOException cause = mAbortCause;
                         mSnapshotLatch.releaseExclusive();
-                        String message = "Snapshot closed";
-                        if (cause != null) {
-                            message += ": " + cause;
-                        }
-                        throw new IOException(message);
+                        throw aborted(cause);
+                    }
+                    mProgress = index + cluster - 1;
+                    try {
+                        writeCluster(index);
+                    } catch (IOException e) {
+                        abort(e);
+                        throw e;
                     }
                 }
             } finally {
@@ -495,6 +514,14 @@ class PageArray implements Closeable {
             }
             unregister(this);
             mTempFileManager.deleteTempFile(mTempFile);
+        }
+
+        private IOException aborted(IOException cause) {
+            String message = "Snapshot closed";
+            if (cause != null) {
+                message += ": " + cause;
+            }
+            return new IOException(message);
         }
     }
 }

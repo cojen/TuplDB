@@ -45,7 +45,7 @@ public class SnapshotTest {
 
         db.checkpoint();
 
-        s.finish();
+        s.write();
         out.close();
     }
 }
