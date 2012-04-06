@@ -328,6 +328,8 @@ final class TreeCursor implements Cursor {
     }
 
     /**
+     * Note: When method returns, frame is unlatched and may no longer be valid.
+     *
      * @param frame leaf frame, not split, with exclusive latch
      */
     private LockResult next(Transaction txn, TreeCursorFrame frame) throws IOException {
@@ -341,10 +343,13 @@ final class TreeCursor implements Cursor {
             } else if ((result = lockAndCopyIfExists(txn)) != null) {
                 return result;
             }
+            frame = leafExclusiveNotSplit();
         }
     }
 
     /**
+     * Note: When method returns, frame is unlatched and may no longer be valid.
+     *
      * @param frame leaf frame, not split, with exclusive latch
      */
     private LockResult next(Transaction txn, TreeCursorFrame frame,
@@ -361,10 +366,13 @@ final class TreeCursor implements Cursor {
             } else if ((result = lockAndCopyIfExists(txn, maxWait, unit)) != null) {
                 return result;
             }
+            frame = leafExclusiveNotSplit();
         }
     }
 
     /**
+     * Note: When method returns, frame is unlatched and may no longer be valid.
+     *
      * @param frame leaf frame, not split, with exclusive latch
      * @return null if lock was required but was not immediately available
      */
@@ -510,6 +518,8 @@ final class TreeCursor implements Cursor {
     }
 
     /**
+     * Note: When method returns, frame is unlatched and may no longer be valid.
+     *
      * @param frame leaf frame, not split, with exclusive latch
      */
     private LockResult previous(Transaction txn, TreeCursorFrame frame) throws IOException {
@@ -523,10 +533,13 @@ final class TreeCursor implements Cursor {
             } else if ((result = lockAndCopyIfExists(txn)) != null) {
                 return result;
             }
+            frame = leafExclusiveNotSplit();
         }
     }
 
     /**
+     * Note: When method returns, frame is unlatched and may no longer be valid.
+     *
      * @param frame leaf frame, not split, with exclusive latch
      */
     private LockResult previous(Transaction txn, TreeCursorFrame frame,
@@ -542,10 +555,13 @@ final class TreeCursor implements Cursor {
             } else if ((result = lockAndCopyIfExists(txn, maxWait, unit)) != null) {
                 return result;
             }
+            frame = leafExclusiveNotSplit();
         }
     }
 
     /**
+     * Note: When method returns, frame is unlatched and may no longer be valid.
+     *
      * @param frame leaf frame, not split, with exclusive latch
      * @return null if lock was required but was not immediately available
      */
