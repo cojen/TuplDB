@@ -100,9 +100,9 @@ final class UndoLog {
     private byte[] mBuffer;
     private int mBufferPos;
 
-    // Top node, always latched. This prevents it from being evicted. Nodes are
-    // not used for logs which fit into local buffer.
-    Node mNode;
+    // Top node, typically latched. This prevents it from being evicted. Nodes
+    // are not used for logs which fit into local buffer.
+    private Node mNode;
 
     // Number of bytes currently pushed into log.
     private long mLength;
@@ -161,6 +161,28 @@ final class UndoLog {
             mBuffer = null;
             mBufferPos = 0;
         }
+    }
+
+    /**
+     * Release the master undo log's top node.
+     *
+     * @return node id
+     */
+    long releaseNodeLatch() {
+        Node node = mNode;
+        long id = node.mId;
+        mDatabase.makeUnevictable(node);
+        node.releaseExclusive();
+        return id;
+    }
+
+    /**
+     * Re-acquire the master undo log's top node.
+     */
+    void acquireNodeLatch(long id) throws IOException {
+        Node node = mNode;
+        node.acquireExclusive();
+        mDatabase.makeEvictable(node);
     }
 
     /**
@@ -577,8 +599,18 @@ final class UndoLog {
             return entry;
         }
 
-        byte[] page = node.mPage;
-        int pos = node.mGarbage;
+        byte[] page;
+        int pos;
+        while (true) {
+            page = node.mPage;
+            pos = node.mGarbage;
+            if (pos < page.length) {
+                break;
+            }
+            if ((node = popNode(node)) == null) {
+                return null;
+            }
+        }
 
         int payloadLen;
         {
@@ -647,13 +679,7 @@ final class UndoLog {
         }
 
         // Node was evicted, so reload it.
-        lowerNode = mDatabase.allocLatchedNode();
-        lowerNode.read(mDatabase, lowerNodeId);
-        if (lowerNode.mType != Node.TYPE_UNDO_LOG) {
-            throw new CorruptDatabaseException("Not an undo log node type: " + lowerNode.mType);
-        }
-
-        return lowerNode;
+        return readUndoLogNode(mDatabase, lowerNodeId);
     }
 
     private static void writeEntry(byte[] dest, int destPos,
