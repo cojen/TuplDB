@@ -923,6 +923,30 @@ public final class Database implements Closeable {
     }
 
     /**
+     * Allow a Node which was allocated as evictable to be unevictable.
+     */
+    void makeUnevictable(Node node) {
+        final Latch usageLatch = mUsageLatch;
+        usageLatch.acquireExclusive();
+        try {
+            Node lessUsed = node.mLessUsed;
+            Node moreUsed = node.mMoreUsed;
+            if (lessUsed == null) {
+                (mLeastRecentlyUsed = moreUsed).mLessUsed = null;
+            } else if (moreUsed == null) {
+                (mMostRecentlyUsed = lessUsed).mMoreUsed = null;
+            } else {
+                node.mLessUsed.mMoreUsed = moreUsed;
+                node.mMoreUsed.mLessUsed = lessUsed;
+            }
+            node.mMoreUsed = null;
+            node.mLessUsed = null;
+        } finally {
+            usageLatch.releaseExclusive();
+        }
+    }
+
+    /**
      * Caller must hold commit lock and any latch on node.
      */
     boolean shouldMarkDirty(Node node) {
@@ -1159,9 +1183,8 @@ public final class Database implements Closeable {
                     for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
                         workspace = log.writeToMaster(masterUndoLog, workspace);
                     }
-                    masterUndoLogId = masterUndoLog.mNode.mId;
                     // Release latch to allow flush to acquire and release it.
-                    masterUndoLog.mNode.releaseExclusive();
+                    masterUndoLogId = masterUndoLog.releaseNodeLatch();
                 }
             }
 
@@ -1175,7 +1198,7 @@ public final class Database implements Closeable {
             if (masterUndoLog != null) {
                 // Delete the master undo log, which won't take effect until
                 // the next checkpoint.
-                masterUndoLog.mNode.acquireExclusive();
+                masterUndoLog.acquireNodeLatch(masterUndoLogId);
                 masterUndoLog.truncate();
             }
 
