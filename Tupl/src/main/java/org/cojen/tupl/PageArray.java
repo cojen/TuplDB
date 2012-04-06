@@ -200,6 +200,7 @@ class PageArray implements Closeable {
     Snapshot beginSnapshot(TempFileManager tfm, long pageCount, int cluster, OutputStream out)
         throws IOException
     {
+        pageCount = Math.min(pageCount, getPageCount());
         ArraySnapshot snapshot = new ArraySnapshot(tfm, pageCount, cluster, out);
 
         synchronized (this) {
@@ -276,6 +277,9 @@ class PageArray implements Closeable {
         if (failMessage != null) {
             throw new DatabaseException("Invalid snapshot: " + failMessage);
         }
+
+        // Ensure enough space is available.
+        fio.setLength(pageSize * snapshotPageCount);
 
         DataIn din = new DataIn(in, 8 + pageSize * cluster);
         long remainingPageCount = snapshotPageCount;
