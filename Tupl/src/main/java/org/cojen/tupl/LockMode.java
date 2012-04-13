@@ -22,10 +22,9 @@ package org.cojen.tupl;
  * with respect to entries which are being read.
  *
  * <p>When an entry is modified, an exclusive lock is acquired, which is
- * typically held until the end of the transaction. All locks acquired within
- * transaction scopes are released for uncommitted modifications. Scopes which
- * are committed transfer exclusive locks to the parent scope, and all other
- * acquired locks are released.
+ * typically held until the end of the transaction. When transaction scopes are
+ * committed, all held locks transfer to the parent scope. Uncommitted scopes
+ * release all of their acquired locks.
  *
  * <p>Mode strengths: {@code UPGRADABLE_READ > REPEATABLE_READ > READ_COMMITTED > READ_UNCOMMITTED > UNSAFE}
  *
