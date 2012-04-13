@@ -97,12 +97,15 @@ final class Tree implements Index {
         return new TreeCursor(this, txn);
     }
 
+    /*
     @Override
     public long count(Transaction txn) throws IOException {
         // FIXME
         throw null;
     }
+    */
 
+    /*
     @Override
     public long count(Transaction txn,
                       byte[] start, boolean startInclusive,
@@ -112,18 +115,23 @@ final class Tree implements Index {
         // FIXME
         throw null;
     }
+    */
 
+    /*
     @Override
     public boolean exists(Transaction txn, byte[] key) throws IOException {
         // FIXME
         throw null;
     }
+    */
 
+    /*
     @Override
     public boolean exists(Transaction txn, byte[] key, byte[] value) throws IOException {
         // FIXME
         throw null;
     }
+    */
 
     @Override
     public byte[] load(Transaction txn, byte[] key) throws IOException {
