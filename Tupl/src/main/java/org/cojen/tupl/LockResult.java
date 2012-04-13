@@ -86,21 +86,24 @@ public enum LockResult {
     }
 
     /**
-     * @return true if lock request timed out
+     * Rreturns true if lock request timed out. Applicable to {@link #TIMED_OUT_LOCK}.
      */
     public boolean isTimedOut() {
         return mType == 1;
     }
 
     /**
-     * @return true if lock was just acquired or was already owned
+     * Returns true if lock was just acquired or was already owned. Applicable
+     * to {@link #ACQUIRED}, {@link #UPGRADED}, {@link #OWNED_SHARED}, {@link
+     * #OWNED_UPGRADABLE}, and {@link #OWNED_EXCLUSIVE}.
      */
     public boolean isHeld() {
         return mType >= 2;
     }
 
     /**
-     * @return true if lock was already owned when requested
+     * Returns true if lock was already owned when requested. Applicable {@link
+     * #OWNED_SHARED}, {@link #OWNED_UPGRADABLE}, and {@link #OWNED_EXCLUSIVE}.
      */
     public boolean alreadyOwned() {
         return mType == 3;
