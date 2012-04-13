@@ -18,8 +18,8 @@ package org.cojen.tupl;
 
 /**
  * Exception thrown when attempting to acquire an upgradable or exclusive lock
- * when a shared lock is already held. Use {@link LockMode#UPGRADABLE_READ}
- * mode to prevent this.
+ * when a shared lock is already held. Use {@link LockMode#UPGRADABLE_READ
+ * UPGRADABLE_READ} mode to prevent this.
  *
  * @author Brian S O'Neill
  * @see Transaction#lockMode Transaction.lockMode
