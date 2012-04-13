@@ -113,8 +113,9 @@ public final class Transaction extends Locker {
 
     /**
      * Sets the lock mode for the current scope. Transactions begin in {@link
-     * LockMode#UPGRADABLE_READ} mode, and newly entered scopes begin at the
-     * outer scope's current mode. Exiting a scope reverts the lock mode.
+     * LockMode#UPGRADABLE_READ UPGRADABLE_READ} mode, and newly entered scopes
+     * begin at the outer scope's current mode. Exiting a scope reverts the
+     * lock mode.
      *
      * @param mode new lock mode
      * @throws IllegalArgumentException if mode is null
@@ -335,6 +336,36 @@ public final class Transaction extends Locker {
         }
     }
 
+    @Override
+    public String toString() {
+        StringBuilder b = new StringBuilder(getClass().getName());
+
+        if (this == BOGUS) {
+            return b.append('.').append("BOGUS").toString();
+        }
+
+        b.append('@').append(Integer.toHexString(hashCode()));
+
+        b.append(" {");
+        b.append("id").append(": ").append(mTxnId);
+        b.append(", ");
+        b.append("durabilityMode").append(": ").append(mDurabilityMode);
+        b.append(", ");
+        b.append("lockMode").append(": ").append(mLockMode);
+        b.append(", ");
+        b.append("lockTimeout").append(": ");
+        TimeUnit unit = LockTimeoutException.inferUnit(TimeUnit.NANOSECONDS, mLockTimeoutNanos);
+        LockTimeoutException.appendTimeout(b, lockTimeout(unit), unit);
+
+        Object borked = mBorked;
+        if (borked != null) {
+            b.append(", ");
+            b.append("invalid").append(": ").append(borked);
+        }
+
+        return b.append('}').toString();
+    }
+
     /**
      * Attempts to acquire a shared lock for the given key, denying exclusive
      * locks. If return value is {@link LockResult#alreadyOwned owned}, transaction
@@ -344,7 +375,10 @@ public final class Transaction extends Locker {
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
      * @param key non-null key to lock; instance is not cloned
-     * @return ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link
+     * LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws IllegalStateException if too many shared locks
      * @throws LockFailureException if interrupted or timed out
      * @throws DeadlockException if deadlock was detected after waiting full timeout
@@ -366,7 +400,9 @@ public final class Transaction extends Locker {
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
      * @param key non-null key to lock; instance is not cloned
-     * @return ACQUIRED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      */
@@ -389,7 +425,8 @@ public final class Transaction extends Locker {
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
      * @param key non-null key to lock; instance is not cloned
-     * @return ACQUIRED, UPGRADED, or OWNED_EXCLUSIVE
+     * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link LockResult#UPGRADED
+     * UPGRADED}, or {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      */
@@ -500,35 +537,5 @@ public final class Transaction extends Locker {
             mBorked = e;
         }
         return Utils.rethrow(e);
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder b = new StringBuilder(getClass().getName());
-
-        if (this == BOGUS) {
-            return b.append('.').append("BOGUS").toString();
-        }
-
-        b.append('@').append(Integer.toHexString(hashCode()));
-
-        b.append(" {");
-        b.append("id").append(": ").append(mTxnId);
-        b.append(", ");
-        b.append("durabilityMode").append(": ").append(mDurabilityMode);
-        b.append(", ");
-        b.append("lockMode").append(": ").append(mLockMode);
-        b.append(", ");
-        b.append("lockTimeout").append(": ");
-        TimeUnit unit = LockTimeoutException.inferUnit(TimeUnit.NANOSECONDS, mLockTimeoutNanos);
-        LockTimeoutException.appendTimeout(b, lockTimeout(unit), unit);
-
-        Object borked = mBorked;
-        if (borked != null) {
-            b.append(", ");
-            b.append("invalid").append(": ").append(borked);
-        }
-
-        return b.append('}').toString();
     }
 }

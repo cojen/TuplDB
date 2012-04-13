@@ -67,11 +67,8 @@ public interface Index {
     /**
      * Returns true if an entry exists for the given key.
      *
-     * <p>When a transaction is provided in a lock mode of {@link
-     * LockMode#REPEATABLE_READ REPEATABLE_READ} or {@link
-     * LockMode#UPGRADABLE_READ UPGRADABLE_READ}, ownership of the key instance
-     * transfers to the Transaction. The key must not be modified after calling
-     * this method, even if the transaction is reset.
+     * <p>If the entry must be locked, ownership of the key instance is
+     * transferred. The key must not be modified after calling this method.
      *
      * @param txn optional transaction; pass null for {@link
      * LockMode#READ_COMMITTED READ_COMMITTED} locking behavior
@@ -84,11 +81,8 @@ public interface Index {
     /**
      * Returns true if a matching key-value entry exists.
      *
-     * <p>When a transaction is provided in a lock mode of {@link
-     * LockMode#REPEATABLE_READ REPEATABLE_READ} or {@link
-     * LockMode#UPGRADABLE_READ UPGRADABLE_READ}, ownership of the key instance
-     * transfers to the Transaction. The key must not be modified after calling
-     * this method, even if the transaction is reset.
+     * <p>If the entry must be locked, ownership of the key instance is
+     * transferred. The key must not be modified after calling this method.
      *
      * @param txn optional transaction; pass null for {@link
      * LockMode#READ_COMMITTED READ_COMMITTED} locking behavior
@@ -103,11 +97,8 @@ public interface Index {
      * Returns a copy of the value for the given key, or null if no matching
      * entry exists.
      *
-     * <p>When a transaction is provided in a lock mode of {@link
-     * LockMode#REPEATABLE_READ REPEATABLE_READ} or {@link
-     * LockMode#UPGRADABLE_READ UPGRADABLE_READ}, ownership of the key instance
-     * transfers to the Transaction. The key must not be modified after calling
-     * this method, even if the transaction is reset.
+     * <p>If the entry must be locked, ownership of the key instance is
+     * transferred. The key must not be modified after calling this method.
      *
      * @param txn optional transaction; pass null for {@link
      * LockMode#READ_COMMITTED READ_COMMITTED} locking behavior
@@ -120,11 +111,8 @@ public interface Index {
     /**
      * Unconditionally associates a value with the given key.
      *
-     * <p>When a transaction is provided in a lock mode of {@link
-     * LockMode#REPEATABLE_READ REPEATABLE_READ} or {@link
-     * LockMode#UPGRADABLE_READ UPGRADABLE_READ}, ownership of the key instance
-     * transfers to the Transaction. The key must not be modified after calling
-     * this method, even if the transaction is reset.
+     * <p>If the entry must be locked, ownership of the key instance is
+     * transferred. The key must not be modified after calling this method.
      *
      * @param txn optional transaction; pass null for auto-commit mode
      * @param key non-null key
@@ -137,11 +125,8 @@ public interface Index {
      * Associates a value with the given key, unless a corresponding value
      * already exists.
      *
-     * <p>When a transaction is provided in a lock mode of {@link
-     * LockMode#REPEATABLE_READ REPEATABLE_READ} or {@link
-     * LockMode#UPGRADABLE_READ UPGRADABLE_READ}, ownership of the key instance
-     * transfers to the Transaction. The key must not be modified after calling
-     * this method, even if the transaction is reset.
+     * <p>If the entry must be locked, ownership of the key instance is
+     * transferred. The key must not be modified after calling this method.
      *
      * @param txn optional transaction; pass null for auto-commit mode
      * @param key non-null key
@@ -155,11 +140,8 @@ public interface Index {
      * Associates a value with the given key, but only if a corresponding value
      * already exists.
      *
-     * <p>When a transaction is provided in a lock mode of {@link
-     * LockMode#REPEATABLE_READ REPEATABLE_READ} or {@link
-     * LockMode#UPGRADABLE_READ UPGRADABLE_READ}, ownership of the key instance
-     * transfers to the Transaction. The key must not be modified after calling
-     * this method, even if the transaction is reset.
+     * <p>If the entry must be locked, ownership of the key instance is
+     * transferred. The key must not be modified after calling this method.
      *
      * @param txn optional transaction; pass null for auto-commit mode
      * @param key non-null key
@@ -173,11 +155,8 @@ public interface Index {
      * Associates a value with the given key, but only if given old value
      * matches.
      *
-     * <p>When a transaction is provided in a lock mode of {@link
-     * LockMode#REPEATABLE_READ REPEATABLE_READ} or {@link
-     * LockMode#UPGRADABLE_READ UPGRADABLE_READ}, ownership of the key instance
-     * transfers to the Transaction. The key must not be modified after calling
-     * this method, even if the transaction is reset.
+     * <p>If the entry must be locked, ownership of the key instance is
+     * transferred. The key must not be modified after calling this method.
      *
      * @param txn optional transaction; pass null for auto-commit mode
      * @param key non-null key
@@ -192,11 +171,8 @@ public interface Index {
     /**
      * Unconditionally removes the entry associated with the given key.
      *
-     * <p>When a transaction is provided in a lock mode of {@link
-     * LockMode#REPEATABLE_READ REPEATABLE_READ} or {@link
-     * LockMode#UPGRADABLE_READ UPGRADABLE_READ}, ownership of the key instance
-     * transfers to the Transaction. The key must not be modified after calling
-     * this method, even if the transaction is reset.
+     * <p>If the entry must be locked, ownership of the key instance is
+     * transferred. The key must not be modified after calling this method.
      *
      * @param txn optional transaction; pass null for auto-commit mode
      * @param key non-null key
@@ -209,11 +185,8 @@ public interface Index {
      * Removes the entry associated with the given key, but only if given value
      * matches.
      *
-     * <p>When a transaction is provided in a lock mode of {@link
-     * LockMode#REPEATABLE_READ REPEATABLE_READ} or {@link
-     * LockMode#UPGRADABLE_READ UPGRADABLE_READ}, ownership of the key instance
-     * transfers to the Transaction. The key must not be modified after calling
-     * this method, even if the transaction is reset.
+     * <p>If the entry must be locked, ownership of the key instance is
+     * transferred. The key must not be modified after calling this method.
      *
      * @param txn optional transaction; pass null for auto-commit mode
      * @param key non-null key

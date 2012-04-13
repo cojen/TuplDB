@@ -62,8 +62,11 @@ class Locker {
      *
      * @param key non-null key to lock; instance is not cloned
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
-     * @return INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED, OWNED_SHARED,
-     * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     * @return {@link LockResult#INTERRUPTED INTERRUPTED}, {@link
+     * LockResult#TIMED_OUT_LOCK TIMED_OUT_LOCK}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws IllegalStateException if too many shared locks
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      */
@@ -93,7 +96,10 @@ class Locker {
      *
      * @param key non-null key to lock; instance is not cloned
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
-     * @return ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link
+     * LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws IllegalStateException if too many shared locks
      * @throws LockFailureException if interrupted or timed out
      * @throws DeadlockException if deadlock was detected after waiting full timeout
@@ -117,7 +123,10 @@ class Locker {
     /**
      * NT == No Timeout or deadlock exception thrown
      *
-     * @return TIMED_OUT_LOCK, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     * @return {@link LockResult#TIMED_OUT_LOCK TIMED_OUT_LOCK}, {@link
+     * LockResult#ACQUIRED ACQUIRED}, {@link LockResult#OWNED_SHARED
+     * OWNED_SHARED}, {@link LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or
+     * {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      */
     final LockResult lockSharedNT(long indexId, byte[] key, int hash, long nanosTimeout)
         throws LockFailureException
@@ -130,15 +139,19 @@ class Locker {
      * Attempts to acquire an upgradable lock for the given key, denying
      * exclusive and additional upgradable locks. If return value is {@link
      * LockResult#alreadyOwned owned}, transaction already owns a strong enough
-     * lock, and no extra unlock should be performed. If ILLEGAL is returned,
-     * transaction holds a shared lock, which cannot be upgraded.
+     * lock, and no extra unlock should be performed. If {@link
+     * LockResult#ILLEGAL ILLEGAL} is returned, transaction holds a shared
+     * lock, which cannot be upgraded.
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
      * @param key non-null key to lock; instance is not cloned
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
-     * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED,
-     * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     * @return {@link LockResult#ILLEGAL ILLEGAL}, {@link
+     * LockResult#INTERRUPTED INTERRUPTED}, {@link LockResult#TIMED_OUT_LOCK
+     * TIMED_OUT_LOCK}, {@link LockResult#ACQUIRED ACQUIRED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      */
     public final LockResult tryLockUpgradable(long indexId, byte[] key, long nanosTimeout)
@@ -167,7 +180,9 @@ class Locker {
      *
      * @param key non-null key to lock; instance is not cloned
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
-     * @return ACQUIRED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      */
@@ -190,7 +205,10 @@ class Locker {
     /**
      * NT == No Timeout or deadlock exception thrown
      *
-     * @return TIMED_OUT_LOCK, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     * @return {@link LockResult#TIMED_OUT_LOCK TIMED_OUT_LOCK}, {@link
+     * LockResult#ACQUIRED ACQUIRED}, {@link LockResult#OWNED_SHARED
+     * OWNED_SHARED}, {@link LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or
+     * {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      */
     final LockResult lockUpgradableNT(long indexId, byte[] key, int hash, long nanosTimeout)
         throws LockFailureException
@@ -201,17 +219,20 @@ class Locker {
 
     /**
      * Attempts to acquire an exclusive lock for the given key, denying any
-     * additional locks. If return value is {@link LockResult#alreadyOwned owned},
-     * transaction already owns exclusive lock, and no extra unlock should be
-     * performed. If ILLEGAL is returned, transaction holds a shared lock,
-     * which cannot be upgraded.
+     * additional locks. If return value is {@link LockResult#alreadyOwned
+     * owned}, transaction already owns exclusive lock, and no extra unlock
+     * should be performed. If {@link LockResult#ILLEGAL ILLEGAL} is returned,
+     * transaction holds a shared lock, which cannot be upgraded.
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
      * @param key non-null key to lock; instance is not cloned
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
-     * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED, UPGRADED, or
-     * OWNED_EXCLUSIVE
+     * @return {@link LockResult#ILLEGAL ILLEGAL}, {@link
+     * LockResult#INTERRUPTED INTERRUPTED}, {@link LockResult#TIMED_OUT_LOCK
+     * TIMED_OUT_LOCK}, {@link LockResult#ACQUIRED ACQUIRED}, {@link
+     * LockResult#UPGRADED UPGRADED}, or {@link LockResult#OWNED_EXCLUSIVE
+     * OWNED_EXCLUSIVE}
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      */
     public final LockResult tryLockExclusive(long indexId, byte[] key, long nanosTimeout)
@@ -241,7 +262,8 @@ class Locker {
      *
      * @param key non-null key to lock; instance is not cloned
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
-     * @return ACQUIRED, UPGRADED, or OWNED_EXCLUSIVE
+     * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link LockResult#UPGRADED
+     * UPGRADED}, or {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      */
@@ -264,7 +286,10 @@ class Locker {
     /**
      * NT == No Timeout or deadlock exception thrown
      *
-     * @return TIMED_OUT_LOCK, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     * @return {@link LockResult#TIMED_OUT_LOCK TIMED_OUT_LOCK}, {@link
+     * LockResult#ACQUIRED ACQUIRED}, {@link LockResult#OWNED_SHARED
+     * OWNED_SHARED}, {@link LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or
+     * {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      */
     final LockResult lockExclusiveNT(long indexId, byte[] key, int hash, long nanosTimeout)
         throws LockFailureException
@@ -324,7 +349,10 @@ class Locker {
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @return UNOWNED, OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link
+     * LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      */
     public final LockResult lockCheck(long indexId, byte[] key) {
         return mManager.check(this, indexId, key, hash(indexId, key));
