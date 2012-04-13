@@ -48,6 +48,10 @@ import java.util.concurrent.locks.Lock;
  * }
  * </pre>
  *
+ * <p>Note: Transaction instances are never fully closed after they are reset
+ * or have fully exited. Any operation which acts upon a reset transaction can
+ * resurrect it.
+ *
  * @author Brian S O'Neill
  * @see Database#newTransaction Database.newTransaction
  */

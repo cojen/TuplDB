@@ -46,6 +46,15 @@ public interface Cursor {
     public static final byte[] NOT_LOADED = new byte[0];
 
     /**
+     * Link to a transaction, which can be null for auto-commit mode. All
+     * entries visited by the cursor become part of the given transaction.  To
+     * continue using a cursor after the transaction is complete, link it to
+     * null or another transaction. Otherwise, the orginal transaction will be
+     * resurrected.
+     */
+    public void link(Transaction txn);
+
+    /**
      * Returns an uncopied reference to the current key, or null if Cursor is
      * unpositioned. Array contents must not be modified.
      */
@@ -208,8 +217,11 @@ public interface Cursor {
     /**
      * Moves the Cursor to find the given key.
      *
-     * <p>Ownership of the key instance transfers to the Cursor, and it should
-     * no longer be modified after calling this method.
+     * <p>Ownership of the key instance transfers to the Cursor, and it must
+     * not be modified after calling this method. When {@link #link linked} to
+     * a transaction in {@link LockMode#REPEATABLE_READ REPEATABLE_READ} or
+     * {@link LockMode#UPGRADABLE_READ UPGRADABLE_READ} mode, the key must not
+     * be modified even after the Cursor and Transaction are reset.
      *
      * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
      * OWNED_EXCLUSIVE
@@ -221,8 +233,11 @@ public interface Cursor {
      * Moves the Cursor to find the first available entry greater than or equal
      * to the given key.
      *
-     * <p>Ownership of the key instance transfers to the Cursor, and it should
-     * no longer be modified after calling this method.
+     * <p>Ownership of the key instance transfers to the Cursor, and it must
+     * not be modified after calling this method. When {@link #link linked} to
+     * a transaction in {@link LockMode#REPEATABLE_READ REPEATABLE_READ} or
+     * {@link LockMode#UPGRADABLE_READ UPGRADABLE_READ} mode, the key must not
+     * be modified even after the Cursor and Transaction are reset.
      *
      * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
      * OWNED_EXCLUSIVE
@@ -234,8 +249,11 @@ public interface Cursor {
      * Moves the Cursor to find the first available entry greater than or equal
      * to the given key.
      *
-     * <p>Ownership of the key instance transfers to the Cursor, and it should
-     * no longer be modified after calling this method.
+     * <p>Ownership of the key instance transfers to the Cursor, and it must
+     * not be modified after calling this method. When {@link #link linked} to
+     * a transaction in {@link LockMode#REPEATABLE_READ REPEATABLE_READ} or
+     * {@link LockMode#UPGRADABLE_READ UPGRADABLE_READ} mode, the key must not
+     * be modified even after the Cursor and Transaction are reset.
      *
      * <p>If locking is required, entries are <i>skipped</i> when not lockable
      * within the specified maximum wait time. Neither {@link LockTimeoutException}
@@ -254,8 +272,11 @@ public interface Cursor {
      * Moves the Cursor to find the first available entry greater than the
      * given key.
      *
-     * <p>Ownership of the key instance transfers to the Cursor, and it should
-     * no longer be modified after calling this method.
+     * <p>Ownership of the key instance transfers to the Cursor, and it must
+     * not be modified after calling this method. When {@link #link linked} to
+     * a transaction in {@link LockMode#REPEATABLE_READ REPEATABLE_READ} or
+     * {@link LockMode#UPGRADABLE_READ UPGRADABLE_READ} mode, the key must not
+     * be modified even after the Cursor and Transaction are reset.
      *
      * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
      * OWNED_EXCLUSIVE
@@ -267,8 +288,11 @@ public interface Cursor {
      * Moves the Cursor to find the first available entry greater than the
      * given key.
      *
-     * <p>Ownership of the key instance transfers to the Cursor, and it should
-     * no longer be modified after calling this method.
+     * <p>Ownership of the key instance transfers to the Cursor, and it must
+     * not be modified after calling this method. When {@link #link linked} to
+     * a transaction in {@link LockMode#REPEATABLE_READ REPEATABLE_READ} or
+     * {@link LockMode#UPGRADABLE_READ UPGRADABLE_READ} mode, the key must not
+     * be modified even after the Cursor and Transaction are reset.
      *
      * <p>If locking is required, entries are <i>skipped</i> when not lockable
      * within the specified maximum wait time. Neither {@link LockTimeoutException}
@@ -287,8 +311,11 @@ public interface Cursor {
      * Moves the Cursor to find the first available entry less than or equal to
      * the given key.
      *
-     * <p>Ownership of the key instance transfers to the Cursor, and it should
-     * no longer be modified after calling this method.
+     * <p>Ownership of the key instance transfers to the Cursor, and it must
+     * not be modified after calling this method. When {@link #link linked} to
+     * a transaction in {@link LockMode#REPEATABLE_READ REPEATABLE_READ} or
+     * {@link LockMode#UPGRADABLE_READ UPGRADABLE_READ} mode, the key must not
+     * be modified even after the Cursor and Transaction are reset.
      *
      * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
      * OWNED_EXCLUSIVE
@@ -300,8 +327,11 @@ public interface Cursor {
      * Moves the Cursor to find the first available entry less than or equal to
      * the given key.
      *
-     * <p>Ownership of the key instance transfers to the Cursor, and it should
-     * no longer be modified after calling this method.
+     * <p>Ownership of the key instance transfers to the Cursor, and it must
+     * not be modified after calling this method. When {@link #link linked} to
+     * a transaction in {@link LockMode#REPEATABLE_READ REPEATABLE_READ} or
+     * {@link LockMode#UPGRADABLE_READ UPGRADABLE_READ} mode, the key must not
+     * be modified even after the Cursor and Transaction are reset.
      *
      * <p>If locking is required, entries are <i>skipped</i> when not lockable
      * within the specified maximum wait time. Neither {@link LockTimeoutException}
@@ -320,8 +350,11 @@ public interface Cursor {
      * Moves the Cursor to find the first available entry less than the given
      * key.
      *
-     * <p>Ownership of the key instance transfers to the Cursor, and it should
-     * no longer be modified after calling this method.
+     * <p>Ownership of the key instance transfers to the Cursor, and it must
+     * not be modified after calling this method. When {@link #link linked} to
+     * a transaction in {@link LockMode#REPEATABLE_READ REPEATABLE_READ} or
+     * {@link LockMode#UPGRADABLE_READ UPGRADABLE_READ} mode, the key must not
+     * be modified even after the Cursor and Transaction are reset.
      *
      * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
      * OWNED_EXCLUSIVE
@@ -333,8 +366,11 @@ public interface Cursor {
      * Moves the Cursor to find the first available entry less than the given
      * key.
      *
-     * <p>Ownership of the key instance transfers to the Cursor, and it should
-     * no longer be modified after calling this method.
+     * <p>Ownership of the key instance transfers to the Cursor, and it must
+     * not be modified after calling this method. When {@link #link linked} to
+     * a transaction in {@link LockMode#REPEATABLE_READ REPEATABLE_READ} or
+     * {@link LockMode#UPGRADABLE_READ UPGRADABLE_READ} mode, the key must not
+     * be modified even after the Cursor and Transaction are reset.
      *
      * <p>If locking is required, entries are <i>skipped</i> when not lockable
      * within the specified maximum wait time. Neither {@link LockTimeoutException}
@@ -355,8 +391,11 @@ public interface Cursor {
      * one. Even if not in close proximity, the find behavior is still
      * identicial, although it may perform more slowly.
      *
-     * <p>Ownership of the key instance transfers to the Cursor, and it should
-     * no longer be modified after calling this method.
+     * <p>Ownership of the key instance transfers to the Cursor, and it must
+     * not be modified after calling this method. When {@link #link linked} to
+     * a transaction in {@link LockMode#REPEATABLE_READ REPEATABLE_READ} or
+     * {@link LockMode#UPGRADABLE_READ UPGRADABLE_READ} mode, the key must not
+     * be modified even after the Cursor and Transaction are reset.
      *
      * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
      * OWNED_EXCLUSIVE
@@ -379,7 +418,7 @@ public interface Cursor {
      * Stores a value into the current entry, leaving the position
      * unchanged. An entry may be inserted, updated or deleted by this
      * method. A null value deletes the entry. Unless an exception is thrown,
-     * the object returned by the {@link #value} method will be the same
+     * the object returned by the {@link #value value} method will be the same
      * instance as was provided to this method.
      *
      * @param value value to store; pass null to delete
@@ -395,11 +434,6 @@ public interface Cursor {
      * @throws IllegalStateException if position is undefined at invocation time
      */
     //public void append(byte[] data) throws IOException;
-
-    /**
-     * Link to a transaction, which can be null for auto-commit mode.
-     */
-    public void link(Transaction txn);
 
     /**
      * Returns a new independent Cursor, positioned where this one is, and
