@@ -48,8 +48,9 @@ public interface Index {
      *
      * @param txn optional transaction; pass null for {@link
      * LockMode#READ_COMMITTED READ_COMMITTED} locking behavior
-     */
+     * /
     public long count(Transaction txn) throws IOException;
+    */
 
     /**
      * Counts the number of non-null values within a given range.
@@ -58,11 +59,12 @@ public interface Index {
      * LockMode#READ_COMMITTED READ_COMMITTED} locking behavior
      * @param start key range start; pass null for open range
      * @param end key range end; pass null for open range
-     */
+     * /
     public long count(Transaction txn,
                       byte[] start, boolean startInclusive,
                       byte[] end, boolean endInclusive)
         throws IOException;
+    */
 
     /**
      * Returns true if an entry exists for the given key.
@@ -75,8 +77,9 @@ public interface Index {
      * @param key non-null key
      * @return true if non-null value exists for the given key
      * @throws NullPointerException if key is null
-     */
+     * /
     public boolean exists(Transaction txn, byte[] key) throws IOException;
+    */
 
     /**
      * Returns true if a matching key-value entry exists.
@@ -90,8 +93,9 @@ public interface Index {
      * @param value value to compare to, which can be null
      * @return true if entry matches given key and value
      * @throws NullPointerException if key is null
-     */
+     * /
     public boolean exists(Transaction txn, byte[] key, byte[] value) throws IOException;
+    */
 
     /**
      * Returns a copy of the value for the given key, or null if no matching
