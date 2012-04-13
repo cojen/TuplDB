@@ -100,8 +100,10 @@ public interface Cursor {
      * Moves the Cursor to find the first available entry. Cursor key and value
      * are set to null if no entries exist, and position will be undefined.
      *
-     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
-     * OWNED_EXCLUSIVE
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      */
     public LockResult first() throws IOException;
 
@@ -116,8 +118,10 @@ public interface Cursor {
      * @param maxWait maximum time to wait for lock before moving to next
      * entry; negative is infinite
      * @param unit required unit if maxWait is more than zero
-     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
-     * OWNED_EXCLUSIVE
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      */
     public LockResult first(long maxWait, TimeUnit unit) throws IOException;
 
@@ -125,8 +129,10 @@ public interface Cursor {
      * Moves the Cursor to find the last available entry. Cursor key and value
      * are set to null if no entries exist, and position will be undefined.
      *
-     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
-     * OWNED_EXCLUSIVE
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      */
     public LockResult last() throws IOException;
 
@@ -141,8 +147,10 @@ public interface Cursor {
      * @param maxWait maximum time to wait for lock before moving to next
      * entry; negative is infinite
      * @param unit required unit if maxWait is more than zero
-     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
-     * OWNED_EXCLUSIVE
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      */
     public LockResult last(long maxWait, TimeUnit unit) throws IOException;
 
@@ -152,8 +160,10 @@ public interface Cursor {
      * movement. If less than the given amount are available, the Cursor key
      * and value are set to null, and position will be undefined.
      *
-     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
-     * OWNED_EXCLUSIVE
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws IllegalStateException if position is undefined at invocation time
      */
     public LockResult move(long amount) throws IOException;
@@ -162,8 +172,10 @@ public interface Cursor {
      * Advances to the Cursor to the next available entry. Cursor key and value
      * are set to null if no next entry exists, and position will be undefined.
      *
-     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
-     * OWNED_EXCLUSIVE
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws IllegalStateException if position is undefined at invocation time
      */
     public LockResult next() throws IOException;
@@ -179,8 +191,10 @@ public interface Cursor {
      * @param maxWait maximum time to wait for lock before moving to next
      * entry; negative is infinite
      * @param unit required unit if maxWait is more than zero
-     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
-     * OWNED_EXCLUSIVE
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws IllegalStateException if position is undefined at invocation time
      */
     public LockResult next(long maxWait, TimeUnit unit) throws IOException;
@@ -190,8 +204,10 @@ public interface Cursor {
      * value are set to null if no previous entry exists, and position will be
      * undefined.
      *
-     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
-     * OWNED_EXCLUSIVE
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws IllegalStateException if position is undefined at invocation time
      */
     public LockResult previous() throws IOException;
@@ -208,8 +224,10 @@ public interface Cursor {
      * @param maxWait maximum time to wait for lock before moving to next
      * entry; negative is infinite
      * @param unit required unit if maxWait is more than zero
-     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
-     * OWNED_EXCLUSIVE
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws IllegalStateException if position is undefined at invocation time
      */
     public LockResult previous(long maxWait, TimeUnit unit) throws IOException;
@@ -218,13 +236,12 @@ public interface Cursor {
      * Moves the Cursor to find the given key.
      *
      * <p>Ownership of the key instance transfers to the Cursor, and it must
-     * not be modified after calling this method. When {@link #link linked} to
-     * a transaction in {@link LockMode#REPEATABLE_READ REPEATABLE_READ} or
-     * {@link LockMode#UPGRADABLE_READ UPGRADABLE_READ} mode, the key must not
-     * be modified even after the Cursor and Transaction are reset.
+     * not be modified after calling this method.
      *
-     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
-     * OWNED_EXCLUSIVE
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws NullPointerException if key is null
      */
     public LockResult find(byte[] key) throws IOException;
@@ -234,13 +251,12 @@ public interface Cursor {
      * to the given key.
      *
      * <p>Ownership of the key instance transfers to the Cursor, and it must
-     * not be modified after calling this method. When {@link #link linked} to
-     * a transaction in {@link LockMode#REPEATABLE_READ REPEATABLE_READ} or
-     * {@link LockMode#UPGRADABLE_READ UPGRADABLE_READ} mode, the key must not
-     * be modified even after the Cursor and Transaction are reset.
+     * not be modified after calling this method.
      *
-     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
-     * OWNED_EXCLUSIVE
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws NullPointerException if key is null
      */
     public LockResult findGe(byte[] key) throws IOException;
@@ -250,10 +266,7 @@ public interface Cursor {
      * to the given key.
      *
      * <p>Ownership of the key instance transfers to the Cursor, and it must
-     * not be modified after calling this method. When {@link #link linked} to
-     * a transaction in {@link LockMode#REPEATABLE_READ REPEATABLE_READ} or
-     * {@link LockMode#UPGRADABLE_READ UPGRADABLE_READ} mode, the key must not
-     * be modified even after the Cursor and Transaction are reset.
+     * not be modified after calling this method.
      *
      * <p>If locking is required, entries are <i>skipped</i> when not lockable
      * within the specified maximum wait time. Neither {@link LockTimeoutException}
@@ -262,8 +275,10 @@ public interface Cursor {
      * @param maxWait maximum time to wait for lock before moving to next
      * entry; negative is infinite
      * @param unit required unit if maxWait is more than zero
-     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
-     * OWNED_EXCLUSIVE
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws NullPointerException if key is null
      */
     public LockResult findGe(byte[] key, long maxWait, TimeUnit unit) throws IOException;
@@ -273,13 +288,12 @@ public interface Cursor {
      * given key.
      *
      * <p>Ownership of the key instance transfers to the Cursor, and it must
-     * not be modified after calling this method. When {@link #link linked} to
-     * a transaction in {@link LockMode#REPEATABLE_READ REPEATABLE_READ} or
-     * {@link LockMode#UPGRADABLE_READ UPGRADABLE_READ} mode, the key must not
-     * be modified even after the Cursor and Transaction are reset.
+     * not be modified after calling this method.
      *
-     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
-     * OWNED_EXCLUSIVE
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws NullPointerException if key is null
      */
     public LockResult findGt(byte[] key) throws IOException;
@@ -289,10 +303,7 @@ public interface Cursor {
      * given key.
      *
      * <p>Ownership of the key instance transfers to the Cursor, and it must
-     * not be modified after calling this method. When {@link #link linked} to
-     * a transaction in {@link LockMode#REPEATABLE_READ REPEATABLE_READ} or
-     * {@link LockMode#UPGRADABLE_READ UPGRADABLE_READ} mode, the key must not
-     * be modified even after the Cursor and Transaction are reset.
+     * not be modified after calling this method.
      *
      * <p>If locking is required, entries are <i>skipped</i> when not lockable
      * within the specified maximum wait time. Neither {@link LockTimeoutException}
@@ -301,8 +312,10 @@ public interface Cursor {
      * @param maxWait maximum time to wait for lock before moving to next
      * entry; negative is infinite
      * @param unit required unit if maxWait is more than zero
-     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
-     * OWNED_EXCLUSIVE
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws NullPointerException if key is null
      */
     public LockResult findGt(byte[] key, long maxWait, TimeUnit unit) throws IOException;
@@ -312,13 +325,12 @@ public interface Cursor {
      * the given key.
      *
      * <p>Ownership of the key instance transfers to the Cursor, and it must
-     * not be modified after calling this method. When {@link #link linked} to
-     * a transaction in {@link LockMode#REPEATABLE_READ REPEATABLE_READ} or
-     * {@link LockMode#UPGRADABLE_READ UPGRADABLE_READ} mode, the key must not
-     * be modified even after the Cursor and Transaction are reset.
+     * not be modified after calling this method.
      *
-     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
-     * OWNED_EXCLUSIVE
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws NullPointerException if key is null
      */
     public LockResult findLe(byte[] key) throws IOException;
@@ -328,10 +340,7 @@ public interface Cursor {
      * the given key.
      *
      * <p>Ownership of the key instance transfers to the Cursor, and it must
-     * not be modified after calling this method. When {@link #link linked} to
-     * a transaction in {@link LockMode#REPEATABLE_READ REPEATABLE_READ} or
-     * {@link LockMode#UPGRADABLE_READ UPGRADABLE_READ} mode, the key must not
-     * be modified even after the Cursor and Transaction are reset.
+     * not be modified after calling this method.
      *
      * <p>If locking is required, entries are <i>skipped</i> when not lockable
      * within the specified maximum wait time. Neither {@link LockTimeoutException}
@@ -340,8 +349,10 @@ public interface Cursor {
      * @param maxWait maximum time to wait for lock before moving to next
      * entry; negative is infinite
      * @param unit required unit if maxWait is more than zero
-     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
-     * OWNED_EXCLUSIVE
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws NullPointerException if key is null
      */
     public LockResult findLe(byte[] key, long maxWait, TimeUnit unit) throws IOException;
@@ -351,13 +362,12 @@ public interface Cursor {
      * key.
      *
      * <p>Ownership of the key instance transfers to the Cursor, and it must
-     * not be modified after calling this method. When {@link #link linked} to
-     * a transaction in {@link LockMode#REPEATABLE_READ REPEATABLE_READ} or
-     * {@link LockMode#UPGRADABLE_READ UPGRADABLE_READ} mode, the key must not
-     * be modified even after the Cursor and Transaction are reset.
+     * not be modified after calling this method.
      *
-     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
-     * OWNED_EXCLUSIVE
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws NullPointerException if key is null
      */
     public LockResult findLt(byte[] key) throws IOException;
@@ -367,10 +377,7 @@ public interface Cursor {
      * key.
      *
      * <p>Ownership of the key instance transfers to the Cursor, and it must
-     * not be modified after calling this method. When {@link #link linked} to
-     * a transaction in {@link LockMode#REPEATABLE_READ REPEATABLE_READ} or
-     * {@link LockMode#UPGRADABLE_READ UPGRADABLE_READ} mode, the key must not
-     * be modified even after the Cursor and Transaction are reset.
+     * not be modified after calling this method.
      *
      * <p>If locking is required, entries are <i>skipped</i> when not lockable
      * within the specified maximum wait time. Neither {@link LockTimeoutException}
@@ -379,8 +386,10 @@ public interface Cursor {
      * @param maxWait maximum time to wait for lock before moving to next
      * entry; negative is infinite
      * @param unit required unit if maxWait is more than zero
-     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
-     * OWNED_EXCLUSIVE
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws NullPointerException if key is null
      */
     public LockResult findLt(byte[] key, long maxWait, TimeUnit unit) throws IOException;
@@ -392,13 +401,12 @@ public interface Cursor {
      * identicial, although it may perform more slowly.
      *
      * <p>Ownership of the key instance transfers to the Cursor, and it must
-     * not be modified after calling this method. When {@link #link linked} to
-     * a transaction in {@link LockMode#REPEATABLE_READ REPEATABLE_READ} or
-     * {@link LockMode#UPGRADABLE_READ UPGRADABLE_READ} mode, the key must not
-     * be modified even after the Cursor and Transaction are reset.
+     * not be modified after calling this method.
      *
-     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
-     * OWNED_EXCLUSIVE
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws NullPointerException if key is null
      */
     public LockResult findNearby(byte[] key) throws IOException;
@@ -409,8 +417,10 @@ public interface Cursor {
      * the same.
      *
      * @throws IllegalStateException if position is undefined at invocation time
-     * @return UNOWNED, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
-     * OWNED_EXCLUSIVE
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      */
     public LockResult load() throws IOException;
 
