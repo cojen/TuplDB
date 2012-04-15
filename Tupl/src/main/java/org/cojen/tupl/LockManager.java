@@ -176,7 +176,7 @@ final class LockManager {
         Latch latch = ht.mLatch;
         latch.acquireExclusive();
         try {
-            lock.unlockToShared(locker);
+            lock.unlockToShared(locker, latch);
         } finally {
             latch.releaseExclusive();
         }
@@ -187,7 +187,7 @@ final class LockManager {
         Latch latch = ht.mLatch;
         latch.acquireExclusive();
         try {
-            lock.unlockToUpgradable(locker);
+            lock.unlockToUpgradable(locker, latch);
         } finally {
             latch.releaseExclusive();
         }
@@ -337,9 +337,12 @@ final class LockManager {
             try {
                 Lock[] entries = mEntries;
                 int index = hash & (entries.length - 1);
-                for (Lock e = entries[index], prev = null; e != null; e = e.mLockManagerNext) {
+                for (Lock e = entries[index], prev = null; e != null; ) {
                     if (e.matches(indexId, key, hash)) {
-                        if (e.unlock(locker)) {
+                        switch (e.unlock(locker, latch)) {
+                        default:
+                            return;
+                        case 1:
                             // Remove last use of lock.
                             if (prev == null) {
                                 entries[index] = e.mLockManagerNext;
@@ -347,10 +350,20 @@ final class LockManager {
                                 prev.mLockManagerNext = e.mLockManagerNext;
                             }
                             mSize--;
+                            return;
+                        case 2:
+                            // Since tombstone was deleted, latch was briefly
+                            // released. Entries might have changed as a
+                            // result, so start over before trying to finish
+                            // the unlock operation.
+                            entries = mEntries;
+                            index = hash & (entries.length - 1);
+                            e = entries[index];
+                            prev = null;
                         }
-                        return;
                     } else {
                         prev = e;
+                        e = e.mLockManagerNext;
                     }
                 }
             } finally {

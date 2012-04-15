@@ -273,7 +273,7 @@ final class Lock {
             }
             if (nanosTimeout == 0) {
                 if (ur == ACQUIRED) {
-                    unlock(locker);
+                    unlockUpgradable();
                 }
                 return TIMED_OUT_LOCK;
             }
@@ -294,7 +294,7 @@ final class Lock {
 
             if (w < 1) {
                 if (ur == ACQUIRED) {
-                    unlock(locker);
+                    unlockUpgradable();
                 }
                 if (w == 0) {
                     return TIMED_OUT_LOCK;
@@ -331,36 +331,57 @@ final class Lock {
     }
 
     /**
+     * Called internally to unlock an upgradable lock which was just
+     * acquired. Implementation is a just a smaller version of the regular
+     * unlock method. It doesn't have to deal with tombstones.
+     */
+    private void unlockUpgradable() {
+        mLocker = null;
+        WaitQueue queueU = mQueueU;
+        if (queueU != null) {
+            // Signal at most one upgradable lock waiter.
+            queueU.signal();
+        }
+        mLockCount &= 0x7fffffff;
+    }
+
+    /**
      * Called with exclusive latch held, which is retained.
      *
-     * @return true if lock is now completely unused
+     * @param latch briefly released and re-acquired for deleting a tombstone
+     * @return 0 if unlocked and still used; 1 if lock is now completely
+     * unused; 2 if tombstone was deleted instead
      * @throws IllegalStateException if lock not held
      */
-    boolean unlock(Locker locker) {
+    int unlock(Locker locker, Latch latch) {
         if (mLocker == locker) {
+            if (deleteTombstone(latch)) {
+                return 2;
+            }
+
             mLocker = null;
             WaitQueue queueU = mQueueU;
             if (queueU != null) {
                 // Signal at most one upgradable lock waiter.
                 queueU.signal();
             }
+
             int count = mLockCount;
             if (count != ~0) {
                 // Unlocking upgradable lock.
-                return (mLockCount = count & 0x7fffffff) == 0 && queueU == null;
+                return ((mLockCount = count & 0x7fffffff) == 0 && queueU == null) ? 1 : 0;
             } else {
                 // Unlocking exclusive lock.
-                deleteTombstone();
                 mLockCount = 0;
                 WaitQueue queueSX = mQueueSX;
                 if (queueSX == null) {
-                    return queueU == null;
+                    return queueU == null ? 1 : 0;
                 } else {
                     // Signal first shared lock waiter. Queue doesn't contain
                     // any exclusive lock waiters, because they would need to
                     // acquire upgradable lock first, which was held.
                     queueSX.signal();
-                    return false;
+                    return 0;
                 }
             }
         } else {
@@ -396,9 +417,9 @@ final class Lock {
                     // held. In case there are any, signal them instead.
                     queueSX.signal();
                 }
-                return false;
+                return 0;
             } else {
-                return count == 0 && queueSX == null && mQueueU == null;
+                return (count == 0 && queueSX == null && mQueueU == null) ? 1 : 0;
             }
         }
     }
@@ -406,10 +427,12 @@ final class Lock {
     /**
      * Called with exclusive latch held, which is retained.
      *
+     * @param latch briefly released and re-acquired for deleting a tombstone
      * @throws IllegalStateException if lock not held or too many shared locks
      */
-    void unlockToShared(Locker locker) {
+    void unlockToShared(Locker locker, Latch latch) {
         if (mLocker == locker) {
+            deleteTombstone(latch);
             mLocker = null;
             WaitQueue queueU = mQueueU;
             if (queueU != null) {
@@ -427,7 +450,6 @@ final class Lock {
                 addSharedLocker(count, locker);
             } else {
                 // Unlocking exclusive lock into shared.
-                deleteTombstone();
                 addSharedLocker(0, locker);
                 WaitQueue queueSX = mQueueSX;
                 if (queueSX != null) {
@@ -445,9 +467,10 @@ final class Lock {
     /**
      * Called with exclusive latch held, which is retained.
      *
+     * @param latch briefly released and re-acquired for deleting a tombstone
      * @throws IllegalStateException if lock not held
      */
-    void unlockToUpgradable(Locker locker) {
+    void unlockToUpgradable(Locker locker, Latch latch) {
         if (mLocker != locker) {
             String message = "Exclusive or upgradable lock not held";
             if (mLockCount == 0 || !isSharedLocker(locker)) {
@@ -459,7 +482,7 @@ final class Lock {
             // Already upgradable.
             return;
         }
-        deleteTombstone();
+        deleteTombstone(latch);
         mLockCount = 0x80000000;
         WaitQueue queueSX = mQueueSX;
         if (queueSX != null) {
@@ -468,28 +491,39 @@ final class Lock {
     }
 
     /**
-     * Called to complete a delete operation, when an exclusive lock is
-     * downgraded or released.
+     * @param latch was briefly released and re-acquired if true is returned
      */
-    private void deleteTombstone() {
+    boolean deleteTombstone(Latch latch) {
         // FIXME: Unlock due to rollback can be optimized. It never needs to
         // actually delete tombstones, because the undo actions replaced
         // them. Calling Cursor.deleteTombstone performs a pointless search.
+
         Object obj = mSharedLockersObj;
-        if (obj instanceof Tree) {
-            TreeCursor c = new TreeCursor((Tree) obj, null);
-            try {
-                c.deleteTombstone(mKey);
-            } catch (java.io.IOException e) {
-                // Exception indicates that database is borked. Tombstone will
-                // get cleaned up when database is re-opened.
-                // FIXME: Define a borked mode for Database, and hand it the exception.
-                e.printStackTrace();
-            } finally {
-                mSharedLockersObj = null;
-                c.reset();
-            }
+        if (!(obj instanceof Tree)) {
+            return false;
         }
+
+        TreeCursor c = new TreeCursor((Tree) obj, null);
+        byte[] key = mKey;
+        mSharedLockersObj = null;
+
+        // Release to prevent deadlock, since additional latches are required for delete.
+        latch.releaseExclusive();
+        try {
+            c.deleteTombstone(key);
+        } catch (java.io.IOException e) {
+            // Exception indicates that database is borked. Tombstone will
+            // get cleaned up when database is re-opened.
+            // FIXME: Define a borked mode for Database, and hand it the exception.
+            e.printStackTrace();
+        } finally {
+            // Reset before re-acquiring latch, since it needs to acqure
+            // latches to detach cursor from tree.
+            c.reset();
+            latch.acquireExclusive();
+        }
+
+        return true;
     }
 
     /**
