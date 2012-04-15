@@ -749,7 +749,7 @@ class Locker {
                         break;
                     }
                     size--;
-                    mask >>= 1;
+                    mask >>>= 1;
                 }
                 mUpgrades = upgrades & ~(~0L << size);
                 mSize = size;
