@@ -111,7 +111,7 @@ public final class Database implements Closeable {
     private final Tree mRegistryKeyMap;
     // Maps tree names to open trees.
     private final Map<byte[], Tree> mOpenTrees;
-    private final Map<Long, Tree> mOpenTreesById;
+    private final LHashTable.Obj<Tree> mOpenTreesById;
 
     private final OrderedPageAllocator mAllocator;
 
@@ -248,7 +248,7 @@ public final class Database implements Closeable {
 
             mRegistry = new Tree(this, Tree.REGISTRY_ID, null, null, loadRegistryRoot(header));
             mOpenTrees = new TreeMap<byte[], Tree>(KeyComparator.THE);
-            mOpenTreesById = new HashMap<Long, Tree>();
+            mOpenTreesById = new LHashTable.Obj<Tree>(16);
 
             synchronized (mTxnIdLock) {
                 mTxnId = readLong(header, I_TRANSACTION_ID);
@@ -516,9 +516,9 @@ public final class Database implements Closeable {
         commitLock.lock();
         try {
             synchronized (mOpenTrees) {
-                Tree tree = mOpenTreesById.get(id);
-                if (tree != null) {
-                    return tree;
+                LHashTable.ObjEntry<Tree> entry = mOpenTreesById.get(id);
+                if (entry != null) {
+                    return entry.value;
                 }
             }
 
@@ -777,7 +777,7 @@ public final class Database implements Closeable {
                 if (tree == null) {
                     tree = new Tree(this, treeId, treeIdBytes, name, rootNode);
                     mOpenTrees.put(name, tree);
-                    mOpenTreesById.put(treeId, tree);
+                    mOpenTreesById.insert(treeId).value = tree;
                 }
                 return tree;
             }

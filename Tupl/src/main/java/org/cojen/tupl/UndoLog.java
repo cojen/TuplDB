@@ -812,7 +812,8 @@ final class UndoLog {
         Node node = db.allocLatchedNode();
         node.read(db, nodeId);
         if (node.mType != Node.TYPE_UNDO_LOG) {
-            throw new CorruptDatabaseException("Not an undo log node type: " + node.mType);
+            throw new CorruptDatabaseException
+                ("Not an undo log node type: " + node.mType + ", id: " + nodeId);
         }
         return node;
     }

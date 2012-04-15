@@ -82,6 +82,25 @@ final class Tree implements Index {
     }
 
     @Override
+    public String toString() {
+        String nameStr;
+        try {
+            nameStr = mName == null ? "null" : new String(mName, "UTF-8");
+        } catch (IOException e) {
+            nameStr = new String(mName);
+        }
+
+        StringBuilder b = new StringBuilder(getClass().getName());
+        b.append('@').append(Integer.toHexString(hashCode()));
+        b.append(" {");
+        b.append("name").append(": ").append(nameStr);
+        b.append(", ");
+        b.append("id").append(": ").append(mId);
+
+        return b.append('}').toString();
+    }
+
+    @Override
     public long getId() {
         return mId;
     }
