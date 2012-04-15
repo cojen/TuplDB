@@ -31,6 +31,7 @@ final class OrderedPageAllocator {
 
     private final PageStore mSource;
     private final Index mLocalPages;
+    private final Latch mAllocLatch;
     private final Cursor mAllocCursor;
     private volatile int mReadyState;
 
@@ -47,6 +48,7 @@ final class OrderedPageAllocator {
     OrderedPageAllocator(PageStore source, Index localPages) {
         mSource = source;
         mLocalPages = localPages;
+        mAllocLatch = new Latch();
         mAllocCursor = localPages.newCursor(Transaction.BOGUS);
         mAllocCursor.autoload(false);
     }
@@ -135,36 +137,49 @@ final class OrderedPageAllocator {
             }
 
             Cursor cursor = mAllocCursor;
-            synchronized (cursor) {
-                int state = mReadyState;
-                if (state == EMPTY) {
-                    break allocLocal;
-                }
+            Latch allocLatch = mAllocLatch;
 
-                byte[] key;
-                makeReady: {
-                    if (state == READY) {
-                        cursor.next();
-                        if ((key = cursor.key()) != null) {
-                            break makeReady;
-                        }
-                    }
-                    cursor.first();
-                    if ((key = cursor.key()) == null) {
-                        mReadyState = EMPTY;
+            try {
+                // Make a best effort attempt to allocate the next node in
+                // order. Deadlock is possible due to node eviction. When the
+                // allocation index needs to load a child node, it might be
+                // latching a node which was evicted. When the node owner
+                // latches the node and then attempts to allocate a page, the
+                // latching order is now inconsistent.
+                if (allocLatch.tryAcquireExclusiveNanos(1000000)) try {
+                    int state = mReadyState;
+                    if (state == EMPTY) {
                         break allocLocal;
                     }
-                    mReadyState = READY;
+
+                    byte[] key;
+                    makeReady: {
+                        if (state == READY) {
+                            cursor.next();
+                            if ((key = cursor.key()) != null) {
+                                break makeReady;
+                            }
+                        }
+                        cursor.first();
+                        if ((key = cursor.key()) == null) {
+                            mReadyState = EMPTY;
+                            break allocLocal;
+                        }
+                        mReadyState = READY;
+                    }
+
+                    long id = DataUtils.readLong(key, 0);
+
+                    // Delete entry while still latched -- cursor is not
+                    // thread-safe. Besides, one section of the index will be
+                    // heavily updated so this avoids latch contention.
+                    cursor.store(null);
+
+                    return id;
+                } finally {
+                    allocLatch.releaseExclusive();
                 }
-
-                long id = DataUtils.readLong(key, 0);
-
-                // Delete entry while still synchronized -- cursor is not
-                // thread-safe. Besides, one section of the index will be
-                // heavily updated so this avoids latch contention.
-                cursor.store(null);
-
-                return id;
+            } catch (InterruptedException e) {
             }
         }
 
@@ -240,10 +255,15 @@ final class OrderedPageAllocator {
     }
 
     private void makeReady() {
-        if (mReadyState == EMPTY) synchronized (mAllocCursor) {
-            if (mReadyState == EMPTY) {
-                // Let the allocPage method determine for sure if ready.
-                mReadyState = UNKNOWN;
+        if (mReadyState == EMPTY) {
+            mAllocLatch.acquireExclusive();
+            try {
+                if (mReadyState == EMPTY) {
+                    // Let the allocPage method determine for sure if ready.
+                    mReadyState = UNKNOWN;
+                }
+            } finally {
+                mAllocLatch.releaseExclusive();
             }
         }
     }
