@@ -92,7 +92,7 @@ class TempFileManager {
             if (mFiles == null || !mFiles.containsKey(file)) {
                 return;
             }
-            c = mFiles.get(file);
+            c = mFiles.remove(file);
         }
         if (c != null) {
             try {
