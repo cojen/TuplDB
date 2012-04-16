@@ -187,7 +187,15 @@ final class Node extends Latch {
     // Raw contents of node.
     byte[] mPage;
 
-    long mId;
+    // Id is often read without acquiring latch, although in most cases, it
+    // doesn't need to be volatile. This is because a double check with the
+    // latch held is always performed. So-called double-checked locking doesn't
+    // work with object initialization, but it's fine with primitive types.
+    // When nodes are evicted, the write operation must complete before the id
+    // is re-assigned. For this reason, the id is volatile. A memory barrier
+    // between the write and re-assignment should work too.
+    volatile long mId;
+
     byte mCachedState;
 
     // Entries from header, available as fields for quick access.
