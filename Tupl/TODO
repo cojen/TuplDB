@@ -7,5 +7,8 @@
 - Support closing indexes. Requires latch sweep and stubbing of cursors.
 - Support truncating indexes. Depends on close and workflow to ensure truncate completes.
 - Support non-persistent database mode which never writes to files and doesn't require any.
+- Support stats: free space, used space, lock count (from LockManager), active
+  cursor count (examine all root nodes), active transaction count
+  (Database.mUndoLogCount; doesn’t count use of UNSAFE)
 
 ---
