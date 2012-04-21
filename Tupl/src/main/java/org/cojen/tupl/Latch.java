@@ -19,7 +19,9 @@ package org.cojen.tupl;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer;
 
 /**
- * Non-reentrant read/write latch, using unfair acquisition.
+ * Non-reentrant read/write latch, using unfair acquisition. Implementation
+ * also does not track thread ownership or check for illegal usage. As a
+ * result, it typically outperforms ReentrantLock and Java synchronization.
  *
  * @author Brian S O'Neill
  */
@@ -27,12 +29,19 @@ class Latch extends AbstractQueuedSynchronizer {
     // In the inherited state field, high bit is set if exclusive latch is
     // held, and low bits count shared latches. Limited to (2^31)-1 shared latches.
 
+    // Note: When acquiring the exclusive latch, a check is made first before
+    // calling compareAndSetState. Considering that compareAndSetState will
+    // check again, this is not strictly required. However, under high
+    // contention, performance improves when this check is made. Under low
+    // contention, the extra check doesn't appear to slow things down. So it's
+    // a performance win overall, for some reason.
+
     /**
      * Attempt to acquire the exclusive latch, barging ahead of any waiting
      * threads if possible.
      */
     public final boolean tryAcquireExclusive() {
-        return compareAndSetState(0, 0x80000001);
+        return getState() == 0 ? compareAndSetState(0, 0x80000001) : false;
     }
 
     /**
@@ -128,7 +137,7 @@ class Latch extends AbstractQueuedSynchronizer {
      * caller must later call releaseExclusive instead of releaseShared.
      */
     public final boolean tryUpgrade() {
-        return compareAndSetState(1, 0x80000001);
+        return getState() == 1 ? compareAndSetState(1, 0x80000001) : false;
     }
 
     /**
@@ -140,7 +149,7 @@ class Latch extends AbstractQueuedSynchronizer {
 
     @Override
     protected final boolean tryAcquire(int x) {
-        return compareAndSetState(0, 0x80000001);
+        return getState() == 0 ? compareAndSetState(0, 0x80000001) : false;
     }
 
     @Override
