@@ -349,40 +349,35 @@ final class Lock {
      * Called with exclusive latch held, which is retained.
      *
      * @param latch briefly released and re-acquired for deleting a tombstone
-     * @return 0 if unlocked and still used; 1 if lock is now completely
-     * unused; 2 if tombstone was deleted instead
+     * @return true if lock is now completely unused
      * @throws IllegalStateException if lock not held
      */
-    int unlock(Locker locker, Latch latch) {
+    boolean unlock(Locker locker, Latch latch) {
         if (mLocker == locker) {
-            if (deleteTombstone(latch)) {
-                return 2;
-            }
-
+            deleteTombstone(latch);
             mLocker = null;
             WaitQueue queueU = mQueueU;
             if (queueU != null) {
                 // Signal at most one upgradable lock waiter.
                 queueU.signal();
             }
-
             int count = mLockCount;
             if (count != ~0) {
                 // Unlocking upgradable lock.
-                return ((mLockCount = count & 0x7fffffff) == 0
-                        && queueU == null && mQueueSX == null) ? 1 : 0;
+                return (mLockCount = count & 0x7fffffff) == 0
+                    && queueU == null && mQueueSX == null;
             } else {
                 // Unlocking exclusive lock.
                 mLockCount = 0;
                 WaitQueue queueSX = mQueueSX;
                 if (queueSX == null) {
-                    return queueU == null ? 1 : 0;
+                    return queueU == null;
                 } else {
                     // Signal first shared lock waiter. Queue doesn't contain
                     // any exclusive lock waiters, because they would need to
                     // acquire upgradable lock first, which was held.
                     queueSX.signal();
-                    return 0;
+                    return false;
                 }
             }
         } else {
@@ -418,9 +413,9 @@ final class Lock {
                     // held. In case there are any, signal them instead.
                     queueSX.signal();
                 }
-                return 0;
+                return false;
             } else {
-                return (count == 0 && queueSX == null && mQueueU == null) ? 1 : 0;
+                return count == 0 && queueSX == null && mQueueU == null;
             }
         }
     }
@@ -492,16 +487,16 @@ final class Lock {
     }
 
     /**
-     * @param latch was briefly released and re-acquired if true is returned
+     * @param latch might be briefly released and re-acquired
      */
-    boolean deleteTombstone(Latch latch) {
+    void deleteTombstone(Latch latch) {
         // FIXME: Unlock due to rollback can be optimized. It never needs to
         // actually delete tombstones, because the undo actions replaced
         // them. Calling Cursor.deleteTombstone performs a pointless search.
 
         Object obj = mSharedLockersObj;
         if (!(obj instanceof Tree)) {
-            return false;
+            return;
         }
 
         TreeCursor c = new TreeCursor((Tree) obj, null);
@@ -518,13 +513,11 @@ final class Lock {
             // FIXME: Define a borked mode for Database, and hand it the exception.
             e.printStackTrace();
         } finally {
-            // Reset before re-acquiring latch, since it needs to acqure
+            // Reset before re-acquiring latch, since it needs to acquire
             // latches to detach cursor from tree.
             c.reset();
             latch.acquireExclusive();
         }
-
-        return true;
     }
 
     /**
