@@ -369,7 +369,8 @@ final class Lock {
             int count = mLockCount;
             if (count != ~0) {
                 // Unlocking upgradable lock.
-                return ((mLockCount = count & 0x7fffffff) == 0 && queueU == null) ? 1 : 0;
+                return ((mLockCount = count & 0x7fffffff) == 0
+                        && queueU == null && mQueueSX == null) ? 1 : 0;
             } else {
                 // Unlocking exclusive lock.
                 mLockCount = 0;

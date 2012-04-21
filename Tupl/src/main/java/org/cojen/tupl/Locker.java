@@ -298,8 +298,8 @@ class Locker {
         return result.isHeld() ? result : nt(result, indexId, key, nanosTimeout);
     }
 
-    private LockFailureException failed(LockResult result,
-                                        long indexId, byte[] key, long nanosTimeout)
+    LockFailureException failed(LockResult result,
+                                long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException
     {
         switch (result) {

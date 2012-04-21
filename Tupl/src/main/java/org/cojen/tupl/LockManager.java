@@ -167,8 +167,7 @@ final class LockManager {
     }
 
     final void unlock(Locker locker, Lock lock) {
-        int hash = lock.mHashCode;
-        getLockHT(hash).unlock(locker, lock.mIndexId, lock.mKey, hash);
+        getLockHT(lock.mHashCode).unlock(locker, lock);
     }
 
     final void unlockToShared(Locker locker, Lock lock) {
@@ -223,16 +222,22 @@ final class LockManager {
 
     final Locker lockSharedLocal(long indexId, byte[] key, int hash) throws LockFailureException {
         Locker locker = localLocker();
-        locker.lockShared(indexId, key, hash, mDefaultTimeoutNanos);
-        return locker;
+        LockResult result = tryLockShared(locker, indexId, key, hash, mDefaultTimeoutNanos);
+        if (result.isHeld()) {
+            return locker;
+        }
+        throw locker.failed(result, indexId, key, mDefaultTimeoutNanos);
     }
 
     final Locker lockExclusiveLocal(long indexId, byte[] key, int hash)
         throws LockFailureException
     {
         Locker locker = localLocker();
-        locker.lockExclusive(indexId, key, hash, mDefaultTimeoutNanos);
-        return locker;
+        LockResult result = tryLockExclusive(locker, indexId, key, hash, mDefaultTimeoutNanos);
+        if (result.isHeld()) {
+            return locker;
+        }
+        throw locker.failed(result, indexId, key, mDefaultTimeoutNanos);
     }
 
     final Locker localLocker() {
@@ -331,15 +336,15 @@ final class LockManager {
             return lock;
         }
 
-        void unlock(Locker locker, long indexId, byte[] key, int hash) {
+        void unlock(Locker locker, Lock lock) {
             Latch latch = mLatch;
             latch.acquireExclusive();
             try {
                 doUnlock: while (true) {
                     Lock[] entries = mEntries;
-                    int index = hash & (entries.length - 1);
+                    int index = lock.mHashCode & (entries.length - 1);
                     for (Lock e = entries[index], prev = null; e != null; ) {
-                        if (e.matches(indexId, key, hash)) {
+                        if (e == lock) {
                             switch (e.unlock(locker, latch)) {
                             default:
                                 return;
