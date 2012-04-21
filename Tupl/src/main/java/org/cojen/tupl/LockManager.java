@@ -167,7 +167,16 @@ final class LockManager {
     }
 
     final void unlock(Locker locker, Lock lock) {
-        getLockHT(lock.mHashCode).unlock(locker, lock);
+        LockHT ht = getLockHT(lock.mHashCode);
+        Latch latch = ht.mLatch;
+        latch.acquireExclusive();
+        try {
+            if (lock.unlock(locker, latch)) {
+                ht.remove(lock);
+            }
+        } finally {
+            latch.releaseExclusive();
+        }
     }
 
     final void unlockToShared(Locker locker, Lock lock) {
@@ -336,47 +345,26 @@ final class LockManager {
             return lock;
         }
 
-        void unlock(Locker locker, Lock lock) {
-            Latch latch = mLatch;
-            latch.acquireExclusive();
-            try {
-                doUnlock: while (true) {
-                    Lock[] entries = mEntries;
-                    int index = lock.mHashCode & (entries.length - 1);
-                    for (Lock e = entries[index], prev = null; e != null; ) {
-                        if (e == lock) {
-                            switch (e.unlock(locker, latch)) {
-                            default:
-                                return;
-                            case 1:
-                                // Remove last use of lock.
-                                if (prev == null) {
-                                    entries[index] = e.mLockManagerNext;
-                                } else {
-                                    prev.mLockManagerNext = e.mLockManagerNext;
-                                }
-                                mSize--;
-                                return;
-                            case 2:
-                                // Since tombstone was deleted, latch was
-                                // briefly released. Entries might have changed
-                                // as a result, so start over before trying to
-                                // finish the unlock operation.
-                                continue doUnlock;
-                            }
-                        } else {
-                            prev = e;
-                            e = e.mLockManagerNext;
-                        }
-                    }
-
+        /**
+         * Caller must hold latch and ensure that Lock is in hashtable.
+         *
+         * @throws NullPointerException if lock is not in hashtable
+         */
+        void remove(Lock lock) {
+            Lock[] entries = mEntries;
+            int index = lock.mHashCode & (entries.length - 1);
+            Lock e = entries[index];
+            if (e == lock) {
+                entries[index] = e.mLockManagerNext;
+            } else while (true) {
+                Lock next = e.mLockManagerNext;
+                if (next == lock) {
+                    e.mLockManagerNext = next.mLockManagerNext;
                     break;
                 }
-            } finally {
-                latch.releaseExclusive();
+                e = next;
             }
-
-            throw new IllegalStateException("Lock not held");
+            mSize--;
         }
     }
 }
