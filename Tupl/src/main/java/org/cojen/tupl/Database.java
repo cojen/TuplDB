@@ -440,6 +440,14 @@ public final class Database implements Closeable {
     }
 
     /**
+     * Convenience method which returns a transaction intended for locking, and
+     * not for making modifications.
+     */
+    Transaction newLockTransaction() {
+        return new Transaction(this, DurabilityMode.NO_LOG, LockMode.UPGRADABLE_READ, -1);
+    }
+
+    /**
      * Caller must hold commit lock. This ensures that highest transaction id
      * is persisted correctly by checkpoint.
      *
@@ -767,19 +775,33 @@ public final class Database implements Closeable {
                 }
             }
 
-            byte[] rootIdBytes = mRegistry.load(Transaction.BOGUS, treeIdBytes);
-            long rootId = (rootIdBytes == null || rootIdBytes.length == 0) ? 0
-                : readLong(rootIdBytes, 0);
-            Node rootNode = loadTreeRoot(rootId);
+            // Use a transaction to ensure that only one thread loads the
+            // requested index. Nothing is written into it.
+            Transaction txn = newLockTransaction();
+            try {
+                // Pass the transaction to acquire the lock.
+                byte[] rootIdBytes = mRegistry.load(txn, treeIdBytes);
 
-            synchronized (mOpenTrees) {
-                Tree tree = mOpenTrees.get(name);
-                if (tree == null) {
-                    tree = new Tree(this, treeId, treeIdBytes, name, rootNode);
+                synchronized (mOpenTrees) {
+                    Tree tree = mOpenTrees.get(name);
+                    if (tree != null) {
+                        // Another thread got the lock first and loaded the index.
+                        return tree;
+                    }
+                }
+
+                long rootId = (rootIdBytes == null || rootIdBytes.length == 0) ? 0
+                    : readLong(rootIdBytes, 0);
+                Tree tree = new Tree(this, treeId, treeIdBytes, name, loadTreeRoot(rootId));
+
+                synchronized (mOpenTrees) {
                     mOpenTrees.put(name, tree);
                     mOpenTreesById.insert(treeId).value = tree;
                 }
+
                 return tree;
+            } finally {
+                txn.reset();
             }
         } finally {
             commitLock.unlock();
