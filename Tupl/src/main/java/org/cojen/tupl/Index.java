@@ -38,6 +38,11 @@ public interface Index {
     public byte[] getName();
 
     /**
+     * @return name decoded as UTF-8
+     */
+    public String getNameString();
+
+    /**
      * @param txn optional transaction for Cursor to {@link Cursor#link link} to
      * @return a new unpositioned cursor
      */

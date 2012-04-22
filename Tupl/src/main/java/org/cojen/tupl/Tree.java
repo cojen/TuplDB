@@ -83,20 +83,12 @@ final class Tree implements Index {
 
     @Override
     public String toString() {
-        String nameStr;
-        try {
-            nameStr = mName == null ? "null" : new String(mName, "UTF-8");
-        } catch (IOException e) {
-            nameStr = new String(mName);
-        }
-
         StringBuilder b = new StringBuilder(getClass().getName());
         b.append('@').append(Integer.toHexString(hashCode()));
         b.append(" {");
-        b.append("name").append(": ").append(nameStr);
+        b.append("name").append(": ").append(getNameString());
         b.append(", ");
         b.append("id").append(": ").append(mId);
-
         return b.append('}').toString();
     }
 
@@ -109,6 +101,16 @@ final class Tree implements Index {
     public byte[] getName() {
         byte[] name = mName;
         return name == null ? null : name.clone();
+    }
+
+    @Override
+    public String getNameString() {
+        byte[] name = mName;
+        try {
+            return name == null ? "null" : new String(name, "UTF-8");
+        } catch (IOException e) {
+            return new String(name);
+        }
     }
 
     @Override
