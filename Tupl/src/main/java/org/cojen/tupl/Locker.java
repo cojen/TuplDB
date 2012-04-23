@@ -248,7 +248,6 @@ class Locker {
         if (result == LockResult.TIMED_OUT_LOCK) {
             detectDeadlock(indexId, key, nanosTimeout);
         }
-        mWaitingFor = null;
         return result;
     }
 
