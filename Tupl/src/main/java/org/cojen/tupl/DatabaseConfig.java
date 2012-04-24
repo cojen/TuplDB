@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Writer;
 
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Properties;
 
@@ -36,7 +37,7 @@ import java.util.concurrent.TimeUnit;
 public class DatabaseConfig implements Cloneable {
     File mBaseFile;
     boolean mMkdirs;
-    File mDataFile;
+    File[] mDataFiles;
     long mMinCachedBytes;
     long mMaxCachedBytes;
     DurabilityMode mDurabilityMode;
@@ -59,7 +60,7 @@ public class DatabaseConfig implements Cloneable {
      * file must reside in an ordinary file directory.
      */
     public DatabaseConfig baseFile(File file) {
-        mBaseFile = file;
+        mBaseFile = file == null ? null : abs(file);
         return this;
     }
 
@@ -78,7 +79,25 @@ public class DatabaseConfig implements Cloneable {
      * directory, and it can even be a raw block device.
      */
     public DatabaseConfig dataFile(File file) {
-        mDataFile = file;
+        dataFiles(file);
+        return this;
+    }
+
+    /**
+     * Stripe the database data file across several files, expected to be on
+     * separate devices. The data files can refer to ordinary files or to raw
+     * block devices.
+     */
+    public DatabaseConfig dataFiles(File... files) {
+        if (files == null || files.length == 0) {
+            mDataFiles = null;
+        } else {
+            File[] dataFiles = new File[files.length];
+            for (int i=0; i<files.length; i++) {
+                dataFiles[i] = abs(files[i]);
+            }
+            mDataFiles = dataFiles;
+        }
         return this;
     }
 
@@ -176,9 +195,9 @@ public class DatabaseConfig implements Cloneable {
 
     /**
      * Checks that base and data files are valid and returns the applicable
-     * data file.
+     * data files.
      */
-    File dataFile() {
+    File[] dataFiles() {
         if (mBaseFile == null) {
             throw new IllegalArgumentException("No base file provided");
         }
@@ -186,15 +205,17 @@ public class DatabaseConfig implements Cloneable {
             throw new IllegalArgumentException("Base file is a directory: " + mBaseFile);
         }
 
-        File dataFile = mDataFile;
-        if (dataFile == null) {
-            dataFile = new File(mBaseFile.getPath() + ".db");
+        File[] dataFiles = mDataFiles;
+        if (dataFiles == null || dataFiles.length == 0) {
+            dataFiles = new File[] {new File(mBaseFile.getPath() + ".db")};
         }
-        if (dataFile.isDirectory()) {
-            throw new IllegalArgumentException("Data file is a directory: " + dataFile);
+        for (File dataFile : dataFiles) {
+            if (dataFile.isDirectory()) {
+                throw new IllegalArgumentException("Data file is a directory: " + dataFile);
+            }
         }
 
-        return dataFile;
+        return dataFiles;
     }
 
     EnumSet<OpenOption> createOpenOptions() {
@@ -229,7 +250,24 @@ public class DatabaseConfig implements Cloneable {
 
         set(props, "baseFile", mBaseFile);
         set(props, "createFilePath", mMkdirs);
-        set(props, "dataFile", mDataFile);
+
+        if (mDataFiles != null && mDataFiles.length > 0) {
+            if (mDataFiles.length == 1) {
+                set(props, "dataFile", mDataFiles[0]);
+            } else {
+                StringBuilder b = new StringBuilder();
+                b.append('[');
+                for (int i=0; i<mDataFiles.length; i++) {
+                    if (i > 0) {
+                        b.append(", ");
+                    }
+                    b.append(mDataFiles[i]);
+                }
+                b.append(']');
+                props.setProperty("dataFiles", b.toString());
+            }
+        }
+
         set(props, "minCacheSize", mMinCachedBytes);
         set(props, "maxCacheSize", mMaxCachedBytes);
         set(props, "durabilityMode", mDurabilityMode);
@@ -245,5 +283,9 @@ public class DatabaseConfig implements Cloneable {
         if (value != null) {
             props.setProperty(name, String.valueOf(value));
         }
+    }
+
+    private static File abs(File file) {
+        return file.getAbsoluteFile();
     }
 }

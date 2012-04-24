@@ -16,15 +16,11 @@
 
 package org.cojen.tupl;
 
-import java.io.BufferedWriter;
 import java.io.Closeable;
 import java.io.File;
-import java.io.OutputStreamWriter;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.io.Writer;
 
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
@@ -62,19 +58,6 @@ class LockedFile implements Closeable {
         }
 
         mRaf = raf;
-    }
-
-    void write(DatabaseConfig config) throws IOException {
-        RandomAccessFile raf = mRaf;
-        if (raf == null) {
-            return;
-        }
-        raf.setLength(0);
-        Writer w = new BufferedWriter
-            (new OutputStreamWriter(new FileOutputStream(raf.getFD()), "UTF-8"));
-        config.writeInfo(w);
-        w.flush();
-        raf.getFD().sync();
     }
 
     public void close() throws IOException {

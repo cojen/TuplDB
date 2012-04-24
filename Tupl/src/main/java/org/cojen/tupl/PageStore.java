@@ -91,30 +91,56 @@ class PageStore implements Closeable {
     // Commit number is the highest one which has been committed.
     private int mCommitNumber;
 
-    PageStore(File file, EnumSet<OpenOption> options, boolean destroy, int pageSize)
+    PageStore(int pageSize, File[] files, EnumSet<OpenOption> options, boolean destroy)
         throws IOException
     {
-        this(file, options, destroy, pageSize, 32);
+        this(openPageArray(pageSize, files, options), destroy);
     }
 
-    PageStore(File file, EnumSet<OpenOption> options, boolean destroy,
-              int pageSize, int openFileCount)
+    static PageArray openPageArray(int pageSize, File[] files, EnumSet<OpenOption> options)
         throws IOException
     {
+        checkPageSize(pageSize);
+
+        if (!options.contains(OpenOption.CREATE)) {
+            for (File file : files) {
+                if (!file.exists()) {
+                    throw new DatabaseException("File does not exist: " + file);
+                }
+            }
+        }
+
+        if (files.length == 0) {
+            throw new IllegalArgumentException("No files provided");
+        }
+
+        if (files.length == 1) {
+            return new SimplePageArray(pageSize, files[0], options);
+        }
+
+        PageArray[] arrays = new PageArray[files.length];
+        for (int i=0; i<files.length; i++) {
+            arrays[i] = new SimplePageArray(pageSize, files[i], options);
+        }
+
+        return new StripedPageArray(arrays);
+    }
+
+    private static void checkPageSize(int pageSize) {
         if (pageSize < MINIMUM_PAGE_SIZE) {
             throw new IllegalArgumentException
                 ("Page size must be at least " + MINIMUM_PAGE_SIZE + ": " + pageSize);
         }
+    }
 
-        if (!options.contains(OpenOption.CREATE) && !file.exists()) {
-            throw new DatabaseException("File does not exist: " + file);
-        }
-
+    PageStore(PageArray pa, boolean destroy) throws IOException {
+        mPageArray = pa;
         mCommitLock = new ReentrantReadWriteLock(true);
         mHeaderLatch = new Latch();
 
         try {
-            mPageArray = new PageArray(pageSize, file, options);
+            int pageSize = pa.pageSize();
+            checkPageSize(pageSize);
 
             open: {
                 if (destroy || mPageArray.isEmpty()) {
@@ -491,11 +517,12 @@ class PageStore implements Closeable {
     /**
      * @param in snapshot source; does not require extra buffering; not auto-closed
      */
-    static PageStore restoreFromSnapshot(File file, EnumSet<OpenOption> options, InputStream in)
+    static PageStore restoreFromSnapshot(File[] files, EnumSet<OpenOption> options, InputStream in)
         throws IOException
     {
-        int pageSize = PageArray.restoreFromSnapshot(file, options, in);
-        return new PageStore(file, options, false, pageSize);
+        PageArray pa = openPageArray(MINIMUM_PAGE_SIZE, files, options);
+        pa = pa.restoreFromSnapshot(in);
+        return new PageStore(pa, false);
     }
 
     private IOException closeOnFailure(Throwable e) throws IOException {
