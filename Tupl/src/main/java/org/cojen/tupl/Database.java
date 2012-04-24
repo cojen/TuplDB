@@ -19,11 +19,12 @@ package org.cojen.tupl;
 import java.io.BufferedWriter;
 import java.io.Closeable;
 import java.io.File;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.Writer;
 
 import java.util.EnumSet;
@@ -84,7 +85,7 @@ public final class Database implements Closeable {
 
     private static int cThreadCounter;
 
-    private final LockedFile mInfoFile;
+    private final LockedFile mLockFile;
 
     final DurabilityMode mDurabilityMode;
     final long mDefaultLockTimeoutNanos;
@@ -154,7 +155,7 @@ public final class Database implements Closeable {
      */
     private Database(DatabaseConfig config, boolean destroy) throws IOException {
         File baseFile = config.mBaseFile;
-        File dataFile = config.dataFile();
+        File[] dataFiles = config.dataFiles();
 
         int pageSize = config.mPageSize;
         if (pageSize <= 0) {
@@ -200,19 +201,30 @@ public final class Database implements Closeable {
 
         if (!config.mReadOnly && config.mMkdirs) {
             baseFile.getParentFile().mkdirs();
-            dataFile.getParentFile().mkdirs();
+            for (File f : dataFiles) {
+                f.getParentFile().mkdirs();
+            }
         }
 
-        // Attempt to create and lock the info file, which mostly lists the config values.
-        mInfoFile = new LockedFile(new File(baseFile.getPath() + ".info"), config.mReadOnly);
-        mInfoFile.write(config);
+        // Create lock file and write info file of properties.
+        mLockFile = new LockedFile(new File(baseFile.getPath() + ".lock"), config.mReadOnly);
+        if (!config.mReadOnly) {
+            File infoFile = new File(baseFile.getPath() + ".info");
+            Writer w = new BufferedWriter
+                (new OutputStreamWriter(new FileOutputStream(infoFile), "UTF-8"));
+            try {
+                config.writeInfo(w);
+            } finally {
+                w.close();
+            }
+        }
 
         EnumSet<OpenOption> options = config.createOpenOptions();
         if (destroy) {
             // Delete old redo log files.
             Utils.deleteNumberedFiles(baseFile, ".redo.");
         }
-        mPageStore = new PageStore(dataFile, options, destroy, pageSize);
+        mPageStore = new PageStore(pageSize, dataFiles, options, destroy);
 
         try {
             // Pre-allocate nodes. They are automatically added to the usage
@@ -597,14 +609,16 @@ public final class Database implements Closeable {
     public static Database restoreFromSnapshot(DatabaseConfig config, InputStream in)
         throws IOException
     {
-        File dataFile = config.dataFile();
+        File[] dataFiles = config.dataFiles();
         if (!config.mReadOnly && config.mMkdirs) {
-            dataFile.getParentFile().mkdirs();
+            for (File f : dataFiles) {
+                f.getParentFile().mkdirs();
+            }
         }
         EnumSet<OpenOption> options = config.createOpenOptions();
         // Delete old redo log files.
         Utils.deleteNumberedFiles(config.mBaseFile, ".redo.");
-        PageStore.restoreFromSnapshot(dataFile, options, in).close();
+        PageStore.restoreFromSnapshot(dataFiles, options, in).close();
         return Database.open(config);
     }
 
@@ -654,8 +668,8 @@ public final class Database implements Closeable {
         if (mPageStore != null) {
             mPageStore.close();
         }
-        if (mInfoFile != null) {
-            mInfoFile.close();
+        if (mLockFile != null) {
+            mLockFile.close();
         }
     }
 

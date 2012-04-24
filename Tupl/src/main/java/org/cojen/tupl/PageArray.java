@@ -31,61 +31,40 @@ import java.util.EnumSet;
  *
  * @author Brian S O'Neill
  */
-class PageArray implements Closeable {
+abstract class PageArray implements Closeable {
     final int mPageSize;
-    final FileIO mFio;
 
     volatile Object mSnapshots;
 
-    PageArray(int pageSize, File file, EnumSet<OpenOption> options) throws IOException {
-        this(pageSize, JavaFileIO.open(file, options));
-    }
-
-    PageArray(int pageSize, FileIO fio) {
+    PageArray(int pageSize) {
         if (pageSize < 1) {
             throw new IllegalArgumentException("Page size must be at least 1: " + pageSize);
         }
         mPageSize = pageSize;
-        mFio = fio;
-    }
-
-    public boolean isReadOnly() {
-        return mFio.isReadOnly();
     }
 
     /**
      * Returns the fixed size of all pages in the array, in bytes.
      */
-    public int pageSize() {
+    public final int pageSize() {
         return mPageSize;
     }
 
-    public boolean isEmpty() throws IOException {
-        return mFio.length() == 0;
-    }
+    public abstract boolean isReadOnly();
+
+    public abstract boolean isEmpty() throws IOException;
 
     /**
      * Returns the total count of pages in the array.
      */
-    public long getPageCount() throws IOException {
-        // Always round page count down. A partial last page effectively doesn't exist.
-        return mFio.length() / mPageSize;
-    }
+    public abstract long getPageCount() throws IOException;
 
     /**
      * Set the total count of pages, truncating or growing the array as necessary.
      *
      * @throws IllegalArgumentException if count is negative
      */
-    public void setPageCount(long count) throws IOException {
-        if (count < 0) {
-            throw new IllegalArgumentException(String.valueOf(count));
-        }
-        if (isReadOnly()) {
-            return;
-        }
-        mFio.setLength(count * mPageSize);
-    }
+    public abstract void setPageCount(long count) throws IOException;
 
     /**
      * @param index zero-based page index to read
@@ -104,13 +83,7 @@ class PageArray implements Closeable {
      * @throws IndexOutOfBoundsException if index is negative
      * @throws IOException if index is greater than or equal to page count
      */
-    public void readPage(long index, byte[] buf, int offset) throws IOException {
-        if (index < 0) {
-            throw new IndexOutOfBoundsException(String.valueOf(index));
-        }
-        int pageSize = mPageSize;
-        mFio.read(index * pageSize, buf, offset, pageSize);
-    }
+    public abstract void readPage(long index, byte[] buf, int offset) throws IOException;
 
     /**
      * @param index zero-based page index to read
@@ -122,18 +95,20 @@ class PageArray implements Closeable {
      * @throws IndexOutOfBoundsException if index is negative
      * @throws IOException if index is greater than or equal to page count
      */
-    public int readPartial(long index, int start, byte[] buf, int offset, int length)
-        throws IOException
-    {
-        if (index < 0) {
-            throw new IndexOutOfBoundsException(String.valueOf(index));
-        }
-        int pageSize = mPageSize;
-        int remaining = pageSize - start;
-        length = remaining <= 0 ? 0 : Math.min(remaining, length);
-        mFio.read(index * pageSize + start, buf, offset, length);
-        return length;
-    }
+    public abstract int readPartial(long index, int start, byte[] buf, int offset, int length)
+        throws IOException;
+
+    /**
+     * @param index zero-based page index to read
+     * @param buf receives read data
+     * @param offset offset into data buffer
+     * @param count number of pages to read
+     * @return length read (always page size times count)
+     * @throws IndexOutOfBoundsException if index is negative
+     * @throws IOException if index is greater than or equal to page count
+     */
+    public abstract int readCluster(long index, byte[] buf, int offset, int count)
+        throws IOException;
 
     /**
      * Writes a page, which is lazily flushed. The array grows automatically if
@@ -156,7 +131,7 @@ class PageArray implements Closeable {
      * @param offset offset into data buffer
      * @throws IndexOutOfBoundsException if index is negative
      */
-    public void writePage(long index, byte[] buf, int offset) throws IOException {
+    public final void writePage(long index, byte[] buf, int offset) throws IOException {
         if (index < 0) {
             throw new IndexOutOfBoundsException(String.valueOf(index));
         }
@@ -170,23 +145,30 @@ class PageArray implements Closeable {
             }
         }
 
-        int pageSize = mPageSize;
-        mFio.write(index * pageSize, buf, offset, pageSize);
+        doWritePage(index, buf, offset);
     }
+
+    /**
+     * Writes a page, which is lazily flushed. The array grows automatically if
+     * the index is greater than or equal to the current page count.
+     *
+     * @param index zero-based page index to write (never negative)
+     * @param buf data to write
+     * @param offset offset into data buffer
+     */
+    abstract void doWritePage(long index, byte[] buf, int offset) throws IOException;
 
     /**
      * Durably flushes all writes to the underlying device.
      *
      * @param metadata pass true to flush all file metadata
      */
-    public void sync(boolean metadata) throws IOException {
-        mFio.sync(metadata);
-    }
+    public abstract void sync(boolean metadata) throws IOException;
 
-    @Override
-    public void close() throws IOException {
-        mFio.close();
-    }
+    /**
+     * @return a new instance with the given page size, still backed by the orginal array
+     */
+    abstract PageArray withPageSize(int pageSize);
 
     /**
      * Supports writing a snapshot of the array, while still permitting
@@ -223,32 +205,17 @@ class PageArray implements Closeable {
 
     /**
      * @param in snapshot source; does not require extra buffering; not auto-closed
-     * @return page size
+     * @return array with correct page size
      */
-    static int restoreFromSnapshot(File file, EnumSet<OpenOption> options, InputStream in)
-        throws IOException
-    {
-        FileIO fio = JavaFileIO.open(file, options);
-        try {
-            return restoreFromSnapshot(fio, in);
-        } finally {
-            try {
-                fio.close();
-            } catch (IOException e) {
-                // Ignore.
-            }
-        }
+    PageArray restoreFromSnapshot(InputStream in) throws IOException {
+        return restoreFromSnapshot(this, in);
     }
 
-    /**
-     * @param in snapshot source; does not require extra buffering; not auto-closed
-     * @return page size
-     */
-    static int restoreFromSnapshot(FileIO fio, InputStream in) throws IOException {
-        if (fio.isReadOnly()) {
+    private static PageArray restoreFromSnapshot(PageArray pa, InputStream in) throws IOException {
+        if (pa.isReadOnly()) {
             throw new DatabaseException("Cannot restore into a read-only file");
         }
-        if (fio.length() != 0) {
+        if (!pa.isEmpty()) {
             throw new DatabaseException("Cannot restore into a non-empty file");
         }
 
@@ -278,8 +245,10 @@ class PageArray implements Closeable {
             throw new DatabaseException("Invalid snapshot: " + failMessage);
         }
 
+        pa = pa.withPageSize(pageSize);
+
         // Ensure enough space is available.
-        fio.setLength(pageSize * snapshotPageCount);
+        pa.setPageCount(snapshotPageCount);
 
         DataIn din = new DataIn(in, 8 + pageSize * cluster);
         long remainingPageCount = snapshotPageCount;
@@ -291,11 +260,11 @@ class PageArray implements Closeable {
             if (count <= 0) {
                 throw new DatabaseException("Invalid data packet index: " + index);
             }
-            din.readAndWriteTo(fio, index * pageSize, count * pageSize);
+            din.readAndWriteTo(pa, index, count);
             remainingPageCount -= count;
         }
 
-        return pageSize;
+        return pa;
     }
 
     synchronized void unregister(ArraySnapshot snapshot) {
@@ -472,9 +441,7 @@ class PageArray implements Closeable {
                     if (count <= 0) {
                         throw new AssertionError();
                     }
-                    int pageSize = mPageSize;
-                    len = pageSize * count;
-                    mFio.read(index * pageSize, buffer, 8, len);
+                    len = readCluster(index, buffer, 8, count);
                 } catch (IOException e) {
                     mBufferLatch.releaseExclusive();
                     throw e;
