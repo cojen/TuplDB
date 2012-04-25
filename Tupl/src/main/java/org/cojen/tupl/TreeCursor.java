@@ -2490,9 +2490,6 @@ final class TreeCursor implements Cursor {
 
         // FIXME: How to acquire shared commit lock without deadlock?
         if (node == tree.mRoot) {
-            if (!tree.mDatabase.isSharedLocked()) {
-                new Exception("shared commit lock!").printStackTrace(System.out);
-            }
             Node stub;
             if (tree.hasStub()) {
                 // FIXME: Use tryPopStub first, to avoid deadlock.
