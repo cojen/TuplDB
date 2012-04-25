@@ -298,16 +298,27 @@ final class TreeCursor implements Cursor {
 
     @Override
     public LockResult move(long amount) throws IOException {
+        if (amount == 0) {
+            Transaction txn = mTxn;
+            if (txn != null && txn != Transaction.BOGUS) {
+                byte[] key = mKey;
+                if (key != null) {
+                    return txn.mManager.check(txn, mTree.mId, key, keyHash());
+                }
+            }
+            return LockResult.UNOWNED;
+        }
+
         // TODO: optimize and also utilize counts embedded in the tree
 
         // FIXME: Skipped entries should be locked no higher than
-        // READ_COMMITTED and released immediately.
+        // READ_COMMITTED and be released immediately.
 
         if (amount > 0) {
             do {
                 next();
             } while (--amount > 0);
-        } else if (amount < 0) {
+        } else {
             do {
                 previous();
             } while (++amount < 0);
@@ -2479,6 +2490,9 @@ final class TreeCursor implements Cursor {
 
         // FIXME: How to acquire shared commit lock without deadlock?
         if (node == tree.mRoot) {
+            if (!tree.mDatabase.isSharedLocked()) {
+                new Exception("shared commit lock!").printStackTrace(System.out);
+            }
             Node stub;
             if (tree.hasStub()) {
                 // FIXME: Use tryPopStub first, to avoid deadlock.
