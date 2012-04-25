@@ -38,7 +38,7 @@ class StripedPageArray extends PageArray {
     }
 
     private StripedPageArray(StripedPageArray src, int newPageSize) {
-        super(src.pageSize());
+        super(newPageSize);
 
         int length = src.mArrays.length;
         PageArray[] newArrays = new PageArray[length];

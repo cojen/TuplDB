@@ -191,11 +191,11 @@ class DataIn extends InputStream {
         int start = mStart;
         while (true) {
             pa.writePage(pageIndex, mBuffer, start);
+            mStart = start += pageSize;
             if (--pageCount <= 0) {
                 break;
             }
             pageIndex++;
-            mStart = start += pageSize;
         }
     }
 }
