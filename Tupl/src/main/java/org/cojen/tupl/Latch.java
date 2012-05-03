@@ -56,7 +56,9 @@ class Latch extends AbstractQueuedSynchronizer {
      * possible.
      */
     public final void acquireExclusive() {
-        acquire(0);
+        if (getState() != 0 || !compareAndSetState(0, 0x80000001)) {
+            acquire(0);
+        }
     }
 
     /**
