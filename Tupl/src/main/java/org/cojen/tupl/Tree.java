@@ -66,6 +66,8 @@ final class Tree implements Index {
     // object when the tree root changes.
     final Node mRoot;
 
+    final int mMaxEntrySize;
+
     // Maintain a stack of stubs, which are created when root nodes are
     // deleted. When a new root is created, a stub is popped, and cursors bound
     // to it are transferred into the new root. Access to this stack is guarded
@@ -79,6 +81,8 @@ final class Tree implements Index {
         mIdBytes = idBytes;
         mName = name;
         mRoot = root;
+        // Limit maximum non-fragmented entry size to 0.75 of usable node size.
+        mMaxEntrySize = ((db.pageSize() - Node.TN_HEADER_SIZE) * 3) >> 2;
     }
 
     @Override

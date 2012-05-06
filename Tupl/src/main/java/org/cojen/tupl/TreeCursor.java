@@ -31,7 +31,7 @@ import java.util.concurrent.locks.Lock;
  * @author Brian S O'Neill
  */
 final class TreeCursor implements Cursor {
-    private final Tree mTree;
+    final Tree mTree;
     private Transaction mTxn;
 
     // Top stack frame for cursor, always a leaf.
@@ -716,7 +716,7 @@ final class TreeCursor implements Cursor {
      * @param txn optional
      * @param node latched node
      */
-    private LockResult tryCopyCurrent(Transaction txn, Node node, int pos) {
+    private LockResult tryCopyCurrent(Transaction txn, Node node, int pos) throws IOException {
         final LockMode mode;
         if (txn == null) {
             mode = LockMode.READ_COMMITTED;
@@ -746,7 +746,8 @@ final class TreeCursor implements Cursor {
             default:
                 if (mTree.isLockAvailable(txn, mKey, keyHash())) {
                     // No need to acquire full lock.
-                    mValue = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
+                    mValue = mKeyOnly ? node.hasLeafValue(pos)
+                        : node.retrieveLeafValue(mTree, pos);
                     return LockResult.UNOWNED;
                 } else {
                     return null;
@@ -762,7 +763,7 @@ final class TreeCursor implements Cursor {
             }
 
             if (result.isHeld()) {
-                mValue = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
+                mValue = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(mTree, pos);
                 return result;
             } else {
                 return null;
@@ -930,7 +931,7 @@ final class TreeCursor implements Cursor {
             } else if (mKeyOnly) {
                 return (mValue = node.hasLeafValue(pos)) != null;
             } else {
-                return (mValue = node.retrieveLeafValue(pos)) != null;
+                return (mValue = node.retrieveLeafValue(mTree, pos)) != null;
             }
         } finally {
             node.releaseShared();
@@ -1147,7 +1148,8 @@ final class TreeCursor implements Cursor {
                 if (pos >= 0) {
                     frame.mNotFoundKey = null;
                     frame.mNodePos = pos;
-                    mValue = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
+                    mValue = mKeyOnly ? node.hasLeafValue(pos)
+                        : node.retrieveLeafValue(mTree, pos);
                     node.releaseExclusive();
                     return result;
                 } else if (pos != ~0 && ~pos <= node.highestLeafPos()) {
@@ -1220,7 +1222,8 @@ final class TreeCursor implements Cursor {
                         mValue = null;
                     } else {
                         mValue = (variant == VARIANT_CHECK) ? NOT_LOADED
-                            : (mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos));
+                            : (mKeyOnly ? node.hasLeafValue(pos)
+                               : node.retrieveLeafValue(mTree, pos));
                     }
                     mLeaf = frame;
                     if (variant < VARIANT_RETAIN) {
@@ -1324,7 +1327,7 @@ final class TreeCursor implements Cursor {
             Node node = frame.acquireShared();
             if (node.mSplit == null) {
                 int pos = frame.mNodePos;
-                mValue = pos >= 0 ? node.retrieveLeafValue(pos) : null;
+                mValue = pos >= 0 ? node.retrieveLeafValue(mTree, pos) : null;
                 node.releaseShared();
             } else {
                 if (!node.tryUpgrade()) {
@@ -1335,7 +1338,7 @@ final class TreeCursor implements Cursor {
                     node = finishSplit(frame, node);
                 }
                 int pos = frame.mNodePos;
-                mValue = pos >= 0 ? node.retrieveLeafValue(pos) : null;
+                mValue = pos >= 0 ? node.retrieveLeafValue(mTree, pos) : null;
                 node.releaseExclusive();
             }
             return result;
@@ -1414,7 +1417,7 @@ final class TreeCursor implements Cursor {
             Node node = frame.acquireShared();
             if (node.mSplit == null) {
                 int pos = frame.mNodePos;
-                mValue = pos >= 0 ? node.retrieveLeafValue(pos) : null;
+                mValue = pos >= 0 ? node.retrieveLeafValue(mTree, pos) : null;
                 node.releaseShared();
             } else {
                 if (!node.tryUpgrade()) {
@@ -1425,7 +1428,7 @@ final class TreeCursor implements Cursor {
                     node = finishSplit(frame, node);
                 }
                 int pos = frame.mNodePos;
-                mValue = pos >= 0 ? node.retrieveLeafValue(pos) : null;
+                mValue = pos >= 0 ? node.retrieveLeafValue(mTree, pos) : null;
                 node.releaseExclusive();
             }
             return result;

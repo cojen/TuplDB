@@ -116,6 +116,8 @@ public final class Database implements Closeable {
 
     private final OrderedPageAllocator mAllocator;
 
+    private final FragmentCache mFragmentCache;
+
     private final Object mTxnIdLock = new Object();
     // The following fields are guarded by mTxnIdLock.
     private long mTxnId;
@@ -274,6 +276,8 @@ public final class Database implements Closeable {
 
             mAllocator = new OrderedPageAllocator
                 (mPageStore, openInternalTree(Tree.PAGE_ALLOCATOR, true));
+
+            mFragmentCache = new FragmentCache(this, mMaxNodeCount);
 
             // Perform recovery by examining redo and undo logs.
 
@@ -1155,6 +1159,236 @@ public final class Database implements Closeable {
             }
             usageLatch.releaseExclusive();
         }
+    }
+
+    /**
+     * Breakup a large value into separate pages, returning a new value which
+     * encodes the page references. Caller must hold commit lock.
+     *
+     * Returned value begins with a one byte header:
+     *
+     * 0b0000_ffip
+     *
+     * The leading 4 bits define the encoding type, which must be 0. The 'f'
+     * bits define the full value length field size: 2, 4, 6, or 8 bytes. The
+     * array is limited to a 4 byte length, and so only the 2 and 4 byte forms
+     * apply. The 'i' bit defines the inline content length field size: 0 or 2
+     * bytes. The 'p' bit is clear if direct pointers are used, and set for
+     * indirect pointers. Pointers are always 6 bytes.
+     *
+     * @param forTree tree which is storing large value
+     * @param max maximum allowed size for returned byte array; must not be
+     * less than 11 (can be 9 if full value length is < 65536)
+     * @return null if max is too small
+     */
+    byte[] fragment(Tree forTree, byte[] value, int max) throws IOException {
+        int pageSize = pageSize();
+        int pageCount = value.length / pageSize;
+        int remainder = value.length % pageSize;
+
+        if (value.length >= 65536) {
+            // Subtract header size, full length field size, and size of one pointer.
+            max -= (1 + 4 + 6);
+        } else if (pageCount == 0 && remainder <= (max - (1 + 2 + 2))) {
+            // Entire value fits inline. It didn't really need to be
+            // encoded this way, but do as we're told.
+            byte[] newValue = new byte[(1 + 2 + 2) + value.length];
+            newValue[0] = 0x02; // ff=0, i=1, p=0
+            DataUtils.writeShort(newValue, 1, value.length);     // full length
+            DataUtils.writeShort(newValue, 1 + 2, value.length); // inline length
+            System.arraycopy(value, 0, newValue, (1 + 2 + 2), value.length);
+            return newValue;
+        } else {
+            // Subtract header size, full length field size, and size of one pointer.
+            max -= (1 + 2 + 6);
+        }
+
+        if (max < 0) {
+            return null;
+        }
+
+        byte[] newValue;
+        if (remainder <= max && remainder < 65536) {
+            // Remainder fits inline, minimizing internal fragmentation. All
+            // extra pages will be full.
+            byte header;
+            int offset;
+            if (value.length >= 65536) {
+                header = 0x06; // ff = 1, i=1
+                offset = 1 + 4;
+            } else {
+                header = 0x02; // ff = 0, i=1
+                offset = 1 + 2;
+            }
+
+            int pointerSpace = pageCount * 6;
+
+            if (pointerSpace <= (max + (6 - 2) - remainder)) {
+                // All pointers fit, so encode as direct.
+                int poffset = offset + 2 + remainder;
+                newValue = new byte[poffset + pointerSpace];
+                if (pageCount > 0) {
+                    int voffset = remainder;
+                    while (true) {
+                        Node node = allocDirtyNode(forTree);
+                        try {
+                            mFragmentCache.put(node);
+                            DataUtils.writeInt6(newValue, poffset, node.mId);
+                            System.arraycopy(value, voffset, node.mPage, 0, pageSize);
+                            if (pageCount == 1) {
+                                break;
+                            }
+                        } finally {
+                            node.releaseExclusive();
+                        }
+                        pageCount--;
+                        poffset += 6;
+                        voffset += pageSize;
+                    }
+                }
+            } else {
+                // Use indirect pointers.
+                newValue = new byte[offset + remainder + (2 + 6)];
+                // FIXME
+                throw null;
+            }
+
+            newValue[0] = header;
+            DataUtils.writeShort(newValue, offset, remainder); // inline length
+            System.arraycopy(value, 0, newValue, offset + 2, remainder);
+        } else {
+            // Remainder doesn't fit inline, so don't encode any inline
+            // content. Last extra page will not be full.
+            pageCount++;
+
+            byte header;
+            int offset;
+            if (value.length >= 65536) {
+                header = 0x04; // ff = 1, i=0
+                offset = 1 + 4;
+            } else {
+                header = 0x00; // ff = 0, i=0
+                offset = 1 + 2;
+            }
+
+            int pointerSpace = pageCount * 6;
+
+            if (pointerSpace <= (max + 6)) {
+                // All pointers fit, so encode as direct.
+                newValue = new byte[offset + pointerSpace];
+                if (pageCount > 0) {
+                    int voffset = 0;
+                    while (true) {
+                        Node node = allocDirtyNode(forTree);
+                        try {
+                            mFragmentCache.put(node);
+                            DataUtils.writeInt6(newValue, offset, node.mId);
+                            if (pageCount > 1) {
+                                System.arraycopy(value, voffset, node.mPage, 0, pageSize);
+                            } else {
+                                System.arraycopy(value, voffset, node.mPage, 0, remainder);
+                                break;
+                            }
+                        } finally {
+                            node.releaseExclusive();
+                        }
+                        pageCount--;
+                        offset += 6;
+                        voffset += pageSize;
+                    }
+                }
+            } else {
+                // Use indirect pointers.
+                newValue = new byte[offset + 6];
+                // FIXME
+                throw null;
+            }
+
+            newValue[0] = header;
+        }
+
+        // Encode full length field.
+        if (value.length >= 65536) {
+            DataUtils.writeInt(newValue, 1, value.length);
+        } else {
+            DataUtils.writeShort(newValue, 1, value.length);
+        }
+
+        return newValue;
+    }
+
+    /**
+     * Reconstruct a fragmented value.
+     */
+    byte[] reconstruct(byte[] fragmented, int off, int len) throws IOException {
+        int header = fragmented[off++];
+        int length;
+        switch ((header >> 2) & 0x02) {
+        default:
+            length = DataUtils.readUnsignedShort(fragmented, off);
+            off += 2;
+            len -= 2;
+            break;
+
+        case 1:
+            length = DataUtils.readInt(fragmented, off);
+            if (length < 0) {
+                throw new DatabaseException("Value is too large: " + (length & 0xffffffffL));
+            }
+            off += 4;
+            len -= 4;
+            break;
+
+        case 2:
+            throw new DatabaseException
+                ("Value is too large: " + DataUtils.readInt6(fragmented, off));
+
+        case 3:
+            // TODO: Length is unsigned. Special handling for negative value.
+            throw new DatabaseException
+                ("Value is too large: " + DataUtils.readLong(fragmented, off));
+        }
+
+        byte[] value;
+        try {
+            value = new byte[length];
+        } catch (OutOfMemoryError e) {
+            throw new DatabaseException("Value is too large: " + length, e);
+        }
+
+        int vOff = 0;
+        if ((header & 0x02) != 0) {
+            // Inline content.
+            int inLen = DataUtils.readUnsignedShort(fragmented, off);
+            off += 2;
+            len -= 2;
+            System.arraycopy(fragmented, off, value, vOff, inLen);
+            off += inLen;
+            len -= inLen;
+            vOff += inLen;
+        }
+
+        if ((header & 0x01) == 0) {
+            // Direct pointers.
+            while (len >= 6) {
+                long nodeId = DataUtils.readInt6(fragmented, off);
+                off += 6;
+                len -= 6;
+                Node node = mFragmentCache.get(nodeId);
+                try {
+                    byte[] page = node.mPage;
+                    System.arraycopy(page, 0, value, vOff, page.length);
+                    vOff += page.length;
+                } finally {
+                    node.releaseShared();
+                }
+            }
+        } else {
+            // Indirect pointers.
+            // FIXME
+        }
+
+        return value;
     }
 
     byte[] removeSpareBuffer() throws InterruptedIOException {

@@ -1,0 +1,277 @@
+/*
+ *  Copyright 2012 Brian S O'Neill
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.cojen.tupl;
+
+import java.io.IOException;
+
+/**
+ * Special cache implementation for fragment nodes, as used by fragmented
+ * values.
+ *
+ * @author Brian S O'Neill
+ */
+class FragmentCache {
+    private final LHT[] mHashTables;
+    private final int mHashTableShift;
+
+    FragmentCache(Database db, int maxCapacity) {
+        this(db, maxCapacity, Runtime.getRuntime().availableProcessors() * 16);
+    }
+
+    private FragmentCache(Database db, int maxCapacity, int numHashTables) {
+        numHashTables = Utils.roundUpPower2(numHashTables);
+        maxCapacity = (maxCapacity + numHashTables - 1) / numHashTables;
+        mHashTables = new LHT[numHashTables];
+        for (int i=0; i<numHashTables; i++) {
+            mHashTables[i] = new LHT(db, maxCapacity);
+        }
+        mHashTableShift = Integer.numberOfLeadingZeros(numHashTables - 1);
+    }
+
+    /**
+     * Returns the node with the given id, possibly loading it and evicting
+     * another.
+     *
+     * @return node shared latch held
+     */
+    Node get(long nodeId) throws IOException {
+        int hash = hash(nodeId);
+        return mHashTables[hash >>> mHashTableShift].get(nodeId, hash);
+    }
+
+    /**
+     * Stores the node, and possibly evicts another. As a side-effect, node
+     * type is set to TYPE_FRAGMENT. Node latch is not released, even if an
+     * exception is thrown.
+     *
+     * @param node exclusively latched node
+     */
+    void put(Node node) throws IOException {
+        int hash = hash(node.mId);
+        mHashTables[hash >>> mHashTableShift].put(node, hash);
+    }
+
+    static int hash(long nodeId) {
+        int hash = ((int) nodeId) ^ ((int) (nodeId >>> 32));
+        // Scramble the hashcode a bit, just like HashMap does.
+        hash ^= (hash >>> 20) ^ (hash >>> 12);
+        return hash ^ (hash >>> 7) ^ (hash >>> 4);
+    }
+
+    /**
+     * Simply "lossy" hashtable of Nodes. When a collision is found, the
+     * existing entry (if TYPE_FRAGMENT) might simply be evicted.
+     */
+    static final class LHT {
+        private static final float LOAD_FACTOR = 0.75f;
+
+        private final Database mDatabase;
+        private final int mMaxCapacity;
+        private final Latch mLatch;
+
+        private Node[] mEntries;
+        private int mSize;
+        private int mGrowThreshold;
+
+        LHT(Database db, int maxCapacity) {
+            // Initial capacity of must be a power of 2.
+            mEntries = new Node[Utils.roundUpPower2(Math.min(16, maxCapacity))];
+            mGrowThreshold = (int) (mEntries.length * LOAD_FACTOR);
+            mDatabase = db;
+            mMaxCapacity = maxCapacity;
+            mLatch = new Latch();
+        }
+
+        /**
+         * Returns the node with the given id, possibly loading it and evicting
+         * another.
+         *
+         * @return node with shared latch held
+         */
+        Node get(long nodeId, int hash) throws IOException {
+            Latch latch = mLatch;
+            latch.acquireShared();
+            boolean htEx = false;
+            boolean nEx = false;
+
+            while (true) {
+                Node[] entries = mEntries;
+                int index = hash & (entries.length - 1);
+                Node existing = entries[index];
+                if (existing != null && existing.mId == nodeId) {
+                    if (nEx) {
+                        existing.acquireExclusive();
+                    } else {
+                        existing.acquireShared();
+                    }
+                    if (existing.mId == nodeId) {
+                        latch.release(htEx);
+                        mDatabase.used(existing);
+                        if (nEx) {
+                            existing.downgrade();
+                        }
+                        return existing;
+                    }
+                }
+
+                // Need to have an exclusive lock before making
+                // modifications to hashtable.
+                if (!htEx) {
+                    htEx = true;
+                    if (!latch.tryUpgrade()) {
+                        existing.release(nEx);
+                        latch.releaseShared();
+                        latch.acquireExclusive();
+                        continue;
+                    }
+                }
+
+                if (existing != null) {
+                    if (existing.mType != Node.TYPE_FRAGMENT) {
+                        // Hashtable slot can be used without evicting anything.
+                        existing.release(nEx);
+                        existing = null;
+                    } else if (rehash(existing)) {
+                        // See if rehash eliminates collision.
+                        existing.release(nEx);
+                        continue;
+                    } else if (!nEx && !existing.tryUpgrade()) {
+                        // Exclusive latch is required for eviction.
+                        existing.releaseShared();
+                        nEx = true;
+                        continue;
+                    }
+                }
+
+                // Allocate node and reserve slot.
+                Node node = mDatabase.allocLatchedNode();
+                node.mId = nodeId;
+                node.mType = Node.TYPE_FRAGMENT;
+                entries[index] = node;
+
+                // Evict and load without ht latch held.
+                latch.releaseExclusive();
+
+                if (existing != null) {
+                    try {
+                        existing.doEvict(mDatabase);
+                        existing.releaseExclusive();
+                    } catch (IOException e) {
+                        node.mId = 0;
+                        node.releaseExclusive();
+                        throw e;
+                    }
+                }
+
+                mDatabase.readPage(nodeId, node.mPage);
+
+                node.downgrade();
+                return node;
+            }
+        }
+
+        /**
+         * Stores the node, and possibly evicts another. Node latch is not
+         * released, even if an exception is thrown.
+         *
+         * @param node latched node
+         */
+        void put(Node node, int hash) throws IOException {
+            Latch latch = mLatch;
+            latch.acquireExclusive();
+
+            while (true) {
+                Node[] entries = mEntries;
+                int index = hash & (entries.length - 1);
+                Node existing = entries[index];
+                if (existing != null) {
+                    existing.acquireExclusive();
+                    if (existing.mType != Node.TYPE_FRAGMENT) {
+                        // Hashtable slot can be used without evicting anything.
+                        existing.releaseExclusive();
+                        existing = null;
+                    } else if (rehash(existing)) {
+                        // See if rehash eliminates collision.
+                        existing.releaseExclusive();
+                        continue;
+                    }
+                }
+
+                node.mType = Node.TYPE_FRAGMENT;
+                entries[index] = node;
+
+                // Evict without ht latch held.
+                latch.releaseExclusive();
+
+                if (existing != null) {
+                    existing.doEvict(mDatabase);
+                    existing.releaseExclusive();
+                }
+
+                return;
+            }
+        }
+
+        /**
+         * Caller must hold exclusive latch.
+         *
+         * @param n latched node
+         * @return false if not rehashed
+         */
+        private boolean rehash(Node n) {
+            Node[] entries;
+            int capacity;
+            int size = mSize;
+            if (size < mGrowThreshold ||
+                (capacity = (entries = mEntries).length) >= mMaxCapacity)
+            {
+                return false;
+            }
+
+            capacity <<= 1;
+            Node[] newEntries = new Node[capacity];
+            int newMask = capacity - 1;
+
+            for (int i=entries.length; --i>=0 ;) {
+                Node e = entries[i];
+                if (e != null) {
+                    long id;
+                    if (e == n) {
+                        if (e.mType != Node.TYPE_FRAGMENT) {
+                            continue;
+                        }
+                        id = e.mId;
+                    } else {
+                        e.acquireShared();
+                        id = e.mId;
+                        if (e.mType != Node.TYPE_FRAGMENT) {
+                            e.releaseShared();
+                            continue;
+                        }
+                        e.releaseShared();
+                    }
+                    newEntries[hash(id) & newMask] = e;
+                }
+            }
+
+            mEntries = entries = newEntries;
+            mGrowThreshold = (int) (capacity * LOAD_FACTOR);
+
+            return true;
+        }
+    }
+}
