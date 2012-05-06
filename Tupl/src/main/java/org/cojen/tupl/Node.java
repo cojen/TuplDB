@@ -1102,7 +1102,7 @@ final class Node extends Latch {
             if (value == null) {
                 throw new DatabaseException("Key is too large: " + key.length);
             }
-            encodedLen = encodedKeyLen + calculateLeafValueLength(value);
+            encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
             fragmented = VALUE_FRAGMENTED;
         }
 
@@ -1911,6 +1911,14 @@ final class Node extends Latch {
     private static int calculateLeafValueLength(byte[] value) {
         int len = value.length;
         return len + ((len <= 127) ? 1 : ((len <= 8192) ? 2 : 3));
+    }
+
+    /**
+     * Calculate encoded value length for leaf, including header.
+     */
+    private static int calculateFragmentedValueLength(byte[] value) {
+        int len = value.length;
+        return len + ((len <= 8192) ? 2 : 3);
     }
 
     /**
