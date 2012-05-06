@@ -1098,9 +1098,10 @@ final class Node extends Latch {
         if (encodedLen <= tree.mMaxEntrySize) {
             fragmented = 0;
         } else {
-            value = tree.mDatabase.fragment(tree, value, tree.mMaxEntrySize - encodedKeyLen);
+            Database db = tree.mDatabase;
+            value = db.fragment(tree, value, db.mMaxFragmentedEntrySize - encodedKeyLen);
             if (value == null) {
-                throw new DatabaseException("Key is too large: " + key.length);
+                throw new LargeKeyException(key.length);
             }
             encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
             fragmented = VALUE_FRAGMENTED;
@@ -1109,7 +1110,6 @@ final class Node extends Latch {
         int entryLoc = createLeafEntry(tree, pos, encodedLen);
 
         if (entryLoc < 0) {
-            // FIXME: might not fit; fragment if not already fragmented
             splitLeafAndCreateEntry(tree, key, fragmented, value, encodedLen, pos, true);
         } else {
             copyToLeafEntry(key, fragmented, value, entryLoc);
@@ -2153,20 +2153,7 @@ final class Node extends Latch {
             if (newLoc == 0) {
                 // Unable to insert new entry into left node. Insert it into the right
                 // node, which should have space now.
-                pos = binarySearch(key);
-                if (forInsert) {
-                    if (pos >= 0) {
-                        throw new AssertionError("Key exists");
-                    }
-                    // FIXME: might not fit
-                    copyToLeafEntry(key, fragmented, value,
-                                    createLeafEntry(tree, ~pos, encodedLen));
-                } else {
-                    if (pos < 0) {
-                        throw new AssertionError("Key not found");
-                    }
-                    updateLeafValue(tree, pos, value);
-                }
+                storeIntoSplitLeaf(tree, key, fragmented, value, encodedLen, forInsert);
             } else {
                 // Create new entry and point to it.
                 destLoc -= encodedLen;
@@ -2241,20 +2228,7 @@ final class Node extends Latch {
             if (newLoc == 0) {
                 // Unable to insert new entry into new right node. Insert it into the left
                 // node, which should have space now.
-                pos = binarySearch(key);
-                if (forInsert) {
-                    if (pos >= 0) {
-                        throw new AssertionError("Key exists");
-                    }
-                    // FIXME: might not fit
-                    copyToLeafEntry(key, fragmented, value,
-                                    createLeafEntry(tree, ~pos, encodedLen));
-                } else {
-                    if (pos < 0) {
-                        throw new AssertionError("Key not found");
-                    }
-                    updateLeafValue(tree, pos, value);
-                }
+                storeIntoSplitLeaf(tree, key, fragmented, value, encodedLen, forInsert);
             } else {
                 // Create new entry and point to it.
                 newNode.copyToLeafEntry(key, fragmented, value, destLoc);
@@ -2269,6 +2243,41 @@ final class Node extends Latch {
 
             // Split key is copied from the new right node.
             mSplit = new Split(true, newNode, newNode.retrieveKey(0));
+        }
+    }
+
+    /**
+     * Store an entry into a node which has just been split and has room.
+     */
+    private void storeIntoSplitLeaf(Tree tree, byte[] key, int fragmented, byte[] value,
+                                    int encodedLen, boolean forInsert)
+        throws IOException
+    {
+        int pos = binarySearch(key);
+        if (forInsert) {
+            if (pos >= 0) {
+                throw new AssertionError("Key exists");
+            }
+            int entryLoc = createLeafEntry(tree, ~pos, encodedLen);
+            while (entryLoc < 0) {
+                if (fragmented != 0) {
+                    // FIXME: Can this happen?
+                    throw new DatabaseException("Fragmented entry doesn't fit");
+                }
+                value = tree.mDatabase.fragment(tree, value, ~entryLoc);
+                if (value == null) {
+                    throw new LargeKeyException(key.length);
+                }
+                fragmented = VALUE_FRAGMENTED;
+                encodedLen = calculateKeyLength(key) + calculateFragmentedValueLength(value);
+                entryLoc = createLeafEntry(tree, ~pos, encodedLen);
+            }
+            copyToLeafEntry(key, fragmented, value, entryLoc);
+        } else {
+            if (pos < 0) {
+                throw new AssertionError("Key not found");
+            }
+            updateLeafValue(tree, pos, value);
         }
     }
 

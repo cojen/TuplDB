@@ -117,6 +117,7 @@ public final class Database implements Closeable {
     private final OrderedPageAllocator mAllocator;
 
     private final FragmentCache mFragmentCache;
+    final int mMaxFragmentedEntrySize;
 
     private final Object mTxnIdLock = new Object();
     // The following fields are guarded by mTxnIdLock.
@@ -278,6 +279,11 @@ public final class Database implements Closeable {
                 (mPageStore, openInternalTree(Tree.PAGE_ALLOCATOR, true));
 
             mFragmentCache = new FragmentCache(this, mMaxNodeCount);
+
+            // Limit maximum fragmented entry size to guarantee that 2 entries
+            // fit. Each also requires 2 bytes for pointer and up to 3 bytes
+            // for value length field.
+            mMaxFragmentedEntrySize = (pageSize - Node.TN_HEADER_SIZE - (2 + 3 + 2 + 3)) >> 1;
 
             // Perform recovery by examining redo and undo logs.
 
@@ -1207,10 +1213,15 @@ public final class Database implements Closeable {
             return null;
         }
 
+        int pointerSpace = pageCount * 6;
+
         byte[] newValue;
-        if (remainder <= max && remainder < 65536) {
+        if (remainder <= max && remainder < 65536
+            && (pointerSpace <= (max + (6 - 2) - remainder)))
+        {
             // Remainder fits inline, minimizing internal fragmentation. All
-            // extra pages will be full.
+            // extra pages will be full. All pointers fit too; encode direct.
+
             byte header;
             int offset;
             if (value.length >= 65536) {
@@ -1221,36 +1232,26 @@ public final class Database implements Closeable {
                 offset = 1 + 2;
             }
 
-            int pointerSpace = pageCount * 6;
-
-            if (pointerSpace <= (max + (6 - 2) - remainder)) {
-                // All pointers fit, so encode as direct.
-                int poffset = offset + 2 + remainder;
-                newValue = new byte[poffset + pointerSpace];
-                if (pageCount > 0) {
-                    int voffset = remainder;
-                    while (true) {
-                        Node node = allocDirtyNode(forTree);
-                        try {
-                            mFragmentCache.put(node);
-                            DataUtils.writeInt6(newValue, poffset, node.mId);
-                            System.arraycopy(value, voffset, node.mPage, 0, pageSize);
-                            if (pageCount == 1) {
-                                break;
-                            }
-                        } finally {
-                            node.releaseExclusive();
+            int poffset = offset + 2 + remainder;
+            newValue = new byte[poffset + pointerSpace];
+            if (pageCount > 0) {
+                int voffset = remainder;
+                while (true) {
+                    Node node = allocDirtyNode(forTree);
+                    try {
+                        mFragmentCache.put(node);
+                        DataUtils.writeInt6(newValue, poffset, node.mId);
+                        System.arraycopy(value, voffset, node.mPage, 0, pageSize);
+                        if (pageCount == 1) {
+                            break;
                         }
-                        pageCount--;
-                        poffset += 6;
-                        voffset += pageSize;
+                    } finally {
+                        node.releaseExclusive();
                     }
+                    pageCount--;
+                    poffset += 6;
+                    voffset += pageSize;
                 }
-            } else {
-                // Use indirect pointers.
-                newValue = new byte[offset + remainder + (2 + 6)];
-                // FIXME
-                throw null;
             }
 
             newValue[0] = header;
@@ -1260,6 +1261,7 @@ public final class Database implements Closeable {
             // Remainder doesn't fit inline, so don't encode any inline
             // content. Last extra page will not be full.
             pageCount++;
+            pointerSpace += 6;
 
             byte header;
             int offset;
@@ -1270,8 +1272,6 @@ public final class Database implements Closeable {
                 header = 0x00; // ff = 0, i=0
                 offset = 1 + 2;
             }
-
-            int pointerSpace = pageCount * 6;
 
             if (pointerSpace <= (max + 6)) {
                 // All pointers fit, so encode as direct.
