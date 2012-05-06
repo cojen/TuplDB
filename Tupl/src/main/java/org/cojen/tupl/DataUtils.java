@@ -33,6 +33,16 @@ class DataUtils {
             ((b[offset + 2] & 0xff) << 8) | (b[offset + 3] & 0xff);
     }
 
+    public static final long readInt6(byte[] b, int offset) {
+        return
+            (((long)(((b[offset    ] & 0xff) << 8 ) | 
+                     ((b[offset + 1] & 0xff)      ))              ) << 32) |
+            (((long)(((b[offset + 2]       ) << 24) |
+                     ((b[offset + 3] & 0xff) << 16) |
+                     ((b[offset + 4] & 0xff) << 8 ) | 
+                     ((b[offset + 5] & 0xff)      )) & 0xffffffffL)      );
+    }
+
     public static final long readLong(byte[] b, int offset) {
         return
             (((long)(((b[offset    ]       ) << 24) |
@@ -237,6 +247,17 @@ class DataUtils {
         b[offset + 1] = (byte)(v >> 16);
         b[offset + 2] = (byte)(v >> 8);
         b[offset + 3] = (byte)v;
+    }
+
+    public static final void writeInt6(byte[] b, int offset, long v) {
+        int w = (int)(v >> 32);
+        b[offset    ] = (byte)(w >> 8);
+        b[offset + 1] = (byte)w;
+        w = (int)v;
+        b[offset + 2] = (byte)(w >> 24);
+        b[offset + 3] = (byte)(w >> 16);
+        b[offset + 4] = (byte)(w >> 8);
+        b[offset + 5] = (byte)w;
     }
 
     public static final void writeLong(byte[] b, int offset, long v) {
