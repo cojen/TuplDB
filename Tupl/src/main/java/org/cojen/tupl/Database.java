@@ -1182,12 +1182,13 @@ public final class Database implements Closeable {
      * bytes. The 'p' bit is clear if direct pointers are used, and set for
      * indirect pointers. Pointers are always 6 bytes.
      *
+     * @param caller optional tree node which is latched and calling this method
      * @param forTree tree which is storing large value
      * @param max maximum allowed size for returned byte array; must not be
      * less than 11 (can be 9 if full value length is < 65536)
      * @return null if max is too small
      */
-    byte[] fragment(Tree forTree, byte[] value, int max) throws IOException {
+    byte[] fragment(Node caller, Tree forTree, byte[] value, int max) throws IOException {
         int pageSize = pageSize();
         int pageCount = value.length / pageSize;
         int remainder = value.length % pageSize;
@@ -1239,7 +1240,7 @@ public final class Database implements Closeable {
                 while (true) {
                     Node node = allocDirtyNode(forTree);
                     try {
-                        mFragmentCache.put(node);
+                        mFragmentCache.put(caller, node);
                         DataUtils.writeInt6(newValue, poffset, node.mId);
                         System.arraycopy(value, voffset, node.mPage, 0, pageSize);
                         if (pageCount == 1) {
@@ -1281,7 +1282,7 @@ public final class Database implements Closeable {
                     while (true) {
                         Node node = allocDirtyNode(forTree);
                         try {
-                            mFragmentCache.put(node);
+                            mFragmentCache.put(caller, node);
                             DataUtils.writeInt6(newValue, offset, node.mId);
                             if (pageCount > 1) {
                                 System.arraycopy(value, voffset, node.mPage, 0, pageSize);
@@ -1319,8 +1320,10 @@ public final class Database implements Closeable {
 
     /**
      * Reconstruct a fragmented value.
+     *
+     * @param caller optional tree node which is latched and calling this method
      */
-    byte[] reconstruct(byte[] fragmented, int off, int len) throws IOException {
+    byte[] reconstruct(Node caller, byte[] fragmented, int off, int len) throws IOException {
         int header = fragmented[off++];
         int length;
         switch ((header >> 2) & 0x02) {
@@ -1374,7 +1377,7 @@ public final class Database implements Closeable {
                 long nodeId = DataUtils.readInt6(fragmented, off);
                 off += 6;
                 len -= 6;
-                Node node = mFragmentCache.get(nodeId);
+                Node node = mFragmentCache.get(caller, nodeId);
                 try {
                     byte[] page = node.mPage;
                     System.arraycopy(page, 0, value, vOff, page.length);
