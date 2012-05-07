@@ -961,10 +961,10 @@ final class Node extends Latch {
         int loc = readUnsignedShort(page, mSearchVecStart + pos);
         int header = page[loc++];
         loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
-        return retrieveLeafValueAtLoc(tree, page, loc);
+        return retrieveLeafValueAtLoc(this, tree, page, loc);
     }
 
-    private static byte[] retrieveLeafValueAtLoc(Tree tree, byte[] page, int loc)
+    private static byte[] retrieveLeafValueAtLoc(Node caller, Tree tree, byte[] page, int loc)
         throws IOException
     {
         final int header = page[loc++];
@@ -979,13 +979,13 @@ final class Node extends Latch {
             if ((header & 0x20) == 0) {
                 len = 1 + (((header & 0x1f) << 8) | (page[loc++] & 0xff));
                 if ((header & VALUE_FRAGMENTED) != 0) {
-                    return tree.mDatabase.reconstruct(page, loc, len);
+                    return tree.mDatabase.reconstruct(caller, page, loc, len);
                 }
             } else if (header != -1) {
                 len = 1 + (((header & 0x0f) << 16)
                            | ((page[loc++] & 0xff) << 8) | (page[loc++] & 0xff));
                 if ((header & VALUE_FRAGMENTED) != 0) {
-                    return tree.mDatabase.reconstruct(page, loc, len);
+                    return tree.mDatabase.reconstruct(caller, page, loc, len);
                 }
             } else {
                 // tombstone
@@ -1010,7 +1010,7 @@ final class Node extends Latch {
         byte[] key = new byte[keyLen];
         System.arraycopy(page, loc, key, 0, keyLen);
         cursor.mKey = key;
-        cursor.mValue = retrieveLeafValueAtLoc(cursor.mTree, page, loc + keyLen);
+        cursor.mValue = retrieveLeafValueAtLoc(this, cursor.mTree, page, loc + keyLen);
     }
 
     /**
@@ -1038,7 +1038,7 @@ final class Node extends Latch {
         byte[] key = new byte[keyLen];
         System.arraycopy(entry, loc, key, 0, keyLen);
         // FIXME: Special requirements for fragmented entries.
-        return new byte[][] {key, retrieveLeafValueAtLoc(null, entry, loc + keyLen)};
+        return new byte[][] {key, retrieveLeafValueAtLoc(null, null, entry, loc + keyLen)};
     }
 
     /**
@@ -1099,7 +1099,7 @@ final class Node extends Latch {
             fragmented = 0;
         } else {
             Database db = tree.mDatabase;
-            value = db.fragment(tree, value, db.mMaxFragmentedEntrySize - encodedKeyLen);
+            value = db.fragment(this, tree, value, db.mMaxFragmentedEntrySize - encodedKeyLen);
             if (value == null) {
                 throw new LargeKeyException(key.length);
             }
@@ -2264,7 +2264,7 @@ final class Node extends Latch {
                     // FIXME: Can this happen?
                     throw new DatabaseException("Fragmented entry doesn't fit");
                 }
-                value = tree.mDatabase.fragment(tree, value, ~entryLoc);
+                value = tree.mDatabase.fragment(this, tree, value, ~entryLoc);
                 if (value == null) {
                     throw new LargeKeyException(key.length);
                 }

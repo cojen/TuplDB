@@ -46,11 +46,12 @@ class FragmentCache {
      * Returns the node with the given id, possibly loading it and evicting
      * another.
      *
+     * @param caller optional tree node which is latched and calling this method
      * @return node shared latch held
      */
-    Node get(long nodeId) throws IOException {
+    Node get(Node caller, long nodeId) throws IOException {
         int hash = hash(nodeId);
-        return mHashTables[hash >>> mHashTableShift].get(nodeId, hash);
+        return mHashTables[hash >>> mHashTableShift].get(caller, nodeId, hash);
     }
 
     /**
@@ -58,22 +59,27 @@ class FragmentCache {
      * type is set to TYPE_FRAGMENT. Node latch is not released, even if an
      * exception is thrown.
      *
+     * @param caller optional tree node which is latched and calling this method
      * @param node exclusively latched node
      */
-    void put(Node node) throws IOException {
+    void put(Node caller, Node node) throws IOException {
         int hash = hash(node.mId);
-        mHashTables[hash >>> mHashTableShift].put(node, hash);
+        mHashTables[hash >>> mHashTableShift].put(caller, node, hash);
     }
 
     static int hash(long nodeId) {
         int hash = ((int) nodeId) ^ ((int) (nodeId >>> 32));
-        // Scramble the hashcode a bit, just like HashMap does.
-        hash ^= (hash >>> 20) ^ (hash >>> 12);
-        return hash ^ (hash >>> 7) ^ (hash >>> 4);
+        // Scramble the hashcode a bit, just like ConcurrentHashMap does.
+        hash += (hash <<  15) ^ 0xffffcd7d;
+        hash ^= (hash >>> 10);
+        hash += (hash <<   3);
+        hash ^= (hash >>>  6);
+        hash += (hash <<   2) + (hash << 14);
+        return hash ^ (hash >>> 16);
     }
 
     /**
-     * Simply "lossy" hashtable of Nodes. When a collision is found, the
+     * Simple "lossy" hashtable of Nodes. When a collision is found, the
      * existing entry (if TYPE_FRAGMENT) might simply be evicted.
      */
     static final class LHT {
@@ -84,6 +90,7 @@ class FragmentCache {
         private final Latch mLatch;
 
         private Node[] mEntries;
+        // FIXME: adjust size
         private int mSize;
         private int mGrowThreshold;
 
@@ -100,9 +107,10 @@ class FragmentCache {
          * Returns the node with the given id, possibly loading it and evicting
          * another.
          *
+         * @param caller optional tree node which is latched and calling this method
          * @return node with shared latch held
          */
-        Node get(long nodeId, int hash) throws IOException {
+        Node get(Node caller, long nodeId, int hash) throws IOException {
             Latch latch = mLatch;
             latch.acquireShared();
             boolean htEx = false;
@@ -112,19 +120,23 @@ class FragmentCache {
                 Node[] entries = mEntries;
                 int index = hash & (entries.length - 1);
                 Node existing = entries[index];
-                if (existing != null && existing.mId == nodeId) {
-                    if (nEx) {
-                        existing.acquireExclusive();
+                if (existing != null) {
+                    if (existing == caller || existing.mId != nodeId) {
+                        existing = null;
                     } else {
-                        existing.acquireShared();
-                    }
-                    if (existing.mId == nodeId) {
-                        latch.release(htEx);
-                        mDatabase.used(existing);
                         if (nEx) {
-                            existing.downgrade();
+                            existing.acquireExclusive();
+                        } else {
+                            existing.acquireShared();
                         }
-                        return existing;
+                        if (existing.mId == nodeId) {
+                            latch.release(htEx);
+                            mDatabase.used(existing);
+                            if (nEx) {
+                                existing.downgrade();
+                            }
+                            return existing;
+                        }
                     }
                 }
 
@@ -133,7 +145,9 @@ class FragmentCache {
                 if (!htEx) {
                     htEx = true;
                     if (!latch.tryUpgrade()) {
-                        existing.release(nEx);
+                        if (existing != null) {
+                            existing.release(nEx);
+                        }
                         latch.releaseShared();
                         latch.acquireExclusive();
                         continue;
@@ -145,7 +159,7 @@ class FragmentCache {
                         // Hashtable slot can be used without evicting anything.
                         existing.release(nEx);
                         existing = null;
-                    } else if (rehash(existing)) {
+                    } else if (rehash(caller, existing)) {
                         // See if rehash eliminates collision.
                         existing.release(nEx);
                         continue;
@@ -188,9 +202,10 @@ class FragmentCache {
          * Stores the node, and possibly evicts another. Node latch is not
          * released, even if an exception is thrown.
          *
+         * @param caller optional tree node which is latched and calling this method
          * @param node latched node
          */
-        void put(Node node, int hash) throws IOException {
+        void put(Node caller, Node node, int hash) throws IOException {
             Latch latch = mLatch;
             latch.acquireExclusive();
 
@@ -199,15 +214,19 @@ class FragmentCache {
                 int index = hash & (entries.length - 1);
                 Node existing = entries[index];
                 if (existing != null) {
-                    existing.acquireExclusive();
-                    if (existing.mType != Node.TYPE_FRAGMENT) {
-                        // Hashtable slot can be used without evicting anything.
-                        existing.releaseExclusive();
+                    if (existing == caller || existing == node) {
                         existing = null;
-                    } else if (rehash(existing)) {
-                        // See if rehash eliminates collision.
-                        existing.releaseExclusive();
-                        continue;
+                    } else {
+                        existing.acquireExclusive();
+                        if (existing.mType != Node.TYPE_FRAGMENT) {
+                            // Hashtable slot can be used without evicting anything.
+                            existing.releaseExclusive();
+                            existing = null;
+                        } else if (rehash(caller, existing)) {
+                            // See if rehash eliminates collision.
+                            existing.releaseExclusive();
+                            continue;
+                        }
                     }
                 }
 
@@ -232,7 +251,7 @@ class FragmentCache {
          * @param n latched node
          * @return false if not rehashed
          */
-        private boolean rehash(Node n) {
+        private boolean rehash(Node caller, Node n) {
             Node[] entries;
             int capacity;
             int size = mSize;
@@ -248,7 +267,7 @@ class FragmentCache {
 
             for (int i=entries.length; --i>=0 ;) {
                 Node e = entries[i];
-                if (e != null) {
+                if (e != null && e != caller) {
                     long id;
                     if (e == n) {
                         if (e.mType != Node.TYPE_FRAGMENT) {
