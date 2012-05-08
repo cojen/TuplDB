@@ -1173,8 +1173,8 @@ final class Node extends Latch {
                 // for entry pointer, key length, and value length. Key and
                 // value length might only require only require 1 byte fields,
                 // but be safe and choose the larger size of 2.
-                int max = leftSpace + rightSpace - (2 + 2 + 2);
-                return max < 0 ? -1 : ~max;
+                int max = mGarbage + leftSpace + rightSpace - (2 + 2 + 2);
+                return max <= 0 ? -1 : ~max;
             }
 
             int vecLen = searchVecEnd - searchVecStart + 2;
@@ -2264,12 +2264,14 @@ final class Node extends Latch {
                     // FIXME: Can this happen?
                     throw new DatabaseException("Fragmented entry doesn't fit");
                 }
-                value = tree.mDatabase.fragment(this, tree, value, ~entryLoc);
+                int max = Math.min(~entryLoc, tree.mDatabase.mMaxFragmentedEntrySize);
+                int encodedKeyLen = calculateKeyLength(key);
+                value = tree.mDatabase.fragment(this, tree, value, max - encodedKeyLen);
                 if (value == null) {
                     throw new LargeKeyException(key.length);
                 }
                 fragmented = VALUE_FRAGMENTED;
-                encodedLen = calculateKeyLength(key) + calculateFragmentedValueLength(value);
+                encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
                 entryLoc = createLeafEntry(tree, ~pos, encodedLen);
             }
             copyToLeafEntry(key, fragmented, value, entryLoc);
