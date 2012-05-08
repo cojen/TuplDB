@@ -1325,38 +1325,50 @@ public final class Database implements Closeable {
      */
     byte[] reconstruct(Node caller, byte[] fragmented, int off, int len) throws IOException {
         int header = fragmented[off++];
-        int length;
-        switch ((header >> 2) & 0x02) {
+        int vLen;
+        switch ((header >> 2) & 0x03) {
         default:
-            length = DataUtils.readUnsignedShort(fragmented, off);
+            vLen = DataUtils.readUnsignedShort(fragmented, off);
             off += 2;
             len -= 2;
             break;
 
         case 1:
-            length = DataUtils.readInt(fragmented, off);
-            if (length < 0) {
-                throw new DatabaseException("Value is too large: " + (length & 0xffffffffL));
+            vLen = DataUtils.readInt(fragmented, off);
+            if (vLen < 0) {
+                throw new DatabaseException("Value is too large: " + (vLen & 0xffffffffL));
             }
             off += 4;
             len -= 4;
             break;
 
         case 2:
-            throw new DatabaseException
-                ("Value is too large: " + DataUtils.readInt6(fragmented, off));
+            long vLenL = DataUtils.readInt6(fragmented, off);
+            if (vLenL > Integer.MAX_VALUE) {
+                throw new DatabaseException("Value is too large: " + vLenL);
+            }
+            vLen = (int) vLenL;
+            off += 6;
+            len -= 6;
+            break;
 
         case 3:
-            // TODO: Length is unsigned. Special handling for negative value.
-            throw new DatabaseException
-                ("Value is too large: " + DataUtils.readLong(fragmented, off));
+            vLenL = DataUtils.readLong(fragmented, off);
+            if (vLenL < 0 || vLenL > Integer.MAX_VALUE) {
+                // TODO: Special handling for printing unsigned long.
+                throw new DatabaseException("Value is too large: " + vLenL);
+            }
+            vLen = (int) vLenL;
+            off += 8;
+            len -= 8;
+            break;
         }
 
         byte[] value;
         try {
-            value = new byte[length];
+            value = new byte[vLen];
         } catch (OutOfMemoryError e) {
-            throw new DatabaseException("Value is too large: " + length, e);
+            throw new DatabaseException("Value is too large: " + vLen, e);
         }
 
         int vOff = 0;
@@ -1369,6 +1381,7 @@ public final class Database implements Closeable {
             off += inLen;
             len -= inLen;
             vOff += inLen;
+            vLen -= inLen;
         }
 
         if ((header & 0x01) == 0) {
@@ -1380,8 +1393,10 @@ public final class Database implements Closeable {
                 Node node = mFragmentCache.get(caller, nodeId);
                 try {
                     byte[] page = node.mPage;
-                    System.arraycopy(page, 0, value, vOff, page.length);
-                    vOff += page.length;
+                    int pLen = Math.min(vLen, page.length);
+                    System.arraycopy(page, 0, value, vOff, pLen);
+                    vOff += pLen;
+                    vLen -= pLen;
                 } finally {
                     node.releaseShared();
                 }
