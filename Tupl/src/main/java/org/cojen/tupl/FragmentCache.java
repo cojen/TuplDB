@@ -67,6 +67,15 @@ class FragmentCache {
         mHashTables[hash >>> mHashTableShift].put(caller, node, hash);
     }
 
+    /**
+     * @param caller optional tree node which is latched and calling this method
+     * @return exclusively latched node if found; null if not found
+     */
+    Node remove(Node caller, long nodeId) {
+        int hash = hash(nodeId);
+        return mHashTables[hash >>> mHashTableShift].remove(caller, nodeId, hash);
+    }
+
     static int hash(long nodeId) {
         int hash = ((int) nodeId) ^ ((int) (nodeId >>> 32));
         // Scramble the hashcode a bit, just like ConcurrentHashMap does.
@@ -243,6 +252,27 @@ class FragmentCache {
 
                 return;
             }
+        }
+
+        Node remove(Node caller, long nodeId, int hash) {
+            Latch latch = mLatch;
+            latch.acquireExclusive();
+
+            Node[] entries = mEntries;
+            int index = hash & (entries.length - 1);
+            Node existing = entries[index];
+            if (existing != null && existing != caller && existing.mId == nodeId) {
+                existing.acquireExclusive();
+                if (existing.mId == nodeId) {
+                    entries[index] = null;
+                    latch.releaseExclusive();
+                    return existing;
+                }
+                existing.releaseExclusive();
+            }
+
+            latch.releaseExclusive();
+            return null;
         }
 
         /**
