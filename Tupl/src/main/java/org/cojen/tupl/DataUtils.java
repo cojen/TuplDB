@@ -33,7 +33,7 @@ class DataUtils {
             ((b[offset + 2] & 0xff) << 8) | (b[offset + 3] & 0xff);
     }
 
-    public static final long readInt6(byte[] b, int offset) {
+    public static final long readUnsignedInt48(byte[] b, int offset) {
         return
             (((long)(((b[offset    ] & 0xff) << 8 ) | 
                      ((b[offset + 1] & 0xff)      ))              ) << 32) |
@@ -249,7 +249,7 @@ class DataUtils {
         b[offset + 3] = (byte)v;
     }
 
-    public static final void writeInt6(byte[] b, int offset, long v) {
+    public static final void writeInt48(byte[] b, int offset, long v) {
         int w = (int)(v >> 32);
         b[offset    ] = (byte)(w >> 8);
         b[offset + 1] = (byte)w;

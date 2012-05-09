@@ -978,18 +978,15 @@ final class Node extends Latch {
         } else {
             if ((header & 0x20) == 0) {
                 len = 1 + (((header & 0x1f) << 8) | (page[loc++] & 0xff));
-                if ((header & VALUE_FRAGMENTED) != 0) {
-                    return tree.mDatabase.reconstruct(caller, page, loc, len);
-                }
             } else if (header != -1) {
                 len = 1 + (((header & 0x0f) << 16)
                            | ((page[loc++] & 0xff) << 8) | (page[loc++] & 0xff));
-                if ((header & VALUE_FRAGMENTED) != 0) {
-                    return tree.mDatabase.reconstruct(caller, page, loc, len);
-                }
             } else {
                 // tombstone
                 return null;
+            }
+            if ((header & VALUE_FRAGMENTED) != 0) {
+                return tree.mDatabase.reconstruct(caller, page, loc, len);
             }
         }
 
@@ -1062,15 +1059,15 @@ final class Node extends Latch {
         int loc = entryLoc;
         int header = page[loc++];
         loc += (header >= 0 ? (header & 0x3f) : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
-        int len = page[loc++];
-        if (len >= 0) {
-            loc += len;
+        header = page[loc++];
+        if (header >= 0) {
+            loc += header;
         } else {
-            if ((len & 0x20) == 0) {
-                loc += 2 + (((len & 0x1f) << 8) | (page[loc] & 0xff));
-            } else if (len != -1) {
-                loc += 3 +
-                    (((len & 0x0f) << 16) | ((page[loc] & 0xff) << 8) | (page[loc + 1] & 0xff));
+            if ((header & 0x20) == 0) {
+                loc += 2 + (((header & 0x1f) << 8) | (page[loc] & 0xff));
+            } else if (header != -1) {
+                loc += 3 + (((header & 0x0f) << 16)
+                            | ((page[loc] & 0xff) << 8) | (page[loc + 1] & 0xff));
             }
         }
         return loc - entryLoc;
@@ -1646,13 +1643,38 @@ final class Node extends Latch {
     /**
      * @param pos position as provided by binarySearch; must be positive
      */
-    void deleteLeafEntry(int pos) {
+    void deleteLeafEntry(Tree tree, int pos) throws IOException {
         final byte[] page = mPage;
 
         int searchVecStart = mSearchVecStart;
-        int entryLoc = readUnsignedShort(page, searchVecStart + pos);
+        final int entryLoc = readUnsignedShort(page, searchVecStart + pos);
+
+        // Note: Similar to leafEntryLengthAtLoc and retrieveLeafValueAtLoc.
+        int loc = entryLoc;
+        int header = page[loc++];
+        loc += (header >= 0 ? (header & 0x3f) : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
+        header = page[loc++];
+        if (header >= 0) {
+            loc += header;
+        } else largeValue: {
+            int len;
+            if ((header & 0x20) == 0) {
+                len = 1 + (((header & 0x1f) << 8) | (page[loc++] & 0xff));
+            } else if (header != -1) {
+                len = 1 + (((header & 0x0f) << 16)
+                           | ((page[loc++] & 0xff) << 8) | (page[loc++] & 0xff));
+            } else {
+                // tombstone
+                break largeValue;
+            }
+            if ((header & VALUE_FRAGMENTED) != 0) {
+                tree.mDatabase.deleteFragments(this, tree, page, loc, len);
+            }
+            loc += len;
+        }
+
         // Increment garbage by the size of the encoded entry.
-        mGarbage += leafEntryLengthAtLoc(page, entryLoc);
+        mGarbage += loc - entryLoc;
 
         int searchVecEnd = mSearchVecEnd;
 

@@ -1241,7 +1241,7 @@ public final class Database implements Closeable {
                     Node node = allocDirtyNode(forTree);
                     try {
                         mFragmentCache.put(caller, node);
-                        DataUtils.writeInt6(newValue, poffset, node.mId);
+                        DataUtils.writeInt48(newValue, poffset, node.mId);
                         System.arraycopy(value, voffset, node.mPage, 0, pageSize);
                         if (pageCount == 1) {
                             break;
@@ -1283,7 +1283,7 @@ public final class Database implements Closeable {
                         Node node = allocDirtyNode(forTree);
                         try {
                             mFragmentCache.put(caller, node);
-                            DataUtils.writeInt6(newValue, offset, node.mId);
+                            DataUtils.writeInt48(newValue, offset, node.mId);
                             if (pageCount > 1) {
                                 System.arraycopy(value, voffset, node.mPage, 0, pageSize);
                             } else {
@@ -1329,8 +1329,6 @@ public final class Database implements Closeable {
         switch ((header >> 2) & 0x03) {
         default:
             vLen = DataUtils.readUnsignedShort(fragmented, off);
-            off += 2;
-            len -= 2;
             break;
 
         case 1:
@@ -1338,18 +1336,14 @@ public final class Database implements Closeable {
             if (vLen < 0) {
                 throw new DatabaseException("Value is too large: " + (vLen & 0xffffffffL));
             }
-            off += 4;
-            len -= 4;
             break;
 
         case 2:
-            long vLenL = DataUtils.readInt6(fragmented, off);
+            long vLenL = DataUtils.readUnsignedInt48(fragmented, off);
             if (vLenL > Integer.MAX_VALUE) {
                 throw new DatabaseException("Value is too large: " + vLenL);
             }
             vLen = (int) vLenL;
-            off += 6;
-            len -= 6;
             break;
 
         case 3:
@@ -1359,9 +1353,13 @@ public final class Database implements Closeable {
                 throw new DatabaseException("Value is too large: " + vLenL);
             }
             vLen = (int) vLenL;
-            off += 8;
-            len -= 8;
             break;
+        }
+
+        {
+            int vLenFieldSize = 2 + ((header >> 1) & 0x06);
+            off += vLenFieldSize;
+            len -= vLenFieldSize;
         }
 
         byte[] value;
@@ -1387,7 +1385,7 @@ public final class Database implements Closeable {
         if ((header & 0x01) == 0) {
             // Direct pointers.
             while (len >= 6) {
-                long nodeId = DataUtils.readInt6(fragmented, off);
+                long nodeId = DataUtils.readUnsignedInt48(fragmented, off);
                 off += 6;
                 len -= 6;
                 Node node = mFragmentCache.get(caller, nodeId);
@@ -1407,6 +1405,51 @@ public final class Database implements Closeable {
         }
 
         return value;
+    }
+
+    /**
+     * Delete the extra pages of a fragmented value.
+     *
+     * @param caller optional tree node which is latched and calling this method
+     * @param fromTree tree which is deleting the large value
+     */
+    void deleteFragments(Node caller, Tree fromTree, byte[] fragmented, int off, int len)
+        throws IOException
+    {
+        int header = fragmented[off++];
+
+        {
+            int vLenFieldSize = 2 + ((header >> 1) & 0x06);
+            off += vLenFieldSize;
+            len -= vLenFieldSize;
+        }
+
+        if ((header & 0x02) != 0) {
+            // Skip inline content.
+            int inLen = 2 + DataUtils.readUnsignedShort(fragmented, off);
+            off += inLen;
+            len -= inLen;
+        }
+
+        if ((header & 0x01) == 0) {
+            // Direct pointers.
+            while (len >= 6) {
+                long nodeId = DataUtils.readUnsignedInt48(fragmented, off);
+                off += 6;
+                len -= 6;
+                Node node = mFragmentCache.remove(caller, nodeId);
+                if (node != null) {
+                    deleteNode(fromTree, node);
+                } else {
+                    // Page is clean if not in a Node, and so it must survive
+                    // until after the next checkpoint.
+                    mPageStore.deletePage(nodeId);
+                }
+            }
+        } else {
+            // Indirect pointers.
+            // FIXME
+        }
     }
 
     byte[] removeSpareBuffer() throws InterruptedIOException {

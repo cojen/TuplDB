@@ -1708,10 +1708,10 @@ final class TreeCursor implements Cursor {
 
             if (txn == null) {
                 mTree.redoStore(key, null);
-                node.deleteLeafEntry(pos);
+                node.deleteLeafEntry(mTree, pos);
             } else {
                 if (txn.lockMode() == LockMode.UNSAFE) {
-                    node.deleteLeafEntry(pos);
+                    node.deleteLeafEntry(mTree, pos);
                     if (txn.mDurabilityMode != DurabilityMode.NO_LOG) {
                         txn.redoStore(mTree.mId, key, null);
                     }
