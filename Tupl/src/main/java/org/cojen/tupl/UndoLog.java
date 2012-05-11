@@ -373,24 +373,19 @@ final class UndoLog {
     }
 
     /**
-     * Truncate all log entries. Caller does not need to hold commit lock.
+     * Truncate all log entries. Caller must hold commit lock or prevent any
+     * checkpoints from starting.
      */
     final void truncate() throws IOException {
         if (mLength > 0) {
-            final Lock sharedCommitLock = mDatabase.sharedCommitLock();
-            sharedCommitLock.lock();
-            try {
-                Node node = mNode;
-                if (node == null) {
-                    mBufferPos = mBuffer.length;
-                } else {
-                    while ((node = popNode(node)) != null);
-                }
-                mLength = 0;
-                mActiveIndexId = 0;
-            } finally {
-                sharedCommitLock.unlock();
+            Node node = mNode;
+            if (node == null) {
+                mBufferPos = mBuffer.length;
+            } else {
+                while ((node = popNode(node)) != null);
             }
+            mLength = 0;
+            mActiveIndexId = 0;
         }
 
         mActiveTxnId = 0;
