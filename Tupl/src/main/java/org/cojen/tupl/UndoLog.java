@@ -468,11 +468,8 @@ final class UndoLog {
 
             case OP_DELETE:
             case OP_UPDATE:
-                // Ignore.
-                break;
-
             case OP_INSERT:
-                // FIXME: OP_INSERT must delete tombstone
+                // Ignore.
                 break;
             }
         }
