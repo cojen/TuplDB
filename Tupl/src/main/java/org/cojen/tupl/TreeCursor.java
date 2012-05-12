@@ -2492,11 +2492,28 @@ final class TreeCursor implements Cursor {
         Tree tree = mTree;
 
         // FIXME: How to acquire shared commit lock without deadlock?
-        if (node == tree.mRoot) {
+        while (node == tree.mRoot) {
             Node stub;
             if (tree.hasStub()) {
-                // FIXME: Use tryPopStub first, to avoid deadlock.
-                stub = tree.validateStub(tree.popStub());
+                // Don't wait for stub latch, to avoid deadlock. The stub stack
+                // is latched up upwards here, but downwards by cursors.
+                stub = tree.tryPopStub();
+                if (stub == null) {
+                    // Latch not immediately available, so release root latch
+                    // and try again. This implementation spins, but root
+                    // splits are expected to be infrequent.
+                    Thread waiter = node.getFirstQueuedThread();
+                    node.releaseExclusive();
+                    do {
+                        Thread.yield();
+                    } while (waiter != null && node.getFirstQueuedThread() == waiter);
+                    node = frame.acquireExclusive();
+                    if (node.mSplit == null) {
+                        return node;
+                    }
+                    continue;
+                }
+                stub = tree.validateStub(stub);
             } else {
                 stub = null;
             }
