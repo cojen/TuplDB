@@ -436,7 +436,15 @@ final class Tree implements Index {
      * Caller must exclusively hold root latch.
      */
     boolean hasStub() {
-        return mStubTail != null;
+        Stub stub = mStubTail;
+        while (stub != null) {
+            if (stub.mNode.mId == Node.STUB_ID) {
+                return true;
+            }
+            // Node was evicted, so pop it off and try next one.
+            mStubTail = stub = stub.mParent;
+        }
+        return false;
     }
 
     /**
@@ -457,12 +465,14 @@ final class Tree implements Index {
      * Exclusively latches and pops the tail stub node. Caller must exclusively
      * hold root latch and have checked that a stub exists.
      */
+    /*
     Node popStub() {
         Stub stub = mStubTail;
         stub.mNode.acquireExclusive();
         mStubTail = stub.mParent;
         return stub.mNode;
     }
+    */
 
     /**
      * Checks if popped stub is still valid, because it has not been evicted
