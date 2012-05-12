@@ -184,11 +184,7 @@ final class RedoLog implements Closeable {
         try {
             replay(in, visitor);
         } finally {
-            try {
-                in.close();
-            } catch (IOException e) {
-                // Ignore.
-            }
+            Utils.closeQuietly(null, in);
         }
 
         return true;
@@ -237,23 +233,13 @@ final class RedoLog implements Closeable {
             doFlush();
         } catch (IOException e) {
             mChannel = ((mOut = oldOut) == null) ? null : oldOut.getChannel();
-            try {
-                out.close();
-            } catch (IOException e2) {
-                // Ignore.
-            }
+            Utils.closeQuietly(null, out);
             file.delete();
 
             throw e;
         }
 
-        if (oldOut != null) {
-            try {
-                oldOut.close();
-            } catch (IOException e) {
-                // Ignore.
-            }
-        }
+        Utils.closeQuietly(null, oldOut);
 
         mLogId = logId;
     }

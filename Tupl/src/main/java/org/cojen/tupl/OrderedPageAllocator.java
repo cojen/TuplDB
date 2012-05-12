@@ -254,6 +254,22 @@ final class OrderedPageAllocator {
         return node;
     }
 
+    /**
+     * Remove all nodes from dirty list, as part of close sequence.
+     */
+    synchronized void clearDirtyNodes() {
+        Node node = mFirstDirty;
+        mIterateNext = null;
+        mFirstDirty = null;
+        mLastDirty = null;
+        while (node != null) {
+            Node next = node.mNextDirty;
+            node.mPrevDirty = null;
+            node.mNextDirty = null;
+            node = next;
+        }
+    }
+
     private void makeReady() {
         if (mReadyState == EMPTY) {
             mAllocLatch.acquireExclusive();

@@ -94,13 +94,7 @@ class TempFileManager {
             }
             c = mFiles.remove(file);
         }
-        if (c != null) {
-            try {
-                c.close();
-            } catch (IOException e) {
-                // Ignore.
-            }
-        }
+        Utils.closeQuietly(null, c);
         file.delete();
     }
 
@@ -109,13 +103,7 @@ class TempFileManager {
         if (mFiles != null) {
             for (Map.Entry<File, Closeable> entry : mFiles.entrySet()) {
                 Closeable c = entry.getValue();
-                if (c != null) {
-                    try {
-                        c.close();
-                    } catch (IOException e) {
-                        // Ignore.
-                    }
-                }
+                Utils.closeQuietly(null, c);
                 entry.getKey().delete();
             }
             mFiles.clear();

@@ -27,6 +27,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -96,7 +97,7 @@ public final class Database implements Closeable {
     private final BufferPool mSpareBufferPool;
 
     private final Latch mUsageLatch;
-    private final int mMaxNodeCount;
+    private int mMaxNodeCount;
     private int mNodeCount;
     private Node mMostRecentlyUsed;
     private Node mLeastRecentlyUsed;
@@ -130,6 +131,8 @@ public final class Database implements Closeable {
     private volatile Checkpointer mCheckpointer;
 
     private final TempFileManager mTempFileManager;
+
+    volatile boolean mClosed;
 
     /**
      * Open a database, creating it if necessary.
@@ -330,11 +333,7 @@ public final class Database implements Closeable {
 
             mTempFileManager = new TempFileManager(baseFile);
         } catch (Throwable e) {
-            try {
-                close();
-            } catch (IOException e2) {
-                // Ignore.
-            }
+            Utils.closeQuietly(null, this);
             throw Utils.rethrow(e);
         }
     }
@@ -638,7 +637,9 @@ public final class Database implements Closeable {
      * become {@link DurabilityMode#NO_SYNC no-sync} durable.
      */
     public void flush() throws IOException {
-        mRedoLog.flush();
+        if (!mClosed) {
+            mRedoLog.flush();
+        }
     }
 
     /**
@@ -648,7 +649,9 @@ public final class Database implements Closeable {
      * DurabilityMode#SYNC sync} durable.
      */
     public void sync() throws IOException {
-        mRedoLog.sync();
+        if (!mClosed) {
+            mRedoLog.sync();
+        }
     }
 
     /**
@@ -657,7 +660,9 @@ public final class Database implements Closeable {
      * non-transactional modifications are durable.
      */
     public void checkpoint() throws IOException {
-        checkpoint(false);
+        if (!mClosed) {
+            checkpoint(false);
+        }
     }
 
     /**
@@ -667,19 +672,41 @@ public final class Database implements Closeable {
      */
     @Override
     public void close() throws IOException {
+        mClosed = true;
+
         Checkpointer c = mCheckpointer;
         if (c != null) {
             c.cancel();
             c = null;
         }
-        if (mRedoLog != null) {
-            mRedoLog.close();
+
+        synchronized (mOpenTrees) {
+            mOpenTrees.clear();
+            mOpenTreesById.clear(0);
         }
-        if (mPageStore != null) {
-            mPageStore.close();
+
+        mSharedCommitLock.lock();
+        try {
+            closeNodeCache();
+            mAllocator.clearDirtyNodes();
+
+            IOException ex = null;
+
+            ex = Utils.closeQuietly(ex, mRedoLog);
+            ex = Utils.closeQuietly(ex, mPageStore);
+            ex = Utils.closeQuietly(ex, mLockFile);
+
+            if (ex != null) {
+                throw ex;
+            }
+        } finally {
+            mSharedCommitLock.unlock();
         }
-        if (mLockFile != null) {
-            mLockFile.close();
+    }
+
+    void checkClosed() throws DatabaseException {
+        if (mClosed) {
+            throw new DatabaseException("Closed");
         }
     }
 
@@ -749,6 +776,8 @@ public final class Database implements Closeable {
     }
 
     private Index openIndex(byte[] name, boolean create) throws IOException {
+        checkClosed();
+
         final Lock commitLock = sharedCommitLock();
         commitLock.lock();
         try {
@@ -869,7 +898,13 @@ public final class Database implements Closeable {
         usageLatch.acquireExclusive();
         alloc: try {
             int max = mMaxNodeCount;
+
+            if (max == 0) {
+                break alloc;
+            }
+
             if (mNodeCount < max) {
+                checkClosed();
                 Node node = new Node(pageSize());
                 node.acquireExclusive();
                 mNodeCount++;
@@ -910,9 +945,50 @@ public final class Database implements Closeable {
             usageLatch.releaseExclusive();
         }
 
+        checkClosed();
+
         // FIXME: Throw a better exception. Also, try all nodes again, but with
         // stronger latch request before giving up.
         throw new DatabaseException("Cache is full");
+    }
+
+    /**
+     * Unlinks all nodes from each other in usage list, and prevents new nodes
+     * from being allocated.
+     */
+    private void closeNodeCache() {
+        final Latch usageLatch = mUsageLatch;
+        usageLatch.acquireExclusive();
+        try {
+            // Prevent new allocations.
+            mMaxNodeCount = 0;
+
+            Node node = mLeastRecentlyUsed;
+            mLeastRecentlyUsed = null;
+            mMostRecentlyUsed = null;
+
+            while (node != null) {
+                Node next = node.mMoreUsed;
+                node.mLessUsed = null;
+                node.mMoreUsed = null;
+
+                // Make node appear to be evicted.
+                node.mId = 0;
+
+                // Attempt to unlink child nodes, making them appear to be evicted.
+                if (node.tryAcquireExclusive()) {
+                    Node[] childNodes = node.mChildNodes;
+                    if (childNodes != null) {
+                        Arrays.fill(childNodes, null);
+                    }
+                    node.releaseExclusive();
+                }
+
+                node = next;
+            }
+        } finally {
+            usageLatch.releaseExclusive();
+        }
     }
 
     /**
@@ -958,6 +1034,10 @@ public final class Database implements Closeable {
         final Latch usageLatch = mUsageLatch;
         usageLatch.acquireExclusive();
         try {
+            if (mMaxNodeCount == 0) {
+                // Closed.
+                return;
+            }
             if (node.mMoreUsed != null || node.mLessUsed != null) {
                 throw new IllegalStateException();
             }
@@ -975,6 +1055,10 @@ public final class Database implements Closeable {
         final Latch usageLatch = mUsageLatch;
         usageLatch.acquireExclusive();
         try {
+            if (mMaxNodeCount == 0) {
+                // Closed.
+                return;
+            }
             Node lessUsed = node.mLessUsed;
             Node moreUsed = node.mMoreUsed;
             if (lessUsed == null) {
