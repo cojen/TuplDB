@@ -141,22 +141,12 @@ class JavaFileIO implements FileIO {
 
     public void close() throws IOException {
         IOException ex = null;
-
         RandomAccessFile[] pool = mFilePool;
         synchronized (pool) {
             for (RandomAccessFile file : pool) {
-                if (file != null) {
-                    try {
-                        file.close();
-                    } catch (IOException e) {
-                        if (ex == null) {
-                            ex = e;
-                        }
-                    }
-                }
+                ex = Utils.closeQuietly(ex, file);
             }
         }
-
         if (ex != null) {
             throw ex;
         }

@@ -57,16 +57,26 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
     private int mSize;
     private int mGrowThreshold;
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
     LHashTable(int capacity) {
-        capacity = Utils.roundUpPower2(capacity);
-        mEntries = (E[]) new Entry[capacity];
-        mMask = capacity - 1;
-        mGrowThreshold = (int) (capacity * LOAD_FACTOR);
+        clear(capacity);
     }
 
     public final int size() {
         return mSize;
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public final void clear(int capacity) {
+        capacity = Utils.roundUpPower2(capacity);
+        E[] entries = mEntries;
+        if (entries != null && entries.length == capacity) {
+            java.util.Arrays.fill(entries, null);
+        } else {
+            mEntries = (E[]) new Entry[capacity];
+            mMask = capacity - 1;
+            mGrowThreshold = (int) (capacity * LOAD_FACTOR);
+        }
+        mSize = 0;
     }
 
     /**
@@ -175,6 +185,9 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
         E[] entries = mEntries;
 
         int capacity = entries.length << 1;
+        if (capacity == 0) {
+            capacity = 1;
+        }
         E[] newEntries = (E[]) new Entry[capacity];
         int newMask = capacity - 1;
 
