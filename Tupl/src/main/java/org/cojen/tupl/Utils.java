@@ -140,6 +140,24 @@ class Utils {
         throw new CorruptDatabaseException(e);
     }
 
+    /**
+     * @param first returned if non-null
+     * @param c can be null
+     * @return IOException which was caught, unless e was non-null
+     */
+    static IOException closeQuietly(IOException first, Closeable c) {
+        if (c != null) {
+            try {
+                c.close();
+            } catch (IOException e) {
+                if (first == null) {
+                    return e;
+                }
+            }
+        }
+        return first;
+    }
+
     static void uncaught(Throwable e) {
         Thread t = Thread.currentThread();
         t.getUncaughtExceptionHandler().uncaughtException(t, e);
