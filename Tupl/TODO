@@ -1,7 +1,10 @@
 
 - Fix undo log corruption with long transactions. Possibly caused by eviction.
-- Apparent storage leak when deleting records.
+- Apparent storage leak when deleting records. (caused by ordered allocation)
 - Use 6-byte pointers in internal nodes.
+- Audit usage of shared commit locking and reduce its scope to eliminate a
+  bottleneck. In particular, holding the lock while loading a page can block the
+  checkpointer, which in turn blocks all other threads waiting to get shared lock.
 - Support large values.
 - Support key prefix compression.
 - Support closing indexes. Requires latch sweep and stubbing of cursors.
