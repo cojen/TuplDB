@@ -99,7 +99,6 @@ class FragmentCache {
         private final Latch mLatch;
 
         private Node[] mEntries;
-        // FIXME: adjust size
         private int mSize;
         private int mGrowThreshold;
 
@@ -119,20 +118,22 @@ class FragmentCache {
          * @param caller optional tree node which is latched and calling this method
          * @return node with shared latch held
          */
-        Node get(Node caller, long nodeId, int hash) throws IOException {
+        Node get(final Node caller, final long nodeId, final int hash) throws IOException {
             Latch latch = mLatch;
             latch.acquireShared();
             boolean htEx = false;
             boolean nEx = false;
 
             while (true) {
-                Node[] entries = mEntries;
-                int index = hash & (entries.length - 1);
+                final Node[] entries = mEntries;
+                final int index = hash & (entries.length - 1);
                 Node existing = entries[index];
-                if (existing != null) {
-                    if (existing == caller || existing.mId != nodeId) {
+                if (existing == null) {
+                    mSize++;
+                } else {
+                    if (existing == caller) {
                         existing = null;
-                    } else {
+                    } else if (existing.mId == nodeId) {
                         if (nEx) {
                             existing.acquireExclusive();
                         } else {
@@ -181,7 +182,7 @@ class FragmentCache {
                 }
 
                 // Allocate node and reserve slot.
-                Node node = mDatabase.allocLatchedNode();
+                final Node node = mDatabase.allocLatchedNode();
                 node.mId = nodeId;
                 node.mType = Node.TYPE_FRAGMENT;
                 entries[index] = node;
@@ -214,15 +215,17 @@ class FragmentCache {
          * @param caller optional tree node which is latched and calling this method
          * @param node latched node
          */
-        void put(Node caller, Node node, int hash) throws IOException {
+        void put(final Node caller, final Node node, final int hash) throws IOException {
             Latch latch = mLatch;
             latch.acquireExclusive();
 
             while (true) {
-                Node[] entries = mEntries;
-                int index = hash & (entries.length - 1);
+                final Node[] entries = mEntries;
+                final int index = hash & (entries.length - 1);
                 Node existing = entries[index];
-                if (existing != null) {
+                if (existing == null) {
+                    mSize++;
+                } else {
                     if (existing == caller || existing == node) {
                         existing = null;
                     } else {
@@ -254,7 +257,7 @@ class FragmentCache {
             }
         }
 
-        Node remove(Node caller, long nodeId, int hash) {
+        Node remove(final Node caller, final long nodeId, final int hash) {
             Latch latch = mLatch;
             latch.acquireExclusive();
 
@@ -265,6 +268,7 @@ class FragmentCache {
                 existing.acquireExclusive();
                 if (existing.mId == nodeId) {
                     entries[index] = null;
+                    mSize--;
                     latch.releaseExclusive();
                     return existing;
                 }

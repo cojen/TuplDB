@@ -1019,7 +1019,7 @@ final class Node extends Latch {
     void undoPushLeafEntry(Transaction txn, long indexId, byte op, int pos) throws IOException {
         final byte[] page = mPage;
         final int entryLoc = readUnsignedShort(page, mSearchVecStart + pos);
-        // FIXME: Special requirements for fragmented entries.
+        // FIXME: fragmented: Special requirements for fragmented entries.
         txn.undoStore(indexId, op, page, entryLoc, leafEntryLengthAtLoc(page, entryLoc));
     }
 
@@ -1034,7 +1034,7 @@ final class Node extends Latch {
             : (((header & 0x3f) << 8) | ((entry[loc++]) & 0xff));
         byte[] key = new byte[keyLen];
         System.arraycopy(entry, loc, key, 0, keyLen);
-        // FIXME: Special requirements for fragmented entries.
+        // FIXME: fragmented: Special requirements for fragmented entries.
         return new byte[][] {key, retrieveLeafValueAtLoc(null, null, entry, loc + keyLen)};
     }
 
@@ -1476,27 +1476,34 @@ final class Node extends Latch {
         quick: {
             int loc;
             start = loc = readUnsignedShort(page, searchVecStart + pos);
-            final int header = page[loc++];
+            int header = page[loc++];
             loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
 
             final int valueHeaderLoc = loc;
 
-            // Note: Similar to retrieveLeafValueAtLoc.
+            // Note: Similar to leafEntryLengthAtLoc and retrieveLeafValueAtLoc.
             int len = page[loc++];
-            if (len < 0) {
-                // FIXME: fragmented
+            if (len < 0) largeValue: {
                 if ((len & 0x20) == 0) {
+                    header = len;
                     len = 1 + (((len & 0x1f) << 8) | (page[loc++] & 0xff));
                 } else if (len != -1) {
+                    header = len;
                     len = 1 + (((len & 0x0f) << 16)
                                | ((page[loc++] & 0xff) << 8) | (page[loc++] & 0xff));
                 } else {
                     // tombstone
                     len = 0;
+                    break largeValue;
+                }
+                if ((header & VALUE_FRAGMENTED) != 0) {
+                    tree.mDatabase.deleteFragments(this, tree, page, loc, len);
+                    // FIXME: fragmented: If new value needs to be fragmented
+                    // too, try to re-use existing value slot.
+                    // Clear fragmented bit in case new value can be quick copied.
+                    page[valueHeaderLoc] = (byte) (header & ~VALUE_FRAGMENTED);
                 }
             }
-
-            // FIXME: If replacing fragmented, delete old pages.
 
             final int valueLen = value.length;
             if (valueLen > len) {
@@ -1529,7 +1536,22 @@ final class Node extends Latch {
         int leftSpace = searchVecStart - mLeftSegTail;
         int rightSpace = mRightSegTail - searchVecEnd - 1;
 
-        final int encodedLen = keyLen + calculateLeafValueLength(value);
+        int encodedLen = keyLen + calculateLeafValueLength(value);
+
+        int fragmented;
+        if (encodedLen <= tree.mMaxEntrySize) {
+            fragmented = 0;
+        } else {
+            Database db = tree.mDatabase;
+            value = db.fragment(this, tree, value, db.mMaxFragmentedEntrySize - keyLen);
+            if (value == null) {
+                // TODO: Supply proper key length, not the encoded
+                // length. Subtracting 2 is just a guess.
+                throw new LargeKeyException(keyLen - 2);
+            }
+            encodedLen = keyLen + calculateFragmentedValueLength(value);
+            fragmented = VALUE_FRAGMENTED;
+        }
 
         int entryLoc;
         alloc: {
@@ -1545,12 +1567,11 @@ final class Node extends Latch {
                 // Do full compaction and free up the garbage, or split the node.
                 byte[] key = retrieveKey(pos);
                 if ((mGarbage + remaining) >= 0) {
-                    // FIXME: might need to be fragmented
-                    copyToLeafEntry(key, 0, value, compactLeaf(tree, encodedLen, pos, false));
+                    copyToLeafEntry(key, fragmented, value,
+                                    compactLeaf(tree, encodedLen, pos, false));
                 } else {
                     // Node is full so split it.
-                    // FIXME: might need to be fragmented
-                    splitLeafAndCreateEntry(tree, key, 0, value, encodedLen, pos, false);
+                    splitLeafAndCreateEntry(tree, key, fragmented, value, encodedLen, pos, false);
                 }
                 return;
             }
@@ -1575,8 +1596,7 @@ final class Node extends Latch {
             } else {
                 // Search vector is misaligned, so do full compaction.
                 byte[] key = retrieveKey(pos);
-                // FIXME: might need to be fragmented
-                copyToLeafEntry(key, 0, value, compactLeaf(tree, encodedLen, pos, false));
+                copyToLeafEntry(key, fragmented, value, compactLeaf(tree, encodedLen, pos, false));
                 return;
             }
 
@@ -1589,8 +1609,7 @@ final class Node extends Latch {
 
         // Copy existing key, and then copy value.
         System.arraycopy(page, start, page, entryLoc, keyLen);
-        // FIXME: might need to be fragmented
-        copyToLeafValue(page, 0, value, entryLoc + keyLen);
+        copyToLeafValue(page, fragmented, value, entryLoc + keyLen);
 
         writeShort(page, pos, entryLoc);
     }
