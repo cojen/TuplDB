@@ -1301,7 +1301,6 @@ public final class Database implements Closeable {
                     masterUndoLog = UndoLog.newMasterUndoLog(this);
                     byte[] workspace = null;
                     for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
-                        // FIXME: Not thread safe!
                         workspace = log.writeToMaster(masterUndoLog, workspace);
                     }
                     // Release latch to allow flush to acquire and release it.
