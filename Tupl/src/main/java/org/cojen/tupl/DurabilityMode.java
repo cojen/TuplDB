@@ -22,7 +22,13 @@ package org.cojen.tupl;
  * relatively slow. Weak modes are faster, but transactions committed in one of
  * these modes can get lost.
  *
- * <p>Mode strengths: {@code SYNC > NO_SYNC > NO_FLUSH > NO_LOG}
+ * <p>Modes ordered from strongest to weakest:
+ * <ul>
+ * <li>{@code SYNC}
+ * <li>{@code NO_SYNC}
+ * <li>{@code NO_FLUSH}
+ * <li>{@code NO_LOG}
+ * </ul>
  *
  * @author Brian S O'Neill
  */
