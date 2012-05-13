@@ -26,7 +26,14 @@ package org.cojen.tupl;
  * committed, all held locks transfer to the parent scope. Uncommitted scopes
  * release all of their acquired locks.
  *
- * <p>Mode strengths: {@code UPGRADABLE_READ > REPEATABLE_READ > READ_COMMITTED > READ_UNCOMMITTED > UNSAFE}
+ * <p>Modes ordered from strongest to weakest:
+ * <ul>
+ * <li>{@code UPGRADABLE_READ}
+ * <li>{@code REPEATABLE_READ}
+ * <li>{@code READ_COMMITTED}
+ * <li>{@code READ_UNCOMMITTED}
+ * <li>{@code UNSAFE}
+ * </ul>
  *
  * @author Brian S O'Neill
  */
