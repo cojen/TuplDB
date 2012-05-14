@@ -97,15 +97,18 @@ final class UndoLog {
 
     private final Database mDatabase;
 
+    // Number of bytes currently pushed into log.
+    private long mLength;
+
+    // Except for mLength, all field modifications during normal usage must be
+    // performed while holding shared commit lock. See writeToMaster method.
+
     private byte[] mBuffer;
     private int mBufferPos;
 
     // Top node, typically latched. This prevents it from being evicted. Nodes
     // are not used for logs which fit into local buffer.
     private Node mNode;
-
-    // Number of bytes currently pushed into log.
-    private long mLength;
 
     private long mActiveTxnId;
     private long mActiveIndexId;
@@ -400,10 +403,10 @@ final class UndoLog {
         // temporary arrays and copies. Rollback optimization is generally not
         // necessary, since most transactions are expected to commit.
 
-        if (savepoint < mLength) {
-            final Lock sharedCommitLock = mDatabase.sharedCommitLock();
-            sharedCommitLock.lock();
-            try {
+        final Lock sharedCommitLock = mDatabase.sharedCommitLock();
+        sharedCommitLock.lock();
+        try {
+            if (savepoint < mLength) {
                 byte[] opRef = new byte[1];
                 Index activeIndex = null;
                 do {
@@ -418,12 +421,12 @@ final class UndoLog {
                         activeIndex = undo(activeIndex, op, entry);
                     }
                 } while (savepoint < mLength);
-            } finally {
-                sharedCommitLock.unlock();
             }
-        }
 
-        mActiveTxnId = 0;
+            mActiveTxnId = 0;
+        } finally {
+            sharedCommitLock.unlock();
+        }
     }
 
     /**
@@ -693,6 +696,8 @@ final class UndoLog {
     }
 
     /**
+     * Caller must hold exclusive commit lock.
+     *
      * @param workspace temporary buffer, allocated on demand
      * @return new workspace instance
      */
