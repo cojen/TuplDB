@@ -193,20 +193,29 @@ public final class Transaction extends Locker {
                 if (undo == null) {
                     sharedCommitLock = null;
                 } else {
-                    // Holding the shared commit lock ensures that the redo log
-                    // doesn't disappear before the undo log. Lingering undo
-                    // logs with no corresponding redo log are treated as
-                    // aborted. Recovery would erroneously apply undo
-                    // operations for committed transactions.
+                    /*
+                      Holding the shared commit lock ensures that the redo log
+                      doesn't disappear before the undo log. Lingering undo
+                      logs with no corresponding redo log are treated as
+                      aborted. Recovery would erroneously apply undo operations
+                      for committed transactions.
+
+                      An unfortunate side-effect is that the commit lock is
+                      held while performing additional I/O, which can create a
+                      backlog if a checkpoint tries to begin. All other threads
+                      trying to acquire the shared commit lock must wait.
+                    */
                     (sharedCommitLock = mDatabase.sharedCommitLock()).lock();
                 }
 
+                boolean sync;
                 try {
-                    if (mHasRedo) {
-                        mDatabase.mRedoLog.txnCommit(mTxnId, 0, mDurabilityMode);
+                    if (sync = mHasRedo) {
+                        sync = mDatabase.mRedoLog.txnCommitFull(mTxnId, mDurabilityMode);
                         mHasRedo = false;
                     }
 
+                    // Calling this deletes any tombstones too.
                     super.scopeUnlockAll();
 
                     // Safe to truncate obsolete log entries after releasing locks.
@@ -219,9 +228,15 @@ public final class Transaction extends Locker {
                         sharedCommitLock.unlock();
                     }
                 }
+
+                if (sync) {
+                    // Durably sync the redo log after releasing the commit
+                    // lock, preventing additional blocking.
+                    mDatabase.mRedoLog.txnCommitSync();
+                }
             } else {
                 if (mHasRedo) {
-                    mDatabase.mRedoLog.txnCommit(mTxnId, parentScope.mTxnId, mDurabilityMode);
+                    mDatabase.mRedoLog.txnCommitScope(mTxnId, parentScope.mTxnId);
                     mHasRedo = false;
                 }
 
@@ -275,22 +290,21 @@ public final class Transaction extends Locker {
 
         try {
             ParentScope parentScope = mParentScope;
-            if (mHasRedo) {
-                long parentTxnId = parentScope == null ? 0 : parentScope.mTxnId;
-                mDatabase.mRedoLog.txnRollback(mTxnId, parentTxnId);
-                mHasRedo = false;
-            }
-
-            UndoLog undo = mUndoLog;
-            if (undo != null) {
-                // Active transaction id is cleared as a side-effect.
-                undo.rollback(mSavepoint);
-            }
-
-            // Exit and release all locks obtained in this scope.
-            super.scopeExit();
-
             if (parentScope == null) {
+                if (mHasRedo) {
+                    mDatabase.mRedoLog.txnRollback(mTxnId, 0);
+                    mHasRedo = false;
+                }
+
+                UndoLog undo = mUndoLog;
+                if (undo != null) {
+                    // Active transaction id is cleared as a side-effect.
+                    undo.rollback(mSavepoint);
+                }
+
+                // Exit and release all locks obtained in this scope.
+                super.scopeExit();
+
                 mTxnId = 0;
                 mSavepoint = 0;
                 if (undo != null) {
@@ -298,6 +312,19 @@ public final class Transaction extends Locker {
                     mUndoLog = null;
                 }
             } else {
+                if (mHasRedo) {
+                    mDatabase.mRedoLog.txnRollback(mTxnId, parentScope.mTxnId);
+                }
+
+                UndoLog undo = mUndoLog;
+                if (undo != null) {
+                    // Active transaction id is cleared as a side-effect.
+                    undo.rollback(mSavepoint);
+                }
+
+                // Exit and release all locks obtained in this scope.
+                super.scopeExit();
+
                 mLockMode = parentScope.mLockMode;
                 mLockTimeoutNanos = parentScope.mLockTimeoutNanos;
                 mTxnId = parentScope.mTxnId;

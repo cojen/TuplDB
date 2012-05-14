@@ -135,7 +135,7 @@ class PageStore implements Closeable {
 
     PageStore(PageArray pa, boolean destroy) throws IOException {
         mPageArray = pa;
-        mCommitLock = new ReentrantReadWriteLock(true);
+        mCommitLock = new ReentrantReadWriteLock(false);
         mHeaderLatch = new Latch();
 
         try {

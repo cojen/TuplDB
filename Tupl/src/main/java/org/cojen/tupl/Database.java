@@ -36,6 +36,7 @@ import java.util.TreeMap;
 
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import java.util.concurrent.locks.Lock;
 
@@ -1557,8 +1558,23 @@ public final class Database implements Closeable {
         synchronized (mCheckpointLock) {
             final Node root = mRegistry.mRoot;
 
-            // Commit lock must be acquired first, to prevent deadlock.
-            mPageStore.exclusiveCommitLock().lock();
+            // Exclusive commit lock must be acquired first, to prevent deadlock.
+
+            // If the commit lock cannot be immediately obtained, it's due to a
+            // shared lock being held for a long time. While waiting for the
+            // exclusive lock, all other shared requests are queued. By waiting
+            // a timed amount and giving up, the exclusive lock request is
+            // effectively de-prioritized. For each retry, the timeout is
+            // doubled, to ensure that the checkpoint request is not starved.
+            try {
+                Lock commitLock = mPageStore.exclusiveCommitLock();
+                long timeoutMillis = 1;
+                while (!commitLock.tryLock(timeoutMillis, TimeUnit.MILLISECONDS)) {
+                    timeoutMillis <<= 1;
+                }
+            } catch (InterruptedException e) {
+                throw new InterruptedIOException();
+            }
 
             root.acquireShared();
 

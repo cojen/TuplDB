@@ -333,24 +333,29 @@ final class RedoLog implements Closeable {
         }
     }
 
-    public void txnCommit(long txnId, long parentTxnId, DurabilityMode mode)
+    /**
+     * @return true if caller should call txnCommitSync
+     */
+    public boolean txnCommitFull(long txnId, DurabilityMode mode)
         throws IOException
     {
-        boolean sync;
         synchronized (this) {
-            if (parentTxnId == 0) {
-                writeOp(OP_TXN_COMMIT, txnId);
-                sync = conditionalFlush(mode);
-            } else {
-                writeOp(OP_TXN_COMMIT_CHILD, txnId);
-                writeLong(parentTxnId);
-                // No need for child transactions to be durable.
-                return;
-            }
+            writeOp(OP_TXN_COMMIT, txnId);
+            return conditionalFlush(mode);
         }
+    }
 
-        if (sync) {
-            mChannel.force(false);
+    /**
+     * Called after txnCommitFull.
+     */
+    public void txnCommitSync() throws IOException {
+        mChannel.force(false);
+    }
+
+    public void txnCommitScope(long txnId, long parentTxnId) throws IOException {
+        synchronized (this) {
+            writeOp(OP_TXN_COMMIT_CHILD, txnId);
+            writeLong(parentTxnId);
         }
     }
 
