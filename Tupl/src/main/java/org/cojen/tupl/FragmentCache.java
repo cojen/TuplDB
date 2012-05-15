@@ -288,8 +288,7 @@ class FragmentCache {
         private boolean rehash(Node caller, Node n) {
             Node[] entries;
             int capacity;
-            int size = mSize;
-            if (size < mGrowThreshold ||
+            if (mSize < mGrowThreshold ||
                 (capacity = (entries = mEntries).length) >= mMaxCapacity)
             {
                 return false;
@@ -297,6 +296,7 @@ class FragmentCache {
 
             capacity <<= 1;
             Node[] newEntries = new Node[capacity];
+            int newSize = 0;
             int newMask = capacity - 1;
 
             for (int i=entries.length; --i>=0 ;) {
@@ -318,10 +318,12 @@ class FragmentCache {
                         e.releaseShared();
                     }
                     newEntries[hash(id) & newMask] = e;
+                    newSize++;
                 }
             }
 
-            mEntries = entries = newEntries;
+            mEntries = newEntries;
+            mSize = newSize;
             mGrowThreshold = (int) (capacity * LOAD_FACTOR);
 
             return true;
