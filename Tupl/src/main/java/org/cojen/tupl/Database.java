@@ -80,8 +80,8 @@ public final class Database implements Closeable {
     private static final int I_REDO_LOG_ID             = I_TRANSACTION_ID + 8;
     private static final int HEADER_SIZE               = I_REDO_LOG_ID + 8;
 
-    private static final byte KEY_TYPE_INDEX_NAME = 0;
-    private static final byte KEY_TYPE_INDEX_ID = 1;
+    static final byte KEY_TYPE_INDEX_NAME = 0;
+    static final byte KEY_TYPE_INDEX_ID = 1;
 
     private static final int DEFAULT_PAGE_SIZE = 4096;
 
@@ -431,6 +431,86 @@ public final class Database implements Closeable {
     }
 
     /**
+     * Returns an index by its identifier, returning null if not found.
+     *
+     * @throws IllegalArgumentException if id is reserved
+     */
+    public Index indexById(long id) throws IOException {
+        if (Tree.isInternal(id)) {
+            throw new IllegalArgumentException("Invalid id: " + id);
+        }
+
+        Index index;
+
+        final Lock commitLock = sharedCommitLock();
+        commitLock.lock();
+        try {
+            synchronized (mOpenTrees) {
+                LHashTable.ObjEntry<Tree> entry = mOpenTreesById.get(id);
+                if (entry != null) {
+                    return entry.value;
+                }
+            }
+
+            byte[] idKey = new byte[9];
+            idKey[0] = KEY_TYPE_INDEX_ID;
+            writeLong(idKey, 1, id);
+
+            byte[] name = mRegistryKeyMap.load(null, idKey);
+
+            if (name == null) {
+                return null;
+            }
+
+            index = openIndex(name, false);
+        } catch (Throwable e) {
+            throw Utils.closeOnFailure(this, e);
+        } finally {
+            commitLock.unlock();
+        }
+
+        if (index == null) {
+            // Registry needs to be repaired to fix this.
+            throw new DatabaseException("Unable to find index in registry");
+        }
+
+        return index;
+    }
+
+    /**
+     * Returns an index by its identifier, returning null if not found.
+     *
+     * @param id big-endian encoded long integer
+     * @throws IllegalArgumentException if id is malformed or reserved
+     */
+    public Index indexById(byte[] id) throws IOException {
+        if (id.length != 8) {
+            throw new IllegalArgumentException("Expected 8 byte identifier: " + id.length);
+        }
+        return indexById(readLong(id, 0));
+    }
+
+    /**
+     * Allows access to internal indexes which can use the redo log.
+     */
+    Index anyIndexById(long id) throws IOException {
+        if (id == Tree.REGISTRY_KEY_MAP_ID) {
+            return mRegistryKeyMap;
+        }
+        return indexById(id);
+    }
+
+    /**
+     * Returns a Cursor which maps all available index names to
+     * identifiers. Identifiers are long integers, big-endian encoded.
+     * Attempting to store anything into the Cursor causes an {@link
+     * UnmodifiableViewException} to be thrown.
+     */
+    public Cursor allIndexes() throws IOException {
+        return new IndexesCursor(mRegistryKeyMap.newCursor(null));
+    }
+
+    /**
      * Returns a new Transaction with the {@link DatabaseConfig#durabilityMode default}
      * durability mode.
      */
@@ -518,63 +598,6 @@ public final class Database implements Closeable {
             }
             mUndoLogCount--;
         }
-    }
-
-    /**
-     * Returns an index by its identifier, returning null if not found.
-     *
-     * @throws IllegalArgumentException if id is reserved
-     */
-    public Index indexById(long id) throws IOException {
-        if (Tree.isInternal(id)) {
-            throw new IllegalArgumentException("Invalid id: " + id);
-        }
-
-        Index index;
-
-        final Lock commitLock = sharedCommitLock();
-        commitLock.lock();
-        try {
-            synchronized (mOpenTrees) {
-                LHashTable.ObjEntry<Tree> entry = mOpenTreesById.get(id);
-                if (entry != null) {
-                    return entry.value;
-                }
-            }
-
-            byte[] idKey = new byte[9];
-            idKey[0] = KEY_TYPE_INDEX_ID;
-            writeLong(idKey, 1, id);
-
-            byte[] name = mRegistryKeyMap.load(null, idKey);
-
-            if (name == null) {
-                return null;
-            }
-
-            index = openIndex(name, false);
-        } catch (Throwable e) {
-            throw Utils.closeOnFailure(this, e);
-        } finally {
-            commitLock.unlock();
-        }
-
-        if (index == null) {
-            // Registry needs to be repaired to fix this.
-            throw new DatabaseException("Unable to find index in registry");
-        }
-
-        return index;
-    }
-
-    /**
-     * Allows access to internal indexes which can use the redo log.
-     */
-    Index anyIndexById(long id) throws IOException {
-        if (id == Tree.REGISTRY_KEY_MAP_ID) {
-            return mRegistryKeyMap;
-        }
-        return indexById(id);
     }
 
     /**
