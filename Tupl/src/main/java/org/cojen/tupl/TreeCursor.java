@@ -1887,6 +1887,12 @@ final class TreeCursor implements Cursor {
             frame.copyInto(frameCopy);
             copy.mLeaf = frameCopy;
         }
+        copy.mKey = mKey;
+        mKeyHash = mKeyHash;
+        if (!(copy.mKeyOnly = mKeyOnly)) {
+            byte[] value = mValue;
+            copy.mValue = (value == null || value.length == 0) ? value : value.clone();
+        }
         return copy;
     }
 
