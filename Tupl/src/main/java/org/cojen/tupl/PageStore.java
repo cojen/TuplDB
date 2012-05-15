@@ -135,7 +135,9 @@ class PageStore implements Closeable {
 
     PageStore(PageArray pa, boolean destroy) throws IOException {
         mPageArray = pa;
-        mCommitLock = new ReentrantReadWriteLock(false);
+        // Should be fair in order for exclusive lock request to de-prioritize
+        // itself by timing out and retrying. See Database.checkpoint.
+        mCommitLock = new ReentrantReadWriteLock(true);
         mHeaderLatch = new Latch();
 
         try {
