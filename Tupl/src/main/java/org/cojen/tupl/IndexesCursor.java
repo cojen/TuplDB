@@ -76,8 +76,8 @@ class IndexesCursor implements Cursor {
         return assignKey(mRegistryCursor.findLe(afterLastKey(), maxWait, unit));
     }
 
-    public LockResult move(long amount) throws IOException {
-        return assignKey(mRegistryCursor.move(amount));
+    public LockResult skip(long amount) throws IOException {
+        return assignKey(mRegistryCursor.skip(amount));
     }
 
     public LockResult next() throws IOException {
