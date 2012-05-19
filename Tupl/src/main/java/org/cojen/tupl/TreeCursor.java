@@ -297,7 +297,7 @@ final class TreeCursor implements Cursor {
     }
 
     @Override
-    public LockResult move(long amount) throws IOException {
+    public LockResult skip(long amount) throws IOException {
         if (amount == 0) {
             Transaction txn = mTxn;
             if (txn != null && txn != Transaction.BOGUS) {
