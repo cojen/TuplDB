@@ -156,9 +156,9 @@ public interface Cursor {
 
     /**
      * Moves the Cursor by a relative amount of entries. Pass a positive amount
-     * for forward movement, and pass a negative amount for reverse
-     * movement. If less than the given amount are available, the Cursor key
-     * and value are set to null, and position will be undefined.
+     * to skip forward, and pass a negative amount for to skip bakwards. If
+     * less than the given amount of entries are available, the Cursor key and
+     * value are set to null, and position will be undefined.
      *
      * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
      * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
@@ -166,7 +166,7 @@ public interface Cursor {
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws IllegalStateException if position is undefined at invocation time
      */
-    public LockResult move(long amount) throws IOException;
+    public LockResult skip(long amount) throws IOException;
 
     /**
      * Advances to the Cursor to the next available entry. Cursor key and value
