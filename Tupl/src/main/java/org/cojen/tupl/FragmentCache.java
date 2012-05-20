@@ -133,7 +133,7 @@ class FragmentCache {
                 } else {
                     if (existing == caller) {
                         existing = null;
-                    } else if (existing.mId == nodeId) {
+                    } else {
                         if (nEx) {
                             existing.acquireExclusive();
                         } else {
