@@ -14,4 +14,17 @@
   cursor count (examine all root nodes), active transaction count
   (Database.mUndoLogCount; doesn’t count use of UNSAFE)
 
+Reduce overhead of checkpoint by sweeping through dirty nodes twice. This
+approach smooths out the "dump" when issuing a checkpoint. Also, it allows
+dirty nodes to move to MRU position when accessed. A new state is introduced,
+"mutable". At checkpoint, sweep through all dirty nodes, write them out, and
+mark them as mutable. When a mutable node is altered, its state becomes dirty
+again, but it doesn't acquire a new identifier. After first checkpoint sweep,
+switch active state (0/1). All dirty nodes with old state are written first
+when modified, just like the current design. Mutable nodes with old state don't
+need to be written, but a new identifier must still be acquired. Checkpoint now
+sweeps through node list again, forcing all dirty nodes to be written and
+marked clean. Those which are mutable are also marked clean, but without the
+additional write.
+
 ---
