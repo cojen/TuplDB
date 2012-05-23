@@ -174,10 +174,12 @@ public class DatabaseConfig implements Cloneable {
         return this;
     }
 
+    /*
     public DatabaseConfig readOnly(boolean readOnly) {
         mReadOnly = readOnly;
         return this;
     }
+    */
 
     public DatabaseConfig pageSize(int size) {
         mPageSize = size;
