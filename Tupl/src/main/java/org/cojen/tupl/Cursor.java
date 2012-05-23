@@ -156,7 +156,7 @@ public interface Cursor {
 
     /**
      * Moves the Cursor by a relative amount of entries. Pass a positive amount
-     * to skip forward, and pass a negative amount for to skip bakwards. If
+     * to skip forward, and pass a negative amount for to skip backwards. If
      * less than the given amount of entries are available, the Cursor key and
      * value are set to null, and position will be undefined.
      *
