@@ -149,6 +149,9 @@ public final class Database implements Closeable {
      */
     public static Database destroy(DatabaseConfig config) throws IOException {
         config = config.clone();
+        if (config.mReadOnly) {
+            throw new IllegalArgumentException("Cannot destroy read-only database");
+        }
         Database db = new Database(config, true);
         db.startCheckpointer(config);
         return db;
