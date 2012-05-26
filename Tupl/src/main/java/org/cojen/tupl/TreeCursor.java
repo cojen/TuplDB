@@ -16,6 +16,7 @@
 
 package org.cojen.tupl;
 
+import java.io.Closeable;
 import java.io.IOException;
 
 import java.util.ArrayDeque;
@@ -30,7 +31,7 @@ import java.util.concurrent.locks.Lock;
  *
  * @author Brian S O'Neill
  */
-final class TreeCursor implements Cursor {
+final class TreeCursor implements Cursor, Closeable {
     final Tree mTree;
     private Transaction mTxn;
 
@@ -1924,6 +1925,11 @@ final class TreeCursor implements Cursor {
         mKeyHash = 0;
         mValue = null;
         TreeCursorFrame.popAll(frame);
+    }
+
+    @Override
+    public void close() {
+        reset();
     }
 
     /**

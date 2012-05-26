@@ -176,9 +176,9 @@ final class Tree implements Index {
         try {
             cursor.autoload(false);
             cursor.findAndStore(key, value);
-        } finally {
-            // FIXME: this can deadlock, because exception can be thrown at anytime
             cursor.reset();
+        } catch (Throwable e) {
+            throw Utils.closeOnFailure(cursor, e);
         }
     }
 
@@ -187,13 +187,11 @@ final class Tree implements Index {
         TreeCursor cursor = new TreeCursor(this, txn);
         try {
             cursor.autoload(false);
-            return cursor.findAndModify(key, TreeCursor.MODIFY_INSERT, value);
-        } catch (Throwable e) {
-            e.printStackTrace(System.out);
-            throw Utils.rethrow(e);
-        } finally {
-            // FIXME: this can deadlock, because exception can be thrown at anytime
+            boolean result = cursor.findAndModify(key, TreeCursor.MODIFY_INSERT, value);
             cursor.reset();
+            return result;
+        } catch (Throwable e) {
+            throw Utils.closeOnFailure(cursor, e);
         }
     }
 
@@ -202,10 +200,11 @@ final class Tree implements Index {
         TreeCursor cursor = new TreeCursor(this, txn);
         try {
             cursor.autoload(false);
-            return cursor.findAndModify(key, TreeCursor.MODIFY_REPLACE, value);
-        } finally {
-            // FIXME: this can deadlock, because exception can be thrown at anytime
+            boolean result = cursor.findAndModify(key, TreeCursor.MODIFY_REPLACE, value);
             cursor.reset();
+            return result;
+        } catch (Throwable e) {
+            throw Utils.closeOnFailure(cursor, e);
         }
     }
 
@@ -215,10 +214,11 @@ final class Tree implements Index {
     {
         TreeCursor cursor = new TreeCursor(this, txn);
         try {
-            return cursor.findAndModify(key, oldValue, newValue);
-        } finally {
-            // FIXME: this can deadlock, because exception can be thrown at anytime
+            boolean result = cursor.findAndModify(key, oldValue, newValue);
             cursor.reset();
+            return result;
+        } catch (Throwable e) {
+            throw Utils.closeOnFailure(cursor, e);
         }
     }
 
