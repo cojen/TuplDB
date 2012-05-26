@@ -419,7 +419,10 @@ final class Tree implements Index {
     }
 
     void redoStore(byte[] key, byte[] value) throws IOException {
-        mDatabase.mRedoLog.store(mId, key, value, mDatabase.mDurabilityMode);
+        RedoLog redo = mDatabase.mRedoLog;
+        if (redo != null) {
+            redo.store(mId, key, value, mDatabase.mDurabilityMode);
+        }
     }
 
     /**

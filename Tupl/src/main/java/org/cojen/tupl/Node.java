@@ -677,9 +677,9 @@ final class Node extends Latch {
             try {
                 write(db);
                 mCachedState = CACHED_CLEAN;
-            } catch (IOException e) {
+            } catch (Throwable e) {
                 releaseExclusive();
-                throw e;
+                throw Utils.rethrow(e);
             }
         }
 
@@ -1276,6 +1276,7 @@ final class Node extends Latch {
             newChildPos <<= 3;
         }
 
+        // FIXME: IOException; how to rollback the damage?
         InResult result = createInternalEntry
             (tree, keyPos, split.splitKeyEncodedLength(), newChildPos, splitChild);
 
@@ -1378,6 +1379,7 @@ final class Node extends Latch {
                     return null;
                 }
 
+                // FIXME: IOException; how to rollback the damage?
                 result = splitInternal(tree, keyPos, splitChild, newChildPos, encodedLen);
                 page = result.mPage;
                 keyPos = result.mKeyLoc;
@@ -2187,28 +2189,34 @@ final class Node extends Latch {
                 avail += entryLen + 2;
             }
 
+            // Allocate Split object first, in case it throws an OutOfMemoryError.
+            mSplit = new Split(false, newNode);
+
             // Prune off the left end of this node.
             mSearchVecStart = searchVecLoc;
             mGarbage += garbageAccum;
 
-            if (newLoc == 0) {
-                // Unable to insert new entry into left node. Insert it into the right
-                // node, which should have space now.
-                storeIntoSplitLeaf(tree, key, fragmented, value, encodedLen, forInsert);
-            } else {
-                // Create new entry and point to it.
-                destLoc -= encodedLen;
-                newNode.copyToLeafEntry(key, fragmented, value, destLoc);
-                writeShort(newPage, newLoc, destLoc);
-            }
-
             newNode.mLeftSegTail = TN_HEADER_SIZE;
-            newNode.mRightSegTail = destLoc - 1;
             newNode.mSearchVecStart = TN_HEADER_SIZE;
             newNode.mSearchVecEnd = newSearchVecLoc - 2;
 
-            // Split key is copied from this, the right node.
-            mSplit = new Split(false, newNode, retrieveKey(0));
+            try {
+                if (newLoc == 0) {
+                    // Unable to insert new entry into left node. Insert it
+                    // into the right node, which should have space now.
+                    storeIntoSplitLeaf(tree, key, fragmented, value, encodedLen, forInsert);
+                } else {
+                    // Create new entry and point to it.
+                    destLoc -= encodedLen;
+                    newNode.copyToLeafEntry(key, fragmented, value, destLoc);
+                    writeShort(newPage, newLoc, destLoc);
+                }
+            } finally {
+                // Split key is copied from this, the right node.
+                mSplit.setKey(retrieveKey(0));
+                newNode.mRightSegTail = destLoc - 1;
+                newNode.releaseExclusive();
+            }
         } else {
             // Split into new right node.
 
@@ -2262,28 +2270,34 @@ final class Node extends Latch {
                 avail += entryLen + 2;
             }
 
+            // Allocate Split object first, in case it throws an OutOfMemoryError.
+            mSplit = new Split(true, newNode);
+
             // Prune off the right end of this node.
             mSearchVecEnd = searchVecLoc;
             mGarbage += garbageAccum;
 
-            if (newLoc == 0) {
-                // Unable to insert new entry into new right node. Insert it into the left
-                // node, which should have space now.
-                storeIntoSplitLeaf(tree, key, fragmented, value, encodedLen, forInsert);
-            } else {
-                // Create new entry and point to it.
-                newNode.copyToLeafEntry(key, fragmented, value, destLoc);
-                writeShort(newPage, newLoc, destLoc);
-                destLoc += encodedLen;
-            }
-
-            newNode.mLeftSegTail = destLoc;
             newNode.mRightSegTail = newPage.length - 1;
             newNode.mSearchVecStart = newSearchVecLoc + 2;
             newNode.mSearchVecEnd = newPage.length - 2;
 
-            // Split key is copied from the new right node.
-            mSplit = new Split(true, newNode, newNode.retrieveKey(0));
+            try {
+                if (newLoc == 0) {
+                    // Unable to insert new entry into new right node. Insert
+                    // it into the left node, which should have space now.
+                    storeIntoSplitLeaf(tree, key, fragmented, value, encodedLen, forInsert);
+                } else {
+                    // Create new entry and point to it.
+                    newNode.copyToLeafEntry(key, fragmented, value, destLoc);
+                    writeShort(newPage, newLoc, destLoc);
+                    destLoc += encodedLen;
+                }
+            } finally {
+                // Split key is copied from the new right node.
+                mSplit.setKey(newNode.retrieveKey(0));
+                newNode.mLeftSegTail = destLoc;
+                newNode.releaseExclusive();
+            }
         }
     }
 
@@ -2420,7 +2434,8 @@ final class Node extends Latch {
                         // New node has accumlated enough entries and split key has been found.
 
                         if (newKeyLoc != 0) {
-                            split = new Split(false, newNode, retrieveKeyAtLoc(page, entryLoc));
+                            split = new Split(false, newNode);
+                            split.setKey(retrieveKeyAtLoc(page, entryLoc));
                             break;
                         }
 
@@ -2473,6 +2488,7 @@ final class Node extends Latch {
                 newNode.mRightSegTail = destLoc - encodedLen - 1;
                 newNode.mSearchVecStart = TN_HEADER_SIZE;
                 newNode.mSearchVecEnd = newSearchVecLoc - 2;
+                newNode.releaseExclusive();
 
                 // Prune off the left end of this node by shifting vector towards child ids.
                 int shift = (searchVecLoc - searchVecStart) << 2;
@@ -2513,7 +2529,8 @@ final class Node extends Latch {
                         // New node has accumlated enough entries and split key has been found.
 
                         if (newKeyLoc != 0) {
-                            split = new Split(true, newNode, retrieveKeyAtLoc(page, entryLoc));
+                            split = new Split(true, newNode);
+                            split.setKey(retrieveKeyAtLoc(page, entryLoc));
                             break;
                         }
 
@@ -2582,6 +2599,7 @@ final class Node extends Latch {
                 newNode.mRightSegTail = newPage.length - 1;
                 newNode.mSearchVecStart = newSearchVecLoc;
                 newNode.mSearchVecEnd = newSearchVecEnd;
+                newNode.releaseExclusive();
 
                 // Prune off the right end of this node by shifting vector towards child ids.
                 int len = searchVecLoc - searchVecStart;

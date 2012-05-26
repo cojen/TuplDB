@@ -212,7 +212,7 @@ final class PageManager {
                 break createPages;
             }
 
-            PageStore.Stats stats = new PageStore.Stats();
+            PageDb.Stats stats = new PageDb.Stats();
             addTo(stats);
             pageCount -= stats.freePages;
 
@@ -283,7 +283,7 @@ final class PageManager {
         mRegularFreeList.appendLock().unlock();
     }
 
-    void addTo(PageStore.Stats stats) {
+    void addTo(PageDb.Stats stats) {
         mRemoveLock.lock();
         try {
             stats.totalPages += mTotalPageCount;
