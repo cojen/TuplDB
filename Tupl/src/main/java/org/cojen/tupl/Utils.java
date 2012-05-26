@@ -121,13 +121,39 @@ class Utils {
         }
     }
 
-    static IOException closeOnFailure(Closeable c, Throwable e) throws IOException {
-        e.printStackTrace(System.out);
+    static IOException closeOnFailure(final Closeable c, Throwable e) throws IOException {
+        // Close in a separate thread, in case of deadlock.
+        Thread closer;
         try {
-            c.close();
-        } catch (IOException e2) {
-            // Ignore.
+            closer = new Thread() {
+                public void run() {
+                    try {
+                        c.close();
+                    } catch (IOException e2) {
+                        // Ignore.
+                    }
+                }
+            };
+            closer.setDaemon(true);
+            closer.start();
+        } catch (Throwable e2) {
+            closer = null;
         }
+
+        if (closer == null) {
+            try {
+                c.close();
+            } catch (IOException e2) {
+                // Ignore.
+            }
+        } else {
+            // Block up to one second.
+            try {
+                closer.join(1000);
+            } catch (InterruptedException e2) {
+            }
+        }
+
         if (e instanceof RuntimeException) {
             throw (RuntimeException) e;
         }
@@ -137,6 +163,7 @@ class Utils {
         if (e instanceof IOException) {
             throw (IOException) e;
         }
+
         throw new CorruptDatabaseException(e);
     }
 
