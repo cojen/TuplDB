@@ -1148,9 +1148,12 @@ final class TreeCursor implements Cursor {
                 if (pos >= 0) {
                     frame.mNotFoundKey = null;
                     frame.mNodePos = pos;
-                    mValue = mKeyOnly ? node.hasLeafValue(pos)
-                        : node.retrieveLeafValue(mTree, pos);
-                    node.releaseExclusive();
+                    try {
+                        mValue = mKeyOnly ? node.hasLeafValue(pos)
+                            : node.retrieveLeafValue(mTree, pos);
+                    } finally {
+                        node.releaseExclusive();
+                    }
                     return result;
                 } else if (pos != ~0 && ~pos <= node.highestLeafPos()) {
                     // Not found, but insertion pos is in bounds.
@@ -1221,9 +1224,14 @@ final class TreeCursor implements Cursor {
                         frame.mNotFoundKey = key;
                         mValue = null;
                     } else {
-                        mValue = (variant == VARIANT_CHECK) ? NOT_LOADED
-                            : (mKeyOnly ? node.hasLeafValue(pos)
-                               : node.retrieveLeafValue(mTree, pos));
+                        try {
+                            mValue = (variant == VARIANT_CHECK) ? NOT_LOADED
+                                : (mKeyOnly ? node.hasLeafValue(pos)
+                                   : node.retrieveLeafValue(mTree, pos));
+                        } catch (Throwable e) {
+                            node.releaseExclusive();
+                            throw Utils.rethrow(e);
+                        }
                     }
                     mLeaf = frame;
                     if (variant < VARIANT_RETAIN) {
@@ -1692,46 +1700,135 @@ final class TreeCursor implements Cursor {
         throws IOException
     {
         byte[] key = mKey;
+        Node node = leaf.mNode;
+        try {
+            if (value == null) {
+                // Delete entry...
 
-        if (value == null) {
-            // Delete entry...
+                if (leaf.mNodePos < 0) {
+                    // Entry doesn't exist, so nothing to do.
+                    mValue = null;
+                    return;
+                }
 
-            if (leaf.mNodePos < 0) {
-                // Entry doesn't exist, so nothing to do.
-                leaf.mNode.releaseExclusive();
+                node = notSplitDirty(leaf);
+                final int pos = leaf.mNodePos;
+
+                if (txn == null) {
+                    mTree.redoStore(key, null);
+                    node.deleteLeafEntry(mTree, pos);
+                } else {
+                    if (txn.lockMode() == LockMode.UNSAFE) {
+                        node.deleteLeafEntry(mTree, pos);
+                        if (txn.mDurabilityMode != DurabilityMode.NO_LOG) {
+                            txn.redoStore(mTree.mId, key, null);
+                        }
+                    } else {
+                        Tree tree = mTree;
+                        node.undoPushLeafEntry(txn, tree.mId, UndoLog.OP_INSERT, pos);
+                        mTree.mLockManager.tombstoned(txn, tree, key, keyHash());
+                        node.tombstoneLeafValue(pos);
+                        if (txn.mDurabilityMode != DurabilityMode.NO_LOG) {
+                            txn.redoStore(tree.mId, key, null);
+                        }
+                        mValue = null;
+                        return;
+                    }
+                }
+
+                int newPos = ~pos;
+                leaf.mNodePos = newPos;
+                leaf.mNotFoundKey = key;
+
+                // Fix all cursors bound to the node.
+                TreeCursorFrame frame = node.mLastCursorFrame;
+                do {
+                    if (frame == leaf) {
+                        // Don't need to fix self.
+                        continue;
+                    }
+
+                    int framePos = frame.mNodePos;
+
+                    if (framePos == pos) {
+                        frame.mNodePos = newPos;
+                        frame.mNotFoundKey = key;
+                    } else if (framePos > pos) {
+                        frame.mNodePos = framePos - 2;
+                    } else if (framePos < newPos) {
+                        // Position is a complement, so add instead of subtract.
+                        frame.mNodePos = framePos + 2;
+                    }
+                } while ((frame = frame.mPrevCousin) != null);
+
+                if (node.shouldLeafMerge()) {
+                    try {
+                        mergeLeaf(leaf, node);
+                    } finally {
+                        // Always released by mergeLeaf.
+                        node = null;
+                    }
+                }
+
                 mValue = null;
                 return;
             }
 
-            Node node = notSplitDirty(leaf);
+            // Update and insert always dirty the node.
+            node = notSplitDirty(leaf);
             final int pos = leaf.mNodePos;
 
-            if (txn == null) {
-                mTree.redoStore(key, null);
-                node.deleteLeafEntry(mTree, pos);
-            } else {
-                if (txn.lockMode() == LockMode.UNSAFE) {
-                    node.deleteLeafEntry(mTree, pos);
+            if (pos >= 0) {
+                // Update entry...
+
+                if (txn == null) {
+                    mTree.redoStore(key, value);
+                } else {
+                    if (txn.lockMode() != LockMode.UNSAFE) {
+                        node.undoPushLeafEntry(txn, mTree.mId, UndoLog.OP_UPDATE, pos);
+                    }
                     if (txn.mDurabilityMode != DurabilityMode.NO_LOG) {
-                        txn.redoStore(mTree.mId, key, null);
+                        txn.redoStore(mTree.mId, key, value);
+                    }
+                }
+
+                node.updateLeafValue(mTree, pos, value);
+
+                if (node.shouldLeafMerge()) {
+                    try {
+                        mergeLeaf(leaf, node);
+                    } finally {
+                        // Always released by mergeLeaf.
+                        node = null;
                     }
                 } else {
-                    Tree tree = mTree;
-                    node.undoPushLeafEntry(txn, tree.mId, UndoLog.OP_INSERT, pos);
-                    mTree.mLockManager.tombstoned(txn, tree, key, keyHash());
-                    node.tombstoneLeafValue(pos);
-                    if (txn.mDurabilityMode != DurabilityMode.NO_LOG) {
-                        txn.redoStore(tree.mId, key, null);
+                    if (node.mSplit != null) {
+                        node = finishSplit(leaf, node);
                     }
-                    node.releaseExclusive();
-                    mValue = null;
-                    return;
+                }
+
+                mValue = value;
+                return;
+            }
+
+            // Insert entry...
+
+            if (txn == null) {
+                mTree.redoStore(key, value);
+            } else {
+                if (txn.lockMode() != LockMode.UNSAFE) {
+                    txn.undoDelete(mTree.mId, key);
+                }
+                if (txn.mDurabilityMode != DurabilityMode.NO_LOG) {
+                    txn.redoStore(mTree.mId, key, value);
                 }
             }
 
             int newPos = ~pos;
+            node.insertLeafEntry(mTree, newPos, key, value);
+
             leaf.mNodePos = newPos;
-            leaf.mNotFoundKey = key;
+            leaf.mNotFoundKey = null;
 
             // Fix all cursors bound to the node.
             TreeCursorFrame frame = node.mLastCursorFrame;
@@ -1744,118 +1841,39 @@ final class TreeCursor implements Cursor {
                 int framePos = frame.mNodePos;
 
                 if (framePos == pos) {
-                    frame.mNodePos = newPos;
-                    frame.mNotFoundKey = key;
-                } else if (framePos > pos) {
-                    frame.mNodePos = framePos - 2;
-                } else if (framePos < newPos) {
-                    // Position is a complement, so add instead of subtract.
+                    // Other cursor is at same not-found position as this one
+                    // was. If keys are the same, then other cursor switches
+                    // to a found state as well. If key is greater, then
+                    // position needs to be updated.
+
+                    byte[] frameKey = frame.mNotFoundKey;
+                    int compare = Utils.compareKeys
+                        (frameKey, 0, frameKey.length, key, 0, key.length);
+                    if (compare > 0) {
+                        // Position is a complement, so subtract instead of add.
+                        frame.mNodePos = framePos - 2;
+                    } else if (compare == 0) {
+                        frame.mNodePos = newPos;
+                        frame.mNotFoundKey = null;
+                    }
+                } else if (framePos >= newPos) {
                     frame.mNodePos = framePos + 2;
+                } else if (framePos < pos) {
+                    // Position is a complement, so subtract instead of add.
+                    frame.mNodePos = framePos - 2;
                 }
             } while ((frame = frame.mPrevCousin) != null);
 
-            if (node.shouldLeafMerge()) {
-                mergeLeaf(leaf, node);
-            } else {
-                node.releaseExclusive();
-            }
-
-            mValue = null;
-            return;
-        }
-
-        // Update and insert always dirty the node.
-        Node node = notSplitDirty(leaf);
-        final int pos = leaf.mNodePos;
-
-        if (pos >= 0) {
-            // Update entry...
-
-            if (txn == null) {
-                mTree.redoStore(key, value);
-            } else {
-                if (txn.lockMode() != LockMode.UNSAFE) {
-                    node.undoPushLeafEntry(txn, mTree.mId, UndoLog.OP_UPDATE, pos);
-                }
-                if (txn.mDurabilityMode != DurabilityMode.NO_LOG) {
-                    txn.redoStore(mTree.mId, key, value);
-                }
-            }
-
-            node.updateLeafValue(mTree, pos, value);
-
-            if (node.shouldLeafMerge()) {
-                mergeLeaf(leaf, node);
-            } else {
-                if (node.mSplit != null) {
-                    node = finishSplit(leaf, node);
-                }
-                node.releaseExclusive();
+            if (node.mSplit != null) {
+                node = finishSplit(leaf, node);
             }
 
             mValue = value;
-            return;
-        }
-
-        // Insert entry...
-
-        if (txn == null) {
-            mTree.redoStore(key, value);
-        } else {
-            if (txn.lockMode() != LockMode.UNSAFE) {
-                txn.undoDelete(mTree.mId, key);
-            }
-            if (txn.mDurabilityMode != DurabilityMode.NO_LOG) {
-                txn.redoStore(mTree.mId, key, value);
+        } finally {
+            if (node != null) {
+                node.releaseExclusive();
             }
         }
-
-        int newPos = ~pos;
-        node.insertLeafEntry(mTree, newPos, key, value);
-
-        leaf.mNodePos = newPos;
-        leaf.mNotFoundKey = null;
-
-        // Fix all cursors bound to the node.
-        TreeCursorFrame frame = node.mLastCursorFrame;
-        do {
-            if (frame == leaf) {
-                // Don't need to fix self.
-                continue;
-            }
-
-            int framePos = frame.mNodePos;
-
-            if (framePos == pos) {
-                // Other cursor is at same not-found position as this one was.
-                // If keys are the same, then other cursor switches to a found
-                // state as well. If key is greater, then position needs to be
-                // updated.
-
-                byte[] frameKey = frame.mNotFoundKey;
-                int compare = Utils.compareKeys
-                    (frameKey, 0, frameKey.length, key, 0, key.length);
-                if (compare > 0) {
-                    // Position is a complement, so subtract instead of add.
-                    frame.mNodePos = framePos - 2;
-                } else if (compare == 0) {
-                    frame.mNodePos = newPos;
-                    frame.mNotFoundKey = null;
-                }
-            } else if (framePos >= newPos) {
-                frame.mNodePos = framePos + 2;
-            } else if (framePos < pos) {
-                // Position is a complement, so subtract instead of add.
-                frame.mNodePos = framePos - 2;
-            }
-        } while ((frame = frame.mPrevCousin) != null);
-
-        if (node.mSplit != null) {
-            node = finishSplit(leaf, node);
-        }
-
-        node.releaseExclusive();
-        mValue = value;
     }
 
     private IOException handleStoreException(Throwable e) throws IOException {
@@ -1868,8 +1886,7 @@ final class TreeCursor implements Cursor {
         try {
             throw Utils.closeOnFailure(mTree.mDatabase, e);
         } finally {
-            // FIXME: this can deadlock, because exception can be thrown at anytime
-            //close();
+            reset();
         }
     }
 
@@ -2148,7 +2165,7 @@ final class TreeCursor implements Cursor {
      * Caller must hold exclusive latch, which is released by this method.
      */
     private void mergeLeaf(final TreeCursorFrame leaf, Node node) throws IOException {
-        TreeCursorFrame parentFrame = leaf.mParentFrame;
+        final TreeCursorFrame parentFrame = leaf.mParentFrame;
         node.releaseExclusive();
 
         if (parentFrame == null) {
@@ -2523,8 +2540,13 @@ final class TreeCursor implements Cursor {
             } else {
                 stub = null;
             }
-            node.finishSplitRoot(tree, stub);
-            return node;
+            try {
+                node.finishSplitRoot(tree, stub);
+                return node;
+            } catch (Throwable e) {
+                node.releaseExclusive();
+                throw Utils.rethrow(e);
+            }
         }
 
         final TreeCursorFrame parentFrame = frame.mParentFrame;
@@ -2549,6 +2571,7 @@ final class TreeCursor implements Cursor {
                     parentNode.releaseExclusive();
                     return node;
                 }
+                // FIXME: IOException; release latch
                 parentNode.insertSplitChildRef(tree, parentFrame.mNodePos, node);
             }
         } finally {

@@ -171,6 +171,9 @@ final class RedoLog implements Closeable {
         }
 
         File file = fileFor(mLogId);
+        if (file == null) {
+            return true;
+        }
 
         DataIn in;
         try {
@@ -244,8 +247,12 @@ final class RedoLog implements Closeable {
         mLogId = logId;
     }
 
+    /**
+     * @return null if non-durable
+     */
     private File fileFor(long logId) {
-        return new File(mBaseFile.getPath() + ".redo." + logId);
+        File base = mBaseFile;
+        return base == null ? null :  new File(base.getPath() + ".redo." + logId);
     }
 
     public synchronized void flush() throws IOException {

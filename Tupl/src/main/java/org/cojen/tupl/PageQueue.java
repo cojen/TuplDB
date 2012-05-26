@@ -372,7 +372,7 @@ final class PageQueue implements IntegerRef {
     /**
      * Caller must hold remove lock.
      */
-    void addTo(PageStore.Stats stats) {
+    void addTo(PageDb.Stats stats) {
         stats.freePages += mRemovePageCount + mRemoveNodeCount;
     }
 

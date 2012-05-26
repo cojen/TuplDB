@@ -517,8 +517,11 @@ public final class Transaction extends Locker {
                 mTxnId = txnId;
             }
 
-            mDatabase.mRedoLog.txnStore(txnId, indexId, key, value);
-            mHasRedo = true;
+            RedoLog redo = mDatabase.mRedoLog;
+            if (redo != null) {
+                redo.txnStore(txnId, indexId, key, value);
+                mHasRedo = true;
+            }
         } catch (Throwable e) {
             throw borked(e);
         }

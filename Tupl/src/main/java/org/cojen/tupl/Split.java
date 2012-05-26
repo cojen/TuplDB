@@ -23,24 +23,21 @@ package org.cojen.tupl;
  */
 class Split {
     final boolean mSplitRight;
-    private final long mSiblingId;
     private final Node mSibling;
 
     // In many cases a copy of the key is not necessary; a simple reference to
     // the appropriate sub node works fine. This strategy assumes that the sub
     // node will not be compacted before the split is completed. For this
     // reason, Split is always constructed with a copied key.
-    private final byte[] mSplitKey;
+    private byte[] mSplitKey;
 
-    /**
-     * @param sibling must have exclusive lock when called; is released as a side-effect
-     */
-    Split(boolean splitRight, Node sibling, byte[] splitKey) {
+    Split(boolean splitRight, Node sibling) {
         mSplitRight = splitRight;
-        mSiblingId = sibling.mId;
         mSibling = sibling;
+    }
+
+    void setKey(byte[] splitKey) {
         mSplitKey = splitKey;
-        sibling.releaseExclusive();
     }
 
     /**

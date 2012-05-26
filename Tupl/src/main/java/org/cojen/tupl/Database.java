@@ -93,7 +93,7 @@ public final class Database implements Closeable {
     final long mDefaultLockTimeoutNanos;
     final LockManager mLockManager;
     final RedoLog mRedoLog;
-    final PageStore mPageStore;
+    final PageDb mPageDb;
 
     private final BufferPool mSpareBufferPool;
 
@@ -209,7 +209,7 @@ public final class Database implements Closeable {
         mDefaultLockTimeoutNanos = config.mLockTimeoutNanos;
         mLockManager = new LockManager(mDefaultLockTimeoutNanos);
 
-        if (!config.mReadOnly && config.mMkdirs) {
+        if (baseFile != null && !config.mReadOnly && config.mMkdirs) {
             baseFile.getParentFile().mkdirs();
             for (File f : dataFiles) {
                 f.getParentFile().mkdirs();
@@ -217,24 +217,33 @@ public final class Database implements Closeable {
         }
 
         // Create lock file and write info file of properties.
-        mLockFile = new LockedFile(new File(baseFile.getPath() + ".lock"), config.mReadOnly);
-        if (!config.mReadOnly) {
-            File infoFile = new File(baseFile.getPath() + ".info");
-            Writer w = new BufferedWriter
-                (new OutputStreamWriter(new FileOutputStream(infoFile), "UTF-8"));
-            try {
-                config.writeInfo(w);
-            } finally {
-                w.close();
+        if (baseFile == null) {
+            mLockFile = null;
+        } else {
+            mLockFile = new LockedFile(new File(baseFile.getPath() + ".lock"), config.mReadOnly);
+            if (!config.mReadOnly) {
+                File infoFile = new File(baseFile.getPath() + ".info");
+                Writer w = new BufferedWriter
+                    (new OutputStreamWriter(new FileOutputStream(infoFile), "UTF-8"));
+                try {
+                    config.writeInfo(w);
+                } finally {
+                    w.close();
+                }
             }
         }
 
         EnumSet<OpenOption> options = config.createOpenOptions();
-        if (destroy) {
+        if (baseFile != null && destroy) {
             // Delete old redo log files.
             Utils.deleteNumberedFiles(baseFile, ".redo.");
         }
-        mPageStore = new PageStore(pageSize, dataFiles, options, destroy);
+
+        if (dataFiles == null) {
+            mPageDb = new NonPageDb(pageSize);
+        } else {
+            mPageDb = new DurablePageDb(pageSize, dataFiles, options, destroy);
+        }
 
         try {
             // Pre-allocate nodes. They are automatically added to the usage
@@ -255,9 +264,9 @@ public final class Database implements Closeable {
             }
 
             int spareBufferCount = Runtime.getRuntime().availableProcessors();
-            mSpareBufferPool = new BufferPool(mPageStore.pageSize(), spareBufferCount);
+            mSpareBufferPool = new BufferPool(mPageDb.pageSize(), spareBufferCount);
 
-            mSharedCommitLock = mPageStore.sharedCommitLock();
+            mSharedCommitLock = mPageDb.sharedCommitLock();
             mSharedCommitLock.lock();
             try {
                 mCommitState = CACHED_DIRTY_0;
@@ -266,7 +275,7 @@ public final class Database implements Closeable {
             }
 
             byte[] header = new byte[HEADER_SIZE];
-            mPageStore.readExtraCommitData(header);
+            mPageDb.readExtraCommitData(header);
 
             mRegistry = new Tree(this, Tree.REGISTRY_ID, null, null, loadRegistryRoot(header));
             mOpenTrees = new TreeMap<byte[], Tree>(KeyComparator.THE);
@@ -278,12 +287,12 @@ public final class Database implements Closeable {
             long redoLogId = readLong(header, I_REDO_LOG_ID);
 
             // Initialized, but not open yet.
-            mRedoLog = new RedoLog(baseFile, redoLogId);
+            mRedoLog = baseFile == null ? null : new RedoLog(baseFile, redoLogId);
 
             mRegistryKeyMap = openInternalTree(Tree.REGISTRY_KEY_MAP_ID, true);
 
             mAllocator = new OrderedPageAllocator
-                (mPageStore, openInternalTree(Tree.PAGE_ALLOCATOR, true));
+                (mPageDb, null /*openInternalTree(Tree.PAGE_ALLOCATOR, true)*/);
 
             mFragmentCache = new FragmentCache(this, mMaxNodeCount);
 
@@ -292,50 +301,52 @@ public final class Database implements Closeable {
             // for value length field.
             mMaxFragmentedEntrySize = (pageSize - Node.TN_HEADER_SIZE - (2 + 3 + 2 + 3)) >> 1;
 
-            // Perform recovery by examining redo and undo logs.
+            if (mRedoLog != null) {
+                // Perform recovery by examining redo and undo logs.
 
-            UndoLog masterUndoLog;
-            LHashTable.Obj<UndoLog> undoLogs;
-            {
-                long nodeId = readLong(header, I_MASTER_UNDO_LOG_PAGE_ID);
-                if (nodeId == 0) {
-                    masterUndoLog = null;
-                    undoLogs = null;
-                } else {
-                    masterUndoLog = UndoLog.recoverMasterUndoLog(this, nodeId);
-                    undoLogs = masterUndoLog.recoverLogs();
+                UndoLog masterUndoLog;
+                LHashTable.Obj<UndoLog> undoLogs;
+                {
+                    long nodeId = readLong(header, I_MASTER_UNDO_LOG_PAGE_ID);
+                    if (nodeId == 0) {
+                        masterUndoLog = null;
+                        undoLogs = null;
+                    } else {
+                        masterUndoLog = UndoLog.recoverMasterUndoLog(this, nodeId);
+                        undoLogs = masterUndoLog.recoverLogs();
+                    }
                 }
-            }
 
-            // TODO: Recovery should only need to perform at most one checkpoint.
-            // The current approach is fine, but it's just a bit messy.
+                // TODO: Recovery should only need to perform at most one checkpoint.
+                // The current approach is fine, but it's just a bit messy.
 
-            if (redoReplay(undoLogs)) {
-                // Make sure old redo log is deleted. Process might have exited
-                // before last checkpoint could delete it.
-                mRedoLog.deleteOldFile(redoLogId - 1);
+                if (redoReplay(undoLogs)) {
+                    // Make sure old redo log is deleted. Process might have exited
+                    // before last checkpoint could delete it.
+                    mRedoLog.deleteOldFile(redoLogId - 1);
 
-                // Checkpoint now to ensure all old redo log entries are durable.
-                checkpoint(true);
-
-                while (mRedoLog.isReplayMode()) {
-                    // Last checkpoint was interrupted, so apply next log file too.
-                    redoReplay(undoLogs);
+                    // Checkpoint now to ensure all old redo log entries are durable.
                     checkpoint(true);
+
+                    while (mRedoLog.isReplayMode()) {
+                        // Last checkpoint was interrupted, so apply next log file too.
+                        redoReplay(undoLogs);
+                        checkpoint(true);
+                    }
+                }
+
+                if (masterUndoLog != null) {
+                    // Rollback all remaining undo logs. They were never explicitly
+                    // rolled back. This also deletes the master undo log.
+                    if (masterUndoLog.rollbackRemaining(undoLogs)) {
+                        // Checkpoint again to ensure that undo logs don't get
+                        // re-applied following a restart.
+                        checkpoint(true);
+                    }
                 }
             }
 
-            if (masterUndoLog != null) {
-                // Rollback all remaining undo logs. They were never explicitly
-                // rolled back. This also deletes the master undo log.
-                if (masterUndoLog.rollbackRemaining(undoLogs)) {
-                    // Checkpoint again to ensure that undo logs don't get
-                    // re-applied following a restart.
-                    checkpoint(true);
-                }
-            }
-
-            mTempFileManager = new TempFileManager(baseFile);
+            mTempFileManager = baseFile == null ? null : new TempFileManager(baseFile);
         } catch (Throwable e) {
             Utils.closeQuietly(null, this);
             throw Utils.rethrow(e);
@@ -343,6 +354,10 @@ public final class Database implements Closeable {
     }
 
     private void startCheckpointer(DatabaseConfig config) {
+        if (mRedoLog == null) {
+            return;
+        }
+
         long checkpointRateNanos = config.mCheckpointRateNanos;
         if (checkpointRateNanos < 0) {
             return;
@@ -373,7 +388,7 @@ public final class Database implements Closeable {
 
     // FIXME: testing
     void trace() throws IOException {
-        java.util.BitSet pages = mPageStore.tracePages();
+        java.util.BitSet pages = mPageDb.tracePages();
         mRegistry.mRoot.tracePages(this, pages);
         mRegistryKeyMap.mRoot.tracePages(this, pages);
         synchronized (mOpenTrees) {
@@ -383,7 +398,7 @@ public final class Database implements Closeable {
         }
         System.out.println(pages);
         System.out.println("lost: " + pages.cardinality());
-        System.out.println(mPageStore.stats());
+        System.out.println(mPageDb.stats());
     }
 
     private boolean redoReplay(LHashTable.Obj<UndoLog> undoLogs) throws IOException {
@@ -620,7 +635,7 @@ public final class Database implements Closeable {
         int pageSize = pageSize();
         long pageCount = (bytes + pageSize - 1) / pageSize;
         if (pageCount > 0) {
-            mPageStore.allocatePages(pageCount);
+            mPageDb.allocatePages(pageCount);
             checkpoint(true);
         }
     }
@@ -635,8 +650,12 @@ public final class Database implements Closeable {
      * @return a snapshot control object, which must be closed when no longer needed
      */
     public Snapshot beginSnapshot(OutputStream out) throws IOException {
+        if (!(mPageDb instanceof DurablePageDb)) {
+            throw new UnsupportedOperationException("Snapshot only allowed for durable databases");
+        }
+        DurablePageDb pageDb = (DurablePageDb) mPageDb;
         int cluster = Math.max(1, 65536 / pageSize());
-        return mPageStore.beginSnapshot(mTempFileManager, cluster, out);
+        return pageDb.beginSnapshot(mTempFileManager, cluster, out);
     }
 
     /**
@@ -646,6 +665,9 @@ public final class Database implements Closeable {
         throws IOException
     {
         File[] dataFiles = config.dataFiles();
+        if (dataFiles == null) {
+            throw new UnsupportedOperationException("Restore only allowed for durable databases");
+        }
         if (!config.mReadOnly && config.mMkdirs) {
             for (File f : dataFiles) {
                 f.getParentFile().mkdirs();
@@ -654,7 +676,7 @@ public final class Database implements Closeable {
         EnumSet<OpenOption> options = config.createOpenOptions();
         // Delete old redo log files.
         Utils.deleteNumberedFiles(config.mBaseFile, ".redo.");
-        PageStore.restoreFromSnapshot(dataFiles, options, in).close();
+        DurablePageDb.restoreFromSnapshot(dataFiles, options, in).close();
         return Database.open(config);
     }
 
@@ -664,7 +686,7 @@ public final class Database implements Closeable {
      * become {@link DurabilityMode#NO_SYNC no-sync} durable.
      */
     public void flush() throws IOException {
-        if (!mClosed) {
+        if (!mClosed && mRedoLog != null) {
             mRedoLog.flush();
         }
     }
@@ -676,7 +698,7 @@ public final class Database implements Closeable {
      * DurabilityMode#SYNC sync} durable.
      */
     public void sync() throws IOException {
-        if (!mClosed) {
+        if (!mClosed && mRedoLog != null) {
             mRedoLog.sync();
         }
     }
@@ -687,7 +709,7 @@ public final class Database implements Closeable {
      * non-transactional modifications are durable.
      */
     public void checkpoint() throws IOException {
-        if (!mClosed) {
+        if (!mClosed && mRedoLog != null) {
             checkpoint(false);
         }
     }
@@ -707,9 +729,11 @@ public final class Database implements Closeable {
             c = null;
         }
 
-        synchronized (mOpenTrees) {
-            mOpenTrees.clear();
-            mOpenTreesById.clear(0);
+        if (mOpenTrees != null) {
+            synchronized (mOpenTrees) {
+                mOpenTrees.clear();
+                mOpenTreesById.clear(0);
+            }
         }
 
         mSharedCommitLock.lock();
@@ -720,7 +744,7 @@ public final class Database implements Closeable {
             IOException ex = null;
 
             ex = Utils.closeQuietly(ex, mRedoLog);
-            ex = Utils.closeQuietly(ex, mPageStore);
+            ex = Utils.closeQuietly(ex, mPageDb);
             ex = Utils.closeQuietly(ex, mLockFile);
 
             if (ex != null) {
@@ -899,7 +923,7 @@ public final class Database implements Closeable {
      * Returns the fixed size of all pages in the store, in bytes.
      */
     int pageSize() {
-        return mPageStore.pageSize();
+        return mPageDb.pageSize();
     }
 
     /**
@@ -1135,7 +1159,7 @@ public final class Database implements Closeable {
         if (node.mCachedState != mCommitState) {
             long oldId = node.mId;
             long newId = mAllocator.allocPage(null, node);
-            mPageStore.deletePage(oldId);
+            mPageDb.deletePage(oldId);
             node.write(this);
             dirty(node, newId);
         }
@@ -1150,7 +1174,7 @@ public final class Database implements Closeable {
         long oldId = node.mId;
         long newId = mAllocator.allocPage(tree, node);
         if (oldId != 0) {
-            mPageStore.deletePage(oldId);
+            mPageDb.deletePage(oldId);
         }
         if (node.mCachedState != CACHED_CLEAN) {
             node.write(this);
@@ -1238,7 +1262,7 @@ public final class Database implements Closeable {
                 mAllocator.recyclePage(fromTree, id);
             } else {
                 // Old data must survive until after checkpoint.
-                mPageStore.deletePage(id);
+                mPageDb.deletePage(id);
             }
         }
     }
@@ -1554,7 +1578,7 @@ public final class Database implements Closeable {
                 } else {
                     // Page is clean if not in a Node, and so it must survive
                     // until after the next checkpoint.
-                    mPageStore.deletePage(nodeId);
+                    mPageDb.deletePage(nodeId);
                 }
             }
         } else {
@@ -1572,11 +1596,11 @@ public final class Database implements Closeable {
     }
 
     void readPage(long id, byte[] page) throws IOException {
-        mPageStore.readPage(id, page);
+        mPageDb.readPage(id, page);
     }
 
     void writePage(long id, byte[] page) throws IOException {
-        mPageStore.writePage(id, page);
+        mPageDb.writePage(id, page);
     }
 
     private void checkpoint(boolean force) throws IOException {
@@ -1593,7 +1617,7 @@ public final class Database implements Closeable {
             // effectively de-prioritized. For each retry, the timeout is
             // doubled, to ensure that the checkpoint request is not starved.
             try {
-                Lock commitLock = mPageStore.exclusiveCommitLock();
+                Lock commitLock = mPageDb.exclusiveCommitLock();
                 long timeoutMillis = 1;
                 while (!commitLock.tryLock(timeoutMillis, TimeUnit.MILLISECONDS)) {
                     timeoutMillis <<= 1;
@@ -1607,7 +1631,7 @@ public final class Database implements Closeable {
             if (!force && root.mCachedState == CACHED_CLEAN) {
                 // Root is clean, so nothing to do.
                 root.releaseShared();
-                mPageStore.exclusiveCommitLock().unlock();
+                mPageDb.exclusiveCommitLock().unlock();
                 return;
             }
 
@@ -1622,7 +1646,7 @@ public final class Database implements Closeable {
                 redoLogId = mRedoLog.openNewFile();
             } catch (IOException e) {
                 root.releaseShared();
-                mPageStore.exclusiveCommitLock().unlock();
+                mPageDb.exclusiveCommitLock().unlock();
                 throw e;
             }
 
@@ -1645,7 +1669,7 @@ public final class Database implements Closeable {
                 }
             }
 
-            mPageStore.commit(new PageStore.CommitCallback() {
+            mPageDb.commit(new PageDb.CommitCallback() {
                 @Override
                 public byte[] prepare() throws IOException {
                     return flush(redoLogId, masterUndoLogId);
@@ -1682,7 +1706,7 @@ public final class Database implements Closeable {
         final int stateToFlush = mCommitState;
         mCommitState = (byte) (stateToFlush ^ 1);
         root.releaseShared();
-        mPageStore.exclusiveCommitLock().unlock();
+        mPageDb.exclusiveCommitLock().unlock();
 
         mAllocator.beginDirtyIteration();
         Node node;
