@@ -72,28 +72,34 @@ final class UndoLog {
     // Must be power of two.
     private static final int INITIAL_BUFFER_SIZE = 128;
 
+    // Indicates that transaction has been committed.
+    private static final byte OP_COMMIT = (byte) 1;
+
+    // Indicates that transaction has been committed and log is partially truncated.
+    private static final byte OP_COMMIT_TRUNCATE = (byte) 2;
+
     // Copy to another log from master log. Payload is active transaction id,
     // index id, buffer size (short type), and serialized buffer.
-    private static final byte OP_LOG_COPY = (byte) 1;
+    private static final byte OP_LOG_COPY = (byte) 3;
 
     // Reference to another log from master log. Payload is active transaction
     // id, index id, and node id.
-    private static final byte OP_LOG_REF = (byte) 2;
+    private static final byte OP_LOG_REF = (byte) 4;
 
     // Payload is active transaction id.
-    private static final byte OP_TRANSACTION = (byte) 3;
+    private static final byte OP_TRANSACTION = (byte) 5;
 
     // Payload is active index id.
-    private static final byte OP_INDEX = (byte) 4;
+    private static final byte OP_INDEX = (byte) 6;
 
     // Payload is key to delete to undo an insert.
-    static final byte OP_DELETE = (byte) 5;
+    static final byte OP_DELETE = (byte) 7;
 
     // Payload is key and value to store to undo an update.
-    static final byte OP_UPDATE = (byte) 6;
+    static final byte OP_UPDATE = (byte) 8;
 
     // Payload is key and value to store to undo a delete.
-    static final byte OP_INSERT = (byte) 7;
+    static final byte OP_INSERT = (byte) 9;
 
     private final Database mDatabase;
 
@@ -101,7 +107,7 @@ final class UndoLog {
     private long mLength;
 
     // Except for mLength, all field modifications during normal usage must be
-    // performed while holding shared commit lock. See writeToMaster method.
+    // performed while holding shared db commit lock. See writeToMaster method.
 
     private byte[] mBuffer;
     private int mBufferPos;
@@ -123,7 +129,7 @@ final class UndoLog {
     }
 
     /**
-     * Caller must hold commit lock.
+     * Caller must hold db commit lock.
      */
     static UndoLog newMasterUndoLog(Database db) throws IOException {
         UndoLog log = new UndoLog(db);
@@ -142,7 +148,7 @@ final class UndoLog {
     }
 
     /**
-     * Ensures all entries are stored in persistable nodes. Caller must hold
+     * Ensures all entries are stored in persistable nodes. Caller must hold db
      * commit lock.
      */
     private void persistReady() throws IOException {
@@ -189,14 +195,14 @@ final class UndoLog {
     }
 
     /**
-     * Caller must hold commit lock.
+     * Caller must hold db commit lock.
      */
     final long activeTransactionId() {
         return mActiveTxnId;
     }
 
     /**
-     * Caller must hold commit lock.
+     * Caller must hold db commit lock.
      */
     final void activeTransactionId(long txnId) throws IOException {
         long active = mActiveTxnId;
@@ -213,14 +219,14 @@ final class UndoLog {
     }
 
     /**
-     * Caller must hold commit lock.
+     * Caller must hold db commit lock.
      */
     final void push(long indexId, byte op, byte[] payload) throws IOException {
         push(indexId, op, payload, 0, payload.length);
     }
 
     /**
-     * Caller must hold commit lock.
+     * Caller must hold db commit lock.
      */
     final void push(final long indexId,
                     final byte op, final byte[] payload, final int off, final int len)
@@ -244,7 +250,14 @@ final class UndoLog {
     }
 
     /**
-     * Caller must hold commit lock.
+     * Caller must hold db commit lock.
+     */
+    void pushCommit() throws IOException {
+        doPush(OP_COMMIT, Utils.EMPTY_BYTES, 0, 0, 1); 
+    }
+
+    /**
+     * Caller must hold db commit lock.
      */
     private void doPush(final byte op, final byte[] payload, final int off, final int len,
                         int varIntLen)
@@ -348,7 +361,7 @@ final class UndoLog {
     }
 
     /**
-     * Caller does not need to hold commit lock.
+     * Caller does not need to hold db commit lock.
      */
     final long savepoint() {
         final Lock sharedCommitLock = mDatabase.sharedCommitLock();
@@ -363,7 +376,7 @@ final class UndoLog {
 
     /**
      * Should only be called after all log entries have been truncated or
-     * rolled back. Caller does not need to hold commit lock.
+     * rolled back. Caller does not need to hold db commit lock.
      */
     final void unregister() {
         final Lock sharedCommitLock = mDatabase.sharedCommitLock();
@@ -376,27 +389,49 @@ final class UndoLog {
     }
 
     /**
-     * Truncate all log entries. Caller must hold commit lock or prevent any
-     * checkpoints from starting.
+     * Truncate all log entries. Caller does not need to hold db commit lock.
+     *
+     * @param commit pass true to indicate that top of stack is a commit op
      */
-    final void truncate() throws IOException {
-        if (mLength > 0) {
-            Node node = mNode;
-            if (node == null) {
-                mBufferPos = mBuffer.length;
-            } else {
-                while ((node = popNode(node)) != null);
+    final void truncate(boolean commit) throws IOException {
+        final Lock sharedCommitLock = mDatabase.sharedCommitLock();
+        sharedCommitLock.lock();
+        try {
+            if (mLength > 0) {
+                Node node = mNode;
+                if (node == null) {
+                    mBufferPos = mBuffer.length;
+                } else {
+                    while ((node = popNode(node)) != null) {
+                        if (commit) {
+                            // When shared lock is released, log can be
+                            // checkpointed in an incomplete state. Update the
+                            // top node to indicate that undo log is committed.
+                            mDatabase.redirty(node);
+                            byte[] page = node.mPage;
+                            int end = page.length - 1;
+                            node.mGarbage = end;
+                            page[end] = OP_COMMIT_TRUNCATE;
+                        }
+                        // Release and re-acquire, to unblock any threads
+                        // waiting for checkpoint to begin.
+                        sharedCommitLock.unlock();
+                        sharedCommitLock.lock();
+                    }
+                }
+                mLength = 0;
+                mActiveIndexId = 0;
             }
-            mLength = 0;
-            mActiveIndexId = 0;
-        }
 
-        mActiveTxnId = 0;
+            mActiveTxnId = 0;
+        } finally {
+            sharedCommitLock.unlock();
+        }
     }
 
     /**
      * Rollback all log entries to the given savepoint. Pass zero to rollback
-     * everything. Caller does not need to hold commit lock.
+     * everything. Caller does not need to hold db commit lock.
      */
     final void rollback(long savepoint) throws IOException {
         // Implementation could be optimized somewhat, resulting in less
@@ -430,8 +465,60 @@ final class UndoLog {
     }
 
     /**
+     * Truncate all log entries, and delete any tombstones that were
+     * created. Only to be called during recovery.
+     */
+    final void deleteTombstones() throws IOException {
+        if (mLength > 0) {
+            byte[] opRef = new byte[1];
+            Index activeIndex = null;
+            do {
+                byte[] entry = pop(opRef);
+                if (entry == null) {
+                    break;
+                }
+
+                byte op = opRef[0];
+                switch (op) {
+                default:
+                    throw new DatabaseException("Unknown undo log entry type: " + op);
+
+                case OP_COMMIT:
+                case OP_COMMIT_TRUNCATE:
+                case OP_TRANSACTION:
+                case OP_DELETE:
+                case OP_UPDATE:
+                    // Ignore.
+                    break;
+
+                case OP_INDEX:
+                    mActiveIndexId = readLong(entry, 0);
+                    activeIndex = null;
+                    break;
+
+                case OP_INSERT:
+                    // Since transaction was committed, don't insert an entry
+                    // to undo a delete, but instead delete the tombstone.
+                    activeIndex = findIndex(activeIndex);
+                    byte[][] pair = Node.decodeUndoEntry(entry);
+                    TreeCursor cursor = new TreeCursor((Tree) activeIndex, null);
+                    try {
+                        cursor.deleteTombstone(pair[0]);
+                        cursor.reset();
+                    } catch (Throwable e) {
+                        throw Utils.closeOnFailure(cursor, e);
+                    }
+                    break;
+                }
+            } while (mLength > 0);
+        }
+
+        mActiveTxnId = 0;
+    }
+
+    /**
      * Truncate to an enclosing parent scope, as required by master log during
-     * recovery. Caller must hold commit lock or be performing recovery.
+     * recovery. Caller must hold db commit lock or be performing recovery.
      *
      * @param txnId expected active transaction id
      * @param parentTxnId new active transaction to be
@@ -472,6 +559,8 @@ final class UndoLog {
             case OP_DELETE:
             case OP_UPDATE:
             case OP_INSERT:
+            case OP_COMMIT:
+            case OP_COMMIT_TRUNCATE:
                 // Ignore.
                 break;
             }
@@ -482,7 +571,7 @@ final class UndoLog {
 
     /**
      * Rollback to an enclosing parent scope, as required by master log during
-     * recovery. Caller must hold commit lock or be performing recovery.
+     * recovery. Caller must hold db commit lock or be performing recovery.
      *
      * @param txnId expected active transaction id
      * @param parentTxnId new active transaction to be
@@ -532,6 +621,11 @@ final class UndoLog {
             // Caller should have already handled this
             throw new AssertionError();
 
+        case OP_COMMIT:
+        case OP_COMMIT_TRUNCATE:
+            // Only needs to be processed by processRemaining.
+            break;
+
         case OP_INDEX:
             mActiveIndexId = readLong(entry, 0);
             activeIndex = null;
@@ -542,7 +636,8 @@ final class UndoLog {
             activeIndex.delete(Transaction.BOGUS, entry);
             break;
 
-        case OP_UPDATE: case OP_INSERT:
+        case OP_UPDATE:
+        case OP_INSERT:
             activeIndex = findIndex(activeIndex);
             {
                 byte[][] pair = Node.decodeUndoEntry(entry);
@@ -564,7 +659,28 @@ final class UndoLog {
     }
 
     /**
-     * Caller must hold commit lock.
+     * @return last pushed op, or 0 if empty
+     */
+    final byte peek() throws IOException {
+        Node node = mNode;
+        if (node == null) {
+            return (mBuffer == null || mBufferPos >= mBuffer.length) ? 0 : mBuffer[mBufferPos];
+        }
+
+        while (true) {
+            byte[] page = node.mPage;
+            int pos = node.mGarbage;
+            if (pos < page.length) {
+                return page[pos];
+            }
+            if ((node = popNode(node)) == null) {
+                return 0;
+            }
+        }
+    }
+
+    /**
+     * Caller must hold db commit lock.
      *
      * @param opRef element zero is filled in with the opcode
      * @return null if nothing left
@@ -686,7 +802,7 @@ final class UndoLog {
     }
 
     /**
-     * Caller must hold commit lock.
+     * Caller must hold db commit lock.
      */
     private Node allocDirtyNode(long lowerNodeId) throws IOException {
         Node node = mDatabase.allocDirtyNode(null);
@@ -696,7 +812,7 @@ final class UndoLog {
     }
 
     /**
-     * Caller must hold exclusive commit lock.
+     * Caller must hold exclusive db commit lock.
      *
      * @param workspace temporary buffer, allocated on demand
      * @return new workspace instance
@@ -781,21 +897,39 @@ final class UndoLog {
     }
 
     /**
-     * Rollback all remaining undo log entries and delete this master log.
+     * Rollback or truncate all remaining undo log entries and delete this
+     * master log.
      */
-    boolean rollbackRemaining(LHashTable.Obj<UndoLog> logs) throws IOException {
+    boolean processRemaining(LHashTable.Obj<UndoLog> logs) throws IOException {
         boolean any = logs.size() > 0;
 
         if (any) {
             logs.traverse(new LHashTable.Vistor<LHashTable.ObjEntry<UndoLog>, IOException>() {
                 public void visit(LHashTable.ObjEntry<UndoLog> entry) throws IOException {
-                    entry.value.rollback(0);
+                    UndoLog undo = entry.value;
+                    switch (undo.peek()) {
+                    default:
+                        undo.rollback(0);
+                        break;
+
+                    case OP_COMMIT:
+                        // Transaction was actually committed, but redo log is
+                        // gone. This can happen when a checkpoint completes in
+                        // the middle of the transaction commit operation.
+                        undo.deleteTombstones();
+                        break;
+
+                    case OP_COMMIT_TRUNCATE:
+                        // Like OP_COMMIT, but tombstones have already been deleted.
+                        undo.truncate(false);
+                        break;
+                    }
                 }
             });
         }
 
         // Delete this master log.
-        truncate();
+        truncate(false);
 
         return any;
     }

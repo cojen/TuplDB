@@ -71,7 +71,7 @@ public final class Database implements Closeable {
         return nodes * (long) (pageSize + NODE_OVERHEAD);
     }
 
-    private static final int ENCODING_VERSION = 20120326;
+    private static final int ENCODING_VERSION = 20120525;
 
     private static final int I_ENCODING_VERSION        = 0;
     private static final int I_ROOT_PAGE_ID            = I_ENCODING_VERSION + 4;
@@ -336,9 +336,10 @@ public final class Database implements Closeable {
                 }
 
                 if (masterUndoLog != null) {
-                    // Rollback all remaining undo logs. They were never explicitly
-                    // rolled back. This also deletes the master undo log.
-                    if (masterUndoLog.rollbackRemaining(undoLogs)) {
+                    // Rollback or truncate all remaining undo logs. They were
+                    // never explicitly rolled back, or they were committed but
+                    // not cleaned up. This also deletes the master undo log.
+                    if (masterUndoLog.processRemaining(undoLogs)) {
                         // Checkpoint again to ensure that undo logs don't get
                         // re-applied following a restart.
                         checkpoint(true);
@@ -1196,6 +1197,14 @@ public final class Database implements Closeable {
     }
 
     /**
+     * Caller must hold commit lock and exclusive latch on node. This method
+     * should only be called for nodes whose existing data is not needed.
+     */
+    void redirty(Node node) {
+        node.mCachedState = mCommitState;
+    }
+
+    /**
      * Similar to markDirty method except no new page is reserved, and old page
      * is not immediately deleted. Caller must hold commit lock and exclusive
      * latch on node. Latch is never released by this method, even if an
@@ -1680,7 +1689,7 @@ public final class Database implements Closeable {
                 // Delete the master undo log, which won't take effect until
                 // the next checkpoint.
                 masterUndoLog.acquireNodeLatch(masterUndoLogId);
-                masterUndoLog.truncate();
+                masterUndoLog.truncate(false);
             }
 
             // Note: The delete step can get skipped if process exits at this
