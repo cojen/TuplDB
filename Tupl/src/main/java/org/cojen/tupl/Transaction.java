@@ -189,50 +189,53 @@ public final class Transaction extends Locker {
             ParentScope parentScope = mParentScope;
             if (parentScope == null) {
                 UndoLog undo = mUndoLog;
-                final Lock sharedCommitLock;
                 if (undo == null) {
-                    sharedCommitLock = null;
+                    if (mHasRedo) {
+                        RedoLog redo = mDatabase.mRedoLog;
+                        if (redo.txnCommitFull(mTxnId, mDurabilityMode)) {
+                            redo.txnCommitSync();
+                        }
+                    }
+                    super.scopeUnlockAll();
                 } else {
-                    /*
-                      Holding the shared commit lock ensures that the redo log
-                      doesn't disappear before the undo log. Lingering undo
-                      logs with no corresponding redo log are treated as
-                      aborted. Recovery would erroneously apply undo operations
-                      for committed transactions.
+                    // Holding the shared commit lock ensures that the redo log
+                    // doesn't disappear before the undo log. Lingering undo
+                    // logs with no corresponding redo log are treated as
+                    // aborted. Recovery would erroneously rollback committed
+                    // transactions.
+                    final Lock sharedCommitLock = mDatabase.sharedCommitLock();
+                    sharedCommitLock.lock();
+                    boolean sync;
+                    try {
+                        if (sync = mHasRedo) {
+                            sync = mDatabase.mRedoLog.txnCommitFull(mTxnId, mDurabilityMode);
+                            mHasRedo = false;
+                        }
+                        // Indicates that undo log should be truncated instead
+                        // of rolled back during recovery. Commit lock can now
+                        // be released safely. See UndoLog.rollbackRemaining.
+                        undo.pushCommit();
+                    } finally {
+                        sharedCommitLock.unlock();
+                    }
 
-                      An unfortunate side-effect is that the commit lock is
-                      held while performing additional I/O, which can create a
-                      backlog if a checkpoint tries to begin. All other threads
-                      trying to acquire the shared commit lock must wait.
-                    */
-                    (sharedCommitLock = mDatabase.sharedCommitLock()).lock();
-                }
-
-                boolean sync;
-                try {
-                    if (sync = mHasRedo) {
-                        sync = mDatabase.mRedoLog.txnCommitFull(mTxnId, mDurabilityMode);
-                        mHasRedo = false;
+                    if (sync) {
+                        // Durably sync the redo log after releasing the commit
+                        // lock, preventing additional blocking.
+                        mDatabase.mRedoLog.txnCommitSync();
                     }
 
                     // Calling this deletes any tombstones too.
                     super.scopeUnlockAll();
 
-                    // Safe to truncate obsolete log entries after releasing locks.
-                    if (undo != null) {
-                        // Active transaction id is cleared as a side-effect.
-                        undo.truncate();
-                    }
-                } finally {
-                    if (sharedCommitLock != null) {
-                        sharedCommitLock.unlock();
-                    }
-                }
-
-                if (sync) {
-                    // Durably sync the redo log after releasing the commit
-                    // lock, preventing additional blocking.
-                    mDatabase.mRedoLog.txnCommitSync();
+                    // Truncate obsolete log entries after releasing
+                    // locks. Active transaction id is cleared as a
+                    // side-effect. Recovery might need to re-delete
+                    // tombstones, which is only possible with a complete undo
+                    // log. Truncate operation can be interrupted by a
+                    // checkpoint, allowing a partial undo log to be seen by
+                    // the recovery. It will not attempt to delete tombstones.
+                    undo.truncate(true);
                 }
             } else {
                 if (mHasRedo) {
