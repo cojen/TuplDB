@@ -127,12 +127,12 @@ final class IdHeap {
         while (mSize > 0 && offset < end) {
             if (offset > (end - 9)) {
                 long id = mIds[0];
-                if (offset + DataUtils.calcUnsignedVarLongLength(id - prevId) > end) {
+                if (offset + Utils.calcUnsignedVarLongLength(id - prevId) > end) {
                     break;
                 }
             }
             long id = remove();
-            offset = DataUtils.writeUnsignedVarLong(buffer, offset, id - prevId);
+            offset = Utils.writeUnsignedVarLong(buffer, offset, id - prevId);
             prevId = id;
         }
         return offset;

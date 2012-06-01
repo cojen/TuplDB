@@ -33,7 +33,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import java.util.zip.CRC32;
 
-import static org.cojen.tupl.DataUtils.*;
+import static org.cojen.tupl.Utils.*;
 
 /**
  * Low-level support for storing fixed size pages in a single file. Page size should be a

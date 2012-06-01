@@ -40,8 +40,8 @@ import java.util.concurrent.TimeUnit;
 
 import java.util.concurrent.locks.Lock;
 
-import static org.cojen.tupl.DataUtils.*;
 import static org.cojen.tupl.Node.*;
+import static org.cojen.tupl.Utils.*;
 
 /**
  * Main database class, containing a collection of transactional indexes. Call
@@ -120,6 +120,9 @@ public final class Database implements Closeable {
 
     private final FragmentCache mFragmentCache;
     final int mMaxFragmentedEntrySize;
+
+    // Fragmented values which are transactionally deleted go here.
+    private volatile FragmentedTrash mFragmentedTrash;
 
     private final Object mTxnIdLock = new Object();
     // The following fields are guarded by mTxnIdLock.
@@ -292,9 +295,16 @@ public final class Database implements Closeable {
             mRegistryKeyMap = openInternalTree(Tree.REGISTRY_KEY_MAP_ID, true);
 
             mAllocator = new OrderedPageAllocator
-                (mPageDb, null /*openInternalTree(Tree.PAGE_ALLOCATOR, true)*/);
+                (mPageDb, null /*openInternalTree(Tree.PAGE_ALLOCATOR_ID, true)*/);
 
             mFragmentCache = new FragmentCache(this, mMaxNodeCount);
+
+            {
+                Tree tree = openInternalTree(Tree.FRAGMENTED_TRASH_ID, false);
+                if (tree != null) {
+                    mFragmentedTrash = new FragmentedTrash(tree);
+                }
+            }
 
             // Limit maximum fragmented entry size to guarantee that 2 entries
             // fit. Each also requires 2 bytes for pointer and up to 3 bytes
@@ -345,6 +355,12 @@ public final class Database implements Closeable {
                         checkpoint(true);
                     }
                 }
+            }
+
+            // Delete lingering fragmented values after undo logs have been
+            // processed, ensuring deletes were committed.
+            if (mFragmentedTrash != null && mFragmentedTrash.emptyAllTrash()) {
+                checkpoint(true);
             }
 
             mTempFileManager = baseFile == null ? null : new TempFileManager(baseFile);
@@ -525,6 +541,8 @@ public final class Database implements Closeable {
     Index anyIndexById(long id) throws IOException {
         if (id == Tree.REGISTRY_KEY_MAP_ID) {
             return mRegistryKeyMap;
+        } else if (id == Tree.FRAGMENTED_TRASH_ID) {
+            return fragmentedTrash().mTrash;
         }
         return indexById(id);
     }
@@ -1345,8 +1363,8 @@ public final class Database implements Closeable {
             // encoded this way, but do as we're told.
             byte[] newValue = new byte[(1 + 2 + 2) + value.length];
             newValue[0] = 0x02; // ff=0, i=1, p=0
-            DataUtils.writeShort(newValue, 1, value.length);     // full length
-            DataUtils.writeShort(newValue, 1 + 2, value.length); // inline length
+            writeShort(newValue, 1, value.length);     // full length
+            writeShort(newValue, 1 + 2, value.length); // inline length
             System.arraycopy(value, 0, newValue, (1 + 2 + 2), value.length);
             return newValue;
         } else {
@@ -1385,7 +1403,7 @@ public final class Database implements Closeable {
                     Node node = allocDirtyNode(forTree);
                     try {
                         mFragmentCache.put(caller, node);
-                        DataUtils.writeInt48(newValue, poffset, node.mId);
+                        writeInt48(newValue, poffset, node.mId);
                         System.arraycopy(value, voffset, node.mPage, 0, pageSize);
                         if (pageCount == 1) {
                             break;
@@ -1400,7 +1418,7 @@ public final class Database implements Closeable {
             }
 
             newValue[0] = header;
-            DataUtils.writeShort(newValue, offset, remainder); // inline length
+            writeShort(newValue, offset, remainder); // inline length
             System.arraycopy(value, 0, newValue, offset + 2, remainder);
         } else {
             // Remainder doesn't fit inline, so don't encode any inline
@@ -1427,7 +1445,7 @@ public final class Database implements Closeable {
                         Node node = allocDirtyNode(forTree);
                         try {
                             mFragmentCache.put(caller, node);
-                            DataUtils.writeInt48(newValue, offset, node.mId);
+                            writeInt48(newValue, offset, node.mId);
                             if (pageCount > 1) {
                                 System.arraycopy(value, voffset, node.mPage, 0, pageSize);
                             } else {
@@ -1454,9 +1472,9 @@ public final class Database implements Closeable {
 
         // Encode full length field.
         if (value.length >= 65536) {
-            DataUtils.writeInt(newValue, 1, value.length);
+            writeInt(newValue, 1, value.length);
         } else {
-            DataUtils.writeShort(newValue, 1, value.length);
+            writeShort(newValue, 1, value.length);
         }
 
         return newValue;
@@ -1472,18 +1490,18 @@ public final class Database implements Closeable {
         int vLen;
         switch ((header >> 2) & 0x03) {
         default:
-            vLen = DataUtils.readUnsignedShort(fragmented, off);
+            vLen = readUnsignedShort(fragmented, off);
             break;
 
         case 1:
-            vLen = DataUtils.readInt(fragmented, off);
+            vLen = readInt(fragmented, off);
             if (vLen < 0) {
                 throw new DatabaseException("Value is too large: " + (vLen & 0xffffffffL));
             }
             break;
 
         case 2:
-            long vLenL = DataUtils.readUnsignedInt48(fragmented, off);
+            long vLenL = readUnsignedInt48(fragmented, off);
             if (vLenL > Integer.MAX_VALUE) {
                 throw new DatabaseException("Value is too large: " + vLenL);
             }
@@ -1491,7 +1509,7 @@ public final class Database implements Closeable {
             break;
 
         case 3:
-            vLenL = DataUtils.readLong(fragmented, off);
+            vLenL = readLong(fragmented, off);
             if (vLenL < 0 || vLenL > Integer.MAX_VALUE) {
                 // TODO: Special handling for printing unsigned long.
                 throw new DatabaseException("Value is too large: " + vLenL);
@@ -1516,7 +1534,7 @@ public final class Database implements Closeable {
         int vOff = 0;
         if ((header & 0x02) != 0) {
             // Inline content.
-            int inLen = DataUtils.readUnsignedShort(fragmented, off);
+            int inLen = readUnsignedShort(fragmented, off);
             off += 2;
             len -= 2;
             System.arraycopy(fragmented, off, value, vOff, inLen);
@@ -1529,7 +1547,7 @@ public final class Database implements Closeable {
         if ((header & 0x01) == 0) {
             // Direct pointers.
             while (len >= 6) {
-                long nodeId = DataUtils.readUnsignedInt48(fragmented, off);
+                long nodeId = readUnsignedInt48(fragmented, off);
                 off += 6;
                 len -= 6;
                 Node node = mFragmentCache.get(caller, nodeId);
@@ -1552,7 +1570,8 @@ public final class Database implements Closeable {
     }
 
     /**
-     * Delete the extra pages of a fragmented value.
+     * Delete the extra pages of a fragmented value. Caller must hold commit
+     * lock.
      *
      * @param caller optional tree node which is latched and calling this method
      * @param fromTree tree which is deleting the large value
@@ -1570,7 +1589,7 @@ public final class Database implements Closeable {
 
         if ((header & 0x02) != 0) {
             // Skip inline content.
-            int inLen = 2 + DataUtils.readUnsignedShort(fragmented, off);
+            int inLen = 2 + readUnsignedShort(fragmented, off);
             off += inLen;
             len -= inLen;
         }
@@ -1578,7 +1597,7 @@ public final class Database implements Closeable {
         if ((header & 0x01) == 0) {
             // Direct pointers.
             while (len >= 6) {
-                long nodeId = DataUtils.readUnsignedInt48(fragmented, off);
+                long nodeId = readUnsignedInt48(fragmented, off);
                 off += 6;
                 len -= 6;
                 Node node = mFragmentCache.remove(caller, nodeId);
@@ -1593,6 +1612,23 @@ public final class Database implements Closeable {
         } else {
             // Indirect pointers.
             // FIXME
+        }
+    }
+
+    /**
+     * Obtain the trash for transactionally deleting fragmented values.
+     */
+    FragmentedTrash fragmentedTrash() throws IOException {
+        FragmentedTrash trash = mFragmentedTrash;
+        if (trash != null) {
+            return trash;
+        }
+        synchronized (mOpenTrees) {
+            if ((trash = mFragmentedTrash) != null) {
+                return trash;
+            }
+            Tree tree = openInternalTree(Tree.FRAGMENTED_TRASH_ID, true);
+            return mFragmentedTrash = new FragmentedTrash(tree);
         }
     }
 
