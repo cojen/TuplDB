@@ -400,7 +400,7 @@ final class RedoLog implements Closeable {
             doFlush(buffer, pos);
             pos = 0;
         }
-        DataUtils.writeInt(buffer, pos, v);
+        Utils.writeInt(buffer, pos, v);
         mBufferPos = pos + 4;
     }
 
@@ -412,7 +412,7 @@ final class RedoLog implements Closeable {
             doFlush(buffer, pos);
             pos = 0;
         }
-        DataUtils.writeLong(buffer, pos, v);
+        Utils.writeLong(buffer, pos, v);
         mBufferPos = pos + 8;
     }
 
@@ -425,7 +425,7 @@ final class RedoLog implements Closeable {
             pos = 0;
         }
         buffer[pos] = op;
-        DataUtils.writeLong(buffer, pos + 1, operand);
+        Utils.writeLong(buffer, pos + 1, operand);
         mBufferPos = pos + 9;
     }
 
@@ -437,7 +437,7 @@ final class RedoLog implements Closeable {
             doFlush(buffer, pos);
             pos = 0;
         }
-        mBufferPos = DataUtils.writeUnsignedVarInt(buffer, pos, v);
+        mBufferPos = Utils.writeUnsignedVarInt(buffer, pos, v);
     }
 
     // Caller must be synchronized.

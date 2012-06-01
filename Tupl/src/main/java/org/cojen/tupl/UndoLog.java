@@ -22,7 +22,7 @@ import java.util.List;
 
 import java.util.concurrent.locks.Lock;
 
-import static org.cojen.tupl.DataUtils.*;
+import static org.cojen.tupl.Utils.*;
 
 /**
  * Specialized stack used by UndoLog.
@@ -100,6 +100,9 @@ final class UndoLog {
 
     // Payload is key and value to store to undo a delete.
     static final byte OP_INSERT = (byte) 9;
+
+    // Payload is key and trash id to undo a fragmented value delete.
+    static final byte OP_RECLAIM_FRAGMENTED = (byte) 10;
 
     private final Database mDatabase;
 
@@ -488,6 +491,7 @@ final class UndoLog {
                 case OP_TRANSACTION:
                 case OP_DELETE:
                 case OP_UPDATE:
+                case OP_RECLAIM_FRAGMENTED:
                     // Ignore.
                     break;
 
@@ -500,10 +504,10 @@ final class UndoLog {
                     // Since transaction was committed, don't insert an entry
                     // to undo a delete, but instead delete the tombstone.
                     activeIndex = findIndex(activeIndex);
-                    byte[][] pair = Node.decodeUndoEntry(entry);
+                    byte[] key = Node.retrieveKeyAtLoc(entry, 0);
                     TreeCursor cursor = new TreeCursor((Tree) activeIndex, null);
                     try {
-                        cursor.deleteTombstone(pair[0]);
+                        cursor.deleteTombstone(key);
                         cursor.reset();
                     } catch (Throwable e) {
                         throw Utils.closeOnFailure(cursor, e);
@@ -559,6 +563,7 @@ final class UndoLog {
             case OP_DELETE:
             case OP_UPDATE:
             case OP_INSERT:
+            case OP_RECLAIM_FRAGMENTED:
             case OP_COMMIT:
             case OP_COMMIT_TRUNCATE:
                 // Ignore.
@@ -640,9 +645,14 @@ final class UndoLog {
         case OP_INSERT:
             activeIndex = findIndex(activeIndex);
             {
-                byte[][] pair = Node.decodeUndoEntry(entry);
+                byte[][] pair = Node.retrieveKeyValueAtLoc(entry, 0);
                 activeIndex.store(Transaction.BOGUS, pair[0], pair[1]);
             }
+            break;
+
+        case OP_RECLAIM_FRAGMENTED:
+            activeIndex = findIndex(activeIndex);
+            mDatabase.fragmentedTrash().remove(mActiveTxnId, (Tree) activeIndex, entry);
             break;
         }
 

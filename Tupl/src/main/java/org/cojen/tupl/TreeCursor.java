@@ -1725,13 +1725,8 @@ final class TreeCursor implements Cursor, Closeable {
                             txn.redoStore(mTree.mId, key, null);
                         }
                     } else {
-                        Tree tree = mTree;
-                        node.undoPushLeafEntry(txn, tree.mId, UndoLog.OP_INSERT, pos);
-                        mTree.mLockManager.tombstoned(txn, tree, key, keyHash());
-                        node.tombstoneLeafValue(pos);
-                        if (txn.mDurabilityMode != DurabilityMode.NO_LOG) {
-                            txn.redoStore(tree.mId, key, null);
-                        }
+                        node.txnDeleteLeafEntry(txn, mTree, key, keyHash(), pos);
+                        // Above operation leaves a tombstone, so no cursors to fix.
                         mValue = null;
                         return;
                     }
@@ -1793,7 +1788,7 @@ final class TreeCursor implements Cursor, Closeable {
                     }
                 }
 
-                node.updateLeafValue(mTree, pos, value);
+                node.updateLeafValue(mTree, pos, 0, value);
 
                 if (node.shouldLeafMerge()) {
                     try {
@@ -1875,6 +1870,94 @@ final class TreeCursor implements Cursor, Closeable {
                 node.releaseExclusive();
             }
         }
+    }
+
+    /**
+     * Non-transactional insert of a fragmented value. Cursor value is
+     * NOT_LOADED as a side-effect.
+     *
+     * @param leaf leaf frame, latched exclusively, which is released by this method
+     */
+    boolean insertFragmented(byte[] value) throws IOException {
+        byte[] key = mKey;
+        if (key == null) {
+            throw new IllegalStateException("Cursor position is undefined");
+        }
+        if (value == null) {
+            throw new IllegalArgumentException("Value is null");
+        }
+
+        Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
+        sharedCommitLock.lock();
+        try {
+            final TreeCursorFrame leaf = leafExclusive();
+            Node node = notSplitDirty(leaf);
+            try {
+                final int pos = leaf.mNodePos;
+                if (pos >= 0) {
+                    // Entry already exists.
+                    if (mValue != null) {
+                        return false;
+                    }
+                    // Replace tombstone.
+                    node.updateLeafValue(mTree, pos, Node.VALUE_FRAGMENTED, value);
+                } else {
+                    int newPos = ~pos;
+                    node.insertFragmentedLeafEntry(mTree, newPos, key, value);
+
+                    leaf.mNodePos = newPos;
+                    leaf.mNotFoundKey = null;
+
+                    // Fix all cursors bound to the node.
+                    TreeCursorFrame frame = node.mLastCursorFrame;
+                    do {
+                        if (frame == leaf) {
+                            // Don't need to fix self.
+                            continue;
+                        }
+
+                        int framePos = frame.mNodePos;
+
+                        if (framePos == pos) {
+                            // Other cursor is at same not-found position as this one
+                            // was. If keys are the same, then other cursor switches
+                            // to a found state as well. If key is greater, then
+                            // position needs to be updated.
+
+                            byte[] frameKey = frame.mNotFoundKey;
+                            int compare = Utils.compareKeys
+                                (frameKey, 0, frameKey.length, key, 0, key.length);
+                            if (compare > 0) {
+                                // Position is a complement, so subtract instead of add.
+                                frame.mNodePos = framePos - 2;
+                            } else if (compare == 0) {
+                                frame.mNodePos = newPos;
+                                frame.mNotFoundKey = null;
+                            }
+                        } else if (framePos >= newPos) {
+                            frame.mNodePos = framePos + 2;
+                        } else if (framePos < pos) {
+                            // Position is a complement, so subtract instead of add.
+                            frame.mNodePos = framePos - 2;
+                        }
+                    } while ((frame = frame.mPrevCousin) != null);
+                }
+
+                if (node.mSplit != null) {
+                    node = finishSplit(leaf, node);
+                }
+
+                mValue = NOT_LOADED;
+            } finally {
+                node.releaseExclusive();
+            }
+        } catch (Throwable e) {
+            throw handleStoreException(e);
+        } finally {
+            sharedCommitLock.unlock();
+        }
+
+        return true;
     }
 
     private IOException handleStoreException(Throwable e) throws IOException {
@@ -2466,7 +2549,7 @@ final class TreeCursor implements Cursor, Closeable {
         // Determine if both nodes plus parent key can fit in one node. If so,
         // migrate and delete the right node.
         byte[] parentPage = parentNode.mPage;
-        int parentEntryLoc = DataUtils.readUnsignedShort
+        int parentEntryLoc = Utils.readUnsignedShort
             (parentPage, parentNode.mSearchVecStart + leftPos);
         int parentEntryLen = Node.internalEntryLengthAtLoc(parentPage, parentEntryLoc);
         int remaining = leftAvail - parentEntryLen

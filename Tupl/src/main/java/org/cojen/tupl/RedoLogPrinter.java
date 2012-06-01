@@ -68,6 +68,11 @@ class RedoLogPrinter implements RedoLogVisitor {
                      ", key=" + toHex(key) + ", value=" + toHex(value));
     }
 
+    public void txnTrashFragmented(long txnId, long indexId, byte[] key) {
+        mOut.println("txnTrashFragmented: txnId=" + txnId + ", indexId=" + indexId +
+                     ", key=" + toHex(key));
+    }
+
     private String toHex(byte[] bytes) {
         StringBuilder bob = new StringBuilder(bytes.length * 2);
         for (int i=0; i<bytes.length; i++) {

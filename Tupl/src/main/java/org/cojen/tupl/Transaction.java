@@ -67,11 +67,11 @@ public final class Transaction extends Locker {
     private final Database mDatabase;
     final DurabilityMode mDurabilityMode;
 
-    LockMode mLockMode;
-    long mLockTimeoutNanos;
-    long mTxnId;
-    boolean mHasRedo;
-    long mSavepoint;
+    private LockMode mLockMode;
+    private long mLockTimeoutNanos;
+    private long mTxnId;
+    private boolean mHasRedo;
+    private long mSavepoint;
 
     private UndoLog mUndoLog;
 
@@ -195,6 +195,7 @@ public final class Transaction extends Locker {
                         if (redo.txnCommitFull(mTxnId, mDurabilityMode)) {
                             redo.txnCommitSync();
                         }
+                        mHasRedo = false;
                     }
                     super.scopeUnlockAll();
                 } else {
@@ -236,6 +237,8 @@ public final class Transaction extends Locker {
                     // checkpoint, allowing a partial undo log to be seen by
                     // the recovery. It will not attempt to delete tombstones.
                     undo.truncate(true);
+
+                    // FIXME: If has trash, empty it now.
                 }
             } else {
                 if (mHasRedo) {
@@ -510,14 +513,7 @@ public final class Transaction extends Locker {
                 if (parentScope != null && parentScope.mTxnId == 0) {
                     assignTxnId(parentScope);
                 }
-                UndoLog undo = mUndoLog;
-                if (undo == null) {
-                    txnId = mDatabase.nextTransactionId();
-                } else if ((txnId = undo.activeTransactionId()) == 0) {
-                    txnId = mDatabase.nextTransactionId();
-                    undo.activeTransactionId(txnId);
-                }
-                mTxnId = txnId;
+                txnId = assignTxnId();
             }
 
             RedoLog redo = mDatabase.mRedoLog;
@@ -530,12 +526,42 @@ public final class Transaction extends Locker {
         }
     }
 
+    private long assignTxnId() throws IOException {
+        long txnId;
+        UndoLog undo = mUndoLog;
+        if (undo == null) {
+            txnId = mDatabase.nextTransactionId();
+        } else if ((txnId = undo.activeTransactionId()) == 0) {
+            txnId = mDatabase.nextTransactionId();
+            undo.activeTransactionId(txnId);
+        }
+        mTxnId = txnId;
+        return txnId;
+    }
+
     private void assignTxnId(ParentScope scope) {
         ParentScope parentScope = scope.mParentScope;
         if (parentScope != null && parentScope.mTxnId == 0) {
             assignTxnId(parentScope);
         }
         scope.mTxnId = mDatabase.nextTransactionId();
+    }
+
+    final long topTxnId() throws IOException {
+        ParentScope parentScope = mParentScope;
+        if (parentScope == null) {
+            long txnId = mTxnId;
+            return txnId == 0 ? assignTxnId() : txnId;
+        }
+        while (true) {
+            ParentScope grandparentScope = parentScope.mParentScope;
+            if (grandparentScope == null) {
+                break;
+            }
+            parentScope = grandparentScope;
+        }
+        long txnId = parentScope.mTxnId;
+        return txnId == 0 ? (parentScope.mTxnId = mDatabase.nextTransactionId()) : txnId;
     }
 
     /**
@@ -569,6 +595,22 @@ public final class Transaction extends Locker {
 
     /**
      * Caller must hold commit lock.
+     *
+     * @param payload Node encoded key followed by trash id
+     */
+    final void undoReclaimFragmented(long indexId, byte[] payload, int off, int len)
+        throws IOException
+    {
+        check();
+        try {
+            undoLog().push(indexId, UndoLog.OP_RECLAIM_FRAGMENTED, payload, off, len);
+        } catch (Throwable e) {
+            throw borked(e);
+        }
+    }
+
+    /**
+     * Caller must hold commit lock.
      */
     private UndoLog undoLog() throws IOException {
         UndoLog undo = mUndoLog;
@@ -586,7 +628,7 @@ public final class Transaction extends Locker {
         return undo;
     }
 
-    private RuntimeException borked(Throwable e) {
+    RuntimeException borked(Throwable e) {
         // Because this transaction is now borked, user cannot commit or
         // rollback. Locks cannot be released, ensuring other transactions
         // cannot see the partial changes made by this transaction. A restart

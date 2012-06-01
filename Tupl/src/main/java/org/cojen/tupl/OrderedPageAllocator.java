@@ -72,7 +72,7 @@ final class OrderedPageAllocator {
             long lastId = 0;
             long id;
             while ((id = source.tryAllocPage()) != 0) {
-                DataUtils.writeLong(key, 0, id);
+                Utils.writeLong(key, 0, id);
                 if (id >= lastId) {
                     // PageStore implementation is expected to provide partially
                     // ordered ids, so use the faster find variant.
@@ -170,7 +170,7 @@ final class OrderedPageAllocator {
                         mReadyState = READY;
                     }
 
-                    long id = DataUtils.readLong(key, 0);
+                    long id = Utils.readLong(key, 0);
 
                     // Delete entry while still latched -- cursor is not
                     // thread-safe. Besides, one section of the index will be
@@ -194,7 +194,7 @@ final class OrderedPageAllocator {
             mSource.deletePage(id);
         } else {
             byte[] key = new byte[8];
-            DataUtils.writeLong(key, 0, id);
+            Utils.writeLong(key, 0, id);
             mLocalPages.store(Transaction.BOGUS, key, Utils.EMPTY_BYTES);
             makeReady();
         }

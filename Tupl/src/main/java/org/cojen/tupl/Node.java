@@ -23,7 +23,7 @@ import java.util.Arrays;
 
 import java.util.concurrent.locks.Lock;
 
-import static org.cojen.tupl.DataUtils.*;
+import static org.cojen.tupl.Utils.*;
 
 /**
  * 
@@ -67,7 +67,7 @@ final class Node extends Latch {
 
     static final int STUB_ID = 1;
 
-    private static final int VALUE_FRAGMENTED = 0x40;
+    static final int VALUE_FRAGMENTED = 0x40;
 
     // Links within usage list, guarded by Database.mUsageLatch.
     Node mMoreUsed; // points to more recently used node
@@ -596,7 +596,7 @@ final class Node extends Latch {
             if (childNodes != null && childNodes.length > 0) {
                 Node child = childNodes[0];
                 if (child != null) {
-                    long childId = DataUtils.readLong(node.mPage, UndoLog.I_LOWER_NODE_ID);
+                    long childId = readLong(node.mPage, UndoLog.I_LOWER_NODE_ID);
                     // Check id match before lock attempt, as a quick short
                     // circuit if child has already been evicted.
                     if (childId == child.mId) {
@@ -941,6 +941,18 @@ final class Node extends Latch {
     }
 
     /**
+     * @param loc absolute location of entry
+     */
+    static byte[][] retrieveKeyValueAtLoc(final byte[] page, int loc) throws IOException {
+        int header = page[loc++];
+        int keyLen = header >= 0 ? ((header & 0x3f) + 1)
+            : (((header & 0x3f) << 8) | ((page[loc++]) & 0xff));
+        byte[] key = new byte[keyLen];
+        System.arraycopy(page, loc, key, 0, keyLen);
+        return new byte[][] {key, retrieveLeafValueAtLoc(null, null, page, loc + keyLen)};
+    }
+
+    /**
      * @param pos position as provided by binarySearch; must be positive
      * @return Cursor.NOT_LOADED if value exists, null if tombstone
      */
@@ -1011,31 +1023,87 @@ final class Node extends Latch {
     }
 
     /**
+     * Transactionally delete a leaf entry, replacing the value with a
+     * tombstone. When read back, it is interpreted as null. Tombstones are
+     * used by transactional deletes, to ensure that they are not visible by
+     * cursors in other transactions. They need to acquire a lock first. When
+     * the original transaction commits, it deletes all the tombstoned entries
+     * it created.
+     *
+     * <p>Caller must hold commit lock and any latch on node.
+     *
+     * @param pos position as provided by binarySearch; must be positive
+     */
+    void txnDeleteLeafEntry(Transaction txn, Tree tree, byte[] key, int keyHash, int pos)
+        throws IOException
+    {
+        final byte[] page = mPage;
+        final int entryLoc = readUnsignedShort(page, mSearchVecStart + pos);
+        int loc = entryLoc;
+
+        // Read key header and skip key.
+        int header = page[loc++];
+        loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
+
+        // Read value header.
+        final int valueHeaderLoc = loc;
+        header = page[loc++];
+
+        doUndo: {
+            // Note: Similar to leafEntryLengthAtLoc.
+            if (header >= 0) {
+                // Short value. Move loc to just past end of value.
+                loc += header;
+            } else {
+                // Medium value. Move loc to just past end of value.
+                if ((header & 0x20) == 0) {
+                    loc += 2 + (((header & 0x1f) << 8) | (page[loc] & 0xff));
+                } else if (header != -1) {
+                    loc += 3 + (((header & 0x0f) << 16)
+                                | ((page[loc] & 0xff) << 8) | (page[loc + 1] & 0xff));
+                } else {
+                    // Already a tombstone, so nothing to undo.
+                    break doUndo;
+                }
+
+                if ((header & VALUE_FRAGMENTED) != 0) {
+                    int valueStartLoc = valueHeaderLoc + 2 + ((header & 0x20) >> 5);
+                    tree.mDatabase.fragmentedTrash().add
+                        (txn, tree.mId, page,
+                         entryLoc, valueHeaderLoc - entryLoc,
+                         valueStartLoc, loc - valueStartLoc);
+                    break doUndo;
+                }
+            }
+
+            // Copy whole entry into undo log.
+            txn.undoStore(tree.mId, UndoLog.OP_INSERT, page, entryLoc, loc - entryLoc);
+        }
+
+        // Tombstone will be deleted later when locks are released.
+        tree.mLockManager.tombstoned(txn, tree, key, keyHash);
+
+        // Replace value with tombstone.
+        page[valueHeaderLoc] = (byte) -1;
+        mGarbage += loc - valueHeaderLoc - 1;
+
+        if (txn.mDurabilityMode != DurabilityMode.NO_LOG) {
+            txn.redoStore(tree.mId, key, null);
+        }
+    }
+
+    /**
      * Caller must hold commit lock and any latch on node.
      *
      * @param op OP_UPDATE or OP_INSERT
      * @param pos position as provided by binarySearch; must be positive
      */
+    // FIXME: remove or revise for update
     void undoPushLeafEntry(Transaction txn, long indexId, byte op, int pos) throws IOException {
         final byte[] page = mPage;
         final int entryLoc = readUnsignedShort(page, mSearchVecStart + pos);
         // FIXME: fragmented: Special requirements for fragmented entries.
         txn.undoStore(indexId, op, page, entryLoc, leafEntryLengthAtLoc(page, entryLoc));
-    }
-
-    /**
-     * @param entry encoded by undoPushLeafEntry
-     * @return key and value
-     */
-    static byte[][] decodeUndoEntry(byte[] entry) throws IOException {
-        int loc = 0;
-        int header = entry[loc++];
-        int keyLen = header >= 0 ? ((header & 0x3f) + 1)
-            : (((header & 0x3f) << 8) | ((entry[loc++]) & 0xff));
-        byte[] key = new byte[keyLen];
-        System.arraycopy(entry, loc, key, 0, keyLen);
-        // FIXME: fragmented: Special requirements for fragmented entries.
-        return new byte[][] {key, retrieveLeafValueAtLoc(null, null, entry, loc + keyLen)};
     }
 
     /**
@@ -1110,6 +1178,21 @@ final class Node extends Latch {
             splitLeafAndCreateEntry(tree, key, fragmented, value, encodedLen, pos, true);
         } else {
             copyToLeafEntry(key, fragmented, value, entryLoc);
+        }
+    }
+
+    void insertFragmentedLeafEntry(Tree tree, int pos, byte[] key, byte[] value)
+        throws IOException
+    {
+        int encodedKeyLen = calculateKeyLength(key);
+        int encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
+
+        int entryLoc = createLeafEntry(tree, pos, encodedLen);
+
+        if (entryLoc < 0) {
+            splitLeafAndCreateEntry(tree, key, VALUE_FRAGMENTED, value, encodedLen, pos, true);
+        } else {
+            copyToLeafEntry(key, VALUE_FRAGMENTED, value, entryLoc);
         }
     }
 
@@ -1469,7 +1552,7 @@ final class Node extends Latch {
     /**
      * @param pos position as provided by binarySearch; must be positive
      */
-    void updateLeafValue(Tree tree, int pos, byte[] value) throws IOException {
+    void updateLeafValue(Tree tree, int pos, int fragmented, byte[] value) throws IOException {
         final byte[] page = mPage;
         final int searchVecStart = mSearchVecStart;
 
@@ -1499,11 +1582,14 @@ final class Node extends Latch {
                     break largeValue;
                 }
                 if ((header & VALUE_FRAGMENTED) != 0) {
+                    // FIXME: fragmented: Not transactional!!!
                     tree.mDatabase.deleteFragments(this, tree, page, loc, len);
                     // FIXME: fragmented: If new value needs to be fragmented
                     // too, try to re-use existing value slot.
-                    // Clear fragmented bit in case new value can be quick copied.
-                    page[valueHeaderLoc] = (byte) (header & ~VALUE_FRAGMENTED);
+                    if (fragmented == 0) {
+                        // Clear fragmented bit in case new value can be quick copied.
+                        page[valueHeaderLoc] = (byte) (header & ~VALUE_FRAGMENTED);
+                    }
                 }
             }
 
@@ -1522,9 +1608,13 @@ final class Node extends Latch {
                     page[valueHeaderLoc] = 0;
                 } else {
                     System.arraycopy(value, 0, page, loc, valueLen);
+                    if (fragmented != 0) {
+                        page[valueHeaderLoc] |= fragmented;
+                    }
                 }
             } else {
-                mGarbage += loc + len - copyToLeafValue(page, 0, value, valueHeaderLoc) - valueLen;
+                mGarbage += loc + len - copyToLeafValue
+                    (page, fragmented, value, valueHeaderLoc) - valueLen;
             }
 
             return;
@@ -1540,10 +1630,7 @@ final class Node extends Latch {
 
         int encodedLen = keyLen + calculateLeafValueLength(value);
 
-        int fragmented;
-        if (encodedLen <= tree.mMaxEntrySize) {
-            fragmented = 0;
-        } else {
+        if (fragmented == 0 && encodedLen > tree.mMaxEntrySize) {
             Database db = tree.mDatabase;
             value = db.fragment(this, tree, value, db.mMaxFragmentedEntrySize - keyLen);
             if (value == null) {
@@ -1621,44 +1708,6 @@ final class Node extends Latch {
      */
     void updateChildRefId(int pos, long id) {
         writeLong(mPage, mSearchVecEnd + 2 + (pos << 2), id);
-    }
-
-    /**
-     * Special variant of updateLeafValue which replaces the value with a
-     * tombstone. When read back, it is interpreted as null. Tombstones are
-     * used by transactional deletes, to ensure that they are not visible by
-     * cursors in other transactions. They need to acquire a lock first. When
-     * the original transaction commits, it deletes all the tombstoned entries
-     * it created.
-     *
-     * @param pos position as provided by binarySearch; must be positive
-     */
-    void tombstoneLeafValue(int pos) {
-        final byte[] page = mPage;
-
-        int loc = readUnsignedShort(page, mSearchVecStart + pos);
-        final int header = page[loc++];
-        loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
-
-        final int valueHeaderLoc = loc;
-
-        // Note: Similar to retrieveLeafValueAtLoc.
-        int len = page[loc++];
-        if (len < 0) {
-            // FIXME: fragmented
-            if ((len & 0x20) == 0) {
-                len = 1 + (((len & 0x1f) << 8) | (page[loc++] & 0xff));
-            } else if (len != -1) {
-                len = 1 + (((len & 0x0f) << 16)
-                           | ((page[loc++] & 0xff) << 8) | (page[loc++] & 0xff));
-            } else {
-                // Already a tombstone.
-                return;
-            }
-        }
-
-        page[valueHeaderLoc] = (byte) -1;
-        mGarbage += loc + len - valueHeaderLoc - 1;
     }
 
     /**
@@ -2334,7 +2383,7 @@ final class Node extends Latch {
             if (pos < 0) {
                 throw new AssertionError("Key not found");
             }
-            updateLeafValue(tree, pos, value);
+            updateLeafValue(tree, pos, fragmented, value);
         }
     }
 
