@@ -60,6 +60,7 @@ class FragmentedTrash {
         try {
             // Write trash entry first, ensuring that the undo log entry will
             // refer to something valid.
+            txn.setHasTrash();
             cursor.store(payload);
             cursor.reset();
         } catch (Throwable e) {
@@ -210,8 +211,6 @@ class FragmentedTrash {
                 found = true;
                 do {
                     byte[] fragmented = cursor.value();
-                    // FIXME: Remove this line.
-                    System.out.println("deleting trash: " + fragmented.length);
                     sharedCommitLock.lock();
                     try {
                         db.deleteFragments(null, null, fragmented, 0, fragmented.length);

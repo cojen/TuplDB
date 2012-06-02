@@ -24,6 +24,8 @@ import java.io.PrintStream;
  * @author Brian S O'Neill
  */
 class RedoLogPrinter implements RedoLogVisitor {
+    private static final int MAX_VALUE = 1000;
+
     private final PrintStream mOut;
 
     RedoLogPrinter() {
@@ -74,13 +76,27 @@ class RedoLogPrinter implements RedoLogVisitor {
     }
 
     private String toHex(byte[] bytes) {
-        StringBuilder bob = new StringBuilder(bytes.length * 2);
-        for (int i=0; i<bytes.length; i++) {
+        if (bytes == null) {
+            return "null";
+        }
+        StringBuilder bob;
+        int len;
+        if (bytes.length <= MAX_VALUE) {
+            len = bytes.length;
+            bob = new StringBuilder(len * 2);
+        } else {
+            len = MAX_VALUE;
+            bob = new StringBuilder(len * 2 + 3);
+        }
+        for (int i=0; i<len; i++) {
             int b = bytes[i] & 0xff;
             if (b < 16) {
                 bob.append('0');
             }
             bob.append(Integer.toHexString(b));
+        }
+        if (bytes.length > MAX_VALUE) {
+            bob.append("...");
         }
         return bob.toString();
     }
