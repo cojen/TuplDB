@@ -1827,6 +1827,7 @@ final class TreeCursor implements Cursor, Closeable {
             leaf.mNotFoundKey = null;
 
             // Fix all cursors bound to the node.
+            // Note: Same code as in insertFragmented method.
             TreeCursorFrame frame = node.mLastCursorFrame;
             do {
                 if (frame == leaf) {
@@ -1909,6 +1910,7 @@ final class TreeCursor implements Cursor, Closeable {
                     leaf.mNotFoundKey = null;
 
                     // Fix all cursors bound to the node.
+                    // Note: Same code as in store method.
                     TreeCursorFrame frame = node.mLastCursorFrame;
                     do {
                         if (frame == leaf) {

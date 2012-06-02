@@ -64,13 +64,15 @@ public final class Transaction extends Locker {
      */
     public static final Transaction BOGUS = new Transaction();
 
+    private static final int HAS_REDO = 1, HAS_TRASH = 2;
+
     private final Database mDatabase;
     final DurabilityMode mDurabilityMode;
 
     private LockMode mLockMode;
     private long mLockTimeoutNanos;
     private long mTxnId;
-    private boolean mHasRedo;
+    private int mHasState;
     private long mSavepoint;
 
     private UndoLog mUndoLog;
@@ -190,12 +192,12 @@ public final class Transaction extends Locker {
             if (parentScope == null) {
                 UndoLog undo = mUndoLog;
                 if (undo == null) {
-                    if (mHasRedo) {
+                    if ((mHasState & HAS_REDO) != 0) {
                         RedoLog redo = mDatabase.mRedoLog;
                         if (redo.txnCommitFull(mTxnId, mDurabilityMode)) {
                             redo.txnCommitSync();
                         }
-                        mHasRedo = false;
+                        mHasState = 0;
                     }
                     super.scopeUnlockAll();
                 } else {
@@ -208,9 +210,9 @@ public final class Transaction extends Locker {
                     sharedCommitLock.lock();
                     boolean sync;
                     try {
-                        if (sync = mHasRedo) {
+                        if (sync = ((mHasState & HAS_REDO) != 0)) {
                             sync = mDatabase.mRedoLog.txnCommitFull(mTxnId, mDurabilityMode);
-                            mHasRedo = false;
+                            mHasState &= ~HAS_REDO;
                         }
                         // Indicates that undo log should be truncated instead
                         // of rolled back during recovery. Commit lock can now
@@ -238,12 +240,16 @@ public final class Transaction extends Locker {
                     // the recovery. It will not attempt to delete tombstones.
                     undo.truncate(true);
 
-                    // FIXME: If has trash, empty it now.
+                    // Any remaining state would be HAS_TRASH.
+                    if (mHasState != 0) {
+                        mDatabase.fragmentedTrash().emptyTrash(mTxnId);
+                        mHasState = 0;
+                    }
                 }
             } else {
-                if (mHasRedo) {
+                if ((mHasState & HAS_REDO) != 0) {
                     mDatabase.mRedoLog.txnCommitScope(mTxnId, parentScope.mTxnId);
-                    mHasRedo = false;
+                    mHasState &= ~HAS_REDO;
                 }
 
                 super.promote();
@@ -272,7 +278,7 @@ public final class Transaction extends Locker {
         parentScope.mLockMode = mLockMode;
         parentScope.mLockTimeoutNanos = mLockTimeoutNanos;
         parentScope.mTxnId = mTxnId;
-        parentScope.mHasRedo = mHasRedo;
+        parentScope.mHasState = mHasState;
 
         UndoLog undo = mUndoLog;
         if (undo != null) {
@@ -283,7 +289,7 @@ public final class Transaction extends Locker {
 
         // Next transaction id is assigned on demand.
         mTxnId = 0;
-        mHasRedo = false;
+        mHasState &= ~HAS_REDO;
     }
 
     /**
@@ -297,9 +303,9 @@ public final class Transaction extends Locker {
         try {
             ParentScope parentScope = mParentScope;
             if (parentScope == null) {
-                if (mHasRedo) {
+                if ((mHasState & HAS_REDO) != 0) {
                     mDatabase.mRedoLog.txnRollback(mTxnId, 0);
-                    mHasRedo = false;
+                    mHasState &= ~HAS_REDO;
                 }
 
                 UndoLog undo = mUndoLog;
@@ -318,8 +324,9 @@ public final class Transaction extends Locker {
                     mUndoLog = null;
                 }
             } else {
-                if (mHasRedo) {
+                if ((mHasState & HAS_REDO) != 0) {
                     mDatabase.mRedoLog.txnRollback(mTxnId, parentScope.mTxnId);
+                    mHasState &= ~HAS_REDO;
                 }
 
                 UndoLog undo = mUndoLog;
@@ -334,7 +341,7 @@ public final class Transaction extends Locker {
                 mLockMode = parentScope.mLockMode;
                 mLockTimeoutNanos = parentScope.mLockTimeoutNanos;
                 mTxnId = parentScope.mTxnId;
-                mHasRedo = parentScope.mHasRedo;
+                mHasState |= parentScope.mHasState & HAS_REDO;
                 mSavepoint = parentScope.mSavepoint;
             }
         } catch (Throwable e) {
@@ -352,26 +359,27 @@ public final class Transaction extends Locker {
         try {
             ParentScope parentScope = mParentScope;
             if (parentScope == null) {
-                if (mHasRedo) {
+                if ((mHasState & HAS_REDO) != 0) {
                     mDatabase.mRedoLog.txnRollback(mTxnId, 0);
-                    mHasRedo = false;
+                    mHasState = 0;
                 }
             } else {
                 long txnId = mTxnId;
-                boolean hasRedo = mHasRedo;
+                int hasState = mHasState;
                 do {
                     long parentTxnId = parentScope.mTxnId;
-                    if (hasRedo) {
+                    if ((hasState & HAS_REDO) != 0) {
                         mDatabase.mRedoLog.txnRollback(txnId, parentTxnId);
+                        hasState &= ~HAS_REDO;
                     }
                     txnId = parentTxnId;
-                    hasRedo = parentScope.mHasRedo;
+                    hasState |= parentScope.mHasState & HAS_REDO;
                     parentScope = parentScope.mParentScope;
                 } while (parentScope != null);
-                if (hasRedo) {
+                if ((hasState & HAS_REDO) != 0) {
                     mDatabase.mRedoLog.txnRollback(txnId, 0);
                 }
-                mHasRedo = false;
+                mHasState = 0;
             }
 
             UndoLog undo = mUndoLog;
@@ -519,7 +527,7 @@ public final class Transaction extends Locker {
             RedoLog redo = mDatabase.mRedoLog;
             if (redo != null) {
                 redo.txnStore(txnId, indexId, key, value);
-                mHasRedo = true;
+                mHasState |= HAS_REDO;
             }
         } catch (Throwable e) {
             throw borked(e);
@@ -562,6 +570,10 @@ public final class Transaction extends Locker {
         }
         long txnId = parentScope.mTxnId;
         return txnId == 0 ? (parentScope.mTxnId = mDatabase.nextTransactionId()) : txnId;
+    }
+
+    final void setHasTrash() {
+        mHasState |= HAS_TRASH;
     }
 
     /**
