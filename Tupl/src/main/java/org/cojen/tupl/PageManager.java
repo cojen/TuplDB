@@ -100,14 +100,16 @@ final class PageManager {
             if (actualPageCount > mTotalPageCount) {
                 if (!array.isReadOnly()) {
                     // Truncate extra uncommitted pages.
+                    /*
                     System.out.println("Page count is too large: "
                                        + actualPageCount + " > " + mTotalPageCount);
+                    */
                     array.setPageCount(mTotalPageCount);
                 }
             } else if (actualPageCount < mTotalPageCount) {
+                /* TODO: can be caused by pre-allocated append tail node
                 System.out.println("Page count is too small: " + actualPageCount + " < " +
                                    mTotalPageCount);
-                /* FIXME: can be caused by pre-allocated append tail node
                 throw new CorruptPageStoreException
                     ("Page count is too small: " + actualPageCount + " < " + mTotalPageCount);
                 */
@@ -197,7 +199,7 @@ final class PageManager {
      * @throws IllegalArgumentException if id is less than or equal to one
      */
     public void recyclePage(long id) throws IOException {
-        // FIXME: Recycling doesn't work correctly with commits. Should
+        // TODO: Recycling doesn't work correctly with commits. Should
         // recycling be handled at this layer anyhow?
         deletePage(id);
         //mRecycleFreeList.append(id);

@@ -474,7 +474,7 @@ final class Node extends Latch {
         writeLong(newPage, searchVecStart + 2, left.mId);
         writeLong(newPage, searchVecStart + 2 + 8, right.mId);
 
-        // FIXME: recycle these arrays
+        // TODO: recycle these arrays
         mChildNodes = new Node[] {left, right};
 
         mPage = newPage;
@@ -543,7 +543,7 @@ final class Node extends Latch {
             mSearchVecStart = readUnsignedShort(page, 8);
             mSearchVecEnd = readUnsignedShort(page, 10);
             if (type == TYPE_TN_INTERNAL) {
-                // FIXME: recycle child node arrays
+                // TODO: recycle child node arrays
                 mChildNodes = new Node[numKeys() + 1];
             } else if (type != TYPE_TN_LEAF) {
                 throw new CorruptDatabaseException("Unknown node type: " + type + ", id: " + id);
@@ -639,7 +639,7 @@ final class Node extends Latch {
                             if (childId == child.mId && child.mCachedState != CACHED_CLEAN) {
                                 // Cannot evict if a child is dirty. Child must
                                 // be evicted first.
-                                // FIXME: try evicting child instead
+                                // TODO: try evicting child instead
                                 node.releaseExclusive();
                                 return null;
                             }
@@ -684,7 +684,7 @@ final class Node extends Latch {
         }
 
         mId = 0;
-        // FIXME: child node array should be recycled
+        // TODO: child node array should be recycled
         mChildNodes = null;
     }
 
@@ -1347,7 +1347,7 @@ final class Node extends Latch {
 
         // Update references to child node instances.
         {
-            // FIXME: recycle child node arrays
+            // TODO: recycle child node arrays
             Node[] newChildNodes = new Node[mChildNodes.length + 1];
             System.arraycopy(mChildNodes, 0, newChildNodes, 0, newChildPos);
             System.arraycopy(mChildNodes, newChildPos, newChildNodes, newChildPos + 1,
@@ -1852,7 +1852,7 @@ final class Node extends Latch {
             searchVecStart += 2;
         }
 
-        // FIXME: recycle child node arrays
+        // TODO: recycle child node arrays
         int leftLen = leftNode.mChildNodes.length;
         Node[] newChildNodes = new Node[leftLen + mChildNodes.length];
         System.arraycopy(leftNode.mChildNodes, 0, newChildNodes, 0, leftLen);
@@ -1896,7 +1896,7 @@ final class Node extends Latch {
         mGarbage += internalEntryLengthAtLoc(page, entryLoc);
 
         // Update references to child node instances.
-        // FIXME: recycle child node arrays
+        // TODO: recycle child node arrays
         childPos >>= 1;
         Node[] newChildNodes = new Node[mChildNodes.length - 1];
         System.arraycopy(mChildNodes, 0, newChildNodes, 0, childPos);
@@ -2522,7 +2522,7 @@ final class Node extends Latch {
 
                     // Split references to child node instances. New child node has already
                     // been placed into mChildNodes by caller.
-                    // FIXME: recycle child node arrays
+                    // TODO: recycle child node arrays
                     int leftLen = ((newSearchVecLoc - TN_HEADER_SIZE) >> 1) + 1;
                     Node[] leftChildNodes = new Node[leftLen];
                     Node[] rightChildNodes = new Node[mChildNodes.length - leftLen];
@@ -2633,7 +2633,7 @@ final class Node extends Latch {
 
                     // Split references to child node instances. New child node has already
                     // been placed into mChildNodes by caller.
-                    // FIXME: recycle child node arrays
+                    // TODO: recycle child node arrays
                     int rightLen = ((newSearchVecEnd - newSearchVecLoc) >> 1) + 2;
                     Node[] rightChildNodes = new Node[rightLen];
                     Node[] leftChildNodes = new Node[mChildNodes.length - rightLen];

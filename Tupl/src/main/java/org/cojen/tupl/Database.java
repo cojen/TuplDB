@@ -403,7 +403,7 @@ public final class Database implements Closeable {
         t.start();
     }
 
-    // FIXME: testing
+    // TODO: remove test method
     void trace() throws IOException {
         java.util.BitSet pages = mPageDb.tracePages();
         mRegistry.mRoot.tracePages(this, pages);
@@ -1245,7 +1245,7 @@ public final class Database implements Closeable {
             deletePage(fromTree, node.mId, node.mCachedState);
 
             node.mId = 0;
-            // FIXME: child node array should be recycled
+            // TODO: child node array should be recycled
             node.mChildNodes = null;
 
             // When node is re-allocated, it will be evicted. Ensure that eviction

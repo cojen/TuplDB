@@ -1680,7 +1680,7 @@ final class TreeCursor implements Cursor, Closeable {
         sharedCommitLock.lock();
         try {
             // Find with no lock because it has already been acquired.
-            // FIXME: Use nearby optimization when used with transactional Index.clear.
+            // TODO: Use nearby optimization when used with transactional Index.clear.
             find(null, key, 0, VARIANT_NO_LOCK);
             if (mValue == null) {
                 store(Transaction.BOGUS, mLeaf, null);
@@ -2275,7 +2275,7 @@ final class TreeCursor implements Cursor, Closeable {
 
             if (parentNode.numKeys() <= 0) {
                 if (parentNode.mId != Node.STUB_ID) {
-                    // FIXME: This shouldn't be a problem when internal nodes can be rebalanced.
+                    // TODO: This shouldn't be a problem when internal nodes can be rebalanced.
                     //System.out.println("tiny internal node: " + (parentNode == mTree.mRoot));
                 }
                 parentNode.releaseExclusive();
@@ -2368,14 +2368,14 @@ final class TreeCursor implements Cursor, Closeable {
             rightNode.transferLeafToLeftAndDelete(mTree, leftNode);
             rightNode = null;
             parentNode.deleteChildRef(leftPos + 2);
-        } else if (false) { // FIXME: testing
+        } else if (false) { // TODO: testing
             // Rebalance nodes, but don't delete anything. Right node must be dirtied too.
 
             if (mTree.markDirty(rightNode)) {
                 parentNode.updateChildRefId(leftPos + 2, rightNode.mId);
             }
 
-            // FIXME: testing
+            // TODO: testing
             if (leftNode.numKeys() == 1 || rightNode.numKeys() == 1) {
                 System.out.println("left avail: " + leftAvail + ", right avail: " + rightAvail +
                                    ", left pos: " + leftPos);
@@ -2390,10 +2390,10 @@ final class TreeCursor implements Cursor, Closeable {
 
             if (leftNode == node) {
                 // Rebalance towards left node, which is smaller.
-                // FIXME
+                // TODO
             } else {
                 // Rebalance towards right node, which is smaller.
-                // FIXME
+                // TODO
             }
         }
 
@@ -2461,7 +2461,7 @@ final class TreeCursor implements Cursor, Closeable {
 
             if (parentNode.numKeys() <= 0) {
                 if (parentNode.mId != Node.STUB_ID) {
-                    // FIXME: This shouldn't be a problem when internal nodes can be rebalanced.
+                    // TODO: This shouldn't be a problem when internal nodes can be rebalanced.
                     //System.out.println("tiny internal node (2): " + (parentNode == mTree.mRoot));
                 }
                 parentNode.releaseExclusive();
@@ -2564,14 +2564,14 @@ final class TreeCursor implements Cursor, Closeable {
                 (mTree, leftNode, parentPage, parentEntryLoc, parentEntryLen);
             rightNode = null;
             parentNode.deleteChildRef(leftPos + 2);
-        } else if (false) { // FIXME: testing
+        } else if (false) { // TODO: testing
             // Rebalance nodes, but don't delete anything. Right node must be dirtied too.
 
             if (mTree.markDirty(rightNode)) {
                 parentNode.updateChildRefId(leftPos + 2, rightNode.mId);
             }
 
-            // FIXME: testing
+            // TODO: testing
             if (leftNode.numKeys() == 1 || rightNode.numKeys() == 1) {
                 System.out.println("left avail: " + leftAvail + ", right avail: " + rightAvail +
                                    ", left pos: " + leftPos);
@@ -2586,10 +2586,10 @@ final class TreeCursor implements Cursor, Closeable {
 
             if (leftNode == node) {
                 // Rebalance towards left node, which is smaller.
-                // FIXME
+                // TODO
             } else {
                 // Rebalance towards right node, which is smaller.
-                // FIXME
+                // TODO
             }
         }
 
