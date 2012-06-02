@@ -82,7 +82,7 @@ public final class Transaction extends Locker {
 
     // TODO: Define autoCommit(boolean) method.
 
-    // FIXME: Add abort method which can be called by any thread. Transaction
+    // TODO: Add abort method which can be called by any thread. Transaction
     // is borked as a result, and the field needs to be volatile to signal the
     // abort action. Rollback is performed by the original thread, to avoid any
     // other race conditions. If transaction is waiting for a lock, it's

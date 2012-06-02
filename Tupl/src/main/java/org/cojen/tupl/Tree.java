@@ -126,7 +126,7 @@ final class Tree implements Index {
     /*
     @Override
     public long count(Transaction txn) throws IOException {
-        // FIXME
+        // TODO
         throw null;
     }
     */
@@ -138,7 +138,7 @@ final class Tree implements Index {
                       byte[] end, boolean endInclusive)
         throws IOException
     {
-        // FIXME
+        // TODO
         throw null;
     }
     */
@@ -146,7 +146,7 @@ final class Tree implements Index {
     /*
     @Override
     public boolean exists(Transaction txn, byte[] key) throws IOException {
-        // FIXME
+        // TODO
         throw null;
     }
     */
@@ -154,7 +154,7 @@ final class Tree implements Index {
     /*
     @Override
     public boolean exists(Transaction txn, byte[] key, byte[] value) throws IOException {
-        // FIXME
+        // TODO
         throw null;
     }
     */
@@ -249,7 +249,7 @@ final class Tree implements Index {
         }
 
         if (txn.lockMode() == LockMode.UNSAFE) {
-            // FIXME: Optimize for LockMode.UNSAFE.
+            // TODO: Optimize for LockMode.UNSAFE.
             throw null;
         }
 
@@ -265,7 +265,7 @@ final class Tree implements Index {
                     cursor.next();
                 }
             } finally {
-                // FIXME: this can deadlock, because exception can be thrown at anytime
+                // TODO: this can deadlock, because exception can be thrown at anytime
                 cursor.reset();
             }
             txn.commit();
@@ -299,7 +299,7 @@ final class Tree implements Index {
         }
 
         if (txn.lockMode() == LockMode.UNSAFE) {
-            // FIXME: Optimize for LockMode.UNSAFE.
+            // TODO: Optimize for LockMode.UNSAFE.
             throw null;
         }
 
@@ -347,7 +347,7 @@ final class Tree implements Index {
                     }
                 }
             } finally {
-                // FIXME: this can deadlock, because exception can be thrown at anytime
+                // TODO: this can deadlock, because exception can be thrown at anytime
                 cursor.reset();
             }
             txn.commit();
