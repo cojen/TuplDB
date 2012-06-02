@@ -1455,22 +1455,22 @@ final class TreeCursor implements Cursor, Closeable {
             throw new IllegalStateException("Cursor position is undefined");
         }
 
-        Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
-        sharedCommitLock.lock();
+        final Transaction txn = mTxn;
+        final Locker locker = mTree.lockExclusive(txn, key, keyHash());
         try {
-            final Transaction txn = mTxn;
-            final Locker locker = mTree.lockExclusive(txn, key, keyHash());
+            final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
+            sharedCommitLock.lock();
             try {
                 store(txn, leafExclusive(), value);
             } finally {
-                if (locker != null) {
-                    locker.unlock();
-                }
+                sharedCommitLock.unlock();
             }
         } catch (Throwable e) {
             throw handleStoreException(e);
         } finally {
-            sharedCommitLock.unlock();
+            if (locker != null) {
+                locker.unlock();
+            }
         }
     }
 
@@ -1535,23 +1535,24 @@ final class TreeCursor implements Cursor, Closeable {
     void findAndStore(byte[] key, byte[] value) throws IOException {
         final Transaction txn = mTxn;
         final int hash = keyHashForStore(txn, key);
-        final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
-        sharedCommitLock.lock();
+        final Locker locker = mTree.lockExclusive(txn, key, hash);
         try {
-            final Locker locker = mTree.lockExclusive(txn, key, hash);
+            // Find with no lock because it has already been acquired.
+            find(null, key, hash, VARIANT_NO_LOCK);
+
+            final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
+            sharedCommitLock.lock();
             try {
-                // Find with no lock because it has already been acquired.
-                find(null, key, hash, VARIANT_NO_LOCK);
                 store(txn, mLeaf, value);
             } finally {
-                if (locker != null) {
-                    locker.unlock();
-                }
+                sharedCommitLock.unlock();
             }
         } catch (Throwable e) {
             throw handleStoreException(e);
         } finally {
-            sharedCommitLock.unlock();
+            if (locker != null) {
+                locker.unlock();
+            }
         }
     }
 
@@ -1565,8 +1566,7 @@ final class TreeCursor implements Cursor, Closeable {
     boolean findAndModify(byte[] key, byte[] oldValue, byte[] newValue) throws IOException {
         final Transaction txn = mTxn;
         final int hash = keyHashForStore(txn, key);
-        final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
-        sharedCommitLock.lock();
+
         try {
             // Note: Acquire exclusive lock instead of performing upgrade
             // sequence. The upgrade would need to be performed with the node
@@ -1614,8 +1614,6 @@ final class TreeCursor implements Cursor, Closeable {
             }
         } catch (Throwable e) {
             throw handleStoreException(e);
-        } finally {
-            sharedCommitLock.unlock();
         }
     }
 
@@ -1626,48 +1624,46 @@ final class TreeCursor implements Cursor, Closeable {
         // Find with no lock because caller must already acquire exclusive lock.
         find(null, key, hash, VARIANT_NO_LOCK);
 
-        if (oldValue == MODIFY_INSERT) {
-            // insert mode
-
-            if (mValue != null) {
-                mLeaf.mNode.releaseExclusive();
-                return false;
-            }
-
-            store(txn, mLeaf, newValue);
-            return true;
-        } else if (oldValue == MODIFY_REPLACE) {
-            // replace mode
-
-            if (mValue == null) {
-                mLeaf.mNode.releaseExclusive();
-                return false;
-            }
-
-            store(txn, mLeaf, newValue);
-            return true;
-        } else {
-            // update mode
-
-            if (mValue != null) {
-                if (Arrays.equals(oldValue, mValue)) {
-                    store(txn, mLeaf, newValue);
-                    return true;
-                } else {
-                    mLeaf.mNode.releaseExclusive();
-                    return false;
+        check: {
+            if (oldValue == MODIFY_INSERT) {
+                if (mValue == null) {
+                    // Insert allowed.
+                    break check;
                 }
-            } else if (oldValue == null) {
-                if (newValue == null) {
-                    mLeaf.mNode.releaseExclusive();
-                } else {
-                    store(txn, mLeaf, newValue);
+            } else if (oldValue == MODIFY_REPLACE) {
+                if (mValue != null) {
+                    // Replace allowed.
+                    break check;
                 }
-                return true;
             } else {
-                mLeaf.mNode.releaseExclusive();
-                return false;
+                if (mValue != null) {
+                    if (Arrays.equals(oldValue, mValue)) {
+                        // Update allowed.
+                        break check;
+                    }
+                } else if (oldValue == null) {
+                    if (newValue == null) {
+                        // Update allowed, but nothing changed.
+                        mLeaf.mNode.releaseExclusive();
+                        return true;
+                    } else {
+                        // Update allowed.
+                        break check;
+                    }
+                }
             }
+
+            mLeaf.mNode.releaseExclusive();
+            return false;
+        }
+
+        final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
+        sharedCommitLock.lock();
+        try {
+            store(txn, mLeaf, newValue);
+            return true;
+        } finally {
+            sharedCommitLock.unlock();
         }
     }
 
@@ -1676,19 +1672,24 @@ final class TreeCursor implements Cursor, Closeable {
      * key lock. Method does nothing if a value exists.
      */
     void deleteTombstone(byte[] key) throws IOException {
-        Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
-        sharedCommitLock.lock();
         try {
             // Find with no lock because it has already been acquired.
             // TODO: Use nearby optimization when used with transactional Index.clear.
             find(null, key, 0, VARIANT_NO_LOCK);
+
             if (mValue == null) {
-                store(Transaction.BOGUS, mLeaf, null);
+                final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
+                sharedCommitLock.lock();
+                try {
+                    store(Transaction.BOGUS, mLeaf, null);
+                } finally {
+                    sharedCommitLock.unlock();
+                }
             } else {
                 mLeaf.mNode.releaseExclusive();
             }
-        } finally {
-            sharedCommitLock.unlock();
+        } catch (Throwable e) {
+            throw handleStoreException(e);
         }
     }
 
