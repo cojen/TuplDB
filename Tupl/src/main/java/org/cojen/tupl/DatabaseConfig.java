@@ -26,7 +26,6 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Properties;
 
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -43,7 +42,6 @@ public class DatabaseConfig implements Cloneable {
     DurabilityMode mDurabilityMode;
     long mLockTimeoutNanos;
     long mCheckpointRateNanos;
-    ScheduledExecutorService mCheckpointExecutor;
     boolean mFileSync;
     boolean mReadOnly;
     int mPageSize;
@@ -153,15 +151,6 @@ public class DatabaseConfig implements Cloneable {
      */
     public DatabaseConfig checkpointRate(long rate, TimeUnit unit) {
         mCheckpointRateNanos = Utils.toNanos(rate, unit);
-        return this;
-    }
-
-    /**
-     * Set an executor which runs automatic checkpoints. If not set, a
-     * dedicated thread is created to run checkpoints.
-     */
-    public DatabaseConfig checkpointExecutor(ScheduledExecutorService executor) {
-        mCheckpointExecutor = executor;
         return this;
     }
 
