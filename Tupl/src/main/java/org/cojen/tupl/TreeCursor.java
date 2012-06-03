@@ -310,23 +310,22 @@ final class TreeCursor implements Cursor, Closeable {
             return LockResult.UNOWNED;
         }
 
-        // TODO: optimize and also utilize counts embedded in the tree
-
-        // FIXME: Skipped entries should be locked no higher than
-        // READ_COMMITTED and be released immediately.
-
-        if (amount > 0) {
-            do {
-                next();
-            } while (--amount > 0);
-        } else {
-            do {
-                previous();
-            } while (++amount < 0);
+        try {
+            TreeCursorFrame frame = leafExclusiveNotSplit();
+            if (amount > 0) {
+                if (amount > 1 && (frame = skipNextGap(frame, amount - 1)) == null) {
+                    return LockResult.UNOWNED;
+                }
+                return next(mTxn, frame);
+            } else {
+                if (amount < -1 && (frame = skipPreviousGap(frame, -1 - amount)) == null) {
+                    return LockResult.UNOWNED;
+                }
+                return previous(mTxn, frame);
+            }
+        } catch (Throwable e) {
+            throw handleException(e);
         }
-
-        // FIXME: LockResult
-        return LockResult.UNOWNED;
     }
 
     @Override
@@ -519,6 +518,181 @@ final class TreeCursor implements Cursor, Closeable {
         }
     }
 
+    /**
+     * @param frame leaf frame, not split, with exclusive latch
+     * @return latched leaf frame or null if reached end
+     */
+    private TreeCursorFrame skipNextGap(TreeCursorFrame frame, long amount) throws IOException {
+        outer: while (true) {
+            Node node = frame.mNode;
+
+            quick: {
+                int pos = frame.mNodePos;
+
+                int highest;
+                if (pos < 0) {
+                    pos = ~2 - pos; // eq: (~pos) - 2;
+                    if (pos >= (highest = node.highestLeafPos())) {
+                        break quick;
+                    }
+                    frame.mNotFoundKey = null;
+                } else if (pos >= (highest = node.highestLeafPos())) {
+                    break quick;
+                }
+
+                int avail = (highest - pos) >> 1;
+                if (avail >= amount) {
+                    frame.mNodePos = pos + (((int) amount) << 1);
+                    return frame;
+                } else {
+                    frame.mNodePos = highest;
+                    amount -= avail;
+                }
+            }
+
+            while (true) {
+                TreeCursorFrame parentFrame = frame.peek();
+
+                if (parentFrame == null) {
+                    frame.popv();
+                    node.releaseExclusive();
+                    mLeaf = null;
+                    mKey = null;
+                    mKeyHash = 0;
+                    mValue = null;
+                    return null;
+                }
+
+                Node parentNode;
+                int parentPos;
+
+                latchParent: {
+                    splitCheck: {
+                        // Latch coupling up the tree usually works, so give it a
+                        // try. If it works, then there's no need to worry about a
+                        // node merge.
+                        parentNode = parentFrame.tryAcquireExclusive();
+
+                        if (parentNode == null) {
+                            // Latch coupling failed, and so acquire parent latch
+                            // without holding child latch. The child might have
+                            // changed, and so it must be checked again.
+                            node.releaseExclusive();
+                            parentNode = parentFrame.acquireExclusive();
+                            if (parentNode.mSplit == null) {
+                                break splitCheck;
+                            }
+                        } else {
+                            if (parentNode.mSplit == null) {
+                                frame.popv();
+                                node.releaseExclusive();
+                                parentPos = parentFrame.mNodePos;
+                                break latchParent;
+                            }
+                            node.releaseExclusive();
+                        }
+
+                        // When this point is reached, parent node must be split.
+                        // Parent latch is held, child latch is not held, but the
+                        // frame is still valid.
+
+                        parentNode = finishSplit(parentFrame, parentNode);
+                    }
+
+                    // When this point is reached, child must be relatched. Parent
+                    // latch is held, and the child frame is still valid.
+
+                    parentPos = parentFrame.mNodePos;
+                    node = latchChild(parentNode, parentPos, false);
+
+                    // Quick check again, in case node got bigger due to merging.
+                    // Unlike the earlier quick check, this one must handle
+                    // internal nodes too.
+                    quick: {
+                        int pos = frame.mNodePos;
+
+                        int highest;
+                        if (pos < 0) {
+                            pos = ~2 - pos; // eq: (~pos) - 2;
+                            if (pos >= (highest = node.highestLeafPos())) {
+                                break quick;
+                            }
+                            frame.mNotFoundKey = null;
+                        } else if (pos >= (highest = node.highestPos())) {
+                            break quick;
+                        }
+
+                        parentNode.releaseExclusive();
+
+                        if (frame == mLeaf) {
+                            int avail = (highest - pos) >> 1;
+                            if (avail >= amount) {
+                                frame.mNodePos = pos + (((int) amount) << 1);
+                                return frame;
+                            } else {
+                                frame.mNodePos = highest;
+                                amount -= avail;
+                            }
+                        }
+
+                        // Increment position of internal node.
+                        frame.mNodePos = (pos += 2);
+
+                        frame = skipToFirst(latchChild(node, pos, true),
+                                            new TreeCursorFrame(frame));
+                        if (--amount <= 0) {
+                            return frame;
+                        }
+                        continue outer;
+                    }
+
+                    frame.popv();
+                    node.releaseExclusive();
+                }
+
+                // When this point is reached, only the parent latch is held. Child
+                // frame is no longer valid.
+
+                if (parentPos < parentNode.highestInternalPos()) {
+                    parentFrame.mNodePos = (parentPos += 2);
+                    frame = skipToFirst(latchChild(parentNode, parentPos, true),
+                                        new TreeCursorFrame(parentFrame));
+                    if (--amount <= 0) {
+                        return frame;
+                    }
+                    continue outer;
+                }
+
+                frame = parentFrame;
+                node = parentNode;
+            }
+        }
+    }
+
+    /**
+     * @param node latched node
+     * @param frame frame to bind node to
+     * @return latched leaf frame
+     */
+    private TreeCursorFrame skipToFirst(Node node, TreeCursorFrame frame) throws IOException {
+        while (true) {
+            frame.bind(node, 0);
+
+            if (node.isLeaf()) {
+                mLeaf = frame;
+                return frame;
+            }
+
+            if (node.mSplit != null) {
+                node = node.mSplit.latchLeft(mTree.mDatabase, node);
+            }
+
+            // FIXME: Node can be empty if in the process of merging.
+            node = latchChild(node, 0, true);
+            frame = new TreeCursorFrame(frame);
+        }
+    }
+
     @Override
     public LockResult previous() throws IOException {
         return previous(mTxn, leafExclusiveNotSplit());
@@ -705,6 +879,210 @@ final class TreeCursor implements Cursor, Closeable {
 
             frame = parentFrame;
             node = parentNode;
+        }
+    }
+
+    /**
+     * @param frame leaf frame, not split, with exclusive latch
+     * @return latched leaf frame or null if reached end
+     */
+    private TreeCursorFrame skipPreviousGap(TreeCursorFrame frame, long amount)
+        throws IOException
+    {
+        outer: while (true) {
+            Node node = frame.mNode;
+
+            quick: {
+                int pos = frame.mNodePos;
+
+                if (pos < 0) {
+                    pos = ~pos;
+                    if (pos == 0) {
+                        break quick;
+                    }
+                    frame.mNotFoundKey = null;
+                } else if (pos == 0) {
+                    break quick;
+                }
+
+                int avail = pos >> 1;
+                if (avail >= amount) {
+                    frame.mNodePos = pos - (((int) amount) << 1);
+                    return frame;
+                } else {
+                    frame.mNodePos = 0;
+                    amount -= avail;
+                }
+            }
+
+            while (true) {
+                TreeCursorFrame parentFrame = frame.peek();
+
+                if (parentFrame == null) {
+                    frame.popv();
+                    node.releaseExclusive();
+                    mLeaf = null;
+                    mKey = null;
+                    mKeyHash = 0;
+                    mValue = null;
+                    return null;
+                }
+
+                Node parentNode;
+                int parentPos;
+
+                latchParent: {
+                    splitCheck: {
+                        // Latch coupling up the tree usually works, so give it a
+                        // try. If it works, then there's no need to worry about a
+                        // node merge.
+                        parentNode = parentFrame.tryAcquireExclusive();
+
+                        if (parentNode == null) {
+                            // Latch coupling failed, and so acquire parent latch
+                            // without holding child latch. The child might have
+                            // changed, and so it must be checked again.
+                            node.releaseExclusive();
+                            parentNode = parentFrame.acquireExclusive();
+                            if (parentNode.mSplit == null) {
+                                break splitCheck;
+                            }
+                        } else {
+                            if (parentNode.mSplit == null) {
+                                frame.popv();
+                                node.releaseExclusive();
+                                parentPos = parentFrame.mNodePos;
+                                break latchParent;
+                            }
+                            node.releaseExclusive();
+                        }
+
+                        // When this point is reached, parent node must be split.
+                        // Parent latch is held, child latch is not held, but the
+                        // frame is still valid.
+
+                        parentNode = finishSplit(parentFrame, parentNode);
+                    }
+
+                    // When this point is reached, child must be relatched. Parent
+                    // latch is held, and the child frame is still valid.
+
+                    parentPos = parentFrame.mNodePos;
+                    node = latchChild(parentNode, parentPos, false);
+
+                    // Quick check again, in case node got bigger due to merging.
+                    // Unlike the earlier quick check, this one must handle
+                    // internal nodes too.
+                    quick: {
+                        int pos = frame.mNodePos;
+
+                        if (pos < 0) {
+                            pos = ~pos;
+                            if (pos == 0) {
+                                break quick;
+                            }
+                            frame.mNotFoundKey = null;
+                        } else if (pos == 0) {
+                            break quick;
+                        }
+
+                        parentNode.releaseExclusive();
+
+                        if (frame == mLeaf) {
+                            int avail = pos >> 1;
+                            if (avail >= amount) {
+                                frame.mNodePos = pos - (((int) amount) << 1);
+                                return frame;
+                            } else {
+                                frame.mNodePos = 0;
+                                amount -= avail;
+                            }
+                        }
+
+                        // Decrement position of internal node.
+                        frame.mNodePos = (pos -= 2);
+
+                        frame = skipToLast(latchChild(node, pos, true),
+                                            new TreeCursorFrame(frame));
+                        if (--amount <= 0) {
+                            return frame;
+                        }
+                        continue outer;
+                    }
+
+                    frame.popv();
+                    node.releaseExclusive();
+                }
+
+                // When this point is reached, only the parent latch is held. Child
+                // frame is no longer valid.
+
+                if (parentPos > 0) {
+                    parentFrame.mNodePos = (parentPos -= 2);
+                    frame = skipToLast(latchChild(parentNode, parentPos, true),
+                                        new TreeCursorFrame(parentFrame));
+                    if (--amount <= 0) {
+                        return frame;
+                    }
+                    continue outer;
+                }
+
+                frame = parentFrame;
+                node = parentNode;
+            }
+        }
+    }
+
+    /**
+     * @param node latched node
+     * @param frame frame to bind node to
+     * @return latched leaf frame
+     */
+    private TreeCursorFrame skipToLast(Node node, TreeCursorFrame frame) throws IOException {
+        while (true) {
+            if (node.isLeaf()) {
+                int pos;
+                if (node.mSplit == null) {
+                    pos = node.highestLeafPos();
+                } else {
+                    pos = node.mSplit.highestLeafPos(mTree.mDatabase, node);
+                }
+                frame.bind(node, pos);
+                mLeaf = frame;
+                return frame;
+            }
+
+            Split split = node.mSplit;
+            if (split == null) {
+                int childPos = node.highestInternalPos();
+                frame.bind(node, childPos);
+                // FIXME: Node can be empty if in the process of merging.
+                node = latchChild(node, childPos, true);
+            } else {
+                // Follow highest position of split, binding this frame to the
+                // unsplit node as if it had not split. The binding will be
+                // corrected when split is finished.
+
+                final Node sibling = split.latchSibling(mTree.mDatabase);
+
+                final Node left, right;
+                if (split.mSplitRight) {
+                    left = node;
+                    right = sibling;
+                } else {
+                    left = sibling;
+                    right = node;
+                }
+
+                int highestRightPos = right.highestInternalPos();
+                frame.bind(node, left.highestInternalPos() + 2 + highestRightPos);
+                left.releaseExclusive();
+
+                // FIXME: Node can be empty if in the process of merging.
+                node = latchChild(right, highestRightPos, true);
+            }
+
+            frame = new TreeCursorFrame(frame);
         }
     }
 
@@ -1466,7 +1844,7 @@ final class TreeCursor implements Cursor, Closeable {
                 sharedCommitLock.unlock();
             }
         } catch (Throwable e) {
-            throw handleStoreException(e);
+            throw handleException(e);
         } finally {
             if (locker != null) {
                 locker.unlock();
@@ -1513,7 +1891,7 @@ final class TreeCursor implements Cursor, Closeable {
                     }
                 }
             } catch (Throwable e) {
-                throw handleStoreException(e);
+                throw handleException(e);
             } finally {
                 sharedCommitLock.unlock();
             }
@@ -1548,7 +1926,7 @@ final class TreeCursor implements Cursor, Closeable {
                 sharedCommitLock.unlock();
             }
         } catch (Throwable e) {
-            throw handleStoreException(e);
+            throw handleException(e);
         } finally {
             if (locker != null) {
                 locker.unlock();
@@ -1613,7 +1991,7 @@ final class TreeCursor implements Cursor, Closeable {
                 }
             }
         } catch (Throwable e) {
-            throw handleStoreException(e);
+            throw handleException(e);
         }
     }
 
@@ -1689,7 +2067,7 @@ final class TreeCursor implements Cursor, Closeable {
                 mLeaf.mNode.releaseExclusive();
             }
         } catch (Throwable e) {
-            throw handleStoreException(e);
+            throw handleException(e);
         }
     }
 
@@ -1955,7 +2333,7 @@ final class TreeCursor implements Cursor, Closeable {
                 node.releaseExclusive();
             }
         } catch (Throwable e) {
-            throw handleStoreException(e);
+            throw handleException(e);
         } finally {
             sharedCommitLock.unlock();
         }
@@ -1963,7 +2341,7 @@ final class TreeCursor implements Cursor, Closeable {
         return true;
     }
 
-    private IOException handleStoreException(Throwable e) throws IOException {
+    private IOException handleException(Throwable e) throws IOException {
         // Any unexpected exception can corrupt the internal store state.
         // Closing down protects the persisted state.
         if (mLeaf == null && e instanceof IllegalStateException) {

@@ -248,6 +248,8 @@ public final class Database implements Closeable {
             mPageDb = new DurablePageDb(pageSize, dataFiles, options, destroy);
         }
 
+        mSharedCommitLock = mPageDb.sharedCommitLock();
+
         try {
             // Pre-allocate nodes. They are automatically added to the usage
             // list, and so nothing special needs to be done to allow them to
@@ -269,7 +271,6 @@ public final class Database implements Closeable {
             int spareBufferCount = Runtime.getRuntime().availableProcessors();
             mSpareBufferPool = new BufferPool(mPageDb.pageSize(), spareBufferCount);
 
-            mSharedCommitLock = mPageDb.sharedCommitLock();
             mSharedCommitLock.lock();
             try {
                 mCommitState = CACHED_DIRTY_0;
@@ -758,7 +759,10 @@ public final class Database implements Closeable {
         mSharedCommitLock.lock();
         try {
             closeNodeCache();
-            mAllocator.clearDirtyNodes();
+
+            if (mAllocator != null) {
+                mAllocator.clearDirtyNodes();
+            }
 
             IOException ex = null;
 
