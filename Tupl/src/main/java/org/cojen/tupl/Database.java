@@ -85,8 +85,6 @@ public final class Database implements Closeable {
 
     private static final int DEFAULT_PAGE_SIZE = 4096;
 
-    private static int cThreadCounter;
-
     private final LockedFile mLockFile;
 
     final DurabilityMode mDurabilityMode;
@@ -372,36 +370,18 @@ public final class Database implements Closeable {
     }
 
     private void startCheckpointer(DatabaseConfig config) {
-        if (mRedoLog == null) {
+        if (mRedoLog == null && mTempFileManager == null) {
+            // Nothing is durable and nothing to ever clean up 
             return;
         }
 
-        long checkpointRateNanos = config.mCheckpointRateNanos;
-        if (checkpointRateNanos < 0) {
-            return;
-        }
+        mCheckpointer = new Checkpointer(this, config.mCheckpointRateNanos);
 
-        ScheduledExecutorService executor = config.mCheckpointExecutor;
-        if (executor != null) {
-            try {
-                mCheckpointer = Checkpointer.start(this, checkpointRateNanos, executor);
-                return;
-            } catch (RejectedExecutionException e) {
-                // Use dedicated thread.
-            }
-        }
+        // Register objects to automatically shutdown.
+        mCheckpointer.register(mRedoLog);
+        mCheckpointer.register(mTempFileManager);
 
-        mCheckpointer = Checkpointer.create(this, checkpointRateNanos);
-
-        int num;
-        synchronized (Database.class) {
-            num = ++cThreadCounter;
-        }
-
-        Thread t = new Thread(mCheckpointer);
-        t.setDaemon(true);
-        t.setName("Checkpointer-" + (num & 0xffffffffL));
-        t.start();
+        mCheckpointer.start();
     }
 
     // TODO: remove test method
@@ -745,7 +725,7 @@ public final class Database implements Closeable {
 
         Checkpointer c = mCheckpointer;
         if (c != null) {
-            c.cancel();
+            c.close();
             c = null;
         }
 

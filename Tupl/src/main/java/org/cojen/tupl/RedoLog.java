@@ -32,7 +32,7 @@ import java.nio.channels.FileChannel;
  *
  * @author Brian S O'Neill
  */
-final class RedoLog implements Closeable {
+final class RedoLog implements Closeable, Checkpointer.Shutdown {
     private static final long MAGIC_NUMBER = 431399725605778814L;
     private static final int ENCODING_VERSION = 20120105;
 
@@ -131,8 +131,6 @@ final class RedoLog implements Closeable {
 
     private boolean mAlwaysFlush;
 
-    private Thread mShutdownHook;
-
     /**
      * RedoLog starts in replay mode.
      */
@@ -143,19 +141,6 @@ final class RedoLog implements Closeable {
         synchronized (this) {
             mLogId = logId;
             mReplayMode = true;
-
-            mShutdownHook = new Thread() {
-                @Override
-                public void run() {
-                    try {
-                        shutdown(OP_SHUTDOWN);
-                    } catch (Throwable e) {
-                        Utils.rethrow(e);
-                    }
-                }
-            };
-
-            Runtime.getRuntime().addShutdownHook(mShutdownHook);
         }
     }
 
@@ -271,22 +256,18 @@ final class RedoLog implements Closeable {
         shutdown(OP_CLOSE);
     }
 
+    @Override
+    public void shutdown() {
+        try {
+            shutdown(OP_SHUTDOWN);
+        } catch (IOException e) {
+            // Ignore.
+        }
+    }
+
     void shutdown(byte op) throws IOException {
         synchronized (this) {
             mAlwaysFlush = true;
-
-            if (op == OP_CLOSE) {
-                Thread hook = mShutdownHook;
-                if (hook != null) {
-                    try {
-                        Runtime.getRuntime().removeShutdownHook(hook);
-                    } catch (IllegalStateException e) {
-                        // Ignore.
-                    }
-                }
-            }
-
-            mShutdownHook = null;
 
             if (mChannel == null || !mChannel.isOpen()) {
                 return;
