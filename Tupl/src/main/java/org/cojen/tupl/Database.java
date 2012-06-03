@@ -296,7 +296,13 @@ public final class Database implements Closeable {
             mAllocator = new OrderedPageAllocator
                 (mPageDb, null /*openInternalTree(Tree.PAGE_ALLOCATOR_ID, true)*/);
 
-            mFragmentCache = new FragmentCache(this, mMaxNodeCount);
+            if (baseFile == null) {
+                // Non-durable database never evicts anything.
+                mFragmentCache = new FragmentMap();
+            } else {
+                // Regular database evicts automatically.
+                mFragmentCache = new FragmentCache(this, mMaxNodeCount);
+            }
 
             {
                 Tree tree = openInternalTree(Tree.FRAGMENTED_TRASH_ID, false);

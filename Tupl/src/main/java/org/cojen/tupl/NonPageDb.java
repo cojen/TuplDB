@@ -30,8 +30,12 @@ import java.util.BitSet;
 class NonPageDb extends PageDb {
     private final int mPageSize;
 
+    private long mAllocId;
+
     NonPageDb(int pageSize) {
         mPageSize = pageSize;
+        // Next assigned id is 2, the first legal identifier.
+        mAllocId = 1;
     }
 
     public int pageSize() {
@@ -60,11 +64,16 @@ class NonPageDb extends PageDb {
         fail(false);
     }
 
-    public long allocPage() throws IOException {
-        // It's safe for all pages to have the same id. Database only checks
-        // ids to detect eviction, but non-durable database doesn't support
-        // eviction.
-        return 2;
+    public synchronized long allocPage() throws IOException {
+        // For ordinary nodes, the same identifier can be vended out each
+        // time. Fragmented values require unique identifiers.
+        long id = mAllocId + 1;
+        if (id == 0) {
+            // Wrapped around. In practice, this will not happen in 100 years.
+            throw new DatabaseException("All page identifiers exhausted");
+        }
+        mAllocId = id;
+        return id;
     }
 
     public long tryAllocPage() throws IOException {

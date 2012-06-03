@@ -42,12 +42,17 @@ class FragmentCache {
         mHashTableShift = Integer.numberOfLeadingZeros(numHashTables - 1);
     }
 
+    protected FragmentCache() {
+        mHashTables = null;
+        mHashTableShift = 0;
+    }
+
     /**
      * Returns the node with the given id, possibly loading it and evicting
      * another.
      *
      * @param caller optional tree node which is latched and calling this method
-     * @return node shared latch held
+     * @return node with shared latch held
      */
     Node get(Node caller, long nodeId) throws IOException {
         int hash = hash(nodeId);
