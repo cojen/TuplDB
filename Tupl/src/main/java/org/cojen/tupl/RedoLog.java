@@ -18,6 +18,7 @@ package org.cojen.tupl;
 
 import java.io.BufferedInputStream;
 import java.io.Closeable;
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileInputStream;
@@ -186,6 +187,8 @@ final class RedoLog implements Closeable {
 
         try {
             replay(in, visitor);
+        } catch (EOFException e) {
+            // End of log didn't get completely flushed.
         } finally {
             Utils.closeQuietly(null, in);
         }
