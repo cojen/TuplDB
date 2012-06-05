@@ -100,14 +100,16 @@ final class PageManager {
             if (actualPageCount > mTotalPageCount) {
                 if (!array.isReadOnly()) {
                     // Truncate extra uncommitted pages.
+                    /*
                     System.out.println("Page count is too large: "
                                        + actualPageCount + " > " + mTotalPageCount);
+                    */
                     array.setPageCount(mTotalPageCount);
                 }
             } else if (actualPageCount < mTotalPageCount) {
+                /* TODO: can be caused by pre-allocated append tail node
                 System.out.println("Page count is too small: " + actualPageCount + " < " +
                                    mTotalPageCount);
-                /* FIXME: can be caused by pre-allocated append tail node
                 throw new CorruptPageStoreException
                     ("Page count is too small: " + actualPageCount + " < " + mTotalPageCount);
                 */
@@ -124,7 +126,7 @@ final class PageManager {
     }
 
     static long readTotalPageCount(byte[] header, int offset) {
-        return DataUtils.readLong(header, offset + I_TOTAL_PAGE_COUNT);
+        return Utils.readLong(header, offset + I_TOTAL_PAGE_COUNT);
     }
 
     public int headerSize() {
@@ -197,7 +199,7 @@ final class PageManager {
      * @throws IllegalArgumentException if id is less than or equal to one
      */
     public void recyclePage(long id) throws IOException {
-        // FIXME: Recycling doesn't work correctly with commits. Should
+        // TODO: Recycling doesn't work correctly with commits. Should
         // recycling be handled at this layer anyhow?
         deletePage(id);
         //mRecycleFreeList.append(id);
@@ -212,7 +214,7 @@ final class PageManager {
                 break createPages;
             }
 
-            PageStore.Stats stats = new PageStore.Stats();
+            PageDb.Stats stats = new PageDb.Stats();
             addTo(stats);
             pageCount -= stats.freePages;
 
@@ -246,7 +248,7 @@ final class PageManager {
             //mRecycleFreeList.commitStart(header, offset + I_RECYCLE_QUEUE);
             // Write total after committing free list, to account for
             // additional pages it needed to allocate for draining nodes.
-            DataUtils.writeLong(header, offset + I_TOTAL_PAGE_COUNT, mTotalPageCount);
+            Utils.writeLong(header, offset + I_TOTAL_PAGE_COUNT, mTotalPageCount);
         } finally {
             fullUnlock();
         }
@@ -283,7 +285,7 @@ final class PageManager {
         mRegularFreeList.appendLock().unlock();
     }
 
-    void addTo(PageStore.Stats stats) {
+    void addTo(PageDb.Stats stats) {
         mRemoveLock.lock();
         try {
             stats.totalPages += mTotalPageCount;

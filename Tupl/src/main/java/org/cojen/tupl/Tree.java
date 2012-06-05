@@ -32,7 +32,8 @@ final class Tree implements Index {
     static final int
         REGISTRY_ID = 0,
         REGISTRY_KEY_MAP_ID = 1,
-        PAGE_ALLOCATOR = 2,
+        PAGE_ALLOCATOR_ID = 2,
+        FRAGMENTED_TRASH_ID = 3,
         MAX_RESERVED_ID = 0xff;
 
     static boolean isInternal(long id) {
@@ -66,6 +67,8 @@ final class Tree implements Index {
     // object when the tree root changes.
     final Node mRoot;
 
+    final int mMaxEntrySize;
+
     // Maintain a stack of stubs, which are created when root nodes are
     // deleted. When a new root is created, a stub is popped, and cursors bound
     // to it are transferred into the new root. Access to this stack is guarded
@@ -79,6 +82,8 @@ final class Tree implements Index {
         mIdBytes = idBytes;
         mName = name;
         mRoot = root;
+        // Limit maximum non-fragmented entry size to 0.75 of usable node size.
+        mMaxEntrySize = ((db.pageSize() - Node.TN_HEADER_SIZE) * 3) >> 2;
     }
 
     @Override
@@ -121,7 +126,7 @@ final class Tree implements Index {
     /*
     @Override
     public long count(Transaction txn) throws IOException {
-        // FIXME
+        // TODO
         throw null;
     }
     */
@@ -133,7 +138,7 @@ final class Tree implements Index {
                       byte[] end, boolean endInclusive)
         throws IOException
     {
-        // FIXME
+        // TODO
         throw null;
     }
     */
@@ -141,7 +146,7 @@ final class Tree implements Index {
     /*
     @Override
     public boolean exists(Transaction txn, byte[] key) throws IOException {
-        // FIXME
+        // TODO
         throw null;
     }
     */
@@ -149,7 +154,7 @@ final class Tree implements Index {
     /*
     @Override
     public boolean exists(Transaction txn, byte[] key, byte[] value) throws IOException {
-        // FIXME
+        // TODO
         throw null;
     }
     */
@@ -172,9 +177,9 @@ final class Tree implements Index {
         try {
             cursor.autoload(false);
             cursor.findAndStore(key, value);
-        } finally {
-            // FIXME: this can deadlock, because exception can be thrown at anytime
             cursor.reset();
+        } catch (Throwable e) {
+            throw Utils.closeOnFailure(cursor, e);
         }
     }
 
@@ -183,13 +188,11 @@ final class Tree implements Index {
         TreeCursor cursor = new TreeCursor(this, txn);
         try {
             cursor.autoload(false);
-            return cursor.findAndModify(key, TreeCursor.MODIFY_INSERT, value);
-        } catch (Throwable e) {
-            e.printStackTrace(System.out);
-            throw Utils.rethrow(e);
-        } finally {
-            // FIXME: this can deadlock, because exception can be thrown at anytime
+            boolean result = cursor.findAndModify(key, TreeCursor.MODIFY_INSERT, value);
             cursor.reset();
+            return result;
+        } catch (Throwable e) {
+            throw Utils.closeOnFailure(cursor, e);
         }
     }
 
@@ -198,10 +201,11 @@ final class Tree implements Index {
         TreeCursor cursor = new TreeCursor(this, txn);
         try {
             cursor.autoload(false);
-            return cursor.findAndModify(key, TreeCursor.MODIFY_REPLACE, value);
-        } finally {
-            // FIXME: this can deadlock, because exception can be thrown at anytime
+            boolean result = cursor.findAndModify(key, TreeCursor.MODIFY_REPLACE, value);
             cursor.reset();
+            return result;
+        } catch (Throwable e) {
+            throw Utils.closeOnFailure(cursor, e);
         }
     }
 
@@ -211,10 +215,11 @@ final class Tree implements Index {
     {
         TreeCursor cursor = new TreeCursor(this, txn);
         try {
-            return cursor.findAndModify(key, oldValue, newValue);
-        } finally {
-            // FIXME: this can deadlock, because exception can be thrown at anytime
+            boolean result = cursor.findAndModify(key, oldValue, newValue);
             cursor.reset();
+            return result;
+        } catch (Throwable e) {
+            throw Utils.closeOnFailure(cursor, e);
         }
     }
 
@@ -244,7 +249,7 @@ final class Tree implements Index {
         }
 
         if (txn.lockMode() == LockMode.UNSAFE) {
-            // FIXME: Optimize for LockMode.UNSAFE.
+            // TODO: Optimize for LockMode.UNSAFE.
             throw null;
         }
 
@@ -260,7 +265,7 @@ final class Tree implements Index {
                     cursor.next();
                 }
             } finally {
-                // FIXME: this can deadlock, because exception can be thrown at anytime
+                // TODO: this can deadlock, because exception can be thrown at anytime
                 cursor.reset();
             }
             txn.commit();
@@ -294,7 +299,7 @@ final class Tree implements Index {
         }
 
         if (txn.lockMode() == LockMode.UNSAFE) {
-            // FIXME: Optimize for LockMode.UNSAFE.
+            // TODO: Optimize for LockMode.UNSAFE.
             throw null;
         }
 
@@ -342,7 +347,7 @@ final class Tree implements Index {
                     }
                 }
             } finally {
-                // FIXME: this can deadlock, because exception can be thrown at anytime
+                // TODO: this can deadlock, because exception can be thrown at anytime
                 cursor.reset();
             }
             txn.commit();
@@ -415,7 +420,10 @@ final class Tree implements Index {
     }
 
     void redoStore(byte[] key, byte[] value) throws IOException {
-        mDatabase.mRedoLog.store(mId, key, value, mDatabase.mDurabilityMode);
+        RedoLog redo = mDatabase.mRedoLog;
+        if (redo != null) {
+            redo.store(mId, key, value, mDatabase.mDurabilityMode);
+        }
     }
 
     /**

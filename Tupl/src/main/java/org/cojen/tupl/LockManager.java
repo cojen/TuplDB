@@ -51,8 +51,8 @@ final class LockManager {
     /**
      * @return total number of locks actively held, of any type
      */
-    public int numLocksHeld() {
-        int count = 0;
+    public long numLocksHeld() {
+        long count = 0;
         for (LockHT ht : mHashTables) {
             count += ht.size();
         }

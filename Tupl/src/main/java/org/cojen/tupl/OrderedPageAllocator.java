@@ -29,7 +29,7 @@ final class OrderedPageAllocator {
 
     private static final int MIN_FILL = 10;
 
-    private final PageStore mSource;
+    private final PageDb mSource;
     private final Index mLocalPages;
     private final Latch mAllocLatch;
     private final Cursor mAllocCursor;
@@ -45,15 +45,16 @@ final class OrderedPageAllocator {
     /**
      * @param localPages index for storing readily available pages
      */
-    OrderedPageAllocator(PageStore source, Index localPages) {
+    OrderedPageAllocator(PageDb source, Index localPages) {
         mSource = source;
         mLocalPages = localPages;
         mAllocLatch = new Latch();
-        mAllocCursor = localPages.newCursor(Transaction.BOGUS);
-        mAllocCursor.autoload(false);
+        mAllocCursor = null;//localPages.newCursor(Transaction.BOGUS);
+        //mAllocCursor.autoload(false);
     }
 
     void fill() throws IOException {
+        /*
         PageStore source = mSource;
         if (source.allocPageCount() < MIN_FILL) {
             // The mere act of filling creates dirty pages, when then forces
@@ -71,7 +72,7 @@ final class OrderedPageAllocator {
             long lastId = 0;
             long id;
             while ((id = source.tryAllocPage()) != 0) {
-                DataUtils.writeLong(key, 0, id);
+                Utils.writeLong(key, 0, id);
                 if (id >= lastId) {
                     // PageStore implementation is expected to provide partially
                     // ordered ids, so use the faster find variant.
@@ -88,6 +89,7 @@ final class OrderedPageAllocator {
         } finally {
             fillCursor.reset();
         }
+        */
     }
 
     /**
@@ -129,7 +131,7 @@ final class OrderedPageAllocator {
                 }
             }
 
-            if (isInternal(forTree) || mReadyState == EMPTY) {
+            if (true || isInternal(forTree) || mReadyState == EMPTY) {
                 // Avoid cyclic dependency when allocating pages for internal
                 // trees. Latch deadlock is highly likely, especially for the
                 // page index itself and the registry.
@@ -168,7 +170,7 @@ final class OrderedPageAllocator {
                         mReadyState = READY;
                     }
 
-                    long id = DataUtils.readLong(key, 0);
+                    long id = Utils.readLong(key, 0);
 
                     // Delete entry while still latched -- cursor is not
                     // thread-safe. Besides, one section of the index will be
@@ -187,12 +189,12 @@ final class OrderedPageAllocator {
     }
 
     void recyclePage(Tree fromTree, long id) throws IOException {
-        if (isInternal(fromTree)) {
+        if (true || isInternal(fromTree)) {
             // Avoid deadlock-prone cyclic dependency.
             mSource.deletePage(id);
         } else {
             byte[] key = new byte[8];
-            DataUtils.writeLong(key, 0, id);
+            Utils.writeLong(key, 0, id);
             mLocalPages.store(Transaction.BOGUS, key, Utils.EMPTY_BYTES);
             makeReady();
         }

@@ -16,7 +16,6 @@
 
 package org.cojen.tupl;
 
-import java.io.Closeable;
 import java.io.EOFException;
 import java.io.File;
 import java.io.InputStream;
@@ -34,7 +33,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import java.util.zip.CRC32;
 
-import static org.cojen.tupl.DataUtils.*;
+import static org.cojen.tupl.Utils.*;
 
 /**
  * Low-level support for storing fixed size pages in a single file. Page size should be a
@@ -46,13 +45,14 @@ import static org.cojen.tupl.DataUtils.*;
  * all changes to the last successful commit. All changes before the commit are still
  * stored in the file, allowing the interval between commits to be quite long.
  *
- * <p>Any exception thrown while performing an operation on the PageStore causes it to
- * close. This prevents further damage if the in-memory state is now inconsistent with the
- * persistent state. The PageStore must be re-opened to restore to a clean state.
+ * <p>Any exception thrown while performing an operation on the DurablePageDb
+ * causes it to close. This prevents further damage if the in-memory state is
+ * now inconsistent with the persistent state. The DurablePageDb must be
+ * re-opened to restore to a clean state.
  *
  * @author Brian S O'Neill
  */
-class PageStore implements Closeable {
+class DurablePageDb extends PageDb {
     /*
 
     Header format for first and second pages in file, which is always 512 bytes:
@@ -86,18 +86,17 @@ class PageStore implements Closeable {
     private final PageArray mPageArray;
     private final PageManager mPageManager;
 
-    private final ReadWriteLock mCommitLock;
     private final Latch mHeaderLatch;
     // Commit number is the highest one which has been committed.
     private int mCommitNumber;
 
-    PageStore(int pageSize, File[] files, EnumSet<OpenOption> options, boolean destroy)
+    DurablePageDb(int pageSize, File[] files, EnumSet<OpenOption> options, boolean destroy)
         throws IOException
     {
         this(openPageArray(pageSize, files, options), destroy);
     }
 
-    static PageArray openPageArray(int pageSize, File[] files, EnumSet<OpenOption> options)
+    private static PageArray openPageArray(int pageSize, File[] files, EnumSet<OpenOption> options)
         throws IOException
     {
         checkPageSize(pageSize);
@@ -133,11 +132,8 @@ class PageStore implements Closeable {
         }
     }
 
-    PageStore(PageArray pa, boolean destroy) throws IOException {
+    private DurablePageDb(PageArray pa, boolean destroy) throws IOException {
         mPageArray = pa;
-        // Should be fair in order for exclusive lock request to de-prioritize
-        // itself by timing out and retrying. See Database.checkpoint.
-        mCommitLock = new ReentrantReadWriteLock(true);
         mHeaderLatch = new Latch();
 
         try {
@@ -233,34 +229,16 @@ class PageStore implements Closeable {
         }
     }
 
-    /**
-     * Returns the fixed size of all pages in the store, in bytes.
-     */
     public int pageSize() {
         return mPageArray.pageSize();
     }
 
-    /**
-     * Returns a snapshot of additional store stats.
-     */
     public Stats stats() {
         Stats stats = new Stats();
         mPageManager.addTo(stats);
         return stats;
     }
 
-    public static final class Stats {
-        public long totalPages;
-        public long freePages;
-
-        public String toString() {
-            return "PageStore.Stats {totalPages=" + totalPages + ", freePages=" + freePages + '}';
-        }
-    }
-
-    /**
-     * Returns a BitSet where each clear bit indicates a free page.
-     */
     public BitSet tracePages() throws IOException {
         BitSet pages = new BitSet();
         mPageManager.markAllPages(pages);
@@ -268,25 +246,10 @@ class PageStore implements Closeable {
         return pages;
     }
 
-    /**
-     * Reads a page without locking. Caller must ensure that a deleted page
-     * is not read during or after a commit.
-     *
-     * @param id page id to read
-     * @param buf receives read data
-     */
     public void readPage(long id, byte[] buf) throws IOException {
         readPage(id, buf, 0);
     }
 
-    /**
-     * Reads a page without locking. Caller must ensure that a deleted page
-     * is not read during or after a commit.
-     *
-     * @param id page id to read
-     * @param buf receives read data
-     * @param offset offset into data buffer
-     */
     public void readPage(long id, byte[] buf, int offset) throws IOException {
         try {
             mPageArray.readPage(id, buf, offset);
@@ -295,16 +258,6 @@ class PageStore implements Closeable {
         }
     }
 
-    /**
-     * Reads a part of a page without locking. Caller must ensure that a
-     * deleted page is not read during or after a commit.
-     *
-     * @param id page id to read
-     * @param start start of page to read
-     * @param buf receives read data
-     * @param offset offset into data buffer
-     * @param length length to read
-     */
     public void readPartial(long id, int start, byte[] buf, int offset, int length)
         throws IOException
     {
@@ -315,11 +268,6 @@ class PageStore implements Closeable {
         }
     }
 
-    /**
-     * Allocates a page to be written to.
-     *
-     * @return page id; never zero or one
-     */
     public long allocPage() throws IOException {
         mCommitLock.readLock().lock();
         try {
@@ -331,12 +279,6 @@ class PageStore implements Closeable {
         }
     }
 
-    /**
-     * Tries to allocates a page to be written to, but without ever creating a
-     * new page.
-     *
-     * @return page id; never one; zero if no pages are available
-     */
     public long tryAllocPage() throws IOException {
         mCommitLock.readLock().lock();
         try {
@@ -348,34 +290,14 @@ class PageStore implements Closeable {
         }
     }
 
-    /**
-     * Returns the amount of recycled pages available for allocation.
-     */
     public long allocPageCount() {
         return mPageManager.allocPageCount();
     }
 
-    /**
-     * Writes to an allocated page, but doesn't commit it. A written page is
-     * immediately readable even if not committed. An uncommitted page can be
-     * deleted, but it remains readable until after a commit.
-     *
-     * @param id previously allocated page id
-     * @param buf data to write
-     */
     public void writePage(long id, byte[] buf) throws IOException {
         writePage(id, buf, 0);
     }
 
-    /**
-     * Writes to an allocated page, but doesn't commit it. A written page is
-     * immediately readable even if not committed. An uncommitted page can be
-     * deleted, but it remains readable until after a commit.
-     *
-     * @param id previously allocated page id
-     * @param buf data to write
-     * @param offset offset into data buffer
-     */
     public void writePage(long id, byte[] buf, int offset) throws IOException {
         checkId(id);
         try {
@@ -385,11 +307,6 @@ class PageStore implements Closeable {
         }
     }
 
-    /**
-     * Deletes a page, but doesn't commit it. Deleted pages are not used for
-     * new writes, and they are still readable until after a commit. Caller
-     * must ensure that a page is deleted at most once between commits.
-     */
     public void deletePage(long id) throws IOException {
         checkId(id);
         mCommitLock.readLock().lock();
@@ -402,10 +319,6 @@ class PageStore implements Closeable {
         }
     }
 
-    /**
-     * Allocates pages for immediate use. Even if requested page count is zero,
-     * this method ensures the file system has allocated all pages.
-     */
     public void allocatePages(long pageCount) throws IOException {
         mCommitLock.readLock().lock();
         try {
@@ -417,25 +330,6 @@ class PageStore implements Closeable {
         }
     }
 
-    /**
-     * Access the shared commit lock, which prevents commits while held.
-     */
-    public Lock sharedCommitLock() {
-        return mCommitLock.readLock();
-    }
-
-    /**
-     * Access the exclusive commit lock, which is acquired by the commit method.
-     */
-    public Lock exclusiveCommitLock() {
-        return mCommitLock.writeLock();
-    }
-
-    /**
-     * Durably commits all writes and deletes to the underlying device.
-     *
-     * @param callback optional callback to run during commit
-     */
     public void commit(final CommitCallback callback) throws IOException {
         mCommitLock.writeLock().lock();
         mCommitLock.readLock().lock();
@@ -462,21 +356,6 @@ class PageStore implements Closeable {
         }
     }
 
-    public static interface CommitCallback {
-        /**
-         * Write all allocated pages which should be committed and return extra
-         * data. Extra commit data is stored in PageStore header.
-         *
-         * @return optional extra data to commit, up to 256 bytes
-         */
-        public byte[] prepare() throws IOException;
-    }
-
-    /**
-     * Reads extra data that was stored with the last commit.
-     *
-     * @param extra optional extra data which was committed, up to 256 bytes
-     */
     public void readExtraCommitData(byte[] extra) throws IOException {
         try {
             mHeaderLatch.acquireShared();
@@ -519,12 +398,12 @@ class PageStore implements Closeable {
     /**
      * @param in snapshot source; does not require extra buffering; not auto-closed
      */
-    static PageStore restoreFromSnapshot(File[] files, EnumSet<OpenOption> options, InputStream in)
+    static PageDb restoreFromSnapshot(File[] files, EnumSet<OpenOption> options, InputStream in)
         throws IOException
     {
         PageArray pa = openPageArray(MINIMUM_PAGE_SIZE, files, options);
         pa = pa.restoreFromSnapshot(in);
-        return new PageStore(pa, false);
+        return new DurablePageDb(pa, false);
     }
 
     private IOException closeOnFailure(Throwable e) throws IOException {
