@@ -71,7 +71,7 @@ public class CursorTest4 {
 
                     int i = count - 2;
                     do {
-                        int key = DataUtils.readInt(c.key(), 0);
+                        int key = Utils.readInt(c.key(), 0);
 
                         if ((key & 1) != 0) {
                             // Skip odd keys.
@@ -141,11 +141,11 @@ public class CursorTest4 {
 
     static byte[] toKey(int i) {
         byte[] k = new byte[4];
-        DataUtils.writeInt(k, 0, i);
+        Utils.writeInt(k, 0, i);
         return k;
     }
 
     static String string(Cursor cursor) {
-        return DataUtils.readInt(cursor.key(), 0) + " = " + CursorTest.string(cursor.value());
+        return Utils.readInt(cursor.key(), 0) + " = " + CursorTest.string(cursor.value());
     }
 }
