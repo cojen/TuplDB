@@ -100,22 +100,22 @@ class DataIn extends InputStream {
 
     public int readInt() throws IOException {
         require(4);
-        int v = DataUtils.readInt(mBuffer, mStart);
+        int v = Utils.readInt(mBuffer, mStart);
         mStart += 4;
         return v;
     }
 
     public long readLong() throws IOException {
         require(8);
-        long v = DataUtils.readLong(mBuffer, mStart);
+        long v = Utils.readLong(mBuffer, mStart);
         mStart += 8;
         return v;
     }
 
     public int readUnsignedVarInt() throws IOException {
         tryRequire(5);
-        int v = DataUtils.readUnsignedVarInt(mBuffer, mStart, mEnd);
-        mStart += DataUtils.calcUnsignedVarIntLength(v);
+        int v = Utils.readUnsignedVarInt(mBuffer, mStart, mEnd);
+        mStart += Utils.calcUnsignedVarIntLength(v);
         return v;
     }
 

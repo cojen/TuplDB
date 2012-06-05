@@ -17,11 +17,10 @@
 package org.cojen.tupl;
 
 import java.lang.ref.WeakReference;
+import java.lang.ref.ReferenceQueue;
 
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 
@@ -29,60 +28,58 @@ import java.util.concurrent.TimeUnit;
  * @author Brian S O'Neill
  */
 final class Checkpointer implements Runnable {
-    /**
-     * Create for running in a dedicated thread.
-     */
-    static Checkpointer create(Database db, long rateNanos) {
-        if (rateNanos < 0) {
-            throw new IllegalArgumentException();
-        }
-        return new Checkpointer(db, rateNanos);
-    }
+    private static int cThreadCounter;
 
-    /**
-     * Start running checkpointer task.
-     */
-    static Checkpointer start(Database db, long rateNanos, ScheduledExecutorService executor)
-        throws RejectedExecutionException
-    {
-        if (rateNanos < 0) {
-            throw new IllegalArgumentException();
-        }
-        if (rateNanos == 0) {
-            // ScheduledExecutorService doesn't allow 0.
-            rateNanos = 1;
-        }
-        Checkpointer c = new Checkpointer(db, -1);
-        c.mTask = executor.scheduleAtFixedRate(c, rateNanos, rateNanos, TimeUnit.NANOSECONDS);
-        return c;
-    }
-
+    private final ReferenceQueue<Database> mRefQueue;
     private final WeakReference<Database> mDatabaseRef;
     private final long mRateNanos;
-    private volatile ScheduledFuture mTask;
-    private volatile boolean mCanceled;
+    private volatile boolean mClosed;
+    private Hook mShutdownHook;
+    private List<Shutdown> mToShutdown;
 
-    private Checkpointer(Database db, long rateNanos) {
-        mDatabaseRef = new WeakReference<Database>(db);
+    Checkpointer(Database db, long rateNanos) {
+        if (rateNanos < 0) {
+            mRefQueue = new ReferenceQueue<Database>();
+            mDatabaseRef = new WeakReference<Database>(db, mRefQueue);
+        } else {
+            mRefQueue = null;
+            mDatabaseRef = new WeakReference<Database>(db);
+        }
+
         mRateNanos = rateNanos;
+    }
+
+    void start() {
+        int num;
+        synchronized (Checkpointer.class) {
+            num = ++cThreadCounter;
+        }
+        Thread t = new Thread(this);
+        t.setDaemon(true);
+        t.setName("Checkpointer-" + (num & 0xffffffffL));
+        t.start();
     }
 
     @Override
     public void run() {
         try {
+            if (mRefQueue != null) {
+                mRefQueue.remove();
+                close();
+                return;
+            }
+
             long lastDurationNanos = 0;
 
             while (true) {
-                if (mRateNanos >= 0) {
-                    long delayMillis = (mRateNanos - lastDurationNanos) / 1000000L;
-                    if (delayMillis > 0) {
-                        Thread.sleep(delayMillis); 
-                    }
+                long delayMillis = (mRateNanos - lastDurationNanos) / 1000000L;
+                if (delayMillis > 0) {
+                    Thread.sleep(delayMillis); 
                 }
 
                 Database db = mDatabaseRef.get();
                 if (db == null) {
-                    cancel();
+                    close();
                     return;
                 }
 
@@ -92,27 +89,101 @@ final class Checkpointer implements Runnable {
                 long endNanos = System.nanoTime();
                 System.out.println("...done");
 
-                if (mRateNanos < 0) {
-                    // Task will run again.
-                    return;
-                }
-
                 lastDurationNanos = endNanos - startNanos;
             }
         } catch (Exception e) {
-            if (!mCanceled) {
+            if (!mClosed) {
                 Utils.uncaught(e);
             }
-            cancel();
+            close();
         }
     }
 
-    void cancel() {
-        mCanceled = true;
+    /**
+     * Register to close the given object on shutdown or when the Database is
+     * no longer referenced. The Shutdown object must not maintain a strong
+     * reference to the Database.
+     *
+     * @param obj ignored if null
+     * @return false if immediately shutdown
+     */
+    boolean register(Shutdown obj) {
+        if (obj == null) {
+            return false;
+        }
+
+        doRegister: if (!mClosed) {
+            synchronized (this) {
+                if (mClosed) {
+                    break doRegister;
+                }
+
+                if (mShutdownHook == null) {
+                    Hook hook = new Hook(this);
+                    try {
+                        Runtime.getRuntime().addShutdownHook(hook);
+                        mShutdownHook = hook;
+                    } catch (IllegalStateException e) {
+                        break doRegister;
+                    }
+                }
+
+                if (mToShutdown == null) {
+                    mToShutdown = new ArrayList<Shutdown>(2);
+                }
+
+                mToShutdown.add(obj);
+                return true;
+            }
+        }
+
+        obj.shutdown();
+        return false;
+    }
+
+    void close() {
+        mClosed = true;
         mDatabaseRef.clear();
-        ScheduledFuture task = mTask;
-        if (task != null) {
-            task.cancel(false);
+
+        List<Shutdown> toShutdown;
+        synchronized (this) {
+            if (mShutdownHook != null) {
+                try {
+                    Runtime.getRuntime().removeShutdownHook(mShutdownHook);
+                } catch (Throwable e) {
+                }
+                mShutdownHook = null;
+            }
+
+            if (mToShutdown == null) {
+                toShutdown = null;
+            } else {
+                toShutdown = new ArrayList<Shutdown>(mToShutdown);
+                mToShutdown = null;
+            }
+        }
+
+        if (toShutdown != null) {
+            for (Shutdown obj : toShutdown) {
+                obj.shutdown();
+            }
+        }
+    }
+
+    public static interface Shutdown {
+        void shutdown();
+    }
+
+    static class Hook extends Thread {
+        private final Checkpointer mCheckpointer;
+
+        Hook(Checkpointer c) {
+            mCheckpointer = c;
+        }
+
+        @Override
+        public void run() {
+            mCheckpointer.close();
         }
     }
 }

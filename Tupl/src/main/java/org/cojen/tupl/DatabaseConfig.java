@@ -26,7 +26,6 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Properties;
 
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -43,7 +42,6 @@ public class DatabaseConfig implements Cloneable {
     DurabilityMode mDurabilityMode;
     long mLockTimeoutNanos;
     long mCheckpointRateNanos;
-    ScheduledExecutorService mCheckpointExecutor;
     boolean mFileSync;
     boolean mReadOnly;
     int mPageSize;
@@ -56,8 +54,9 @@ public class DatabaseConfig implements Cloneable {
     }
 
     /**
-     * Set the base file name for the database, which is required. The base
-     * file must reside in an ordinary file directory.
+     * Set the base file name for the database, which must reside in an
+     * ordinary file directory. If no base file is provided, database is
+     * non-durable and cannot exceed the size of the cache.
      */
     public DatabaseConfig baseFile(File file) {
         mBaseFile = file == null ? null : abs(file);
@@ -123,7 +122,8 @@ public class DatabaseConfig implements Cloneable {
 
     /**
      * Set the default transaction durability mode, which is {@link
-     * DurabilityMode#SYNC SYNC} if not overridden.
+     * DurabilityMode#SYNC SYNC} if not overridden. If database itself is
+     * non-durabile, durability modes are ignored.
      */
     public DatabaseConfig durabilityMode(DurabilityMode durabilityMode) {
         if (durabilityMode == null) {
@@ -155,15 +155,6 @@ public class DatabaseConfig implements Cloneable {
     }
 
     /**
-     * Set an executor which runs automatic checkpoints. If not set, a
-     * dedicated thread is created to run checkpoints.
-     */
-    public DatabaseConfig checkpointExecutor(ScheduledExecutorService executor) {
-        mCheckpointExecutor = executor;
-        return this;
-    }
-
-    /**
      * Set true to ensure all writes the main database file are immediately
      * durable, although not checkpointed. This option typically reduces
      * overall performance, but checkpoints complete more quickly. As a result,
@@ -181,6 +172,9 @@ public class DatabaseConfig implements Cloneable {
     }
     */
 
+    /**
+     * Set the page size, which is 4096 bytes by default.
+     */
     public DatabaseConfig pageSize(int size) {
         mPageSize = size;
         return this;
@@ -197,20 +191,26 @@ public class DatabaseConfig implements Cloneable {
 
     /**
      * Checks that base and data files are valid and returns the applicable
-     * data files.
+     * data files. Null is returned when base file is null.
      */
     File[] dataFiles() {
+        File[] dataFiles = mDataFiles;
         if (mBaseFile == null) {
-            throw new IllegalArgumentException("No base file provided");
+            if (dataFiles != null && dataFiles.length > 0) {
+                throw new IllegalArgumentException
+                    ("Cannot specify data files when no base file is provided");
+            }
+            return null;
         }
+
         if (mBaseFile.isDirectory()) {
             throw new IllegalArgumentException("Base file is a directory: " + mBaseFile);
         }
 
-        File[] dataFiles = mDataFiles;
         if (dataFiles == null || dataFiles.length == 0) {
             dataFiles = new File[] {new File(mBaseFile.getPath() + ".db")};
         }
+
         for (File dataFile : dataFiles) {
             if (dataFile.isDirectory()) {
                 throw new IllegalArgumentException("Data file is a directory: " + dataFile);

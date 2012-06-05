@@ -490,7 +490,7 @@ final class Lock {
      * @param latch might be briefly released and re-acquired
      */
     void deleteTombstone(Latch latch) {
-        // FIXME: Unlock due to rollback can be optimized. It never needs to
+        // TODO: Unlock due to rollback can be optimized. It never needs to
         // actually delete tombstones, because the undo actions replaced
         // them. Calling Cursor.deleteTombstone performs a pointless search.
 

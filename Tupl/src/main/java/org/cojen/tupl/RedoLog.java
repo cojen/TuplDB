@@ -18,6 +18,7 @@ package org.cojen.tupl;
 
 import java.io.BufferedInputStream;
 import java.io.Closeable;
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileInputStream;
@@ -31,7 +32,7 @@ import java.nio.channels.FileChannel;
  *
  * @author Brian S O'Neill
  */
-final class RedoLog implements Closeable {
+final class RedoLog implements Closeable, Checkpointer.Shutdown {
     private static final long MAGIC_NUMBER = 431399725605778814L;
     private static final int ENCODING_VERSION = 20120105;
 
@@ -130,8 +131,6 @@ final class RedoLog implements Closeable {
 
     private boolean mAlwaysFlush;
 
-    private Thread mShutdownHook;
-
     /**
      * RedoLog starts in replay mode.
      */
@@ -142,19 +141,6 @@ final class RedoLog implements Closeable {
         synchronized (this) {
             mLogId = logId;
             mReplayMode = true;
-
-            mShutdownHook = new Thread() {
-                @Override
-                public void run() {
-                    try {
-                        shutdown(OP_SHUTDOWN);
-                    } catch (Throwable e) {
-                        Utils.rethrow(e);
-                    }
-                }
-            };
-
-            Runtime.getRuntime().addShutdownHook(mShutdownHook);
         }
     }
 
@@ -171,6 +157,9 @@ final class RedoLog implements Closeable {
         }
 
         File file = fileFor(mLogId);
+        if (file == null) {
+            return true;
+        }
 
         DataIn in;
         try {
@@ -183,6 +172,8 @@ final class RedoLog implements Closeable {
 
         try {
             replay(in, visitor);
+        } catch (EOFException e) {
+            // End of log didn't get completely flushed.
         } finally {
             Utils.closeQuietly(null, in);
         }
@@ -244,8 +235,12 @@ final class RedoLog implements Closeable {
         mLogId = logId;
     }
 
+    /**
+     * @return null if non-durable
+     */
     private File fileFor(long logId) {
-        return new File(mBaseFile.getPath() + ".redo." + logId);
+        File base = mBaseFile;
+        return base == null ? null :  new File(base.getPath() + ".redo." + logId);
     }
 
     public synchronized void flush() throws IOException {
@@ -261,22 +256,18 @@ final class RedoLog implements Closeable {
         shutdown(OP_CLOSE);
     }
 
+    @Override
+    public void shutdown() {
+        try {
+            shutdown(OP_SHUTDOWN);
+        } catch (IOException e) {
+            // Ignore.
+        }
+    }
+
     void shutdown(byte op) throws IOException {
         synchronized (this) {
             mAlwaysFlush = true;
-
-            if (op == OP_CLOSE) {
-                Thread hook = mShutdownHook;
-                if (hook != null) {
-                    try {
-                        Runtime.getRuntime().removeShutdownHook(hook);
-                    } catch (IllegalStateException e) {
-                        // Ignore.
-                    }
-                }
-            }
-
-            mShutdownHook = null;
 
             if (mChannel == null || !mChannel.isOpen()) {
                 return;
@@ -393,7 +384,7 @@ final class RedoLog implements Closeable {
             doFlush(buffer, pos);
             pos = 0;
         }
-        DataUtils.writeInt(buffer, pos, v);
+        Utils.writeInt(buffer, pos, v);
         mBufferPos = pos + 4;
     }
 
@@ -405,7 +396,7 @@ final class RedoLog implements Closeable {
             doFlush(buffer, pos);
             pos = 0;
         }
-        DataUtils.writeLong(buffer, pos, v);
+        Utils.writeLong(buffer, pos, v);
         mBufferPos = pos + 8;
     }
 
@@ -418,7 +409,7 @@ final class RedoLog implements Closeable {
             pos = 0;
         }
         buffer[pos] = op;
-        DataUtils.writeLong(buffer, pos + 1, operand);
+        Utils.writeLong(buffer, pos + 1, operand);
         mBufferPos = pos + 9;
     }
 
@@ -430,7 +421,7 @@ final class RedoLog implements Closeable {
             doFlush(buffer, pos);
             pos = 0;
         }
-        mBufferPos = DataUtils.writeUnsignedVarInt(buffer, pos, v);
+        mBufferPos = Utils.writeUnsignedVarInt(buffer, pos, v);
     }
 
     // Caller must be synchronized.

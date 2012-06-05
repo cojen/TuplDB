@@ -371,11 +371,11 @@ abstract class PageArray implements Closeable {
                         throw aborted(mAbortCause);
                     }
                     try {
-                        DataUtils.writeLong(mBuffer, 0, SNAPSHOT_MAGIC_NUMBER);
-                        DataUtils.writeInt(mBuffer, 8, SNAPSHOT_ENCODING_VERSION);
-                        DataUtils.writeInt(mBuffer, 12, mPageSize);
-                        DataUtils.writeLong(mBuffer, 16, count);
-                        DataUtils.writeInt(mBuffer, 24, cluster);
+                        Utils.writeLong(mBuffer, 0, SNAPSHOT_MAGIC_NUMBER);
+                        Utils.writeInt(mBuffer, 8, SNAPSHOT_ENCODING_VERSION);
+                        Utils.writeInt(mBuffer, 12, mPageSize);
+                        Utils.writeLong(mBuffer, 16, count);
+                        Utils.writeInt(mBuffer, 24, cluster);
                         mOut.write(mBuffer, 0, HEADER_SIZE);
                     } catch (IOException e) {
                         abort(e);
@@ -436,7 +436,7 @@ abstract class PageArray implements Closeable {
                 buffer = mBuffer;
                 mBufferLatch.acquireExclusive();
                 try {
-                    DataUtils.writeLong(buffer, 0, clusterIndex);
+                    Utils.writeLong(buffer, 0, clusterIndex);
                     int count = (int) Math.min(cluster, mSnapshotPageCount - index);
                     if (count <= 0) {
                         throw new AssertionError();

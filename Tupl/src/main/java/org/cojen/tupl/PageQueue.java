@@ -24,7 +24,7 @@ import java.util.BitSet;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import static org.cojen.tupl.DataUtils.*;
+import static org.cojen.tupl.Utils.*;
 
 /**
  * Used by PageManager to implement free lists.
@@ -372,7 +372,7 @@ final class PageQueue implements IntegerRef {
     /**
      * Caller must hold remove lock.
      */
-    void addTo(PageStore.Stats stats) {
+    void addTo(PageDb.Stats stats) {
         stats.freePages += mRemovePageCount + mRemoveNodeCount;
     }
 

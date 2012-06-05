@@ -20,7 +20,9 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -28,7 +30,7 @@ import java.util.Map;
  *
  * @author Brian S O'Neill
  */
-class TempFileManager {
+class TempFileManager implements Closeable, Checkpointer.Shutdown {
     private File mBaseFile;
     private long mCount;
     private Map<File, Closeable> mFiles;
@@ -38,12 +40,6 @@ class TempFileManager {
 
         // Delete old files.
         Utils.deleteNumberedFiles(baseFile, ".temp.");
-
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            public void run() {
-                shutdown();
-            }
-        });
     }
 
     File createTempFile() throws IOException {
@@ -98,15 +94,27 @@ class TempFileManager {
         file.delete();
     }
 
-    public synchronized void shutdown() {
-        mBaseFile = null;
-        if (mFiles != null) {
-            for (Map.Entry<File, Closeable> entry : mFiles.entrySet()) {
-                Closeable c = entry.getValue();
-                Utils.closeQuietly(null, c);
-                entry.getKey().delete();
+    public void close() {
+        List<Closeable> fileList;
+        synchronized (this) {
+            mBaseFile = null;
+            if (mFiles == null) {
+                fileList = null;
+            } else {
+                fileList = new ArrayList<Closeable>(mFiles.values());
+                mFiles = null;
             }
-            mFiles.clear();
         }
+
+        if (fileList != null) {
+            for (Closeable c : fileList) {
+                Utils.closeQuietly(null, c);
+            }
+        }
+    }
+
+    @Override
+    public void shutdown() {
+        close();
     }
 }
