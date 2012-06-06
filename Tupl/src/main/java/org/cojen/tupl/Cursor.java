@@ -160,6 +160,12 @@ public interface Cursor {
      * than the given amount of entries are available, the Cursor key and value
      * are set to null, and position will be undefined.
      *
+     * <p>Skipping by 1 is equivalent to calling {@link #next next}, and
+     * skipping by -1 is equivalent to calling {@link #previous previous}. A
+     * skip of 0 merely checks and returns the lock state for the current
+     * key. Lock acquisition only applies to the target entry &mdash; no locks
+     * are acquired for entries in between.
+     *
      * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
      * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
@@ -169,7 +175,7 @@ public interface Cursor {
     public LockResult skip(long amount) throws IOException;
 
     /**
-     * Advances to the Cursor to the next available entry. Cursor key and value
+     * Moves to the Cursor to the next available entry. Cursor key and value
      * are set to null if no next entry exists, and position will be undefined.
      *
      * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
@@ -181,7 +187,7 @@ public interface Cursor {
     public LockResult next() throws IOException;
 
     /**
-     * Advances to the Cursor to the next available entry. Cursor key and value
+     * Moves to the Cursor to the next available entry. Cursor key and value
      * are set to null if no next entry exists, and position will be undefined.
      *
      * <p>If locking is required, entries are <i>skipped</i> when not lockable
@@ -200,7 +206,7 @@ public interface Cursor {
     public LockResult next(long maxWait, TimeUnit unit) throws IOException;
 
     /**
-     * Advances to the Cursor to the previous available entry. Cursor key and
+     * Moves to the Cursor to the previous available entry. Cursor key and
      * value are set to null if no previous entry exists, and position will be
      * undefined.
      *
@@ -213,7 +219,7 @@ public interface Cursor {
     public LockResult previous() throws IOException;
 
     /**
-     * Advances to the Cursor to the previous available entry. Cursor key and
+     * Moves to the Cursor to the previous available entry. Cursor key and
      * value are set to null if no previous entry exists, and position will be
      * undefined.
      *
