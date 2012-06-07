@@ -80,7 +80,7 @@ public interface View {
      * LockMode#READ_COMMITTED READ_COMMITTED} locking behavior
      * @param key non-null key
      * @param value value to compare to, which can be null
-     * @return true if entry matches given key and value
+     * @return true if entry matches the given key and value
      * @throws NullPointerException if key is null
      * /
     public boolean exists(Transaction txn, byte[] key, byte[] value) throws IOException;
@@ -116,7 +116,8 @@ public interface View {
 
     /**
      * Associates a value with the given key, unless a corresponding value
-     * already exists.
+     * already exists. Equivalent to: <code>update(txn, key, null,
+     * value)</code>
      *
      * <p>If the entry must be locked, ownership of the key instance is
      * transferred. The key must not be modified after calling this method.
@@ -145,7 +146,7 @@ public interface View {
     public boolean replace(Transaction txn, byte[] key, byte[] value) throws IOException;
 
     /**
-     * Associates a value with the given key, but only if given old value
+     * Associates a value with the given key, but only if the given old value
      * matches.
      *
      * <p>If the entry must be locked, ownership of the key instance is
@@ -162,7 +163,8 @@ public interface View {
         throws IOException;
 
     /**
-     * Unconditionally removes the entry associated with the given key.
+     * Unconditionally removes the entry associated with the given
+     * key. Equivalent to: <code>replace(txn, key, null)</code>
      *
      * <p>If the entry must be locked, ownership of the key instance is
      * transferred. The key must not be modified after calling this method.
@@ -175,8 +177,8 @@ public interface View {
     public boolean delete(Transaction txn, byte[] key) throws IOException;
 
     /**
-     * Removes the entry associated with the given key, but only if given value
-     * matches.
+     * Removes the entry associated with the given key, but only if the given
+     * value matches. Equivalent to: <code>update(txn, key, value, null)</code>
      *
      * <p>If the entry must be locked, ownership of the key instance is
      * transferred. The key must not be modified after calling this method.
