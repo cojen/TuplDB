@@ -21,10 +21,10 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Maintains a logical position in an {@link Index}. Cursor instances can only
- * be safely used by one thread at a time, and they must be {@link #reset
- * reset} when no longer needed. Instances can be exchanged by threads, as long
- * as a happens-before relationship is established. Without proper exclusion,
+ * Maintains a logical position in a {@link View}. Cursor instances can only be
+ * safely used by one thread at a time, and they must be {@link #reset reset}
+ * when no longer needed. Instances can be exchanged by threads, as long as a
+ * happens-before relationship is established. Without proper exclusion,
  * multiple threads interacting with a Cursor instance may cause database
  * corruption.
  *
@@ -37,7 +37,7 @@ import java.util.concurrent.TimeUnit;
  * {@link DatabaseConfig#lockTimeout default} timeout.
  *
  * @author Brian S O'Neill
- * @see Index#newCursor Index.newCursor
+ * @see View#newCursor View.newCursor
  */
 public interface Cursor {
     /**
