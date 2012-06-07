@@ -1,21 +1,16 @@
 
 - Fix undo log corruption with long transactions. Possibly caused by eviction.
-- Apparent storage leak when deleting records. (caused by ordered allocation)
 - Use 6-byte pointers in internal nodes.
-- Audit usage of shared commit locking and reduce its scope to eliminate a
-  bottleneck. In particular, holding the lock while loading a page can block the
-  checkpointer, which in turn blocks all other threads waiting to get shared lock.
 - Support large values.
 - Support key prefix compression.
 - Support closing indexes. Requires latch sweep and stubbing of cursors.
 - Support truncating indexes. Depends on close and workflow to ensure truncate completes.
-- Support non-persistent database mode which never writes to files and doesn't require any.
 - Support stats: free space, used space, lock count (from LockManager), active
   cursor count (examine all root nodes), active transaction count
   (Database.mUndoLogCount; doesn’t count use of UNSAFE)
 
 Reduce overhead of checkpoint by sweeping through dirty nodes twice. This
-approach smooths out the "dump" when issuing a checkpoint. Also, it allows
+approach smooths out the "bump" when issuing a checkpoint. Also, it allows
 dirty nodes to move to MRU position when accessed. A new state is introduced,
 "mutable". At checkpoint, sweep through all dirty nodes, write them out, and
 mark them as mutable. When a mutable node is altered, its state becomes dirty

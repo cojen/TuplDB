@@ -259,6 +259,7 @@ final class TreeCursor implements Cursor, Closeable {
                     return tryCopyCurrent(txn, node, pos);
                 } finally {
                     node.releaseExclusive();
+                    // FIXME: Frame might not be bound if node throws an exception.
                     mLeaf = frame;
                 }
             }
