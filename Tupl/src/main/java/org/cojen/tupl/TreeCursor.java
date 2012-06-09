@@ -1455,7 +1455,7 @@ final class TreeCursor implements Cursor, Closeable {
         throws IOException
     {
         if (key == null) {
-            throw new NullPointerException("Cannot find a null key");
+            throw new NullPointerException("Key is null");
         }
 
         LockResult result;
