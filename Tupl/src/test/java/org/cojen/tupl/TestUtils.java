@@ -153,4 +153,39 @@ class TestUtils {
     private static void deleteDbFile(File baseFile, String suffix) {
         new File(baseFile.getParentFile(), baseFile.getName() + suffix).delete();
     }
+
+    static byte[] randomStr(Random rnd, int size) {
+        return randomStr(rnd, null, size, size);
+    }
+
+    static byte[] randomStr(Random rnd, int min, int max) {
+        return randomStr(rnd, null, min, max);
+    }
+
+    static byte[] randomStr(Random rnd, byte[] prefix, int min, int max) {
+        int size;
+        if (min == max) {
+            size = max;
+        } else {
+            size = min + rnd.nextInt(max - min);
+        }
+
+        int i;
+        byte[] str;
+        if (prefix == null) {
+            i = 0;
+            str = new byte[size];
+        } else {
+            i = prefix.length;
+            str = new byte[i + size];
+            System.arraycopy(prefix, 0, str, 0, i);
+        }
+
+        // Fill with printable ascii characters.
+        for (; i < str.length; i++) {
+            str[i] = (byte) (33 + rnd.nextInt(127 - 33));
+        }
+
+        return str;
+    }
 }
