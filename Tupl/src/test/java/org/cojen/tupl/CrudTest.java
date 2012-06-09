@@ -16,8 +16,12 @@
 
 package org.cojen.tupl;
 
+import java.util.*;
+
 import org.junit.*;
 import static org.junit.Assert.*;
+
+import static org.cojen.tupl.TestUtils.*;
 
 /**
  * 
@@ -31,12 +35,13 @@ public class CrudTest {
 
     @Before
     public void createTempDb() throws Exception {
-        mDb = TestUtils.newTempDatabase();
+        mDb = newTempDatabase();
     }
 
     @After
     public void teardown() {
-        TestUtils.deleteTempDatabases();
+        deleteTempDatabases();
+        mDb = null;
     }
 
     private Database mDb;
@@ -208,7 +213,7 @@ public class CrudTest {
             ix.store(Transaction.BOGUS, key, value);
             assertTrue(ix.replace(txn, key, value2));
             txn.exit();
-            // Bogus transaction artifact. Undo log entry created earler.
+            // Bogus transaction artifact. Undo log entry was created earler.
             assertNull(ix.load(txn, key));
 
             ix.store(Transaction.BOGUS, key, value);
@@ -216,5 +221,238 @@ public class CrudTest {
             txn.exit();
             assertArrayEquals(value, ix.load(txn, key));
         }
+    }
+
+    @Test
+    public void testUpdateBasic1() throws Exception {
+        testUpdateBasic(null);
+    }
+
+    @Test
+    public void testUpdateBasic2() throws Exception {
+        testUpdateBasic(Transaction.BOGUS);
+    }
+
+    @Test
+    public void testUpdateBasic3() throws Exception {
+        testUpdateBasic(mDb.newTransaction());
+    }
+
+    private void testUpdateBasic(Transaction txn) throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        try {
+            ix.update(txn, null, null, null);
+            fail();
+        } catch (NullPointerException e) {
+            // Expected.
+        }
+
+        byte[] key = "hello".getBytes();
+        byte[] key2 = "howdy".getBytes();
+        byte[] value = "everyone".getBytes();
+        byte[] value2 = "world".getBytes();
+
+        assertTrue(ix.update(txn, key, null, value));
+        assertArrayEquals(value, ix.load(txn, key));
+
+        assertTrue(ix.update(txn, key, value, value2));
+        assertArrayEquals(value2, ix.load(txn, key));
+
+        assertFalse(ix.update(txn, key, value, value));
+        assertArrayEquals(value2, ix.load(txn, key));
+
+        assertFalse(ix.update(txn, key, value, value2));
+        assertArrayEquals(value2, ix.load(txn, key));
+
+        assertNull(ix.load(txn, key2));
+
+        assertTrue(ix.update(txn, key, value2, null));
+        assertNull(ix.load(txn, key));
+
+        assertFalse(ix.update(txn, key, value, value2));
+        assertNull(ix.load(txn, key));
+
+        if (txn != null && txn != Transaction.BOGUS) {
+            ix.store(Transaction.BOGUS, key, value);
+            assertTrue(ix.update(txn, key, value, value2));
+            txn.exit();
+            // Bogus transaction artifact. Undo log entry was created earler.
+            assertNull(ix.load(txn, key));
+
+            ix.store(Transaction.BOGUS, key, value);
+            assertTrue(ix.update(txn, key, value, value2));
+            txn.exit();
+            assertArrayEquals(value, ix.load(txn, key));
+        }
+    }
+
+    @Test
+    public void testDeleteBasic1() throws Exception {
+        testDeleteBasic(null);
+    }
+
+    @Test
+    public void testDeleteBasic2() throws Exception {
+        testDeleteBasic(Transaction.BOGUS);
+    }
+
+    @Test
+    public void testDeleteBasic3() throws Exception {
+        testDeleteBasic(mDb.newTransaction());
+    }
+
+    private void testDeleteBasic(Transaction txn) throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        try {
+            ix.delete(txn, null);
+            fail();
+        } catch (NullPointerException e) {
+            // Expected.
+        }
+
+        byte[] key = "hello".getBytes();
+        byte[] key2 = "howdy".getBytes();
+        byte[] value = "everyone".getBytes();
+        byte[] value2 = "world".getBytes();
+
+        assertFalse(ix.delete(txn, key));
+        assertTrue(ix.insert(txn, key, value));
+        assertNull(ix.load(txn, key2));
+
+        assertTrue(ix.delete(txn, key));
+        assertNull(ix.load(txn, key));
+        assertNull(ix.load(txn, key2));
+
+        assertFalse(ix.delete(txn, key));
+        assertFalse(ix.delete(txn, key2));
+
+        if (txn != null && txn != Transaction.BOGUS) {
+            ix.store(Transaction.BOGUS, key, value);
+            assertTrue(ix.delete(txn, key));
+            txn.exit();
+            // Bogus transaction artifact. Undo log entry was created earler.
+            assertNull(ix.load(txn, key));
+
+            ix.store(Transaction.BOGUS, key, value);
+            assertTrue(ix.delete(txn, key));
+            txn.exit();
+            assertArrayEquals(value, ix.load(txn, key));
+        }
+    }
+
+    @Test
+    public void testFill() throws Exception {
+        Index ix = mDb.openIndex("test");
+        testFill(ix, 10);
+        testFill(ix, 100);
+        testFill(ix, 1000);
+        testFill(ix, 10000);
+        testFill(ix, 100000);
+    }
+
+    private void testFill(final Index ix, final int count) throws Exception {
+        final long seed1 = 1860635281L + count;
+        final long seed2 = 2860635281L + count;
+
+        // Insert random entries and verify.
+
+        LHashTable.Int skipped = new LHashTable.Int(10);
+        Random rnd = new Random(seed1);
+
+        for (int i=0; i<count; i++) {
+            byte[] key = randomStr(rnd, 1, 100);
+            byte[] value = randomStr(rnd, 1, 100);
+            byte[] existing = ix.load(Transaction.BOGUS, key);
+            boolean result = ix.insert(Transaction.BOGUS, key, value);
+            if (existing == null) {
+                assertTrue(result);
+            } else {
+                assertFalse(result);
+                skipped.replace(i);
+            }
+        }
+
+        rnd = new Random(seed1);
+
+        int expectedCount = 0;
+        for (int i=0; i<count; i++) {
+            byte[] key = randomStr(rnd, 1, 100);
+            byte[] value = randomStr(rnd, 1, 100);
+            byte[] existing = ix.load(Transaction.BOGUS, key);
+            if (skipped.get(i) == null) {
+                assertArrayEquals(value, existing);
+                expectedCount++;
+            }
+        }
+
+        assertEquals(expectedCount, count(ix));
+
+        // Replace random entries and verify.
+
+        Map<byte[], byte[]> replaced = new TreeMap<byte[], byte[]>(KeyComparator.THE);
+        rnd = new Random(seed2);
+
+        for (int i=0; i<count; i++) {
+            byte[] key = randomStr(rnd, 1, 100);
+            byte[] value = randomStr(rnd, 1, 100);
+            byte[] existing = ix.load(Transaction.BOGUS, key);
+            boolean result = ix.replace(Transaction.BOGUS, key, value);
+            if (existing != null) {
+                assertTrue(result);
+                replaced.put(key, value);
+            } else {
+                assertFalse(result);
+            }
+        }
+
+        rnd = new Random(seed2);
+
+        for (int i=0; i<count; i++) {
+            byte[] key = randomStr(rnd, 1, 100);
+            byte[] value = randomStr(rnd, 1, 100);
+            byte[] existing = ix.load(Transaction.BOGUS, key);
+            byte[] newValue = replaced.get(key);
+            if (newValue != null) {
+                assertArrayEquals(newValue, existing);
+            }
+        }
+
+        assertEquals(expectedCount, count(ix));
+
+        // Remove random entries and verify.
+
+        rnd = new Random(seed1);
+
+        for (int i=0; i<count; i++) {
+            byte[] key = randomStr(rnd, 1, 100);
+            byte[] value = randomStr(rnd, 1, 100);
+            if (skipped.get(i) == null && !replaced.containsKey(key)) {
+                byte[] existing = ix.load(Transaction.BOGUS, key);
+                assertTrue(ix.remove(Transaction.BOGUS, key, existing));
+                expectedCount--;
+            }
+        }
+
+        assertEquals(expectedCount, count(ix));
+
+        // Delete all remaining entries and verify.
+
+        for (Map.Entry<byte[], byte[]> e : replaced.entrySet()) {
+            assertTrue(ix.delete(Transaction.BOGUS, e.getKey()));
+        }
+
+        assertEquals(0, count(ix));
+    }
+
+    static int count(Index ix) throws Exception {
+        int count = 0;
+        Cursor c = ix.newCursor(Transaction.BOGUS);
+        c.autoload(false);
+        for (c.first(); c.key() != null; c.next()) {
+            count++;
+        }
+        return count;
     }
 }
