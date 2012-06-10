@@ -67,6 +67,9 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     public final void clear(int capacity) {
+        if (capacity <= 0) {
+            capacity = 1;
+        }
         capacity = Utils.roundUpPower2(capacity);
         E[] entries = mEntries;
         if (entries != null && entries.length == capacity) {

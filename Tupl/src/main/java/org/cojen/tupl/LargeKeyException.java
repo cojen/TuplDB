@@ -26,4 +26,9 @@ public class LargeKeyException extends DatabaseException {
     public LargeKeyException(int length) {
         super("Key is too large: " + length);
     }
+
+    @Override
+    public boolean isRecoverable() {
+        return true;
+    }
 }
