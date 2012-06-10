@@ -73,13 +73,24 @@ class TestUtils {
     }
 
     static File newTempBaseFile() throws IOException {
-        StackTraceElement trace = new Exception().getStackTrace()[1];
-        String className = trace.getClassName();
-        String prefix = "org.cojen.tupl.";
-        if (className.startsWith(prefix)) {
-            className = className.substring(prefix.length());
+        String className = "", methodName = "";
+        {
+            StackTraceElement[] trace = new Exception().getStackTrace();
+            for (int i=0; i<trace.length; i++) {
+                StackTraceElement element = trace[i];
+                if (TestUtils.class.getName().equals(element.getClassName())) {
+                    continue;
+                }
+                className = element.getClassName();
+                String prefix = "org.cojen.tupl.";
+                if (className.startsWith(prefix)) {
+                    className = className.substring(prefix.length());
+                }
+                methodName = element.getMethodName();
+            }
         }
-        String baseName = className + '.' + trace.getMethodName();
+
+        String baseName = className + '.' + methodName;
 
         File tempDir = new File(System.getProperty("java.io.tmpdir"), "tupl");
         cDeleteTempDir = tempDir.exists() ? null : tempDir;
