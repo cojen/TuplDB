@@ -59,6 +59,7 @@ class TestUtils {
         if (cacheSize >= 0) {
             config.minCacheSize(cacheSize);
         }
+        config.durabilityMode(DurabilityMode.NO_FLUSH);
         return newTempDatabase(config);
     }
 

@@ -2349,6 +2349,14 @@ final class TreeCursor implements Cursor, Closeable {
             // Exception is caused by cursor state; store is safe.
             throw (IllegalStateException) e;
         }
+
+        if (e instanceof DatabaseException) {
+            DatabaseException de = (DatabaseException) e;
+            if (de.isRecoverable()) {
+                throw de;
+            }
+        }
+
         try {
             throw Utils.closeOnFailure(mTree.mDatabase, e);
         } finally {

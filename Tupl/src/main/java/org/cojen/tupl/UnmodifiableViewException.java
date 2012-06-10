@@ -25,4 +25,9 @@ package org.cojen.tupl;
 public class UnmodifiableViewException extends DatabaseException {
     public UnmodifiableViewException() {
     }
+
+    @Override
+    public boolean isRecoverable() {
+        return true;
+    }
 }

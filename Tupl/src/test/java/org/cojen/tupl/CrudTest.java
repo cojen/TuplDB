@@ -447,12 +447,17 @@ public class CrudTest {
     }
 
     static int count(Index ix) throws Exception {
-        int count = 0;
+        int count1 = 0;
         Cursor c = ix.newCursor(Transaction.BOGUS);
         c.autoload(false);
         for (c.first(); c.key() != null; c.next()) {
-            count++;
+            count1++;
         }
-        return count;
+        int count2 = 0;
+        for (c.last(); c.key() != null; c.previous()) {
+            count2++;
+        }
+        assertEquals(count1, count2);
+        return count1;
     }
 }

@@ -39,4 +39,8 @@ public class DatabaseException extends IOException {
     public DatabaseException(String message, Throwable cause) {
         super(message, cause);
     }
+
+    public boolean isRecoverable() {
+        return false;
+    }
 }

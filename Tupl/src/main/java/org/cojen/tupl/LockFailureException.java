@@ -37,4 +37,9 @@ public class LockFailureException extends DatabaseException {
     public LockFailureException(String message, Throwable cause) {
         super(message, cause);
     }
+
+    @Override
+    public boolean isRecoverable() {
+        return true;
+    }
 }

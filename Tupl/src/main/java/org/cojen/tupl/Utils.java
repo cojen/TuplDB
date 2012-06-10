@@ -714,6 +714,8 @@ class Utils {
         }
     }
 
+    // FIXME: Don't use generic Closeable. Define interface which remembers why
+    // it was closed. It always must throw the original cause.
     static IOException closeOnFailure(final Closeable c, Throwable e) throws IOException {
         // Close in a separate thread, in case of deadlock.
         Thread closer;
