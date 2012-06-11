@@ -2161,7 +2161,7 @@ final class TreeCursor implements Cursor, Closeable {
                     mTree.redoStore(key, value);
                 } else {
                     if (txn.lockMode() != LockMode.UNSAFE) {
-                        node.undoPushLeafEntry(txn, mTree.mId, UndoLog.OP_UPDATE, pos);
+                        node.txnPreUpdateLeafEntry(txn, mTree, key, pos);
                     }
                     if (txn.mDurabilityMode != DurabilityMode.NO_LOG) {
                         txn.redoStore(mTree.mId, key, value);

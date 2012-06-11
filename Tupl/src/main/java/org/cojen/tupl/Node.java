@@ -938,6 +938,8 @@ final class Node extends Latch {
     }
 
     /**
+     * Used by UndoLog for decoding entries. Only works for non-fragmented values.
+     *
      * @param loc absolute location of entry
      */
     static byte[][] retrieveKeyValueAtLoc(final byte[] page, int loc) throws IOException {
@@ -1027,7 +1029,7 @@ final class Node extends Latch {
      * the original transaction commits, it deletes all the tombstoned entries
      * it created.
      *
-     * <p>Caller must hold commit lock and any latch on node.
+     * <p>Caller must hold commit lock and exclusive latch on node.
      *
      * @param pos position as provided by binarySearch; must be positive
      */
@@ -1067,8 +1069,8 @@ final class Node extends Latch {
                     int valueStartLoc = valueHeaderLoc + 2 + ((header & 0x20) >> 5);
                     tree.mDatabase.fragmentedTrash().add
                         (txn, tree.mId, page,
-                         entryLoc, valueHeaderLoc - entryLoc,
-                         valueStartLoc, loc - valueStartLoc);
+                         entryLoc, valueHeaderLoc - entryLoc,  // keyStart, keyLen
+                         valueStartLoc, loc - valueStartLoc);  // valueStart, valueLen
                     break doUndo;
                 }
             }
@@ -1090,17 +1092,62 @@ final class Node extends Latch {
     }
 
     /**
-     * Caller must hold commit lock and any latch on node.
+     * Copies existing entry to undo log prior to it being updated. Fragmented
+     * values are added to the trash and the fragmented bit is cleared. Caller
+     * must hold commit lock and exlusive latch on node.
      *
-     * @param op OP_UPDATE or OP_INSERT
      * @param pos position as provided by binarySearch; must be positive
      */
-    // FIXME: remove or revise for update
-    void undoPushLeafEntry(Transaction txn, long indexId, byte op, int pos) throws IOException {
+    void txnPreUpdateLeafEntry(Transaction txn, Tree tree, byte[] key, int pos)
+        throws IOException
+    {
         final byte[] page = mPage;
         final int entryLoc = readUnsignedShort(page, mSearchVecStart + pos);
-        // FIXME: fragmented: Special requirements for fragmented entries.
-        txn.undoStore(indexId, op, page, entryLoc, leafEntryLengthAtLoc(page, entryLoc));
+        int loc = entryLoc;
+
+        // Read key header and skip key.
+        int header = page[loc++];
+        loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
+
+        // Read value header.
+        final int valueHeaderLoc = loc;
+        header = page[loc++];
+
+        examineEntry: {
+            // Note: Similar to leafEntryLengthAtLoc.
+            if (header >= 0) {
+                // Short value. Move loc to just past end of value.
+                loc += header;
+                break examineEntry;
+            } else {
+                // Medium value. Move loc to just past end of value.
+                if ((header & 0x20) == 0) {
+                    loc += 2 + (((header & 0x1f) << 8) | (page[loc] & 0xff));
+                } else if (header != -1) {
+                    loc += 3 + (((header & 0x0f) << 16)
+                                | ((page[loc] & 0xff) << 8) | (page[loc + 1] & 0xff));
+                } else {
+                    // Already a tombstone, so nothing to undo.
+                    break examineEntry;
+                }
+
+                if ((header & VALUE_FRAGMENTED) != 0) {
+                    int valueStartLoc = valueHeaderLoc + 2 + ((header & 0x20) >> 5);
+                    tree.mDatabase.fragmentedTrash().add
+                        (txn, tree.mId, page,
+                         entryLoc, valueHeaderLoc - entryLoc,  // keyStart, keyLen
+                         valueStartLoc, loc - valueStartLoc);  // valueStart, valueLen
+                    // Clearing the fragmented bit prevents the update from
+                    // double-deleting the fragments, and it also allows the
+                    // old entry slot to be re-used.
+                    page[valueHeaderLoc] = (byte) (header & ~VALUE_FRAGMENTED);
+                    return;
+                }
+            }
+        }
+
+        // Copy whole entry into undo log.
+        txn.undoStore(tree.mId, UndoLog.OP_UPDATE, page, entryLoc, loc - entryLoc);
     }
 
     /**
@@ -1579,10 +1626,9 @@ final class Node extends Latch {
                     break largeValue;
                 }
                 if ((header & VALUE_FRAGMENTED) != 0) {
-                    // FIXME: fragmented: Not transactional!!!
                     tree.mDatabase.deleteFragments(this, tree, page, loc, len);
-                    // FIXME: fragmented: If new value needs to be fragmented
-                    // too, try to re-use existing value slot.
+                    // TODO: If new value needs to be fragmented too, try to
+                    // re-use existing value slot.
                     if (fragmented == 0) {
                         // Clear fragmented bit in case new value can be quick copied.
                         page[valueHeaderLoc] = (byte) (header & ~VALUE_FRAGMENTED);
