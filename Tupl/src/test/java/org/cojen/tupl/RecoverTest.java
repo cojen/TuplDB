@@ -144,34 +144,92 @@ public class RecoverTest {
     }
 
     @Test
+    public void deleteTombstone() throws Exception {
+        byte[] key = "hello".getBytes();
+        byte[] value = "world".getBytes();
+
+        Index ix = mDb.openIndex("test");
+
+        Transaction txn = mDb.newTransaction();
+        ix.store(txn, key, value);
+        txn.commit();
+        mDb.checkpoint();
+
+        txn = mDb.newTransaction();
+        ix.store(txn, key, null);
+
+        mDb = reopenTempDatabase(mDb, mConfig);
+        ix = mDb.openIndex("test");
+        assertArrayEquals(value, ix.load(null, key));
+
+        txn = mDb.newTransaction();
+        ix.store(txn, key, null);
+        txn.commit();
+
+        mDb = reopenTempDatabase(mDb, mConfig);
+        ix = mDb.openIndex("test");
+        assertEquals(null, ix.load(null, key));
+    }
+
+    @Test
+    public void smallUndo() throws Exception {
+        for (int chkpnt = 0; chkpnt <= 4; chkpnt++) {
+            testRecover(10, false, false, chkpnt);
+        }
+    }
+
+    @Test
+    public void smallUndoExit() throws Exception {
+        for (int chkpnt = 0; chkpnt <= 4; chkpnt++) {
+            testRecover(10, false, true, chkpnt);
+        }
+    }
+
+    @Test
+    public void smallRedo() throws Exception {
+        for (int chkpnt = 0; chkpnt <= 4; chkpnt++) {
+            testRecover(10, true, false, chkpnt);
+        }
+    }
+
+    @Test
+    public void smallRedoExit() throws Exception {
+        for (int chkpnt = 0; chkpnt <= 4; chkpnt++) {
+            testRecover(10, true, true, chkpnt);
+        }
+    }
+
+    @Test
     public void largeUndo() throws Exception {
         for (int chkpnt = 0; chkpnt <= 4; chkpnt++) {
-            largeRecover(false, false, chkpnt);
+            testRecover(10000, false, false, chkpnt);
         }
     }
 
     @Test
     public void largeUndoExit() throws Exception {
         for (int chkpnt = 0; chkpnt <= 4; chkpnt++) {
-            largeRecover(false, true, chkpnt);
+            testRecover(10000, false, true, chkpnt);
         }
     }
 
     @Test
     public void largeRedo() throws Exception {
         for (int chkpnt = 0; chkpnt <= 4; chkpnt++) {
-            largeRecover(true, false, chkpnt);
+            testRecover(10000, true, false, chkpnt);
         }
     }
 
     @Test
     public void largeRedoExit() throws Exception {
         for (int chkpnt = 0; chkpnt <= 4; chkpnt++) {
-            largeRecover(true, true, chkpnt);
+            testRecover(10000, true, true, chkpnt);
         }
     }
 
-    private void largeRecover(boolean commit, boolean exit, int chkpnt) throws Exception {
+    private void testRecover(int count, boolean commit, boolean exit, int chkpnt)
+        throws Exception
+    {
         Index ix1 = mDb.openIndex("test1");
         Index ix2 = mDb.openIndex("test2");
 
@@ -179,13 +237,13 @@ public class RecoverTest {
         Random rnd = new Random(seed);
 
         Transaction txn = mDb.newTransaction();
-        for (int i=0; i<10000; i++) {
+        for (int i=0; i<count; i++) {
             {
                 byte[] key = randomStr(rnd, 10, 100);
                 byte[] value = randomStr(rnd, 10, 100);
                 ix1.store(txn, key, value);
             }
-            if (chkpnt == 1 && i == 5000) {
+            if (chkpnt == 1 && i == (count / 2)) {
                 mDb.checkpoint();
             }
             {
@@ -203,13 +261,13 @@ public class RecoverTest {
         int count2 = CrudTest.count(ix2);
 
         txn.enter();
-        for (int i=0; i<10000; i++) {
+        for (int i=0; i<count; i++) {
             {
                 byte[] key = randomStr(rnd, 100);
                 byte[] value = randomStr(rnd, 100);
                 ix1.store(txn, key, value);
             }
-            if (chkpnt == 3 && i == 8000) {
+            if (chkpnt == 3 && i == (int) (count * 0.8)) {
                 mDb.checkpoint();
             }
             {
@@ -251,7 +309,7 @@ public class RecoverTest {
         if (commit) {
             rnd = new Random(seed);
 
-            for (int i=0; i<10000; i++) {
+            for (int i=0; i<count; i++) {
                 {
                     byte[] key = randomStr(rnd, 10, 100);
                     byte[] value = randomStr(rnd, 10, 100);
@@ -264,7 +322,7 @@ public class RecoverTest {
                 }
             }
 
-            for (int i=0; i<10000; i++) {
+            for (int i=0; i<count; i++) {
                 {
                     byte[] key = randomStr(rnd, 100);
                     byte[] value = randomStr(rnd, 100);
