@@ -1,0 +1,103 @@
+/*
+ *  Copyright 2012 Brian S O'Neill
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.cojen.tupl;
+
+import java.util.*;
+
+import org.junit.*;
+import static org.junit.Assert.*;
+
+import static org.cojen.tupl.TestUtils.*;
+
+/**
+ * 
+ *
+ * @author Brian S O'Neill
+ */
+public class LargeValueTest {
+    public static void main(String[] args) throws Exception {
+        org.junit.runner.JUnitCore.main(LargeValueTest.class.getName());
+    }
+
+    @Before
+    public void createTempDb() throws Exception {
+        mDb = newTempDatabase();
+    }
+
+    @After
+    public void teardown() {
+        deleteTempDatabases();
+        mDb = null;
+    }
+
+    private Database mDb;
+
+    @Test
+    public void testStoreBasic() throws Exception {
+        Random rnd = new Random(82348976232L);
+        int[] sizes = {1000, 2000, 3000, 4000, 5000, 6000, 10000, 100000};
+
+        for (int size : sizes) {
+            testStoreBasic(rnd, size, null);
+            testStoreBasic(rnd, size, Transaction.BOGUS);
+            testStoreBasic(rnd, size, mDb.newTransaction());
+        }
+    }
+
+    private void testStoreBasic(Random rnd, int size, Transaction txn) throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        try {
+            ix.store(txn, null, null);
+            fail();
+        } catch (NullPointerException e) {
+            // Expected.
+        }
+
+        byte[] key = "hello".getBytes();
+        byte[] key2 = "howdy".getBytes();
+
+        byte[] value = randomStr(rnd, size);
+        byte[] value2 = randomStr(rnd, size);
+
+        ix.store(txn, key, value);
+        assertArrayEquals(value, ix.load(txn, key));
+
+        ix.store(txn, key, value2);
+        assertArrayEquals(value2, ix.load(txn, key));
+
+        assertNull(ix.load(txn, key2));
+
+        ix.store(txn, key, null);
+        assertNull(ix.load(txn, key));
+
+        if (txn != null && txn != Transaction.BOGUS) {
+            ix.store(txn, key, value);
+            txn.commit();
+            assertArrayEquals(value, ix.load(txn, key));
+
+            ix.store(txn, key, value2);
+            txn.commit();
+            assertArrayEquals(value2, ix.load(txn, key));
+
+            ix.store(txn, key, value);
+            txn.exit();
+            assertArrayEquals(value2, ix.load(txn, key));
+            txn.exit();
+        }
+    }
+}
