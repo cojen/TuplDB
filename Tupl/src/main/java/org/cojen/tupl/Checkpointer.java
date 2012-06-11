@@ -143,6 +143,7 @@ final class Checkpointer implements Runnable {
 
     void close() {
         mClosed = true;
+        mDatabaseRef.enqueue();
         mDatabaseRef.clear();
 
         List<Shutdown> toShutdown;

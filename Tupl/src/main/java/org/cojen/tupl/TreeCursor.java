@@ -2698,7 +2698,16 @@ final class TreeCursor implements Cursor, Closeable {
             if (pos >= parentNode.highestInternalPos()) {
                 rightNode = null;
             } else {
-                rightNode = latchChild(parentNode, pos + 2, false);
+                try {
+                    rightNode = latchChild(parentNode, pos + 2, false);
+                } catch (Throwable e) {
+                    if (leftNode != null) {
+                        leftNode.releaseExclusive();
+                    }
+                    node.releaseExclusive();
+                    throw Utils.rethrow(e);
+                }
+
                 if (rightNode.mSplit != null) {
                     // Finish sibling split.
                     if (leftNode != null) {

@@ -26,7 +26,7 @@ import java.util.*;
  */
 @org.junit.Ignore
 class TestUtils {
-    private static final Map<Database, File> cTempDatabases = new HashMap<Database, File>();
+    private static final Map<Database, File> cTempDatabases = new WeakHashMap<Database, File>();
     private static final Set<File> cTempBaseFiles = new HashSet<File>();
     private static volatile File cDeleteTempDir;
 
@@ -66,6 +66,22 @@ class TestUtils {
     static Database newTempDatabase(DatabaseConfig config) throws IOException {
         File baseFile = newTempBaseFile();
         Database db = Database.open(config.baseFile(baseFile));
+        synchronized (cTempDatabases) {
+            cTempDatabases.put(db, baseFile);
+        }
+        return db;
+    }
+
+    static Database reopenTempDatabase(Database db, DatabaseConfig config) throws IOException {
+        File baseFile;
+        synchronized (cTempDatabases) {
+            baseFile = cTempDatabases.remove(db);
+        }
+        if (baseFile == null) {
+            throw new IllegalArgumentException();
+        }
+        db.close();
+        db = Database.open(config.baseFile(baseFile));
         synchronized (cTempDatabases) {
             cTempDatabases.put(db, baseFile);
         }

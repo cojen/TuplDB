@@ -116,6 +116,25 @@ class WaitQueue {
         return true;
     }
 
+    /**
+     * Clears out all waiters and interrupts them.
+     */
+    void clear() {
+        Node node = mHead;
+        while (node != null) {
+            Thread waiter = node.mWaiter;
+            if (waiter != null) {
+                waiter.interrupt();
+            }
+            node.mPrev = null;
+            Node next = node.mNext;
+            node.mNext = null;
+            node = next;
+        }
+        mHead = null;
+        mTail = null;
+    }
+
     static class Node {
         Thread mWaiter;
         Node mPrev;
