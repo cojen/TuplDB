@@ -257,6 +257,17 @@ final class LockManager {
         return locker;
     }
 
+    /**
+     * Interrupts all waiters, and exclusive locks are transferred to hidden
+     * locker. This prevents them from being acquired again.
+     */
+    final void close() {
+        Locker locker = new Locker();
+        for (LockHT ht : mHashTables) {
+            ht.close(locker);
+        }
+    }
+
     final static int hash(long indexId, byte[] key) {
         int hash = ((int) indexId) ^ ((int) (indexId >>> 32));
         for (int i=key.length; --i>=0; ) {
@@ -365,6 +376,56 @@ final class LockManager {
                 e = next;
             }
             mSize--;
+        }
+
+        void close(Locker locker) {
+            mLatch.acquireExclusive();
+            try {
+                if (mSize > 0) {
+                    Lock[] entries = mEntries;
+                    for (int i=entries.length; --i>=0 ;) {
+                        for (Lock e = entries[i], prev = null; e != null; ) {
+                            Lock next = e.mLockManagerNext;
+
+                            if (e.mLockCount == ~0) {
+                                // Transfer exclusive lock.
+                                e.mLocker = locker;
+                            } else {
+                                // Release and remove lock.
+                                e.mLockCount = 0;
+                                e.mLocker = null;
+                                if (prev == null) {
+                                    entries[i] = next;
+                                } else {
+                                    prev.mLockManagerNext = next;
+                                }
+                                e.mLockManagerNext = null;
+                                mSize--;
+                            }
+
+                            e.mSharedLockersObj = null;
+
+                            // Interrupt all waiters.
+
+                            WaitQueue q = e.mQueueU;
+                            if (q != null) {
+                                q.clear();
+                                e.mQueueU = null;
+                            }
+
+                            q = e.mQueueSX;
+                            if (q != null) {
+                                q.clear();
+                                e.mQueueSX = null;
+                            }
+
+                            e = next;
+                        }
+                    }
+                }
+            } finally {
+                mLatch.releaseExclusive();
+            }
         }
     }
 }

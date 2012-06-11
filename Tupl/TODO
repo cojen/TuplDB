@@ -1,5 +1,4 @@
 
-- Fix undo log corruption with long transactions. Possibly caused by eviction.
 - Use 6-byte pointers in internal nodes.
 - Support large values.
 - Support key prefix compression.

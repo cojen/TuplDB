@@ -48,9 +48,6 @@ final class Node extends Latch {
 
       TN == Tree Node
 
-      A bud is a leaf which doesn't contain any values. This is an optimization
-      for indexes which are just a set of keys.
-
       Note that leaf type is always negative. If type encoding changes, the
       isLeaf method might need to be updated.
 
@@ -2764,13 +2761,22 @@ final class Node extends Latch {
      */
     @Override
     public String toString() {
-        return "Node: {id=" + mId +
-            ", type=" + mType +
-            ", cachedState=" + mCachedState +
-            ", isSplit=" + (mSplit != null) +
-            ", availableBytes=" + availableBytes() +
-            ", lockState=" + super.toString() +
-            '}';
+        if (mType == TYPE_UNDO_LOG) {
+            return "UndoNode: {id=" + mId +
+                ", cachedState=" + mCachedState +
+                ", topEntry=" + mGarbage +
+                ", lowerNodeId=" + + Utils.readLong(mPage, 4) +
+                ", lockState=" + super.toString() +
+                '}';
+        } else {
+            return "TreeNode: {id=" + mId +
+                ", type=" + mType +
+                ", cachedState=" + mCachedState +
+                ", isSplit=" + (mSplit != null) +
+                ", availableBytes=" + availableBytes() +
+                ", lockState=" + super.toString() +
+                '}';
+        }
     }
 
     /**

@@ -83,7 +83,7 @@ final class UndoLog {
     private static final byte OP_LOG_COPY = (byte) 3;
 
     // Reference to another log from master log. Payload is active transaction
-    // id, index id, and node id.
+    // id, index id, node id, and top entry offset.
     private static final byte OP_LOG_REF = (byte) 4;
 
     // Payload is active transaction id.
@@ -115,8 +115,7 @@ final class UndoLog {
     private byte[] mBuffer;
     private int mBufferPos;
 
-    // Top node, typically latched. This prevents it from being evicted. Nodes
-    // are not used for logs which fit into local buffer.
+    // Top node, if required. Nodes are not used for logs which fit into local buffer.
     private Node mNode;
 
     private long mActiveTxnId;
@@ -142,7 +141,7 @@ final class UndoLog {
 
     static UndoLog recoverMasterUndoLog(Database db, long nodeId) throws IOException {
         UndoLog log = new UndoLog(db);
-        log.mNode = readUndoLogNode(db, nodeId);
+        (log.mNode = readUndoLogNode(db, nodeId)).releaseExclusive();
         return log;
     }
 
@@ -158,11 +157,12 @@ final class UndoLog {
         Node node;
         byte[] buffer = mBuffer;
         if (buffer == null) {
-            mNode = node = allocDirtyNode(0);
+            mNode = node = allocUnevictableNode(0);
             // Set pointer to top entry (none at the moment).
             node.mGarbage = node.mPage.length;
+            node.releaseExclusive();
         } else if (mNode == null) {
-            mNode = node = allocDirtyNode(0);
+            mNode = node = allocUnevictableNode(0);
             int pos = mBufferPos;
             int size = buffer.length - pos;
             byte[] page = node.mPage;
@@ -172,29 +172,12 @@ final class UndoLog {
             node.mGarbage = newPos;
             mBuffer = null;
             mBufferPos = 0;
+            node.releaseExclusive();
         }
     }
 
-    /**
-     * Release the master undo log's top node.
-     *
-     * @return node id
-     */
-    long releaseNodeLatch() {
-        Node node = mNode;
-        long id = node.mId;
-        mDatabase.makeUnevictable(node);
-        node.releaseExclusive();
-        return id;
-    }
-
-    /**
-     * Re-acquire the master undo log's top node.
-     */
-    void acquireNodeLatch(long id) throws IOException {
-        Node node = mNode;
-        node.acquireExclusive();
-        mDatabase.makeEvictable(node);
+    long topNodeId() {
+        return mNode.mId;
     }
 
     /**
@@ -272,6 +255,7 @@ final class UndoLog {
         Node node = mNode;
         if (node != null) {
             // Push into allocated node, which must be marked dirty.
+            node.acquireExclusive();
             mDatabase.markUndoLogDirty(node);
         } else quick: {
             // Try to push into a local buffer before allocating a node.
@@ -285,7 +269,7 @@ final class UndoLog {
                     mBufferPos = pos = newCap;
                 } else {
                     // Required capacity is large, so just use a node.
-                    mNode = node = allocDirtyNode(0);
+                    mNode = node = allocUnevictableNode(0);
                     // Set pointer to top entry (none at the moment).
                     node.mGarbage = pageSize;
                     break quick;
@@ -293,8 +277,9 @@ final class UndoLog {
             } else {
                 pos = mBufferPos;
                 if (pos < encodedLen) {
-                    int size = buffer.length - pos;
-                    int newCap = Math.max(buffer.length << 1, Utils.roundUpPower2(encodedLen));
+                    final int size = buffer.length - pos;
+                    int newCap = Math.max
+                        (buffer.length << 1, Utils.roundUpPower2(encodedLen + size));
                     if (newCap <= (mDatabase.pageSize() >> 1)) {
                         byte[] newBuf = new byte[newCap];
                         int newPos = newCap - size;
@@ -303,7 +288,7 @@ final class UndoLog {
                         mBufferPos = pos = newPos;
                     } else {
                         // Required capacity is large, so just use a node.
-                        mNode = node = allocDirtyNode(0);
+                        mNode = node = allocUnevictableNode(0);
                         byte[] page = node.mPage;
                         int newPos = page.length - size;
                         System.arraycopy(buffer, pos, page, newPos, size);
@@ -327,6 +312,7 @@ final class UndoLog {
         if (available >= encodedLen) {
             writeEntry(node.mPage, pos -= encodedLen, op, payload, off, len);
             node.mGarbage = pos;
+            node.releaseExclusive();
             return;
         }
 
@@ -346,19 +332,21 @@ final class UndoLog {
                 writeUnsignedVarInt(page, pos -= varIntLen, len);
                 page[--pos] = op;
                 node.mGarbage = pos;
+                node.releaseExclusive();
                 break;
             }
 
             Node newNode;
             {
                 Node[] childNodes = new Node[] {node};
-                newNode = allocDirtyNode(node.mId);
+                newNode = allocUnevictableNode(node.mId);
                 newNode.mChildNodes = childNodes;
                 newNode.mGarbage = pos = page.length;
                 available = pos - HEADER_SIZE;
             }
 
             node.releaseExclusive();
+            mDatabase.makeEvictable(node);
             mNode = node = newNode;
         }
     }
@@ -405,6 +393,7 @@ final class UndoLog {
                 if (node == null) {
                     mBufferPos = mBuffer.length;
                 } else {
+                    node.acquireExclusive();
                     while ((node = popNode(node)) != null) {
                         if (commit) {
                             // When shared lock is released, log can be
@@ -677,11 +666,14 @@ final class UndoLog {
             return (mBuffer == null || mBufferPos >= mBuffer.length) ? 0 : mBuffer[mBufferPos];
         }
 
+        node.acquireExclusive();
         while (true) {
             byte[] page = node.mPage;
             int pos = node.mGarbage;
             if (pos < page.length) {
-                return page[pos];
+                byte op = page[pos];
+                node.releaseExclusive();
+                return op;
             }
             if ((node = popNode(node)) == null) {
                 return 0;
@@ -695,8 +687,7 @@ final class UndoLog {
      * @param opRef element zero is filled in with the opcode
      * @return null if nothing left
      */
-    // TODO: private
-    final byte[] pop(byte[] opRef) throws IOException {
+    private final byte[] pop(byte[] opRef) throws IOException {
         Node node = mNode;
         if (node == null) {
             byte[] buffer = mBuffer;
@@ -720,6 +711,7 @@ final class UndoLog {
             return entry;
         }
 
+        node.acquireExclusive();
         byte[] page;
         int pos;
         while (true) {
@@ -757,6 +749,9 @@ final class UndoLog {
             }
 
             if (payloadLen <= 0) {
+                if (node != null) {
+                    node.releaseExclusive();
+                }
                 return entry;
             }
 
@@ -771,15 +766,18 @@ final class UndoLog {
     }
 
     /**
-     * @return current mNode; null if none left
+     * @param parent latched parent node
+     * @return current (latched) mNode; null if none left
      */
     private Node popNode(Node parent) throws IOException {
         Node lowerNode = latchLowerNode(parent);
+        mDatabase.makeEvictable(parent);
         mDatabase.deleteNode(null, parent);
         return mNode = lowerNode;
     }
 
     /**
+     * @param parent latched parent node
      * @return null if none
      */
     private Node latchLowerNode(Node parent) throws IOException {
@@ -794,6 +792,7 @@ final class UndoLog {
             lowerNode = childNodes[0];
             lowerNode.acquireExclusive();
             if (lowerNodeId == lowerNode.mId) {
+                mDatabase.makeUnevictable(lowerNode);
                 return lowerNode;
             }
             lowerNode.releaseExclusive();
@@ -814,8 +813,8 @@ final class UndoLog {
     /**
      * Caller must hold db commit lock.
      */
-    private Node allocDirtyNode(long lowerNodeId) throws IOException {
-        Node node = mDatabase.allocDirtyNode(null);
+    private Node allocUnevictableNode(long lowerNodeId) throws IOException {
+        Node node = mDatabase.allocUnevictableNode(null);
         node.mType = Node.TYPE_UNDO_LOG;
         writeLong(node.mPage, I_LOWER_NODE_ID, lowerNodeId);
         return node;
@@ -855,7 +854,8 @@ final class UndoLog {
             }
             writeActiveIds(workspace);
             writeLong(workspace, (8 + 8), node.mId);
-            master.doPush(OP_LOG_REF, workspace, 0, (8 + 8 + 8), 1);
+            writeShort(workspace, (8 + 8 + 8), node.mGarbage);
+            master.doPush(OP_LOG_REF, workspace, 0, (8 + 8 + 8 + 2), 1);
         }
         return workspace;
     }
@@ -896,7 +896,10 @@ final class UndoLog {
             case OP_LOG_REF:
                 setActiveIds(log, entry);
                 long nodeId = readLong(entry, (8 + 8));
+                int topEntry = readUnsignedShort(entry, (8 + 8 + 8));
                 log.mNode = readUndoLogNode(mDatabase, nodeId);
+                log.mNode.mGarbage = topEntry;
+                log.mNode.releaseExclusive();
                 break;
             }
 
@@ -949,8 +952,11 @@ final class UndoLog {
         log.mActiveIndexId = readLong(masterLogEntry, 8);
     }
 
+    /**
+     * @return latched, unevictable node
+     */
     private static Node readUndoLogNode(Database db, long nodeId) throws IOException {
-        Node node = db.allocLatchedNode();
+        Node node = db.allocLatchedNode(false);
         node.read(db, nodeId);
         if (node.mType != Node.TYPE_UNDO_LOG) {
             throw new CorruptDatabaseException

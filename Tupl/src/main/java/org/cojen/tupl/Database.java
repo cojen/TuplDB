@@ -71,7 +71,7 @@ public final class Database implements Closeable {
         return nodes * (long) (pageSize + NODE_OVERHEAD);
     }
 
-    private static final int ENCODING_VERSION = 20120525;
+    private static final int ENCODING_VERSION = 20120610;
 
     private static final int I_ENCODING_VERSION        = 0;
     private static final int I_ROOT_PAGE_ID            = I_ENCODING_VERSION + 4;
@@ -756,6 +756,8 @@ public final class Database implements Closeable {
             ex = Utils.closeQuietly(ex, mPageDb);
             ex = Utils.closeQuietly(ex, mLockFile);
 
+            mLockManager.close();
+
             if (ex != null) {
                 throw ex;
             }
@@ -951,9 +953,12 @@ public final class Database implements Closeable {
     }
 
     /**
+     * Returns a new or recycled Node instance, latched exclusively, with an id
+     * of zero and a clean state.
+     *
      * @param evictable true if allocated node can be automatically evicted
      */
-    private Node allocLatchedNode(boolean evictable) throws IOException {
+    Node allocLatchedNode(boolean evictable) throws IOException {
         final Latch usageLatch = mUsageLatch;
         usageLatch.acquireExclusive();
         alloc: try {
@@ -1007,9 +1012,9 @@ public final class Database implements Closeable {
 
         checkClosed();
 
-        // FIXME: Throw a better exception. Also, try all nodes again, but with
-        // stronger latch request before giving up.
-        throw new DatabaseException("Cache is full");
+        // TODO: Try all nodes again, but with stronger latch request before
+        // giving up.
+        throw new CacheExhaustedException();
     }
 
     /**
@@ -1699,8 +1704,7 @@ public final class Database implements Closeable {
                     for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
                         workspace = log.writeToMaster(masterUndoLog, workspace);
                     }
-                    // Release latch to allow flush to acquire and release it.
-                    masterUndoLogId = masterUndoLog.releaseNodeLatch();
+                    masterUndoLogId = masterUndoLog.topNodeId();
                 }
             }
 
@@ -1714,7 +1718,6 @@ public final class Database implements Closeable {
             if (masterUndoLog != null) {
                 // Delete the master undo log, which won't take effect until
                 // the next checkpoint.
-                masterUndoLog.acquireNodeLatch(masterUndoLogId);
                 masterUndoLog.truncate(false);
             }
 
