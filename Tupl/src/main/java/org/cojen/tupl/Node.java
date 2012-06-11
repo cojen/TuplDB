@@ -2890,6 +2890,7 @@ final class Node extends Latch {
      * Counts all the enties in the tree rooted at this node. No latches are
      * acquired by this method -- it is only used for debugging.
      */
+    /*
     long countEntries(Database db) throws IOException {
         if (isLeaf()) {
             return 1 + ((mSearchVecEnd - mSearchVecStart) >> 1);
@@ -2919,11 +2920,13 @@ final class Node extends Latch {
 
         return count;
     }
+    */
 
     /**
      * Counts all the pages used to store the tree rooted at this node. No
      * latches are acquired by this method -- it is only used for debugging.
      */
+    /*
     long countPages(Database db) throws IOException {
         if (isLeaf()) {
             return 1;
@@ -2953,11 +2956,13 @@ final class Node extends Latch {
 
         return count + 1;
     }
+    */
 
     /**
      * Clears a bit for each page used to store the tree rooted at this node. No
      * latches are acquired by this method -- it is only used for debugging.
      */
+    /*
     void tracePages(Database db, java.util.BitSet bits) throws IOException {
         if (mId == 0) {
             return;
@@ -2994,11 +2999,13 @@ final class Node extends Latch {
             child.tracePages(db, bits);
         }
     }
+    */
 
     /**
      * Prints the contents of tree rooted at this node. No latches are acquired
      * by this method -- it is only used for debugging.
      */
+    /*
     void dump(Tree tree, String indent) throws IOException {
         Database db = tree.mDatabase;
         verify0();
@@ -3062,4 +3069,5 @@ final class Node extends Latch {
         }
         return new String(bytes);
     }
+    */
 }

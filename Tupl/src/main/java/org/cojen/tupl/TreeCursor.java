@@ -2445,9 +2445,11 @@ final class TreeCursor implements Cursor, Closeable {
      *
      * @return false if unable to verify completely at this time
      */
+    /*
     boolean verify() throws IOException, IllegalStateException {
         return verify(mKey);
     }
+    */
 
     /**
      * Verifies that cursor state is correct by performing a find operation.
@@ -2455,6 +2457,7 @@ final class TreeCursor implements Cursor, Closeable {
      * @return false if unable to verify completely at this time
      * @throws NullPointerException if key is null
      */
+    /*
     boolean verify(byte[] key) throws IllegalStateException {
         ArrayDeque<TreeCursorFrame> frames;
         {
@@ -2484,7 +2487,7 @@ final class TreeCursor implements Cursor, Closeable {
             node.releaseShared();
             throw new IllegalStateException("Bottom frame is not at root node");
         }
-        */
+        * /
 
         while (true) {
             if (node.isLeaf()) {
@@ -2547,6 +2550,7 @@ final class TreeCursor implements Cursor, Closeable {
             }
         }
     }
+    */
 
     /**
      * Checks that leaf is defined and returns it.

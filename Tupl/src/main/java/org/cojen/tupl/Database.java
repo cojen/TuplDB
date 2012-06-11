@@ -390,7 +390,7 @@ public final class Database implements Closeable {
         mCheckpointer.start();
     }
 
-    // TODO: remove test method
+    /*
     void trace() throws IOException {
         java.util.BitSet pages = mPageDb.tracePages();
         mRegistry.mRoot.tracePages(this, pages);
@@ -404,6 +404,7 @@ public final class Database implements Closeable {
         System.out.println("lost: " + pages.cardinality());
         System.out.println(mPageDb.stats());
     }
+    */
 
     private boolean redoReplay(LHashTable.Obj<UndoLog> undoLogs) throws IOException {
         RedoLogTxnScanner scanner = new RedoLogTxnScanner();
