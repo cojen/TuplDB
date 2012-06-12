@@ -2828,6 +2828,7 @@ final class Node extends Latch {
     /**
      * Verifies the integrity of this node.
      */
+    /*
     public void verify() throws CorruptDatabaseException {
         acquireShared();
         try {
@@ -2838,10 +2839,12 @@ final class Node extends Latch {
             releaseShared();
         }
     }
+    */
 
     /**
      * Caller must hold any latch.
      */
+    /*
     void verify0() throws CorruptDatabaseException {
         final byte[] page = mPage;
 
@@ -2931,6 +2934,7 @@ final class Node extends Latch {
             throw new CorruptDatabaseException("Garbage: " + mGarbage + " != " + garbage);
         }
     }
+    */
 
     /**
      * Counts all the enties in the tree rooted at this node. No latches are
