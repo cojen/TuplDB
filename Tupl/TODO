@@ -21,4 +21,11 @@ sweeps through node list again, forcing all dirty nodes to be written and
 marked clean. Those which are mutable are also marked clean, but without the
 additional write.
 
+Shared commit lock is held for a long time, especially when a fragmented value
+is being created. When the checkpointer requests an exclusive lock, all other
+requests for the shared lock are blocked. Introduce a new type of lock, which
+is hooked into the FileIO or PageArray class. When an I/O operation is
+performed, assume it will take a long time and allow any shared lock waiters to
+barge ahead of the exclusive lock request.
+
 ---
