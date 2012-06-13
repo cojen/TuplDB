@@ -309,7 +309,7 @@ final class Node extends Latch {
 
             // Child needs to be loaded.
 
-            if (exclusiveHeld = node.tryUpgrade(parentLatch, exclusiveHeld)) {
+            if (/*exclusiveHeld =*/ node.tryUpgrade(parentLatch, exclusiveHeld)) {
                 // Succeeded in upgrading latch, so break out to load child.
                 parentLatch = null;
                 break loop;
@@ -2795,7 +2795,7 @@ final class Node extends Latch {
      * Provides information necessary to complete split by copying split key, pointer to
      * split key, and pointer to new child id.
      */
-    private static final class InResult {
+    static final class InResult {
         byte[] mPage;
         int mKeyLoc;
         int mNewChildLoc;

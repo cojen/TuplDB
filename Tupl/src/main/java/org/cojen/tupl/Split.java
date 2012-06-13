@@ -21,7 +21,7 @@ package org.cojen.tupl;
  *
  * @author Brian S O'Neill
  */
-class Split {
+class Split implements java.io.Serializable {
     final boolean mSplitRight;
     private final Node mSibling;
 

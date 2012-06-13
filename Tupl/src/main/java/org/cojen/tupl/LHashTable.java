@@ -204,7 +204,7 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
             }
         }
 
-        mEntries = entries = newEntries;
+        mEntries = newEntries;
         mMask = newMask;
         mGrowThreshold = (int) (capacity * LOAD_FACTOR);
 

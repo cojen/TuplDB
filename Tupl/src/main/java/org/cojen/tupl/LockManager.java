@@ -419,6 +419,7 @@ final class LockManager {
                                 e.mQueueSX = null;
                             }
 
+                            prev = e;
                             e = next;
                         }
                     }
