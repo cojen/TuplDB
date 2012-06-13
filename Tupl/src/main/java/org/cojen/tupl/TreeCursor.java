@@ -1954,7 +1954,7 @@ final class TreeCursor implements Cursor, Closeable {
             if (txn == null) {
                 Locker locker = mTree.lockExclusiveLocal(key, hash);
                 try {
-                    return doFindAndModify(txn, key, hash, oldValue, newValue);
+                    return doFindAndModify(null, key, hash, oldValue, newValue);
                 } finally {
                     locker.unlock();
                 }
@@ -2379,7 +2379,7 @@ final class TreeCursor implements Cursor, Closeable {
             copy.mLeaf = frameCopy;
         }
         copy.mKey = mKey;
-        mKeyHash = mKeyHash;
+        copy.mKeyHash = mKeyHash;
         if (!(copy.mKeyOnly = mKeyOnly)) {
             byte[] value = mValue;
             copy.mValue = (value == null || value.length == 0) ? value : value.clone();

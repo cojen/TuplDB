@@ -77,7 +77,7 @@ public class LockTimeoutException extends LockFailureException {
             unit = TimeUnit.MINUTES;
             if ((value - (value /= 60) * 60) != 0) break infer;
             unit = TimeUnit.HOURS;
-            if ((value - (value /= 24) * 24) != 0) break infer;
+            if ((value - (value / 24) * 24) != 0) break infer;
             unit = TimeUnit.DAYS;
         }
 
