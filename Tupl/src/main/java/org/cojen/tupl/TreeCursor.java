@@ -1834,22 +1834,24 @@ final class TreeCursor implements Cursor, Closeable {
             throw new IllegalStateException("Cursor position is undefined");
         }
 
-        final Transaction txn = mTxn;
-        final Locker locker = mTree.lockExclusive(txn, key, keyHash());
         try {
-            final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
-            sharedCommitLock.lock();
+            final Transaction txn = mTxn;
+            final Locker locker = mTree.lockExclusive(txn, key, keyHash());
             try {
-                store(txn, leafExclusive(), value);
+                final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
+                sharedCommitLock.lock();
+                try {
+                    store(txn, leafExclusive(), value);
+                } finally {
+                    sharedCommitLock.unlock();
+                }
             } finally {
-                sharedCommitLock.unlock();
+                if (locker != null) {
+                    locker.unlock();
+                }
             }
         } catch (Throwable e) {
             throw handleException(e);
-        } finally {
-            if (locker != null) {
-                locker.unlock();
-            }
         }
     }
 
@@ -1912,26 +1914,28 @@ final class TreeCursor implements Cursor, Closeable {
      * Atomic find and store operation.
      */
     void findAndStore(byte[] key, byte[] value) throws IOException {
-        final Transaction txn = mTxn;
-        final int hash = keyHashForStore(txn, key);
-        final Locker locker = mTree.lockExclusive(txn, key, hash);
         try {
-            // Find with no lock because it has already been acquired.
-            find(null, key, hash, VARIANT_NO_LOCK);
-
-            final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
-            sharedCommitLock.lock();
+            final Transaction txn = mTxn;
+            final int hash = keyHashForStore(txn, key);
+            final Locker locker = mTree.lockExclusive(txn, key, hash);
             try {
-                store(txn, mLeaf, value);
+                // Find with no lock because it has already been acquired.
+                find(null, key, hash, VARIANT_NO_LOCK);
+                
+                final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
+                sharedCommitLock.lock();
+                try {
+                    store(txn, mLeaf, value);
+                } finally {
+                    sharedCommitLock.unlock();
+                }
             } finally {
-                sharedCommitLock.unlock();
+                if (locker != null) {
+                    locker.unlock();
+                }
             }
         } catch (Throwable e) {
             throw handleException(e);
-        } finally {
-            if (locker != null) {
-                locker.unlock();
-            }
         }
     }
 
