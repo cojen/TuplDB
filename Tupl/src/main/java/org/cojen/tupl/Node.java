@@ -630,10 +630,15 @@ final class Node extends Latch {
             if (childNodes != null) for (int i=0; i<childNodes.length; i++) {
                 Node child = childNodes[i];
                 if (child != null) {
-                    if (child.tryAcquireShared()) {
+                    long childId = node.retrieveChildRefIdFromIndex(i);
+                    if (childId != child.mId) {
+                        // Not our child -- it was evicted already.
+                        childNodes[i] = null;
+                    } else if (child.tryAcquireShared()) {
                         try {
-                            long childId = node.retrieveChildRefIdFromIndex(i);
-                            if (childId == child.mId && child.mCachedState != CACHED_CLEAN) {
+                            if (childId != child.mId) {
+                                childNodes[i] = null;
+                            } else if (child.mCachedState != CACHED_CLEAN) {
                                 // Cannot evict if a child is dirty. Child must
                                 // be evicted first.
                                 // TODO: try evicting child instead

@@ -27,10 +27,6 @@ import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.UUID;
 
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 import java.util.zip.CRC32;
 
 import static org.cojen.tupl.Utils.*;
