@@ -28,14 +28,19 @@ import static org.cojen.tupl.TestUtils.*;
  *
  * @author Brian S O'Neill
  */
-public class LargeValueTest {
+public class ExtraLargeValueTest {
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(LargeValueTest.class.getName());
+        org.junit.runner.JUnitCore.main(ExtraLargeValueTest.class.getName());
     }
 
     @Before
     public void createTempDb() throws Exception {
-        mDb = newTempDatabase();
+        DatabaseConfig config = new DatabaseConfig();
+        config.durabilityMode(DurabilityMode.NO_FLUSH);
+        // Use smaller page size so that more inode levels are required without
+        // requiring super large arrays.
+        config.pageSize(512);
+        mDb = newTempDatabase(config);
     }
 
     @After
@@ -49,7 +54,7 @@ public class LargeValueTest {
     @Test
     public void testStoreBasic() throws Exception {
         Random rnd = new Random(82348976232L);
-        int[] sizes = {1000, 2000, 3000, 4000, 5000, 6000, 10000, 100000};
+        int[] sizes = {20000, 30000, 43519, 43520, 43521, 50000, 100000, 1000000, 4000000};
 
         for (int size : sizes) {
             testStoreBasic(rnd, size, null);
@@ -61,13 +66,6 @@ public class LargeValueTest {
     private void testStoreBasic(Random rnd, int size, Transaction txn) throws Exception {
         Index ix = mDb.openIndex("test");
 
-        try {
-            ix.store(txn, null, null);
-            fail();
-        } catch (NullPointerException e) {
-            // Expected.
-        }
-
         byte[] key = "hello".getBytes();
         byte[] key2 = "howdy".getBytes();
 
@@ -77,27 +75,11 @@ public class LargeValueTest {
         ix.store(txn, key, value);
         fastAssertArrayEquals(value, ix.load(txn, key));
 
-        ix.store(txn, key, value2);
-        fastAssertArrayEquals(value2, ix.load(txn, key));
-
-        assertNull(ix.load(txn, key2));
-
-        ix.store(txn, key, null);
-        assertNull(ix.load(txn, key));
-
         if (txn != null && txn != Transaction.BOGUS) {
-            ix.store(txn, key, value);
             txn.commit();
-            fastAssertArrayEquals(value, ix.load(txn, key));
-
-            ix.store(txn, key, value2);
-            txn.commit();
-            fastAssertArrayEquals(value2, ix.load(txn, key));
-
-            ix.store(txn, key, value);
-            txn.exit();
-            fastAssertArrayEquals(value2, ix.load(txn, key));
-            txn.exit();
         }
+
+        // FIXME
+        ix.delete(Transaction.BOGUS, key);
     }
 }

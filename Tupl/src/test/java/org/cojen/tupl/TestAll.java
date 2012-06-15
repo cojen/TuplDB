@@ -27,6 +27,7 @@ public class TestAll {
         Class[] classes = {
             CrudTest.class,
             LargeValueTest.class,
+            ExtraLargeValueTest.class,
             LockTest.class,
             RecoverTest.class,
             TransactionTest.class,

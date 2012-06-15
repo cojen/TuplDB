@@ -96,42 +96,16 @@ final class OrderedPageAllocator {
      * @param forNode node which needs a new page; must be latched
      */
     long allocPage(final Tree forTree, final Node forNode) throws IOException {
-        allocLocal: {
-            if (forNode != null) synchronized (this) {
-                // Move or add node to the end of the dirty list. Allocations
-                // are in order, and the list maintains the order.
-                move: {
-                    final Node next = forNode.mNextDirty;
-                    final Node prev = forNode.mPrevDirty;
-                    if (next != null) {
-                        if ((next.mPrevDirty = prev) == null) {
-                            mFirstDirty = next;
-                        } else {
-                            prev.mNextDirty = next;
-                        }
-                        forNode.mNextDirty = null;
-                        (forNode.mPrevDirty = mLastDirty).mNextDirty = forNode;
-                    } else if (prev == null) {
-                        Node last = mLastDirty;
-                        if (last == forNode) {
-                            break move;
-                        }
-                        if (last == null) {
-                            mFirstDirty = forNode;
-                        } else {
-                            forNode.mPrevDirty = last;
-                            last.mNextDirty = forNode;
-                        }
-                    }
-                    mLastDirty = forNode;
-                    // See removeNextDirtyNode for explanation for node latch requirement.
-                    if (mIterateNext == forNode) {
-                        mIterateNext = next;
-                    }
-                }
-            }
+        // When allocations are in order, the list maintains the order.
+        dirty(forNode);
+        return mSource.allocPage();
 
-            if (true || isInternal(forTree) || mReadyState == EMPTY) {
+        /*
+        allocLocal: {
+            // When allocations are in order, the list maintains the order.
+            dirty(forNode);
+
+            if (isInternal(forTree) || mReadyState == EMPTY) {
                 // Avoid cyclic dependency when allocating pages for internal
                 // trees. Latch deadlock is highly likely, especially for the
                 // page index itself and the registry.
@@ -186,6 +160,40 @@ final class OrderedPageAllocator {
         }
 
         return mSource.allocPage();
+        */
+    }
+
+    /**
+     * Move or add node to the end of the dirty list.
+     */
+    synchronized void dirty(Node node) {
+        final Node next = node.mNextDirty;
+        final Node prev = node.mPrevDirty;
+        if (next != null) {
+            if ((next.mPrevDirty = prev) == null) {
+                mFirstDirty = next;
+            } else {
+                prev.mNextDirty = next;
+            }
+            node.mNextDirty = null;
+            (node.mPrevDirty = mLastDirty).mNextDirty = node;
+        } else if (prev == null) {
+            Node last = mLastDirty;
+            if (last == node) {
+                return;
+            }
+            if (last == null) {
+                mFirstDirty = node;
+            } else {
+                node.mPrevDirty = last;
+                last.mNextDirty = node;
+            }
+        }
+        mLastDirty = node;
+        // See removeNextDirtyNode for explanation for node latch requirement.
+        if (mIterateNext == node) {
+            mIterateNext = next;
+        }
     }
 
     void recyclePage(Tree fromTree, long id) throws IOException {

@@ -17,8 +17,8 @@
 package org.cojen.tupl;
 
 /**
- * Exception thrown when a key is too large to fit into a page. Maximum key
- * size supported is little less than half of the page size.
+ * Thrown when a key is too large to fit into a page. Maximum key size
+ * supported is little less than half of the page size.
  *
  * @author Brian S O'Neill
  */
