@@ -1,5 +1,5 @@
 /*
- *  Copyright 2011-2012 Brian S O'Neill
+ *  Copyright 2012 Brian S O'Neill
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -17,28 +17,25 @@
 package org.cojen.tupl;
 
 /**
- * Thrown when a lock request by a {@link Transaction transaction} failed.
+ * Thrown when attempting to load a value which cannot fit into memory.
  *
  * @author Brian S O'Neill
  */
-public class LockFailureException extends DatabaseException {
-    public LockFailureException() {
+public class LargeValueException extends DatabaseException {
+    public LargeValueException(long length) {
+        super(createMessage(length));
     }
 
-    public LockFailureException(String message) {
-        super(message);
+    public LargeValueException(long length, Throwable cause) {
+        super(createMessage(length), cause);
     }
 
-    public LockFailureException(Throwable cause) {
-        super(cause);
-    }
-
-    public LockFailureException(String message, Throwable cause) {
-        super(message, cause);
-    }
-
-    @Override
     public boolean isRecoverable() {
         return true;
+    }
+
+    private static String createMessage(long length) {
+        // TODO: Special handling for printing unsigned long.
+        return "Value is too large: " + length;
     }
 }

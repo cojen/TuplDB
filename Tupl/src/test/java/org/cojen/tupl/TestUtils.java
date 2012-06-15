@@ -50,6 +50,16 @@ class TestUtils {
         });
     }
 
+    static void fastAssertArrayEquals(byte[] expected, byte[] actual) {
+        if (expected == null) {
+            org.junit.Assert.assertNull(actual);
+        } else {
+            org.junit.Assert.assertNotNull(actual);
+            org.junit.Assert.assertEquals("array length", expected.length, actual.length);
+            org.junit.Assert.assertTrue("array contents", Arrays.equals(expected, actual));
+        }
+    }
+
     static Database newTempDatabase() throws IOException {
         return newTempDatabase(-1);
     }

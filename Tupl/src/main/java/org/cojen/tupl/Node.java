@@ -2812,14 +2812,25 @@ final class Node extends Latch {
      */
     @Override
     public String toString() {
-        if (mType == TYPE_UNDO_LOG) {
+        switch (mType) {
+        default:
+            return "Node: {id=" + mId +
+                ", cachedState=" + mCachedState +
+                ", lockState=" + super.toString() +
+                '}';
+        case TYPE_UNDO_LOG:
             return "UndoNode: {id=" + mId +
                 ", cachedState=" + mCachedState +
                 ", topEntry=" + mGarbage +
                 ", lowerNodeId=" + + Utils.readLong(mPage, 4) +
                 ", lockState=" + super.toString() +
                 '}';
-        } else {
+        case TYPE_FRAGMENT:
+            return "FragmentNode: {id=" + mId +
+                ", cachedState=" + mCachedState +
+                ", lockState=" + super.toString() +
+                '}';
+        case TYPE_TN_INTERNAL: TYPE_TN_LEAF:
             return "TreeNode: {id=" + mId +
                 ", type=" + mType +
                 ", cachedState=" + mCachedState +
