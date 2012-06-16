@@ -41,7 +41,7 @@ final class Node extends Latch {
     /*
       Node type encoding strategy:
 
-      bits 7..4: major type   0001 (undo log), 0010 (fragment), 0100 (internal), 1000 (leaf)
+      bits 7..4: major type   0010 (fragment), 0100 (undo log), 0110 (internal), 1000 (leaf)
       bits 3..1: sub type     for leaf: 000 (normal)
                               for internal: 001 (6 byte child pointers), 010 (8 byte pointers)
       bit  0:    endianness   0 (little), 1 (big)
@@ -54,9 +54,9 @@ final class Node extends Latch {
      */
 
     static final byte
-        TYPE_UNDO_LOG    = (byte) 0x11, // 0b0001_000_1
         TYPE_FRAGMENT    = (byte) 0x20, // 0b0010_000_0
-        TYPE_TN_INTERNAL = (byte) 0x45, // 0b0100_010_1
+        TYPE_UNDO_LOG    = (byte) 0x41, // 0b0100_000_1
+        TYPE_TN_INTERNAL = (byte) 0x65, // 0b0110_010_1
         TYPE_TN_LEAF     = (byte) 0x81; // 0b1000_000_1
 
     // Tree node header size.
