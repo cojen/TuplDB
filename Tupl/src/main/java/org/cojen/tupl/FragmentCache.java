@@ -136,7 +136,7 @@ class FragmentCache {
                 if (existing == null) {
                     mSize++;
                 } else {
-                    if (existing == caller) {
+                    if (existing == caller || existing.mType != Node.TYPE_FRAGMENT) {
                         existing = null;
                     } else {
                         if (nEx) {
@@ -231,7 +231,9 @@ class FragmentCache {
                 if (existing == null) {
                     mSize++;
                 } else {
-                    if (existing == caller || existing == node) {
+                    if (existing == caller || existing == node
+                        || existing.mType != Node.TYPE_FRAGMENT)
+                    {
                         existing = null;
                     } else {
                         existing.acquireExclusive();
