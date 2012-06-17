@@ -35,7 +35,6 @@ public class LargeValueException extends DatabaseException {
     }
 
     private static String createMessage(long length) {
-        // TODO: Special handling for printing unsigned long.
-        return "Value is too large: " + length;
+        return "Value is too large: " + Utils.valueOfUnsigned(length);
     }
 }

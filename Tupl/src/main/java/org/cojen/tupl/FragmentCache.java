@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import static org.cojen.tupl.Node.*;
+
 /**
  * Special cache implementation for fragment nodes, as used by fragmented
  * values.
@@ -136,7 +138,7 @@ class FragmentCache {
                 if (existing == null) {
                     mSize++;
                 } else {
-                    if (existing == caller || existing.mType != Node.TYPE_FRAGMENT) {
+                    if (existing == caller || existing.mType != TYPE_FRAGMENT) {
                         existing = null;
                     } else {
                         if (nEx) {
@@ -170,7 +172,7 @@ class FragmentCache {
                 }
 
                 if (existing != null) {
-                    if (existing.mType != Node.TYPE_FRAGMENT) {
+                    if (existing.mType != TYPE_FRAGMENT) {
                         // Hashtable slot can be used without evicting anything.
                         existing.release(nEx);
                         existing = null;
@@ -189,7 +191,7 @@ class FragmentCache {
                 // Allocate node and reserve slot.
                 final Node node = mDatabase.allocLatchedNode();
                 node.mId = nodeId;
-                node.mType = Node.TYPE_FRAGMENT;
+                node.mType = TYPE_FRAGMENT;
                 entries[index] = node;
 
                 // Evict and load without ht latch held.
@@ -232,12 +234,12 @@ class FragmentCache {
                     mSize++;
                 } else {
                     if (existing == caller || existing == node
-                        || existing.mType != Node.TYPE_FRAGMENT)
+                        || existing.mType != TYPE_FRAGMENT)
                     {
                         existing = null;
                     } else {
                         existing.acquireExclusive();
-                        if (existing.mType != Node.TYPE_FRAGMENT) {
+                        if (existing.mType != TYPE_FRAGMENT) {
                             // Hashtable slot can be used without evicting anything.
                             existing.releaseExclusive();
                             existing = null;
@@ -249,7 +251,7 @@ class FragmentCache {
                     }
                 }
 
-                node.mType = Node.TYPE_FRAGMENT;
+                node.mType = TYPE_FRAGMENT;
                 entries[index] = node;
 
                 // Evict without ht latch held.
@@ -311,14 +313,14 @@ class FragmentCache {
                 if (e != null && e != caller) {
                     long id;
                     if (e == n) {
-                        if (e.mType != Node.TYPE_FRAGMENT) {
+                        if (e.mType != TYPE_FRAGMENT) {
                             continue;
                         }
                         id = e.mId;
                     } else {
                         e.acquireShared();
                         id = e.mId;
-                        if (e.mType != Node.TYPE_FRAGMENT) {
+                        if (e.mType != TYPE_FRAGMENT) {
                             e.releaseShared();
                             continue;
                         }

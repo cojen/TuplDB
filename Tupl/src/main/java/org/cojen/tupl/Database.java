@@ -27,6 +27,8 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 
+import java.math.BigInteger;
+
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -1259,8 +1261,19 @@ public final class Database implements Closeable {
         final Latch usageLatch = mUsageLatch;
         usageLatch.acquireExclusive();
         try {
+            if (mMaxNodeCount == 0) {
+                // Closed.
+                return;
+            }
             Node lessUsed = node.mLessUsed;
-            if (lessUsed != null) {
+            if (lessUsed == null) {
+                // Node might already be least...
+                if (node.mMoreUsed != null) {
+                    // ...confirmed.
+                    return;
+                }
+                // ...Node isn't in the usage list at all.
+            } else {
                 Node moreUsed = node.mMoreUsed;
                 if ((lessUsed.mMoreUsed = moreUsed) == null) {
                     mMostRecentlyUsed = lessUsed;
@@ -1268,9 +1281,9 @@ public final class Database implements Closeable {
                     moreUsed.mLessUsed = lessUsed;
                 }
                 node.mLessUsed = null;
-                (node.mMoreUsed = mLeastRecentlyUsed).mLessUsed = node;
-                mLeastRecentlyUsed = node;
             }
+            (node.mMoreUsed = mLeastRecentlyUsed).mLessUsed = node;
+            mLeastRecentlyUsed = node;
         } finally {
             usageLatch.releaseExclusive();
         }
@@ -1464,7 +1477,7 @@ public final class Database implements Closeable {
                 int levels = calculateInodeLevels(value.length, pageSize);
                 Node inode = allocDirtyNode(forTree);
                 writeInt48(newValue, offset, inode.mId);
-                writeMultilevelFragment
+                writeMultilevelFragments
                     (caller, forTree, levels, inode, value, 0, value.length);
             }
 
@@ -1481,15 +1494,31 @@ public final class Database implements Closeable {
         return newValue;
     }
 
-    private static int calculateInodeLevels(int valueLength, int pageSize) {
+    private static int calculateInodeLevels(long valueLength, int pageSize) {
         int levels = 0;
-        int len = (valueLength + (pageSize - 1)) / pageSize;
-        if (len > 1) {
-            int ptrCount = pageSize / 6;
-            do {
-                levels++;
-            } while ((len = (len + (ptrCount - 1)) / ptrCount) > 1);
+
+        if (valueLength >= 0 && valueLength < (Long.MAX_VALUE / 2)) {
+            long len = (valueLength + (pageSize - 1)) / pageSize;
+            if (len > 1) {
+                int ptrCount = pageSize / 6;
+                do {
+                    levels++;
+                } while ((len = (len + (ptrCount - 1)) / ptrCount) > 1);
+            }
+        } else {
+            BigInteger bPageSize = BigInteger.valueOf(pageSize);
+            BigInteger bLen = (valueOfUnsigned(valueLength)
+                               .add(bPageSize.subtract(BigInteger.ONE))).divide(bPageSize);
+            if (bLen.compareTo(BigInteger.ONE) > 0) {
+                BigInteger bPtrCount = bPageSize.divide(BigInteger.valueOf(6));
+                BigInteger bPtrCountM1 = bPtrCount.subtract(BigInteger.ONE);
+                do {
+                    levels++;
+                } while ((bLen = (bLen.add(bPtrCountM1)).divide(bPtrCount))
+                         .compareTo(BigInteger.ONE) > 0);
+            }
         }
+
         return levels;
     }
 
@@ -1498,24 +1527,24 @@ public final class Database implements Closeable {
      * @param inode exclusive latched parent inode; always released by this method
      * @param value slice of complete value being fragmented
      */
-    private void writeMultilevelFragment(Node caller, Tree forTree,
-                                         int level, Node inode,
-                                         byte[] value, int voffset, int vlength)
+    private void writeMultilevelFragments(Node caller, Tree forTree,
+                                          int level, Node inode,
+                                          byte[] value, int voffset, int vlength)
         throws IOException
     {
-        int levelCap;
+        long levelCap;
         long[] childNodeIds;
         Node[] childNodes;
         try {
             byte[] page = inode.mPage;
             level--;
-            levelCap = page.length * (int) Math.pow(page.length / 6, level);
+            levelCap = page.length * (long) Math.pow(page.length / 6, level);
 
             // Pre-allocate and reference the required child nodes in order for
             // parent node latch to be released early. FragmentCache can then
             // safely evict the parent node if necessary.
 
-            int childNodeCount = (vlength + (levelCap - 1)) / levelCap;
+            int childNodeCount = (int) ((vlength + (levelCap - 1)) / levelCap);
             childNodeIds = new long[childNodeCount];
             childNodes = new Node[childNodeCount];
             try {
@@ -1563,13 +1592,13 @@ public final class Database implements Closeable {
                 redirty(childNode);
             }
 
-            int len = Math.min(levelCap, vlength);
+            int len = (int) Math.min(levelCap, vlength);
             if (level <= 0) {
                 System.arraycopy(value, voffset, childNode.mPage, 0, len);
                 mFragmentCache.put(caller, childNode);
                 childNode.releaseExclusive();
             } else {
-                writeMultilevelFragment
+                writeMultilevelFragments
                     (caller, forTree, level, childNode, value, voffset, len);
             }
 
@@ -1586,6 +1615,7 @@ public final class Database implements Closeable {
     byte[] reconstruct(Node caller, byte[] fragmented, int off, int len) throws IOException {
         int header = fragmented[off++];
         len--;
+
         int vLen;
         switch ((header >> 2) & 0x03) {
         default:
@@ -1664,7 +1694,7 @@ public final class Database implements Closeable {
             int levels = calculateInodeLevels(vLen, pageSize());
             long nodeId = readUnsignedInt48(fragmented, off);
             Node inode = mFragmentCache.get(caller, nodeId);
-            readMultilevelFragment(caller, levels, inode, value, 0, vLen);
+            readMultilevelFragments(caller, levels, inode, value, 0, vLen);
         }
 
         return value;
@@ -1675,18 +1705,18 @@ public final class Database implements Closeable {
      * @param inode shared latched parent inode; always released by this method
      * @param value slice of complete value being reconstructed
      */
-    private void readMultilevelFragment(Node caller,
-                                        int level, Node inode,
-                                        byte[] value, int voffset, int vlength)
+    private void readMultilevelFragments(Node caller,
+                                         int level, Node inode,
+                                         byte[] value, int voffset, int vlength)
         throws IOException
     {
         byte[] page = inode.mPage;
         level--;
-        int levelCap = page.length * (int) Math.pow(page.length / 6, level);
+        long levelCap = page.length * (long) Math.pow(page.length / 6, level);
 
         // Copy all child node ids and release parent latch early.
         // FragmentCache can then safely evict the parent node if necessary.
-        int childNodeCount = (vlength + (levelCap - 1)) / levelCap;
+        int childNodeCount = (int) ((vlength + (levelCap - 1)) / levelCap);
         long[] childNodeIds = new long[childNodeCount];
         for (int poffset = 0, i=0; i<childNodeCount; poffset += 6, i++) {
             childNodeIds[i] = readUnsignedInt48(page, poffset);
@@ -1695,12 +1725,12 @@ public final class Database implements Closeable {
 
         for (long childNodeId : childNodeIds) {
             Node childNode = mFragmentCache.get(caller, childNodeId);
-            int len = Math.min(levelCap, vlength);
+            int len = (int) Math.min(levelCap, vlength);
             if (level <= 0) {
                 System.arraycopy(childNode.mPage, 0, value, voffset, len);
                 childNode.releaseShared();
             } else {
-                readMultilevelFragment(caller, level, childNode, value, voffset, len);
+                readMultilevelFragments(caller, level, childNode, value, voffset, len);
             }
             vlength -= len;
             voffset += len;
@@ -1719,6 +1749,27 @@ public final class Database implements Closeable {
     {
         int header = fragmented[off++];
         len--;
+
+        long vLen;
+        if ((header & 0x01) == 0) {
+            // Don't need to read the value length when deleting direct pointers.
+            vLen = 0;
+        } else {
+            switch ((header >> 2) & 0x03) {
+            default:
+                vLen = readUnsignedShort(fragmented, off);
+                break;
+            case 1:
+                vLen = readInt(fragmented, off) & 0xffffffffL;
+                break;
+            case 2:
+                vLen = readUnsignedInt48(fragmented, off);
+                break;
+            case 3:
+                vLen = readLong(fragmented, off);
+                break;
+            }
+        }
 
         {
             int vLenFieldSize = 2 + ((header >> 1) & 0x06);
@@ -1739,20 +1790,69 @@ public final class Database implements Closeable {
                 long nodeId = readUnsignedInt48(fragmented, off);
                 off += 6;
                 len -= 6;
-                Node node = mFragmentCache.remove(caller, nodeId);
-                if (node != null) {
-                    deleteNode(fromTree, node);
-                } else {
-                    // Page is clean if not in a Node, and so it must survive
-                    // until after the next checkpoint.
-                    mPageDb.deletePage(nodeId);
-                }
+                deleteFragment(caller, fromTree, nodeId);
             }
         } else {
             // Indirect pointers.
-            // FIXME
-            System.out.println("delete...");
-            System.out.println(Utils.toHex(fragmented, off, len));
+            int levels = calculateInodeLevels(vLen, pageSize());
+            long nodeId = readUnsignedInt48(fragmented, off);
+            Node inode = removeInode(caller, nodeId);
+            deleteMultilevelFragments(caller, fromTree, levels, inode, vLen);
+        }
+    }
+
+    /**
+     * @param level inode level; at least 1
+     * @param inode exclusive latched parent inode; always released by this method
+     */
+    private void deleteMultilevelFragments(Node caller, Tree fromTree,
+                                           int level, Node inode, long vlength)
+        throws IOException
+    {
+        byte[] page = inode.mPage;
+        level--;
+        long levelCap = page.length * (long) Math.pow(page.length / 6, level);
+
+        // Copy all child node ids and release parent latch early.
+        int childNodeCount = (int) ((vlength + (levelCap - 1)) / levelCap);
+        long[] childNodeIds = new long[childNodeCount];
+        for (int poffset = 0, i=0; i<childNodeCount; poffset += 6, i++) {
+            childNodeIds[i] = readUnsignedInt48(page, poffset);
+        }
+        deleteNode(fromTree, inode);
+
+        if (level <= 0) for (long childNodeId : childNodeIds) {
+            deleteFragment(caller, fromTree, childNodeId);
+        } else for (long childNodeId : childNodeIds) {
+            Node childNode = removeInode(caller, childNodeId);
+            long len = Math.min(levelCap, vlength);
+            deleteMultilevelFragments(caller, fromTree, level, childNode, len);
+            vlength -= len;
+        }
+    }
+
+    /**
+     * @return non-null Node with exclusive latch held
+     */
+    private Node removeInode(Node caller, long nodeId) throws IOException {
+        Node node = mFragmentCache.remove(caller, nodeId);
+        if (node == null) {
+            node = allocLatchedNode(false);
+            node.mId = nodeId;
+            node.mType = TYPE_FRAGMENT;
+            readPage(nodeId, node.mPage);
+        }
+        return node;
+    }
+
+    private void deleteFragment(Node caller, Tree fromTree, long nodeId) throws IOException {
+        Node node = mFragmentCache.remove(caller, nodeId);
+        if (node != null) {
+            deleteNode(fromTree, node);
+        } else {
+            // Page is clean if not in a Node, and so it must survive until
+            // after the next checkpoint.
+            mPageDb.deletePage(nodeId);
         }
     }
 

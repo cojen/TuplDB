@@ -21,6 +21,8 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 
+import java.math.BigInteger;
+
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -44,6 +46,12 @@ class Utils {
         i |= i >> 4;
         i |= i >> 8;
         return (i | (i >> 16)) + 1;
+    }
+
+    static BigInteger valueOfUnsigned(long v) {
+        byte[] temp = new byte[9];
+        writeLong(temp, 1, v);
+        return new BigInteger(temp);
     }
 
     /**

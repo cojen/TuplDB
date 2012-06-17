@@ -75,11 +75,27 @@ public class ExtraLargeValueTest {
         ix.store(txn, key, value);
         fastAssertArrayEquals(value, ix.load(txn, key));
 
-        if (txn != null && txn != Transaction.BOGUS) {
-            txn.commit();
-        }
+        ix.store(txn, key, value2);
+        fastAssertArrayEquals(value2, ix.load(txn, key));
 
-        // FIXME
-        ix.delete(Transaction.BOGUS, key);
+        assertNull(ix.load(txn, key2));
+
+        ix.store(txn, key, null);
+        assertNull(ix.load(txn, key));
+
+        if (txn != null && txn != Transaction.BOGUS) {
+            ix.store(txn, key, value);
+            txn.commit();
+            fastAssertArrayEquals(value, ix.load(txn, key));
+
+            ix.store(txn, key, value2);
+            txn.commit();
+            fastAssertArrayEquals(value2, ix.load(txn, key));
+
+            ix.store(txn, key, value);
+            txn.exit();
+            fastAssertArrayEquals(value2, ix.load(txn, key));
+            txn.exit();
+        }
     }
 }
