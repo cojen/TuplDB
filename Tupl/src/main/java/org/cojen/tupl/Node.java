@@ -1504,7 +1504,7 @@ final class Node extends Latch {
                     return compactInternal(tree, encodedLen, keyPos, newChildPos);
                 }
 
-                // Node is full so split it.
+                // Node is full, so split it.
 
                 if (splitChild == null) {
                     // Caller doesn't allow split.
@@ -1703,13 +1703,31 @@ final class Node extends Latch {
             if (mGarbage > remaining) {
                 // Do full compaction and free up the garbage, or split the node.
                 byte[] key = retrieveKey(pos);
-                if ((mGarbage + remaining) >= 0) {
-                    copyToLeafEntry(key, fragmented, value,
-                                    compactLeaf(tree, encodedLen, pos, false));
-                } else {
-                    // Node is full so split it.
-                    splitLeafAndCreateEntry(tree, key, fragmented, value, encodedLen, pos, false);
+                if ((mGarbage + remaining) < 0) {
+                    if (mSplit == null) {
+                        // Node is full, so split it.
+                        splitLeafAndCreateEntry
+                            (tree, key, fragmented, value, encodedLen, pos, false);
+                        return;
+                    }
+
+                    // Node is already split, and so value is too large.
+                    if (fragmented != 0) {
+                        // FIXME: Can this happen?
+                        throw new DatabaseException("Fragmented entry doesn't fit");
+                    }
+                    Database db = tree.mDatabase;
+                    int max = Math.min(db.mMaxFragmentedEntrySize,
+                                       mGarbage + leftSpace + rightSpace);
+                    value = db.fragment(this, tree, value, max);
+                    if (value == null) {
+                        throw new LargeKeyException(key.length);
+                    }
+                    encodedLen = keyLen + calculateFragmentedValueLength(value);
+                    fragmented = VALUE_FRAGMENTED;
                 }
+
+                copyToLeafEntry(key, fragmented, value, compactLeaf(tree, encodedLen, pos, false));
                 return;
             }
 
@@ -2416,9 +2434,10 @@ final class Node extends Latch {
                     // FIXME: Can this happen?
                     throw new DatabaseException("Fragmented entry doesn't fit");
                 }
-                int max = Math.min(~entryLoc, tree.mDatabase.mMaxFragmentedEntrySize);
+                Database db = tree.mDatabase;
+                int max = Math.min(~entryLoc, db.mMaxFragmentedEntrySize);
                 int encodedKeyLen = calculateKeyLength(key);
-                value = tree.mDatabase.fragment(this, tree, value, max - encodedKeyLen);
+                value = db.fragment(this, tree, value, max - encodedKeyLen);
                 if (value == null) {
                     throw new LargeKeyException(key.length);
                 }
@@ -2812,6 +2831,8 @@ final class Node extends Latch {
      */
     @Override
     public String toString() {
+        String prefix;
+
         switch (mType) {
         default:
             return "Node: {id=" + mId +
@@ -2830,15 +2851,21 @@ final class Node extends Latch {
                 ", cachedState=" + mCachedState +
                 ", lockState=" + super.toString() +
                 '}';
-        case TYPE_TN_INTERNAL: TYPE_TN_LEAF:
-            return "TreeNode: {id=" + mId +
-                ", type=" + mType +
-                ", cachedState=" + mCachedState +
-                ", isSplit=" + (mSplit != null) +
-                ", availableBytes=" + availableBytes() +
-                ", lockState=" + super.toString() +
-                '}';
+        case TYPE_TN_INTERNAL:
+            prefix = "Internal";
+            break;
+
+        case TYPE_TN_LEAF:
+            prefix = "Leaf";
+            break;
         }
+
+        return prefix + "Node: {id=" + mId +
+            ", cachedState=" + mCachedState +
+            ", isSplit=" + (mSplit != null) +
+            ", availableBytes=" + availableBytes() +
+            ", lockState=" + super.toString() +
+            '}';
     }
 
     /**
