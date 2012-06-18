@@ -1,6 +1,5 @@
 
 - Use 6-byte pointers in internal nodes.
-- Support large values.
 - Support key prefix compression.
 - Support closing indexes. Requires latch sweep and stubbing of cursors.
 - Support truncating indexes. Depends on close and workflow to ensure truncate completes.
