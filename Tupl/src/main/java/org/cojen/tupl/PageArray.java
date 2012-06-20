@@ -225,18 +225,18 @@ abstract class PageArray implements Closeable {
         int cluster = 0;
         readHeader: try {
             DataIn din = new DataIn(in, ArraySnapshot.HEADER_SIZE);
-            if (din.readLong() != ArraySnapshot.SNAPSHOT_MAGIC_NUMBER) {
+            if (din.readLongBE() != ArraySnapshot.SNAPSHOT_MAGIC_NUMBER) {
                 failMessage = "Magic number mismatch";
                 break readHeader;
             }
-            int version = din.readInt();
+            int version = din.readIntBE();
             if (version != ArraySnapshot.SNAPSHOT_ENCODING_VERSION) {
                 failMessage = "Unknown encoding version: " + version;
                 break readHeader;
             }
-            pageSize = din.readInt();
-            snapshotPageCount = din.readLong();
-            cluster = din.readInt();
+            pageSize = din.readIntBE();
+            snapshotPageCount = din.readLongBE();
+            cluster = din.readIntBE();
         } catch (EOFException e) {
             failMessage = "Truncated";
         }
@@ -254,7 +254,7 @@ abstract class PageArray implements Closeable {
         long remainingPageCount = snapshotPageCount;
 
         while (remainingPageCount > 0) {
-            long clusterIndex = din.readLong();
+            long clusterIndex = din.readLongBE();
             long index = clusterIndex * cluster;
             int count = (int) Math.min(cluster, snapshotPageCount - index);
             if (count <= 0) {
@@ -371,11 +371,11 @@ abstract class PageArray implements Closeable {
                         throw aborted(mAbortCause);
                     }
                     try {
-                        Utils.writeLong(mBuffer, 0, SNAPSHOT_MAGIC_NUMBER);
-                        Utils.writeInt(mBuffer, 8, SNAPSHOT_ENCODING_VERSION);
-                        Utils.writeInt(mBuffer, 12, mPageSize);
-                        Utils.writeLong(mBuffer, 16, count);
-                        Utils.writeInt(mBuffer, 24, cluster);
+                        Utils.writeLongBE(mBuffer, 0, SNAPSHOT_MAGIC_NUMBER);
+                        Utils.writeIntBE(mBuffer, 8, SNAPSHOT_ENCODING_VERSION);
+                        Utils.writeIntBE(mBuffer, 12, mPageSize);
+                        Utils.writeLongBE(mBuffer, 16, count);
+                        Utils.writeIntBE(mBuffer, 24, cluster);
                         mOut.write(mBuffer, 0, HEADER_SIZE);
                     } catch (IOException e) {
                         abort(e);
@@ -436,7 +436,7 @@ abstract class PageArray implements Closeable {
                 buffer = mBuffer;
                 mBufferLatch.acquireExclusive();
                 try {
-                    Utils.writeLong(buffer, 0, clusterIndex);
+                    Utils.writeLongBE(buffer, 0, clusterIndex);
                     int count = (int) Math.min(cluster, mSnapshotPageCount - index);
                     if (count <= 0) {
                         throw new AssertionError();

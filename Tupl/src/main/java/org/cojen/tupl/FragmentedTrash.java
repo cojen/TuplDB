@@ -92,7 +92,7 @@ class FragmentedTrash {
         // the transaction have lower integer values.
 
         byte[] prefix = new byte[8];
-        Utils.writeLong(prefix, 0, txnId);
+        Utils.writeLongBE(prefix, 0, txnId);
 
         TreeCursor cursor = new TreeCursor(mTrash, Transaction.BOGUS);
         try {
@@ -134,7 +134,7 @@ class FragmentedTrash {
         int tidLen = undoEntry.length - loc;
         byte[] trashKey = new byte[8 + tidLen];
 
-        Utils.writeLong(trashKey, 0, txnId);
+        Utils.writeLongBE(trashKey, 0, txnId);
         System.arraycopy(undoEntry, loc, trashKey, 8, tidLen);
 
         byte[] fragmented;
@@ -169,7 +169,7 @@ class FragmentedTrash {
      */
     void emptyTrash(long txnId) throws IOException {
         byte[] prefix = new byte[8];
-        Utils.writeLong(prefix, 0, txnId);
+        Utils.writeLongBE(prefix, 0, txnId);
 
         Database db = mTrash.mDatabase;
         final Lock sharedCommitLock = db.sharedCommitLock();

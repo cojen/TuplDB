@@ -217,9 +217,9 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
             mOut = out;
             mChannel = out.getChannel();
 
-            writeLong(MAGIC_NUMBER);
-            writeInt(ENCODING_VERSION);
-            writeLong(logId);
+            writeLongBE(MAGIC_NUMBER);
+            writeIntBE(ENCODING_VERSION);
+            writeLongBE(logId);
             timestamp();
             doFlush();
         } catch (IOException e) {
@@ -320,7 +320,7 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
             writeOp(OP_TXN_ROLLBACK, txnId);
         } else {
             writeOp(OP_TXN_ROLLBACK_CHILD, txnId);
-            writeLong(parentTxnId);
+            writeLongBE(parentTxnId);
         }
     }
 
@@ -346,7 +346,7 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
     public void txnCommitScope(long txnId, long parentTxnId) throws IOException {
         synchronized (this) {
             writeOp(OP_TXN_COMMIT_CHILD, txnId);
-            writeLong(parentTxnId);
+            writeLongBE(parentTxnId);
         }
     }
 
@@ -359,12 +359,12 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
 
         if (value == null) {
             writeOp(OP_TXN_DELETE, txnId);
-            writeLong(indexId);
+            writeLongBE(indexId);
             writeUnsignedVarInt(key.length);
             writeBytes(key);
         } else {
             writeOp(OP_TXN_STORE, txnId);
-            writeLong(indexId);
+            writeLongBE(indexId);
             writeUnsignedVarInt(key.length);
             writeBytes(key);
             writeUnsignedVarInt(value.length);
@@ -377,26 +377,26 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
     }
 
     // Caller must be synchronized.
-    private void writeInt(int v) throws IOException {
+    private void writeIntBE(int v) throws IOException {
         byte[] buffer = mBuffer;
         int pos = mBufferPos;
         if (pos > buffer.length - 4) {
             doFlush(buffer, pos);
             pos = 0;
         }
-        Utils.writeInt(buffer, pos, v);
+        Utils.writeIntBE(buffer, pos, v);
         mBufferPos = pos + 4;
     }
 
     // Caller must be synchronized.
-    private void writeLong(long v) throws IOException {
+    private void writeLongBE(long v) throws IOException {
         byte[] buffer = mBuffer;
         int pos = mBufferPos;
         if (pos > buffer.length - 8) {
             doFlush(buffer, pos);
             pos = 0;
         }
-        Utils.writeLong(buffer, pos, v);
+        Utils.writeLongBE(buffer, pos, v);
         mBufferPos = pos + 8;
     }
 
@@ -409,7 +409,7 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
             pos = 0;
         }
         buffer[pos] = op;
-        Utils.writeLong(buffer, pos + 1, operand);
+        Utils.writeLongBE(buffer, pos + 1, operand);
         mBufferPos = pos + 9;
     }
 
@@ -482,14 +482,14 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
     }
 
     private void replay(DataIn in, RedoLogVisitor visitor) throws IOException {
-        if (in.readLong() != MAGIC_NUMBER) {
+        if (in.readLongBE() != MAGIC_NUMBER) {
             throw new DatabaseException("Incorrect magic number in log file");
         }
-        int version = in.readInt();
+        int version = in.readIntBE();
         if (version != ENCODING_VERSION) {
             throw new DatabaseException("Unsupported encoding version: " + version);
         }
-        long id = in.readLong();
+        long id = in.readLongBE();
         if (id != mLogId) {
             throw new DatabaseException
                 ("Expected log identifier of " + mLogId + ", but actual is: " + id);
@@ -503,76 +503,76 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
                 throw new DatabaseException("Unknown log operation: " + op);
 
             case OP_TIMESTAMP:
-                visitor.timestamp(in.readLong());
+                visitor.timestamp(in.readLongBE());
                 break;
 
             case OP_SHUTDOWN:
-                visitor.shutdown(in.readLong());
+                visitor.shutdown(in.readLongBE());
                 break;
 
             case OP_CLOSE:
-                visitor.close(in.readLong());
+                visitor.close(in.readLongBE());
                 break;
 
             case OP_END_FILE:
-                visitor.endFile(in.readLong());
+                visitor.endFile(in.readLongBE());
                 break;
 
             case OP_TXN_ROLLBACK:
-                visitor.txnRollback(in.readLong(), 0);
+                visitor.txnRollback(in.readLongBE(), 0);
                 break;
 
             case OP_TXN_ROLLBACK_CHILD:
-                visitor.txnRollback(in.readLong(), in.readLong());
+                visitor.txnRollback(in.readLongBE(), in.readLongBE());
                 break;
 
             case OP_TXN_COMMIT:
-                visitor.txnCommit(in.readLong(), 0);
+                visitor.txnCommit(in.readLongBE(), 0);
                 break;
 
             case OP_TXN_COMMIT_CHILD:
-                visitor.txnCommit(in.readLong(), in.readLong());
+                visitor.txnCommit(in.readLongBE(), in.readLongBE());
                 break;
 
             case OP_STORE:
-                visitor.store(in.readLong(), in.readBytes(), in.readBytes());
+                visitor.store(in.readLongBE(), in.readBytes(), in.readBytes());
                 break;
 
             case OP_DELETE:
-                visitor.store(in.readLong(), in.readBytes(), null);
+                visitor.store(in.readLongBE(), in.readBytes(), null);
                 break;
 
             case OP_TXN_STORE:
-                visitor.txnStore(in.readLong(), in.readLong(), in.readBytes(), in.readBytes());
+                visitor.txnStore(in.readLongBE(), in.readLongBE(), in.readBytes(), in.readBytes());
                 break;
 
             case OP_TXN_STORE_COMMIT:
-                long txnId = in.readLong();
-                visitor.txnStore(txnId, in.readLong(), in.readBytes(), in.readBytes());
+                long txnId = in.readLongBE();
+                visitor.txnStore(txnId, in.readLongBE(), in.readBytes(), in.readBytes());
                 visitor.txnCommit(txnId, 0);
                 break;
 
             case OP_TXN_STORE_COMMIT_CHILD:
-                txnId = in.readLong();
-                long parentTxnId = in.readLong();
-                visitor.txnStore(txnId, in.readLong(), in.readBytes(), in.readBytes());
+                txnId = in.readLongBE();
+                long parentTxnId = in.readLongBE();
+                visitor.txnStore(txnId, in.readLongBE(), in.readBytes(), in.readBytes());
                 visitor.txnCommit(txnId, parentTxnId);
                 break;
 
             case OP_TXN_DELETE:
-                visitor.txnStore(in.readLong(), in.readLong(), in.readBytes(), null);
+                visitor.txnStore(in.readLongBE(), in.readLongBE(), in.readBytes(), null);
                 break;
 
             case OP_TXN_DELETE_COMMIT:
-                txnId = in.readLong();
-                visitor.txnStore(txnId, in.readLong(), in.readBytes(), null);
+                txnId = in.readLongBE();
+                visitor.txnStore(txnId, in.readLongBE(), in.readBytes(), null);
                 visitor.txnCommit(txnId, 0);
                 break;
 
             case OP_TXN_DELETE_COMMIT_CHILD:
-                txnId = in.readLong();
-                parentTxnId = in.readLong();
-                visitor.txnStore(txnId, in.readLong(), in.readBytes(), null);
+                txnId = in.readLongBE();
+                parentTxnId = in.readLongBE();
+                visitor.txnStore(txnId, in.readLongBE(), in.readBytes(), null);
                 visitor.txnCommit(txnId, parentTxnId);
                 break;
             }

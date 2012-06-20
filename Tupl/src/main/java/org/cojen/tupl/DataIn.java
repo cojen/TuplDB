@@ -98,16 +98,16 @@ class DataIn extends InputStream {
         mIn.close();
     }
 
-    public int readInt() throws IOException {
+    public int readIntBE() throws IOException {
         require(4);
-        int v = Utils.readInt(mBuffer, mStart);
+        int v = Utils.readIntBE(mBuffer, mStart);
         mStart += 4;
         return v;
     }
 
-    public long readLong() throws IOException {
+    public long readLongBE() throws IOException {
         require(8);
-        long v = Utils.readLong(mBuffer, mStart);
+        long v = Utils.readLongBE(mBuffer, mStart);
         mStart += 8;
         return v;
     }
