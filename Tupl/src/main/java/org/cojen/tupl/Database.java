@@ -1228,7 +1228,7 @@ public final class Database implements Closeable {
      * exception is thrown.
      */
     void prepareToDelete(Node node) throws IOException {
-        // Hello. My name is Íñigo Montoya. You killed my father. Prepare to die. 
+        // Hello. My name is Inigo Montoya. You killed my father. Prepare to die. 
         byte state = node.mCachedState;
         if (state != CACHED_CLEAN && state != mCommitState) {
             node.write(this);
