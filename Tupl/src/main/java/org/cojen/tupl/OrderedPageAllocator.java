@@ -144,7 +144,7 @@ final class OrderedPageAllocator {
                         mReadyState = READY;
                     }
 
-                    long id = Utils.readLong(key, 0);
+                    long id = Utils.readLongBE(key, 0);
 
                     // Delete entry while still latched -- cursor is not
                     // thread-safe. Besides, one section of the index will be
@@ -202,7 +202,7 @@ final class OrderedPageAllocator {
             mSource.deletePage(id);
         } else {
             byte[] key = new byte[8];
-            Utils.writeLong(key, 0, id);
+            Utils.writeLongBE(key, 0, id);
             mLocalPages.store(Transaction.BOGUS, key, Utils.EMPTY_BYTES);
             makeReady();
         }

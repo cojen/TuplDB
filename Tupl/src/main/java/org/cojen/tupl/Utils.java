@@ -50,7 +50,7 @@ class Utils {
 
     static BigInteger valueOfUnsigned(long v) {
         byte[] temp = new byte[9];
-        writeLong(temp, 1, v);
+        writeLongBE(temp, 1, v);
         return new BigInteger(temp);
     }
 
@@ -110,16 +110,16 @@ class Utils {
         return alen - blen;
     }
 
-    public static final int readUnsignedShort(byte[] b, int offset) {
+    public static final int readUnsignedShortBE(byte[] b, int offset) {
         return ((b[offset] & 0xff) << 8) | ((b[offset + 1] & 0xff));
     }
 
-    public static final int readInt(byte[] b, int offset) {
+    public static final int readIntBE(byte[] b, int offset) {
         return (b[offset] << 24) | ((b[offset + 1] & 0xff) << 16) |
             ((b[offset + 2] & 0xff) << 8) | (b[offset + 3] & 0xff);
     }
 
-    public static final long readUnsignedInt48(byte[] b, int offset) {
+    public static final long readUnsignedInt48BE(byte[] b, int offset) {
         return
             (((long)(((b[offset    ] & 0xff) << 8 ) | 
                      ((b[offset + 1] & 0xff)      ))              ) << 32) |
@@ -129,7 +129,7 @@ class Utils {
                      ((b[offset + 5] & 0xff)      )) & 0xffffffffL)      );
     }
 
-    public static final long readLong(byte[] b, int offset) {
+    public static final long readLongBE(byte[] b, int offset) {
         return
             (((long)(((b[offset    ]       ) << 24) |
                      ((b[offset + 1] & 0xff) << 16) |
@@ -323,19 +323,19 @@ class Utils {
         return decoded;
     }
 
-    public static final void writeShort(byte[] b, int offset, int v) {
+    public static final void writeShortBE(byte[] b, int offset, int v) {
         b[offset    ] = (byte)(v >> 8);
         b[offset + 1] = (byte)v;
     }
 
-    public static final void writeInt(byte[] b, int offset, int v) {
+    public static final void writeIntBE(byte[] b, int offset, int v) {
         b[offset    ] = (byte)(v >> 24);
         b[offset + 1] = (byte)(v >> 16);
         b[offset + 2] = (byte)(v >> 8);
         b[offset + 3] = (byte)v;
     }
 
-    public static final void writeInt48(byte[] b, int offset, long v) {
+    public static final void writeInt48BE(byte[] b, int offset, long v) {
         int w = (int)(v >> 32);
         b[offset    ] = (byte)(w >> 8);
         b[offset + 1] = (byte)w;
@@ -346,7 +346,7 @@ class Utils {
         b[offset + 5] = (byte)w;
     }
 
-    public static final void writeLong(byte[] b, int offset, long v) {
+    public static final void writeLongBE(byte[] b, int offset, long v) {
         int w = (int)(v >> 32);
         b[offset    ] = (byte)(w >> 24);
         b[offset + 1] = (byte)(w >> 16);
@@ -680,7 +680,7 @@ class Utils {
                     }
                 } else {
                     String pair = "000".concat
-                        (Integer.toHexString(readUnsignedShort(b, offset + pos)));
+                        (Integer.toHexString(readUnsignedShortBE(b, offset + pos)));
                     pair = pair.substring(pair.length() - 4);
                     bob.append(pair);
                     bob.append(' ');

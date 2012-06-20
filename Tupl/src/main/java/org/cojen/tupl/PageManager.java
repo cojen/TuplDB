@@ -126,7 +126,7 @@ final class PageManager {
     }
 
     static long readTotalPageCount(byte[] header, int offset) {
-        return Utils.readLong(header, offset + I_TOTAL_PAGE_COUNT);
+        return Utils.readLongBE(header, offset + I_TOTAL_PAGE_COUNT);
     }
 
     public int headerSize() {
@@ -248,7 +248,7 @@ final class PageManager {
             //mRecycleFreeList.commitStart(header, offset + I_RECYCLE_QUEUE);
             // Write total after committing free list, to account for
             // additional pages it needed to allocate for draining nodes.
-            Utils.writeLong(header, offset + I_TOTAL_PAGE_COUNT, mTotalPageCount);
+            Utils.writeLongBE(header, offset + I_TOTAL_PAGE_COUNT, mTotalPageCount);
         } finally {
             fullUnlock();
         }

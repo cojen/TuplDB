@@ -286,9 +286,9 @@ public final class Database implements Closeable {
             mOpenTreesById = new LHashTable.Obj<Tree>(16);
 
             synchronized (mTxnIdLock) {
-                mTxnId = readLong(header, I_TRANSACTION_ID);
+                mTxnId = readLongBE(header, I_TRANSACTION_ID);
             }
-            long redoLogId = readLong(header, I_REDO_LOG_ID);
+            long redoLogId = readLongBE(header, I_REDO_LOG_ID);
 
             // Initialized, but not open yet.
             mRedoLog = baseFile == null ? null : new RedoLog(baseFile, redoLogId);
@@ -324,7 +324,7 @@ public final class Database implements Closeable {
                 UndoLog masterUndoLog;
                 LHashTable.Obj<UndoLog> undoLogs;
                 {
-                    long nodeId = readLong(header, I_MASTER_UNDO_LOG_PAGE_ID);
+                    long nodeId = readLongBE(header, I_MASTER_UNDO_LOG_PAGE_ID);
                     if (nodeId == 0) {
                         masterUndoLog = null;
                         undoLogs = null;
@@ -489,7 +489,7 @@ public final class Database implements Closeable {
 
             byte[] idKey = new byte[9];
             idKey[0] = KEY_TYPE_INDEX_ID;
-            writeLong(idKey, 1, id);
+            writeLongBE(idKey, 1, id);
 
             byte[] name = mRegistryKeyMap.load(null, idKey);
 
@@ -522,7 +522,7 @@ public final class Database implements Closeable {
         if (id.length != 8) {
             throw new IllegalArgumentException("Expected 8 byte identifier: " + id.length);
         }
-        return indexById(readLong(id, 0));
+        return indexById(readLongBE(id, 0));
     }
 
     /**
@@ -803,7 +803,7 @@ public final class Database implements Closeable {
      * is not eligible for eviction.
      */
     private Node loadRegistryRoot(byte[] header) throws IOException {
-        int version = readInt(header, I_ENCODING_VERSION);
+        int version = readIntBE(header, I_ENCODING_VERSION);
 
         long rootId;
         if (version == 0) {
@@ -812,7 +812,7 @@ public final class Database implements Closeable {
             if (version != ENCODING_VERSION) {
                 throw new CorruptDatabaseException("Unknown encoding version: " + version);
             }
-            rootId = readLong(header, I_ROOT_PAGE_ID);
+            rootId = readLongBE(header, I_ROOT_PAGE_ID);
         }
 
         return loadTreeRoot(rootId);
@@ -823,11 +823,11 @@ public final class Database implements Closeable {
         commitLock.lock();
         try {
             byte[] treeIdBytes = new byte[8];
-            writeLong(treeIdBytes, 0, treeId);
+            writeLongBE(treeIdBytes, 0, treeId);
             byte[] rootIdBytes = mRegistry.load(Transaction.BOGUS, treeIdBytes);
             long rootId;
             if (rootIdBytes != null) {
-                rootId = readLong(rootIdBytes, 0);
+                rootId = readLongBE(rootIdBytes, 0);
             } else {
                 if (!create) {
                     return null;
@@ -858,20 +858,20 @@ public final class Database implements Closeable {
             long treeId;
 
             if (treeIdBytes != null) {
-                treeId = readLong(treeIdBytes, 0);
+                treeId = readLongBE(treeIdBytes, 0);
             } else if (!create) {
                 return null;
             } else synchronized (mOpenTrees) {
                 treeIdBytes = mRegistryKeyMap.load(null, nameKey);
                 if (treeIdBytes != null) {
-                    treeId = readLong(treeIdBytes, 0);
+                    treeId = readLongBE(treeIdBytes, 0);
                 } else {
                     treeIdBytes = new byte[8];
 
                     try {
                         do {
                             treeId = Tree.randomId();
-                            writeLong(treeIdBytes, 0, treeId);
+                            writeLongBE(treeIdBytes, 0, treeId);
                         } while (!mRegistry.insert(Transaction.BOGUS, treeIdBytes,
                                                    Utils.EMPTY_BYTES));
 
@@ -909,7 +909,7 @@ public final class Database implements Closeable {
                 }
 
                 long rootId = (rootIdBytes == null || rootIdBytes.length == 0) ? 0
-                    : readLong(rootIdBytes, 0);
+                    : readLongBE(rootIdBytes, 0);
                 Tree tree = new Tree(this, treeId, treeIdBytes, name, loadTreeRoot(rootId));
 
                 synchronized (mOpenTrees) {
@@ -1198,7 +1198,7 @@ public final class Database implements Closeable {
         }
         if (node == tree.mRoot && tree.mIdBytes != null) {
             byte[] newEncodedId = new byte[8];
-            writeLong(newEncodedId, 0, newId);
+            writeLongBE(newEncodedId, 0, newId);
             mRegistry.store(Transaction.BOGUS, tree.mIdBytes, newEncodedId);
         }
         dirty(node, newId);
@@ -1373,8 +1373,8 @@ public final class Database implements Closeable {
             // encoded this way, but do as we're told.
             byte[] newValue = new byte[(1 + 2 + 2) + value.length];
             newValue[0] = 0x02; // ff=0, i=1, p=0
-            writeShort(newValue, 1, value.length);     // full length
-            writeShort(newValue, 1 + 2, value.length); // inline length
+            writeShortBE(newValue, 1, value.length);     // full length
+            writeShortBE(newValue, 1 + 2, value.length); // inline length
             System.arraycopy(value, 0, newValue, (1 + 2 + 2), value.length);
             return newValue;
         } else {
@@ -1413,7 +1413,7 @@ public final class Database implements Closeable {
                     Node node = allocDirtyNode(forTree);
                     try {
                         mFragmentCache.put(caller, node);
-                        writeInt48(newValue, poffset, node.mId);
+                        writeInt48BE(newValue, poffset, node.mId);
                         System.arraycopy(value, voffset, node.mPage, 0, pageSize);
                         if (pageCount == 1) {
                             break;
@@ -1428,7 +1428,7 @@ public final class Database implements Closeable {
             }
 
             newValue[0] = header;
-            writeShort(newValue, offset, remainder); // inline length
+            writeShortBE(newValue, offset, remainder); // inline length
             System.arraycopy(value, 0, newValue, offset + 2, remainder);
         } else {
             // Remainder doesn't fit inline, so don't encode any inline
@@ -1455,7 +1455,7 @@ public final class Database implements Closeable {
                         Node node = allocDirtyNode(forTree);
                         try {
                             mFragmentCache.put(caller, node);
-                            writeInt48(newValue, offset, node.mId);
+                            writeInt48BE(newValue, offset, node.mId);
                             if (pageCount > 1) {
                                 System.arraycopy(value, voffset, node.mPage, 0, pageSize);
                             } else {
@@ -1476,7 +1476,7 @@ public final class Database implements Closeable {
                 newValue = new byte[offset + 6];
                 int levels = calculateInodeLevels(value.length, pageSize);
                 Node inode = allocDirtyNode(forTree);
-                writeInt48(newValue, offset, inode.mId);
+                writeInt48BE(newValue, offset, inode.mId);
                 writeMultilevelFragments
                     (caller, forTree, levels, inode, value, 0, value.length);
             }
@@ -1486,9 +1486,9 @@ public final class Database implements Closeable {
 
         // Encode full length field.
         if (value.length >= 65536) {
-            writeInt(newValue, 1, value.length);
+            writeIntBE(newValue, 1, value.length);
         } else {
-            writeShort(newValue, 1, value.length);
+            writeShortBE(newValue, 1, value.length);
         }
 
         return newValue;
@@ -1550,7 +1550,7 @@ public final class Database implements Closeable {
             try {
                 for (int poffset = 0, i=0; i<childNodeCount; poffset += 6, i++) {
                     Node childNode = allocDirtyNode(forTree);
-                    writeInt48(page, poffset, childNodeIds[i] = childNode.mId);
+                    writeInt48BE(page, poffset, childNodeIds[i] = childNode.mId);
                     childNodes[i] = childNode;
                     // Allow node to be evicted, but don't write anything yet.
                     childNode.mCachedState = CACHED_CLEAN;
@@ -1619,18 +1619,18 @@ public final class Database implements Closeable {
         int vLen;
         switch ((header >> 2) & 0x03) {
         default:
-            vLen = readUnsignedShort(fragmented, off);
+            vLen = readUnsignedShortBE(fragmented, off);
             break;
 
         case 1:
-            vLen = readInt(fragmented, off);
+            vLen = readIntBE(fragmented, off);
             if (vLen < 0) {
                 throw new LargeValueException(vLen & 0xffffffffL);
             }
             break;
 
         case 2:
-            long vLenL = readUnsignedInt48(fragmented, off);
+            long vLenL = readUnsignedInt48BE(fragmented, off);
             if (vLenL > Integer.MAX_VALUE) {
                 throw new LargeValueException(vLenL);
             }
@@ -1638,7 +1638,7 @@ public final class Database implements Closeable {
             break;
 
         case 3:
-            vLenL = readLong(fragmented, off);
+            vLenL = readLongBE(fragmented, off);
             if (vLenL < 0 || vLenL > Integer.MAX_VALUE) {
                 throw new LargeValueException(vLenL);
             }
@@ -1662,7 +1662,7 @@ public final class Database implements Closeable {
         int vOff = 0;
         if ((header & 0x02) != 0) {
             // Inline content.
-            int inLen = readUnsignedShort(fragmented, off);
+            int inLen = readUnsignedShortBE(fragmented, off);
             off += 2;
             len -= 2;
             System.arraycopy(fragmented, off, value, vOff, inLen);
@@ -1675,7 +1675,7 @@ public final class Database implements Closeable {
         if ((header & 0x01) == 0) {
             // Direct pointers.
             while (len >= 6) {
-                long nodeId = readUnsignedInt48(fragmented, off);
+                long nodeId = readUnsignedInt48BE(fragmented, off);
                 off += 6;
                 len -= 6;
                 Node node = mFragmentCache.get(caller, nodeId);
@@ -1692,7 +1692,7 @@ public final class Database implements Closeable {
         } else {
             // Indirect pointers.
             int levels = calculateInodeLevels(vLen, pageSize());
-            long nodeId = readUnsignedInt48(fragmented, off);
+            long nodeId = readUnsignedInt48BE(fragmented, off);
             Node inode = mFragmentCache.get(caller, nodeId);
             readMultilevelFragments(caller, levels, inode, value, 0, vLen);
         }
@@ -1719,7 +1719,7 @@ public final class Database implements Closeable {
         int childNodeCount = (int) ((vlength + (levelCap - 1)) / levelCap);
         long[] childNodeIds = new long[childNodeCount];
         for (int poffset = 0, i=0; i<childNodeCount; poffset += 6, i++) {
-            childNodeIds[i] = readUnsignedInt48(page, poffset);
+            childNodeIds[i] = readUnsignedInt48BE(page, poffset);
         }
         inode.releaseShared();
 
@@ -1757,16 +1757,16 @@ public final class Database implements Closeable {
         } else {
             switch ((header >> 2) & 0x03) {
             default:
-                vLen = readUnsignedShort(fragmented, off);
+                vLen = readUnsignedShortBE(fragmented, off);
                 break;
             case 1:
-                vLen = readInt(fragmented, off) & 0xffffffffL;
+                vLen = readIntBE(fragmented, off) & 0xffffffffL;
                 break;
             case 2:
-                vLen = readUnsignedInt48(fragmented, off);
+                vLen = readUnsignedInt48BE(fragmented, off);
                 break;
             case 3:
-                vLen = readLong(fragmented, off);
+                vLen = readLongBE(fragmented, off);
                 break;
             }
         }
@@ -1779,7 +1779,7 @@ public final class Database implements Closeable {
 
         if ((header & 0x02) != 0) {
             // Skip inline content.
-            int inLen = 2 + readUnsignedShort(fragmented, off);
+            int inLen = 2 + readUnsignedShortBE(fragmented, off);
             off += inLen;
             len -= inLen;
         }
@@ -1787,7 +1787,7 @@ public final class Database implements Closeable {
         if ((header & 0x01) == 0) {
             // Direct pointers.
             while (len >= 6) {
-                long nodeId = readUnsignedInt48(fragmented, off);
+                long nodeId = readUnsignedInt48BE(fragmented, off);
                 off += 6;
                 len -= 6;
                 deleteFragment(caller, fromTree, nodeId);
@@ -1795,7 +1795,7 @@ public final class Database implements Closeable {
         } else {
             // Indirect pointers.
             int levels = calculateInodeLevels(vLen, pageSize());
-            long nodeId = readUnsignedInt48(fragmented, off);
+            long nodeId = readUnsignedInt48BE(fragmented, off);
             Node inode = removeInode(caller, nodeId);
             deleteMultilevelFragments(caller, fromTree, levels, inode, vLen);
         }
@@ -1817,7 +1817,7 @@ public final class Database implements Closeable {
         int childNodeCount = (int) ((vlength + (levelCap - 1)) / levelCap);
         long[] childNodeIds = new long[childNodeCount];
         for (int poffset = 0, i=0; i<childNodeCount; poffset += 6, i++) {
-            childNodeIds[i] = readUnsignedInt48(page, poffset);
+            childNodeIds[i] = readUnsignedInt48BE(page, poffset);
         }
         deleteNode(fromTree, inode);
 
@@ -2005,12 +2005,12 @@ public final class Database implements Closeable {
         }
 
         byte[] header = new byte[HEADER_SIZE];
-        writeInt(header, I_ENCODING_VERSION, ENCODING_VERSION);
-        writeLong(header, I_ROOT_PAGE_ID, rootId);
-        writeLong(header, I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
-        writeLong(header, I_TRANSACTION_ID, txnId);
+        writeIntBE(header, I_ENCODING_VERSION, ENCODING_VERSION);
+        writeLongBE(header, I_ROOT_PAGE_ID, rootId);
+        writeLongBE(header, I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
+        writeLongBE(header, I_TRANSACTION_ID, txnId);
         // Add one to redoLogId, indicating the active log id.
-        writeLong(header, I_REDO_LOG_ID, redoLogId + 1);
+        writeLongBE(header, I_REDO_LOG_ID, redoLogId + 1);
 
         return header;
     }
