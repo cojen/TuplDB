@@ -114,31 +114,62 @@ class Utils {
         return ((b[offset] & 0xff) << 8) | ((b[offset + 1] & 0xff));
     }
 
+    public static final int readUnsignedShortLE(byte[] b, int offset) {
+        return ((b[offset] & 0xff)) | ((b[offset + 1] & 0xff) << 8);
+    }
+
     public static final int readIntBE(byte[] b, int offset) {
         return (b[offset] << 24) | ((b[offset + 1] & 0xff) << 16) |
             ((b[offset + 2] & 0xff) << 8) | (b[offset + 3] & 0xff);
     }
 
+    public static final int readIntLE(byte[] b, int offset) {
+        return (b[offset] & 0xff) | ((b[offset + 1] & 0xff) << 8) |
+            ((b[offset + 2] & 0xff) << 16) | (b[offset + 3] << 24);
+    }
+
     public static final long readUnsignedInt48BE(byte[] b, int offset) {
         return
-            (((long)(((b[offset    ] & 0xff) << 8 ) | 
+            (((long)(((b[offset    ] & 0xff) << 8 ) |
                      ((b[offset + 1] & 0xff)      ))              ) << 32) |
             (((long)(((b[offset + 2]       ) << 24) |
                      ((b[offset + 3] & 0xff) << 16) |
-                     ((b[offset + 4] & 0xff) << 8 ) | 
+                     ((b[offset + 4] & 0xff) << 8 ) |
                      ((b[offset + 5] & 0xff)      )) & 0xffffffffL)      );
+    }
+
+    public static final long readUnsignedInt48LE(byte[] b, int offset) {
+        return
+            (((long)(((b[offset    ] & 0xff)      ) |
+                     ((b[offset + 1] & 0xff) << 8 ) |
+                     ((b[offset + 2] & 0xff) << 16) |
+                     ((b[offset + 3]       ) << 24)) & 0xffffffffL)      ) |
+            (((long)(((b[offset + 4] & 0xff)      ) |
+                     ((b[offset + 5] & 0xff) << 8 ))              ) << 32);
     }
 
     public static final long readLongBE(byte[] b, int offset) {
         return
             (((long)(((b[offset    ]       ) << 24) |
                      ((b[offset + 1] & 0xff) << 16) |
-                     ((b[offset + 2] & 0xff) << 8 ) | 
+                     ((b[offset + 2] & 0xff) << 8 ) |
                      ((b[offset + 3] & 0xff)      ))              ) << 32) |
             (((long)(((b[offset + 4]       ) << 24) |
                      ((b[offset + 5] & 0xff) << 16) |
-                     ((b[offset + 6] & 0xff) << 8 ) | 
+                     ((b[offset + 6] & 0xff) << 8 ) |
                      ((b[offset + 7] & 0xff)      )) & 0xffffffffL)      );
+    }
+
+    public static final long readLongLE(byte[] b, int offset) {
+        return
+            (((long)(((b[offset    ] & 0xff)      ) |
+                     ((b[offset + 1] & 0xff) << 8 ) |
+                     ((b[offset + 2] & 0xff) << 16) |
+                     ((b[offset + 3]       ) << 24)) & 0xffffffffL)      ) |
+            (((long)(((b[offset + 4] & 0xff)      ) |
+                     ((b[offset + 5] & 0xff) << 8 ) |
+                     ((b[offset + 6] & 0xff) << 16) |
+                     ((b[offset + 7]       ) << 24))              ) << 32);
     }
 
     /**
@@ -328,11 +359,23 @@ class Utils {
         b[offset + 1] = (byte)v;
     }
 
+    public static final void writeShortLE(byte[] b, int offset, int v) {
+        b[offset    ] = (byte)v;
+        b[offset + 1] = (byte)(v >> 8);
+    }
+
     public static final void writeIntBE(byte[] b, int offset, int v) {
         b[offset    ] = (byte)(v >> 24);
         b[offset + 1] = (byte)(v >> 16);
         b[offset + 2] = (byte)(v >> 8);
         b[offset + 3] = (byte)v;
+    }
+
+    public static final void writeIntLE(byte[] b, int offset, int v) {
+        b[offset    ] = (byte)v;
+        b[offset + 1] = (byte)(v >> 8);
+        b[offset + 2] = (byte)(v >> 16);
+        b[offset + 3] = (byte)(v >> 24);
     }
 
     public static final void writeInt48BE(byte[] b, int offset, long v) {
@@ -346,6 +389,17 @@ class Utils {
         b[offset + 5] = (byte)w;
     }
 
+    public static final void writeInt48LE(byte[] b, int offset, long v) {
+        int w = (int)v;
+        b[offset    ] = (byte)w;
+        b[offset + 1] = (byte)(w >> 8);
+        b[offset + 2] = (byte)(w >> 16);
+        b[offset + 3] = (byte)(w >> 24);
+        w = (int)(v >> 32);
+        b[offset + 4] = (byte)w;
+        b[offset + 5] = (byte)(w >> 8);
+    }
+
     public static final void writeLongBE(byte[] b, int offset, long v) {
         int w = (int)(v >> 32);
         b[offset    ] = (byte)(w >> 24);
@@ -357,6 +411,19 @@ class Utils {
         b[offset + 5] = (byte)(w >> 16);
         b[offset + 6] = (byte)(w >> 8);
         b[offset + 7] = (byte)w;
+    }
+
+    public static final void writeLongLE(byte[] b, int offset, long v) {
+        int w = (int)v;
+        b[offset    ] = (byte)w;
+        b[offset + 1] = (byte)(w >> 8);
+        b[offset + 2] = (byte)(w >> 16);
+        b[offset + 3] = (byte)(w >> 24);
+        w = (int)(v >> 32);
+        b[offset + 4] = (byte)w;
+        b[offset + 5] = (byte)(w >> 8);
+        b[offset + 6] = (byte)(w >> 16);
+        b[offset + 7] = (byte)(w >> 24);
     }
 
     public static int calcUnsignedVarIntLength(int v) {
