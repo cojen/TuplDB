@@ -55,9 +55,9 @@ final class Node extends Latch {
 
     static final byte
         TYPE_FRAGMENT    = (byte) 0x20, // 0b0010_000_0
-        TYPE_UNDO_LOG    = (byte) 0x41, // 0b0100_000_1
-        TYPE_TN_INTERNAL = (byte) 0x65, // 0b0110_010_1
-        TYPE_TN_LEAF     = (byte) 0x81; // 0b1000_000_1
+        TYPE_UNDO_LOG    = (byte) 0x40, // 0b0100_000_0
+        TYPE_TN_INTERNAL = (byte) 0x64, // 0b0110_010_0
+        TYPE_TN_LEAF     = (byte) 0x80; // 0b1000_000_0
 
     // Tree node header size.
     static final int TN_HEADER_SIZE = 12;
@@ -86,7 +86,7 @@ final class Node extends Latch {
       There are two types of tree nodes, having a similar structure and
       supporting a maximum page size of 65536 bytes. The ushort type is an
       unsigned byte pair, and the ulong type is eight bytes. All multibyte
-      types are big endian encoded.
+      types are little endian encoded.
 
       +----------------------------------------+
       | byte:   node type                      |  header
@@ -467,9 +467,9 @@ final class Node extends Latch {
         // Create new single-element search vector.
         final int searchVecStart =
             ((newPage.length - TN_HEADER_SIZE - keyLen - (2 + 8 + 8)) >> 1) & ~1;
-        writeShortBE(newPage, searchVecStart, TN_HEADER_SIZE);
-        writeLongBE(newPage, searchVecStart + 2, left.mId);
-        writeLongBE(newPage, searchVecStart + 2 + 8, right.mId);
+        writeShortLE(newPage, searchVecStart, TN_HEADER_SIZE);
+        writeLongLE(newPage, searchVecStart + 2, left.mId);
+        writeLongLE(newPage, searchVecStart + 2 + 8, right.mId);
 
         // TODO: recycle these arrays
         mChildNodes = new Node[] {left, right};
@@ -532,13 +532,13 @@ final class Node extends Latch {
         mType = type;
 
         // For undo log node, this is top entry pointer.
-        mGarbage = readUnsignedShortBE(page, 2);
+        mGarbage = readUnsignedShortLE(page, 2);
 
         if (type != TYPE_UNDO_LOG) {
-            mLeftSegTail = readUnsignedShortBE(page, 4);
-            mRightSegTail = readUnsignedShortBE(page, 6);
-            mSearchVecStart = readUnsignedShortBE(page, 8);
-            mSearchVecEnd = readUnsignedShortBE(page, 10);
+            mLeftSegTail = readUnsignedShortLE(page, 4);
+            mRightSegTail = readUnsignedShortLE(page, 6);
+            mSearchVecStart = readUnsignedShortLE(page, 8);
+            mSearchVecEnd = readUnsignedShortLE(page, 10);
             if (type == TYPE_TN_INTERNAL) {
                 // TODO: recycle child node arrays
                 mChildNodes = new Node[numKeys() + 1];
@@ -567,13 +567,13 @@ final class Node extends Latch {
             page[1] = 0; // reserved
 
             // For undo log node, this is top entry pointer.
-            writeShortBE(page, 2, mGarbage);
+            writeShortLE(page, 2, mGarbage);
 
             if (mType != TYPE_UNDO_LOG) {
-                writeShortBE(page, 4, mLeftSegTail);
-                writeShortBE(page, 6, mRightSegTail);
-                writeShortBE(page, 8, mSearchVecStart);
-                writeShortBE(page, 10, mSearchVecEnd);
+                writeShortLE(page, 4, mLeftSegTail);
+                writeShortLE(page, 6, mRightSegTail);
+                writeShortLE(page, 8, mSearchVecStart);
+                writeShortLE(page, 10, mSearchVecEnd);
             }
         }
 
@@ -593,7 +593,7 @@ final class Node extends Latch {
             if (childNodes != null && childNodes.length > 0) {
                 Node child = childNodes[0];
                 if (child != null) {
-                    long childId = readLongBE(node.mPage, UndoLog.I_LOWER_NODE_ID);
+                    long childId = readLongLE(node.mPage, UndoLog.I_LOWER_NODE_ID);
                     // Check id match before lock attempt, as a quick short
                     // circuit if child has already been evicted.
                     if (childId == child.mId) {
@@ -813,7 +813,7 @@ final class Node extends Latch {
         outer: while (lowPos <= highPos) {
             int midPos = ((lowPos + highPos) >> 1) & ~1;
 
-            int compareLoc = readUnsignedShortBE(page, midPos);
+            int compareLoc = readUnsignedShortLE(page, midPos);
             int compareLen = page[compareLoc++];
             compareLen = compareLen >= 0 ? ((compareLen & 0x3f) + 1)
                 : (((compareLen & 0x3f) << 8) | ((page[compareLoc++]) & 0xff));
@@ -872,7 +872,7 @@ final class Node extends Latch {
 
         while (true) {
             compare: {
-                int compareLoc = readUnsignedShortBE(page, midPos);
+                int compareLoc = readUnsignedShortLE(page, midPos);
                 int compareLen = page[compareLoc++];
                 compareLen = compareLen >= 0 ? ((compareLen & 0x3f) + 1)
                     : (((compareLen & 0x3f) << 8) | ((page[compareLoc++]) & 0xff));
@@ -927,7 +927,7 @@ final class Node extends Latch {
      */
     byte[] retrieveKey(int pos) {
         final byte[] page = mPage;
-        return retrieveKeyAtLoc(page, readUnsignedShortBE(page, mSearchVecStart + pos));
+        return retrieveKeyAtLoc(page, readUnsignedShortLE(page, mSearchVecStart + pos));
     }
 
     /**
@@ -962,7 +962,7 @@ final class Node extends Latch {
      */
     byte[] hasLeafValue(int pos) {
         final byte[] page = mPage;
-        int loc = readUnsignedShortBE(page, mSearchVecStart + pos);
+        int loc = readUnsignedShortLE(page, mSearchVecStart + pos);
         int header = page[loc++];
         loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
         return page[loc] == -1 ? null : Cursor.NOT_LOADED;
@@ -974,7 +974,7 @@ final class Node extends Latch {
      */
     byte[] retrieveLeafValue(Tree tree, int pos) throws IOException {
         final byte[] page = mPage;
-        int loc = readUnsignedShortBE(page, mSearchVecStart + pos);
+        int loc = readUnsignedShortLE(page, mSearchVecStart + pos);
         int header = page[loc++];
         loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
         return retrieveLeafValueAtLoc(this, tree, page, loc);
@@ -1016,7 +1016,7 @@ final class Node extends Latch {
      */
     void retrieveLeafEntry(int pos, TreeCursor cursor) throws IOException {
         final byte[] page = mPage;
-        int loc = readUnsignedShortBE(page, mSearchVecStart + pos);
+        int loc = readUnsignedShortLE(page, mSearchVecStart + pos);
         int header = page[loc++];
         int keyLen = header >= 0 ? ((header & 0x3f) + 1)
             : (((header & 0x3f) << 8) | ((page[loc++]) & 0xff));
@@ -1042,7 +1042,7 @@ final class Node extends Latch {
         throws IOException
     {
         final byte[] page = mPage;
-        final int entryLoc = readUnsignedShortBE(page, mSearchVecStart + pos);
+        final int entryLoc = readUnsignedShortLE(page, mSearchVecStart + pos);
         int loc = entryLoc;
 
         // Read key header and skip key.
@@ -1107,7 +1107,7 @@ final class Node extends Latch {
         throws IOException
     {
         final byte[] page = mPage;
-        final int entryLoc = readUnsignedShortBE(page, mSearchVecStart + pos);
+        final int entryLoc = readUnsignedShortLE(page, mSearchVecStart + pos);
         int loc = entryLoc;
 
         // Read key header and skip key.
@@ -1159,14 +1159,14 @@ final class Node extends Latch {
      * @param pos position as provided by binarySearch; must be positive
      */
     long retrieveChildRefId(int pos) {
-        return readLongBE(mPage, mSearchVecEnd + 2 + (pos << 2));
+        return readLongLE(mPage, mSearchVecEnd + 2 + (pos << 2));
     }
 
     /**
      * @param index index in child node array
      */
     long retrieveChildRefIdFromIndex(int index) {
-        return readLongBE(mPage, mSearchVecEnd + 2 + (index << 3));
+        return readLongLE(mPage, mSearchVecEnd + 2 + (index << 3));
     }
 
     /**
@@ -1338,7 +1338,7 @@ final class Node extends Latch {
         }
 
         // Write pointer to new allocation.
-        writeShortBE(page, pos, entryLoc);
+        writeShortLE(page, pos, entryLoc);
         return entryLoc;
     }
 
@@ -1413,7 +1413,7 @@ final class Node extends Latch {
             (tree, keyPos, split.splitKeyEncodedLength(), newChildPos, splitChild);
 
         // Write new child id.
-        writeLongBE(result.mPage, result.mNewChildLoc, newChild.mId);
+        writeLongLE(result.mPage, result.mNewChildLoc, newChild.mId);
         // Write key entry itself.
         split.copySplitKeyToParent(result.mPage, result.mEntryLoc);
 
@@ -1568,7 +1568,7 @@ final class Node extends Latch {
         }
 
         // Write pointer to key entry.
-        writeShortBE(page, keyPos, entryLoc);
+        writeShortLE(page, keyPos, entryLoc);
 
         if (result == null) {
             result = new InResult();
@@ -1609,7 +1609,7 @@ final class Node extends Latch {
         final int keyLen;
         quick: {
             int loc;
-            start = loc = readUnsignedShortBE(page, searchVecStart + pos);
+            start = loc = readUnsignedShortLE(page, searchVecStart + pos);
             int header = page[loc++];
             loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
 
@@ -1766,14 +1766,14 @@ final class Node extends Latch {
         System.arraycopy(page, start, page, entryLoc, keyLen);
         copyToLeafValue(page, fragmented, value, entryLoc + keyLen);
 
-        writeShortBE(page, pos, entryLoc);
+        writeShortLE(page, pos, entryLoc);
     }
 
     /**
      * @param pos position as provided by binarySearch; must be positive
      */
     void updateChildRefId(int pos, long id) {
-        writeLongBE(mPage, mSearchVecEnd + 2 + (pos << 2), id);
+        writeLongLE(mPage, mSearchVecEnd + 2 + (pos << 2), id);
     }
 
     /**
@@ -1783,7 +1783,7 @@ final class Node extends Latch {
         final byte[] page = mPage;
 
         int searchVecStart = mSearchVecStart;
-        final int entryLoc = readUnsignedShortBE(page, searchVecStart + pos);
+        final int entryLoc = readUnsignedShortLE(page, searchVecStart + pos);
 
         // Note: Similar to leafEntryLengthAtLoc and retrieveLeafValueAtLoc.
         int loc = entryLoc;
@@ -1844,7 +1844,7 @@ final class Node extends Latch {
 
         int searchVecStart = mSearchVecStart;
         while (searchVecStart <= searchVecEnd) {
-            int entryLoc = readUnsignedShortBE(rightPage, searchVecStart);
+            int entryLoc = readUnsignedShortLE(rightPage, searchVecStart);
             int encodedLen = leafEntryLengthAtLoc(rightPage, entryLoc);
             int leftEntryLoc = leftNode.createLeafEntry
                 (tree, leftNode.highestLeafPos() + 2, encodedLen);
@@ -1901,7 +1901,7 @@ final class Node extends Latch {
 
         int searchVecStart = mSearchVecStart;
         while (searchVecStart <= searchVecEnd) {
-            int entryLoc = readUnsignedShortBE(rightPage, searchVecStart);
+            int entryLoc = readUnsignedShortLE(rightPage, searchVecStart);
             int encodedLen = internalEntryLengthAtLoc(rightPage, entryLoc);
 
             // Allocate entry for left node.
@@ -1957,7 +1957,7 @@ final class Node extends Latch {
         int keyPos = childPos == 0 ? 0 : (childPos - 2);
         int searchVecStart = mSearchVecStart;
 
-        int entryLoc = readUnsignedShortBE(page, searchVecStart + keyPos);
+        int entryLoc = readUnsignedShortLE(page, searchVecStart + keyPos);
         // Increment garbage by the size of the encoded entry.
         mGarbage += internalEntryLengthAtLoc(page, entryLoc);
 
@@ -2185,8 +2185,8 @@ final class Node extends Latch {
                     continue;
                 }
             }
-            writeShortBE(dest, newSearchVecLoc, destLoc);
-            int sourceLoc = readUnsignedShortBE(page, searchVecLoc);
+            writeShortLE(dest, newSearchVecLoc, destLoc);
+            int sourceLoc = readUnsignedShortLE(page, searchVecLoc);
             int len = leafEntryLengthAtLoc(page, sourceLoc);
             System.arraycopy(page, sourceLoc, dest, destLoc, len);
             destLoc += len;
@@ -2196,7 +2196,7 @@ final class Node extends Latch {
         db.addSpareBuffer(page);
 
         // Write pointer to new allocation.
-        writeShortBE(dest, newLoc == 0 ? newSearchVecLoc : newLoc, destLoc);
+        writeShortLE(dest, newLoc == 0 ? newSearchVecLoc : newLoc, destLoc);
 
         mPage = dest;
         mGarbage = 0;
@@ -2261,7 +2261,7 @@ final class Node extends Latch {
 
             int searchVecLoc = searchVecStart;
             for (; newAvail > avail; searchVecLoc += 2, newSearchVecLoc += 2) {
-                int entryLoc = readUnsignedShortBE(page, searchVecLoc);
+                int entryLoc = readUnsignedShortLE(page, searchVecLoc);
                 int entryLen = leafEntryLengthAtLoc(page, entryLoc);
 
                 if (searchVecLoc == pos) {
@@ -2298,7 +2298,7 @@ final class Node extends Latch {
                 // Copy entry and point to it.
                 destLoc -= entryLen;
                 System.arraycopy(page, entryLoc, newPage, destLoc, entryLen);
-                writeShortBE(newPage, newSearchVecLoc, destLoc);
+                writeShortLE(newPage, newSearchVecLoc, destLoc);
 
                 garbageAccum += entryLen;
                 avail += entryLen + 2;
@@ -2324,7 +2324,7 @@ final class Node extends Latch {
                     // Create new entry and point to it.
                     destLoc -= encodedLen;
                     newNode.copyToLeafEntry(key, fragmented, value, destLoc);
-                    writeShortBE(newPage, newLoc, destLoc);
+                    writeShortLE(newPage, newLoc, destLoc);
                 }
             } finally {
                 // Split key is copied from this, the right node.
@@ -2340,7 +2340,7 @@ final class Node extends Latch {
 
             int searchVecLoc = searchVecEnd;
             for (; newAvail > avail; searchVecLoc -= 2, newSearchVecLoc -= 2) {
-                int entryLoc = readUnsignedShortBE(page, searchVecLoc);
+                int entryLoc = readUnsignedShortLE(page, searchVecLoc);
                 int entryLen = leafEntryLengthAtLoc(page, entryLoc);
 
                 if (forInsert) {
@@ -2378,7 +2378,7 @@ final class Node extends Latch {
 
                 // Copy entry and point to it.
                 System.arraycopy(page, entryLoc, newPage, destLoc, entryLen);
-                writeShortBE(newPage, newSearchVecLoc, destLoc);
+                writeShortLE(newPage, newSearchVecLoc, destLoc);
                 destLoc += entryLen;
 
                 garbageAccum += entryLen;
@@ -2404,7 +2404,7 @@ final class Node extends Latch {
                 } else {
                     // Create new entry and point to it.
                     newNode.copyToLeafEntry(key, fragmented, value, destLoc);
-                    writeShortBE(newPage, newLoc, destLoc);
+                    writeShortLE(newPage, newLoc, destLoc);
                     destLoc += encodedLen;
                 }
             } finally {
@@ -2535,7 +2535,7 @@ final class Node extends Latch {
                         newSize += encodedLen + (2 + 8);
                     }
 
-                    int entryLoc = readUnsignedShortBE(page, searchVecLoc);
+                    int entryLoc = readUnsignedShortLE(page, searchVecLoc);
                     int entryLen = internalEntryLengthAtLoc(page, entryLoc);
 
                     searchVecLoc += 2;
@@ -2568,7 +2568,7 @@ final class Node extends Latch {
                     // Copy key entry and point to it.
                     destLoc -= entryLen;
                     System.arraycopy(page, entryLoc, newPage, destLoc, entryLen);
-                    writeShortBE(newPage, newSearchVecLoc, destLoc);
+                    writeShortLE(newPage, newSearchVecLoc, destLoc);
                     newSearchVecLoc += 2;
                 }
 
@@ -2632,7 +2632,7 @@ final class Node extends Latch {
 
                     searchVecLoc -= 2;
 
-                    int entryLoc = readUnsignedShortBE(page, searchVecLoc);
+                    int entryLoc = readUnsignedShortLE(page, searchVecLoc);
                     int entryLen = internalEntryLengthAtLoc(page, entryLoc);
 
                     // Size change must incorporate child id, although they are copied later.
@@ -2663,7 +2663,7 @@ final class Node extends Latch {
                     // Copy key entry and point to it.
                     System.arraycopy(page, entryLoc, newPage, destLoc, entryLen);
                     newSearchVecLoc -= 2;
-                    writeShortBE(newPage, newSearchVecLoc, destLoc);
+                    writeShortLE(newPage, newSearchVecLoc, destLoc);
                     destLoc += entryLen;
                 }
 
@@ -2775,8 +2775,8 @@ final class Node extends Latch {
                 newLoc = newSearchVecLoc;
                 newSearchVecLoc += 2;
             }
-            writeShortBE(dest, newSearchVecLoc, destLoc);
-            int sourceLoc = readUnsignedShortBE(page, searchVecLoc);
+            writeShortLE(dest, newSearchVecLoc, destLoc);
+            int sourceLoc = readUnsignedShortLE(page, searchVecLoc);
             int len = internalEntryLengthAtLoc(page, sourceLoc);
             System.arraycopy(page, sourceLoc, dest, destLoc, len);
             destLoc += len;
@@ -2797,7 +2797,7 @@ final class Node extends Latch {
         db.addSpareBuffer(page);
 
         // Write pointer to key entry.
-        writeShortBE(dest, newLoc, destLoc);
+        writeShortLE(dest, newLoc, destLoc);
 
         mPage = dest;
         mGarbage = 0;
@@ -2843,7 +2843,7 @@ final class Node extends Latch {
             return "UndoNode: {id=" + mId +
                 ", cachedState=" + mCachedState +
                 ", topEntry=" + mGarbage +
-                ", lowerNodeId=" + + Utils.readLongBE(mPage, 4) +
+                ", lowerNodeId=" + + Utils.readLongLE(mPage, 4) +
                 ", lockState=" + super.toString() +
                 '}';
         case TYPE_FRAGMENT:
@@ -2920,7 +2920,7 @@ final class Node extends Latch {
             LHashTable.Int childIds = new LHashTable.Int(512);
 
             for (int i = childIdsStart; i < childIdsEnd; i += 8) {
-                long childId = readLongBE(page, i);
+                long childId = readLongLE(page, i);
 
                 if (childId < 0 || childId == 0 || childId == 1) {
                     throw new CorruptDatabaseException("Illegal child id: " + childId);
@@ -2940,7 +2940,7 @@ final class Node extends Latch {
         int lastKeyLen = 0;
 
         for (int i = mSearchVecStart; i <= mSearchVecEnd; i += 2) {
-            int loc = readUnsignedShortBE(page, i);
+            int loc = readUnsignedShortLE(page, i);
 
             if (loc < TN_HEADER_SIZE || loc >= page.length ||
                 (loc >= mLeftSegTail && loc <= mRightSegTail))
