@@ -105,9 +105,23 @@ class DataIn extends InputStream {
         return v;
     }
 
+    public int readIntLE() throws IOException {
+        require(4);
+        int v = Utils.readIntLE(mBuffer, mStart);
+        mStart += 4;
+        return v;
+    }
+
     public long readLongBE() throws IOException {
         require(8);
         long v = Utils.readLongBE(mBuffer, mStart);
+        mStart += 8;
+        return v;
+    }
+
+    public long readLongLE() throws IOException {
+        require(8);
+        long v = Utils.readLongLE(mBuffer, mStart);
         mStart += 8;
         return v;
     }

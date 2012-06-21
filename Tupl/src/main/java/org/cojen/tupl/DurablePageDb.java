@@ -160,8 +160,8 @@ class DurablePageDb extends PageDb {
 
                     try {
                         header0 = readHeader(0);
-                        commitNumber0 = readIntBE(header0, I_COMMIT_NUMBER);
-                        pageSize0 = readIntBE(header0, I_PAGE_SIZE);
+                        commitNumber0 = readIntLE(header0, I_COMMIT_NUMBER);
+                        pageSize0 = readIntLE(header0, I_PAGE_SIZE);
                         ex0 = null;
                     } catch (CorruptDatabaseException e) {
                         header0 = null;
@@ -178,7 +178,7 @@ class DurablePageDb extends PageDb {
 
                     try {
                         header1 = readHeader(1);
-                        commitNumber1 = readIntBE(header1, I_COMMIT_NUMBER);
+                        commitNumber1 = readIntLE(header1, I_COMMIT_NUMBER);
                     } catch (CorruptDatabaseException e) {
                         if (ex0 != null) {
                             // File is completely unusable.
@@ -189,7 +189,7 @@ class DurablePageDb extends PageDb {
                         break findHeader;
                     }
 
-                    int pageSize1 = readIntBE(header1, I_PAGE_SIZE);
+                    int pageSize1 = readIntLE(header1, I_PAGE_SIZE);
                     if (pageSize0 != pageSize1) {
                         throw new CorruptDatabaseException
                             ("Mismatched page sizes: " + pageSize0 + " != " + pageSize1);
@@ -420,9 +420,9 @@ class DurablePageDb extends PageDb {
     {
         final PageArray array = mPageArray;
 
-        writeLongBE(header, I_MAGIC_NUMBER, MAGIC_NUMBER);
-        writeIntBE (header, I_PAGE_SIZE, array.pageSize());
-        writeIntBE (header, I_COMMIT_NUMBER, commitNumber);
+        writeLongLE(header, I_MAGIC_NUMBER, MAGIC_NUMBER);
+        writeIntLE (header, I_PAGE_SIZE, array.pageSize());
+        writeIntLE (header, I_COMMIT_NUMBER, commitNumber);
 
         if (extra != null) {
             // Exception is thrown if extra data exceeds header length.
@@ -478,11 +478,11 @@ class DurablePageDb extends PageDb {
 
     private static int setHeaderChecksum(byte[] header) {
         // Clear checksum field before computing.
-        writeIntBE(header, I_CHECKSUM, 0);
+        writeIntLE(header, I_CHECKSUM, 0);
         CRC32 crc = new CRC32();
         crc.update(header, 0, MINIMUM_PAGE_SIZE);
         int checksum = (int) crc.getValue();
-        writeIntBE(header, I_CHECKSUM, checksum);
+        writeIntLE(header, I_CHECKSUM, checksum);
         return checksum;
     }
 
@@ -495,12 +495,12 @@ class DurablePageDb extends PageDb {
             throw new CorruptDatabaseException("File is smaller than expected");
         }
 
-        long magic = readLongBE(header, I_MAGIC_NUMBER);
+        long magic = readLongLE(header, I_MAGIC_NUMBER);
         if (magic != MAGIC_NUMBER) {
             throw new CorruptDatabaseException("Wrong magic number: " + magic);
         }
 
-        int checksum = readIntBE(header, I_CHECKSUM);
+        int checksum = readIntLE(header, I_CHECKSUM);
 
         int newChecksum = setHeaderChecksum(header);
         if (newChecksum != checksum) {

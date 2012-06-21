@@ -211,6 +211,9 @@ abstract class PageArray implements Closeable {
         return restoreFromSnapshot(this, in);
     }
 
+    // Snapshots are expected to be sent over the network, and so multibyte
+    // values are encoded in "network byte order", which is big-endian.
+
     private static PageArray restoreFromSnapshot(PageArray pa, InputStream in) throws IOException {
         if (pa.isReadOnly()) {
             throw new DatabaseException("Cannot restore into a read-only file");
