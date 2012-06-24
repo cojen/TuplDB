@@ -1894,7 +1894,20 @@ public final class Database implements Closeable {
         synchronized (mCheckpointLock) {
             final Node root = mRegistry.mRoot;
 
-            // Exclusive commit lock must be acquired first, to prevent deadlock.
+            if (!force) {
+                root.acquireShared();
+                if (root.mCachedState == CACHED_CLEAN) {
+                    // Root is clean, so nothing to do.
+                    root.releaseShared();
+                    return;
+                }
+                root.releaseShared();
+            }
+
+            final long redoLogId = mRedoLog.openNewFile();
+
+            // Exclusive commit lock must be acquired before root latch, to
+            // prevent deadlock.
 
             // If the commit lock cannot be immediately obtained, it's due to a
             // shared lock being held for a long time. While waiting for the
@@ -1914,27 +1927,10 @@ public final class Database implements Closeable {
 
             root.acquireShared();
 
-            if (!force && root.mCachedState == CACHED_CLEAN) {
-                // Root is clean, so nothing to do.
-                root.releaseShared();
-                mPageDb.exclusiveCommitLock().unlock();
-                return;
-            }
-
             // TODO: I don't like all this activity with exclusive commit lock
-            // held. New RedoLog file can probably be created optimistically.
-            // UndoLog can be refactored to store into a special Tree, but this
-            // requires more features to be added to Tree first. Specifically,
-            // large values and appending to them.
-
-            final long redoLogId;
-            try {
-                redoLogId = mRedoLog.openNewFile();
-            } catch (IOException e) {
-                root.releaseShared();
-                mPageDb.exclusiveCommitLock().unlock();
-                throw e;
-            }
+            // held. UndoLog can be refactored to store into a special Tree,
+            // but this requires more features to be added to Tree
+            // first. Specifically, large values and appending to them.
 
             final UndoLog masterUndoLog;
             final long masterUndoLogId;
