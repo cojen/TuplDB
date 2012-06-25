@@ -303,9 +303,9 @@ final class LockManager {
 
         int size() {
             Latch latch = mLatch;
-            latch.acquireExclusive();
+            latch.acquireShared();
             int size = mSize;
-            latch.releaseExclusive();
+            latch.releaseShared();
             return size;
         }
 
