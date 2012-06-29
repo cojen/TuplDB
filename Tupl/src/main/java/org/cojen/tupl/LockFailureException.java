@@ -38,7 +38,7 @@ public class LockFailureException extends DatabaseException {
     }
 
     @Override
-    public boolean isRecoverable() {
+    boolean isRecoverable() {
         return true;
     }
 }

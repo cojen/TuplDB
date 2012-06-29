@@ -26,7 +26,8 @@ public class CacheExhaustedException extends DatabaseException {
     public CacheExhaustedException() {
     }
 
-    public boolean isRecoverable() {
+    @Override
+    boolean isRecoverable() {
         return true;
     }
 }
