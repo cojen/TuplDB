@@ -1538,7 +1538,7 @@ public final class Database implements Closeable {
         try {
             byte[] page = inode.mPage;
             level--;
-            levelCap = page.length * (long) Math.pow(page.length / 6, level);
+            levelCap = levelCap(page.length, level);
 
             // Pre-allocate and reference the required child nodes in order for
             // parent node latch to be released early. FragmentCache can then
@@ -1712,7 +1712,7 @@ public final class Database implements Closeable {
     {
         byte[] page = inode.mPage;
         level--;
-        long levelCap = page.length * (long) Math.pow(page.length / 6, level);
+        long levelCap = levelCap(page.length, level);
 
         // Copy all child node ids and release parent latch early.
         // FragmentCache can then safely evict the parent node if necessary.
@@ -1811,7 +1811,7 @@ public final class Database implements Closeable {
     {
         byte[] page = inode.mPage;
         level--;
-        long levelCap = page.length * (long) Math.pow(page.length / 6, level);
+        long levelCap = levelCap(page.length, level);
 
         // Copy all child node ids and release parent latch early.
         int childNodeCount = (int) ((vlength + (levelCap - 1)) / levelCap);
@@ -1854,6 +1854,10 @@ public final class Database implements Closeable {
             // after the next checkpoint.
             mPageDb.deletePage(nodeId);
         }
+    }
+
+    private static long levelCap(int pageLength, int level) {
+        return pageLength * (long) Math.pow(pageLength / 6, level);
     }
 
     /**

@@ -411,7 +411,6 @@ abstract class PageArray implements Closeable {
 
         void capture(long index) {
             try {
-                byte[] buffer;
                 mSnapshotLatch.acquireExclusive();
                 if (mClosed || index >= mSnapshotPageCount || index <= mProgress) {
                     mSnapshotLatch.releaseExclusive();
