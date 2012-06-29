@@ -28,7 +28,7 @@ public class LargeKeyException extends DatabaseException {
     }
 
     @Override
-    public boolean isRecoverable() {
+    boolean isRecoverable() {
         return true;
     }
 }

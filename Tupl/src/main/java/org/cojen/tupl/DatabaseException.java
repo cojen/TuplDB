@@ -40,7 +40,7 @@ public class DatabaseException extends IOException {
         super(message, cause);
     }
 
-    public boolean isRecoverable() {
+    boolean isRecoverable() {
         return false;
     }
 }

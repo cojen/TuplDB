@@ -27,7 +27,7 @@ public class UnmodifiableViewException extends DatabaseException {
     }
 
     @Override
-    public boolean isRecoverable() {
+    boolean isRecoverable() {
         return true;
     }
 }

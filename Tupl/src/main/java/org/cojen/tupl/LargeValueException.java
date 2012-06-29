@@ -30,7 +30,8 @@ public class LargeValueException extends DatabaseException {
         super(createMessage(length), cause);
     }
 
-    public boolean isRecoverable() {
+    @Override
+    boolean isRecoverable() {
         return true;
     }
 
