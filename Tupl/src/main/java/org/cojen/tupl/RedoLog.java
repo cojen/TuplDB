@@ -25,6 +25,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 
 /**
@@ -125,7 +126,7 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
 
     private long mLogId;
     private FileOutputStream mOut;
-    private FileChannel mChannel;
+    private volatile FileChannel mChannel;
 
     private boolean mReplayMode;
 
@@ -249,7 +250,17 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
 
     public void sync() throws IOException {
         flush();
-        mChannel.force(false);
+        force(false);
+    }
+
+    private void force(boolean metadata) throws IOException {
+        FileChannel channel = mChannel;
+        if (channel != null) {
+            try {
+                channel.force(metadata);
+            } catch (ClosedChannelException e) {
+            }
+        }
     }
 
     public synchronized void close() throws IOException {
@@ -283,7 +294,7 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
             }
         }
 
-        mChannel.force(true);
+        force(true);
     }
 
     public void store(long indexId, byte[] key, byte[] value, DurabilityMode mode)
@@ -311,7 +322,7 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
         }
 
         if (sync) {
-            mChannel.force(false);
+            force(false);
         }
     }
 
@@ -340,7 +351,7 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
      * Called after txnCommitFull.
      */
     public void txnCommitSync() throws IOException {
-        mChannel.force(false);
+        force(false);
     }
 
     public void txnCommitScope(long txnId, long parentTxnId) throws IOException {
