@@ -655,7 +655,7 @@ public final class Database implements Closeable {
      * up to the last checkpoint. Call {@link #restoreFromSnapshot restoreFromSnapshot}
      * to recreate a Database from the snapshot.
      *
-     * @param out snapshot destination; does not require extra buffering
+     * @param out snapshot destination; does not require extra buffering; not auto-closed
      * @return a snapshot control object, which must be closed when no longer needed
      */
     public Snapshot beginSnapshot(OutputStream out) throws IOException {
