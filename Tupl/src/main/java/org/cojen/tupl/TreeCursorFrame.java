@@ -166,10 +166,26 @@ final class TreeCursorFrame implements java.io.Serializable {
      * Pop given non-null frame and all parent frames.
      */
     static void popAll(TreeCursorFrame frame) {
-        do {
-            Node node = frame.acquireExclusive();
-            frame = frame.pop();
-            node.releaseExclusive();
+        outer: do {
+            Node node = frame.mNode;
+            while (true) {
+                if (node == null) {
+                    // Frame was not bound properly, suggesting that cursor is
+                    // being cleaned up in response to an exception. Frame
+                    // cannot be latched, so just go to the parent.
+                    frame = frame.mParentFrame;
+                    continue outer;
+                }
+                node.acquireExclusive();
+                Node actualNode = frame.mNode;
+                if (actualNode == node) {
+                    frame = frame.pop();
+                    node.releaseExclusive();
+                    continue outer;
+                }
+                node.releaseExclusive();
+                node = actualNode;
+            }
         } while (frame != null);
     }
 
