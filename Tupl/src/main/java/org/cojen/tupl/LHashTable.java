@@ -36,7 +36,6 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
         }
     }
 
-    /*
     public static final class IntEntry extends Entry<IntEntry> {
         public int value;
     }
@@ -50,7 +49,6 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
             return new IntEntry();
         }
     }
-    */
 
     private static final float LOAD_FACTOR = 0.75f;
 
