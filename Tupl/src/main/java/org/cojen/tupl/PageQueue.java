@@ -56,6 +56,10 @@ final class PageQueue implements IntegerRef {
     |                                       |
     +---------------------------------------+
 
+    The two longs in the queue node header are big endian encoded. The first
+    byte in the node is almost always 0, aiding in quick detection of
+    corruption if a page queue node is referenced by another data structure.
+
     */
 
     // Indexes of header entries.
@@ -149,7 +153,7 @@ final class PageQueue implements IntegerRef {
         } else {
             mManager.pageArray().readPage(mRemoveHeadId, mRemoveHead);
             if (mRemoveHeadFirstPageId == 0) {
-                mRemoveHeadFirstPageId = readLongLE(mRemoveHead, I_FIRST_PAGE_ID);
+                mRemoveHeadFirstPageId = readLongBE(mRemoveHead, I_FIRST_PAGE_ID);
             }
         }
     }
@@ -192,7 +196,7 @@ final class PageQueue implements IntegerRef {
             oldHeadId = mRemoveHeadId;
 
             // Move to the next node in the list.
-            long nextId = readLongLE(head, I_NEXT_NODE_ID);
+            long nextId = readLongBE(head, I_NEXT_NODE_ID);
 
             if (nextId == mAppendHeadId) {
                 // Cannot remove from the append list. Those pages are off limits.
@@ -227,7 +231,7 @@ final class PageQueue implements IntegerRef {
         mManager.pageArray().readPage(id, head);
         mRemoveHeadId = id;
         mRemoveHeadOffset = I_NODE_START;
-        mRemoveHeadFirstPageId = readLongLE(head, I_FIRST_PAGE_ID);
+        mRemoveHeadFirstPageId = readLongBE(head, I_FIRST_PAGE_ID);
     }
 
     /**
@@ -291,8 +295,8 @@ final class PageQueue implements IntegerRef {
             long firstPageId = appendHeap.remove();
 
             byte[] tailBuf = mAppendTail;
-            writeLongLE(tailBuf, I_NEXT_NODE_ID, newTailId);
-            writeLongLE(tailBuf, I_FIRST_PAGE_ID, firstPageId);
+            writeLongBE(tailBuf, I_NEXT_NODE_ID, newTailId);
+            writeLongBE(tailBuf, I_FIRST_PAGE_ID, firstPageId);
 
             int end = appendHeap.drain(firstPageId,
                                        tailBuf,
@@ -326,8 +330,8 @@ final class PageQueue implements IntegerRef {
             drainAppendHeap(appendHeap);
         }
 
-        writeLongLE(header, offset+I_REMOVE_PAGE_COUNT, mRemovePageCount + mAppendPageCount);
-        writeLongLE(header, offset+I_REMOVE_NODE_COUNT, mRemoveNodeCount + mAppendNodeCount);
+        writeLongLE(header, offset + I_REMOVE_PAGE_COUNT, mRemovePageCount + mAppendPageCount);
+        writeLongLE(header, offset + I_REMOVE_NODE_COUNT, mRemoveNodeCount + mAppendNodeCount);
 
         if (mRemoveHeadId == 0 && mAppendPageCount > 0) {
             writeLongLE(header, offset + I_REMOVE_HEAD_ID, mAppendHeadId);
@@ -437,13 +441,13 @@ final class PageQueue implements IntegerRef {
             count++;
             clearPageBit(pages, nodeId);
 
-            nodeId = readLongLE(node, I_NEXT_NODE_ID);
+            nodeId = readLongBE(node, I_NEXT_NODE_ID);
             if (nodeId == mAppendHeadId) {
                 break;
             }
 
             mManager.pageArray().readPage(nodeId, node);
-            pageId = readLongLE(node, I_FIRST_PAGE_ID);
+            pageId = readLongBE(node, I_FIRST_PAGE_ID);
             nodeOffsetRef.offset = I_NODE_START;
         }
 

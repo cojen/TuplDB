@@ -73,7 +73,7 @@ public final class Database implements Closeable {
         return nodes * (long) (pageSize + NODE_OVERHEAD);
     }
 
-    private static final int ENCODING_VERSION = 20120621;
+    private static final int ENCODING_VERSION = 20120630;
 
     private static final int I_ENCODING_VERSION        = 0;
     private static final int I_ROOT_PAGE_ID            = I_ENCODING_VERSION + 4;
