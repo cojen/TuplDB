@@ -57,7 +57,7 @@ class Split implements java.io.Serializable {
      * @param node node which was split; shared latch must be held
      * @return original node or sibling
      */
-    Node selectNodeShared(Database db, Node node, byte[] key) {
+    Node selectNodeShared(Node node, byte[] key) {
         Node sibling = mSibling;
         sibling.acquireShared();
 
@@ -88,8 +88,8 @@ class Split implements java.io.Serializable {
      * @param node node which was split; exclusive latch must be held
      * @return original node or sibling
      */
-    Node selectNodeExclusive(Database db, Node node, byte[] key) {
-        Node sibling = latchSibling(db);
+    Node selectNodeExclusive(Node node, byte[] key) {
+        Node sibling = latchSibling();
 
         Node left, right;
         if (mSplitRight) {
@@ -113,8 +113,8 @@ class Split implements java.io.Serializable {
      * Performs a binary search against the split, returning the position
      * within the original node as if it had not split.
      */
-    int binarySearch(Database db, Node node, byte[] key) {
-        Node sibling = latchSibling(db);
+    int binarySearch(Node node, byte[] key) {
+        Node sibling = latchSibling();
 
         Node left, right;
         if (mSplitRight) {
@@ -146,8 +146,8 @@ class Split implements java.io.Serializable {
     /**
      * Returns the highest position within the original node as if it had not split.
      */
-    int highestLeafPos(Database db, Node node) {
-        Node sibling = latchSibling(db);
+    int highestLeafPos(Node node) {
+        Node sibling = latchSibling();
         int pos = node.highestLeafPos() + sibling.highestLeafPos() + 2;
         sibling.releaseExclusive();
         return pos;
@@ -156,11 +156,11 @@ class Split implements java.io.Serializable {
     /**
      * Return the left split node, latched exclusively. Other node is unlatched.
      */
-    Node latchLeft(Database db, Node node) {
+    Node latchLeft(Node node) {
         if (mSplitRight) {
             return node;
         }
-        Node sibling = latchSibling(db);
+        Node sibling = latchSibling();
         node.releaseExclusive();
         return sibling;
     }
@@ -168,7 +168,7 @@ class Split implements java.io.Serializable {
     /**
      * @return sibling with exclusive latch held
      */
-    Node latchSibling(Database db) {
+    Node latchSibling() {
         Node sibling = mSibling;
         sibling.acquireExclusive();
         return sibling;

@@ -168,7 +168,7 @@ final class TreeCursor implements Cursor, Closeable {
             }
 
             if (node.mSplit != null) {
-                node = node.mSplit.latchLeft(mTree.mDatabase, node);
+                node = node.mSplit.latchLeft(node);
             }
 
             // FIXME: Node can be empty if in the process of merging.
@@ -253,7 +253,7 @@ final class TreeCursor implements Cursor, Closeable {
                     if (node.mSplit == null) {
                         pos = node.highestLeafPos();
                     } else {
-                        pos = node.mSplit.highestLeafPos(mTree.mDatabase, node);
+                        pos = node.mSplit.highestLeafPos(node);
                     }
                     frame.bind(node, pos);
                     return tryCopyCurrent(txn, node, pos);
@@ -275,7 +275,7 @@ final class TreeCursor implements Cursor, Closeable {
                 // unsplit node as if it had not split. The binding will be
                 // corrected when split is finished.
 
-                final Node sibling = split.latchSibling(mTree.mDatabase);
+                final Node sibling = split.latchSibling();
 
                 final Node left, right;
                 if (split.mSplitRight) {
@@ -685,7 +685,7 @@ final class TreeCursor implements Cursor, Closeable {
             }
 
             if (node.mSplit != null) {
-                node = node.mSplit.latchLeft(mTree.mDatabase, node);
+                node = node.mSplit.latchLeft(node);
             }
 
             // FIXME: Node can be empty if in the process of merging.
@@ -1046,7 +1046,7 @@ final class TreeCursor implements Cursor, Closeable {
                 if (node.mSplit == null) {
                     pos = node.highestLeafPos();
                 } else {
-                    pos = node.mSplit.highestLeafPos(mTree.mDatabase, node);
+                    pos = node.mSplit.highestLeafPos(node);
                 }
                 frame.bind(node, pos);
                 mLeaf = frame;
@@ -1064,7 +1064,7 @@ final class TreeCursor implements Cursor, Closeable {
                 // unsplit node as if it had not split. The binding will be
                 // corrected when split is finished.
 
-                final Node sibling = split.latchSibling(mTree.mDatabase);
+                final Node sibling = split.latchSibling();
 
                 final Node left, right;
                 if (split.mSplitRight) {
@@ -1597,7 +1597,7 @@ final class TreeCursor implements Cursor, Closeable {
                     if (node.mSplit == null) {
                         pos = node.binarySearch(key);
                     } else {
-                        pos = node.mSplit.binarySearch(mTree.mDatabase, node, key);
+                        pos = node.mSplit.binarySearch(node, key);
                     }
                     frame.bind(node, pos);
                     if (pos < 0) {
@@ -1630,7 +1630,7 @@ final class TreeCursor implements Cursor, Closeable {
                     // unsplit node as if it had not split. The binding will be
                     // corrected when split is finished.
 
-                    final Node sibling = split.latchSibling(mTree.mDatabase);
+                    final Node sibling = split.latchSibling();
 
                     final Node left, right;
                     if (split.mSplitRight) {
