@@ -289,7 +289,7 @@ final class Node extends Latch {
                 }
 
                 if (childNode.mSplit != null) {
-                    childNode = childNode.mSplit.selectNodeShared(tree.mDatabase, childNode, key);
+                    childNode = childNode.mSplit.selectNodeShared(childNode, key);
                 }
 
                 if (childNode.isLeaf()) {
@@ -327,7 +327,7 @@ final class Node extends Latch {
 
             if (node.mSplit != null) {
                 // Node might have split while shared latch was not held.
-                node = node.mSplit.selectNodeExclusive(tree.mDatabase, node, key);
+                node = node.mSplit.selectNodeExclusive(node, key);
             }
 
             if (node == tree.mRoot) {
@@ -450,7 +450,7 @@ final class Node extends Latch {
         }
 
         final Split split = mSplit;
-        final Node sibling = rebindSplitFrames(db, split);
+        final Node sibling = rebindSplitFrames(split);
         mSplit = null;
 
         Node left, right;
@@ -1359,7 +1359,7 @@ final class Node extends Latch {
         }
 
         final Split split = splitChild.mSplit;
-        final Node newChild = splitChild.rebindSplitFrames(db, split);
+        final Node newChild = splitChild.rebindSplitFrames(split);
         splitChild.mSplit = null;
 
         //final Node leftChild;
@@ -1587,8 +1587,8 @@ final class Node extends Latch {
      *
      * @return latched sibling
      */
-    private Node rebindSplitFrames(Database db, Split split) {
-        final Node sibling = split.latchSibling(db);
+    private Node rebindSplitFrames(Split split) {
+        final Node sibling = split.latchSibling();
         for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
             // Capture previous frame from linked list before changing the links.
             TreeCursorFrame prev = frame.mPrevCousin;
