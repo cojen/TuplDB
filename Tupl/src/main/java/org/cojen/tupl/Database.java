@@ -108,9 +108,11 @@ public final class Database implements Closeable {
     // Is either CACHED_DIRTY_0 or CACHED_DIRTY_1. Access is guarded by commit lock.
     private byte mCommitState;
 
-    // Typically opposite of mCommitState, or -1 if checkpoint is not in
+    // Typically opposite of mCommitState, or negative if checkpoint is not in
     // progress. Indicates which nodes are being flushed by the checkpoint.
-    private volatile int mCheckpointFlushState = -1;
+    private volatile int mCheckpointFlushState = CHECKPOINT_NOT_FLUSHING;
+
+    private static int CHECKPOINT_FLUSH_PREPARE = -2, CHECKPOINT_NOT_FLUSHING = -1;
 
     // The root tree, which maps tree ids to other tree root node ids.
     private final Tree mRegistry;
@@ -1941,35 +1943,47 @@ public final class Database implements Closeable {
 
             root.acquireShared();
 
-            // TODO: I don't like all this activity with exclusive commit lock
-            // held. UndoLog can be refactored to store into a special Tree,
-            // but this requires more features to be added to Tree
-            // first. Specifically, large values and appending to them.
+            mCheckpointFlushState = CHECKPOINT_FLUSH_PREPARE;
 
             final UndoLog masterUndoLog;
-            final long masterUndoLogId;
-            synchronized (mTxnIdLock) {
-                int count = mUndoLogCount;
-                if (count == 0) {
-                    masterUndoLog = null;
-                    masterUndoLogId = 0;
-                } else {
-                    final int stateToFlush = mCommitState;
-                    masterUndoLog = UndoLog.newMasterUndoLog(this);
-                    byte[] workspace = null;
-                    for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
-                        workspace = log.writeToMaster(masterUndoLog, workspace);
-                    }
-                    masterUndoLogId = masterUndoLog.topNodeId();
-                }
-            }
+            try {
+                // TODO: I don't like all this activity with exclusive commit
+                // lock held. UndoLog can be refactored to store into a special
+                // Tree, but this requires more features to be added to Tree
+                // first. Specifically, large values and appending to them.
 
-            mPageDb.commit(new PageDb.CommitCallback() {
-                @Override
-                public byte[] prepare() throws IOException {
-                    return flush(redoLogId, masterUndoLogId);
+                final long masterUndoLogId;
+                synchronized (mTxnIdLock) {
+                    int count = mUndoLogCount;
+                    if (count == 0) {
+                        masterUndoLog = null;
+                        masterUndoLogId = 0;
+                    } else {
+                        final int stateToFlush = mCommitState;
+                        masterUndoLog = UndoLog.newMasterUndoLog(this);
+                        byte[] workspace = null;
+                        for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
+                            workspace = log.writeToMaster(masterUndoLog, workspace);
+                        }
+                        masterUndoLogId = masterUndoLog.topNodeId();
+                    }
                 }
-            });
+
+                mPageDb.commit(new PageDb.CommitCallback() {
+                    @Override
+                    public byte[] prepare() throws IOException {
+                        return flush(redoLogId, masterUndoLogId);
+                    }
+                });
+            } catch (IOException e) {
+                if (mCheckpointFlushState == CHECKPOINT_FLUSH_PREPARE) {
+                    // Exception was thrown with locks still held.
+                    mCheckpointFlushState = CHECKPOINT_NOT_FLUSHING;
+                    root.releaseShared();
+                    mPageDb.exclusiveCommitLock().unlock();
+                }
+                throw e;
+            }
 
             if (masterUndoLog != null) {
                 // Delete the master undo log, which won't take effect until
@@ -2003,20 +2017,21 @@ public final class Database implements Closeable {
         root.releaseShared();
         mPageDb.exclusiveCommitLock().unlock();
 
-        mAllocator.beginDirtyIteration();
-        Node node;
-        while ((node = mAllocator.removeNextDirtyNode(stateToFlush)) != null) {
-            node.mCachedState = CACHED_CLEAN;
-            node.downgrade();
-            try {
-                node.write(this);
-            } finally {
-                node.releaseShared();
+        try {
+            mAllocator.beginDirtyIteration();
+            Node node;
+            while ((node = mAllocator.removeNextDirtyNode(stateToFlush)) != null) {
+                node.mCachedState = CACHED_CLEAN;
+                node.downgrade();
+                try {
+                    node.write(this);
+                } finally {
+                    node.releaseShared();
+                }
             }
+        } finally {
+            mCheckpointFlushState = CHECKPOINT_NOT_FLUSHING;
         }
-
-        // Checkpoint flush is complete.
-        mCheckpointFlushState = -1;
 
         byte[] header = new byte[HEADER_SIZE];
         writeIntLE(header, I_ENCODING_VERSION, ENCODING_VERSION);
