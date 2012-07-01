@@ -495,17 +495,22 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
     }
 
     private void replay(DataIn in, RedoLogVisitor visitor) throws IOException {
-        if (in.readLongLE() != MAGIC_NUMBER) {
-            throw new DatabaseException("Incorrect magic number in log file");
+        long magic = in.readLongLE();
+        if (magic != MAGIC_NUMBER) {
+            if (magic == 0) {
+                // Assume file was flushed improperly and discard it.
+                return;
+            }
+            throw new DatabaseException("Incorrect magic number in redo log file");
         }
         int version = in.readIntLE();
         if (version != ENCODING_VERSION) {
-            throw new DatabaseException("Unsupported encoding version: " + version);
+            throw new DatabaseException("Unsupported redo log encoding version: " + version);
         }
         long id = in.readLongLE();
         if (id != mLogId) {
             throw new DatabaseException
-                ("Expected log identifier of " + mLogId + ", but actual is: " + id);
+                ("Expected redo log identifier of " + mLogId + ", but actual is: " + id);
         }
 
         int op;
@@ -513,7 +518,7 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
             op = op & 0xff;
             switch (op) {
             default:
-                throw new DatabaseException("Unknown log operation: " + op);
+                throw new DatabaseException("Unknown redo log operation: " + op);
 
             case OP_NOP:
                 // Can be caused by recovered log file which was not flushed
