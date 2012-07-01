@@ -25,6 +25,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
+import java.util.Random;
+
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 
@@ -35,11 +37,9 @@ import java.nio.channels.FileChannel;
  */
 final class RedoLog implements Closeable, Checkpointer.Shutdown {
     private static final long MAGIC_NUMBER = 431399725605778814L;
-    private static final int ENCODING_VERSION = 20120105;
+    private static final int ENCODING_VERSION = 20120701;
 
     private static final byte
-        OP_NOP = 0,
-
         /** timestamp: long */
         OP_TIMESTAMP = 1,
 
@@ -121,6 +121,15 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
         /** txnId: long, length: varInt, data: bytes */
         //OP_TXN_CUSTOM = (byte) 129;
 
+    private static final Random cRnd = new Random();
+
+    private static int randomInt() {
+        int x;
+        // Cannot return zero, since it breaks Xorshift RNG.
+        while ((x = cRnd.nextInt()) == 0);
+        return x;
+    }
+
     private final File mBaseFile;
 
     private final byte[] mBuffer;
@@ -133,6 +142,8 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
     private boolean mReplayMode;
 
     private boolean mAlwaysFlush;
+
+    private int mOpRndSeed;
 
     /**
      * RedoLog starts in replay mode.
@@ -223,6 +234,7 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
             writeLongLE(MAGIC_NUMBER);
             writeIntLE(ENCODING_VERSION);
             writeLongLE(logId);
+            writeIntLE(mOpRndSeed = randomInt());
             timestamp();
             doFlush();
         } catch (IOException e) {
@@ -414,16 +426,30 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
     }
 
     // Caller must be synchronized.
-    private void writeOp(byte op, long operand) throws IOException {
+    private void writeOp(int op, long operand) throws IOException {
         byte[] buffer = mBuffer;
         int pos = mBufferPos;
-        if (pos >= buffer.length - 9) {
+        if (pos >= buffer.length - 12) {
             doFlush(buffer, pos);
             pos = 0;
         }
-        buffer[pos] = op;
-        Utils.writeLongLE(buffer, pos + 1, operand);
-        mBufferPos = pos + 9;
+
+        // Sprinkle some random data into the opcode, to detect corruption. Use
+        // Xorshift RNG by George Marsaglia.
+        op ^= nextOpRnd();
+
+        Utils.writeIntLE(buffer, pos, op);
+        Utils.writeLongLE(buffer, pos + 4, operand);
+        mBufferPos = pos + 12;
+    }
+
+    private int nextOpRnd() {
+        int x = mOpRndSeed;
+        x ^= x << 13;
+        x ^= x >>> 17;
+        x ^= x << 5;
+        mOpRndSeed = x;
+        return x;
     }
 
     // Caller must be synchronized.
@@ -503,27 +529,39 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
             }
             throw new DatabaseException("Incorrect magic number in redo log file");
         }
+
         int version = in.readIntLE();
         if (version != ENCODING_VERSION) {
             throw new DatabaseException("Unsupported redo log encoding version: " + version);
         }
+
         long id = in.readLongLE();
         if (id != mLogId) {
             throw new DatabaseException
                 ("Expected redo log identifier of " + mLogId + ", but actual is: " + id);
         }
 
-        int op;
-        while ((op = in.read()) >= 0) {
-            op = op & 0xff;
+        mOpRndSeed = in.readIntLE();
+
+        while (true) {
+            int op;
+            try {
+                op = in.readIntLE();
+            } catch (EOFException e) {
+                return;
+            }
+
+            op ^= nextOpRnd();
+
+            if ((op & 0xffffff00) != 0) {
+                // Assume rest of log is corrupt.
+                return;
+            }
+
+            op &= 0xff;
             switch (op) {
             default:
                 throw new DatabaseException("Unknown redo log operation: " + op);
-
-            case OP_NOP:
-                // Can be caused by recovered log file which was not flushed
-                // properly by operating system.
-                break;
 
             case OP_TIMESTAMP:
                 visitor.timestamp(in.readLongLE());
