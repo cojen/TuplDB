@@ -38,6 +38,8 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
     private static final int ENCODING_VERSION = 20120105;
 
     private static final byte
+        OP_NOP = 0,
+
         /** timestamp: long */
         OP_TIMESTAMP = 1,
 
@@ -512,6 +514,11 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
             switch (op) {
             default:
                 throw new DatabaseException("Unknown log operation: " + op);
+
+            case OP_NOP:
+                // Can be caused by recovered log file which was not flushed
+                // properly by operating system.
+                break;
 
             case OP_TIMESTAMP:
                 visitor.timestamp(in.readLongLE());
