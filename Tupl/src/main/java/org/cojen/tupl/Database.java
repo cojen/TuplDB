@@ -108,6 +108,10 @@ public final class Database implements Closeable {
     // Is either CACHED_DIRTY_0 or CACHED_DIRTY_1. Access is guarded by commit lock.
     private byte mCommitState;
 
+    // Typically opposite of mCommitState, or -1 if checkpoint is not in
+    // progress. Indicates which nodes are being flushed by the checkpoint.
+    private volatile int mCheckpointFlushState = -1;
+
     // The root tree, which maps tree ids to other tree root node ids.
     private final Tree mRegistry;
     // Maps tree name keys to ids.
@@ -1241,6 +1245,12 @@ public final class Database implements Closeable {
      */
     void deleteNode(Tree fromTree, Node node) throws IOException {
         try {
+            if (node.mCachedState == mCheckpointFlushState) {
+                // Node must be committed with the current checkpoint, and so
+                // it must be written out before it can be deleted.
+                node.write(this);
+            }
+
             deletePage(fromTree, node.mId, node.mCachedState);
 
             node.mId = 0;
@@ -1988,6 +1998,7 @@ public final class Database implements Closeable {
         final Node root = mRegistry.mRoot;
         final long rootId = root.mId;
         final int stateToFlush = mCommitState;
+        mCheckpointFlushState = stateToFlush;
         mCommitState = (byte) (stateToFlush ^ 1);
         root.releaseShared();
         mPageDb.exclusiveCommitLock().unlock();
@@ -2003,6 +2014,9 @@ public final class Database implements Closeable {
                 node.releaseShared();
             }
         }
+
+        // Checkpoint flush is complete.
+        mCheckpointFlushState = -1;
 
         byte[] header = new byte[HEADER_SIZE];
         writeIntLE(header, I_ENCODING_VERSION, ENCODING_VERSION);
