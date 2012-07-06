@@ -67,25 +67,23 @@ final class LockManager {
      */
     final boolean isAvailable(Locker locker, long indexId, byte[] key, int hash) {
         LockHT ht = getLockHT(hash);
-        Latch latch = ht.mLatch;
-        latch.acquireShared();
+        ht.acquireShared();
         try {
             Lock lock = ht.lockFor(indexId, key, hash, false);
             return lock == null ? true : lock.isAvailable(locker);
         } finally {
-            latch.releaseShared();
+            ht.releaseShared();
         }
     }
 
     final LockResult check(Locker locker, long indexId, byte[] key, int hash) {
         LockHT ht = getLockHT(hash);
-        Latch latch = ht.mLatch;
-        latch.acquireShared();
+        ht.acquireShared();
         try {
             Lock lock = ht.lockFor(indexId, key, hash, false);
             return lock == null ? LockResult.UNOWNED : lock.check(locker);
         } finally {
-            latch.releaseShared();
+            ht.releaseShared();
         }
     }
 
@@ -97,13 +95,12 @@ final class LockManager {
         Lock lock;
         LockResult result;
         {
-            Latch latch = ht.mLatch;
-            latch.acquireExclusive();
+            ht.acquireExclusive();
             try {
                 lock = ht.lockFor(indexId, key, hash, true);
-                result = lock.tryLockShared(latch, locker, nanosTimeout);
+                result = lock.tryLockShared(ht, locker, nanosTimeout);
             } finally {
-                latch.releaseExclusive();
+                ht.releaseExclusive();
             }
         }
 
@@ -122,13 +119,12 @@ final class LockManager {
         Lock lock;
         LockResult result;
         {
-            Latch latch = ht.mLatch;
-            latch.acquireExclusive();
+            ht.acquireExclusive();
             try {
                 lock = ht.lockFor(indexId, key, hash, true);
-                result = lock.tryLockUpgradable(latch, locker, nanosTimeout);
+                result = lock.tryLockUpgradable(ht, locker, nanosTimeout);
             } finally {
-                latch.releaseExclusive();
+                ht.releaseExclusive();
             }
         }
 
@@ -147,13 +143,12 @@ final class LockManager {
         Lock lock;
         LockResult result;
         {
-            Latch latch = ht.mLatch;
-            latch.acquireExclusive();
+            ht.acquireExclusive();
             try {
                 lock = ht.lockFor(indexId, key, hash, true);
-                result = lock.tryLockExclusive(latch, locker, nanosTimeout);
+                result = lock.tryLockExclusive(ht, locker, nanosTimeout);
             } finally {
-                latch.releaseExclusive();
+                ht.releaseExclusive();
             }
         }
 
@@ -168,48 +163,44 @@ final class LockManager {
 
     final void unlock(Locker locker, Lock lock) {
         LockHT ht = getLockHT(lock.mHashCode);
-        Latch latch = ht.mLatch;
-        latch.acquireExclusive();
+        ht.acquireExclusive();
         try {
-            if (lock.unlock(locker, latch)) {
+            if (lock.unlock(locker, ht)) {
                 ht.remove(lock);
             }
         } finally {
-            latch.releaseExclusive();
+            ht.releaseExclusive();
         }
     }
 
     final void unlockToShared(Locker locker, Lock lock) {
         LockHT ht = getLockHT(lock.mHashCode);
-        Latch latch = ht.mLatch;
-        latch.acquireExclusive();
+        ht.acquireExclusive();
         try {
-            lock.unlockToShared(locker, latch);
+            lock.unlockToShared(locker, ht);
         } finally {
-            latch.releaseExclusive();
+            ht.releaseExclusive();
         }
     }
 
     final void unlockToUpgradable(Locker locker, Lock lock) {
         LockHT ht = getLockHT(lock.mHashCode);
-        Latch latch = ht.mLatch;
-        latch.acquireExclusive();
+        ht.acquireExclusive();
         try {
-            lock.unlockToUpgradable(locker, latch);
+            lock.unlockToUpgradable(locker, ht);
         } finally {
-            latch.releaseExclusive();
+            ht.releaseExclusive();
         }
     }
 
     /*
     final boolean unlockIfNonExclusive(Locker locker, Lock lock) {
         LockHT ht = getLockHT(lock.mHashCode);
-        Latch latch = ht.mLatch;
-        latch.acquireExclusive();
+        ht.acquireExclusive();
         try {
             return lock.unlockIfNonExclusive(locker);
         } finally {
-            latch.releaseExclusive();
+            ht.releaseExclusive();
         }
     }
     */
@@ -220,12 +211,11 @@ final class LockManager {
      */
     final void tombstoned(Locker locker, Tree tree, byte[] key, int hash) {
         LockHT ht = getLockHT(hash);
-        Latch latch = ht.mLatch;
-        latch.acquireExclusive();
+        ht.acquireExclusive();
         try {
             ht.lockFor(tree.mId, key, hash, false).mSharedLockersObj = tree;
         } finally {
-            latch.releaseExclusive();
+            ht.releaseExclusive();
         }
     }
 
@@ -285,27 +275,23 @@ final class LockManager {
     /**
      * Simple hashtable of Locks.
      */
-    static final class LockHT {
+    static final class LockHT extends Latch {
         private static final float LOAD_FACTOR = 0.75f;
 
         private Lock[] mEntries;
         private int mSize;
         private int mGrowThreshold;
 
-        final Latch mLatch;
-
         LockHT() {
             // Initial capacity of must be a power of 2.
             mEntries = new Lock[16];
             mGrowThreshold = (int) (mEntries.length * LOAD_FACTOR);
-            mLatch = new Latch();
         }
 
         int size() {
-            Latch latch = mLatch;
-            latch.acquireShared();
+            acquireShared();
             int size = mSize;
-            latch.releaseShared();
+            releaseShared();
             return size;
         }
 
@@ -379,7 +365,7 @@ final class LockManager {
         }
 
         void close(Locker locker) {
-            mLatch.acquireExclusive();
+            acquireExclusive();
             try {
                 if (mSize > 0) {
                     Lock[] entries = mEntries;
@@ -425,7 +411,7 @@ final class LockManager {
                     }
                 }
             } finally {
-                mLatch.releaseExclusive();
+                releaseExclusive();
             }
         }
     }

@@ -98,12 +98,11 @@ class FragmentCache {
      * Simple "lossy" hashtable of Nodes. When a collision is found, the
      * existing entry (if TYPE_FRAGMENT) might simply be evicted.
      */
-    static final class LHT {
+    static final class LHT extends Latch {
         private static final float LOAD_FACTOR = 0.75f;
 
         private final Database mDatabase;
         private final int mMaxCapacity;
-        private final Latch mLatch;
 
         private Node[] mEntries;
         private int mSize;
@@ -115,7 +114,6 @@ class FragmentCache {
             mGrowThreshold = (int) (mEntries.length * LOAD_FACTOR);
             mDatabase = db;
             mMaxCapacity = maxCapacity;
-            mLatch = new Latch();
         }
 
         /**
@@ -126,8 +124,7 @@ class FragmentCache {
          * @return node with shared latch held
          */
         Node get(final Node caller, final long nodeId, final int hash) throws IOException {
-            Latch latch = mLatch;
-            latch.acquireShared();
+            acquireShared();
             boolean htEx = false;
             boolean nEx = false;
 
@@ -147,7 +144,7 @@ class FragmentCache {
                             existing.acquireShared();
                         }
                         if (existing.mId == nodeId) {
-                            latch.release(htEx);
+                            release(htEx);
                             mDatabase.used(existing);
                             if (nEx) {
                                 existing.downgrade();
@@ -161,12 +158,12 @@ class FragmentCache {
                 // modifications to hashtable.
                 if (!htEx) {
                     htEx = true;
-                    if (!latch.tryUpgrade()) {
+                    if (!tryUpgrade()) {
                         if (existing != null) {
                             existing.release(nEx);
                         }
-                        latch.releaseShared();
-                        latch.acquireExclusive();
+                        releaseShared();
+                        acquireExclusive();
                         continue;
                     }
                 }
@@ -195,7 +192,7 @@ class FragmentCache {
                 entries[index] = node;
 
                 // Evict and load without ht latch held.
-                latch.releaseExclusive();
+                releaseExclusive();
 
                 if (existing != null) {
                     try {
@@ -223,8 +220,7 @@ class FragmentCache {
          * @param node latched node
          */
         void put(final Node caller, final Node node, final int hash) throws IOException {
-            Latch latch = mLatch;
-            latch.acquireExclusive();
+            acquireExclusive();
 
             while (true) {
                 final Node[] entries = mEntries;
@@ -255,7 +251,7 @@ class FragmentCache {
                 entries[index] = node;
 
                 // Evict without ht latch held.
-                latch.releaseExclusive();
+                releaseExclusive();
 
                 if (existing != null) {
                     existing.doEvict(mDatabase);
@@ -267,8 +263,7 @@ class FragmentCache {
         }
 
         Node remove(final Node caller, final long nodeId, final int hash) {
-            Latch latch = mLatch;
-            latch.acquireExclusive();
+            acquireExclusive();
 
             Node[] entries = mEntries;
             int index = hash & (entries.length - 1);
@@ -278,13 +273,13 @@ class FragmentCache {
                 if (existing.mId == nodeId) {
                     entries[index] = null;
                     mSize--;
-                    latch.releaseExclusive();
+                    releaseExclusive();
                     return existing;
                 }
                 existing.releaseExclusive();
             }
 
-            latch.releaseExclusive();
+            releaseExclusive();
             return null;
         }
 
