@@ -388,9 +388,9 @@ final class Node extends Latch {
             childNode = db.allocLatchedNode();
             childNode.mId = childId;
             mChildNodes[childPos >> 1] = childNode;
-        } catch (IOException e) {
+        } catch (Throwable e) {
             releaseExclusive();
-            throw e;
+            throw Utils.rethrow(e);
         }
 
         // Release parent latch before child has been loaded. Any threads
@@ -408,12 +408,12 @@ final class Node extends Latch {
 
         try {
             childNode.read(db, childId);
-        } catch (IOException e) {
+        } catch (Throwable e) {
             // Another thread might access child and see that it is invalid because
             // id is zero. It will assume it got evicted and will load child again.
             childNode.mId = 0;
             childNode.releaseExclusive();
-            throw e;
+            throw Utils.rethrow(e);
         }
 
         return childNode;
@@ -1343,8 +1343,9 @@ final class Node extends Latch {
     }
 
     /**
-     * Insert into an internal node following a child node split. This parent node and
-     * child node must have an exclusive latch held. Child latch is released.
+     * Insert into an internal node following a child node split. This parent
+     * node and child node must have an exclusive latch held. Child latch is
+     * released, unless an exception is thrown.
      *
      * @param keyPos position to insert split key
      * @param splitChild child node which split
@@ -1425,8 +1426,9 @@ final class Node extends Latch {
     }
 
     /**
-     * Insert into an internal node following a child node split. This parent node and
-     * child node must have an exclusive latch held. Child latch is released.
+     * Insert into an internal node following a child node split. This parent
+     * node and child node must have an exclusive latch held. Child latch is
+     * released, unless an exception is thrown.
      *
      * @param keyPos 2-based position
      * @param newChildPos 8-based position

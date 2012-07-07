@@ -17,7 +17,6 @@
 package org.cojen.tupl;
 
 import java.io.BufferedInputStream;
-import java.io.Closeable;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -35,7 +34,7 @@ import java.nio.channels.FileChannel;
  *
  * @author Brian S O'Neill
  */
-final class RedoLog implements Closeable, Checkpointer.Shutdown {
+final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
     private static final long MAGIC_NUMBER = 431399725605778814L;
     private static final int ENCODING_VERSION = 20120701;
 
@@ -145,6 +144,8 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
 
     private int mOpRndSeed;
 
+    private volatile Throwable mCause;
+
     /**
      * RedoLog starts in replay mode.
      */
@@ -175,24 +176,28 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
             return true;
         }
 
-        DataIn in;
         try {
-            in = new DataIn(new FileInputStream(file));
-        } catch (FileNotFoundException e) {
-            mReplayMode = false;
-            openFile(mLogId);
-            return false;
-        }
+            DataIn in;
+            try {
+                in = new DataIn(new FileInputStream(file));
+            } catch (FileNotFoundException e) {
+                mReplayMode = false;
+                openFile(mLogId);
+                return false;
+            }
 
-        try {
-            replay(in, visitor);
-        } catch (EOFException e) {
-            // End of log didn't get completely flushed.
-        } finally {
-            Utils.closeQuietly(null, in);
-        }
+            try {
+                replay(in, visitor);
+            } catch (EOFException e) {
+                // End of log didn't get completely flushed.
+            } finally {
+                Utils.closeQuietly(null, in);
+            }
 
-        return true;
+            return true;
+        } catch (IOException e) {
+            throw Utils.rethrow(e, mCause);
+        }
     }
 
     /**
@@ -224,30 +229,34 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
 
         mReplayMode = false;
 
-        final FileOutputStream oldOut = mOut;
-        final FileOutputStream out = new FileOutputStream(file);
-
         try {
-            mOut = out;
-            mChannel = out.getChannel();
+            final FileOutputStream oldOut = mOut;
+            final FileOutputStream out = new FileOutputStream(file);
 
-            writeLongLE(MAGIC_NUMBER);
-            writeIntLE(ENCODING_VERSION);
-            writeLongLE(logId);
-            writeIntLE(mOpRndSeed = randomInt());
-            timestamp();
-            doFlush();
+            try {
+                mOut = out;
+                mChannel = out.getChannel();
+
+                writeLongLE(MAGIC_NUMBER);
+                writeIntLE(ENCODING_VERSION);
+                writeLongLE(logId);
+                writeIntLE(mOpRndSeed = randomInt());
+                timestamp();
+                doFlush();
+            } catch (IOException e) {
+                mChannel = ((mOut = oldOut) == null) ? null : oldOut.getChannel();
+                Utils.closeQuietly(null, out);
+                file.delete();
+
+                throw e;
+            }
+
+            Utils.closeQuietly(null, oldOut);
+
+            mLogId = logId;
         } catch (IOException e) {
-            mChannel = ((mOut = oldOut) == null) ? null : oldOut.getChannel();
-            Utils.closeQuietly(null, out);
-            file.delete();
-
-            throw e;
+            throw Utils.rethrow(e, mCause);
         }
-
-        Utils.closeQuietly(null, oldOut);
-
-        mLogId = logId;
     }
 
     /**
@@ -273,11 +282,22 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
             try {
                 channel.force(metadata);
             } catch (ClosedChannelException e) {
+            } catch (IOException e) {
+                throw Utils.rethrow(e, mCause);
             }
         }
     }
 
+    @Override
     public synchronized void close() throws IOException {
+        close(null);
+    }
+
+    @Override
+    public synchronized void close(Throwable cause) throws IOException {
+        if (cause != null) {
+            mCause = cause;
+        }
         shutdown(OP_CLOSE);
     }
 
@@ -516,8 +536,12 @@ final class RedoLog implements Closeable, Checkpointer.Shutdown {
 
     // Caller must be synchronized.
     private void doFlush(byte[] buffer, int pos) throws IOException {
-        mOut.write(buffer, 0, pos);
-        mBufferPos = 0;
+        try {
+            mOut.write(buffer, 0, pos);
+            mBufferPos = 0;
+        } catch (IOException e) {
+            throw Utils.rethrow(e, mCause);
+        }
     }
 
     private void replay(DataIn in, RedoLogVisitor visitor) throws IOException {

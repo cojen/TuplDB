@@ -1003,7 +1003,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                         frame.mNodePos = (pos -= 2);
 
                         frame = skipToLast(latchChild(node, pos, true),
-                                            new TreeCursorFrame(frame));
+                                           new TreeCursorFrame(frame));
                         if (--amount <= 0) {
                             return frame;
                         }
@@ -1020,7 +1020,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                 if (parentPos > 0) {
                     parentFrame.mNodePos = (parentPos -= 2);
                     frame = skipToLast(latchChild(parentNode, parentPos, true),
-                                        new TreeCursorFrame(parentFrame));
+                                       new TreeCursorFrame(parentFrame));
                     if (--amount <= 0) {
                         return frame;
                     }
@@ -2606,7 +2606,8 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     /**
      * Called with exclusive frame latch held, which is retained. Leaf frame is
      * dirtied, any split is finished, and the same applies to all parent
-     * nodes. Caller must hold shared commit lock, to prevent deadlock.
+     * nodes. Caller must hold shared commit lock, to prevent deadlock. Node
+     * latch is released if an exception is thrown.
      *
      * @return replacement node, still latched
      */
@@ -2625,8 +2626,13 @@ final class TreeCursor extends CauseCloseable implements Cursor {
 
         TreeCursorFrame parentFrame = frame.mParentFrame;
         if (parentFrame == null) {
-            db.doMarkDirty(mTree, node);
-            return node;
+            try {
+                db.doMarkDirty(mTree, node);
+                return node;
+            } catch (Throwable e) {
+                node.releaseExclusive();
+                throw Utils.rethrow(e);
+            }
         }
 
         // Make sure the parent is not split and dirty too.
@@ -2649,19 +2655,30 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             // Already dirty now, but finish the split. Since parent latch is
             // already held, no need to call into the regular finishSplit
             // method. It would release latches and recheck everything.
-            parentNode.insertSplitChildRef(mTree, parentFrame.mNodePos, node);
+            try {
+                parentNode.insertSplitChildRef(mTree, parentFrame.mNodePos, node);
+            } catch (Throwable e) {
+                parentNode.releaseExclusive();
+                node.releaseExclusive();
+                throw Utils.rethrow(e);
+            }
             if (parentNode.mSplit != null) {
                 parentNode = finishSplit(parentFrame, parentNode);
             }
             node = frame.acquireExclusive();
         }
         
-        if (db.markDirty(mTree, node)) {
-            parentNode.updateChildRefId(parentFrame.mNodePos, node.mId);
+        try {
+            if (db.markDirty(mTree, node)) {
+                parentNode.updateChildRefId(parentFrame.mNodePos, node.mId);
+            }
+            return node;
+        } catch (Throwable e) {
+            node.releaseExclusive();
+            throw Utils.rethrow(e);
+        } finally {
+            parentNode.releaseExclusive();
         }
-
-        parentNode.releaseExclusive();
-        return node;
     }
 
     /**
@@ -3019,7 +3036,8 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     }
 
     /**
-     * Caller must hold exclusive latch and it must verify that node has split.
+     * Caller must hold exclusive latch and it must verify that node has
+     * split. Node latch is released if an exception is thrown.
      *
      * @return replacement node, still latched
      */
