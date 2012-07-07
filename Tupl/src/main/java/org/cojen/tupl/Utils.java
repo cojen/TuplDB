@@ -789,16 +789,14 @@ class Utils {
         }
     }
 
-    // FIXME: Don't use generic Closeable. Define interface which remembers why
-    // it was closed. It always must throw the original cause.
-    static IOException closeOnFailure(final Closeable c, Throwable e) throws IOException {
+    static IOException closeOnFailure(final Closeable c, final Throwable e) throws IOException {
         // Close in a separate thread, in case of deadlock.
         Thread closer;
         try {
             closer = new Thread() {
                 public void run() {
                     try {
-                        c.close();
+                        close(c, e);
                     } catch (IOException e2) {
                         // Ignore.
                     }
@@ -812,7 +810,7 @@ class Utils {
 
         if (closer == null) {
             try {
-                c.close();
+                close(c, e);
             } catch (IOException e2) {
                 // Ignore.
             }
@@ -855,12 +853,49 @@ class Utils {
         return first;
     }
 
+    /**
+     * @param first returned if non-null
+     * @param c can be null
+     * @return IOException which was caught, unless e was non-null
+     */
+    static IOException closeQuietly(IOException first, Closeable c, Throwable cause) {
+        if (c != null) {
+            try {
+                close(c, cause);
+            } catch (IOException e) {
+                if (first == null) {
+                    return e;
+                }
+            }
+        }
+        return first;
+    }
+
+    static void close(Closeable c, Throwable cause) throws IOException {
+        if (c instanceof CauseCloseable) {
+            ((CauseCloseable) c).close(cause);
+        } else {
+            c.close();
+        }
+    }
+
     static void uncaught(Throwable e) {
         Thread t = Thread.currentThread();
         t.getUncaughtExceptionHandler().uncaughtException(t, e);
     }
 
     static RuntimeException rethrow(Throwable e) {
+        Utils.<RuntimeException>castAndThrow(e);
+        return null;
+    }
+
+    static RuntimeException rethrow(Throwable e, Throwable cause) {
+        if (e.getCause() == null && cause != null) {
+            try {
+                e.initCause(cause);
+            } catch (Exception e2) {
+            } 
+        }
         Utils.<RuntimeException>castAndThrow(e);
         return null;
     }

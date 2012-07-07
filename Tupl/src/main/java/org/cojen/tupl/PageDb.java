@@ -16,7 +16,6 @@
 
 package org.cojen.tupl;
 
-import java.io.Closeable;
 import java.io.IOException;
 
 import java.util.BitSet;
@@ -30,7 +29,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * @see DurablePageDb
  * @see NonPageDb
  */
-abstract class PageDb implements Closeable {
+abstract class PageDb extends CauseCloseable {
     final ReadWriteLock mCommitLock;
 
     PageDb() {

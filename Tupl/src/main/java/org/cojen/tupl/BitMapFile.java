@@ -16,7 +16,6 @@
 
 package org.cojen.tupl;
 
-import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -28,9 +27,11 @@ import java.io.RandomAccessFile;
  *
  * @author Brian S O'Neill
  */
-class BitMapFile implements Closeable {
+class BitMapFile extends CauseCloseable {
     private final File mFile;
     private final RandomAccessFile mRaf;
+
+    private volatile Throwable mCause;
 
     public BitMapFile(File file) throws IOException {
         mFile = file;
@@ -38,49 +39,69 @@ class BitMapFile implements Closeable {
     }
 
     public boolean get(long index) throws IOException {
-        long pos = index >> 3;
-        int v;
-        synchronized (this) {
-            mRaf.seek(pos);
-            v = mRaf.read();
+        try {
+            long pos = index >> 3;
+            int v;
+            synchronized (this) {
+                mRaf.seek(pos);
+                v = mRaf.read();
+            }
+            return v < 0 ? false : (v & (1 << (index & 7))) != 0;
+        } catch (IOException e) {
+            throw Utils.rethrow(e, mCause);
         }
-        return v < 0 ? false : (v & (1 << (index & 7))) != 0;
     }
 
     /**
      * @return old value
      */
     public boolean set(long index) throws IOException {
-        long pos = index >> 3;
-        int ov = 1 << (index & 7);
-        synchronized (this) {
-            mRaf.seek(pos);
-            int v = mRaf.read();
-            if (v < 0) {
-                v = 0;
-            } else if ((v & ov) != 0) {
-                return true;
+        try {
+            long pos = index >> 3;
+            int ov = 1 << (index & 7);
+            synchronized (this) {
+                mRaf.seek(pos);
+                int v = mRaf.read();
+                if (v < 0) {
+                    v = 0;
+                } else if ((v & ov) != 0) {
+                    return true;
+                }
+                mRaf.seek(pos);
+                mRaf.write(v | ov);
             }
-            mRaf.seek(pos);
-            mRaf.write(v | ov);
+            return false;
+        } catch (IOException e) {
+            throw Utils.rethrow(e, mCause);
         }
-        return false;
     }
 
     public void clear(long index) throws IOException {
-        long pos = index >> 3;
-        int av = ~(1 << (index & 7));
-        synchronized (this) {
-            mRaf.seek(pos);
-            int v = mRaf.read();
-            mRaf.seek(pos);
-            // Always write a value, to support file pre-allocation.
-            mRaf.write(v < 0 ? 0 : (v & av));
+        try {
+            long pos = index >> 3;
+            int av = ~(1 << (index & 7));
+            synchronized (this) {
+                mRaf.seek(pos);
+                int v = mRaf.read();
+                mRaf.seek(pos);
+                // Always write a value, to support file pre-allocation.
+                mRaf.write(v < 0 ? 0 : (v & av));
+            }
+        } catch (IOException e) {
+            throw Utils.rethrow(e, mCause);
         }
     }
 
     @Override
     public void close() throws IOException {
+        close(null);
+    }
+
+    @Override
+    public void close(Throwable cause) throws IOException {
         mRaf.close();
+        if (cause != null) {
+            mCause = cause;
+        }
     }
 }

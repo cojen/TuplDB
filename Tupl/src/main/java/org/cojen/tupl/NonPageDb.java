@@ -38,32 +38,39 @@ class NonPageDb extends PageDb {
         mAllocId = 1;
     }
 
+    @Override
     public int pageSize() {
         return mPageSize;
     }
 
+    @Override
     public Stats stats() {
         return new Stats();
     }
 
+    @Override
     public BitSet tracePages() throws IOException {
         return new BitSet();
     }
 
+    @Override
     public void readPage(long id, byte[] buf) throws IOException {
         fail(false);
     }
 
+    @Override
     public void readPage(long id, byte[] buf, int offset) throws IOException {
         fail(false);
     }
 
+    @Override
     public void readPartial(long id, int start, byte[] buf, int offset, int length)
         throws IOException
     {
         fail(false);
     }
 
+    @Override
     public synchronized long allocPage() throws IOException {
         // For ordinary nodes, the same identifier can be vended out each
         // time. Fragmented values require unique identifiers.
@@ -76,39 +83,53 @@ class NonPageDb extends PageDb {
         return id;
     }
 
+    @Override
     public long tryAllocPage() throws IOException {
         return 0;
     }
 
+    @Override
     public long allocPageCount() {
         return 0;
     }
 
+    @Override
     public void writePage(long id, byte[] buf) throws IOException {
         fail(true);
     }
 
+    @Override
     public void writePage(long id, byte[] buf, int offset) throws IOException {
         fail(true);
     }
 
+    @Override
     public void deletePage(long id) throws IOException {
         // Do nothing.
     }
 
+    @Override
     public void allocatePages(long pageCount) throws IOException {
         // Do nothing.
     }
 
+    @Override
     public void commit(final CommitCallback callback) throws IOException {
         fail(false);
     }
 
+    @Override
     public void readExtraCommitData(byte[] extra) throws IOException {
         Arrays.fill(extra, (byte) 0);
     }
 
+    @Override
     public void close() throws IOException {
+        // Do nothing.
+    }
+
+    @Override
+    public void close(Throwable cause) throws IOException {
         // Do nothing.
     }
 

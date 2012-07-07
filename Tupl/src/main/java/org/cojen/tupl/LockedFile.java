@@ -32,7 +32,7 @@ import java.nio.channels.OverlappingFileLockException;
  * @author Brian S O'Neill
  */
 class LockedFile implements Closeable {
-    final RandomAccessFile mRaf;
+    private final RandomAccessFile mRaf;
 
     LockedFile(File file, boolean readOnly) throws IOException {
         try {
@@ -60,6 +60,7 @@ class LockedFile implements Closeable {
         mRaf = raf;
     }
 
+    @Override
     public void close() throws IOException {
         RandomAccessFile raf = mRaf;
         if (raf != null) {
