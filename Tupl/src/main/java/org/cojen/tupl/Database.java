@@ -142,6 +142,7 @@ public final class Database extends CauseCloseable {
     private final TempFileManager mTempFileManager;
 
     volatile boolean mClosed;
+    volatile Throwable mClosedCause;
 
     /**
      * Open a database, creating it if necessary.
@@ -740,6 +741,10 @@ public final class Database extends CauseCloseable {
 
     @Override
     void close(Throwable cause) throws IOException {
+        if (cause != null) {
+            mClosedCause = cause;
+        }
+
         mClosed = true;
 
         Checkpointer c = mCheckpointer;
@@ -781,7 +786,7 @@ public final class Database extends CauseCloseable {
 
     void checkClosed() throws DatabaseException {
         if (mClosed) {
-            throw new DatabaseException("Closed");
+            throw new DatabaseException("Closed", mClosedCause);
         }
     }
 

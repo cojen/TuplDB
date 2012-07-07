@@ -93,7 +93,10 @@ final class Checkpointer implements Runnable {
             }
         } catch (Exception e) {
             if (!mClosed) {
-                Utils.uncaught(e);
+                Database db = mDatabaseRef.get();
+                if (db != null && !db.mClosed) {
+                    Utils.closeQuietly(null, db, e);
+                }
             }
             close();
         }
