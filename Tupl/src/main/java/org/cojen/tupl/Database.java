@@ -17,7 +17,6 @@
 package org.cojen.tupl;
 
 import java.io.BufferedWriter;
-import java.io.Closeable;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -51,7 +50,7 @@ import static org.cojen.tupl.Utils.*;
  *
  * @author Brian S O'Neill
  */
-public final class Database implements Closeable {
+public final class Database extends CauseCloseable {
     private static final int DEFAULT_CACHED_NODES = 1000;
     // +2 for registry and key map root nodes, +1 for one user index, and +2
     // for usage list to function correctly. It always assumes that the least
@@ -378,7 +377,7 @@ public final class Database implements Closeable {
 
             mTempFileManager = baseFile == null ? null : new TempFileManager(baseFile);
         } catch (Throwable e) {
-            Utils.closeQuietly(null, this);
+            Utils.closeQuietly(null, this, e);
             throw Utils.rethrow(e);
         }
     }
@@ -736,6 +735,11 @@ public final class Database implements Closeable {
      */
     @Override
     public void close() throws IOException {
+        close(null);
+    }
+
+    @Override
+    void close(Throwable cause) throws IOException {
         mClosed = true;
 
         Checkpointer c = mCheckpointer;
@@ -761,9 +765,9 @@ public final class Database implements Closeable {
 
             IOException ex = null;
 
-            ex = Utils.closeQuietly(ex, mRedoLog);
-            ex = Utils.closeQuietly(ex, mPageDb);
-            ex = Utils.closeQuietly(ex, mLockFile);
+            ex = Utils.closeQuietly(ex, mRedoLog, cause);
+            ex = Utils.closeQuietly(ex, mPageDb, cause);
+            ex = Utils.closeQuietly(ex, mLockFile, cause);
 
             mLockManager.close();
 

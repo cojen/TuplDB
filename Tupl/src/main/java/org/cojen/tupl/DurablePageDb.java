@@ -225,16 +225,19 @@ class DurablePageDb extends PageDb {
         }
     }
 
+    @Override
     public int pageSize() {
         return mPageArray.pageSize();
     }
 
+    @Override
     public Stats stats() {
         Stats stats = new Stats();
         mPageManager.addTo(stats);
         return stats;
     }
 
+    @Override
     public BitSet tracePages() throws IOException {
         BitSet pages = new BitSet();
         mPageManager.markAllPages(pages);
@@ -242,10 +245,12 @@ class DurablePageDb extends PageDb {
         return pages;
     }
 
+    @Override
     public void readPage(long id, byte[] buf) throws IOException {
         readPage(id, buf, 0);
     }
 
+    @Override
     public void readPage(long id, byte[] buf, int offset) throws IOException {
         try {
             mPageArray.readPage(id, buf, offset);
@@ -254,6 +259,7 @@ class DurablePageDb extends PageDb {
         }
     }
 
+    @Override
     public void readPartial(long id, int start, byte[] buf, int offset, int length)
         throws IOException
     {
@@ -264,6 +270,7 @@ class DurablePageDb extends PageDb {
         }
     }
 
+    @Override
     public long allocPage() throws IOException {
         mCommitLock.readLock().lock();
         try {
@@ -275,6 +282,7 @@ class DurablePageDb extends PageDb {
         }
     }
 
+    @Override
     public long tryAllocPage() throws IOException {
         mCommitLock.readLock().lock();
         try {
@@ -286,14 +294,17 @@ class DurablePageDb extends PageDb {
         }
     }
 
+    @Override
     public long allocPageCount() {
         return mPageManager.allocPageCount();
     }
 
+    @Override
     public void writePage(long id, byte[] buf) throws IOException {
         writePage(id, buf, 0);
     }
 
+    @Override
     public void writePage(long id, byte[] buf, int offset) throws IOException {
         checkId(id);
         try {
@@ -303,6 +314,7 @@ class DurablePageDb extends PageDb {
         }
     }
 
+    @Override
     public void deletePage(long id) throws IOException {
         checkId(id);
         mCommitLock.readLock().lock();
@@ -315,6 +327,7 @@ class DurablePageDb extends PageDb {
         }
     }
 
+    @Override
     public void allocatePages(long pageCount) throws IOException {
         mCommitLock.readLock().lock();
         try {
@@ -326,6 +339,7 @@ class DurablePageDb extends PageDb {
         }
     }
 
+    @Override
     public void commit(final CommitCallback callback) throws IOException {
         mCommitLock.writeLock().lock();
         mCommitLock.readLock().lock();
@@ -352,6 +366,7 @@ class DurablePageDb extends PageDb {
         }
     }
 
+    @Override
     public void readExtraCommitData(byte[] extra) throws IOException {
         try {
             mHeaderLatch.acquireShared();
@@ -367,8 +382,13 @@ class DurablePageDb extends PageDb {
 
     @Override
     public void close() throws IOException {
+        close(null);
+    }
+
+    @Override
+    public void close(Throwable cause) throws IOException {
         if (mPageArray != null) {
-            mPageArray.close();
+            mPageArray.close(cause);
         }
     }
 

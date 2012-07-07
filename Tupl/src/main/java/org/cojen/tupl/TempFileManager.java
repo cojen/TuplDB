@@ -16,7 +16,6 @@
 
 package org.cojen.tupl;
 
-import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 
@@ -30,10 +29,12 @@ import java.util.Map;
  *
  * @author Brian S O'Neill
  */
-class TempFileManager implements Closeable, Checkpointer.Shutdown {
+class TempFileManager extends CauseCloseable implements Checkpointer.Shutdown {
     private File mBaseFile;
     private long mCount;
-    private Map<File, Closeable> mFiles;
+    private Map<File, CauseCloseable> mFiles;
+
+    private Throwable mCause;
 
     TempFileManager(File baseFile) throws IOException {
         mBaseFile = baseFile;
@@ -47,11 +48,11 @@ class TempFileManager implements Closeable, Checkpointer.Shutdown {
             File file;
             synchronized (this) {
                 if (mBaseFile == null) {
-                    throw new IOException("Shutting down");
+                    throw new IOException("Shutting down", mCause);
                 }
                 file = new File(mBaseFile.getPath() + ".temp." + (mCount++));
                 if (mFiles == null) {
-                    mFiles = new HashMap<File, Closeable>(4);
+                    mFiles = new HashMap<File, CauseCloseable>(4);
                 }
                 if (mFiles.containsKey(file)) {
                     continue;
@@ -68,10 +69,10 @@ class TempFileManager implements Closeable, Checkpointer.Shutdown {
         }
     }
 
-    synchronized void register(File file, Closeable c) throws IOException {
+    synchronized void register(File file, CauseCloseable c) throws IOException {
         if (mFiles == null || !mFiles.containsKey(file)) {
             if (mBaseFile == null) {
-                throw new IOException("Shutting down");
+                throw new IOException("Shutting down", mCause);
             }
             return;
         }
@@ -83,7 +84,7 @@ class TempFileManager implements Closeable, Checkpointer.Shutdown {
     }
 
     void deleteTempFile(File file) {
-        Closeable c;
+        CauseCloseable c;
         synchronized (this) {
             if (mFiles == null || !mFiles.containsKey(file)) {
                 return;
@@ -94,21 +95,30 @@ class TempFileManager implements Closeable, Checkpointer.Shutdown {
         file.delete();
     }
 
+    @Override
     public void close() {
-        List<Closeable> fileList;
+        close(null);
+    }
+
+    @Override
+    public void close(Throwable cause) {
+        List<CauseCloseable> fileList;
         synchronized (this) {
             mBaseFile = null;
+            if (cause != null) {
+                mCause = cause;
+            }
             if (mFiles == null) {
                 fileList = null;
             } else {
-                fileList = new ArrayList<Closeable>(mFiles.values());
+                fileList = new ArrayList<CauseCloseable>(mFiles.values());
                 mFiles = null;
             }
         }
 
         if (fileList != null) {
-            for (Closeable c : fileList) {
-                Utils.closeQuietly(null, c);
+            for (CauseCloseable c : fileList) {
+                Utils.closeQuietly(null, c, cause);
             }
         }
     }

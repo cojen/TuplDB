@@ -16,7 +16,6 @@
 
 package org.cojen.tupl;
 
-import java.io.Closeable;
 import java.io.EOFException;
 import java.io.File;
 import java.io.OutputStream;
@@ -31,7 +30,7 @@ import java.util.EnumSet;
  *
  * @author Brian S O'Neill
  */
-abstract class PageArray implements Closeable {
+abstract class PageArray extends CauseCloseable {
     final int mPageSize;
 
     volatile Object mSnapshots;
@@ -307,7 +306,7 @@ abstract class PageArray implements Closeable {
         mSnapshots = newSnapshots;
     }
 
-    class ArraySnapshot implements Snapshot {
+    class ArraySnapshot extends CauseCloseable implements Snapshot {
         static final long SNAPSHOT_MAGIC_NUMBER = 7280926818757785542L;
         static final int SNAPSHOT_ENCODING_VERSION = 20120216;
         static final int HEADER_SIZE = 28;
@@ -325,7 +324,7 @@ abstract class PageArray implements Closeable {
         // The highest cluster page written by the run method.
         private long mProgress;
 
-        private IOException mAbortCause;
+        private Throwable mAbortCause;
 
         private volatile boolean mClosed;
 
@@ -392,7 +391,7 @@ abstract class PageArray implements Closeable {
                 for (long index = 0; index < count; index += cluster) {
                     mSnapshotLatch.acquireExclusive();
                     if (mClosed) {
-                        IOException cause = mAbortCause;
+                        Throwable cause = mAbortCause;
                         mSnapshotLatch.releaseExclusive();
                         throw aborted(cause);
                     }
@@ -463,15 +462,8 @@ abstract class PageArray implements Closeable {
             close(null);
         }
 
-        private void abort(IOException e) {
-            try {
-                close(e);
-            } catch (IOException e2) {
-                // Ignore.
-            }
-        }
-
-        private void close(IOException cause) throws IOException {
+        @Override
+        public void close(Throwable cause) throws IOException {
             if (mClosed) {
                 return;
             }
@@ -489,7 +481,15 @@ abstract class PageArray implements Closeable {
             mTempFileManager.deleteTempFile(mTempFile);
         }
 
-        private IOException aborted(IOException cause) {
+        private void abort(IOException e) {
+            try {
+                close(e);
+            } catch (IOException e2) {
+                // Ignore.
+            }
+        }
+
+        private IOException aborted(Throwable cause) {
             String message = "Snapshot closed";
             if (cause != null) {
                 message += ": " + cause;

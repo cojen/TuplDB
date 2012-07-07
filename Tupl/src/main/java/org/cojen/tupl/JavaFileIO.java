@@ -31,7 +31,7 @@ import java.util.EnumSet;
  *
  * @author Brian S O'Neill
  */
-class JavaFileIO implements FileIO {
+class JavaFileIO extends CauseCloseable implements FileIO {
     static FileIO open(File file, EnumSet<OpenOption> options)
         throws IOException
     {
@@ -48,6 +48,8 @@ class JavaFileIO implements FileIO {
     private final RandomAccessFile[] mFilePool;
     private int mFilePoolTop;
     private final boolean mReadOnly;
+
+    private volatile Throwable mCause;
 
     private JavaFileIO(File file, EnumSet<OpenOption> options, int openFileCount)
         throws IOException
@@ -79,19 +81,24 @@ class JavaFileIO implements FileIO {
         }
     }
 
+    @Override
     public boolean isReadOnly() {
         return mReadOnly;
     }
 
+    @Override
     public long length() throws IOException {
         RandomAccessFile file = accessFile();
         try {
             return file.length();
+        } catch (IOException e) {
+            throw Utils.rethrow(e, mCause);
         } finally {
             yieldFile(file);
         }
     }
 
+    @Override
     public void setLength(long length) throws IOException {
         RandomAccessFile file = accessFile();
         try {
@@ -103,6 +110,7 @@ class JavaFileIO implements FileIO {
         }
     }
 
+    @Override
     public void read(long pos, byte[] buf, int offset, int length) throws IOException {
         try {
             RandomAccessFile file = accessFile();
@@ -113,20 +121,28 @@ class JavaFileIO implements FileIO {
                 yieldFile(file);
             }
         } catch (EOFException e) {
-            throw new EOFException("Attempt to read past end of file: " + pos);
+            EOFException eof = new EOFException("Attempt to read past end of file: " + pos);
+            eof.initCause(mCause);
+            throw eof;
+        } catch (IOException e) {
+            throw Utils.rethrow(e, mCause);
         }
     }
 
+    @Override
     public void write(long pos, byte[] buf, int offset, int length) throws IOException {
         RandomAccessFile file = accessFile();
         try {
             file.seek(pos);
             file.write(buf, offset, length);
+        } catch (IOException e) {
+            throw Utils.rethrow(e, mCause);
         } finally {
             yieldFile(file);
         }
     }
 
+    @Override
     public void sync(boolean metadata) throws IOException {
         if (mReadOnly) {
             return;
@@ -134,17 +150,28 @@ class JavaFileIO implements FileIO {
         RandomAccessFile file = accessFile();
         try {
             file.getChannel().force(metadata);
+        } catch (IOException e) {
+            throw Utils.rethrow(e, mCause);
         } finally {
             yieldFile(file);
         }
     }
 
+    @Override
     public void close() throws IOException {
+        close(null);
+    }
+
+    @Override
+    public void close(Throwable cause) throws IOException {
+        if (cause != null) {
+            mCause = cause;
+        }
         IOException ex = null;
         RandomAccessFile[] pool = mFilePool;
         synchronized (pool) {
             for (RandomAccessFile file : pool) {
-                ex = Utils.closeQuietly(ex, file);
+                ex = Utils.closeQuietly(ex, file, cause);
             }
         }
         if (ex != null) {

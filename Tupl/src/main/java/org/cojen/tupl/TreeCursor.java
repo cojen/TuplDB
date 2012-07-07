@@ -16,7 +16,6 @@
 
 package org.cojen.tupl;
 
-import java.io.Closeable;
 import java.io.IOException;
 
 import java.util.ArrayDeque;
@@ -31,7 +30,7 @@ import java.util.concurrent.locks.Lock;
  *
  * @author Brian S O'Neill
  */
-final class TreeCursor implements Cursor, Closeable {
+final class TreeCursor extends CauseCloseable implements Cursor {
     final Tree mTree;
     private Transaction mTxn;
 
@@ -2407,6 +2406,23 @@ final class TreeCursor implements Cursor, Closeable {
     @Override
     public void close() {
         reset();
+    }
+
+    @Override
+    public void close(Throwable cause) {
+        try {
+            if (cause instanceof DatabaseException) {
+                DatabaseException de = (DatabaseException) cause;
+                if (de.isRecoverable()) {
+                    return;
+                }
+            }
+            throw Utils.closeOnFailure(mTree.mDatabase, cause);
+        } catch (IOException e) {
+            // Ignore.
+        } finally {
+            reset();
+        }
     }
 
     /**
