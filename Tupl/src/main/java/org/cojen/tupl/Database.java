@@ -786,7 +786,12 @@ public final class Database extends CauseCloseable {
 
     void checkClosed() throws DatabaseException {
         if (mClosed) {
-            throw new DatabaseException("Closed", mClosedCause);
+            String message = "Closed";
+            Throwable cause = mClosedCause;
+            if (cause != null) {
+                message += "; " + cause;
+            }
+            throw new DatabaseException(message, cause);
         }
     }
 
