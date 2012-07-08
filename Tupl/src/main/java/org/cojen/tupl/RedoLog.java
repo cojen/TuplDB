@@ -159,6 +159,10 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
         }
     }
 
+    synchronized long logId() {
+        return mLogId;
+    }
+
     synchronized boolean isReplayMode() {
         return mReplayMode;
     }

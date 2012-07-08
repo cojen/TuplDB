@@ -42,6 +42,7 @@ public class DatabaseConfig implements Cloneable {
     DurabilityMode mDurabilityMode;
     long mLockTimeoutNanos;
     long mCheckpointRateNanos;
+    EventListener mEventListener;
     boolean mFileSync;
     boolean mReadOnly;
     int mPageSize;
@@ -151,6 +152,15 @@ public class DatabaseConfig implements Cloneable {
      */
     public DatabaseConfig checkpointRate(long rate, TimeUnit unit) {
         mCheckpointRateNanos = Utils.toNanos(rate, unit);
+        return this;
+    }
+
+    /**
+     * Set a listener which receives notifications of actions being performed
+     * by the database.
+     */
+    public DatabaseConfig eventListener(EventListener listener) {
+        mEventListener = listener;
         return this;
     }
 

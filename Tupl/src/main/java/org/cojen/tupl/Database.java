@@ -28,10 +28,9 @@ import java.io.Writer;
 
 import java.math.BigInteger;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -85,6 +84,8 @@ public final class Database extends CauseCloseable {
     static final byte KEY_TYPE_INDEX_ID = 1;
 
     private static final int DEFAULT_PAGE_SIZE = 4096;
+
+    private final EventListener mEventListener;
 
     private final LockedFile mLockFile;
 
@@ -173,6 +174,8 @@ public final class Database extends CauseCloseable {
      * @param config cloned config
      */
     private Database(DatabaseConfig config, boolean destroy) throws IOException {
+        mEventListener = SafeEventListener.makeSafe(config.mEventListener);
+
         File baseFile = config.mBaseFile;
         File[] dataFiles = config.dataFiles();
 
@@ -261,6 +264,14 @@ public final class Database extends CauseCloseable {
             // list, and so nothing special needs to be done to allow them to
             // get used. Since the initial state is clean, evicting these
             // nodes does nothing.
+
+            long cacheInitStart = 0;
+            if (mEventListener != null) {
+                mEventListener.notify(EventType.CACHE_INIT_BEGIN,
+                                      "Initializing %1$d cached nodes", minCache);
+                cacheInitStart = System.nanoTime();
+            }
+
             try {
                 for (int i=minCache; --i>=0; ) {
                     allocLatchedNode(true).releaseExclusive();
@@ -272,6 +283,13 @@ public final class Database extends CauseCloseable {
                 throw new OutOfMemoryError
                     ("Unable to allocate the minimum required number of cached nodes: " +
                      minCache);
+            }
+
+            if (mEventListener != null) {
+                double duration = (System.nanoTime() - cacheInitStart) / 1000000000.0;
+                mEventListener.notify(EventType.CHECKPOINT_BEGIN,
+                                      "Cache initialization completed in %1$1.3f seconds",
+                                      duration, TimeUnit.SECONDS);
             }
 
             int spareBufferCount = Runtime.getRuntime().availableProcessors();
@@ -324,8 +342,14 @@ public final class Database extends CauseCloseable {
             // for value length field.
             mMaxFragmentedEntrySize = (pageSize - Node.TN_HEADER_SIZE - (2 + 3 + 2 + 3)) >> 1;
 
+            long recoveryStart = 0;
             if (mRedoLog != null) {
                 // Perform recovery by examining redo and undo logs.
+
+                if (mEventListener != null) {
+                    mEventListener.notify(EventType.RECOVERY_BEGIN, "Database recovery begin");
+                    recoveryStart = System.nanoTime();
+                }
 
                 UndoLog masterUndoLog;
                 LHashTable.Obj<UndoLog> undoLogs;
@@ -335,48 +359,86 @@ public final class Database extends CauseCloseable {
                         masterUndoLog = null;
                         undoLogs = null;
                     } else {
+                        if (mEventListener != null) {
+                            mEventListener.notify
+                                (EventType.RECOVERY_LOAD_UNDO_LOGS, "Loading undo logs");
+                        }
                         masterUndoLog = UndoLog.recoverMasterUndoLog(this, nodeId);
                         undoLogs = masterUndoLog.recoverLogs();
                     }
                 }
 
-                // TODO: Recovery should only need to perform at most one checkpoint.
-                // The current approach is fine, but it's just a bit messy.
+                // List of all replayed redo log files which should be deleted
+                // after the recovery checkpoint.
+                ArrayList<Long> redosToDelete = new ArrayList<Long>(2);
 
                 if (redoReplay(undoLogs)) {
-                    // Make sure old redo log is deleted. Process might have exited
-                    // before last checkpoint could delete it.
-                    mRedoLog.deleteOldFile(redoLogId - 1);
+                    // Make sure old redo logs are deleted. Process might have
+                    // exited before last checkpoint could delete them.
+                    for (int i=1; i<=2; i++) {
+                        mRedoLog.deleteOldFile(redoLogId - i);
+                    }
 
-                    // Checkpoint now to ensure all old redo log entries are durable.
-                    checkpoint(true);
+                    redosToDelete.add(mRedoLog.openNewFile());
 
                     while (mRedoLog.isReplayMode()) {
                         // Last checkpoint was interrupted, so apply next log file too.
                         redoReplay(undoLogs);
-                        checkpoint(true);
+                        redosToDelete.add(mRedoLog.openNewFile());
                     }
                 }
 
+                boolean doCheckpoint = false;
                 if (masterUndoLog != null) {
                     // Rollback or truncate all remaining undo logs. They were
                     // never explicitly rolled back, or they were committed but
                     // not cleaned up. This also deletes the master undo log.
+
+                    if (mEventListener != null) {
+                        mEventListener.notify
+                            (EventType.RECOVERY_PROCESS_REMAINING,
+                             "Processing remaining transactions");
+                    }
+
                     if (masterUndoLog.processRemaining(undoLogs)) {
-                        // Checkpoint again to ensure that undo logs don't get
+                        // Checkpoint ensures that undo logs don't get
                         // re-applied following a restart.
-                        checkpoint(true);
+                        doCheckpoint = true;
+                    }
+                }
+
+                if (doCheckpoint || !redosToDelete.isEmpty()) {
+                    // The one and only recovery checkpoint.
+                    checkpoint(true);
+
+                    // Only delete redo logs after successful checkpoint.
+                    for (long id : redosToDelete) {
+                        mRedoLog.deleteOldFile(id);
                     }
                 }
             }
 
             // Delete lingering fragmented values after undo logs have been
             // processed, ensuring deletes were committed.
-            if (mFragmentedTrash != null && mFragmentedTrash.emptyAllTrash()) {
-                checkpoint(true);
+            if (mFragmentedTrash != null) {
+                if (mEventListener != null) {
+                    mEventListener.notify(EventType.RECOVERY_DELETE_FRAGMENTS,
+                                          "Deleting unused large fragments");
+                }
+                
+                if (mFragmentedTrash.emptyAllTrash()) {
+                    checkpoint(true);
+                }
             }
 
             mTempFileManager = baseFile == null ? null : new TempFileManager(baseFile);
+
+            if (mRedoLog != null && mEventListener != null) {
+                double duration = (System.nanoTime() - recoveryStart) / 1000000000.0;
+                mEventListener.notify(EventType.RECOVERY_COMPLETE,
+                                      "Recovery completed in %1$1.3f seconds",
+                                      duration, TimeUnit.SECONDS);
+            }
         } catch (Throwable e) {
             closeQuietly(null, this, e);
             throw rethrow(e);
@@ -416,9 +478,22 @@ public final class Database extends CauseCloseable {
 
     private boolean redoReplay(LHashTable.Obj<UndoLog> undoLogs) throws IOException {
         RedoLogTxnScanner scanner = new RedoLogTxnScanner();
-        if (!mRedoLog.replay(scanner) ||
-            !mRedoLog.replay(new RedoLogApplier(this, scanner, undoLogs)))
-        {
+
+        if (mEventListener != null) {
+            mEventListener.notify
+                (EventType.RECOVERY_SCAN_REDO_LOG, "Scanning redo log: %1$d", mRedoLog.logId());
+        }
+
+        if (!mRedoLog.replay(scanner)) {
+            return false;
+        }
+
+        if (mEventListener != null) {
+            mEventListener.notify
+                (EventType.RECOVERY_APPLY_REDO_LOG, "Applying redo log: %1$d", mRedoLog.logId());
+        }
+
+        if (!mRedoLog.replay(new RedoLogApplier(this, scanner, undoLogs))) {
             return false;
         }
 
@@ -742,6 +817,12 @@ public final class Database extends CauseCloseable {
     @Override
     void close(Throwable cause) throws IOException {
         if (cause != null) {
+            if (mClosedCause == null && mEventListener != null) {
+                mEventListener.notify(EventType.PANIC_UNHANDLED_EXCEPTION,
+                                      "Closing database due to unhandled exception: %1$s",
+                                      rootCause(cause));
+            }
+
             mClosedCause = cause;
         }
 
@@ -789,7 +870,7 @@ public final class Database extends CauseCloseable {
             String message = "Closed";
             Throwable cause = mClosedCause;
             if (cause != null) {
-                message += "; " + cause;
+                message += "; " + rootCause(cause);
             }
             throw new DatabaseException(message, cause);
         }
@@ -1934,6 +2015,13 @@ public final class Database extends CauseCloseable {
                 root.releaseShared();
             }
 
+            long start = 0;
+            if (mEventListener != null) {
+                mEventListener.notify(EventType.CHECKPOINT_BEGIN,
+                                      "Checkpoint begin: %1$d", mRedoLog.logId());
+                start = System.nanoTime();
+            }
+
             final long redoLogId = mRedoLog.openNewFile();
 
             // Exclusive commit lock must be acquired before root latch, to
@@ -2011,6 +2099,13 @@ public final class Database extends CauseCloseable {
 
             // Deleted pages are now available for new allocations.
             mAllocator.fill();
+
+            if (mEventListener != null) {
+                double duration = (System.nanoTime() - start) / 1000000000.0;
+                mEventListener.notify(EventType.CHECKPOINT_BEGIN,
+                                      "Checkpoint completed in %1$1.3f seconds",
+                                      duration, TimeUnit.SECONDS);
+            }
         }
     }
 
@@ -2030,6 +2125,10 @@ public final class Database extends CauseCloseable {
         mCommitState = (byte) (stateToFlush ^ 1);
         root.releaseShared();
         mPageDb.exclusiveCommitLock().unlock();
+
+        if (mEventListener != null) {
+            mEventListener.notify(EventType.CHECKPOINT_FLUSH, "Flushing all dirty nodes");
+        }
 
         try {
             mAllocator.beginDirtyIteration();
