@@ -245,7 +245,7 @@ public final class Database extends CauseCloseable {
         EnumSet<OpenOption> options = config.createOpenOptions();
         if (baseFile != null && destroy) {
             // Delete old redo log files.
-            Utils.deleteNumberedFiles(baseFile, ".redo.");
+            deleteNumberedFiles(baseFile, ".redo.");
         }
 
         if (dataFiles == null) {
@@ -378,8 +378,8 @@ public final class Database extends CauseCloseable {
 
             mTempFileManager = baseFile == null ? null : new TempFileManager(baseFile);
         } catch (Throwable e) {
-            Utils.closeQuietly(null, this, e);
-            throw Utils.rethrow(e);
+            closeQuietly(null, this, e);
+            throw rethrow(e);
         }
     }
 
@@ -505,7 +505,7 @@ public final class Database extends CauseCloseable {
 
             index = openIndex(name, false);
         } catch (Throwable e) {
-            throw Utils.closeOnFailure(this, e);
+            throw closeOnFailure(this, e);
         } finally {
             commitLock.unlock();
         }
@@ -690,7 +690,7 @@ public final class Database extends CauseCloseable {
         }
         EnumSet<OpenOption> options = config.createOpenOptions();
         // Delete old redo log files.
-        Utils.deleteNumberedFiles(config.mBaseFile, ".redo.");
+        deleteNumberedFiles(config.mBaseFile, ".redo.");
         DurablePageDb.restoreFromSnapshot(dataFiles, options, in).close();
         return Database.open(config);
     }
@@ -770,9 +770,9 @@ public final class Database extends CauseCloseable {
 
             IOException ex = null;
 
-            ex = Utils.closeQuietly(ex, mRedoLog, cause);
-            ex = Utils.closeQuietly(ex, mPageDb, cause);
-            ex = Utils.closeQuietly(ex, mLockFile, cause);
+            ex = closeQuietly(ex, mRedoLog, cause);
+            ex = closeQuietly(ex, mPageDb, cause);
+            ex = closeQuietly(ex, mLockFile, cause);
 
             mLockManager.close();
 
@@ -887,8 +887,7 @@ public final class Database extends CauseCloseable {
                         do {
                             treeId = Tree.randomId();
                             writeLongBE(treeIdBytes, 0, treeId);
-                        } while (!mRegistry.insert(Transaction.BOGUS, treeIdBytes,
-                                                   Utils.EMPTY_BYTES));
+                        } while (!mRegistry.insert(Transaction.BOGUS, treeIdBytes, EMPTY_BYTES));
 
                         if (!mRegistryKeyMap.insert(null, nameKey, treeIdBytes)) {
                             mRegistry.delete(Transaction.BOGUS, treeIdBytes);
@@ -903,7 +902,7 @@ public final class Database extends CauseCloseable {
                             throw new DatabaseException("Unable to insert index id");
                         }
                     } catch (IOException e) {
-                        throw Utils.closeOnFailure(this, e);
+                        throw closeOnFailure(this, e);
                     }
                 }
             }
@@ -1239,29 +1238,30 @@ public final class Database extends CauseCloseable {
     /**
      * Similar to markDirty method except no new page is reserved, and old page
      * is not immediately deleted. Caller must hold commit lock and exclusive
-     * latch on node. Latch is never released by this method, even if an
+     * latch on node. Latch is never released by this method, unless an
      * exception is thrown.
      */
     void prepareToDelete(Node node) throws IOException {
         // Hello. My name is Inigo Montoya. You killed my father. Prepare to die. 
-        byte state = node.mCachedState;
-        if (state != CACHED_CLEAN && state != mCommitState) {
-            node.write(this);
+        if (node.mCachedState == mCheckpointFlushState) {
+            // Node must be committed with the current checkpoint, and so
+            // it must be written out before it can be deleted.
+            try {
+                node.write(this);
+            } catch (Throwable e) {
+                node.releaseExclusive();
+                throw rethrow(e);
+            }
         }
     }
 
     /**
-     * Caller must hold commit lock and exclusive latch on node. Latch is
-     * always released by this method, even if an exception is thrown.
+     * Caller must hold commit lock and exclusive latch on node. The
+     * prepareToDelete method must have been called first. Latch is always
+     * released by this method, even if an exception is thrown.
      */
     void deleteNode(Tree fromTree, Node node) throws IOException {
         try {
-            if (node.mCachedState == mCheckpointFlushState) {
-                // Node must be committed with the current checkpoint, and so
-                // it must be written out before it can be deleted.
-                node.write(this);
-            }
-
             deletePage(fromTree, node.mId, node.mCachedState);
 
             node.mId = 0;
@@ -1584,7 +1584,7 @@ public final class Database extends CauseCloseable {
                         deleteNode(null, childNode);
                     }
                 }
-                throw Utils.rethrow(e);
+                throw rethrow(e);
             }
 
             mFragmentCache.put(caller, inode);

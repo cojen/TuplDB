@@ -771,8 +771,10 @@ final class UndoLog {
      */
     private Node popNode(Node parent) throws IOException {
         Node lowerNode = latchLowerNode(parent);
-        mDatabase.makeEvictable(parent);
-        mDatabase.deleteNode(null, parent);
+        Database db = mDatabase;
+        db.makeEvictable(parent);
+        db.prepareToDelete(parent);
+        db.deleteNode(null, parent);
         return mNode = lowerNode;
     }
 
