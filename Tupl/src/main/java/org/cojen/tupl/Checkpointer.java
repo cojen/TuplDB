@@ -83,11 +83,9 @@ final class Checkpointer implements Runnable {
                     return;
                 }
 
-                //System.out.println("checkpoint...");
                 long startNanos = System.nanoTime();
                 db.checkpoint();
                 long endNanos = System.nanoTime();
-                //System.out.println("...done");
 
                 lastDurationNanos = endNanos - startNanos;
             }

@@ -879,6 +879,16 @@ class Utils {
         }
     }
 
+    static Throwable rootCause(Throwable e) {
+        while (true) {
+            Throwable cause = e.getCause();
+            if (cause == null) {
+                return e;
+            }
+            e = cause;
+        }
+    }
+
     static void uncaught(Throwable e) {
         Thread t = Thread.currentThread();
         t.getUncaughtExceptionHandler().uncaughtException(t, e);
