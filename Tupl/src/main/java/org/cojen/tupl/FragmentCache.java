@@ -173,7 +173,7 @@ class FragmentCache {
                         // Hashtable slot can be used without evicting anything.
                         existing.release(nEx);
                         existing = null;
-                    } else if (rehash(caller, existing)) {
+                    } else if (rehash(caller, null, existing)) {
                         // See if rehash eliminates collision.
                         existing.release(nEx);
                         continue;
@@ -239,7 +239,7 @@ class FragmentCache {
                             // Hashtable slot can be used without evicting anything.
                             existing.releaseExclusive();
                             existing = null;
-                        } else if (rehash(caller, existing)) {
+                        } else if (rehash(caller, node, existing)) {
                             // See if rehash eliminates collision.
                             existing.releaseExclusive();
                             continue;
@@ -286,10 +286,11 @@ class FragmentCache {
         /**
          * Caller must hold exclusive latch.
          *
-         * @param n latched node
+         * @param node optional latched node to be inserted
+         * @param existing latched node in desired slot
          * @return false if not rehashed
          */
-        private boolean rehash(Node caller, Node n) {
+        private boolean rehash(Node caller, Node node, Node existing) {
             Node[] entries;
             int capacity;
             if (mSize < mGrowThreshold ||
@@ -307,7 +308,9 @@ class FragmentCache {
                 Node e = entries[i];
                 if (e != null && e != caller) {
                     long id;
-                    if (e == n) {
+                    if (e == node) {
+                        continue;
+                    } else if (e == existing) {
                         if (e.mType != TYPE_FRAGMENT) {
                             continue;
                         }
