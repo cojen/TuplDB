@@ -474,14 +474,15 @@ class DurablePageDb extends PageDb {
                 }
             }
 
-            // Ensure all writes are flushed before flushing the header. There's
-            // otherwise no ordering guarantees.
-            array.sync(false);
+            // Ensure all writes are flushed before flushing the header.
+            // There's otherwise no ordering guarantees. Metadata, like length,
+            // should also be be flushed first, because the header won't affect it.
+            array.sync(true);
 
             mHeaderLatch.acquireExclusive();
             try {
                 array.writePage(commitNumber & 1, header);
-                array.sync(true);
+                array.sync(false);
                 mCommitNumber = commitNumber;
             } finally {
                 mHeaderLatch.releaseExclusive();
