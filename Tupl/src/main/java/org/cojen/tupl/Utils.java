@@ -514,7 +514,7 @@ class Utils {
      */
     public static int writeSignedVarInt(byte[] b, int offset, int v) {
         if (v < 0) {
-            // Compliment negative value to turn all the ones to zeros, which
+            // Complement negative value to turn all the ones to zeros, which
             // can be compacted. Shift and put sign bit at LSB.
             v = ((~v) << 1) | 1;
         } else {

@@ -1200,7 +1200,7 @@ final class Node extends Latch {
     }
 
     /**
-     * @param pos compliment of position as provided by binarySearch; must be positive
+     * @param pos complement of position as provided by binarySearch; must be positive
      */
     void insertLeafEntry(Tree tree, int pos, byte[] key, byte[] value)
         throws IOException
@@ -1246,9 +1246,9 @@ final class Node extends Latch {
     }
 
     /**
-     * @param pos compliment of position as provided by binarySearch; must be positive
+     * @param pos complement of position as provided by binarySearch; must be positive
      * @return Location for newly allocated entry, already pointed to by search
-     * vector, or negative if leaf must be split. Compliment of negative value
+     * vector, or negative if leaf must be split. Complement of negative value
      * is maximum space available.
      */
     private int createLeafEntry(Tree tree, int pos, final int encodedLen)
