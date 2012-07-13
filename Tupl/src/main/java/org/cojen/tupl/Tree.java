@@ -163,7 +163,19 @@ final class Tree implements Index {
     public byte[] load(Transaction txn, byte[] key) throws IOException {
         Locker locker = lockForLoad(txn, key);
         try {
+            // Search without a cursor, which rarely aborts.
             return mRoot.search(this, key);
+        } catch (Node.SearchAborted aborted) {
+            // Retry with a cursor, which is reliable, but slower.
+            TreeCursor cursor = new TreeCursor(this, Transaction.BOGUS);
+            try {
+                cursor.find(key);
+                byte[] value = cursor.value();
+                cursor.reset();
+                return value;
+            } catch (Throwable e) {
+                throw Utils.closeOnFailure(cursor, e);
+            }
         } finally {
             if (locker != null) {
                 locker.unlock();
