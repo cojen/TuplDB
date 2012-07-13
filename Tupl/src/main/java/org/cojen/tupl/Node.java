@@ -241,6 +241,7 @@ final class Node extends Latch {
      *
      * @param key search key
      * @return copy of value or null if not found
+     * @throws SearchAborted if search must be redone
      */
     byte[] search(Tree tree, byte[] key) throws IOException {
         acquireShared();
@@ -258,6 +259,7 @@ final class Node extends Latch {
      * @param key search key
      * @param exclusiveHeld is true if exclusive latch is held on this node
      * @return copy of value or null if not found
+     * @throws SearchAborted if search must be redone
      */
     private static byte[] subSearch(Tree tree, Node node, Latch parentLatch,
                                     byte[] key, boolean exclusiveHeld)
@@ -317,9 +319,22 @@ final class Node extends Latch {
 
             // Release shared latch, re-acquire exclusive latch, and start over.
 
+            long id = node.mId;
             node.releaseShared();
             node.acquireExclusive();
+
+            if (node.mId != id && node != tree.mRoot) {
+                // Node got evicted or dirtied when latch was released. To be
+                // safe, the search must be retried from the root.
+                node.releaseExclusive();
+                if (parentLatch != null) {
+                    parentLatch.releaseShared();
+                }
+                throw SearchAborted.THE;
+            }
+
             exclusiveHeld = true;
+
             if (parentLatch != null) {
                 parentLatch.releaseShared();
                 parentLatch = null;
@@ -331,7 +346,7 @@ final class Node extends Latch {
             }
 
             if (node == tree.mRoot) {
-                // This is the root node, and so no parent latch exists. It is
+                // This is the root node, and so no parent latch exists. It's
                 // possible that a delete slipped in when the latch was
                 // released, and that the root is now a leaf.
                 if (node.isLeaf()) {
@@ -354,6 +369,18 @@ final class Node extends Latch {
             // likely need to load its own child nodes to continue the
             // search. This eliminates the latch upgrade step.
             return subSearch(tree, childNode, null, key, true);
+        }
+    }
+
+    /**
+     * Thrown if child node might have been inadvertently evicted.
+     */
+    static final class SearchAborted extends DatabaseException {
+        static final SearchAborted THE = new SearchAborted();
+        public SearchAborted() {}
+        @Override
+        public Throwable fillInStackTrace() {
+            return this;
         }
     }
 
