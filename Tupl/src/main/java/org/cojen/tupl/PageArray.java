@@ -22,8 +22,6 @@ import java.io.OutputStream;
 import java.io.InputStream;
 import java.io.IOException;
 
-import java.util.EnumSet;
-
 /**
  * Defines a persistent, array of fixed sized pages. Each page is uniquely
  * identified by a 64-bit index, starting at zero.

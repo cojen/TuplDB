@@ -22,6 +22,8 @@ package org.cojen.tupl;
  * @author Brian S O'Neill
  */
 public class LockFailureException extends DatabaseException {
+    private static final long serialVersionUID = 1L;
+
     public LockFailureException() {
     }
 

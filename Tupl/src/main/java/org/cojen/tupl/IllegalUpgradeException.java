@@ -26,6 +26,8 @@ package org.cojen.tupl;
  * @see LockResult#ILLEGAL
  */
 public class IllegalUpgradeException extends LockFailureException {
+    private static final long serialVersionUID = 1L;
+
     public IllegalUpgradeException() {
     }
 }

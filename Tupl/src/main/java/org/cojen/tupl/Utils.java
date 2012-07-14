@@ -266,7 +266,6 @@ class Utils {
      */
     public static long readUnsignedVarLong(byte[] b, IntegerRef offsetRef) {
         int offset = offsetRef.get();
-        int length;
         int val = b[offset++];
         if (val >= 0) {
             offsetRef.set(offset);

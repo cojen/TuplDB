@@ -22,6 +22,8 @@ package org.cojen.tupl;
  * @author Brian S O'Neill
  */
 final class TreeCursorFrame implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
+
     // Node and position this TreeCursorFrame is bound to.
     Node mNode;
     int mNodePos;

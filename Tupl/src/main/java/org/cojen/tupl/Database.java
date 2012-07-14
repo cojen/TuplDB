@@ -34,8 +34,6 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.TreeMap;
 
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import java.util.concurrent.locks.Lock;
@@ -2061,7 +2059,6 @@ public final class Database extends CauseCloseable {
                         masterUndoLog = null;
                         masterUndoLogId = 0;
                     } else {
-                        final int stateToFlush = mCommitState;
                         masterUndoLog = UndoLog.newMasterUndoLog(this);
                         byte[] workspace = null;
                         for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {

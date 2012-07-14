@@ -27,6 +27,8 @@ import java.util.concurrent.TimeUnit;
  * @see LockResult#TIMED_OUT_LOCK
  */
 public class LockTimeoutException extends LockFailureException {
+    private static final long serialVersionUID = 1L;
+
     private final long mNanosTimeout;
 
     private TimeUnit mUnit;

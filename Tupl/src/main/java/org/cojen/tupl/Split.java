@@ -22,6 +22,8 @@ package org.cojen.tupl;
  * @author Brian S O'Neill
  */
 class Split implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
+
     final boolean mSplitRight;
     private final Node mSibling;
 

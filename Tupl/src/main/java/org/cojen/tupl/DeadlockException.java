@@ -26,6 +26,8 @@ package org.cojen.tupl;
  * @author Brian S O'Neill
  */
 public class DeadlockException extends LockTimeoutException {
+    private static final long serialVersionUID = 1L;
+
     private final boolean mGuilty;
 
     DeadlockException(long nanosTimeout, boolean guilty) {

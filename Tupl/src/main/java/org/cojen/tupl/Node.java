@@ -19,10 +19,6 @@ package org.cojen.tupl;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
-import java.util.Arrays;
-
-import java.util.concurrent.locks.Lock;
-
 import static org.cojen.tupl.Utils.*;
 
 /**
@@ -31,6 +27,8 @@ import static org.cojen.tupl.Utils.*;
  * @author Brian S O'Neill
  */
 final class Node extends Latch {
+    private static final long serialVersionUID = 1L;
+
     // Note: Changing these values affects how the Database class handles the
     // commit flag. It only needs to flip bit 0 to switch dirty states.
     static final byte
@@ -376,6 +374,7 @@ final class Node extends Latch {
      * Thrown if child node might have been inadvertently evicted.
      */
     static final class SearchAborted extends DatabaseException {
+        private static final long serialVersionUID = 1L;
         static final SearchAborted THE = new SearchAborted();
         public SearchAborted() {}
         @Override
