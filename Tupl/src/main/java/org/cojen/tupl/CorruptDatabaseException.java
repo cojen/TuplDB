@@ -23,6 +23,8 @@ package org.cojen.tupl;
  * @author Brian S O'Neill
  */
 public class CorruptDatabaseException extends DatabaseException {
+    private static final long serialVersionUID = 1L;
+
     public CorruptDatabaseException(String message) {
         super(message);
     }

@@ -18,8 +18,6 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import java.util.List;
-
 import java.util.concurrent.locks.Lock;
 
 import static org.cojen.tupl.Utils.*;

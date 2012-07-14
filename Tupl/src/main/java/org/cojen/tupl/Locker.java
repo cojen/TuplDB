@@ -297,6 +297,7 @@ class Locker {
         return result.isHeld() ? result : nt(result, indexId, key, nanosTimeout);
     }
 
+    @SuppressWarnings("incomplete-switch")
     LockFailureException failed(LockResult result,
                                 long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException
@@ -316,6 +317,7 @@ class Locker {
         return new LockFailureException();
     }
 
+    @SuppressWarnings("incomplete-switch")
     private LockResult nt(LockResult result, long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {

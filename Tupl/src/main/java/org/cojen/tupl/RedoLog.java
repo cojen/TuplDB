@@ -16,7 +16,6 @@
 
 package org.cojen.tupl;
 
-import java.io.BufferedInputStream;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileNotFoundException;

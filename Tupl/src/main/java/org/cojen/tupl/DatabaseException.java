@@ -25,6 +25,8 @@ import java.io.IOException;
  * @author Brian S O'Neill
  */
 public class DatabaseException extends IOException {
+    private static final long serialVersionUID = 1L;
+
     public DatabaseException() {
     }
 

@@ -28,13 +28,11 @@ import java.io.RandomAccessFile;
  * @author Brian S O'Neill
  */
 class BitMapFile extends CauseCloseable {
-    private final File mFile;
     private final RandomAccessFile mRaf;
 
     private volatile Throwable mCause;
 
     public BitMapFile(File file) throws IOException {
-        mFile = file;
         mRaf = new RandomAccessFile(file, "rw");
     }
 

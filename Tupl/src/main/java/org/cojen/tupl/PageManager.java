@@ -18,7 +18,6 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import java.util.Arrays;
 import java.util.BitSet;
 
 import java.util.concurrent.locks.Lock;

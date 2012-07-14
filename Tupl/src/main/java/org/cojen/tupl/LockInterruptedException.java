@@ -24,6 +24,8 @@ package org.cojen.tupl;
  * @see LockResult#INTERRUPTED
  */
 public class LockInterruptedException extends LockFailureException {
+    private static final long serialVersionUID = 1L;
+
     public LockInterruptedException() {
         super();
     }
