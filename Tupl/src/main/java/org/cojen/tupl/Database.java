@@ -43,9 +43,39 @@ import static org.cojen.tupl.Utils.*;
 
 /**
  * Main database class, containing a collection of transactional indexes. Call
- * {@link #open open} to obtain a Database instance.
+ * {@link #open open} to obtain a Database instance. Examples:
+ *
+ * <p>Open a non-durable database, limited to a max size of 100MB:
+ *
+ * <pre>
+ * DatabaseConfig config = new DatabaseConfig().maxCacheSize(100_000_000);
+ * Database db = Database.open(config);
+ * </pre>
+ *
+ * <p>Open a regular database, setting the minimum cache size to ensure enough
+ * memory is initially available. A weak {@link DurabilityMode durability mode}
+ * offers the best transactional commit performance.
+ *
+ * <pre>
+ * DatabaseConfig config = new DatabaseConfig()
+ *    .baseFilePath("/var/lib/tupl")
+ *    .minCacheSize(100_000_000)
+ *    .durabilityMode(DurabilityMode.NO_FLUSH);
+ *
+ * Database db = Database.open(config);
+ * </pre>
+ *
+ * <p>The following files are created by the above example:
+ *
+ * <ul>
+ * <li><code>/var/lib/tupl.db</code> &ndash; primary data file
+ * <li><code>/var/lib/tupl.info</code> &ndash; text file describing the database configuration
+ * <li><code>/var/lib/tupl.lock</code> &ndash; lock file to ensure that at most one process can have the database open
+ * <li><code>/var/lib/tupl.redo.0</code> &ndash; first redo log file
+ * </ul>
  *
  * @author Brian S O'Neill
+ * @see DatabaseConfig
  */
 public final class Database extends CauseCloseable {
     private static final int DEFAULT_CACHED_NODES = 1000;
