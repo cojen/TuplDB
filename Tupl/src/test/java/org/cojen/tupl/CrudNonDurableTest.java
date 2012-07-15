@@ -16,35 +16,28 @@
 
 package org.cojen.tupl;
 
+import org.junit.*;
+
 /**
  * 
  *
  * @author Brian S O'Neill
  */
-@org.junit.Ignore
-public class TestAll {
+public class CrudNonDurableTest extends CrudTest {
     public static void main(String[] args) throws Exception {
-        Class[] classes = {
-            CrudTest.class,
-            CrudNonDurableTest.class,
-            CursorTest.class,
-            CursorNonDurableTest.class,
-            LargeValueTest.class,
-            LargeValueNonDurableTest.class,
-            ExtraLargeValueTest.class,
-            ExtraLargeValueNonDurableTest.class,
-            LockTest.class,
-            RecoverTest.class,
-            TransactionTest.class,
-            TransactionNonDurableTest.class,
-            UtilsTest.class,
-        };
+        org.junit.runner.JUnitCore.main(CrudNonDurableTest.class.getName());
+    }
 
-        String[] names = new String[classes.length];
-        for (int i=0; i<classes.length; i++) {
-            names[i] = classes[i].getName();
-        }
+    @Before
+    public void createTempDb() throws Exception {
+        DatabaseConfig config = new DatabaseConfig();
+        config.maxCacheSize(100000000);
+        mDb = Database.open(config);
+    }
 
-        org.junit.runner.JUnitCore.main(names);
+    @After
+    public void teardown() throws Exception {
+        mDb.close();
+        mDb = null;
     }
 }

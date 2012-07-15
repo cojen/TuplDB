@@ -28,6 +28,7 @@ import java.util.*;
 class TestUtils {
     private static final Map<Database, File> cTempDatabases = new WeakHashMap<Database, File>();
     private static final Set<File> cTempBaseFiles = new HashSet<File>();
+    private static long cTempId;
     private static volatile File cDeleteTempDir;
 
     static {
@@ -95,41 +96,13 @@ class TestUtils {
     }
 
     static File newTempBaseFile() throws IOException {
-        String className = "", methodName = "";
-        {
-            StackTraceElement[] trace = new Exception().getStackTrace();
-            for (int i=0; i<trace.length; i++) {
-                StackTraceElement element = trace[i];
-                if (TestUtils.class.getName().equals(element.getClassName())) {
-                    continue;
-                }
-                className = element.getClassName();
-                String prefix = "org.cojen.tupl.";
-                if (className.startsWith(prefix)) {
-                    className = className.substring(prefix.length());
-                }
-                methodName = element.getMethodName();
-            }
-        }
-
-        String baseName = className + '.' + methodName;
-
         File tempDir = new File(System.getProperty("java.io.tmpdir"), "tupl");
         cDeleteTempDir = tempDir.exists() ? null : tempDir;
         tempDir.mkdirs();
 
-        File baseFile = new File(tempDir, baseName);
-        File lockFile = new File(tempDir, baseName + ".lock");
-
-        int mult = 10;
-        while (!lockFile.createNewFile()) {
-            String suffix = "-" + (long) ((Math.random() * mult));
-            baseFile = new File(tempDir, baseName + suffix);
-            lockFile = new File(tempDir, baseName + suffix + ".lock");
-            mult *= 10;
-        }
-
+        File baseFile;
         synchronized (cTempBaseFiles) {
+            baseFile = new File(tempDir, "test-" + System.currentTimeMillis() + "-" + (++cTempId));
             cTempBaseFiles.add(baseFile);
         }
 
@@ -185,7 +158,10 @@ class TestUtils {
     }
 
     private static void deleteDbFile(File baseFile, String suffix) {
-        new File(baseFile.getParentFile(), baseFile.getName() + suffix).delete();
+        File f = new File(baseFile.getParentFile(), baseFile.getName() + suffix);
+        if (!f.delete()) {
+            //System.out.println("unable to delete: " + f);
+        }
     }
 
     static byte[] randomStr(Random rnd, int size) {
