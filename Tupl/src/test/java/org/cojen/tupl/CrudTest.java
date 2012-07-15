@@ -39,12 +39,12 @@ public class CrudTest {
     }
 
     @After
-    public void teardown() {
+    public void teardown() throws Exception {
         deleteTempDatabases();
         mDb = null;
     }
 
-    private Database mDb;
+    protected Database mDb;
 
     @Test
     public void loadNothing() throws Exception {

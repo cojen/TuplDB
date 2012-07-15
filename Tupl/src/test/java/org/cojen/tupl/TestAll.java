@@ -26,12 +26,17 @@ public class TestAll {
     public static void main(String[] args) throws Exception {
         Class[] classes = {
             CrudTest.class,
+            CrudNonDurableTest.class,
             CursorTest.class,
+            CursorNonDurableTest.class,
             LargeValueTest.class,
+            LargeValueNonDurableTest.class,
             ExtraLargeValueTest.class,
+            ExtraLargeValueNonDurableTest.class,
             LockTest.class,
             RecoverTest.class,
             TransactionTest.class,
+            TransactionNonDurableTest.class,
             UtilsTest.class,
         };
 
