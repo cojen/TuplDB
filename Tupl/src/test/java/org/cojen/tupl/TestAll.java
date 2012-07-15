@@ -26,6 +26,7 @@ public class TestAll {
     public static void main(String[] args) throws Exception {
         Class[] classes = {
             CrudTest.class,
+            CursorTest.class,
             LargeValueTest.class,
             ExtraLargeValueTest.class,
             LockTest.class,
