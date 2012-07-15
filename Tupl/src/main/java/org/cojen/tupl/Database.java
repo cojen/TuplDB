@@ -90,9 +90,17 @@ public final class Database extends CauseCloseable {
     private static final int NODE_OVERHEAD = 100;
 
     private static int nodeCountFromBytes(long bytes, int pageSize) {
-         pageSize += NODE_OVERHEAD;
-         long count = (bytes + pageSize - 1) / pageSize;
-         return count <= Integer.MAX_VALUE ? (int) count : Integer.MAX_VALUE;
+        if (bytes <= 0) {
+            return 0;
+        }
+        pageSize += NODE_OVERHEAD;
+        bytes += pageSize - 1;
+        if (bytes <= 0) {
+            // Overflow.
+            return Integer.MAX_VALUE;
+        }
+        long count = bytes / pageSize;
+        return count <= Integer.MAX_VALUE ? (int) count : Integer.MAX_VALUE;
     }
 
     private static long byteCountFromNodes(int nodes, int pageSize) {
@@ -112,6 +120,8 @@ public final class Database extends CauseCloseable {
     static final byte KEY_TYPE_INDEX_ID = 1;
 
     private static final int DEFAULT_PAGE_SIZE = 4096;
+    private static final int MINIMUM_PAGE_SIZE = 512;
+    private static final int MAXIMUM_PAGE_SIZE = 65536;
 
     private final EventListener mEventListener;
 
@@ -210,12 +220,18 @@ public final class Database extends CauseCloseable {
         int pageSize = config.mPageSize;
         if (pageSize <= 0) {
             config.pageSize(pageSize = DEFAULT_PAGE_SIZE);
+        } else if (pageSize < MINIMUM_PAGE_SIZE) {
+            throw new IllegalArgumentException
+                ("Page size is too small: " + pageSize + " < " + MINIMUM_PAGE_SIZE);
+        } else if (pageSize > MAXIMUM_PAGE_SIZE) {
+            throw new IllegalArgumentException
+                ("Page size is too large: " + pageSize + " > " + MAXIMUM_PAGE_SIZE);
         }
 
         int minCache, maxCache;
         cacheSize: {
-            long minCachedBytes = config.mMinCachedBytes;
-            long maxCachedBytes = config.mMaxCachedBytes;
+            long minCachedBytes = Math.max(0, config.mMinCachedBytes);
+            long maxCachedBytes = Math.max(0, config.mMaxCachedBytes);
 
             if (maxCachedBytes == 0) {
                 maxCachedBytes = minCachedBytes;
