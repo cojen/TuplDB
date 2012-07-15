@@ -120,7 +120,7 @@ class DurablePageDb extends PageDb {
     private static void checkPageSize(int pageSize) {
         if (pageSize < MINIMUM_PAGE_SIZE) {
             throw new IllegalArgumentException
-                ("Page size must be at least " + MINIMUM_PAGE_SIZE + ": " + pageSize);
+                ("Page size is too small: " + pageSize + " < " + MINIMUM_PAGE_SIZE);
         }
     }
 
