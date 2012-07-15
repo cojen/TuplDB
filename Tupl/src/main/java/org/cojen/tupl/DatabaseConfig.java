@@ -64,6 +64,16 @@ public class DatabaseConfig implements Cloneable {
     }
 
     /**
+     * Set the base file name for the database, which must reside in an
+     * ordinary file directory. If no base file is provided, database is
+     * non-durable and cannot exceed the size of the cache.
+     */
+    public DatabaseConfig baseFilePath(String path) {
+        mBaseFile = path == null ? null : abs(new File(path));
+        return this;
+    }
+
+    /**
      * Set true to create directories for the base and data file, if they don't
      * already exist. Default is true.
      */
