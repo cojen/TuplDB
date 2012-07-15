@@ -331,7 +331,7 @@ public final class Database extends CauseCloseable {
 
             if (mEventListener != null) {
                 double duration = (System.nanoTime() - cacheInitStart) / 1000000000.0;
-                mEventListener.notify(EventType.CHECKPOINT_BEGIN,
+                mEventListener.notify(EventType.CACHE_INIT_COMPLETE,
                                       "Cache initialization completed in %1$1.3f seconds",
                                       duration, TimeUnit.SECONDS);
             }
