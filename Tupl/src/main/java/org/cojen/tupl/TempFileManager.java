@@ -19,7 +19,6 @@ package org.cojen.tupl;
 import java.io.File;
 import java.io.IOException;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -102,23 +101,26 @@ class TempFileManager extends CauseCloseable implements Checkpointer.Shutdown {
 
     @Override
     public void close(Throwable cause) {
-        List<CauseCloseable> fileList;
+        Map<File, CauseCloseable> files;
         synchronized (this) {
             mBaseFile = null;
             if (cause != null) {
                 mCause = cause;
             }
             if (mFiles == null) {
-                fileList = null;
+                files = null;
             } else {
-                fileList = new ArrayList<CauseCloseable>(mFiles.values());
+                files = new HashMap<File, CauseCloseable>(mFiles);
                 mFiles = null;
             }
         }
 
-        if (fileList != null) {
-            for (CauseCloseable c : fileList) {
+        if (files != null) {
+            for (CauseCloseable c : files.values()) {
                 Utils.closeQuietly(null, c, cause);
+            }
+            for (File f : files.keySet()) {
+                f.delete();
             }
         }
     }

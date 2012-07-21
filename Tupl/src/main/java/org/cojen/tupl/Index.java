@@ -45,41 +45,49 @@ public interface Index extends View {
     /**
      * {@inheritDoc}
      */
+    @Override
     public Cursor newCursor(Transaction txn);
 
     /**
      * {@inheritDoc}
      */
+    @Override
     public byte[] load(Transaction txn, byte[] key) throws IOException;
 
     /**
      * {@inheritDoc}
      */
+    @Override
     public void store(Transaction txn, byte[] key, byte[] value) throws IOException;
 
     /**
      * {@inheritDoc}
      */
+    @Override
     public boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException;
 
     /**
      * {@inheritDoc}
      */
+    @Override
     public boolean replace(Transaction txn, byte[] key, byte[] value) throws IOException;
 
     /**
      * {@inheritDoc}
      */
+    @Override
     public boolean update(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException;
 
     /**
      * {@inheritDoc}
      */
+    @Override
     public boolean delete(Transaction txn, byte[] key) throws IOException;
 
     /**
      * {@inheritDoc}
      */
+    @Override
     public boolean remove(Transaction txn, byte[] key, byte[] value) throws IOException;
 }
