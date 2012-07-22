@@ -2604,7 +2604,6 @@ final class Node extends Latch {
 
                 // Copy existing child ids and insert new child id.
                 {
-                    int newDestLoc = newSearchVecLoc;
                     System.arraycopy(page, searchVecEnd + 2,
                                      newPage, newSearchVecLoc, newChildPos);
 

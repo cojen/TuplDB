@@ -30,6 +30,7 @@ import java.math.BigInteger;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.TreeMap;
@@ -71,8 +72,13 @@ import static org.cojen.tupl.Utils.*;
  * <li><code>/var/lib/tupl.db</code> &ndash; primary data file
  * <li><code>/var/lib/tupl.info</code> &ndash; text file describing the database configuration
  * <li><code>/var/lib/tupl.lock</code> &ndash; lock file to ensure that at most one process can have the database open
- * <li><code>/var/lib/tupl.redo.0</code> &ndash; first redo log file
+ * <li><code>/var/lib/tupl.redo.0</code> &ndash; first transaction redo log file
  * </ul>
+ *
+ * <p>New redo log files are created by {@link #checkpoint checkpoints}, which
+ * also delete the old files. When {@link #beginSnapshot snapshots} are in
+ * progress, one or more numbered temporary files are created. For example:
+ * <code>/var/lib/tupl.temp.123</code>.
  *
  * @author Brian S O'Neill
  * @see DatabaseConfig
@@ -107,7 +113,7 @@ public final class Database extends CauseCloseable {
         return nodes * (long) (pageSize + NODE_OVERHEAD);
     }
 
-    private static final int ENCODING_VERSION = 20120630;
+    private static final int ENCODING_VERSION = 20120721;
 
     private static final int I_ENCODING_VERSION        = 0;
     private static final int I_ROOT_PAGE_ID            = I_ENCODING_VERSION + 4;
@@ -122,6 +128,8 @@ public final class Database extends CauseCloseable {
     private static final int DEFAULT_PAGE_SIZE = 4096;
     private static final int MINIMUM_PAGE_SIZE = 512;
     private static final int MAXIMUM_PAGE_SIZE = 65536;
+
+    private static final int OPEN_REGULAR = 0, OPEN_DESTROY = 1, OPEN_TEMP = 2;
 
     private final EventListener mEventListener;
 
@@ -188,7 +196,7 @@ public final class Database extends CauseCloseable {
      */
     public static Database open(DatabaseConfig config) throws IOException {
         config = config.clone();
-        Database db = new Database(config, false);
+        Database db = new Database(config, OPEN_REGULAR);
         db.startCheckpointer(config);
         return db;
     }
@@ -203,15 +211,31 @@ public final class Database extends CauseCloseable {
         if (config.mReadOnly) {
             throw new IllegalArgumentException("Cannot destroy read-only database");
         }
-        Database db = new Database(config, true);
+        Database db = new Database(config, OPEN_DESTROY);
         db.startCheckpointer(config);
         return db;
     }
 
     /**
-     * @param config cloned config
+     * @param config base file is set as a side-effect
      */
-    private Database(DatabaseConfig config, boolean destroy) throws IOException {
+    static Tree openTemp(TempFileManager tfm, DatabaseConfig config) throws IOException {
+        File file = tfm.createTempFile();
+        config.baseFile(file);
+        config.dataFile(file);
+        config.createFilePath(false);
+        config.durabilityMode(DurabilityMode.NO_FLUSH);
+        Database db = new Database(config, OPEN_TEMP);
+        tfm.register(file, db);
+        db.mCheckpointer = new Checkpointer(db, config.mCheckpointRateNanos);
+        db.mCheckpointer.start();
+        return db.mRegistry;
+    }
+
+    /**
+     * @param config unshared config
+     */
+    private Database(DatabaseConfig config, int openMode) throws IOException {
         mEventListener = SafeEventListener.makeSafe(config.mEventListener);
 
         File baseFile = config.mBaseFile;
@@ -273,7 +297,7 @@ public final class Database extends CauseCloseable {
         }
 
         // Create lock file and write info file of properties.
-        if (baseFile == null) {
+        if (baseFile == null || openMode == OPEN_TEMP) {
             mLockFile = null;
         } else {
             mLockFile = new LockedFile(new File(baseFile.getPath() + ".lock"), config.mReadOnly);
@@ -290,7 +314,7 @@ public final class Database extends CauseCloseable {
         }
 
         EnumSet<OpenOption> options = config.createOpenOptions();
-        if (baseFile != null && destroy) {
+        if (baseFile != null && openMode == OPEN_DESTROY) {
             // Delete old redo log files.
             deleteNumberedFiles(baseFile, ".redo.");
         }
@@ -298,7 +322,7 @@ public final class Database extends CauseCloseable {
         if (dataFiles == null) {
             mPageDb = new NonPageDb(pageSize);
         } else {
-            mPageDb = new DurablePageDb(pageSize, dataFiles, options, destroy);
+            mPageDb = new DurablePageDb(pageSize, dataFiles, options, openMode == OPEN_DESTROY);
         }
 
         mSharedCommitLock = mPageDb.sharedCommitLock();
@@ -350,18 +374,32 @@ public final class Database extends CauseCloseable {
             mPageDb.readExtraCommitData(header);
 
             mRegistry = new Tree(this, Tree.REGISTRY_ID, null, null, loadRegistryRoot(header));
-            mOpenTrees = new TreeMap<byte[], Tree>(KeyComparator.THE);
-            mOpenTreesById = new LHashTable.Obj<Tree>(16);
+
+            if (openMode == OPEN_TEMP) {
+                mOpenTrees = Collections.emptyMap();
+                mOpenTreesById = new LHashTable.Obj<Tree>(0);
+            } else {
+                mOpenTrees = new TreeMap<byte[], Tree>(KeyComparator.THE);
+                mOpenTreesById = new LHashTable.Obj<Tree>(16);
+            }
 
             synchronized (mTxnIdLock) {
                 mTxnId = readLongLE(header, I_TRANSACTION_ID);
             }
             long redoLogId = readLongLE(header, I_REDO_LOG_ID);
 
-            // Initialized, but not open yet.
-            mRedoLog = baseFile == null ? null : new RedoLog(baseFile, redoLogId);
+            if (baseFile == null || openMode == OPEN_TEMP) {
+                mRedoLog = null;
+            } else {
+                // Initialized, but not open yet.
+                mRedoLog = new RedoLog(baseFile, redoLogId);
+            }
 
-            mRegistryKeyMap = openInternalTree(Tree.REGISTRY_KEY_MAP_ID, true);
+            if (openMode == OPEN_TEMP) {
+                mRegistryKeyMap = null;
+            } else {
+                mRegistryKeyMap = openInternalTree(Tree.REGISTRY_KEY_MAP_ID, true);
+            }
 
             mAllocator = new OrderedPageAllocator
                 (mPageDb, null /*openInternalTree(Tree.PAGE_ALLOCATOR_ID, true)*/);
@@ -374,7 +412,7 @@ public final class Database extends CauseCloseable {
                 mFragmentCache = new FragmentCache(this, mMaxNodeCount);
             }
 
-            {
+            if (openMode != OPEN_TEMP) {
                 Tree tree = openInternalTree(Tree.FRAGMENTED_TRASH_ID, false);
                 if (tree != null) {
                     mFragmentedTrash = new FragmentedTrash(tree);
@@ -475,7 +513,11 @@ public final class Database extends CauseCloseable {
                 }
             }
 
-            mTempFileManager = baseFile == null ? null : new TempFileManager(baseFile);
+            if (baseFile == null || openMode == OPEN_TEMP) {
+                mTempFileManager = null;
+            } else {
+                mTempFileManager = new TempFileManager(baseFile);
+            }
 
             if (mRedoLog != null && mEventListener != null) {
                 double duration = (System.nanoTime() - recoveryStart) / 1000000000.0;
@@ -777,22 +819,32 @@ public final class Database extends CauseCloseable {
     /**
      * Support for capturing a snapshot (hot backup) of the database, while
      * still allowing concurrent modifications. The snapshot contains all data
-     * up to the last checkpoint. Call {@link #restoreFromSnapshot restoreFromSnapshot}
-     * to recreate a Database from the snapshot.
+     * up to the last checkpoint. To restore from a snapshot, store it in the
+     * primary data file, which is the base file with a ".db" extension. Make
+     * sure no redo log files exist and then open the database. Alternatively,
+     * call {@link #restoreFromSnapshot restoreFromSnapshot}, which also
+     * supports restoring into separate data files.
      *
-     * @param out snapshot destination; does not require extra buffering; not auto-closed
+     * <p>During the snapshot, temporary files are created to hold pre-modified
+     * copies of pages. If the snapshot destination stream blocks for too long,
+     * these files keep growing. File growth rate increases too if the database
+     * is being heavily modified. In the worst case, the temporary files can
+     * become larger than the primary database files.
+     *
      * @return a snapshot control object, which must be closed when no longer needed
      */
-    public Snapshot beginSnapshot(OutputStream out) throws IOException {
+    public Snapshot beginSnapshot() throws IOException {
         if (!(mPageDb instanceof DurablePageDb)) {
             throw new UnsupportedOperationException("Snapshot only allowed for durable databases");
         }
         DurablePageDb pageDb = (DurablePageDb) mPageDb;
-        int cluster = Math.max(1, 65536 / pageSize());
-        return pageDb.beginSnapshot(mTempFileManager, cluster, out);
+        return pageDb.beginSnapshot(mTempFileManager);
     }
 
     /**
+     * Restore from a {@link #beginSnapshot snapshot}, into the data files
+     * defined by the given configuration.
+     *
      * @param in snapshot source; does not require extra buffering; not auto-closed
      */
     public static Database restoreFromSnapshot(DatabaseConfig config, InputStream in)
@@ -840,10 +892,12 @@ public final class Database extends CauseCloseable {
     /**
      * Durably sync and checkpoint all changes to the database. In addition to
      * ensuring that all transactions are durable, checkpointing ensures that
-     * non-transactional modifications are durable.
+     * non-transactional modifications are durable. Checkpoints are performed
+     * automatically by a background thread, at a {@link
+     * DatabaseConfig#checkpointRate configurable} rate.
      */
     public void checkpoint() throws IOException {
-        if (!mClosed && mRedoLog != null) {
+        if (!mClosed && mPageDb instanceof DurablePageDb) {
             checkpoint(false);
         }
     }
@@ -2061,12 +2115,13 @@ public final class Database extends CauseCloseable {
 
             long start = 0;
             if (mEventListener != null) {
+                long redoLogId = mRedoLog == null ? 0 : mRedoLog.logId();
                 mEventListener.notify(EventType.CHECKPOINT_BEGIN,
-                                      "Checkpoint begin: %1$d", mRedoLog.logId());
+                                      "Checkpoint begin: %1$d", redoLogId);
                 start = System.nanoTime();
             }
 
-            final long redoLogId = mRedoLog.openNewFile();
+            final long redoLogId = mRedoLog == null ? 0 : mRedoLog.openNewFile();
 
             // Exclusive commit lock must be acquired before root latch, to
             // prevent deadlock.
@@ -2138,7 +2193,9 @@ public final class Database extends CauseCloseable {
 
             // Note: The delete step can get skipped if process exits at this
             // point. File is deleted again when database is re-opened.
-            mRedoLog.deleteOldFile(redoLogId);
+            if (mRedoLog != null) {
+                mRedoLog.deleteOldFile(redoLogId);
+            }
 
             // Deleted pages are now available for new allocations.
             mAllocator.fill();

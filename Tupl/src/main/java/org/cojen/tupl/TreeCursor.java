@@ -1937,6 +1937,41 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         }
     }
 
+    /**
+     * Atomic find and swap operation.
+     */
+    /*
+    byte[] findAndSwap(byte[] key, byte[] newValue) throws IOException {
+        try {
+            final Transaction txn = mTxn;
+            final int hash = keyHashForStore(txn, key);
+            final Locker locker = mTree.lockExclusive(txn, key, hash);
+            byte[] oldValue;
+            try {
+                // Find with no lock because it has already been acquired.
+                find(null, key, hash, VARIANT_NO_LOCK);
+                oldValue = mValue;
+
+                final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
+                sharedCommitLock.lock();
+                try {
+                    store(txn, mLeaf, newValue);
+                } finally {
+                    sharedCommitLock.unlock();
+                }
+            } finally {
+                if (locker != null) {
+                    locker.unlock();
+                }
+            }
+
+            return oldValue;
+        } catch (Throwable e) {
+            throw handleException(e);
+        }
+    }
+    */
+
     static final byte[] MODIFY_INSERT = new byte[0], MODIFY_REPLACE = new byte[0];
 
     /**

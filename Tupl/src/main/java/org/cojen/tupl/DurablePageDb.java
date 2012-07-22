@@ -25,6 +25,8 @@ import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.zip.CRC32;
 
+import java.security.SecureRandom;
+
 import static org.cojen.tupl.Utils.*;
 
 /**
@@ -51,12 +53,13 @@ class DurablePageDb extends PageDb {
 
     +------------------------------------------+
     | long: magic number                       |
+    | u128: database id                        |
     | int:  page size                          |
     | int:  commit number                      |
     | int:  checksum                           |
     | page manager header (96 bytes)           |
     +------------------------------------------+
-    | reserved (140 bytes)                     |
+    | reserved (124 bytes)                     |
     +------------------------------------------+
     | extra data (256 bytes)                   |
     +------------------------------------------+
@@ -67,7 +70,8 @@ class DurablePageDb extends PageDb {
 
     // Indexes of entries in header node.
     private static final int I_MAGIC_NUMBER     = 0;
-    private static final int I_PAGE_SIZE        = I_MAGIC_NUMBER + 8;
+    private static final int I_DATABASE_ID      = I_MAGIC_NUMBER + 8;
+    private static final int I_PAGE_SIZE        = I_DATABASE_ID + 16;
     private static final int I_COMMIT_NUMBER    = I_PAGE_SIZE + 4;
     private static final int I_CHECKSUM         = I_COMMIT_NUMBER + 4;
     private static final int I_MANAGER_HEADER   = I_CHECKSUM + 4;
@@ -77,6 +81,8 @@ class DurablePageDb extends PageDb {
 
     private final PageArray mPageArray;
     private final PageManager mPageManager;
+
+    private final long mDatabaseId1, mDatabaseId2;
 
     private final Latch mHeaderLatch;
     // Commit number is the highest one which has been committed.
@@ -137,6 +143,9 @@ class DurablePageDb extends PageDb {
                     // Newly created file.
                     mPageManager = new PageManager(mPageArray);
                     mCommitNumber = -1;
+                    SecureRandom rnd = new SecureRandom();
+                    mDatabaseId1 = rnd.nextLong();
+                    mDatabaseId2 = rnd.nextLong();
                     // Commit twice to ensure both headers have valid data.
                     commit(null);
                     commit(null);
@@ -209,6 +218,9 @@ class DurablePageDb extends PageDb {
                         }
                     }
                 }
+
+                mDatabaseId1 = readLongLE(header, I_DATABASE_ID);
+                mDatabaseId2 = readLongLE(header, I_DATABASE_ID + 8);
 
                 mHeaderLatch.acquireExclusive();
                 mCommitNumber = commitNumber;
@@ -391,19 +403,15 @@ class DurablePageDb extends PageDb {
     /**
      * @see PageArray#beginSnapshot
      */
-    Snapshot beginSnapshot(TempFileManager tfm, int cluster, OutputStream out) throws IOException {
+    Snapshot beginSnapshot(TempFileManager tfm) throws IOException {
         byte[] header = new byte[MINIMUM_PAGE_SIZE];
+        mHeaderLatch.acquireShared();
         try {
-            mHeaderLatch.acquireShared();
-            try {
-                mPageArray.readPartial(mCommitNumber & 1, 0, header, 0, header.length);
-                long pageCount = PageManager.readTotalPageCount(header, I_MANAGER_HEADER);
-                return mPageArray.beginSnapshot(tfm, pageCount, cluster, out);
-            } finally {
-                mHeaderLatch.releaseShared();
-            }
-        } catch (Throwable e) {
-            throw closeOnFailure(e);
+            mPageArray.readPartial(mCommitNumber & 1, 0, header, 0, header.length);
+            long pageCount = PageManager.readTotalPageCount(header, I_MANAGER_HEADER);
+            return mPageArray.beginSnapshot(tfm, pageCount);
+        } finally {
+            mHeaderLatch.releaseShared();
         }
     }
 
@@ -414,7 +422,7 @@ class DurablePageDb extends PageDb {
         throws IOException
     {
         PageArray pa = openPageArray(MINIMUM_PAGE_SIZE, files, options);
-        pa = pa.restoreFromSnapshot(in);
+        pa.restoreFromSnapshot(in);
         return new DurablePageDb(pa, false);
     }
 
@@ -437,6 +445,8 @@ class DurablePageDb extends PageDb {
         final PageArray array = mPageArray;
 
         writeLongLE(header, I_MAGIC_NUMBER, MAGIC_NUMBER);
+        writeLongLE(header, I_DATABASE_ID, mDatabaseId1);
+        writeLongLE(header, I_DATABASE_ID + 8, mDatabaseId2);
         writeIntLE (header, I_PAGE_SIZE, array.pageSize());
         writeIntLE (header, I_COMMIT_NUMBER, commitNumber);
 

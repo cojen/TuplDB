@@ -257,6 +257,23 @@ final class Tree implements Index {
 
     /*
     @Override
+    public byte[] swap(Transaction txn, byte[] key, byte[] newValue) throws IOException {
+        if (key == null) {
+            throw new NullPointerException("Key is null");
+        }
+        TreeCursor cursor = new TreeCursor(this, txn);
+        try {
+            byte[] oldValue = cursor.findAndSwap(key, newValue);
+            cursor.reset();
+            return oldValue;
+        } catch (Throwable e) {
+            throw Utils.closeOnFailure(cursor, e);
+        }
+    }
+    */
+
+    /*
+    @Override
     public void clear(Transaction txn) throws IOException {
         if (txn == null) {
             TreeCursor cursor = new TreeCursor(this, null);

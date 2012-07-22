@@ -192,6 +192,21 @@ public interface View {
     public boolean remove(Transaction txn, byte[] key, byte[] value) throws IOException;
 
     /**
+     * Unconditionally associates a value with the given key, returning the old
+     * value.
+     *
+     * <p>If the entry must be locked, ownership of the key instance is
+     * transferred. The key must not be modified after calling this method.
+     *
+     * @param txn optional transaction; pass null for auto-commit mode
+     * @param key non-null key
+     * @param newValue value to store; pass null to delete
+     * @return old value, which can be null
+     * @throws NullPointerException if key is null
+     */
+    //public byte[] swap(Transaction txn, byte[] key, byte[] newValue) throws IOException;
+
+    /**
      * Unconditionally associates a value over a range of keys. The order in
      * which the range is scanned is determined by the order of the start and
      * end keys. The range is scanned in forward order when the start key is
