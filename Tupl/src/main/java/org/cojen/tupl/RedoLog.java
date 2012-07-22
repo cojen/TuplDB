@@ -568,7 +568,6 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
     // Caller must be synchronized.
     private void doFlush(byte[] buffer, int pos) throws IOException {
         try {
-            // FIXME: If mCrypto, encrypting stream must be padded!
             mOut.write(buffer, 0, pos);
             mBufferPos = 0;
         } catch (IOException e) {
