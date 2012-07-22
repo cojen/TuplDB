@@ -219,14 +219,16 @@ class FragmentCache {
          * released, even if an exception is thrown.
          *
          * @param caller optional tree node which is latched and calling this method
-         * @param node exclusively latched node
+         * @param node exclusively latched node; evictable
          */
         void put(final Node caller, final Node node, final int hash) throws IOException {
             if (!tryAcquireExclusive()) {
-                // Possible deadlock caused by inconsistent LHT and Node lock ordering.
+                // Avoid deadlock caused by inconsistent LHT and Node lock ordering.
+                mDatabase.makeUnevictable(node);
                 node.releaseExclusive();
-                acquireExclusive();
+                this.acquireExclusive();
                 node.acquireExclusive();
+                mDatabase.makeEvictable(node);
             }
 
             while (true) {

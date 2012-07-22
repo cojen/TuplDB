@@ -90,4 +90,10 @@ public interface Index extends View {
      */
     @Override
     public boolean remove(Transaction txn, byte[] key, byte[] value) throws IOException;
+
+    /**
+     * {@inheritDoc}
+     */
+    //@Override
+    //public byte[] swap(Transaction txn, byte[] key, byte[] newValue) throws IOException;
 }

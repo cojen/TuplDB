@@ -18,6 +18,7 @@ package org.cojen.tupl;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.OutputStream;
 
 /**
  * Control object used to capture a database snapshot.
@@ -36,12 +37,14 @@ public interface Snapshot extends Closeable {
      * Writes out snapshot data, and then closes this object. Snapshot aborts
      * if the OutputStream throws an exception or if another thread closes this
      * Snapshot instance.
+     *
+     * @param out snapshot destination; does not require extra buffering; not auto-closed
      */
-    public void write() throws IOException;
+    public void writeTo(OutputStream out) throws IOException;
 
     /**
      * Can be called by another thread to abort the snapshot, causing any
-     * thread in the finish method to throw an exception.
+     * thread in the writeTo method to throw an exception.
      */
     public void close() throws IOException;
 }

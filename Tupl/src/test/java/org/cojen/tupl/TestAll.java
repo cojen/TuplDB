@@ -36,6 +36,7 @@ public class TestAll {
             ExtraLargeValueNonDurableTest.class,
             LockTest.class,
             RecoverTest.class,
+            SnapshotTest.class,
             TransactionTest.class,
             TransactionNonDurableTest.class,
             UtilsTest.class,

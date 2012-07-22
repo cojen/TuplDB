@@ -18,9 +18,10 @@ package org.cojen.tupl;
 
 import java.io.EOFException;
 import java.io.File;
-import java.io.OutputStream;
+import java.io.InterruptedIOException;
 import java.io.InputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 
 /**
  * Defines a persistent, array of fixed sized pages. Each page is uniquely
@@ -135,9 +136,9 @@ abstract class PageArray extends CauseCloseable {
 
         Object obj = mSnapshots;
         if (obj != null) {
-            if (obj instanceof ArraySnapshot) {
-                ((ArraySnapshot) obj).capture(index);
-            } else for (ArraySnapshot snapshot : (ArraySnapshot[]) obj) {
+            if (obj instanceof SnapshotImpl) {
+                ((SnapshotImpl) obj).capture(index);
+            } else for (SnapshotImpl snapshot : (SnapshotImpl[]) obj) {
                 snapshot.capture(index);
             }
         }
@@ -173,27 +174,23 @@ abstract class PageArray extends CauseCloseable {
      * processed specially by the restoreFromSnapshot method.
      *
      * @param pageCount total number of pages to include in snapshot
-     * @param cluster number of pages to cluster together as snapshot pages
-     * @param out snapshot destination; does not require extra buffering
      */
-    Snapshot beginSnapshot(TempFileManager tfm, long pageCount, int cluster, OutputStream out)
-        throws IOException
-    {
+    Snapshot beginSnapshot(TempFileManager tfm, long pageCount) throws IOException {
         pageCount = Math.min(pageCount, getPageCount());
-        ArraySnapshot snapshot = new ArraySnapshot(tfm, pageCount, cluster, out);
+        SnapshotImpl snapshot = new SnapshotImpl(tfm, pageCount);
 
         synchronized (this) {
             Object obj = mSnapshots;
             if (obj == null) {
                 mSnapshots = snapshot;
-            } else if (obj instanceof ArraySnapshot[]) {
-                ArraySnapshot[] snapshots = (ArraySnapshot[]) obj;
-                ArraySnapshot[] newSnapshots = new ArraySnapshot[snapshots.length + 1];
+            } else if (obj instanceof SnapshotImpl[]) {
+                SnapshotImpl[] snapshots = (SnapshotImpl[]) obj;
+                SnapshotImpl[] newSnapshots = new SnapshotImpl[snapshots.length + 1];
                 System.arraycopy(snapshots, 0, newSnapshots, 0, snapshots.length);
                 newSnapshots[newSnapshots.length - 1] = snapshot;
                 mSnapshots = newSnapshots;
             } else {
-                mSnapshots = new ArraySnapshot[] {(ArraySnapshot) obj, snapshot};
+                mSnapshots = new SnapshotImpl[] {(SnapshotImpl) obj, snapshot};
             }
         }
 
@@ -202,82 +199,34 @@ abstract class PageArray extends CauseCloseable {
 
     /**
      * @param in snapshot source; does not require extra buffering; not auto-closed
-     * @return array with correct page size
      */
-    PageArray restoreFromSnapshot(InputStream in) throws IOException {
-        return restoreFromSnapshot(this, in);
-    }
-
-    // Snapshots are expected to be sent over the network, and so multibyte
-    // values are encoded in "network byte order", which is big-endian.
-
-    private static PageArray restoreFromSnapshot(PageArray pa, InputStream in) throws IOException {
-        if (pa.isReadOnly()) {
+    void restoreFromSnapshot(InputStream in) throws IOException {
+        if (isReadOnly()) {
             throw new DatabaseException("Cannot restore into a read-only file");
         }
-        if (!pa.isEmpty()) {
+        if (!isEmpty()) {
             throw new DatabaseException("Cannot restore into a non-empty file");
         }
-
-        String failMessage = null;
-        int pageSize = 0;
-        long snapshotPageCount = 0;
-        int cluster = 0;
-        readHeader: try {
-            DataIn din = new DataIn(in, ArraySnapshot.HEADER_SIZE);
-            if (din.readLongBE() != ArraySnapshot.SNAPSHOT_MAGIC_NUMBER) {
-                failMessage = "Magic number mismatch";
-                break readHeader;
-            }
-            int version = din.readIntBE();
-            if (version != ArraySnapshot.SNAPSHOT_ENCODING_VERSION) {
-                failMessage = "Unknown encoding version: " + version;
-                break readHeader;
-            }
-            pageSize = din.readIntBE();
-            snapshotPageCount = din.readLongBE();
-            cluster = din.readIntBE();
-        } catch (EOFException e) {
-            failMessage = "Truncated";
+        byte[] buffer = new byte[mPageSize];
+        long index = 0;
+        int amt;
+        while ((amt = in.read(buffer)) > 0) {
+            writePage(index, buffer);
+            index++;
         }
-
-        if (failMessage != null) {
-            throw new DatabaseException("Invalid snapshot: " + failMessage);
-        }
-
-        pa = pa.withPageSize(pageSize);
-
-        // Ensure enough space is available.
-        pa.setPageCount(snapshotPageCount);
-
-        DataIn din = new DataIn(in, 8 + pageSize * cluster);
-        long remainingPageCount = snapshotPageCount;
-
-        while (remainingPageCount > 0) {
-            long clusterIndex = din.readLongBE();
-            long index = clusterIndex * cluster;
-            int count = (int) Math.min(cluster, snapshotPageCount - index);
-            if (count <= 0) {
-                throw new DatabaseException("Invalid data packet index: " + index);
-            }
-            din.readAndWriteTo(pa, index, count);
-            remainingPageCount -= count;
-        }
-
-        return pa;
     }
 
-    synchronized void unregister(ArraySnapshot snapshot) {
+    synchronized void unregister(SnapshotImpl snapshot) {
         Object obj = mSnapshots;
         if (obj == snapshot) {
             mSnapshots = null;
             return;
         }
-        if (!(obj instanceof ArraySnapshot[])) {
+        if (!(obj instanceof SnapshotImpl[])) {
             return;
         }
 
-        ArraySnapshot[] snapshots = (ArraySnapshot[]) obj;
+        SnapshotImpl[] snapshots = (SnapshotImpl[]) obj;
 
         if (snapshots.length == 2) {
             if (snapshots[0] == snapshot) {
@@ -298,160 +247,189 @@ abstract class PageArray extends CauseCloseable {
             return;
         }
 
-        ArraySnapshot[] newSnapshots = new ArraySnapshot[snapshots.length - 1];
+        SnapshotImpl[] newSnapshots = new SnapshotImpl[snapshots.length - 1];
         System.arraycopy(snapshots, 0, newSnapshots, 0, pos);
         System.arraycopy(snapshots, pos + 1, newSnapshots, pos, newSnapshots.length - pos);
         mSnapshots = newSnapshots;
     }
 
-    class ArraySnapshot extends CauseCloseable implements Snapshot {
-        static final long SNAPSHOT_MAGIC_NUMBER = 7280926818757785542L;
-        static final int SNAPSHOT_ENCODING_VERSION = 20120216;
-        static final int HEADER_SIZE = 28;
-
+    class SnapshotImpl extends CauseCloseable implements Snapshot {
         private final TempFileManager mTempFileManager;
         private final long mSnapshotPageCount;
-        private final int mCluster;
-        private final OutputStream mOut;
-        private final Latch mSnapshotLatch;
-        private final Latch mBufferLatch;
-        private final byte[] mBuffer;
+
+        private final Tree mPageCopyIndex;
         private final File mTempFile;
-        private final BitMapFile mBitMap;
 
-        // The highest cluster page written by the run method.
-        private long mProgress;
+        private final Object mSnapshotLock;
 
-        private Throwable mAbortCause;
+        private final Latch mCaptureLatch;
+        private final byte[] mCaptureValue;
+
+        // The highest page written by the writeTo method.
+        private volatile long mProgress;
+        // Always equal to or one more than mProgress.
+        private long mWriteInProgress;
+        private long mCaptureInProgress;
 
         private volatile boolean mClosed;
+        private Throwable mAbortCause;
 
-        ArraySnapshot(TempFileManager tfm, long pageCount, int cluster, OutputStream out)
-            throws IOException
-        {
+        SnapshotImpl(TempFileManager tfm, long pageCount) throws IOException {
             mTempFileManager = tfm;
             mSnapshotPageCount = pageCount;
-            mCluster = cluster;
-            mOut = out;
-            mSnapshotLatch = new Latch();
-            mBufferLatch = new Latch();
-            // For general use, first 8 bytes of buffer encode the cluster index.
-            mBuffer = new byte[8 + mPageSize * mCluster];
 
-            try {
-                mTempFile = mTempFileManager.createTempFile();
-                mBitMap = new BitMapFile(mTempFile);
-                mTempFileManager.register(mTempFile, mBitMap);
-                // Try to pre-allocate space for the bit map.
-                mBitMap.clear(((pageCount + cluster - 1) / cluster) - 1);
-            } catch (IOException e) {
-                abort(e);
-                throw e;
-            }
+            int pageSize = mPageSize;
+
+            DatabaseConfig config = new DatabaseConfig()
+                .pageSize(pageSize).minCacheSize(pageSize * 100);
+            mPageCopyIndex = Database.openTemp(tfm, config);
+            mTempFile = config.mBaseFile;
+
+            mSnapshotLock = new Object();
+            mCaptureLatch = new Latch();
+            mCaptureValue = new byte[pageSize];
+
+            // -2: Not yet started. -1: Started, but nothing written yet.
+            mProgress = -2;
+            mWriteInProgress = -2;
+            mCaptureInProgress = -1;
         }
 
         @Override
         public long length() {
-            long payload = mSnapshotPageCount * mPageSize;
-            int packetSize = mCluster * mPageSize;
-            long packets = (payload + packetSize - 1) / packetSize;
-            return HEADER_SIZE + payload + (packets * 8);
+            return mSnapshotPageCount * mPageSize;
         }
 
         @Override
-        public void write() throws IOException {
-            final long count = mSnapshotPageCount;
-            final int cluster = mCluster;
+        public void writeTo(OutputStream out) throws IOException {
+            synchronized (mSnapshotLock) {
+                if (mProgress > -2) {
+                    throw new IllegalStateException("Snapshot already started");
+                }
+                if (mClosed) {
+                    throw aborted(mAbortCause);
+                }
+                mProgress = -1;
+                mWriteInProgress = -1;
+            }
 
+            Cursor c = null;
             try {
-                // Write the header.
-                mSnapshotLatch.acquireExclusive();
-                try {
-                    if (mClosed) {
-                        throw aborted(mAbortCause);
-                    }
-                    try {
-                        Utils.writeLongBE(mBuffer, 0, SNAPSHOT_MAGIC_NUMBER);
-                        Utils.writeIntBE(mBuffer, 8, SNAPSHOT_ENCODING_VERSION);
-                        Utils.writeIntBE(mBuffer, 12, mPageSize);
-                        Utils.writeLongBE(mBuffer, 16, count);
-                        Utils.writeIntBE(mBuffer, 24, cluster);
-                        mOut.write(mBuffer, 0, HEADER_SIZE);
-                    } catch (IOException e) {
-                        abort(e);
-                        throw e;
-                    }
-                } finally {
-                    mSnapshotLatch.releaseExclusive();
+                final byte[] buffer = new byte[mPageSize];
+                final byte[] key = new byte[8];
+                final long count = mSnapshotPageCount;
+
+                {
+                    // Insert a terminator for findNearby efficiency.
+                    byte[] k2 = new byte[8];
+                    Utils.writeLongBE(k2, 0, ~0L);
+                    mPageCopyIndex.store(Transaction.BOGUS, k2, Utils.EMPTY_BYTES);
                 }
 
-                // Write the clusters.
-                for (long index = 0; index < count; index += cluster) {
-                    mSnapshotLatch.acquireExclusive();
-                    if (mClosed) {
-                        Throwable cause = mAbortCause;
-                        mSnapshotLatch.releaseExclusive();
-                        throw aborted(cause);
+                for (long index = 0; index < count; index++, Utils.increment(key, 0, 8)) {
+                    synchronized (mSnapshotLock) {
+                        while (true) {
+                            if (mClosed) {
+                                throw aborted(mAbortCause);
+                            }
+                            if (index == mCaptureInProgress) {
+                                try {
+                                    mSnapshotLock.wait();
+                                } catch (InterruptedException e) {
+                                    throw new InterruptedIOException();
+                                }
+                            } else {
+                                mWriteInProgress = index;
+                                break;
+                            }
+                        }
                     }
-                    mProgress = index + cluster - 1;
-                    try {
-                        writeCluster(index);
-                    } catch (IOException e) {
-                        abort(e);
-                        throw e;
+
+                    if (c == null) {
+                        c = mPageCopyIndex.newCursor(Transaction.BOGUS);
+                        c.find(key);
+                    } else {
+                        c.findNearby(key);
+                    }
+
+                    byte[] value = c.value();
+
+                    if (value == null) {
+                        readPage(index, buffer);
+                        synchronized (mSnapshotLock) {
+                            mProgress = index;
+                            mSnapshotLock.notifyAll();
+                        }
+                        out.write(buffer);
+                    } else {
+                        synchronized (mSnapshotLock) {
+                            mProgress = index;
+                            mSnapshotLock.notifyAll();
+                        }
+                        out.write(value);
+                        c.store(null);
                     }
                 }
             } finally {
+                if (c != null) {
+                    c.reset();
+                }
                 close();
             }
         }
 
-        void capture(long index) {
-            try {
-                mSnapshotLatch.acquireExclusive();
-                if (mClosed || index >= mSnapshotPageCount || index <= mProgress) {
-                    mSnapshotLatch.releaseExclusive();
-                } else {
-                    writeCluster(index);
-                }
-            } catch (IOException e) {
-                abort(e);
+        void capture(final long index) {
+            if (index >= mSnapshotPageCount) {
+                return;
             }
-        }
 
-        /**
-         * Caller must hold mSnapshotLatch, which is released by this method.
-         */
-        private void writeCluster(long index) throws IOException {
-            byte[] buffer;
-            int len;
+            Cursor c = null;
             try {
-                int cluster = mCluster;
-                long clusterIndex = index / cluster;
-                if (mBitMap.set(clusterIndex)) {
-                    return;
-                }
-                index = clusterIndex * cluster;
-                buffer = mBuffer;
-                mBufferLatch.acquireExclusive();
-                try {
-                    Utils.writeLongBE(buffer, 0, clusterIndex);
-                    int count = (int) Math.min(cluster, mSnapshotPageCount - index);
-                    if (count <= 0) {
-                        throw new AssertionError();
+                while (true) {
+                    if (index <= mProgress) {
+                        return;
                     }
-                    len = readCluster(index, buffer, 8, count);
-                } catch (IOException e) {
-                    mBufferLatch.releaseExclusive();
-                    throw e;
+                    synchronized (mSnapshotLock) {
+                        if (mClosed || index <= mProgress) {
+                            return;
+                        }
+                        if (index == mWriteInProgress) {
+                            mSnapshotLock.wait();
+                        } else {
+                            byte[] key = new byte[8];
+                            Utils.writeLongBE(key, 0, index);
+                            c = mPageCopyIndex.newCursor(Transaction.BOGUS);
+                            c.autoload(false);
+                            c.find(key);
+                            if (c.value() != null) {
+                                // Already captured.
+                                return;
+                            }
+                            // Prevent main writer from catching up while page is captured.
+                            mCaptureLatch.acquireExclusive();
+                            mCaptureInProgress = index;
+                            break;
+                        }
+                    }
                 }
+
+                try {
+                    readPage(index, mCaptureValue);
+                    c.store(mCaptureValue);
+                } finally {
+                    mCaptureLatch.releaseExclusive();
+                }
+
+                synchronized (mSnapshotLock) {
+                    mCaptureInProgress = -1;
+                    mSnapshotLock.notifyAll();
+                }
+            } catch (Throwable e) {
+                abort(e);
             } finally {
-                mSnapshotLatch.releaseExclusive();
-            }
-            try {
-                mOut.write(buffer, 0, 8 + len);
-            } finally {
-                mBufferLatch.releaseExclusive();
+                if (c != null) {
+                    c.reset();
+                }
             }
         }
 
@@ -465,21 +443,23 @@ abstract class PageArray extends CauseCloseable {
             if (mClosed) {
                 return;
             }
-            mSnapshotLatch.acquireExclusive();
-            try {
+            synchronized (mSnapshotLock) {
                 if (mClosed) {
                     return;
                 }
+                mProgress = ~0L;
+                mWriteInProgress = ~0L;
+                mCaptureInProgress = -1;
                 mAbortCause = cause;
                 mClosed = true;
-            } finally {
-                mSnapshotLatch.releaseExclusive();
+                mSnapshotLock.notifyAll();
             }
             unregister(this);
+            Utils.closeQuietly(null, mPageCopyIndex.mDatabase);
             mTempFileManager.deleteTempFile(mTempFile);
         }
 
-        private void abort(IOException e) {
+        private void abort(Throwable e) {
             try {
                 close(e);
             } catch (IOException e2) {

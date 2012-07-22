@@ -188,28 +188,4 @@ class DataIn extends InputStream {
             }
         }
     }
-
-    void readAndWriteTo(FileIO fio, long offset, int length) throws IOException {
-        require(length);
-        int start = mStart;
-        fio.write(offset, mBuffer, start, length);
-        mStart = start + length;
-    }
-
-    void readAndWriteTo(PageArray pa, long pageIndex, int pageCount) throws IOException {
-        if (pageCount <= 0) {
-            return;
-        }
-        int pageSize = pa.mPageSize;
-        require(pageCount * pageSize);
-        int start = mStart;
-        while (true) {
-            pa.writePage(pageIndex, mBuffer, start);
-            mStart = start += pageSize;
-            if (--pageCount <= 0) {
-                break;
-            }
-            pageIndex++;
-        }
-    }
 }
