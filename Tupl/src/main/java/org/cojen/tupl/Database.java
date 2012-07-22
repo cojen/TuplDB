@@ -322,7 +322,8 @@ public final class Database extends CauseCloseable {
         if (dataFiles == null) {
             mPageDb = new NonPageDb(pageSize);
         } else {
-            mPageDb = new DurablePageDb(pageSize, dataFiles, options, openMode == OPEN_DESTROY);
+            mPageDb = new DurablePageDb
+                (pageSize, dataFiles, options, config.mCrypto, openMode == OPEN_DESTROY);
         }
 
         mSharedCommitLock = mPageDb.sharedCommitLock();
@@ -392,7 +393,7 @@ public final class Database extends CauseCloseable {
                 mRedoLog = null;
             } else {
                 // Initialized, but not open yet.
-                mRedoLog = new RedoLog(baseFile, redoLogId);
+                mRedoLog = new RedoLog(config.mCrypto, baseFile, redoLogId);
             }
 
             if (openMode == OPEN_TEMP) {
@@ -862,7 +863,7 @@ public final class Database extends CauseCloseable {
         EnumSet<OpenOption> options = config.createOpenOptions();
         // Delete old redo log files.
         deleteNumberedFiles(config.mBaseFile, ".redo.");
-        DurablePageDb.restoreFromSnapshot(dataFiles, options, in).close();
+        DurablePageDb.restoreFromSnapshot(dataFiles, options, config.mCrypto, in).close();
         return Database.open(config);
     }
 

@@ -43,14 +43,14 @@ public class RecoverTest {
     }
 
     @After
-    public void teardown() {
+    public void teardown() throws Exception {
         deleteTempDatabases();
         mDb = null;
         mConfig = null;
     }
 
-    private DatabaseConfig mConfig;
-    private Database mDb;
+    protected DatabaseConfig mConfig;
+    protected Database mDb;
 
     @Test
     public void interruptOnClose() throws Exception {

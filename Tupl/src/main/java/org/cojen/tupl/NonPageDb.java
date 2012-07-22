@@ -39,6 +39,11 @@ class NonPageDb extends PageDb {
     }
 
     @Override
+    public byte[] databaseId() {
+        return Utils.EMPTY_BYTES;
+    }
+
+    @Override
     public int pageSize() {
         return mPageSize;
     }

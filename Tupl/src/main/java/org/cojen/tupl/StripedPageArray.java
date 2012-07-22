@@ -155,11 +155,6 @@ class StripedPageArray extends PageArray {
     }
 
     @Override
-    public void close() throws IOException {
-        close(null);
-    }
-
-    @Override
     public void close(Throwable cause) throws IOException {
         IOException ex = null;
         for (PageArray pa : mArrays) {

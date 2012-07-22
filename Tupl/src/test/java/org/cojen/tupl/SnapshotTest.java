@@ -34,6 +34,9 @@ public class SnapshotTest {
         org.junit.runner.JUnitCore.main(SnapshotTest.class.getName());
     }
 
+    protected void decorate(DatabaseConfig config) throws Exception {
+    }
+
     @Test
     public void test() throws Exception {
         File base = newTempBaseFile();
@@ -42,14 +45,17 @@ public class SnapshotTest {
         deleteTempDatabases();
     }
 
-    private static void test(File base, File snapshotBase) throws Exception {
+    private void test(File base, File snapshotBase) throws Exception {
         File snapshot = new File(snapshotBase.getParentFile(), snapshotBase.getName() + ".db");
 
-        final Database db = Database.open
-            (new DatabaseConfig()
-             .baseFile(base)
-             .minCacheSize(100000000)
-             .durabilityMode(DurabilityMode.NO_FLUSH));
+        DatabaseConfig config = new DatabaseConfig()
+            .baseFile(base)
+            .minCacheSize(100000000)
+            .durabilityMode(DurabilityMode.NO_FLUSH);
+
+        decorate(config);
+
+        final Database db = Database.open(config);
         final Index index = db.openIndex("test1");
 
         for (int i=0; i<10000000; i++) {
@@ -115,11 +121,14 @@ public class SnapshotTest {
 
         assertEquals(expectedLength, snapshot.length());
 
-        final Database restored = Database.open
-            (new DatabaseConfig()
-             .baseFile(snapshotBase)
-             .minCacheSize(100000000)
-             .durabilityMode(DurabilityMode.NO_FLUSH));
+        DatabaseConfig restoredConfig = new DatabaseConfig()
+            .baseFile(snapshotBase)
+            .minCacheSize(100000000)
+            .durabilityMode(DurabilityMode.NO_FLUSH);
+
+        decorate(restoredConfig);
+
+        final Database restored = Database.open(restoredConfig);
         final Index restoredIx = restored.openIndex("test1");
 
         for (int i=0; i<10000000; i++) {

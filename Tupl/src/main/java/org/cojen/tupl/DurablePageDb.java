@@ -88,10 +88,11 @@ class DurablePageDb extends PageDb {
     // Commit number is the highest one which has been committed.
     private int mCommitNumber;
 
-    DurablePageDb(int pageSize, File[] files, EnumSet<OpenOption> options, boolean destroy)
+    DurablePageDb(int pageSize, File[] files, EnumSet<OpenOption> options,
+                  Crypto crypto, boolean destroy)
         throws IOException
     {
-        this(openPageArray(pageSize, files, options), destroy);
+        this(openPageArray(pageSize, files, options), crypto, destroy);
     }
 
     private static PageArray openPageArray(int pageSize, File[] files, EnumSet<OpenOption> options)
@@ -130,7 +131,11 @@ class DurablePageDb extends PageDb {
         }
     }
 
-    private DurablePageDb(PageArray pa, boolean destroy) throws IOException {
+    private DurablePageDb(PageArray pa, Crypto crypto, boolean destroy) throws IOException {
+        if (crypto != null) {
+            pa = new CryptoPageArray(pa, crypto);
+        }
+
         mPageArray = pa;
         mHeaderLatch = new Latch();
 
@@ -146,9 +151,15 @@ class DurablePageDb extends PageDb {
                     SecureRandom rnd = new SecureRandom();
                     mDatabaseId1 = rnd.nextLong();
                     mDatabaseId2 = rnd.nextLong();
+
+                    if (crypto != null) {
+                        crypto.setDatabaseId(databaseId());
+                    }
+
                     // Commit twice to ensure both headers have valid data.
                     commit(null);
                     commit(null);
+
                     mPageArray.setPageCount(2);
                     break open;
                 }
@@ -222,6 +233,10 @@ class DurablePageDb extends PageDb {
                 mDatabaseId1 = readLongLE(header, I_DATABASE_ID);
                 mDatabaseId2 = readLongLE(header, I_DATABASE_ID + 8);
 
+                if (crypto != null) {
+                    crypto.setDatabaseId(databaseId());
+                }
+
                 mHeaderLatch.acquireExclusive();
                 mCommitNumber = commitNumber;
                 mHeaderLatch.releaseExclusive();
@@ -231,6 +246,14 @@ class DurablePageDb extends PageDb {
         } catch (Throwable e) {
             throw closeOnFailure(e);
         }
+    }
+
+    @Override
+    public byte[] databaseId() {
+        byte[] id = new byte[16];
+        writeLongLE(id, 0, mDatabaseId1);
+        writeLongLE(id, 8, mDatabaseId2);
+        return id;
     }
 
     @Override
@@ -418,12 +441,13 @@ class DurablePageDb extends PageDb {
     /**
      * @param in snapshot source; does not require extra buffering; not auto-closed
      */
-    static PageDb restoreFromSnapshot(File[] files, EnumSet<OpenOption> options, InputStream in)
+    static PageDb restoreFromSnapshot(File[] files, EnumSet<OpenOption> options,
+                                      Crypto crypto, InputStream in)
         throws IOException
     {
         PageArray pa = openPageArray(MINIMUM_PAGE_SIZE, files, options);
         pa.restoreFromSnapshot(in);
-        return new DurablePageDb(pa, false);
+        return new DurablePageDb(pa, crypto, false);
     }
 
     private IOException closeOnFailure(Throwable e) throws IOException {

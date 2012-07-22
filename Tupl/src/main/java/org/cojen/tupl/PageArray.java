@@ -48,6 +48,10 @@ abstract class PageArray extends CauseCloseable {
         return mPageSize;
     }
 
+    public PageArray rawPageArray() {
+        return this;
+    }
+
     public abstract boolean isReadOnly();
 
     public abstract boolean isEmpty() throws IOException;
@@ -163,6 +167,11 @@ abstract class PageArray extends CauseCloseable {
      */
     public abstract void sync(boolean metadata) throws IOException;
 
+    @Override
+    public void close() throws IOException {
+        close(null);
+    }
+
     /**
      * @return a new instance with the given page size, still backed by the orginal array
      */
@@ -254,6 +263,8 @@ abstract class PageArray extends CauseCloseable {
     }
 
     class SnapshotImpl extends CauseCloseable implements Snapshot {
+        private final PageArray mRawPageArray;
+
         private final TempFileManager mTempFileManager;
         private final long mSnapshotPageCount;
 
@@ -275,6 +286,9 @@ abstract class PageArray extends CauseCloseable {
         private Throwable mAbortCause;
 
         SnapshotImpl(TempFileManager tfm, long pageCount) throws IOException {
+            // Snapshot does not decrypt the pages.
+            mRawPageArray = rawPageArray();
+
             mTempFileManager = tfm;
             mSnapshotPageCount = pageCount;
 
@@ -355,7 +369,7 @@ abstract class PageArray extends CauseCloseable {
                     byte[] value = c.value();
 
                     if (value == null) {
-                        readPage(index, buffer);
+                        mRawPageArray.readPage(index, buffer);
                         synchronized (mSnapshotLock) {
                             mProgress = index;
                             mSnapshotLock.notifyAll();
@@ -414,7 +428,7 @@ abstract class PageArray extends CauseCloseable {
                 }
 
                 try {
-                    readPage(index, mCaptureValue);
+                    mRawPageArray.readPage(index, mCaptureValue);
                     c.store(mCaptureValue);
                 } finally {
                     mCaptureLatch.releaseExclusive();
