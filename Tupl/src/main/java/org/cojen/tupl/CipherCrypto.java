@@ -56,7 +56,7 @@ public class CipherCrypto implements Crypto {
         System.out.println(b);
     }
 
-    private final ThreadLocal<Cipher> mUnpaddedCipher = new ThreadLocal<Cipher>();
+    private final ThreadLocal<Cipher> mBlockCipher = new ThreadLocal<Cipher>();
     private final SecretKey mKey;
     private final boolean mIsNewKey;
 
@@ -120,7 +120,7 @@ public class CipherCrypto implements Crypto {
     public void encryptPage(long pageIndex, int pageSize, byte[] page, int pageOffset)
         throws GeneralSecurityException
     {
-        Cipher cipher = unpaddedCipher();
+        Cipher cipher = blockCipher();
         initCipher(cipher, Cipher.ENCRYPT_MODE, mKey, generateIv(pageIndex));
         if (cipher.doFinal(page, pageOffset, pageSize, page, pageOffset) != pageSize) {
             throw new GeneralSecurityException("Encrypted length does not match");
@@ -132,7 +132,7 @@ public class CipherCrypto implements Crypto {
                             byte[] src, int srcOffset, byte[] dst, int dstOffset)
         throws GeneralSecurityException
     {
-        Cipher cipher = unpaddedCipher();
+        Cipher cipher = blockCipher();
         initCipher(cipher, Cipher.ENCRYPT_MODE, mKey, generateIv(pageIndex));
         if (cipher.doFinal(src, srcOffset, pageSize, dst, dstOffset) != pageSize) {
             throw new GeneralSecurityException("Encrypted length does not match");
@@ -143,7 +143,7 @@ public class CipherCrypto implements Crypto {
     public void decryptPage(long pageIndex, int pageSize, byte[] page, int pageOffset)
         throws GeneralSecurityException
     {
-        Cipher cipher = unpaddedCipher();
+        Cipher cipher = blockCipher();
         initCipher(cipher, Cipher.DECRYPT_MODE, mKey, generateIv(pageIndex));
         if (cipher.doFinal(page, pageOffset, pageSize, page, pageOffset) != pageSize) {
             throw new GeneralSecurityException("Decrypted length does not match");
@@ -155,7 +155,7 @@ public class CipherCrypto implements Crypto {
                             byte[] src, int srcOffset, byte[] dst, int dstOffset)
         throws GeneralSecurityException
     {
-        Cipher cipher = unpaddedCipher();
+        Cipher cipher = blockCipher();
         initCipher(cipher, Cipher.DECRYPT_MODE, mKey, generateIv(pageIndex));
         cipher.doFinal(src, srcOffset, pageSize, dst, dstOffset);
         if (cipher.doFinal(src, srcOffset, pageSize, dst, dstOffset) != pageSize) {
@@ -167,7 +167,7 @@ public class CipherCrypto implements Crypto {
     public OutputStream newEncryptingStream(long id, OutputStream out)
         throws GeneralSecurityException, IOException
     {
-        Cipher cipher = newPaddedCipher();
+        Cipher cipher = newStreamCipher();
         initCipher(cipher, Cipher.ENCRYPT_MODE, mKey, generatePageIv(id));
         return new CipherOutputStream(out, cipher);
     }
@@ -176,7 +176,7 @@ public class CipherCrypto implements Crypto {
     public InputStream newDecryptingStream(long id, InputStream in)
         throws GeneralSecurityException, IOException
     {
-        Cipher cipher = newPaddedCipher();
+        Cipher cipher = newStreamCipher();
         initCipher(cipher, Cipher.DECRYPT_MODE, mKey, generatePageIv(id));
         return new CipherInputStream(in, cipher);
     }
@@ -199,12 +199,12 @@ public class CipherCrypto implements Crypto {
         return new SecretKeySpec(encodedKey, algorithm());
     }
 
-    protected Cipher newUnpaddedCipher() throws GeneralSecurityException {
+    protected Cipher newBlockCipher() throws GeneralSecurityException {
         return Cipher.getInstance(algorithm() + "/CBC/NoPadding");
     }
 
-    protected Cipher newPaddedCipher() throws GeneralSecurityException {
-        return Cipher.getInstance(algorithm() + "/CBC/PKCS5Padding");
+    protected Cipher newStreamCipher() throws GeneralSecurityException {
+        return Cipher.getInstance(algorithm() + "/CTR/NoPadding");
     }
 
     protected void initCipher(Cipher cipher, int opmode, SecretKey key, byte[] iv)
@@ -238,11 +238,11 @@ public class CipherCrypto implements Crypto {
         return iv;
     }
 
-    private Cipher unpaddedCipher() throws GeneralSecurityException {
-        Cipher cipher = mUnpaddedCipher.get();
+    private Cipher blockCipher() throws GeneralSecurityException {
+        Cipher cipher = mBlockCipher.get();
         if (cipher == null) {
-            cipher = newUnpaddedCipher();
-            mUnpaddedCipher.set(cipher);
+            cipher = newBlockCipher();
+            mBlockCipher.set(cipher);
         }
         return cipher;
     }
