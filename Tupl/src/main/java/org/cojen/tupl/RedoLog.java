@@ -21,12 +21,16 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 
 import java.util.Random;
 
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
+
+import java.security.GeneralSecurityException;
 
 /**
  * 
@@ -128,13 +132,14 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
         return x;
     }
 
+    private final Crypto mCrypto;
     private final File mBaseFile;
 
     private final byte[] mBuffer;
     private int mBufferPos;
 
     private long mLogId;
-    private FileOutputStream mOut;
+    private OutputStream mOut;
     private volatile FileChannel mChannel;
 
     private boolean mReplayMode;
@@ -148,7 +153,8 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
     /**
      * RedoLog starts in replay mode.
      */
-    RedoLog(File baseFile, long logId) throws IOException {
+    RedoLog(Crypto crypto, File baseFile, long logId) throws IOException {
+        mCrypto = crypto;
         mBaseFile = baseFile;
         mBuffer = new byte[4096];
 
@@ -182,11 +188,17 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
         try {
             DataIn in;
             try {
-                in = new DataIn(new FileInputStream(file));
+                InputStream fin = new FileInputStream(file);
+                if (mCrypto != null) {
+                    fin = mCrypto.newDecryptingStream(mLogId, fin);
+                }
+                in = new DataIn(fin);
             } catch (FileNotFoundException e) {
                 mReplayMode = false;
                 openFile(mLogId);
                 return false;
+            } catch (GeneralSecurityException e) {
+                throw new DatabaseException(e);
             }
 
             try {
@@ -233,12 +245,28 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
         mReplayMode = false;
 
         try {
-            final FileOutputStream oldOut = mOut;
-            final FileOutputStream out = new FileOutputStream(file);
+            final OutputStream oldOut = mOut;
+            final FileChannel oldChannel = mChannel;
+
+            final OutputStream out;
+            final FileChannel channel;
+            {
+                FileOutputStream fout = new FileOutputStream(file);
+                channel = fout.getChannel();
+                if (mCrypto == null) {
+                    out = fout;
+                } else {
+                    try {
+                        out = mCrypto.newEncryptingStream(logId, fout);
+                    } catch (GeneralSecurityException e) {
+                        throw new DatabaseException(e);
+                    }
+                }
+            }
 
             try {
                 mOut = out;
-                mChannel = out.getChannel();
+                mChannel = channel;
 
                 writeLongLE(MAGIC_NUMBER);
                 writeIntLE(ENCODING_VERSION);
@@ -247,7 +275,7 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
                 timestamp();
                 doFlush();
             } catch (IOException e) {
-                mChannel = ((mOut = oldOut) == null) ? null : oldOut.getChannel();
+                mChannel = ((mOut = oldOut) == null) ? null : oldChannel;
                 Utils.closeQuietly(null, out);
                 file.delete();
 

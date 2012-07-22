@@ -45,6 +45,7 @@ public class DatabaseConfig implements Cloneable {
     boolean mFileSync;
     boolean mReadOnly;
     int mPageSize;
+    Crypto mCrypto;
 
     public DatabaseConfig() {
         createFilePath(true);
@@ -196,6 +197,18 @@ public class DatabaseConfig implements Cloneable {
      */
     public DatabaseConfig pageSize(int size) {
         mPageSize = size;
+        return this;
+    }
+
+    /**
+     * Enable full encryption of the data files, transaction logs, and
+     * snapshots. Option has no effect if database is non-durable. Allocated
+     * but never used pages within the data files are unencrypted, although
+     * they contain no information. Temporary files used by in-progress
+     * snapshots contain encrypted content.
+     */
+    public DatabaseConfig encrypt(Crypto crypto) {
+        mCrypto = crypto;
         return this;
     }
 

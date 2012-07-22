@@ -113,11 +113,6 @@ class SimplePageArray extends PageArray {
     }
 
     @Override
-    public void close() throws IOException {
-        close(null);
-    }
-
-    @Override
     public void close(Throwable cause) throws IOException {
         Utils.close(mFio, cause);
     }

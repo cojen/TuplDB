@@ -39,6 +39,11 @@ abstract class PageDb extends CauseCloseable {
     }
 
     /**
+     * Returns a copy of the database id.
+     */
+    public abstract byte[] databaseId();
+
+    /**
      * Returns the fixed size of all pages in the store, in bytes.
      */
     public abstract int pageSize();
