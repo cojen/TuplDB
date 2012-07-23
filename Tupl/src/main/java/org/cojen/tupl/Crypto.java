@@ -97,7 +97,7 @@ public interface Crypto {
         throws GeneralSecurityException, IOException;
 
     /**
-     * Called to wrap an OutputStream for supporting decryption. Implementation
+     * Called to wrap an InputStream for supporting decryption. Implementation
      * of this method must be thread-safe, but the stream doesn't need to be.
      *
      * @param id stream identifier
