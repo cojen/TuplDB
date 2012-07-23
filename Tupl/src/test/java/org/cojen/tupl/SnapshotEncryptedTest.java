@@ -25,6 +25,7 @@ import org.junit.*;
  *
  * @author Brian S O'Neill
  */
+@Ignore
 public class SnapshotEncryptedTest extends SnapshotTest {
     public static void main(String[] args) throws Exception {
         org.junit.runner.JUnitCore.main(SnapshotEncryptedTest.class.getName());
