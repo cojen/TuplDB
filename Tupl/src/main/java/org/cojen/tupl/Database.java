@@ -846,7 +846,7 @@ public final class Database extends CauseCloseable {
      * Restore from a {@link #beginSnapshot snapshot}, into the data files
      * defined by the given configuration.
      *
-     * @param in snapshot source; does not require extra buffering; not auto-closed
+     * @param in snapshot source; does not require extra buffering; auto-closed
      */
     public static Database restoreFromSnapshot(DatabaseConfig config, InputStream in)
         throws IOException
@@ -863,7 +863,8 @@ public final class Database extends CauseCloseable {
         EnumSet<OpenOption> options = config.createOpenOptions();
         // Delete old redo log files.
         deleteNumberedFiles(config.mBaseFile, ".redo.");
-        DurablePageDb.restoreFromSnapshot(dataFiles, options, config.mCrypto, in).close();
+        DurablePageDb.restoreFromSnapshot
+            (config.mPageSize, dataFiles, options, config.mCrypto, in).close();
         return Database.open(config);
     }
 

@@ -439,14 +439,69 @@ class DurablePageDb extends PageDb {
     }
 
     /**
-     * @param in snapshot source; does not require extra buffering; not auto-closed
+     * @param in snapshot source; does not require extra buffering; auto-closed
      */
-    static PageDb restoreFromSnapshot(File[] files, EnumSet<OpenOption> options,
+    static PageDb restoreFromSnapshot(int pageSize, File[] files, EnumSet<OpenOption> options,
                                       Crypto crypto, InputStream in)
         throws IOException
     {
-        PageArray pa = openPageArray(MINIMUM_PAGE_SIZE, files, options);
-        pa.restoreFromSnapshot(in);
+        if (options.contains(OpenOption.READ_ONLY)) {
+            throw new DatabaseException("Cannot restore into a read-only file");
+        }
+
+        byte[] buffer;
+        PageArray pa;
+        long index = 0;
+
+        if (crypto != null) {
+            buffer = new byte[pageSize];
+            pa = openPageArray(pageSize, files, options);
+            if (!pa.isEmpty()) {
+                throw new DatabaseException("Cannot restore into a non-empty file");
+            }
+        } else {
+            // Figure out what the actual page size is.
+
+            buffer = new byte[MINIMUM_PAGE_SIZE];
+            Utils.readFully(in, buffer, 0, buffer.length);
+
+            long magic = readLongLE(buffer, I_MAGIC_NUMBER);
+            if (magic != MAGIC_NUMBER) {
+                throw new CorruptDatabaseException("Wrong magic number: " + magic);
+            }
+
+            pageSize = readIntLE(buffer, I_PAGE_SIZE);
+            pa = openPageArray(pageSize, files, options);
+
+            if (!pa.isEmpty()) {
+                throw new DatabaseException("Cannot restore into a non-empty file");
+            }
+
+            if (pageSize != buffer.length) {
+                byte[] newBuffer = new byte[pageSize];
+                System.arraycopy(buffer, 0, newBuffer, 0, buffer.length);
+                Utils.readFully(in, newBuffer, buffer.length, pageSize - buffer.length);
+                buffer = newBuffer;
+            }
+
+            pa.writePage(index, buffer);
+            index++;
+        }
+
+        try {
+            while (true) {
+                try {
+                    Utils.readFully(in, buffer, 0, buffer.length);
+                } catch (EOFException e) {
+                    break;
+                }
+                pa.writePage(index, buffer);
+                index++;
+            }
+        } finally {
+            Utils.closeQuietly(null, in);
+        }
+
         return new DurablePageDb(pa, crypto, false);
     }
 

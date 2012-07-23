@@ -19,6 +19,7 @@ package org.cojen.tupl;
 import java.io.Closeable;
 import java.io.EOFException;
 import java.io.File;
+import java.io.InputStream;
 import java.io.IOException;
 
 import java.math.BigInteger;
@@ -108,6 +109,21 @@ class Utils {
             }
         }
         return alen - blen;
+    }
+
+    static void readFully(InputStream in, byte[] b, int off, int len) throws IOException {
+        if (len > 0) {
+            while (true) {
+                int amt = in.read(b, off, len);
+                if (amt <= 0) {
+                    throw new EOFException();
+                }
+                if ((len -= amt) <= 0) {
+                    break;
+                }
+                off += amt;
+            }
+        }
     }
 
     public static final int readUnsignedShortBE(byte[] b, int offset) {

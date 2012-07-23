@@ -206,25 +206,6 @@ abstract class PageArray extends CauseCloseable {
         return snapshot;
     }
 
-    /**
-     * @param in snapshot source; does not require extra buffering; not auto-closed
-     */
-    void restoreFromSnapshot(InputStream in) throws IOException {
-        if (isReadOnly()) {
-            throw new DatabaseException("Cannot restore into a read-only file");
-        }
-        if (!isEmpty()) {
-            throw new DatabaseException("Cannot restore into a non-empty file");
-        }
-        byte[] buffer = new byte[mPageSize];
-        long index = 0;
-        int amt;
-        while ((amt = in.read(buffer)) > 0) {
-            writePage(index, buffer);
-            index++;
-        }
-    }
-
     synchronized void unregister(SnapshotImpl snapshot) {
         Object obj = mSnapshots;
         if (obj == snapshot) {

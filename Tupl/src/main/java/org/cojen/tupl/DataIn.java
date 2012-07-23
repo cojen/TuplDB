@@ -134,20 +134,7 @@ class DataIn extends InputStream {
     }
 
     public void readFully(byte[] b) throws IOException {
-        int len = b.length;
-        if (len > 0) {
-            int off = 0;
-            while (true) {
-                int amt = read(b, off, len);
-                if (amt <= 0) {
-                    throw new EOFException();
-                }
-                if ((len -= amt) <= 0) {
-                    break;
-                }
-                off += amt;
-            }
-        }
+        Utils.readFully(this, b, 0, b.length);
     }
 
     /**
