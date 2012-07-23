@@ -23,6 +23,7 @@ import org.junit.*;
  *
  * @author Brian S O'Neill
  */
+@Ignore
 public class RecoverEncryptedTest extends RecoverTest {
     public static void main(String[] args) throws Exception {
         org.junit.runner.JUnitCore.main(RecoverEncryptedTest.class.getName());
