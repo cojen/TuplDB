@@ -88,12 +88,44 @@ class IndexesCursor implements Cursor {
         return assignKey(mRegistryCursor.next(maxWait, unit));
     }
 
+    public LockResult nextLe(byte[] limitKey) throws IOException {
+        return assignKey(mRegistryCursor.nextLe(limitKey));
+    }
+
+    public LockResult nextLe(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException {
+        return assignKey(mRegistryCursor.nextLe(limitKey, maxWait, unit));
+    }
+
+    public LockResult nextLt(byte[] limitKey) throws IOException {
+        return assignKey(mRegistryCursor.nextLt(limitKey));
+    }
+
+    public LockResult nextLt(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException {
+        return assignKey(mRegistryCursor.nextLt(limitKey, maxWait, unit));
+    }
+
     public LockResult previous() throws IOException {
         return assignKey(mRegistryCursor.previous());
     }
 
     public LockResult previous(long maxWait, TimeUnit unit) throws IOException {
         return assignKey(mRegistryCursor.previous(maxWait, unit));
+    }
+
+    public LockResult previousGe(byte[] limitKey) throws IOException {
+        return assignKey(mRegistryCursor.previousGe(limitKey));
+    }
+
+    public LockResult previousGe(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException {
+        return assignKey(mRegistryCursor.previousGe(limitKey, maxWait, unit));
+    }
+
+    public LockResult previousGt(byte[] limitKey) throws IOException {
+        return assignKey(mRegistryCursor.previousGt(limitKey));
+    }
+
+    public LockResult previousGt(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException {
+        return assignKey(mRegistryCursor.previousGt(limitKey, maxWait, unit));
     }
 
     public LockResult find(byte[] key) throws IOException {

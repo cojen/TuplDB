@@ -91,6 +91,13 @@ class Utils {
     }
 
     /**
+     * @return negative if 'a' is less, zero if equal, greater than zero if greater
+     */
+    static int compareKeys(byte[] a, byte[] b) {
+        return compareKeys(a, 0, a.length, b, 0, b.length);
+    }
+
+    /**
      * @param a key 'a'
      * @param aoff key 'a' offset
      * @param alen key 'a' length
