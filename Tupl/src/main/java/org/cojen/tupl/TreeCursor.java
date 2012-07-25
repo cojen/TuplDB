@@ -337,6 +337,82 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         return next(mTxn, leafExclusiveNotSplit(), maxWait, unit);
     }
 
+    @Override
+    public LockResult nextLe(byte[] limitKey) throws IOException {
+        return nextCmp(limitKey, 1);
+    }
+
+    @Override
+    public LockResult nextLe(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException {
+        return nextCmp(limitKey, 1, maxWait, unit);
+    }
+
+    @Override
+    public LockResult nextLt(byte[] limitKey) throws IOException {
+        return nextCmp(limitKey, 0);
+    }
+
+    @Override
+    public LockResult nextLt(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException {
+        return nextCmp(limitKey, 0, maxWait, unit);
+    }
+
+    private LockResult nextCmp(byte[] limitKey, int cmp) throws IOException {
+        TreeCursorFrame frame = leafExclusiveNotSplit();
+        while (true) {
+            toNext(Transaction.BOGUS, frame);
+            if (mKey == null) {
+                return LockResult.UNOWNED;
+            }
+            LockResult result;
+            if (Utils.compareKeys(mKey, limitKey) >= cmp) {
+                mKey = null;
+                mValue = null;
+                return LockResult.UNOWNED;
+            } else {
+                Transaction txn = mTxn;
+                if (txn != null && txn.lockMode().noReadLock) {
+                    // Extra check for filtering tombstones.
+                    if (mValue != null) {
+                        return LockResult.UNOWNED;
+                    }
+                } else if ((result = lockAndCopyIfExists(txn)) != null) {
+                    return result;
+                }
+            }
+            frame = leafExclusiveNotSplit();
+        }
+    }
+
+    private LockResult nextCmp(byte[] limitKey, int cmp, long maxWait, TimeUnit unit)
+        throws IOException
+    {
+        TreeCursorFrame frame = leafExclusiveNotSplit();
+        while (true) {
+            toNext(Transaction.BOGUS, frame);
+            if (mKey == null) {
+                return LockResult.UNOWNED;
+            }
+            LockResult result;
+            if (Utils.compareKeys(mKey, limitKey) >= cmp) {
+                mKey = null;
+                mValue = null;
+                return LockResult.UNOWNED;
+            } else {
+                Transaction txn = mTxn;
+                if (txn != null && txn.lockMode().noReadLock) {
+                    // Extra check for filtering tombstones.
+                    if (mValue != null) {
+                        return LockResult.UNOWNED;
+                    }
+                } else if ((result = lockAndCopyIfExists(txn, maxWait, unit)) != null) {
+                    return result;
+                }
+            }
+            frame = leafExclusiveNotSplit();
+        }
+    }
+
     /**
      * Note: When method returns, frame is unlatched and may no longer be valid.
      *
@@ -700,6 +776,82 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     @Override
     public LockResult previous(long maxWait, TimeUnit unit) throws IOException {
         return previous(mTxn, leafExclusiveNotSplit(), maxWait, unit);
+    }
+
+    @Override
+    public LockResult previousGe(byte[] limitKey) throws IOException {
+        return previousCmp(limitKey, 1);
+    }
+
+    @Override
+    public LockResult previousGe(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException {
+        return previousCmp(limitKey, 1, maxWait, unit);
+    }
+
+    @Override
+    public LockResult previousGt(byte[] limitKey) throws IOException {
+        return previousCmp(limitKey, 0);
+    }
+
+    @Override
+    public LockResult previousGt(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException {
+        return previousCmp(limitKey, 0, maxWait, unit);
+    }
+
+    private LockResult previousCmp(byte[] limitKey, int cmp) throws IOException {
+        TreeCursorFrame frame = leafExclusiveNotSplit();
+        while (true) {
+            toPrevious(Transaction.BOGUS, frame);
+            if (mKey == null) {
+                return LockResult.UNOWNED;
+            }
+            LockResult result;
+            if (Utils.compareKeys(limitKey, mKey) >= cmp) {
+                mKey = null;
+                mValue = null;
+                return LockResult.UNOWNED;
+            } else {
+                Transaction txn = mTxn;
+                if (txn != null && txn.lockMode().noReadLock) {
+                    // Extra check for filtering tombstones.
+                    if (mValue != null) {
+                        return LockResult.UNOWNED;
+                    }
+                } else if ((result = lockAndCopyIfExists(txn)) != null) {
+                    return result;
+                }
+            }
+            frame = leafExclusiveNotSplit();
+        }
+    }
+
+    private LockResult previousCmp(byte[] limitKey, int cmp, long maxWait, TimeUnit unit)
+        throws IOException
+    {
+        TreeCursorFrame frame = leafExclusiveNotSplit();
+        while (true) {
+            toPrevious(Transaction.BOGUS, frame);
+            if (mKey == null) {
+                return LockResult.UNOWNED;
+            }
+            LockResult result;
+            if (Utils.compareKeys(limitKey, mKey) >= cmp) {
+                mKey = null;
+                mValue = null;
+                return LockResult.UNOWNED;
+            } else {
+                Transaction txn = mTxn;
+                if (txn != null && txn.lockMode().noReadLock) {
+                    // Extra check for filtering tombstones.
+                    if (mValue != null) {
+                        return LockResult.UNOWNED;
+                    }
+                } else if ((result = lockAndCopyIfExists(txn, maxWait, unit)) != null) {
+                    return result;
+                }
+            }
+            frame = leafExclusiveNotSplit();
+        }
     }
 
     /**
