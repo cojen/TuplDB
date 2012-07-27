@@ -608,13 +608,17 @@ final class Node extends Latch {
 
     /**
      * Caller must hold exclusive latch on node. Latch is released by this
-     * method when null is returned or an exception is thrown. If another node
-     * is returned, it is latched exclusively and original is released.
+     * method when null is returned or if an exception is thrown. If another
+     * node is returned, it is latched exclusively and original is released.
      *
      * @return original or another node to be evicted; null if cannot evict
      */
     static Node evict(Node node, Database db) throws IOException {
-        check: if (node.mType == TYPE_UNDO_LOG) while (true) {
+        if (node.mType != TYPE_UNDO_LOG) {
+            return node.evictTreeNode(db);
+        }
+
+        while (true) {
             Node[] childNodes = node.mChildNodes;
             if (childNodes != null && childNodes.length > 0) {
                 Node child = childNodes[0];
@@ -641,51 +645,49 @@ final class Node extends Latch {
                     }
                 }
             }
-            break;
-        } else {
-            if (node.mLastCursorFrame != null || node.mSplit != null) {
-                node.releaseExclusive();
-                return null;
-            }
+            node.doEvict(db);
+            return node;
+        }
+    }
 
-            if (node.mId == STUB_ID) {
-                break check;
-            }
+    private Node evictTreeNode(Database db) throws IOException {
+        if (mLastCursorFrame != null || mSplit != null) {
+            // Cannot evict if in use by a cursor or if splitting.
+            releaseExclusive();
+            return null;
+        }
 
-            Node[] childNodes = node.mChildNodes;
-            if (childNodes != null) for (int i=0; i<childNodes.length; i++) {
-                Node child = childNodes[i];
-                if (child != null) {
-                    long childId = node.retrieveChildRefIdFromIndex(i);
-                    if (childId != child.mId) {
-                        // Not our child -- it was evicted already.
-                        childNodes[i] = null;
-                    } else if (child.tryAcquireShared()) {
-                        try {
-                            if (childId != child.mId) {
-                                childNodes[i] = null;
-                            } else if (child.mCachedState != CACHED_CLEAN) {
-                                // Cannot evict if a child is dirty. Child must
-                                // be evicted first.
-                                // TODO: try evicting child instead
-                                node.releaseExclusive();
-                                return null;
-                            }
-                        } finally {
-                            child.releaseShared();
-                        }
-                    } else {
-                        // If latch cannot be acquired, assume child is still
-                        // in use, and so the parent node should be kept.
-                        node.releaseExclusive();
+        if (mId == STUB_ID) {
+            return this;
+        }
+
+        Node[] childNodes = mChildNodes;
+        if (childNodes != null) for (int i=0; i<childNodes.length; i++) {
+            Node child = childNodes[i];
+            if (child != null) {
+                long childId = retrieveChildRefIdFromIndex(i);
+                if (childId != child.mId) {
+                    // Not our child -- it was evicted already.
+                    childNodes[i] = null;
+                } else if (child.tryAcquireExclusive()) {
+                    if (childId == child.mId && child.evictTreeNode(db) == null) {
+                        // Cannot evict child, and so cannot evict parent.
+                        releaseExclusive();
                         return null;
                     }
+                    childNodes[i] = null;
+                    child.releaseExclusive();
+                } else {
+                    // If latch cannot be acquired, assume child is still in
+                    // use, and so the parent node should be kept.
+                    releaseExclusive();
+                    return null;
                 }
             }
         }
 
-        node.doEvict(db);
-        return node;
+        doEvict(db);
+        return this;
     }
 
     /**
