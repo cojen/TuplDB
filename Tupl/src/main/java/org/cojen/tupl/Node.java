@@ -658,6 +658,12 @@ final class Node extends Latch {
         }
 
         if (mId == STUB_ID) {
+            // Stub has one child which is the root or another stub. The child
+            // should never be evicted, because this would cause the entire
+            // tree to be erroneously evicted.
+            mId = 0;
+            // TODO: child node array should be recycled
+            mChildNodes = null;
             return this;
         }
 
