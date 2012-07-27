@@ -2242,15 +2242,6 @@ public final class Database extends CauseCloseable {
                     // Clean state must be set after write completes. Although
                     // latch has been downgraded to shared, modifying the state
                     // is safe because no other thread could have changed it.
-                    // Be extra paranoid and perform a volatile read first,
-                    // ensuring that the write operation happens before. If the
-                    // cache state becomes clean before the write, then node
-                    // eviction logic gets confused. It can cause a node to get
-                    // reloaded before it's previous write begins, which is
-                    // clearly incorrect behavior.
-                    if (mCheckpointFlushState != stateToFlush) {
-                        throw new AssertionError();
-                    }
                     node.mCachedState = CACHED_CLEAN;
                 } finally {
                     node.releaseShared();
