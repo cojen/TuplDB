@@ -360,11 +360,14 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     private LockResult nextCmp(byte[] limitKey, int cmp) throws IOException {
         TreeCursorFrame frame = leafExclusiveNotSplit();
         while (true) {
+            // FIXME: This causes an extra value copy to be performed.
             toNext(Transaction.BOGUS, frame);
             if (mKey == null) {
                 return LockResult.UNOWNED;
             }
             LockResult result;
+            // FIXME: For le or ge variation, lock must always be acquired
+            // before a decision can be made.
             if (Utils.compareKeys(mKey, limitKey) >= cmp) {
                 mKey = null;
                 mValue = null;
@@ -379,6 +382,8 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                 } else if ((result = lockAndCopyIfExists(txn)) != null) {
                     return result;
                 }
+                // FIXME: If exception from lockAndCopyIfExists, set value to
+                // NOT_LOADED. Don't want uncommited values from being exposed.
             }
             frame = leafExclusiveNotSplit();
         }

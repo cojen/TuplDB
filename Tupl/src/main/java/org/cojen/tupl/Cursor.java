@@ -210,9 +210,6 @@ public interface Cursor {
      * or equal to the given limit key. Cursor key and value are set to null if
      * no applicable entry exists, and position will be undefined.
      *
-     * <p>Ownership of the key instance transfers to the Cursor, and it must
-     * not be modified after calling this method.
-     *
      * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
      * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
@@ -225,9 +222,6 @@ public interface Cursor {
      * Moves to the Cursor to the next available entry, but only when less than
      * or equal to the given limit key. Cursor key and value are set to null if
      * no applicable entry exists, and position will be undefined.
-     *
-     * <p>Ownership of the key instance transfers to the Cursor, and it must
-     * not be modified after calling this method.
      *
      * <p>If locking is required, entries are <i>skipped</i> when not lockable
      * within the specified maximum wait time. Neither {@link LockTimeoutException}
@@ -249,9 +243,6 @@ public interface Cursor {
      * the given limit key. Cursor key and value are set to null if no
      * applicable entry exists, and position will be undefined.
      *
-     * <p>Ownership of the key instance transfers to the Cursor, and it must
-     * not be modified after calling this method.
-     *
      * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
      * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
@@ -264,9 +255,6 @@ public interface Cursor {
      * Moves to the Cursor to the next available entry, but only when less than
      * the given limit key. Cursor key and value are set to null if no
      * applicable entry exists, and position will be undefined.
-     *
-     * <p>Ownership of the key instance transfers to the Cursor, and it must
-     * not be modified after calling this method.
      *
      * <p>If locking is required, entries are <i>skipped</i> when not lockable
      * within the specified maximum wait time. Neither {@link LockTimeoutException}
@@ -322,9 +310,6 @@ public interface Cursor {
      * set to null if no applicable entry exists, and position will be
      * undefined.
      *
-     * <p>Ownership of the key instance transfers to the Cursor, and it must
-     * not be modified after calling this method.
-     *
      * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
      * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
@@ -338,9 +323,6 @@ public interface Cursor {
      * greater than or equal to the given limit key. Cursor key and value are
      * set to null if no applicable entry exists, and position will be
      * undefined.
-     *
-     * <p>Ownership of the key instance transfers to the Cursor, and it must
-     * not be modified after calling this method.
      *
      * <p>If locking is required, entries are <i>skipped</i> when not lockable
      * within the specified maximum wait time. Neither {@link LockTimeoutException}
@@ -362,9 +344,6 @@ public interface Cursor {
      * greater than the given limit key. Cursor key and value are set to null
      * if no applicable entry exists, and position will be undefined.
      *
-     * <p>Ownership of the key instance transfers to the Cursor, and it must
-     * not be modified after calling this method.
-     *
      * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
      * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
@@ -377,9 +356,6 @@ public interface Cursor {
      * Moves to the Cursor to the previous available entry, but only when
      * greater than the given limit key. Cursor key and value are set to null
      * if no applicable entry exists, and position will be undefined.
-     *
-     * <p>Ownership of the key instance transfers to the Cursor, and it must
-     * not be modified after calling this method.
      *
      * <p>If locking is required, entries are <i>skipped</i> when not lockable
      * within the specified maximum wait time. Neither {@link LockTimeoutException}
