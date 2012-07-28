@@ -60,8 +60,10 @@ public class CipherCrypto implements Crypto {
     private final SecretKey mKey;
     private final boolean mIsNewKey;
 
-    private volatile byte[] mHeaderIv;
-    private volatile byte[] mPageIv;
+    private final byte[] mHeaderIv0;
+    private final byte[] mHeaderIv1;
+
+    private volatile MessageDigest mPageMd;
 
     /**
      * Construct with a new key, available from the {@link #secretKey
@@ -70,7 +72,8 @@ public class CipherCrypto implements Crypto {
     public CipherCrypto() throws GeneralSecurityException {
         mKey = generateKey();
         mIsNewKey = true;
-        mHeaderIv = generateHeaderIv();
+        mHeaderIv0 = generateHeaderIv(false);
+        mHeaderIv1 = generateHeaderIv(true);
     }
 
     /**
@@ -79,7 +82,8 @@ public class CipherCrypto implements Crypto {
     public CipherCrypto(byte[] encodedKey) throws GeneralSecurityException {
         mKey = keyFor(encodedKey);
         mIsNewKey = false;
-        mHeaderIv = generateHeaderIv();
+        mHeaderIv0 = generateHeaderIv(false);
+        mHeaderIv1 = generateHeaderIv(true);
     }
 
     /**
@@ -88,7 +92,8 @@ public class CipherCrypto implements Crypto {
     public CipherCrypto(SecretKey key) throws GeneralSecurityException {
         mKey = key;
         mIsNewKey = false;
-        mHeaderIv = generateHeaderIv();
+        mHeaderIv0 = generateHeaderIv(false);
+        mHeaderIv1 = generateHeaderIv(true);
     }
 
     /**
@@ -103,17 +108,10 @@ public class CipherCrypto implements Crypto {
 
     @Override
     public void setDatabaseId(byte[] databaseId) throws GeneralSecurityException {
-        int size = algorithmBlockSizeInBytes();
-        byte[] iv;
-        int ivOffset = 0;
-        if (databaseId.length == size) {
-            iv = databaseId.clone();
-        } else {
-            iv = new byte[size];
-            ivOffset = mix(iv, ivOffset, databaseId);
-        }
-        mix(iv, ivOffset, mKey.getEncoded());
-        mPageIv = iv;
+        MessageDigest md = newMessageDigest();
+        md.update(databaseId);
+        md.update(mKey.getEncoded());
+        mPageMd = md;
     }
 
     @Override
@@ -189,6 +187,10 @@ public class CipherCrypto implements Crypto {
         return 16;
     }
 
+    protected MessageDigest newMessageDigest() throws GeneralSecurityException {
+        return MessageDigest.getInstance("SHA-1");
+    }
+
     protected SecretKey generateKey() throws GeneralSecurityException {
         KeyGenerator gen = KeyGenerator.getInstance(algorithm());
         gen.init(256);
@@ -213,29 +215,40 @@ public class CipherCrypto implements Crypto {
         cipher.init(opmode, key, new IvParameterSpec(iv));
     }
 
-    private byte[] generateHeaderIv() throws GeneralSecurityException {
-        byte[] hash = MessageDigest.getInstance("SHA-1").digest(mKey.getEncoded());
+    private byte[] generateHeaderIv(boolean second) throws GeneralSecurityException {
+        MessageDigest md = newMessageDigest();
+        md.update(mKey.getEncoded());
+        if (second) {
+            md.update((byte) 85);
+        }
         byte[] iv = new byte[algorithmBlockSizeInBytes()];
-        mix(iv, 0, hash);
+        digest(md, iv);
         return iv;
     }
 
-    private byte[] generateIv(long pageIndex) {
+    private byte[] generateIv(long pageIndex) throws GeneralSecurityException {
         if (pageIndex == 0) {
-            return mHeaderIv.clone();
+            return mHeaderIv0.clone();
         } else if (pageIndex == 1) {
-            byte[] iv = mHeaderIv.clone();
-            iv[0] ^= 1;
-            return iv;
+            return mHeaderIv1.clone();
         } else {
             return generatePageIv(pageIndex);
         }
     }
 
-    private byte[] generatePageIv(long pageIndex) {
-        byte[] iv = mPageIv.clone();
-        mix(iv, 0, pageIndex);
-        return iv;
+    private byte[] generatePageIv(long pageIndex) throws GeneralSecurityException {
+        try {
+            MessageDigest md = (MessageDigest) mPageMd.clone();
+            int size = algorithmBlockSizeInBytes();
+            byte[] iv = new byte[size];
+            byte[] pageBytes = size >= 8 ? iv : new byte[8];
+            Utils.writeLongLE(pageBytes, 0, pageIndex);
+            md.update(pageBytes);
+            digest(md, iv);
+            return iv;
+        } catch (CloneNotSupportedException e) {
+            throw new GeneralSecurityException(e);
+        }
     }
 
     private Cipher blockCipher() throws GeneralSecurityException {
@@ -247,30 +260,15 @@ public class CipherCrypto implements Crypto {
         return cipher;
     }
 
-    private int mix(byte[] dst, int dstOffset, byte[] src) {
+    private void digest(MessageDigest md, byte[] dst) {
+        byte[] digest = md.digest();
+        int dstOffset = 0;
         int dstLength = dst.length;
-        for (int i=0; i<src.length; i++) {
-            dst[dstOffset++] ^= src[i];
+        for (int i=0; i<digest.length; i++) {
+            dst[dstOffset++] ^= digest[i];
             if (dstOffset >= dstLength) {
                 dstOffset = 0;
             }
         }
-        return dstOffset;
-    }
-
-    private int mix(byte[] dst, int dstOffset, long src) {
-        int dstLength = dst.length;
-        int i=0;
-        while (true) {
-            dst[dstOffset++] ^= (byte) src;
-            if (++i >= 8) {
-                break;
-            }
-            src >>= 8;
-            if (dstOffset >= dstLength) {
-                dstOffset = 0;
-            }
-        }
-        return dstOffset;
     }
 }
