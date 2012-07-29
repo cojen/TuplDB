@@ -977,6 +977,20 @@ final class Node extends Latch {
     }
 
     /**
+     * Returns the last key of this node, appended with 0.
+     */
+    private byte[] higherKey() {
+        final byte[] page = mPage;
+        int loc = readUnsignedShortLE(page, mSearchVecEnd);
+        int keyLen = page[loc++];
+        keyLen = keyLen >= 0 ? ((keyLen & 0x3f) + 1)
+            : (((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff));
+        byte[] key = new byte[keyLen + 1];
+        System.arraycopy(page, loc, key, 0, keyLen);
+        return key;
+    }
+
+    /**
      * Used by UndoLog for decoding entries. Only works for non-fragmented values.
      *
      * @param loc absolute location of entry
@@ -2274,9 +2288,69 @@ final class Node extends Latch {
 
         byte[] newPage = newNode.mPage;
 
+        if (pos == 0) {
+            // Inserting into left edge of node, possibly because inserts are
+            // descending. Split into new left node, but only the new entry
+            // goes into the new node. Split key is copied from this, the right
+            // node. Because internal nodes point to the left child based on a
+            // less-than comparison, future in-between inserts will go into the
+            // left node.
+
+            mSplit = new Split(false, newNode);
+            mSplit.setKey(retrieveKey(0));
+
+            // Position search vector at extreme left, allowing new entries to
+            // be placed in a natural descending order.
+            newNode.mLeftSegTail = TN_HEADER_SIZE;
+            newNode.mSearchVecStart = TN_HEADER_SIZE;
+            newNode.mSearchVecEnd = TN_HEADER_SIZE;
+
+            int destLoc = newPage.length - encodedLen;
+            newNode.copyToLeafEntry(key, fragmented, value, destLoc);
+            writeShortLE(newPage, TN_HEADER_SIZE, destLoc);
+
+            newNode.mRightSegTail = destLoc - 1;
+            newNode.releaseExclusive();
+
+            return;
+        }
+
         final int searchVecStart = mSearchVecStart;
         final int searchVecEnd = mSearchVecEnd;
+
         pos += searchVecStart;
+
+        if (pos == searchVecEnd + 2) {
+            // Inserting into right edge of node, possibly because inserts are
+            // ascending. Split into new right node, but only the new entry
+            // goes into the new node. Split key is defined as the next higher
+            // key from this node. Because internal nodes point to the right
+            // child based on a greater-than-or-equal comparison, future
+            // in-between inserts will go into the left node.
+
+            mSplit = new Split(true, newNode);
+
+            // Next higher key might be same as the new key. This is fine,
+            // because the greater-than-or-equal comparison will still be
+            // correct. Note that a "lowerKey" operation is not possible. It
+            // would be like a repeating 0.999... decimal. This is why a
+            // greater-than-or-equal rule is better than less-than-or-equal.
+            mSplit.setKey(higherKey());
+
+            // Position search vector at extreme right, allowing new entries to
+            // be placed in a natural ascending order.
+            newNode.mRightSegTail = newPage.length - 1;
+            newNode.mSearchVecStart =
+                newNode.mSearchVecEnd = newPage.length - 2;
+
+            newNode.copyToLeafEntry(key, fragmented, value, TN_HEADER_SIZE);
+            writeShortLE(newPage, newPage.length - 2, TN_HEADER_SIZE);
+
+            newNode.mLeftSegTail = TN_HEADER_SIZE + encodedLen;
+            newNode.releaseExclusive();
+
+            return;
+        }
 
         // Amount of bytes available in unsplit node.
         int avail = availableLeafBytes();
@@ -2902,6 +2976,48 @@ final class Node extends Latch {
             ", lockState=" + super.toString() +
             '}';
     }
+
+    /* counts[0]: total, counts[1]: used
+    public void analyze(Database db, long[] counts) throws IOException {
+        acquireShared();
+        analyze0(db, counts);
+    }
+
+    private void analyze0(Database db, long[] counts) throws IOException {
+        try {
+            {
+                int len = mPage.length;
+                counts[0] += len;
+                counts[1] += len - availableBytes();
+            }
+
+            if (mSplit != null) {
+                // TODO
+            }
+
+            if (isLeaf()) {
+                return;
+            }
+
+            Node[] childNodes = mChildNodes;
+            int lastPos = mSearchVecEnd - mSearchVecStart + 2;
+
+            for (int childPos = 0; childPos <= lastPos; childPos += 2) {
+                Node childNode = childNodes[childPos >> 1];
+                long childId = retrieveChildRefId(childPos);
+                if (childNode != null && childId == childNode.mId) {
+                    childNode.acquireShared();
+                } else {
+                    childNode = loadChild(db, childPos, childId, false);
+                    childNode.downgrade();
+                }
+                childNode.analyze0(db, counts);
+            }
+        } finally {
+            releaseShared();
+        }
+    }
+    */
 
     /**
      * Verifies the integrity of this node.
