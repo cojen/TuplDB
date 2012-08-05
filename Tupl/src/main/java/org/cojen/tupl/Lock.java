@@ -500,6 +500,7 @@ final class Lock {
         }
 
         TreeCursor c = new TreeCursor((Tree) obj, null);
+        c.autoload(false);
         byte[] key = mKey;
         mSharedLockersObj = null;
 
