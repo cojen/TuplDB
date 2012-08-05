@@ -424,6 +424,11 @@ final class UndoLog {
      * everything. Caller does not need to hold db commit lock.
      */
     final void rollback(long savepoint) throws IOException {
+        if (savepoint == mLength) {
+            // Nothing to rollback, so return quickly.
+            return;
+        }
+
         // Implementation could be optimized somewhat, resulting in less
         // temporary arrays and copies. Rollback optimization is generally not
         // necessary, since most transactions are expected to commit.
