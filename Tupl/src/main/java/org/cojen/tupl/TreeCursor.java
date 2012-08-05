@@ -1803,6 +1803,11 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                 } else {
                     pos = node.mSplit.binarySearch(node, key);
                     frame.bind(node, pos);
+                    if (pos < 0) {
+                        // The finishSplit method will release the latch, and
+                        // so the frame must be completely defined first.
+                        frame.mNotFoundKey = key;
+                    }
                     node = finishSplit(frame, node);
                     pos = frame.mNodePos;
                 }
