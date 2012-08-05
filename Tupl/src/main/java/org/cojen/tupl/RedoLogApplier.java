@@ -48,7 +48,10 @@ class RedoLogApplier implements RedoLogVisitor {
 
     @Override
     public void store(long indexId, byte[] key, byte[] value) throws IOException {
-        mDb.anyIndexById(indexId).store(Transaction.BOGUS, key, value);
+        Index ix = mDb.anyIndexById(indexId);
+        if (ix != null) {
+            ix.store(Transaction.BOGUS, key, value);
+        }
     }
 
     @Override
@@ -64,7 +67,10 @@ class RedoLogApplier implements RedoLogVisitor {
     @Override
     public void txnStore(long txnId, long indexId, byte[] key, byte[] value) throws IOException {
         if (mScanner.isCommitted(txnId)) {
-            mDb.anyIndexById(indexId).store(Transaction.BOGUS, key, value);
+            Index ix = mDb.anyIndexById(indexId);
+            if (ix != null) {
+                ix.store(Transaction.BOGUS, key, value);
+            }
         }
     }
 
