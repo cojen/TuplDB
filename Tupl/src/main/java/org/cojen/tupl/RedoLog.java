@@ -39,7 +39,7 @@ import java.security.GeneralSecurityException;
  */
 final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
     private static final long MAGIC_NUMBER = 431399725605778814L;
-    private static final int ENCODING_VERSION = 20120701;
+    private static final int ENCODING_VERSION = 20120801;
 
     private static final byte
         /** timestamp: long */
@@ -123,12 +123,11 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
         /** txnId: long, length: varInt, data: bytes */
         //OP_TXN_CUSTOM = (byte) 129;
 
-    private static final Random cRnd = new Random();
-
     private static int randomInt() {
+        Random rnd = new Random();
         int x;
         // Cannot return zero, since it breaks Xorshift RNG.
-        while ((x = cRnd.nextInt()) == 0);
+        while ((x = rnd.nextInt()) == 0);
         return x;
     }
 
@@ -146,7 +145,7 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
 
     private boolean mAlwaysFlush;
 
-    private int mOpRndSeed;
+    private int mTermRndSeed;
 
     private volatile Throwable mCause;
 
@@ -221,6 +220,7 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
     synchronized long openNewFile() throws IOException {
         if (mOut != null) {
             writeOp(OP_END_FILE, System.currentTimeMillis());
+            writeTerminator();
             doFlush();
         }
         long logId = mLogId;
@@ -271,7 +271,7 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
                 writeLongLE(MAGIC_NUMBER);
                 writeIntLE(ENCODING_VERSION);
                 writeLongLE(logId);
-                writeIntLE(mOpRndSeed = randomInt());
+                writeIntLE(mTermRndSeed = randomInt());
                 timestamp();
                 doFlush();
             } catch (IOException e) {
@@ -350,6 +350,7 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
             }
 
             writeOp(op, System.currentTimeMillis());
+            writeTerminator();
             doFlush();
 
             if (op == OP_CLOSE) {
@@ -382,6 +383,7 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
                 writeUnsignedVarInt(value.length);
                 writeBytes(value);
             }
+            writeTerminator();
 
             sync = conditionalFlush(mode);
         }
@@ -398,6 +400,7 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
             writeOp(OP_TXN_ROLLBACK_CHILD, txnId);
             writeLongLE(parentTxnId);
         }
+        writeTerminator();
     }
 
     /**
@@ -408,6 +411,7 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
     {
         synchronized (this) {
             writeOp(OP_TXN_COMMIT, txnId);
+            writeTerminator();
             return conditionalFlush(mode);
         }
     }
@@ -423,6 +427,7 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
         synchronized (this) {
             writeOp(OP_TXN_COMMIT_CHILD, txnId);
             writeLongLE(parentTxnId);
+            writeTerminator();
         }
     }
 
@@ -446,10 +451,13 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
             writeUnsignedVarInt(value.length);
             writeBytes(value);
         }
+
+        writeTerminator();
     }
 
     synchronized void timestamp() throws IOException {
         writeOp(OP_TIMESTAMP, System.currentTimeMillis());
+        writeTerminator();
     }
 
     // Caller must be synchronized.
@@ -477,29 +485,31 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
     }
 
     // Caller must be synchronized.
-    private void writeOp(int op, long operand) throws IOException {
+    private void writeOp(byte op, long operand) throws IOException {
         byte[] buffer = mBuffer;
         int pos = mBufferPos;
-        if (pos >= buffer.length - 12) {
+        if (pos >= buffer.length - 9) {
             doFlush(buffer, pos);
             pos = 0;
         }
-
-        // Sprinkle some random data into the opcode, to detect corruption. Use
-        // Xorshift RNG by George Marsaglia.
-        op ^= nextOpRnd();
-
-        Utils.writeIntLE(buffer, pos, op);
-        Utils.writeLongLE(buffer, pos + 4, operand);
-        mBufferPos = pos + 12;
+        buffer[pos] = op;
+        Utils.writeLongLE(buffer, pos + 1, operand);
+        mBufferPos = pos + 9;
     }
 
-    private int nextOpRnd() {
-        int x = mOpRndSeed;
+    // Caller must be synchronized.
+    private void writeTerminator() throws IOException {
+        writeIntLE(nextTermRnd());
+    }
+
+    // Caller must be synchronized (replay is exempt)
+    private int nextTermRnd() throws IOException {
+        // Xorshift RNG by George Marsaglia.
+        int x = mTermRndSeed;
         x ^= x << 13;
         x ^= x >>> 17;
         x ^= x << 5;
-        mOpRndSeed = x;
+        mTermRndSeed = x;
         return x;
     }
 
@@ -596,102 +606,165 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
                 ("Expected redo log identifier of " + mLogId + ", but actual is: " + id);
         }
 
-        mOpRndSeed = in.readIntLE();
+        mTermRndSeed = in.readIntLE();
 
-        while (true) {
-            int op;
-            try {
-                op = in.readIntLE();
-            } catch (EOFException e) {
-                return;
-            }
+        int op;
+        while ((op = in.read()) >= 0) {
+            long operand = in.readLongLE();
 
-            op ^= nextOpRnd();
-
-            if ((op & 0xffffff00) != 0) {
-                // Assume rest of log is corrupt.
-                return;
-            }
-
-            op &= 0xff;
-            switch (op) {
+            switch (op &= 0xff) {
             default:
                 throw new DatabaseException("Unknown redo log operation: " + op);
 
             case OP_TIMESTAMP:
-                visitor.timestamp(in.readLongLE());
+                if (!verifyTerminator(in)) {
+                    return;
+                }
+                visitor.timestamp(operand);
                 break;
 
             case OP_SHUTDOWN:
-                visitor.shutdown(in.readLongLE());
+                if (!verifyTerminator(in)) {
+                    return;
+                }
+                visitor.shutdown(operand);
                 break;
 
             case OP_CLOSE:
-                visitor.close(in.readLongLE());
+                if (!verifyTerminator(in)) {
+                    return;
+                }
+                visitor.close(operand);
                 break;
 
             case OP_END_FILE:
-                visitor.endFile(in.readLongLE());
+                if (!verifyTerminator(in)) {
+                    return;
+                }
+                visitor.endFile(operand);
                 break;
 
             case OP_TXN_ROLLBACK:
-                visitor.txnRollback(in.readLongLE(), 0);
+                if (!verifyTerminator(in)) {
+                    return;
+                }
+                visitor.txnRollback(operand, 0);
                 break;
 
             case OP_TXN_ROLLBACK_CHILD:
-                visitor.txnRollback(in.readLongLE(), in.readLongLE());
+                long parentTxnId = in.readLongLE();
+                if (!verifyTerminator(in)) {
+                    return;
+                }
+                visitor.txnRollback(operand, parentTxnId);
                 break;
 
             case OP_TXN_COMMIT:
-                visitor.txnCommit(in.readLongLE(), 0);
+                if (!verifyTerminator(in)) {
+                    return;
+                }
+                visitor.txnCommit(operand, 0);
                 break;
 
             case OP_TXN_COMMIT_CHILD:
-                visitor.txnCommit(in.readLongLE(), in.readLongLE());
+                parentTxnId = in.readLongLE();
+                if (!verifyTerminator(in)) {
+                    return;
+                }
+                visitor.txnCommit(operand, parentTxnId);
                 break;
 
             case OP_STORE:
-                visitor.store(in.readLongLE(), in.readBytes(), in.readBytes());
+                byte[] key = in.readBytes();
+                byte[] value = in.readBytes();
+                if (!verifyTerminator(in)) {
+                    return;
+                }
+                visitor.store(operand, key, value);
                 break;
 
             case OP_DELETE:
-                visitor.store(in.readLongLE(), in.readBytes(), null);
+                key = in.readBytes();
+                if (!verifyTerminator(in)) {
+                    return;
+                }
+                visitor.store(operand, key, null);
                 break;
 
             case OP_TXN_STORE:
-                visitor.txnStore(in.readLongLE(), in.readLongLE(), in.readBytes(), in.readBytes());
+                long indexId = in.readLongLE();
+                key = in.readBytes();
+                value = in.readBytes();
+                if (!verifyTerminator(in)) {
+                    return;
+                }
+                visitor.txnStore(operand, indexId, key, value);
                 break;
 
             case OP_TXN_STORE_COMMIT:
-                long txnId = in.readLongLE();
-                visitor.txnStore(txnId, in.readLongLE(), in.readBytes(), in.readBytes());
-                visitor.txnCommit(txnId, 0);
+                indexId = in.readLongLE();
+                key = in.readBytes();
+                value = in.readBytes();
+                if (!verifyTerminator(in)) {
+                    return;
+                }
+                visitor.txnStore(operand, indexId, key, value);
+                visitor.txnCommit(operand, 0);
                 break;
 
             case OP_TXN_STORE_COMMIT_CHILD:
-                txnId = in.readLongLE();
-                long parentTxnId = in.readLongLE();
-                visitor.txnStore(txnId, in.readLongLE(), in.readBytes(), in.readBytes());
-                visitor.txnCommit(txnId, parentTxnId);
+                parentTxnId = in.readLongLE();
+                indexId = in.readLongLE();
+                key = in.readBytes();
+                value = in.readBytes();
+                if (!verifyTerminator(in)) {
+                    return;
+                }
+                visitor.txnStore(operand, indexId, key, value);
+                visitor.txnCommit(operand, parentTxnId);
                 break;
 
             case OP_TXN_DELETE:
-                visitor.txnStore(in.readLongLE(), in.readLongLE(), in.readBytes(), null);
+                indexId = in.readLongLE();
+                key = in.readBytes();
+                if (!verifyTerminator(in)) {
+                    return;
+                }
+                visitor.txnStore(operand, indexId, key, null);
                 break;
 
             case OP_TXN_DELETE_COMMIT:
-                txnId = in.readLongLE();
-                visitor.txnStore(txnId, in.readLongLE(), in.readBytes(), null);
-                visitor.txnCommit(txnId, 0);
+                indexId = in.readLongLE();
+                key = in.readBytes();
+                if (!verifyTerminator(in)) {
+                    return;
+                }
+                visitor.txnStore(operand, indexId, key, null);
+                visitor.txnCommit(operand, 0);
                 break;
 
             case OP_TXN_DELETE_COMMIT_CHILD:
-                txnId = in.readLongLE();
                 parentTxnId = in.readLongLE();
-                visitor.txnStore(txnId, in.readLongLE(), in.readBytes(), null);
-                visitor.txnCommit(txnId, parentTxnId);
+                indexId = in.readLongLE();
+                key = in.readBytes();
+                if (!verifyTerminator(in)) {
+                    return;
+                }
+                visitor.txnStore(operand, indexId, key, null);
+                visitor.txnCommit(operand, parentTxnId);
                 break;
             }
+        }
+    }
+
+    /**
+     * If false is returned, assume rest of log file is corrupt.
+     */
+    private boolean verifyTerminator(DataIn in) throws IOException {
+        try {
+            return in.readIntLE() == nextTermRnd();
+        } catch (EOFException e) {
+            return false;
         }
     }
 }
