@@ -6,6 +6,8 @@
 - Support stats: free space, used space, lock count (from LockManager), active
   cursor count (examine all root nodes), active transaction count
   (Database.mUndoLogCount; doesn’t count use of UNSAFE)
+- Online compaction. Two types: Node merging and file truncation. File
+  truncation is the more difficult one.
 
 Reduce overhead of checkpoint by sweeping through dirty nodes twice. This
 approach smooths out the "bump" when issuing a checkpoint. Also, it allows
@@ -26,36 +28,5 @@ requests for the shared lock are blocked. Introduce a new type of lock, which
 is hooked into the FileIO or PageArray class. When an I/O operation is
 performed, assume it will take a long time and allow any shared lock waiters to
 barge ahead of the exclusive lock request.
-
-Undo log corruption when disk is full. Observed during recovery:
-
-org.cojen.tupl.CorruptDatabaseException: Unknown node type: 0, id: 919018
-        at org.cojen.tupl.Node.read(Node.java:591)
-        at org.cojen.tupl.UndoLog.readUndoLogNode(UndoLog.java:960)
-        at org.cojen.tupl.UndoLog.latchLowerNode(UndoLog.java:802)
-        at org.cojen.tupl.UndoLog.popNode(UndoLog.java:773)
-        at org.cojen.tupl.UndoLog.pop(UndoLog.java:748)
-        at org.cojen.tupl.UndoLog.truncateScope(UndoLog.java:531)
-        at org.cojen.tupl.RedoLogApplier.processUndo(RedoLogApplier.java:74)
-        at org.cojen.tupl.RedoLogApplier.txnCommit(RedoLogApplier.java:61)
-        at org.cojen.tupl.RedoLog.replay(RedoLog.java:541)
-        at org.cojen.tupl.RedoLog.replay(RedoLog.java:175)
-        at org.cojen.tupl.Database.redoReplay(Database.java:419)
-        at org.cojen.tupl.Database.<init>(Database.java:346)
-        at org.cojen.tupl.Database.open(Database.java:152)
-
-Undo log node was not persisted, preventing it from being truncated.
-Transaction spanned a checkpoint, which might explain why this happened.
-
-Locks partially released after an exception (unplug the device):
-
-java.lang.IllegalStateException: Lock not held
-        at org.cojen.tupl.Lock.unlockToUpgradable(Lock.java:475)
-        at org.cojen.tupl.LockManager.unlockToUpgradable(LockManager.java:198)
-        at org.cojen.tupl.Locker$Block.unlockToSavepoint(Locker.java:742)
-        at org.cojen.tupl.Locker.scopeUnlockAll(Locker.java:526)
-        at org.cojen.tupl.Locker.scopeExit(Locker.java:551)
-        at org.cojen.tupl.Transaction.exit(Transaction.java:366)
-
 
 ---
