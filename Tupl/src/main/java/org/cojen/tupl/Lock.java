@@ -508,11 +508,10 @@ final class Lock {
         latch.releaseExclusive();
         try {
             c.deleteTombstone(key);
-        } catch (java.io.IOException e) {
+        } catch (Throwable e) {
             // Exception indicates that database is borked. Tombstone will
             // get cleaned up when database is re-opened.
-            // FIXME: Define a borked mode for Database, and hand it the exception.
-            e.printStackTrace();
+            Utils.closeQuietly(null, ((Tree) obj).mDatabase, e);
         } finally {
             // Reset before re-acquiring latch, since it needs to acquire
             // latches to detach cursor from tree.
