@@ -977,6 +977,32 @@ final class Node extends Latch {
     }
 
     /**
+     * Copies the key at the given position based on a limit. If equal, the
+     * limitKey instance is returned. If beyond the limit, null is returned.
+     *
+     * @param pos position as provided by binarySearch; must be positive
+     * @param limitKey comparison key
+     * @param limitMode positive for LE behavior, negative for GE behavior
+     */
+    byte[] retrieveKeyCmp(int pos, byte[] limitKey, int limitMode) {
+        final byte[] page = mPage;
+        int loc = readUnsignedShortLE(page, mSearchVecStart + pos);
+        int keyLen = page[loc++];
+        keyLen = keyLen >= 0 ? ((keyLen & 0x3f) + 1)
+            : (((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff));
+        int cmp = compareKeys(page, loc, keyLen, limitKey, 0, limitKey.length);
+        if (cmp == 0) {
+            return limitKey;
+        } else if ((cmp ^ limitMode) < 0) {
+            byte[] key = new byte[keyLen];
+            System.arraycopy(page, loc, key, 0, keyLen);
+            return key;
+        } else {
+            return null;
+        }
+    }
+
+    /**
      * Returns the last key of this node, appended with 0.
      */
     private byte[] higherKey() {

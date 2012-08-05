@@ -36,12 +36,16 @@ import java.util.concurrent.TimeUnit;
  * locking behavior and timeout. Otherwise, a lock is always acquired, with the
  * {@link DatabaseConfig#lockTimeout default} timeout.
  *
+ * <p>If a {@link LockFailureException} is thrown from any method, the Cursor
+ * is positioned at the desired key, but the value is {@link #NOT_LOADED}.
+ *
  * @author Brian S O'Neill
  * @see View#newCursor View.newCursor
  */
 public interface Cursor {
     /**
-     * Empty marker which indicates that value exists but has not been loaded.
+     * Empty marker which indicates that value exists but has not been {@link
+     * #load loaded}.
      */
     public static final byte[] NOT_LOADED = new byte[0];
 
@@ -554,7 +558,7 @@ public interface Cursor {
     /**
      * Loads or reloads the value at the cursor's current position. Cursor
      * value is set to null if entry no longer exists, but the position remains
-     * the same.
+     * unmodified.
      *
      * @throws IllegalStateException if position is undefined at invocation time
      * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
