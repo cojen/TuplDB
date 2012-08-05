@@ -92,15 +92,11 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     public LockResult first() throws IOException {
         Node root = mTree.mRoot;
         TreeCursorFrame frame = reset(root);
-        if (!root.hasKeys()) {
-            root.releaseExclusive();
-            mKey = null;
-            mKeyHash = 0;
-            mValue = null;
+
+        if (!toFirst(root, frame)) {
             return LockResult.UNOWNED;
         }
 
-        toFirst(root, frame);
         Transaction txn = mTxn;
         LockResult result = tryCopyCurrent(txn);
 
@@ -123,15 +119,11 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     public LockResult first(long maxWait, TimeUnit unit) throws IOException {
         Node root = mTree.mRoot;
         TreeCursorFrame frame = reset(root);
-        if (!root.hasKeys()) {
-            root.releaseExclusive();
-            mKey = null;
-            mKeyHash = 0;
-            mValue = null;
+
+        if (!toFirst(root, frame)) {
             return LockResult.UNOWNED;
         }
 
-        toFirst(root, frame);
         Transaction txn = mTxn;
         LockResult result = tryCopyCurrent(txn);
 
@@ -154,27 +146,22 @@ final class TreeCursor extends CauseCloseable implements Cursor {
      * Moves the cursor to the first subtree entry. Leaf frame remains latched
      * when method returns normally.
      *
-     * @param node latched node
+     * @param node latched node; can have no keys
      * @param frame frame to bind node to
+     * @return false if nothing left
      */
-    private void toFirst(Node node, TreeCursorFrame frame) throws IOException {
+    private boolean toFirst(Node node, TreeCursorFrame frame) throws IOException {
         try {
             while (true) {
                 frame.bind(node, 0);
-
                 if (node.isLeaf()) {
                     mLeaf = frame;
-                    // FIXME: Node can be empty if in the process of merging.
-                    return;
+                    return node.hasKeys() ? true : toNext(frame);
                 }
-
                 if (node.mSplit != null) {
                     node = node.mSplit.latchLeft(node);
                 }
-
-                // FIXME: Node can be empty if in the process of merging.
                 node = latchChild(node, 0, true);
-
                 frame = new TreeCursorFrame(frame);
             }
         } catch (Throwable e) {
@@ -186,15 +173,11 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     public LockResult last() throws IOException {
         Node root = mTree.mRoot;
         TreeCursorFrame frame = reset(root);
-        if (!root.hasKeys()) {
-            root.releaseExclusive();
-            mKey = null;
-            mKeyHash = 0;
-            mValue = null;
+
+        if (!toLast(root, frame)) {
             return LockResult.UNOWNED;
         }
 
-        toLast(root, frame);
         Transaction txn = mTxn;
         LockResult result = tryCopyCurrent(txn);
 
@@ -217,15 +200,11 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     public LockResult last(long maxWait, TimeUnit unit) throws IOException {
         Node root = mTree.mRoot;
         TreeCursorFrame frame = reset(root);
-        if (!root.hasKeys()) {
-            root.releaseExclusive();
-            mKey = null;
-            mKeyHash = 0;
-            mValue = null;
+
+        if (!toLast(root, frame)) {
             return LockResult.UNOWNED;
         }
 
-        toLast(root, frame);
         Transaction txn = mTxn;
         LockResult result = tryCopyCurrent(txn);
 
@@ -248,30 +227,36 @@ final class TreeCursor extends CauseCloseable implements Cursor {
      * Moves the cursor to the last subtree entry. Leaf frame remains latched
      * when method returns normally.
      *
-     * @param node latched node
+     * @param node latched node; can have no keys
      * @param frame frame to bind node to
+     * @return false if nothing left
      */
-    private void toLast(Node node, TreeCursorFrame frame) throws IOException {
+    private boolean toLast(Node node, TreeCursorFrame frame) throws IOException {
         try {
             while (true) {
                 if (node.isLeaf()) {
-                    // FIXME: Node can be empty if in the process of merging.
+                    // Note: Highest pos is -2 if leaf node has no keys.
                     int pos;
                     if (node.mSplit == null) {
                         pos = node.highestLeafPos();
                     } else {
                         pos = node.mSplit.highestLeafPos(node);
                     }
-                    frame.bind(node, pos);
                     mLeaf = frame;
-                    return;
+                    if (pos < 0) {
+                        frame.bind(node, 0);
+                        return toPrevious(frame);
+                    } else {
+                        frame.bind(node, pos);
+                        return true;
+                    }
                 }
 
                 Split split = node.mSplit;
                 if (split == null) {
+                    // Note: Highest pos is 0 if internal node has no keys.
                     int childPos = node.highestInternalPos();
                     frame.bind(node, childPos);
-                    // FIXME: Node can be empty if in the process of merging.
                     node = latchChild(node, childPos, true);
                 } else {
                     // Follow highest position of split, binding this frame to the
@@ -293,7 +278,6 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                     frame.bind(node, left.highestInternalPos() + 2 + highestRightPos);
                     left.releaseExclusive();
 
-                    // FIXME: Node can be empty if in the process of merging.
                     node = latchChild(right, highestRightPos, true);
                 }
 
@@ -558,7 +542,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                     frame.mNodePos = (pos += 2);
 
                     if (frame != mLeaf) {
-                        toFirst(latchChild(node, pos, true), new TreeCursorFrame(frame));
+                        return toFirst(latchChild(node, pos, true), new TreeCursorFrame(frame));
                     }
 
                     return true;
@@ -573,8 +557,8 @@ final class TreeCursor extends CauseCloseable implements Cursor {
 
             if (parentPos < parentNode.highestInternalPos()) {
                 parentFrame.mNodePos = (parentPos += 2);
-                toFirst(latchChild(parentNode, parentPos, true), new TreeCursorFrame(parentFrame));
-                return true;
+                return toFirst(latchChild(parentNode, parentPos, true),
+                               new TreeCursorFrame(parentFrame));
             }
 
             frame = parentFrame;
@@ -702,8 +686,10 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                         // Increment position of internal node.
                         frame.mNodePos = (pos += 2);
 
-                        frame = skipToFirst(latchChild(node, pos, true),
-                                            new TreeCursorFrame(frame));
+                        if (!toFirst(latchChild(node, pos, true), new TreeCursorFrame(frame))) {
+                            return null;
+                        }
+                        frame = mLeaf;
                         if (--amount <= 0) {
                             return frame;
                         }
@@ -719,8 +705,12 @@ final class TreeCursor extends CauseCloseable implements Cursor {
 
                 if (parentPos < parentNode.highestInternalPos()) {
                     parentFrame.mNodePos = (parentPos += 2);
-                    frame = skipToFirst(latchChild(parentNode, parentPos, true),
-                                        new TreeCursorFrame(parentFrame));
+                    if (!toFirst(latchChild(parentNode, parentPos, true),
+                                 new TreeCursorFrame(parentFrame)))
+                    {
+                        return null;
+                    }
+                    frame = mLeaf;
                     if (--amount <= 0) {
                         return frame;
                     }
@@ -730,35 +720,6 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                 frame = parentFrame;
                 node = parentNode;
             }
-        }
-    }
-
-    /**
-     * @param node latched node
-     * @param frame frame to bind node to
-     * @return latched leaf frame
-     */
-    private TreeCursorFrame skipToFirst(Node node, TreeCursorFrame frame) throws IOException {
-        try {
-            while (true) {
-                frame.bind(node, 0);
-
-                if (node.isLeaf()) {
-                    mLeaf = frame;
-                    return frame;
-                }
-
-                if (node.mSplit != null) {
-                    node = node.mSplit.latchLeft(node);
-                }
-
-                // FIXME: Node can be empty if in the process of merging.
-                node = latchChild(node, 0, true);
-
-                frame = new TreeCursorFrame(frame);
-            }
-        } catch (Throwable e) {
-            throw cleanup(e, frame);
         }
     }
 
@@ -985,7 +946,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                     frame.mNodePos = (pos -= 2);
 
                     if (frame != mLeaf) {
-                        toLast(latchChild(node, pos, true), new TreeCursorFrame(frame));
+                        return toLast(latchChild(node, pos, true), new TreeCursorFrame(frame));
                     }
 
                     return true;
@@ -1000,8 +961,8 @@ final class TreeCursor extends CauseCloseable implements Cursor {
 
             if (parentPos > 0) {
                 parentFrame.mNodePos = (parentPos -= 2);
-                toLast(latchChild(parentNode, parentPos, true), new TreeCursorFrame(parentFrame));
-                return true;
+                return toLast(latchChild(parentNode, parentPos, true),
+                              new TreeCursorFrame(parentFrame));
             }
 
             frame = parentFrame;
@@ -1129,8 +1090,10 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                         // Decrement position of internal node.
                         frame.mNodePos = (pos -= 2);
 
-                        frame = skipToLast(latchChild(node, pos, true),
-                                           new TreeCursorFrame(frame));
+                        if (!toLast(latchChild(node, pos, true), new TreeCursorFrame(frame))) {
+                            return null;
+                        }
+                        frame = mLeaf;
                         if (--amount <= 0) {
                             return frame;
                         }
@@ -1146,8 +1109,12 @@ final class TreeCursor extends CauseCloseable implements Cursor {
 
                 if (parentPos > 0) {
                     parentFrame.mNodePos = (parentPos -= 2);
-                    frame = skipToLast(latchChild(parentNode, parentPos, true),
-                                       new TreeCursorFrame(parentFrame));
+                    if (!toLast(latchChild(parentNode, parentPos, true),
+                                new TreeCursorFrame(parentFrame)))
+                    {
+                        return null;
+                    }
+                    frame = mLeaf;
                     if (--amount <= 0) {
                         return frame;
                     }
@@ -1157,63 +1124,6 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                 frame = parentFrame;
                 node = parentNode;
             }
-        }
-    }
-
-    /**
-     * @param node latched node
-     * @param frame frame to bind node to
-     * @return latched leaf frame
-     */
-    private TreeCursorFrame skipToLast(Node node, TreeCursorFrame frame) throws IOException {
-        try {
-            while (true) {
-                if (node.isLeaf()) {
-                    int pos;
-                    if (node.mSplit == null) {
-                        pos = node.highestLeafPos();
-                    } else {
-                        pos = node.mSplit.highestLeafPos(node);
-                    }
-                    frame.bind(node, pos);
-                    mLeaf = frame;
-                    return frame;
-                }
-
-                Split split = node.mSplit;
-                if (split == null) {
-                    int childPos = node.highestInternalPos();
-                    frame.bind(node, childPos);
-                    // FIXME: Node can be empty if in the process of merging.
-                    node = latchChild(node, childPos, true);
-                } else {
-                    // Follow highest position of split, binding this frame to the
-                    // unsplit node as if it had not split. The binding will be
-                    // corrected when split is finished.
-
-                    final Node sibling = split.latchSibling();
-
-                    final Node left, right;
-                    if (split.mSplitRight) {
-                        left = node;
-                        right = sibling;
-                    } else {
-                        left = sibling;
-                        right = node;
-                    }
-
-                    int highestRightPos = right.highestInternalPos();
-                    frame.bind(node, left.highestInternalPos() + 2 + highestRightPos);
-                    left.releaseExclusive();
-
-                    // FIXME: Node can be empty if in the process of merging.
-                    node = latchChild(right, highestRightPos, true);
-                }
-
-                frame = new TreeCursorFrame(frame);
-            }
-        } catch (Throwable e) {
-            throw cleanup(e, frame);
         }
     }
 

@@ -45,6 +45,50 @@ public class CursorTest {
     protected Database mDb;
 
     @Test
+    public void empty() throws Exception {
+        Index ix = mDb.openIndex("test");
+        Cursor c = ix.newCursor(Transaction.BOGUS);
+        c.first();
+        assertNull(c.key());
+        assertNull(c.value());
+        c.last();
+        assertNull(c.key());
+        assertNull(c.value());
+
+        for (int i=0; i<8; i++) {
+            ix.store(Transaction.BOGUS, key(1), value(1));
+
+            if ((i & 4) == 0) {
+                c.first();
+            } else {
+                c.last();
+            }
+            fastAssertArrayEquals(key(1), c.key());
+            fastAssertArrayEquals(value(1), c.value());
+
+            ix.delete(Transaction.BOGUS, key(1));
+
+            switch (i & 3) {
+            default:
+                c.first();
+                break;
+            case 1:
+                c.last();
+                break;
+            case 2:
+                c.next();
+                break;
+            case 3:
+                c.previous();
+                break;
+            }
+
+            assertNull(c.key());
+            assertNull(c.value());
+        }
+    }
+
+    @Test
     public void stubCursor() throws Exception {
         stubCursor(false);
     }
