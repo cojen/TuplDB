@@ -1796,13 +1796,11 @@ final class TreeCursor extends CauseCloseable implements Cursor {
 
         while (true) {
             if (node.isLeaf()) {
-                int pos;
-                if (node.mSplit == null) {
-                    pos = node.binarySearch(key);
-                } else {
-                    pos = node.mSplit.binarySearch(node, key);
+                if (node.mSplit != null) {
+                    node = finishSplit(frame, node);
                 }
 
+                int pos = node.binarySearch(key);
                 frame.bind(node, pos);
                 mLeaf = frame;
 

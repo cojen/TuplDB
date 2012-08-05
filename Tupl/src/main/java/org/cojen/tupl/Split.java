@@ -112,40 +112,6 @@ class Split implements java.io.Serializable {
     }
 
     /**
-     * Performs a binary search against the split, returning the position
-     * within the original node as if it had not split.
-     */
-    int binarySearch(Node node, byte[] key) {
-        Node sibling = latchSibling();
-
-        Node left, right;
-        if (mSplitRight) {
-            left = node;
-            right = sibling;
-        } else {
-            left = sibling;
-            right = node;
-        }
-
-        int searchPos;
-        if (compare(key) < 0) {
-            searchPos = left.binarySearch(key);
-        } else {
-            int highestPos = left.highestLeafPos();
-            searchPos = right.binarySearch(key);
-            if (searchPos < 0) {
-                searchPos = searchPos - highestPos - 2;
-            } else {
-                searchPos = highestPos + 2 + searchPos;
-            }
-        }
-
-        sibling.releaseExclusive();
-
-        return searchPos;
-    }
-
-    /**
      * Returns the highest position within the original node as if it had not split.
      */
     int highestLeafPos(Node node) {
