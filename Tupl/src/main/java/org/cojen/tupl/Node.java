@@ -2962,6 +2962,26 @@ final class Node extends Latch {
     }
 
     /**
+     * Count the number of cursors bound to this node.
+     */
+    long countCursors() {
+        long count = 0;
+
+        acquireShared();
+        try {
+            TreeCursorFrame frame = mLastCursorFrame;
+            while (frame != null) {
+                count++;
+                frame = frame.mPrevCousin;
+            }
+        } finally {
+            releaseShared();
+        }
+
+        return count;
+    }
+
+    /**
      * No latches are acquired by this method -- it is only used for debugging.
      */
     @Override
