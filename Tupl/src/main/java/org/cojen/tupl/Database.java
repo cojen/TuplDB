@@ -24,6 +24,7 @@ import java.io.InterruptedIOException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.io.Serializable;
 import java.io.Writer;
 
 import java.math.BigInteger;
@@ -866,6 +867,118 @@ public final class Database extends CauseCloseable {
         DurablePageDb.restoreFromSnapshot
             (config.mPageSize, dataFiles, options, config.mCrypto, in).close();
         return Database.open(config);
+    }
+
+    /**
+     * Returns an immutable copy of database statistics.
+     */
+    public Stats stats() {
+        Stats stats = new Stats();
+
+        mSharedCommitLock.lock();
+        try {
+            long cursorCount = 0;
+            synchronized (mOpenTrees) {
+                stats.mOpenIndexes = mOpenTrees.size();
+                for (Tree tree : mOpenTrees.values()) {
+                    cursorCount += tree.mRoot.countCursors(); 
+                }
+            }
+
+            stats.mCursorCount = cursorCount;
+
+            PageDb.Stats pstats = mPageDb.stats();
+            int pageSize = pageSize();
+            stats.mFreeSpace = pstats.freePages * pageSize;
+            stats.mTotalSpace = pstats.totalPages * pageSize;
+
+            stats.mLockCount = mLockManager.numLocksHeld();
+
+            synchronized (mTxnIdLock) {
+                stats.mTxnCount = mUndoLogCount;
+            }
+        } finally {
+            mSharedCommitLock.unlock();
+        }
+
+        return stats;
+    }
+
+    /**
+     * Immutable copy of database {@link Database#stats statistics}.
+     */
+    public static class Stats implements Serializable {
+        private static final long serialVersionUID = 1L;
+
+        int mOpenIndexes;
+        long mFreeSpace;
+        long mTotalSpace;
+        long mLockCount;
+        long mCursorCount;
+        long mTxnCount;
+
+        Stats() {
+        }
+
+        /**
+         * Returns the amount of indexes currently open.
+         */
+        public int openIndexes() {
+            return mOpenIndexes;
+        }
+
+        /**
+         * Returns the amount of unused bytes in the database.
+         */
+        public long freeSpace() {
+            return mFreeSpace;
+        }
+
+        /**
+         * Returns the total amount of bytes in the database.
+         */
+        public long totalSpace() {
+            return mTotalSpace;
+        }
+
+        /**
+         * Returns the amount of locks currently allocated. Locks are created
+         * as transactions access or modifiy records, and they are destroyed
+         * when transactions exit or reset. An accumulation of locks can
+         * indicate that transactions are not being reset properly.
+         */
+        public long lockCount() {
+            return mLockCount;
+        }
+
+        /**
+         * Returns the amount of cursors which are in a non-reset state. An
+         * accumulation of cursors can indicate that cursors are not being
+         * reset properly.
+         */
+        public long cursorCount() {
+            return mCursorCount;
+        }
+
+        /**
+         * Returns the amount of transactions which are in a non-reset
+         * state. An accumulation of transactions can indicate that
+         * transactions are not being reset properly.
+         */
+        public long transactionCount() {
+            return mTxnCount;
+        }
+
+        @Override
+        public String toString() {
+            return "Database.Stats {openIndexes=" + mOpenIndexes
+                + ", freeSpace=" + mFreeSpace
+                + ", totalSpace=" + mTotalSpace
+                + ", lockCount=" + mLockCount
+                + ", cursorCount=" + mCursorCount
+                + ", transactionCount=" + mTxnCount
+                + '}';
+        }
     }
 
     /**
