@@ -259,8 +259,8 @@ final class Node extends Latch {
      * @return copy of value or null if not found
      * @throws SearchAborted if search must be redone
      */
-    private static byte[] subSearch(Tree tree, Node node, Latch parentLatch,
-                                    byte[] key, boolean exclusiveHeld)
+    private static byte[] subSearch(final Tree tree, Node node, Latch parentLatch,
+                                    final byte[] key, boolean exclusiveHeld)
         throws IOException
     {
         // Caller invokes Database.used for this Node. Root node is not
@@ -301,9 +301,13 @@ final class Node extends Latch {
                     // needs to upgrade its shared latch.
                     if (exclusiveHeld) {
                         node.downgrade();
+                        exclusiveHeld = false;
                     }
                     tree.mDatabase.used(childNode);
-                    return subSearch(tree, childNode, node, key, false);
+                    // Tail call: return subSearch(tree, childNode, node, key, false);
+                    parentLatch = node;
+                    node = childNode;
+                    continue loop;
                 }
             } // end childCheck
 
@@ -390,15 +394,59 @@ final class Node extends Latch {
      * @param key search key
      * @return copy of value or null if not found
      */
-    private byte[] subSearchLeaf(Tree tree, byte[] key) throws IOException {
-        int childPos = binarySearch(key);
-        if (childPos < 0) {
-            releaseShared();
-            return null;
+    private byte[] subSearchLeaf(final Tree tree, final byte[] key) throws IOException {
+        // Same code as binarySearch, but instead of returning the position, it
+        // directly copies the value if found. This avoids having to decode the
+        // found value location twice.
+
+        final byte[] page = mPage;
+        final int keyLen = key.length;
+        int lowPos = mSearchVecStart;
+        int highPos = mSearchVecEnd;
+
+        int lowMatch = 0;
+        int highMatch = 0;
+
+        outer: while (lowPos <= highPos) {
+            int midPos = ((lowPos + highPos) >> 1) & ~1;
+
+            int compareLoc = readUnsignedShortLE(page, midPos);
+            int compareLen = page[compareLoc++];
+            compareLen = compareLen >= 0 ? ((compareLen & 0x3f) + 1)
+                : (((compareLen & 0x3f) << 8) | ((page[compareLoc++]) & 0xff));
+
+            int minLen = Math.min(compareLen, keyLen);
+            int i = Math.min(lowMatch, highMatch);
+            for (; i<minLen; i++) {
+                byte cb = page[compareLoc + i];
+                byte kb = key[i];
+                if (cb != kb) {
+                    if ((cb & 0xff) < (kb & 0xff)) {
+                        lowPos = midPos + 2;
+                        lowMatch = i;
+                    } else {
+                        highPos = midPos - 2;
+                        highMatch = i;
+                    }
+                    continue outer;
+                }
+            }
+
+            if (compareLen < keyLen) {
+                lowPos = midPos + 2;
+                lowMatch = i;
+            } else if (compareLen > keyLen) {
+                highPos = midPos - 2;
+                highMatch = i;
+            } else {
+                byte[] value = retrieveLeafValueAtLoc(this, tree, page, compareLoc + compareLen);
+                releaseShared();
+                return value;
+            }
         }
-        byte[] value = retrieveLeafValue(tree, childPos);
+
         releaseShared();
-        return value;
+        return null;
     }
 
     /**
