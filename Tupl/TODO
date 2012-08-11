@@ -5,6 +5,8 @@
 - Support truncating indexes. Depends on close and workflow to ensure truncate completes.
 - Online compaction. Two types: Node merging and file truncation. File
   truncation is the more difficult one.
+- Support snapshot into a temp Database instance.
+
 
 Reduce overhead of checkpoint by sweeping through dirty nodes twice. This
 approach smooths out the "bump" when issuing a checkpoint. Also, it allows
