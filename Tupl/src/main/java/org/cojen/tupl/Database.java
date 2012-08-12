@@ -2238,26 +2238,34 @@ public final class Database extends CauseCloseable {
 
             final long redoLogId = mRedoLog == null ? 0 : mRedoLog.openNewFile();
 
-            // Exclusive commit lock must be acquired before root latch, to
-            // prevent deadlock.
-
-            // If the commit lock cannot be immediately obtained, it's due to a
-            // shared lock being held for a long time. While waiting for the
-            // exclusive lock, all other shared requests are queued. By waiting
-            // a timed amount and giving up, the exclusive lock request is
-            // effectively de-prioritized. For each retry, the timeout is
-            // doubled, to ensure that the checkpoint request is not starved.
-            try {
+            {
+                // If the commit lock cannot be immediately obtained, it's due to a
+                // shared lock being held for a long time. While waiting for the
+                // exclusive lock, all other shared requests are queued. By waiting
+                // a timed amount and giving up, the exclusive lock request is
+                // effectively de-prioritized. For each retry, the timeout is
+                // doubled, to ensure that the checkpoint request is not starved.
                 Lock commitLock = mPageDb.exclusiveCommitLock();
-                long timeoutMillis = 1;
-                while (!commitLock.tryLock(timeoutMillis, TimeUnit.MILLISECONDS)) {
-                    timeoutMillis <<= 1;
-                }
-            } catch (InterruptedException e) {
-                throw new InterruptedIOException();
-            }
+                while (true) {
+                    try {
+                        long timeoutMillis = 1;
+                        while (!commitLock.tryLock(timeoutMillis, TimeUnit.MILLISECONDS)) {
+                            timeoutMillis <<= 1;
+                        }
+                    } catch (InterruptedException e) {
+                        throw new InterruptedIOException();
+                    }
 
-            root.acquireShared();
+                    // Registry root is infrequently modified, and so shared latch
+                    // is usually available. If not, cause might be a deadlock. To
+                    // be safe, always release commit lock and start over.
+                    if (root.tryAcquireShared()) {
+                        break;
+                    }
+
+                    commitLock.unlock();
+                }
+            }
 
             mCheckpointFlushState = CHECKPOINT_FLUSH_PREPARE;
 
