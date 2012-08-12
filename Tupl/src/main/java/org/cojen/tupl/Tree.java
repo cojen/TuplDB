@@ -159,6 +159,7 @@ final class Tree implements Index {
 
     @Override
     public byte[] load(Transaction txn, byte[] key) throws IOException {
+        check(txn);
         Locker locker = lockForLoad(txn, key);
         try {
             // Search without a cursor, which rarely aborts.
@@ -395,6 +396,15 @@ final class Tree implements Index {
         }
     }
     */
+
+    void check(Transaction txn) throws IllegalArgumentException {
+        if (txn != null) {
+            Database txnDb = txn.mDatabase;
+            if (txnDb != null & txnDb != mDatabase) {
+                throw new IllegalArgumentException("Transaction belongs to a different database");
+            }
+        }
+    }
 
     void verify() throws IOException {
         mRoot.verify(mDatabase);
