@@ -2013,10 +2013,11 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             final Transaction txn = mTxn;
             final Locker locker = mTree.lockExclusive(txn, key, keyHash());
             try {
+                TreeCursorFrame leaf = leafExclusive(); 
                 final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
                 sharedCommitLock.lock();
                 try {
-                    store(txn, leafExclusive(), value);
+                    store(txn, leaf, value);
                 } finally {
                     sharedCommitLock.unlock();
                 }
@@ -2287,7 +2288,8 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     }
 
     /**
-     * Note: caller must hold shared commit lock, to prevent deadlock.
+     * Caller must hold shared commit lock, to prevent checkpoints from
+     * observing in-progress splits.
      *
      * @param leaf leaf frame, latched exclusively, which is released by this method
      */
@@ -3287,7 +3289,6 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     private Node finishSplit(final TreeCursorFrame frame, Node node) throws IOException {
         Tree tree = mTree;
 
-        // FIXME: How to acquire shared commit lock without deadlock?
         while (node == tree.mRoot) {
             Node stub;
             if (tree.hasStub()) {
@@ -3325,30 +3326,18 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         final TreeCursorFrame parentFrame = frame.mParentFrame;
         node.releaseExclusive();
 
-        // To avoid deadlock, ensure shared commit lock is held. Not all
-        // callers acquire the shared lock first, since they usually only read
-        // from the tree. Node latch has now been released, which should have
-        // been the only latch held, and so commit lock can be acquired without
-        // deadlock.
-
-        final Lock sharedCommitLock = tree.mDatabase.sharedCommitLock();
-        sharedCommitLock.lock();
-        try {
-            Node parentNode = parentFrame.acquireExclusive();
-            while (true) {
-                if (parentNode.mSplit != null) {
-                    parentNode = finishSplit(parentFrame, parentNode);
-                }
-                node = frame.acquireExclusive();
-                if (node.mSplit == null) {
-                    parentNode.releaseExclusive();
-                    return node;
-                }
-                // FIXME: IOException; release latch
-                parentNode.insertSplitChildRef(tree, parentFrame.mNodePos, node);
+        Node parentNode = parentFrame.acquireExclusive();
+        while (true) {
+            if (parentNode.mSplit != null) {
+                parentNode = finishSplit(parentFrame, parentNode);
             }
-        } finally {
-            sharedCommitLock.unlock();
+            node = frame.acquireExclusive();
+            if (node.mSplit == null) {
+                parentNode.releaseExclusive();
+                return node;
+            }
+            // FIXME: IOException; release latch
+            parentNode.insertSplitChildRef(tree, parentFrame.mNodePos, node);
         }
     }
 
