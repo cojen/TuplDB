@@ -406,14 +406,10 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
     /**
      * @return true if caller should call txnCommitSync
      */
-    public boolean txnCommitFull(long txnId, DurabilityMode mode)
-        throws IOException
-    {
-        synchronized (this) {
-            writeOp(OP_TXN_COMMIT, txnId);
-            writeTerminator();
-            return conditionalFlush(mode);
-        }
+    public synchronized boolean txnCommitFull(long txnId, DurabilityMode mode) throws IOException {
+        writeOp(OP_TXN_COMMIT, txnId);
+        writeTerminator();
+        return conditionalFlush(mode);
     }
 
     /**
@@ -423,12 +419,10 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
         force(false);
     }
 
-    public void txnCommitScope(long txnId, long parentTxnId) throws IOException {
-        synchronized (this) {
-            writeOp(OP_TXN_COMMIT_CHILD, txnId);
-            writeLongLE(parentTxnId);
-            writeTerminator();
-        }
+    public synchronized void txnCommitScope(long txnId, long parentTxnId) throws IOException {
+        writeOp(OP_TXN_COMMIT_CHILD, txnId);
+        writeLongLE(parentTxnId);
+        writeTerminator();
     }
 
     public synchronized void txnStore(long txnId, long indexId, byte[] key, byte[] value)
