@@ -49,6 +49,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     private int mKeyHash;
 
     TreeCursor(Tree tree, Transaction txn) {
+        tree.check(txn);
         mTree = tree;
         mTxn = txn;
     }
@@ -2582,6 +2583,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
 
     @Override
     public void link(Transaction txn) {
+        mTree.check(txn);
         mTxn = txn;
     }
 

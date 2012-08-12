@@ -66,7 +66,7 @@ public final class Transaction extends Locker {
 
     private static final int HAS_REDO = 1, HAS_TRASH = 2;
 
-    private final Database mDatabase;
+    final Database mDatabase;
     final DurabilityMode mDurabilityMode;
 
     private LockMode mLockMode;
