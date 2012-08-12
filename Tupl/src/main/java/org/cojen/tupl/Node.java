@@ -1731,6 +1731,7 @@ final class Node extends Latch {
 
         final int start;
         final int keyLen;
+        final int garbage;
         quick: {
             int loc;
             start = loc = readUnsignedShortLE(page, searchVecStart + pos);
@@ -1769,7 +1770,7 @@ final class Node extends Latch {
             if (valueLen > len) {
                 // Old entry is too small, and so it becomes garbage.
                 keyLen = valueHeaderLoc - start;
-                mGarbage += loc + len - start;
+                garbage = mGarbage + loc + len - start;
                 break quick;
             }
 
@@ -1824,10 +1825,10 @@ final class Node extends Latch {
             // Compute remaining space surrounding search vector after update completes.
             int remaining = leftSpace + rightSpace - encodedLen;
 
-            if (mGarbage > remaining) {
+            if (garbage > remaining) {
                 // Do full compaction and free up the garbage, or split the node.
                 byte[] key = retrieveKey(pos);
-                if ((mGarbage + remaining) < 0) {
+                if ((garbage + remaining) < 0) {
                     if (mSplit == null) {
                         // Node is full, so split it.
                         splitLeafAndCreateEntry
@@ -1842,7 +1843,7 @@ final class Node extends Latch {
                     }
                     Database db = tree.mDatabase;
                     int max = Math.min(db.mMaxFragmentedEntrySize,
-                                       mGarbage + leftSpace + rightSpace);
+                                       garbage + leftSpace + rightSpace);
                     value = db.fragment(this, tree, value, max);
                     if (value == null) {
                         throw new LargeKeyException(key.length);
@@ -1851,6 +1852,7 @@ final class Node extends Latch {
                     fragmented = VALUE_FRAGMENTED;
                 }
 
+                mGarbage = garbage;
                 copyToLeafEntry(key, fragmented, value, compactLeaf(tree, encodedLen, pos, false));
                 return;
             }
@@ -1875,6 +1877,7 @@ final class Node extends Latch {
             } else {
                 // Search vector is misaligned, so do full compaction.
                 byte[] key = retrieveKey(pos);
+                mGarbage = garbage;
                 copyToLeafEntry(key, fragmented, value, compactLeaf(tree, encodedLen, pos, false));
                 return;
             }
@@ -1889,8 +1892,9 @@ final class Node extends Latch {
         // Copy existing key, and then copy value.
         System.arraycopy(page, start, page, entryLoc, keyLen);
         copyToLeafValue(page, fragmented, value, entryLoc + keyLen);
-
         writeShortLE(page, pos, entryLoc);
+
+        mGarbage = garbage;
     }
 
     /**
@@ -2466,10 +2470,10 @@ final class Node extends Latch {
                             // Updated entry doesn't fit into new node.
                             break;
                         }
-                        // Don't copy old entry, don't adjust garbageAccum, and
-                        // don't adjust avail. Caller is expected to have
-                        // already marked old entry as garbage.
+                        // Don't copy old entry.
                         newLoc = newSearchVecLoc;
+                        garbageAccum += entryLen;
+                        avail += entryLen;
                         continue;
                     }
                 }
@@ -2547,10 +2551,10 @@ final class Node extends Latch {
                             // Updated entry doesn't fit into new node.
                             break;
                         }
-                        // Don't copy old entry, don't adjust garbageAccum, and
-                        // don't adjust avail. Caller is expected to have
-                        // already marked old entry as garbage.
+                        // Don't copy old entry.
                         newLoc = newSearchVecLoc;
+                        garbageAccum += entryLen;
+                        avail += entryLen;
                         continue;
                     }
                 }
@@ -3114,26 +3118,23 @@ final class Node extends Latch {
     */
 
     /**
-     * Verifies the integrity of this node.
+     * Verifies the integrity of this node. Pass database instance to recurse.
      */
-    /*
-    public void verify() throws CorruptDatabaseException {
+    void verify(Database db) throws CorruptDatabaseException, IOException {
         acquireShared();
         try {
-            verify0();
+            verify0(db);
         } catch (IndexOutOfBoundsException e) {
             throw new CorruptDatabaseException(e);
         } finally {
             releaseShared();
         }
     }
-    */
 
     /**
      * Caller must hold any latch.
      */
-    /*
-    void verify0() throws CorruptDatabaseException {
+    private void verify0(Database db) throws CorruptDatabaseException, IOException {
         final byte[] page = mPage;
 
         if (mLeftSegTail < TN_HEADER_SIZE) {
@@ -3221,8 +3222,21 @@ final class Node extends Latch {
         if (mGarbage != garbage) {
             throw new CorruptDatabaseException("Garbage: " + mGarbage + " != " + garbage);
         }
+
+        if (db != null && !isLeaf()) {
+            for (int pos = mSearchVecEnd - mSearchVecStart; pos >= 0; pos -= 2) {
+                Node child = mChildNodes[pos >> 1];
+                long childId = retrieveChildRefId(pos);
+
+                if (child == null || childId != child.mId) {
+                    child = new Node(db.pageSize());
+                    child.read(db, childId);
+                }
+
+                child.verify(db);
+            }
+        }
     }
-    */
 
     /**
      * Counts all the enties in the tree rooted at this node. No latches are

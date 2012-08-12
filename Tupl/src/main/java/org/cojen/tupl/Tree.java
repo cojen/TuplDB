@@ -396,6 +396,10 @@ final class Tree implements Index {
     }
     */
 
+    void verify() throws IOException {
+        mRoot.verify(mDatabase);
+    }
+
     /**
      * Returns true if a shared lock can be immediately granted. Caller must
      * hold a coarse latch to prevent this state from changing.

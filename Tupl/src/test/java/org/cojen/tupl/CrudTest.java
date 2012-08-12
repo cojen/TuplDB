@@ -343,6 +343,27 @@ public class CrudTest {
     }
 
     @Test
+    public void testUpdateSplit() throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        // Fill with ordered entries to create filled nodes.
+        byte[] key = new byte[4];
+        byte[] value = "small".getBytes();
+        for (int i=0; i<1000; i++) {
+            Utils.writeIntBE(key, 0, i);
+            ix.store(Transaction.BOGUS, key, value);
+        }
+
+        // Update with larger values, forcing nodes to split.
+        value = "value is much bigger now".getBytes();
+        for (int i=0; i<1000; i++) {
+            Utils.writeIntBE(key, 0, i);
+            ix.store(Transaction.BOGUS, key, value);
+            ((Tree) ix).verify();
+        }
+    }
+
+    @Test
     public void testFill() throws Exception {
         Index ix = mDb.openIndex("test");
         testFill(ix, 10);
