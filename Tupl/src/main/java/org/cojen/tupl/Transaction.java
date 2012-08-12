@@ -298,7 +298,9 @@ public final class Transaction extends Locker {
      * method is called, unless an exception is thrown.
      */
     public final void exit() throws IOException {
-        check();
+        if (mBorked != null) {
+            return;
+        }
 
         try {
             ParentScope parentScope = mParentScope;
@@ -354,7 +356,9 @@ public final class Transaction extends Locker {
      * modifications.
      */
     public final void reset() throws IOException {
-        check();
+        if (mBorked != null) {
+            return;
+        }
 
         try {
             ParentScope parentScope = mParentScope;
