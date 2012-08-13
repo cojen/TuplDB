@@ -64,17 +64,21 @@ class IndexesCursor implements Cursor {
         return assignKey(mRegistryCursor.findGe(firstKey()));
     }
 
+    /*
     public LockResult first(long maxWait, TimeUnit unit) throws IOException {
         return assignKey(mRegistryCursor.findGe(firstKey(), maxWait, unit));
     }
+    */
 
     public LockResult last() throws IOException {
         return assignKey(mRegistryCursor.findLe(afterLastKey()));
     }
 
+    /*
     public LockResult last(long maxWait, TimeUnit unit) throws IOException {
         return assignKey(mRegistryCursor.findLe(afterLastKey(), maxWait, unit));
     }
+    */
 
     public LockResult skip(long amount) throws IOException {
         return assignKey(mRegistryCursor.skip(amount));
@@ -84,49 +88,61 @@ class IndexesCursor implements Cursor {
         return assignKey(mRegistryCursor.next());
     }
 
+    /*
     public LockResult next(long maxWait, TimeUnit unit) throws IOException {
         return assignKey(mRegistryCursor.next(maxWait, unit));
     }
+    */
 
     public LockResult nextLe(byte[] limitKey) throws IOException {
         return assignKey(mRegistryCursor.nextLe(limitKey));
     }
 
+    /*
     public LockResult nextLe(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException {
         return assignKey(mRegistryCursor.nextLe(limitKey, maxWait, unit));
     }
+    */
 
     public LockResult nextLt(byte[] limitKey) throws IOException {
         return assignKey(mRegistryCursor.nextLt(limitKey));
     }
 
+    /*
     public LockResult nextLt(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException {
         return assignKey(mRegistryCursor.nextLt(limitKey, maxWait, unit));
     }
+    */
 
     public LockResult previous() throws IOException {
         return assignKey(mRegistryCursor.previous());
     }
 
+    /*
     public LockResult previous(long maxWait, TimeUnit unit) throws IOException {
         return assignKey(mRegistryCursor.previous(maxWait, unit));
     }
+    */
 
     public LockResult previousGe(byte[] limitKey) throws IOException {
         return assignKey(mRegistryCursor.previousGe(limitKey));
     }
 
+    /*
     public LockResult previousGe(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException {
         return assignKey(mRegistryCursor.previousGe(limitKey, maxWait, unit));
     }
+    */
 
     public LockResult previousGt(byte[] limitKey) throws IOException {
         return assignKey(mRegistryCursor.previousGt(limitKey));
     }
 
+    /*
     public LockResult previousGt(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException {
         return assignKey(mRegistryCursor.previousGt(limitKey, maxWait, unit));
     }
+    */
 
     public LockResult find(byte[] key) throws IOException {
         return assignKey(mRegistryCursor.find(applyKeyPrefix(key)));
@@ -136,33 +152,41 @@ class IndexesCursor implements Cursor {
         return assignKey(mRegistryCursor.findGe(applyKeyPrefix(key)));
     }
 
+    /*
     public LockResult findGe(byte[] key, long maxWait, TimeUnit unit) throws IOException {
         return assignKey(mRegistryCursor.findGe(applyKeyPrefix(key), maxWait, unit));
     }
+    */
 
     public LockResult findGt(byte[] key) throws IOException {
         return assignKey(mRegistryCursor.findGt(applyKeyPrefix(key)));
     }
 
+    /*
     public LockResult findGt(byte[] key, long maxWait, TimeUnit unit) throws IOException {
         return assignKey(mRegistryCursor.findGt(applyKeyPrefix(key), maxWait, unit));
     }
+    */
 
     public LockResult findLe(byte[] key) throws IOException {
         return assignKey(mRegistryCursor.findLe(applyKeyPrefix(key)));
     }
 
+    /*
     public LockResult findLe(byte[] key, long maxWait, TimeUnit unit) throws IOException {
         return assignKey(mRegistryCursor.findLe(applyKeyPrefix(key), maxWait, unit));
     }
+    */
 
     public LockResult findLt(byte[] key) throws IOException {
         return assignKey(mRegistryCursor.findLt(applyKeyPrefix(key)));
     }
 
+    /*
     public LockResult findLt(byte[] key, long maxWait, TimeUnit unit) throws IOException {
         return assignKey(mRegistryCursor.findLt(applyKeyPrefix(key), maxWait, unit));
     }
+    */
 
     public LockResult findNearby(byte[] key) throws IOException {
         return assignKey(mRegistryCursor.findNearby(applyKeyPrefix(key)));

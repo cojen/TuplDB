@@ -127,7 +127,7 @@ public interface Cursor {
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      */
-    public LockResult first(long maxWait, TimeUnit unit) throws IOException;
+    //public LockResult first(long maxWait, TimeUnit unit) throws IOException;
 
     /**
      * Moves the Cursor to find the last available entry. Cursor key and value
@@ -156,7 +156,7 @@ public interface Cursor {
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      */
-    public LockResult last(long maxWait, TimeUnit unit) throws IOException;
+    //public LockResult last(long maxWait, TimeUnit unit) throws IOException;
 
     /**
      * Moves the Cursor by a relative amount of entries. Pass a positive amount
@@ -207,7 +207,7 @@ public interface Cursor {
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws IllegalStateException if position is undefined at invocation time
      */
-    public LockResult next(long maxWait, TimeUnit unit) throws IOException;
+    //public LockResult next(long maxWait, TimeUnit unit) throws IOException;
 
     /**
      * Moves to the Cursor to the next available entry, but only when less than
@@ -240,7 +240,7 @@ public interface Cursor {
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws IllegalStateException if position is undefined at invocation time
      */
-    public LockResult nextLe(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException;
+    //public LockResult nextLe(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException;
 
     /**
      * Moves to the Cursor to the next available entry, but only when less than
@@ -273,7 +273,7 @@ public interface Cursor {
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws IllegalStateException if position is undefined at invocation time
      */
-    public LockResult nextLt(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException;
+    //public LockResult nextLt(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException;
 
     /**
      * Moves to the Cursor to the previous available entry. Cursor key and
@@ -306,7 +306,7 @@ public interface Cursor {
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws IllegalStateException if position is undefined at invocation time
      */
-    public LockResult previous(long maxWait, TimeUnit unit) throws IOException;
+    //public LockResult previous(long maxWait, TimeUnit unit) throws IOException;
 
     /**
      * Moves to the Cursor to the previous available entry, but only when
@@ -341,7 +341,7 @@ public interface Cursor {
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws IllegalStateException if position is undefined at invocation time
      */
-    public LockResult previousGe(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException;
+    //public LockResult previousGe(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException;
 
     /**
      * Moves to the Cursor to the previous available entry, but only when
@@ -374,7 +374,7 @@ public interface Cursor {
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws IllegalStateException if position is undefined at invocation time
      */
-    public LockResult previousGt(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException;
+    //public LockResult previousGt(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException;
 
     /**
      * Moves the Cursor to find the given key.
@@ -425,7 +425,7 @@ public interface Cursor {
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws NullPointerException if key is null
      */
-    public LockResult findGe(byte[] key, long maxWait, TimeUnit unit) throws IOException;
+    //public LockResult findGe(byte[] key, long maxWait, TimeUnit unit) throws IOException;
 
     /**
      * Moves the Cursor to find the first available entry greater than the
@@ -462,7 +462,7 @@ public interface Cursor {
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws NullPointerException if key is null
      */
-    public LockResult findGt(byte[] key, long maxWait, TimeUnit unit) throws IOException;
+    //public LockResult findGt(byte[] key, long maxWait, TimeUnit unit) throws IOException;
 
     /**
      * Moves the Cursor to find the first available entry less than or equal to
@@ -499,7 +499,7 @@ public interface Cursor {
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws NullPointerException if key is null
      */
-    public LockResult findLe(byte[] key, long maxWait, TimeUnit unit) throws IOException;
+    //public LockResult findLe(byte[] key, long maxWait, TimeUnit unit) throws IOException;
 
     /**
      * Moves the Cursor to find the first available entry less than the given
@@ -536,7 +536,7 @@ public interface Cursor {
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws NullPointerException if key is null
      */
-    public LockResult findLt(byte[] key, long maxWait, TimeUnit unit) throws IOException;
+    //public LockResult findLt(byte[] key, long maxWait, TimeUnit unit) throws IOException;
 
     /**
      * Optimized version of the regular find method, which can perform fewer
