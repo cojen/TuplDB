@@ -116,7 +116,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         return next();
     }
 
-    @Override
+    //@Override
     public LockResult first(long maxWait, TimeUnit unit) throws IOException {
         Node root = mTree.mRoot;
         TreeCursorFrame frame = reset(root);
@@ -197,7 +197,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         return previous();
     }
 
-    @Override
+    //@Override
     public LockResult last(long maxWait, TimeUnit unit) throws IOException {
         Node root = mTree.mRoot;
         TreeCursorFrame frame = reset(root);
@@ -325,7 +325,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         return next(mTxn, leafExclusiveNotSplit());
     }
 
-    @Override
+    //@Override
     public LockResult next(long maxWait, TimeUnit unit) throws IOException {
         return next(mTxn, leafExclusiveNotSplit(), maxWait, unit);
     }
@@ -335,7 +335,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         return nextCmp(limitKey, LIMIT_LE);
     }
 
-    @Override
+    //@Override
     public LockResult nextLe(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException {
         return nextCmp(limitKey, LIMIT_LE, maxWait, unit);
     }
@@ -345,7 +345,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         return nextCmp(limitKey, LIMIT_LT);
     }
 
-    @Override
+    //@Override
     public LockResult nextLt(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException {
         return nextCmp(limitKey, LIMIT_LT, maxWait, unit);
     }
@@ -729,7 +729,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         return previous(mTxn, leafExclusiveNotSplit());
     }
 
-    @Override
+    //@Override
     public LockResult previous(long maxWait, TimeUnit unit) throws IOException {
         return previous(mTxn, leafExclusiveNotSplit(), maxWait, unit);
     }
@@ -739,7 +739,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         return previousCmp(limitKey, LIMIT_GE);
     }
 
-    @Override
+    //@Override
     public LockResult previousGe(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException {
         return previousCmp(limitKey, LIMIT_GE, maxWait, unit);
     }
@@ -749,7 +749,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         return previousCmp(limitKey, LIMIT_GT);
     }
 
-    @Override
+    //@Override
     public LockResult previousGt(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException {
         return previousCmp(limitKey, LIMIT_GT, maxWait, unit);
     }
@@ -1494,7 +1494,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         }
     }
 
-    @Override
+    //@Override
     public LockResult findGe(byte[] key, long maxWait, TimeUnit unit) throws IOException {
         Transaction txn = mTxn;
         find(txn, key, 0, VARIANT_CHECK);
@@ -1518,7 +1518,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         return next(txn, mLeaf);
     }
 
-    @Override
+    //@Override
     public LockResult findGt(byte[] key, long maxWait, TimeUnit unit) throws IOException {
         // Never lock the requested key.
         Transaction txn = mTxn;
@@ -1542,7 +1542,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         }
     }
 
-    @Override
+    //@Override
     public LockResult findLe(byte[] key, long maxWait, TimeUnit unit) throws IOException {
         Transaction txn = mTxn;
         find(txn, key, 0, VARIANT_CHECK);
@@ -1566,7 +1566,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         return previous(txn, mLeaf);
     }
 
-    @Override
+    //@Override
     public LockResult findLt(byte[] key, long maxWait, TimeUnit unit) throws IOException {
         // Never lock the requested key.
         Transaction txn = mTxn;
