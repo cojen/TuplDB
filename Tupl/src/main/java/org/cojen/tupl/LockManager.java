@@ -276,8 +276,6 @@ final class LockManager {
      * Simple hashtable of Locks.
      */
     static final class LockHT extends Latch {
-        private static final long serialVersionUID = 1L;
-
         private static final float LOAD_FACTOR = 0.75f;
 
         private Lock[] mEntries;

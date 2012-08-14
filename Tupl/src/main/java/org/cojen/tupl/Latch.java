@@ -36,9 +36,7 @@ class Latch extends AbstractQueuedSynchronizer {
     // contention, the extra check doesn't appear to slow things down. So it's
     // a performance win overall, for some reason.
 
-	private static final long serialVersionUID = 1L;
-
-	/**
+    /**
      * Attempt to acquire the exclusive latch, barging ahead of any waiting
      * threads if possible.
      */
