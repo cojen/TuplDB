@@ -20,6 +20,7 @@ import java.lang.management.ManagementFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.io.Writer;
 
 import java.util.EnumSet;
@@ -32,7 +33,9 @@ import java.util.concurrent.TimeUnit;
  *
  * @author Brian S O'Neill
  */
-public class DatabaseConfig implements Cloneable {
+public class DatabaseConfig implements Cloneable, Serializable {
+    private static final long serialVersionUID = 1L;
+
     File mBaseFile;
     boolean mMkdirs;
     File[] mDataFiles;
@@ -41,11 +44,11 @@ public class DatabaseConfig implements Cloneable {
     DurabilityMode mDurabilityMode;
     long mLockTimeoutNanos;
     long mCheckpointRateNanos;
-    EventListener mEventListener;
+    transient EventListener mEventListener;
     boolean mFileSync;
     boolean mReadOnly;
     int mPageSize;
-    Crypto mCrypto;
+    transient Crypto mCrypto;
 
     public DatabaseConfig() {
         createFilePath(true);

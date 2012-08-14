@@ -99,8 +99,6 @@ class FragmentCache {
      * existing entry (if TYPE_FRAGMENT) might simply be evicted.
      */
     static final class LHT extends Latch {
-        private static final long serialVersionUID = 1L;
-
         private static final float LOAD_FACTOR = 0.75f;
 
         private final Database mDatabase;
