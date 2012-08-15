@@ -44,6 +44,8 @@ public class DatabaseConfig implements Cloneable, Serializable {
     DurabilityMode mDurabilityMode;
     long mLockTimeoutNanos;
     long mCheckpointRateNanos;
+    long mCheckpointSizeThreshold;
+    long mCheckpointDelayThresholdNanos;
     transient EventListener mEventListener;
     boolean mFileSync;
     boolean mReadOnly;
@@ -55,6 +57,8 @@ public class DatabaseConfig implements Cloneable, Serializable {
         durabilityMode(null);
         lockTimeout(1, TimeUnit.SECONDS);
         checkpointRate(1, TimeUnit.SECONDS);
+        checkpointSizeThreshold(1024 * 1024);
+        checkpointDelayThreshold(1, TimeUnit.MINUTES);
     }
 
     /**
@@ -162,9 +166,33 @@ public class DatabaseConfig implements Cloneable, Serializable {
      * Set the rate at which {@link Database#checkpoint checkpoints} are
      * automatically performed. Default rate is 1 second. Pass a negative value
      * to disable automatic checkpoints.
+     *
+     * @param unit required unit if rate is more than zero
      */
     public DatabaseConfig checkpointRate(long rate, TimeUnit unit) {
         mCheckpointRateNanos = Utils.toNanos(rate, unit);
+        return this;
+    }
+
+    /**
+     * Set the minimum redo log size required for an automatic {@link
+     * Database#checkpoint checkpoint} to actually be performed. Default is 1
+     * MiB.
+     */
+    public DatabaseConfig checkpointSizeThreshold(long bytes) {
+        mCheckpointSizeThreshold = bytes;
+        return this;
+    }
+
+    /**
+     * Set the maximum delay before an automatic {@link Database#checkpoint
+     * checkpoint} is performed, regardless of the redo log size
+     * threshold. Default is 1 minute, and a negative delay is infinite.
+     *
+     * @param unit required unit if delay is more than zero
+     */
+    public DatabaseConfig checkpointDelayThreshold(long delay, TimeUnit unit) {
+        mCheckpointDelayThresholdNanos = Utils.toNanos(delay, unit);
         return this;
     }
 

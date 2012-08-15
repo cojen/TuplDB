@@ -295,7 +295,12 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
      */
     private File fileFor(long logId) {
         File base = mBaseFile;
-        return base == null ? null :  new File(base.getPath() + ".redo." + logId);
+        return base == null ? null : new File(base.getPath() + ".redo." + logId);
+    }
+
+    public long size() throws IOException {
+        FileChannel channel = mChannel;
+        return channel == null ? 0 : channel.size();
     }
 
     public synchronized void flush() throws IOException {

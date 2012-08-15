@@ -33,12 +33,18 @@ final class Checkpointer implements Runnable {
     private final ReferenceQueue<Database> mRefQueue;
     private final WeakReference<Database> mDatabaseRef;
     private final long mRateNanos;
+    private final long mSizeThreshold;
+    private final long mDelayThresholdNanos;
     private volatile boolean mClosed;
     private Hook mShutdownHook;
     private List<Shutdown> mToShutdown;
 
-    Checkpointer(Database db, long rateNanos) {
-        if (rateNanos < 0) {
+    Checkpointer(Database db, DatabaseConfig config) {
+        mRateNanos = config.mCheckpointRateNanos;
+        mSizeThreshold = config.mCheckpointSizeThreshold;
+        mDelayThresholdNanos = config.mCheckpointDelayThresholdNanos;
+
+        if (mRateNanos < 0) {
             mRefQueue = new ReferenceQueue<Database>();
             mDatabaseRef = new WeakReference<Database>(db, mRefQueue);
         } else {
@@ -46,7 +52,6 @@ final class Checkpointer implements Runnable {
             mDatabaseRef = new WeakReference<Database>(db);
         }
 
-        mRateNanos = rateNanos;
     }
 
     void start() {
@@ -84,7 +89,7 @@ final class Checkpointer implements Runnable {
                 }
 
                 long startNanos = System.nanoTime();
-                db.checkpoint();
+                db.checkpoint(false, mSizeThreshold, mDelayThresholdNanos);
                 long endNanos = System.nanoTime();
 
                 lastDurationNanos = endNanos - startNanos;
