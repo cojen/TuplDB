@@ -185,6 +185,8 @@ public final class Database extends CauseCloseable {
 
     private final Object mCheckpointLock = new Object();
 
+    private long mLastCheckpointNanos;
+
     private volatile Checkpointer mCheckpointer;
 
     private final TempFileManager mTempFileManager;
@@ -228,7 +230,7 @@ public final class Database extends CauseCloseable {
         config.durabilityMode(DurabilityMode.NO_FLUSH);
         Database db = new Database(config, OPEN_TEMP);
         tfm.register(file, db);
-        db.mCheckpointer = new Checkpointer(db, config.mCheckpointRateNanos);
+        db.mCheckpointer = new Checkpointer(db, config);
         db.mCheckpointer.start();
         return db.mRegistry;
     }
@@ -493,7 +495,7 @@ public final class Database extends CauseCloseable {
 
                 if (doCheckpoint || !redosToDelete.isEmpty()) {
                     // The one and only recovery checkpoint.
-                    checkpoint(true);
+                    checkpoint(true, 0, 0);
 
                     // Only delete redo logs after successful checkpoint.
                     for (long id : redosToDelete) {
@@ -511,7 +513,7 @@ public final class Database extends CauseCloseable {
                 }
                 
                 if (mFragmentedTrash.emptyAllTrash()) {
-                    checkpoint(true);
+                    checkpoint(false, 0, 0);
                 }
             }
 
@@ -539,7 +541,7 @@ public final class Database extends CauseCloseable {
             return;
         }
 
-        mCheckpointer = new Checkpointer(this, config.mCheckpointRateNanos);
+        mCheckpointer = new Checkpointer(this, config);
 
         // Register objects to automatically shutdown.
         mCheckpointer.register(mRedoLog);
@@ -810,11 +812,13 @@ public final class Database extends CauseCloseable {
      * Preallocates pages for immediate use.
      */
     public void preallocate(long bytes) throws IOException {
-        int pageSize = pageSize();
-        long pageCount = (bytes + pageSize - 1) / pageSize;
-        if (pageCount > 0) {
-            mPageDb.allocatePages(pageCount);
-            checkpoint(true);
+        if (!mClosed && mPageDb instanceof DurablePageDb) {
+            int pageSize = pageSize();
+            long pageCount = (bytes + pageSize - 1) / pageSize;
+            if (pageCount > 0) {
+                mPageDb.allocatePages(pageCount);
+                checkpoint(true, 0, 0);
+            }
         }
     }
 
@@ -1013,7 +1017,7 @@ public final class Database extends CauseCloseable {
      */
     public void checkpoint() throws IOException {
         if (!mClosed && mPageDb instanceof DurablePageDb) {
-            checkpoint(false);
+            checkpoint(false, 0, 0);
         }
     }
 
@@ -2213,28 +2217,58 @@ public final class Database extends CauseCloseable {
         mPageDb.writePage(id, page);
     }
 
-    private void checkpoint(boolean force) throws IOException {
+    void checkpoint(boolean force, long sizeThreshold, long delayThresholdNanos)
+        throws IOException
+    {
         // Checkpoint lock ensures consistent state between page store and logs.
         synchronized (mCheckpointLock) {
             final Node root = mRegistry.mRoot;
 
+            long nowNanos = System.nanoTime();
+
             if (!force) {
-                root.acquireShared();
-                if (root.mCachedState == CACHED_CLEAN) {
-                    // Root is clean, so nothing to do.
-                    root.releaseShared();
+                check: {
+                    if (delayThresholdNanos == 0) {
+                        break check;
+                    }
+
+                    if (delayThresholdNanos > 0 &&
+                        ((nowNanos - mLastCheckpointNanos) >= delayThresholdNanos))
+                    {
+                        break check;
+                    }
+
+                    if (mRedoLog == null || mRedoLog.size() >= sizeThreshold) {
+                        break check;
+                    }
+
+                    // Thresholds not met, for a full checkpoint, but sync the
+                    // redo log for durability.
+                    if (mRedoLog != null) {
+                        mRedoLog.sync();
+                    }
+
                     return;
                 }
-                root.releaseShared();
+
+                root.acquireShared();
+                try {
+                    if (root.mCachedState == CACHED_CLEAN) {
+                        // Root is clean, so nothing to do.
+                        return;
+                    }
+                } finally {
+                    root.releaseShared();
+                }
             }
 
-            long start = 0;
             if (mEventListener != null) {
                 long redoLogId = mRedoLog == null ? 0 : mRedoLog.logId();
                 mEventListener.notify(EventType.CHECKPOINT_BEGIN,
                                       "Checkpoint begin: %1$d", redoLogId);
-                start = System.nanoTime();
             }
+
+            mLastCheckpointNanos = nowNanos;
 
             final long redoLogId = mRedoLog == null ? 0 : mRedoLog.openNewFile();
 
@@ -2324,7 +2358,7 @@ public final class Database extends CauseCloseable {
             mAllocator.fill();
 
             if (mEventListener != null) {
-                double duration = (System.nanoTime() - start) / 1000000000.0;
+                double duration = (System.nanoTime() - mLastCheckpointNanos) / 1000000000.0;
                 mEventListener.notify(EventType.CHECKPOINT_BEGIN,
                                       "Checkpoint completed in %1$1.3f seconds",
                                       duration, TimeUnit.SECONDS);
