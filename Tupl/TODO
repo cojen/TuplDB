@@ -6,6 +6,8 @@
 - Online compaction. Two types: Node merging and file truncation. File
   truncation is the more difficult one.
 - Support snapshot into a temp Database instance.
+- Add Index.insertFence and removeFence methods for boosting findNearby
+  performance at the edges. Implementation inserts a tombstone.
 
 
 Reduce overhead of checkpoint by sweeping through dirty nodes twice. This
