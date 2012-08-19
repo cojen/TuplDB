@@ -3221,7 +3221,8 @@ final class Node extends Latch {
         }
 
         if (db != null && !isLeaf()) {
-            for (int pos = mSearchVecEnd - mSearchVecStart; pos >= 0; pos -= 2) {
+            int endPos = mSearchVecEnd - mSearchVecStart + 2;
+            for (int pos = 0; pos <= endPos; pos += 2) {
                 Node child = mChildNodes[pos >> 1];
                 long childId = retrieveChildRefId(pos);
 
