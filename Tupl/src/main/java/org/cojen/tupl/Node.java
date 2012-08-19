@@ -62,6 +62,9 @@ final class Node extends Latch {
 
     static final int VALUE_FRAGMENTED = 0x40;
 
+    private static final boolean VERIFY_ON_WRITE = Boolean.getBoolean
+        ("org.cojen.tupl.Node.verifyOnWrite");
+
     // Links within usage list, guarded by Database.mUsageLatch.
     Node mMoreUsed; // points to more recently used node
     Node mLessUsed; // points to less recently used node
@@ -629,6 +632,10 @@ final class Node extends Latch {
     void write(Database db) throws IOException {
         if (mSplit != null) {
             throw new AssertionError("Cannot write partially split node");
+        }
+
+        if (VERIFY_ON_WRITE) {
+            verify0(null);
         }
 
         byte[] page = mPage;
@@ -3129,9 +3136,13 @@ final class Node extends Latch {
     }
 
     /**
-     * Caller must hold any latch.
+     * Caller must hold any latch. Pass database instance to recurse.
      */
     private void verify0(Database db) throws CorruptDatabaseException, IOException {
+        if (mType != TYPE_TN_INTERNAL && mType != TYPE_TN_LEAF) {
+            return;
+        }
+
         final byte[] page = mPage;
 
         if (mLeftSegTail < TN_HEADER_SIZE) {
