@@ -186,7 +186,7 @@ public class TransactionTest {
     }
 
     @Test
-    public void tombstone() throws Exception {
+    public void ghost() throws Exception {
         Index ix = mDb.openIndex("test");
         byte[] value = "value".getBytes();
 

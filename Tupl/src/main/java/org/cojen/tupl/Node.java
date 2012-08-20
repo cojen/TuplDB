@@ -163,7 +163,7 @@ final class Node extends Latch {
       0b0xxx_xxxx: value is 0..127 bytes
       0b1f0x_xxxx: value/entry is 1..8192 bytes
       0b1f10_xxxx: value/entry is 1..1048576 bytes
-      0b1111_1111: tombstone value (null)
+      0b1111_1111: ghost value (null)
 
       When the 'f' bit is zero, the entry is a normal value. Otherwise, it is a
       fragmented value, defined by Database.fragment.
@@ -1084,7 +1084,7 @@ final class Node extends Latch {
 
     /**
      * @param pos position as provided by binarySearch; must be positive
-     * @return Cursor.NOT_LOADED if value exists, null if tombstone
+     * @return Cursor.NOT_LOADED if value exists, null if ghost
      */
     byte[] hasLeafValue(int pos) {
         final byte[] page = mPage;
@@ -1096,7 +1096,7 @@ final class Node extends Latch {
 
     /**
      * @param pos position as provided by binarySearch; must be positive
-     * @return null if tombstone
+     * @return null if ghost
      */
     byte[] retrieveLeafValue(Tree tree, int pos) throws IOException {
         final byte[] page = mPage;
@@ -1124,7 +1124,7 @@ final class Node extends Latch {
                 len = 1 + (((header & 0x0f) << 16)
                            | ((page[loc++] & 0xff) << 8) | (page[loc++] & 0xff));
             } else {
-                // tombstone
+                // ghost
                 return null;
             }
             if ((header & VALUE_FRAGMENTED) != 0) {
@@ -1154,11 +1154,10 @@ final class Node extends Latch {
 
     /**
      * Transactionally delete a leaf entry, replacing the value with a
-     * tombstone. When read back, it is interpreted as null. Tombstones are
-     * used by transactional deletes, to ensure that they are not visible by
-     * cursors in other transactions. They need to acquire a lock first. When
-     * the original transaction commits, it deletes all the tombstoned entries
-     * it created.
+     * ghost. When read back, it is interpreted as null. Ghosts are used by
+     * transactional deletes, to ensure that they are not visible by cursors in
+     * other transactions. They need to acquire a lock first. When the original
+     * transaction commits, it deletes all the ghosted entries it created.
      *
      * <p>Caller must hold commit lock and exclusive latch on node.
      *
@@ -1192,7 +1191,7 @@ final class Node extends Latch {
                     loc += 3 + (((header & 0x0f) << 16)
                                 | ((page[loc] & 0xff) << 8) | (page[loc + 1] & 0xff));
                 } else {
-                    // Already a tombstone, so nothing to undo.
+                    // Already a ghost, so nothing to undo.
                     break doUndo;
                 }
 
@@ -1210,10 +1209,10 @@ final class Node extends Latch {
             txn.undoStore(tree.mId, UndoLog.OP_INSERT, page, entryLoc, loc - entryLoc);
         }
 
-        // Tombstone will be deleted later when locks are released.
-        tree.mLockManager.tombstoned(txn, tree, key, keyHash);
+        // Ghost will be deleted later when locks are released.
+        tree.mLockManager.ghosted(txn, tree, key, keyHash);
 
-        // Replace value with tombstone.
+        // Replace value with ghost.
         page[valueHeaderLoc] = (byte) -1;
         mGarbage += loc - valueHeaderLoc - 1;
 
@@ -1258,7 +1257,7 @@ final class Node extends Latch {
                     loc += 3 + (((header & 0x0f) << 16)
                                 | ((page[loc] & 0xff) << 8) | (page[loc + 1] & 0xff));
                 } else {
-                    // Already a tombstone, so nothing to undo.
+                    // Already a ghost, so nothing to undo.
                     break examineEntry;
                 }
 
@@ -1755,7 +1754,7 @@ final class Node extends Latch {
                     len = 1 + (((len & 0x0f) << 16)
                                | ((page[loc++] & 0xff) << 8) | (page[loc++] & 0xff));
                 } else {
-                    // tombstone
+                    // ghost
                     len = 0;
                     break largeValue;
                 }
@@ -1781,7 +1780,7 @@ final class Node extends Latch {
             if (valueLen == len) {
                 // Quick copy with no garbage created.
                 if (valueLen == 0) {
-                    // Ensure tombstone is replaced.
+                    // Ensure ghost is replaced.
                     page[valueHeaderLoc] = 0;
                 } else {
                     System.arraycopy(value, 0, page, loc, valueLen);
@@ -1932,7 +1931,7 @@ final class Node extends Latch {
                 len = 1 + (((header & 0x0f) << 16)
                            | ((page[loc++] & 0xff) << 8) | (page[loc++] & 0xff));
             } else {
-                // tombstone
+                // ghost
                 break largeValue;
             }
             if ((header & VALUE_FRAGMENTED) != 0) {

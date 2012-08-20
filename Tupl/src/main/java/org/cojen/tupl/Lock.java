@@ -46,9 +46,9 @@ final class Lock {
     Locker mLocker;
 
     // Locker instance if one shared locker, or else a hashtable for more.
-    // Field is re-used for indicating that exclusive lock has tombstoned an
-    // entry, and it should be deleted when transaction commits. A C-style
-    // union type would be handy. Object is a Tree if entry is tombstoned.
+    // Field is re-used to indicate when an exclusive lock has ghosted an
+    // entry, which should be deleted when the transaction commits. A C-style
+    // union type would be handy. Object is a Tree if entry is ghosted.
     Object mSharedLockersObj;
 
     // Waiters for upgradable lock. Contains only WaitQueue.Node instances.
@@ -333,7 +333,7 @@ final class Lock {
     /**
      * Called internally to unlock an upgradable lock which was just
      * acquired. Implementation is a just a smaller version of the regular
-     * unlock method. It doesn't have to deal with tombstones.
+     * unlock method. It doesn't have to deal with ghosts.
      */
     private void unlockUpgradable() {
         mLocker = null;
@@ -348,13 +348,13 @@ final class Lock {
     /**
      * Called with exclusive latch held, which is retained.
      *
-     * @param latch briefly released and re-acquired for deleting a tombstone
+     * @param latch briefly released and re-acquired for deleting a ghost
      * @return true if lock is now completely unused
      * @throws IllegalStateException if lock not held
      */
     boolean unlock(Locker locker, Latch latch) {
         if (mLocker == locker) {
-            deleteTombstone(latch);
+            deleteGhost(latch);
             mLocker = null;
             WaitQueue queueU = mQueueU;
             if (queueU != null) {
@@ -423,12 +423,12 @@ final class Lock {
     /**
      * Called with exclusive latch held, which is retained.
      *
-     * @param latch briefly released and re-acquired for deleting a tombstone
+     * @param latch briefly released and re-acquired for deleting a ghost
      * @throws IllegalStateException if lock not held or too many shared locks
      */
     void unlockToShared(Locker locker, Latch latch) {
         if (mLocker == locker) {
-            deleteTombstone(latch);
+            deleteGhost(latch);
             mLocker = null;
             WaitQueue queueU = mQueueU;
             if (queueU != null) {
@@ -463,7 +463,7 @@ final class Lock {
     /**
      * Called with exclusive latch held, which is retained.
      *
-     * @param latch briefly released and re-acquired for deleting a tombstone
+     * @param latch briefly released and re-acquired for deleting a ghost
      * @throws IllegalStateException if lock not held
      */
     void unlockToUpgradable(Locker locker, Latch latch) {
@@ -478,7 +478,7 @@ final class Lock {
             // Already upgradable.
             return;
         }
-        deleteTombstone(latch);
+        deleteGhost(latch);
         mLockCount = 0x80000000;
         WaitQueue queueSX = mQueueSX;
         if (queueSX != null) {
@@ -489,10 +489,10 @@ final class Lock {
     /**
      * @param latch might be briefly released and re-acquired
      */
-    void deleteTombstone(Latch latch) {
+    void deleteGhost(Latch latch) {
         // TODO: Unlock due to rollback can be optimized. It never needs to
-        // actually delete tombstones, because the undo actions replaced
-        // them. Calling Cursor.deleteTombstone performs a pointless search.
+        // actually delete ghosts, because the undo actions replaced
+        // them. Calling TreeCursor.deleteGhost performs a pointless search.
 
         Object obj = mSharedLockersObj;
         if (!(obj instanceof Tree)) {
@@ -507,10 +507,10 @@ final class Lock {
         // Release to prevent deadlock, since additional latches are required for delete.
         latch.releaseExclusive();
         try {
-            c.deleteTombstone(key);
+            c.deleteGhost(key);
         } catch (Throwable e) {
-            // Exception indicates that database is borked. Tombstone will
-            // get cleaned up when database is re-opened.
+            // Exception indicates that database is borked. Ghost will get
+            // cleaned up when database is re-opened.
             Utils.closeQuietly(null, ((Tree) obj).mDatabase, e);
         } finally {
             // Reset before re-acquiring latch, since it needs to acquire

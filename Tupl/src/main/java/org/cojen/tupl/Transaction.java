@@ -233,11 +233,11 @@ public final class Transaction extends Locker {
 
                     // Truncate obsolete log entries after releasing
                     // locks. Active transaction id is cleared as a
-                    // side-effect. Recovery might need to re-delete
-                    // tombstones, which is only possible with a complete undo
+                    // side-effect. Recovery might need to re-delete ghosts,
+                    // which is only possible with a complete undo
                     // log. Truncate operation can be interrupted by a
                     // checkpoint, allowing a partial undo log to be seen by
-                    // the recovery. It will not attempt to delete tombstones.
+                    // the recovery. It will not attempt to delete ghosts.
                     undo.truncate(true);
 
                     // Any remaining state would be HAS_TRASH.

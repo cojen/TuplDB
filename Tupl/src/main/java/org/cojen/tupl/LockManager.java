@@ -206,10 +206,10 @@ final class LockManager {
     */
 
     /**
-     * Mark a lock as referencing a tombstoned entry. Caller must ensure that
-     * lock is already exclusively held.
+     * Mark a lock as referencing a ghosted entry. Caller must ensure that lock
+     * is already exclusively held.
      */
-    final void tombstoned(Locker locker, Tree tree, byte[] key, int hash) {
+    final void ghosted(Locker locker, Tree tree, byte[] key, int hash) {
         LockHT ht = getLockHT(hash);
         ht.acquireExclusive();
         try {
