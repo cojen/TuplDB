@@ -144,7 +144,7 @@ public class RecoverTest {
     }
 
     @Test
-    public void deleteTombstone() throws Exception {
+    public void deleteGhost() throws Exception {
         byte[] key = "hello".getBytes();
         byte[] value = "world".getBytes();
 

@@ -102,7 +102,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         LockResult result = tryCopyCurrent(txn);
 
         if (result != null) {
-            // Extra check for filtering tombstones.
+            // Extra check for filtering ghosts.
             if (mKey == null || mValue != null) {
                 return result;
             }
@@ -129,7 +129,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         LockResult result = tryCopyCurrent(txn);
 
         if (result != null) {
-            // Extra check for filtering tombstones.
+            // Extra check for filtering ghosts.
             if (mKey == null || mValue != null) {
                 return result;
             }
@@ -183,7 +183,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         LockResult result = tryCopyCurrent(txn);
 
         if (result != null) {
-            // Extra check for filtering tombstones.
+            // Extra check for filtering ghosts.
             if (mKey == null || mValue != null) {
                 return result;
             }
@@ -210,7 +210,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         LockResult result = tryCopyCurrent(txn);
 
         if (result != null) {
-            // Extra check for filtering tombstones.
+            // Extra check for filtering ghosts.
             if (mKey == null || mValue != null) {
                 return result;
             }
@@ -360,7 +360,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             }
             LockResult result = tryCopyCurrentCmp(txn, limitKey, limitMode);
             if (result != null) {
-                // Extra check for filtering tombstones.
+                // Extra check for filtering ghosts.
                 if (mKey == null || mValue != null) {
                     return result;
                 }
@@ -383,7 +383,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             }
             LockResult result = tryCopyCurrentCmp(txn, limitKey, limitMode);
             if (result != null) {
-                // Extra check for filtering tombstones.
+                // Extra check for filtering ghosts.
                 if (mKey == null || mValue != null) {
                     return result;
                 }
@@ -406,7 +406,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             }
             LockResult result = tryCopyCurrent(txn);
             if (result != null) {
-                // Extra check for filtering tombstones.
+                // Extra check for filtering ghosts.
                 if (mKey == null || mValue != null) {
                     return result;
                 }
@@ -432,7 +432,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             }
             LockResult result = tryCopyCurrent(txn);
             if (result != null) {
-                // Extra check for filtering tombstones.
+                // Extra check for filtering ghosts.
                 if (mKey == null || mValue != null) {
                     return result;
                 }
@@ -764,7 +764,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             }
             LockResult result = tryCopyCurrentCmp(txn, limitKey, limitMode);
             if (result != null) {
-                // Extra check for filtering tombstones.
+                // Extra check for filtering ghosts.
                 if (mKey == null || mValue != null) {
                     return result;
                 }
@@ -787,7 +787,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             }
             LockResult result = tryCopyCurrentCmp(txn, limitKey, limitMode);
             if (result != null) {
-                // Extra check for filtering tombstones.
+                // Extra check for filtering ghosts.
                 if (mKey == null || mValue != null) {
                     return result;
                 }
@@ -810,7 +810,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             }
             LockResult result = tryCopyCurrent(txn);
             if (result != null) {
-                // Extra check for filtering tombstones.
+                // Extra check for filtering ghosts.
                 if (mKey == null || mValue != null) {
                     return result;
                 }
@@ -836,7 +836,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             }
             LockResult result = tryCopyCurrent(txn);
             if (result != null) {
-                // Extra check for filtering tombstones.
+                // Extra check for filtering ghosts.
                 if (mKey == null || mValue != null) {
                     return result;
                 }
@@ -2263,10 +2263,10 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     }
 
     /**
-     * Non-transactional tombstone delete. Caller is expected to hold exclusive
-     * key lock. Method does nothing if a value exists.
+     * Non-transactional ghost delete. Caller is expected to hold exclusive key
+     * lock. Method does nothing if a value exists.
      */
-    void deleteTombstone(byte[] key) throws IOException {
+    void deleteGhost(byte[] key) throws IOException {
         try {
             // Find with no lock because it has already been acquired.
             // TODO: Use nearby optimization when used with transactional Index.clear.
@@ -2323,7 +2323,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                         }
                     } else {
                         node.txnDeleteLeafEntry(txn, mTree, key, keyHash(), pos);
-                        // Above operation leaves a tombstone, so no cursors to fix.
+                        // Above operation leaves a ghost, so no cursors to fix.
                         mValue = null;
                         return;
                     }
@@ -2497,7 +2497,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                     if (mValue != null) {
                         return false;
                     }
-                    // Replace tombstone.
+                    // Replace ghost.
                     node.updateLeafValue(mTree, pos, Node.VALUE_FRAGMENTED, value);
                 } else {
                     int newPos = ~pos;

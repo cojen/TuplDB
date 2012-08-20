@@ -460,10 +460,10 @@ final class UndoLog {
     }
 
     /**
-     * Truncate all log entries, and delete any tombstones that were
-     * created. Only to be called during recovery.
+     * Truncate all log entries, and delete any ghosts that were created. Only
+     * to be called during recovery.
      */
-    final void deleteTombstones() throws IOException {
+    final void deleteGhosts() throws IOException {
         if (mLength > 0) {
             byte[] opRef = new byte[1];
             Index activeIndex = null;
@@ -494,12 +494,12 @@ final class UndoLog {
 
                 case OP_INSERT:
                     // Since transaction was committed, don't insert an entry
-                    // to undo a delete, but instead delete the tombstone.
+                    // to undo a delete, but instead delete the ghost.
                     activeIndex = findIndex(activeIndex);
                     byte[] key = Node.retrieveKeyAtLoc(entry, 0);
                     TreeCursor cursor = new TreeCursor((Tree) activeIndex, null);
                     try {
-                        cursor.deleteTombstone(key);
+                        cursor.deleteGhost(key);
                         cursor.reset();
                     } catch (Throwable e) {
                         throw Utils.closeOnFailure(cursor, e);
@@ -934,11 +934,11 @@ final class UndoLog {
                         // Transaction was actually committed, but redo log is
                         // gone. This can happen when a checkpoint completes in
                         // the middle of the transaction commit operation.
-                        undo.deleteTombstones();
+                        undo.deleteGhosts();
                         break;
 
                     case OP_COMMIT_TRUNCATE:
-                        // Like OP_COMMIT, but tombstones have already been deleted.
+                        // Like OP_COMMIT, but ghosts have already been deleted.
                         undo.truncate(false);
                         break;
                     }
