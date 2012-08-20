@@ -24,8 +24,8 @@ package org.cojen.tupl;
  */
 class RedoLogTxnScanner implements RedoLogVisitor {
     // FIXME: This design does not scale. Memory is required for each
-    // transaction in the log file. The log file can be processed in
-    // chunks. Scan, apply, scan, apply, etc.
+    // transaction in the log file. When it reaches a certain threshold, switch
+    // to using a temp database.
     private final LHashTable<Status> mStatusTable = new LHashTable<Status>(1024) {
         protected Status newEntry() {
             return new Status();
