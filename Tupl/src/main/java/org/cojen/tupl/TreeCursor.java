@@ -1679,6 +1679,8 @@ final class TreeCursor extends CauseCloseable implements Cursor {
 
                 // Only search inside non-split nodes. It's easier to just pop
                 // up rather than finish or search the split.
+                // TODO: Search will immediately come back to split node,
+                // spinning for a bit. Consider finishing the split.
                 if (node.mSplit != null) {
                     continue;
                 }
