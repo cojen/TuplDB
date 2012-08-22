@@ -556,6 +556,20 @@ public interface Cursor {
     public LockResult findNearby(byte[] key) throws IOException;
 
     /**
+     * Moves the Cursor to a random entry, but not guaranteed to be chosen from
+     * a uniform distribution. Cursor key and value are set to null if no
+     * entries exist, and position will be undefined.
+     *
+     * @param lowKey inclusive lowest key in the selectable range; pass null for open range
+     * @param highKey exclusive highest key in the selectable range; pass null for open range
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
+     */
+    public LockResult random(byte[] lowKey, byte[] highKey) throws IOException;
+
+    /**
      * Loads or reloads the value at the cursor's current position. Cursor
      * value is set to null if entry no longer exists, but the position remains
      * unmodified.

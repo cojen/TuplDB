@@ -192,6 +192,16 @@ class IndexesCursor implements Cursor {
         return assignKey(mRegistryCursor.findNearby(applyKeyPrefix(key)));
     }
 
+    public LockResult random(byte[] lowKey, byte[] highKey) throws IOException {
+        if (lowKey != null) {
+            lowKey = applyKeyPrefix(lowKey);
+        }
+        if (highKey != null) {
+            highKey = applyKeyPrefix(highKey);
+        }
+        return assignKey(mRegistryCursor.random(lowKey, highKey));
+    }
+
     public LockResult load() throws IOException {
         return mRegistryCursor.load();
     }

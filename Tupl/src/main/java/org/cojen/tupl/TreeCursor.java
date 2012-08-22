@@ -19,6 +19,7 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 import java.util.Arrays;
+import java.util.Random;
 
 import java.util.concurrent.TimeUnit;
 
@@ -1854,6 +1855,133 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         } catch (DeadlockException e) {
             // Not expected with timeout of zero anyhow.
             return null;
+        }
+    }
+
+    @Override
+    public LockResult random(byte[] lowKey, byte[] highKey) throws IOException {
+        Random rnd = Utils.random();
+
+        start: while (true) {
+            mKey = null;
+            mKeyHash = 0;
+            mValue = null;
+
+            Node node = mTree.mRoot;
+            TreeCursorFrame frame = reset(node);
+
+            search: while (true) {
+                if (node.mSplit != null) {
+                    // Bind to anything to finish the split.
+                    frame.bind(node, 0);
+                    node = finishSplit(frame, node);
+                }
+
+                int pos;
+                select: {
+                    if (highKey == null) {
+                        pos = node.highestPos() + 2;
+                    } else {
+                        pos = node.binarySearch(highKey);
+                        if (!node.isLeaf()) {
+                            pos = Node.internalPos(pos);
+                        } else if (pos < 0) {
+                            pos = ~pos;
+                        }
+                    }
+
+                    if (lowKey == null) {
+                        if (pos > 0) {
+                            pos = (pos == 2) ? 0 : (rnd.nextInt(pos >> 1) << 1);
+                            break select;
+                        }
+                    } else {
+                        int lowPos = node.binarySearch(lowKey);
+                        if (!node.isLeaf()) {
+                            lowPos = Node.internalPos(lowPos);
+                        } else if (lowPos < 0) {
+                            lowPos = ~lowPos;
+                        }
+                        int range = pos - lowPos;
+                        if (range > 0) {
+                            pos = (range == 2) ? lowPos : lowPos + (rnd.nextInt(range >> 1) << 1);
+                            break select;
+                        }
+                    }
+
+                    // Node is empty or out of bounds, so pop up the tree.
+                    TreeCursorFrame parent = frame.mParentFrame;
+                    node.releaseExclusive();
+
+                    if (parent == null) {
+                        // Usually the root frame refers to the root node, but
+                        // it can be wrong if the tree height is changing.
+                        Node root = mTree.mRoot;
+                        if (node == root) {
+                            return LockResult.UNOWNED;
+                        }
+                        root.acquireExclusive();
+                        node = root;
+                    } else {
+                        frame = parent;
+                        node = frame.acquireExclusive();
+                    }
+
+                    continue search;
+                }
+
+                frame.bind(node, pos);
+
+                if (node.isLeaf()) {
+                    mLeaf = frame;
+                    Transaction txn = mTxn;
+                    mKeyHash = keyHashForLoad(txn, mKey = node.retrieveKey(pos));
+
+                    LockResult result;
+                    if ((result = tryLockKey(txn)) == null) {
+                        // Unable to immediately acquire the lock.
+                        mValue = NOT_LOADED;
+                        node.releaseExclusive();
+                        // This might fail to acquire the lock too, but the cursor
+                        // is at the proper position, and with the proper state.
+                        result = doLoad(txn);
+                    } else {
+                        try {
+                            mValue = mKeyOnly ? node.hasLeafValue(pos)
+                                : node.retrieveLeafValue(mTree, pos);
+                        } catch (Throwable e) {
+                            mValue = NOT_LOADED;
+                            node.releaseExclusive();
+                            throw Utils.rethrow(e);
+                        }
+                        node.releaseExclusive();
+                    }
+
+                    if (mValue == null) {
+                        // Skip over ghosts. Attempting to lock ghosts in the
+                        // first place is correct behavior, avoiding bias.
+                        if (result == LockResult.ACQUIRED) {
+                            txn.unlock();
+                        }
+                        frame = leafExclusiveNotSplit();
+                        result = rnd.nextBoolean() ? next(txn, frame) : previous(txn, frame);
+                        if (mValue == null) {
+                            // Nothing but ghosts in selected direction, so start over.
+                            continue start;
+                        }
+                    }
+
+                    return result;
+                } else {
+                    try {
+                        node = latchChild(node, pos, true);
+                    } catch (Throwable e) {
+                        throw cleanup(e, frame);
+                    }
+                }
+
+                frame = new TreeCursorFrame(frame);
+            }
         }
     }
 

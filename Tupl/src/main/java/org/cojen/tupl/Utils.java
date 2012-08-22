@@ -24,6 +24,8 @@ import java.io.IOException;
 
 import java.math.BigInteger;
 
+import java.util.Random;
+
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -53,6 +55,16 @@ class Utils {
         byte[] temp = new byte[9];
         writeLongBE(temp, 1, v);
         return new BigInteger(temp);
+    }
+
+    private static Random cRnd;
+
+    static Random random() {
+        Random rnd = cRnd;
+        if (rnd == null) {
+            cRnd = rnd = new Random();
+        }
+        return rnd;
     }
 
     /**
