@@ -609,6 +609,115 @@ public class CursorTest {
         txn.exit();
     }
 
+    @Test
+    public void random() throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        Cursor c = ix.newCursor(null);
+        c.random(null, null);
+        assertNull(c.key());
+        assertNull(c.value());
+
+        for (int i=0; i<10000; i++) {
+            ix.store(Transaction.BOGUS, key(i), value(i));
+        }
+
+        int[] buckets = new int[10];
+
+        c = ix.newCursor(null);
+        for (int i=0; i<1000000; i++) {
+            c.random(null, null);
+            int key = Utils.readIntBE(c.key(), 0);
+            buckets[key / 1000]++;
+        }
+
+        for (int bucket : buckets) {
+            int diff = Math.abs(bucket - (1000000 / 10));
+            // Allow 10% tolerance.
+            assertTrue(diff < ((1000000 / 10) / 10));
+        }
+    }
+
+    @Test
+    public void randomNotGhost() throws Exception {
+        // Verfies that ghosts are not selected.
+
+        Index ix = mDb.openIndex("test");
+        ix.store(Transaction.BOGUS, key(0), value(0));
+        ix.store(Transaction.BOGUS, key(1), value(1));
+
+        Transaction txn = mDb.newTransaction();
+        ix.delete(txn, key(1));
+        Cursor c = ix.newCursor(txn);
+        for (int i=0; i<100; i++) {
+            c.random(null, null);
+            assertNotNull(c.value());
+            assertTrue(c.value().length > 0);
+        }
+
+        txn.exit();
+        ix.delete(txn, key(0));
+        c = ix.newCursor(txn);
+        for (int i=0; i<100; i++) {
+            c.random(null, null);
+            assertNotNull(c.value());
+            assertTrue(c.value().length > 0);
+        }
+    }
+
+    @Test
+    public void randomRange() throws Exception {
+        Index ix = mDb.openIndex("test");
+        for (int i=0; i<10000; i++) {
+            ix.store(Transaction.BOGUS, key(i), value(i));
+        }
+
+        {
+            int[] buckets = new int[10];
+
+            Cursor c = ix.newCursor(null);
+            byte[] lowKey = key(0);
+            byte[] highKey = key(10000);
+            for (int i=0; i<1000000; i++) {
+                c.random(null, null);
+                int key = Utils.readIntBE(c.key(), 0);
+                buckets[key / 1000]++;
+            }
+
+            for (int bucket : buckets) {
+                int diff = Math.abs(bucket - (1000000 / 10));
+                // Allow 10% tolerance.
+                assertTrue(diff < ((1000000 / 10) / 10));
+            }
+        }
+
+        {
+            int[] buckets = new int[10];
+
+            Cursor c = ix.newCursor(null);
+            byte[] lowKey = key(1000);
+            byte[] highKey = key(9000);
+            for (int i=0; i<10000000; i++) {
+                c.random(lowKey, highKey);
+                int key = Utils.readIntBE(c.key(), 0);
+                assertTrue(key >= 1000);
+                assertTrue(key < 9000);
+                buckets[key / 1000]++;
+            }
+
+            for (int i=1; i<9; i++) {
+                int diff = Math.abs(buckets[i] - (10000000 / 8));
+                // Allow 10% tolerance, except at ends. Cannot expect perfect distribution
+                // with range endpoints with a tree.
+                int tolerance = (10000000 / 8) / 10;
+                if (i == 1 || i == 8) {
+                    tolerance *= 2;
+                }
+                assertTrue(diff < tolerance);
+            }
+        }
+    }
+
     private byte[] key(int i) {
         byte[] key = new byte[4];
         Utils.writeIntBE(key, 0, i);
