@@ -338,6 +338,8 @@ public class DatabaseConfig implements Cloneable, Serializable {
         set(props, "durabilityMode", mDurabilityMode);
         set(props, "lockTimeoutNanos", mLockTimeoutNanos);
         set(props, "checkpointRateNanos", mCheckpointRateNanos);
+        set(props, "checkpointSizeThreshold", mCheckpointSizeThreshold);
+        set(props, "checkpointDelayThresholdNanos", mCheckpointDelayThresholdNanos);
         set(props, "syncWrites", mFileSync);
         set(props, "pageSize", mPageSize);
 
