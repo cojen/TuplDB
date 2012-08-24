@@ -228,7 +228,7 @@ public final class Transaction extends Locker {
                         mDatabase.mRedoLog.txnCommitSync();
                     }
 
-                    // Calling this deletes any tombstones too.
+                    // Calling this deletes any ghosts too.
                     super.scopeUnlockAll();
 
                     // Truncate obsolete log entries after releasing
