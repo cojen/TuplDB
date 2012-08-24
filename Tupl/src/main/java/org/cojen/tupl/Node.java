@@ -1804,18 +1804,22 @@ final class Node extends Latch {
         int leftSpace = searchVecStart - mLeftSegTail;
         int rightSpace = mRightSegTail - searchVecEnd - 1;
 
-        int encodedLen = keyLen + calculateLeafValueLength(value);
-
-        if (fragmented == 0 && encodedLen > tree.mMaxEntrySize) {
-            Database db = tree.mDatabase;
-            value = db.fragment(this, tree, value, db.mMaxFragmentedEntrySize - keyLen);
-            if (value == null) {
-                // TODO: Supply proper key length, not the encoded
-                // length. Subtracting 2 is just a guess.
-                throw new LargeKeyException(keyLen - 2);
-            }
+        int encodedLen;
+        if (fragmented != 0) {
             encodedLen = keyLen + calculateFragmentedValueLength(value);
-            fragmented = VALUE_FRAGMENTED;
+        } else {
+            encodedLen = keyLen + calculateLeafValueLength(value);
+            if (encodedLen > tree.mMaxEntrySize) {
+                Database db = tree.mDatabase;
+                value = db.fragment(this, tree, value, db.mMaxFragmentedEntrySize - keyLen);
+                if (value == null) {
+                    // TODO: Supply proper key length, not the encoded
+                    // length. Subtracting 2 is just a guess.
+                    throw new LargeKeyException(keyLen - 2);
+                }
+                encodedLen = keyLen + calculateFragmentedValueLength(value);
+                fragmented = VALUE_FRAGMENTED;
+            }
         }
 
         int entryLoc;

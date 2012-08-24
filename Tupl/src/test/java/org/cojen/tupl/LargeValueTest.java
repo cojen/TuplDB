@@ -100,4 +100,46 @@ public class LargeValueTest {
             txn.exit();
         }
     }
+
+    @Test
+    public void testUpdateLarger() throws Exception {
+        // Special regresion test, discovered when updating a fragmented value
+        // to be slightly larger. The inline content length was between 1 and
+        // 128 before and after. The node was split to make room, but the split
+        // direction guess was wrong. This caused updateLeafValue to be called
+        // twice, and the second time it computed the encoded length without
+        // considering that the value is fragmented. The value header must be
+        // at least 2 bytes for fragmented values, but the 1 byte format was
+        // assumed instead. This corrupted the node.
+
+        Index ix = mDb.openIndex("test");
+
+        int c1 = 200;
+        int c2 = 150;
+
+        for (int i=0; i<c1; i++) {
+            ix.store(Transaction.BOGUS, key(i), new byte[0]);
+        }
+
+        byte[] k = key(c1);
+        // Assuming 4096 byte nodes, the inline content length is between 1 and 128.
+        ix.store(Transaction.BOGUS, k, new byte[4111]);
+
+        for (int i=0; i<c2; i++) {
+            int n = c1 + i + 1;
+            ix.store(Transaction.BOGUS, key(n), new byte[10]);
+        }
+
+        // Assuming 4096 byte nodes, the inline content length is still between 1 and 128.
+        ix.store(Transaction.BOGUS, k, new byte[4121]);
+
+        ((Tree) ix).verify();
+    }
+
+    private byte[] key(int i) {
+        byte[] key = new byte[4];
+        Utils.writeIntBE(key, 0, i);
+        return key;
+    }
+        
 }
