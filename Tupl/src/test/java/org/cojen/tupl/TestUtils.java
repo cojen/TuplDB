@@ -159,9 +159,7 @@ class TestUtils {
 
     private static void deleteDbFile(File baseFile, String suffix) {
         File f = new File(baseFile.getParentFile(), baseFile.getName() + suffix);
-        if (!f.delete()) {
-            //System.out.println("unable to delete: " + f);
-        }
+        f.delete();
     }
 
     static byte[] randomStr(Random rnd, int size) {
