@@ -7,7 +7,7 @@
   truncation is the more difficult one.
 - Support snapshot into a temp Database instance.
 - Add Index.insertFence and removeFence methods for boosting findNearby
-  performance at the edges. Implementation inserts a tombstone.
+  performance at the edges. Implementation inserts a ghost.
 
 
 Reduce overhead of checkpoint by sweeping through dirty nodes twice. This
