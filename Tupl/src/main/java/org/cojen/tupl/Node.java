@@ -2373,7 +2373,7 @@ final class Node extends Latch {
 
         byte[] newPage = newNode.mPage;
 
-        if (pos == 0) {
+        if (forInsert && pos == 0) {
             // Inserting into left edge of node, possibly because inserts are
             // descending. Split into new left node, but only the new entry
             // goes into the new node. Split key is copied from this, the right
@@ -2405,7 +2405,7 @@ final class Node extends Latch {
 
         pos += searchVecStart;
 
-        if (pos == searchVecEnd + 2) {
+        if (forInsert && pos == searchVecEnd + 2) {
             // Inserting into right edge of node, possibly because inserts are
             // ascending. Split into new right node, but only the new entry
             // goes into the new node. Split key is defined as the next higher
@@ -2460,25 +2460,20 @@ final class Node extends Latch {
                 int entryLen = leafEntryLengthAtLoc(page, entryLoc);
 
                 if (searchVecLoc == pos) {
+                    if ((newAvail -= encodedLen + 2) < 0) {
+                        // Entry doesn't fit into new node.
+                        break;
+                    }
+                    newLoc = newSearchVecLoc;
                     if (forInsert) {
-                        if ((newAvail -= encodedLen + 2) < 0) {
-                            // Inserted entry doesn't fit into new node.
-                            break;
-                        }
                         // Reserve slot in vector for new entry.
-                        newLoc = newSearchVecLoc;
                         newSearchVecLoc += 2;
                         if (newAvail <= avail) {
                             // Balanced enough.
                             break;
                         }
                     } else {
-                        if ((newAvail -= encodedLen) < 0) {
-                            // Updated entry doesn't fit into new node.
-                            break;
-                        }
                         // Don't copy old entry.
-                        newLoc = newSearchVecLoc;
                         garbageAccum += entryLen;
                         avail += entryLen;
                         continue;
@@ -2554,7 +2549,7 @@ final class Node extends Latch {
                     }
                 } else {
                     if (searchVecLoc == pos) {
-                        if ((newAvail -= encodedLen) < 0) {
+                        if ((newAvail -= encodedLen + 2) < 0) {
                             // Updated entry doesn't fit into new node.
                             break;
                         }
