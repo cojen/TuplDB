@@ -1051,6 +1051,14 @@ public final class Database extends CauseCloseable {
             c = null;
         }
 
+        // Synchronize to wait for any in-progress checkpoint to complete.
+        synchronized (mCheckpointLock) {
+            // Nothing really needs to be done in the synchronized block, but
+            // do something just in case a "smart" compiler thinks an empty
+            // synchronized block can be eliminated.
+            mClosed = true;
+        }
+
         if (mOpenTrees != null) {
             synchronized (mOpenTrees) {
                 mOpenTrees.clear();
@@ -2222,6 +2230,10 @@ public final class Database extends CauseCloseable {
     {
         // Checkpoint lock ensures consistent state between page store and logs.
         synchronized (mCheckpointLock) {
+            if (mClosed) {
+                return;
+            }
+
             final Node root = mRegistry.mRoot;
 
             long nowNanos = System.nanoTime();
