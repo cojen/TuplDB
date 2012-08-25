@@ -45,6 +45,10 @@ public class TransactionTest {
         mDb = null;
     }
 
+    protected Database newTempDatabase() throws Exception {
+        return TestUtils.newTempDatabase();
+    }
+
     protected Database mDb;
 
     @Test

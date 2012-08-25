@@ -28,16 +28,16 @@ public class TransactionNonDurableTest extends TransactionTest {
         org.junit.runner.JUnitCore.main(TransactionNonDurableTest.class.getName());
     }
 
-    @Before
-    public void createTempDb() throws Exception {
-        DatabaseConfig config = new DatabaseConfig();
-        config.maxCacheSize(200000000);
-        mDb = Database.open(config);
-    }
-
     @After
     public void teardown() throws Exception {
         mDb.close();
         mDb = null;
+    }
+
+    @Override
+    protected Database newTempDatabase() throws Exception {
+        DatabaseConfig config = new DatabaseConfig();
+        config.maxCacheSize(200000000);
+        return Database.open(config);
     }
 }
