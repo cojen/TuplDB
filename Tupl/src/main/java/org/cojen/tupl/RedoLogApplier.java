@@ -27,11 +27,13 @@ class RedoLogApplier implements RedoLogVisitor {
     private final Database mDb;
     private final RedoLogTxnScanner mScanner;
     private final LHashTable.Obj<UndoLog> mUndoLogs;
+    private final LHashTable.Obj<Index> mIndexes;
 
     RedoLogApplier(Database db, RedoLogTxnScanner scanner, LHashTable.Obj<UndoLog> undoLogs) {
         mDb = db;
         mScanner = scanner;
         mUndoLogs = undoLogs;
+        mIndexes = new LHashTable.Obj<Index>(16);
     }
 
     @Override
@@ -48,7 +50,7 @@ class RedoLogApplier implements RedoLogVisitor {
 
     @Override
     public void store(long indexId, byte[] key, byte[] value) throws IOException {
-        Index ix = mDb.anyIndexById(indexId);
+        Index ix = openIndex(indexId);
         if (ix != null) {
             ix.store(Transaction.BOGUS, key, value);
         }
@@ -67,7 +69,7 @@ class RedoLogApplier implements RedoLogVisitor {
     @Override
     public void txnStore(long txnId, long indexId, byte[] key, byte[] value) throws IOException {
         if (mScanner.isCommitted(txnId)) {
-            Index ix = mDb.anyIndexById(indexId);
+            Index ix = openIndex(indexId);
             if (ix != null) {
                 ix.store(Transaction.BOGUS, key, value);
             }
@@ -87,5 +89,18 @@ class RedoLogApplier implements RedoLogVisitor {
             mUndoLogs.remove(txnId);
             mUndoLogs.insert(log.activeTransactionId()).value = log;
         }
+    }
+
+    private Index openIndex(long indexId) throws IOException {
+        LHashTable.ObjEntry<Index> entry = mIndexes.get(indexId);
+        if (entry != null) {
+            return entry.value;
+        }
+        Index ix = mDb.anyIndexById(indexId);
+        if (ix != null) {
+            // Maintain a strong reference to the index.
+            mIndexes.insert(indexId).value = ix;
+        }
+        return ix;
     }
 }

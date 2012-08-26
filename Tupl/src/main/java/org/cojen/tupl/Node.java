@@ -22,7 +22,7 @@ import java.io.IOException;
 import static org.cojen.tupl.Utils.*;
 
 /**
- * 
+ * Node within a B-tree, undo log, or a large value fragment.
  *
  * @author Brian S O'Neill
  */
@@ -704,7 +704,9 @@ final class Node extends Latch {
 
     private Node evictTreeNode(Database db) throws IOException {
         if (mLastCursorFrame != null || mSplit != null) {
-            // Cannot evict if in use by a cursor or if splitting.
+            // Cannot evict if in use by a cursor or if splitting. The split
+            // check is redundant, since a node cannot be in a split state
+            // without a cursor registered against it.
             releaseExclusive();
             return null;
         }
@@ -746,6 +748,37 @@ final class Node extends Latch {
 
         doEvict(db);
         return this;
+    }
+
+    /**
+     * Evict all tree nodes, starting from the root. Intended to be used only
+     * when tree is no longer referenced, ensuring all dirty nodes are written.
+     * Caller must hold exclusive latch on node. Latch is released by this
+     * method when an exception is thrown.
+     */
+    void forceEvictTree(Database db) throws IOException {
+        // Verify that node isn't referenced by active operations.
+        if (mLastCursorFrame != null) {
+            throw new AssertionError();
+        }
+
+        Node[] childNodes = mChildNodes;
+        if (childNodes != null) for (int i=0; i<childNodes.length; i++) {
+            Node child = childNodes[i];
+            if (child != null) {
+                long childId = retrieveChildRefIdFromIndex(i);
+                if (childId == child.mId) {
+                    child.acquireExclusive();
+                    if (childId == child.mId) {
+                        child.forceEvictTree(db);
+                    }
+                    child.releaseExclusive();
+                }
+                childNodes[i] = null;
+            }
+        }
+
+        doEvict(db);
     }
 
     /**
