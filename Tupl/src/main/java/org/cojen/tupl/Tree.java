@@ -21,7 +21,7 @@ import java.io.IOException;
 import java.security.SecureRandom;
 
 /**
- * 
+ * B-tree implementation.
  *
  * @author Brian S O'Neill
  */

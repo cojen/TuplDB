@@ -27,6 +27,9 @@ import java.io.OutputStreamWriter;
 import java.io.Serializable;
 import java.io.Writer;
 
+import java.lang.ref.Reference;
+import java.lang.ref.ReferenceQueue;
+
 import java.math.BigInteger;
 
 import java.util.ArrayList;
@@ -166,8 +169,9 @@ public final class Database extends CauseCloseable {
     // Maps tree name keys to ids.
     private final Tree mRegistryKeyMap;
     // Maps tree names to open trees.
-    private final Map<byte[], Tree> mOpenTrees;
-    private final LHashTable.Obj<Tree> mOpenTreesById;
+    private final Map<byte[], TreeRef> mOpenTrees;
+    private final LHashTable.Obj<TreeRef> mOpenTreesById;
+    private final ReferenceQueue<Tree> mOpenTreesRefQueue;
 
     private final OrderedPageAllocator mAllocator;
 
@@ -381,10 +385,12 @@ public final class Database extends CauseCloseable {
 
             if (openMode == OPEN_TEMP) {
                 mOpenTrees = Collections.emptyMap();
-                mOpenTreesById = new LHashTable.Obj<Tree>(0);
+                mOpenTreesById = new LHashTable.Obj<TreeRef>(0);
+                mOpenTreesRefQueue = null;
             } else {
-                mOpenTrees = new TreeMap<byte[], Tree>(KeyComparator.THE);
-                mOpenTreesById = new LHashTable.Obj<Tree>(16);
+                mOpenTrees = new TreeMap<byte[], TreeRef>(KeyComparator.THE);
+                mOpenTreesById = new LHashTable.Obj<TreeRef>(16);
+                mOpenTreesRefQueue = new ReferenceQueue<Tree>();
             }
 
             synchronized (mTxnIdLock) {
@@ -652,9 +658,12 @@ public final class Database extends CauseCloseable {
         commitLock.lock();
         try {
             synchronized (mOpenTrees) {
-                LHashTable.ObjEntry<Tree> entry = mOpenTreesById.get(id);
+                LHashTable.ObjEntry<TreeRef> entry = mOpenTreesById.get(id);
                 if (entry != null) {
-                    return entry.value;
+                    index = entry.value.get();
+                    if (index != null) {
+                        return index;
+                    }
                 }
             }
 
@@ -884,8 +893,11 @@ public final class Database extends CauseCloseable {
             long cursorCount = 0;
             synchronized (mOpenTrees) {
                 stats.mOpenIndexes = mOpenTrees.size();
-                for (Tree tree : mOpenTrees.values()) {
-                    cursorCount += tree.mRoot.countCursors(); 
+                for (TreeRef treeRef : mOpenTrees.values()) {
+                    Tree tree = treeRef.get();
+                    if (tree != null) {
+                        cursorCount += tree.mRoot.countCursors(); 
+                    }
                 }
             }
 
@@ -1114,7 +1126,7 @@ public final class Database extends CauseCloseable {
                 try {
                     rootNode.read(this, rootId);
                 } catch (IOException e) {
-                    makeEvictable(rootNode);
+                    makeEvictableNow(rootNode);
                     throw e;
                 }
             }
@@ -1172,11 +1184,12 @@ public final class Database extends CauseCloseable {
         final Lock commitLock = sharedCommitLock();
         commitLock.lock();
         try {
-            synchronized (mOpenTrees) {
-                Tree tree = mOpenTrees.get(name);
-                if (tree != null) {
-                    return tree;
-                }
+            // Cleaup before opening more indexes.
+            cleanupUnreferencedTrees(null);
+
+            Tree tree = quickFindIndex(null, name);
+            if (tree != null) {
+                return tree;
             }
 
             byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, name);
@@ -1225,21 +1238,21 @@ public final class Database extends CauseCloseable {
                 // Pass the transaction to acquire the lock.
                 byte[] rootIdBytes = mRegistry.load(txn, treeIdBytes);
 
-                synchronized (mOpenTrees) {
-                    Tree tree = mOpenTrees.get(name);
-                    if (tree != null) {
-                        // Another thread got the lock first and loaded the index.
-                        return tree;
-                    }
+                tree = quickFindIndex(txn, name);
+                if (tree != null) {
+                    // Another thread got the lock first and loaded the index.
+                    return tree;
                 }
 
                 long rootId = (rootIdBytes == null || rootIdBytes.length == 0) ? 0
                     : readLongLE(rootIdBytes, 0);
-                Tree tree = new Tree(this, treeId, treeIdBytes, name, loadTreeRoot(rootId));
+                tree = new Tree(this, treeId, treeIdBytes, name, loadTreeRoot(rootId));
+
+                TreeRef treeRef = new TreeRef(tree, mOpenTreesRefQueue);
 
                 synchronized (mOpenTrees) {
-                    mOpenTrees.put(name, tree);
-                    mOpenTreesById.insert(treeId).value = tree;
+                    mOpenTrees.put(name, treeRef);
+                    mOpenTreesById.insert(treeId).value = treeRef;
                 }
 
                 return tree;
@@ -1248,6 +1261,95 @@ public final class Database extends CauseCloseable {
             }
         } finally {
             commitLock.unlock();
+        }
+    }
+
+    /**
+     * @return null if not found
+     */
+    private Tree quickFindIndex(Transaction txn, byte[] name) throws IOException {
+        synchronized (mOpenTrees) {
+            TreeRef treeRef = mOpenTrees.get(name);
+            if (treeRef == null) {
+                return null;
+            }
+            Tree tree = treeRef.get();
+            if (tree != null) {
+                return tree;
+            }
+        }
+        // Ensure that all nodes referenced by cleared tree references are
+        // evicted before potentially replacing them.
+        cleanupUnreferencedTrees(txn);
+        return null;
+    }
+
+    /**
+     * Trees retain a references to an unevictable root node. If tree is no
+     * longer in use, evict everything, including the root node. Method cannot
+     * be called while a checkpoint is in progress.
+     */
+    private void cleanupUnreferencedTrees(Transaction txn) throws IOException {
+        final ReferenceQueue queue = mOpenTreesRefQueue;
+        if (queue == null) {
+            return;
+        }
+
+        try {
+            while (true) {
+                Reference ref = queue.poll();
+                if (ref == null) {
+                    break;
+                }
+
+                if (!(ref instanceof TreeRef)) {
+                    continue;
+                }
+                
+                TreeRef treeRef = (TreeRef) ref;
+
+                // Acquire lock to prevent tree from being reloaded too soon.
+
+                byte[] treeIdBytes = new byte[8];
+                writeLongBE(treeIdBytes, 0, treeRef.mId);
+
+                if (txn == null) {
+                    txn = newLockTransaction();
+                } else {
+                    txn.enter();
+                }
+
+                try {
+                    // Pass the transaction to acquire the lock.
+                    mRegistry.load(txn, treeIdBytes);
+
+                    synchronized (mOpenTrees) {
+                        LHashTable.ObjEntry<TreeRef> entry = mOpenTreesById.get(treeRef.mId);
+                        if (entry == null || entry.value != treeRef) {
+                            continue;
+                        }
+                    }
+
+                    Node root = treeRef.mRoot;
+                    root.acquireExclusive();
+                    root.forceEvictTree(this);
+                    root.releaseExclusive();
+
+                    synchronized (mOpenTrees) {
+                        mOpenTreesById.remove(treeRef.mId);
+                        mOpenTrees.remove(treeRef.mName);
+                    }
+                } finally {
+                    txn.exit();
+                }
+
+                // Move root node into usage list, allowing it to be re-used.
+                makeEvictableNow(treeRef.mRoot);
+            }
+        } catch (Exception e) {
+            if (!mClosed) {
+                throw rethrow(e);
+            }
         }
     }
 
@@ -1413,7 +1515,7 @@ public final class Database extends CauseCloseable {
             dirty(node, mAllocator.allocPage(forTree, node));
             return node;
         } catch (IOException e) {
-            makeEvictable(node);
+            makeEvictableNow(node);
             node.releaseExclusive();
             throw e;
         }
@@ -1436,6 +1538,28 @@ public final class Database extends CauseCloseable {
             }
             (node.mLessUsed = mMostRecentlyUsed).mMoreUsed = node;
             mMostRecentlyUsed = node;
+        } finally {
+            usageLatch.releaseExclusive();
+        }
+    }
+
+    /**
+     * Allow a Node which was allocated as unevictable to be evictable, as the
+     * least recently used.
+     */
+    void makeEvictableNow(Node node) {
+        final Latch usageLatch = mUsageLatch;
+        usageLatch.acquireExclusive();
+        try {
+            if (mMaxNodeCount == 0) {
+                // Closed.
+                return;
+            }
+            if (node.mMoreUsed != null || node.mLessUsed != null) {
+                throw new IllegalStateException();
+            }
+            (node.mMoreUsed = mLeastRecentlyUsed).mLessUsed = node;
+            mLeastRecentlyUsed = node;
         } finally {
             usageLatch.releaseExclusive();
         }
@@ -2233,6 +2357,9 @@ public final class Database extends CauseCloseable {
             if (mClosed) {
                 return;
             }
+
+            // Now's a good time to clean things up.
+            cleanupUnreferencedTrees(null);
 
             final Node root = mRegistry.mRoot;
 
