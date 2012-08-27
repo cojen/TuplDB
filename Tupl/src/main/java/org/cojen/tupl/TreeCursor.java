@@ -3070,6 +3070,8 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             return;
         }
 
+        // FIXME: release latches if any exception is thrown
+
         Node parentNode = parentFrame.acquireExclusive();
 
         Node leftNode, rightNode;
