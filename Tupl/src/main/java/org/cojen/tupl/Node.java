@@ -504,7 +504,7 @@ final class Node extends Latch {
         // root node to point to new and split child nodes. New root is always an internal node.
 
         Database db = tree.mDatabase;
-        Node child = db.allocDirtyNode(tree);
+        Node child = db.allocDirtyNode();
 
         byte[] newPage = child.mPage;
         child.mPage = mPage;
@@ -1371,7 +1371,7 @@ final class Node extends Latch {
             fragmented = 0;
         } else {
             Database db = tree.mDatabase;
-            value = db.fragment(this, tree, value, db.mMaxFragmentedEntrySize - encodedKeyLen);
+            value = db.fragment(this, value, db.mMaxFragmentedEntrySize - encodedKeyLen);
             if (value == null) {
                 throw new LargeKeyException(key.length);
             }
@@ -1792,7 +1792,7 @@ final class Node extends Latch {
                     break largeValue;
                 }
                 if ((header & VALUE_FRAGMENTED) != 0) {
-                    tree.mDatabase.deleteFragments(this, tree, page, loc, len);
+                    tree.mDatabase.deleteFragments(this, page, loc, len);
                     // TODO: If new value needs to be fragmented too, try to
                     // re-use existing value slot.
                     if (fragmented == 0) {
@@ -1844,7 +1844,7 @@ final class Node extends Latch {
             encodedLen = keyLen + calculateLeafValueLength(value);
             if (encodedLen > tree.mMaxEntrySize) {
                 Database db = tree.mDatabase;
-                value = db.fragment(this, tree, value, db.mMaxFragmentedEntrySize - keyLen);
+                value = db.fragment(this, value, db.mMaxFragmentedEntrySize - keyLen);
                 if (value == null) {
                     // TODO: Supply proper key length, not the encoded
                     // length. Subtracting 2 is just a guess.
@@ -1884,7 +1884,7 @@ final class Node extends Latch {
                     Database db = tree.mDatabase;
                     int max = Math.min(db.mMaxFragmentedEntrySize,
                                        garbage + leftSpace + rightSpace);
-                    value = db.fragment(this, tree, value, max);
+                    value = db.fragment(this, value, max);
                     if (value == null) {
                         throw new LargeKeyException(key.length);
                     }
@@ -1972,7 +1972,7 @@ final class Node extends Latch {
                 break largeValue;
             }
             if ((header & VALUE_FRAGMENTED) != 0) {
-                tree.mDatabase.deleteFragments(this, tree, page, loc, len);
+                tree.mDatabase.deleteFragments(this, page, loc, len);
             }
             loc += len;
         }
@@ -2031,7 +2031,7 @@ final class Node extends Latch {
             frame = prev;
         }
 
-        tree.mDatabase.deleteNode(tree, this);
+        tree.mDatabase.deleteNode(this);
     }
 
     /**
@@ -2103,7 +2103,7 @@ final class Node extends Latch {
             frame = prev;
         }
 
-        tree.mDatabase.deleteNode(tree, this);
+        tree.mDatabase.deleteNode(this);
     }
 
     /**
@@ -2220,7 +2220,7 @@ final class Node extends Latch {
 
         // The page can be deleted earlier in the method, but doing it here
         // might prevent corruption if an unexpected exception occurs.
-        tree.mDatabase.deletePage(tree, toDelete, toDeleteState);
+        tree.mDatabase.deletePage(toDelete, toDeleteState);
     }
 
     /**
@@ -2400,7 +2400,7 @@ final class Node extends Latch {
 
         byte[] page = mPage;
 
-        Node newNode = tree.mDatabase.allocUnevictableNode(tree);
+        Node newNode = tree.mDatabase.allocUnevictableNode();
         newNode.mType = TYPE_TN_LEAF;
         newNode.mGarbage = 0;
 
@@ -2660,7 +2660,7 @@ final class Node extends Latch {
                 Database db = tree.mDatabase;
                 int max = Math.min(~entryLoc, db.mMaxFragmentedEntrySize);
                 int encodedKeyLen = calculateKeyLength(key);
-                value = db.fragment(this, tree, value, max - encodedKeyLen);
+                value = db.fragment(this, value, max - encodedKeyLen);
                 if (value == null) {
                     throw new LargeKeyException(key.length);
                 }
@@ -2693,7 +2693,7 @@ final class Node extends Latch {
 
         final byte[] page = mPage;
 
-        final Node newNode = tree.mDatabase.allocUnevictableNode(tree);
+        final Node newNode = tree.mDatabase.allocUnevictableNode();
         newNode.mType = TYPE_TN_INTERNAL;
         newNode.mGarbage = 0;
 
