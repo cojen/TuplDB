@@ -777,7 +777,7 @@ final class UndoLog {
         Database db = mDatabase;
         db.makeEvictable(parent);
         db.prepareToDelete(parent);
-        db.deleteNode(null, parent);
+        db.deleteNode(parent);
         return mNode = lowerNode;
     }
 
@@ -819,7 +819,7 @@ final class UndoLog {
      * Caller must hold db commit lock.
      */
     private Node allocUnevictableNode(long lowerNodeId) throws IOException {
-        Node node = mDatabase.allocUnevictableNode(null);
+        Node node = mDatabase.allocUnevictableNode();
         node.mType = Node.TYPE_UNDO_LOG;
         writeLongLE(node.mPage, I_LOWER_NODE_ID, lowerNodeId);
         return node;
