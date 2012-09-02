@@ -2433,7 +2433,7 @@ public final class Database extends CauseCloseable {
 
             mCheckpointFlushState = CHECKPOINT_FLUSH_PREPARE;
 
-            final UndoLog masterUndoLog;
+            UndoLog masterUndoLog;
             try {
                 // TODO: I don't like all this activity with exclusive commit
                 // lock held. UndoLog can be refactored to store into a special
@@ -2453,6 +2453,10 @@ public final class Database extends CauseCloseable {
                             workspace = log.writeToMaster(masterUndoLog, workspace);
                         }
                         masterUndoLogId = masterUndoLog.topNodeId();
+                        if (masterUndoLogId == 0) {
+                            // Nothing was actually written to the log.
+                            masterUndoLog = null;
+                        }
                     }
                 }
 
