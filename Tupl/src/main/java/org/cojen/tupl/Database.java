@@ -833,11 +833,15 @@ public final class Database extends CauseCloseable {
     /**
      * Support for capturing a snapshot (hot backup) of the database, while
      * still allowing concurrent modifications. The snapshot contains all data
-     * up to the last checkpoint. To restore from a snapshot, store it in the
-     * primary data file, which is the base file with a ".db" extension. Make
-     * sure no redo log files exist and then open the database. Alternatively,
-     * call {@link #restoreFromSnapshot restoreFromSnapshot}, which also
-     * supports restoring into separate data files.
+     * up to the last checkpoint. Call the {@link #checkpoint checkpoint}
+     * method immediately before to ensure that an up-to-date snapshot is
+     * captured.
+     *
+     * <p>To restore from a snapshot, store it in the primary data file, which
+     * is the base file with a ".db" extension. Make sure no redo log files
+     * exist and then open the database. Alternatively, call {@link
+     * #restoreFromSnapshot restoreFromSnapshot}, which also supports restoring
+     * into separate data files.
      *
      * <p>During the snapshot, temporary files are created to hold pre-modified
      * copies of pages. If the snapshot destination stream blocks for too long,
@@ -851,6 +855,7 @@ public final class Database extends CauseCloseable {
         if (!(mPageDb instanceof DurablePageDb)) {
             throw new UnsupportedOperationException("Snapshot only allowed for durable databases");
         }
+        checkClosed();
         DurablePageDb pageDb = (DurablePageDb) mPageDb;
         return pageDb.beginSnapshot(mTempFileManager);
     }
@@ -2372,7 +2377,7 @@ public final class Database extends CauseCloseable {
                         break check;
                     }
 
-                    // Thresholds not met, for a full checkpoint, but sync the
+                    // Thresholds not met for a full checkpoint, but sync the
                     // redo log for durability.
                     if (mRedoLog != null) {
                         mRedoLog.sync();
