@@ -684,10 +684,10 @@ class Utils {
      * @param value unsigned integer to increment
      * @return false if overflowed
      */
-    public static boolean increment(byte[] value, int offset, int len) {
-        while (--len >= offset) {
-            byte digit = (byte) ((value[len] & 0xff) + 1);
-            value[len] = digit;
+    public static boolean increment(byte[] value, final int start, int end) {
+        while (--end >= start) {
+            byte digit = (byte) ((value[end] & 0xff) + 1);
+            value[end] = digit;
             if (digit != 0) {
                 // No carry bit, so done adding.
                 return true;
@@ -704,10 +704,10 @@ class Utils {
      * @param value unsigned integer to decrement
      * @return false if overflowed
      */
-    public static boolean decrement(byte[] value, int offset, int len) {
-        while (--len >= offset) {
-            byte digit = (byte) ((value[len] & 0xff) + -1);
-            value[len] = digit;
+    public static boolean decrement(byte[] value, final int start, int end) {
+        while (--end >= start) {
+            byte digit = (byte) ((value[end] & 0xff) + -1);
+            value[end] = digit;
             if (digit != -1) {
                 // No borrow bit, so done subtracting.
                 return true;
@@ -729,7 +729,7 @@ class Utils {
      */
     public static byte[] decrementReverseUnsignedVar(byte[] b, int offset) {
         int len = decodeReverseUnsignedLength(b, offset);
-        decrement(b, offset, len);
+        decrement(b, offset, offset + len);
         if (len != decodeReverseUnsignedLength(b, offset)) {
             byte[] copy = new byte[b.length + 1];
             System.arraycopy(b, 0, copy, 0, b.length);
