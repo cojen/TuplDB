@@ -128,13 +128,8 @@ final class UndoLog {
         return log;
     }
 
-    /**
-     * Caller must hold db commit lock.
-     */
     static UndoLog newMasterUndoLog(Database db) throws IOException {
-        UndoLog log = new UndoLog(db);
-        log.persistReady();
-        return log;
+        return new UndoLog(db);
     }
 
     static UndoLog recoverMasterUndoLog(Database db, long nodeId) throws IOException {
@@ -152,6 +147,10 @@ final class UndoLog {
      * commit lock.
      */
     private void persistReady() throws IOException {
+        if (mNode != null) {
+            return;
+        }
+
         Node node;
         byte[] buffer = mBuffer;
         if (buffer == null) {
@@ -159,7 +158,7 @@ final class UndoLog {
             // Set pointer to top entry (none at the moment).
             node.mGarbage = node.mPage.length;
             node.releaseExclusive();
-        } else if (mNode == null) {
+        } else {
             mNode = node = allocUnevictableNode(0);
             int pos = mBufferPos;
             int size = buffer.length - pos;
@@ -174,7 +173,18 @@ final class UndoLog {
         }
     }
 
-    long topNodeId() {
+    /**
+     * Caller must hold db commit lock.
+     *
+     * @return 0 if log is empty
+     */
+    long topNodeId() throws IOException {
+        if (mNode == null) {
+            if (mLength == 0) {
+                return 0;
+            }
+            persistReady();
+        }
         return mNode.mId;
     }
 
