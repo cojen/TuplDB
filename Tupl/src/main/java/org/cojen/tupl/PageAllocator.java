@@ -81,8 +81,7 @@ final class PageAllocator {
     }
 
     void recyclePage(long id) throws IOException {
-        // TODO: Implement proper page recycling. Should the node at least be
-        // removed from the dirty list?
+        // TODO: Implement proper page recycling.
         mSource.deletePage(id);
     }
 

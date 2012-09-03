@@ -1568,7 +1568,7 @@ public final class Database extends CauseCloseable {
     /**
      * Allow a Node which was allocated as evictable to be unevictable.
      */
-    void makeUnevictable(Node node) {
+    void makeUnevictable(final Node node) {
         final Latch usageLatch = mUsageLatch;
         usageLatch.acquireExclusive();
         try {
@@ -1576,15 +1576,15 @@ public final class Database extends CauseCloseable {
                 // Closed.
                 return;
             }
-            Node lessUsed = node.mLessUsed;
-            Node moreUsed = node.mMoreUsed;
+            final Node lessUsed = node.mLessUsed;
+            final Node moreUsed = node.mMoreUsed;
             if (lessUsed == null) {
                 (mLeastRecentlyUsed = moreUsed).mLessUsed = null;
             } else if (moreUsed == null) {
                 (mMostRecentlyUsed = lessUsed).mMoreUsed = null;
             } else {
-                node.mLessUsed.mMoreUsed = moreUsed;
-                node.mMoreUsed.mLessUsed = lessUsed;
+                lessUsed.mMoreUsed = moreUsed;
+                moreUsed.mLessUsed = lessUsed;
             }
             node.mMoreUsed = null;
             node.mLessUsed = null;
