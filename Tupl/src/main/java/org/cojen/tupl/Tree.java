@@ -542,7 +542,7 @@ final class Tree implements Index {
      *
      * @return node if valid, null otherwise
      */
-    Node validateStub(Node node) {
+    static Node validateStub(Node node) {
         if (node.mId == Node.STUB_ID && node.mLastCursorFrame != null) {
             return node;
         }
