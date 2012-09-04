@@ -3444,7 +3444,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                     }
                     continue;
                 }
-                stub = tree.validateStub(stub);
+                stub = Tree.validateStub(stub);
             } else {
                 stub = null;
             }
