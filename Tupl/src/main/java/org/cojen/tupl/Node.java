@@ -2169,8 +2169,9 @@ final class Node extends Latch {
      * node is deleted. This design allows active cursors to still function
      * normally until they can unbind.
      *
-     * <p>Caller must hold exclusive latches for root node and lone child. No
-     * latches are released by this method.
+     * <p>Caller must hold exclusive latches for root node and lone child.
+     * Caller must also ensure that both nodes are not splitting. No latches
+     * are released by this method.
      */
     void rootDelete(Tree tree) throws IOException {
         byte[] page = mPage;
@@ -2204,6 +2205,8 @@ final class Node extends Latch {
         child.mLastCursorFrame = lastCursorFrame;
         // Lone child of stub root points to actual root.
         childNodes[0] = this;
+        // Search vector also needs to point to root.
+        writeLongLE(page, child.mSearchVecEnd + 2, this.mId);
 
         // Fix cursor bindings for this, the real root node.
         for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
