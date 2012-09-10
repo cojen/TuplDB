@@ -141,7 +141,7 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
     private OutputStream mOut;
     private volatile FileChannel mChannel;
 
-    private boolean mReplayMode;
+    private volatile boolean mReplayMode;
 
     private boolean mAlwaysFlush;
 
@@ -167,7 +167,7 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
         return mLogId;
     }
 
-    synchronized boolean isReplayMode() {
+    boolean isReplayMode() {
         return mReplayMode;
     }
 
@@ -217,13 +217,11 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
     /**
      * @return old log file id, which is one less than new one
      */
-    synchronized long openNewFile() throws IOException {
-        if (mOut != null) {
-            writeOp(OP_END_FILE, System.currentTimeMillis());
-            writeTerminator();
-            doFlush();
+    long openNewFile() throws IOException {
+        long logId;
+        synchronized (this) {
+            logId = mLogId;
         }
-        long logId = mLogId;
         openFile(logId + 1);
         return logId;
     }
@@ -232,7 +230,7 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
         fileFor(logId).delete();
     }
 
-    private synchronized void openFile(long logId) throws IOException {
+    private void openFile(long logId) throws IOException {
         final File file = fileFor(logId);
         if (file.exists()) {
             if (mReplayMode) {
@@ -244,50 +242,70 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
 
         mReplayMode = false;
 
-        try {
-            final OutputStream oldOut = mOut;
-            final FileChannel oldChannel = mChannel;
-
-            final OutputStream out;
-            final FileChannel channel;
-            {
-                FileOutputStream fout = new FileOutputStream(file);
-                channel = fout.getChannel();
-                if (mCrypto == null) {
-                    out = fout;
-                } else {
-                    try {
-                        out = mCrypto.newEncryptingStream(logId, fout);
-                    } catch (GeneralSecurityException e) {
-                        throw new DatabaseException(e);
-                    }
+        final OutputStream out;
+        final FileChannel channel;
+        final int termRndSeed;
+        {
+            FileOutputStream fout = new FileOutputStream(file);
+            channel = fout.getChannel();
+            if (mCrypto == null) {
+                out = fout;
+            } else {
+                try {
+                    out = mCrypto.newEncryptingStream(logId, fout);
+                } catch (GeneralSecurityException e) {
+                    throw new DatabaseException(e);
                 }
             }
 
-            try {
-                mOut = out;
-                mChannel = channel;
-
-                writeLongLE(MAGIC_NUMBER);
-                writeIntLE(ENCODING_VERSION);
-                writeLongLE(logId);
-                writeIntLE(mTermRndSeed = randomInt());
-                timestamp();
-                doFlush();
-            } catch (IOException e) {
-                mChannel = ((mOut = oldOut) == null) ? null : oldChannel;
-                Utils.closeQuietly(null, out);
-                file.delete();
-
-                throw e;
+            byte[] buf = new byte[8 + 4 + 8 + 4];
+            int offset = 0;
+            Utils.writeLongLE(buf, offset, MAGIC_NUMBER); offset += 8;
+            Utils.writeIntLE(buf, offset, ENCODING_VERSION); offset += 4;
+            Utils.writeLongLE(buf, offset, logId); offset += 8;
+            Utils.writeIntLE(buf, offset, termRndSeed = randomInt()); offset += 4;
+            if (offset != buf.length) {
+                throw new AssertionError();
             }
 
-            Utils.closeQuietly(null, oldOut);
-
-            mLogId = logId;
-        } catch (IOException e) {
-            throw Utils.rethrow(e, mCause);
+            try {
+                out.write(buf);
+            } catch (IOException e) {
+                Utils.closeQuietly(null, out);
+                file.delete();
+                throw e;
+            }
         }
+
+        final OutputStream oldOut;
+        final FileChannel oldChannel;
+        synchronized (this) {
+            oldOut = mOut;
+            oldChannel = mChannel;
+
+            if (oldOut != null) {
+                writeOp(OP_END_FILE, System.currentTimeMillis());
+                writeTerminator();
+                doFlush();
+            }
+
+            mOut = out;
+            mChannel = channel;
+            mTermRndSeed = termRndSeed;
+            mLogId = logId;
+
+            timestamp();
+        }
+
+        try {
+            if (oldChannel != null) {
+                oldChannel.force(true);
+            }
+        } catch (IOException e) {
+            // Ignore.
+        }
+
+        Utils.closeQuietly(null, oldOut);
     }
 
     /**
