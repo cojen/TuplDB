@@ -32,11 +32,11 @@ import java.lang.ref.ReferenceQueue;
 
 import java.math.BigInteger;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 import java.util.concurrent.TimeUnit;
@@ -398,13 +398,6 @@ public final class Database extends CauseCloseable {
             }
             long redoLogId = readLongLE(header, I_REDO_LOG_ID);
 
-            if (baseFile == null || openMode == OPEN_TEMP) {
-                mRedoLog = null;
-            } else {
-                // Initialized, but not open yet.
-                mRedoLog = new RedoLog(config.mCrypto, baseFile, redoLogId);
-            }
-
             if (openMode == OPEN_TEMP) {
                 mRegistryKeyMap = null;
             } else {
@@ -434,7 +427,9 @@ public final class Database extends CauseCloseable {
             mMaxFragmentedEntrySize = (pageSize - Node.TN_HEADER_SIZE - (2 + 3 + 2 + 3)) >> 1;
 
             long recoveryStart = 0;
-            if (mRedoLog != null) {
+            if (baseFile == null || openMode == OPEN_TEMP) {
+                mRedoLog = null;
+            } else {
                 // Perform recovery by examining redo and undo logs.
 
                 if (mEventListener != null) {
@@ -459,27 +454,41 @@ public final class Database extends CauseCloseable {
                     }
                 }
 
-                // List of all replayed redo log files which should be deleted
-                // after the recovery checkpoint.
-                ArrayList<Long> redosToDelete = new ArrayList<Long>(2);
+                // Make sure old redo logs are deleted. Process might have
+                // exited before last checkpoint could delete them.
+                for (int i=1; i<=2; i++) {
+                    RedoLog.deleteOldFile(baseFile, redoLogId - i);
+                }
 
-                if (redoReplay(undoLogs)) {
-                    // Make sure old redo logs are deleted. Process might have
-                    // exited before last checkpoint could delete them.
-                    for (int i=1; i<=2; i++) {
-                        mRedoLog.deleteOldFile(redoLogId - i);
-                    }
+                // First pass, find all transactions which committed.
+                RedoLogTxnScanner txnScanner = new RedoLogTxnScanner();
+                final RedoLog scanRedoLog = new RedoLog(config.mCrypto, baseFile, redoLogId, true);
+                Set<File> redoFiles = scanRedoLog
+                    .replay(txnScanner, null,
+                            mEventListener, EventType.RECOVERY_SCAN_REDO_LOG,
+                            "Scanning redo log: %1$d");
 
-                    redosToDelete.add(mRedoLog.openNewFile());
-
-                    while (mRedoLog.isReplayMode()) {
-                        // Last checkpoint was interrupted, so apply next log file too.
-                        redoReplay(undoLogs);
-                        redosToDelete.add(mRedoLog.openNewFile());
+                // Bump up the highest transaction id if scanner has seen
+                // higher. Although this should not happen, it prevents
+                // transaction id collisions if it does.
+                {
+                    long redoTxnId = txnScanner.highestTxnId();
+                    if (redoTxnId != 0) synchronized (mTxnIdLock) {
+                        // Subtract for modulo comparison.
+                        if (mTxnId == 0 || (redoTxnId - mTxnId) > 0) {
+                            mTxnId = redoTxnId;
+                        }
                     }
                 }
 
-                boolean doCheckpoint = false;
+                // Second pass, apply all committed transactions.
+                new RedoLog(config.mCrypto, baseFile, redoLogId, true)
+                    .replay(new RedoLogApplier(this, txnScanner, undoLogs), redoFiles,
+                            mEventListener, EventType.RECOVERY_APPLY_REDO_LOG,
+                            "Applying redo log: %1$d");
+
+                boolean doCheckpoint = !redoFiles.isEmpty();
+
                 if (masterUndoLog != null) {
                     // Rollback or truncate all remaining undo logs. They were
                     // never explicitly rolled back, or they were committed but
@@ -498,15 +507,16 @@ public final class Database extends CauseCloseable {
                     }
                 }
 
-                if (doCheckpoint || !redosToDelete.isEmpty()) {
-                    // The one and only recovery checkpoint.
+                if (doCheckpoint) {
                     checkpoint(true, 0, 0);
-
-                    // Only delete redo logs after successful checkpoint.
-                    for (long id : redosToDelete) {
-                        mRedoLog.deleteOldFile(id);
+                    // Only delete scanned redo logs after successful checkpoint.
+                    for (File file : redoFiles) {
+                        file.delete();
                     }
                 }
+
+                // New redo logs begin with identifiers one higher than last scanned.
+                mRedoLog = new RedoLog(config.mCrypto, baseFile, scanRedoLog.logId(), false);
             }
 
             // Delete lingering fragmented values after undo logs have been
@@ -570,38 +580,6 @@ public final class Database extends CauseCloseable {
         System.out.println(mPageDb.stats());
     }
     */
-
-    private boolean redoReplay(LHashTable.Obj<UndoLog> undoLogs) throws IOException {
-        RedoLogTxnScanner scanner = new RedoLogTxnScanner();
-
-        if (mEventListener != null) {
-            mEventListener.notify
-                (EventType.RECOVERY_SCAN_REDO_LOG, "Scanning redo log: %1$d", mRedoLog.logId());
-        }
-
-        if (!mRedoLog.replay(scanner)) {
-            return false;
-        }
-
-        if (mEventListener != null) {
-            mEventListener.notify
-                (EventType.RECOVERY_APPLY_REDO_LOG, "Applying redo log: %1$d", mRedoLog.logId());
-        }
-
-        if (!mRedoLog.replay(new RedoLogApplier(this, scanner, undoLogs))) {
-            return false;
-        }
-
-        long redoTxnId = scanner.highestTxnId();
-        if (redoTxnId != 0) synchronized (mTxnIdLock) {
-            // Subtract for modulo comparison.
-            if (mTxnId == 0 || (redoTxnId - mTxnId) > 0) {
-                mTxnId = redoTxnId;
-            }
-        }
-
-        return true;
-    }
 
     /**
      * Returns the given named index, returning null if not found.
