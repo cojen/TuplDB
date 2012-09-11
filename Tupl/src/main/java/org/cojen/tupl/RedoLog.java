@@ -25,6 +25,8 @@ import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.Random;
 
 import java.nio.channels.ClosedChannelException;
@@ -137,11 +139,11 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
     private final byte[] mBuffer;
     private int mBufferPos;
 
+    private final boolean mReplayMode;
+
     private long mLogId;
     private OutputStream mOut;
     private volatile FileChannel mChannel;
-
-    private volatile boolean mReplayMode;
 
     private boolean mAlwaysFlush;
 
@@ -150,16 +152,19 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
     private volatile Throwable mCause;
 
     /**
-     * RedoLog starts in replay mode.
+     * @param logId last log id; first log id used by RedoLog instance is one higher
      */
-    RedoLog(Crypto crypto, File baseFile, long logId) throws IOException {
+    RedoLog(Crypto crypto, File baseFile, long logId, boolean replay) throws IOException {
         mCrypto = crypto;
         mBaseFile = baseFile;
         mBuffer = new byte[4096];
+        mReplayMode = replay;
 
         synchronized (this) {
             mLogId = logId;
-            mReplayMode = true;
+            if (!replay) {
+                openNewFile(logId);
+            }
         }
     }
 
@@ -167,80 +172,90 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
         return mLogId;
     }
 
-    boolean isReplayMode() {
-        return mReplayMode;
-    }
-
     /**
-     * @return false if file not found and replay mode is deactivated
+     * @param scanned files scanned in previous replay
+     * @return all the files which were replayed
      */
-    synchronized boolean replay(RedoLogVisitor visitor) throws IOException {
-        if (!mReplayMode) {
+    synchronized Set<File> replay(RedoLogVisitor visitor, Set<File> scanned,
+                                  EventListener listener, EventType type, String message)
+        throws IOException
+    {
+        if (!mReplayMode || mBaseFile == null) {
             throw new IllegalStateException();
         }
 
-        File file = fileFor(mLogId);
-        if (file == null) {
-            return true;
-        }
-
         try {
-            DataIn in;
-            try {
-                InputStream fin = new FileInputStream(file);
-                if (mCrypto != null) {
-                    fin = mCrypto.newDecryptingStream(mLogId, fin);
+            Set<File> files = new LinkedHashSet<File>(2);
+
+            while (true) {
+                File file = fileFor(mBaseFile, ++mLogId);
+
+                DataIn in;
+                try {
+                    InputStream fin = new FileInputStream(file);
+                    if (mCrypto != null) {
+                        fin = mCrypto.newDecryptingStream(mLogId, fin);
+                    }
+                    in = new DataIn(fin);
+                } catch (FileNotFoundException e) {
+                    break;
+                } catch (GeneralSecurityException e) {
+                    throw new DatabaseException(e);
                 }
-                in = new DataIn(fin);
-            } catch (FileNotFoundException e) {
-                mReplayMode = false;
-                openFile(mLogId);
-                return false;
-            } catch (GeneralSecurityException e) {
-                throw new DatabaseException(e);
+
+                try {
+                    if (scanned != null && !scanned.contains(file)) {
+                        continue;
+                    }
+
+                    if (listener != null) {
+                        listener.notify(type, message, mLogId);
+                    }
+
+                    files.add(file);
+
+                    replay(in, visitor);
+                } catch (EOFException e) {
+                    // End of log didn't get completely flushed.
+                } finally {
+                    Utils.closeQuietly(null, in);
+                }
             }
 
-            try {
-                replay(in, visitor);
-            } catch (EOFException e) {
-                // End of log didn't get completely flushed.
-            } finally {
-                Utils.closeQuietly(null, in);
-            }
-
-            return true;
+            return files;
         } catch (IOException e) {
             throw Utils.rethrow(e, mCause);
         }
+    }
+
+    static void deleteOldFile(File baseFile, long logId) {
+        fileFor(baseFile, logId).delete();
+    }
+
+    void deleteOldFile(long logId) {
+        fileFor(mBaseFile, logId).delete();
     }
 
     /**
      * @return old log file id, which is one less than new one
      */
     long openNewFile() throws IOException {
-        long logId;
-        synchronized (this) {
-            logId = mLogId;
+        if (mReplayMode) {
+            throw new IllegalStateException();
         }
-        openFile(logId + 1);
-        return logId;
+        final long oldLogId;
+        synchronized (this) {
+            oldLogId = mLogId;
+        }
+        openNewFile(oldLogId + 1);
+        return oldLogId;
     }
 
-    void deleteOldFile(long logId) {
-        fileFor(logId).delete();
-    }
-
-    private void openFile(long logId) throws IOException {
-        final File file = fileFor(logId);
+    private void openNewFile(long logId) throws IOException {
+        final File file = fileFor(mBaseFile, logId);
         if (file.exists()) {
-            if (mReplayMode) {
-                mLogId = logId;
-                return;
-            }
             throw new FileNotFoundException("Log file already exists: " + file.getPath());
         }
-
-        mReplayMode = false;
 
         final OutputStream out;
         final FileChannel channel;
@@ -311,8 +326,7 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
     /**
      * @return null if non-durable
      */
-    private File fileFor(long logId) {
-        File base = mBaseFile;
+    private static File fileFor(File base, long logId) {
         return base == null ? null : new File(base.getPath() + ".redo." + logId);
     }
 
