@@ -152,7 +152,7 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
     private volatile Throwable mCause;
 
     /**
-     * @param logId last log id; first log id used by RedoLog instance is one higher
+     * @oaram logId first log id to open
      */
     RedoLog(Crypto crypto, File baseFile, long logId, boolean replay) throws IOException {
         mCrypto = crypto;
@@ -188,7 +188,7 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
             Set<File> files = new LinkedHashSet<File>(2);
 
             while (true) {
-                File file = fileFor(mBaseFile, ++mLogId);
+                File file = fileFor(mBaseFile, mLogId);
 
                 DataIn in;
                 try {
@@ -205,7 +205,7 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
 
                 try {
                     if (scanned != null && !scanned.contains(file)) {
-                        continue;
+                        break;
                     }
 
                     if (listener != null) {
@@ -220,6 +220,8 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
                 } finally {
                     Utils.closeQuietly(null, in);
                 }
+
+                mLogId++;
             }
 
             return files;
@@ -233,7 +235,7 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
     }
 
     void deleteOldFile(long logId) {
-        fileFor(mBaseFile, logId).delete();
+        deleteOldFile(mBaseFile, logId);
     }
 
     /**

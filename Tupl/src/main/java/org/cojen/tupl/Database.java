@@ -468,10 +468,10 @@ public final class Database extends CauseCloseable {
                             mEventListener, EventType.RECOVERY_SCAN_REDO_LOG,
                             "Scanning redo log: %1$d");
 
-                // Bump up the highest transaction id if scanner has seen
-                // higher. Although this should not happen, it prevents
-                // transaction id collisions if it does.
-                {
+                if (!redoFiles.isEmpty()) {
+                    // Bump up the highest transaction id if scanner has seen
+                    // higher. Although this should not happen, it prevents
+                    // transaction id collisions if it does.
                     long redoTxnId = txnScanner.highestTxnId();
                     if (redoTxnId != 0) synchronized (mTxnIdLock) {
                         // Subtract for modulo comparison.
@@ -479,13 +479,13 @@ public final class Database extends CauseCloseable {
                             mTxnId = redoTxnId;
                         }
                     }
-                }
 
-                // Second pass, apply all committed transactions.
-                new RedoLog(config.mCrypto, baseFile, redoLogId, true)
-                    .replay(new RedoLogApplier(this, txnScanner, undoLogs), redoFiles,
-                            mEventListener, EventType.RECOVERY_APPLY_REDO_LOG,
-                            "Applying redo log: %1$d");
+                    // Second pass, apply all committed transactions.
+                    new RedoLog(config.mCrypto, baseFile, redoLogId, true)
+                        .replay(new RedoLogApplier(this, txnScanner, undoLogs), redoFiles,
+                                mEventListener, EventType.RECOVERY_APPLY_REDO_LOG,
+                                "Applying redo log: %1$d");
+                }
 
                 boolean doCheckpoint = !redoFiles.isEmpty();
 
@@ -507,6 +507,12 @@ public final class Database extends CauseCloseable {
                     }
                 }
 
+                // New redo logs begin with identifiers one higher than last
+                // scanned. Note: RedoLog must be assigned before recovery
+                // checkpoint, because it accesses it to determine what the
+                // checkpointed redo log id is.
+                mRedoLog = new RedoLog(config.mCrypto, baseFile, scanRedoLog.logId(), false);
+
                 if (doCheckpoint) {
                     checkpoint(true, 0, 0);
                     // Only delete scanned redo logs after successful checkpoint.
@@ -514,9 +520,6 @@ public final class Database extends CauseCloseable {
                         file.delete();
                     }
                 }
-
-                // New redo logs begin with identifiers one higher than last scanned.
-                mRedoLog = new RedoLog(config.mCrypto, baseFile, scanRedoLog.logId(), false);
             }
 
             // Delete lingering fragmented values after undo logs have been
