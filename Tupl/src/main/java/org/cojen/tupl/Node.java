@@ -179,7 +179,7 @@ final class Node extends Latch {
       identifiers are always a fixed length, ulong type.
 
       Child node identifiers are encoded immediately following the search vector. Free space
-      management must account for this, treating it as an extention to the search vector.
+      management must account for this, treating it as an extension to the search vector.
 
      */
 
