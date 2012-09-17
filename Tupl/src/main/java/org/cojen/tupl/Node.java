@@ -134,7 +134,7 @@ final class Node extends Latch {
       Garbage refers to the amount of unused bytes within the left and right allocation
       segments. Garbage accumulates when entries are deleted and updated from the
       segments. Segments are not immediately shifted because the search vector would also
-      need to be repaied. A compaction operation reclaims garbage by rebuilding the
+      need to be repaired. A compaction operation reclaims garbage by rebuilding the
       segments and search vector. A copying garbage collection algorithm is used for this.
 
       The compaction implementation allocates all surviving entries in the left segment,
