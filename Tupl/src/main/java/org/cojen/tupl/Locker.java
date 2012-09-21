@@ -81,7 +81,7 @@ class Locker {
     {
         LockResult result = mManager.tryLockShared(this, indexId, key, hash, nanosTimeout);
         if (result == LockResult.TIMED_OUT_LOCK) {
-            detectDeadlock(indexId, key, nanosTimeout);
+            detectDeadlock(nanosTimeout);
         }
         return result;
     }
@@ -165,7 +165,7 @@ class Locker {
     {
         LockResult result = mManager.tryLockUpgradable(this, indexId, key, hash, nanosTimeout);
         if (result == LockResult.TIMED_OUT_LOCK) {
-            detectDeadlock(indexId, key, nanosTimeout);
+            detectDeadlock(nanosTimeout);
         }
         return result;
     }
@@ -246,7 +246,7 @@ class Locker {
     {
         LockResult result = mManager.tryLockExclusive(this, indexId, key, hash, nanosTimeout);
         if (result == LockResult.TIMED_OUT_LOCK) {
-            detectDeadlock(indexId, key, nanosTimeout);
+            detectDeadlock(nanosTimeout);
         }
         return result;
     }
@@ -304,7 +304,7 @@ class Locker {
     {
         switch (result) {
         case TIMED_OUT_LOCK:
-            detectDeadlock(indexId, key, nanosTimeout);
+            detectDeadlock(nanosTimeout);
             break;
         case ILLEGAL:
             return new IllegalUpgradeException();
@@ -330,12 +330,10 @@ class Locker {
         return result;
     }
 
-    private void detectDeadlock(long indexId, byte[] key, long nanosTimeout)
-        throws DeadlockException
-    {
+    private void detectDeadlock(long nanosTimeout) throws DeadlockException {
         if (mWaitingFor != null) {
             try {
-                DeadlockDetector detector = new DeadlockDetector(this, indexId, key);
+                DeadlockDetector detector = new DeadlockDetector(this);
                 if (detector.scan()) {
                     throw new DeadlockException(nanosTimeout, detector.mGuilty);
                 }

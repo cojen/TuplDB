@@ -42,7 +42,7 @@ class DeadlockDetector {
 
     boolean mGuilty;
 
-    DeadlockDetector(Locker locker, long indexId, byte[] key) {
+    DeadlockDetector(Locker locker) {
         mOrigin = locker;
         mLockers = new LinkedHashSet<Locker>();
     }
