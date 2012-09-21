@@ -112,6 +112,56 @@ public class DeadlockTest {
         joinTasks();
     }
 
+    @Test
+    public void test_2() throws Throwable {
+        // Deadlock caused by three threads and three keys.
+
+        final long timeout = 3L * 1000 * 1000 * 1000;
+
+        class TheTask extends Task {
+            private final long mTimeout;
+            private final boolean mExpectDeadlock;
+            private final byte[][] mKeys;
+
+            TheTask(long timeout, boolean expectDeadlock, String... keys) {
+                mTimeout = timeout;
+                mExpectDeadlock = expectDeadlock;
+                mKeys = new byte[keys.length][];
+                for (int i=0; i<keys.length; i++) {
+                    mKeys[i] = keys[i].getBytes();
+                }
+            }
+
+            void doRun() throws Throwable {
+                try {
+                    Locker locker = new Locker(mManager);
+                    try {
+                        for (byte[] key : mKeys) {
+                            locker.lockUpgradable(1, key, mTimeout);
+                            sleep(100);
+                        }
+                    } finally {
+                        locker.scopeUnlockAll();
+                    }
+                    assertFalse(mExpectDeadlock);
+                } catch (DeadlockException e) {
+                    assertTrue(mExpectDeadlock);
+                }
+            }
+        };
+
+        // All three threads must be waiting for a deadlock to occur. As soon
+        // as one times out, the rest can proceed because the dependency cycle
+        // is broken.
+
+        mTasks.add(new TheTask(timeout,     true,  "k1", "k2"));
+        mTasks.add(new TheTask(timeout * 2, false, "k2", "k3"));
+        mTasks.add(new TheTask(timeout * 2, false, "k3", "k1"));
+
+        startTasks();
+        joinTasks();
+    }
+
     private void startTasks() {
         for (Task t : mTasks) {
             t.start();
