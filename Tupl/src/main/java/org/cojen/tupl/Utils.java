@@ -749,11 +749,28 @@ class Utils {
         return h - g;
     }
 
-    static String toHex(byte[] b) {
-        return toHex(b, 0, b.length);
+    static String toHex(byte[] key) {
+        if (key == null) {
+            return "null";
+        }
+        char[] chars = new char[key.length << 1];
+        for (int bi=0, ci=0; bi<key.length; bi++) {
+            int b = key[bi] & 0xff;
+            chars[ci++] = toHexChar(b >> 4);
+            chars[ci++] = toHexChar(b & 0xf);
+        }
+        return new String(chars);
     }
 
-    static String toHex(byte[] b, int offset, int length) {
+    private static char toHexChar(int b) {
+        return (char) ((b < 10) ? ('0' + b) : ('a' + b - 10));
+    }
+
+    static String toHexDump(byte[] b) {
+        return toHexDump(b, 0, b.length);
+    }
+
+    static String toHexDump(byte[] b, int offset, int length) {
         StringBuilder bob = new StringBuilder();
 
         for (int i=0; i<length; i+=16) {
