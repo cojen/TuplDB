@@ -335,7 +335,9 @@ class Locker {
             try {
                 DeadlockDetector detector = new DeadlockDetector(this);
                 if (detector.scan()) {
-                    throw new DeadlockException(nanosTimeout, detector.mGuilty);
+                    throw new DeadlockException(nanosTimeout,
+                                                detector.mGuilty,
+                                                new DeadlockSet(detector.mLocks));
                 }
             } finally {
                 mWaitingFor = null;
