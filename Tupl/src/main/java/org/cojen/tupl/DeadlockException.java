@@ -29,24 +29,40 @@ public class DeadlockException extends LockTimeoutException {
     private static final long serialVersionUID = 1L;
 
     private final boolean mGuilty;
+    private final DeadlockSet mSet;
 
-    DeadlockException(long nanosTimeout, boolean guilty) {
+    DeadlockException(long nanosTimeout, boolean guilty, DeadlockSet set) {
         super(nanosTimeout);
         mGuilty = guilty;
+        mSet = set;
     }
 
+    /**
+     * @return true if caller helped caused the deadlock; false if caller might
+     * be innocent
+     */
     public boolean isGuilty() {
         return mGuilty;
     }
 
+    /**
+     * @return the set of lock requests which were in a deadlock
+     */
+    public DeadlockSet getDeadlockSet() {
+        return mSet;
+    }
+
     @Override
     public String getMessage() {
-        String message;
+        StringBuilder b = new StringBuilder(super.getMessage());
+        b.append("; caller ");
         if (mGuilty) {
-            message = "caller helped cause the deadlock";
+            b.append("helped cause the deadlock");
         } else {
-            message = "caller might be innocent";
+            b.append("might be innocent");
         }
-        return super.getMessage() + "; " + message;
+        b.append(". Deadlock set: ");
+        mSet.appendMembers(b);
+        return b.toString();
     }
 }

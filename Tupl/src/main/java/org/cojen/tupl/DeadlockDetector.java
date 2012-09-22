@@ -39,12 +39,14 @@ class DeadlockDetector {
 
     private final Locker mOrigin;
     private final Set<Locker> mLockers;
+    final Set<Lock> mLocks;
 
     boolean mGuilty;
 
     DeadlockDetector(Locker locker) {
         mOrigin = locker;
         mLockers = new LinkedHashSet<Locker>();
+        mLocks = new LinkedHashSet<Lock>();
     }
 
     /**
@@ -65,6 +67,8 @@ class DeadlockDetector {
             if (lock == null) {
                 return found;
             }
+
+            mLocks.add(lock);
 
             if (mLockers.isEmpty()) {
                 mLockers.add(locker);
