@@ -54,6 +54,17 @@ public class DeadlockException extends LockTimeoutException {
 
     @Override
     public String getMessage() {
+        return getMessage(true);
+    }
+
+    /**
+     * @return message without deadlock set info
+     */
+    public String getShortMessage() {
+        return getMessage(false);
+    }
+
+    private String getMessage(boolean full) {
         StringBuilder b = new StringBuilder(super.getMessage());
         b.append("; caller ");
         if (mGuilty) {
@@ -61,8 +72,11 @@ public class DeadlockException extends LockTimeoutException {
         } else {
             b.append("might be innocent");
         }
-        b.append(". Deadlock set: ");
-        mSet.appendMembers(b);
+        b.append('.');
+        if (full) {
+            b.append(" Deadlock set: ");
+            mSet.appendMembers(b);
+        }
         return b.toString();
     }
 }
