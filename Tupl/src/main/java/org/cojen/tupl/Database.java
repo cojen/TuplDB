@@ -897,6 +897,7 @@ public final class Database extends CauseCloseable {
 
             synchronized (mTxnIdLock) {
                 stats.mTxnCount = mUndoLogCount;
+                stats.mTxnsCreated = mTxnId;
             }
         } finally {
             mSharedCommitLock.unlock();
@@ -917,6 +918,7 @@ public final class Database extends CauseCloseable {
         long mLockCount;
         long mCursorCount;
         long mTxnCount;
+        long mTxnsCreated;
 
         Stats() {
         }
@@ -944,7 +946,7 @@ public final class Database extends CauseCloseable {
 
         /**
          * Returns the amount of locks currently allocated. Locks are created
-         * as transactions access or modifiy records, and they are destroyed
+         * as transactions access or modify records, and they are destroyed
          * when transactions exit or reset. An accumulation of locks can
          * indicate that transactions are not being reset properly.
          */
@@ -970,6 +972,14 @@ public final class Database extends CauseCloseable {
             return mTxnCount;
         }
 
+        /**
+         * Returns the total amount of transactions explicitly created since
+         * the database was created. Nested transaction scopes are included as well.
+         */
+        public long transactionsCreated() {
+            return mTxnsCreated;
+        }
+
         @Override
         public String toString() {
             return "Database.Stats {openIndexes=" + mOpenIndexes
@@ -978,6 +988,7 @@ public final class Database extends CauseCloseable {
                 + ", lockCount=" + mLockCount
                 + ", cursorCount=" + mCursorCount
                 + ", transactionCount=" + mTxnCount
+                + ", transactionsCreated=" + mTxnsCreated
                 + '}';
         }
     }
