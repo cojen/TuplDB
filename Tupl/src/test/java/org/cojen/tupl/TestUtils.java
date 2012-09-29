@@ -203,4 +203,21 @@ class TestUtils {
         } catch (InterruptedException e) {
         }
     }
+
+    private static volatile Object cForceGcRef;
+
+    static void forceGc() {
+        for (int x=0; x<10; x++) {
+            System.gc();
+        }
+        List<String> list = new ArrayList<String>();
+        for (int x=0; x<1000; x++) {
+            list.add("" + x);
+        }
+        cForceGcRef = list;
+        for (int x=0; x<10; x++) {
+            System.gc();
+        }
+        cForceGcRef = null;
+    }
 }

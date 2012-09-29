@@ -41,6 +41,7 @@ public class TestAll {
             TransactionTest.class,
             TransactionNonDurableTest.class,
             UtilsTest.class,
+            SmallCacheTest.class,
         };
 
         String[] names = new String[classes.length];
