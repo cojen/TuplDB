@@ -1191,14 +1191,18 @@ public final class Database extends CauseCloseable {
             byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, name);
             byte[] treeIdBytes = mRegistryKeyMap.load(null, nameKey);
             long treeId;
+            // Is non-null if index was created.
+            byte[] idKey;
 
             if (treeIdBytes != null) {
+                idKey = null;
                 treeId = readLongBE(treeIdBytes, 0);
             } else if (!create) {
                 return null;
             } else synchronized (mOpenTrees) {
                 treeIdBytes = mRegistryKeyMap.load(null, nameKey);
                 if (treeIdBytes != null) {
+                    idKey = null;
                     treeId = readLongBE(treeIdBytes, 0);
                 } else {
                     treeIdBytes = new byte[8];
@@ -1214,7 +1218,7 @@ public final class Database extends CauseCloseable {
                             throw new DatabaseException("Unable to insert index name");
                         }
 
-                        byte[] idKey = newKey(KEY_TYPE_INDEX_ID, treeIdBytes);
+                        idKey = newKey(KEY_TYPE_INDEX_ID, treeIdBytes);
 
                         if (!mRegistryKeyMap.insert(null, idKey, name)) {
                             mRegistryKeyMap.delete(null, nameKey);
@@ -1252,6 +1256,18 @@ public final class Database extends CauseCloseable {
                 }
 
                 return tree;
+            } catch (Throwable e) {
+                if (idKey != null) {
+                    // Rollback create of new index.
+                    try {
+                        mRegistryKeyMap.delete(null, idKey);
+                        mRegistryKeyMap.delete(null, nameKey);
+                        mRegistry.delete(Transaction.BOGUS, treeIdBytes);
+                    } catch (Throwable e2) {
+                        // Ignore.
+                    }
+                }
+                throw rethrow(e);
             } finally {
                 txn.reset();
             }
@@ -1386,60 +1402,69 @@ public final class Database extends CauseCloseable {
      */
     Node allocLatchedNode(boolean evictable) throws IOException {
         final Latch usageLatch = mUsageLatch;
-        usageLatch.acquireExclusive();
-        alloc: try {
-            int max = mMaxNodeCount;
+        for (int trial = 1; trial <= 3; trial++) {
+            usageLatch.acquireExclusive();
+            alloc: try {
+                int max = mMaxNodeCount;
 
-            if (max == 0) {
-                break alloc;
-            }
-
-            if (mNodeCount < max) {
-                checkClosed();
-                Node node = new Node(pageSize());
-                node.acquireExclusive();
-                mNodeCount++;
-                if (evictable) {
-                    if ((node.mLessUsed = mMostRecentlyUsed) == null) {
-                        mLeastRecentlyUsed = node;
-                    } else {
-                        mMostRecentlyUsed.mMoreUsed = node;
-                    }
-                    mMostRecentlyUsed = node;
+                if (max == 0) {
+                    break alloc;
                 }
-                return node;
-            }
 
-            if (!evictable && mLeastRecentlyUsed.mMoreUsed == mMostRecentlyUsed) {
-                // Cannot allow list to shrink to less than two elements.
-                break alloc;
-            }
-
-            do {
-                Node node = mLeastRecentlyUsed;
-                (mLeastRecentlyUsed = node.mMoreUsed).mLessUsed = null;
-                node.mMoreUsed = null;
-                (node.mLessUsed = mMostRecentlyUsed).mMoreUsed = node;
-                mMostRecentlyUsed = node;
-
-                if (node.tryAcquireExclusive() && (node = Node.evict(node, this)) != null) {
-                    if (!evictable) {
-                        // Detach from linked list.
-                        (mMostRecentlyUsed = node.mLessUsed).mMoreUsed = null;
-                        node.mLessUsed = null;
+                if (mNodeCount < max) {
+                    checkClosed();
+                    Node node = new Node(pageSize());
+                    node.acquireExclusive();
+                    mNodeCount++;
+                    if (evictable) {
+                        if ((node.mLessUsed = mMostRecentlyUsed) == null) {
+                            mLeastRecentlyUsed = node;
+                        } else {
+                            mMostRecentlyUsed.mMoreUsed = node;
+                        }
+                        mMostRecentlyUsed = node;
                     }
-                    // Return with latch still held.
                     return node;
                 }
-            } while (--max > 0);
-        } finally {
-            usageLatch.releaseExclusive();
+
+                if (!evictable && mLeastRecentlyUsed.mMoreUsed == mMostRecentlyUsed) {
+                    // Cannot allow list to shrink to less than two elements.
+                    break alloc;
+                }
+
+                do {
+                    Node node = mLeastRecentlyUsed;
+                    (mLeastRecentlyUsed = node.mMoreUsed).mLessUsed = null;
+                    node.mMoreUsed = null;
+                    (node.mLessUsed = mMostRecentlyUsed).mMoreUsed = node;
+                    mMostRecentlyUsed = node;
+
+                    if (node.tryAcquireExclusive() && (node = Node.evict(node, this)) != null) {
+                        if (!evictable) {
+                            // Detach from linked list.
+                            (mMostRecentlyUsed = node.mLessUsed).mMoreUsed = null;
+                            node.mLessUsed = null;
+                        }
+                        // Return with latch still held.
+                        return node;
+                    }
+                } while (--max > 0);
+            } finally {
+                usageLatch.releaseExclusive();
+            }
+
+            checkClosed();
+
+            final Lock commitLock = sharedCommitLock();
+            commitLock.lock();
+            try {
+                // Try to free up nodes from unreferenced trees.
+                cleanupUnreferencedTrees(null);
+            } finally {
+                commitLock.unlock();
+            }
         }
 
-        checkClosed();
-
-        // TODO: Try all nodes again, but with stronger latch request before
-        // giving up.
         throw new CacheExhaustedException();
     }
 
