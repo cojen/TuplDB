@@ -594,6 +594,8 @@ public interface Cursor {
      */
     public void store(byte[] value) throws IOException;
 
+    //public int read(LockResult[] result,int start,byte[] b, int off, int len) throws IOException;
+
     /**
      * Appends data to the current entry's value, creating it if necessary.
      *

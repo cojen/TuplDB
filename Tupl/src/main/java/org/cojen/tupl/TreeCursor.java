@@ -3500,7 +3500,43 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                 return childNode;
             }
         }
-                
+
         return parent.loadChild(mTree.mDatabase, childPos, childId, releaseParent);
     }
+
+    /**
+     * With parent held exclusively, returns child with exclusive latch held.
+     * If an exception is thrown, parent and child latches are always released.
+     * If null is returned, child is not loaded and parent latch is still held.
+     *
+     * Note: Unlike the latchChild method, this method never identifies the
+     * child as having been used. It is just as likely to be evicted as before.
+     *
+     * @return null or child node, possibly split
+     */
+    /*
+    private Node tryLatchChild(Node parent, int childPos, boolean releaseParent) {
+        Node childNode = parent.mChildNodes[childPos >> 1];
+
+        if (childNode != null) {
+            long childId = parent.retrieveChildRefId(childPos);
+            if (childId == childNode.mId) {
+                childNode.acquireExclusive();
+                // Need to check again in case evict snuck in.
+                if (childId != childNode.mId) {
+                    childNode.releaseExclusive();
+                } else {
+                    if (releaseParent) {
+                        parent.releaseExclusive();
+                    }
+                    return childNode;
+                }
+            }
+            // Clear reference to evicted child.
+            parent.mChildNodes[childPos >> 1] = null;
+        }
+
+        return null;
+    }
+    */
 }

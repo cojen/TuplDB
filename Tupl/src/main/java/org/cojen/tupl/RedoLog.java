@@ -488,6 +488,43 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
         writeTerminator();
     }
 
+    /*
+    public synchronized void txnStoreCommit(long txnId, long parentTxnId,
+                                            long indexId, byte[] key, byte[] value)
+        throws IOException
+    {
+        if (key == null) {
+            throw new NullPointerException("Key is null");
+        }
+
+        if (value == null) {
+            if (parentTxnId == 0) {
+                writeOp(OP_TXN_DELETE_COMMIT, txnId);
+            } else {
+                writeOp(OP_TXN_DELETE_COMMIT_CHILD, txnId);
+                writeLongLE(parentTxnId);
+            }
+            writeLongLE(indexId);
+            writeUnsignedVarInt(key.length);
+            writeBytes(key);
+        } else {
+            if (parentTxnId == 0) {
+                writeOp(OP_TXN_STORE_COMMIT, txnId);
+            } else {
+                writeOp(OP_TXN_STORE_COMMIT_CHILD, txnId);
+                writeLongLE(parentTxnId);
+            }
+            writeLongLE(indexId);
+            writeUnsignedVarInt(key.length);
+            writeBytes(key);
+            writeUnsignedVarInt(value.length);
+            writeBytes(value);
+        }
+
+        writeTerminator();
+    }
+    */
+
     synchronized void timestamp() throws IOException {
         writeOp(OP_TIMESTAMP, System.currentTimeMillis());
         writeTerminator();
