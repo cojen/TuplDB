@@ -82,15 +82,42 @@ public final class Transaction extends Locker {
 
     // TODO: Define autoCommit(boolean) method.
 
-    // TODO: Add abort method which can be called by any thread. Transaction
-    // is borked as a result, and the field needs to be volatile to signal the
-    // abort action. Rollback is performed by the original thread, to avoid any
-    // other race conditions. If transaction is waiting for a lock, it's
-    // possible to wake up all threads in the wait queue, but which thread is
-    // the correct one? A bogus signal can be injected into all of them, and
-    // all threads need to check the lock state again anyhow. If the
-    // mWaitingFor field was cleared, this indicates that transaction was
-    // aborted. Define a new LockResult code: ABORTED
+    // TODO: Add terminate method which can be called by any thread.
+    // Transaction is borked as a result, and the field needs to be volatile to
+    // signal the terminate action. Rollback is performed by the original
+    // thread, to avoid any other race conditions. If transaction is waiting
+    // for a lock, it's possible to wake up all threads in the wait queue, but
+    // which thread is the correct one? A bogus signal can be injected into all
+    // of them, and all threads need to check the lock state again anyhow. If
+    // the mWaitingFor field was cleared, this indicates that transaction was
+    // terminated. Define a new LockResult code: TERMINATED
+
+    /*
+      - Exclusive commit lock. Prevents undos.
+      - Latch all LockManager LockHT instances.
+      - Switch lock mode to no higher than REPEATABLE_READ.
+      - Lock RedoLog.
+      - If mWaitingFor is not null, clear and signal all threads in Lock's WaitQueues.
+      - Transfer all transaction state to terminator's Transaction.
+      - Original transaction is borked.
+      - Release all latches.
+      - Reset terminator's Transaction.
+    */
+
+    /*
+      How to terminate all transactions:
+
+      - Deactivate RedoLog.
+      - Fully latch LockManager.
+      - Deactivate LockManager???
+      - For each Lock...
+      - Examine WaitQueues. Clear mWaitingFor for all Lockers in the queues and
+        wake up the waiting threads.
+      - Lock implementation must check mWaitingFor again after waking up. If
+        null, throw LockTerminatedException.
+      - For each Locker found which is a Transaction, 
+
+    */
 
     Transaction(Database db,
                 DurabilityMode durabilityMode,
@@ -537,6 +564,43 @@ public final class Transaction extends Locker {
             throw borked(e);
         }
     }
+
+    /**
+     * Caller must hold commit lock.
+     *
+     * @param value pass null for redo delete
+     */
+    /*
+    final void redoStoreCommit(long indexId, byte[] key, byte[] value) throws IOException {
+        check();
+
+        try {
+            long parentTxnId;
+            ParentScope parentScope = mParentScope;
+            if (parentScope == null) {
+                parentTxnId = 0;
+            } else if ((parentTxnId = parentScope.mTxnId) == 0) {
+                assignTxnId(parentScope);
+                parentTxnId = parentScope.mTxnId;
+            }
+
+            long txnId = mTxnId;
+            if (txnId == 0) {
+                txnId = assignTxnId();
+            }
+
+            RedoLog redo = mDatabase.mRedoLog;
+            if (redo != null) {
+                redo.txnStoreCommit(txnId, parentTxnId, indexId, key, value);
+                mHasState |= HAS_REDO;
+            }
+
+            // FIXME: commit
+        } catch (Throwable e) {
+            throw borked(e);
+        }
+    }
+    */
 
     private long assignTxnId() throws IOException {
         long txnId;
