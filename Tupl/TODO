@@ -30,4 +30,12 @@ is hooked into the FileIO or PageArray class. When an I/O operation is
 performed, assume it will take a long time and allow any shared lock waiters to
 barge ahead of the exclusive lock request.
 
+Support page-level compression. The easiest way to do this is to define a new
+CompressedPageArray class. It maps logical page ids to compressed pages, stored
+in another database. The logical and compressed databases must have different
+page sizes to be effective. The best ratio needs to be determined, but I think
+512 byte pages would work best for the compressed database. If the logical page
+size is less than 4096, then ratio should probably be swapped -- compressed
+page should 8 times larger than logical page size.
+
 ---
