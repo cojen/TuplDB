@@ -26,14 +26,14 @@ import java.util.EnumSet;
  *
  * @author Brian S O'Neill
  */
-class SimplePageArray extends PageArray {
+class FilePageArray extends PageArray {
     final FileIO mFio;
 
-    SimplePageArray(int pageSize, File file, EnumSet<OpenOption> options) throws IOException {
+    FilePageArray(int pageSize, File file, EnumSet<OpenOption> options) throws IOException {
         this(pageSize, JavaFileIO.open(file, options));
     }
 
-    SimplePageArray(int pageSize, FileIO fio) {
+    FilePageArray(int pageSize, FileIO fio) {
         super(pageSize);
         mFio = fio;
     }
@@ -119,6 +119,6 @@ class SimplePageArray extends PageArray {
 
     @Override
     PageArray withPageSize(int pageSize) {
-        return new SimplePageArray(pageSize, mFio);
+        return new FilePageArray(pageSize, mFio);
     }
 }

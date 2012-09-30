@@ -113,12 +113,12 @@ class DurablePageDb extends PageDb {
         }
 
         if (files.length == 1) {
-            return new SimplePageArray(pageSize, files[0], options);
+            return new FilePageArray(pageSize, files[0], options);
         }
 
         PageArray[] arrays = new PageArray[files.length];
         for (int i=0; i<files.length; i++) {
-            arrays[i] = new SimplePageArray(pageSize, files[i], options);
+            arrays[i] = new FilePageArray(pageSize, files[i], options);
         }
 
         return new StripedPageArray(arrays);
