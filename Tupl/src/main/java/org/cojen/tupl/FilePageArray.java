@@ -116,9 +116,4 @@ class FilePageArray extends PageArray {
     public void close(Throwable cause) throws IOException {
         Utils.close(mFio, cause);
     }
-
-    @Override
-    PageArray withPageSize(int pageSize) {
-        return new FilePageArray(pageSize, mFio);
-    }
 }

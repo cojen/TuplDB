@@ -173,11 +173,6 @@ abstract class PageArray extends CauseCloseable {
     }
 
     /**
-     * @return a new instance with the given page size, still backed by the orginal array
-     */
-    abstract PageArray withPageSize(int pageSize);
-
-    /**
      * Supports writing a snapshot of the array, while still permitting
      * concurrent access. Snapshot data is not a valid array file. It must be
      * processed specially by the restoreFromSnapshot method.
