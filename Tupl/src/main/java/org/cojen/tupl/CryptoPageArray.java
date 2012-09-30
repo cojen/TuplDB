@@ -122,9 +122,4 @@ class CryptoPageArray extends PageArray {
     public void close(Throwable cause) throws IOException {
         mSource.close(cause);
     }
-
-    @Override
-    PageArray withPageSize(int pageSize) {
-        return new CryptoPageArray(mSource.withPageSize(pageSize), mCrypto);
-    }
 }

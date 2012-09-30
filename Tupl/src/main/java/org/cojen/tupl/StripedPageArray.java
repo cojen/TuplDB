@@ -37,19 +37,6 @@ class StripedPageArray extends PageArray {
         mReadOnly = readOnly;
     }
 
-    private StripedPageArray(StripedPageArray src, int newPageSize) {
-        super(newPageSize);
-
-        int length = src.mArrays.length;
-        PageArray[] newArrays = new PageArray[length];
-        for (int i=0; i<length; i++) {
-            newArrays[i] = src.mArrays[i].withPageSize(newPageSize);
-        }
-
-        mArrays = newArrays;
-        mReadOnly = src.mReadOnly;
-    }
-
     private static int pageSize(PageArray... arrays) {
         int pageSize = arrays[0].pageSize();
         for (int i=1; i<arrays.length; i++) {
@@ -163,10 +150,5 @@ class StripedPageArray extends PageArray {
         if (ex != null) {
             throw ex;
         }
-    }
-
-    @Override
-    PageArray withPageSize(int pageSize) {
-        return new StripedPageArray(this, pageSize);
     }
 }
