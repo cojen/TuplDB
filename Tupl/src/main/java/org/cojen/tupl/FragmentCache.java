@@ -311,27 +311,33 @@ class FragmentCache {
             int newSize = 0;
             int newMask = capacity - 1;
 
-            for (int i=entries.length; --i>=0 ;) {
+            for (int i=entries.length, mask=entries.length-1; --i>=0 ;) {
                 Node e = entries[i];
                 if (e != null && e != caller) {
                     long id;
                     if (e == node) {
                         continue;
                     } else if (e == existing) {
-                        if (e.mType != TYPE_FRAGMENT) {
+                        if (e.mType != TYPE_FRAGMENT || ((hash(id = e.mId) & mask) != i)) {
                             continue;
                         }
-                        id = e.mId;
                     } else {
                         e.acquireShared();
-                        id = e.mId;
-                        if (e.mType != TYPE_FRAGMENT) {
+                        if (e.mType != TYPE_FRAGMENT || ((hash(id = e.mId) & mask) != i)) {
                             e.releaseShared();
                             continue;
                         }
                         e.releaseShared();
                     }
-                    newEntries[hash(id) & newMask] = e;
+
+                    int index = hash(id) & newMask;
+
+                    if (newEntries[index] != null) {
+                        // Rehash should never create collisions.
+                        throw new AssertionError();
+                    }
+
+                    newEntries[index] = e;
                     newSize++;
                 }
             }
