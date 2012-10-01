@@ -135,6 +135,13 @@ class StripedPageArray extends PageArray {
     }
 
     @Override
+    void doWritePageDurably(long index, byte[] buf, int offset) throws IOException {
+        PageArray[] arrays = mArrays;
+        int stripes = arrays.length;
+        arrays[(int) (index % stripes)].doWritePageDurably(index / stripes, buf, offset);
+    }
+
+    @Override
     public void sync(boolean metadata) throws IOException {
         for (PageArray pa : mArrays) {
             pa.sync(metadata);

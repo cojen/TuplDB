@@ -71,36 +71,6 @@ class CryptoPageArray extends PageArray {
     }
 
     @Override
-    public int readPartial(long index, int start, byte[] buf, int offset, int length)
-        throws IOException
-    {
-        int pageSize = mPageSize;
-        if (start == 0 && length == pageSize) {
-            readPage(index, buf, offset);
-        } else {
-            // Page is encrypted as a unit, and so partial read cannot be optimized.
-            byte[] page = new byte[pageSize];
-            readPage(index, page, 0);
-            System.arraycopy(page, start, buf, offset, length);
-        }
-        return length;
-    }
-
-    @Override
-    public int readCluster(long index, byte[] buf, int offset, int count) throws IOException {
-        int pageSize = mPageSize;
-        if (count > 0) while (true) {
-            readPage(index, buf, offset);
-            if (--count <= 0) {
-                break;
-            }
-            index++;
-            offset += pageSize;
-        }
-        return pageSize * count;
-    }
-
-    @Override
     void doWritePage(long index, byte[] buf, int offset) throws IOException {
         try {
             int pageSize = mPageSize;
@@ -108,6 +78,19 @@ class CryptoPageArray extends PageArray {
             byte[] encrypted = new byte[pageSize];
             mCrypto.encryptPage(index, pageSize, buf, offset, encrypted, 0);
             mSource.doWritePage(index, encrypted, 0);
+        } catch (GeneralSecurityException e) {
+            throw new DatabaseException(e);
+        }
+    }
+
+    @Override
+    void doWritePageDurably(long index, byte[] buf, int offset) throws IOException {
+        try {
+            int pageSize = mPageSize;
+            // Unknown if buf contents can be destroyed, so create a new one.
+            byte[] encrypted = new byte[pageSize];
+            mCrypto.encryptPage(index, pageSize, buf, offset, encrypted, 0);
+            mSource.doWritePageDurably(index, encrypted, 0);
         } catch (GeneralSecurityException e) {
             throw new DatabaseException(e);
         }
