@@ -50,6 +50,15 @@ interface FileIO extends Closeable {
     public void write(long pos, byte[] buf, int offset, int length) throws IOException;
 
     /**
+     * @param pos zero-based position in file
+     * @param buf data to write
+     * @param offset offset into data buffer
+     * @param length amount of data
+     * @throws IllegalArgumentException
+     */
+    public void writeDurably(long pos, byte[] buf, int offset, int length) throws IOException;
+
+    /**
      * Durably flushes all writes to the underlying device.
      *
      * @param metadata pass true to flush all file metadata

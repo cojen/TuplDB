@@ -88,6 +88,8 @@ abstract class PageArray extends CauseCloseable {
     public abstract void readPage(long index, byte[] buf, int offset) throws IOException;
 
     /**
+     * Subclass should override to improve performance.
+     *
      * @param index zero-based page index to read
      * @param start start of page to read
      * @param buf receives read data
@@ -97,10 +99,23 @@ abstract class PageArray extends CauseCloseable {
      * @throws IndexOutOfBoundsException if index is negative
      * @throws IOException if index is greater than or equal to page count
      */
-    public abstract int readPartial(long index, int start, byte[] buf, int offset, int length)
-        throws IOException;
+    public int readPartial(long index, int start, byte[] buf, int offset, int length)
+        throws IOException
+    {
+        int pageSize = mPageSize;
+        if (start == 0 && length == pageSize) {
+            readPage(index, buf, offset);
+        } else {
+            byte[] page = new byte[pageSize];
+            readPage(index, page, 0);
+            System.arraycopy(page, start, buf, offset, length);
+        }
+        return length;
+    }
 
     /**
+     * Subclass should override to improve performance.
+     *
      * @param index zero-based page index to read
      * @param buf receives read data
      * @param offset offset into data buffer
@@ -109,8 +124,18 @@ abstract class PageArray extends CauseCloseable {
      * @throws IndexOutOfBoundsException if index is negative
      * @throws IOException if index is greater than or equal to page count
      */
-    public abstract int readCluster(long index, byte[] buf, int offset, int count)
-        throws IOException;
+    public int readCluster(long index, byte[] buf, int offset, int count) throws IOException {
+        int pageSize = mPageSize;
+        if (count > 0) while (true) {
+            readPage(index, buf, offset);
+            if (--count <= 0) {
+                break;
+            }
+            index++;
+            offset += pageSize;
+        }
+        return pageSize * count;
+    }
 
     /**
      * Writes a page, which is lazily flushed. The array grows automatically if
@@ -134,6 +159,37 @@ abstract class PageArray extends CauseCloseable {
      * @throws IndexOutOfBoundsException if index is negative
      */
     public final void writePage(long index, byte[] buf, int offset) throws IOException {
+        prepareToWrite(index);
+        doWritePage(index, buf, offset);
+    }
+
+    /**
+     * Writes a page, which is immediately flushed. The array grows automatically if
+     * the index is greater than or equal to the current page count.
+     *
+     * @param index zero-based page index to write
+     * @param buf data to write
+     * @throws IndexOutOfBoundsException if index is negative
+     */
+    public void writePageDurably(long index, byte[] buf) throws IOException {
+        writePageDurably(index, buf, 0);
+    }
+
+    /**
+     * Writes a page, which is immediately flushed. The array grows automatically if
+     * the index is greater than or equal to the current page count.
+     *
+     * @param index zero-based page index to write
+     * @param buf data to write
+     * @param offset offset into data buffer
+     * @throws IndexOutOfBoundsException if index is negative
+     */
+    public final void writePageDurably(long index, byte[] buf, int offset) throws IOException {
+        prepareToWrite(index);
+        doWritePageDurably(index, buf, offset);
+    }
+
+    private void prepareToWrite(long index) {
         if (index < 0) {
             throw new IndexOutOfBoundsException(String.valueOf(index));
         }
@@ -146,8 +202,6 @@ abstract class PageArray extends CauseCloseable {
                 snapshot.capture(index);
             }
         }
-
-        doWritePage(index, buf, offset);
     }
 
     /**
@@ -159,6 +213,16 @@ abstract class PageArray extends CauseCloseable {
      * @param offset offset into data buffer
      */
     abstract void doWritePage(long index, byte[] buf, int offset) throws IOException;
+
+    /**
+     * Writes a page, which is immediately flushed. The array grows automatically if
+     * the index is greater than or equal to the current page count.
+     *
+     * @param index zero-based page index to write (never negative)
+     * @param buf data to write
+     * @param offset offset into data buffer
+     */
+    abstract void doWritePageDurably(long index, byte[] buf, int offset) throws IOException;
 
     /**
      * Durably flushes all writes to the underlying device.

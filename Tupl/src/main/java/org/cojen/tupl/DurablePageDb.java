@@ -566,8 +566,7 @@ class DurablePageDb extends PageDb {
 
             mHeaderLatch.acquireExclusive();
             try {
-                array.writePage(commitNumber & 1, header);
-                array.sync(false);
+                array.writePageDurably(commitNumber & 1, header);
                 mCommitNumber = commitNumber;
             } finally {
                 mHeaderLatch.releaseExclusive();

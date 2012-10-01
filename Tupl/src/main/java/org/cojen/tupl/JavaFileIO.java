@@ -49,6 +49,8 @@ class JavaFileIO extends CauseCloseable implements FileIO {
     private int mFilePoolTop;
     private final boolean mReadOnly;
 
+    private final RandomAccessFile mDurableFile;
+
     private volatile Throwable mCause;
 
     private JavaFileIO(File file, EnumSet<OpenOption> options, int openFileCount)
@@ -57,11 +59,18 @@ class JavaFileIO extends CauseCloseable implements FileIO {
         String mode;
         if ((mReadOnly = options.contains(OpenOption.READ_ONLY))) {
             mode = "r";
+            mDurableFile = null;
         } else {
             if (!options.contains(OpenOption.CREATE) && !file.exists()) {
                 throw new FileNotFoundException(file.getPath());
             }
-            mode = options.contains(OpenOption.SYNC_IO) ? "rwd" : "rw";
+            if (options.contains(OpenOption.SYNC_IO)) {
+                mode = "rwd";
+                mDurableFile = null;
+            } else {
+                mode = "rw";
+                mDurableFile = openRaf(file, "rwd");
+            }
         }
 
         if (openFileCount < 1) {
@@ -139,6 +148,18 @@ class JavaFileIO extends CauseCloseable implements FileIO {
             throw Utils.rethrow(e, mCause);
         } finally {
             yieldFile(file);
+        }
+    }
+
+    @Override
+    public void writeDurably(long pos, byte[] buf, int offset, int length) throws IOException {
+        RandomAccessFile file = mDurableFile;
+        if (file == null) {
+            // All files are durable.
+            write(pos, buf, offset, length);
+        } else synchronized (file) {
+            file.seek(pos);
+            file.write(buf, offset, length);
         }
     }
 
