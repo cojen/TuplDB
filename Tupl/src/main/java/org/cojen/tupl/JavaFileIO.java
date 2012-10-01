@@ -194,6 +194,9 @@ class JavaFileIO extends CauseCloseable implements FileIO {
             for (RandomAccessFile file : pool) {
                 ex = Utils.closeQuietly(ex, file, cause);
             }
+            if (mDurableFile != null) {
+                ex = Utils.closeQuietly(ex, mDurableFile, cause);
+            }
         }
         if (ex != null) {
             throw ex;
