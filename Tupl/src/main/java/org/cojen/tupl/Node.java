@@ -50,6 +50,7 @@ final class Node extends Latch {
      */
 
     static final byte
+        TYPE_NONE        = 0,
         TYPE_FRAGMENT    = (byte) 0x20, // 0b0010_000_0
         TYPE_UNDO_LOG    = (byte) 0x40, // 0b0100_000_0
         TYPE_TN_INTERNAL = (byte) 0x64, // 0b0110_010_0
@@ -486,6 +487,7 @@ final class Node extends Latch {
             // Another thread might access child and see that it is invalid because
             // id is zero. It will assume it got evicted and will load child again.
             childNode.mId = 0;
+            childNode.mType = TYPE_NONE;
             childNode.releaseExclusive();
             throw Utils.rethrow(e);
         }
@@ -805,6 +807,7 @@ final class Node extends Latch {
         }
 
         mId = 0;
+        mType = TYPE_NONE;
         // TODO: child node array should be recycled
         mChildNodes = null;
     }
