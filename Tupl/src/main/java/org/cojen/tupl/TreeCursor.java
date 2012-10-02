@@ -1600,9 +1600,10 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         nearby: if (variant == VARIANT_NEARBY) {
             frame = mLeaf;
             if (frame == null) {
+                // Allocate new frame before latching root -- allocation can block.
+                frame = new TreeCursorFrame();
                 node = mTree.mRoot;
                 node.acquireExclusive();
-                frame = new TreeCursorFrame();
                 break nearby;
             }
 
@@ -2789,8 +2790,10 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     private TreeCursorFrame reset(Node root) {
         TreeCursorFrame frame = mLeaf;
         if (frame == null) {
+            // Allocate new frame before latching root -- allocation can block.
+            frame = new TreeCursorFrame();
             root.acquireExclusive();
-            return new TreeCursorFrame();
+            return frame;
         }
 
         mLeaf = null;
