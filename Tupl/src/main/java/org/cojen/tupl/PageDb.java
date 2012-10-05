@@ -33,8 +33,12 @@ abstract class PageDb extends CauseCloseable {
     final ReadWriteLock mCommitLock;
 
     PageDb() {
-        // Should be fair in order for exclusive lock request to de-prioritize
-        // itself by timing out and retrying. See Database.checkpoint.
+        // Need to use a reentrant lock instead of a latch to simplify the
+        // logic for persisting in-flight undo logs during a checkpoint. Pages
+        // might need to be allocated during this time, and so reentrancy is
+        // required to avoid deadlock. Lock should be fair in order for
+        // exclusive lock request to de-prioritize itself by timing out and
+        // retrying. See Database.checkpoint.
         mCommitLock = new ReentrantReadWriteLock(true);
     }
 
