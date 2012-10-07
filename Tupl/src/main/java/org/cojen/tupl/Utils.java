@@ -124,7 +124,7 @@ class Utils {
             byte ab = a[aoff + i];
             byte bb = b[boff + i];
             if (ab != bb) {
-                return ((ab & 0xff) < (bb & 0xff)) ? -1 : 1;
+                return (ab & 0xff) - (bb & 0xff);
             }
         }
         return alen - blen;
