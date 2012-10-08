@@ -158,6 +158,9 @@ public final class Database extends CauseCloseable {
     // Is either CACHED_DIRTY_0 or CACHED_DIRTY_1. Access is guarded by commit lock.
     private byte mCommitState;
 
+    // Is false for empty databases which have never checkpointed.
+    private volatile boolean mHasCheckpointed = true;
+
     // Typically opposite of mCommitState, or negative if checkpoint is not in
     // progress. Indicates which nodes are being flushed by the checkpoint.
     private volatile int mCheckpointFlushState = CHECKPOINT_NOT_FLUSHING;
@@ -234,8 +237,6 @@ public final class Database extends CauseCloseable {
         config.durabilityMode(DurabilityMode.NO_FLUSH);
         Database db = new Database(config, OPEN_TEMP);
         tfm.register(file, db);
-        db.mCheckpointer = new Checkpointer(db, config);
-        db.mCheckpointer.start();
         return db.mRegistry;
     }
 
@@ -1142,6 +1143,8 @@ public final class Database extends CauseCloseable {
         long rootId;
         if (version == 0) {
             rootId = 0;
+            // No registry; clearly nothing has been checkpointed.
+            mHasCheckpointed = false;
         } else {
             if (version != ENCODING_VERSION) {
                 throw new CorruptDatabaseException("Unknown encoding version: " + version);
@@ -2309,7 +2312,7 @@ public final class Database extends CauseCloseable {
             node = allocLatchedNode(false);
             node.mId = nodeId;
             node.mType = TYPE_FRAGMENT;
-            readPage(nodeId, node.mPage);
+            node.mCachedState = readNodePage(nodeId, node.mPage);
         }
         return node;
     }
@@ -2354,8 +2357,31 @@ public final class Database extends CauseCloseable {
         mSpareBufferPool.add(buffer);
     }
 
-    void readPage(long id, byte[] page) throws IOException {
+    /**
+     * @return initial cached state for node
+     */
+    byte readNodePage(long id, byte[] page) throws IOException {
         mPageDb.readPage(id, page);
+
+        if (!mHasCheckpointed) {
+            // Read is reloading an evicted node which is known to be dirty.
+            mSharedCommitLock.lock();
+            try {
+                return mCommitState;
+            } finally {
+                mSharedCommitLock.unlock();
+            }
+        }
+
+        // TODO: Keep some sort of cache of ids known to be dirty. If reloaded
+        // before commit, then they're still dirty. Without this optimization,
+        // too many pages are allocated when: evictions are high, write rate is
+        // high, and commits are bogged down. A Bloom filter is not
+        // appropriate, because of false positives. A random evicting cache
+        // works well -- it has no collision chains. Evict whatever else was
+        // there in the slot. An array of longs should suffice.
+
+        return CACHED_CLEAN;
     }
 
     void writePage(long id, byte[] page) throws IOException {
@@ -2531,6 +2557,7 @@ public final class Database extends CauseCloseable {
         final Node root = mRegistry.mRoot;
         final long rootId = root.mId;
         final int stateToFlush = mCommitState;
+        mHasCheckpointed = true; // Must be set before switching commit state.
         mCheckpointFlushState = stateToFlush;
         mCommitState = (byte) (stateToFlush ^ 1);
         root.releaseShared();

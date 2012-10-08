@@ -599,10 +599,8 @@ final class Node extends Latch {
     void read(Database db, long id) throws IOException {
         byte[] page = mPage;
 
-        db.readPage(id, page);
-
+        mCachedState = db.readNodePage(id, page);
         mId = id;
-        mCachedState = CACHED_CLEAN;
 
         byte type = page[0];
         mType = type;
@@ -789,14 +787,6 @@ final class Node extends Latch {
      */
     void doEvict(Database db) throws IOException {
         if (mCachedState != CACHED_CLEAN) {
-            // TODO: Keep some sort of cache of ids known to be dirty. If
-            // reloaded before commit, then they're still dirty. Without this
-            // optimization, too many pages are allocated when: evictions are
-            // high, write rate is high, and commits are bogged down. A Bloom
-            // filter is not appropriate, because of false positives. A random
-            // evicting cache works well -- it has no collision chains. Evict
-            // whatever else was there in the slot. An array of longs should suffice.
-
             try {
                 write(db);
                 mCachedState = CACHED_CLEAN;
