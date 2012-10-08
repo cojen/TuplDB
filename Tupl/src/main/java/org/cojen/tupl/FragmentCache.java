@@ -205,7 +205,7 @@ class FragmentCache {
                     }
                 }
 
-                mDatabase.readPage(nodeId, node.mPage);
+                node.mCachedState = mDatabase.readNodePage(nodeId, node.mPage);
 
                 node.downgrade();
                 return node;
