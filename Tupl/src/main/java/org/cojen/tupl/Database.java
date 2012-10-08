@@ -237,6 +237,8 @@ public final class Database extends CauseCloseable {
         config.durabilityMode(DurabilityMode.NO_FLUSH);
         Database db = new Database(config, OPEN_TEMP);
         tfm.register(file, db);
+        db.mCheckpointer = new Checkpointer(db, config);
+        db.mCheckpointer.start();
         return db.mRegistry;
     }
 
@@ -2321,6 +2323,9 @@ public final class Database extends CauseCloseable {
         Node node = mFragmentCache.remove(caller, nodeId);
         if (node != null) {
             deleteNode(node);
+        } else if (!mHasCheckpointed) {
+            // Page was never used if nothing has ever been checkpointed.
+            mAllocator.recyclePage(nodeId);
         } else {
             // Page is clean if not in a Node, and so it must survive until
             // after the next checkpoint.
