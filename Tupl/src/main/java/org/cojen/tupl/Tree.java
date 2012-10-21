@@ -397,6 +397,43 @@ final class Tree implements Index {
     }
     */
 
+    @Override
+    public View viewGe(byte[] key) {
+        if (key == null) {
+            throw new NullPointerException("Key is null");
+        }
+        return new BoundedView(this, key, null, 0);
+    }
+
+    @Override
+    public View viewGt(byte[] key) {
+        if (key == null) {
+            throw new NullPointerException("Key is null");
+        }
+        return new BoundedView(this, key, null, BoundedView.START_EXCLUSIVE);
+    }
+
+    @Override
+    public View viewLe(byte[] key) {
+        if (key == null) {
+            throw new NullPointerException("Key is null");
+        }
+        return new BoundedView(this, null, key, 0);
+    }
+
+    @Override
+    public View viewLt(byte[] key) {
+        if (key == null) {
+            throw new NullPointerException("Key is null");
+        }
+        return new BoundedView(this, null, key, BoundedView.END_EXCLUSIVE);
+    }
+
+    @Override
+    public View viewReverse() {
+        return new ReverseView(this);
+    }
+
     void check(Transaction txn) throws IllegalArgumentException {
         if (txn != null) {
             Database txnDb = txn.mDatabase;

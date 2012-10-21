@@ -34,8 +34,8 @@ class IndexesCursor implements Cursor {
         mRegistryCursor = registryCursor;
     }
 
-    public void link(Transaction txn) {
-        mRegistryCursor.link(txn);
+    public Transaction link(Transaction txn) {
+        return mRegistryCursor.link(txn);
     }
 
     public byte[] key() {
@@ -46,8 +46,8 @@ class IndexesCursor implements Cursor {
         return mRegistryCursor.value();
     }
 
-    public void autoload(boolean mode) {
-        mRegistryCursor.autoload(mode);
+    public boolean autoload(boolean mode) {
+        return mRegistryCursor.autoload(mode);
     }
 
     public int compareKeyTo(byte[] rkey) {

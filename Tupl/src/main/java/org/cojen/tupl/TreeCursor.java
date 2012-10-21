@@ -56,6 +56,14 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     }
 
     @Override
+    public Transaction link(Transaction txn) {
+        mTree.check(txn);
+        Transaction old = mTxn;
+        mTxn = txn;
+        return old;
+    }
+
+    @Override
     public byte[] key() {
         return mKey;
     }
@@ -66,8 +74,10 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     }
 
     @Override
-    public void autoload(boolean mode) {
+    public boolean autoload(boolean mode) {
+        boolean old = mKeyOnly;
         mKeyOnly = !mode;
+        return !old;
     }
 
     @Override
@@ -2710,12 +2720,6 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         } finally {
             reset();
         }
-    }
-
-    @Override
-    public void link(Transaction txn) {
-        mTree.check(txn);
-        mTxn = txn;
     }
 
     @Override

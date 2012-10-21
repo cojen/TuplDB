@@ -55,8 +55,10 @@ public interface Cursor {
      * continue using a cursor after the transaction is complete, link it to
      * null or another transaction. Otherwise, the orginal transaction will be
      * resurrected.
+     *
+     * @return prior linked transaction
      */
-    public void link(Transaction txn);
+    public Transaction link(Transaction txn);
 
     /**
      * Returns an uncopied reference to the current key, or null if Cursor is
@@ -75,8 +77,9 @@ public interface Cursor {
      * disabled, values must be {@link Cursor#load manually loaded}.
      *
      * @param mode false to disable
+     * @return prior autoload mode
      */
-    public void autoload(boolean mode);
+    public boolean autoload(boolean mode);
 
     /**
      * Compare the current key to the one given.

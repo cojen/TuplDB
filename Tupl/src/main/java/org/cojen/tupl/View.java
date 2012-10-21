@@ -251,4 +251,49 @@ public interface View {
                       byte[] end, boolean endInclusive)
         throws IOException;
     */
+
+    /**
+     * Returns a sub-view, backed by this one, whose keys are greater than or
+     * equal to the given key. Ownership of the key instance is transferred,
+     * and so it must not be modified after calling this method.
+     *
+     * <p>The returned view will throw an IllegalArgumentException on an attempt
+     * to insert a key outside its range.
+     */
+    public View viewGe(byte[] key);
+
+    /**
+     * Returns a sub-view, backed by this one, whose keys are greater than the
+     * given key. Ownership of the key instance is transferred, and so it must
+     * not be modified after calling this method.
+     *
+     * <p>The returned view will throw an IllegalArgumentException on an attempt
+     * to insert a key outside its range.
+     */
+    public View viewGt(byte[] key);
+
+    /**
+     * Returns a sub-view, backed by this one, whose keys are less than or
+     * equal to the given key. Ownership of the key instance is transferred,
+     * and so it must not be modified after calling this method.
+     *
+     * <p>The returned view will throw an IllegalArgumentException on an attempt
+     * to insert a key outside its range.
+     */
+    public View viewLe(byte[] key);
+
+    /**
+     * Returns a sub-view, backed by this one, whose keys are less than the
+     * given key. Ownership of the key instance is transferred, and so it must
+     * not be modified after calling this method.
+     *
+     * <p>The returned view will throw an IllegalArgumentException on an attempt
+     * to insert a key outside its range.
+     */
+    public View viewLt(byte[] key);
+
+    /**
+     * Returns a view, backed by this one, whose natural order is reversed.
+     */
+    public View viewReverse();
 }
