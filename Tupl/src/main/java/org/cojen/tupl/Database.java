@@ -165,7 +165,7 @@ public final class Database extends CauseCloseable {
     // progress. Indicates which nodes are being flushed by the checkpoint.
     private volatile int mCheckpointFlushState = CHECKPOINT_NOT_FLUSHING;
 
-    private static int CHECKPOINT_FLUSH_PREPARE = -2, CHECKPOINT_NOT_FLUSHING = -1;
+    private static final int CHECKPOINT_FLUSH_PREPARE = -2, CHECKPOINT_NOT_FLUSHING = -1;
 
     // The root tree, which maps tree ids to other tree root node ids.
     private final Tree mRegistry;
