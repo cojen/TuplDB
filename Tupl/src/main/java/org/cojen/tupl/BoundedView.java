@@ -50,9 +50,6 @@ final class BoundedView extends SubView {
         if (startRangeCompare(key) <= 0) {
             return this;
         }
-        if (endRangeCompare(key) > 0) {
-            return EmptyView.THE;
-        }
         return new BoundedView(mSource, key, mEnd, mMode & ~START_EXCLUSIVE);
     }
 
@@ -63,9 +60,6 @@ final class BoundedView extends SubView {
         }
         if (startRangeCompare(key) < 0) {
             return this;
-        }
-        if (endRangeCompare(key) >= 0) {
-            return EmptyView.THE;
         }
         return new BoundedView(mSource, key, mEnd, mMode | START_EXCLUSIVE);
     }
@@ -78,9 +72,6 @@ final class BoundedView extends SubView {
         if (endRangeCompare(key) >= 0) {
             return this;
         }
-        if (startRangeCompare(key) < 0) {
-            return EmptyView.THE;
-        }
         return new BoundedView(mSource, mStart, key, mMode & ~END_EXCLUSIVE);
     }
 
@@ -91,9 +82,6 @@ final class BoundedView extends SubView {
         }
         if (endRangeCompare(key) > 0) {
             return this;
-        }
-        if (startRangeCompare(key) <= 0) {
-            return EmptyView.THE;
         }
         return new BoundedView(mSource, mStart, key, mMode | END_EXCLUSIVE);
     }
