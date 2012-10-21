@@ -16,6 +16,8 @@
 
 package org.cojen.tupl;
 
+import java.lang.ref.WeakReference;
+
 import static org.cojen.tupl.LockResult.*;
 
 /**
@@ -29,7 +31,7 @@ final class LockManager {
     private final LockHT[] mHashTables;
     private final int mHashTableShift;
 
-    private final ThreadLocal<Locker> mLocalLocker;
+    private final ThreadLocal<WeakReference<Locker>> mLocalLockerRef;
 
     LockManager(long timeoutNanos) {
         this(timeoutNanos, Runtime.getRuntime().availableProcessors() * 16);
@@ -45,7 +47,7 @@ final class LockManager {
         }
         mHashTableShift = Integer.numberOfLeadingZeros(numHashTables - 1);
 
-        mLocalLocker = new ThreadLocal<Locker>();
+        mLocalLockerRef = new ThreadLocal<WeakReference<Locker>>();
     }
 
     /**
@@ -240,9 +242,10 @@ final class LockManager {
     }
 
     final Locker localLocker() {
-        Locker locker = mLocalLocker.get();
-        if (locker == null) {
-            mLocalLocker.set(locker = new Locker(this));
+        WeakReference<Locker> lockerRef = mLocalLockerRef.get();
+        Locker locker;
+        if (lockerRef == null || (locker = lockerRef.get()) == null) {
+            mLocalLockerRef.set(new WeakReference<Locker>(locker = new Locker(this)));
         }
         return locker;
     }
