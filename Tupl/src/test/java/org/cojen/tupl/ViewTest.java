@@ -490,6 +490,45 @@ public class ViewTest {
         fastAssertArrayEquals(key(30), c.key());
     }
 
+    @Test
+    public void subReverse() throws Exception {
+        Index ix = fill();
+
+        View view = ix.viewReverse().viewGe(key(80)).viewLt(key(30));
+        Cursor c = view.newCursor(null);
+        int i = 80;
+        for (c.first(); c.key() != null; c.next()) {
+            fastAssertArrayEquals(key(i), c.key());
+            i -= 10;
+        }
+        assertEquals(30, i);
+
+        c = view.newCursor(null);
+        i = 40;
+        for (c.last(); c.key() != null; c.previous()) {
+            fastAssertArrayEquals(key(i), c.key());
+            i += 10;
+        }
+        assertEquals(90, i);
+
+        view = ix.viewGt(key(30)).viewLe(key(80)).viewReverse();
+        c = view.newCursor(null);
+        i = 80;
+        for (c.first(); c.key() != null; c.next()) {
+            fastAssertArrayEquals(key(i), c.key());
+            i -= 10;
+        }
+        assertEquals(30, i);
+
+        c = view.newCursor(null);
+        i = 40;
+        for (c.last(); c.key() != null; c.previous()) {
+            fastAssertArrayEquals(key(i), c.key());
+            i += 10;
+        }
+        assertEquals(90, i);
+    }
+
     private Index fill() throws Exception {
         Index ix = mDb.openIndex("views");
         for (int i=20; i<=90; i+=10) {
