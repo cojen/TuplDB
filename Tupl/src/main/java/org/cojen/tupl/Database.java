@@ -32,9 +32,11 @@ import java.lang.ref.ReferenceQueue;
 
 import java.math.BigInteger;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -175,6 +177,11 @@ public final class Database extends CauseCloseable {
     private final Map<byte[], TreeRef> mOpenTrees;
     private final LHashTable.Obj<TreeRef> mOpenTreesById;
     private final ReferenceQueue<Tree> mOpenTreesRefQueue;
+
+    // Strong references to all trees opened during recovery. Not critical, but
+    // it keeps the trees from being closed and re-opened automatically by
+    // garbage collection. Access to this collection is not thread-safe.
+    private List<Tree> mRecoveredTrees;
 
     private final PageAllocator mAllocator;
 
@@ -440,6 +447,9 @@ public final class Database extends CauseCloseable {
                     recoveryStart = System.nanoTime();
                 }
 
+                // Keep all the trees open during recovery.
+                mRecoveredTrees = new ArrayList<Tree>();
+
                 UndoLog masterUndoLog;
                 LHashTable.Obj<UndoLog> undoLogs;
                 {
@@ -523,6 +533,8 @@ public final class Database extends CauseCloseable {
                         file.delete();
                     }
                 }
+
+                mRecoveredTrees = null;
             }
 
             // Delete lingering fragmented values after undo logs have been
@@ -1260,6 +1272,11 @@ public final class Database extends CauseCloseable {
                     mOpenTreesById.insert(treeId).value = treeRef;
                 }
 
+                List<Tree> recovered = mRecoveredTrees;
+                if (recovered != null) {
+                    recovered.add(tree);
+                }
+
                 return tree;
             } catch (Throwable e) {
                 if (idKey != null) {
@@ -1285,8 +1302,9 @@ public final class Database extends CauseCloseable {
      * @return null if not found
      */
     private Tree quickFindIndex(Transaction txn, byte[] name) throws IOException {
+        TreeRef treeRef;
         synchronized (mOpenTrees) {
-            TreeRef treeRef = mOpenTrees.get(name);
+            treeRef = mOpenTrees.get(name);
             if (treeRef == null) {
                 return null;
             }
@@ -1295,9 +1313,13 @@ public final class Database extends CauseCloseable {
                 return tree;
             }
         }
-        // Ensure that all nodes referenced by cleared tree references are
-        // evicted before potentially replacing them.
-        cleanupUnreferencedTrees(txn);
+
+        // Ensure that all nodes of cleared tree reference are evicted before
+        // potentially replacing them. Weak references are cleared before they
+        // are enqueued, and so polling the queue does not guarantee node
+        // eviction. Process the tree directly.
+        cleanupUnreferencedTree(txn, treeRef);
+
         return null;
     }
 
@@ -1311,63 +1333,61 @@ public final class Database extends CauseCloseable {
         if (queue == null) {
             return;
         }
-
         try {
             while (true) {
                 Reference ref = queue.poll();
                 if (ref == null) {
                     break;
                 }
-
-                if (!(ref instanceof TreeRef)) {
-                    continue;
+                if (ref instanceof TreeRef) {
+                    cleanupUnreferencedTree(txn, (TreeRef) ref);
                 }
-                
-                TreeRef treeRef = (TreeRef) ref;
-
-                // Acquire lock to prevent tree from being reloaded too soon.
-
-                byte[] treeIdBytes = new byte[8];
-                writeLongBE(treeIdBytes, 0, treeRef.mId);
-
-                if (txn == null) {
-                    txn = newLockTransaction();
-                } else {
-                    txn.enter();
-                }
-
-                try {
-                    // Pass the transaction to acquire the lock.
-                    mRegistry.load(txn, treeIdBytes);
-
-                    synchronized (mOpenTrees) {
-                        LHashTable.ObjEntry<TreeRef> entry = mOpenTreesById.get(treeRef.mId);
-                        if (entry == null || entry.value != treeRef) {
-                            continue;
-                        }
-                    }
-
-                    Node root = treeRef.mRoot;
-                    root.acquireExclusive();
-                    root.forceEvictTree(this);
-                    root.releaseExclusive();
-
-                    synchronized (mOpenTrees) {
-                        mOpenTreesById.remove(treeRef.mId);
-                        mOpenTrees.remove(treeRef.mName);
-                    }
-                } finally {
-                    txn.exit();
-                }
-
-                // Move root node into usage list, allowing it to be re-used.
-                makeEvictableNow(treeRef.mRoot);
             }
         } catch (Exception e) {
             if (!mClosed) {
                 throw rethrow(e);
             }
         }
+    }
+
+    private void cleanupUnreferencedTree(Transaction txn, TreeRef ref) throws IOException {
+        // Acquire lock to prevent tree from being reloaded too soon.
+
+        byte[] treeIdBytes = new byte[8];
+        writeLongBE(treeIdBytes, 0, ref.mId);
+
+        if (txn == null) {
+            txn = newLockTransaction();
+        } else {
+            txn.enter();
+        }
+
+        try {
+            // Pass the transaction to acquire the lock.
+            mRegistry.load(txn, treeIdBytes);
+
+            synchronized (mOpenTrees) {
+                LHashTable.ObjEntry<TreeRef> entry = mOpenTreesById.get(ref.mId);
+                if (entry == null || entry.value != ref) {
+                    return;
+                }
+            }
+
+            Node root = ref.mRoot;
+            root.acquireExclusive();
+            root.forceEvictTree(this);
+            root.releaseExclusive();
+
+            synchronized (mOpenTrees) {
+                mOpenTreesById.remove(ref.mId);
+                mOpenTrees.remove(ref.mName);
+            }
+        } finally {
+            txn.exit();
+        }
+
+        // Move root node into usage list, allowing it to be re-used.
+        makeEvictableNow(ref.mRoot);
     }
 
     private static byte[] newKey(byte type, byte[] payload) {

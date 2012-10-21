@@ -38,24 +38,4 @@ page sizes to be effective. The best ratio needs to be determined, but I think
 size is less than 4096, then ratio should probably be swapped -- compressed
 page should 8 times larger than logical page size.
 
-Exception in thread "Thread-191" java.lang.ArrayIndexOutOfBoundsException: 17514
-        at org.cojen.tupl.Node.binarySearch(Node.java:929)
-        at org.cojen.tupl.TreeCursor.find(TreeCursor.java:1785)
-        at org.cojen.tupl.TreeCursor.doFindAndModify(TreeCursor.java:2361)
-        at org.cojen.tupl.TreeCursor.findAndModify(TreeCursor.java:2338)
-        at org.cojen.tupl.Tree.replace(Tree.java:224)
-        at org.cojen.tupl.Tree.delete(Tree.java:251)
-        at org.cojen.tupl.UndoLog.undo(UndoLog.java:643)
-        at org.cojen.tupl.UndoLog.rollback(UndoLog.java:461)
-        at org.cojen.tupl.UndoLog$1.visit(UndoLog.java:940)
-        at org.cojen.tupl.UndoLog$1.visit(UndoLog.java:935)
-        at org.cojen.tupl.LHashTable.traverse(LHashTable.java:168)
-        at org.cojen.tupl.LHashTable$Obj.traverse(LHashTable.java:29)
-        at org.cojen.tupl.UndoLog.processRemaining(UndoLog.java:935)
-        at org.cojen.tupl.Database.<init>(Database.java:506)
-        at org.cojen.tupl.Database.open(Database.java:209)
-        at org.cojen.tupl.TestUtils.reopenTempDatabase(TestUtils.java:91)
-        at org.cojen.tupl.RecoverTest.testRecover(RecoverTest.java:300)
-        at org.cojen.tupl.RecoverTest.largeUndo(RecoverTest.java:205)
-
 ---
