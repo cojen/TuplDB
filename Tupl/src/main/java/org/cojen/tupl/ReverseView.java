@@ -74,22 +74,22 @@ final class ReverseView implements View {
 
     @Override
     public View viewGe(byte[] key) {
-        return new ReverseView(mSource.viewGe(key));
-    }
-
-    @Override
-    public View viewGt(byte[] key) {
-        return new ReverseView(mSource.viewGt(key));
-    }
-
-    @Override
-    public View viewLe(byte[] key) {
         return new ReverseView(mSource.viewLe(key));
     }
 
     @Override
-    public View viewLt(byte[] key) {
+    public View viewGt(byte[] key) {
         return new ReverseView(mSource.viewLt(key));
+    }
+
+    @Override
+    public View viewLe(byte[] key) {
+        return new ReverseView(mSource.viewGe(key));
+    }
+
+    @Override
+    public View viewLt(byte[] key) {
+        return new ReverseView(mSource.viewGt(key));
     }
 
     @Override
