@@ -171,8 +171,11 @@ public final class Database extends CauseCloseable {
 
     // The root tree, which maps tree ids to other tree root node ids.
     private final Tree mRegistry;
+
     // Maps tree name keys to ids.
     private final Tree mRegistryKeyMap;
+
+    private final Latch mOpenTreesLatch;
     // Maps tree names to open trees.
     private final Map<byte[], TreeRef> mOpenTrees;
     private final LHashTable.Obj<TreeRef> mOpenTreesById;
@@ -393,6 +396,7 @@ public final class Database extends CauseCloseable {
 
             mRegistry = new Tree(this, Tree.REGISTRY_ID, null, null, loadRegistryRoot(header));
 
+            mOpenTreesLatch = new Latch();
             if (openMode == OPEN_TEMP) {
                 mOpenTrees = Collections.emptyMap();
                 mOpenTreesById = new LHashTable.Obj<TreeRef>(0);
@@ -588,11 +592,16 @@ public final class Database extends CauseCloseable {
         java.util.BitSet pages = mPageDb.tracePages();
         mRegistry.mRoot.tracePages(this, pages);
         mRegistryKeyMap.mRoot.tracePages(this, pages);
-        synchronized (mOpenTrees) {
+
+        mOpenTreesLatch.acquireShared();
+        try {
             for (Tree tree : mOpenTrees.values()) {
                 tree.mRoot.tracePages(this, pages);
             }
+        } finally {
+            mOpenTreesLatch.releaseShared();
         }
+
         System.out.println(pages);
         System.out.println("lost: " + pages.cardinality());
         System.out.println(mPageDb.stats());
@@ -652,7 +661,8 @@ public final class Database extends CauseCloseable {
         final Lock commitLock = sharedCommitLock();
         commitLock.lock();
         try {
-            synchronized (mOpenTrees) {
+            mOpenTreesLatch.acquireShared();
+            try {
                 LHashTable.ObjEntry<TreeRef> entry = mOpenTreesById.get(id);
                 if (entry != null) {
                     index = entry.value.get();
@@ -660,6 +670,8 @@ public final class Database extends CauseCloseable {
                         return index;
                     }
                 }
+            } finally {
+                mOpenTreesLatch.releaseShared();
             }
 
             byte[] idKey = new byte[9];
@@ -891,7 +903,8 @@ public final class Database extends CauseCloseable {
         mSharedCommitLock.lock();
         try {
             long cursorCount = 0;
-            synchronized (mOpenTrees) {
+            mOpenTreesLatch.acquireShared();
+            try {
                 stats.mOpenIndexes = mOpenTrees.size();
                 for (TreeRef treeRef : mOpenTrees.values()) {
                     Tree tree = treeRef.get();
@@ -899,6 +912,8 @@ public final class Database extends CauseCloseable {
                         cursorCount += tree.mRoot.countCursors(); 
                     }
                 }
+            } finally {
+                mOpenTreesLatch.releaseShared();
             }
 
             stats.mCursorCount = cursorCount;
@@ -1083,9 +1098,12 @@ public final class Database extends CauseCloseable {
         }
 
         if (mOpenTrees != null) {
-            synchronized (mOpenTrees) {
+            mOpenTreesLatch.acquireExclusive();
+            try {
                 mOpenTrees.clear();
                 mOpenTreesById.clear(0);
+            } finally {
+                mOpenTreesLatch.releaseExclusive();
             }
         }
 
@@ -1194,16 +1212,16 @@ public final class Database extends CauseCloseable {
     private Index openIndex(byte[] name, boolean create) throws IOException {
         checkClosed();
 
+        Tree tree = quickFindIndex(null, name);
+        if (tree != null) {
+            return tree;
+        }
+
         final Lock commitLock = sharedCommitLock();
         commitLock.lock();
         try {
             // Cleaup before opening more indexes.
             cleanupUnreferencedTrees(null);
-
-            Tree tree = quickFindIndex(null, name);
-            if (tree != null) {
-                return tree;
-            }
 
             byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, name);
             byte[] treeIdBytes = mRegistryKeyMap.load(null, nameKey);
@@ -1216,35 +1234,41 @@ public final class Database extends CauseCloseable {
                 treeId = readLongBE(treeIdBytes, 0);
             } else if (!create) {
                 return null;
-            } else synchronized (mOpenTrees) {
-                treeIdBytes = mRegistryKeyMap.load(null, nameKey);
-                if (treeIdBytes != null) {
-                    idKey = null;
-                    treeId = readLongBE(treeIdBytes, 0);
-                } else {
-                    treeIdBytes = new byte[8];
+            } else {
+                mOpenTreesLatch.acquireExclusive();
+                try {
+                    treeIdBytes = mRegistryKeyMap.load(null, nameKey);
+                    if (treeIdBytes != null) {
+                        idKey = null;
+                        treeId = readLongBE(treeIdBytes, 0);
+                    } else {
+                        treeIdBytes = new byte[8];
 
-                    try {
-                        do {
-                            treeId = Tree.randomId();
-                            writeLongBE(treeIdBytes, 0, treeId);
-                        } while (!mRegistry.insert(Transaction.BOGUS, treeIdBytes, EMPTY_BYTES));
+                        try {
+                            do {
+                                treeId = Tree.randomId();
+                                writeLongBE(treeIdBytes, 0, treeId);
+                            } while (!mRegistry.insert
+                                     (Transaction.BOGUS, treeIdBytes, EMPTY_BYTES));
 
-                        if (!mRegistryKeyMap.insert(null, nameKey, treeIdBytes)) {
-                            mRegistry.delete(Transaction.BOGUS, treeIdBytes);
-                            throw new DatabaseException("Unable to insert index name");
+                            if (!mRegistryKeyMap.insert(null, nameKey, treeIdBytes)) {
+                                mRegistry.delete(Transaction.BOGUS, treeIdBytes);
+                                throw new DatabaseException("Unable to insert index name");
+                            }
+
+                            idKey = newKey(KEY_TYPE_INDEX_ID, treeIdBytes);
+
+                            if (!mRegistryKeyMap.insert(null, idKey, name)) {
+                                mRegistryKeyMap.delete(null, nameKey);
+                                mRegistry.delete(Transaction.BOGUS, treeIdBytes);
+                                throw new DatabaseException("Unable to insert index id");
+                            }
+                        } catch (IOException e) {
+                            throw closeOnFailure(this, e);
                         }
-
-                        idKey = newKey(KEY_TYPE_INDEX_ID, treeIdBytes);
-
-                        if (!mRegistryKeyMap.insert(null, idKey, name)) {
-                            mRegistryKeyMap.delete(null, nameKey);
-                            mRegistry.delete(Transaction.BOGUS, treeIdBytes);
-                            throw new DatabaseException("Unable to insert index id");
-                        }
-                    } catch (IOException e) {
-                        throw closeOnFailure(this, e);
                     }
+                } finally {
+                    mOpenTreesLatch.releaseExclusive();
                 }
             }
 
@@ -1267,9 +1291,12 @@ public final class Database extends CauseCloseable {
 
                 TreeRef treeRef = new TreeRef(tree, mOpenTreesRefQueue);
 
-                synchronized (mOpenTrees) {
+                mOpenTreesLatch.acquireExclusive();
+                try {
                     mOpenTrees.put(name, treeRef);
                     mOpenTreesById.insert(treeId).value = treeRef;
+                } finally {
+                    mOpenTreesLatch.releaseExclusive();
                 }
 
                 List<Tree> recovered = mRecoveredTrees;
@@ -1303,7 +1330,8 @@ public final class Database extends CauseCloseable {
      */
     private Tree quickFindIndex(Transaction txn, byte[] name) throws IOException {
         TreeRef treeRef;
-        synchronized (mOpenTrees) {
+        mOpenTreesLatch.acquireShared();
+        try {
             treeRef = mOpenTrees.get(name);
             if (treeRef == null) {
                 return null;
@@ -1312,6 +1340,8 @@ public final class Database extends CauseCloseable {
             if (tree != null) {
                 return tree;
             }
+        } finally {
+            mOpenTreesLatch.releaseShared();
         }
 
         // Ensure that all nodes of cleared tree reference are evicted before
@@ -1366,11 +1396,14 @@ public final class Database extends CauseCloseable {
             // Pass the transaction to acquire the lock.
             mRegistry.load(txn, treeIdBytes);
 
-            synchronized (mOpenTrees) {
+            mOpenTreesLatch.acquireShared();
+            try {
                 LHashTable.ObjEntry<TreeRef> entry = mOpenTreesById.get(ref.mId);
                 if (entry == null || entry.value != ref) {
                     return;
                 }
+            } finally {
+                mOpenTreesLatch.releaseShared();
             }
 
             Node root = ref.mRoot;
@@ -1378,9 +1411,12 @@ public final class Database extends CauseCloseable {
             root.forceEvictTree(this);
             root.releaseExclusive();
 
-            synchronized (mOpenTrees) {
+            mOpenTreesLatch.acquireExclusive();
+            try {
                 mOpenTreesById.remove(ref.mId);
                 mOpenTrees.remove(ref.mName);
+            } finally {
+                mOpenTreesLatch.releaseExclusive();
             }
         } finally {
             txn.exit();
@@ -2365,12 +2401,15 @@ public final class Database extends CauseCloseable {
         if (trash != null) {
             return trash;
         }
-        synchronized (mOpenTrees) {
+        mOpenTreesLatch.acquireExclusive();
+        try {
             if ((trash = mFragmentedTrash) != null) {
                 return trash;
             }
             Tree tree = openInternalTree(Tree.FRAGMENTED_TRASH_ID, true);
             return mFragmentedTrash = new FragmentedTrash(tree);
+        } finally {
+            mOpenTreesLatch.releaseExclusive();
         }
     }
 
