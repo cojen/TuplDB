@@ -119,27 +119,18 @@ final class UndoLog {
     private long mActiveTxnId;
     private long mActiveIndexId;
 
-    /**
-     * Returns a new registered UndoLog.
-     */
-    static UndoLog newUndoLog(Database db, long txnId) {
-        UndoLog log = new UndoLog(db);
-        log.mActiveTxnId = db.register(log, txnId);
-        return log;
-    }
-
-    static UndoLog newMasterUndoLog(Database db) throws IOException {
-        return new UndoLog(db);
-    }
-
     static UndoLog recoverMasterUndoLog(Database db, long nodeId) throws IOException {
         UndoLog log = new UndoLog(db);
         (log.mNode = readUndoLogNode(db, nodeId)).releaseExclusive();
         return log;
     }
 
-    private UndoLog(Database db) {
+    UndoLog(Database db) {
         mDatabase = db;
+    }
+
+    void setInitialActiveTransactionId(long txnId) {
+        mActiveTxnId = txnId;
     }
 
     /**

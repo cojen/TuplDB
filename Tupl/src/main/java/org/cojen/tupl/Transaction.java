@@ -277,6 +277,7 @@ public final class Transaction extends Locker {
                 if ((mHasState & HAS_REDO) != 0) {
                     mDatabase.mRedoLog.txnCommitScope(mTxnId, parentScope.mTxnId);
                     mHasState &= ~HAS_REDO;
+                    parentScope.mHasState |= HAS_REDO;
                 }
 
                 super.promote();
@@ -695,12 +696,26 @@ public final class Transaction extends Locker {
     private UndoLog undoLog() throws IOException {
         UndoLog undo = mUndoLog;
         if (undo == null) {
-            undo = UndoLog.newUndoLog(mDatabase, mTxnId);
-            mTxnId = undo.activeTransactionId();
+            undo = new UndoLog(mDatabase);
+            long txnId = mTxnId;
+            if (txnId == 0) {
+                ParentScope parentScope = mParentScope;
+                if (parentScope != null && parentScope.mTxnId == 0) {
+                    assignTxnId(parentScope);
+                }
+                mTxnId = txnId = mDatabase.registerAndNextTransactionId(undo);
+            } else {
+                mDatabase.register(undo);
+            }
+            undo.setInitialActiveTransactionId(txnId);
             mUndoLog = undo;
         } else if (undo.activeTransactionId() == 0) {
             long txnId = mTxnId;
             if (txnId == 0) {
+                ParentScope parentScope = mParentScope;
+                if (parentScope != null && parentScope.mTxnId == 0) {
+                    assignTxnId(parentScope);
+                }
                 mTxnId = txnId = mDatabase.nextTransactionId();
             }
             undo.activeTransactionId(txnId);

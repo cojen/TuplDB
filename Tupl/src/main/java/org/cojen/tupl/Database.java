@@ -766,11 +766,26 @@ public final class Database extends CauseCloseable {
     /**
      * Caller must hold commit lock. This ensures that highest transaction id
      * is persisted correctly by checkpoint.
+     */
+    void register(UndoLog undo) {
+        synchronized (mTxnIdLock) {
+            UndoLog top = mTopUndoLog;
+            if (top != null) {
+                undo.mPrev = top;
+                top.mNext = undo;
+            }
+            mTopUndoLog = undo;
+            mUndoLogCount++;
+        }
+    }
+
+    /**
+     * Caller must hold commit lock. This ensures that highest transaction id
+     * is persisted correctly by checkpoint.
      *
-     * @param txnId pass zero to select a transaction id
      * @return non-zero transaction id
      */
-    long register(UndoLog undo, long txnId) {
+    long registerAndNextTransactionId(UndoLog undo) {
         synchronized (mTxnIdLock) {
             UndoLog top = mTopUndoLog;
             if (top != null) {
@@ -780,9 +795,8 @@ public final class Database extends CauseCloseable {
             mTopUndoLog = undo;
             mUndoLogCount++;
 
-            while (txnId == 0) {
-                txnId = ++mTxnId;
-            }
+            long txnId;
+            while ((txnId = ++mTxnId) == 0);
             return txnId;
         }
     }
@@ -2559,7 +2573,7 @@ public final class Database extends CauseCloseable {
                         masterUndoLog = null;
                         masterUndoLogId = 0;
                     } else {
-                        masterUndoLog = UndoLog.newMasterUndoLog(this);
+                        masterUndoLog = new UndoLog(this);
                         byte[] workspace = null;
                         for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
                             workspace = log.writeToMaster(masterUndoLog, workspace);
