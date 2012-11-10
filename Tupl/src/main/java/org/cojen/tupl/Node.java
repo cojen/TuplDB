@@ -241,7 +241,6 @@ final class Node extends Latch {
      *
      * @param key search key
      * @return copy of value or null if not found
-     * @throws SearchAborted if search must be redone
      */
     byte[] search(Tree tree, byte[] key) throws IOException {
         acquireShared();
@@ -259,7 +258,6 @@ final class Node extends Latch {
      * @param key search key
      * @param exclusiveHeld is true if exclusive latch is held on this node
      * @return copy of value or null if not found
-     * @throws SearchAborted if search must be redone
      */
     private static byte[] subSearch(final Tree tree, Node node, Latch parentLatch,
                                     final byte[] key, boolean exclusiveHeld)
@@ -334,7 +332,16 @@ final class Node extends Latch {
                 if (parentLatch != null) {
                     parentLatch.releaseShared();
                 }
-                throw SearchAborted.THE;
+                // Retry with a cursor, which is reliable, but slower.
+                TreeCursor cursor = new TreeCursor(tree, Transaction.BOGUS);
+                try {
+                    cursor.find(key);
+                    byte[] value = cursor.value();
+                    cursor.reset();
+                    return value;
+                } catch (Throwable e) {
+                    throw Utils.closeOnFailure(cursor, e);
+                }
             }
 
             exclusiveHeld = true;
@@ -373,18 +380,6 @@ final class Node extends Latch {
             // likely need to load its own child nodes to continue the
             // search. This eliminates the latch upgrade step.
             return subSearch(tree, childNode, null, key, true);
-        }
-    }
-
-    /**
-     * Thrown if child node might have been inadvertently evicted.
-     */
-    static final class SearchAborted extends DatabaseException {
-        static final SearchAborted THE = new SearchAborted();
-        public SearchAborted() {}
-        @Override
-        public Throwable fillInStackTrace() {
-            return this;
         }
     }
 
