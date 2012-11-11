@@ -1980,22 +1980,22 @@ final class Node extends Latch {
     }
 
     /**
-     * Copies all the entries from this node, inserts them into the tail of the
-     * given left node, and then deletes this node. Caller must ensure that
+     * Moves all the entries from the right node into the tail of the given
+     * left node, and then deletes the right node node. Caller must ensure that
      * left node has enough room, and that both nodes are latched exclusively.
-     * Caller must also hold commit lock. This node is always released as a
-     * side effect, but left node is never released by this method.
+     * Caller must also hold commit lock. The right node is always released as
+     * a side effect, but left node is never released by this method.
      */
-    void transferLeafToLeftAndDelete(Tree tree, Node leftNode)
+    static void moveLeafToLeftAndDelete(Tree tree, Node leftNode, Node rightNode)
         throws IOException
     {
-        tree.mDatabase.prepareToDelete(this);
+        tree.mDatabase.prepareToDelete(rightNode);
 
-        final byte[] rightPage = mPage;
-        final int searchVecEnd = mSearchVecEnd;
+        final byte[] rightPage = rightNode.mPage;
+        final int searchVecEnd = rightNode.mSearchVecEnd;
         final int leftEndPos = leftNode.highestLeafPos() + 2;
 
-        int searchVecStart = mSearchVecStart;
+        int searchVecStart = rightNode.mSearchVecStart;
         while (searchVecStart <= searchVecEnd) {
             int entryLoc = readUnsignedShortLE(rightPage, searchVecStart);
             int encodedLen = leafEntryLengthAtLoc(rightPage, entryLoc);
@@ -2006,8 +2006,8 @@ final class Node extends Latch {
             searchVecStart += 2;
         }
 
-        // All cursors in this node must be moved to left node.
-        for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
+        // All cursors in the right node must be moved to the left node.
+        for (TreeCursorFrame frame = rightNode.mLastCursorFrame; frame != null; ) {
             // Capture previous frame from linked list before changing the links.
             TreeCursorFrame prev = frame.mPrevCousin;
             int framePos = frame.mNodePos;
@@ -2016,25 +2016,25 @@ final class Node extends Latch {
             frame = prev;
         }
 
-        tree.mDatabase.deleteNode(this);
+        tree.mDatabase.deleteNode(rightNode);
     }
 
     /**
-     * Copies all the entries from this node, inserts them into the tail of the
-     * given left node, and then deletes this node. Caller must ensure that
+     * Moves all the entries from the right node into the tail of the given
+     * left node, and then deletes the right node node. Caller must ensure that
      * left node has enough room, and that both nodes are latched exclusively.
-     * Caller must also hold commit lock. This node is always released as a
-     * side effect, but left node is never released by this method.
+     * Caller must also hold commit lock. The right node is always released as
+     * a side effect, but left node is never released by this method.
      *
      * @param parentPage source of entry to merge from parent
      * @param parentLoc location of parent entry
      * @param parentLen length of parent entry
      */
-    void transferInternalToLeftAndDelete(Tree tree, Node leftNode,
-                                         byte[] parentPage, int parentLoc, int parentLen)
+    static void moveInternalToLeftAndDelete(Tree tree, Node leftNode, Node rightNode,
+                                            byte[] parentPage, int parentLoc, int parentLen)
         throws IOException
     {
-        tree.mDatabase.prepareToDelete(this);
+        tree.mDatabase.prepareToDelete(rightNode);
 
         // Create space to absorb parent key.
         int leftEndPos = leftNode.highestInternalPos();
@@ -2042,17 +2042,17 @@ final class Node extends Latch {
             (tree, leftEndPos, parentLen, (leftEndPos += 2) << 2, null);
 
         // Copy child id associated with parent key.
-        final byte[] rightPage = mPage;
-        int rightChildIdsLoc = mSearchVecEnd + 2;
+        final byte[] rightPage = rightNode.mPage;
+        int rightChildIdsLoc = rightNode.mSearchVecEnd + 2;
         System.arraycopy(rightPage, rightChildIdsLoc, result.mPage, result.mNewChildLoc, 8);
         rightChildIdsLoc += 8;
 
         // Write parent key.
         System.arraycopy(parentPage, parentLoc, result.mPage, result.mEntryLoc, parentLen);
 
-        final int searchVecEnd = mSearchVecEnd;
+        final int searchVecEnd = rightNode.mSearchVecEnd;
 
-        int searchVecStart = mSearchVecStart;
+        int searchVecStart = rightNode.mSearchVecStart;
         while (searchVecStart <= searchVecEnd) {
             int entryLoc = readUnsignedShortLE(rightPage, searchVecStart);
             int encodedLen = internalEntryLengthAtLoc(rightPage, entryLoc);
@@ -2073,13 +2073,14 @@ final class Node extends Latch {
 
         // TODO: recycle child node arrays
         int leftLen = leftNode.mChildNodes.length;
-        Node[] newChildNodes = new Node[leftLen + mChildNodes.length];
+        Node[] newChildNodes = new Node[leftLen + rightNode.mChildNodes.length];
         System.arraycopy(leftNode.mChildNodes, 0, newChildNodes, 0, leftLen);
-        System.arraycopy(mChildNodes, 0, newChildNodes, leftLen, mChildNodes.length);
+        System.arraycopy(rightNode.mChildNodes, 0, newChildNodes, leftLen,
+                         rightNode.mChildNodes.length);
         leftNode.mChildNodes = newChildNodes;
 
-        // All cursors in this node must be moved to left node.
-        for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
+        // All cursors in the right node must be moved to the left node.
+        for (TreeCursorFrame frame = rightNode.mLastCursorFrame; frame != null; ) {
             // Capture previous frame from linked list before changing the links.
             TreeCursorFrame prev = frame.mPrevCousin;
             int framePos = frame.mNodePos;
@@ -2088,7 +2089,7 @@ final class Node extends Latch {
             frame = prev;
         }
 
-        tree.mDatabase.deleteNode(this);
+        tree.mDatabase.deleteNode(rightNode);
     }
 
     /**
