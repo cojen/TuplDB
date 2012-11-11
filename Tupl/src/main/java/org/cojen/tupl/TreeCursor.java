@@ -3203,7 +3203,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             // Migrate the entire contents of the right node into the left
             // node, and then delete the right node.
             try {
-                rightNode.transferLeafToLeftAndDelete(mTree, leftNode);
+                Node.moveLeafToLeftAndDelete(mTree, leftNode, rightNode);
             } catch (Throwable e) {
                 leftNode.releaseExclusive();
                 parentNode.releaseExclusive();
@@ -3438,8 +3438,8 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             // Migrate the entire contents of the right node into the left
             // node, and then delete the right node.
             try {
-                rightNode.transferInternalToLeftAndDelete
-                    (mTree, leftNode, parentPage, parentEntryLoc, parentEntryLen);
+                Node.moveInternalToLeftAndDelete
+                    (mTree, leftNode, rightNode, parentPage, parentEntryLoc, parentEntryLen);
             } catch (Throwable e) {
                 leftNode.releaseExclusive();
                 parentNode.releaseExclusive();
