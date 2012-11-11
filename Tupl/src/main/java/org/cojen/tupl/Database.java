@@ -2427,7 +2427,7 @@ public final class Database extends CauseCloseable {
         }
     }
 
-    byte[] removeSpareBuffer() throws InterruptedIOException {
+    byte[] removeSpareBuffer() {
         return mSpareBufferPool.remove();
     }
 

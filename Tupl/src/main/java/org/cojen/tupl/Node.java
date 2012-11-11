@@ -16,7 +16,6 @@
 
 package org.cojen.tupl;
 
-import java.io.InterruptedIOException;
 import java.io.IOException;
 
 import static org.cojen.tupl.Utils.*;
@@ -1397,9 +1396,7 @@ final class Node extends Latch {
      * vector, or negative if leaf must be split. Complement of negative value
      * is maximum space available.
      */
-    private int createLeafEntry(Tree tree, int pos, final int encodedLen)
-        throws InterruptedIOException
-    {
+    private int createLeafEntry(Tree tree, int pos, final int encodedLen) {
         int searchVecStart = mSearchVecStart;
         int searchVecEnd = mSearchVecEnd;
 
@@ -2306,9 +2303,7 @@ final class Node extends Latch {
      * @param pos normalized search vector position of entry to insert/update
      * @return location for newly allocated entry, already pointed to by search vector
      */
-    private int compactLeaf(Tree tree, int encodedLen, int pos, boolean forInsert)
-        throws InterruptedIOException
-    {
+    private int compactLeaf(Tree tree, int encodedLen, int pos, boolean forInsert) {
         byte[] page = mPage;
 
         int searchVecLoc = mSearchVecStart;
@@ -2956,9 +2951,7 @@ final class Node extends Latch {
      * @param keyPos normalized search vector position of key to insert
      * @param childPos normalized search vector position of child node id to insert
      */
-    private InResult compactInternal(Tree tree, int encodedLen, int keyPos, int childPos)
-        throws InterruptedIOException
-    {
+    private InResult compactInternal(Tree tree, int encodedLen, int keyPos, int childPos) {
         byte[] page = mPage;
 
         int searchVecLoc = mSearchVecStart;

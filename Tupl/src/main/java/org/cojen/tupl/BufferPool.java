@@ -16,8 +16,6 @@
 
 package org.cojen.tupl;
 
-import java.io.InterruptedIOException;
-
 /**
  * Pool of spare page buffers not currently in use by nodes.
  *
@@ -39,16 +37,16 @@ final class BufferPool {
     /**
      * Remove a buffer from the pool, waiting for one to become available if necessary.
      */
-    synchronized byte[] remove() throws InterruptedIOException {
-        try {
-            int pos;
-            while ((pos = mPos) == 0) {
+    synchronized byte[] remove() {
+        int pos;
+        while ((pos = mPos) == 0) {
+            try {
                 wait();
+            } catch (InterruptedException e) {
+                Thread.interrupted();
             }
-            return mPool[mPos = pos - 1];
-        } catch (InterruptedException e) {
-            throw new InterruptedIOException();
         }
+        return mPool[mPos = pos - 1];
     }
 
     /**

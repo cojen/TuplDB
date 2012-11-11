@@ -1999,7 +1999,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     @Override
     public LockResult load() throws IOException {
         // This will always acquire a lock if required to. A try-lock pattern
-        // can skip the lock acquisition is certain cases, but the optimization
+        // can skip the lock acquisition in certain cases, but the optimization
         // doesn't seem worth the trouble.
         return doLoad(mTxn);
     }
@@ -3077,8 +3077,6 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             return;
         }
 
-        // FIXME: release latches if any exception is thrown
-
         Node parentNode = parentFrame.acquireExclusive();
 
         Node leftNode, rightNode;
@@ -3089,10 +3087,6 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             }
 
             if (parentNode.numKeys() <= 0) {
-                if (parentNode.mId != Node.STUB_ID) {
-                    // TODO: This shouldn't be a problem when internal nodes can be rebalanced.
-                    //System.out.println("tiny internal node: " + (parentNode == mTree.mRoot));
-                }
                 parentNode.releaseExclusive();
                 return;
             }
@@ -3105,8 +3099,14 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                 leftNode = latchChild(parentNode, pos - 2, false);
                 if (leftNode.mSplit != null) {
                     // Finish sibling split.
-                    parentNode.insertSplitChildRef(mTree, pos - 2, leftNode);
-                    continue;
+                    try {
+                        parentNode.insertSplitChildRef(mTree, pos - 2, leftNode);
+                        continue;
+                    } catch (Throwable e) {
+                        leftNode.releaseExclusive();
+                        parentNode.releaseExclusive();
+                        throw Utils.rethrow(e);
+                    }
                 }
             }
 
@@ -3141,8 +3141,14 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                         leftNode.releaseExclusive();
                     }
                     node.releaseExclusive();
-                    parentNode.insertSplitChildRef(mTree, pos + 2, rightNode);
-                    continue;
+                    try {
+                        parentNode.insertSplitChildRef(mTree, pos + 2, rightNode);
+                        continue;
+                    } catch (Throwable e) {
+                        rightNode.releaseExclusive();
+                        parentNode.releaseExclusive();
+                        throw Utils.rethrow(e);
+                    }
                 }
             }
 
@@ -3178,8 +3184,15 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         }
 
         // Left node must always be marked dirty. Parent is already expected to be dirty.
-        if (mTree.markDirty(leftNode)) {
-            parentNode.updateChildRefId(leftPos, leftNode.mId);
+        try {
+            if (mTree.markDirty(leftNode)) {
+                parentNode.updateChildRefId(leftPos, leftNode.mId);
+            }
+        } catch (Throwable e) {
+            leftNode.releaseExclusive();
+            rightNode.releaseExclusive();
+            parentNode.releaseExclusive();
+            throw Utils.rethrow(e);
         }
 
         // Determine if both nodes can fit in one node. If so, migrate and
@@ -3189,12 +3202,19 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         if (remaining >= 0) {
             // Migrate the entire contents of the right node into the left
             // node, and then delete the right node.
-            rightNode.transferLeafToLeftAndDelete(mTree, leftNode);
+            try {
+                rightNode.transferLeafToLeftAndDelete(mTree, leftNode);
+            } catch (Throwable e) {
+                leftNode.releaseExclusive();
+                parentNode.releaseExclusive();
+                throw Utils.rethrow(e);
+            }
             rightNode = null;
             parentNode.deleteChildRef(leftPos + 2);
-        } else if (false) { // TODO: testing
+        } /*else { // TODO: testing
             // Rebalance nodes, but don't delete anything. Right node must be dirtied too.
 
+            // TODO: IOException; release latches
             if (mTree.markDirty(rightNode)) {
                 parentNode.updateChildRefId(leftPos + 2, rightNode.mId);
             }
@@ -3210,7 +3230,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             /*
             System.out.println("left avail: " + leftAvail + ", right avail: " + rightAvail +
                                ", left pos: " + leftPos + ", mode: " + migrateMode);
-            */
+            * /
 
             if (leftNode == node) {
                 // Rebalance towards left node, which is smaller.
@@ -3219,7 +3239,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                 // Rebalance towards right node, which is smaller.
                 // TODO
             }
-        }
+            }*/
 
         mergeInternal(parentFrame, parentNode, leftNode, rightNode);
     }
@@ -3244,7 +3264,16 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                 // been deleted), another thread is prevented from splitting
                 // the lone child. The lone child will become the new root.
                 // TODO: Investigate if this creates deadlocks.
-                node.rootDelete(mTree);
+                try {
+                    node.rootDelete(mTree);
+                } catch (Throwable e) {
+                    if (rightChildNode != null) {
+                        rightChildNode.releaseExclusive();
+                    }
+                    leftChildNode.releaseExclusive();
+                    node.releaseExclusive();
+                    throw Utils.rethrow(e);
+                }
             }
 
             if (rightChildNode != null) {
@@ -3284,10 +3313,6 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             }
 
             if (parentNode.numKeys() <= 0) {
-                if (parentNode.mId != Node.STUB_ID) {
-                    // TODO: This shouldn't be a problem when internal nodes can be rebalanced.
-                    //System.out.println("tiny internal node (2): " + (parentNode == mTree.mRoot));
-                }
                 parentNode.releaseExclusive();
                 return;
             }
@@ -3300,8 +3325,14 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                 leftNode = latchChild(parentNode, pos - 2, false);
                 if (leftNode.mSplit != null) {
                     // Finish sibling split.
-                    parentNode.insertSplitChildRef(mTree, pos - 2, leftNode);
-                    continue;
+                    try {
+                        parentNode.insertSplitChildRef(mTree, pos - 2, leftNode);
+                        continue;
+                    } catch (Throwable e) {
+                        leftNode.releaseExclusive();
+                        parentNode.releaseExclusive();
+                        throw Utils.rethrow(e);
+                    }
                 }
             }
 
@@ -3320,15 +3351,30 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             if (pos >= parentNode.highestInternalPos()) {
                 rightNode = null;
             } else {
-                rightNode = latchChild(parentNode, pos + 2, false);
+                try {
+                    rightNode = latchChild(parentNode, pos + 2, false);
+                } catch (Throwable e) {
+                    if (leftNode != null) {
+                        leftNode.releaseExclusive();
+                    }
+                    node.releaseExclusive();
+                    throw Utils.rethrow(e);
+                }
+
                 if (rightNode.mSplit != null) {
                     // Finish sibling split.
                     if (leftNode != null) {
                         leftNode.releaseExclusive();
                     }
                     node.releaseExclusive();
-                    parentNode.insertSplitChildRef(mTree, pos + 2, rightNode);
-                    continue;
+                    try {
+                        parentNode.insertSplitChildRef(mTree, pos + 2, rightNode);
+                        continue;
+                    } catch (Throwable e) {
+                        rightNode.releaseExclusive();
+                        parentNode.releaseExclusive();
+                        throw Utils.rethrow(e);
+                    }
                 }
             }
 
@@ -3368,8 +3414,15 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         }
 
         // Left node must always be marked dirty. Parent is already expected to be dirty.
-        if (mTree.markDirty(leftNode)) {
-            parentNode.updateChildRefId(leftPos, leftNode.mId);
+        try {
+            if (mTree.markDirty(leftNode)) {
+                parentNode.updateChildRefId(leftPos, leftNode.mId);
+            }
+        } catch (Throwable e) {
+            leftNode.releaseExclusive();
+            rightNode.releaseExclusive();
+            parentNode.releaseExclusive();
+            throw Utils.rethrow(e);
         }
 
         // Determine if both nodes plus parent key can fit in one node. If so,
@@ -3384,13 +3437,20 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         if (remaining >= 0) {
             // Migrate the entire contents of the right node into the left
             // node, and then delete the right node.
-            rightNode.transferInternalToLeftAndDelete
-                (mTree, leftNode, parentPage, parentEntryLoc, parentEntryLen);
+            try {
+                rightNode.transferInternalToLeftAndDelete
+                    (mTree, leftNode, parentPage, parentEntryLoc, parentEntryLen);
+            } catch (Throwable e) {
+                leftNode.releaseExclusive();
+                parentNode.releaseExclusive();
+                throw Utils.rethrow(e);
+            }
             rightNode = null;
             parentNode.deleteChildRef(leftPos + 2);
-        } else if (false) { // TODO: testing
+        } /*else { // TODO: testing
             // Rebalance nodes, but don't delete anything. Right node must be dirtied too.
 
+            // TODO: IOException; release latches
             if (mTree.markDirty(rightNode)) {
                 parentNode.updateChildRefId(leftPos + 2, rightNode.mId);
             }
@@ -3406,7 +3466,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             /*
             System.out.println("left avail: " + leftAvail + ", right avail: " + rightAvail +
                                ", left pos: " + leftPos + ", mode: " + migrateMode);
-            */
+            * /
 
             if (leftNode == node) {
                 // Rebalance towards left node, which is smaller.
@@ -3415,7 +3475,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                 // Rebalance towards right node, which is smaller.
                 // TODO
             }
-        }
+            }*/
 
         // Tail call. I could just loop here, but this is simpler.
         mergeInternal(parentFrame, parentNode, leftNode, rightNode);
@@ -3477,8 +3537,13 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                 parentNode.releaseExclusive();
                 return node;
             }
-            // FIXME: IOException; release latch
-            parentNode.insertSplitChildRef(tree, parentFrame.mNodePos, node);
+            try {
+                parentNode.insertSplitChildRef(tree, parentFrame.mNodePos, node);
+            } catch (Throwable e) {
+                node.releaseExclusive();
+                parentNode.releaseExclusive();
+                throw Utils.rethrow(e);
+            }
         }
     }
 
