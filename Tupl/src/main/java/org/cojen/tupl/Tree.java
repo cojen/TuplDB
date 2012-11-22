@@ -422,6 +422,36 @@ final class Tree implements Index {
         return new ReverseView(this);
     }
 
+    @Override
+    public void close() throws IOException {
+        Node root = mRoot;
+        root.acquireExclusive();
+
+        if (root.mPage == Utils.EMPTY_BYTES) {
+            // Already closed.
+            root.releaseExclusive();
+            return;
+        }
+
+        if (root.mLastCursorFrame != null) {
+            root.releaseExclusive();
+            throw new IllegalStateException("Cannot close index which has active cursors");
+        }
+
+        root.forceEvictTree(mDatabase);
+
+        // Root node reference cannot be cleared, so instead make it
+        // non-functional. Move the page reference into a new evictable Node
+        // object, allowing it to be recycled.
+
+        try {
+            mDatabase.makeEvictable(root.closeRoot());
+            mDatabase.treeClosed(this);
+        } finally {
+            root.releaseExclusive();
+        }
+    }
+
     void check(Transaction txn) throws IllegalArgumentException {
         if (txn != null) {
             Database txnDb = txn.mDatabase;

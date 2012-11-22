@@ -43,6 +43,7 @@ public class TestAll {
             UtilsTest.class,
             SmallCacheTest.class,
             ViewTest.class,
+            CloseTest.class,
         };
 
         String[] names = new String[classes.length];
