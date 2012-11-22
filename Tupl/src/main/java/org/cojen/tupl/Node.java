@@ -218,11 +218,43 @@ final class Node extends Latch {
         mPage = new byte[pageSize];
     }
 
+    private Node(byte[] page) {
+        mPage = page;
+    }
+
     void asEmptyRoot() {
         mId = 0;
         mCachedState = CACHED_CLEAN;
         mType = TYPE_TN_LEAF;
         clearEntries();
+    }
+
+    /**
+     * Close the root node when closing a tree. Returns a new node which allows
+     * the page to be recycled.
+     */
+    Node closeRoot() {
+        // Allocate node first, in case an OutOfMemoryError is thrown.
+        Node newNode = new Node(mPage);
+
+        // Prevent node from being marked dirty.
+        mId = STUB_ID;
+        mCachedState = CACHED_CLEAN;
+        mType = TYPE_TN_LEAF;
+        mPage = EMPTY_BYTES;
+        mGarbage = 0;
+
+        // Clear entries with the lowest positive values for an empty node.
+        // Binary search must return ~0 and availableBytes must return 0.
+        mLeftSegTail = 2;
+        mRightSegTail = 1;
+        mSearchVecStart = 2;
+        mSearchVecEnd = 0;
+
+        // TODO: child node array should be recycled
+        mChildNodes = null;
+
+        return newNode;
     }
 
     private void clearEntries() {
@@ -2386,6 +2418,11 @@ final class Node extends Latch {
         // fragmentation to ensure that split is successful.
 
         byte[] page = mPage;
+
+        if (page == EMPTY_BYTES) {
+            // Node is a closed tree root.
+            throw new ClosedIndexException();
+        }
 
         Node newNode = tree.mDatabase.allocUnevictableNode();
         newNode.mType = TYPE_TN_LEAF;

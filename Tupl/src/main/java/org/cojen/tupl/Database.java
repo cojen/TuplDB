@@ -1156,6 +1156,20 @@ public final class Database extends CauseCloseable {
         }
     }
 
+    void treeClosed(Tree tree) {
+        mOpenTreesLatch.acquireExclusive();
+        try {
+            TreeRef ref = mOpenTrees.get(tree.mName);
+            if (ref != null && ref.get() == tree) {
+                ref.clear();
+                mOpenTrees.remove(tree.mName);
+                mOpenTreesById.remove(tree.mId);
+            }
+        } finally {
+            mOpenTreesLatch.releaseExclusive();
+        }
+    }
+
     /**
      * @param rootId pass zero to create
      * @return unlatched and unevictable root node
