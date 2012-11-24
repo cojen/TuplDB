@@ -54,7 +54,7 @@ final class PageManager {
     private long mTotalPageCount;
 
     private final PageQueue mRegularFreeList;
-    //private final PageQueue mRecycleFreeList;
+    private final PageQueue mRecycleFreeList;
 
     /**
      * Create a new PageManager.
@@ -85,13 +85,13 @@ final class PageManager {
         // Lock must be reentrant and unfair. See notes in PageQueue.
         mRemoveLock = new ReentrantLock(false);
         mRegularFreeList = new PageQueue(this);
-        //mRecycleFreeList = new PageQueue(this);
+        mRecycleFreeList = new PageQueue(this);
 
         if (!restored) {
             // Pages 0 and 1 are reserved.
             mTotalPageCount = 2;
             mRegularFreeList.init();
-            //mRecycleFreeList.init();
+            mRecycleFreeList.init();
         } else {
             mTotalPageCount = readTotalPageCount(header, offset + I_TOTAL_PAGE_COUNT);
 
@@ -117,7 +117,7 @@ final class PageManager {
             fullLock();
             try {
                 mRegularFreeList.init(header, offset + I_REGULAR_QUEUE);
-                //mRecycleFreeList.init(header, offset + I_RECYCLE_QUEUE);
+                mRecycleFreeList.init(header, offset + I_RECYCLE_QUEUE);
             } finally {
                 fullUnlock();
             }
@@ -143,9 +143,18 @@ final class PageManager {
      * @return non-zero page id
      */
     public long allocPage() throws IOException {
+        // Remove recently recycled pages first, reducing page writes caused by queue drains.
+        long pageId = mRecycleFreeList.tryUnappend();
+        if (pageId != 0) {
+            return pageId;
+        }
         final Lock lock = mRemoveLock;
         lock.lock();
-        long pageId = mRegularFreeList.tryRemove(lock);
+        pageId = mRecycleFreeList.tryRemove(lock, true);
+        if (pageId != 0) {
+            return pageId;
+        }
+        pageId = mRegularFreeList.tryRemove(lock, false);
         if (pageId != 0) {
             return pageId;
         }
@@ -154,22 +163,6 @@ final class PageManager {
         } finally {
             lock.unlock();
         }
-    }
-
-    /**
-     * Tries to allocates a page from the free list, returning zero if
-     * empty. No page allocations are permanent until after commit is called.
-     *
-     * @return page id; zero if free list is empty
-     */
-    public long tryAllocPage() throws IOException {
-        final Lock lock = mRemoveLock;
-        lock.lock();
-        long pageId = mRegularFreeList.tryRemove(lock);
-        if (pageId == 0) {
-            lock.unlock();
-        }
-        return pageId;
     }
 
     public long allocPageCount() {
@@ -198,10 +191,7 @@ final class PageManager {
      * @throws IllegalArgumentException if id is less than or equal to one
      */
     public void recyclePage(long id) throws IOException {
-        // TODO: Recycling doesn't work correctly with commits. Should
-        // recycling be handled at this layer anyhow?
-        deletePage(id);
-        //mRecycleFreeList.append(id);
+        mRecycleFreeList.append(id);
     }
 
     /**
@@ -243,11 +233,16 @@ final class PageManager {
     public void commitStart(byte[] header, int offset) throws IOException {
         fullLock();
         try {
-            mRegularFreeList.commitStart(header, offset + I_REGULAR_QUEUE);
-            //mRecycleFreeList.commitStart(header, offset + I_RECYCLE_QUEUE);
-            // Write total after committing free list, to account for
-            // additional pages it needed to allocate for draining nodes.
+            // Pre-commit all first, draining the append heaps.
+            mRegularFreeList.preCommit();
+            mRecycleFreeList.preCommit();
+
+            // Total page count is written after append heaps have been
+            // drained, because additional pages might have been allocated.
             Utils.writeLongLE(header, offset + I_TOTAL_PAGE_COUNT, mTotalPageCount);
+
+            mRegularFreeList.commitStart(header, offset + I_REGULAR_QUEUE);
+            mRecycleFreeList.commitStart(header, offset + I_RECYCLE_QUEUE);
         } finally {
             fullUnlock();
         }
@@ -263,7 +258,7 @@ final class PageManager {
         mRemoveLock.lock();
         try {
             mRegularFreeList.commitEnd(header, offset + I_REGULAR_QUEUE);
-            //mRecycleFreeList.commitEnd(header, offset + I_RECYCLE_QUEUE);
+            mRecycleFreeList.commitEnd(header, offset + I_RECYCLE_QUEUE);
         } finally {
             mRemoveLock.unlock();
         }
@@ -274,13 +269,13 @@ final class PageManager {
         // matches the lock order used by the deletePage method, which might
         // call allocPage, which in turn acquires remove lock.
         mRegularFreeList.appendLock().lock();
-        //mRecycleFreeList.appendLock().lock();
+        mRecycleFreeList.appendLock().lock();
         mRemoveLock.lock();
     }
 
     private void fullUnlock() {
         mRemoveLock.unlock();
-        //mRecycleFreeList.appendLock().unlock();
+        mRecycleFreeList.appendLock().unlock();
         mRegularFreeList.appendLock().unlock();
     }
 
@@ -289,7 +284,7 @@ final class PageManager {
         try {
             stats.totalPages += mTotalPageCount;
             mRegularFreeList.addTo(stats);
-            //mRecycleFreeList.addTo(stats);
+            mRecycleFreeList.addTo(stats);
         } finally {
             mRemoveLock.unlock();
         }
@@ -315,7 +310,7 @@ final class PageManager {
      */
     int traceFreePages(BitSet pages) throws IOException {
         int count = mRegularFreeList.traceRemovablePages(pages);
-        //count += mRecycleFreeList.traceRemovablePages(pages);
+        count += mRecycleFreeList.traceRemovablePages(pages);
         return count;
     }
 

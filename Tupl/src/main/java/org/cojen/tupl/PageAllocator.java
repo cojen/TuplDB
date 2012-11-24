@@ -81,8 +81,7 @@ final class PageAllocator {
     }
 
     void recyclePage(long id) throws IOException {
-        // TODO: Implement proper page recycling.
-        mSource.deletePage(id);
+        mSource.recyclePage(id);
     }
 
     /**

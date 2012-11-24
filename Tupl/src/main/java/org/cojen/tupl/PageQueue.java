@@ -96,7 +96,7 @@ final class PageQueue implements IntegerRef {
     private final ReentrantLock mAppendLock;
     private final IdHeap mAppendHeap;
     private final byte[] mAppendTail;
-    private long mAppendTailId;
+    private volatile long mAppendTailId;
     private long mAppendPageCount;
     private long mAppendNodeCount;
     private boolean mDrainInProgress;
@@ -163,9 +163,10 @@ final class PageQueue implements IntegerRef {
      * remove lock, which might be released by this method.
      *
      * @param lock lock to be released by this method, unless return value is 0
+     * @param aggressive pass true if most appended pages are safe to remove
      * @return 0 if queue is empty or if remaining pages are off limits
      */
-    long tryRemove(Lock lock) throws IOException {
+    long tryRemove(Lock lock, boolean aggressive) throws IOException {
         if (mRemoveHeadId == 0) {
             return 0;
         }
@@ -198,7 +199,7 @@ final class PageQueue implements IntegerRef {
             // Move to the next node in the list.
             long nextId = readLongBE(head, I_NEXT_NODE_ID);
 
-            if (nextId == mAppendHeadId) {
+            if (nextId == (aggressive ? mAppendTailId : mAppendHeadId)) {
                 // Cannot remove from the append list. Those pages are off limits.
                 mRemoveHeadId = 0;
                 mRemoveHeadOffset = 0;
@@ -274,16 +275,21 @@ final class PageQueue implements IntegerRef {
      *
      * @return 0 if none available
      */
-    /*
     long tryUnappend() {
         mAppendLock.lock();
         try {
-            return mAppendHeap.tryRemove();
+            if (mDrainInProgress) {
+                return 0;
+            }
+            long id = mAppendHeap.tryRemove();
+            if (id != 0) {
+                mAppendPageCount--;
+            }
+            return id;
         } finally {
             mAppendLock.unlock();
         }
     }
-    */
 
     // Caller must hold mAppendLock.
     private void drainAppendHeap(IdHeap appendHeap) throws IOException {
@@ -324,14 +330,18 @@ final class PageQueue implements IntegerRef {
     /**
      * Caller must hold append and remove locks.
      */
-    void commitStart(byte[] header, int offset) throws IOException {
+    void preCommit() throws IOException {
         final IdHeap appendHeap = mAppendHeap;
-
         while (appendHeap.size() > 0) {
             // A new mAppendTailId is assigned as a side-effect.
             drainAppendHeap(appendHeap);
         }
+    }
 
+    /**
+     * Caller must hold append and remove locks and have called preCommit.
+     */
+    void commitStart(byte[] header, int offset) {
         writeLongLE(header, offset + I_REMOVE_PAGE_COUNT, mRemovePageCount + mAppendPageCount);
         writeLongLE(header, offset + I_REMOVE_NODE_COUNT, mRemoveNodeCount + mAppendNodeCount);
 
