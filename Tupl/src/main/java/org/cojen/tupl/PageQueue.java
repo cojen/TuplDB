@@ -274,6 +274,7 @@ final class PageQueue implements IntegerRef {
      *
      * @return 0 if none available
      */
+    /*
     long tryUnappend() {
         mAppendLock.lock();
         try {
@@ -282,6 +283,7 @@ final class PageQueue implements IntegerRef {
             mAppendLock.unlock();
         }
     }
+    */
 
     // Caller must hold mAppendLock.
     private void drainAppendHeap(IdHeap appendHeap) throws IOException {
