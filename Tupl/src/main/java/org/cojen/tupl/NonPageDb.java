@@ -89,11 +89,6 @@ class NonPageDb extends PageDb {
     }
 
     @Override
-    public long tryAllocPage() throws IOException {
-        return 0;
-    }
-
-    @Override
     public long allocPageCount() {
         return 0;
     }
@@ -110,6 +105,11 @@ class NonPageDb extends PageDb {
 
     @Override
     public void deletePage(long id) throws IOException {
+        // Do nothing.
+    }
+
+    @Override
+    public void recyclePage(long id) throws IOException {
         // Do nothing.
     }
 

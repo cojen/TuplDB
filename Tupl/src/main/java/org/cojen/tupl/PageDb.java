@@ -111,14 +111,6 @@ abstract class PageDb extends CauseCloseable {
     public abstract long allocPage() throws IOException;
 
     /**
-     * Tries to allocates a page to be written to, but without ever creating a
-     * new page.
-     *
-     * @return page id; never one; zero if no pages are available
-     */
-    public abstract long tryAllocPage() throws IOException;
-
-    /**
      * Returns the amount of recycled pages available for allocation.
      */
     public abstract long allocPageCount();
@@ -150,6 +142,11 @@ abstract class PageDb extends CauseCloseable {
      * must ensure that a page is deleted at most once between commits.
      */
     public abstract void deletePage(long id) throws IOException;
+
+    /**
+     * Recycles a page for immediate re-use.
+     */
+    public abstract void recyclePage(long id) throws IOException;
 
     /**
      * Allocates pages for immediate use. Even if requested page count is zero,

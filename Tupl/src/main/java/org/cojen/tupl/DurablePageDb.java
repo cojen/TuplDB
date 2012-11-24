@@ -314,18 +314,6 @@ class DurablePageDb extends PageDb {
     }
 
     @Override
-    public long tryAllocPage() throws IOException {
-        mCommitLock.readLock().lock();
-        try {
-            return mPageManager.tryAllocPage();
-        } catch (Throwable e) {
-            throw closeOnFailure(e);
-        } finally {
-            mCommitLock.readLock().unlock();
-        }
-    }
-
-    @Override
     public long allocPageCount() {
         return mPageManager.allocPageCount();
     }
@@ -351,6 +339,19 @@ class DurablePageDb extends PageDb {
         mCommitLock.readLock().lock();
         try {
             mPageManager.deletePage(id);
+        } catch (Throwable e) {
+            throw closeOnFailure(e);
+        } finally {
+            mCommitLock.readLock().unlock();
+        }
+    }
+
+    @Override
+    public void recyclePage(long id) throws IOException {
+        checkId(id);
+        mCommitLock.readLock().lock();
+        try {
+            mPageManager.recyclePage(id);
         } catch (Throwable e) {
             throw closeOnFailure(e);
         } finally {
