@@ -1,10 +1,9 @@
 
 - Use 6-byte pointers in internal nodes.
 - Support key prefix compression.
-- Support closing indexes. Requires latch sweep and stubbing of cursors.
 - Support truncating indexes. Depends on close and workflow to ensure truncate completes.
-- Online compaction. Two types: Node merging and file truncation. File
-  truncation is the more difficult one.
+- Online Database pruning, to reduce the file size.
+- Online Index compaction, reducing the b-tree overhead.
 - Support snapshot into a temp Database instance.
 - Add Index.insertFence and removeFence methods for boosting findNearby
   performance at the edges. Implementation inserts a ghost.
