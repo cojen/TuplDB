@@ -113,4 +113,6 @@ public interface Index extends View, Closeable {
      */
     @Override
     public void close() throws IOException;
+
+    public boolean isClosed();
 }

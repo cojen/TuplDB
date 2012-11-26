@@ -502,25 +502,32 @@ final class Lock {
         Tree tree = (Tree) obj;
 
         try {
-            if (tree.mRoot.mPage == Utils.EMPTY_BYTES) {
+            while (true) {
+                TreeCursor c = new TreeCursor(tree, null);
+                c.autoload(false);
+                byte[] key = mKey;
+                mSharedLockersObj = null;
+
+                // Release to prevent deadlock, since additional latches are
+                // required for delete.
+                latch.releaseExclusive();
+                try {
+                    if (c.deleteGhost(key)) {
+                        break;
+                    }
+                } finally {
+                    // Reset before re-acquiring latch, since it needs to
+                    // acquire latches to detach cursor from tree.
+                    c.reset();
+                    latch.acquireExclusive();
+                }
+
                 // Reopen closed index.
                 tree = (Tree) tree.mDatabase.indexById(tree.mId);
-            }
-
-            TreeCursor c = new TreeCursor(tree, null);
-            c.autoload(false);
-            byte[] key = mKey;
-            mSharedLockersObj = null;
-
-            // Release to prevent deadlock, since additional latches are required for delete.
-            latch.releaseExclusive();
-            try {
-                c.deleteGhost(key);
-            } finally {
-                // Reset before re-acquiring latch, since it needs to acquire
-                // latches to detach cursor from tree.
-                c.reset();
-                latch.acquireExclusive();
+                if (tree == null) {
+                    // Assume index was deleted.
+                    break;
+                }
             }
         } catch (Throwable e) {
             // Exception indicates that database is borked. Ghost will get
