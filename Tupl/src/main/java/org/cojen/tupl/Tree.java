@@ -452,6 +452,15 @@ final class Tree implements Index {
         }
     }
 
+    @Override 
+    public boolean isClosed() {
+        Node root = mRoot;
+        root.acquireShared();
+        boolean closed = root.mPage == Utils.EMPTY_BYTES;
+        root.releaseShared();
+        return closed;
+    }
+
     void check(Transaction txn) throws IllegalArgumentException {
         if (txn != null) {
             Database txnDb = txn.mDatabase;
