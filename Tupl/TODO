@@ -1,10 +1,12 @@
 
-- Use 6-byte pointers in internal nodes.
-- Support key prefix compression.
-- Support truncating indexes. Depends on close and workflow to ensure truncate completes.
+- Support deleting/truncating indexes. Persistent workflow ensures operation completes.
 - Online Database pruning, to reduce the file size.
 - Online Index compaction, reducing the b-tree overhead.
+- Use concurrent queue algorithms for binding/unbinding cursor frames,
+  eliminating exclusive latch requirement.
+- Support key prefix compression.
 - Support snapshot into a temp Database instance.
+- Use 6-byte pointers in internal nodes.
 - Add Index.insertFence and removeFence methods for boosting findNearby
   performance at the edges. Implementation inserts a ghost.
 
