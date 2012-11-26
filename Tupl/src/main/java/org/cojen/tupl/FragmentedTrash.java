@@ -141,8 +141,11 @@ class FragmentedTrash {
         TreeCursor cursor = new TreeCursor(mTrash, Transaction.BOGUS);
         try {
             cursor.find(trashKey);
-            // TODO: What if not found? Undo is not possible.
             fragmented = cursor.value();
+            if (fragmented == null) {
+                // Nothing to undo, possibly caused by double undo.
+                return;
+            }
             cursor.store(null);
         } catch (Throwable e) {
             throw Utils.closeOnFailure(cursor, e);
