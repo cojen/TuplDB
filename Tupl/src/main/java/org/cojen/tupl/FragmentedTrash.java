@@ -143,10 +143,12 @@ class FragmentedTrash {
             cursor.find(trashKey);
             fragmented = cursor.value();
             if (fragmented == null) {
-                // Nothing to undo, possibly caused by double undo.
+                // Nothing to remove, possibly caused by double undo.
+                cursor.reset();
                 return;
             }
             cursor.store(null);
+            cursor.reset();
         } catch (Throwable e) {
             throw Utils.closeOnFailure(cursor, e);
         }
