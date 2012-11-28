@@ -18,8 +18,6 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import java.security.SecureRandom;
-
 /**
  * B-tree implementation.
  *
@@ -36,16 +34,6 @@ final class Tree implements Index {
 
     static boolean isInternal(long id) {
         return (id & ~0xff) == 0;
-    }
-
-    /**
-     * Returns a random id outside the internal id range.
-     */
-    static long randomId() {
-        SecureRandom rnd = new SecureRandom();
-        long id;
-        while (isInternal(id = rnd.nextLong()));
-        return id;
     }
 
     final Database mDatabase;

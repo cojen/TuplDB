@@ -126,7 +126,8 @@ public final class Database extends CauseCloseable {
     private static final int I_MASTER_UNDO_LOG_PAGE_ID = I_ROOT_PAGE_ID + 8;
     private static final int I_TRANSACTION_ID          = I_MASTER_UNDO_LOG_PAGE_ID + 8;
     private static final int I_REDO_LOG_ID             = I_TRANSACTION_ID + 8;
-    private static final int HEADER_SIZE               = I_REDO_LOG_ID + 8;
+    private static final int I_NEXT_TREE_ID            = I_REDO_LOG_ID + 8;
+    private static final int HEADER_SIZE               = I_NEXT_TREE_ID + 8;
 
     static final byte KEY_TYPE_INDEX_NAME = 0;
     static final byte KEY_TYPE_INDEX_ID = 1;
@@ -180,6 +181,7 @@ public final class Database extends CauseCloseable {
     private final Map<byte[], TreeRef> mOpenTrees;
     private final LHashTable.Obj<TreeRef> mOpenTreesById;
     private final ReferenceQueue<Tree> mOpenTreesRefQueue;
+    private volatile long mNextTreeId;
 
     // Strong references to all trees opened during recovery. Not critical, but
     // it keeps the trees from being closed and re-opened automatically by
@@ -405,6 +407,7 @@ public final class Database extends CauseCloseable {
                 mOpenTrees = new TreeMap<byte[], TreeRef>(KeyComparator.THE);
                 mOpenTreesById = new LHashTable.Obj<TreeRef>(16);
                 mOpenTreesRefQueue = new ReferenceQueue<Tree>();
+                mNextTreeId = readLongLE(header, I_NEXT_TREE_ID);
             }
 
             synchronized (mTxnIdLock) {
@@ -1274,7 +1277,7 @@ public final class Database extends CauseCloseable {
 
                         try {
                             do {
-                                treeId = Tree.randomId();
+                                treeId = nextTreeId();
                                 writeLongBE(treeIdBytes, 0, treeId);
                             } while (!mRegistry.insert
                                      (Transaction.BOGUS, treeIdBytes, EMPTY_BYTES));
@@ -1351,6 +1354,24 @@ public final class Database extends CauseCloseable {
         } finally {
             commitLock.unlock();
         }
+    }
+
+    // Caller must exclusively hold mOpenTreesLatch.
+    private long nextTreeId() {
+        // By generating identifiers from a 64-bit sequence, it's effectively
+        // impossible for them to get re-used after trees are deleted.
+        long treeId;
+        do {
+            treeId = mNextTreeId++;
+            byte[] databaseId = mPageDb.databaseId();
+            if (databaseId.length >= 8) {
+                // Mask with the unique database id, making the identifiers
+                // less predictable and non-compatible with other databases.
+                treeId ^= Utils.readLongLE(databaseId, 0);
+            }
+            treeId = Utils.scramble(treeId);
+        } while (Tree.isInternal(treeId));
+        return treeId;
     }
 
     /**
@@ -2685,6 +2706,7 @@ public final class Database extends CauseCloseable {
         writeLongLE(header, I_TRANSACTION_ID, txnId);
         // Add one to redoLogId, indicating the active log id.
         writeLongLE(header, I_REDO_LOG_ID, redoLogId + 1);
+        writeLongLE(header, I_NEXT_TREE_ID, mNextTreeId);
 
         return header;
     }
