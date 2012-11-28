@@ -68,6 +68,20 @@ class Utils {
     }
 
     /**
+     * Apply Wang/Jenkins hash function to given value. Hash is invertible, and
+     * so no uniqueness is lost.
+     */
+    static long scramble(long v) {
+        v = (v << 21) - v - 1;
+        v = v ^ (v >>> 24);
+        v = (v + (v << 3)) + (v << 8); // v * 265
+        v = v ^ (v >>> 14);
+        v = (v + (v << 2)) + (v << 4); // v * 21
+        v = v ^ (v >>> 28);
+        return v + (v << 31);
+    }
+
+    /**
      * Performs multiple array copies, correctly ordered to prevent clobbering. The copies
      * must not overlap, and start1 must be less than start2.
      */
