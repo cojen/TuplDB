@@ -917,6 +917,8 @@ public final class Database extends CauseCloseable {
     public Stats stats() {
         Stats stats = new Stats();
 
+        stats.mPageSize = mPageDb.pageSize();
+
         mSharedCommitLock.lock();
         try {
             long cursorCount = 0;
@@ -959,6 +961,7 @@ public final class Database extends CauseCloseable {
     public static class Stats implements Serializable {
         private static final long serialVersionUID = 1L;
 
+        int mPageSize;
         int mOpenIndexes;
         long mFreeSpace;
         long mTotalSpace;
@@ -968,6 +971,13 @@ public final class Database extends CauseCloseable {
         long mTxnsCreated;
 
         Stats() {
+        }
+
+        /**
+         * Returns the allocation page size.
+         */
+        public int pageSize() {
+            return mPageSize;
         }
 
         /**
