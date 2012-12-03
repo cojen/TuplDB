@@ -359,7 +359,7 @@ public class CrudTest {
         for (int i=0; i<1000; i++) {
             Utils.writeIntBE(key, 0, i);
             ix.store(Transaction.BOGUS, key, value);
-            ((Tree) ix).verify();
+            assertTrue(ix.verify(null));
         }
     }
 

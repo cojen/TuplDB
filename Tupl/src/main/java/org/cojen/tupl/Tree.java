@@ -411,6 +411,41 @@ final class Tree implements Index {
     }
 
     @Override
+    public boolean verify(VerificationObserver observer) throws IOException {
+        if (observer == null) {
+            observer = new VerificationObserver();
+        }
+        observer.failed = false;
+        verifyTree(observer);
+        boolean passed = !observer.failed;
+        observer.indexComplete(this, passed, null);
+        return passed;
+    }
+
+    /**
+     * @return false if should stop
+     */
+    boolean verifyTree(VerificationObserver observer) throws IOException {
+        TreeCursor cursor = new TreeCursor(this, Transaction.BOGUS);
+        try {
+            cursor.first();
+            int height = cursor.height();
+            if (!observer.indexBegin(this, height)) {
+                return false;
+            }
+            if (!cursor.verify(height, observer)) {
+                return false;
+            }
+        } catch (Throwable e) {
+            observer.failed = true;
+            throw Utils.rethrow(e);
+        } finally {
+            cursor.reset();
+        }
+        return true;
+    }
+
+    @Override
     public void close() throws IOException {
         Node root = mRoot;
         root.acquireExclusive();
@@ -456,10 +491,6 @@ final class Tree implements Index {
                 throw new IllegalArgumentException("Transaction belongs to a different database");
             }
         }
-    }
-
-    void verify() throws IOException {
-        mRoot.verify(mDatabase);
     }
 
     /**
