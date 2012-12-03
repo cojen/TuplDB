@@ -133,7 +133,7 @@ public class LargeValueTest {
         // Assuming 4096 byte nodes, the inline content length is still between 1 and 128.
         ix.store(Transaction.BOGUS, k, new byte[4121]);
 
-        ((Tree) ix).verify();
+        assertTrue(ix.verify(null));
     }
 
     private byte[] key(int i) {

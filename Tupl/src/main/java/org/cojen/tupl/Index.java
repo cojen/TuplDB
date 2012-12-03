@@ -99,6 +99,14 @@ public interface Index extends View, Closeable {
     //public byte[] swap(Transaction txn, byte[] key, byte[] newValue) throws IOException;
 
     /**
+     * Verifies the integrity of the index.
+     *
+     * @param observer optional observer; pass null for default
+     * @return true if verification passed
+     */
+    public boolean verify(VerificationObserver observer) throws IOException;
+
+    /**
      * Closes this index reference, causing it to become empty and {@link
      * ClosedIndexException unmodifiable}. The underlying index is still valid
      * and can be re-opened.  Closing an index is relatively expensive, and so

@@ -2831,117 +2831,62 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         }
     }
 
-    /**
-     * Verifies that cursor state is correct by performing a find operation.
-     *
-     * @return false if unable to verify completely at this time
-     */
-    /*
-    boolean verify() throws IOException, IllegalStateException {
-        return verify(mKey);
+    int height() {
+        int height = 0;
+        TreeCursorFrame frame = mLeaf;
+        while (frame != null) {
+            height++;
+            frame = frame.mParentFrame;
+        }
+        return height;
     }
-    */
 
     /**
-     * Verifies that cursor state is correct by performing a find operation.
+     * Verifies from the current node to the last.
      *
-     * @return false if unable to verify completely at this time
-     * @throws NullPointerException if key is null
+     * @return false if should stop
      */
-    /*
-    boolean verify(byte[] key) throws IllegalStateException {
-        ArrayDeque<TreeCursorFrame> frames;
-        {
-            TreeCursorFrame frame = mLeaf;
-            if (frame == null) {
-                return true;
-            }
-            frames = new ArrayDeque<TreeCursorFrame>(10);
-            do {
-                frames.addFirst(frame);
-                frame = frame.mParentFrame;
-            } while (frame != null);
-        }
+    boolean verify(int height, VerificationObserver observer) throws IOException {
+        if (height > 0) {
+            final int level = height - 1;
+            final Node[] stack = new Node[level];
 
-        TreeCursorFrame frame = frames.removeFirst();
-        Node node = frame.acquireShared();
-
-        if (node.mSplit != null) {
-            // Cannot verify into split nodes.
-            node.releaseShared();
-            return false;
-        }
-
-        /* This check cannot be reliably performed, because the snapshot of
-         * frames can be stale.
-        if (node != mTree.mRoot) {
-            node.releaseShared();
-            throw new IllegalStateException("Bottom frame is not at root node");
-        }
-        * /
-
-        while (true) {
-            if (node.isLeaf()) {
-                int pos = node.binarySearch(key);
-
-                try {
-                    if (frame.mNodePos != pos) {
-                        throw new IllegalStateException
-                            ("Leaf frame position incorrect: " + frame.mNodePos + " != " + pos);
-                    }
-
-                    if (pos < 0) {
-                        if (frame.mNotFoundKey == null) {
-                            throw new IllegalStateException
-                                ("Leaf frame key is not set; pos=" + pos);
-                        }
-                    } else if (frame.mNotFoundKey != null) {
-                        throw new IllegalStateException
-                            ("Leaf frame key should not be set; pos=" + pos);
-                    }
-                } finally {
-                    node.releaseShared();
-                }
-
-                return true;
-            }
-
-            int childPos = Node.internalPos(node.binarySearch(key));
-
-            TreeCursorFrame next;
-            try {
-                if (frame.mNodePos != childPos) {
-                    throw new IllegalStateException
-                        ("Internal frame position incorrect: " +
-                         frame.mNodePos + " != " + childPos);
-                }
-
-                if (frame.mNotFoundKey != null) {
-                    throw new IllegalStateException("Internal frame key should not be set");
-                }
-
-                next = frames.pollFirst();
-
-                if (next == null) {
-                    throw new IllegalStateException("Top frame is not a leaf node");
-                }
-
-                next.acquireShared();
-            } finally {
-                node.releaseShared();
-            }
-
-            frame = next;
-            node = frame.mNode;
-
-            if (node.mSplit != null) {
-                // Cannot verify into split nodes.
-                node.releaseShared();
-                return false;
+            while (key() != null) {
+                verifyFrames(level, stack, mLeaf, observer);
+                // Move to next node by first setting current node position higher
+                // than possible.
+                mLeaf.mNodePos = Integer.MAX_VALUE - 1;
+                next();
             }
         }
+
+        return true;
     }
-    */
+
+    private boolean verifyFrames(int level, Node[] stack, TreeCursorFrame frame,
+                                 VerificationObserver observer)
+    {
+        // FIXME: verify child node keys are higher/lower than parent node
+
+        TreeCursorFrame parentFrame = frame.mParentFrame;
+
+        if (parentFrame != null) {
+            Node parentNode = parentFrame.mNode;
+            int parentLevel = level - 1;
+            if (parentLevel >= 0 && stack[parentLevel] != parentNode) {
+                parentNode = parentFrame.acquireShared();
+                if (stack[parentLevel] != parentNode) {
+                    parentNode.releaseShared();
+                    stack[parentLevel] = parentNode;
+                    if (!verifyFrames(parentLevel, stack, parentFrame, observer)) {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        return frame.acquireShared().verifyTreeNode(level, observer);
+    }
 
     /**
      * Checks that leaf is defined and returns it.

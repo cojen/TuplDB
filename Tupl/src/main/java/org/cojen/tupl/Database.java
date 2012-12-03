@@ -664,17 +664,8 @@ public final class Database extends CauseCloseable {
         final Lock commitLock = sharedCommitLock();
         commitLock.lock();
         try {
-            mOpenTreesLatch.acquireShared();
-            try {
-                LHashTable.ObjEntry<TreeRef> entry = mOpenTreesById.get(id);
-                if (entry != null) {
-                    index = entry.value.get();
-                    if (index != null) {
-                        return index;
-                    }
-                }
-            } finally {
-                mOpenTreesLatch.releaseShared();
+            if ((index = lookupIndexById(id)) != null) {
+                return index;
             }
 
             byte[] idKey = new byte[9];
@@ -700,6 +691,19 @@ public final class Database extends CauseCloseable {
         }
 
         return index;
+    }
+
+    /**
+     * @return null if index is not open
+     */
+    private Tree lookupIndexById(long id) {
+        mOpenTreesLatch.acquireShared();
+        try {
+            LHashTable.ObjEntry<TreeRef> entry = mOpenTreesById.get(id);
+            return entry == null ? null : entry.value.get();
+        } finally {
+            mOpenTreesLatch.releaseShared();
+        }
     }
 
     /**
@@ -1084,6 +1088,83 @@ public final class Database extends CauseCloseable {
         if (!mClosed && mPageDb instanceof DurablePageDb) {
             checkpoint(false, 0, 0);
         }
+    }
+
+    /**
+     * Verifies the integrity of the database and all indexes.
+     *
+     * @param observer optional observer; pass null for default
+     * @return true if verification passed
+     */
+    public boolean verify(VerificationObserver observer) throws IOException {
+        // TODO: Verify free lists.
+
+        if (observer == null) {
+            observer = new VerificationObserver();
+        }
+
+        boolean[] passedRef = {true};
+
+        indexes: {
+            if (!verify(passedRef, mRegistry, observer)) {
+                break indexes;
+            }
+            if (!verify(passedRef, mRegistryKeyMap, observer)) {
+                break indexes;
+            }
+
+            FragmentedTrash trash = mFragmentedTrash;
+            if (trash != null) {
+                if (!verify(passedRef, trash.mTrash, observer)) {
+                    break indexes;
+                }
+            }
+
+            Cursor all = allIndexes();
+
+            for (all.first(); all.key() != null; all.next()) {
+                long id = readLongBE(all.value(), 0);
+
+                Tree index = lookupIndexById(id);
+                if (index != null) {
+                    if (!verify(passedRef, index, observer)) {
+                        break indexes;
+                    }
+                } else {
+                    // Open the index.
+                    index = (Tree) indexById(id);
+                    boolean keepGoing = verify(passedRef, index, observer);
+                    try {
+                        index.close();
+                    } catch (IllegalStateException e) {
+                        // Leave open if in use now.
+                    }
+                    if (!keepGoing) {
+                        break indexes;
+                    }
+                }
+            }
+
+            all.reset();
+        }
+
+        return passedRef[0];
+    }
+
+    /**
+     * @return false if should stop
+     */
+    private boolean verify(boolean[] passedRef, Tree tree,
+                           VerificationObserver observer)
+        throws IOException
+    {
+        observer.failed = false;
+        boolean keepGoing = tree.verifyTree(observer);
+        passedRef[0] &= !observer.failed;
+        if (keepGoing) {
+            keepGoing = observer.indexComplete(tree, !observer.failed, null);
+        }
+        return keepGoing;
     }
 
     /**

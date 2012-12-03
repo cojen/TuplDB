@@ -62,9 +62,6 @@ final class Node extends Latch {
 
     static final int VALUE_FRAGMENTED = 0x40;
 
-    private static final boolean VERIFY_ON_WRITE = Boolean.getBoolean
-        ("org.cojen.tupl.Node.verifyOnWrite");
-
     // Links within usage list, guarded by Database.mUsageLatch.
     Node mMoreUsed; // points to more recently used node
     Node mLessUsed; // points to less recently used node
@@ -658,10 +655,6 @@ final class Node extends Latch {
     void write(Database db) throws IOException {
         if (mSplit != null) {
             throw new AssertionError("Cannot write partially split node");
-        }
-
-        if (VERIFY_ON_WRITE) {
-            verify0(null);
         }
 
         byte[] page = mPage;
@@ -3132,116 +3125,66 @@ final class Node extends Latch {
             '}';
     }
 
-    /* counts[0]: total, counts[1]: used
-    public void analyze(Database db, long[] counts) throws IOException {
-        acquireShared();
-        analyze0(db, counts);
-    }
-
-    private void analyze0(Database db, long[] counts) throws IOException {
-        try {
-            {
-                int len = mPage.length;
-                counts[0] += len;
-                counts[1] += len - availableBytes();
-            }
-
-            if (mSplit != null) {
-                // TODO
-            }
-
-            if (isLeaf()) {
-                return;
-            }
-
-            Node[] childNodes = mChildNodes;
-            int lastPos = mSearchVecEnd - mSearchVecStart + 2;
-
-            for (int childPos = 0; childPos <= lastPos; childPos += 2) {
-                Node childNode = childNodes[childPos >> 1];
-                long childId = retrieveChildRefId(childPos);
-                if (childNode != null && childId == childNode.mId) {
-                    childNode.acquireShared();
-                } else {
-                    childNode = loadChild(db, childPos, childId, false);
-                    childNode.downgrade();
-                }
-                childNode.analyze0(db, counts);
-            }
-        } finally {
-            releaseShared();
-        }
-    }
-    */
-
     /**
-     * Verifies the integrity of this node. Pass database instance to recurse.
+     * Caller must acquired shared latch before calling this method. Latch is
+     * released unless an exception is thrown. If an exception is thrown by the
+     * observer, the latch would have already been released.
+     *
+     * @return false if should stop
      */
-    void verify(Database db) throws CorruptDatabaseException, IOException {
-        acquireShared();
-        try {
-            verify0(db);
-        } catch (IndexOutOfBoundsException e) {
-            throw new CorruptDatabaseException(e);
-        } finally {
-            releaseShared();
-        }
-    }
-
-    /**
-     * Caller must hold any latch. Pass database instance to recurse.
-     */
-    private void verify0(Database db) throws CorruptDatabaseException, IOException {
+    boolean verifyTreeNode(int level, VerificationObserver observer) {
         if (mType != TYPE_TN_INTERNAL && mType != TYPE_TN_LEAF) {
-            return;
+            return verifyFailed(level, observer, "Not a tree node");
         }
 
         final byte[] page = mPage;
 
         if (mLeftSegTail < TN_HEADER_SIZE) {
-            throw new CorruptDatabaseException("Left segment tail: " + mLeftSegTail);
+            return verifyFailed(level, observer, "Left segment tail: " + mLeftSegTail);
         }
+
         if (mSearchVecStart < mLeftSegTail) {
-            throw new CorruptDatabaseException("Search vector start: " + mSearchVecStart);
+            return verifyFailed(level, observer, "Search vector start: " + mSearchVecStart);
         }
+
         if (mSearchVecEnd < (mSearchVecStart - 2)) {
-            throw new CorruptDatabaseException("Search vector end: " + mSearchVecEnd);
+            return verifyFailed(level, observer, "Search vector end: " + mSearchVecEnd);
         }
+
         if (mRightSegTail < mSearchVecEnd || mRightSegTail > (page.length - 1)) {
-            throw new CorruptDatabaseException("Right segment tail: " + mRightSegTail);
+            return verifyFailed(level, observer, "Right segment tail: " + mRightSegTail);
         }
 
         if (!isLeaf()) {
             if (numKeys() + 1 != mChildNodes.length) {
-                throw new CorruptDatabaseException
-                    ("Wrong number of child nodes: " +
-                     (numKeys() + 1) + " != " + mChildNodes.length);
+                return verifyFailed(level, observer, "Wrong number of child nodes: " +
+                                    (numKeys() + 1) + " != " + mChildNodes.length);
             }
 
             int childIdsStart = mSearchVecEnd + 2;
             int childIdsEnd = childIdsStart + ((childIdsStart - mSearchVecStart) << 2) + 8;
             if (childIdsEnd > (mRightSegTail + 1)) {
-                throw new CorruptDatabaseException("Child ids end: " + childIdsEnd);
+                return verifyFailed(level, observer, "Child ids end: " + childIdsEnd);
             }
 
             LHashTable.Int childIds = new LHashTable.Int(512);
 
             for (int i = childIdsStart; i < childIdsEnd; i += 8) {
                 long childId = readLongLE(page, i);
-
                 if (childId < 0 || childId == 0 || childId == 1) {
-                    throw new CorruptDatabaseException("Illegal child id: " + childId);
+                    return verifyFailed(level, observer, "Illegal child id: " + childId);
                 }
-
                 LHashTable.IntEntry e = childIds.insert(childId);
                 if (e.value != 0) {
-                    throw new CorruptDatabaseException("Duplicate child id: " + childId);
+                    return verifyFailed(level, observer, "Duplicate child id: " + childId);
                 }
                 e.value = 1;
             }
         }
 
         int used = TN_HEADER_SIZE + mRightSegTail + 1 - mLeftSegTail;
+
+        int largeValueCount = 0;
 
         int lastKeyLoc = 0;
         int lastKeyLen = 0;
@@ -3252,10 +3195,8 @@ final class Node extends Latch {
             if (loc < TN_HEADER_SIZE || loc >= page.length ||
                 (loc >= mLeftSegTail && loc <= mRightSegTail))
             {
-                throw new CorruptDatabaseException("Entry location: " + loc);
+                return verifyFailed(level, observer, "Entry location: " + loc);
             }
-
-            int keyLen;
 
             if (isLeaf()) {
                 used += leafEntryLengthAtLoc(page, loc);
@@ -3263,41 +3204,78 @@ final class Node extends Latch {
                 used += internalEntryLengthAtLoc(page, loc);
             }
 
-            keyLen = page[loc++];
-            keyLen = keyLen >= 0 ? ((keyLen & 0x3f) + 1)
-                : (((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff));
+            int keyLen;
+            try {
+                keyLen = page[loc++];
+                keyLen = keyLen >= 0 ? ((keyLen & 0x3f) + 1)
+                    : (((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff));
+            } catch (IndexOutOfBoundsException e) {
+                return verifyFailed(level, observer, "Key location out of bounds");
+            }
+
+            if (loc + keyLen > page.length) {
+                return verifyFailed(level, observer, "Key end location: " + (loc + keyLen));
+            }
 
             if (lastKeyLoc != 0) {
                 int result = Utils.compareKeys(page, lastKeyLoc, lastKeyLen, page, loc, keyLen);
                 if (result >= 0) {
-                    throw new CorruptDatabaseException("Key order: " + result);
+                    return verifyFailed(level, observer, "Key order: " + result);
                 }
             }
 
             lastKeyLoc = loc;
             lastKeyLoc = keyLen;
+
+            if (isLeaf()) value: {
+                int len;
+                try {
+                    loc += keyLen;
+                    int header = page[loc++];
+                    if (header >= 0) {
+                        len = header;
+                    } else {
+                        if ((header & 0x20) == 0) {
+                            len = 1 + (((header & 0x1f) << 8) | (page[loc++] & 0xff));
+                        } else if (header != -1) {
+                            len = 1 + (((header & 0x0f) << 16)
+                                       | ((page[loc++] & 0xff) << 8) | (page[loc++] & 0xff));
+                        } else {
+                            // ghost
+                            break value;
+                        }
+                        if ((header & VALUE_FRAGMENTED) != 0) {
+                            largeValueCount++;
+                        }
+                    }
+                } catch (IndexOutOfBoundsException e) {
+                    return verifyFailed(level, observer, "Value location out of bounds");
+                }
+                if (loc + len > page.length) {
+                    return verifyFailed(level, observer, "Value end location: " + (loc + len));
+                }
+            }
         }
 
         int garbage = page.length - used;
 
         if (mGarbage != garbage) {
-            throw new CorruptDatabaseException("Garbage: " + mGarbage + " != " + garbage);
+            return verifyFailed(level, observer, "Garbage: " + mGarbage + " != " + garbage);
         }
 
-        if (db != null && !isLeaf()) {
-            int endPos = mSearchVecEnd - mSearchVecStart + 2;
-            for (int pos = 0; pos <= endPos; pos += 2) {
-                Node child = mChildNodes[pos >> 1];
-                long childId = retrieveChildRefId(pos);
+        int entryCount = numKeys();
+        int freeBytes = availableBytes();
 
-                if (child == null || childId != child.mId) {
-                    child = new Node(db.pageSize());
-                    child.read(db, childId);
-                }
+        long id = mId;
+        releaseShared();
+        return observer.indexNodePassed(id, level, entryCount, freeBytes, largeValueCount);
+    }
 
-                child.verify(db);
-            }
-        }
+    private boolean verifyFailed(int level, VerificationObserver observer, String message) {
+        long id = mId;
+        releaseShared();
+        observer.failed = true;
+        return observer.indexNodeFailed(id, level, message);
     }
 
     /**
