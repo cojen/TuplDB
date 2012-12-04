@@ -190,22 +190,26 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
             while (true) {
                 File file = fileFor(mBaseFile, mLogId);
 
-                DataIn in;
+                if (scanned != null && !scanned.contains(file)) {
+                    break;
+                }
+
+                InputStream in;
                 try {
-                    InputStream fin = new FileInputStream(file);
-                    if (mCrypto != null) {
-                        fin = mCrypto.newDecryptingStream(mLogId, fin);
-                    }
-                    in = new DataIn(fin);
+                    in = new FileInputStream(file);
                 } catch (FileNotFoundException e) {
                     break;
-                } catch (GeneralSecurityException e) {
-                    throw new DatabaseException(e);
                 }
 
                 try {
-                    if (scanned != null && !scanned.contains(file)) {
-                        break;
+                    if (mCrypto != null) {
+                        try {
+                            in = mCrypto.newDecryptingStream(mLogId, in);
+                        } catch (IOException e) {
+                            throw e;
+                        } catch (Exception e) {
+                            throw new DatabaseException(e);
+                        }
                     }
 
                     if (listener != null) {
@@ -214,7 +218,7 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
 
                     files.add(file);
 
-                    replay(in, visitor);
+                    replay(new DataIn(in), visitor);
                 } catch (EOFException e) {
                     // End of log didn't get completely flushed.
                 } finally {
