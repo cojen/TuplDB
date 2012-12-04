@@ -2626,9 +2626,7 @@ public final class Database extends CauseCloseable {
 
                     // Thresholds not met for a full checkpoint, but sync the
                     // redo log for durability.
-                    if (mRedoLog != null) {
-                        mRedoLog.sync();
-                    }
+                    mRedoLog.sync();
 
                     return;
                 }
