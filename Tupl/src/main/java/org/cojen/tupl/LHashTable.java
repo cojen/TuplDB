@@ -161,7 +161,7 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
         return null;
     }
 
-    public <X extends Exception> void traverse(Vistor<E, X> v) throws X {
+    public <X extends Exception> void traverse(Visitor<E, X> v) throws X {
         E[] entries = mEntries;
         for (int i=0; i<entries.length; i++) {
             for (E e = entries[i], prev = null; e != null; ) {
@@ -227,7 +227,7 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
         E next;
     }
 
-    public static interface Vistor<E extends Entry<E>, X extends Exception> {
+    public static interface Visitor<E extends Entry<E>, X extends Exception> {
         /**
          * @return true if entry should be deleted
          */

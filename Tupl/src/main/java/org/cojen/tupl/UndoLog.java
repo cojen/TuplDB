@@ -933,7 +933,7 @@ final class UndoLog {
         boolean any = logs.size() > 0;
 
         if (any) {
-            logs.traverse(new LHashTable.Vistor<LHashTable.ObjEntry<UndoLog>, IOException>() {
+            logs.traverse(new LHashTable.Visitor<LHashTable.ObjEntry<UndoLog>, IOException>() {
                 public boolean visit(LHashTable.ObjEntry<UndoLog> entry) throws IOException {
                     UndoLog undo = entry.value;
                     switch (undo.peek()) {
