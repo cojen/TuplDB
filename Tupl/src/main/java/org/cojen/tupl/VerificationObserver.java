@@ -67,7 +67,7 @@ public class VerificationObserver {
      * implementation does nothing but return true.
      *
      * @param id ephemeral node identifier
-     * @param level index node level; zero for root node
+     * @param level index node level; root node is level one
      * @param entryCount total number of entries in the node
      * @param freeBytes amount of unused bytes in the node
      * @param largeValueCount number of values which don't fit entirely in the node
@@ -85,7 +85,7 @@ public class VerificationObserver {
      * implementation prints a message to standard out and returns true.
      *
      * @param id ephemeral node identifier
-     * @param level index node level; zero for root node
+     * @param level index node level; root node is level one
      * @param message failure message
      * @return false if verification should stop
      */
