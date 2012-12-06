@@ -2846,13 +2846,12 @@ final class TreeCursor extends CauseCloseable implements Cursor {
      *
      * @return false if should stop
      */
-    boolean verify(int height, VerificationObserver observer) throws IOException {
+    boolean verify(final int height, VerificationObserver observer) throws IOException {
         if (height > 0) {
-            final int level = height - 1;
-            final Node[] stack = new Node[level];
+            final Node[] stack = new Node[height];
 
             while (key() != null) {
-                verifyFrames(level, stack, mLeaf, observer);
+                verifyFrames(height, stack, mLeaf, observer);
                 // Move to next node by first setting current node position higher
                 // than possible.
                 mLeaf.mNodePos = Integer.MAX_VALUE - 1;
@@ -2873,7 +2872,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         if (parentFrame != null) {
             Node parentNode = parentFrame.mNode;
             int parentLevel = level - 1;
-            if (parentLevel >= 0 && stack[parentLevel] != parentNode) {
+            if (parentLevel > 0 && stack[parentLevel] != parentNode) {
                 parentNode = parentFrame.acquireShared();
                 if (stack[parentLevel] != parentNode) {
                     parentNode.releaseShared();
