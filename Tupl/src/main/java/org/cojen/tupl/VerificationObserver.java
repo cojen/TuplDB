@@ -27,7 +27,7 @@ public class VerificationObserver {
     /** Index currently being verified.  */
     protected Index index;
 
-    /** Index height; is at least one. */
+    /** Index height; is zero for empty indexes. */
     protected int height;
 
     boolean failed;
@@ -37,7 +37,7 @@ public class VerificationObserver {
      * records the index and height, and then returns true.
      *
      * @param index index being verified
-     * @param height index height; is at least one
+     * @param height index height; is zero for empty indexes
      * @return false if verification should stop
      */
     public boolean indexBegin(Index index, int height) {
