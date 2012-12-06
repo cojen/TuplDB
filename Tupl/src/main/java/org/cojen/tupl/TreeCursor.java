@@ -2874,8 +2874,8 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             int parentLevel = level - 1;
             if (parentLevel > 0 && stack[parentLevel] != parentNode) {
                 parentNode = parentFrame.acquireShared();
+                parentNode.releaseShared();
                 if (stack[parentLevel] != parentNode) {
-                    parentNode.releaseShared();
                     stack[parentLevel] = parentNode;
                     if (!verifyFrames(parentLevel, stack, parentFrame, observer)) {
                         return false;
