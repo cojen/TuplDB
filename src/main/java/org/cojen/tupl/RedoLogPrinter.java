@@ -57,11 +57,19 @@ class RedoLogPrinter implements RedoLogVisitor {
         mOut.println("clear: indexId=" + indexId);
     }
 
-    public void txnRollback(long txnId, long parentTxnId) {
+    public void txnRollback(long txnId) {
+        mOut.println("txnRollback: txnId=" + txnId);
+    }
+
+    public void txnRollbackChild(long txnId, long parentTxnId) {
         mOut.println("txnRollback: txnId=" + txnId + ", parentTxnId=" + parentTxnId);
     }
 
-    public void txnCommit(long txnId, long parentTxnId) {
+    public void txnCommit(long txnId) {
+        mOut.println("txnCommit: txnId=" + txnId);
+    }
+
+    public void txnCommitChild(long txnId, long parentTxnId) {
         mOut.println("txnCommit: txnId=" + txnId + ", parentTxnId=" + parentTxnId);
     }
 
