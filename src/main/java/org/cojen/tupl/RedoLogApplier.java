@@ -57,12 +57,22 @@ class RedoLogApplier implements RedoLogVisitor {
     }
 
     @Override
-    public void txnRollback(long txnId, long parentTxnId) throws IOException {
+    public void txnRollback(long txnId) throws IOException {
+        processUndo(txnId, 0, false);
+    }
+
+    @Override
+    public void txnRollbackChild(long txnId, long parentTxnId) throws IOException {
         processUndo(txnId, parentTxnId, false);
     }
 
     @Override
-    public void txnCommit(long txnId, long parentTxnId) throws IOException {
+    public void txnCommit(long txnId) throws IOException {
+        processUndo(txnId, 0, true);
+    }
+
+    @Override
+    public void txnCommitChild(long txnId, long parentTxnId) throws IOException {
         processUndo(txnId, parentTxnId, true);
     }
 

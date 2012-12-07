@@ -41,15 +41,25 @@ interface RedoLogVisitor {
 
     /**
      * @param txnId non-zero transaction id
-     * @param parentTxnId parent transaction id; zero if none
      */
-    public void txnRollback(long txnId, long parentTxnId) throws IOException;
+    public void txnRollback(long txnId) throws IOException;
 
     /**
      * @param txnId non-zero transaction id
      * @param parentTxnId parent transaction id; zero if none
      */
-    public void txnCommit(long txnId, long parentTxnId) throws IOException;
+    public void txnRollbackChild(long txnId, long parentTxnId) throws IOException;
+
+    /**
+     * @param txnId non-zero transaction id
+     */
+    public void txnCommit(long txnId) throws IOException;
+
+    /**
+     * @param txnId non-zero transaction id
+     * @param parentTxnId parent transaction id; zero if none
+     */
+    public void txnCommitChild(long txnId, long parentTxnId) throws IOException;
 
     /**
      * @param txnId non-zero transaction id

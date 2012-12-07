@@ -62,7 +62,12 @@ class RedoLogTxnScanner implements RedoLogVisitor {
     public void store(long indexId, byte[] key, byte[] value) {}
 
     @Override
-    public void txnRollback(long txnId, long parentTxnId) {
+    public void txnRollback(long txnId) {
+        txnRollbackChild(txnId, 0);
+    }
+
+    @Override
+    public void txnRollbackChild(long txnId, long parentTxnId) {
         checkHighest(txnId, parentTxnId);
 
         Status status = mStatusTable.remove(txnId);
@@ -80,22 +85,23 @@ class RedoLogTxnScanner implements RedoLogVisitor {
             if (count > 0) {
                 long[] children = status.mChildren;
                 for (int i=count; --i>=0; ) {
-                    txnRollback(children[i], txnId);
+                    txnRollbackChild(children[i], txnId);
                 }
             }
         }
     }
 
     @Override
-    public void txnCommit(long txnId, long parentTxnId) {
-        checkHighest(txnId, parentTxnId);
+    public void txnCommit(long txnId) {
+        checkHighest(txnId);
+        fullCommit(txnId);
+    }
 
-        if (parentTxnId == 0) {
-            fullCommit(txnId);
-        } else {
-            // Child transaction is not fully committed until parent is.
-            mStatusTable.insert(parentTxnId).addChild(txnId);
-        }
+    @Override
+    public void txnCommitChild(long txnId, long parentTxnId) {
+        checkHighest(txnId, parentTxnId);
+        // Child transaction is not fully committed until parent is.
+        mStatusTable.insert(parentTxnId).addChild(txnId);
     }
 
     private void fullCommit(long txnId) {
