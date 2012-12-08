@@ -919,7 +919,7 @@ public final class Database extends CauseCloseable {
     public Stats stats() {
         Stats stats = new Stats();
 
-        stats.mPageSize = mPageDb.pageSize();
+        stats.mPageSize = pageSize();
 
         mSharedCommitLock.lock();
         try {
@@ -940,9 +940,8 @@ public final class Database extends CauseCloseable {
             stats.mCursorCount = cursorCount;
 
             PageDb.Stats pstats = mPageDb.stats();
-            int pageSize = pageSize();
-            stats.mFreeSpace = pstats.freePages * pageSize;
-            stats.mTotalSpace = pstats.totalPages * pageSize;
+            stats.mFreePages = pstats.freePages;
+            stats.mTotalPages = pstats.totalPages;
 
             stats.mLockCount = mLockManager.numLocksHeld();
 
@@ -961,12 +960,12 @@ public final class Database extends CauseCloseable {
      * Immutable copy of database {@link Database#stats statistics}.
      */
     public static class Stats implements Serializable {
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 2L;
 
         int mPageSize;
+        long mFreePages;
+        long mTotalPages;
         int mOpenIndexes;
-        long mFreeSpace;
-        long mTotalSpace;
         long mLockCount;
         long mCursorCount;
         long mTxnCount;
@@ -983,24 +982,24 @@ public final class Database extends CauseCloseable {
         }
 
         /**
+         * Returns the amount of unused pages in the database.
+         */
+        public long freePages() {
+            return mFreePages;
+        }
+
+        /**
+         * Returns the total amount of pages in the database.
+         */
+        public long totalPages() {
+            return mTotalPages;
+        }
+
+        /**
          * Returns the amount of indexes currently open.
          */
         public int openIndexes() {
             return mOpenIndexes;
-        }
-
-        /**
-         * Returns the amount of unused bytes in the database.
-         */
-        public long freeSpace() {
-            return mFreeSpace;
-        }
-
-        /**
-         * Returns the total amount of bytes in the database.
-         */
-        public long totalSpace() {
-            return mTotalSpace;
         }
 
         /**
@@ -1041,9 +1040,10 @@ public final class Database extends CauseCloseable {
 
         @Override
         public String toString() {
-            return "Database.Stats {openIndexes=" + mOpenIndexes
-                + ", freeSpace=" + mFreeSpace
-                + ", totalSpace=" + mTotalSpace
+            return "Database.Stats {pageSize=" + mPageSize
+                + ", freePages=" + mFreePages
+                + ", totalPages=" + mTotalPages
+                + ", openIndexes=" + mOpenIndexes
                 + ", lockCount=" + mLockCount
                 + ", cursorCount=" + mCursorCount
                 + ", transactionCount=" + mTxnCount
