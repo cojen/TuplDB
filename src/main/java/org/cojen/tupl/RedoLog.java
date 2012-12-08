@@ -690,6 +690,10 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
             default:
                 throw new DatabaseException("Unknown redo log operation: " + op);
 
+            case 0:
+                // Assume redo log did not flush completely.
+                return;
+
             case OP_TIMESTAMP:
                 if (!verifyTerminator(in)) {
                     return;
