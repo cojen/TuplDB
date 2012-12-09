@@ -844,17 +844,24 @@ public final class Database extends CauseCloseable {
     }
 
     /**
-     * Preallocates pages for immediate use.
+     * Preallocates pages for immediate use. The actual amount allocated
+     * varies, depending on the amount of free pages already available.
+     *
+     * @return actual amount allocated
      */
-    public void preallocate(long bytes) throws IOException {
+    public long preallocate(long bytes) throws IOException {
         if (!mClosed && mPageDb instanceof DurablePageDb) {
             int pageSize = pageSize();
             long pageCount = (bytes + pageSize - 1) / pageSize;
             if (pageCount > 0) {
-                mPageDb.allocatePages(pageCount);
-                checkpoint(true, 0, 0);
+                pageCount = mPageDb.allocatePages(pageCount);
+                if (pageCount > 0) {
+                    checkpoint(true, 0, 0);
+                }
+                return pageCount * pageSize;
             }
         }
+        return 0;
     }
 
     /**

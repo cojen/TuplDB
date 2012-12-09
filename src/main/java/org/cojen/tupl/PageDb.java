@@ -149,10 +149,11 @@ abstract class PageDb extends CauseCloseable {
     public abstract void recyclePage(long id) throws IOException;
 
     /**
-     * Allocates pages for immediate use. Even if requested page count is zero,
-     * this method ensures the file system has allocated all pages.
+     * Allocates pages for immediate use.
+     *
+     * @return actual amount allocated
      */
-    public abstract void allocatePages(long pageCount) throws IOException;
+    public abstract long allocatePages(long pageCount) throws IOException;
 
     /**
      * Access the shared commit lock, which prevents commits while held.
