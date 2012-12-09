@@ -196,32 +196,34 @@ final class PageManager {
 
     /**
      * Allocates pages for immediate use.
+     *
+     * @return actual amount allocated
      */
-    public void allocatePages(long pageCount) throws IOException {
-        createPages: {
-            if (pageCount <= 0) {
-                break createPages;
-            }
-
-            PageDb.Stats stats = new PageDb.Stats();
-            addTo(stats);
-            pageCount -= stats.freePages;
-
-            if (pageCount <= 0) {
-                break createPages;
-            }
-
-            do {
-                long pageId;
-                mRemoveLock.lock();
-                try {
-                    pageId = createPage();
-                } finally {
-                    mRemoveLock.unlock();
-                }
-                recyclePage(pageId);
-            } while (--pageCount > 0);
+    public long allocatePages(long pageCount) throws IOException {
+        if (pageCount <= 0) {
+            return 0;
         }
+
+        PageDb.Stats stats = new PageDb.Stats();
+        addTo(stats);
+        pageCount -= stats.freePages;
+
+        if (pageCount <= 0) {
+            return 0;
+        }
+
+        for (int i=0; i<pageCount; i++) {
+            long pageId;
+            mRemoveLock.lock();
+            try {
+                pageId = createPage();
+            } finally {
+                mRemoveLock.unlock();
+            }
+            recyclePage(pageId);
+        }
+
+        return pageCount;
     }
 
     /**
