@@ -843,7 +843,15 @@ final class Node extends Latch {
     }
 
     /**
-     * Caller must hold any latch.
+     * Returns the highest possible key position, which is an even number. If
+     * node has no keys, return value is negative. Caller must hold any latch.
+     */
+    int highestKeyPos() {
+        return mSearchVecEnd - mSearchVecStart;
+    }
+
+    /**
+     * Returns highest leaf or internal position. Caller must hold any latch.
      */
     int highestPos() {
         int pos = mSearchVecEnd - mSearchVecStart;
@@ -854,14 +862,19 @@ final class Node extends Latch {
     }
 
     /**
-     * Caller must hold any latch.
+     * Returns the highest possible leaf key position, which is an even
+     * number. If leaf node is empty, return value is negative. Caller must
+     * hold any latch.
      */
     int highestLeafPos() {
         return mSearchVecEnd - mSearchVecStart;
     }
 
     /**
-     * Caller must hold any latch.
+     * Returns the highest possible internal node position, which is an even
+     * number. Highest position doesn't correspond to a valid key, but instead
+     * a child node position. If internal node has no keys, node has one child
+     * at position zero. Caller must hold any latch.
      */
     int highestInternalPos() {
         return mSearchVecEnd - mSearchVecStart + 2;
