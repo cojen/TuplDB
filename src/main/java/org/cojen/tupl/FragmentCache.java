@@ -196,7 +196,7 @@ class FragmentCache {
 
                 if (existing != null) {
                     try {
-                        existing.doEvict(mDatabase);
+                        existing.doEvict(mDatabase.mPageDb);
                         existing.releaseExclusive();
                     } catch (IOException e) {
                         node.mId = 0;
@@ -261,7 +261,7 @@ class FragmentCache {
                 releaseExclusive();
 
                 if (existing != null) {
-                    existing.doEvict(mDatabase);
+                    existing.doEvict(mDatabase.mPageDb);
                     existing.releaseExclusive();
                 }
 

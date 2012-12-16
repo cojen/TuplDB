@@ -116,8 +116,9 @@ class NonPageDb extends PageDb {
     }
 
     @Override
-    public void allocatePages(long pageCount) throws IOException {
+    public long allocatePages(long pageCount) throws IOException {
         // Do nothing.
+        return 0;
     }
 
     @Override

@@ -652,7 +652,7 @@ final class Node extends Latch {
     /**
      * Caller must hold any latch, which is not released, even if an exception is thrown.
      */
-    void write(Database db) throws IOException {
+    void write(PageDb db) throws IOException {
         if (mSplit != null) {
             throw new AssertionError("Cannot write partially split node");
         }
@@ -684,7 +684,7 @@ final class Node extends Latch {
      *
      * @return original or another node to be evicted; null if cannot evict
      */
-    static Node evict(Node node, Database db) throws IOException {
+    static Node evict(Node node, PageDb db) throws IOException {
         if (node.mType != TYPE_UNDO_LOG) {
             return node.evictTreeNode(db);
         }
@@ -721,7 +721,7 @@ final class Node extends Latch {
         }
     }
 
-    private Node evictTreeNode(Database db) throws IOException {
+    private Node evictTreeNode(PageDb db) throws IOException {
         if (mLastCursorFrame != null || mSplit != null) {
             // Cannot evict if in use by a cursor or if splitting. The split
             // check is redundant, since a node cannot be in a split state
@@ -775,7 +775,7 @@ final class Node extends Latch {
      * Caller must hold exclusive latch on node. Latch is released by this
      * method when an exception is thrown.
      */
-    void forceEvictTree(Database db) throws IOException {
+    void forceEvictTree(PageDb db) throws IOException {
         // Verify that node isn't referenced by active operations.
         if (mLastCursorFrame != null) {
             throw new AssertionError();
@@ -804,7 +804,7 @@ final class Node extends Latch {
      * Caller must hold exclusive latch on node. Latch is released by this
      * method when an exception is thrown.
      */
-    void doEvict(Database db) throws IOException {
+    void doEvict(PageDb db) throws IOException {
         if (mCachedState != CACHED_CLEAN) {
             try {
                 write(db);
@@ -843,7 +843,15 @@ final class Node extends Latch {
     }
 
     /**
-     * Caller must hold any latch.
+     * Returns the highest possible key position, which is an even number. If
+     * node has no keys, return value is negative. Caller must hold any latch.
+     */
+    int highestKeyPos() {
+        return mSearchVecEnd - mSearchVecStart;
+    }
+
+    /**
+     * Returns highest leaf or internal position. Caller must hold any latch.
      */
     int highestPos() {
         int pos = mSearchVecEnd - mSearchVecStart;
@@ -854,14 +862,19 @@ final class Node extends Latch {
     }
 
     /**
-     * Caller must hold any latch.
+     * Returns the highest possible leaf key position, which is an even
+     * number. If leaf node is empty, return value is negative. Caller must
+     * hold any latch.
      */
     int highestLeafPos() {
         return mSearchVecEnd - mSearchVecStart;
     }
 
     /**
-     * Caller must hold any latch.
+     * Returns the highest possible internal node position, which is an even
+     * number. Highest position doesn't correspond to a valid key, but instead
+     * a child node position. If internal node has no keys, node has one child
+     * at position zero. Caller must hold any latch.
      */
     int highestInternalPos() {
         return mSearchVecEnd - mSearchVecStart + 2;
