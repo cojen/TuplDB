@@ -360,10 +360,10 @@ class DurablePageDb extends PageDb {
     }
 
     @Override
-    public void allocatePages(long pageCount) throws IOException {
+    public long allocatePages(long pageCount) throws IOException {
         mCommitLock.readLock().lock();
         try {
-            mPageManager.allocatePages(pageCount);
+            return mPageManager.allocatePages(pageCount);
         } catch (Throwable e) {
             throw closeOnFailure(e);
         } finally {

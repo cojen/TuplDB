@@ -461,7 +461,7 @@ final class Tree implements Index {
             throw new IllegalStateException("Cannot close index which has active cursors");
         }
 
-        root.forceEvictTree(mDatabase);
+        root.forceEvictTree(mDatabase.mPageDb);
 
         // Root node reference cannot be cleared, so instead make it
         // non-functional. Move the page reference into a new evictable Node

@@ -844,17 +844,24 @@ public final class Database extends CauseCloseable {
     }
 
     /**
-     * Preallocates pages for immediate use.
+     * Preallocates pages for immediate use. The actual amount allocated
+     * varies, depending on the amount of free pages already available.
+     *
+     * @return actual amount allocated
      */
-    public void preallocate(long bytes) throws IOException {
+    public long preallocate(long bytes) throws IOException {
         if (!mClosed && mPageDb instanceof DurablePageDb) {
             int pageSize = pageSize();
             long pageCount = (bytes + pageSize - 1) / pageSize;
             if (pageCount > 0) {
-                mPageDb.allocatePages(pageCount);
-                checkpoint(true, 0, 0);
+                pageCount = mPageDb.allocatePages(pageCount);
+                if (pageCount > 0) {
+                    checkpoint(true, 0, 0);
+                }
+                return pageCount * pageSize;
             }
         }
+        return 0;
     }
 
     /**
@@ -919,7 +926,7 @@ public final class Database extends CauseCloseable {
     public Stats stats() {
         Stats stats = new Stats();
 
-        stats.mPageSize = mPageDb.pageSize();
+        stats.mPageSize = pageSize();
 
         mSharedCommitLock.lock();
         try {
@@ -940,9 +947,8 @@ public final class Database extends CauseCloseable {
             stats.mCursorCount = cursorCount;
 
             PageDb.Stats pstats = mPageDb.stats();
-            int pageSize = pageSize();
-            stats.mFreeSpace = pstats.freePages * pageSize;
-            stats.mTotalSpace = pstats.totalPages * pageSize;
+            stats.mFreePages = pstats.freePages;
+            stats.mTotalPages = pstats.totalPages;
 
             stats.mLockCount = mLockManager.numLocksHeld();
 
@@ -961,12 +967,12 @@ public final class Database extends CauseCloseable {
      * Immutable copy of database {@link Database#stats statistics}.
      */
     public static class Stats implements Serializable {
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 2L;
 
         int mPageSize;
+        long mFreePages;
+        long mTotalPages;
         int mOpenIndexes;
-        long mFreeSpace;
-        long mTotalSpace;
         long mLockCount;
         long mCursorCount;
         long mTxnCount;
@@ -983,24 +989,24 @@ public final class Database extends CauseCloseable {
         }
 
         /**
+         * Returns the amount of unused pages in the database.
+         */
+        public long freePages() {
+            return mFreePages;
+        }
+
+        /**
+         * Returns the total amount of pages in the database.
+         */
+        public long totalPages() {
+            return mTotalPages;
+        }
+
+        /**
          * Returns the amount of indexes currently open.
          */
         public int openIndexes() {
             return mOpenIndexes;
-        }
-
-        /**
-         * Returns the amount of unused bytes in the database.
-         */
-        public long freeSpace() {
-            return mFreeSpace;
-        }
-
-        /**
-         * Returns the total amount of bytes in the database.
-         */
-        public long totalSpace() {
-            return mTotalSpace;
         }
 
         /**
@@ -1041,9 +1047,10 @@ public final class Database extends CauseCloseable {
 
         @Override
         public String toString() {
-            return "Database.Stats {openIndexes=" + mOpenIndexes
-                + ", freeSpace=" + mFreeSpace
-                + ", totalSpace=" + mTotalSpace
+            return "Database.Stats {pageSize=" + mPageSize
+                + ", freePages=" + mFreePages
+                + ", totalPages=" + mTotalPages
+                + ", openIndexes=" + mOpenIndexes
                 + ", lockCount=" + mLockCount
                 + ", cursorCount=" + mCursorCount
                 + ", transactionCount=" + mTxnCount
@@ -1564,7 +1571,7 @@ public final class Database extends CauseCloseable {
 
             Node root = ref.mRoot;
             root.acquireExclusive();
-            root.forceEvictTree(this);
+            root.forceEvictTree(mPageDb);
             root.releaseExclusive();
 
             mOpenTreesLatch.acquireExclusive();
@@ -1656,7 +1663,7 @@ public final class Database extends CauseCloseable {
                     (node.mLessUsed = mMostRecentlyUsed).mMoreUsed = node;
                     mMostRecentlyUsed = node;
 
-                    if (node.tryAcquireExclusive() && (node = Node.evict(node, this)) != null) {
+                    if (node.tryAcquireExclusive() && (node = Node.evict(node, mPageDb)) != null) {
                         if (!evictable) {
                             // Detach from linked list.
                             (mMostRecentlyUsed = node.mLessUsed).mMoreUsed = null;
@@ -1860,7 +1867,7 @@ public final class Database extends CauseCloseable {
             long oldId = node.mId;
             long newId = mAllocator.allocPage(node);
             mPageDb.deletePage(oldId);
-            node.write(this);
+            node.write(mPageDb);
             dirty(node, newId);
         }
     }
@@ -1877,7 +1884,7 @@ public final class Database extends CauseCloseable {
             mPageDb.deletePage(oldId);
         }
         if (node.mCachedState != CACHED_CLEAN) {
-            node.write(this);
+            node.write(mPageDb);
         }
         if (node == tree.mRoot && tree.mIdBytes != null) {
             byte[] newEncodedId = new byte[8];
@@ -1916,7 +1923,7 @@ public final class Database extends CauseCloseable {
             // Node must be committed with the current checkpoint, and so
             // it must be written out before it can be deleted.
             try {
-                node.write(this);
+                node.write(mPageDb);
             } catch (Throwable e) {
                 node.releaseExclusive();
                 throw rethrow(e);
@@ -2001,12 +2008,6 @@ public final class Database extends CauseCloseable {
      * thrown.
      */
     void used(Node node) {
-        // Node latch is only required for this check. Dirty nodes are evicted
-        // in FIFO order, which helps spread out the write workload.
-        if (node.mCachedState != CACHED_CLEAN) {
-            return;
-        }
-
         // Because this method can be a bottleneck, don't wait for exclusive
         // latch. If node is popular, it will get more chances to be identified
         // as most recently used. This strategy works well enough because cache
@@ -2604,10 +2605,6 @@ public final class Database extends CauseCloseable {
         return CACHED_CLEAN;
     }
 
-    void writePage(long id, byte[] page) throws IOException {
-        mPageDb.writePage(id, page);
-    }
-
     void checkpoint(boolean force, long sizeThreshold, long delayThresholdNanos)
         throws IOException
     {
@@ -2786,20 +2783,7 @@ public final class Database extends CauseCloseable {
         }
 
         try {
-            mAllocator.beginDirtyIteration();
-            Node node;
-            while ((node = mAllocator.removeNextDirtyNode(stateToFlush)) != null) {
-                node.downgrade();
-                try {
-                    node.write(this);
-                    // Clean state must be set after write completes. Although
-                    // latch has been downgraded to shared, modifying the state
-                    // is safe because no other thread could have changed it.
-                    node.mCachedState = CACHED_CLEAN;
-                } finally {
-                    node.releaseShared();
-                }
-            }
+            mAllocator.flushDirtyNodes(stateToFlush);
         } finally {
             mCheckpointFlushState = CHECKPOINT_NOT_FLUSHING;
         }

@@ -764,11 +764,16 @@ class Utils {
     }
 
     static String toHex(byte[] key) {
+        return toHex(key, 0, key.length);
+    }
+
+    static String toHex(byte[] key, int offset, int length) {
         if (key == null) {
             return "null";
         }
-        char[] chars = new char[key.length << 1];
-        for (int bi=0, ci=0; bi<key.length; bi++) {
+        char[] chars = new char[length << 1];
+        int end = offset + length;
+        for (int bi=offset, ci=0; bi<end; bi++) {
             int b = key[bi] & 0xff;
             chars[ci++] = toHexChar(b >> 4);
             chars[ci++] = toHexChar(b & 0xf);

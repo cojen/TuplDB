@@ -2865,8 +2865,6 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     private boolean verifyFrames(int level, Node[] stack, TreeCursorFrame frame,
                                  VerificationObserver observer)
     {
-        // FIXME: verify child node keys are higher/lower than parent node
-
         TreeCursorFrame parentFrame = frame.mParentFrame;
 
         if (parentFrame != null) {
@@ -2880,6 +2878,51 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                     if (!verifyFrames(parentLevel, stack, parentFrame, observer)) {
                         return false;
                     }
+                }
+            }
+
+            // Verify child node keys are lower/higher than parent node.
+
+            parentNode = parentFrame.acquireShared();
+            Node childNode = frame.acquireShared();
+
+            int parentPos = parentFrame.mNodePos;
+
+            int childPos;
+            boolean left;
+            if (parentPos >= parentNode.highestInternalPos()) {
+                // Verify lowest child key is greater than or equal to parent key.
+                parentPos = parentNode.highestKeyPos();
+                childPos = 0;
+                left = false;
+            } else {
+                // Verify highest child key is lower than parent key.
+                childPos = childNode.highestKeyPos();
+                left = true;
+            }
+
+            byte[] parentKey = parentNode.retrieveKey(parentPos);
+            byte[] childKey = childNode.retrieveKey(childPos);
+            long childId = childNode.mId;
+
+            childNode.releaseShared();
+            parentNode.releaseShared();
+
+            int compare = Utils.compareKeys(childKey, parentKey);
+
+            if (left) {
+                if (compare >= 0) {
+                    if (!observer.indexNodeFailed
+                        (childId, level, "Child keys are not less than parent key"))
+                    {
+                        return false;
+                    }
+                }
+            } else if (compare < 0) {
+                if (!observer.indexNodeFailed
+                    (childId, level, "Child keys are not greater than or equal to parent key"))
+                {
+                    return false;
                 }
             }
         }

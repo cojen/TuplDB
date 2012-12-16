@@ -21,11 +21,11 @@ package org.cojen.tupl;
  *
  * @author Brian S O'Neill
  */
-class SafeEventListener implements EventListener {
+final class SafeEventListener implements EventListener {
     static EventListener makeSafe(EventListener listener) {
         return (listener == null
                 || listener instanceof SafeEventListener
-                || listener instanceof EventPrinter) ? listener
+                || listener.getClass() == EventPrinter.class) ? listener
             : new SafeEventListener(listener);
     }
 
