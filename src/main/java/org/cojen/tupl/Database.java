@@ -1571,7 +1571,7 @@ public final class Database extends CauseCloseable {
 
             Node root = ref.mRoot;
             root.acquireExclusive();
-            root.forceEvictTree(this);
+            root.forceEvictTree(mPageDb);
             root.releaseExclusive();
 
             mOpenTreesLatch.acquireExclusive();
@@ -1663,7 +1663,7 @@ public final class Database extends CauseCloseable {
                     (node.mLessUsed = mMostRecentlyUsed).mMoreUsed = node;
                     mMostRecentlyUsed = node;
 
-                    if (node.tryAcquireExclusive() && (node = Node.evict(node, this)) != null) {
+                    if (node.tryAcquireExclusive() && (node = Node.evict(node, mPageDb)) != null) {
                         if (!evictable) {
                             // Detach from linked list.
                             (mMostRecentlyUsed = node.mLessUsed).mMoreUsed = null;
@@ -1867,7 +1867,7 @@ public final class Database extends CauseCloseable {
             long oldId = node.mId;
             long newId = mAllocator.allocPage(node);
             mPageDb.deletePage(oldId);
-            node.write(this);
+            node.write(mPageDb);
             dirty(node, newId);
         }
     }
@@ -1884,7 +1884,7 @@ public final class Database extends CauseCloseable {
             mPageDb.deletePage(oldId);
         }
         if (node.mCachedState != CACHED_CLEAN) {
-            node.write(this);
+            node.write(mPageDb);
         }
         if (node == tree.mRoot && tree.mIdBytes != null) {
             byte[] newEncodedId = new byte[8];
@@ -1923,7 +1923,7 @@ public final class Database extends CauseCloseable {
             // Node must be committed with the current checkpoint, and so
             // it must be written out before it can be deleted.
             try {
-                node.write(this);
+                node.write(mPageDb);
             } catch (Throwable e) {
                 node.releaseExclusive();
                 throw rethrow(e);
@@ -2008,12 +2008,6 @@ public final class Database extends CauseCloseable {
      * thrown.
      */
     void used(Node node) {
-        // Node latch is only required for this check. Dirty nodes are evicted
-        // in FIFO order, which helps spread out the write workload.
-        if (node.mCachedState != CACHED_CLEAN) {
-            return;
-        }
-
         // Because this method can be a bottleneck, don't wait for exclusive
         // latch. If node is popular, it will get more chances to be identified
         // as most recently used. This strategy works well enough because cache
@@ -2611,10 +2605,6 @@ public final class Database extends CauseCloseable {
         return CACHED_CLEAN;
     }
 
-    void writePage(long id, byte[] page) throws IOException {
-        mPageDb.writePage(id, page);
-    }
-
     void checkpoint(boolean force, long sizeThreshold, long delayThresholdNanos)
         throws IOException
     {
@@ -2793,20 +2783,7 @@ public final class Database extends CauseCloseable {
         }
 
         try {
-            mAllocator.beginDirtyIteration();
-            Node node;
-            while ((node = mAllocator.removeNextDirtyNode(stateToFlush)) != null) {
-                node.downgrade();
-                try {
-                    node.write(this);
-                    // Clean state must be set after write completes. Although
-                    // latch has been downgraded to shared, modifying the state
-                    // is safe because no other thread could have changed it.
-                    node.mCachedState = CACHED_CLEAN;
-                } finally {
-                    node.releaseShared();
-                }
-            }
+            mAllocator.flushDirtyNodes(stateToFlush);
         } finally {
             mCheckpointFlushState = CHECKPOINT_NOT_FLUSHING;
         }
