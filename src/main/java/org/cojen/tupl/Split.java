@@ -22,19 +22,6 @@ package org.cojen.tupl;
  * @author Brian S O'Neill
  */
 class Split {
-    /**
-     * Special marker class used by a loading node. Not really a split state,
-     * but it allows the Node's split field to be re-used. A node cannot be
-     * split while loading, and so there's no state conflict.
-     */
-    static class Loading extends Split {
-        WaitQueue mWaitQueue;
-
-        Loading() {
-            super(false, null);
-        }
-    }
-
     final boolean mSplitRight;
     private final Node mSibling;
 
