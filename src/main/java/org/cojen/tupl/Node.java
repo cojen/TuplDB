@@ -481,38 +481,138 @@ final class Node extends Latch {
     Node loadChild(Database db, int childPos, long childId, boolean releaseParent)
         throws IOException
     {
-        Node childNode;
-        try {
-            childNode = db.allocLatchedNode();
-            childNode.mId = childId;
+        // FIXME: Move the !releaseParent case to another method, or figure out
+        // how the parent can be released in all cases.
+        if (!releaseParent) {
+            Node childNode;
+            try {
+                childNode = db.allocLatchedNode();
+            } catch (Throwable e) {
+                releaseExclusive();
+                throw Utils.rethrow(e);
+            }
+
             mChildNodes[childPos >> 1] = childNode;
-        } catch (Throwable e) {
-            releaseExclusive();
-            throw Utils.rethrow(e);
+
+            try {
+                childNode.read(db, childId);
+            } catch (Throwable e) {
+                // Another thread might access child and see that it is invalid
+                // because id is zero. It will assume it got evicted and will
+                // load child again.
+                childNode.mId = 0;
+                childNode.mType = TYPE_NONE;
+                childNode.releaseExclusive();
+                throw Utils.rethrow(e);
+            }
+
+            return childNode;
         }
 
-        // Release parent latch before child has been loaded. Any threads
-        // which wish to access the same child will block until this thread
-        // has finished loading the child and released its exclusive latch.
-        if (releaseParent) {
+        // Determine if child node is currently being loaded by another thread.
+
+        Node childNode = mChildNodes[childPos >> 1];
+        prepareLoad: {
+            loadWait: {
+                if (childNode == null || childNode.mId != ~childId) {
+                    break loadWait;
+                }
+
+                childNode.acquireExclusive();
+                if (childNode.mId != ~childId) {
+                    // Proceed with load in this thread.
+                    childNode.releaseExclusive();
+                    break loadWait;
+                }
+
+                // Load is being peformed by another thread. Release parent and
+                // wait on child node.
+                releaseExclusive();
+                Split.Loading loading = (Split.Loading) childNode.mSplit;
+                WaitQueue queue = loading.mWaitQueue;
+                if (queue == null) {
+                    loading.mWaitQueue = queue = new WaitQueue();
+                }
+
+                // Bind a cursor frame to prevent child node eviction after
+                // latch is released by await method.
+                TreeCursorFrame frame = new TreeCursorFrame();
+                frame.bind(childNode, 0);
+
+                while (queue.await(childNode, new WaitQueue.Node(), -1, 0) <= 0);
+
+                // Latch is held again, and so no eviction will occur.
+                frame.unbind();
+
+                if (childNode.mId == childId) {
+                    // Signal next waiter, if any.
+                    queue.signal();
+                    return childNode;
+                }
+
+                if (childNode.mId != ~childId) {
+                    throw new AssertionError();
+                }
+
+                // Load failed, so try loading in this thread instead.
+                break prepareLoad;
+            }
+
+            // Prepare first load attempt.
+
+            try {
+                childNode = db.allocLatchedNode();
+                // Indicates that load is in progress.
+                childNode.mId = ~childId;
+                mChildNodes[childPos >> 1] = childNode;
+            } catch (Throwable e) {
+                releaseExclusive();
+                throw Utils.rethrow(e);
+            }
+
+            // Release parent latch.
             releaseExclusive();
+
+            // Special object for signaling any threads waiting for load to
+            // complete. Also ensures that child node doesn't get evicted.
+            childNode.mSplit = new Split.Loading();
         }
 
-        // FIXME: Don't hold latch during load. Instead, use an object for
-        // holding state, and include a "loading" state. As other threads see
-        // this state, they replace the state object with a linked stack of
-        // parked threads. When the load is finished, all waiting threads are
-        // unparked. Without this change, latch blockage can reach the root.
+        // Proceed with load without latch held. All other threads will have to
+        // wait, and so there's no concurrency issues.
+        childNode.releaseExclusive();
 
         try {
             childNode.read(db, childId);
         } catch (Throwable e) {
-            // Another thread might access child and see that it is invalid because
-            // id is zero. It will assume it got evicted and will load child again.
-            childNode.mId = 0;
+            childNode.acquireExclusive();
             childNode.mType = TYPE_NONE;
+            WaitQueue queue = ((Split.Loading) childNode.mSplit).mWaitQueue;
+            if (queue != null && !queue.isEmpty()) {
+                // Let next waiting thread attempt the load.
+                childNode.mId = ~childId;
+                queue.signal();
+            } else {
+                // Clean up after failed load, making it appear as if child
+                // node was evicted.
+                childNode.mId = 0;
+                childNode.mSplit = null;
+            }
             childNode.releaseExclusive();
             throw Utils.rethrow(e);
+        }
+
+        childNode.acquireExclusive();
+        WaitQueue queue = ((Split.Loading) childNode.mSplit).mWaitQueue;
+
+        // Clear reference allowing node to be split. To prevent eviction
+        // before waiters get a chance to access the child node, they are
+        // required to have bound a TreeCursorFrame.
+        childNode.mSplit = null;
+
+        if (queue != null) {
+            // Signal next waiter, if any.
+            queue.signal();
         }
 
         return childNode;
@@ -724,8 +824,10 @@ final class Node extends Latch {
     private Node evictTreeNode(PageDb db) throws IOException {
         if (mLastCursorFrame != null || mSplit != null) {
             // Cannot evict if in use by a cursor or if splitting. The split
-            // check is redundant, since a node cannot be in a split state
-            // without a cursor registered against it.
+            // check is usually redundant, since a node cannot be in a split
+            // state without a cursor registered against it. However, the field
+            // is used also to indicate that the node is in the process of
+            // being loaded. See the loadChild method.
             releaseExclusive();
             return null;
         }

@@ -24,7 +24,7 @@ import java.util.concurrent.locks.LockSupport;
  * @author Brian S O'Neill
  * @see Lock
  */
-class WaitQueue {
+final class WaitQueue {
     Node mHead;
     Node mTail;
 
