@@ -527,22 +527,10 @@ final class Node extends Latch {
 
                 // Load is being peformed by another thread. Release parent and
                 // wait on child node.
+
                 releaseExclusive();
-                Split.Loading loading = (Split.Loading) childNode.mSplit;
-                WaitQueue queue = loading.mWaitQueue;
-                if (queue == null) {
-                    loading.mWaitQueue = queue = new WaitQueue();
-                }
 
-                // Bind a cursor frame to prevent child node eviction after
-                // latch is released by await method.
-                TreeCursorFrame frame = new TreeCursorFrame();
-                frame.bind(childNode, 0);
-
-                while (queue.await(childNode, new WaitQueue.Node(), -1, 0) <= 0);
-
-                // Latch is held again, and so no eviction will occur.
-                frame.unbind();
+                WaitQueue queue = NodeLoading.await(childNode);
 
                 if (childNode.mId == childId) {
                     // Signal next waiter, if any.
@@ -575,7 +563,7 @@ final class Node extends Latch {
 
             // Special object for signaling any threads waiting for load to
             // complete. Also ensures that child node doesn't get evicted.
-            childNode.mSplit = new Split.Loading();
+            childNode.mSplit = NodeLoading.MARKER;
         }
 
         // Proceed with load without latch held. All other threads will have to
@@ -587,7 +575,7 @@ final class Node extends Latch {
         } catch (Throwable e) {
             childNode.acquireExclusive();
             childNode.mType = TYPE_NONE;
-            WaitQueue queue = ((Split.Loading) childNode.mSplit).mWaitQueue;
+            WaitQueue queue = ((NodeLoading) childNode.mSplit).mWaitQueue;
             if (queue != null && !queue.isEmpty()) {
                 // Let next waiting thread attempt the load.
                 childNode.mId = ~childId;
@@ -603,7 +591,7 @@ final class Node extends Latch {
         }
 
         childNode.acquireExclusive();
-        WaitQueue queue = ((Split.Loading) childNode.mSplit).mWaitQueue;
+        WaitQueue queue = ((NodeLoading) childNode.mSplit).mWaitQueue;
 
         // Clear reference allowing node to be split. To prevent eviction
         // before waiters get a chance to access the child node, they are
