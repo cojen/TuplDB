@@ -18,22 +18,23 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import static org.cojen.tupl.RedoLog.*;
+import static org.cojen.tupl.RedoOps.*;
 
 /**
  * 
  *
  * @author Brian S O'Neill
+ * @see RedoWriter
  */
-class RedoLogDecoder {
-    RedoLogDecoder() {
+abstract class RedoDecoder {
+    RedoDecoder() {
     }
 
     /**
      * Reads from the given stream, passing operations to the visitor, until
-     * the end of stream is reached.
+     * the end of stream is reached or visitor returns false.
      */
-    void run(DataIn in, RedoLogVisitor visitor) throws IOException {
+    void run(DataIn in, RedoVisitor visitor) throws IOException {
         int op;
         while ((op = in.read()) >= 0) {
             long operand = in.readLongLE();
@@ -47,99 +48,101 @@ class RedoLogDecoder {
                 return;
 
             case OP_TIMESTAMP:
-                if (!verifyTerminator(in)) {
+                if (!verifyTerminator(in) || !visitor.timestamp(operand)) {
                     return;
                 }
-                visitor.timestamp(operand);
                 break;
 
             case OP_SHUTDOWN:
-                if (!verifyTerminator(in)) {
+                if (!verifyTerminator(in) || !visitor.shutdown(operand)) {
                     return;
                 }
-                visitor.shutdown(operand);
                 break;
 
             case OP_CLOSE:
-                if (!verifyTerminator(in)) {
+                if (!verifyTerminator(in) || !visitor.close(operand)) {
                     return;
                 }
-                visitor.close(operand);
                 break;
 
             case OP_END_FILE:
-                if (!verifyTerminator(in)) {
+                if (!verifyTerminator(in) || !visitor.endFile(operand)) {
                     return;
                 }
-                visitor.endFile(operand);
+                break;
+
+            case OP_TXN_BEGIN:
+                if (!verifyTerminator(in) || !visitor.txnBegin(operand)) {
+                    return;
+                }
+                break;
+
+            case OP_TXN_BEGIN_CHILD:
+                long parentTxnId = in.readLongLE();
+                if (!verifyTerminator(in) || !visitor.txnBeginChild(operand, parentTxnId)) {
+                    return;
+                }
                 break;
 
             case OP_TXN_ROLLBACK:
-                if (!verifyTerminator(in)) {
+                if (!verifyTerminator(in) || !visitor.txnRollback(operand)) {
                     return;
                 }
-                visitor.txnRollback(operand);
                 break;
 
             case OP_TXN_ROLLBACK_CHILD:
-                long parentTxnId = in.readLongLE();
-                if (!verifyTerminator(in)) {
+                parentTxnId = in.readLongLE();
+                if (!verifyTerminator(in) || !visitor.txnRollbackChild(operand, parentTxnId)) {
                     return;
                 }
-                visitor.txnRollbackChild(operand, parentTxnId);
                 break;
 
             case OP_TXN_COMMIT:
-                if (!verifyTerminator(in)) {
+                if (!verifyTerminator(in) || !visitor.txnCommit(operand)) {
                     return;
                 }
-                visitor.txnCommit(operand);
                 break;
 
             case OP_TXN_COMMIT_CHILD:
                 parentTxnId = in.readLongLE();
-                if (!verifyTerminator(in)) {
+                if (!verifyTerminator(in) || !visitor.txnCommitChild(operand, parentTxnId)) {
                     return;
                 }
-                visitor.txnCommitChild(operand, parentTxnId);
                 break;
 
             case OP_STORE:
                 byte[] key = in.readBytes();
                 byte[] value = in.readBytes();
-                if (!verifyTerminator(in)) {
+                if (!verifyTerminator(in) || !visitor.store(operand, key, value)) {
                     return;
                 }
-                visitor.store(operand, key, value);
                 break;
 
             case OP_DELETE:
                 key = in.readBytes();
-                if (!verifyTerminator(in)) {
+                if (!verifyTerminator(in) || !visitor.store(operand, key, null)) {
                     return;
                 }
-                visitor.store(operand, key, null);
                 break;
 
             case OP_TXN_STORE:
                 long indexId = in.readLongLE();
                 key = in.readBytes();
                 value = in.readBytes();
-                if (!verifyTerminator(in)) {
+                if (!verifyTerminator(in) || !visitor.txnStore(operand, indexId, key, value)) {
                     return;
                 }
-                visitor.txnStore(operand, indexId, key, value);
                 break;
 
             case OP_TXN_STORE_COMMIT:
                 indexId = in.readLongLE();
                 key = in.readBytes();
                 value = in.readBytes();
-                if (!verifyTerminator(in)) {
+                if (!verifyTerminator(in)
+                    || !visitor.txnStoreCommit(operand, indexId, key, value))
+                {
                     return;
                 }
-                visitor.txnStore(operand, indexId, key, value);
-                visitor.txnCommit(operand);
                 break;
 
             case OP_TXN_STORE_COMMIT_CHILD:
@@ -147,51 +150,48 @@ class RedoLogDecoder {
                 indexId = in.readLongLE();
                 key = in.readBytes();
                 value = in.readBytes();
-                if (!verifyTerminator(in)) {
+                if (!verifyTerminator(in)
+                    || !visitor.txnStoreCommitChild(operand, parentTxnId, indexId, key, value))
+                {
                     return;
                 }
-                visitor.txnStore(operand, indexId, key, value);
-                visitor.txnCommitChild(operand, parentTxnId);
                 break;
 
             case OP_TXN_DELETE:
                 indexId = in.readLongLE();
                 key = in.readBytes();
-                if (!verifyTerminator(in)) {
+                if (!verifyTerminator(in) || !visitor.txnStore(operand, indexId, key, null)) {
                     return;
                 }
-                visitor.txnStore(operand, indexId, key, null);
                 break;
 
             case OP_TXN_DELETE_COMMIT:
                 indexId = in.readLongLE();
                 key = in.readBytes();
-                if (!verifyTerminator(in)) {
+                if (!verifyTerminator(in)
+                    || !visitor.txnStoreCommit(operand, indexId, key, null))
+                {
                     return;
                 }
-                visitor.txnStore(operand, indexId, key, null);
-                visitor.txnCommit(operand);
                 break;
 
             case OP_TXN_DELETE_COMMIT_CHILD:
                 parentTxnId = in.readLongLE();
                 indexId = in.readLongLE();
                 key = in.readBytes();
-                if (!verifyTerminator(in)) {
+                if (!verifyTerminator(in)
+                    || !visitor.txnStoreCommitChild(operand, parentTxnId, indexId, key, null))
+                {
                     return;
                 }
-                visitor.txnStore(operand, indexId, key, null);
-                visitor.txnCommitChild(operand, parentTxnId);
                 break;
             }
         }
     }
 
     /**
-     * If false is returned, assume rest of log file is corrupt. Default
-     * implementation does nothing but return true.
+     * If false is returned, assume rest of redo data is corrupt.
+     * Implementation can return true if no redo terminators were written.
      */
-    boolean verifyTerminator(DataIn in) throws IOException {
-        return true;
-    }
+    abstract boolean verifyTerminator(DataIn in) throws IOException;
 }

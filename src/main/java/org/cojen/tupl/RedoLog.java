@@ -39,93 +39,9 @@ import java.security.GeneralSecurityException;
  *
  * @author Brian S O'Neill
  */
-final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
+final class RedoLog extends RedoWriter {
     private static final long MAGIC_NUMBER = 431399725605778814L;
     private static final int ENCODING_VERSION = 20120801;
-
-    // Note: When updating the opcodes, be sure to update RedoLogDecoder class.
-
-    static final byte
-        /** timestamp: long */
-        OP_TIMESTAMP = 1,
-
-        /** timestamp: long */
-        OP_SHUTDOWN = 2,
-
-        /** timestamp: long */
-        OP_CLOSE = 3,
-
-        /** timestamp: long */
-        OP_END_FILE = 4,
-
-        /** txnId: long */
-        //OP_TXN_BEGIN = 5,
-
-        /** txnId: long, parentTxnId: long */
-        //OP_TXN_BEGIN_CHILD = 6,
-
-        /** txnId: long */
-        //OP_TXN_CONTINUE = 7,
-
-        /** txnId: long, parentTxnId: long */
-        //OP_TXN_CONTINUE_CHILD = 8,
-
-        /** txnId: long */
-        OP_TXN_ROLLBACK = 9,
-
-        /** txnId: long, parentTxnId: long */
-        OP_TXN_ROLLBACK_CHILD = 10,
-
-        /** txnId: long */
-        OP_TXN_COMMIT = 11,
-
-        /** txnId: long, parentTxnId: long */
-        OP_TXN_COMMIT_CHILD = 12,
-
-        /** indexId: long, keyLength: varInt, key: bytes, valueLength: varInt, value: bytes */
-        OP_STORE = 16,
-
-        /** indexId: long, keyLength: varInt, key: bytes */
-        OP_DELETE = 17,
-
-        /** indexId: long */
-        //OP_CLEAR = 18,
-
-        /** txnId: long, indexId: long, keyLength: varInt, key: bytes,
-            valueLength: varInt, value: bytes */
-        OP_TXN_STORE = 19,
-
-        /** txnId: long, indexId: long, keyLength: varInt, key: bytes,
-            valueLength: varInt, value: bytes */
-        OP_TXN_STORE_COMMIT = 20,
-
-        /** txnId: long, parentTxnId: long, indexId: long, keyLength: varInt, key: bytes,
-            valueLength: varInt, value: bytes */
-        OP_TXN_STORE_COMMIT_CHILD = 21,
-
-        /** txnId: long, indexId: long, keyLength: varInt, key: bytes */
-        OP_TXN_DELETE = 22,
-
-        /** txnId: long, indexId: long, keyLength: varInt, key: bytes */
-        OP_TXN_DELETE_COMMIT = 23,
-
-        /** txnId: long, parentTxnId: long, indexId: long, keyLength: varInt, key: bytes */
-        OP_TXN_DELETE_COMMIT_CHILD = 24;
-
-        /** txnId: long, indexId: long */
-        //OP_TXN_CLEAR = 25,
-
-        /** txnId: long, indexId: long */
-        //OP_TXN_CLEAR_COMMIT = 26,
-
-        /** txnId: long, parentTxnId: long, indexId: long */
-        //OP_TXN_CLEAR_COMMIT_CHILD = 27,
-
-        /** length: varInt, data: bytes */
-        //OP_CUSTOM = (byte) 128,
-
-        /** txnId: long, length: varInt, data: bytes */
-        //OP_TXN_CUSTOM = (byte) 129;
 
     private static int randomInt() {
         Random rnd = new Random();
@@ -138,28 +54,22 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
     private final Crypto mCrypto;
     private final File mBaseFile;
 
-    private final byte[] mBuffer;
-    private int mBufferPos;
-
     private final boolean mReplayMode;
 
     private long mLogId;
     private OutputStream mOut;
     private volatile FileChannel mChannel;
 
-    private boolean mAlwaysFlush;
-
     private int mTermRndSeed;
-
-    private volatile Throwable mCause;
 
     /**
      * @oaram logId first log id to open
      */
     RedoLog(Crypto crypto, File baseFile, long logId, boolean replay) throws IOException {
+        super(4096);
+
         mCrypto = crypto;
         mBaseFile = baseFile;
-        mBuffer = new byte[4096];
         mReplayMode = replay;
 
         synchronized (this) {
@@ -178,7 +88,7 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
      * @param scanned files scanned in previous replay
      * @return all the files which were replayed
      */
-    synchronized Set<File> replay(RedoLogVisitor visitor, Set<File> scanned,
+    synchronized Set<File> replay(RedoVisitor visitor, Set<File> scanned,
                                   EventListener listener, EventType type, String message)
         throws IOException
     {
@@ -307,9 +217,7 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
             oldChannel = mChannel;
 
             if (oldOut != null) {
-                writeOp(OP_END_FILE, System.currentTimeMillis());
-                writeTerminator();
-                doFlush();
+                endFile();
             }
 
             mOut = out;
@@ -343,243 +251,63 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
         return channel == null ? 0 : channel.size();
     }
 
-    public synchronized void flush() throws IOException {
-        doFlush();
+    @Override
+    public void txnBegin(long txnId) {
+        // RedoLogTxnScanner infers transaction begin.
     }
 
-    public void sync() throws IOException {
-        flush();
-        force(false);
+    @Override
+    public void txnBegin(long txnId, long parentTxnId) {
+        // RedoLogTxnScanner infers transaction begin and parent transaction.
     }
 
-    private void force(boolean metadata) throws IOException {
+    @Override
+    boolean isOpen() {
+        FileChannel channel = mChannel;
+        return channel != null && channel.isOpen();
+    }
+
+    @Override
+    void write(byte[] buffer, int len) throws IOException {
+        mOut.write(buffer, 0, len);
+    }
+
+    @Override
+    void force(boolean metadata) throws IOException {
         FileChannel channel = mChannel;
         if (channel != null) {
             try {
                 channel.force(metadata);
             } catch (ClosedChannelException e) {
-            } catch (IOException e) {
-                throw Utils.rethrow(e, mCause);
+                // Ignore.
             }
         }
     }
 
     @Override
-    public synchronized void close() throws IOException {
-        close(null);
+    void forceAndClose() throws IOException {
+        FileChannel channel = mChannel;
+        if (channel != null) {
+            try {
+                channel.force(true);
+                try {
+                    channel.close();
+                } catch (IOException e) {
+                    // Ignore.
+                }
+            } catch (ClosedChannelException e) {
+                // Ignore.
+            }
+        }
     }
 
     @Override
-    public synchronized void close(Throwable cause) throws IOException {
-        if (cause != null) {
-            mCause = cause;
-        }
-        shutdown(OP_CLOSE);
-    }
-
-    @Override
-    public void shutdown() {
-        try {
-            shutdown(OP_SHUTDOWN);
-        } catch (IOException e) {
-            // Ignore.
-        }
-    }
-
-    void shutdown(byte op) throws IOException {
-        synchronized (this) {
-            mAlwaysFlush = true;
-
-            if (mChannel == null || !mChannel.isOpen()) {
-                return;
-            }
-
-            writeOp(op, System.currentTimeMillis());
-            writeTerminator();
-            doFlush();
-
-            if (op == OP_CLOSE) {
-                mChannel.force(true);
-                mChannel.close();
-                return;
-            }
-        }
-
-        force(true);
-    }
-
-    public void store(long indexId, byte[] key, byte[] value, DurabilityMode mode)
-        throws IOException
-    {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
-
-        boolean sync;
-        synchronized (this) {
-            if (value == null) {
-                writeOp(OP_DELETE, indexId);
-                writeUnsignedVarInt(key.length);
-                writeBytes(key);
-            } else {
-                writeOp(OP_STORE, indexId);
-                writeUnsignedVarInt(key.length);
-                writeBytes(key);
-                writeUnsignedVarInt(value.length);
-                writeBytes(value);
-            }
-            writeTerminator();
-
-            sync = conditionalFlush(mode);
-        }
-
-        if (sync) {
-            force(false);
-        }
-    }
-
-    public synchronized void txnRollback(long txnId, long parentTxnId) throws IOException {
-        if (parentTxnId == 0) {
-            writeOp(OP_TXN_ROLLBACK, txnId);
-        } else {
-            writeOp(OP_TXN_ROLLBACK_CHILD, txnId);
-            writeLongLE(parentTxnId);
-        }
-        writeTerminator();
-    }
-
-    /**
-     * @return true if caller should call txnCommitSync
-     */
-    public synchronized boolean txnCommitFull(long txnId, DurabilityMode mode) throws IOException {
-        writeOp(OP_TXN_COMMIT, txnId);
-        writeTerminator();
-        return conditionalFlush(mode);
-    }
-
-    /**
-     * Called after txnCommitFull.
-     */
-    public void txnCommitSync() throws IOException {
-        force(false);
-    }
-
-    public synchronized void txnCommitScope(long txnId, long parentTxnId) throws IOException {
-        writeOp(OP_TXN_COMMIT_CHILD, txnId);
-        writeLongLE(parentTxnId);
-        writeTerminator();
-    }
-
-    public synchronized void txnStore(long txnId, long indexId, byte[] key, byte[] value)
-        throws IOException
-    {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
-
-        if (value == null) {
-            writeOp(OP_TXN_DELETE, txnId);
-            writeLongLE(indexId);
-            writeUnsignedVarInt(key.length);
-            writeBytes(key);
-        } else {
-            writeOp(OP_TXN_STORE, txnId);
-            writeLongLE(indexId);
-            writeUnsignedVarInt(key.length);
-            writeBytes(key);
-            writeUnsignedVarInt(value.length);
-            writeBytes(value);
-        }
-
-        writeTerminator();
-    }
-
-    /*
-    public synchronized void txnStoreCommit(long txnId, long parentTxnId,
-                                            long indexId, byte[] key, byte[] value)
-        throws IOException
-    {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
-
-        if (value == null) {
-            if (parentTxnId == 0) {
-                writeOp(OP_TXN_DELETE_COMMIT, txnId);
-            } else {
-                writeOp(OP_TXN_DELETE_COMMIT_CHILD, txnId);
-                writeLongLE(parentTxnId);
-            }
-            writeLongLE(indexId);
-            writeUnsignedVarInt(key.length);
-            writeBytes(key);
-        } else {
-            if (parentTxnId == 0) {
-                writeOp(OP_TXN_STORE_COMMIT, txnId);
-            } else {
-                writeOp(OP_TXN_STORE_COMMIT_CHILD, txnId);
-                writeLongLE(parentTxnId);
-            }
-            writeLongLE(indexId);
-            writeUnsignedVarInt(key.length);
-            writeBytes(key);
-            writeUnsignedVarInt(value.length);
-            writeBytes(value);
-        }
-
-        writeTerminator();
-    }
-    */
-
-    synchronized void timestamp() throws IOException {
-        writeOp(OP_TIMESTAMP, System.currentTimeMillis());
-        writeTerminator();
-    }
-
-    // Caller must be synchronized.
-    private void writeIntLE(int v) throws IOException {
-        byte[] buffer = mBuffer;
-        int pos = mBufferPos;
-        if (pos > buffer.length - 4) {
-            doFlush(buffer, pos);
-            pos = 0;
-        }
-        Utils.writeIntLE(buffer, pos, v);
-        mBufferPos = pos + 4;
-    }
-
-    // Caller must be synchronized.
-    private void writeLongLE(long v) throws IOException {
-        byte[] buffer = mBuffer;
-        int pos = mBufferPos;
-        if (pos > buffer.length - 8) {
-            doFlush(buffer, pos);
-            pos = 0;
-        }
-        Utils.writeLongLE(buffer, pos, v);
-        mBufferPos = pos + 8;
-    }
-
-    // Caller must be synchronized.
-    private void writeOp(byte op, long operand) throws IOException {
-        byte[] buffer = mBuffer;
-        int pos = mBufferPos;
-        if (pos >= buffer.length - 9) {
-            doFlush(buffer, pos);
-            pos = 0;
-        }
-        buffer[pos] = op;
-        Utils.writeLongLE(buffer, pos + 1, operand);
-        mBufferPos = pos + 9;
-    }
-
-    // Caller must be synchronized.
-    private void writeTerminator() throws IOException {
+    void writeTerminator() throws IOException {
         writeIntLE(nextTermRnd());
     }
 
     // Caller must be synchronized (replay is exempt)
-    private int nextTermRnd() throws IOException {
+    int nextTermRnd() throws IOException {
         // Xorshift RNG by George Marsaglia.
         int x = mTermRndSeed;
         x ^= x << 13;
@@ -589,79 +317,7 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
         return x;
     }
 
-    // Caller must be synchronized.
-    private void writeUnsignedVarInt(int v) throws IOException {
-        byte[] buffer = mBuffer;
-        int pos = mBufferPos;
-        if (pos > buffer.length - 5) {
-            doFlush(buffer, pos);
-            pos = 0;
-        }
-        mBufferPos = Utils.writeUnsignedVarInt(buffer, pos, v);
-    }
-
-    // Caller must be synchronized.
-    private void writeBytes(byte[] bytes) throws IOException {
-        writeBytes(bytes, 0, bytes.length);
-    }
-
-    // Caller must be synchronized.
-    private void writeBytes(byte[] bytes, int offset, int length) throws IOException {
-        if (length == 0) {
-            return;
-        }
-        byte[] buffer = mBuffer;
-        int pos = mBufferPos;
-        while (true) {
-            if (pos <= buffer.length - length) {
-                System.arraycopy(bytes, offset, buffer, pos, length);
-                mBufferPos = pos + length;
-                return;
-            }
-            int remaining = buffer.length - pos;
-            System.arraycopy(bytes, offset, buffer, pos, remaining);
-            doFlush(buffer, buffer.length);
-            pos = 0;
-            offset += remaining;
-            length -= remaining;
-        }
-    }
-
-    // Caller must be synchronized. Returns true if caller should sync.
-    private boolean conditionalFlush(DurabilityMode mode) throws IOException {
-        switch (mode) {
-        default:
-            return false;
-        case NO_FLUSH:
-            if (mAlwaysFlush) {
-                doFlush();
-            }
-            return false;
-        case SYNC:
-            doFlush();
-            return true;
-        case NO_SYNC:
-            doFlush();
-            return false;
-        }
-    }
-
-    // Caller must be synchronized.
-    private void doFlush() throws IOException {
-        doFlush(mBuffer, mBufferPos);
-    }
-
-    // Caller must be synchronized.
-    private void doFlush(byte[] buffer, int pos) throws IOException {
-        try {
-            mOut.write(buffer, 0, pos);
-            mBufferPos = 0;
-        } catch (IOException e) {
-            throw Utils.rethrow(e, mCause);
-        }
-    }
-
-    private void replay(DataIn in, RedoLogVisitor visitor) throws IOException {
+    private void replay(DataIn in, RedoVisitor visitor) throws IOException {
         long magic = in.readLongLE();
         if (magic != MAGIC_NUMBER) {
             if (magic == 0) {
@@ -684,7 +340,7 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
 
         mTermRndSeed = in.readIntLE();
 
-        new RedoLogDecoder() {
+        new RedoDecoder() {
             @Override
             protected boolean verifyTerminator(DataIn in) throws IOException {
                 try {

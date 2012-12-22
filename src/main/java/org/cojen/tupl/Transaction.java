@@ -334,7 +334,7 @@ public final class Transaction extends Locker {
             ParentScope parentScope = mParentScope;
             if (parentScope == null) {
                 if ((mHasState & HAS_REDO) != 0) {
-                    mDatabase.mRedoLog.txnRollback(mTxnId, 0);
+                    mDatabase.mRedoLog.txnRollback(mTxnId);
                     mHasState &= ~HAS_REDO;
                 }
 
@@ -392,7 +392,7 @@ public final class Transaction extends Locker {
             ParentScope parentScope = mParentScope;
             if (parentScope == null) {
                 if ((mHasState & HAS_REDO) != 0) {
-                    mDatabase.mRedoLog.txnRollback(mTxnId, 0);
+                    mDatabase.mRedoLog.txnRollback(mTxnId);
                     mHasState = 0;
                 }
             } else {
@@ -409,7 +409,7 @@ public final class Transaction extends Locker {
                     parentScope = parentScope.mParentScope;
                 } while (parentScope != null);
                 if ((hasState & HAS_REDO) != 0) {
-                    mDatabase.mRedoLog.txnRollback(txnId, 0);
+                    mDatabase.mRedoLog.txnRollback(txnId);
                 }
                 mHasState = 0;
             }
@@ -547,15 +547,7 @@ public final class Transaction extends Locker {
         check();
 
         try {
-            long txnId = mTxnId;
-            if (txnId == 0) {
-                ParentScope parentScope = mParentScope;
-                if (parentScope != null && parentScope.mTxnId == 0) {
-                    assignTxnId(parentScope);
-                }
-                txnId = assignTxnId();
-            }
-
+            long txnId = ensureTxnId();
             RedoLog redo = mDatabase.mRedoLog;
             if (redo != null) {
                 redo.txnStore(txnId, indexId, key, value);
@@ -576,19 +568,8 @@ public final class Transaction extends Locker {
         check();
 
         try {
-            long parentTxnId;
-            ParentScope parentScope = mParentScope;
-            if (parentScope == null) {
-                parentTxnId = 0;
-            } else if ((parentTxnId = parentScope.mTxnId) == 0) {
-                assignTxnId(parentScope);
-                parentTxnId = parentScope.mTxnId;
-            }
-
-            long txnId = mTxnId;
-            if (txnId == 0) {
-                txnId = assignTxnId();
-            }
+            long txnId = ensureTxnId();
+            long parentTxnId = ensureTxnId(mParentScope);
 
             RedoLog redo = mDatabase.mRedoLog;
             if (redo != null) {
@@ -603,32 +584,36 @@ public final class Transaction extends Locker {
     }
     */
 
-    private long assignTxnId() throws IOException {
-        long txnId;
-        UndoLog undo = mUndoLog;
-        if (undo == null) {
-            txnId = mDatabase.nextTransactionId();
-        } else if ((txnId = undo.activeTransactionId()) == 0) {
-            txnId = mDatabase.nextTransactionId();
-            undo.activeTransactionId(txnId);
+    private long ensureTxnId() throws IOException {
+        long txnId = mTxnId;
+        if (txnId == 0) {
+            UndoLog undo = mUndoLog;
+            if (undo == null) {
+                txnId = mDatabase.beginTransaction(ensureTxnId(mParentScope));
+            } else if ((txnId = undo.activeTransactionId()) == 0) {
+                txnId = mDatabase.beginTransaction(ensureTxnId(mParentScope));
+                undo.activeTransactionId(txnId);
+            }
+            mTxnId = txnId;
         }
-        mTxnId = txnId;
         return txnId;
     }
 
-    private void assignTxnId(ParentScope scope) {
-        ParentScope parentScope = scope.mParentScope;
-        if (parentScope != null && parentScope.mTxnId == 0) {
-            assignTxnId(parentScope);
+    private long ensureTxnId(ParentScope scope) {
+        if (scope == null) {
+            return 0;
         }
-        scope.mTxnId = mDatabase.nextTransactionId();
+        long txnId = scope.mTxnId;
+        if (txnId == 0) {
+            scope.mTxnId = txnId = mDatabase.beginTransaction(ensureTxnId(scope.mParentScope));
+        }
+        return txnId;
     }
 
     final long topTxnId() throws IOException {
         ParentScope parentScope = mParentScope;
         if (parentScope == null) {
-            long txnId = mTxnId;
-            return txnId == 0 ? assignTxnId() : txnId;
+            return ensureTxnId();
         }
         while (true) {
             ParentScope grandparentScope = parentScope.mParentScope;
@@ -638,7 +623,10 @@ public final class Transaction extends Locker {
             parentScope = grandparentScope;
         }
         long txnId = parentScope.mTxnId;
-        return txnId == 0 ? (parentScope.mTxnId = mDatabase.nextTransactionId()) : txnId;
+        if (txnId == 0) {
+            parentScope.mTxnId = txnId = mDatabase.beginTransaction(0);
+        }
+        return txnId;
     }
 
     final void setHasTrash() {
@@ -699,11 +687,8 @@ public final class Transaction extends Locker {
             undo = new UndoLog(mDatabase);
             long txnId = mTxnId;
             if (txnId == 0) {
-                ParentScope parentScope = mParentScope;
-                if (parentScope != null && parentScope.mTxnId == 0) {
-                    assignTxnId(parentScope);
-                }
-                mTxnId = txnId = mDatabase.registerAndNextTransactionId(undo);
+                mTxnId = txnId = mDatabase
+                    .registerAndBeginTransaction(undo, ensureTxnId(mParentScope));
             } else {
                 mDatabase.register(undo);
             }
@@ -712,11 +697,7 @@ public final class Transaction extends Locker {
         } else if (undo.activeTransactionId() == 0) {
             long txnId = mTxnId;
             if (txnId == 0) {
-                ParentScope parentScope = mParentScope;
-                if (parentScope != null && parentScope.mTxnId == 0) {
-                    assignTxnId(parentScope);
-                }
-                mTxnId = txnId = mDatabase.nextTransactionId();
+                mTxnId = txnId = mDatabase.beginTransaction(ensureTxnId(mParentScope));
             }
             undo.activeTransactionId(txnId);
         }
