@@ -27,7 +27,7 @@ package org.cojen.tupl;
  * <li>{@code SYNC}
  * <li>{@code NO_SYNC}
  * <li>{@code NO_FLUSH}
- * <li>{@code NO_LOG}
+ * <li>{@code NO_REDO}
  * </ul>
  *
  * @author Brian S O'Neill
@@ -60,8 +60,8 @@ public enum DurabilityMode {
     /**
      * Weakest durability mode, which doesn't write anything to the redo log.
      * An unlogged transaction does not become durable until a checkpoint is
-     * performed. In addition to the vulnerabilities of NO_FLUSH mode, NO_LOG
+     * performed. In addition to the vulnerabilities of NO_FLUSH mode, NO_REDO
      * mode can lose recently committed transactions when the process exits.
      */
-    NO_LOG;
+    NO_REDO;
 }

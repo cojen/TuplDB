@@ -67,7 +67,7 @@ public class TransactionTest {
     @Test
     public void basicRollback() throws Exception {
         basicRollback(mDb.newTransaction());
-        basicRollback(mDb.newTransaction(DurabilityMode.NO_LOG));
+        basicRollback(mDb.newTransaction(DurabilityMode.NO_REDO));
         basicRollback(mDb.newTransaction(DurabilityMode.NO_FLUSH));
         basicRollback(mDb.newTransaction(DurabilityMode.NO_SYNC));
         basicRollback(mDb.newTransaction(DurabilityMode.SYNC));
@@ -128,7 +128,7 @@ public class TransactionTest {
     @Test
     public void nestedRollback() throws Exception {
         nestedRollback(mDb.newTransaction());
-        nestedRollback(mDb.newTransaction(DurabilityMode.NO_LOG));
+        nestedRollback(mDb.newTransaction(DurabilityMode.NO_REDO));
         nestedRollback(mDb.newTransaction(DurabilityMode.NO_FLUSH));
         nestedRollback(mDb.newTransaction(DurabilityMode.NO_SYNC));
         nestedRollback(mDb.newTransaction(DurabilityMode.SYNC));
