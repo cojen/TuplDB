@@ -765,7 +765,7 @@ public final class Database extends CauseCloseable {
      * not for making modifications.
      */
     Transaction newLockTransaction() {
-        return new Transaction(this, DurabilityMode.NO_LOG, LockMode.UPGRADABLE_READ, -1);
+        return new Transaction(this, DurabilityMode.NO_REDO, LockMode.UPGRADABLE_READ, -1);
     }
 
     /**

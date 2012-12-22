@@ -59,7 +59,7 @@ public final class Transaction extends Locker {
     /**
      * Transaction instance which isn't a transaction at all. It always
      * operates in an {@link LockMode#UNSAFE unsafe} lock mode and a {@link
-     * DurabilityMode#NO_LOG no-log} durability mode. For safe auto-commit
+     * DurabilityMode#NO_REDO no-redo} durability mode. For safe auto-commit
      * transactions, pass null for the transaction argument.
      */
     public static final Transaction BOGUS = new Transaction();
@@ -135,7 +135,7 @@ public final class Transaction extends Locker {
     private Transaction() {
         super();
         mDatabase = null;
-        mDurabilityMode = DurabilityMode.NO_LOG;
+        mDurabilityMode = DurabilityMode.NO_REDO;
         mLockMode = LockMode.UNSAFE;
         mBorked = this;
     }

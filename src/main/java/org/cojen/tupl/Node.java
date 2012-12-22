@@ -1364,7 +1364,7 @@ final class Node extends Latch {
         page[valueHeaderLoc] = (byte) -1;
         mGarbage += loc - valueHeaderLoc - 1;
 
-        if (txn.mDurabilityMode != DurabilityMode.NO_LOG) {
+        if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
             txn.redoStore(tree.mId, key, null);
         }
     }
