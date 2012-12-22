@@ -63,7 +63,14 @@ final class RedoLog extends RedoWriter {
     private int mTermRndSeed;
 
     /**
-     * @oaram logId first log id to open
+     * @param logId first log id to open
+     */
+    RedoLog(DatabaseConfig config, long logId, boolean replay) throws IOException {
+        this(config.mCrypto, config.mBaseFile, logId, replay);
+    }
+
+    /**
+     * @param logId first log id to open
      */
     RedoLog(Crypto crypto, File baseFile, long logId, boolean replay) throws IOException {
         super(4096);
@@ -78,10 +85,6 @@ final class RedoLog extends RedoWriter {
                 openNewFile(logId);
             }
         }
-    }
-
-    synchronized long logId() {
-        return mLogId;
     }
 
     /**
@@ -148,25 +151,6 @@ final class RedoLog extends RedoWriter {
 
     static void deleteOldFile(File baseFile, long logId) {
         fileFor(baseFile, logId).delete();
-    }
-
-    void deleteOldFile(long logId) {
-        deleteOldFile(mBaseFile, logId);
-    }
-
-    /**
-     * @return old log file id, which is one less than new one
-     */
-    long openNewFile() throws IOException {
-        if (mReplayMode) {
-            throw new IllegalStateException();
-        }
-        final long oldLogId;
-        synchronized (this) {
-            oldLogId = mLogId;
-        }
-        openNewFile(oldLogId + 1);
-        return oldLogId;
     }
 
     private void openNewFile(long logId) throws IOException {
@@ -246,11 +230,6 @@ final class RedoLog extends RedoWriter {
         return base == null ? null : new File(base.getPath() + ".redo." + logId);
     }
 
-    public long size() throws IOException {
-        FileChannel channel = mChannel;
-        return channel == null ? 0 : channel.size();
-    }
-
     @Override
     public void txnBegin(long txnId) {
         // RedoLogTxnScanner infers transaction begin.
@@ -265,6 +244,38 @@ final class RedoLog extends RedoWriter {
     boolean isOpen() {
         FileChannel channel = mChannel;
         return channel != null && channel.isOpen();
+    }
+
+    @Override
+    boolean shouldCheckpoint(long size) {
+        try {
+            FileChannel channel = mChannel;
+            return channel != null && channel.size() >= size;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    @Override
+    synchronized long checkpointPosition() {
+        return mLogId;
+    }
+
+    @Override
+    void prepareCheckpoint() throws IOException {
+        if (mReplayMode) {
+            throw new IllegalStateException();
+        }
+        final long logId;
+        synchronized (this) {
+            logId = mLogId;
+        }
+        openNewFile(logId + 1);
+    }
+
+    @Override
+    void checkpointed(long highestLogId) throws IOException {
+        deleteOldFile(mBaseFile, highestLogId - 1);
     }
 
     @Override

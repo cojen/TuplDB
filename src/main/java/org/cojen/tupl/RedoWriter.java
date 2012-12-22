@@ -260,6 +260,28 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
     // Caller must be synchronized.
     abstract boolean isOpen();
 
+    /**
+     * Returns true if uncheckpointed redo size is at least the given threshold
+     */
+    abstract boolean shouldCheckpoint(long sizeThreshold);
+
+    /**
+     * Returns the redo position for the next change, as would be recorded by a
+     * checkpoint.
+     */
+    abstract long checkpointPosition();
+
+    /**
+     * Prepares a new redo log file, if applicable.
+     */
+    abstract void prepareCheckpoint() throws IOException;
+
+    /**
+     * Writer can discard all redo data lower than the given checkpointed
+     * position.
+     */
+    abstract void checkpointed(long position) throws IOException;
+
     // Caller must be synchronized.
     abstract void write(byte[] buffer, int len) throws IOException;
 

@@ -22,7 +22,7 @@ import java.io.IOException;
  * 
  *
  * @author Brian S O'Neill
- * @see RedoLog
+ * @see RedoLogRecovery
  */
 class RedoLogApplier implements RedoVisitor {
     private final Database mDb;
