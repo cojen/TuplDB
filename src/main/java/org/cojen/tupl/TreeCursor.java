@@ -2469,7 +2469,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                 } else {
                     if (txn.lockMode() == LockMode.UNSAFE) {
                         node.deleteLeafEntry(mTree, pos);
-                        if (txn.mDurabilityMode != DurabilityMode.NO_LOG) {
+                        if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
                             txn.redoStore(mTree.mId, key, null);
                         }
                     } else {
@@ -2531,7 +2531,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                     if (txn.lockMode() != LockMode.UNSAFE) {
                         node.txnPreUpdateLeafEntry(txn, mTree, key, pos);
                     }
-                    if (txn.mDurabilityMode != DurabilityMode.NO_LOG) {
+                    if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
                         txn.redoStore(mTree.mId, key, value);
                     }
                 }
@@ -2563,7 +2563,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                 if (txn.lockMode() != LockMode.UNSAFE) {
                     txn.undoDelete(mTree.mId, key);
                 }
-                if (txn.mDurabilityMode != DurabilityMode.NO_LOG) {
+                if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
                     txn.redoStore(mTree.mId, key, value);
                 }
             }
