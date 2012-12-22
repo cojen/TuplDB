@@ -126,13 +126,13 @@ public class RecoverTest {
         byte[] value = "world".getBytes();
 
         Index ix = mDb.openIndex("test");
-        Transaction txn = mDb.newTransaction(DurabilityMode.NO_LOG);
+        Transaction txn = mDb.newTransaction(DurabilityMode.NO_REDO);
         ix.store(txn, key, value);
         txn.commit();
 
         mDb = reopenTempDatabase(mDb, mConfig);
         ix = mDb.openIndex("test");
-        txn = mDb.newTransaction(DurabilityMode.NO_LOG);
+        txn = mDb.newTransaction(DurabilityMode.NO_REDO);
         assertNull(ix.load(txn, key));
         ix.store(txn, key, value);
         txn.commit();
