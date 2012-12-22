@@ -21,8 +21,9 @@ package org.cojen.tupl;
  * which ones will be rolled back.
  *
  * @author Brian S O'Neill
+ * @see RedoLog
  */
-class RedoLogTxnScanner implements RedoLogVisitor {
+class RedoLogTxnScanner implements RedoVisitor {
     // FIXME: This design does not scale. Memory is required for each
     // transaction in the log file. When it reaches a certain threshold, switch
     // to using a temp database.
@@ -47,27 +48,48 @@ class RedoLogTxnScanner implements RedoLogVisitor {
     }
 
     @Override
-    public void timestamp(long timestamp) {}
-
-    @Override
-    public void shutdown(long timestamp) {}
-
-    @Override
-    public void close(long timestamp) {}
-
-    @Override
-    public void endFile(long timestamp) {}
-
-    @Override
-    public void store(long indexId, byte[] key, byte[] value) {}
-
-    @Override
-    public void txnRollback(long txnId) {
-        txnRollbackChild(txnId, 0);
+    public boolean timestamp(long timestamp) {
+        return true;
     }
 
     @Override
-    public void txnRollbackChild(long txnId, long parentTxnId) {
+    public boolean shutdown(long timestamp) {
+        return true;
+    }
+
+    @Override
+    public boolean close(long timestamp) {
+        return true;
+    }
+
+    @Override
+    public boolean endFile(long timestamp) {
+        return true;
+    }
+
+    @Override
+    public boolean store(long indexId, byte[] key, byte[] value) {
+        return true;
+    }
+
+    @Override
+    public boolean txnBegin(long txnId) {
+        return true;
+    }
+
+    @Override
+    public boolean txnBeginChild(long txnId, long parentTxnId) {
+        return true;
+    }
+
+    @Override
+    public boolean txnRollback(long txnId) {
+        txnRollbackChild(txnId, 0);
+        return true;
+    }
+
+    @Override
+    public boolean txnRollbackChild(long txnId, long parentTxnId) {
         checkHighest(txnId, parentTxnId);
 
         Status status = mStatusTable.remove(txnId);
@@ -89,19 +111,23 @@ class RedoLogTxnScanner implements RedoLogVisitor {
                 }
             }
         }
+
+        return true;
     }
 
     @Override
-    public void txnCommit(long txnId) {
+    public boolean txnCommit(long txnId) {
         checkHighest(txnId);
         fullCommit(txnId);
+        return true;
     }
 
     @Override
-    public void txnCommitChild(long txnId, long parentTxnId) {
+    public boolean txnCommitChild(long txnId, long parentTxnId) {
         checkHighest(txnId, parentTxnId);
         // Child transaction is not fully committed until parent is.
         mStatusTable.insert(parentTxnId).addChild(txnId);
+        return true;
     }
 
     private void fullCommit(long txnId) {
@@ -118,8 +144,21 @@ class RedoLogTxnScanner implements RedoLogVisitor {
     }
 
     @Override
-    public void txnStore(long txnId, long indexId, byte[] key, byte[] value) {
+    public boolean txnStore(long txnId, long indexId, byte[] key, byte[] value) {
         checkHighest(txnId);
+        return true;
+    }
+
+    @Override
+    public boolean txnStoreCommit(long txnId, long indexId, byte[] key, byte[] value) {
+        return txnCommit(txnId);
+    }
+
+    @Override
+    public boolean txnStoreCommitChild(long txnId, long parentTxnId,
+                                       long indexId, byte[] key, byte[] value)
+    {
+        return txnCommitChild(txnId, parentTxnId);
     }
 
     private void checkHighest(long txnId, long parentTxnId) {

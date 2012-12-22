@@ -790,7 +790,8 @@ public final class Database extends CauseCloseable {
      *
      * @return non-zero transaction id
      */
-    long registerAndNextTransactionId(UndoLog undo) {
+    long registerAndBeginTransaction(UndoLog undo, long parentTxnId) {
+        long txnId;
         synchronized (mTxnIdLock) {
             UndoLog top = mTopUndoLog;
             if (top != null) {
@@ -800,10 +801,15 @@ public final class Database extends CauseCloseable {
             mTopUndoLog = undo;
             mUndoLogCount++;
 
-            long txnId;
             while ((txnId = ++mTxnId) == 0);
-            return txnId;
         }
+
+        RedoLog redo = mRedoLog;
+        if (redo != null) {
+            redo.txnBegin(txnId, parentTxnId);
+        }
+
+        return txnId;
     }
 
     /**
@@ -812,13 +818,19 @@ public final class Database extends CauseCloseable {
      *
      * @return non-zero transaction id
      */
-    long nextTransactionId() {
+    long beginTransaction(long parentTxnId) {
         long txnId;
         do {
             synchronized (mTxnIdLock) {
                 txnId = ++mTxnId;
             }
         } while (txnId == 0);
+
+        RedoLog redo = mRedoLog;
+        if (redo != null) {
+            redo.txnBegin(txnId, parentTxnId);
+        }
+
         return txnId;
     }
 
@@ -2663,6 +2675,14 @@ public final class Database extends CauseCloseable {
 
             mLastCheckpointNanos = nowNanos;
 
+            // FIXME: Change openNewFile to return nothing. After acquiring
+            // commit lock, ask what the current file number is. This number is
+            // written to the header without incrementing it. The deleteOldFile
+            // method is changed to delete everything less than the given
+            // number. Trim? Prune? Discard? Try to rename the methods to be
+            // more generic (not file based), for replication based redo. The
+            // openNewFile phase does nothing for replication.
+
             final long redoLogId = mRedoLog == null ? 0 : mRedoLog.openNewFile();
 
             {
@@ -2795,6 +2815,10 @@ public final class Database extends CauseCloseable {
         writeLongLE(header, I_TRANSACTION_ID, txnId);
         // Add one to redoLogId, indicating the active log id.
         writeLongLE(header, I_REDO_LOG_ID, redoLogId + 1);
+
+        // FIXME: Add a UUID field which indicates what redo system is in use.
+
+        // FIXME: Add a region for custom redo system attributes.
 
         return header;
     }

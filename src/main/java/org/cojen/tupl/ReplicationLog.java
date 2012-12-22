@@ -16,9 +16,7 @@
 
 package org.cojen.tupl;
 
-import java.io.InputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 
 /**
  * 
@@ -26,14 +24,10 @@ import java.io.OutputStream;
  * @author Brian S O'Neill
  */
 public interface ReplicationLog {
-    // FIXME: Replace streams with specialized ones that only support bulk
-    // operations. Leader is allowed to read from any position, but EOF is
-    // returned if no more. This allows leader to switch to temporary replica
-    // mode if transaction commit times out.  A special operation is required
-    // to commit at a specific position and wait.  The write method returns
-    // false if not leader, but it doesn't indicate how much was written. It
-    // must all be discarded anyhow. When commit times out, how far to
-    // rollback? Transactions known to have already committed cannot be
+    // FIXME: Leader is allowed to read from any position, but EOF is returned
+    // if no more. This allows leader to switch to temporary replica mode if
+    // transaction commit times out. When commit times out, how far to
+    // rollback?  Transactions known to have already committed cannot be
     // re-committed -- or can they? If all operations are applied, then it
     // should be idempotent, but an intermediate blip will be observed. This is
     // bad. Perhaps all reads are locked out until recovery completes? There's
@@ -53,7 +47,7 @@ public interface ReplicationLog {
      *
      * @param position log position immediately after the checkpoint position
      */
-    void checkpointed(long position) throws IOException;
+    //void checkpointed(long position) throws IOException;
 
     /**
      * Instruct that all data starting at the given position must be deleted.
@@ -63,24 +57,22 @@ public interface ReplicationLog {
     /**
      * Provides a stream for a replica to read from, blocking until more data
      * arrives. Upon becoming the replication group leader, the stream returns
-     * EOF and must be discarded. This method and the stream are never invoked
+     * -1 and must be discarded. This method and the stream are never invoked
      * concurrently.
      *
      * @param position log position to start reading from
-     * @throws IllegalStateException if previously vended stream has not been closed
      */
-    InputStream in(long position) throws IOException;
+    Input in(long position) throws IOException;
 
     /**
      * Provides a stream for the group leader to write into. Upon losing the
-     * leader role, the stream throws NotLeaderException and must be
-     * discarded. This method and the stream are never invoked concurrently.
+     * leader role, the stream returns false and must be discarded. This method
+     * and the stream are never invoked concurrently.
      *
      * @param position log position to start writing to
-     * @throws NotLeaderException if local instance is not the group leader
-     * @throws IllegalStateException if previously vended stream has not been closed
+     * @return null if local instance is not the group leader
      */
-    OutputStream out(long position) throws NotLeaderException, IOException;
+    Output out(long position) throws IOException;
 
     /**
      * Forward a change from a replica to the leader. Change must arrive back
@@ -90,5 +82,34 @@ public interface ReplicationLog {
      * @return false if local instance is not a replica or if no leader has
      * been established
      */
-    boolean forward(byte[] b, int off, int len) throws IOException;
+    //boolean forward(byte[] b, int off, int len) throws IOException;
+
+    static interface Input {
+        /**
+         * Blocks at most once, reading as much replication input as
+         * possible. Returns -1 if local instance has become the leader.
+         *
+         * @return amount read, or -1 if group leader
+         */
+        int read(byte[] b, int off, int len) throws IOException;
+    }
+
+    static interface Output {
+        /**
+         * Fully writes the given data, blocking until complete. Returns false
+         * if local instance if not the leader.
+         *
+         * @return true if written; false if not group leader
+         */
+        boolean write(byte[] b, int off, int len) throws IOException;
+
+        /**
+         * Blocks until all data up to the given log position is confirmed.
+         * Returns false if local instance if not the leader or if operation
+         * timed out.
+         *
+         * @return true if confirmed; false if not group leader or timed out
+         */
+        boolean confirm(long position, long timeoutNanos) throws IOException;
+    }
 }

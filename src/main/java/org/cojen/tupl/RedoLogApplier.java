@@ -22,8 +22,9 @@ import java.io.IOException;
  * 
  *
  * @author Brian S O'Neill
+ * @see RedoLog
  */
-class RedoLogApplier implements RedoLogVisitor {
+class RedoLogApplier implements RedoVisitor {
     private final Database mDb;
     private final RedoLogTxnScanner mScanner;
     private final LHashTable.Obj<UndoLog> mUndoLogs;
@@ -37,53 +38,96 @@ class RedoLogApplier implements RedoLogVisitor {
     }
 
     @Override
-    public void timestamp(long timestamp) {}
+    public boolean timestamp(long timestamp) {
+        return true;
+    }
 
     @Override
-    public void shutdown(long timestamp) {}
+    public boolean shutdown(long timestamp) {
+        return true;
+    }
 
     @Override
-    public void close(long timestamp) {}
+    public boolean close(long timestamp) {
+        return true;
+    }
 
     @Override
-    public void endFile(long timestamp) {}
+    public boolean endFile(long timestamp) {
+        return true;
+    }
 
     @Override
-    public void store(long indexId, byte[] key, byte[] value) throws IOException {
+    public boolean store(long indexId, byte[] key, byte[] value) throws IOException {
         Index ix = openIndex(indexId);
         if (ix != null) {
             ix.store(Transaction.BOGUS, key, value);
         }
+        return true;
     }
 
     @Override
-    public void txnRollback(long txnId) throws IOException {
+    public boolean txnBegin(long txnId) {
+        return true;
+    }
+
+    @Override
+    public boolean txnBeginChild(long txnId, long parentTxnId) {
+        return true;
+    }
+
+    @Override
+    public boolean txnRollback(long txnId) throws IOException {
         processUndo(txnId, 0, false);
+        return true;
     }
 
     @Override
-    public void txnRollbackChild(long txnId, long parentTxnId) throws IOException {
+    public boolean txnRollbackChild(long txnId, long parentTxnId) throws IOException {
         processUndo(txnId, parentTxnId, false);
+        return true;
     }
 
     @Override
-    public void txnCommit(long txnId) throws IOException {
+    public boolean txnCommit(long txnId) throws IOException {
         processUndo(txnId, 0, true);
+        return true;
     }
 
     @Override
-    public void txnCommitChild(long txnId, long parentTxnId) throws IOException {
+    public boolean txnCommitChild(long txnId, long parentTxnId) throws IOException {
         processUndo(txnId, parentTxnId, true);
+        return true;
     }
 
     @Override
-    public void txnStore(long txnId, long indexId, byte[] key, byte[] value) throws IOException {
+    public boolean txnStore(long txnId, long indexId, byte[] key, byte[] value)
+        throws IOException
+    {
         if (mScanner.isCommitted(txnId)) {
             Index ix = openIndex(indexId);
             if (ix != null) {
                 ix.store(Transaction.BOGUS, key, value);
             }
         }
+        return true;
+    }
+
+    @Override
+    public boolean txnStoreCommit(long txnId, long indexId, byte[] key, byte[] value)
+        throws IOException
+    {
+        txnStore(txnId, indexId, key, value);
+        return txnCommit(txnId);
+    }
+
+    @Override
+    public boolean txnStoreCommitChild(long txnId, long parentTxnId,
+                                       long indexId, byte[] key, byte[] value)
+        throws IOException
+    {
+        txnStore(txnId, indexId, key, value);
+        return txnCommitChild(txnId, parentTxnId);
     }
 
     private void processUndo(long txnId, long parentTxnId, boolean commit) throws IOException {
