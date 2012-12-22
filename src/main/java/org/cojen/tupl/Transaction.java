@@ -96,7 +96,7 @@ public final class Transaction extends Locker {
       - Exclusive commit lock. Prevents undos.
       - Latch all LockManager LockHT instances.
       - Switch lock mode to no higher than REPEATABLE_READ.
-      - Lock RedoLog.
+      - Lock RedoWriter.
       - If mWaitingFor is not null, clear and signal all threads in Lock's WaitQueues.
       - Transfer all transaction state to terminator's Transaction.
       - Original transaction is borked.
@@ -107,7 +107,7 @@ public final class Transaction extends Locker {
     /*
       How to terminate all transactions:
 
-      - Deactivate RedoLog.
+      - Deactivate RedoWriter.
       - Fully latch LockManager.
       - Deactivate LockManager???
       - For each Lock...
@@ -220,7 +220,7 @@ public final class Transaction extends Locker {
                 UndoLog undo = mUndoLog;
                 if (undo == null) {
                     if ((mHasState & HAS_REDO) != 0) {
-                        RedoLog redo = mDatabase.mRedoLog;
+                        RedoWriter redo = mDatabase.mRedoWriter;
                         if (redo.txnCommitFull(mTxnId, mDurabilityMode)) {
                             redo.txnCommitSync();
                         }
@@ -238,7 +238,7 @@ public final class Transaction extends Locker {
                     boolean sync;
                     try {
                         if (sync = ((mHasState & HAS_REDO) != 0)) {
-                            sync = mDatabase.mRedoLog.txnCommitFull(mTxnId, mDurabilityMode);
+                            sync = mDatabase.mRedoWriter.txnCommitFull(mTxnId, mDurabilityMode);
                             mHasState &= ~HAS_REDO;
                         }
                         // Indicates that undo log should be truncated instead
@@ -252,7 +252,7 @@ public final class Transaction extends Locker {
                     if (sync) {
                         // Durably sync the redo log after releasing the commit
                         // lock, preventing additional blocking.
-                        mDatabase.mRedoLog.txnCommitSync();
+                        mDatabase.mRedoWriter.txnCommitSync();
                     }
 
                     // Calling this deletes any ghosts too.
@@ -275,7 +275,7 @@ public final class Transaction extends Locker {
                 }
             } else {
                 if ((mHasState & HAS_REDO) != 0) {
-                    mDatabase.mRedoLog.txnCommitScope(mTxnId, parentScope.mTxnId);
+                    mDatabase.mRedoWriter.txnCommitScope(mTxnId, parentScope.mTxnId);
                     mHasState &= ~HAS_REDO;
                     parentScope.mHasState |= HAS_REDO;
                 }
@@ -334,7 +334,7 @@ public final class Transaction extends Locker {
             ParentScope parentScope = mParentScope;
             if (parentScope == null) {
                 if ((mHasState & HAS_REDO) != 0) {
-                    mDatabase.mRedoLog.txnRollback(mTxnId);
+                    mDatabase.mRedoWriter.txnRollback(mTxnId);
                     mHasState &= ~HAS_REDO;
                 }
 
@@ -355,7 +355,7 @@ public final class Transaction extends Locker {
                 }
             } else {
                 if ((mHasState & HAS_REDO) != 0) {
-                    mDatabase.mRedoLog.txnRollback(mTxnId, parentScope.mTxnId);
+                    mDatabase.mRedoWriter.txnRollback(mTxnId, parentScope.mTxnId);
                     mHasState &= ~HAS_REDO;
                 }
 
@@ -392,7 +392,7 @@ public final class Transaction extends Locker {
             ParentScope parentScope = mParentScope;
             if (parentScope == null) {
                 if ((mHasState & HAS_REDO) != 0) {
-                    mDatabase.mRedoLog.txnRollback(mTxnId);
+                    mDatabase.mRedoWriter.txnRollback(mTxnId);
                     mHasState = 0;
                 }
             } else {
@@ -401,7 +401,7 @@ public final class Transaction extends Locker {
                 do {
                     long parentTxnId = parentScope.mTxnId;
                     if ((hasState & HAS_REDO) != 0) {
-                        mDatabase.mRedoLog.txnRollback(txnId, parentTxnId);
+                        mDatabase.mRedoWriter.txnRollback(txnId, parentTxnId);
                         hasState &= ~HAS_REDO;
                     }
                     txnId = parentTxnId;
@@ -409,7 +409,7 @@ public final class Transaction extends Locker {
                     parentScope = parentScope.mParentScope;
                 } while (parentScope != null);
                 if ((hasState & HAS_REDO) != 0) {
-                    mDatabase.mRedoLog.txnRollback(txnId);
+                    mDatabase.mRedoWriter.txnRollback(txnId);
                 }
                 mHasState = 0;
             }
@@ -548,7 +548,7 @@ public final class Transaction extends Locker {
 
         try {
             long txnId = ensureTxnId();
-            RedoLog redo = mDatabase.mRedoLog;
+            RedoWriter redo = mDatabase.mRedoWriter;
             if (redo != null) {
                 redo.txnStore(txnId, indexId, key, value);
                 mHasState |= HAS_REDO;
@@ -571,7 +571,7 @@ public final class Transaction extends Locker {
             long txnId = ensureTxnId();
             long parentTxnId = ensureTxnId(mParentScope);
 
-            RedoLog redo = mDatabase.mRedoLog;
+            RedoWriter redo = mDatabase.mRedoWriter;
             if (redo != null) {
                 redo.txnStoreCommit(txnId, parentTxnId, indexId, key, value);
                 mHasState |= HAS_REDO;
@@ -599,7 +599,7 @@ public final class Transaction extends Locker {
         return txnId;
     }
 
-    private long ensureTxnId(ParentScope scope) {
+    private long ensureTxnId(ParentScope scope) throws IOException {
         if (scope == null) {
             return 0;
         }
