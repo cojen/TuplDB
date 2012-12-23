@@ -478,14 +478,14 @@ public final class Database extends CauseCloseable {
                 boolean doCheckpoint = recovery.recover(this, config, redoPos, undoLogs);
 
                 if (doCheckpoint) {
-                    // Bump up the highest transaction id if recovery has seen
-                    // higher. Although this is not expected to not happen, it
-                    // prevents transaction id collisions when it does.
+                    // Avoid re-using transaction ids used by recovery.
                     long redoTxnId = recovery.highestTxnId();
-                    synchronized (mTxnIdLock) {
-                        // Subtract for modulo comparison.
-                        if (mTxnId == 0 || (redoTxnId - mTxnId) > 0) {
-                            mTxnId = redoTxnId;
+                    if (redoTxnId != 0) {
+                        synchronized (mTxnIdLock) {
+                            // Subtract for modulo comparison.
+                            if (mTxnId == 0 || (redoTxnId - mTxnId) > 0) {
+                                mTxnId = redoTxnId;
+                            }
                         }
                     }
                 }
