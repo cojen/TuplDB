@@ -28,11 +28,17 @@ interface RedoRecovery {
      * @param position position to start recovery from
      * @param undoLogs all active transactions during last checkpoint; all
      * committed and (explicitly) rolled back entries must be removed
-     * @return highest transaction applied; zero if none
+     * @return true if anything was recovered
      */
-    long recover(Database db, DatabaseConfig config,
-                 long position, LHashTable.Obj<UndoLog> undoLogs)
+    boolean recover(Database db, DatabaseConfig config,
+                    long position, LHashTable.Obj<UndoLog> undoLogs)
         throws IOException;
+
+    /**
+     * Called after recovery, to obtain the highest recovered transaction
+     * id. Only valid if anything was recovered.
+     */
+    long highestTxnId();
 
     /**
      * Called after recovery, to obtain a writer for new transactions.
@@ -40,7 +46,8 @@ interface RedoRecovery {
     RedoWriter newWriter() throws IOException;
 
     /**
-     * Called after recovery checkpoint, to perform additional cleanup.
+     * Called after recovery checkpoint, to perform additional cleanup. Only
+     * called if anything was recovered and checkpointed.
      */
     void cleanup() throws IOException;
 }

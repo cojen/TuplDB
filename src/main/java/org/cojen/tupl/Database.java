@@ -475,12 +475,13 @@ public final class Database extends CauseCloseable {
                 // FIXME: generic
                 RedoLogRecovery recovery = new RedoLogRecovery();
 
-                long redoTxnId = recovery.recover(this, config, redoPos, undoLogs);
+                boolean doCheckpoint = recovery.recover(this, config, redoPos, undoLogs);
 
-                if (redoTxnId != 0) {
+                if (doCheckpoint) {
                     // Bump up the highest transaction id if recovery has seen
                     // higher. Although this is not expected to not happen, it
                     // prevents transaction id collisions when it does.
+                    long redoTxnId = recovery.highestTxnId();
                     synchronized (mTxnIdLock) {
                         // Subtract for modulo comparison.
                         if (mTxnId == 0 || (redoTxnId - mTxnId) > 0) {
@@ -488,8 +489,6 @@ public final class Database extends CauseCloseable {
                         }
                     }
                 }
-
-                boolean doCheckpoint = redoTxnId != 0;
 
                 if (masterUndoLog != null) {
                     // Rollback or truncate all remaining undo logs. They were

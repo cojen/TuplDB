@@ -74,11 +74,13 @@ class RedoLogTxnScanner implements RedoVisitor {
 
     @Override
     public boolean txnBegin(long txnId) {
+        checkHighest(txnId);
         return true;
     }
 
     @Override
     public boolean txnBeginChild(long txnId, long parentTxnId) {
+        checkHighest(txnId, parentTxnId);
         return true;
     }
 
