@@ -28,12 +28,13 @@ import java.util.Set;
  */
 class RedoLogRecovery implements RedoRecovery {
     private DatabaseConfig mConfig;
+    private RedoLogTxnScanner mTxnScanner;
     private Set<File> mRedoFiles;
     private long mNewLogId;
 
     @Override
-    public long recover(Database db, DatabaseConfig config,
-                        long logId, LHashTable.Obj<UndoLog> undoLogs)
+    public boolean recover(Database db, DatabaseConfig config,
+                           long logId, LHashTable.Obj<UndoLog> undoLogs)
         throws IOException
     {
         mConfig = config;
@@ -45,10 +46,10 @@ class RedoLogRecovery implements RedoRecovery {
         }
 
         // First pass, find all transactions which committed.
-        RedoLogTxnScanner txnScanner = new RedoLogTxnScanner();
+        mTxnScanner = new RedoLogTxnScanner();
         RedoLog scanRedoLog = new RedoLog(config, logId, true);
         mRedoFiles = scanRedoLog
-            .replay(txnScanner, null,
+            .replay(mTxnScanner, null,
                     config.mEventListener, EventType.RECOVERY_SCAN_REDO_LOG,
                     "Scanning redo log: %1$d");
 
@@ -58,12 +59,18 @@ class RedoLogRecovery implements RedoRecovery {
         if (!mRedoFiles.isEmpty()) {
             // Second pass, apply all committed transactions.
             new RedoLog(config, logId, true)
-                .replay(new RedoLogApplier(db, txnScanner, undoLogs), mRedoFiles,
+                .replay(new RedoLogApplier(db, mTxnScanner, undoLogs), mRedoFiles,
                         config.mEventListener, EventType.RECOVERY_APPLY_REDO_LOG,
                         "Applying redo log: %1$d");
+            return true;
         }
 
-        return txnScanner.highestTxnId();
+        return false;
+    }
+
+    @Override
+    public long highestTxnId() {
+        return mTxnScanner.highestTxnId();
     }
 
     @Override
