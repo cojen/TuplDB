@@ -56,8 +56,8 @@ class ReplicaRedoProcessor implements RedoVisitor {
 
     @Override
     public boolean close(long timestamp) throws IOException {
-        // FIXME: As described in ReplicationLog comment, special log message
-        // is required to indicate leadership change. This ensures that
+        // FIXME: As described in ReplicationManager comment, special log
+        // message is required to indicate leadership change. This ensures that
         // replicas kill off all active transactions. Use OP_CLOSE, but it
         // doesn't encode the new leader id. It isn't really required,
         // however. Note that OP_CLOSE implies all active transactions
