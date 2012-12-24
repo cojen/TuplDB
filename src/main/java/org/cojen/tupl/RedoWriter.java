@@ -372,6 +372,7 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
         doFlush(mBuffer, mBufferPos);
     }
 
+    // Caller must be synchronized.
     private void doFlush(byte[] buffer, int len) throws IOException {
         try {
             write(buffer, len);

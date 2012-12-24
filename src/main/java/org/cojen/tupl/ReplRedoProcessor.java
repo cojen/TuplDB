@@ -25,7 +25,7 @@ import java.lang.ref.SoftReference;
  *
  * @author Brian S O'Neill
  */
-class ReplicaRedoProcessor implements RedoVisitor {
+class ReplRedoProcessor implements RedoVisitor {
     // FIXME: configurable
     private final long mTimeoutNanos = 10L * 1000 * 1000 * 1000;
 
@@ -38,7 +38,7 @@ class ReplicaRedoProcessor implements RedoVisitor {
 
     private final LHashTable.Obj<Transaction> mTransactions;
 
-    ReplicaRedoProcessor(Database db) {
+    ReplRedoProcessor(Database db) {
         mDatabase = db;
         mIndexes = new LHashTable.Obj<SoftReference<Index>>(16);
         mTransactions = new LHashTable.Obj<Transaction>(16);
