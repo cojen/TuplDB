@@ -50,6 +50,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
     boolean mFileSync;
     boolean mReadOnly;
     int mPageSize;
+    transient ReplicationManager mReplManager;
     transient Crypto mCrypto;
 
     public DatabaseConfig() {
@@ -228,6 +229,14 @@ public class DatabaseConfig implements Cloneable, Serializable {
      */
     public DatabaseConfig pageSize(int size) {
         mPageSize = size;
+        return this;
+    }
+
+    /**
+     * Enable replication by providing a {@link ReplicationManager} instance.
+     */
+    public DatabaseConfig replicate(ReplicationManager manager) {
+        mReplManager = manager;
         return this;
     }
 
