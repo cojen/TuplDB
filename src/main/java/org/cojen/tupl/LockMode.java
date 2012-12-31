@@ -70,7 +70,8 @@ public enum LockMode {
     /**
      * Lock mode which never acquires locks. This mode bypasses all
      * transactional safety, permitting modifications even when locked by other
-     * transactions. These modifications are immediately committed.
+     * transactions. These modifications are immediately committed, and so
+     * rollback is not possible.
      */
     UNSAFE(true);
 
