@@ -31,6 +31,16 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
             super(capacity);
         }
 
+        public V getValue(long key) {
+            ObjEntry<V> entry = get(key);
+            return entry == null ? null : entry.value;
+        }
+
+        public V removeValue(long key) {
+            ObjEntry<V> entry = remove(key);
+            return entry == null ? null : entry.value;
+        }
+
         protected ObjEntry<V> newEntry() {
             return new ObjEntry<V>();
         }

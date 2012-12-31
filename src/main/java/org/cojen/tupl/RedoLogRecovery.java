@@ -28,13 +28,13 @@ import java.util.Set;
  */
 class RedoLogRecovery implements RedoRecovery {
     private DatabaseConfig mConfig;
-    private RedoLogTxnScanner mTxnScanner;
     private Set<File> mRedoFiles;
+    private long mHighestTxnId;
     private long mNewLogId;
 
     @Override
     public boolean recover(Database db, DatabaseConfig config,
-                           long logId, LHashTable.Obj<UndoLog> undoLogs)
+                           long logId, LHashTable.Obj<Transaction> txns)
         throws IOException
     {
         mConfig = config;
@@ -45,32 +45,24 @@ class RedoLogRecovery implements RedoRecovery {
             RedoLog.deleteOldFile(config.mBaseFile, logId - i);
         }
 
-        // First pass, find all transactions which committed.
-        mTxnScanner = new RedoLogTxnScanner();
-        RedoLog scanRedoLog = new RedoLog(config, logId, true);
-        mRedoFiles = scanRedoLog
-            .replay(mTxnScanner, null,
-                    config.mEventListener, EventType.RECOVERY_SCAN_REDO_LOG,
-                    "Scanning redo log: %1$d");
+        RedoLogApplier applier = new RedoLogApplier(db, txns);
+        RedoLog redoLog = new RedoLog(config, logId, true);
+
+        mRedoFiles = redoLog.replay
+            (applier, config.mEventListener, EventType.RECOVERY_APPLY_REDO_LOG,
+             "Applying redo log: %1$d");
+
+        mHighestTxnId = applier.mHighestTxnId;
 
         // Always set to one higher than the last file observed.
-        mNewLogId = scanRedoLog.checkpointPosition();
+        mNewLogId = redoLog.checkpointPosition();
 
-        if (!mRedoFiles.isEmpty()) {
-            // Second pass, apply all committed transactions.
-            new RedoLog(config, logId, true)
-                .replay(new RedoLogApplier(db, mTxnScanner, undoLogs), mRedoFiles,
-                        config.mEventListener, EventType.RECOVERY_APPLY_REDO_LOG,
-                        "Applying redo log: %1$d");
-            return true;
-        }
-
-        return false;
+        return !mRedoFiles.isEmpty();
     }
 
     @Override
     public long highestTxnId() {
-        return mTxnScanner.highestTxnId();
+        return mHighestTxnId;
     }
 
     @Override

@@ -80,6 +80,11 @@ class ReplRedoProcessor implements RedoVisitor {
         return true;
     }
 
+    @Override
+    public boolean reset(long txnId) {
+        return true;
+    }
+
     // FIXME: To allow for concurrency, locks (upgradable) should be explicitly
     // performed here. After lock has been acquired, log processing can advance
     // concurrently. Additional threads can also be managed in this class.
@@ -121,29 +126,15 @@ class ReplRedoProcessor implements RedoVisitor {
     }
 
     @Override
-    public boolean txnBegin(long txnId) throws IOException {
+    public boolean txnEnter(long txnId) throws IOException {
         Transaction txn = mDatabase.newTransaction(DurabilityMode.NO_REDO);
         mTransactions.insert(txnId).value = txn;
         return true;
     }
 
     @Override
-    public boolean txnBeginChild(long txnId, long parentTxnId) throws IOException {
-        Transaction txn;
-        LHashTable.ObjEntry<Transaction> entry = mTransactions.get(parentTxnId);
-        if (entry == null) {
-            // TODO: deliver an error event
-            return true;
-        } else {
-            txn = entry.value;
-            mTransactions.insert(txnId).value = txn;
-        }
-        txn.enter();
-        return true;
-    }
-
-    @Override
     public boolean txnRollback(long txnId) throws IOException {
+        // FIXME
         Transaction txn = removeTxn(txnId);
         if (txn == null) {
             // TODO: deliver an error event
@@ -154,8 +145,15 @@ class ReplRedoProcessor implements RedoVisitor {
     }
 
     @Override
-    public boolean txnRollbackChild(long txnId, long parentTxnId) throws IOException {
-        return txnRollback(txnId);
+    public boolean txnRollbackFinal(long txnId) throws IOException {
+        // FIXME
+        Transaction txn = removeTxn(txnId);
+        if (txn == null) {
+            // TODO: deliver an error event
+            return true;
+        }
+        txn.reset();
+        return true;
     }
 
     @Override
@@ -171,8 +169,9 @@ class ReplRedoProcessor implements RedoVisitor {
     }
 
     @Override
-    public boolean txnCommitChild(long txnId, long parentTxnId) throws IOException {
-        return txnCommit(txnId);
+    public boolean txnCommitFinal(long txnId) throws IOException {
+        // FIXME
+        return true;
     }
 
     private Transaction removeTxn(long txnId) {
@@ -216,35 +215,7 @@ class ReplRedoProcessor implements RedoVisitor {
     }
 
     @Override
-    public boolean txnStoreCommit(long txnId, long indexId, byte[] key, byte[] value)
-        throws IOException
-    {
-        Index ix = openIndex(indexId);
-        if (ix == null) {
-            // TODO: deliver an error event
-            return true;
-        }
-
-        Transaction txn = removeTxn(txnId);
-        if (txn == null) {
-            // TODO: deliver an error event
-            return true;
-        }
-
-        txn.lockUpgradable(ix.getId(), key, mTimeoutNanos);
-
-        // FIXME: spawn next thread and return false; if no thread, continue in this thread
-
-        ix.store(txn, key, value);
-        txn.commit();
-        txn.exit();
-
-        return true;
-    }
-
-    @Override
-    public boolean txnStoreCommitChild(long txnId, long parentTxnId,
-                                       long indexId, byte[] key, byte[] value)
+    public boolean txnStoreCommitFinal(long txnId, long indexId, byte[] key, byte[] value)
         throws IOException
     {
         Index ix = openIndex(indexId);

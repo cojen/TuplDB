@@ -45,6 +45,11 @@ interface RedoVisitor {
     public boolean endFile(long timestamp) throws IOException;
 
     /**
+     * @return false to stop visiting
+     */
+    public boolean reset(long txnId) throws IOException;
+
+    /**
      * @param indexId non-zero index id
      * @param key non-null key
      * @param value value to store; null to delete
@@ -54,15 +59,9 @@ interface RedoVisitor {
 
     /**
      * @param txnId non-zero transaction id
-     */
-    public boolean txnBegin(long txnId) throws IOException;
-
-    /**
-     * @param txnId non-zero transaction id
-     * @param parentTxnId parent transaction id; zero if none
      * @return false to stop visiting
      */
-    public boolean txnBeginChild(long txnId, long parentTxnId) throws IOException;
+    public boolean txnEnter(long txnId) throws IOException;
 
     /**
      * @param txnId non-zero transaction id
@@ -72,10 +71,9 @@ interface RedoVisitor {
 
     /**
      * @param txnId non-zero transaction id
-     * @param parentTxnId parent transaction id; zero if none
      * @return false to stop visiting
      */
-    public boolean txnRollbackChild(long txnId, long parentTxnId) throws IOException;
+    public boolean txnRollbackFinal(long txnId) throws IOException;
 
     /**
      * @param txnId non-zero transaction id
@@ -85,10 +83,9 @@ interface RedoVisitor {
 
     /**
      * @param txnId non-zero transaction id
-     * @param parentTxnId parent transaction id; zero if none
      * @return false to stop visiting
      */
-    public boolean txnCommitChild(long txnId, long parentTxnId) throws IOException;
+    public boolean txnCommitFinal(long txnId) throws IOException;
 
     /**
      * @param txnId non-zero transaction id
@@ -106,16 +103,6 @@ interface RedoVisitor {
      * @param value value to store; null to delete
      * @return false to stop visiting
      */
-    public boolean txnStoreCommit(long txnId, long indexId, byte[] key, byte[] value)
+    public boolean txnStoreCommitFinal(long txnId, long indexId, byte[] key, byte[] value)
         throws IOException;
-
-    /**
-     * @param txnId non-zero transaction id
-     * @param indexId non-zero index id
-     * @param key non-null key
-     * @param value value to store; null to delete
-     * @return false to stop visiting
-     */
-    public boolean txnStoreCommitChild(long txnId, long parentTxnId,
-                                       long indexId, byte[] key, byte[] value) throws IOException;
 }

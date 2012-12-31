@@ -55,7 +55,7 @@ class FragmentedTrash {
         byte[] payload = new byte[valueLen];
         System.arraycopy(entry, valueStart, payload, 0, valueLen);
 
-        TreeCursor cursor = prepareEntry(txn.topTxnId());
+        TreeCursor cursor = prepareEntry(txn.txnId());
         byte[] key = cursor.key();
         try {
             // Write trash entry first, ensuring that the undo log entry will

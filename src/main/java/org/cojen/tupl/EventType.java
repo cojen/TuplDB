@@ -32,8 +32,6 @@ public enum EventType {
     RECOVERY_BEGIN(Category.RECOVERY),
     /** Signals that undo logs of in-flight transactions are being loaded. */
     RECOVERY_LOAD_UNDO_LOGS(Category.RECOVERY),
-    /** Signals that redo logs of non-checkpointed transactions are being examined. */
-    RECOVERY_SCAN_REDO_LOG(Category.RECOVERY),
     /** Signals that non-checkpointed transactions are being committed or rolled back. */
     RECOVERY_APPLY_REDO_LOG(Category.RECOVERY),
     /** Signals that transactions not expliticly committed or rolled back are being processed. */

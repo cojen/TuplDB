@@ -52,6 +52,8 @@ public class RecoverTest {
     protected DatabaseConfig mConfig;
     protected Database mDb;
 
+    // FIXME: Add test to confirm no redo if transaction does not modify anything.
+
     @Test
     public void interruptOnClose() throws Exception {
         final byte[] key = "hello".getBytes();
@@ -169,6 +171,86 @@ public class RecoverTest {
         mDb = reopenTempDatabase(mDb, mConfig);
         ix = mDb.openIndex("test");
         assertEquals(null, ix.load(null, key));
+    }
+
+    @Test
+    public void scopeRollback1() throws Exception {
+        scopeRollback(0, false);
+    }
+
+    @Test
+    public void scopeRollback2() throws Exception {
+        scopeRollback(1, false);
+    }
+
+    @Test
+    public void scopeRollback3() throws Exception {
+        scopeRollback(2, false);
+    }
+
+    @Test
+    public void scopeRollback4() throws Exception {
+        scopeRollback(3, false);
+    }
+
+    @Test
+    public void scopeRollback5() throws Exception {
+        scopeRollback(0, true);
+    }
+
+    @Test
+    public void scopeRollback6() throws Exception {
+        scopeRollback(1, true);
+    }
+
+    @Test
+    public void scopeRollback7() throws Exception {
+        scopeRollback(2, true);
+    }
+
+    @Test
+    public void scopeRollback8() throws Exception {
+        scopeRollback(3, true);
+    }
+
+    private void scopeRollback(int chkpnt, boolean commit) throws Exception {
+        // Checkpoint forces intermediate log data to be flushed, which should
+        // not interfere with recovery. Make sure outcome is same no matter
+        // where the checkpoint occurs.
+
+        Index ix = mDb.openIndex("test");
+
+        Transaction txn = mDb.newTransaction(); {
+            ix.store(txn, "a".getBytes(), "v1".getBytes());
+            txn.enter(); {
+                ix.store(txn, "b".getBytes(), "v2".getBytes());
+                if (commit) {
+                    txn.commit();
+                }
+                if ((chkpnt & 1) == 0) {
+                    mDb.checkpoint();
+                }
+            } txn.exit();
+
+            if ((chkpnt & 2) == 0) {
+                mDb.checkpoint();
+            }
+
+            ix.store(txn, "c".getBytes(), "v3".getBytes());
+
+            txn.commit();
+        } txn.exit();
+
+        mDb = reopenTempDatabase(mDb, mConfig);
+        ix = mDb.openIndex("test");
+
+        assertArrayEquals("v1".getBytes(), ix.load(null, "a".getBytes()));
+        if (commit) {
+            assertArrayEquals("v2".getBytes(), ix.load(null, "b".getBytes()));
+        } else {
+            assertEquals(null, ix.load(null, "b".getBytes()));
+        }
+        assertArrayEquals("v3".getBytes(), ix.load(null, "c".getBytes()));
     }
 
     @Test
