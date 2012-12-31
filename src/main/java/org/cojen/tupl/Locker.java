@@ -772,7 +772,6 @@ class Locker {
         // These fields are used by Transaction.
         LockMode mLockMode;
         long mLockTimeoutNanos;
-        long mTxnId;
         int mHasState;
         long mSavepoint;
     }

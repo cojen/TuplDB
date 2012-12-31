@@ -455,45 +455,40 @@ public final class Database extends CauseCloseable {
                 // Keep all the trees open during recovery.
                 mRecoveredTrees = Collections.synchronizedList(new ArrayList<Tree>());
 
-                UndoLog masterUndoLog;
-                LHashTable.Obj<UndoLog> undoLogs;
+                LHashTable.Obj<Transaction> txns = new LHashTable.Obj<Transaction>(16);
+
                 {
-                    long nodeId = readLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID);
-                    if (nodeId == 0) {
-                        masterUndoLog = null;
-                        undoLogs = null;
-                    } else {
+                    long masterNodeId = readLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID);
+                    if (masterNodeId != 0) {
                         if (mEventListener != null) {
                             mEventListener.notify
                                 (EventType.RECOVERY_LOAD_UNDO_LOGS, "Loading undo logs");
                         }
-                        masterUndoLog = UndoLog.recoverMasterUndoLog(this, nodeId);
-                        undoLogs = masterUndoLog.recoverLogs();
+                        UndoLog.recoverMasterUndoLog(this, masterNodeId)
+                            .recoverTransactions(txns, LockMode.UPGRADABLE_READ, 0);
                     }
                 }
 
-                // FIXME: generic
+                // FIXME: make generic
                 RedoLogRecovery recovery = new RedoLogRecovery();
 
-                boolean doCheckpoint = recovery.recover(this, config, redoPos, undoLogs);
+                boolean doCheckpoint = recovery.recover(this, config, redoPos, txns);
 
-                if (doCheckpoint) {
-                    // Avoid re-using transaction ids used by recovery.
-                    long redoTxnId = recovery.highestTxnId();
-                    if (redoTxnId != 0) {
-                        synchronized (mTxnIdLock) {
-                            // Subtract for modulo comparison.
-                            if (mTxnId == 0 || (redoTxnId - mTxnId) > 0) {
-                                mTxnId = redoTxnId;
-                            }
+                // Avoid re-using transaction ids used by recovery.
+                long redoTxnId = recovery.highestTxnId();
+                if (redoTxnId != 0) {
+                    synchronized (mTxnIdLock) {
+                        // Subtract for modulo comparison.
+                        if (mTxnId == 0 || (redoTxnId - mTxnId) > 0) {
+                            mTxnId = redoTxnId;
                         }
                     }
                 }
 
-                if (masterUndoLog != null) {
-                    // Rollback or truncate all remaining undo logs. They were
-                    // never explicitly rolled back, or they were committed but
-                    // not cleaned up. This also deletes the master undo log.
+                if (txns.size() > 0) {
+                    // Rollback or truncate all remaining transactions. They
+                    // were never explicitly rolled back, or they were
+                    // committed but not cleaned up.
 
                     if (mEventListener != null) {
                         mEventListener.notify
@@ -501,11 +496,18 @@ public final class Database extends CauseCloseable {
                              "Processing remaining transactions");
                     }
 
-                    if (masterUndoLog.processRemaining(undoLogs)) {
-                        // Checkpoint ensures that undo logs don't get
-                        // re-applied following a restart.
-                        doCheckpoint = true;
-                    }
+                    txns.traverse(new LHashTable.Visitor
+                                  <LHashTable.ObjEntry<Transaction>, IOException>()
+                    {
+                        public boolean visit(LHashTable.ObjEntry<Transaction> entry)
+                            throws IOException
+                        {
+                            entry.value.recoveryCleanup();
+                            return false;
+                        }
+                    });
+
+                    doCheckpoint = true;
                 }
 
                 mRedoWriter = recovery.newWriter();
@@ -767,51 +769,13 @@ public final class Database extends CauseCloseable {
      *
      * @return non-zero transaction id
      */
-    long registerAndBeginTransaction(UndoLog undo, long parentTxnId) throws IOException {
-        // FIXME: check if redo allows writes
-
-        long txnId;
-        synchronized (mTxnIdLock) {
-            UndoLog top = mTopUndoLog;
-            if (top != null) {
-                undo.mPrev = top;
-                top.mNext = undo;
-            }
-            mTopUndoLog = undo;
-            mUndoLogCount++;
-
-            while ((txnId = ++mTxnId) == 0);
-        }
-
-        RedoWriter redo = mRedoWriter;
-        if (redo != null) {
-            redo.txnBegin(txnId, parentTxnId);
-        }
-
-        return txnId;
-    }
-
-    /**
-     * Caller must hold commit lock. This ensures that highest transaction id
-     * is persisted correctly by checkpoint.
-     *
-     * @return non-zero transaction id
-     */
-    long beginTransaction(long parentTxnId) throws IOException {
-        // FIXME: check if redo allows writes
-
+    long nextTransactionId() throws IOException {
         long txnId;
         do {
             synchronized (mTxnIdLock) {
                 txnId = ++mTxnId;
             }
         } while (txnId == 0);
-
-        RedoWriter redo = mRedoWriter;
-        if (redo != null) {
-            redo.txnBegin(txnId, parentTxnId);
-        }
-
         return txnId;
     }
 
@@ -1031,8 +995,8 @@ public final class Database extends CauseCloseable {
         }
 
         /**
-         * Returns the total amount of transactions explicitly created since
-         * the database was created. Nested transaction scopes are included as well.
+         * Returns the total amount of transactions explicitly created over the
+         * life of the database.
          */
         public long transactionsCreated() {
             return mTxnsCreated;
@@ -2712,7 +2676,7 @@ public final class Database extends CauseCloseable {
                         masterUndoLog = null;
                         masterUndoLogId = 0;
                     } else {
-                        masterUndoLog = new UndoLog(this);
+                        masterUndoLog = new UndoLog(this, 0);
                         byte[] workspace = null;
                         for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
                             workspace = log.writeToMaster(masterUndoLog, workspace);

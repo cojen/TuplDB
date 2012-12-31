@@ -27,7 +27,10 @@ import static org.cojen.tupl.RedoOps.*;
  * @see RedoWriter
  */
 abstract class RedoDecoder {
-    RedoDecoder() {
+    private long mTxnId;
+
+    RedoDecoder(long initialTxnId) {
+        mTxnId = initialTxnId;
     }
 
     /**
@@ -37,8 +40,6 @@ abstract class RedoDecoder {
     void run(DataIn in, RedoVisitor visitor) throws IOException {
         int op;
         while ((op = in.read()) >= 0) {
-            long operand = in.readLongLE();
-
             switch (op &= 0xff) {
             default:
                 throw new DatabaseException("Unknown redo log operation: " + op);
@@ -48,145 +49,189 @@ abstract class RedoDecoder {
                 return;
 
             case OP_TIMESTAMP:
-                if (!verifyTerminator(in) || !visitor.timestamp(operand)) {
+                long ts = in.readLongLE();
+                if (!verifyTerminator(in) || !visitor.timestamp(ts)) {
                     return;
                 }
                 break;
 
             case OP_SHUTDOWN:
-                if (!verifyTerminator(in) || !visitor.shutdown(operand)) {
+                ts = in.readLongLE();
+                if (!verifyTerminator(in) || !visitor.shutdown(ts)) {
                     return;
                 }
                 break;
 
             case OP_CLOSE:
-                if (!verifyTerminator(in) || !visitor.close(operand)) {
+                ts = in.readLongLE();
+                if (!verifyTerminator(in) || !visitor.close(ts)) {
                     return;
                 }
                 break;
 
             case OP_END_FILE:
-                if (!verifyTerminator(in) || !visitor.endFile(operand)) {
+                ts = in.readLongLE();
+                if (!verifyTerminator(in) || !visitor.endFile(ts)) {
                     return;
                 }
                 break;
 
-            case OP_TXN_BEGIN:
-                if (!verifyTerminator(in) || !visitor.txnBegin(operand)) {
+            case OP_RESET:
+                long txnId = in.readLongLE();
+                if (!verifyTerminator(in) || !visitor.reset(mTxnId = txnId)) {
                     return;
                 }
                 break;
 
-            case OP_TXN_BEGIN_CHILD:
-                long parentTxnId = in.readLongLE();
-                if (!verifyTerminator(in) || !visitor.txnBeginChild(operand, parentTxnId)) {
+            case OP_TXN_ENTER:
+                txnId = readTxnId(in);
+                if (!verifyTerminator(in) || !visitor.txnEnter(txnId)) {
                     return;
                 }
                 break;
 
             case OP_TXN_ROLLBACK:
-                if (!verifyTerminator(in) || !visitor.txnRollback(operand)) {
+                txnId = readTxnId(in);
+                if (!verifyTerminator(in) || !visitor.txnRollback(txnId)) {
                     return;
                 }
                 break;
 
-            case OP_TXN_ROLLBACK_CHILD:
-                parentTxnId = in.readLongLE();
-                if (!verifyTerminator(in) || !visitor.txnRollbackChild(operand, parentTxnId)) {
+            case OP_TXN_ROLLBACK_FINAL:
+                txnId = readTxnId(in);
+                if (!verifyTerminator(in) || !visitor.txnRollbackFinal(txnId)) {
                     return;
                 }
                 break;
 
             case OP_TXN_COMMIT:
-                if (!verifyTerminator(in) || !visitor.txnCommit(operand)) {
+                txnId = readTxnId(in);
+                if (!verifyTerminator(in) || !visitor.txnCommit(txnId)) {
                     return;
                 }
                 break;
 
-            case OP_TXN_COMMIT_CHILD:
-                parentTxnId = in.readLongLE();
-                if (!verifyTerminator(in) || !visitor.txnCommitChild(operand, parentTxnId)) {
+            case OP_TXN_COMMIT_FINAL:
+                txnId = readTxnId(in);
+                if (!verifyTerminator(in) || !visitor.txnCommitFinal(txnId)) {
                     return;
                 }
                 break;
 
             case OP_STORE:
+                long indexId = in.readLongLE();
                 byte[] key = in.readBytes();
                 byte[] value = in.readBytes();
-                if (!verifyTerminator(in) || !visitor.store(operand, key, value)) {
+                if (!verifyTerminator(in) || !visitor.store(indexId, key, value)) {
                     return;
                 }
                 break;
 
             case OP_DELETE:
+                indexId = in.readLongLE();
                 key = in.readBytes();
-                if (!verifyTerminator(in) || !visitor.store(operand, key, null)) {
+                if (!verifyTerminator(in) || !visitor.store(indexId, key, null)) {
                     return;
                 }
                 break;
 
-            case OP_TXN_STORE:
-                long indexId = in.readLongLE();
-                key = in.readBytes();
-                value = in.readBytes();
-                if (!verifyTerminator(in) || !visitor.txnStore(operand, indexId, key, value)) {
-                    return;
-                }
-                break;
-
-            case OP_TXN_STORE_COMMIT:
+            case OP_TXN_ENTER_STORE:
+                txnId = readTxnId(in);
                 indexId = in.readLongLE();
                 key = in.readBytes();
                 value = in.readBytes();
                 if (!verifyTerminator(in)
-                    || !visitor.txnStoreCommit(operand, indexId, key, value))
+                    || !visitor.txnEnter(txnId)
+                    || !visitor.txnStore(txnId, indexId, key, value))
                 {
                     return;
                 }
                 break;
 
-            case OP_TXN_STORE_COMMIT_CHILD:
-                parentTxnId = in.readLongLE();
+            case OP_TXN_STORE:
+                txnId = readTxnId(in);
+                indexId = in.readLongLE();
+                key = in.readBytes();
+                value = in.readBytes();
+                if (!verifyTerminator(in) || !visitor.txnStore(txnId, indexId, key, value)) {
+                    return;
+                }
+                break;
+
+            case OP_TXN_ENTER_STORE_COMMIT_FINAL:
+                txnId = readTxnId(in);
                 indexId = in.readLongLE();
                 key = in.readBytes();
                 value = in.readBytes();
                 if (!verifyTerminator(in)
-                    || !visitor.txnStoreCommitChild(operand, parentTxnId, indexId, key, value))
+                    || !visitor.txnEnter(txnId)
+                    || !visitor.txnStoreCommitFinal(txnId, indexId, key, value))
+                {
+                    return;
+                }
+                break;
+
+            case OP_TXN_STORE_COMMIT_FINAL:
+                txnId = readTxnId(in);
+                indexId = in.readLongLE();
+                key = in.readBytes();
+                value = in.readBytes();
+                if (!verifyTerminator(in)
+                    || !visitor.txnStoreCommitFinal(txnId, indexId, key, value))
+                {
+                    return;
+                }
+                break;
+
+            case OP_TXN_ENTER_DELETE:
+                txnId = readTxnId(in);
+                indexId = in.readLongLE();
+                key = in.readBytes();
+                if (!verifyTerminator(in)
+                    || !visitor.txnEnter(txnId)
+                    || !visitor.txnStore(txnId, indexId, key, null))
                 {
                     return;
                 }
                 break;
 
             case OP_TXN_DELETE:
+                txnId = readTxnId(in);
                 indexId = in.readLongLE();
                 key = in.readBytes();
-                if (!verifyTerminator(in) || !visitor.txnStore(operand, indexId, key, null)) {
+                if (!verifyTerminator(in) || !visitor.txnStore(txnId, indexId, key, null)) {
                     return;
                 }
                 break;
 
-            case OP_TXN_DELETE_COMMIT:
+            case OP_TXN_ENTER_DELETE_COMMIT_FINAL:
+                txnId = readTxnId(in);
                 indexId = in.readLongLE();
                 key = in.readBytes();
                 if (!verifyTerminator(in)
-                    || !visitor.txnStoreCommit(operand, indexId, key, null))
+                    || !visitor.txnEnter(txnId)
+                    || !visitor.txnStoreCommitFinal(txnId, indexId, key, null))
                 {
                     return;
                 }
                 break;
 
-            case OP_TXN_DELETE_COMMIT_CHILD:
-                parentTxnId = in.readLongLE();
+            case OP_TXN_DELETE_COMMIT_FINAL:
+                txnId = readTxnId(in);
                 indexId = in.readLongLE();
                 key = in.readBytes();
                 if (!verifyTerminator(in)
-                    || !visitor.txnStoreCommitChild(operand, parentTxnId, indexId, key, null))
+                    || !visitor.txnStoreCommitFinal(txnId, indexId, key, null))
                 {
                     return;
                 }
                 break;
             }
         }
+    }
+
+    private long readTxnId(DataIn in) throws IOException {
+        return mTxnId += in.readSignedVarLong();
     }
 
     /**

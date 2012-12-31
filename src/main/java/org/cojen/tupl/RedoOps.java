@@ -38,28 +38,7 @@ class RedoOps {
         OP_END_FILE = 4,
 
         /** txnId: long */
-        OP_TXN_BEGIN = 5,
-
-        /** txnId: long, parentTxnId: long */
-        OP_TXN_BEGIN_CHILD = 6,
-
-        /** txnId: long */
-        //OP_TXN_CONTINUE = 7,
-
-        /** txnId: long, parentTxnId: long */
-        //OP_TXN_CONTINUE_CHILD = 8,
-
-        /** txnId: long */
-        OP_TXN_ROLLBACK = 9,
-
-        /** txnId: long, parentTxnId: long */
-        OP_TXN_ROLLBACK_CHILD = 10,
-
-        /** txnId: long */
-        OP_TXN_COMMIT = 11,
-
-        /** txnId: long, parentTxnId: long */
-        OP_TXN_COMMIT_CHILD = 12,
+        OP_RESET = 8,
 
         /** indexId: long, keyLength: varInt, key: bytes, valueLength: varInt, value: bytes */
         OP_STORE = 16,
@@ -67,38 +46,48 @@ class RedoOps {
         /** indexId: long, keyLength: varInt, key: bytes */
         OP_DELETE = 17,
 
-        /** indexId: long */
-        //OP_CLEAR = 18,
+        /** txnId: delta */
+        OP_TXN_ENTER = 24,
 
-        /** txnId: long, indexId: long, keyLength: varInt, key: bytes,
+        /** txnId: delta */
+        OP_TXN_ROLLBACK = 25,
+
+        /** txnId: delta */
+        OP_TXN_ROLLBACK_FINAL = 26,
+
+        /** txnId: delta */
+        OP_TXN_COMMIT = 27,
+
+        /** txnId: delta */
+        OP_TXN_COMMIT_FINAL = 28,
+
+        /** txnId: delta, indexId: long, keyLength: varInt, key: bytes,
             valueLength: varInt, value: bytes */
-        OP_TXN_STORE = 19,
+        OP_TXN_ENTER_STORE = 32,
 
-        /** txnId: long, indexId: long, keyLength: varInt, key: bytes,
+        /** txnId: delta, indexId: long, keyLength: varInt, key: bytes,
             valueLength: varInt, value: bytes */
-        OP_TXN_STORE_COMMIT = 20,
+        OP_TXN_STORE = 33,
 
-        /** txnId: long, parentTxnId: long, indexId: long, keyLength: varInt, key: bytes,
+        /** txnId: delta, indexId: long, keyLength: varInt, key: bytes,
             valueLength: varInt, value: bytes */
-        OP_TXN_STORE_COMMIT_CHILD = 21,
+        OP_TXN_ENTER_STORE_COMMIT_FINAL = 34,
 
-        /** txnId: long, indexId: long, keyLength: varInt, key: bytes */
-        OP_TXN_DELETE = 22,
+        /** txnId: delta, indexId: long, keyLength: varInt, key: bytes,
+            valueLength: varInt, value: bytes */
+        OP_TXN_STORE_COMMIT_FINAL = 35,
 
-        /** txnId: long, indexId: long, keyLength: varInt, key: bytes */
-        OP_TXN_DELETE_COMMIT = 23,
+        /** txnId: delta, indexId: long, keyLength: varInt, key: bytes */
+        OP_TXN_ENTER_DELETE = 36,
 
-        /** txnId: long, parentTxnId: long, indexId: long, keyLength: varInt, key: bytes */
-        OP_TXN_DELETE_COMMIT_CHILD = 24;
+        /** txnId: delta, indexId: long, keyLength: varInt, key: bytes */
+        OP_TXN_DELETE = 37,
 
-        /** txnId: long, indexId: long */
-        //OP_TXN_CLEAR = 25,
+        /** txnId: delta, indexId: long, keyLength: varInt, key: bytes */
+        OP_TXN_ENTER_DELETE_COMMIT_FINAL = 38,
 
-        /** txnId: long, indexId: long */
-        //OP_TXN_CLEAR_COMMIT = 26,
-
-        /** txnId: long, parentTxnId: long, indexId: long */
-        //OP_TXN_CLEAR_COMMIT_CHILD = 27,
+        /** txnId: delta, indexId: long, keyLength: varInt, key: bytes */
+        OP_TXN_DELETE_COMMIT_FINAL = 39;
 
         /** length: varInt, data: bytes */
         //OP_CUSTOM = (byte) 128,

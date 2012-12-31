@@ -31,12 +31,15 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
     private final byte[] mBuffer;
     private int mBufferPos;
 
+    private long mLastTxnId;
+
     private boolean mAlwaysFlush;
 
     volatile Throwable mCause;
 
-    RedoWriter(int bufferSize) {
+    RedoWriter(int bufferSize, long initialTxnId) {
         mBuffer = new byte[bufferSize];
+        mLastTxnId = initialTxnId;
     }
 
     /**
@@ -76,118 +79,76 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
         }
     }
 
-    public synchronized void txnBegin(long txnId) throws IOException {
-        writeOp(OP_TXN_BEGIN, txnId);
+    public synchronized void reset() throws IOException {
+        writeOp(OP_RESET, mLastTxnId);
         writeTerminator();
     }
 
-    public synchronized void txnBegin(long txnId, long parentTxnId) throws IOException {
-        if (parentTxnId == 0) {
-            writeOp(OP_TXN_BEGIN, txnId);
-        } else {
-            writeOp(OP_TXN_BEGIN_CHILD, txnId);
-            writeLongLE(parentTxnId);
-        }
+    public synchronized void txnEnter(long txnId) throws IOException {
+        writeTxnOp(OP_TXN_ENTER, txnId);
         writeTerminator();
     }
 
     public synchronized void txnRollback(long txnId) throws IOException {
-        writeOp(OP_TXN_ROLLBACK, txnId);
+        writeTxnOp(OP_TXN_ROLLBACK, txnId);
         writeTerminator();
     }
 
-    public synchronized void txnRollback(long txnId, long parentTxnId) throws IOException {
-        if (parentTxnId == 0) {
-            writeOp(OP_TXN_ROLLBACK, txnId);
-        } else {
-            writeOp(OP_TXN_ROLLBACK_CHILD, txnId);
-            writeLongLE(parentTxnId);
-        }
+    public synchronized void txnRollbackFinal(long txnId) throws IOException {
+        writeTxnOp(OP_TXN_ROLLBACK_FINAL, txnId);
+        writeTerminator();
+    }
+
+    public synchronized void txnCommit(long txnId) throws IOException {
+        writeTxnOp(OP_TXN_COMMIT, txnId);
         writeTerminator();
     }
 
     /**
      * @return true if caller should call txnCommitSync
      */
-    public synchronized boolean txnCommitFull(long txnId, DurabilityMode mode) throws IOException {
-        writeOp(OP_TXN_COMMIT, txnId);
+    public synchronized boolean txnCommitFinal(long txnId, DurabilityMode mode)
+        throws IOException
+    {
+        writeTxnOp(OP_TXN_COMMIT_FINAL, txnId);
         writeTerminator();
         return conditionalFlush(mode);
     }
 
     /**
-     * Called after txnCommit.
+     * Called after txnCommitFinal.
      */
     public void txnCommitSync() throws IOException {
         sync(false);
     }
 
-    public synchronized void txnCommitScope(long txnId, long parentTxnId) throws IOException {
-        writeOp(OP_TXN_COMMIT_CHILD, txnId);
-        writeLongLE(parentTxnId);
-        writeTerminator();
-    }
-
-    public synchronized void txnStore(long txnId, long indexId, byte[] key, byte[] value)
+    public synchronized void txnStore(byte op, long txnId, long indexId, byte[] key, byte[] value)
         throws IOException
     {
         if (key == null) {
             throw new NullPointerException("Key is null");
         }
-
-        if (value == null) {
-            writeOp(OP_TXN_DELETE, txnId);
-            writeLongLE(indexId);
-            writeUnsignedVarInt(key.length);
-            writeBytes(key);
-        } else {
-            writeOp(OP_TXN_STORE, txnId);
-            writeLongLE(indexId);
-            writeUnsignedVarInt(key.length);
-            writeBytes(key);
-            writeUnsignedVarInt(value.length);
-            writeBytes(value);
-        }
-
+        writeTxnOp(op, txnId);
+        writeLongLE(indexId);
+        writeUnsignedVarInt(key.length);
+        writeBytes(key);
+        writeUnsignedVarInt(value.length);
+        writeBytes(value);
         writeTerminator();
     }
 
-    /*
-    public synchronized void txnStoreCommit(long txnId, long parentTxnId,
-                                            long indexId, byte[] key, byte[] value)
+    public synchronized void txnDelete(byte op, long txnId, long indexId, byte[] key)
         throws IOException
     {
         if (key == null) {
             throw new NullPointerException("Key is null");
         }
-
-        if (value == null) {
-            if (parentTxnId == 0) {
-                writeOp(OP_TXN_DELETE_COMMIT, txnId);
-            } else {
-                writeOp(OP_TXN_DELETE_COMMIT_CHILD, txnId);
-                writeLongLE(parentTxnId);
-            }
-            writeLongLE(indexId);
-            writeUnsignedVarInt(key.length);
-            writeBytes(key);
-        } else {
-            if (parentTxnId == 0) {
-                writeOp(OP_TXN_STORE_COMMIT, txnId);
-            } else {
-                writeOp(OP_TXN_STORE_COMMIT_CHILD, txnId);
-                writeLongLE(parentTxnId);
-            }
-            writeLongLE(indexId);
-            writeUnsignedVarInt(key.length);
-            writeBytes(key);
-            writeUnsignedVarInt(value.length);
-            writeBytes(value);
-        }
-
+        writeTxnOp(op, txnId);
+        writeLongLE(indexId);
+        writeUnsignedVarInt(key.length);
+        writeBytes(key);
         writeTerminator();
     }
-    */
 
     public synchronized void timestamp() throws IOException {
         writeOp(OP_TIMESTAMP, System.currentTimeMillis());
@@ -358,13 +319,26 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
     private void writeOp(byte op, long operand) throws IOException {
         byte[] buffer = mBuffer;
         int pos = mBufferPos;
-        if (pos >= buffer.length - 9) {
+        if (pos >= buffer.length - (1 + 8)) { // 1 for op, 8 for operand
             doFlush(buffer, pos);
             pos = 0;
         }
         buffer[pos] = op;
         Utils.writeLongLE(buffer, pos + 1, operand);
         mBufferPos = pos + 9;
+    }
+
+    // Caller must be synchronized.
+    private void writeTxnOp(byte op, long txnId) throws IOException {
+        byte[] buffer = mBuffer;
+        int pos = mBufferPos;
+        if (pos >= buffer.length - (1 + 9)) { // 1 for op, up to 9 for txn delta
+            doFlush(buffer, pos);
+            pos = 0;
+        }
+        buffer[pos] = op;
+        mBufferPos = Utils.writeSignedVarLong(buffer, pos + 1, txnId - mLastTxnId);
+        mLastTxnId = txnId;
     }
 
     // Caller must be synchronized.

@@ -311,6 +311,14 @@ class Utils {
     }
 
     /**
+     * Reads an integer as encoded by writeSignedVarLong.
+     */
+    public static long readSignedVarLong(byte[] b, IntegerRef offsetRef) {
+        long v = readUnsignedVarLong(b, offsetRef);
+        return ((v & 1) != 0) ? ((~(v >> 1)) | (1 << 31)) : (v >>> 1);
+    }
+
+    /**
      * Reads a long integer as encoded by writeUnsignedVarLong.
      */
     public static long readUnsignedVarLong(byte[] b, IntegerRef offsetRef) {
@@ -570,6 +578,21 @@ class Utils {
             v <<= 1;
         }
         return writeUnsignedVarInt(b, offset, v);
+    }
+
+    /**
+     * @return new offset
+     */
+    public static int writeSignedVarLong(byte[] b, int offset, long v) {
+        if (v < 0) {
+            // Complement negative value to turn all the ones to zeros, which
+            // can be compacted. Shift and put sign bit at LSB.
+            v = ((~v) << 1) | 1;
+        } else {
+            // Shift and put sign bit at LSB.
+            v <<= 1;
+        }
+        return writeUnsignedVarLong(b, offset, v);
     }
 
     public static int calcUnsignedVarLongLength(long v) {

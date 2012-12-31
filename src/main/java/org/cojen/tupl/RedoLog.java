@@ -41,7 +41,7 @@ import java.security.GeneralSecurityException;
  */
 final class RedoLog extends RedoWriter {
     private static final long MAGIC_NUMBER = 431399725605778814L;
-    private static final int ENCODING_VERSION = 20120801;
+    private static final int ENCODING_VERSION = 20121227;
 
     private static int randomInt() {
         Random rnd = new Random();
@@ -73,7 +73,7 @@ final class RedoLog extends RedoWriter {
      * @param logId first log id to open
      */
     RedoLog(Crypto crypto, File baseFile, long logId, boolean replay) throws IOException {
-        super(4096);
+        super(4096, 0);
 
         mCrypto = crypto;
         mBaseFile = baseFile;
@@ -88,10 +88,9 @@ final class RedoLog extends RedoWriter {
     }
 
     /**
-     * @param scanned files scanned in previous replay
      * @return all the files which were replayed
      */
-    synchronized Set<File> replay(RedoVisitor visitor, Set<File> scanned,
+    synchronized Set<File> replay(RedoVisitor visitor,
                                   EventListener listener, EventType type, String message)
         throws IOException
     {
@@ -104,10 +103,6 @@ final class RedoLog extends RedoWriter {
 
             while (true) {
                 File file = fileFor(mBaseFile, mLogId);
-
-                if (scanned != null && !scanned.contains(file)) {
-                    break;
-                }
 
                 InputStream in;
                 try {
@@ -210,6 +205,7 @@ final class RedoLog extends RedoWriter {
             mLogId = logId;
 
             timestamp();
+            reset();
         }
 
         try {
@@ -228,16 +224,6 @@ final class RedoLog extends RedoWriter {
      */
     private static File fileFor(File base, long logId) {
         return base == null ? null : new File(base.getPath() + ".redo." + logId);
-    }
-
-    @Override
-    public void txnBegin(long txnId) {
-        // RedoLogTxnScanner infers transaction begin.
-    }
-
-    @Override
-    public void txnBegin(long txnId, long parentTxnId) {
-        // RedoLogTxnScanner infers transaction begin and parent transaction.
     }
 
     @Override
@@ -351,7 +337,7 @@ final class RedoLog extends RedoWriter {
 
         mTermRndSeed = in.readIntLE();
 
-        new RedoDecoder() {
+        new RedoDecoder(0) {
             @Override
             protected boolean verifyTerminator(DataIn in) throws IOException {
                 try {

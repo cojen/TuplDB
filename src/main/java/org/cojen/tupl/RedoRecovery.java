@@ -25,13 +25,17 @@ import java.io.IOException;
  */
 interface RedoRecovery {
     /**
+     * Perform main recovery workflow. As new transactions are recovered, they
+     * must be added to the given hashtable. When transactions complete, they
+     * must be removed from the hashtable.
+     *
      * @param position position to start recovery from
-     * @param undoLogs all active transactions during last checkpoint; all
+     * @param txns all active transactions during last checkpoint; all
      * committed and (explicitly) rolled back entries must be removed
      * @return true if anything was recovered
      */
     boolean recover(Database db, DatabaseConfig config,
-                    long position, LHashTable.Obj<UndoLog> undoLogs)
+                    long position, LHashTable.Obj<Transaction> txns)
         throws IOException;
 
     /**

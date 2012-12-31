@@ -24,6 +24,12 @@ import java.io.PrintStream;
  * @author Brian S O'Neill
  */
 class RedoPrinter implements RedoVisitor {
+    public static void main(String[] args) throws Exception {
+        java.io.File baseFile = new java.io.File(args[0]);
+        long logId = Long.parseLong(args[1]);
+        new RedoLog(null, baseFile, logId, true).replay(new RedoPrinter(), null, null, null);
+    }
+
     private static final int MAX_VALUE = 1000;
 
     private final PrintStream mOut;
@@ -57,6 +63,12 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
+    public boolean reset(long txnId) {
+        mOut.println("reset: txnId=" + txnId);
+        return true;
+    }
+
+    @Override
     public boolean store(long indexId, byte[] key, byte[] value) {
         mOut.println("store: indexId=" + indexId +
                      ", key=" + toHex(key) + ", value=" + toHex(value));
@@ -64,14 +76,8 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
-    public boolean txnBegin(long txnId) {
-        mOut.println("txnBegin: txnId=" + txnId);
-        return true;
-    }
-
-    @Override
-    public boolean txnBeginChild(long txnId, long parentTxnId) {
-        mOut.println("txnBegin: txnId=" + txnId + ", parentTxnId=" + parentTxnId);
+    public boolean txnEnter(long txnId) {
+        mOut.println("txnEnter: txnId=" + txnId);
         return true;
     }
 
@@ -82,8 +88,8 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
-    public boolean txnRollbackChild(long txnId, long parentTxnId) {
-        mOut.println("txnRollback: txnId=" + txnId + ", parentTxnId=" + parentTxnId);
+    public boolean txnRollbackFinal(long txnId) {
+        mOut.println("txnRollbackFinal: txnId=" + txnId);
         return true;
     }
 
@@ -94,8 +100,8 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
-    public boolean txnCommitChild(long txnId, long parentTxnId) {
-        mOut.println("txnCommit: txnId=" + txnId + ", parentTxnId=" + parentTxnId);
+    public boolean txnCommitFinal(long txnId) {
+        mOut.println("txnCommitFinal: txnId=" + txnId);
         return true;
     }
 
@@ -107,17 +113,9 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
-    public boolean txnStoreCommit(long txnId, long indexId, byte[] key, byte[] value) {
+    public boolean txnStoreCommitFinal(long txnId, long indexId, byte[] key, byte[] value) {
         txnStore(txnId, indexId, key, value);
         return txnCommit(txnId);
-    }
-
-    @Override
-    public boolean txnStoreCommitChild(long txnId, long parentTxnId,
-                                       long indexId, byte[] key, byte[] value)
-    {
-        txnStore(txnId, indexId, key, value);
-        return txnCommitChild(txnId, parentTxnId);
     }
 
     private String toHex(byte[] bytes) {
