@@ -43,6 +43,8 @@ import java.util.TreeMap;
 
 import java.util.concurrent.TimeUnit;
 
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+
 import java.util.concurrent.locks.Lock;
 
 import static org.cojen.tupl.Node.*;
@@ -211,6 +213,9 @@ public final class Database extends CauseCloseable {
 
     volatile boolean mClosed;
     volatile Throwable mClosedCause;
+
+    private static final AtomicReferenceFieldUpdater<Database, Throwable> cClosedCauseUpdater =
+        AtomicReferenceFieldUpdater.newUpdater(Database.class, Throwable.class, "mClosedCause");
 
     /**
      * Open a database, creating it if necessary.
@@ -856,7 +861,12 @@ public final class Database extends CauseCloseable {
             if (pageCount > 0) {
                 pageCount = mPageDb.allocatePages(pageCount);
                 if (pageCount > 0) {
-                    checkpoint(true, 0, 0);
+                    try {
+                        checkpoint(true, 0, 0);
+                    } catch (Throwable e) {
+                        closeQuietly(null, this, e);
+                        throw rethrow(e);
+                    }
                 }
                 return pageCount * pageSize;
             }
@@ -1091,7 +1101,12 @@ public final class Database extends CauseCloseable {
      */
     public void checkpoint() throws IOException {
         if (!mClosed && mPageDb instanceof DurablePageDb) {
-            checkpoint(false, 0, 0);
+            try {
+                checkpoint(false, 0, 0);
+            } catch (Throwable e) {
+                closeQuietly(null, this, e);
+                throw rethrow(e);
+            }
         }
     }
 
@@ -1185,13 +1200,11 @@ public final class Database extends CauseCloseable {
     @Override
     void close(Throwable cause) throws IOException {
         if (cause != null) {
-            if (mClosedCause == null && mEventListener != null) {
+            if (cClosedCauseUpdater.compareAndSet(this, null, cause) && mEventListener != null) {
                 mEventListener.notify(EventType.PANIC_UNHANDLED_EXCEPTION,
                                       "Closing database due to unhandled exception: %1$s",
                                       rootCause(cause));
             }
-
-            mClosedCause = cause;
         }
 
         mClosed = true;
