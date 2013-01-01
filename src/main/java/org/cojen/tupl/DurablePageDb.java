@@ -547,39 +547,25 @@ class DurablePageDb extends PageDb {
             System.arraycopy(header, 0, header, i * MINIMUM_PAGE_SIZE, MINIMUM_PAGE_SIZE);
         }
 
-        // Boost thread priorty during sync, to ensure it completes quickly.
-        // Some file systems don't sync on a "snapshot", but continue sync'ng
-        // pages which are dirtied during the sync itself.
-        final Thread t = Thread.currentThread();
-        final int original = t.getPriority();
+        // Ensure all writes are flushed before flushing the header. There's
+        // otherwise no ordering guarantees. Metadata should also be be flushed
+        // first, because the header won't affect it.
+        array.sync(true);
+
+        mHeaderLatch.acquireExclusive();
         try {
-            if (original != Thread.MAX_PRIORITY) {
-                try {
-                    t.setPriority(Thread.MAX_PRIORITY);
-                } catch (SecurityException e) {
-                }
-            }
-
-            // Ensure all writes are flushed before flushing the header.
-            // There's otherwise no ordering guarantees. Metadata, like length,
-            // should also be be flushed first, because the header won't affect it.
-            array.sync(true);
-
-            mHeaderLatch.acquireExclusive();
-            try {
-                array.writePageDurably(commitNumber & 1, header);
-                mCommitNumber = commitNumber;
-            } finally {
-                mHeaderLatch.releaseExclusive();
-            }
+            // Write the header immediately instead of sitting in the file
+            // system cache. Sadly, this doesn't guarantee that the storage
+            // device has flushed its own cache, and so an additional sync must
+            // be performed before the commit is truly complete.
+            array.writePageDurably(commitNumber & 1, header);
+            mCommitNumber = commitNumber;
         } finally {
-            if (t.getPriority() != original) {
-                try {
-                    t.setPriority(original);
-                } catch (SecurityException e) {
-                }
-            }
+            mHeaderLatch.releaseExclusive();
         }
+
+        // Final sync to ensure the header is durable.
+        array.sync(false);
     }
 
     private static int setHeaderChecksum(byte[] header) {
