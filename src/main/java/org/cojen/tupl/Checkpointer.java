@@ -94,7 +94,7 @@ final class Checkpointer implements Runnable {
 
                 lastDurationNanos = endNanos - startNanos;
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
             if (!mClosed) {
                 Database db = mDatabaseRef.get();
                 if (db != null && !db.mClosed) {
