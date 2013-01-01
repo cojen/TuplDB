@@ -318,12 +318,11 @@ final class RedoLog extends CauseCloseable implements Checkpointer.Shutdown {
             timestamp();
         }
 
-        try {
-            if (oldChannel != null) {
-                oldChannel.force(true);
-            }
-        } catch (IOException e) {
-            // Ignore.
+        if (oldChannel != null) {
+            // Make sure any exception thrown by this call is not caught here,
+            // because a checkpoint cannot complete successfully if the redo
+            // log has not been durably written.
+            oldChannel.force(true);
         }
 
         Utils.closeQuietly(null, oldOut);
