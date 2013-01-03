@@ -76,6 +76,13 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
+    public boolean storeNoLock(long indexId, byte[] key, byte[] value) {
+        mOut.println("storeNoLock: indexId=" + indexId +
+                     ", key=" + toHex(key) + ", value=" + toHex(value));
+        return true;
+    }
+
+    @Override
     public boolean txnEnter(long txnId) {
         mOut.println("txnEnter: txnId=" + txnId);
         return true;

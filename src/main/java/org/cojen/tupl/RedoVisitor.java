@@ -58,6 +58,14 @@ interface RedoVisitor {
     public boolean store(long indexId, byte[] key, byte[] value) throws IOException;
 
     /**
+     * @param indexId non-zero index id
+     * @param key non-null key
+     * @param value value to store; null to delete
+     * @return false to stop visiting
+     */
+    public boolean storeNoLock(long indexId, byte[] key, byte[] value) throws IOException;
+
+    /**
      * @param txnId non-zero transaction id
      * @return false to stop visiting
      */

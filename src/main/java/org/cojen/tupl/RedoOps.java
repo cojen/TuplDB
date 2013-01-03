@@ -44,7 +44,13 @@ class RedoOps {
         OP_STORE = 16,
 
         /** indexId: long, keyLength: varInt, key: bytes */
-        OP_DELETE = 17,
+        OP_STORE_NO_LOCK = 17,
+
+        /** indexId: long, keyLength: varInt, key: bytes, valueLength: varInt, value: bytes */
+        OP_DELETE = 18,
+
+        /** indexId: long, keyLength: varInt, key: bytes */
+        OP_DELETE_NO_LOCK = 19,
 
         /** txnId: delta */
         OP_TXN_ENTER = 24,

@@ -126,6 +126,12 @@ class ReplRedoProcessor implements RedoVisitor {
     }
 
     @Override
+    public boolean storeNoLock(long indexId, byte[] key, byte[] value) throws IOException {
+        // FIXME
+        return true;
+    }
+
+    @Override
     public boolean txnEnter(long txnId) throws IOException {
         Transaction txn = mDatabase.newTransaction(DurabilityMode.NO_REDO);
         mTransactions.insert(txnId).value = txn;
