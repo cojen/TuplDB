@@ -17,17 +17,17 @@
 package org.cojen.tupl;
 
 /**
- * Various transaction durability modes, which control the durability strength
- * of committed transactions. Strong modes offer safety, but they are also
- * relatively slow. Weak modes are faster, but transactions committed in one of
- * these modes can get lost.
+ * Various {@link Transaction transaction} durability modes, which control the
+ * durability strength of committed transactions. Strong modes offer safety,
+ * but they are also relatively slow. Weak modes are faster, but transactions
+ * committed in one of these modes can get lost.
  *
  * <p>Modes ordered from strongest to weakest:
  * <ul>
- * <li>{@code SYNC}
- * <li>{@code NO_SYNC}
- * <li>{@code NO_FLUSH}
- * <li>{@code NO_REDO}
+ * <li>{@link #SYNC}
+ * <li>{@link #NO_SYNC}
+ * <li>{@link #NO_FLUSH}
+ * <li>{@link #NO_REDO}
  * </ul>
  *
  * @author Brian S O'Neill
