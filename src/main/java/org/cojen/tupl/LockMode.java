@@ -17,9 +17,9 @@
 package org.cojen.tupl;
 
 /**
- * Various lock modes for use within transactions. Except for {@link #UNSAFE},
- * all modes follow the same policy when modifying entries. They all differ
- * with respect to entries which are being read.
+ * Various lock modes for use within {@link Transaction transactions}. Except
+ * for {@link #UNSAFE}, all modes follow the same policy when modifying
+ * entries. They all differ with respect to entries which are being read.
  *
  * <p>When an entry is modified, an exclusive lock is acquired, which is
  * typically held until the end of the transaction. When transaction scopes are
@@ -28,11 +28,11 @@ package org.cojen.tupl;
  *
  * <p>Modes ordered from strongest to weakest:
  * <ul>
- * <li>{@code UPGRADABLE_READ}
- * <li>{@code REPEATABLE_READ}
- * <li>{@code READ_COMMITTED}
- * <li>{@code READ_UNCOMMITTED}
- * <li>{@code UNSAFE}
+ * <li>{@link #UPGRADABLE_READ}
+ * <li>{@link #REPEATABLE_READ}
+ * <li>{@link #READ_COMMITTED}
+ * <li>{@link #READ_UNCOMMITTED}
+ * <li>{@link #UNSAFE}
  * </ul>
  *
  * @author Brian S O'Neill
