@@ -158,14 +158,14 @@ abstract class RedoDecoder {
                 }
                 break;
 
-            case OP_TXN_ENTER_STORE_COMMIT_FINAL:
+            case OP_TXN_STORE_COMMIT:
                 txnId = readTxnId(in);
                 indexId = in.readLongLE();
                 key = in.readBytes();
                 value = in.readBytes();
                 if (!verifyTerminator(in)
-                    || !visitor.txnEnter(txnId)
-                    || !visitor.txnStoreCommitFinal(txnId, indexId, key, value))
+                    || !visitor.txnStore(txnId, indexId, key, value)
+                    || !visitor.txnCommit(txnId))
                 {
                     return;
                 }
@@ -204,13 +204,13 @@ abstract class RedoDecoder {
                 }
                 break;
 
-            case OP_TXN_ENTER_DELETE_COMMIT_FINAL:
+            case OP_TXN_DELETE_COMMIT:
                 txnId = readTxnId(in);
                 indexId = in.readLongLE();
                 key = in.readBytes();
                 if (!verifyTerminator(in)
-                    || !visitor.txnEnter(txnId)
-                    || !visitor.txnStoreCommitFinal(txnId, indexId, key, null))
+                    || !visitor.txnStore(txnId, indexId, key, null)
+                    || !visitor.txnCommitFinal(txnId))
                 {
                     return;
                 }

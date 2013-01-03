@@ -71,7 +71,7 @@ class RedoOps {
 
         /** txnId: delta, indexId: long, keyLength: varInt, key: bytes,
             valueLength: varInt, value: bytes */
-        OP_TXN_ENTER_STORE_COMMIT_FINAL = 34,
+        OP_TXN_STORE_COMMIT = 34,
 
         /** txnId: delta, indexId: long, keyLength: varInt, key: bytes,
             valueLength: varInt, value: bytes */
@@ -84,7 +84,7 @@ class RedoOps {
         OP_TXN_DELETE = 37,
 
         /** txnId: delta, indexId: long, keyLength: varInt, key: bytes */
-        OP_TXN_ENTER_DELETE_COMMIT_FINAL = 38,
+        OP_TXN_DELETE_COMMIT = 38,
 
         /** txnId: delta, indexId: long, keyLength: varInt, key: bytes */
         OP_TXN_DELETE_COMMIT_FINAL = 39;
