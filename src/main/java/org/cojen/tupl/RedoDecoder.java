@@ -127,10 +127,27 @@ abstract class RedoDecoder {
                 }
                 break;
 
+            case OP_STORE_NO_LOCK:
+                indexId = in.readLongLE();
+                key = in.readBytes();
+                value = in.readBytes();
+                if (!verifyTerminator(in) || !visitor.storeNoLock(indexId, key, value)) {
+                    return;
+                }
+                break;
+
             case OP_DELETE:
                 indexId = in.readLongLE();
                 key = in.readBytes();
                 if (!verifyTerminator(in) || !visitor.store(indexId, key, null)) {
+                    return;
+                }
+                break;
+
+            case OP_DELETE_NO_LOCK:
+                indexId = in.readLongLE();
+                key = in.readBytes();
+                if (!verifyTerminator(in) || !visitor.storeNoLock(indexId, key, null)) {
                     return;
                 }
                 break;

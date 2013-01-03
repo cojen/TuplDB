@@ -79,6 +79,43 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
         }
     }
 
+    /**
+     * Auto-commit non-transactional store.
+     *
+     * @param indexId non-zero index id
+     * @param key non-null key
+     * @param value value to store; null to delete
+     */
+    public void storeNoLock(long indexId, byte[] key, byte[] value, DurabilityMode mode)
+        throws IOException
+    {
+        if (key == null) {
+            throw new NullPointerException("Key is null");
+        }
+
+        boolean sync;
+        synchronized (this) {
+            if (value == null) {
+                writeOp(OP_DELETE_NO_LOCK, indexId);
+                writeUnsignedVarInt(key.length);
+                writeBytes(key);
+            } else {
+                writeOp(OP_STORE_NO_LOCK, indexId);
+                writeUnsignedVarInt(key.length);
+                writeBytes(key);
+                writeUnsignedVarInt(value.length);
+                writeBytes(value);
+            }
+            writeTerminator();
+
+            sync = conditionalFlush(mode);
+        }
+
+        if (sync) {
+            sync(false);
+        }
+    }
+
     public synchronized void reset() throws IOException {
         writeOp(OP_RESET, mLastTxnId);
         writeTerminator();

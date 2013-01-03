@@ -66,6 +66,16 @@ class RedoLogApplier implements RedoVisitor {
     public boolean store(long indexId, byte[] key, byte[] value) throws IOException {
         Index ix = openIndex(indexId);
         if (ix != null) {
+            // No need to actually acquire a lock for log based recovery.
+            ix.store(Transaction.BOGUS, key, value);
+        }
+        return true;
+    }
+
+    @Override
+    public boolean storeNoLock(long indexId, byte[] key, byte[] value) throws IOException {
+        Index ix = openIndex(indexId);
+        if (ix != null) {
             ix.store(Transaction.BOGUS, key, value);
         }
         return true;
