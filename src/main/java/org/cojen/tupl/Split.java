@@ -21,7 +21,7 @@ package org.cojen.tupl;
  *
  * @author Brian S O'Neill
  */
-class Split {
+final class Split {
     final boolean mSplitRight;
     private final Node mSibling;
 
