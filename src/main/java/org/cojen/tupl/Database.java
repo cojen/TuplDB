@@ -121,7 +121,7 @@ public final class Database extends CauseCloseable {
         return nodes * (long) (pageSize + NODE_OVERHEAD);
     }
 
-    private static final int ENCODING_VERSION = 20120721;
+    private static final int ENCODING_VERSION = 20130105;
 
     private static final int I_ENCODING_VERSION        = 0;
     private static final int I_ROOT_PAGE_ID            = I_ENCODING_VERSION + 4;
@@ -129,10 +129,6 @@ public final class Database extends CauseCloseable {
     private static final int I_TRANSACTION_ID          = I_MASTER_UNDO_LOG_PAGE_ID + 8;
     private static final int I_REDO_POSITION           = I_TRANSACTION_ID + 8;
     private static final int HEADER_SIZE               = I_REDO_POSITION + 8;
-
-    static final byte KEY_TYPE_INDEX_NAME   = 0;
-    static final byte KEY_TYPE_INDEX_ID     = 1;
-    static final byte KEY_TYPE_NEXT_TREE_ID = 2;
 
     private static final int DEFAULT_PAGE_SIZE = 4096;
     private static final int MINIMUM_PAGE_SIZE = 512;
@@ -175,7 +171,12 @@ public final class Database extends CauseCloseable {
     // The root tree, which maps tree ids to other tree root node ids.
     private final Tree mRegistry;
 
-    // Maps tree name keys to ids.
+    static final byte KEY_TYPE_INDEX_NAME   = 0; // prefix for name to id mapping
+    static final byte KEY_TYPE_INDEX_ID     = 1; // prefix for id to name mapping
+    static final byte KEY_TYPE_TREE_ID_MASK = 2; // full key for random tree id mask
+    static final byte KEY_TYPE_NEXT_TREE_ID = 3; // full key for tree id sequence
+
+    // Various mappings, defined by KEY_TYPE_ fields.
     private final Tree mRegistryKeyMap;
 
     private final Latch mOpenTreesLatch;
@@ -1428,6 +1429,22 @@ public final class Database extends CauseCloseable {
 
         Transaction txn = newTransaction();
         try {
+            // Tree id mask, to make the identifiers less predictable and
+            // non-compatible with other database instances.
+            long treeIdMask;
+            {
+                byte[] key = {KEY_TYPE_TREE_ID_MASK};
+                byte[] treeIdMaskBytes = mRegistryKeyMap.load(txn, key);
+
+                if (treeIdMaskBytes == null) {
+                    treeIdMaskBytes = new byte[8];
+                    random().nextBytes(treeIdMaskBytes);
+                    mRegistryKeyMap.store(txn, key, treeIdMaskBytes);
+                }
+
+                treeIdMask = readLongLE(treeIdMaskBytes, 0);
+            }
+
             byte[] key = {KEY_TYPE_NEXT_TREE_ID};
             byte[] nextTreeIdBytes = mRegistryKeyMap.load(txn, key);
 
@@ -1438,14 +1455,7 @@ public final class Database extends CauseCloseable {
 
             long treeId;
             do {
-                treeId = nextTreeId++;
-                byte[] databaseId = mPageDb.databaseId();
-                if (databaseId.length >= 8) {
-                    // Mask with the unique database id, making the identifiers
-                    // less predictable and non-compatible with other databases.
-                    treeId ^= Utils.readLongLE(databaseId, 0);
-                }
-                treeId = Utils.scramble(treeId);
+                treeId = scramble((nextTreeId++) ^ treeIdMask);
             } while (Tree.isInternal(treeId));
 
             writeLongLE(nextTreeIdBytes, 0, nextTreeId);
