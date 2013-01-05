@@ -29,13 +29,6 @@ import java.security.GeneralSecurityException;
  */
 public interface Crypto {
     /**
-     * Called at most once after the database has been opened or created.
-     *
-     * @param databaseId database identifier; never null
-     */
-    public void setDatabaseId(byte[] databaseId) throws GeneralSecurityException;
-
-    /**
      * Called by multiple threads to encrypt a fixed-size database
      * page. Encrypted length must exactly match original length.
      *
