@@ -34,7 +34,8 @@ class RedoLogRecovery implements RedoRecovery {
 
     @Override
     public boolean recover(Database db, DatabaseConfig config,
-                           long logId, LHashTable.Obj<Transaction> txns)
+                           long logId, long txnId,
+                           LHashTable.Obj<Transaction> txns)
         throws IOException
     {
         mConfig = config;

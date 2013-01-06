@@ -41,7 +41,7 @@ import java.security.GeneralSecurityException;
  */
 final class RedoLog extends RedoWriter {
     private static final long MAGIC_NUMBER = 431399725605778814L;
-    private static final int ENCODING_VERSION = 20121227;
+    private static final int ENCODING_VERSION = 20130106;
 
     private static int randomInt() {
         Random rnd = new Random();
@@ -242,11 +242,6 @@ final class RedoLog extends RedoWriter {
     }
 
     @Override
-    synchronized long checkpointPosition() {
-        return mLogId;
-    }
-
-    @Override
     void prepareCheckpoint() throws IOException {
         if (mReplayMode) {
             throw new IllegalStateException();
@@ -256,6 +251,22 @@ final class RedoLog extends RedoWriter {
             logId = mLogId;
         }
         openNewFile(logId + 1);
+    }
+
+    @Override
+    void captureCheckpointState() {
+        // Was captured by prepare method.
+    }
+
+    @Override
+    synchronized long checkpointPosition() {
+        return mLogId;
+    }
+
+    @Override
+    long checkpointTransactionId() {
+        // Log file always begins with a reset.
+        return 0;
     }
 
     @Override
@@ -336,7 +347,7 @@ final class RedoLog extends RedoWriter {
 
         mTermRndSeed = in.readIntLE();
 
-        new RedoDecoder(0) {
+        new RedoDecoder(in, true, 0) {
             @Override
             protected boolean verifyTerminator(DataIn in) throws IOException {
                 try {
@@ -345,6 +356,6 @@ final class RedoLog extends RedoWriter {
                     return false;
                 }
             }
-        }.run(in, visitor);
+        }.run(visitor);
     }
 }

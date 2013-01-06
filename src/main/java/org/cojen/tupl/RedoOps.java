@@ -25,20 +25,20 @@ class RedoOps {
     // Note: When updating the opcodes, be sure to update RedoWriter and RedoDecoder.
 
     static final byte
-        /** timestamp: long */
-        OP_TIMESTAMP = 1,
+        /** no operands */
+        OP_RESET = 1,
 
         /** timestamp: long */
-        OP_SHUTDOWN = 2,
+        OP_TIMESTAMP = 2,
 
         /** timestamp: long */
-        OP_CLOSE = 3,
+        OP_SHUTDOWN = 3,
 
         /** timestamp: long */
-        OP_END_FILE = 4,
+        OP_CLOSE = 4,
 
-        /** txnId: long */
-        OP_RESET = 8,
+        /** timestamp: long */
+        OP_END_FILE = 5,
 
         /** indexId: long, keyLength: varInt, key: bytes, valueLength: varInt, value: bytes */
         OP_STORE = 16,

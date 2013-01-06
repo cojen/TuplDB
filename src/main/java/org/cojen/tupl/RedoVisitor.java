@@ -27,6 +27,11 @@ interface RedoVisitor {
     /**
      * @return false to stop visiting
      */
+    public boolean reset() throws IOException;
+
+    /**
+     * @return false to stop visiting
+     */
     public boolean timestamp(long timestamp) throws IOException;
 
     /**
@@ -43,11 +48,6 @@ interface RedoVisitor {
      * @return false to stop visiting
      */
     public boolean endFile(long timestamp) throws IOException;
-
-    /**
-     * @return false to stop visiting
-     */
-    public boolean reset(long txnId) throws IOException;
 
     /**
      * @param indexId non-zero index id

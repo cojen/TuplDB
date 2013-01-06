@@ -23,6 +23,7 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
+// FIXME: Interface can go away
 interface RedoRecovery {
     /**
      * Perform main recovery workflow. As new transactions are recovered, they
@@ -30,12 +31,14 @@ interface RedoRecovery {
      * must be removed from the hashtable.
      *
      * @param position position to start recovery from
+     * @param txnId first transaction id at recovery position
      * @param txns all active transactions during last checkpoint; all
      * committed and (explicitly) rolled back entries must be removed
      * @return true if anything was recovered
      */
     boolean recover(Database db, DatabaseConfig config,
-                    long position, LHashTable.Obj<Transaction> txns)
+                    long position, long txnId,
+                    LHashTable.Obj<Transaction> txns)
         throws IOException;
 
     /**
