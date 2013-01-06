@@ -586,7 +586,7 @@ final class UndoLog {
 
     private Index findIndex(Index activeIndex) throws IOException {
         if (activeIndex == null || activeIndex.isClosed()) {
-            if ((activeIndex = mDatabase.indexById(mActiveIndexId)) == null) {
+            if ((activeIndex = mDatabase.anyIndexById(mActiveIndexId)) == null) {
                 // FIXME: If index was deleted, use a "dev/null" index. Some
                 // callers of this method will try to cast the index to a Tree.
                 throw new DatabaseException("Index not found: " + mActiveIndexId);

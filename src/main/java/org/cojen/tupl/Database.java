@@ -121,14 +121,15 @@ public final class Database extends CauseCloseable {
         return nodes * (long) (pageSize + NODE_OVERHEAD);
     }
 
-    private static final int ENCODING_VERSION = 20130105;
+    private static final int ENCODING_VERSION = 20130106;
 
     private static final int I_ENCODING_VERSION        = 0;
     private static final int I_ROOT_PAGE_ID            = I_ENCODING_VERSION + 4;
     private static final int I_MASTER_UNDO_LOG_PAGE_ID = I_ROOT_PAGE_ID + 8;
     private static final int I_TRANSACTION_ID          = I_MASTER_UNDO_LOG_PAGE_ID + 8;
     private static final int I_REDO_POSITION           = I_TRANSACTION_ID + 8;
-    private static final int HEADER_SIZE               = I_REDO_POSITION + 8;
+    private static final int I_REDO_TXN_ID             = I_REDO_POSITION + 8;
+    private static final int HEADER_SIZE               = I_REDO_TXN_ID + 8;
 
     private static final int DEFAULT_PAGE_SIZE = 4096;
     private static final int MINIMUM_PAGE_SIZE = 512;
@@ -417,7 +418,9 @@ public final class Database extends CauseCloseable {
             synchronized (mTxnIdLock) {
                 mTxnId = readLongLE(header, I_TRANSACTION_ID);
             }
+
             long redoPos = readLongLE(header, I_REDO_POSITION);
+            long redoTxnId = readLongLE(header, I_REDO_TXN_ID);
 
             if (openMode == OPEN_TEMP) {
                 mRegistryKeyMap = null;
@@ -459,6 +462,7 @@ public final class Database extends CauseCloseable {
                 }
 
                 // Keep all the trees open during recovery.
+                // FIXME: Only when non-replicated.
                 mRecoveredTrees = Collections.synchronizedList(new ArrayList<Tree>());
 
                 LHashTable.Obj<Transaction> txns = new LHashTable.Obj<Transaction>(16);
@@ -475,13 +479,20 @@ public final class Database extends CauseCloseable {
                     }
                 }
 
-                // FIXME: make generic
-                RedoLogRecovery recovery = new RedoLogRecovery();
+                RedoRecovery recovery;
+                {
+                    ReplicationManager rm = config.mReplManager;
+                    if (rm == null) {
+                        recovery = new RedoLogRecovery();
+                    } else {
+                        recovery = new ReplRedoRecovery(rm);
+                    }
+                }
 
-                boolean doCheckpoint = recovery.recover(this, config, redoPos, txns);
+                boolean doCheckpoint = recovery.recover(this, config, redoPos, redoTxnId, txns);
 
                 // Avoid re-using transaction ids used by recovery.
-                long redoTxnId = recovery.highestTxnId();
+                redoTxnId = recovery.highestTxnId();
                 if (redoTxnId != 0) {
                     synchronized (mTxnIdLock) {
                         // Subtract for modulo comparison.
@@ -529,6 +540,7 @@ public final class Database extends CauseCloseable {
 
             // Delete lingering fragmented values after undo logs have been
             // processed, ensuring deletes were committed.
+            // FIXME: Only when non-replicated. Empty trash after replica reset.
             if (mFragmentedTrash != null) {
                 if (mEventListener != null) {
                     mEventListener.notify(EventType.RECOVERY_DELETE_FRAGMENTS,
@@ -575,22 +587,32 @@ public final class Database extends CauseCloseable {
 
     /*
     void trace() throws IOException {
+        int[] inBuckets = new int[16];
+        int[] leafBuckets = new int[16];
+
         java.util.BitSet pages = mPageDb.tracePages();
-        mRegistry.mRoot.tracePages(this, pages);
-        mRegistryKeyMap.mRoot.tracePages(this, pages);
+        mRegistry.mRoot.tracePages(this, pages, inBuckets, leafBuckets);
+        mRegistryKeyMap.mRoot.tracePages(this, pages, inBuckets, leafBuckets);
 
-        mOpenTreesLatch.acquireShared();
-        try {
-            for (Tree tree : mOpenTrees.values()) {
-                tree.mRoot.tracePages(this, pages);
-            }
-        } finally {
-            mOpenTreesLatch.releaseShared();
+        Cursor all = allIndexes();
+        for (all.first(); all.key() != null; all.next()) {
+            Index ix = indexById(all.value());
+            System.out.println(ix.getNameString());
+
+            Cursor c = ix.newCursor(Transaction.BOGUS);
+            c.first();
+            System.out.println("height: " + ((TreeCursor) c).height());
+            c.reset();
+
+            ((Tree) ix).mRoot.tracePages(this, pages, inBuckets, leafBuckets);
+            System.out.println("unaccounted: " + pages.cardinality());
+            System.out.println("internal avail: " + Arrays.toString(inBuckets));
+            System.out.println("leaf avail: " + Arrays.toString(leafBuckets));
         }
+        all.reset();
 
+        System.out.println("unaccounted: " + pages.cardinality());
         System.out.println(pages);
-        System.out.println("lost: " + pages.cardinality());
-        System.out.println(mPageDb.stats());
     }
     */
 
@@ -2369,6 +2391,86 @@ public final class Database extends CauseCloseable {
     }
 
     /**
+     * Trace the pages of fragmented value.
+     *
+     * @param caller optional tree node which is latched and calling this method
+     */
+    /*
+    void traceFragmented(java.util.BitSet bits,
+                         Node caller, byte[] fragmented, int off, int len)
+        throws IOException
+    {
+        int header = fragmented[off++];
+        len--;
+
+        // TODO: code duplication with reconstruct
+        // TODO: no LargeValueException
+        int vLen;
+        switch ((header >> 2) & 0x03) {
+        default:
+            vLen = readUnsignedShortLE(fragmented, off);
+            break;
+
+        case 1:
+            vLen = readIntLE(fragmented, off);
+            if (vLen < 0) {
+                throw new LargeValueException(vLen & 0xffffffffL);
+            }
+            break;
+
+        case 2:
+            long vLenL = readUnsignedInt48LE(fragmented, off);
+            if (vLenL > Integer.MAX_VALUE) {
+                throw new LargeValueException(vLenL);
+            }
+            vLen = (int) vLenL;
+            break;
+
+        case 3:
+            vLenL = readLongLE(fragmented, off);
+            if (vLenL < 0 || vLenL > Integer.MAX_VALUE) {
+                throw new LargeValueException(vLenL);
+            }
+            vLen = (int) vLenL;
+            break;
+        }
+
+        {
+            int vLenFieldSize = 2 + ((header >> 1) & 0x06);
+            off += vLenFieldSize;
+            len -= vLenFieldSize;
+        }
+
+        if ((header & 0x02) != 0) {
+            // Inline content.
+            int inLen = readUnsignedShortLE(fragmented, off);
+            off += 2 + inLen;
+            len -= 2 + inLen;
+        }
+
+        if ((header & 0x01) == 0) {
+            // Direct pointers.
+            while (len >= 6) {
+                long nodeId = readUnsignedInt48LE(fragmented, off);
+                off += 6;
+                len -= 6;
+                bits.clear((int) nodeId);
+            }
+        } else {
+            // Indirect pointers.
+            // TODO
+            throw new DatabaseException("TODO");
+            /*
+            int levels = calculateInodeLevels(vLen, pageSize());
+            long nodeId = readUnsignedInt48LE(fragmented, off);
+            Node inode = mFragmentCache.get(caller, nodeId);
+            readMultilevelFragments(caller, levels, inode, value, 0, vLen);
+            * /
+        }
+    }
+    */
+
+    /**
      * @param level inode level; at least 1
      * @param inode shared latched parent inode; always released by this method
      * @param value slice of complete value being reconstructed
@@ -2635,13 +2737,6 @@ public final class Database extends CauseCloseable {
                 }
             }
 
-            if (mEventListener != null) {
-                // FIXME: Need to log a stable position; the one last recorded.
-                long pos = mRedoWriter == null ? 0 : mRedoWriter.checkpointPosition();
-                mEventListener.notify(EventType.CHECKPOINT_BEGIN,
-                                      "Checkpoint begin: %1$d", pos);
-            }
-
             mLastCheckpointNanos = nowNanos;
 
             final RedoWriter redo = mRedoWriter;
@@ -2679,9 +2774,21 @@ public final class Database extends CauseCloseable {
                 }
             }
 
-            // Capture the redo checkpoint position after commit lock has been
-            // acquired, ensuring that no changes are in progress.
-            final long redoPos = redo == null ? 0 : redo.checkpointPosition();
+            final long redoPos, redoTxnId;
+            if (redo == null) {
+                redoPos = 0;
+                redoTxnId = 0;
+            } else {
+                // Capture state while commit lock is held.
+                redo.captureCheckpointState();
+                redoPos = redo.checkpointPosition();
+                redoTxnId = redo.checkpointTransactionId();
+            }
+
+            if (mEventListener != null) {
+                mEventListener.notify(EventType.CHECKPOINT_BEGIN,
+                                      "Checkpoint begin: %1$d", redoPos);
+            }
 
             mCheckpointFlushState = CHECKPOINT_FLUSH_PREPARE;
 
@@ -2715,7 +2822,7 @@ public final class Database extends CauseCloseable {
                 mPageDb.commit(new PageDb.CommitCallback() {
                     @Override
                     public byte[] prepare() throws IOException {
-                        return flush(redoPos, masterUndoLogId);
+                        return flush(redoPos, redoTxnId, masterUndoLogId);
                     }
                 });
             } catch (IOException e) {
@@ -2754,7 +2861,9 @@ public final class Database extends CauseCloseable {
      * Method is invoked with exclusive commit lock and shared root node latch
      * held. Both are released by this method.
      */
-    private byte[] flush(final long redoPos, final long masterUndoLogId) throws IOException {
+    private byte[] flush(final long redoPos, final long redoTxnId, final long masterUndoLogId)
+        throws IOException
+    {
         final long txnId;
         synchronized (mTxnIdLock) {
             txnId = mTxnId;
@@ -2784,10 +2893,7 @@ public final class Database extends CauseCloseable {
         writeLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
         writeLongLE(header, I_TRANSACTION_ID, txnId);
         writeLongLE(header, I_REDO_POSITION, redoPos);
-
-        // FIXME: Add a UUID field which indicates what redo system is in use.
-
-        // FIXME: Add a region for custom redo system attributes.
+        writeLongLE(header, I_REDO_TXN_ID, redoTxnId);
 
         return header;
     }

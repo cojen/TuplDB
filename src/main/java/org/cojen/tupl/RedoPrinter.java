@@ -39,6 +39,12 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
+    public boolean reset() {
+        mOut.println("reset");
+        return true;
+    }
+
+    @Override
     public boolean timestamp(long timestamp) {
         mOut.println("timestamp: " + toDateTime(timestamp));
         return true;
@@ -59,12 +65,6 @@ class RedoPrinter implements RedoVisitor {
     @Override
     public boolean endFile(long timestamp) {
         mOut.println("endFile: " + toDateTime(timestamp));
-        return true;
-    }
-
-    @Override
-    public boolean reset(long txnId) {
-        mOut.println("reset: txnId=" + txnId);
         return true;
     }
 

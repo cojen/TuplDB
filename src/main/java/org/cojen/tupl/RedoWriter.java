@@ -117,7 +117,15 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
     }
 
     public synchronized void reset() throws IOException {
-        writeOp(OP_RESET, mLastTxnId);
+        byte[] buffer = mBuffer;
+        int pos = mBufferPos;
+        if (pos >= buffer.length - 1) {
+            doFlush(buffer, pos);
+            pos = 0;
+        }
+        mLastTxnId = 0;
+        buffer[pos] = OP_RESET;
+        mBufferPos = pos + 1;
         writeTerminator();
     }
 
@@ -264,19 +272,32 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
     abstract boolean shouldCheckpoint(long sizeThreshold);
 
     /**
-     * Returns the redo position for the next change, as would be recorded by a
-     * checkpoint.
-     */
-    abstract long checkpointPosition();
-
-    /**
-     * Prepares a new redo log file, if applicable.
+     * Captures the checkpoint position and transaction id, and possibly opens
+     * a new file.
      */
     abstract void prepareCheckpoint() throws IOException;
 
     /**
-     * Writer can discard all redo data lower than the given checkpointed
-     * position.
+     * With excluisve commit lock held, capture the checkpoint position and
+     * transaction id.
+     */
+    abstract void captureCheckpointState() throws IOException;
+
+    /**
+     * Returns the redo position for the first change after capturing
+     * checkpoint state.
+     */
+    abstract long checkpointPosition() throws IOException;
+
+    /**
+     * Returns the transaction id for the first change after capturing
+     * checkpoint state.
+     */
+    abstract long checkpointTransactionId() throws IOException;
+
+    /**
+     * Writer can discard all redo data lower than the checkpointed position,
+     * which was captured earlier.
      */
     abstract void checkpointed(long position) throws IOException;
 
@@ -289,6 +310,11 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
 
     // Caller must be synchronized.
     abstract void writeTerminator() throws IOException;
+
+    // Caller must be synchronized.
+    long lastTransactionId() {
+        return mLastTxnId;
+    }
 
     // Caller must be synchronized.
     void writeIntLE(int v) throws IOException {

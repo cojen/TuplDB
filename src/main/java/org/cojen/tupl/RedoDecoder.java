@@ -26,95 +26,109 @@ import static org.cojen.tupl.RedoOps.*;
  * @author Brian S O'Neill
  * @see RedoWriter
  */
-abstract class RedoDecoder {
+class RedoDecoder {
+    private final DataIn mIn;
+    private final boolean mLenient;
+
     private long mTxnId;
 
-    RedoDecoder(long initialTxnId) {
+    RedoDecoder(DataIn in, boolean lenient, long initialTxnId) {
+        mIn = in;
+        mLenient = lenient;
         mTxnId = initialTxnId;
     }
 
     /**
-     * Reads from the given stream, passing operations to the visitor, until
-     * the end of stream is reached or visitor returns false.
+     * Reads from the stream, passing operations to the visitor, until the end
+     * of stream is reached or visitor returns false.
+     *
+     * @return true if end of stream reached; false if visitor returned false
      */
-    void run(DataIn in, RedoVisitor visitor) throws IOException {
+    boolean run(RedoVisitor visitor) throws IOException {
+        DataIn in = mIn;
         int op;
         while ((op = in.read()) >= 0) {
             switch (op &= 0xff) {
+            case 0:
+                if (mLenient) {
+                    // Assume redo log did not flush completely.
+                    return true;
+                }
+                // fallthrough to next case...
+
             default:
                 throw new DatabaseException("Unknown redo log operation: " + op);
 
-            case 0:
-                // Assume redo log did not flush completely.
-                return;
+            case OP_RESET:
+                if (!verifyTerminator(in)) {
+                    return false;
+                }
+                mTxnId = 0;
+                if (!visitor.reset()) {
+                    return false;
+                }
+                break;
 
             case OP_TIMESTAMP:
                 long ts = in.readLongLE();
                 if (!verifyTerminator(in) || !visitor.timestamp(ts)) {
-                    return;
+                    return false;
                 }
                 break;
 
             case OP_SHUTDOWN:
                 ts = in.readLongLE();
                 if (!verifyTerminator(in) || !visitor.shutdown(ts)) {
-                    return;
+                    return false;
                 }
                 break;
 
             case OP_CLOSE:
                 ts = in.readLongLE();
                 if (!verifyTerminator(in) || !visitor.close(ts)) {
-                    return;
+                    return false;
                 }
                 break;
 
             case OP_END_FILE:
                 ts = in.readLongLE();
                 if (!verifyTerminator(in) || !visitor.endFile(ts)) {
-                    return;
-                }
-                break;
-
-            case OP_RESET:
-                long txnId = in.readLongLE();
-                if (!verifyTerminator(in) || !visitor.reset(mTxnId = txnId)) {
-                    return;
+                    return false;
                 }
                 break;
 
             case OP_TXN_ENTER:
-                txnId = readTxnId(in);
+                long txnId = readTxnId(in);
                 if (!verifyTerminator(in) || !visitor.txnEnter(txnId)) {
-                    return;
+                    return false;
                 }
                 break;
 
             case OP_TXN_ROLLBACK:
                 txnId = readTxnId(in);
                 if (!verifyTerminator(in) || !visitor.txnRollback(txnId)) {
-                    return;
+                    return false;
                 }
                 break;
 
             case OP_TXN_ROLLBACK_FINAL:
                 txnId = readTxnId(in);
                 if (!verifyTerminator(in) || !visitor.txnRollbackFinal(txnId)) {
-                    return;
+                    return false;
                 }
                 break;
 
             case OP_TXN_COMMIT:
                 txnId = readTxnId(in);
                 if (!verifyTerminator(in) || !visitor.txnCommit(txnId)) {
-                    return;
+                    return false;
                 }
                 break;
 
             case OP_TXN_COMMIT_FINAL:
                 txnId = readTxnId(in);
                 if (!verifyTerminator(in) || !visitor.txnCommitFinal(txnId)) {
-                    return;
+                    return false;
                 }
                 break;
 
@@ -123,7 +137,7 @@ abstract class RedoDecoder {
                 byte[] key = in.readBytes();
                 byte[] value = in.readBytes();
                 if (!verifyTerminator(in) || !visitor.store(indexId, key, value)) {
-                    return;
+                    return false;
                 }
                 break;
 
@@ -132,7 +146,7 @@ abstract class RedoDecoder {
                 key = in.readBytes();
                 value = in.readBytes();
                 if (!verifyTerminator(in) || !visitor.storeNoLock(indexId, key, value)) {
-                    return;
+                    return false;
                 }
                 break;
 
@@ -140,7 +154,7 @@ abstract class RedoDecoder {
                 indexId = in.readLongLE();
                 key = in.readBytes();
                 if (!verifyTerminator(in) || !visitor.store(indexId, key, null)) {
-                    return;
+                    return false;
                 }
                 break;
 
@@ -148,7 +162,7 @@ abstract class RedoDecoder {
                 indexId = in.readLongLE();
                 key = in.readBytes();
                 if (!verifyTerminator(in) || !visitor.storeNoLock(indexId, key, null)) {
-                    return;
+                    return false;
                 }
                 break;
 
@@ -161,7 +175,7 @@ abstract class RedoDecoder {
                     || !visitor.txnEnter(txnId)
                     || !visitor.txnStore(txnId, indexId, key, value))
                 {
-                    return;
+                    return false;
                 }
                 break;
 
@@ -171,7 +185,7 @@ abstract class RedoDecoder {
                 key = in.readBytes();
                 value = in.readBytes();
                 if (!verifyTerminator(in) || !visitor.txnStore(txnId, indexId, key, value)) {
-                    return;
+                    return false;
                 }
                 break;
 
@@ -184,7 +198,7 @@ abstract class RedoDecoder {
                     || !visitor.txnStore(txnId, indexId, key, value)
                     || !visitor.txnCommit(txnId))
                 {
-                    return;
+                    return false;
                 }
                 break;
 
@@ -196,7 +210,7 @@ abstract class RedoDecoder {
                 if (!verifyTerminator(in)
                     || !visitor.txnStoreCommitFinal(txnId, indexId, key, value))
                 {
-                    return;
+                    return false;
                 }
                 break;
 
@@ -208,7 +222,7 @@ abstract class RedoDecoder {
                     || !visitor.txnEnter(txnId)
                     || !visitor.txnStore(txnId, indexId, key, null))
                 {
-                    return;
+                    return false;
                 }
                 break;
 
@@ -217,7 +231,7 @@ abstract class RedoDecoder {
                 indexId = in.readLongLE();
                 key = in.readBytes();
                 if (!verifyTerminator(in) || !visitor.txnStore(txnId, indexId, key, null)) {
-                    return;
+                    return false;
                 }
                 break;
 
@@ -229,7 +243,7 @@ abstract class RedoDecoder {
                     || !visitor.txnStore(txnId, indexId, key, null)
                     || !visitor.txnCommitFinal(txnId))
                 {
-                    return;
+                    return false;
                 }
                 break;
 
@@ -240,11 +254,13 @@ abstract class RedoDecoder {
                 if (!verifyTerminator(in)
                     || !visitor.txnStoreCommitFinal(txnId, indexId, key, null))
                 {
-                    return;
+                    return false;
                 }
                 break;
             }
         }
+
+        return true;
     }
 
     private long readTxnId(DataIn in) throws IOException {
@@ -255,5 +271,7 @@ abstract class RedoDecoder {
      * If false is returned, assume rest of redo data is corrupt.
      * Implementation can return true if no redo terminators were written.
      */
-    abstract boolean verifyTerminator(DataIn in) throws IOException;
+    boolean verifyTerminator(DataIn in) throws IOException {
+        return true;
+    }
 }
