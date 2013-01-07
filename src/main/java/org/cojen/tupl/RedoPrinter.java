@@ -23,56 +23,106 @@ import java.io.PrintStream;
  *
  * @author Brian S O'Neill
  */
-class RedoLogPrinter implements RedoLogVisitor {
+class RedoPrinter implements RedoVisitor {
+    public static void main(String[] args) throws Exception {
+        java.io.File baseFile = new java.io.File(args[0]);
+        long logId = Long.parseLong(args[1]);
+        new RedoLog(null, baseFile, logId, true).replay(new RedoPrinter(), null, null, null);
+    }
+
     private static final int MAX_VALUE = 1000;
 
     private final PrintStream mOut;
 
-    RedoLogPrinter() {
+    RedoPrinter() {
         mOut = System.out;
     }
 
-    public void timestamp(long timestamp) {
+    @Override
+    public boolean reset() {
+        mOut.println("reset");
+        return true;
+    }
+
+    @Override
+    public boolean timestamp(long timestamp) {
         mOut.println("timestamp: " + toDateTime(timestamp));
+        return true;
     }
 
-    public void shutdown(long timestamp) {
+    @Override
+    public boolean shutdown(long timestamp) {
         mOut.println("shutdown: " + toDateTime(timestamp));
+        return true;
     }
 
-    public void close(long timestamp) {
+    @Override
+    public boolean close(long timestamp) {
         mOut.println("close: " + toDateTime(timestamp));
+        return true;
     }
 
-    public void endFile(long timestamp) {
+    @Override
+    public boolean endFile(long timestamp) {
         mOut.println("endFile: " + toDateTime(timestamp));
+        return true;
     }
 
-    public void store(long indexId, byte[] key, byte[] value) {
+    @Override
+    public boolean store(long indexId, byte[] key, byte[] value) {
         mOut.println("store: indexId=" + indexId +
                      ", key=" + toHex(key) + ", value=" + toHex(value));
+        return true;
     }
 
-    public void clear(long indexId) {
-        mOut.println("clear: indexId=" + indexId);
+    @Override
+    public boolean storeNoLock(long indexId, byte[] key, byte[] value) {
+        mOut.println("storeNoLock: indexId=" + indexId +
+                     ", key=" + toHex(key) + ", value=" + toHex(value));
+        return true;
     }
 
-    public void txnRollback(long txnId, long parentTxnId) {
-        mOut.println("txnRollback: txnId=" + txnId + ", parentTxnId=" + parentTxnId);
+    @Override
+    public boolean txnEnter(long txnId) {
+        mOut.println("txnEnter: txnId=" + txnId);
+        return true;
     }
 
-    public void txnCommit(long txnId, long parentTxnId) {
-        mOut.println("txnCommit: txnId=" + txnId + ", parentTxnId=" + parentTxnId);
+    @Override
+    public boolean txnRollback(long txnId) {
+        mOut.println("txnRollback: txnId=" + txnId);
+        return true;
     }
 
-    public void txnStore(long txnId, long indexId, byte[] key, byte[] value) {
+    @Override
+    public boolean txnRollbackFinal(long txnId) {
+        mOut.println("txnRollbackFinal: txnId=" + txnId);
+        return true;
+    }
+
+    @Override
+    public boolean txnCommit(long txnId) {
+        mOut.println("txnCommit: txnId=" + txnId);
+        return true;
+    }
+
+    @Override
+    public boolean txnCommitFinal(long txnId) {
+        mOut.println("txnCommitFinal: txnId=" + txnId);
+        return true;
+    }
+
+    @Override
+    public boolean txnStore(long txnId, long indexId, byte[] key, byte[] value) {
         mOut.println("txnStore: txnId=" + txnId + ", indexId=" + indexId +
                      ", key=" + toHex(key) + ", value=" + toHex(value));
+        return true;
     }
 
-    public void txnTrashFragmented(long txnId, long indexId, byte[] key) {
-        mOut.println("txnTrashFragmented: txnId=" + txnId + ", indexId=" + indexId +
-                     ", key=" + toHex(key));
+    @Override
+    public boolean txnStoreCommitFinal(long txnId, long indexId, byte[] key, byte[] value) {
+        txnStore(txnId, indexId, key, value);
+        return txnCommit(txnId);
     }
 
     private String toHex(byte[] bytes) {

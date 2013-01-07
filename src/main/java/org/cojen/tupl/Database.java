@@ -121,18 +121,15 @@ public final class Database extends CauseCloseable {
         return nodes * (long) (pageSize + NODE_OVERHEAD);
     }
 
-    private static final int ENCODING_VERSION = 20120721;
+    private static final int ENCODING_VERSION = 20130106;
 
     private static final int I_ENCODING_VERSION        = 0;
     private static final int I_ROOT_PAGE_ID            = I_ENCODING_VERSION + 4;
     private static final int I_MASTER_UNDO_LOG_PAGE_ID = I_ROOT_PAGE_ID + 8;
     private static final int I_TRANSACTION_ID          = I_MASTER_UNDO_LOG_PAGE_ID + 8;
-    private static final int I_REDO_LOG_ID             = I_TRANSACTION_ID + 8;
-    private static final int HEADER_SIZE               = I_REDO_LOG_ID + 8;
-
-    static final byte KEY_TYPE_INDEX_NAME   = 0;
-    static final byte KEY_TYPE_INDEX_ID     = 1;
-    static final byte KEY_TYPE_NEXT_TREE_ID = 2;
+    private static final int I_REDO_POSITION           = I_TRANSACTION_ID + 8;
+    private static final int I_REDO_TXN_ID             = I_REDO_POSITION + 8;
+    private static final int HEADER_SIZE               = I_REDO_TXN_ID + 8;
 
     private static final int DEFAULT_PAGE_SIZE = 4096;
     private static final int MINIMUM_PAGE_SIZE = 512;
@@ -147,7 +144,7 @@ public final class Database extends CauseCloseable {
     final DurabilityMode mDurabilityMode;
     final long mDefaultLockTimeoutNanos;
     final LockManager mLockManager;
-    final RedoLog mRedoLog;
+    final RedoWriter mRedoWriter;
     final PageDb mPageDb;
 
     private final BufferPool mSpareBufferPool;
@@ -175,7 +172,12 @@ public final class Database extends CauseCloseable {
     // The root tree, which maps tree ids to other tree root node ids.
     private final Tree mRegistry;
 
-    // Maps tree name keys to ids.
+    static final byte KEY_TYPE_INDEX_NAME   = 0; // prefix for name to id mapping
+    static final byte KEY_TYPE_INDEX_ID     = 1; // prefix for id to name mapping
+    static final byte KEY_TYPE_TREE_ID_MASK = 2; // full key for random tree id mask
+    static final byte KEY_TYPE_NEXT_TREE_ID = 3; // full key for tree id sequence
+
+    // Various mappings, defined by KEY_TYPE_ fields.
     private final Tree mRegistryKeyMap;
 
     private final Latch mOpenTreesLatch;
@@ -186,7 +188,7 @@ public final class Database extends CauseCloseable {
 
     // Strong references to all trees opened during recovery. Not critical, but
     // it keeps the trees from being closed and re-opened automatically by
-    // garbage collection. Access to this collection is not thread-safe.
+    // garbage collection. Access to this collection is thread-safe.
     private List<Tree> mRecoveredTrees;
 
     private final PageAllocator mAllocator;
@@ -262,10 +264,10 @@ public final class Database extends CauseCloseable {
      * @param config unshared config
      */
     private Database(DatabaseConfig config, int openMode) throws IOException {
-        mEventListener = SafeEventListener.makeSafe(config.mEventListener);
+        config.mEventListener = mEventListener = SafeEventListener.makeSafe(config.mEventListener);
 
-        File baseFile = config.mBaseFile;
-        File[] dataFiles = config.dataFiles();
+        final File baseFile = config.mBaseFile;
+        final File[] dataFiles = config.dataFiles();
 
         int pageSize = config.mPageSize;
         if (pageSize <= 0) {
@@ -416,7 +418,9 @@ public final class Database extends CauseCloseable {
             synchronized (mTxnIdLock) {
                 mTxnId = readLongLE(header, I_TRANSACTION_ID);
             }
-            long redoLogId = readLongLE(header, I_REDO_LOG_ID);
+
+            long redoPos = readLongLE(header, I_REDO_POSITION);
+            long redoTxnId = readLongLE(header, I_REDO_TXN_ID);
 
             if (openMode == OPEN_TEMP) {
                 mRegistryKeyMap = null;
@@ -448,7 +452,7 @@ public final class Database extends CauseCloseable {
 
             long recoveryStart = 0;
             if (baseFile == null || openMode == OPEN_TEMP) {
-                mRedoLog = null;
+                mRedoWriter = null;
             } else {
                 // Perform recovery by examining redo and undo logs.
 
@@ -458,64 +462,42 @@ public final class Database extends CauseCloseable {
                 }
 
                 // Keep all the trees open during recovery.
-                mRecoveredTrees = new ArrayList<Tree>();
+                // FIXME: Only when non-replicated.
+                mRecoveredTrees = Collections.synchronizedList(new ArrayList<Tree>());
 
-                UndoLog masterUndoLog;
-                LHashTable.Obj<UndoLog> undoLogs;
+                LHashTable.Obj<Transaction> txns = new LHashTable.Obj<Transaction>(16);
+
                 {
-                    long nodeId = readLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID);
-                    if (nodeId == 0) {
-                        masterUndoLog = null;
-                        undoLogs = null;
-                    } else {
+                    long masterNodeId = readLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID);
+                    if (masterNodeId != 0) {
                         if (mEventListener != null) {
                             mEventListener.notify
                                 (EventType.RECOVERY_LOAD_UNDO_LOGS, "Loading undo logs");
                         }
-                        masterUndoLog = UndoLog.recoverMasterUndoLog(this, nodeId);
-                        undoLogs = masterUndoLog.recoverLogs();
+                        UndoLog.recoverMasterUndoLog(this, masterNodeId)
+                            .recoverTransactions(txns, LockMode.UPGRADABLE_READ, 0);
                     }
                 }
 
-                // Make sure old redo logs are deleted. Process might have
-                // exited before last checkpoint could delete them.
-                for (int i=1; i<=2; i++) {
-                    RedoLog.deleteOldFile(baseFile, redoLogId - i);
-                }
+                RedoRecovery recovery = new RedoLogRecovery();
 
-                // First pass, find all transactions which committed.
-                RedoLogTxnScanner txnScanner = new RedoLogTxnScanner();
-                final RedoLog scanRedoLog = new RedoLog(config.mCrypto, baseFile, redoLogId, true);
-                Set<File> redoFiles = scanRedoLog
-                    .replay(txnScanner, null,
-                            mEventListener, EventType.RECOVERY_SCAN_REDO_LOG,
-                            "Scanning redo log: %1$d");
+                boolean doCheckpoint = recovery.recover(this, config, redoPos, redoTxnId, txns);
 
-                if (!redoFiles.isEmpty()) {
-                    // Bump up the highest transaction id if scanner has seen
-                    // higher. Although this should not happen, it prevents
-                    // transaction id collisions if it does.
-                    long redoTxnId = txnScanner.highestTxnId();
-                    if (redoTxnId != 0) synchronized (mTxnIdLock) {
+                // Avoid re-using transaction ids used by recovery.
+                redoTxnId = recovery.highestTxnId();
+                if (redoTxnId != 0) {
+                    synchronized (mTxnIdLock) {
                         // Subtract for modulo comparison.
                         if (mTxnId == 0 || (redoTxnId - mTxnId) > 0) {
                             mTxnId = redoTxnId;
                         }
                     }
-
-                    // Second pass, apply all committed transactions.
-                    new RedoLog(config.mCrypto, baseFile, redoLogId, true)
-                        .replay(new RedoLogApplier(this, txnScanner, undoLogs), redoFiles,
-                                mEventListener, EventType.RECOVERY_APPLY_REDO_LOG,
-                                "Applying redo log: %1$d");
                 }
 
-                boolean doCheckpoint = !redoFiles.isEmpty();
-
-                if (masterUndoLog != null) {
-                    // Rollback or truncate all remaining undo logs. They were
-                    // never explicitly rolled back, or they were committed but
-                    // not cleaned up. This also deletes the master undo log.
+                if (txns.size() > 0) {
+                    // Rollback or truncate all remaining transactions. They
+                    // were never explicitly rolled back, or they were
+                    // committed but not cleaned up.
 
                     if (mEventListener != null) {
                         mEventListener.notify
@@ -523,25 +505,26 @@ public final class Database extends CauseCloseable {
                              "Processing remaining transactions");
                     }
 
-                    if (masterUndoLog.processRemaining(undoLogs)) {
-                        // Checkpoint ensures that undo logs don't get
-                        // re-applied following a restart.
-                        doCheckpoint = true;
-                    }
+                    txns.traverse(new LHashTable.Visitor
+                                  <LHashTable.ObjEntry<Transaction>, IOException>()
+                    {
+                        public boolean visit(LHashTable.ObjEntry<Transaction> entry)
+                            throws IOException
+                        {
+                            entry.value.recoveryCleanup();
+                            return false;
+                        }
+                    });
+
+                    doCheckpoint = true;
                 }
 
-                // New redo logs begin with identifiers one higher than last
-                // scanned. Note: RedoLog must be assigned before recovery
-                // checkpoint, because it accesses it to determine what the
-                // checkpointed redo log id is.
-                mRedoLog = new RedoLog(config.mCrypto, baseFile, scanRedoLog.logId(), false);
+                mRedoWriter = recovery.newWriter();
 
                 if (doCheckpoint) {
                     checkpoint(true, 0, 0);
-                    // Only delete scanned redo logs after successful checkpoint.
-                    for (File file : redoFiles) {
-                        file.delete();
-                    }
+                    // Only cleanup after successful checkpoint.
+                    recovery.cleanup();
                 }
 
                 mRecoveredTrees = null;
@@ -566,7 +549,7 @@ public final class Database extends CauseCloseable {
                 mTempFileManager = new TempFileManager(baseFile);
             }
 
-            if (mRedoLog != null && mEventListener != null) {
+            if (mRedoWriter != null && mEventListener != null) {
                 double duration = (System.nanoTime() - recoveryStart) / 1000000000.0;
                 mEventListener.notify(EventType.RECOVERY_COMPLETE,
                                       "Recovery completed in %1$1.3f seconds",
@@ -579,7 +562,7 @@ public final class Database extends CauseCloseable {
     }
 
     private void startCheckpointer(DatabaseConfig config) {
-        if (mRedoLog == null && mTempFileManager == null) {
+        if (mRedoWriter == null && mTempFileManager == null) {
             // Nothing is durable and nothing to ever clean up 
             return;
         }
@@ -587,7 +570,7 @@ public final class Database extends CauseCloseable {
         mCheckpointer = new Checkpointer(this, config);
 
         // Register objects to automatically shutdown.
-        mCheckpointer.register(mRedoLog);
+        mCheckpointer.register(mRedoWriter);
         mCheckpointer.register(mTempFileManager);
 
         mCheckpointer.start();
@@ -595,22 +578,32 @@ public final class Database extends CauseCloseable {
 
     /*
     void trace() throws IOException {
+        int[] inBuckets = new int[16];
+        int[] leafBuckets = new int[16];
+
         java.util.BitSet pages = mPageDb.tracePages();
-        mRegistry.mRoot.tracePages(this, pages);
-        mRegistryKeyMap.mRoot.tracePages(this, pages);
+        mRegistry.mRoot.tracePages(this, pages, inBuckets, leafBuckets);
+        mRegistryKeyMap.mRoot.tracePages(this, pages, inBuckets, leafBuckets);
 
-        mOpenTreesLatch.acquireShared();
-        try {
-            for (Tree tree : mOpenTrees.values()) {
-                tree.mRoot.tracePages(this, pages);
-            }
-        } finally {
-            mOpenTreesLatch.releaseShared();
+        Cursor all = allIndexes();
+        for (all.first(); all.key() != null; all.next()) {
+            Index ix = indexById(all.value());
+            System.out.println(ix.getNameString());
+
+            Cursor c = ix.newCursor(Transaction.BOGUS);
+            c.first();
+            System.out.println("height: " + ((TreeCursor) c).height());
+            c.reset();
+
+            ((Tree) ix).mRoot.tracePages(this, pages, inBuckets, leafBuckets);
+            System.out.println("unaccounted: " + pages.cardinality());
+            System.out.println("internal avail: " + Arrays.toString(inBuckets));
+            System.out.println("leaf avail: " + Arrays.toString(leafBuckets));
         }
+        all.reset();
 
+        System.out.println("unaccounted: " + pages.cardinality());
         System.out.println(pages);
-        System.out.println("lost: " + pages.cardinality());
-        System.out.println(mPageDb.stats());
     }
     */
 
@@ -795,29 +788,7 @@ public final class Database extends CauseCloseable {
      *
      * @return non-zero transaction id
      */
-    long registerAndNextTransactionId(UndoLog undo) {
-        synchronized (mTxnIdLock) {
-            UndoLog top = mTopUndoLog;
-            if (top != null) {
-                undo.mPrev = top;
-                top.mNext = undo;
-            }
-            mTopUndoLog = undo;
-            mUndoLogCount++;
-
-            long txnId;
-            while ((txnId = ++mTxnId) == 0);
-            return txnId;
-        }
-    }
-
-    /**
-     * Caller must hold commit lock. This ensures that highest transaction id
-     * is persisted correctly by checkpoint.
-     *
-     * @return non-zero transaction id
-     */
-    long nextTransactionId() {
+    long nextTransactionId() throws IOException {
         long txnId;
         do {
             synchronized (mTxnIdLock) {
@@ -1048,8 +1019,8 @@ public final class Database extends CauseCloseable {
         }
 
         /**
-         * Returns the total amount of transactions explicitly created since
-         * the database was created. Nested transaction scopes are included as well.
+         * Returns the total amount of transactions explicitly created over the
+         * life of the database.
          */
         public long transactionsCreated() {
             return mTxnsCreated;
@@ -1075,8 +1046,8 @@ public final class Database extends CauseCloseable {
      * become {@link DurabilityMode#NO_SYNC no-sync} durable.
      */
     public void flush() throws IOException {
-        if (!mClosed && mRedoLog != null) {
-            mRedoLog.flush();
+        if (!mClosed && mRedoWriter != null) {
+            mRedoWriter.flush();
         }
     }
 
@@ -1087,8 +1058,8 @@ public final class Database extends CauseCloseable {
      * DurabilityMode#SYNC sync} durable.
      */
     public void sync() throws IOException {
-        if (!mClosed && mRedoLog != null) {
-            mRedoLog.sync();
+        if (!mClosed && mRedoWriter != null) {
+            mRedoWriter.sync();
         }
     }
 
@@ -1243,7 +1214,7 @@ public final class Database extends CauseCloseable {
 
             IOException ex = null;
 
-            ex = closeQuietly(ex, mRedoLog, cause);
+            ex = closeQuietly(ex, mRedoWriter, cause);
             ex = closeQuietly(ex, mPageDb, cause);
             ex = closeQuietly(ex, mLockFile, cause);
 
@@ -1471,6 +1442,22 @@ public final class Database extends CauseCloseable {
 
         Transaction txn = newTransaction();
         try {
+            // Tree id mask, to make the identifiers less predictable and
+            // non-compatible with other database instances.
+            long treeIdMask;
+            {
+                byte[] key = {KEY_TYPE_TREE_ID_MASK};
+                byte[] treeIdMaskBytes = mRegistryKeyMap.load(txn, key);
+
+                if (treeIdMaskBytes == null) {
+                    treeIdMaskBytes = new byte[8];
+                    random().nextBytes(treeIdMaskBytes);
+                    mRegistryKeyMap.store(txn, key, treeIdMaskBytes);
+                }
+
+                treeIdMask = readLongLE(treeIdMaskBytes, 0);
+            }
+
             byte[] key = {KEY_TYPE_NEXT_TREE_ID};
             byte[] nextTreeIdBytes = mRegistryKeyMap.load(txn, key);
 
@@ -1481,14 +1468,7 @@ public final class Database extends CauseCloseable {
 
             long treeId;
             do {
-                treeId = nextTreeId++;
-                byte[] databaseId = mPageDb.databaseId();
-                if (databaseId.length >= 8) {
-                    // Mask with the unique database id, making the identifiers
-                    // less predictable and non-compatible with other databases.
-                    treeId ^= Utils.readLongLE(databaseId, 0);
-                }
-                treeId = Utils.scramble(treeId);
+                treeId = scramble((nextTreeId++) ^ treeIdMask);
             } while (Tree.isInternal(treeId));
 
             writeLongLE(nextTreeIdBytes, 0, nextTreeId);
@@ -2402,6 +2382,86 @@ public final class Database extends CauseCloseable {
     }
 
     /**
+     * Trace the pages of fragmented value.
+     *
+     * @param caller optional tree node which is latched and calling this method
+     */
+    /*
+    void traceFragmented(java.util.BitSet bits,
+                         Node caller, byte[] fragmented, int off, int len)
+        throws IOException
+    {
+        int header = fragmented[off++];
+        len--;
+
+        // TODO: code duplication with reconstruct
+        // TODO: no LargeValueException
+        int vLen;
+        switch ((header >> 2) & 0x03) {
+        default:
+            vLen = readUnsignedShortLE(fragmented, off);
+            break;
+
+        case 1:
+            vLen = readIntLE(fragmented, off);
+            if (vLen < 0) {
+                throw new LargeValueException(vLen & 0xffffffffL);
+            }
+            break;
+
+        case 2:
+            long vLenL = readUnsignedInt48LE(fragmented, off);
+            if (vLenL > Integer.MAX_VALUE) {
+                throw new LargeValueException(vLenL);
+            }
+            vLen = (int) vLenL;
+            break;
+
+        case 3:
+            vLenL = readLongLE(fragmented, off);
+            if (vLenL < 0 || vLenL > Integer.MAX_VALUE) {
+                throw new LargeValueException(vLenL);
+            }
+            vLen = (int) vLenL;
+            break;
+        }
+
+        {
+            int vLenFieldSize = 2 + ((header >> 1) & 0x06);
+            off += vLenFieldSize;
+            len -= vLenFieldSize;
+        }
+
+        if ((header & 0x02) != 0) {
+            // Inline content.
+            int inLen = readUnsignedShortLE(fragmented, off);
+            off += 2 + inLen;
+            len -= 2 + inLen;
+        }
+
+        if ((header & 0x01) == 0) {
+            // Direct pointers.
+            while (len >= 6) {
+                long nodeId = readUnsignedInt48LE(fragmented, off);
+                off += 6;
+                len -= 6;
+                bits.clear((int) nodeId);
+            }
+        } else {
+            // Indirect pointers.
+            // TODO
+            throw new DatabaseException("TODO");
+            /*
+            int levels = calculateInodeLevels(vLen, pageSize());
+            long nodeId = readUnsignedInt48LE(fragmented, off);
+            Node inode = mFragmentCache.get(caller, nodeId);
+            readMultilevelFragments(caller, levels, inode, value, 0, vLen);
+            * /
+        }
+    }
+    */
+
+    /**
      * @param level inode level; at least 1
      * @param inode shared latched parent inode; always released by this method
      * @param value slice of complete value being reconstructed
@@ -2646,13 +2706,13 @@ public final class Database extends CauseCloseable {
                         break check;
                     }
 
-                    if (mRedoLog == null || mRedoLog.size() >= sizeThreshold) {
+                    if (mRedoWriter == null || mRedoWriter.shouldCheckpoint(sizeThreshold)) {
                         break check;
                     }
 
                     // Thresholds not met for a full checkpoint, but sync the
                     // redo log for durability.
-                    mRedoLog.sync();
+                    mRedoWriter.sync();
 
                     return;
                 }
@@ -2668,15 +2728,13 @@ public final class Database extends CauseCloseable {
                 }
             }
 
-            if (mEventListener != null) {
-                long redoLogId = mRedoLog == null ? 0 : mRedoLog.logId();
-                mEventListener.notify(EventType.CHECKPOINT_BEGIN,
-                                      "Checkpoint begin: %1$d", redoLogId);
-            }
-
             mLastCheckpointNanos = nowNanos;
 
-            final long redoLogId = mRedoLog == null ? 0 : mRedoLog.openNewFile();
+            final RedoWriter redo = mRedoWriter;
+            if (redo != null) {
+                // File-based redo log should begin writing to a new file.
+                redo.prepareCheckpoint();
+            }
 
             {
                 // If the commit lock cannot be immediately obtained, it's due to a
@@ -2707,6 +2765,22 @@ public final class Database extends CauseCloseable {
                 }
             }
 
+            final long redoPos, redoTxnId;
+            if (redo == null) {
+                redoPos = 0;
+                redoTxnId = 0;
+            } else {
+                // Capture state while commit lock is held.
+                redo.captureCheckpointState();
+                redoPos = redo.checkpointPosition();
+                redoTxnId = redo.checkpointTransactionId();
+            }
+
+            if (mEventListener != null) {
+                mEventListener.notify(EventType.CHECKPOINT_BEGIN,
+                                      "Checkpoint begin: %1$d", redoPos);
+            }
+
             mCheckpointFlushState = CHECKPOINT_FLUSH_PREPARE;
 
             UndoLog masterUndoLog;
@@ -2723,7 +2797,7 @@ public final class Database extends CauseCloseable {
                         masterUndoLog = null;
                         masterUndoLogId = 0;
                     } else {
-                        masterUndoLog = new UndoLog(this);
+                        masterUndoLog = new UndoLog(this, 0);
                         byte[] workspace = null;
                         for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
                             workspace = log.writeToMaster(masterUndoLog, workspace);
@@ -2739,7 +2813,7 @@ public final class Database extends CauseCloseable {
                 mPageDb.commit(new PageDb.CommitCallback() {
                     @Override
                     public byte[] prepare() throws IOException {
-                        return flush(redoLogId, masterUndoLogId);
+                        return flush(redoPos, redoTxnId, masterUndoLogId);
                     }
                 });
             } catch (IOException e) {
@@ -2758,10 +2832,11 @@ public final class Database extends CauseCloseable {
                 masterUndoLog.truncate(false);
             }
 
-            // Note: The delete step can get skipped if process exits at this
-            // point. File is deleted again when database is re-opened.
-            if (mRedoLog != null) {
-                mRedoLog.deleteOldFile(redoLogId);
+            // Note: This step is intended to discard old redo data, but it can
+            // get skipped if process exits at this point. Data is discarded
+            // again when database is re-opened.
+            if (mRedoWriter != null) {
+                mRedoWriter.checkpointed(redoPos);
             }
 
             if (mEventListener != null) {
@@ -2777,7 +2852,9 @@ public final class Database extends CauseCloseable {
      * Method is invoked with exclusive commit lock and shared root node latch
      * held. Both are released by this method.
      */
-    private byte[] flush(final long redoLogId, final long masterUndoLogId) throws IOException {
+    private byte[] flush(final long redoPos, final long redoTxnId, final long masterUndoLogId)
+        throws IOException
+    {
         final long txnId;
         synchronized (mTxnIdLock) {
             txnId = mTxnId;
@@ -2806,8 +2883,8 @@ public final class Database extends CauseCloseable {
         writeLongLE(header, I_ROOT_PAGE_ID, rootId);
         writeLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
         writeLongLE(header, I_TRANSACTION_ID, txnId);
-        // Add one to redoLogId, indicating the active log id.
-        writeLongLE(header, I_REDO_LOG_ID, redoLogId + 1);
+        writeLongLE(header, I_REDO_POSITION, redoPos);
+        writeLongLE(header, I_REDO_TXN_ID, redoTxnId);
 
         return header;
     }

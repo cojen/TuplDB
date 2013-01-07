@@ -18,6 +18,9 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
+
 import java.util.concurrent.locks.Lock;
 
 import static org.cojen.tupl.Utils.*;
@@ -51,7 +54,8 @@ final class UndoLog {
       +----------------------------------------+
 
       Stack entries are encoded from the tail end of the node towards the
-      header. Each entry is composed of three sections:
+      header. Entries without payloads are encoded with an opcode less than 16.
+      All other types of entries are composed of three sections:
 
       +----------------------------------------+
       | byte:   opcode                         |
@@ -70,39 +74,43 @@ final class UndoLog {
     // Must be power of two.
     private static final int INITIAL_BUFFER_SIZE = 128;
 
+    private static final byte OP_SCOPE_ENTER = (byte) 1;
+    private static final byte OP_SCOPE_COMMIT = (byte) 2;
+
     // Indicates that transaction has been committed.
-    private static final byte OP_COMMIT = (byte) 1;
+    static final byte OP_COMMIT = (byte) 4;
 
     // Indicates that transaction has been committed and log is partially truncated.
-    private static final byte OP_COMMIT_TRUNCATE = (byte) 2;
+    static final byte OP_COMMIT_TRUNCATE = (byte) 5;
 
-    // Copy to another log from master log. Payload is active transaction id,
+    // All ops less than 16 have no payload.
+    private static final byte PAYLOAD_OP = (byte) 16;
+
+    // Copy to another log from master log. Payload is transaction id, active
     // index id, buffer size (short type), and serialized buffer.
-    private static final byte OP_LOG_COPY = (byte) 3;
+    private static final byte OP_LOG_COPY = (byte) 16;
 
-    // Reference to another log from master log. Payload is active transaction
-    // id, index id, node id, and top entry offset.
-    private static final byte OP_LOG_REF = (byte) 4;
-
-    // Payload is active transaction id.
-    private static final byte OP_TRANSACTION = (byte) 5;
+    // Reference to another log from master log. Payload is transaction id,
+    // active index id, length, node id, and top entry offset.
+    private static final byte OP_LOG_REF = (byte) 17;
 
     // Payload is active index id.
-    private static final byte OP_INDEX = (byte) 6;
+    private static final byte OP_INDEX = (byte) 18;
 
     // Payload is key to delete to undo an insert.
-    static final byte OP_DELETE = (byte) 7;
+    static final byte OP_DELETE = (byte) 19;
 
     // Payload is key and value to store to undo an update.
-    static final byte OP_UPDATE = (byte) 8;
+    static final byte OP_UPDATE = (byte) 20;
 
     // Payload is key and value to store to undo a delete.
-    static final byte OP_INSERT = (byte) 9;
+    static final byte OP_INSERT = (byte) 21;
 
     // Payload is key and trash id to undo a fragmented value delete.
-    static final byte OP_RECLAIM_FRAGMENTED = (byte) 10;
+    static final byte OP_RECLAIM_FRAGMENTED = (byte) 22;
 
     private final Database mDatabase;
+    private final long mTxnId;
 
     // Number of bytes currently pushed into log.
     private long mLength;
@@ -116,21 +124,11 @@ final class UndoLog {
     // Top node, if required. Nodes are not used for logs which fit into local buffer.
     private Node mNode;
 
-    private long mActiveTxnId;
     private long mActiveIndexId;
 
-    static UndoLog recoverMasterUndoLog(Database db, long nodeId) throws IOException {
-        UndoLog log = new UndoLog(db);
-        (log.mNode = readUndoLogNode(db, nodeId)).releaseExclusive();
-        return log;
-    }
-
-    UndoLog(Database db) {
+    UndoLog(Database db, long txnId) {
         mDatabase = db;
-    }
-
-    void setInitialActiveTransactionId(long txnId) {
-        mActiveTxnId = txnId;
+        mTxnId = txnId;
     }
 
     /**
@@ -164,6 +162,10 @@ final class UndoLog {
         }
     }
 
+    long txnId() {
+        return mTxnId;
+    }
+
     /**
      * Caller must hold db commit lock.
      *
@@ -177,30 +179,6 @@ final class UndoLog {
             persistReady();
         }
         return mNode.mId;
-    }
-
-    /**
-     * Caller must hold db commit lock.
-     */
-    final long activeTransactionId() {
-        return mActiveTxnId;
-    }
-
-    /**
-     * Caller must hold db commit lock.
-     */
-    final void activeTransactionId(long txnId) throws IOException {
-        long active = mActiveTxnId;
-        if (txnId != active) {
-            pushTransactionId(active);
-            mActiveTxnId = txnId;
-        }
-    }
-
-    private void pushTransactionId(long txnId) throws IOException {
-        byte[] payload = new byte[8];
-        writeLongLE(payload, 0, txnId);
-        doPush(OP_TRANSACTION, payload, 0, 8, 1);
     }
 
     /**
@@ -238,7 +216,14 @@ final class UndoLog {
      * Caller must hold db commit lock.
      */
     void pushCommit() throws IOException {
-        doPush(OP_COMMIT, Utils.EMPTY_BYTES, 0, 0, 1); 
+        doPush(OP_COMMIT);
+    }
+
+    /**
+     * Caller must hold db commit lock.
+     */
+    private void doPush(final byte op) throws IOException {
+        doPush(op, Utils.EMPTY_BYTES, 0, 0, 0);
     }
 
     /**
@@ -352,13 +337,49 @@ final class UndoLog {
 
     /**
      * Caller does not need to hold db commit lock.
+     *
+     * @return savepoint
      */
-    final long savepoint() {
+    final long scopeEnter() throws IOException {
         final Lock sharedCommitLock = mDatabase.sharedCommitLock();
         sharedCommitLock.lock();
         try {
-            mActiveTxnId = 0;
+            long savepoint = mLength;
+            doPush(OP_SCOPE_ENTER);
+            return savepoint;
+        } finally {
+            sharedCommitLock.unlock();
+        }
+    }
+
+    /**
+     * Caller does not need to hold db commit lock.
+     *
+     * @return savepoint
+     */
+    final long scopeCommit() throws IOException {
+        final Lock sharedCommitLock = mDatabase.sharedCommitLock();
+        sharedCommitLock.lock();
+        try {
+            doPush(OP_SCOPE_COMMIT);
             return mLength;
+        } finally {
+            sharedCommitLock.unlock();
+        }
+    }
+
+    /**
+     * Rollback all log entries to the given savepoint. Pass zero to rollback
+     * everything. Caller does not need to hold db commit lock.
+     */
+    final void scopeRollback(long savepoint) throws IOException {
+        final Lock sharedCommitLock = mDatabase.sharedCommitLock();
+        sharedCommitLock.lock();
+        try {
+            if (savepoint < mLength) {
+                // Rollback the entire scope, including the enter op.
+                doRollback(savepoint);
+            }
         } finally {
             sharedCommitLock.unlock();
         }
@@ -393,7 +414,7 @@ final class UndoLog {
                     mBufferPos = mBuffer.length;
                 } else {
                     node.acquireExclusive();
-                    while ((node = popNode(node)) != null) {
+                    while ((node = popNode(node, true)) != null) {
                         if (commit) {
                             // When shared lock is released, log can be
                             // checkpointed in an incomplete state. Update the
@@ -413,51 +434,47 @@ final class UndoLog {
                 mLength = 0;
                 mActiveIndexId = 0;
             }
-
-            mActiveTxnId = 0;
         } finally {
             sharedCommitLock.unlock();
         }
     }
 
     /**
-     * Rollback all log entries to the given savepoint. Pass zero to rollback
-     * everything. Caller does not need to hold db commit lock.
+     * Rollback all log entries. Caller does not need to hold db commit lock.
      */
-    final void rollback(long savepoint) throws IOException {
-        if (savepoint == mLength) {
+    final void rollback() throws IOException {
+        if (mLength == 0) {
             // Nothing to rollback, so return quickly.
             return;
         }
 
+        final Lock sharedCommitLock = mDatabase.sharedCommitLock();
+        sharedCommitLock.lock();
+        try {
+            doRollback(0);
+        } finally {
+            sharedCommitLock.unlock();
+        }
+    }
+
+    /**
+     * @param savepoint must be less than mLength
+     */
+    private void doRollback(long savepoint) throws IOException {
         // Implementation could be optimized somewhat, resulting in less
         // temporary arrays and copies. Rollback optimization is generally not
         // necessary, since most transactions are expected to commit.
 
-        final Lock sharedCommitLock = mDatabase.sharedCommitLock();
-        sharedCommitLock.lock();
-        try {
-            if (savepoint < mLength) {
-                byte[] opRef = new byte[1];
-                Index activeIndex = null;
-                do {
-                    byte[] entry = pop(opRef);
-                    if (entry == null) {
-                        break;
-                    }
-                    byte op = opRef[0];
-                    if (op == OP_TRANSACTION) {
-                        // Ignore.
-                    } else {
-                        activeIndex = undo(activeIndex, op, entry);
-                    }
-                } while (savepoint < mLength);
+        byte[] opRef = new byte[1];
+        Index activeIndex = null;
+        do {
+            byte[] entry = pop(opRef, true);
+            if (entry == null) {
+                break;
             }
-
-            mActiveTxnId = 0;
-        } finally {
-            sharedCommitLock.unlock();
-        }
+            byte op = opRef[0];
+            activeIndex = undo(activeIndex, op, entry);
+        } while (savepoint < mLength);
     }
 
     /**
@@ -465,151 +482,60 @@ final class UndoLog {
      * to be called during recovery.
      */
     final void deleteGhosts() throws IOException {
-        if (mLength > 0) {
-            byte[] opRef = new byte[1];
-            Index activeIndex = null;
-            do {
-                byte[] entry = pop(opRef);
-                if (entry == null) {
-                    break;
-                }
-
-                byte op = opRef[0];
-                switch (op) {
-                default:
-                    throw new DatabaseException("Unknown undo log entry type: " + op);
-
-                case OP_COMMIT:
-                case OP_COMMIT_TRUNCATE:
-                case OP_TRANSACTION:
-                case OP_DELETE:
-                case OP_UPDATE:
-                case OP_RECLAIM_FRAGMENTED:
-                    // Ignore.
-                    break;
-
-                case OP_INDEX:
-                    mActiveIndexId = readLongLE(entry, 0);
-                    activeIndex = null;
-                    break;
-
-                case OP_INSERT:
-                    // Since transaction was committed, don't insert an entry
-                    // to undo a delete, but instead delete the ghost.
-                    activeIndex = findIndex(activeIndex);
-                    byte[] key = Node.retrieveKeyAtLoc(entry, 0);
-                    TreeCursor cursor = new TreeCursor((Tree) activeIndex, null);
-                    try {
-                        // No need to handle case where Tree is closed, because
-                        // this method can only be called during recovery.
-                        cursor.deleteGhost(key);
-                        cursor.reset();
-                    } catch (Throwable e) {
-                        throw Utils.closeOnFailure(cursor, e);
-                    }
-                    break;
-                }
-            } while (mLength > 0);
-        }
-
-        mActiveTxnId = 0;
-    }
-
-    /**
-     * Truncate to an enclosing parent scope, as required by master log during
-     * recovery. Caller must hold db commit lock or be performing recovery.
-     *
-     * @param txnId expected active transaction id
-     * @param parentTxnId new active transaction to be
-     * @return false if not in expected active transaction scope
-     */
-    final boolean truncateScope(long txnId, long parentTxnId) throws IOException {
-        if (txnId != mActiveTxnId) {
-            return false;
-        }
-
-        if (parentTxnId == mActiveTxnId) {
-            return true;
-        }
-
-        byte[] opRef = new byte[1];
-        loop: while (true) {
-            byte[] entry = pop(opRef);
-
-            if (entry == null) {
-                mActiveTxnId = 0;
-                break loop;
-            }
-
-            switch (opRef[0]) {
-            default:
-                throw new DatabaseException("Unknown undo log entry type: " + opRef[0]);
-
-            case OP_TRANSACTION:
-                if ((mActiveTxnId = readLongLE(entry, 0)) == parentTxnId) {
-                    break loop;
-                }
-                break;
-
-            case OP_INDEX:
-                mActiveIndexId = readLongLE(entry, 0);
-                break;
-
-            case OP_DELETE:
-            case OP_UPDATE:
-            case OP_INSERT:
-            case OP_RECLAIM_FRAGMENTED:
-            case OP_COMMIT:
-            case OP_COMMIT_TRUNCATE:
-                // Ignore.
-                break;
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * Rollback to an enclosing parent scope, as required by master log during
-     * recovery. Caller must hold db commit lock or be performing recovery.
-     *
-     * @param txnId expected active transaction id
-     * @param parentTxnId new active transaction to be
-     * @return false if not in expected active transaction scope
-     */
-    final boolean rollbackScope(long txnId, long parentTxnId) throws IOException {
-        if (txnId != mActiveTxnId) {
-            return false;
-        }
-
-        if (parentTxnId == mActiveTxnId) {
-            return true;
+        if (mLength <= 0) {
+            return;
         }
 
         byte[] opRef = new byte[1];
         Index activeIndex = null;
-        while (true) {
-            byte[] entry = pop(opRef);
+        do {
+            byte[] entry = pop(opRef, true);
             if (entry == null) {
-                mActiveTxnId = 0;
                 break;
             }
-            byte op = opRef[0];
-            if (op == OP_TRANSACTION) {
-                if ((mActiveTxnId = readLongLE(entry, 0)) == parentTxnId) {
-                    break;
-                }
-            } else {
-                activeIndex = undo(activeIndex, op, entry);
-            }
-        }
 
-        return true;
+            byte op = opRef[0];
+            switch (op) {
+            default:
+                throw new DatabaseException("Unknown undo log entry type: " + op);
+
+            case OP_SCOPE_ENTER:
+            case OP_SCOPE_COMMIT:
+            case OP_COMMIT:
+            case OP_COMMIT_TRUNCATE:
+            case OP_DELETE:
+            case OP_UPDATE:
+            case OP_RECLAIM_FRAGMENTED:
+                // Ignore.
+                break;
+
+            case OP_INDEX:
+                mActiveIndexId = readLongLE(entry, 0);
+                activeIndex = null;
+                break;
+
+            case OP_INSERT:
+                // Since transaction was committed, don't insert an entry
+                // to undo a delete, but instead delete the ghost.
+                activeIndex = findIndex(activeIndex);
+                byte[] key = Node.retrieveKeyAtLoc(entry, 0);
+                TreeCursor cursor = new TreeCursor((Tree) activeIndex, null);
+                try {
+                    // No need to handle case where Tree is closed, because
+                    // this method can only be called during recovery.
+                    cursor.deleteGhost(key);
+                    cursor.reset();
+                } catch (Throwable e) {
+                    throw Utils.closeOnFailure(cursor, e);
+                }
+                break;
+            }
+        } while (mLength > 0);
     }
 
     /**
      * @param activeIndex active index, possibly null
-     * @param op undo op, not OP_TRANSACTION
+     * @param op undo op
      * @return new active index, possibly null
      */
     private Index undo(Index activeIndex, byte op, byte[] entry) throws IOException {
@@ -617,13 +543,11 @@ final class UndoLog {
         default:
             throw new DatabaseException("Unknown undo log entry type: " + op);
 
-        case OP_TRANSACTION:
-            // Caller should have already handled this
-            throw new AssertionError();
-
+        case OP_SCOPE_ENTER:
+        case OP_SCOPE_COMMIT:
         case OP_COMMIT:
         case OP_COMMIT_TRUNCATE:
-            // Only needs to be processed by processRemaining.
+            // Only needed by recovery.
             break;
 
         case OP_INDEX:
@@ -652,7 +576,7 @@ final class UndoLog {
         case OP_RECLAIM_FRAGMENTED:
             do {
                 activeIndex = findIndex(activeIndex);
-                mDatabase.fragmentedTrash().remove(mActiveTxnId, (Tree) activeIndex, entry);
+                mDatabase.fragmentedTrash().remove(mTxnId, (Tree) activeIndex, entry);
             } while (activeIndex.isClosed()); // handle concurrent close
             break;
         }
@@ -662,7 +586,7 @@ final class UndoLog {
 
     private Index findIndex(Index activeIndex) throws IOException {
         if (activeIndex == null || activeIndex.isClosed()) {
-            if ((activeIndex = mDatabase.indexById(mActiveIndexId)) == null) {
+            if ((activeIndex = mDatabase.anyIndexById(mActiveIndexId)) == null) {
                 // FIXME: If index was deleted, use a "dev/null" index. Some
                 // callers of this method will try to cast the index to a Tree.
                 throw new DatabaseException("Index not found: " + mActiveIndexId);
@@ -672,9 +596,10 @@ final class UndoLog {
     }
 
     /**
+     * @param delete true to delete nodes
      * @return last pushed op, or 0 if empty
      */
-    final byte peek() throws IOException {
+    final byte peek(boolean delete) throws IOException {
         Node node = mNode;
         if (node == null) {
             return (mBuffer == null || mBufferPos >= mBuffer.length) ? 0 : mBuffer[mBufferPos];
@@ -689,7 +614,7 @@ final class UndoLog {
                 node.releaseExclusive();
                 return op;
             }
-            if ((node = popNode(node)) == null) {
+            if ((node = popNode(node, delete)) == null) {
                 return 0;
             }
         }
@@ -699,22 +624,29 @@ final class UndoLog {
      * Caller must hold db commit lock.
      *
      * @param opRef element zero is filled in with the opcode
+     * @param delete true to delete nodes
      * @return null if nothing left
      */
-    private final byte[] pop(byte[] opRef) throws IOException {
+    private final byte[] pop(byte[] opRef, boolean delete) throws IOException {
         Node node = mNode;
         if (node == null) {
             byte[] buffer = mBuffer;
             if (buffer == null) {
                 opRef[0] = 0;
+                mLength = 0;
                 return null;
             }
             int pos = mBufferPos;
             if (pos >= buffer.length) {
                 opRef[0] = 0;
+                mLength = 0;
                 return null;
             }
-            opRef[0] = buffer[pos++];
+            if ((opRef[0] = buffer[pos++]) < PAYLOAD_OP) {
+                mBufferPos = pos;
+                mLength -= 1;
+                return Utils.EMPTY_BYTES;
+            }
             int payloadLen = readUnsignedVarInt(buffer, pos);
             int varIntLen = calcUnsignedVarIntLength(payloadLen);
             pos += varIntLen;
@@ -734,14 +666,26 @@ final class UndoLog {
             if (pos < page.length) {
                 break;
             }
-            if ((node = popNode(node)) == null) {
+            if ((node = popNode(node, delete)) == null) {
+                mLength = 0;
                 return null;
             }
         }
 
+        if ((opRef[0] = page[pos++]) < PAYLOAD_OP) {
+            mLength -= 1;
+            node.mGarbage = pos;
+            if (pos >= page.length) {
+                node = popNode(node, delete);
+            }
+            if (node != null) {
+                node.releaseExclusive();
+            }
+            return Utils.EMPTY_BYTES;
+        }
+
         int payloadLen;
         {
-            opRef[0] = page[pos++];
             payloadLen = readUnsignedVarInt(page, pos);
             int varIntLen = calcUnsignedVarIntLength(payloadLen);
             pos += varIntLen;
@@ -759,7 +703,7 @@ final class UndoLog {
             node.mGarbage = pos;
 
             if (pos >= page.length) {
-                node = popNode(node);
+                node = popNode(node, delete);
             }
 
             if (payloadLen <= 0) {
@@ -781,14 +725,19 @@ final class UndoLog {
 
     /**
      * @param parent latched parent node
+     * @param delete true to delete the node too
      * @return current (latched) mNode; null if none left
      */
-    private Node popNode(Node parent) throws IOException {
+    private Node popNode(Node parent, boolean delete) throws IOException {
         Node lowerNode = latchLowerNode(parent);
         Database db = mDatabase;
         db.makeEvictable(parent);
-        db.prepareToDelete(parent);
-        db.deleteNode(parent);
+        if (delete) {
+            db.prepareToDelete(parent);
+            db.deleteNode(parent);
+        } else {
+            parent.releaseExclusive();
+        }
         return mNode = lowerNode;
     }
 
@@ -822,8 +771,10 @@ final class UndoLog {
                                    byte op, byte[] payload, int off, int len)
     {
         dest[destPos] = op;
-        int payloadPos = writeUnsignedVarInt(dest, destPos + 1, len);
-        System.arraycopy(payload, off, dest, payloadPos, len);
+        if (op >= PAYLOAD_OP) {
+            int payloadPos = writeUnsignedVarInt(dest, destPos + 1, len);
+            System.arraycopy(payload, off, dest, payloadPos, len);
+        }
     }
 
     /**
@@ -859,7 +810,7 @@ final class UndoLog {
             if (workspace == null || workspace.length < psize) {
                 workspace = new byte[Math.max(INITIAL_BUFFER_SIZE, Utils.roundUpPower2(psize))];
             }
-            writeActiveIds(workspace);
+            writeHeaderToMaster(workspace);
             writeShortLE(workspace, (8 + 8), bsize);
             System.arraycopy(buffer, pos, workspace, (8 + 8 + 2), bsize);
             master.doPush(OP_LOG_COPY, workspace, 0, psize,
@@ -868,105 +819,209 @@ final class UndoLog {
             if (workspace == null) {
                 workspace = new byte[INITIAL_BUFFER_SIZE];
             }
-            writeActiveIds(workspace);
-            writeLongLE(workspace, (8 + 8), node.mId);
-            writeShortLE(workspace, (8 + 8 + 8), node.mGarbage);
-            master.doPush(OP_LOG_REF, workspace, 0, (8 + 8 + 8 + 2), 1);
+            writeHeaderToMaster(workspace);
+            writeLongLE(workspace, (8 + 8), mLength);
+            writeLongLE(workspace, (8 + 8 + 8), node.mId);
+            writeShortLE(workspace, (8 + 8 + 8 + 8), node.mGarbage);
+            master.doPush(OP_LOG_REF, workspace, 0, (8 + 8 + 8 + 8 + 2), 1);
         }
         return workspace;
     }
 
-    private void writeActiveIds(byte[] workspace) {
-        writeLongLE(workspace, 0, mActiveTxnId);
+    private void writeHeaderToMaster(byte[] workspace) {
+        writeLongLE(workspace, 0, mTxnId);
         writeLongLE(workspace, 8, mActiveIndexId);
     }
 
-    /**
-     * Recover UndoLog instances which were written to this master log, keyed
-     * by active transaction id. Length of UndoLog is not restored, and so logs
-     * can only be used for recovery.
-     */
-    LHashTable.Obj<UndoLog> recoverLogs() throws IOException {
-        LHashTable.Obj<UndoLog> logs = new LHashTable.Obj<UndoLog>(16);
+    static UndoLog recoverMasterUndoLog(Database db, long nodeId) throws IOException {
+        UndoLog log = new UndoLog(db, 0);
+        // Length is not recoverable.
+        log.mLength = Long.MAX_VALUE;
+        (log.mNode = readUndoLogNode(db, nodeId)).releaseExclusive();
+        return log;
+    }
 
+    /**
+     * Recover transactions which were recorded by this master log, keyed by
+     * transaction id. Recovered transactions have a NO_REDO durability mode.
+     * All transactions are registered, and so they must be reset after
+     * recovery is complete. Master log is truncated as a side effect of
+     * calling this method.
+     */
+    void recoverTransactions(LHashTable.Obj<Transaction> txns,
+                             LockMode lockMode, long timeoutNanos)
+        throws IOException
+    {
         byte[] opRef = new byte[1];
         byte[] entry;
-        while ((entry = pop(opRef)) != null) {
-            UndoLog log = new UndoLog(mDatabase);
-            log.mLength = Long.MAX_VALUE;
+        while ((entry = pop(opRef, true)) != null) {
+            UndoLog log = recoverUndoLog(opRef[0], entry);
+            Transaction txn = log.recoverTransaction(lockMode, timeoutNanos);
 
-            switch (opRef[0]) {
-            default:
-                throw new DatabaseException("Unknown undo log entry type: " + opRef[0]);
+            // Reload the UndoLog, since recoverTransaction consumes it all.
+            txn.recoveredUndoLog(recoverUndoLog(opRef[0], entry));
 
-            case OP_LOG_COPY: {
-                setActiveIds(log, entry);
-                int bsize = readUnsignedShortLE(entry, (8 + 8));
-                byte[] buffer = new byte[bsize];
-                System.arraycopy(entry, (8 + 8 + 2), buffer, 0, bsize);
-                log.mBuffer = buffer;
-                log.mBufferPos = 0;
-                break;
-            }
-
-            case OP_LOG_REF:
-                setActiveIds(log, entry);
-                long nodeId = readLongLE(entry, (8 + 8));
-                int topEntry = readUnsignedShortLE(entry, (8 + 8 + 8));
-                log.mNode = readUndoLogNode(mDatabase, nodeId);
-                log.mNode.mGarbage = topEntry;
-                log.mNode.releaseExclusive();
-                break;
-            }
-
-            logs.insert(log.mActiveTxnId).value = log;
+            txns.insert(log.mTxnId).value = txn;
         }
-
-        return logs;
     }
 
     /**
-     * Rollback or truncate all remaining undo log entries and delete this
-     * master log.
+     * Method consumes entire log as a side-effect.
      */
-    boolean processRemaining(LHashTable.Obj<UndoLog> logs) throws IOException {
-        boolean any = logs.size() > 0;
+    private final Transaction recoverTransaction(LockMode lockMode, long timeoutNanos)
+        throws IOException
+    {
+        byte[] opRef = new byte[1];
+        Index activeIndex = null;
 
-        if (any) {
-            logs.traverse(new LHashTable.Visitor<LHashTable.ObjEntry<UndoLog>, IOException>() {
-                public boolean visit(LHashTable.ObjEntry<UndoLog> entry) throws IOException {
-                    UndoLog undo = entry.value;
-                    switch (undo.peek()) {
-                    default:
-                        undo.rollback(0);
-                        break;
+        Scope scope = new Scope();
 
-                    case OP_COMMIT:
-                        // Transaction was actually committed, but redo log is
-                        // gone. This can happen when a checkpoint completes in
-                        // the middle of the transaction commit operation.
-                        undo.deleteGhosts();
-                        break;
+        // Scopes are recovered in the opposite order in which they were
+        // created. Gather them in a stack to reverse the order.
+        Deque<Scope> scopes = new ArrayDeque<Scope>();
+        scopes.addFirst(scope);
 
-                    case OP_COMMIT_TRUNCATE:
-                        // Like OP_COMMIT, but ghosts have already been deleted.
-                        undo.truncate(false);
-                        break;
-                    }
-                    return false;
+        int depth = 1;
+
+        while (mLength > 0) {
+            byte[] entry = pop(opRef, false);
+            if (entry == null) {
+                break;
+            }
+
+            byte op = opRef[0];
+            switch (op) {
+            default:
+                throw new DatabaseException("Unknown undo log entry type: " + op);
+
+            case OP_COMMIT:
+            case OP_COMMIT_TRUNCATE:
+                // Handled by processRemaining.
+                break;
+
+            case OP_SCOPE_ENTER:
+                depth++;
+                if (depth > scopes.size()) {
+                    scope.mSavepoint = mLength;
+                    scope = new Scope();
+                    scopes.addFirst(scope);
                 }
-            });
+                break;
+
+            case OP_SCOPE_COMMIT:
+                depth--;
+                break;
+
+            case OP_INDEX:
+                mActiveIndexId = readLongLE(entry, 0);
+                activeIndex = null;
+                break;
+
+            case OP_DELETE:
+                if (lockMode != LockMode.UNSAFE) {
+                    scope.addLock(mActiveIndexId, entry);
+                }
+                break;
+
+            case OP_UPDATE:
+            case OP_INSERT:
+            case OP_RECLAIM_FRAGMENTED:
+                if (lockMode != LockMode.UNSAFE) {
+                    scope.addLock(mActiveIndexId, Node.retrieveKeyAtLoc(entry, 0));
+                }
+                break;
+            }
         }
 
-        // Delete this master log.
-        truncate(false);
+        Transaction txn = new Transaction
+            (mDatabase, mTxnId, lockMode, timeoutNanos,
+             // Blindy assume trash must be deleted. No harm if none exists.
+             Transaction.HAS_TRASH);
 
-        return any;
+        scope = scopes.pollFirst();
+        scope.acquireLocks(txn);
+
+        while ((scope = scopes.pollFirst()) != null) {
+            txn.recoveredScope(scope.mSavepoint, Transaction.HAS_TRASH);
+            scope.acquireLocks(txn);
+        }
+
+        return txn;
     }
 
-    private static void setActiveIds(UndoLog log, byte[] masterLogEntry) {
-        log.mActiveTxnId = readLongLE(masterLogEntry, 0);
+    /**
+     * Recovered undo scope.
+     */
+    static class Scope {
+        long mSavepoint;
+
+        // Locks are recovered in the opposite order in which they were
+        // acquired. Gather them in a stack to reverse the order.
+        Deque<Lock> mLocks;
+
+        Scope() {
+        }
+
+        void addLock(long indexId, byte[] key) {
+            Deque<Lock> locks = mLocks;
+            if (locks == null) {
+                mLocks = locks = new ArrayDeque<Lock>();
+            }
+            locks.addFirst(new Lock(indexId, key));
+        }
+
+        void acquireLocks(Transaction txn) throws LockFailureException {
+            Deque<Lock> locks = mLocks;
+            if (locks != null) {
+                Lock lock;
+                while ((lock = locks.pollFirst()) != null) {
+                    txn.lockExclusive(lock.mIndexId, lock.mKey);
+                }
+            }
+        }
+
+        static class Lock {
+            final long mIndexId;
+            final byte[] mKey;
+
+            Lock(long indexId, byte[] key) {
+                mIndexId = indexId;
+                mKey = key;
+            }
+        }
+    }
+
+    /**
+     * @param masterLogOp OP_LOG_COPY or OP_LOG_REF
+     */
+    private UndoLog recoverUndoLog(byte masterLogOp, byte[] masterLogEntry)
+        throws IOException
+    {
+        if (masterLogOp != OP_LOG_COPY && masterLogOp != OP_LOG_REF) {
+            throw new DatabaseException("Unknown undo log entry type: " + masterLogOp);
+        }
+
+        long txnId = readLongLE(masterLogEntry, 0);
+        UndoLog log = new UndoLog(mDatabase, txnId);
         log.mActiveIndexId = readLongLE(masterLogEntry, 8);
+
+        if (masterLogOp == OP_LOG_COPY) {
+            int bsize = readUnsignedShortLE(masterLogEntry, (8 + 8));
+            log.mLength = bsize;
+            byte[] buffer = new byte[bsize];
+            System.arraycopy(masterLogEntry, (8 + 8 + 2), buffer, 0, bsize);
+            log.mBuffer = buffer;
+            log.mBufferPos = 0;
+        } else {
+            log.mLength = readLongLE(masterLogEntry, (8 + 8));
+            long nodeId = readLongLE(masterLogEntry, (8 + 8 + 8));
+            int topEntry = readUnsignedShortLE(masterLogEntry, (8 + 8 + 8 + 8));
+            log.mNode = readUndoLogNode(mDatabase, nodeId);
+            log.mNode.mGarbage = topEntry;
+            log.mNode.releaseExclusive();
+        }
+
+        return log;
     }
 
     /**

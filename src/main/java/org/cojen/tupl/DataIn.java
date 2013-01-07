@@ -99,38 +99,178 @@ class DataIn extends InputStream {
     }
 
     public int readIntBE() throws IOException {
-        require(4);
-        int v = Utils.readIntBE(mBuffer, mStart);
-        mStart += 4;
+        int start = require(4);
+        int v = Utils.readIntBE(mBuffer, start);
+        mStart = start + 4;
         return v;
     }
 
     public int readIntLE() throws IOException {
-        require(4);
-        int v = Utils.readIntLE(mBuffer, mStart);
-        mStart += 4;
+        int start = require(4);
+        int v = Utils.readIntLE(mBuffer, start);
+        mStart = start + 4;
         return v;
     }
 
     public long readLongBE() throws IOException {
-        require(8);
-        long v = Utils.readLongBE(mBuffer, mStart);
-        mStart += 8;
+        int start = require(8);
+        long v = Utils.readLongBE(mBuffer, start);
+        mStart = start + 8;
         return v;
     }
 
     public long readLongLE() throws IOException {
-        require(8);
-        long v = Utils.readLongLE(mBuffer, mStart);
-        mStart += 8;
+        int start = require(8);
+        long v = Utils.readLongLE(mBuffer, start);
+        mStart = start + 8;
         return v;
     }
 
     public int readUnsignedVarInt() throws IOException {
-        tryRequire(5);
-        int v = Utils.readUnsignedVarInt(mBuffer, mStart, mEnd);
-        mStart += Utils.calcUnsignedVarIntLength(v);
+        int start = require(1);
+        byte[] b = mBuffer;
+        int v = b[start++];
+
+        if (v < 0) {
+            switch ((v >> 4) & 0x07) {
+            case 0x00: case 0x01: case 0x02: case 0x03:
+                start = require(1);
+                v = (1 << 7)
+                    + (((v & 0x3f) << 8)
+                       | (b[start++] & 0xff));
+                break;
+            case 0x04: case 0x05:
+                start = require(2);
+                v = ((1 << 14) + (1 << 7))
+                    + (((v & 0x1f) << 16)
+                       | ((b[start++] & 0xff) << 8)
+                       | (b[start++] & 0xff));
+                break;
+            case 0x06:
+                start = require(3);
+                v = ((1 << 21) + (1 << 14) + (1 << 7))
+                    + (((v & 0x0f) << 24)
+                       | ((b[start++] & 0xff) << 16)
+                       | ((b[start++] & 0xff) << 8)
+                       | (b[start++] & 0xff));
+                break;
+            default:
+                start = require(4);
+                v = ((1 << 28) + (1 << 21) + (1 << 14) + (1 << 7)) 
+                    + ((b[start++] << 24)
+                       | ((b[start++] & 0xff) << 16)
+                       | ((b[start++] & 0xff) << 8)
+                       | (b[start++] & 0xff));
+                break;
+            }
+        }
+
+        mStart = start;
         return v;
+    }
+
+    public long readUnsignedVarLong() throws IOException {
+        int start = require(1);
+        byte[] b = mBuffer;
+        int d = b[start++];
+
+        long v;
+        if (d >= 0) {
+            v = (long) d;
+        } else {
+            switch ((d >> 4) & 0x07) {
+            case 0x00: case 0x01: case 0x02: case 0x03:
+                start = require(1);
+                v = (1L << 7) +
+                    (((d & 0x3f) << 8)
+                     | (b[start++] & 0xff));
+                break;
+            case 0x04: case 0x05:
+                start = require(2);
+                v = ((1L << 14) + (1L << 7))
+                    + (((d & 0x1f) << 16)
+                       | ((b[start++] & 0xff) << 8)
+                       | (b[start++] & 0xff));
+                break;
+            case 0x06:
+                start = require(3);
+                v = ((1L << 21) + (1L << 14) + (1L << 7))
+                    + (((d & 0x0f) << 24)
+                       | ((b[start++] & 0xff) << 16)
+                       | ((b[start++] & 0xff) << 8)
+                       | (b[start++] & 0xff));
+                break;
+            default:
+                switch (d & 0x0f) {
+                default:
+                    start = require(4);
+                    v = ((1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
+                        + (((d & 0x07L) << 32)
+                           | (((long) (b[start++] & 0xff)) << 24)
+                           | (((long) (b[start++] & 0xff)) << 16)
+                           | (((long) (b[start++] & 0xff)) << 8)
+                           | ((long) (b[start++] & 0xff)));
+                    break;
+                case 0x08: case 0x09: case 0x0a: case 0x0b:
+                    start = require(5);
+                    v = ((1L << 35)
+                         + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
+                        + (((d & 0x03L) << 40)
+                           | (((long) (b[start++] & 0xff)) << 32)
+                           | (((long) (b[start++] & 0xff)) << 24)
+                           | (((long) (b[start++] & 0xff)) << 16)
+                           | (((long) (b[start++] & 0xff)) << 8)
+                           | ((long) (b[start++] & 0xff)));
+                    break;
+                case 0x0c: case 0x0d:
+                    start = require(6);
+                    v = ((1L << 42) + (1L << 35)
+                         + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
+                        + (((d & 0x01L) << 48)
+                           | (((long) (b[start++] & 0xff)) << 40)
+                           | (((long) (b[start++] & 0xff)) << 32)
+                           | (((long) (b[start++] & 0xff)) << 24)
+                           | (((long) (b[start++] & 0xff)) << 16)
+                           | (((long) (b[start++] & 0xff)) << 8)
+                           | ((long) (b[start++] & 0xff)));
+                    break;
+                case 0x0e:
+                    start = require(7);
+                    v = ((1L << 49) + (1L << 42) + (1L << 35)
+                         + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
+                        + ((((long) (b[start++] & 0xff)) << 48)
+                           | (((long) (b[start++] & 0xff)) << 40)
+                           | (((long) (b[start++] & 0xff)) << 32)
+                           | (((long) (b[start++] & 0xff)) << 24)
+                           | (((long) (b[start++] & 0xff)) << 16)
+                           | (((long) (b[start++] & 0xff)) << 8)
+                           | ((long) (b[start++] & 0xff)));
+                    break;
+                case 0x0f:
+                    start = require(8);
+                    v = ((1L << 56) + (1L << 49) + (1L << 42) + (1L << 35)
+                         + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
+                        + ((((long) b[start++]) << 56)
+                           | (((long) (b[start++] & 0xff)) << 48)
+                           | (((long) (b[start++] & 0xff)) << 40)
+                           | (((long) (b[start++] & 0xff)) << 32)
+                           | (((long) (b[start++] & 0xff)) << 24)
+                           | (((long) (b[start++] & 0xff)) << 16)
+                           | (((long) (b[start++] & 0xff)) << 8L)
+                           | ((long) (b[start++] & 0xff)));
+                    break;
+                }
+                break;
+            }
+        }
+
+        mStart = start;
+        return v;
+    }
+
+    public long readSignedVarLong() throws IOException {
+        long v = readUnsignedVarLong();
+        return ((v & 1) != 0) ? ((~(v >> 1)) | (1 << 31)) : (v >>> 1);
     }
 
     public void readFully(byte[] b) throws IOException {
@@ -146,32 +286,30 @@ class DataIn extends InputStream {
         return bytes;
     }
 
-    public void require(int amount) throws IOException {
-        if (!tryRequire(amount)) {
-            throw new EOFException();
-        }
-    }
-
-    public boolean tryRequire(int amount) throws IOException {
-        int avail = mEnd - mStart;
+    /**
+     * @return start
+     */
+    public int require(int amount) throws IOException {
+        int start = mStart;
+        int avail = mEnd - start;
         if ((amount -= avail) <= 0) {
-            return true;
+            return start;
         }
 
         if (mBuffer.length - mEnd < amount) {
-            System.arraycopy(mBuffer, mStart, mBuffer, 0, avail);
-            mStart = 0;
+            System.arraycopy(mBuffer, start, mBuffer, 0, avail);
+            mStart = start = 0;
             mEnd = avail;
         }
 
         while (true) {
             int amt = mIn.read(mBuffer, mEnd, mBuffer.length - mEnd);
             if (amt <= 0) {
-                return false;
+                throw new EOFException();
             }
             mEnd += amt;
             if ((amount -= amt) <= 0) {
-                return true;
+                return start;
             }
         }
     }
