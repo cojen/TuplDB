@@ -29,20 +29,13 @@ import java.util.BitSet;
  */
 class NonPageDb extends PageDb {
     private final int mPageSize;
-    private final byte[] mDatabaseId;
 
     private long mAllocId;
 
     NonPageDb(int pageSize) {
         mPageSize = pageSize;
-        Utils.random().nextBytes(mDatabaseId = new byte[8]);
         // Next assigned id is 2, the first legal identifier.
         mAllocId = 1;
-    }
-
-    @Override
-    public byte[] databaseId() {
-        return mDatabaseId.clone();
     }
 
     @Override

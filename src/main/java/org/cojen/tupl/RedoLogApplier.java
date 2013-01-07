@@ -22,72 +22,143 @@ import java.io.IOException;
  * 
  *
  * @author Brian S O'Neill
+ * @see RedoLogRecovery
  */
-class RedoLogApplier implements RedoLogVisitor {
+class RedoLogApplier implements RedoVisitor {
     private final Database mDb;
-    private final RedoLogTxnScanner mScanner;
-    private final LHashTable.Obj<UndoLog> mUndoLogs;
+    private final LHashTable.Obj<Transaction> mTransactions;
     private final LHashTable.Obj<Index> mIndexes;
 
-    RedoLogApplier(Database db, RedoLogTxnScanner scanner, LHashTable.Obj<UndoLog> undoLogs) {
+    long mHighestTxnId;
+
+    RedoLogApplier(Database db, LHashTable.Obj<Transaction> txns) {
         mDb = db;
-        mScanner = scanner;
-        mUndoLogs = undoLogs;
+        mTransactions = txns;
         mIndexes = new LHashTable.Obj<Index>(16);
     }
 
     @Override
-    public void timestamp(long timestamp) {}
+    public boolean timestamp(long timestamp) {
+        return true;
+    }
 
     @Override
-    public void shutdown(long timestamp) {}
+    public boolean shutdown(long timestamp) {
+        return true;
+    }
 
     @Override
-    public void close(long timestamp) {}
+    public boolean close(long timestamp) {
+        return true;
+    }
 
     @Override
-    public void endFile(long timestamp) {}
+    public boolean endFile(long timestamp) {
+        return true;
+    }
 
     @Override
-    public void store(long indexId, byte[] key, byte[] value) throws IOException {
+    public boolean reset() {
+        return true;
+    }
+
+    @Override
+    public boolean store(long indexId, byte[] key, byte[] value) throws IOException {
+        // No need to actually acquire a lock for log based recovery.
+        return storeNoLock(indexId, key, value);
+    }
+
+    @Override
+    public boolean storeNoLock(long indexId, byte[] key, byte[] value) throws IOException {
         Index ix = openIndex(indexId);
         if (ix != null) {
             ix.store(Transaction.BOGUS, key, value);
         }
+        return true;
     }
 
     @Override
-    public void txnRollback(long txnId, long parentTxnId) throws IOException {
-        processUndo(txnId, parentTxnId, false);
+    public boolean txnEnter(long txnId) throws IOException {
+        Transaction txn = txn(txnId);
+        if (txn == null) {
+            txn = new Transaction(mDb, txnId, LockMode.UPGRADABLE_READ, 0);
+            mTransactions.insert(txnId).value = txn;
+        } else {
+            txn.enter();
+        }
+        return true;
     }
 
     @Override
-    public void txnCommit(long txnId, long parentTxnId) throws IOException {
-        processUndo(txnId, parentTxnId, true);
+    public boolean txnRollback(long txnId) throws IOException {
+        Transaction txn = txn(txnId);
+        if (txn != null) {
+            txn.exit();
+        }
+        return true;
     }
 
     @Override
-    public void txnStore(long txnId, long indexId, byte[] key, byte[] value) throws IOException {
-        if (mScanner.isCommitted(txnId)) {
+    public boolean txnRollbackFinal(long txnId) throws IOException {
+        checkHighest(txnId);
+        Transaction txn = mTransactions.removeValue(txnId);
+        if (txn != null) {
+            txn.reset();
+        }
+        return true;
+    }
+
+    @Override
+    public boolean txnCommit(long txnId) throws IOException {
+        Transaction txn = txn(txnId);
+        if (txn != null) {
+            txn.commit();
+            txn.exit();
+        }
+        return true;
+    }
+
+    @Override
+    public boolean txnCommitFinal(long txnId) throws IOException {
+        checkHighest(txnId);
+        Transaction txn = mTransactions.removeValue(txnId);
+        if (txn != null) {
+            txn.commit();
+            txn.reset();
+        }
+        return true;
+    }
+
+    @Override
+    public boolean txnStore(long txnId, long indexId, byte[] key, byte[] value)
+        throws IOException
+    {
+        Transaction txn = txn(txnId);
+        if (txn != null) {
             Index ix = openIndex(indexId);
             if (ix != null) {
-                ix.store(Transaction.BOGUS, key, value);
+                ix.store(txn, key, value);
             }
         }
+        return true;
     }
 
-    private void processUndo(long txnId, long parentTxnId, boolean commit) throws IOException {
-        LHashTable.ObjEntry<UndoLog> entry;
-        UndoLog log;
-        if (mUndoLogs != null
-            && (entry = mUndoLogs.get(txnId)) != null
-            && (log = entry.value) != null
-            && (commit
-                ? log.truncateScope(txnId, parentTxnId)
-                : log.rollbackScope(txnId, parentTxnId)))
-        {
-            mUndoLogs.remove(txnId);
-            mUndoLogs.insert(log.activeTransactionId()).value = log;
+    @Override
+    public boolean txnStoreCommitFinal(long txnId, long indexId, byte[] key, byte[] value)
+        throws IOException
+    {
+        txnStore(txnId, indexId, key, value);
+        return txnCommitFinal(txnId);
+    }
+
+    private Transaction txn(long txnId) {
+        checkHighest(txnId);
+        return mTransactions.getValue(txnId);
+    }
+
+    private void checkHighest(long txnId) {
+        if (txnId > mHighestTxnId) {
+            mHighestTxnId = txnId;
         }
     }
 
