@@ -2923,6 +2923,36 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                     return false;
                 }
             }
+
+            // Verify node level types.
+
+            switch (parentNode.mType) {
+            case Node.TYPE_TN_IN:
+                if (childNode.mType == Node.TYPE_TN_LEAF) {
+                    if (!observer.indexNodeFailed
+                        (childId, level,
+                         "Child is a leaf, but parent is a regular internal node"))
+                    {
+                        return false;
+                    }
+                }
+                break;
+            case Node.TYPE_TN_BIN:
+                if (childNode.mType != Node.TYPE_TN_LEAF) {
+                    if (!observer.indexNodeFailed
+                        (childId, level,
+                         "Child is not a leaf, but parent is a bottom internal node"))
+                    {
+                        return false;
+                    }
+                }
+                break;
+            case Node.TYPE_TN_LEAF:
+                if (!observer.indexNodeFailed(childId, level, "Child parent is a leaf node")) {
+                    return false;
+                }
+                break;
+            }
         }
 
         return frame.acquireShared().verifyTreeNode(level, observer);
