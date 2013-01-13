@@ -121,7 +121,7 @@ public final class Database extends CauseCloseable {
         return nodes * (long) (pageSize + NODE_OVERHEAD);
     }
 
-    private static final int ENCODING_VERSION = 20130106;
+    private static final int ENCODING_VERSION = 20130112;
 
     private static final int I_ENCODING_VERSION        = 0;
     private static final int I_ROOT_PAGE_ID            = I_ENCODING_VERSION + 4;

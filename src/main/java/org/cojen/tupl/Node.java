@@ -36,7 +36,8 @@ final class Node extends Latch {
     /*
       Node type encoding strategy:
 
-      bits 7..4: major type   0010 (fragment), 0100 (undo log), 0110 (internal), 1000 (leaf)
+      bits 7..4: major type   0010 (fragment), 0100 (undo log),
+                              0110 (internal), 0111 (bottom internal), 1000 (leaf)
       bits 3..1: sub type     for leaf: 000 (normal)
                               for internal: 001 (6 byte child pointers), 010 (8 byte pointers)
       bit  0:    endianness   0 (little), 1 (big)
@@ -49,11 +50,12 @@ final class Node extends Latch {
      */
 
     static final byte
-        TYPE_NONE        = 0,
-        TYPE_FRAGMENT    = (byte) 0x20, // 0b0010_000_0
-        TYPE_UNDO_LOG    = (byte) 0x40, // 0b0100_000_0
-        TYPE_TN_INTERNAL = (byte) 0x64, // 0b0110_010_0
-        TYPE_TN_LEAF     = (byte) 0x80; // 0b1000_000_0
+        TYPE_NONE     = 0,
+        TYPE_FRAGMENT = (byte) 0x20, // 0b0010_000_0
+        TYPE_UNDO_LOG = (byte) 0x40, // 0b0100_000_0
+        TYPE_TN_IN    = (byte) 0x64, // 0b0110_010_0
+        TYPE_TN_BIN   = (byte) 0x74, // 0b0111_010_0
+        TYPE_TN_LEAF  = (byte) 0x80; // 0b1000_000_0
 
     // Tree node header size.
     static final int TN_HEADER_SIZE = 12;
@@ -574,7 +576,7 @@ final class Node extends Latch {
         mChildNodes = new Node[] {left, right};
 
         mPage = newPage;
-        mType = TYPE_TN_INTERNAL;
+        mType = mType == TYPE_TN_LEAF ? TYPE_TN_BIN : TYPE_TN_IN;
         mGarbage = 0;
         mLeftSegTail = TN_HEADER_SIZE + keyLen;
         mRightSegTail = newPage.length - 1;
@@ -636,7 +638,7 @@ final class Node extends Latch {
             mRightSegTail = readUnsignedShortLE(page, 6);
             mSearchVecStart = readUnsignedShortLE(page, 8);
             mSearchVecEnd = readUnsignedShortLE(page, 10);
-            if (type == TYPE_TN_INTERNAL) {
+            if (type == TYPE_TN_IN || type == TYPE_TN_BIN) {
                 // TODO: recycle child node arrays
                 mChildNodes = new Node[numKeys() + 1];
             } else if (type != TYPE_TN_LEAF) {
@@ -2208,6 +2210,7 @@ final class Node extends Latch {
         int toDeleteState = child.mCachedState;
 
         mPage = child.mPage;
+        byte stubType = mType;
         mType = child.mType;
         mGarbage = child.mGarbage;
         mLeftSegTail = child.mLeftSegTail;
@@ -2223,7 +2226,7 @@ final class Node extends Latch {
         child.mPage = page;
         child.mId = STUB_ID;
         child.mCachedState = CACHED_CLEAN;
-        child.mType = TYPE_TN_INTERNAL;
+        child.mType = stubType;
         child.clearEntries();
         child.mChildNodes = childNodes;
         child.mLastCursorFrame = lastCursorFrame;
@@ -2724,7 +2727,7 @@ final class Node extends Latch {
         final byte[] page = mPage;
 
         final Node newNode = tree.mDatabase.allocUnevictableNode();
-        newNode.mType = TYPE_TN_INTERNAL;
+        newNode.mType = mType;
         newNode.mGarbage = 0;
 
         final byte[] newPage = newNode.mPage;
@@ -3121,8 +3124,12 @@ final class Node extends Latch {
                 ", cachedState=" + mCachedState +
                 ", lockState=" + super.toString() +
                 '}';
-        case TYPE_TN_INTERNAL:
+        case TYPE_TN_IN:
             prefix = "Internal";
+            break;
+
+        case TYPE_TN_BIN:
+            prefix = "BottomInternal";
             break;
 
         case TYPE_TN_LEAF:
@@ -3146,7 +3153,7 @@ final class Node extends Latch {
      * @return false if should stop
      */
     boolean verifyTreeNode(int level, VerificationObserver observer) {
-        if (mType != TYPE_TN_INTERNAL && mType != TYPE_TN_LEAF) {
+        if (mType != TYPE_TN_IN && mType != TYPE_TN_BIN && mType != TYPE_TN_LEAF) {
             return verifyFailed(level, observer, "Not a tree node");
         }
 
