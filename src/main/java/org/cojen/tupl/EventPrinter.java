@@ -19,7 +19,7 @@ package org.cojen.tupl;
 import java.io.PrintStream;
 
 /**
- * Event listener impementation which prints events to an output stream.
+ * Event listener implementation which prints events to an output stream.
  *
  * @author Brian S O'Neill
  */
