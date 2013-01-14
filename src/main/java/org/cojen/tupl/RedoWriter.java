@@ -311,6 +311,11 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
     // Caller must be synchronized.
     abstract void writeTerminator() throws IOException;
 
+    synchronized void clearAndReset() throws IOException {
+        mBufferPos = 0;
+        reset();
+    }
+
     // Caller must be synchronized.
     long lastTransactionId() {
         return mLastTxnId;
@@ -411,9 +416,11 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
 
     // Caller must be synchronized.
     private void doFlush(byte[] buffer, int len) throws IOException {
+        // Discard buffer even if the write fails. Caller is expected to
+        // rollback the transacion, and so redo is not used.
         try {
-            write(buffer, len);
             mBufferPos = 0;
+            write(buffer, len);
         } catch (IOException e) {
             throw Utils.rethrow(e, mCause);
         }

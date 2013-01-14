@@ -435,7 +435,7 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
         return mLatches[((int) scrambledTxnId) & mLatchesMask];
     }
 
-    private static final long IDLE_TIMEOUT_NANOS = 5 * 1_000_000_000L;
+    private static final long IDLE_TIMEOUT_NANOS = 5 * 1000000000L;
 
     /**
      * @return false if thread should exit
@@ -487,8 +487,8 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
         releaseExclusive();
 
         if (log != null) {
-            // FIXME: Notify.
-            System.out.println("end of stream");
+            // FIXME: position
+            log.leaderNotify(0);
         }
 
         return false;
