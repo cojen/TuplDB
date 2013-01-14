@@ -676,6 +676,9 @@ public final class Database extends CauseCloseable {
 
             index = openIndex(name, false);
         } catch (Throwable e) {
+            if (e instanceof DatabaseException && ((DatabaseException) e).isRecoverable()) {
+                throw (DatabaseException) e;
+            }
             throw closeOnFailure(this, e);
         } finally {
             commitLock.unlock();
@@ -1346,16 +1349,16 @@ public final class Database extends CauseCloseable {
             } else if (!create) {
                 return null;
             } else {
-                mOpenTreesLatch.acquireExclusive();
                 try {
-                    treeIdBytes = mRegistryKeyMap.load(null, nameKey);
-                    if (treeIdBytes != null) {
-                        idKey = null;
-                        treeId = readLongBE(treeIdBytes, 0);
-                    } else {
-                        treeIdBytes = new byte[8];
+                    mOpenTreesLatch.acquireExclusive();
+                    try {
+                        treeIdBytes = mRegistryKeyMap.load(null, nameKey);
+                        if (treeIdBytes != null) {
+                            idKey = null;
+                            treeId = readLongBE(treeIdBytes, 0);
+                        } else {
+                            treeIdBytes = new byte[8];
 
-                        try {
                             do {
                                 treeId = nextTreeId();
                                 writeLongBE(treeIdBytes, 0, treeId);
@@ -1374,12 +1377,17 @@ public final class Database extends CauseCloseable {
                                 mRegistry.delete(Transaction.BOGUS, treeIdBytes);
                                 throw new DatabaseException("Unable to insert index id");
                             }
-                        } catch (IOException e) {
-                            throw closeOnFailure(this, e);
                         }
+                    } finally {
+                        mOpenTreesLatch.releaseExclusive();
                     }
-                } finally {
-                    mOpenTreesLatch.releaseExclusive();
+                } catch (IOException e) {
+                    if (e instanceof DatabaseException
+                        && ((DatabaseException) e).isRecoverable())
+                    {
+                        throw e;
+                    }
+                    throw closeOnFailure(this, e);
                 }
             }
 
