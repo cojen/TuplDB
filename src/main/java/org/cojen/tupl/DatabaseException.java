@@ -42,6 +42,9 @@ public class DatabaseException extends IOException {
         super(message, cause);
     }
 
+    /**
+     * Returns false if database should be closed as a result of this exception.
+     */
     boolean isRecoverable() {
         return false;
     }
