@@ -28,7 +28,6 @@ class ReplRedoLog extends RedoWriter {
     private final ReplicationManager mReplManager;
     private final ReplRedoReceiver mReceiver;
 
-    // FIXME: Thread safety issues?
     private ReplicationManager.Output mOut;
     private long mPosition;
 
@@ -43,40 +42,7 @@ class ReplRedoLog extends RedoWriter {
         mReplManager = rm;
         mReceiver = receiver;
 
-        // FIXME: This shouldn't all be in the constructor. Some stuff is for
-        // leader, other is for replica.
-
-        ReplicationManager.Output out = rm.out(position);
-
-        if (out == null) {
-            out = new ReplicationManager.Output() {
-                @Override
-                public boolean write(byte[] b, int off, int len) {
-                    return false;
-                }
-                @Override
-                public boolean sync(long position) {
-                    return false;
-                }
-                @Override
-                public boolean confirm(long position, long timeoutNanos) {
-                    return false;
-                }
-            };
-        }
-
-        mOut = out;
-        mPosition = position;
-        reset();
-
-        final ReplicationManager.Input in = rm.in(position);
-
-        if (in != null) {
-            // FIXME: initialTxnId
-            RedoDecoder decoder = new RedoDecoder(new DataIn(in), false, 0);
-
-            mReceiver.setDecoder(decoder, this);
-        }
+        leaderNotify(position);
     }
 
     @Override
@@ -150,8 +116,7 @@ class ReplRedoLog extends RedoWriter {
     @Override
     void write(byte[] buffer, int len) throws IOException {
         if (!mOut.write(buffer, 0, len)) {
-            // FIXME
-            System.out.println("Not master (1)");
+            throw new UnmodifiableReplicaException();
         }
     }
 
@@ -162,8 +127,7 @@ class ReplRedoLog extends RedoWriter {
             position = mPosition;
         }
         if (!mOut.sync(position)) {
-            // FIXME
-            System.out.println("Not master (2)");
+            throw new UnmodifiableReplicaException();
         }
     }
 
@@ -176,5 +140,71 @@ class ReplRedoLog extends RedoWriter {
     @Override
     void writeTerminator() throws IOException {
         // No terminators.
+    }
+
+    /**
+     * Called by ReplRedoReceiver.
+     */
+    synchronized void leaderNotify(long position) {
+        mPosition = position;
+
+        ReplicationManager.Output out;
+        try {
+            out = mReplManager.out(position);
+        } catch (IOException e) {
+            // FIXME: log it?
+            e.printStackTrace(System.out);
+            out = null;
+        }
+        
+        if (out != null) {
+            mOut = out;
+            try {
+                clearAndReset();
+            } catch (IOException e) {
+                // FIXME: log it?
+                e.printStackTrace(System.out);
+                mOut = null;
+            }
+        } else {
+            mOut = NonOutput.THE;
+
+            try {
+                final ReplicationManager.Input in = mReplManager.in(mPosition);
+
+                if (in != null) {
+                    // FIXME: initialTxnId
+                    RedoDecoder decoder = new RedoDecoder(new DataIn(in), false, 0);
+                    mReceiver.setDecoder(decoder, this);
+                } else {
+                    // FIXME: What if no in and no out?
+                }
+            } catch (IOException e) {
+                // FIXME: now what?
+                e.printStackTrace(System.out);
+            }
+        }
+    }
+
+    static final class NonOutput implements ReplicationManager.Output {
+        static final NonOutput THE = new NonOutput();
+
+        private NonOutput() {
+        }
+
+        @Override
+        public boolean write(byte[] b, int off, int len) {
+            return false;
+        }
+
+        @Override
+        public boolean sync(long position) {
+            return false;
+        }
+
+        @Override
+        public boolean confirm(long position, long timeoutNanos) {
+            return false;
+        }
     }
 }

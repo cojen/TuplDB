@@ -61,7 +61,7 @@ public interface ReplicationManager {
      * concurrently.
      *
      * @param position log position to start reading from
-     * @return can be null if local instance is the leader
+     * @return null if local instance is the leader
      */
     Input in(long position) throws IOException;
 
@@ -71,7 +71,7 @@ public interface ReplicationManager {
      * and the stream are never invoked concurrently.
      *
      * @param position log position to start writing to
-     * @return can be null if local instance is not the leader
+     * @return null if local instance is not the leader
      */
     Output out(long position) throws IOException;
 
@@ -113,6 +113,7 @@ public interface ReplicationManager {
         /**
          * Durably flushes all modifications to local non-volatile storage.
          *
+         * @param position all data less than this position must be sync'd
          * @return true if written; false if not leader
          */
         boolean sync(long position) throws IOException;
