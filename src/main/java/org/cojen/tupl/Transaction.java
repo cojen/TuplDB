@@ -718,13 +718,28 @@ public final class Transaction extends Locker {
     }
 
     RuntimeException borked(Throwable e) {
-        // Because this transaction is now borked, user cannot commit or
-        // rollback. Locks cannot be released, ensuring other transactions
-        // cannot see the partial changes made by this transaction. A restart
-        // is required, which then performs a clean rollback.
-        if (mBorked != null) {
-            mBorked = e;
+        if (mBorked == null) {
+            // Attempt to rollback the mess and release the locks.
+            UndoLog undo = mUndoLog;
+            try {
+                if (undo != null) {
+                    undo.rollback();
+                }
+                super.scopeExitAll();
+                if (undo != null) {
+                    undo.unregister();
+                    mUndoLog = null;
+                }
+            } catch (Throwable e2) {
+                // Undo failed. Locks cannot be released, ensuring other
+                // transactions cannot see the partial changes made by this
+                // transaction. A restart is required, which then performs a
+                // clean rollback.
+                e2.initCause(e);
+                mBorked = e = e2;
+            }
         }
+
         return Utils.rethrow(e);
     }
 }
