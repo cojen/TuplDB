@@ -80,6 +80,12 @@ class TestUtils {
     }
 
     static Database reopenTempDatabase(Database db, DatabaseConfig config) throws IOException {
+        return reopenTempDatabase(db, config, false);
+    }
+
+    static Database reopenTempDatabase(Database db, DatabaseConfig config, boolean deleteRedo)
+        throws IOException
+    {
         File baseFile;
         synchronized (cTempDatabases) {
             baseFile = cTempDatabases.remove(db);
@@ -88,6 +94,15 @@ class TestUtils {
             throw new IllegalArgumentException();
         }
         db.close();
+
+        if (deleteRedo) {
+            for (File f : baseFile.getParentFile().listFiles()) {
+                if (f.getName().indexOf(".redo.") > 0) {
+                    f.delete();
+                }
+            }
+        }
+
         db = Database.open(config.baseFile(baseFile));
         synchronized (cTempDatabases) {
             cTempDatabases.put(db, baseFile);
