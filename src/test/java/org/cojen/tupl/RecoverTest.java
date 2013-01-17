@@ -422,4 +422,73 @@ public class RecoverTest {
             }
         }
     }
+
+    @Test
+    public void lostRedo() throws Exception {
+        Index ix1 = mDb.openIndex("test1");
+        Index ix2 = mDb.openIndex("test2");
+
+        final int seed = 1234;
+        Random rnd = new Random(seed);
+
+        ix1.store(null, randomStr(rnd, 10, 100), randomStr(rnd, 10, 100));
+        ix2.store(null, randomStr(rnd, 10, 100), randomStr(rnd, 10, 100));
+
+        Transaction txn = mDb.newTransaction();
+        ix1.store(txn, randomStr(rnd, 10, 100), randomStr(rnd, 10, 100));
+        ix2.store(txn, randomStr(rnd, 10, 100), randomStr(rnd, 10, 100));
+        txn.commit();
+        txn.reset();
+
+        txn = mDb.newTransaction(DurabilityMode.NO_SYNC);
+        ix1.store(txn, randomStr(rnd, 10, 100), randomStr(rnd, 10, 100));
+
+        // Don't commit this one.
+        Transaction txn2 = mDb.newTransaction(DurabilityMode.NO_SYNC);
+        ix2.store(txn2, randomStr(rnd, 10, 100), randomStr(rnd, 10, 100));
+
+        mDb.checkpoint();
+
+        ix1.store(txn, randomStr(rnd, 10, 100), randomStr(rnd, 10, 100));
+
+        ix1.store(null, randomStr(rnd, 10, 100), randomStr(rnd, 10, 100));
+
+        txn.commit();
+        txn.reset();
+
+        // Reopen, but delete the redo logs first.
+        mDb = reopenTempDatabase(mDb, mConfig, true);
+
+        ix1 = mDb.openIndex("test1");
+        ix2 = mDb.openIndex("test2");
+
+        rnd = new Random(seed);
+
+        // Verify that fully checkpointed records exist.
+        for (int i=0; i<2; i++) {
+            {
+                byte[] key = randomStr(rnd, 10, 100);
+                byte[] value = randomStr(rnd, 10, 100);
+                assertArrayEquals(value, ix1.load(null, key));
+            }
+
+            {
+                byte[] key = randomStr(rnd, 10, 100);
+                byte[] value = randomStr(rnd, 10, 100);
+                assertArrayEquals(value, ix2.load(null, key));
+            }
+        }
+
+        // All other records must not exist.
+
+        for (Index ix : new Index[] {ix1, ix2}) {
+            int count = 0;
+            Cursor c = ix.newCursor(null);
+            for (c.first(); c.key() != null; c.next()) {
+                count++;
+            }
+            c.reset();
+            assertEquals(2, count);
+        }
+    }
 }
