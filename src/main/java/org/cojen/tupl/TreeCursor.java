@@ -2159,7 +2159,10 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                 final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
                 sharedCommitLock.lock();
                 try {
-                    store(txn, leaf, value);
+                    Node node = store(txn, leaf, value);
+                    if (node != null) {
+                        node.releaseExclusive();
+                    }
                 } finally {
                     sharedCommitLock.unlock();
                 }
@@ -2229,7 +2232,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     */
 
     /**
-     * Atomic find and store operation.
+     * Atomic find and store operation. Cursor is reset as a side-effect.
      */
     void findAndStore(byte[] key, byte[] value) throws IOException {
         try {
@@ -2243,9 +2246,16 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                 final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
                 sharedCommitLock.lock();
                 try {
-                    store(txn, mLeaf, value);
-                } finally {
+                    Node node = store(txn, mLeaf, value);
                     sharedCommitLock.unlock();
+                    if (node == null) {
+                        reset();
+                    } else {
+                        resetLatched(node);
+                    }
+                } catch (IOException e) {
+                    sharedCommitLock.unlock();
+                    throw e;
                 }
             } finally {
                 if (locker != null) {
@@ -2295,7 +2305,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     static final byte[] MODIFY_INSERT = new byte[0], MODIFY_REPLACE = new byte[0];
 
     /**
-     * Atomic find and modify operation.
+     * Atomic find and modify operation. Cursor is reset as a side-effect.
      *
      * @param oldValue MODIFY_INSERT, MODIFY_REPLACE, else update mode
      */
@@ -2380,7 +2390,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                 } else if (oldValue == null) {
                     if (newValue == null) {
                         // Update allowed, but nothing changed.
-                        mLeaf.mNode.releaseExclusive();
+                        resetLatched(mLeaf.mNode);
                         return true;
                     } else {
                         // Update allowed.
@@ -2389,17 +2399,24 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                 }
             }
 
-            mLeaf.mNode.releaseExclusive();
+            resetLatched(mLeaf.mNode);
             return false;
         }
 
         final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
         sharedCommitLock.lock();
         try {
-            store(txn, mLeaf, newValue);
-            return true;
-        } finally {
+            Node node = store(txn, mLeaf, newValue);
             sharedCommitLock.unlock();
+            if (node == null) {
+                reset();
+            } else {
+                resetLatched(node);
+            }
+            return true;
+        } catch (IOException e) {
+            sharedCommitLock.unlock();
+            throw e;
         }
     }
 
@@ -2425,7 +2442,10 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                 final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
                 sharedCommitLock.lock();
                 try {
-                    store(Transaction.BOGUS, leaf, null);
+                    Node node = store(Transaction.BOGUS, leaf, null);
+                    if (node != null) {
+                        node.releaseExclusive();
+                    }
                 } finally {
                     sharedCommitLock.unlock();
                 }
@@ -2443,9 +2463,11 @@ final class TreeCursor extends CauseCloseable implements Cursor {
      * Caller must hold shared commit lock, to prevent checkpoints from
      * observing in-progress splits.
      *
-     * @param leaf leaf frame, latched exclusively, which is released by this method
+     * @param leaf leaf frame, latched exclusively, which is released by this
+     * method if an exception is thrown
+     * @return latch to release, or null if already released
      */
-    private void store(Transaction txn, final TreeCursorFrame leaf, byte[] value)
+    private Node store(Transaction txn, final TreeCursorFrame leaf, byte[] value)
         throws IOException
     {
         byte[] key = mKey;
@@ -2457,7 +2479,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                 if (leaf.mNodePos < 0) {
                     // Entry doesn't exist, so nothing to do.
                     mValue = null;
-                    return;
+                    return node;
                 }
 
                 node = notSplitDirty(leaf);
@@ -2470,7 +2492,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                     node.txnDeleteLeafEntry(txn, mTree, key, keyHash(), pos);
                     // Above operation leaves a ghost, so no cursors to fix.
                     mValue = null;
-                    return;
+                    return node;
                 } else {
                     if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
                         mTree.redoStoreNoLock(key, null);
@@ -2513,7 +2535,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                 }
 
                 mValue = null;
-                return;
+                return node;
             }
 
             // Update and insert always dirty the node.
@@ -2550,7 +2572,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                 }
 
                 mValue = value;
-                return;
+                return node;
             }
 
             // Insert entry...
@@ -2612,11 +2634,14 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             }
 
             mValue = value;
-        } finally {
+        } catch (Throwable e) {
             if (node != null) {
                 node.releaseExclusive();
             }
+            throw Utils.rethrow(e);
         }
+
+        return node;
     }
 
     /**
@@ -2755,6 +2780,22 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         mKey = null;
         mKeyHash = 0;
         mValue = null;
+        if (frame != null) {
+            TreeCursorFrame.popAll(frame);
+        }
+    }
+
+    /**
+     * Reset with leaf already latched exclusively.
+     */
+    private void resetLatched(Node node) {
+        TreeCursorFrame frame = mLeaf;
+        mLeaf = null;
+        mKey = null;
+        mKeyHash = 0;
+        mValue = null;
+        frame = frame.pop();
+        node.releaseExclusive();
         if (frame != null) {
             TreeCursorFrame.popAll(frame);
         }
