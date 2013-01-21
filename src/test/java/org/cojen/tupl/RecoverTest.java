@@ -490,5 +490,13 @@ public class RecoverTest {
             c.reset();
             assertEquals(2, count);
         }
+
+        // No leftover locks from rolled back partial transactions.
+
+        ix1.load(null, randomStr(rnd, 10, 100));
+        randomStr(rnd, 10, 100); // skip value
+
+        ix2.load(null, randomStr(rnd, 10, 100));
+        randomStr(rnd, 10, 100); // skip value
     }
 }

@@ -167,7 +167,6 @@ final class Tree implements Index {
         try {
             cursor.autoload(false);
             cursor.findAndStore(key, value);
-            cursor.reset();
         } catch (Throwable e) {
             throw Utils.closeOnFailure(cursor, e);
         }
@@ -181,9 +180,7 @@ final class Tree implements Index {
         TreeCursor cursor = new TreeCursor(this, txn);
         try {
             cursor.autoload(false);
-            boolean result = cursor.findAndModify(key, TreeCursor.MODIFY_INSERT, value);
-            cursor.reset();
-            return result;
+            return cursor.findAndModify(key, TreeCursor.MODIFY_INSERT, value);
         } catch (Throwable e) {
             throw Utils.closeOnFailure(cursor, e);
         }
@@ -197,9 +194,7 @@ final class Tree implements Index {
         TreeCursor cursor = new TreeCursor(this, txn);
         try {
             cursor.autoload(false);
-            boolean result = cursor.findAndModify(key, TreeCursor.MODIFY_REPLACE, value);
-            cursor.reset();
-            return result;
+            return cursor.findAndModify(key, TreeCursor.MODIFY_REPLACE, value);
         } catch (Throwable e) {
             throw Utils.closeOnFailure(cursor, e);
         }
@@ -214,9 +209,7 @@ final class Tree implements Index {
         }
         TreeCursor cursor = new TreeCursor(this, txn);
         try {
-            boolean result = cursor.findAndModify(key, oldValue, newValue);
-            cursor.reset();
-            return result;
+            return cursor.findAndModify(key, oldValue, newValue);
         } catch (Throwable e) {
             throw Utils.closeOnFailure(cursor, e);
         }
