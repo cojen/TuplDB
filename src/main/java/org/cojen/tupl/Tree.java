@@ -454,17 +454,29 @@ final class Tree implements Index {
             throw new IllegalStateException("Cannot close index which has active cursors");
         }
 
-        root.forceEvictTree(mDatabase.mPageDb);
+        if (mDatabase.mPageDb.isDurable()) {
+            root.forceEvictTree(mDatabase.mPageDb);
 
-        // Root node reference cannot be cleared, so instead make it
-        // non-functional. Move the page reference into a new evictable Node
-        // object, allowing it to be recycled.
+            // Root node reference cannot be cleared, so instead make it non-functional. Move
+            // the page reference into a new evictable Node object, allowing it to be recycled.
 
-        try {
-            mDatabase.makeEvictable(root.closeRoot());
-            mDatabase.treeClosed(this);
-        } finally {
-            root.releaseExclusive();
+            try {
+                mDatabase.makeEvictable(root.closeRoot(false));
+                mDatabase.treeClosed(this);
+            } finally {
+                root.releaseExclusive();
+            }
+        } else {
+            // Non-durable tree cannot be truly closed because nothing would reference it
+            // anymore. As per the interface contract, make this reference unmodifiable, but
+            // also register a replacement tree instance. Closing a non-durable tree has little
+            // practical value.
+
+            try {
+                mDatabase.replaceClosedTree(this, root.closeRoot(true));
+            } finally {
+                root.releaseExclusive();
+            }
         }
     }
 

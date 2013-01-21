@@ -524,7 +524,6 @@ final class UndoLog {
                     // No need to handle case where Tree is closed, because
                     // this method can only be called during recovery.
                     cursor.deleteGhost(key);
-                    cursor.reset();
                 } catch (Throwable e) {
                     throw Utils.closeOnFailure(cursor, e);
                 }

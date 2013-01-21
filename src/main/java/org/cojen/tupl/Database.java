@@ -1245,11 +1245,35 @@ public final class Database extends CauseCloseable {
     void treeClosed(Tree tree) {
         mOpenTreesLatch.acquireExclusive();
         try {
+            // Lookup by name to prevent closing internal trees.
             TreeRef ref = mOpenTrees.get(tree.mName);
             if (ref != null && ref.get() == tree) {
                 ref.clear();
                 mOpenTrees.remove(tree.mName);
                 mOpenTreesById.remove(tree.mId);
+            }
+        } finally {
+            mOpenTreesLatch.releaseExclusive();
+        }
+    }
+
+    /**
+     * @return new tree or null if given tree was not the currently open one
+     */
+    Tree replaceClosedTree(Tree tree, Node newRoot) {
+        mOpenTreesLatch.acquireExclusive();
+        try {
+            // Lookup by name to prevent replacing internal trees.
+            TreeRef ref = mOpenTrees.get(tree.mName);
+            if (ref != null && ref.get() == tree) {
+                ref.clear();
+                tree = new Tree(this, tree.mId, tree.mIdBytes, tree.mName, newRoot);
+                ref = new TreeRef(tree, mOpenTreesRefQueue);
+                mOpenTrees.put(tree.mName, ref);
+                mOpenTreesById.insert(tree.mId).value = ref;
+                return tree;
+            } else {
+                return null;
             }
         } finally {
             mOpenTreesLatch.releaseExclusive();
