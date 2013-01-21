@@ -39,6 +39,11 @@ class NonPageDb extends PageDb {
     }
 
     @Override
+    public boolean isDurable() {
+        return false;
+    }
+
+    @Override
     public int pageSize() {
         return mPageSize;
     }

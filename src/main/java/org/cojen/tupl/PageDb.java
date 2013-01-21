@@ -44,6 +44,8 @@ abstract class PageDb extends CauseCloseable {
         mCommitLock = new ReentrantReadWriteLock(false);
     }
 
+    public abstract boolean isDurable();
+
     /**
      * Returns the fixed size of all pages in the store, in bytes.
      */

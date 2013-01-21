@@ -2421,8 +2421,8 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     }
 
     /**
-     * Non-transactional ghost delete. Caller is expected to hold exclusive key
-     * lock. Method does nothing if a value exists.
+     * Non-transactional ghost delete. Caller is expected to hold exclusive key lock. Method
+     * does nothing if a value exists. Cursor is always reset as a side-effect.
      *
      * @return false if Tree is closed
      */
@@ -2434,7 +2434,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
 
             TreeCursorFrame leaf = mLeaf;
             if (leaf.mNode.mPage == Utils.EMPTY_BYTES) {
-                leaf.mNode.releaseExclusive();
+                resetLatched(leaf.mNode);
                 return false;
             }
 
@@ -2443,14 +2443,18 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                 sharedCommitLock.lock();
                 try {
                     Node node = store(Transaction.BOGUS, leaf, null);
-                    if (node != null) {
-                        node.releaseExclusive();
-                    }
-                } finally {
                     sharedCommitLock.unlock();
+                    if (node == null) {
+                        reset();
+                    } else {
+                        resetLatched(node);
+                    }
+                } catch (IOException e) {
+                    sharedCommitLock.unlock();
+                    throw e;
                 }
             } else {
-                leaf.mNode.releaseExclusive();
+                resetLatched(leaf.mNode);
             }
 
             return true;

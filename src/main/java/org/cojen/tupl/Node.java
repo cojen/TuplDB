@@ -231,10 +231,24 @@ final class Node extends Latch {
     /**
      * Close the root node when closing a tree. Returns a new node which allows
      * the page to be recycled.
+     *
+     * @param clone true to clone state into new node
      */
-    Node closeRoot() {
+    Node closeRoot(boolean clone) {
         // Allocate node first, in case an OutOfMemoryError is thrown.
         Node newNode = new Node(mPage);
+
+        if (clone) {
+            newNode.mId = mId;
+            newNode.mCachedState = mCachedState;
+            newNode.mType = mType;
+            newNode.mGarbage = mGarbage;
+            newNode.mLeftSegTail = mLeftSegTail;
+            newNode.mRightSegTail = mRightSegTail;
+            newNode.mSearchVecStart = mSearchVecStart;
+            newNode.mSearchVecEnd = mSearchVecEnd;
+            newNode.mChildNodes = mChildNodes;
+        }
 
         // Prevent node from being marked dirty.
         mId = STUB_ID;

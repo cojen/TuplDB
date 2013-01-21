@@ -515,18 +515,14 @@ final class Lock {
                     if (c.deleteGhost(key)) {
                         break;
                     }
+                    // Reopen closed index.
+                    tree = (Tree) tree.mDatabase.indexById(tree.mId);
+                    if (tree == null) {
+                        // Assume index was deleted.
+                        break;
+                    }
                 } finally {
-                    // Reset before re-acquiring latch, since it needs to
-                    // acquire latches to detach cursor from tree.
-                    c.reset();
                     latch.acquireExclusive();
-                }
-
-                // Reopen closed index.
-                tree = (Tree) tree.mDatabase.indexById(tree.mId);
-                if (tree == null) {
-                    // Assume index was deleted.
-                    break;
                 }
             }
         } catch (Throwable e) {
