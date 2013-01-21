@@ -229,6 +229,11 @@ class DurablePageDb extends PageDb {
     }
 
     @Override
+    public boolean isDurable() {
+        return true;
+    }
+
+    @Override
     public int pageSize() {
         return mPageArray.pageSize();
     }

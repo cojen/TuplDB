@@ -44,6 +44,7 @@ public class TestAll {
             SmallCacheTest.class,
             ViewTest.class,
             CloseTest.class,
+            CloseNonDurableTest.class,
         };
 
         String[] names = new String[classes.length];
