@@ -511,8 +511,11 @@ final class Tree implements Index {
             // Root node reference cannot be cleared, so instead make it non-functional. Move
             // the page reference into a new evictable Node object, allowing it to be recycled.
 
+            long rootId = root.mId;
+            int cachedState = root.mCachedState;
+
             mDatabase.makeEvictable(root.closeRoot(false));
-            mDatabase.dropClosedTree(this);
+            mDatabase.dropClosedTree(this, rootId, cachedState);
         } finally {
             root.releaseExclusive();
         }
