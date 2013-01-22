@@ -64,4 +64,8 @@ public enum DurabilityMode {
      * mode can lose recently committed transactions when the process exits.
      */
     NO_REDO;
+
+    DurabilityMode alwaysRedo() {
+        return this == NO_REDO ? NO_FLUSH : this;
+    }
 }

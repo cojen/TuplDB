@@ -125,7 +125,7 @@ public interface Index extends View, Closeable {
     public boolean isClosed();
 
     /**
-     * Fully closes and removes an empty index. No action is performed if the index isn't empty
+     * Fully closes and removes an empty index. An exception is thrown if the index isn't empty
      * or if the close constraints aren't met. In particular, an index cannot be closed if any
      * cursors are accessing it. Also, an index cannot be dropped when referenced by an
      * in-progress transaction which has modified it.
