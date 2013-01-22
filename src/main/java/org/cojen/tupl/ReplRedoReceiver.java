@@ -183,6 +183,12 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
     }
 
     @Override
+    public boolean dropIndex(long indexId) throws IOException {
+        // FIXME: 
+        throw null;
+    }
+
+    @Override
     public boolean txnEnter(long txnId) throws IOException {
         // Reduce hash collisions.
         long scrambledTxnId = scramble(txnId);
