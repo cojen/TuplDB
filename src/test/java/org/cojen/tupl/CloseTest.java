@@ -191,4 +191,81 @@ public class CloseTest {
             ix.close();
         }
     }
+
+    @Test
+    public void drop() throws Exception {
+        Index ix = mDb.openIndex("drop");
+        long id = ix.getId();
+
+        assertEquals(ix, mDb.findIndex("drop"));
+        assertEquals(ix, mDb.indexById(id));
+
+        ix.drop();
+
+        assertNull(mDb.findIndex("drop"));
+        assertNull(mDb.indexById(id));
+
+        ix.store(null, "hello".getBytes(), null);
+
+        try {
+            ix.store(null, "hello".getBytes(), "world".getBytes());
+            fail();
+        } catch (ClosedIndexException e) {
+        }
+
+        ix = mDb.openIndex("drop");
+        long id2 = ix.getId();
+
+        assertFalse(id == id2);
+
+        ix.store(null, "hello".getBytes(), "world".getBytes());
+
+        try {
+            ix.drop();
+            fail();
+        } catch (IllegalStateException e) {
+            // Non-empty index.
+        }
+
+        Transaction txn = mDb.newTransaction();
+        ix.store(txn, "hello".getBytes(), null);
+
+        try {
+            ix.drop();
+            fail();
+        } catch (IllegalStateException e) {
+            // Non-empty index.
+        }
+
+        txn.reset();
+
+        try {
+            ix.drop();
+            fail();
+        } catch (IllegalStateException e) {
+            // Non-empty index.
+        }
+
+        Cursor c = ix.newCursor(null);
+        c.first();
+        assertArrayEquals("hello".getBytes(), c.key());
+
+        ix.store(null, "hello".getBytes(), null);
+
+        try {
+            ix.drop();
+            fail();
+        } catch (IllegalStateException e) {
+            // Active cursor.
+        }
+
+        c.load();
+        assertNull(c.value());
+        c.reset();
+
+        ix.drop();
+
+        assertNull(mDb.findIndex("drop"));
+        assertNull(mDb.indexById(id2));
+    }
 }

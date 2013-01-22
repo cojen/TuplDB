@@ -43,4 +43,17 @@ public class CloseNonDurableTest extends CloseTest {
     public void cacheChurn() {
         // Non-durable database cannot exhaust the cache.
     }
+
+    @Test
+    public void dropChurn() throws Exception {
+        // Verify that dropping indexes allows space to be reclaimed.
+
+        for (int i=0; i<10000; i++) {
+            Index ix = mDb.openIndex("ix-" + i);
+            byte[] key = "hello".getBytes();
+            ix.store(null, key, ("world-" + i).getBytes());
+            ix.store(null, key, null);
+            ix.drop();
+        }
+    }
 }
