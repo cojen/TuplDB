@@ -52,6 +52,9 @@ class RedoOps {
         /** indexId: long, keyLength: varInt, key: bytes */
         OP_DELETE_NO_LOCK = 19,
 
+        /** indexId: long */
+        OP_DROP_INDEX = 20,
+
         /** txnId: delta */
         OP_TXN_ENTER = 24,
 

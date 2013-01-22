@@ -166,6 +166,13 @@ class RedoDecoder {
                 }
                 break;
 
+            case OP_DROP_INDEX:
+                indexId = in.readLongLE();
+                if (!verifyTerminator(in) || !visitor.dropIndex(indexId)) {
+                    return false;
+                }
+                break;
+
             case OP_TXN_ENTER_STORE:
                 txnId = readTxnId(in);
                 indexId = in.readLongLE();

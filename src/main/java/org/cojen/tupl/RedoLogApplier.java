@@ -78,6 +78,21 @@ class RedoLogApplier implements RedoVisitor {
     }
 
     @Override
+    public boolean dropIndex(long indexId) throws IOException {
+        Index ix = openIndex(indexId);
+        if (ix != null) {
+            try {
+                ix.drop();
+            } catch (IllegalStateException e) {
+                // Assume not empty due to NO_REDO delete.
+                return true;
+            }
+            mIndexes.remove(indexId);
+        }
+        return true;
+    }
+
+    @Override
     public boolean txnEnter(long txnId) throws IOException {
         Transaction txn = txn(txnId);
         if (txn == null) {

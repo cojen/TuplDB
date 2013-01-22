@@ -116,6 +116,18 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
         }
     }
 
+    /**
+     * Auto-commit index drop.
+     *
+     * @param indexId non-zero index id
+     * @return true if caller should call txnCommitSync
+     */
+    public synchronized boolean dropIndex(long indexId, DurabilityMode mode) throws IOException {
+        writeOp(OP_DROP_INDEX, indexId);
+        writeTerminator();
+        return conditionalFlush(mode);
+    }
+
     public synchronized void reset() throws IOException {
         byte[] buffer = mBuffer;
         int pos = mBufferPos;

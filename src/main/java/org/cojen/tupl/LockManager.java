@@ -285,6 +285,9 @@ final class LockManager {
         private int mSize;
         private int mGrowThreshold;
 
+        // Padding to prevent cache line sharing.
+        private int a0, a1, a2, a3;
+
         LockHT() {
             // Initial capacity of must be a power of 2.
             mEntries = new Lock[16];
