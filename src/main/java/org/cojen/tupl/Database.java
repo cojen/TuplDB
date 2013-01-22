@@ -762,8 +762,8 @@ public final class Database extends CauseCloseable {
     }
 
     /**
-     * Convenience method which returns a transaction intended for locking, and
-     * not for making modifications.
+     * Convenience method which returns a transaction intended for locking. Caller can make
+     * modifications only if commit lock is held.
      */
     Transaction newLockTransaction() {
         return new Transaction(this, DurabilityMode.NO_REDO, LockMode.UPGRADABLE_READ, -1);
@@ -1278,50 +1278,54 @@ public final class Database extends CauseCloseable {
         }
     }
 
-    void dropClosedTree(Tree tree) throws IOException {
-        Transaction txn;
-        mOpenTreesLatch.acquireExclusive();
+    void dropClosedTree(Tree tree, long rootId, int cachedState) throws IOException {
+        final Lock commitLock = sharedCommitLock();
+        commitLock.lock();
         try {
-            TreeRef ref = mOpenTreesById.getValue(tree.mId);
-            if (ref == null || ref.get() != tree) {
-                return;
+            Transaction txn;
+            mOpenTreesLatch.acquireExclusive();
+            try {
+                TreeRef ref = mOpenTreesById.getValue(tree.mId);
+                if (ref == null || ref.get() != tree) {
+                    return;
+                }
+
+                ref.clear();
+                mOpenTrees.remove(tree.mName);
+                mOpenTreesById.remove(tree.mId);
+
+                txn = newLockTransaction();
+                try {
+                    // Lock to prevent tree from being re-opened.
+                    mRegistry.delete(txn, tree.mIdBytes);
+                } catch (Throwable e) {
+                    txn.reset();
+                    throw rethrow(e);
+                }
+            } finally {
+                mOpenTreesLatch.releaseExclusive();
             }
 
-            ref.clear();
-            mOpenTrees.remove(tree.mName);
-            mOpenTreesById.remove(tree.mId);
-
-            DurabilityMode mode = mDurabilityMode;
-            if (mode == DurabilityMode.NO_REDO) {
-                mode = DurabilityMode.NO_FLUSH;
-            }
-
-            txn = newTransaction(mode);
+            // Complete the drop operation without preventing other indexes from being opened
+            // or dropped concurrently.
 
             try {
-                // Lock to prevent tree from being re-opened.
-                mRegistry.delete(txn, tree.mIdBytes);
+                deletePage(rootId, cachedState);
+
+                byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, tree.mName);
+                mRegistryKeyMap.delete(txn, nameKey);
+
+                byte[] idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
+                mRegistryKeyMap.delete(txn, idKey);
+
+                txn.commit();
             } catch (Throwable e) {
+                throw closeOnFailure(this, e);
+            } finally {
                 txn.reset();
-                throw rethrow(e);
             }
         } finally {
-            mOpenTreesLatch.releaseExclusive();
-        }
-
-        // Complete the drop operation without preventing other indexes from being opened or
-        // dropped concurrently.
-
-        try {
-            byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, tree.mName);
-            mRegistryKeyMap.delete(txn, nameKey);
-
-            byte[] idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
-            mRegistryKeyMap.delete(txn, idKey);
-
-            txn.commit();
-        } finally {
-            txn.reset();
+            commitLock.unlock();
         }
     }
 
@@ -1418,16 +1422,16 @@ public final class Database extends CauseCloseable {
             } else if (!create) {
                 return null;
             } else {
+                mOpenTreesLatch.acquireExclusive();
                 try {
-                    mOpenTreesLatch.acquireExclusive();
-                    try {
-                        treeIdBytes = mRegistryKeyMap.load(null, nameKey);
-                        if (treeIdBytes != null) {
-                            idKey = null;
-                            treeId = readLongBE(treeIdBytes, 0);
-                        } else {
-                            treeIdBytes = new byte[8];
+                    treeIdBytes = mRegistryKeyMap.load(null, nameKey);
+                    if (treeIdBytes != null) {
+                        idKey = null;
+                        treeId = readLongBE(treeIdBytes, 0);
+                    } else {
+                        treeIdBytes = new byte[8];
 
+                        try {
                             do {
                                 treeId = nextTreeId();
                                 writeLongBE(treeIdBytes, 0, treeId);
@@ -1446,17 +1450,12 @@ public final class Database extends CauseCloseable {
                                 mRegistry.delete(Transaction.BOGUS, treeIdBytes);
                                 throw new DatabaseException("Unable to insert index id");
                             }
+                        } catch (Throwable e) {
+                            throw closeOnFailure(this, e);
                         }
-                    } finally {
-                        mOpenTreesLatch.releaseExclusive();
                     }
-                } catch (IOException e) {
-                    if (e instanceof DatabaseException
-                        && ((DatabaseException) e).isRecoverable())
-                    {
-                        throw e;
-                    }
-                    throw closeOnFailure(this, e);
+                } finally {
+                    mOpenTreesLatch.releaseExclusive();
                 }
             }
 
