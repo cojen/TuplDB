@@ -713,7 +713,7 @@ public final class Database extends CauseCloseable {
      */
     public Index indexById(byte[] id) throws IOException {
         if (id.length != 8) {
-            throw new IllegalArgumentException("Expected 8 byte identifier: " + id.length);
+            throw new IllegalArgumentException("Expected an 8 byte identifier: " + id.length);
         }
         return indexById(readLongBE(id, 0));
     }
@@ -1245,8 +1245,7 @@ public final class Database extends CauseCloseable {
     void treeClosed(Tree tree) {
         mOpenTreesLatch.acquireExclusive();
         try {
-            // Lookup by name to prevent closing internal trees.
-            TreeRef ref = mOpenTrees.get(tree.mName);
+            TreeRef ref = mOpenTreesById.getValue(tree.mId);
             if (ref != null && ref.get() == tree) {
                 ref.clear();
                 mOpenTrees.remove(tree.mName);
@@ -1263,8 +1262,7 @@ public final class Database extends CauseCloseable {
     Tree replaceClosedTree(Tree tree, Node newRoot) {
         mOpenTreesLatch.acquireExclusive();
         try {
-            // Lookup by name to prevent replacing internal trees.
-            TreeRef ref = mOpenTrees.get(tree.mName);
+            TreeRef ref = mOpenTreesById.getValue(tree.mId);
             if (ref != null && ref.get() == tree) {
                 ref.clear();
                 tree = new Tree(this, tree.mId, tree.mIdBytes, tree.mName, newRoot);
@@ -1277,6 +1275,53 @@ public final class Database extends CauseCloseable {
             }
         } finally {
             mOpenTreesLatch.releaseExclusive();
+        }
+    }
+
+    void dropClosedTree(Tree tree) throws IOException {
+        Transaction txn;
+        mOpenTreesLatch.acquireExclusive();
+        try {
+            TreeRef ref = mOpenTreesById.getValue(tree.mId);
+            if (ref == null || ref.get() != tree) {
+                return;
+            }
+
+            ref.clear();
+            mOpenTrees.remove(tree.mName);
+            mOpenTreesById.remove(tree.mId);
+
+            DurabilityMode mode = mDurabilityMode;
+            if (mode == DurabilityMode.NO_REDO) {
+                mode = DurabilityMode.NO_FLUSH;
+            }
+
+            txn = newTransaction(mode);
+
+            try {
+                // Lock to prevent tree from being re-opened.
+                mRegistry.delete(txn, tree.mIdBytes);
+            } catch (Throwable e) {
+                txn.reset();
+                throw rethrow(e);
+            }
+        } finally {
+            mOpenTreesLatch.releaseExclusive();
+        }
+
+        // Complete the drop operation without preventing other indexes from being opened or
+        // dropped concurrently.
+
+        try {
+            byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, tree.mName);
+            mRegistryKeyMap.delete(txn, nameKey);
+
+            byte[] idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
+            mRegistryKeyMap.delete(txn, idKey);
+
+            txn.commit();
+        } finally {
+            txn.reset();
         }
     }
 
@@ -1472,7 +1517,12 @@ public final class Database extends CauseCloseable {
         // By generating identifiers from a 64-bit sequence, it's effectively
         // impossible for them to get re-used after trees are deleted.
 
-        Transaction txn = newTransaction();
+        DurabilityMode mode = mDurabilityMode;
+        if (mode == DurabilityMode.NO_REDO) {
+            mode = DurabilityMode.NO_FLUSH;
+        }
+
+        Transaction txn = newTransaction(mode);
         try {
             // Tree id mask, to make the identifiers less predictable and
             // non-compatible with other database instances.
