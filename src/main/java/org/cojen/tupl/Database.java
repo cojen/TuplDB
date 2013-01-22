@@ -1279,6 +1279,8 @@ public final class Database extends CauseCloseable {
     }
 
     void dropClosedTree(Tree tree, long rootId, int cachedState) throws IOException {
+        RedoWriter redo = mRedoWriter;
+
         final Lock commitLock = sharedCommitLock();
         commitLock.lock();
         try {
@@ -1318,6 +1320,10 @@ public final class Database extends CauseCloseable {
                 byte[] idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
                 mRegistryKeyMap.delete(txn, idKey);
 
+                if (redo != null && !redo.dropIndex(tree.mId, mDurabilityMode.alwaysRedo())) {
+                    redo = null;
+                }
+
                 txn.commit();
             } catch (Throwable e) {
                 throw closeOnFailure(this, e);
@@ -1326,6 +1332,11 @@ public final class Database extends CauseCloseable {
             }
         } finally {
             commitLock.unlock();
+        }
+
+        if (redo != null) {
+            // Don't hold commit lock during sync.
+            redo.txnCommitSync();
         }
     }
 
@@ -1516,12 +1527,7 @@ public final class Database extends CauseCloseable {
         // By generating identifiers from a 64-bit sequence, it's effectively
         // impossible for them to get re-used after trees are deleted.
 
-        DurabilityMode mode = mDurabilityMode;
-        if (mode == DurabilityMode.NO_REDO) {
-            mode = DurabilityMode.NO_FLUSH;
-        }
-
-        Transaction txn = newTransaction(mode);
+        Transaction txn = newTransaction(mDurabilityMode.alwaysRedo());
         try {
             // Tree id mask, to make the identifiers less predictable and
             // non-compatible with other database instances.
