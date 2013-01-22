@@ -499,4 +499,49 @@ public class RecoverTest {
         ix2.load(null, randomStr(rnd, 10, 100));
         randomStr(rnd, 10, 100); // skip value
     }
+
+    @Test
+    public void dropIndex() throws Exception {
+        Index ix = mDb.openIndex("drop");
+
+        ix.store(null, "hello".getBytes(), "world".getBytes());
+        ix.delete(null, "hello".getBytes());
+        mDb.checkpoint();
+        ix.drop();
+        assertNull(mDb.findIndex("drop"));
+
+        mDb = reopenTempDatabase(mDb, mConfig);
+
+        // Verify drop redo.
+        assertNull(mDb.findIndex("drop"));
+
+        // Test again, but this time with NO_REDO.
+        mDb = reopenTempDatabase(mDb, mConfig);
+
+        ix = mDb.openIndex("drop2");
+        ix.store(null, "hello".getBytes(), "world".getBytes());
+
+        mDb.checkpoint();
+
+        // No redo delete.
+        Transaction txn = mDb.newTransaction(DurabilityMode.NO_REDO);
+        try {
+            ix.delete(txn, "hello".getBytes());
+            txn.commit();
+        } finally {
+            txn.reset();
+        }
+
+        ix.drop();
+
+        assertNull(mDb.findIndex("drop2"));
+
+        mDb = reopenTempDatabase(mDb, mConfig);
+
+        // Index didn't drop because it wasn't actually empty during recovery.
+        ix = mDb.findIndex("drop2");
+        assertNotNull(ix);
+
+        assertArrayEquals("world".getBytes(), ix.load(null, "hello".getBytes()));
+    }
 }
