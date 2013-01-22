@@ -442,41 +442,39 @@ final class Tree implements Index {
     public void close() throws IOException {
         Node root = mRoot;
         root.acquireExclusive();
+        try {
+            if (root.mPage == Utils.EMPTY_BYTES) {
+                // Already closed.
+                return;
+            }
 
-        if (root.mPage == Utils.EMPTY_BYTES) {
-            // Already closed.
-            root.releaseExclusive();
-            return;
-        }
+            if (root.mLastCursorFrame != null) {
+                throw new IllegalStateException("Cannot close an index which has active cursors");
+            }
 
-        if (root.mLastCursorFrame != null) {
-            root.releaseExclusive();
-            throw new IllegalStateException("Cannot close index which has active cursors");
-        }
+            if (isInternal(mId)) {
+                throw new IllegalStateException("Cannot close an internal index");
+            }
 
-        if (mDatabase.mPageDb.isDurable()) {
-            root.forceEvictTree(mDatabase.mPageDb);
+            if (mDatabase.mPageDb.isDurable()) {
+                root.forceEvictTree(mDatabase.mPageDb);
 
-            // Root node reference cannot be cleared, so instead make it non-functional. Move
-            // the page reference into a new evictable Node object, allowing it to be recycled.
+                // Root node reference cannot be cleared, so instead make it
+                // non-functional. Move the page reference into a new evictable Node object,
+                // allowing it to be recycled.
 
-            try {
                 mDatabase.makeEvictable(root.closeRoot(false));
                 mDatabase.treeClosed(this);
-            } finally {
-                root.releaseExclusive();
-            }
-        } else {
-            // Non-durable tree cannot be truly closed because nothing would reference it
-            // anymore. As per the interface contract, make this reference unmodifiable, but
-            // also register a replacement tree instance. Closing a non-durable tree has little
-            // practical value.
+            } else {
+                // Non-durable tree cannot be truly closed because nothing would reference it
+                // anymore. As per the interface contract, make this reference unmodifiable,
+                // but also register a replacement tree instance. Closing a non-durable tree
+                // has little practical value.
 
-            try {
                 mDatabase.replaceClosedTree(this, root.closeRoot(true));
-            } finally {
-                root.releaseExclusive();
             }
+        } finally {
+            root.releaseExclusive();
         }
     }
 
@@ -487,6 +485,37 @@ final class Tree implements Index {
         boolean closed = root.mPage == Utils.EMPTY_BYTES;
         root.releaseShared();
         return closed;
+    }
+
+    @Override
+    public void drop() throws IOException {
+        Node root = mRoot;
+        root.acquireExclusive();
+        try {
+            if (root.mPage == Utils.EMPTY_BYTES) {
+                throw new ClosedIndexException();
+            }
+
+            if (!root.isLeaf() || root.hasKeys()) {
+                throw new IllegalStateException("Cannot drop a non-empty index");
+            }
+        
+            if (root.mLastCursorFrame != null) {
+                throw new IllegalStateException("Cannot close an index which has active cursors");
+            }
+
+            if (isInternal(mId)) {
+                throw new IllegalStateException("Cannot close an internal index");
+            }
+
+            // Root node reference cannot be cleared, so instead make it non-functional. Move
+            // the page reference into a new evictable Node object, allowing it to be recycled.
+
+            mDatabase.makeEvictable(root.closeRoot(false));
+            mDatabase.dropClosedTree(this);
+        } finally {
+            root.releaseExclusive();
+        }
     }
 
     void check(Transaction txn) throws IllegalArgumentException {
