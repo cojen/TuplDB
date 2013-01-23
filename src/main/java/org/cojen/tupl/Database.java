@@ -1315,10 +1315,10 @@ public final class Database extends CauseCloseable {
                 deletePage(rootId, cachedState);
 
                 byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, tree.mName);
-                mRegistryKeyMap.delete(txn, nameKey);
+                mRegistryKeyMap.remove(txn, nameKey, tree.mIdBytes);
 
                 byte[] idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
-                mRegistryKeyMap.delete(txn, idKey);
+                mRegistryKeyMap.remove(txn, idKey, tree.mName);
 
                 if (redo != null && !redo.dropIndex(tree.mId, mDurabilityMode.alwaysRedo())) {
                     redo = null;
