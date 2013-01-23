@@ -1281,6 +1281,8 @@ public final class Database extends CauseCloseable {
     void dropClosedTree(Tree tree, long rootId, int cachedState) throws IOException {
         RedoWriter redo = mRedoWriter;
 
+        byte[] idKey, nameKey;
+
         final Lock commitLock = sharedCommitLock();
         commitLock.lock();
         try {
@@ -1292,14 +1294,21 @@ public final class Database extends CauseCloseable {
                     return;
                 }
 
-                ref.clear();
-                mOpenTrees.remove(tree.mName);
-                mOpenTreesById.remove(tree.mId);
+                idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
+                nameKey = newKey(KEY_TYPE_INDEX_NAME, tree.mName);
 
                 txn = newLockTransaction();
                 try {
-                    // Lock to prevent tree from being re-opened.
-                    mRegistry.delete(txn, tree.mIdBytes);
+                    // Acquire locks to prevent tree from being re-opened. No deadlocks should
+                    // be possible with tree latch held exclusively, but order in a safe
+                    // fashion anyhow. A registry lookup can only follow a key map lookup.
+                    txn.lockExclusive(mRegistryKeyMap.mId, idKey);
+                    txn.lockExclusive(mRegistryKeyMap.mId, nameKey);
+                    txn.lockExclusive(mRegistry.mId, tree.mIdBytes);
+
+                    ref.clear();
+                    mOpenTrees.remove(tree.mName);
+                    mOpenTreesById.remove(tree.mId);
                 } catch (Throwable e) {
                     txn.reset();
                     throw rethrow(e);
@@ -1314,11 +1323,9 @@ public final class Database extends CauseCloseable {
             try {
                 deletePage(rootId, cachedState);
 
-                byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, tree.mName);
-                mRegistryKeyMap.remove(txn, nameKey, tree.mIdBytes);
-
-                byte[] idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
                 mRegistryKeyMap.remove(txn, idKey, tree.mName);
+                mRegistryKeyMap.remove(txn, nameKey, tree.mIdBytes);
+                mRegistry.delete(txn, tree.mIdBytes);
 
                 if (redo != null && !redo.dropIndex(tree.mId, mDurabilityMode.alwaysRedo())) {
                     redo = null;
