@@ -108,6 +108,9 @@ class FragmentCache {
         private int mSize;
         private int mGrowThreshold;
 
+        // Padding to prevent cache line sharing.
+        private long a0, a1, a2;
+
         LHT(Database db, int maxCapacity) {
             // Initial capacity of must be a power of 2.
             mEntries = new Node[Utils.roundUpPower2(Math.min(16, maxCapacity))];
