@@ -16,10 +16,8 @@
 
 package org.cojen.tupl;
 
-import java.io.EOFException;
 import java.io.File;
 import java.io.InterruptedIOException;
-import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 

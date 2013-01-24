@@ -18,8 +18,6 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import java.util.concurrent.TimeUnit;
-
 /**
  * Maintains a logical position in a {@link View}. Cursor instances can only be
  * safely used by one thread at a time, and they must be {@link #reset reset}

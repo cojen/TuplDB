@@ -873,8 +873,6 @@ final class UndoLog {
         throws IOException
     {
         byte[] opRef = new byte[1];
-        Index activeIndex = null;
-
         Scope scope = new Scope();
 
         // Scopes are recovered in the opposite order in which they were
@@ -915,7 +913,6 @@ final class UndoLog {
 
             case OP_INDEX:
                 mActiveIndexId = readLongLE(entry, 0);
-                activeIndex = null;
                 break;
 
             case OP_DELETE:

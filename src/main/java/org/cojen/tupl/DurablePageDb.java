@@ -20,7 +20,6 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.InputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.zip.CRC32;
