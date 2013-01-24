@@ -23,6 +23,10 @@ import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import static java.lang.System.arraycopy;
+
+import static org.cojen.tupl.Utils.*;
+
 /**
  * Defines a persistent, array of fixed sized pages. Each page is uniquely
  * identified by a 64-bit index, starting at zero.
@@ -108,7 +112,7 @@ abstract class PageArray extends CauseCloseable {
         } else {
             byte[] page = new byte[pageSize];
             readPage(index, page, 0);
-            System.arraycopy(page, start, buf, offset, length);
+            arraycopy(page, start, buf, offset, length);
         }
         return length;
     }
@@ -254,7 +258,7 @@ abstract class PageArray extends CauseCloseable {
             } else if (obj instanceof SnapshotImpl[]) {
                 SnapshotImpl[] snapshots = (SnapshotImpl[]) obj;
                 SnapshotImpl[] newSnapshots = new SnapshotImpl[snapshots.length + 1];
-                System.arraycopy(snapshots, 0, newSnapshots, 0, snapshots.length);
+                arraycopy(snapshots, 0, newSnapshots, 0, snapshots.length);
                 newSnapshots[newSnapshots.length - 1] = snapshot;
                 mSnapshots = newSnapshots;
             } else {
@@ -297,8 +301,8 @@ abstract class PageArray extends CauseCloseable {
         }
 
         SnapshotImpl[] newSnapshots = new SnapshotImpl[snapshots.length - 1];
-        System.arraycopy(snapshots, 0, newSnapshots, 0, pos);
-        System.arraycopy(snapshots, pos + 1, newSnapshots, pos, newSnapshots.length - pos);
+        arraycopy(snapshots, 0, newSnapshots, 0, pos);
+        arraycopy(snapshots, pos + 1, newSnapshots, pos, newSnapshots.length - pos);
         mSnapshots = newSnapshots;
     }
 
@@ -376,11 +380,11 @@ abstract class PageArray extends CauseCloseable {
                 {
                     // Insert a terminator for findNearby efficiency.
                     byte[] k2 = new byte[8];
-                    Utils.writeLongBE(k2, 0, ~0L);
-                    mPageCopyIndex.store(Transaction.BOGUS, k2, Utils.EMPTY_BYTES);
+                    writeLongBE(k2, 0, ~0L);
+                    mPageCopyIndex.store(Transaction.BOGUS, k2, EMPTY_BYTES);
                 }
 
-                for (long index = 0; index < count; index++, Utils.increment(key, 0, 8)) {
+                for (long index = 0; index < count; index++, increment(key, 0, 8)) {
                     synchronized (mSnapshotLock) {
                         while (true) {
                             if (mClosed) {
@@ -451,7 +455,7 @@ abstract class PageArray extends CauseCloseable {
                             mSnapshotLock.wait();
                         } else {
                             byte[] key = new byte[8];
-                            Utils.writeLongBE(key, 0, index);
+                            writeLongBE(key, 0, index);
                             c = mPageCopyIndex.newCursor(Transaction.BOGUS);
                             c.autoload(false);
                             c.find(key);
@@ -509,7 +513,7 @@ abstract class PageArray extends CauseCloseable {
                 mSnapshotLock.notifyAll();
             }
             unregister(this);
-            Utils.closeQuietly(null, mPageCopyIndex.mDatabase);
+            closeQuietly(null, mPageCopyIndex.mDatabase);
             mTempFileManager.deleteTempFile(mTempFile);
         }
 

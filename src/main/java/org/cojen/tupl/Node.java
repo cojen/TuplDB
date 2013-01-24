@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import static java.lang.System.arraycopy;
+
 import static org.cojen.tupl.Utils.*;
 
 /**
@@ -384,7 +386,7 @@ final class Node extends Latch {
                     cursor.reset();
                     return value;
                 } catch (Throwable e) {
-                    throw Utils.closeOnFailure(cursor, e);
+                    throw closeOnFailure(cursor, e);
                 }
             }
 
@@ -504,7 +506,7 @@ final class Node extends Latch {
             mChildNodes[childPos >> 1] = childNode;
         } catch (Throwable e) {
             releaseExclusive();
-            throw Utils.rethrow(e);
+            throw rethrow(e);
         }
 
         // Release parent latch before child has been loaded. Any threads
@@ -528,7 +530,7 @@ final class Node extends Latch {
             childNode.mId = 0;
             childNode.mType = TYPE_NONE;
             childNode.releaseExclusive();
-            throw Utils.rethrow(e);
+            throw rethrow(e);
         }
 
         return childNode;
@@ -827,7 +829,7 @@ final class Node extends Latch {
                 mCachedState = CACHED_CLEAN;
             } catch (Throwable e) {
                 releaseExclusive();
-                throw Utils.rethrow(e);
+                throw rethrow(e);
             }
         }
 
@@ -1098,7 +1100,7 @@ final class Node extends Latch {
         keyLen = keyLen >= 0 ? ((keyLen & 0x3f) + 1)
             : (((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff));
         byte[] key = new byte[keyLen];
-        System.arraycopy(page, loc, key, 0, keyLen);
+        arraycopy(page, loc, key, 0, keyLen);
         return key;
     }
 
@@ -1121,7 +1123,7 @@ final class Node extends Latch {
             return limitKey;
         } else if ((cmp ^ limitMode) < 0) {
             byte[] key = new byte[keyLen];
-            System.arraycopy(page, loc, key, 0, keyLen);
+            arraycopy(page, loc, key, 0, keyLen);
             return key;
         } else {
             return null;
@@ -1138,7 +1140,7 @@ final class Node extends Latch {
         keyLen = keyLen >= 0 ? ((keyLen & 0x3f) + 1)
             : (((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff));
         byte[] key = new byte[keyLen + 1];
-        System.arraycopy(page, loc, key, 0, keyLen);
+        arraycopy(page, loc, key, 0, keyLen);
         return key;
     }
 
@@ -1152,7 +1154,7 @@ final class Node extends Latch {
         int keyLen = header >= 0 ? ((header & 0x3f) + 1)
             : (((header & 0x3f) << 8) | ((page[loc++]) & 0xff));
         byte[] key = new byte[keyLen];
-        System.arraycopy(page, loc, key, 0, keyLen);
+        arraycopy(page, loc, key, 0, keyLen);
         return new byte[][] {key, retrieveLeafValueAtLoc(null, null, page, loc + keyLen)};
     }
 
@@ -1185,7 +1187,7 @@ final class Node extends Latch {
     {
         final int header = page[loc++];
         if (header == 0) {
-            return Utils.EMPTY_BYTES;
+            return EMPTY_BYTES;
         }
 
         int len;
@@ -1207,7 +1209,7 @@ final class Node extends Latch {
         }
 
         byte[] value = new byte[len];
-        System.arraycopy(page, loc, value, 0, len);
+        arraycopy(page, loc, value, 0, len);
         return value;
     }
 
@@ -1221,7 +1223,7 @@ final class Node extends Latch {
         int keyLen = header >= 0 ? ((header & 0x3f) + 1)
             : (((header & 0x3f) << 8) | ((page[loc++]) & 0xff));
         byte[] key = new byte[keyLen];
-        System.arraycopy(page, loc, key, 0, keyLen);
+        arraycopy(page, loc, key, 0, keyLen);
         cursor.mKey = key;
         cursor.mValue = retrieveLeafValueAtLoc(this, cursor.mTree, page, loc + keyLen);
     }
@@ -1466,7 +1468,7 @@ final class Node extends Latch {
                 if ((leftSpace -= 2) >= 0 &&
                     (entryLoc = allocPageEntry(encodedLen, leftSpace, rightSpace)) >= 0)
                 {
-                    System.arraycopy(page, searchVecStart, page, searchVecStart -= 2, pos);
+                    arraycopy(page, searchVecStart, page, searchVecStart -= 2, pos);
                     pos += searchVecStart;
                     mSearchVecStart = searchVecStart;
                     break alloc;
@@ -1479,7 +1481,7 @@ final class Node extends Latch {
                     (entryLoc = allocPageEntry(encodedLen, leftSpace, rightSpace)) >= 0)
                 {
                     pos += searchVecStart;
-                    System.arraycopy(page, pos, page, pos + 2, (searchVecEnd += 2) - pos);
+                    arraycopy(page, pos, page, pos + 2, (searchVecEnd += 2) - pos);
                     mSearchVecEnd = searchVecEnd;
                     break alloc;
                 }
@@ -1525,9 +1527,9 @@ final class Node extends Latch {
                 return compactLeaf(tree, encodedLen, pos, true);
             }
 
-            Utils.arrayCopies(page,
-                              searchVecStart, newSearchVecStart, pos,
-                              searchVecStart + pos, newSearchVecStart + pos + 2, vecLen - pos);
+            arrayCopies(page,
+                        searchVecStart, newSearchVecStart, pos,
+                        searchVecStart + pos, newSearchVecStart + pos + 2, vecLen - pos);
 
             pos += newSearchVecStart;
             mSearchVecStart = newSearchVecStart;
@@ -1596,9 +1598,9 @@ final class Node extends Latch {
         {
             // TODO: recycle child node arrays
             Node[] newChildNodes = new Node[mChildNodes.length + 1];
-            System.arraycopy(mChildNodes, 0, newChildNodes, 0, newChildPos);
-            System.arraycopy(mChildNodes, newChildPos, newChildNodes, newChildPos + 1,
-                             mChildNodes.length - newChildPos);
+            arraycopy(mChildNodes, 0, newChildNodes, 0, newChildPos);
+            arraycopy(mChildNodes, newChildPos, newChildNodes, newChildPos + 1,
+                      mChildNodes.length - newChildPos);
             newChildNodes[newChildPos] = newChild;
             mChildNodes = newChildNodes;
 
@@ -1657,10 +1659,10 @@ final class Node extends Latch {
                 if ((leftSpace -= 10) >= 0 &&
                     (entryLoc = allocPageEntry(encodedLen, leftSpace, rightSpace)) >= 0)
                 {
-                    System.arraycopy(page, searchVecStart, page, searchVecStart - 10, keyPos);
-                    System.arraycopy(page, searchVecStart + keyPos,
-                                     page, searchVecStart + keyPos - 8,
-                                     searchVecEnd - searchVecStart + 2 - keyPos + newChildPos);
+                    arraycopy(page, searchVecStart, page, searchVecStart - 10, keyPos);
+                    arraycopy(page, searchVecStart + keyPos,
+                              page, searchVecStart + keyPos - 8,
+                              searchVecEnd - searchVecStart + 2 - keyPos + newChildPos);
                     mSearchVecStart = searchVecStart -= 10;
                     keyPos += searchVecStart;
                     mSearchVecEnd = searchVecEnd -= 8;
@@ -1679,12 +1681,12 @@ final class Node extends Latch {
                 if (leftSpace >= 0 && rightSpace >= 0 &&
                     (entryLoc = allocPageEntry(encodedLen, leftSpace, rightSpace)) >= 0)
                 {
-                    System.arraycopy(page, searchVecStart, page, searchVecStart -= 2, keyPos);
+                    arraycopy(page, searchVecStart, page, searchVecStart -= 2, keyPos);
                     mSearchVecStart = searchVecStart;
                     keyPos += searchVecStart;
-                    System.arraycopy(page, searchVecEnd + newChildPos + 2,
-                                     page, searchVecEnd + newChildPos + (2 + 8),
-                                     ((searchVecEnd - searchVecStart) << 2) + 8 - newChildPos);
+                    arraycopy(page, searchVecEnd + newChildPos + 2,
+                              page, searchVecEnd + newChildPos + (2 + 8),
+                              ((searchVecEnd - searchVecStart) << 2) + 8 - newChildPos);
                     newChildPos += searchVecEnd + 2;
                     break alloc;
                 }
@@ -1745,20 +1747,20 @@ final class Node extends Latch {
 
             int newSearchVecEnd = newSearchVecStart + vecLen;
 
-            Utils.arrayCopies(page,
-                              // Move search vector up to new key position.
-                              searchVecStart, newSearchVecStart, keyPos,
+            arrayCopies(page,
+                        // Move search vector up to new key position.
+                        searchVecStart, newSearchVecStart, keyPos,
 
-                              // Move search vector after new key position, to new child
-                              // id position.
-                              searchVecStart + keyPos,
-                              newSearchVecStart + keyPos + 2,
-                              vecLen - keyPos + newChildPos,
+                        // Move search vector after new key position, to new child
+                        // id position.
+                        searchVecStart + keyPos,
+                        newSearchVecStart + keyPos + 2,
+                        vecLen - keyPos + newChildPos,
 
-                              // Move search vector after new child id position.
-                              searchVecEnd + 2 + newChildPos,
-                              newSearchVecEnd + 10 + newChildPos,
-                              childIdsLen - newChildPos);
+                        // Move search vector after new child id position.
+                        searchVecEnd + 2 + newChildPos,
+                        newSearchVecEnd + 10 + newChildPos,
+                        childIdsLen - newChildPos);
 
             keyPos += newSearchVecStart;
             newChildPos += newSearchVecEnd + 2;
@@ -1855,7 +1857,7 @@ final class Node extends Latch {
                     // Ensure ghost is replaced.
                     page[valueHeaderLoc] = 0;
                 } else {
-                    System.arraycopy(value, 0, page, loc, valueLen);
+                    arraycopy(value, 0, page, loc, valueLen);
                     if (fragmented != 0) {
                         page[valueHeaderLoc] |= fragmented;
                     }
@@ -1961,7 +1963,7 @@ final class Node extends Latch {
                 return;
             }
 
-            System.arraycopy(page, searchVecStart, page, newSearchVecStart, vecLen);
+            arraycopy(page, searchVecStart, page, newSearchVecStart, vecLen);
 
             pos += newSearchVecStart;
             mSearchVecStart = newSearchVecStart;
@@ -1969,7 +1971,7 @@ final class Node extends Latch {
         }
 
         // Copy existing key, and then copy value.
-        System.arraycopy(page, start, page, entryLoc, keyLen);
+        arraycopy(page, start, page, entryLoc, keyLen);
         copyToLeafValue(page, fragmented, value, entryLoc + keyLen);
         writeShortLE(page, pos, entryLoc);
 
@@ -2023,12 +2025,12 @@ final class Node extends Latch {
 
         if (pos < ((searchVecEnd - searchVecStart + 2) >> 1)) {
             // Shift left side of search vector to the right.
-            System.arraycopy(page, searchVecStart, page, searchVecStart += 2, pos);
+            arraycopy(page, searchVecStart, page, searchVecStart += 2, pos);
             mSearchVecStart = searchVecStart;
         } else {
             // Shift right side of search vector to the left.
             pos += searchVecStart;
-            System.arraycopy(page, pos + 2, page, pos, searchVecEnd - pos);
+            arraycopy(page, pos + 2, page, pos, searchVecEnd - pos);
             mSearchVecEnd = searchVecEnd - 2;
         }
     }
@@ -2056,7 +2058,7 @@ final class Node extends Latch {
             int leftEntryLoc = leftNode.createLeafEntry
                 (tree, leftNode.highestLeafPos() + 2, encodedLen);
             // Note: Must access left page each time, since compaction can replace it.
-            System.arraycopy(rightPage, entryLoc, leftNode.mPage, leftEntryLoc, encodedLen);
+            arraycopy(rightPage, entryLoc, leftNode.mPage, leftEntryLoc, encodedLen);
             searchVecStart += 2;
         }
 
@@ -2098,11 +2100,11 @@ final class Node extends Latch {
         // Copy child id associated with parent key.
         final byte[] rightPage = rightNode.mPage;
         int rightChildIdsLoc = rightNode.mSearchVecEnd + 2;
-        System.arraycopy(rightPage, rightChildIdsLoc, result.mPage, result.mNewChildLoc, 8);
+        arraycopy(rightPage, rightChildIdsLoc, result.mPage, result.mNewChildLoc, 8);
         rightChildIdsLoc += 8;
 
         // Write parent key.
-        System.arraycopy(parentPage, parentLoc, result.mPage, result.mEntryLoc, parentLen);
+        arraycopy(parentPage, parentLoc, result.mPage, result.mEntryLoc, parentLen);
 
         final int searchVecEnd = rightNode.mSearchVecEnd;
 
@@ -2116,21 +2118,21 @@ final class Node extends Latch {
             result = leftNode.createInternalEntry(tree, pos, encodedLen, (pos + 2) << 2, null);
 
             // Copy child id.
-            System.arraycopy(rightPage, rightChildIdsLoc, result.mPage, result.mNewChildLoc, 8);
+            arraycopy(rightPage, rightChildIdsLoc, result.mPage, result.mNewChildLoc, 8);
             rightChildIdsLoc += 8;
 
             // Copy key.
             // Note: Must access left page each time, since compaction can replace it.
-            System.arraycopy(rightPage, entryLoc, result.mPage, result.mEntryLoc, encodedLen);
+            arraycopy(rightPage, entryLoc, result.mPage, result.mEntryLoc, encodedLen);
             searchVecStart += 2;
         }
 
         // TODO: recycle child node arrays
         int leftLen = leftNode.mChildNodes.length;
         Node[] newChildNodes = new Node[leftLen + rightNode.mChildNodes.length];
-        System.arraycopy(leftNode.mChildNodes, 0, newChildNodes, 0, leftLen);
-        System.arraycopy(rightNode.mChildNodes, 0, newChildNodes, leftLen,
-                         rightNode.mChildNodes.length);
+        arraycopy(leftNode.mChildNodes, 0, newChildNodes, 0, leftLen);
+        arraycopy(rightNode.mChildNodes, 0, newChildNodes, leftLen,
+                  rightNode.mChildNodes.length);
         leftNode.mChildNodes = newChildNodes;
 
         // All cursors in the right node must be moved to the left node.
@@ -2173,9 +2175,9 @@ final class Node extends Latch {
         // TODO: recycle child node arrays
         childPos >>= 1;
         Node[] newChildNodes = new Node[mChildNodes.length - 1];
-        System.arraycopy(mChildNodes, 0, newChildNodes, 0, childPos);
-        System.arraycopy(mChildNodes, childPos + 1, newChildNodes, childPos,
-                         newChildNodes.length - childPos);
+        arraycopy(mChildNodes, 0, newChildNodes, 0, childPos);
+        arraycopy(mChildNodes, childPos + 1, newChildNodes, childPos,
+                  newChildNodes.length - childPos);
         mChildNodes = newChildNodes;
         // Rescale for long ids as encoded in page.
         childPos <<= 3;
@@ -2186,17 +2188,17 @@ final class Node extends Latch {
         // (8 bytes). Determine which shift operations minimize movement.
         if (childPos < (3 * (searchVecEnd - searchVecStart) + keyPos + 8) >> 1) {
             // Shift child ids right by 8, shift search vector right by 10.
-            System.arraycopy(page, searchVecStart + keyPos + 2,
-                             page, searchVecStart + keyPos + (2 + 8),
-                             searchVecEnd - searchVecStart - keyPos + childPos);
-            System.arraycopy(page, searchVecStart, page, searchVecStart += 10, keyPos);
+            arraycopy(page, searchVecStart + keyPos + 2,
+                      page, searchVecStart + keyPos + (2 + 8),
+                      searchVecEnd - searchVecStart - keyPos + childPos);
+            arraycopy(page, searchVecStart, page, searchVecStart += 10, keyPos);
             mSearchVecEnd = searchVecEnd + 8;
         } else {
             // Shift child ids left by 8, shift search vector right by 2.
-            System.arraycopy(page, searchVecEnd + childPos + (2 + 8),
-                             page, searchVecEnd + childPos + 2,
-                             ((searchVecEnd - searchVecStart) << 2) + 8 - childPos);
-            System.arraycopy(page, searchVecStart, page, searchVecStart += 2, keyPos);
+            arraycopy(page, searchVecEnd + childPos + (2 + 8),
+                      page, searchVecEnd + childPos + 2,
+                      ((searchVecEnd - searchVecStart) << 2) + 8 - childPos);
+            arraycopy(page, searchVecStart, page, searchVecStart += 2, keyPos);
         }
 
         mSearchVecStart = searchVecStart;
@@ -2324,7 +2326,7 @@ final class Node extends Latch {
             page[entryLoc++] = (byte) (0x80 | (len >> 8));
             page[entryLoc++] = (byte) len;
         }
-        System.arraycopy(key, 0, page, entryLoc, len);
+        arraycopy(key, 0, page, entryLoc, len);
 
         copyToLeafValue(page, fragmented, value, entryLoc + len);
     }
@@ -2345,7 +2347,7 @@ final class Node extends Latch {
             page[valueLoc++] = (byte) ((len - 1) >> 8);
             page[valueLoc++] = (byte) (len - 1);
         }
-        System.arraycopy(value, 0, page, valueLoc, len);
+        arraycopy(value, 0, page, valueLoc, len);
         return valueLoc;
     }
 
@@ -2398,7 +2400,7 @@ final class Node extends Latch {
             writeShortLE(dest, newSearchVecLoc, destLoc);
             int sourceLoc = readUnsignedShortLE(page, searchVecLoc);
             int len = leafEntryLengthAtLoc(page, sourceLoc);
-            System.arraycopy(page, sourceLoc, dest, destLoc, len);
+            arraycopy(page, sourceLoc, dest, destLoc, len);
             destLoc += len;
         }
 
@@ -2567,7 +2569,7 @@ final class Node extends Latch {
 
                 // Copy entry and point to it.
                 destLoc -= entryLen;
-                System.arraycopy(page, entryLoc, newPage, destLoc, entryLen);
+                arraycopy(page, entryLoc, newPage, destLoc, entryLen);
                 writeShortLE(newPage, newSearchVecLoc, destLoc);
 
                 garbageAccum += entryLen;
@@ -2647,7 +2649,7 @@ final class Node extends Latch {
                 }
 
                 // Copy entry and point to it.
-                System.arraycopy(page, entryLoc, newPage, destLoc, entryLen);
+                arraycopy(page, entryLoc, newPage, destLoc, entryLen);
                 writeShortLE(newPage, newSearchVecLoc, destLoc);
                 destLoc += entryLen;
 
@@ -2837,7 +2839,7 @@ final class Node extends Latch {
 
                     // Copy key entry and point to it.
                     destLoc -= entryLen;
-                    System.arraycopy(page, entryLoc, newPage, destLoc, entryLen);
+                    arraycopy(page, entryLoc, newPage, destLoc, entryLen);
                     writeShortLE(newPage, newSearchVecLoc, destLoc);
                     newSearchVecLoc += 2;
                 }
@@ -2846,15 +2848,15 @@ final class Node extends Latch {
 
                 // Copy existing child ids and insert new child id.
                 {
-                    System.arraycopy(page, searchVecEnd + 2,
-                                     newPage, newSearchVecLoc, newChildPos);
+                    arraycopy(page, searchVecEnd + 2,
+                              newPage, newSearchVecLoc, newChildPos);
 
                     // Leave gap for new child id, to be set by caller.
                     result.mNewChildLoc = newSearchVecLoc + newChildPos;
 
                     int tailChildIdsLen = ((searchVecLoc - searchVecStart) << 2) - newChildPos;
-                    System.arraycopy(page, searchVecEnd + 2 + newChildPos,
-                                     newPage, newSearchVecLoc + newChildPos + 8, tailChildIdsLen);
+                    arraycopy(page, searchVecEnd + 2 + newChildPos,
+                              newPage, newSearchVecLoc + newChildPos + 8, tailChildIdsLen);
 
                     // Split references to child node instances. New child node has already
                     // been placed into mChildNodes by caller.
@@ -2862,9 +2864,9 @@ final class Node extends Latch {
                     int leftLen = ((newSearchVecLoc - TN_HEADER_SIZE) >> 1) + 1;
                     Node[] leftChildNodes = new Node[leftLen];
                     Node[] rightChildNodes = new Node[mChildNodes.length - leftLen];
-                    System.arraycopy(mChildNodes, 0, leftChildNodes, 0, leftLen);
-                    System.arraycopy(mChildNodes, leftLen,
-                                     rightChildNodes, 0, rightChildNodes.length);
+                    arraycopy(mChildNodes, 0, leftChildNodes, 0, leftLen);
+                    arraycopy(mChildNodes, leftLen,
+                              rightChildNodes, 0, rightChildNodes.length);
                     newNode.mChildNodes = leftChildNodes;
                     mChildNodes = rightChildNodes;
                 }
@@ -2878,8 +2880,8 @@ final class Node extends Latch {
                 // Prune off the left end of this node by shifting vector towards child ids.
                 int shift = (searchVecLoc - searchVecStart) << 2;
                 int len = searchVecEnd - searchVecLoc + 2;
-                System.arraycopy(page, searchVecLoc,
-                                 page, mSearchVecStart = searchVecLoc + shift, len);
+                arraycopy(page, searchVecLoc,
+                          page, mSearchVecStart = searchVecLoc + shift, len);
                 mSearchVecEnd = searchVecEnd + shift;
             } else {
                 // Split into new right node.
@@ -2930,7 +2932,7 @@ final class Node extends Latch {
                     }
 
                     // Copy key entry and point to it.
-                    System.arraycopy(page, entryLoc, newPage, destLoc, entryLen);
+                    arraycopy(page, entryLoc, newPage, destLoc, entryLen);
                     newSearchVecLoc -= 2;
                     writeShortLE(newPage, newSearchVecLoc, destLoc);
                     destLoc += entryLen;
@@ -2944,7 +2946,7 @@ final class Node extends Latch {
                 {
                     int highestLoc = newPage.length - (5 * newVecLen) - 8;
                     int midLoc = ((destLoc + encodedLen + highestLoc + 1) >> 1) & ~1;
-                    System.arraycopy(newPage, newSearchVecLoc, newPage, midLoc, newVecLen);
+                    arraycopy(newPage, newSearchVecLoc, newPage, midLoc, newVecLen);
                     newKeyLoc -= newSearchVecLoc - midLoc;
                     newSearchVecLoc = midLoc;
                 }
@@ -2955,8 +2957,8 @@ final class Node extends Latch {
                 {
                     int headChildIdsLen = newChildPos - ((searchVecLoc - searchVecStart + 2) << 2);
                     int newDestLoc = newSearchVecEnd + 2;
-                    System.arraycopy(page, searchVecEnd + 2 + newChildPos - headChildIdsLen,
-                                     newPage, newDestLoc, headChildIdsLen);
+                    arraycopy(page, searchVecEnd + 2 + newChildPos - headChildIdsLen,
+                              newPage, newDestLoc, headChildIdsLen);
 
                     // Leave gap for new child id, to be set by caller.
                     newDestLoc += headChildIdsLen;
@@ -2964,8 +2966,8 @@ final class Node extends Latch {
 
                     int tailChildIdsLen =
                         ((searchVecEnd - searchVecStart) << 2) + 16 - newChildPos;
-                    System.arraycopy(page, searchVecEnd + 2 + newChildPos,
-                                     newPage, newDestLoc + 8, tailChildIdsLen);
+                    arraycopy(page, searchVecEnd + 2 + newChildPos,
+                              newPage, newDestLoc + 8, tailChildIdsLen);
 
                     // Split references to child node instances. New child node has already
                     // been placed into mChildNodes by caller.
@@ -2973,9 +2975,9 @@ final class Node extends Latch {
                     int rightLen = ((newSearchVecEnd - newSearchVecLoc) >> 1) + 2;
                     Node[] rightChildNodes = new Node[rightLen];
                     Node[] leftChildNodes = new Node[mChildNodes.length - rightLen];
-                    System.arraycopy(mChildNodes, leftChildNodes.length,
-                                     rightChildNodes, 0, rightLen);
-                    System.arraycopy(mChildNodes, 0, leftChildNodes, 0, leftChildNodes.length);
+                    arraycopy(mChildNodes, leftChildNodes.length,
+                              rightChildNodes, 0, rightLen);
+                    arraycopy(mChildNodes, 0, leftChildNodes, 0, leftChildNodes.length);
                     newNode.mChildNodes = rightChildNodes;
                     mChildNodes = leftChildNodes;
                 }
@@ -2988,8 +2990,8 @@ final class Node extends Latch {
 
                 // Prune off the right end of this node by shifting vector towards child ids.
                 int len = searchVecLoc - searchVecStart;
-                System.arraycopy(page, searchVecStart,
-                                 page, mSearchVecStart = searchVecEnd + 2 - len, len);
+                arraycopy(page, searchVecStart,
+                          page, mSearchVecStart = searchVecEnd + 2 - len, len);
             }
 
             break;
@@ -3045,7 +3047,7 @@ final class Node extends Latch {
             writeShortLE(dest, newSearchVecLoc, destLoc);
             int sourceLoc = readUnsignedShortLE(page, searchVecLoc);
             int len = internalEntryLengthAtLoc(page, sourceLoc);
-            System.arraycopy(page, sourceLoc, dest, destLoc, len);
+            arraycopy(page, sourceLoc, dest, destLoc, len);
             destLoc += len;
         }
 
@@ -3055,10 +3057,10 @@ final class Node extends Latch {
         }
 
         // Copy child ids, and leave room for inserted child id.
-        System.arraycopy(page, mSearchVecEnd + 2, dest, newSearchVecLoc, childPos);
-        System.arraycopy(page, mSearchVecEnd + 2 + childPos,
-                         dest, newSearchVecLoc + childPos + 8,
-                         (newSearchVecSize << 2) - childPos);
+        arraycopy(page, mSearchVecEnd + 2, dest, newSearchVecLoc, childPos);
+        arraycopy(page, mSearchVecEnd + 2 + childPos,
+                  dest, newSearchVecLoc + childPos + 8,
+                  (newSearchVecSize << 2) - childPos);
 
         // Recycle old page buffer.
         db.addSpareBuffer(page);
@@ -3130,7 +3132,7 @@ final class Node extends Latch {
             return "UndoNode: {id=" + mId +
                 ", cachedState=" + mCachedState +
                 ", topEntry=" + mGarbage +
-                ", lowerNodeId=" + + Utils.readLongLE(mPage, 4) +
+                ", lowerNodeId=" + + readLongLE(mPage, 4) +
                 ", lockState=" + super.toString() +
                 '}';
         case TYPE_FRAGMENT:
@@ -3252,7 +3254,7 @@ final class Node extends Latch {
             }
 
             if (lastKeyLoc != 0) {
-                int result = Utils.compareKeys(page, lastKeyLoc, lastKeyLen, page, loc, keyLen);
+                int result = compareKeys(page, lastKeyLoc, lastKeyLen, page, loc, keyLen);
                 if (result >= 0) {
                     return verifyFailed(level, observer, "Key order: " + result);
                 }

@@ -28,6 +28,8 @@ import java.util.Random;
 
 import java.util.concurrent.TimeUnit;
 
+import static java.lang.System.arraycopy;
+
 /**
  * 
  *
@@ -90,11 +92,11 @@ class Utils {
                             int start2, int dest2, int length2)
     {
         if (dest1 < start1) {
-            System.arraycopy(page, start1, page, dest1, length1);
-            System.arraycopy(page, start2, page, dest2, length2);
+            arraycopy(page, start1, page, dest1, length1);
+            arraycopy(page, start2, page, dest2, length2);
         } else {
-            System.arraycopy(page, start2, page, dest2, length2);
-            System.arraycopy(page, start1, page, dest1, length1);
+            arraycopy(page, start2, page, dest2, length2);
+            arraycopy(page, start1, page, dest1, length1);
         }
     }
 
@@ -108,11 +110,11 @@ class Utils {
                             int start3, int dest3, int length3)
     {
         if (dest1 < start1) {
-            System.arraycopy(page, start1, page, dest1, length1);
+            arraycopy(page, start1, page, dest1, length1);
             arrayCopies(page, start2, dest2, length2, start3, dest3, length3);
         } else {
             arrayCopies(page, start2, dest2, length2, start3, dest3, length3);
-            System.arraycopy(page, start1, page, dest1, length1);
+            arraycopy(page, start1, page, dest1, length1);
         }
     }
 
@@ -769,7 +771,7 @@ class Utils {
         decrement(b, offset, offset + len);
         if (len != decodeReverseUnsignedLength(b, offset)) {
             byte[] copy = new byte[b.length + 1];
-            System.arraycopy(b, 0, copy, 0, b.length);
+            arraycopy(b, 0, copy, 0, b.length);
             copy[copy.length - 1] = (byte) 0xff;
             b = copy;
         }
