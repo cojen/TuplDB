@@ -20,6 +20,10 @@ import java.io.IOException;
 
 import java.util.concurrent.locks.Lock;
 
+import static java.lang.System.arraycopy;
+
+import static org.cojen.tupl.Utils.*;
+
 /**
  * Persisted collection of fragmented values which should be deleted. Trash is
  * emptied after transactions commit and during recovery.
@@ -53,7 +57,7 @@ class FragmentedTrash {
         // It would be nice if cursor store supported array slices. Instead, a
         // temporary array needs to be created.
         byte[] payload = new byte[valueLen];
-        System.arraycopy(entry, valueStart, payload, 0, valueLen);
+        arraycopy(entry, valueStart, payload, 0, valueLen);
 
         TreeCursor cursor = prepareEntry(txn.txnId());
         byte[] key = cursor.key();
@@ -65,7 +69,7 @@ class FragmentedTrash {
             cursor.reset();
         } catch (Throwable e) {
             txn.borked(e);
-            throw Utils.closeOnFailure(cursor, e);
+            throw closeOnFailure(cursor, e);
         }
 
         // Now write the undo log entry.
@@ -76,8 +80,8 @@ class FragmentedTrash {
             // Cannot re-use existing temporary array.
             payload = new byte[payloadLen];
         }
-        System.arraycopy(entry, keyStart, payload, 0, keyLen);
-        System.arraycopy(key, 8, payload, keyLen, tidLen);
+        arraycopy(entry, keyStart, payload, 0, keyLen);
+        arraycopy(key, 8, payload, keyLen, tidLen);
 
         txn.undoReclaimFragmented(indexId, payload, 0, payloadLen);
     }
@@ -92,17 +96,17 @@ class FragmentedTrash {
         // the transaction have lower integer values.
 
         byte[] prefix = new byte[8];
-        Utils.writeLongBE(prefix, 0, txnId);
+        writeLongBE(prefix, 0, txnId);
 
         TreeCursor cursor = new TreeCursor(mTrash, Transaction.BOGUS);
         try {
             cursor.autoload(false);
             cursor.findGt(prefix);
             byte[] key = cursor.key();
-            if (key == null || Utils.compareKeys(key, 0, 8, prefix, 0, 8) != 0) {
+            if (key == null || compareKeys(key, 0, 8, prefix, 0, 8) != 0) {
                 // Create first entry for this transaction.
                 key = new byte[8 + 1];
-                System.arraycopy(prefix, 0, key, 0, 8);
+                arraycopy(prefix, 0, key, 0, 8);
                 key[8] = (byte) 0xff;
                 cursor.findNearby(key);
             } else {
@@ -110,11 +114,11 @@ class FragmentedTrash {
                 // be modified, it doesn't need to be cloned because no
                 // transaction was used by the search. The key instance is not
                 // shared with the lock manager.
-                cursor.findNearby(Utils.decrementReverseUnsignedVar(key, 8));
+                cursor.findNearby(decrementReverseUnsignedVar(key, 8));
             }
             return cursor;
         } catch (Throwable e) {
-            throw Utils.closeOnFailure(cursor, e);
+            throw closeOnFailure(cursor, e);
         }
     }
 
@@ -129,13 +133,13 @@ class FragmentedTrash {
         keyLen = keyLen >= 0 ? ((keyLen & 0x3f) + 1)
             : (((keyLen & 0x3f) << 8) | ((undoEntry[loc++]) & 0xff));
         byte[] indexKey = new byte[keyLen];
-        System.arraycopy(undoEntry, loc, indexKey, 0, keyLen);
+        arraycopy(undoEntry, loc, indexKey, 0, keyLen);
         loc += keyLen;
         int tidLen = undoEntry.length - loc;
         byte[] trashKey = new byte[8 + tidLen];
 
-        Utils.writeLongBE(trashKey, 0, txnId);
-        System.arraycopy(undoEntry, loc, trashKey, 8, tidLen);
+        writeLongBE(trashKey, 0, txnId);
+        arraycopy(undoEntry, loc, trashKey, 8, tidLen);
 
         byte[] fragmented;
         TreeCursor cursor = new TreeCursor(mTrash, Transaction.BOGUS);
@@ -150,7 +154,7 @@ class FragmentedTrash {
             cursor.store(null);
             cursor.reset();
         } catch (Throwable e) {
-            throw Utils.closeOnFailure(cursor, e);
+            throw closeOnFailure(cursor, e);
         }
 
         cursor = new TreeCursor(index, Transaction.BOGUS);
@@ -164,7 +168,7 @@ class FragmentedTrash {
             }
             cursor.reset();
         } catch (Throwable e) {
-            throw Utils.closeOnFailure(cursor, e);
+            throw closeOnFailure(cursor, e);
         }
     }
 
@@ -174,7 +178,7 @@ class FragmentedTrash {
      */
     void emptyTrash(long txnId) throws IOException {
         byte[] prefix = new byte[8];
-        Utils.writeLongBE(prefix, 0, txnId);
+        writeLongBE(prefix, 0, txnId);
 
         Database db = mTrash.mDatabase;
         final Lock sharedCommitLock = db.sharedCommitLock();
@@ -184,7 +188,7 @@ class FragmentedTrash {
             cursor.findGt(prefix);
             while (true) {
                 byte[] key = cursor.key();
-                if (key == null || Utils.compareKeys(key, 0, 8, prefix, 0, 8) != 0) {
+                if (key == null || compareKeys(key, 0, 8, prefix, 0, 8) != 0) {
                     break;
                 }
                 cursor.load();
@@ -200,7 +204,7 @@ class FragmentedTrash {
             }
             cursor.reset();
         } catch (Throwable e) {
-            throw Utils.closeOnFailure(cursor, e);
+            throw closeOnFailure(cursor, e);
         }
     }
 
@@ -233,7 +237,7 @@ class FragmentedTrash {
             }
             cursor.reset();
         } catch (Throwable e) {
-            throw Utils.closeOnFailure(cursor, e);
+            throw closeOnFailure(cursor, e);
         }
         return found;
     }

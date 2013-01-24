@@ -25,6 +25,8 @@ import java.io.RandomAccessFile;
 
 import java.util.EnumSet;
 
+import static org.cojen.tupl.Utils.*;
+
 /**
  * Basic FileIO implementation which uses the Java RandomAccessFile class,
  * unless a more suitable implementation is available.
@@ -86,7 +88,7 @@ class JavaFileIO extends CauseCloseable implements FileIO {
                 }
             }
         } catch (Throwable e) {
-            throw Utils.closeOnFailure(this, e);
+            throw closeOnFailure(this, e);
         }
     }
 
@@ -101,7 +103,7 @@ class JavaFileIO extends CauseCloseable implements FileIO {
         try {
             return file.length();
         } catch (IOException e) {
-            throw Utils.rethrow(e, mCause);
+            throw rethrow(e, mCause);
         } finally {
             yieldFile(file);
         }
@@ -134,7 +136,7 @@ class JavaFileIO extends CauseCloseable implements FileIO {
             eof.initCause(mCause);
             throw eof;
         } catch (IOException e) {
-            throw Utils.rethrow(e, mCause);
+            throw rethrow(e, mCause);
         }
     }
 
@@ -145,7 +147,7 @@ class JavaFileIO extends CauseCloseable implements FileIO {
             file.seek(pos);
             file.write(buf, offset, length);
         } catch (IOException e) {
-            throw Utils.rethrow(e, mCause);
+            throw rethrow(e, mCause);
         } finally {
             yieldFile(file);
         }
@@ -172,7 +174,7 @@ class JavaFileIO extends CauseCloseable implements FileIO {
         try {
             file.getChannel().force(metadata);
         } catch (IOException e) {
-            throw Utils.rethrow(e, mCause);
+            throw rethrow(e, mCause);
         } finally {
             yieldFile(file);
         }
@@ -192,10 +194,10 @@ class JavaFileIO extends CauseCloseable implements FileIO {
         RandomAccessFile[] pool = mFilePool;
         synchronized (pool) {
             for (RandomAccessFile file : pool) {
-                ex = Utils.closeQuietly(ex, file, cause);
+                ex = closeQuietly(ex, file, cause);
             }
             if (mDurableFile != null) {
-                ex = Utils.closeQuietly(ex, mDurableFile, cause);
+                ex = closeQuietly(ex, mDurableFile, cause);
             }
         }
         if (ex != null) {
@@ -228,7 +230,7 @@ class JavaFileIO extends CauseCloseable implements FileIO {
         }
     }
 
-    private static RandomAccessFile openRaf(File file, String mode) throws IOException {
+    static RandomAccessFile openRaf(File file, String mode) throws IOException {
         try {
             return new RandomAccessFile(file, mode);
         } catch (FileNotFoundException e) {

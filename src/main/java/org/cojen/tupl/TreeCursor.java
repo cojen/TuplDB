@@ -25,6 +25,8 @@ import java.util.concurrent.TimeUnit;
 
 import java.util.concurrent.locks.Lock;
 
+import static org.cojen.tupl.Utils.*;
+
 /**
  * Internal cursor implementation, which can be used by one thread at a time.
  *
@@ -83,13 +85,13 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     @Override
     public int compareKeyTo(byte[] rkey) {
         byte[] lkey = mKey;
-        return Utils.compareKeys(lkey, 0, lkey.length, rkey, 0, rkey.length);
+        return compareKeys(lkey, 0, lkey.length, rkey, 0, rkey.length);
     }
 
     @Override
     public int compareKeyTo(byte[] rkey, int offset, int length) {
         byte[] lkey = mKey;
-        return Utils.compareKeys(lkey, 0, lkey.length, rkey, offset, length);
+        return compareKeys(lkey, 0, lkey.length, rkey, offset, length);
     }
 
     private int keyHash() {
@@ -1376,7 +1378,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     private LockResult lockAndCopyIfExists(Transaction txn, long maxWait, TimeUnit unit)
         throws IOException
     {
-        long nanosTimeout = Utils.toNanos(maxWait, unit);
+        long nanosTimeout = toNanos(maxWait, unit);
 
         if (txn == null) {
             Locker locker = mTree.mLockManager.localLocker();
@@ -1643,7 +1645,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                             return result;
                         } catch (Throwable e) {
                             mValue = NOT_LOADED;
-                            throw Utils.rethrow(e);
+                            throw rethrow(e);
                         }
                     }
                 } finally {
@@ -1770,7 +1772,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                         } catch (Throwable e) {
                             mValue = NOT_LOADED;
                             node.releaseExclusive();
-                            throw Utils.rethrow(e);
+                            throw rethrow(e);
                         }
                         if (variant < VARIANT_NO_LOCK) {
                             node.releaseExclusive();
@@ -1963,7 +1965,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                         } catch (Throwable e) {
                             mValue = NOT_LOADED;
                             node.releaseExclusive();
-                            throw Utils.rethrow(e);
+                            throw rethrow(e);
                         }
                         node.releaseExclusive();
                     }
@@ -2076,7 +2078,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             throw new IllegalStateException("Cursor position is undefined");
         }
 
-        long nanosTimeout = Utils.toNanos(timeout, unit);
+        long nanosTimeout = toNanos(timeout, unit);
 
         LockResult result;
         Locker locker;
@@ -2198,7 +2200,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             if (end == null) {
                 compare = -1;
             } else {
-                compare = Utils.compareKeys(key, 0, key.length, end, 0, end.length);
+                compare = compareKeys(key, 0, key.length, end, 0, end.length);
                 if (compare > 0 || (compare == 0 && !inclusive)) {
                     break;
                 }
@@ -2433,7 +2435,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             find(null, key, 0, VARIANT_NO_LOCK);
 
             TreeCursorFrame leaf = mLeaf;
-            if (leaf.mNode.mPage == Utils.EMPTY_BYTES) {
+            if (leaf.mNode.mPage == EMPTY_BYTES) {
                 resetLatched(leaf.mNode);
                 return false;
             }
@@ -2616,7 +2618,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                     // position needs to be updated.
 
                     byte[] frameKey = frame.mNotFoundKey;
-                    int compare = Utils.compareKeys
+                    int compare = compareKeys
                         (frameKey, 0, frameKey.length, key, 0, key.length);
                     if (compare > 0) {
                         // Position is a complement, so subtract instead of add.
@@ -2642,7 +2644,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             if (node != null) {
                 node.releaseExclusive();
             }
-            throw Utils.rethrow(e);
+            throw rethrow(e);
         }
 
         return node;
@@ -2702,7 +2704,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                             // position needs to be updated.
 
                             byte[] frameKey = frame.mNotFoundKey;
-                            int compare = Utils.compareKeys
+                            int compare = compareKeys
                                 (frameKey, 0, frameKey.length, key, 0, key.length);
                             if (compare > 0) {
                                 // Position is a complement, so subtract instead of add.
@@ -2753,7 +2755,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         }
 
         try {
-            throw Utils.closeOnFailure(mTree.mDatabase, e);
+            throw closeOnFailure(mTree.mDatabase, e);
         } finally {
             reset();
         }
@@ -2812,7 +2814,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     private RuntimeException cleanup(Throwable e, TreeCursorFrame frame) {
         mLeaf = frame;
         reset();
-        return Utils.rethrow(e);
+        return rethrow(e);
     }
 
     @Override
@@ -2829,7 +2831,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                     return;
                 }
             }
-            throw Utils.closeOnFailure(mTree.mDatabase, cause);
+            throw closeOnFailure(mTree.mDatabase, cause);
         } catch (IOException e) {
             // Ignore.
         } finally {
@@ -2951,7 +2953,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             childNode.releaseShared();
             parentNode.releaseShared();
 
-            int compare = Utils.compareKeys(childKey, parentKey);
+            int compare = compareKeys(childKey, parentKey);
 
             if (left) {
                 if (compare >= 0) {
@@ -3085,7 +3087,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                 return node;
             } catch (Throwable e) {
                 node.releaseExclusive();
-                throw Utils.rethrow(e);
+                throw rethrow(e);
             }
         }
 
@@ -3114,7 +3116,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             } catch (Throwable e) {
                 parentNode.releaseExclusive();
                 node.releaseExclusive();
-                throw Utils.rethrow(e);
+                throw rethrow(e);
             }
             if (parentNode.mSplit != null) {
                 parentNode = finishSplit(parentFrame, parentNode);
@@ -3129,7 +3131,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             return node;
         } catch (Throwable e) {
             node.releaseExclusive();
-            throw Utils.rethrow(e);
+            throw rethrow(e);
         } finally {
             parentNode.releaseExclusive();
         }
@@ -3175,7 +3177,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                     } catch (Throwable e) {
                         leftNode.releaseExclusive();
                         parentNode.releaseExclusive();
-                        throw Utils.rethrow(e);
+                        throw rethrow(e);
                     }
                 }
             }
@@ -3202,7 +3204,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                         leftNode.releaseExclusive();
                     }
                     node.releaseExclusive();
-                    throw Utils.rethrow(e);
+                    throw rethrow(e);
                 }
 
                 if (rightNode.mSplit != null) {
@@ -3217,7 +3219,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                     } catch (Throwable e) {
                         rightNode.releaseExclusive();
                         parentNode.releaseExclusive();
-                        throw Utils.rethrow(e);
+                        throw rethrow(e);
                     }
                 }
             }
@@ -3262,7 +3264,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             leftNode.releaseExclusive();
             rightNode.releaseExclusive();
             parentNode.releaseExclusive();
-            throw Utils.rethrow(e);
+            throw rethrow(e);
         }
 
         // Determine if both nodes can fit in one node. If so, migrate and
@@ -3277,7 +3279,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             } catch (Throwable e) {
                 leftNode.releaseExclusive();
                 parentNode.releaseExclusive();
-                throw Utils.rethrow(e);
+                throw rethrow(e);
             }
             rightNode = null;
             parentNode.deleteChildRef(leftPos + 2);
@@ -3342,7 +3344,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                     }
                     leftChildNode.releaseExclusive();
                     node.releaseExclusive();
-                    throw Utils.rethrow(e);
+                    throw rethrow(e);
                 }
             }
 
@@ -3401,7 +3403,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                     } catch (Throwable e) {
                         leftNode.releaseExclusive();
                         parentNode.releaseExclusive();
-                        throw Utils.rethrow(e);
+                        throw rethrow(e);
                     }
                 }
             }
@@ -3428,7 +3430,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                         leftNode.releaseExclusive();
                     }
                     node.releaseExclusive();
-                    throw Utils.rethrow(e);
+                    throw rethrow(e);
                 }
 
                 if (rightNode.mSplit != null) {
@@ -3443,7 +3445,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                     } catch (Throwable e) {
                         rightNode.releaseExclusive();
                         parentNode.releaseExclusive();
-                        throw Utils.rethrow(e);
+                        throw rethrow(e);
                     }
                 }
             }
@@ -3492,13 +3494,13 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             leftNode.releaseExclusive();
             rightNode.releaseExclusive();
             parentNode.releaseExclusive();
-            throw Utils.rethrow(e);
+            throw rethrow(e);
         }
 
         // Determine if both nodes plus parent key can fit in one node. If so,
         // migrate and delete the right node.
         byte[] parentPage = parentNode.mPage;
-        int parentEntryLoc = Utils.readUnsignedShortLE
+        int parentEntryLoc = readUnsignedShortLE
             (parentPage, parentNode.mSearchVecStart + leftPos);
         int parentEntryLen = Node.internalEntryLengthAtLoc(parentPage, parentEntryLoc);
         int remaining = leftAvail - parentEntryLen
@@ -3513,7 +3515,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             } catch (Throwable e) {
                 leftNode.releaseExclusive();
                 parentNode.releaseExclusive();
-                throw Utils.rethrow(e);
+                throw rethrow(e);
             }
             rightNode = null;
             parentNode.deleteChildRef(leftPos + 2);
@@ -3590,7 +3592,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                 return node;
             } catch (Throwable e) {
                 node.releaseExclusive();
-                throw Utils.rethrow(e);
+                throw rethrow(e);
             }
         }
 
@@ -3612,7 +3614,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             } catch (Throwable e) {
                 node.releaseExclusive();
                 parentNode.releaseExclusive();
-                throw Utils.rethrow(e);
+                throw rethrow(e);
             }
         }
     }

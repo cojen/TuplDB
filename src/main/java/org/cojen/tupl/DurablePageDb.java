@@ -20,10 +20,11 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.InputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.zip.CRC32;
+
+import static java.lang.System.arraycopy;
 
 import static org.cojen.tupl.Utils.*;
 
@@ -441,7 +442,7 @@ class DurablePageDb extends PageDb {
             // Figure out what the actual page size is.
 
             buffer = new byte[MINIMUM_PAGE_SIZE];
-            Utils.readFully(in, buffer, 0, buffer.length);
+            readFully(in, buffer, 0, buffer.length);
 
             long magic = readLongLE(buffer, I_MAGIC_NUMBER);
             if (magic != MAGIC_NUMBER) {
@@ -457,8 +458,8 @@ class DurablePageDb extends PageDb {
 
             if (pageSize != buffer.length) {
                 byte[] newBuffer = new byte[pageSize];
-                System.arraycopy(buffer, 0, newBuffer, 0, buffer.length);
-                Utils.readFully(in, newBuffer, buffer.length, pageSize - buffer.length);
+                arraycopy(buffer, 0, newBuffer, 0, buffer.length);
+                readFully(in, newBuffer, buffer.length, pageSize - buffer.length);
                 buffer = newBuffer;
             }
 
@@ -469,7 +470,7 @@ class DurablePageDb extends PageDb {
         try {
             while (true) {
                 try {
-                    Utils.readFully(in, buffer, 0, buffer.length);
+                    readFully(in, buffer, 0, buffer.length);
                 } catch (EOFException e) {
                     break;
                 }
@@ -477,7 +478,7 @@ class DurablePageDb extends PageDb {
                 index++;
             }
         } finally {
-            Utils.closeQuietly(null, in);
+            closeQuietly(null, in);
         }
 
         return new DurablePageDb(pa, crypto, false);
@@ -507,7 +508,7 @@ class DurablePageDb extends PageDb {
 
         if (extra != null) {
             // Exception is thrown if extra data exceeds header length.
-            System.arraycopy(extra, 0, header, I_EXTRA_DATA, extra.length);
+            arraycopy(extra, 0, header, I_EXTRA_DATA, extra.length);
         } 
 
         // Durably write the new page store header before returning
@@ -519,7 +520,7 @@ class DurablePageDb extends PageDb {
         // Write multiple header copies in the page, in case special recovery is required.
         int dupCount = header.length / MINIMUM_PAGE_SIZE;
         for (int i=1; i<dupCount; i++) {
-            System.arraycopy(header, 0, header, i * MINIMUM_PAGE_SIZE, MINIMUM_PAGE_SIZE);
+            arraycopy(header, 0, header, i * MINIMUM_PAGE_SIZE, MINIMUM_PAGE_SIZE);
         }
 
         // Ensure all writes are flushed before flushing the header. There's
