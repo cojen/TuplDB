@@ -18,8 +18,6 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import java.util.concurrent.TimeUnit;
-
 /**
  * Returned by {@link Database#allIndexes}.
  *
