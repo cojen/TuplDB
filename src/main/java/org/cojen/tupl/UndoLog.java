@@ -23,6 +23,8 @@ import java.util.Deque;
 
 import java.util.concurrent.locks.Lock;
 
+import static java.lang.System.arraycopy;
+
 import static org.cojen.tupl.Utils.*;
 
 /**
@@ -153,7 +155,7 @@ final class UndoLog {
             int size = buffer.length - pos;
             byte[] page = node.mPage;
             int newPos = page.length - size;
-            System.arraycopy(buffer, pos, page, newPos, size);
+            arraycopy(buffer, pos, page, newPos, size);
             // Set pointer to top entry.
             node.mGarbage = newPos;
             mBuffer = null;
@@ -223,7 +225,7 @@ final class UndoLog {
      * Caller must hold db commit lock.
      */
     private void doPush(final byte op) throws IOException {
-        doPush(op, Utils.EMPTY_BYTES, 0, 0, 0);
+        doPush(op, EMPTY_BYTES, 0, 0, 0);
     }
 
     /**
@@ -246,7 +248,7 @@ final class UndoLog {
             byte[] buffer = mBuffer;
             int pos;
             if (buffer == null) {
-                int newCap = Math.max(INITIAL_BUFFER_SIZE, Utils.roundUpPower2(encodedLen));
+                int newCap = Math.max(INITIAL_BUFFER_SIZE, roundUpPower2(encodedLen));
                 int pageSize = mDatabase.pageSize();
                 if (newCap <= (pageSize >> 1)) {
                     mBuffer = buffer = new byte[newCap];
@@ -263,11 +265,11 @@ final class UndoLog {
                 if (pos < encodedLen) {
                     final int size = buffer.length - pos;
                     int newCap = Math.max
-                        (buffer.length << 1, Utils.roundUpPower2(encodedLen + size));
+                        (buffer.length << 1, roundUpPower2(encodedLen + size));
                     if (newCap <= (mDatabase.pageSize() >> 1)) {
                         byte[] newBuf = new byte[newCap];
                         int newPos = newCap - size;
-                        System.arraycopy(buffer, pos, newBuf, newPos, size);
+                        arraycopy(buffer, pos, newBuf, newPos, size);
                         mBuffer = buffer = newBuf;
                         mBufferPos = pos = newPos;
                     } else {
@@ -275,7 +277,7 @@ final class UndoLog {
                         mNode = node = allocUnevictableNode(0);
                         byte[] page = node.mPage;
                         int newPos = page.length - size;
-                        System.arraycopy(buffer, pos, page, newPos, size);
+                        arraycopy(buffer, pos, page, newPos, size);
                         // Set pointer to top entry.
                         node.mGarbage = newPos;
                         mBuffer = null;
@@ -309,7 +311,7 @@ final class UndoLog {
             available -= amt;
             remaining -= amt;
             byte[] page = node.mPage;
-            System.arraycopy(payload, off + remaining, page, pos, amt);
+            arraycopy(payload, off + remaining, page, pos, amt);
             node.mGarbage = pos;
 
             if (remaining <= 0 && available >= (1 + varIntLen)) {
@@ -525,7 +527,7 @@ final class UndoLog {
                     // this method can only be called during recovery.
                     cursor.deleteGhost(key);
                 } catch (Throwable e) {
-                    throw Utils.closeOnFailure(cursor, e);
+                    throw closeOnFailure(cursor, e);
                 }
                 break;
             }
@@ -644,13 +646,13 @@ final class UndoLog {
             if ((opRef[0] = buffer[pos++]) < PAYLOAD_OP) {
                 mBufferPos = pos;
                 mLength -= 1;
-                return Utils.EMPTY_BYTES;
+                return EMPTY_BYTES;
             }
             int payloadLen = readUnsignedVarInt(buffer, pos);
             int varIntLen = calcUnsignedVarIntLength(payloadLen);
             pos += varIntLen;
             byte[] entry = new byte[payloadLen];
-            System.arraycopy(buffer, pos, entry, 0, payloadLen);
+            arraycopy(buffer, pos, entry, 0, payloadLen);
             mBufferPos = pos += payloadLen;
             mLength -= 1 + varIntLen + payloadLen;
             return entry;
@@ -680,7 +682,7 @@ final class UndoLog {
             if (node != null) {
                 node.releaseExclusive();
             }
-            return Utils.EMPTY_BYTES;
+            return EMPTY_BYTES;
         }
 
         int payloadLen;
@@ -696,7 +698,7 @@ final class UndoLog {
 
         while (true) {
             int avail = Math.min(payloadLen, page.length - pos);
-            System.arraycopy(page, pos, entry, entryPos, avail);
+            arraycopy(page, pos, entry, entryPos, avail);
             payloadLen -= avail;
             pos += avail;
             node.mGarbage = pos;
@@ -772,7 +774,7 @@ final class UndoLog {
         dest[destPos] = op;
         if (op >= PAYLOAD_OP) {
             int payloadPos = writeUnsignedVarInt(dest, destPos + 1, len);
-            System.arraycopy(payload, off, dest, payloadPos, len);
+            arraycopy(payload, off, dest, payloadPos, len);
         }
     }
 
@@ -807,11 +809,11 @@ final class UndoLog {
             // TODO: Consider calling persistReady if UndoLog is still in a buffer next time.
             final int psize = (8 + 8 + 2) + bsize;
             if (workspace == null || workspace.length < psize) {
-                workspace = new byte[Math.max(INITIAL_BUFFER_SIZE, Utils.roundUpPower2(psize))];
+                workspace = new byte[Math.max(INITIAL_BUFFER_SIZE, roundUpPower2(psize))];
             }
             writeHeaderToMaster(workspace);
             writeShortLE(workspace, (8 + 8), bsize);
-            System.arraycopy(buffer, pos, workspace, (8 + 8 + 2), bsize);
+            arraycopy(buffer, pos, workspace, (8 + 8 + 2), bsize);
             master.doPush(OP_LOG_COPY, workspace, 0, psize,
                           calcUnsignedVarIntLength(psize));
         } else {
@@ -1008,7 +1010,7 @@ final class UndoLog {
             int bsize = readUnsignedShortLE(masterLogEntry, (8 + 8));
             log.mLength = bsize;
             byte[] buffer = new byte[bsize];
-            System.arraycopy(masterLogEntry, (8 + 8 + 2), buffer, 0, bsize);
+            arraycopy(masterLogEntry, (8 + 8 + 2), buffer, 0, bsize);
             log.mBuffer = buffer;
             log.mBufferPos = 0;
         } else {

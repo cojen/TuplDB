@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import static org.cojen.tupl.Utils.*;
+
 /**
  * 
  *
@@ -99,7 +101,7 @@ final class BoundedView extends SubView {
         if (start == null) {
             return 1;
         }
-        int result = Utils.compareKeys(key, 0, key.length, start, 0, start.length);
+        int result = compareKeys(key, 0, key.length, start, 0, start.length);
         return result != 0 ? result : (mMode & START_EXCLUSIVE);
     }
 
@@ -109,7 +111,7 @@ final class BoundedView extends SubView {
      * @return <0 if less than start, 0 if equal (in range), >0 if higher (in range)
      */
     int startRangeCompare(byte[] start, byte[] key) {
-        int result = Utils.compareKeys(key, 0, key.length, start, 0, start.length);
+        int result = compareKeys(key, 0, key.length, start, 0, start.length);
         return result != 0 ? result : (mMode & START_EXCLUSIVE);
     }
 
@@ -121,7 +123,7 @@ final class BoundedView extends SubView {
         if (end == null) {
             return -1;
         }
-        int result = Utils.compareKeys(key, 0, key.length, end, 0, end.length);
+        int result = compareKeys(key, 0, key.length, end, 0, end.length);
         return result != 0 ? result : (mMode & END_EXCLUSIVE);
     }
 
@@ -131,7 +133,7 @@ final class BoundedView extends SubView {
      * @return <0 if less than end (in range), 0 if equal (in range), >0 if higher
      */
     int endRangeCompare(byte[] end, byte[] key) {
-        int result = Utils.compareKeys(key, 0, key.length, end, 0, end.length);
+        int result = compareKeys(key, 0, key.length, end, 0, end.length);
         return result != 0 ? result : (mMode & END_EXCLUSIVE);
     }
 }

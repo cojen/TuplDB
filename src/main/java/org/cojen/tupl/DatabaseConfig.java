@@ -28,6 +28,8 @@ import java.util.Properties;
 
 import java.util.concurrent.TimeUnit;
 
+import static org.cojen.tupl.Utils.*;
+
 /**
  * Configuration options used when {@link Database#open opening} a database.
  *
@@ -158,7 +160,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
      * @param unit required unit if timeout is more than zero
      */
     public DatabaseConfig lockTimeout(long timeout, TimeUnit unit) {
-        mLockTimeoutNanos = Utils.toNanos(timeout, unit);
+        mLockTimeoutNanos = toNanos(timeout, unit);
         return this;
     }
 
@@ -170,7 +172,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
      * @param unit required unit if rate is more than zero
      */
     public DatabaseConfig checkpointRate(long rate, TimeUnit unit) {
-        mCheckpointRateNanos = Utils.toNanos(rate, unit);
+        mCheckpointRateNanos = toNanos(rate, unit);
         return this;
     }
 
@@ -192,7 +194,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
      * @param unit required unit if delay is more than zero
      */
     public DatabaseConfig checkpointDelayThreshold(long delay, TimeUnit unit) {
-        mCheckpointDelayThresholdNanos = Utils.toNanos(delay, unit);
+        mCheckpointDelayThresholdNanos = toNanos(delay, unit);
         return this;
     }
 
@@ -248,7 +250,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
         try {
             return (DatabaseConfig) super.clone();
         } catch (CloneNotSupportedException e) {
-            throw Utils.rethrow(e);
+            throw rethrow(e);
         }
     }
 

@@ -20,6 +20,7 @@ import java.io.Flushable;
 import java.io.IOException;
 
 import static org.cojen.tupl.RedoOps.*;
+import static org.cojen.tupl.Utils.*;
 
 /**
  * Abstract class for active transactions to write into.
@@ -266,7 +267,7 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
                 try {
                     forceAndClose();
                 } catch (IOException e) {
-                    throw Utils.rethrow(e, mCause);
+                    throw rethrow(e, mCause);
                 }
                 return;
             }
@@ -434,7 +435,7 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
             mBufferPos = 0;
             write(buffer, len);
         } catch (IOException e) {
-            throw Utils.rethrow(e, mCause);
+            throw rethrow(e, mCause);
         }
     }
 
@@ -442,7 +443,7 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
         try {
             force(metadata);
         } catch (IOException e) {
-            throw Utils.rethrow(e, mCause);
+            throw rethrow(e, mCause);
         }
     }
 

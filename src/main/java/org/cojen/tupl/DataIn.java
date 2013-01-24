@@ -20,6 +20,8 @@ import java.io.EOFException;
 import java.io.InputStream;
 import java.io.IOException;
 
+import static java.lang.System.arraycopy;
+
 /**
  * Simple buffered input stream.
  *
@@ -64,11 +66,11 @@ class DataIn extends InputStream {
         int start = mStart;
         int avail = mEnd - start;
         if (avail >= len) {
-            System.arraycopy(mBuffer, start, b, off, len);
+            arraycopy(mBuffer, start, b, off, len);
             mStart = start + len;
             return len;
         } else {
-            System.arraycopy(mBuffer, start, b, off, avail);
+            arraycopy(mBuffer, start, b, off, avail);
             mStart = 0;
             mEnd = 0;
             off += avail;
@@ -84,7 +86,7 @@ class DataIn extends InputStream {
                     return amt;
                 } else {
                     int fill = Math.min(amt, len);
-                    System.arraycopy(mBuffer, 0, b, off, fill);
+                    arraycopy(mBuffer, 0, b, off, fill);
                     mStart = fill;
                     mEnd = amt;
                     return fill;
@@ -297,7 +299,7 @@ class DataIn extends InputStream {
         }
 
         if (mBuffer.length - mEnd < amount) {
-            System.arraycopy(mBuffer, start, mBuffer, 0, avail);
+            arraycopy(mBuffer, start, mBuffer, 0, avail);
             mStart = start = 0;
             mEnd = avail;
         }
