@@ -29,6 +29,7 @@ class TestUtils {
     private static final Map<Database, File> cTempDatabases = new WeakHashMap<Database, File>();
     private static final Set<File> cTempBaseFiles = new HashSet<File>();
     private static long cTempId;
+    private static File cBaseDir;
     private static volatile File cDeleteTempDir;
 
     static {
@@ -111,17 +112,17 @@ class TestUtils {
     }
 
     static File newTempBaseFile() throws IOException {
-        File tempDir = new File(System.getProperty("java.io.tmpdir"), "tupl");
-        cDeleteTempDir = tempDir.exists() ? null : tempDir;
-        tempDir.mkdirs();
-
-        File baseFile;
         synchronized (cTempBaseFiles) {
-            baseFile = new File(tempDir, "test-" + System.currentTimeMillis() + "-" + (++cTempId));
+            if (cBaseDir == null) {
+                cBaseDir = new File(System.getProperty("java.io.tmpdir"), "tupl");
+                cDeleteTempDir = cBaseDir.exists() ? null : cBaseDir;
+                cBaseDir.mkdirs();
+            }
+            File baseFile = new File
+                (cBaseDir, "test-" + System.currentTimeMillis() + "-" + (++cTempId));
             cTempBaseFiles.add(baseFile);
+            return baseFile;
         }
-
-        return baseFile;
     }
 
     static void deleteTempDatabase(Database db) {
