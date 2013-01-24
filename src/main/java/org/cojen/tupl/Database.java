@@ -22,7 +22,6 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Serializable;
 import java.io.Writer;
@@ -38,7 +37,6 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 
 import java.util.concurrent.TimeUnit;
@@ -46,6 +44,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import java.util.concurrent.locks.Lock;
+
+import static java.lang.System.arraycopy;
 
 import static org.cojen.tupl.Node.*;
 import static org.cojen.tupl.Utils.*;
@@ -1688,7 +1688,7 @@ public final class Database extends CauseCloseable {
     private static byte[] newKey(byte type, byte[] payload) {
         byte[] key = new byte[1 + payload.length];
         key[0] = type;
-        System.arraycopy(payload, 0, key, 1, payload.length);
+        arraycopy(payload, 0, key, 1, payload.length);
         return key;
     }
 
@@ -2161,7 +2161,7 @@ public final class Database extends CauseCloseable {
             newValue[0] = 0x02; // ff=0, i=1, p=0
             writeShortLE(newValue, 1, value.length);     // full length
             writeShortLE(newValue, 1 + 2, value.length); // inline length
-            System.arraycopy(value, 0, newValue, (1 + 2 + 2), value.length);
+            arraycopy(value, 0, newValue, (1 + 2 + 2), value.length);
             return newValue;
         } else {
             // Subtract header size, full length field size, and size of one pointer.
@@ -2200,7 +2200,7 @@ public final class Database extends CauseCloseable {
                     try {
                         mFragmentCache.put(caller, node);
                         writeInt48LE(newValue, poffset, node.mId);
-                        System.arraycopy(value, voffset, node.mPage, 0, pageSize);
+                        arraycopy(value, voffset, node.mPage, 0, pageSize);
                         if (pageCount == 1) {
                             break;
                         }
@@ -2215,7 +2215,7 @@ public final class Database extends CauseCloseable {
 
             newValue[0] = header;
             writeShortLE(newValue, offset, remainder); // inline length
-            System.arraycopy(value, 0, newValue, offset + 2, remainder);
+            arraycopy(value, 0, newValue, offset + 2, remainder);
         } else {
             // Remainder doesn't fit inline, so don't encode any inline
             // content. Last extra page will not be full.
@@ -2243,9 +2243,9 @@ public final class Database extends CauseCloseable {
                             mFragmentCache.put(caller, node);
                             writeInt48LE(newValue, offset, node.mId);
                             if (pageCount > 1) {
-                                System.arraycopy(value, voffset, node.mPage, 0, pageSize);
+                                arraycopy(value, voffset, node.mPage, 0, pageSize);
                             } else {
-                                System.arraycopy(value, voffset, node.mPage, 0, remainder);
+                                arraycopy(value, voffset, node.mPage, 0, remainder);
                                 break;
                             }
                         } finally {
@@ -2379,7 +2379,7 @@ public final class Database extends CauseCloseable {
 
             int len = (int) Math.min(levelCap, vlength);
             if (level <= 0) {
-                System.arraycopy(value, voffset, childNode.mPage, 0, len);
+                arraycopy(value, voffset, childNode.mPage, 0, len);
                 mFragmentCache.put(caller, childNode);
                 childNode.releaseExclusive();
             } else {
@@ -2449,7 +2449,7 @@ public final class Database extends CauseCloseable {
             int inLen = readUnsignedShortLE(fragmented, off);
             off += 2;
             len -= 2;
-            System.arraycopy(fragmented, off, value, vOff, inLen);
+            arraycopy(fragmented, off, value, vOff, inLen);
             off += inLen;
             len -= inLen;
             vOff += inLen;
@@ -2466,7 +2466,7 @@ public final class Database extends CauseCloseable {
                 try {
                     byte[] page = node.mPage;
                     int pLen = Math.min(vLen, page.length);
-                    System.arraycopy(page, 0, value, vOff, pLen);
+                    arraycopy(page, 0, value, vOff, pLen);
                     vOff += pLen;
                     vLen -= pLen;
                 } finally {
@@ -2591,7 +2591,7 @@ public final class Database extends CauseCloseable {
             Node childNode = mFragmentCache.get(caller, childNodeId);
             int len = (int) Math.min(levelCap, vlength);
             if (level <= 0) {
-                System.arraycopy(childNode.mPage, 0, value, voffset, len);
+                arraycopy(childNode.mPage, 0, value, voffset, len);
                 childNode.releaseShared();
             } else {
                 readMultilevelFragments(caller, level, childNode, value, voffset, len);

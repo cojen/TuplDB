@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import static org.cojen.tupl.Utils.*;
+
 /**
  * B-tree implementation.
  *
@@ -168,7 +170,7 @@ final class Tree implements Index {
             cursor.autoload(false);
             cursor.findAndStore(key, value);
         } catch (Throwable e) {
-            throw Utils.closeOnFailure(cursor, e);
+            throw closeOnFailure(cursor, e);
         }
     }
 
@@ -182,7 +184,7 @@ final class Tree implements Index {
             cursor.autoload(false);
             return cursor.findAndModify(key, TreeCursor.MODIFY_INSERT, value);
         } catch (Throwable e) {
-            throw Utils.closeOnFailure(cursor, e);
+            throw closeOnFailure(cursor, e);
         }
     }
 
@@ -196,7 +198,7 @@ final class Tree implements Index {
             cursor.autoload(false);
             return cursor.findAndModify(key, TreeCursor.MODIFY_REPLACE, value);
         } catch (Throwable e) {
-            throw Utils.closeOnFailure(cursor, e);
+            throw closeOnFailure(cursor, e);
         }
     }
 
@@ -211,7 +213,7 @@ final class Tree implements Index {
         try {
             return cursor.findAndModify(key, oldValue, newValue);
         } catch (Throwable e) {
-            throw Utils.closeOnFailure(cursor, e);
+            throw closeOnFailure(cursor, e);
         }
     }
 
@@ -237,7 +239,7 @@ final class Tree implements Index {
             cursor.reset();
             return oldValue;
         } catch (Throwable e) {
-            throw Utils.closeOnFailure(cursor, e);
+            throw closeOnFailure(cursor, e);
         }
     }
     */
@@ -335,7 +337,7 @@ final class Tree implements Index {
                 } else if (endInclusive) {
                     byte[] key;
                     while ((key = cursor.key()) != null) {
-                        int compare = Utils.compareKeys(key, 0, key.length, end, 0, end.length);
+                        int compare = compareKeys(key, 0, key.length, end, 0, end.length);
                         if (compare > 0) {
                             break;
                         }
@@ -348,7 +350,7 @@ final class Tree implements Index {
                 } else {
                     byte[] key;
                     while ((key = cursor.key()) != null) {
-                        if (Utils.compareKeys(key, 0, key.length, end, 0, end.length) >= 0) {
+                        if (compareKeys(key, 0, key.length, end, 0, end.length) >= 0) {
                             break;
                         }
                         cursor.store(null);
@@ -431,7 +433,7 @@ final class Tree implements Index {
             }
         } catch (Throwable e) {
             observer.failed = true;
-            throw Utils.rethrow(e);
+            throw rethrow(e);
         } finally {
             cursor.reset();
         }
@@ -443,7 +445,7 @@ final class Tree implements Index {
         Node root = mRoot;
         root.acquireExclusive();
         try {
-            if (root.mPage == Utils.EMPTY_BYTES) {
+            if (root.mPage == EMPTY_BYTES) {
                 // Already closed.
                 return;
             }
@@ -482,7 +484,7 @@ final class Tree implements Index {
     public boolean isClosed() {
         Node root = mRoot;
         root.acquireShared();
-        boolean closed = root.mPage == Utils.EMPTY_BYTES;
+        boolean closed = root.mPage == EMPTY_BYTES;
         root.releaseShared();
         return closed;
     }
@@ -492,7 +494,7 @@ final class Tree implements Index {
         Node root = mRoot;
         root.acquireExclusive();
         try {
-            if (root.mPage == Utils.EMPTY_BYTES) {
+            if (root.mPage == EMPTY_BYTES) {
                 throw new ClosedIndexException();
             }
 
