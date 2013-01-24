@@ -16,7 +16,6 @@
 
 package org.cojen.tupl;
 
-import java.io.InputStream;
 import java.io.IOException;
 
 /**
