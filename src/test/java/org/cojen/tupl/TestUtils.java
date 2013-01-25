@@ -80,6 +80,12 @@ class TestUtils {
         return db;
     }
 
+    static File baseFileForTempDatabase(Database db) {
+        synchronized (cTempDatabases) {
+            return cTempDatabases.get(db);
+        }
+    }
+
     static Database reopenTempDatabase(Database db, DatabaseConfig config) throws IOException {
         return reopenTempDatabase(db, config, false);
     }
