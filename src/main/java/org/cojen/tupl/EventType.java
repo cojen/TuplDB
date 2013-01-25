@@ -16,6 +16,8 @@
 
 package org.cojen.tupl;
 
+import java.util.logging.Level;
+
 /**
  * Defines the various types of events that an {@link EventListener
  * EventListener} can receive.
@@ -24,37 +26,41 @@ package org.cojen.tupl;
  */
 public enum EventType {
     /** Signals the beginning of cache initialization. */
-    CACHE_INIT_BEGIN(Category.CACHE_INIT),
+    CACHE_INIT_BEGIN(Category.CACHE_INIT, Level.INFO),
     /** Signals the end of cache initialization, reporting the duration. */
-    CACHE_INIT_COMPLETE(Category.CACHE_INIT),
+    CACHE_INIT_COMPLETE(Category.CACHE_INIT, Level.INFO),
 
     /** Signals the beginning of database recovery. */
-    RECOVERY_BEGIN(Category.RECOVERY),
+    RECOVERY_BEGIN(Category.RECOVERY, Level.INFO),
     /** Signals that undo logs of in-flight transactions are being loaded. */
-    RECOVERY_LOAD_UNDO_LOGS(Category.RECOVERY),
+    RECOVERY_LOAD_UNDO_LOGS(Category.RECOVERY, Level.INFO),
     /** Signals that non-checkpointed transactions are being committed or rolled back. */
-    RECOVERY_APPLY_REDO_LOG(Category.RECOVERY),
+    RECOVERY_APPLY_REDO_LOG(Category.RECOVERY, Level.INFO),
+    /** Signals that some redo operations were not recovered due to log file corruption. */
+    RECOVERY_REDO_LOG_CORRUPTION(Category.RECOVERY, Level.WARNING),
     /** Signals that transactions not expliticly committed or rolled back are being processed. */
-    RECOVERY_PROCESS_REMAINING(Category.RECOVERY),
+    RECOVERY_PROCESS_REMAINING(Category.RECOVERY, Level.INFO),
     /** Signals that large value fragments in the trash are being deleted. */
-    RECOVERY_DELETE_FRAGMENTS(Category.RECOVERY),
+    RECOVERY_DELETE_FRAGMENTS(Category.RECOVERY, Level.INFO),
     /** Signals the end of database recovery, reporting the duration. */
-    RECOVERY_COMPLETE(Category.RECOVERY),
+    RECOVERY_COMPLETE(Category.RECOVERY, Level.INFO),
 
     /** Signals the beginning of a checkpoint. */
-    CHECKPOINT_BEGIN(Category.CHECKPOINT),
+    CHECKPOINT_BEGIN(Category.CHECKPOINT, Level.INFO),
     /** Signals the checkpoint phase which flushes all dirty nodes to the main database file. */
-    CHECKPOINT_FLUSH(Category.CHECKPOINT),
+    CHECKPOINT_FLUSH(Category.CHECKPOINT, Level.INFO),
     /** Signals the end of a checkpoint, reporting the duration. */
-    CHECKPOINT_COMPLETE(Category.CHECKPOINT),
+    CHECKPOINT_COMPLETE(Category.CHECKPOINT, Level.INFO),
 
     /** Signals that an unhandled exception has occurred, and the database must be shutdown. */
-    PANIC_UNHANDLED_EXCEPTION(Category.PANIC);
+    PANIC_UNHANDLED_EXCEPTION(Category.PANIC, Level.SEVERE);
 
     public final Category category;
+    public final Level level;
 
-    private EventType(Category category) {
+    private EventType(Category category, Level level) {
         this.category = category;
+        this.level = level;
     }
 
     /**
