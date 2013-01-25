@@ -43,6 +43,26 @@ class DataIn extends InputStream {
         mBuffer = new byte[bufferSize];
     }
 
+    DataIn(ReplicationManager.Input in) {
+        this(new RepIn(in));
+    }
+
+    static class RepIn extends InputStream {
+        private final ReplicationManager.Input mIn;
+
+        RepIn(ReplicationManager.Input in) {
+            mIn = in;
+        }
+
+        public int read() {
+            throw new AssertionError();
+        }
+
+        public int read(byte[] b, int off, int len) throws IOException {
+            return mIn.read(b, off, len);
+        }
+    }
+
     @Override
     public int read() throws IOException {
         int start = mStart;
