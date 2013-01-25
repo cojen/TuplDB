@@ -16,6 +16,8 @@
 
 package org.cojen.tupl;
 
+import java.io.File;
+
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -51,8 +53,6 @@ public class RecoverTest {
 
     protected DatabaseConfig mConfig;
     protected Database mDb;
-
-    // FIXME: Add test to confirm no redo if transaction does not modify anything.
 
     @Test
     public void interruptOnClose() throws Exception {
@@ -543,5 +543,92 @@ public class RecoverTest {
         assertNotNull(ix);
 
         assertArrayEquals("world".getBytes(), ix.load(null, "hello".getBytes()));
+    }
+
+    @Test
+    public void noRedo() throws Exception {
+        // Verifies that transaction which makes no modifications generates no redo entries.
+
+        Index ix = mDb.openIndex("noredo");
+
+        Transaction txn = mDb.newTransaction(DurabilityMode.NO_SYNC);
+        try {
+            for (int i=0; i<10; i++) {
+                ix.store(txn, ("hello-" + i).getBytes(), "world".getBytes());
+            }
+            txn.commit();
+        } finally {
+            txn.reset();
+        }
+
+        File baseFile = baseFileForTempDatabase(mDb);
+
+        File redoFile = null;
+        for (File f : baseFile.getParentFile().listFiles()) {
+            if (f.getName().startsWith(baseFile.getName())) {
+                if (f.getName().contains("redo")) {
+                    assertNull(redoFile);
+                    redoFile = f;
+                }
+            }
+        }
+
+        assertNotNull(redoFile);
+
+        final long redoLength = redoFile.length();
+
+        // Simple locking transaction, no modifications.
+
+        for (int i=0; i<2; i++) {
+            txn = mDb.newTransaction();
+            try {
+                byte[] value = ix.load(txn, ("hello-0").getBytes());
+                fastAssertArrayEquals("world".getBytes(), value);
+                if (i == 0) {
+                    txn.commit();
+                }
+            } finally {
+                txn.reset();
+            }
+        }
+
+        // No growth.
+        assertEquals(redoLength, redoFile.length());
+
+        // Nested scopes, no modifications.
+
+        for (int i=0; i<4; i++) {
+            txn = mDb.newTransaction();
+            try {
+                byte[] value = ix.load(txn, ("hello-0").getBytes());
+                fastAssertArrayEquals("world".getBytes(), value);
+
+                txn.enter();
+                try {
+                    value = ix.load(txn, ("hello-1").getBytes());
+                    fastAssertArrayEquals("world".getBytes(), value);
+
+                    if ((i & 2) == 0) {
+                        txn.commit();
+                    }
+                } finally {
+                    txn.exit();
+                }
+
+                if ((i & 1) == 0) {
+                    txn.commit();
+                }
+            } finally {
+                txn.reset();
+            }
+        }
+
+        // No growth.
+        assertEquals(redoLength, redoFile.length());
+
+        // All locks released.
+        Cursor c = ix.newCursor(null);
+        for (c.first(); c.key() != null; c.next());
+        c.reset();
     }
 }
