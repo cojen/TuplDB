@@ -186,11 +186,6 @@ public final class Database extends CauseCloseable {
     private final LHashTable.Obj<TreeRef> mOpenTreesById;
     private final ReferenceQueue<Tree> mOpenTreesRefQueue;
 
-    // Strong references to all trees opened during recovery. Not critical, but
-    // it keeps the trees from being closed and re-opened automatically by
-    // garbage collection. Access to this collection is thread-safe.
-    private List<Tree> mRecoveredTrees;
-
     private final PageAllocator mAllocator;
 
     private final FragmentCache mFragmentCache;
@@ -461,12 +456,7 @@ public final class Database extends CauseCloseable {
                     recoveryStart = System.nanoTime();
                 }
 
-                // Keep all the trees open during recovery.
-                // FIXME: Only when non-replicated.
-                mRecoveredTrees = Collections.synchronizedList(new ArrayList<Tree>());
-
                 LHashTable.Obj<Transaction> txns = new LHashTable.Obj<Transaction>(16);
-
                 {
                     long masterNodeId = readLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID);
                     if (masterNodeId != 0) {
@@ -534,8 +524,6 @@ public final class Database extends CauseCloseable {
                     // Only cleanup after successful checkpoint.
                     recovery.cleanup();
                 }
-
-                mRecoveredTrees = null;
             }
 
             // Delete lingering fragmented values after undo logs have been
@@ -1511,11 +1499,6 @@ public final class Database extends CauseCloseable {
                     mOpenTreesById.insert(treeId).value = treeRef;
                 } finally {
                     mOpenTreesLatch.releaseExclusive();
-                }
-
-                List<Tree> recovered = mRecoveredTrees;
-                if (recovered != null) {
-                    recovered.add(tree);
                 }
 
                 return tree;
