@@ -16,61 +16,35 @@
 
 package org.cojen.tupl;
 
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 /**
  * Variation of FragmentCache which never evicts. Used by non-durable database.
  *
  * @author Brian S O'Neill
  */
 class FragmentMap extends FragmentCache {
-    private final LHashTable.Obj<Node> mMap;
-    private final ReadWriteLock mLock;
-
-    // TODO: Is it worth increasing the concurrency with partitions?
+    private final IdHashTable<Node> mMap;
 
     FragmentMap() {
-        mMap = new LHashTable.Obj<Node>(16);
-        mLock = new ReentrantReadWriteLock();
+        mMap = new IdHashTable<Node>(16);
     }
 
     @Override
     Node get(Node caller, long nodeId) {
-        Lock lock = mLock.readLock();
-        lock.lock();
-        try {
-            Node node = mMap.get(nodeId).value;
-            node.acquireShared();
-            return node;
-        } finally {
-            lock.unlock();
-        }
+        Node node = mMap.get(Utils.scramble(nodeId));
+        node.acquireShared();
+        return node;
     }
 
     @Override
     void put(Node caller, Node node) {
-        Lock lock = mLock.writeLock();
-        lock.lock();
-        try {
-            mMap.replace(node.mId).value = node;
-            node.mType = Node.TYPE_FRAGMENT;
-        } finally {
-            lock.unlock();
-        }
+        mMap.put(Utils.scramble(node.mId), node);
+        node.mType = Node.TYPE_FRAGMENT;
     }
 
     @Override
     Node remove(Node caller, long nodeId) {
-        Lock lock = mLock.writeLock();
-        lock.lock();
-        try {
-            Node node = mMap.remove(nodeId).value;
-            node.acquireExclusive();
-            return node;
-        } finally {
-            lock.unlock();
-        }
+        Node node = mMap.remove(Utils.scramble(nodeId));
+        node.acquireExclusive();
+        return node;
     }
 }
