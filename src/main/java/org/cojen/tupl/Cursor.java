@@ -113,24 +113,6 @@ public interface Cursor {
     public LockResult first() throws IOException;
 
     /**
-     * Moves the Cursor to find the first available entry. Cursor key and value
-     * are set to null if no entries exist, and position will be undefined.
-     *
-     * <p>If locking is required, entries are <i>skipped</i> when not lockable
-     * within the specified maximum wait time. Neither {@link LockTimeoutException}
-     * nor {@link DeadlockException} are ever thrown from this method.
-     *
-     * @param maxWait maximum time to wait for lock before moving to next
-     * entry; negative is infinite
-     * @param unit required unit if maxWait is more than zero
-     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
-     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
-     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
-     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     */
-    //public LockResult first(long maxWait, TimeUnit unit) throws IOException;
-
-    /**
      * Moves the Cursor to find the last available entry. Cursor key and value
      * are set to null if no entries exist, and position will be undefined.
      *
@@ -140,24 +122,6 @@ public interface Cursor {
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      */
     public LockResult last() throws IOException;
-
-    /**
-     * Moves the Cursor to find the last available entry. Cursor key and value
-     * are set to null if no entries exist, and position will be undefined.
-     *
-     * <p>If locking is required, entries are <i>skipped</i> when not lockable
-     * within the specified maximum wait time. Neither {@link LockTimeoutException}
-     * nor {@link DeadlockException} are ever thrown from this method.
-     *
-     * @param maxWait maximum time to wait for lock before moving to next
-     * entry; negative is infinite
-     * @param unit required unit if maxWait is more than zero
-     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
-     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
-     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
-     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     */
-    //public LockResult last(long maxWait, TimeUnit unit) throws IOException;
 
     /**
      * Moves the Cursor by a relative amount of entries. Pass a positive amount
@@ -192,25 +156,6 @@ public interface Cursor {
     public LockResult next() throws IOException;
 
     /**
-     * Moves to the Cursor to the next available entry. Cursor key and value
-     * are set to null if no next entry exists, and position will be undefined.
-     *
-     * <p>If locking is required, entries are <i>skipped</i> when not lockable
-     * within the specified maximum wait time. Neither {@link LockTimeoutException}
-     * nor {@link DeadlockException} are ever thrown from this method.
-     *
-     * @param maxWait maximum time to wait for lock before moving to next
-     * entry; negative is infinite
-     * @param unit required unit if maxWait is more than zero
-     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
-     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
-     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
-     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     * @throws IllegalStateException if position is undefined at invocation time
-     */
-    //public LockResult next(long maxWait, TimeUnit unit) throws IOException;
-
-    /**
      * Moves to the Cursor to the next available entry, but only when less than
      * or equal to the given limit key. Cursor key and value are set to null if
      * no applicable entry exists, and position will be undefined.
@@ -222,26 +167,6 @@ public interface Cursor {
      * @throws IllegalStateException if position is undefined at invocation time
      */
     public LockResult nextLe(byte[] limitKey) throws IOException;
-
-    /**
-     * Moves to the Cursor to the next available entry, but only when less than
-     * or equal to the given limit key. Cursor key and value are set to null if
-     * no applicable entry exists, and position will be undefined.
-     *
-     * <p>If locking is required, entries are <i>skipped</i> when not lockable
-     * within the specified maximum wait time. Neither {@link LockTimeoutException}
-     * nor {@link DeadlockException} are ever thrown from this method.
-     *
-     * @param maxWait maximum time to wait for lock before moving to next
-     * entry; negative is infinite
-     * @param unit required unit if maxWait is more than zero
-     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
-     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
-     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
-     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     * @throws IllegalStateException if position is undefined at invocation time
-     */
-    //public LockResult nextLe(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException;
 
     /**
      * Moves to the Cursor to the next available entry, but only when less than
@@ -257,26 +182,6 @@ public interface Cursor {
     public LockResult nextLt(byte[] limitKey) throws IOException;
 
     /**
-     * Moves to the Cursor to the next available entry, but only when less than
-     * the given limit key. Cursor key and value are set to null if no
-     * applicable entry exists, and position will be undefined.
-     *
-     * <p>If locking is required, entries are <i>skipped</i> when not lockable
-     * within the specified maximum wait time. Neither {@link LockTimeoutException}
-     * nor {@link DeadlockException} are ever thrown from this method.
-     *
-     * @param maxWait maximum time to wait for lock before moving to next
-     * entry; negative is infinite
-     * @param unit required unit if maxWait is more than zero
-     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
-     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
-     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
-     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     * @throws IllegalStateException if position is undefined at invocation time
-     */
-    //public LockResult nextLt(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException;
-
-    /**
      * Moves to the Cursor to the previous available entry. Cursor key and
      * value are set to null if no previous entry exists, and position will be
      * undefined.
@@ -288,26 +193,6 @@ public interface Cursor {
      * @throws IllegalStateException if position is undefined at invocation time
      */
     public LockResult previous() throws IOException;
-
-    /**
-     * Moves to the Cursor to the previous available entry. Cursor key and
-     * value are set to null if no previous entry exists, and position will be
-     * undefined.
-     *
-     * <p>If locking is required, entries are <i>skipped</i> when not lockable
-     * within the specified maximum wait time. Neither {@link LockTimeoutException}
-     * nor {@link DeadlockException} are ever thrown from this method.
-     *
-     * @param maxWait maximum time to wait for lock before moving to next
-     * entry; negative is infinite
-     * @param unit required unit if maxWait is more than zero
-     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
-     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
-     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
-     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     * @throws IllegalStateException if position is undefined at invocation time
-     */
-    //public LockResult previous(long maxWait, TimeUnit unit) throws IOException;
 
     /**
      * Moves to the Cursor to the previous available entry, but only when
@@ -325,27 +210,6 @@ public interface Cursor {
 
     /**
      * Moves to the Cursor to the previous available entry, but only when
-     * greater than or equal to the given limit key. Cursor key and value are
-     * set to null if no applicable entry exists, and position will be
-     * undefined.
-     *
-     * <p>If locking is required, entries are <i>skipped</i> when not lockable
-     * within the specified maximum wait time. Neither {@link LockTimeoutException}
-     * nor {@link DeadlockException} are ever thrown from this method.
-     *
-     * @param maxWait maximum time to wait for lock before moving to next
-     * entry; negative is infinite
-     * @param unit required unit if maxWait is more than zero
-     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
-     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
-     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
-     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     * @throws IllegalStateException if position is undefined at invocation time
-     */
-    //public LockResult previousGe(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException;
-
-    /**
-     * Moves to the Cursor to the previous available entry, but only when
      * greater than the given limit key. Cursor key and value are set to null
      * if no applicable entry exists, and position will be undefined.
      *
@@ -356,26 +220,6 @@ public interface Cursor {
      * @throws IllegalStateException if position is undefined at invocation time
      */
     public LockResult previousGt(byte[] limitKey) throws IOException;
-
-    /**
-     * Moves to the Cursor to the previous available entry, but only when
-     * greater than the given limit key. Cursor key and value are set to null
-     * if no applicable entry exists, and position will be undefined.
-     *
-     * <p>If locking is required, entries are <i>skipped</i> when not lockable
-     * within the specified maximum wait time. Neither {@link LockTimeoutException}
-     * nor {@link DeadlockException} are ever thrown from this method.
-     *
-     * @param maxWait maximum time to wait for lock before moving to next
-     * entry; negative is infinite
-     * @param unit required unit if maxWait is more than zero
-     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
-     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
-     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
-     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     * @throws IllegalStateException if position is undefined at invocation time
-     */
-    //public LockResult previousGt(byte[] limitKey, long maxWait, TimeUnit unit) throws IOException;
 
     /**
      * Moves the Cursor to find the given key.
@@ -407,28 +251,6 @@ public interface Cursor {
     public LockResult findGe(byte[] key) throws IOException;
 
     /**
-     * Moves the Cursor to find the first available entry greater than or equal
-     * to the given key.
-     *
-     * <p>Ownership of the key instance transfers to the Cursor, and it must
-     * not be modified after calling this method.
-     *
-     * <p>If locking is required, entries are <i>skipped</i> when not lockable
-     * within the specified maximum wait time. Neither {@link LockTimeoutException}
-     * nor {@link DeadlockException} are ever thrown from this method.
-     *
-     * @param maxWait maximum time to wait for lock before moving to next
-     * entry; negative is infinite
-     * @param unit required unit if maxWait is more than zero
-     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
-     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
-     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
-     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     * @throws NullPointerException if key is null
-     */
-    //public LockResult findGe(byte[] key, long maxWait, TimeUnit unit) throws IOException;
-
-    /**
      * Moves the Cursor to find the first available entry greater than the
      * given key.
      *
@@ -442,28 +264,6 @@ public interface Cursor {
      * @throws NullPointerException if key is null
      */
     public LockResult findGt(byte[] key) throws IOException;
-
-    /**
-     * Moves the Cursor to find the first available entry greater than the
-     * given key.
-     *
-     * <p>Ownership of the key instance transfers to the Cursor, and it must
-     * not be modified after calling this method.
-     *
-     * <p>If locking is required, entries are <i>skipped</i> when not lockable
-     * within the specified maximum wait time. Neither {@link LockTimeoutException}
-     * nor {@link DeadlockException} are ever thrown from this method.
-     *
-     * @param maxWait maximum time to wait for lock before moving to next
-     * entry; negative is infinite
-     * @param unit required unit if maxWait is more than zero
-     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
-     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
-     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
-     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     * @throws NullPointerException if key is null
-     */
-    //public LockResult findGt(byte[] key, long maxWait, TimeUnit unit) throws IOException;
 
     /**
      * Moves the Cursor to find the first available entry less than or equal to
@@ -481,28 +281,6 @@ public interface Cursor {
     public LockResult findLe(byte[] key) throws IOException;
 
     /**
-     * Moves the Cursor to find the first available entry less than or equal to
-     * the given key.
-     *
-     * <p>Ownership of the key instance transfers to the Cursor, and it must
-     * not be modified after calling this method.
-     *
-     * <p>If locking is required, entries are <i>skipped</i> when not lockable
-     * within the specified maximum wait time. Neither {@link LockTimeoutException}
-     * nor {@link DeadlockException} are ever thrown from this method.
-     *
-     * @param maxWait maximum time to wait for lock before moving to next
-     * entry; negative is infinite
-     * @param unit required unit if maxWait is more than zero
-     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
-     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
-     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
-     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     * @throws NullPointerException if key is null
-     */
-    //public LockResult findLe(byte[] key, long maxWait, TimeUnit unit) throws IOException;
-
-    /**
      * Moves the Cursor to find the first available entry less than the given
      * key.
      *
@@ -516,28 +294,6 @@ public interface Cursor {
      * @throws NullPointerException if key is null
      */
     public LockResult findLt(byte[] key) throws IOException;
-
-    /**
-     * Moves the Cursor to find the first available entry less than the given
-     * key.
-     *
-     * <p>Ownership of the key instance transfers to the Cursor, and it must
-     * not be modified after calling this method.
-     *
-     * <p>If locking is required, entries are <i>skipped</i> when not lockable
-     * within the specified maximum wait time. Neither {@link LockTimeoutException}
-     * nor {@link DeadlockException} are ever thrown from this method.
-     *
-     * @param maxWait maximum time to wait for lock before moving to next
-     * entry; negative is infinite
-     * @param unit required unit if maxWait is more than zero
-     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
-     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
-     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
-     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     * @throws NullPointerException if key is null
-     */
-    //public LockResult findLt(byte[] key, long maxWait, TimeUnit unit) throws IOException;
 
     /**
      * Optimized version of the regular find method, which can perform fewer
