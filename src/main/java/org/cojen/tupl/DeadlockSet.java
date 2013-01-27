@@ -27,6 +27,8 @@ import java.util.Set;
  * @see DeadlockException
  */
 public class DeadlockSet implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private final long[] mIndexIds;
     private final byte[][] mKeys;
 
