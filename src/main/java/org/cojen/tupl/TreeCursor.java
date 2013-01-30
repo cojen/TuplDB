@@ -3269,6 +3269,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
      * @param parentFrame parent must be bound to this frame
      * @return child node, possibly split
      */
+    /*
     private Node latchChildToModify(TreeCursorFrame parentFrame, int childPos) throws IOException {
         Node parentNode = parentFrame.mNode;
         Node childNode = parentNode.mChildNodes[childPos >> 1];
@@ -3305,4 +3306,5 @@ final class TreeCursor extends CauseCloseable implements Cursor {
 
         return parentNode.loadChild(mTree.mDatabase, childPos, childId, true);
     }
+    */
 }
