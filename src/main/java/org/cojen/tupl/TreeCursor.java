@@ -36,7 +36,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     private static final int LIMIT_LE = 1, LIMIT_LT = 2, LIMIT_GE = -1, LIMIT_GT = -2;
 
     final Tree mTree;
-    private Transaction mTxn;
+    Transaction mTxn;
 
     // Top stack frame for cursor, always a leaf.
     private TreeCursorFrame mLeaf;
@@ -53,6 +53,10 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         tree.check(txn);
         mTree = tree;
         mTxn = txn;
+    }
+
+    TreeCursor(Tree tree) {
+        mTree = tree;
     }
 
     @Override
@@ -2640,8 +2644,10 @@ final class TreeCursor extends CauseCloseable implements Cursor {
 
     /**
      * Latches and returns leaf frame, not split.
+     *
+     * @throws IllegalStateException if unpositioned
      */
-    private TreeCursorFrame leafExclusiveNotSplit() throws IOException {
+    TreeCursorFrame leafExclusiveNotSplit() throws IOException {
         TreeCursorFrame leaf = leaf();
         Node node = leaf.acquireExclusive();
         if (node.mSplit != null) {
@@ -2652,8 +2658,21 @@ final class TreeCursor extends CauseCloseable implements Cursor {
 
     /**
      * Latches and returns leaf frame, not split.
+     *
+     * @throws IllegalStateException if unpositioned
      */
-    private TreeCursorFrame leafSharedNotSplit() throws IOException {
+    TreeCursorFrame leafExclusiveNotSplitDirty() throws IOException {
+        TreeCursorFrame frame = leafExclusive();
+        notSplitDirty(leafExclusive());
+        return frame;
+    }
+
+    /**
+     * Latches and returns leaf frame, not split.
+     *
+     * @throws IllegalStateException if unpositioned
+     */
+    TreeCursorFrame leafSharedNotSplit() throws IOException {
         TreeCursorFrame leaf = leaf();
         Node node = leaf.acquireShared();
         if (node.mSplit != null) {

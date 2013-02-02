@@ -99,6 +99,12 @@ public interface Index extends View, Closeable {
     //public byte[] swap(Transaction txn, byte[] key, byte[] newValue) throws IOException;
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Stream newStream();
+
+    /**
      * Verifies the integrity of the index.
      *
      * @param observer optional observer; pass null for default
