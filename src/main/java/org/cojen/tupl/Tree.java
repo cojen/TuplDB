@@ -369,6 +369,13 @@ final class Tree implements Index {
     */
 
     @Override
+    public Stream newStream() {
+        TreeCursor cursor = new TreeCursor(this);
+        cursor.autoload(false);
+        return new TreeValueStream(cursor);
+    }
+
+    @Override
     public View viewGe(byte[] key) {
         if (key == null) {
             throw new NullPointerException("Key is null");

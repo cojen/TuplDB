@@ -87,6 +87,11 @@ abstract class SubView implements View {
     }
 
     @Override
+    public Stream newStream() {
+        return mSource.newStream();
+    }
+
+    @Override
     public View viewReverse() {
         return new ReverseView(this);
     }

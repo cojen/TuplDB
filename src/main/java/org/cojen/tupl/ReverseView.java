@@ -73,6 +73,11 @@ final class ReverseView implements View {
     }
 
     @Override
+    public Stream newStream() {
+        return mSource.newStream();
+    }
+
+    @Override
     public View viewGe(byte[] key) {
         return new ReverseView(mSource.viewLe(key));
     }
