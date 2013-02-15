@@ -29,6 +29,10 @@ interface FileIO extends Closeable {
 
     public long length() throws IOException;
 
+    /**
+     * Attempt to set the length of the file. It isn't critical that the
+     * operation succeed, and so any exceptions can be suppressed.
+     */
     public void setLength(long length) throws IOException;
 
     /**

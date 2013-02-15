@@ -67,6 +67,9 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
     private int mSize;
     private int mGrowThreshold;
 
+    /**
+     * @param capacity initial capacity
+     */
     LHashTable(int capacity) {
         clear(capacity);
     }
