@@ -997,7 +997,7 @@ class Utils {
     static RuntimeException rethrow(Throwable e, Throwable cause) {
         if (cause != null && e != cause && e.getCause() == null) {
             try {
-                e.initCause(cause);
+                e.initCause(rootCause(cause));
             } catch (Exception e2) {
             } 
         }
