@@ -46,6 +46,11 @@ final class ReverseView implements View {
     }
 
     @Override
+    public byte[] exchange(Transaction txn, byte[] key, byte[] value) throws IOException {
+        return mSource.exchange(txn, key, value);
+    }
+
+    @Override
     public boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException {
         return mSource.insert(txn, key, value);
     }
