@@ -528,7 +528,12 @@ final class Lock {
         } catch (Throwable e) {
             // Exception indicates that database is borked. Ghost will get
             // cleaned up when database is re-opened.
-            Utils.closeQuietly(null, ((Tree) obj).mDatabase, e);
+            latch.releaseExclusive();
+            try {
+                Utils.closeQuietly(null, ((Tree) obj).mDatabase, e);
+            } finally {
+                latch.acquireExclusive();
+            }
         }
     }
 
