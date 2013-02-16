@@ -115,6 +115,20 @@ public interface View {
     public void store(Transaction txn, byte[] key, byte[] value) throws IOException;
 
     /**
+     * Unconditionally associates a value with the given key, returning the previous value.
+     *
+     * <p>If the entry must be locked, ownership of the key instance is
+     * transferred. The key must not be modified after calling this method.
+     *
+     * @param txn optional transaction; pass null for auto-commit mode
+     * @param key non-null key
+     * @param value value to store; pass null to delete
+     * @return copy of previous value, or null if none
+     * @throws NullPointerException if key is null
+     */
+    public byte[] exchange(Transaction txn, byte[] key, byte[] value) throws IOException;
+
+    /**
      * Associates a value with the given key, unless a corresponding value
      * already exists. Equivalent to: <code>update(txn, key, null,
      * value)</code>
