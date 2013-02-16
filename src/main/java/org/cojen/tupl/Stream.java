@@ -31,6 +31,8 @@ import java.io.OutputStream;
  * @author Brian S O'Neill
  */
 public abstract class Stream implements Closeable {
+    Object mOpenState;
+
     Stream() {
     }
 
@@ -70,14 +72,14 @@ public abstract class Stream implements Closeable {
     public abstract void setLength(long length) throws IOException;
 
     /**
-     * Read from the value, starting from any position.
+     * Read from the value, starting from any position. Read operations can be partial, but at
+     * least one byte is read if at least one is requested.
      *
      * @param pos start position to read from
      * @param buf buffer to read into
      * @param off buffer start offset
      * @param len maximum length to read
-     * @return actual amount read; non-negative; is less than the requested length only if read
-     * would extend beyond the value size
+     * @return actual amount read, which can be less than requested; -1 if end reached
      * @throws IllegalArgumentException if position is negative
      * @throws IndexOutOfBoundsException
      * @throws IllegalStateException if closed
@@ -94,35 +96,38 @@ public abstract class Stream implements Closeable {
 
     /**
      * Write into the value, starting from any position. Value is extended when writing past
-     * the end, even if the written amount is zero.
+     * the end, even if the written amount is zero. Write operations can be partial, but at
+     * least one byte is written if at least one is provided.
      *
      * @param pos start position to write to
      * @param buf buffer to write from
      * @param off buffer start offset
      * @param len maximum length to write
+     * @return actual amount written, which can be less than provided
      * @throws IllegalArgumentException if position is negative
      * @throws IndexOutOfBoundsException
      * @throws IllegalStateException if closed
      * @throws IllegalUpgradeException if not locked for writing
      */
-    public final void write(long pos, byte[] buf, int off, int len) throws IOException {
+    public final int write(long pos, byte[] buf, int off, int len) throws IOException {
         if (pos < 0) {
             throw new IllegalArgumentException();
         }
         boundsCheck(buf, off, len);
-        doWrite(pos, buf, off, len);
+        return doWrite(pos, buf, off, len);
     }
 
-    abstract void doWrite(long pos, byte[] buf, int off, int len) throws IOException;
+    abstract int doWrite(long pos, byte[] buf, int off, int len) throws IOException;
 
     /**
      * Returns a new buffered InputStream instance, which reads from this Stream. When the
-     * InputStream is closed, it closes the Stream too.
+     * InputStream is closed, it closes the Stream too. The InputStream is bound to the Stream,
+     * and so only one thread can access either at a time. Unlike the {@link Stream#read
+     * Stream.read} method, reads from the InputStream return as much as possible.
      *
      * @param pos start position to read from
-     * @return buffered unsynchronized InputStream
+     * @return buffered unsynchronized InputStream; performs full reads
      * @throws IllegalArgumentException if position is negative
-     * @throws IllegalStateException if closed
      */
     public final InputStream newInputStream(long pos) throws IOException {
         return newInputStream(pos, -1);
@@ -130,28 +135,33 @@ public abstract class Stream implements Closeable {
 
     /**
      * Returns a new buffered InputStream instance, which reads from this Stream. When the
-     * InputStream is closed, it closes the Stream too.
+     * InputStream is closed, it closes the Stream too. The InputStream is bound to the Stream,
+     * and so only one thread can access either at a time. Unlike the {@link Stream#read
+     * Stream.read} method, reads from the InputStream return as much as possible.
      *
      * @param pos start position to read from
      * @param bufferSize requested buffer size; actual size may differ
-     * @return buffered unsynchronized InputStream
+     * @return buffered unsynchronized InputStream; performs full reads
      * @throws IllegalArgumentException if position is negative
      * @throws IllegalStateException if closed
      */
     public final InputStream newInputStream(long pos, int bufferSize) throws IOException {
-        // FIXME
-        throw null;
+        if (pos < 0) {
+            throw new IllegalArgumentException();
+        }
+        checkOpen();
+        return new In(mOpenState, pos, allocBuffer(bufferSize));
     }
 
     /**
      * Returns a new buffered OutputStream instance, which writes to this Stream. When the
-     * OutputStream is closed, it closes the Stream too.
+     * OutputStream is closed, it closes the Stream too. The OutputStream is bound to the
+     * Stream, and so only one thread can access either at a time.
      *
      * @param pos start position to write to
      * @return buffered unsynchronized OutputStream
      * @throws IllegalArgumentException if position is negative
      * @throws IllegalStateException if closed
-     * @throws IllegalUpgradeException if not locked for writing
      */
     public final OutputStream newOutputStream(long pos) throws IOException {
         return newOutputStream(pos, -1);
@@ -159,24 +169,46 @@ public abstract class Stream implements Closeable {
 
     /**
      * Returns a new buffered OutputStream instance, which writes to this Stream. When the
-     * OutputStream is closed, it closes the Stream too.
+     * OutputStream is closed, it closes the Stream too. The OutputStream is bound to the
+     * Stream, and so only one thread can access either at a time.
      *
      * @param pos start position to write to
      * @param bufferSize requested buffer size; actual size may differ
      * @return buffered unsynchronized OutputStream
      * @throws IllegalArgumentException if position is negative
      * @throws IllegalStateException if closed
-     * @throws IllegalUpgradeException if not locked for writing
      */
     public final OutputStream newOutputStream(long pos, int bufferSize) throws IOException {
-        // FIXME
-        throw null;
+        if (pos < 0) {
+            throw new IllegalArgumentException();
+        }
+        checkOpen();
+        return new Out(mOpenState, pos, allocBuffer(bufferSize));
+    }
+
+    abstract int pageSize();
+
+    /**
+     * @throws IllegalStateException if closed
+     */
+    abstract void checkOpen();
+
+    void checkOpen(Object openState) {
+        if (openState != mOpenState) {
+            throw new IllegalStateException("Stream closed");
+        }
     }
 
     public final void close() {
-        // FIXME: Ensure that all open InputStream and OutputStreams are disabled. Can use a
-        // version number or registry or object ref.
+        mOpenState = null;
         doClose();
+    }
+
+    final void close(Object openState) {
+        if (openState == mOpenState) {
+            mOpenState = null;
+            doClose();
+        }
     }
 
     abstract void doClose();
@@ -187,61 +219,223 @@ public abstract class Stream implements Closeable {
         }
     }
 
+    private byte[] allocBuffer(int bufferSize) {
+        if (bufferSize <= 1) {
+            if (bufferSize < 0) {
+                bufferSize = pageSize();
+            } else {
+                bufferSize = 1;
+            }
+        } else if (bufferSize >= 65536) {
+            bufferSize = 65536;
+        }
+        return new byte[bufferSize];
+    }
+
     final class In extends InputStream {
-        @Override
-        public int read() throws IOException {
-            // FIXME
-            throw null;
+        private Object mOpenState;
+
+        private long mPos;
+
+        private final byte[] mBuffer;
+        private int mStart;
+        private int mEnd;
+
+        In(Object openState, long pos, byte[] buffer) {
+            if (openState == null) {
+                Stream.this.mOpenState = openState = this;
+            }
+            mOpenState = openState;
+            mPos = pos;
+            mBuffer = buffer;
         }
 
         @Override
-        public int read(byte[] buf, int off, int len) throws IOException {
-            boundsCheck(buf, off, len);
-            // FIXME
-            throw null;
+        public int read() throws IOException {
+            checkOpen(mOpenState);
+
+            byte[] buf = mBuffer;
+            int start = mStart;
+            if (start < mEnd) {
+                mPos++;
+                int b = buf[start] & 0xff;
+                mStart = start + 1;
+                return b;
+            }
+
+            long pos = mPos;
+            int amt = Stream.this.read(pos, buf, 0, buf.length);
+
+            if (amt <= 0) {
+                return -1;
+            }
+
+            mEnd = amt;
+            mPos = pos + 1;
+            mStart = 1;
+            return buf[0] & 0xff;
+        }
+
+        @Override
+        public int read(byte[] b, int off, int len) throws IOException {
+            boundsCheck(b, off, len);
+            checkOpen(mOpenState);
+
+            byte[] buf = mBuffer;
+            int start = mStart;
+            int amt = mEnd - start;
+
+            if (amt >= len) {
+                // Enough available in the buffer.
+                System.arraycopy(buf, start, b, off, len);
+                mStart = start + len;
+                mPos += len;
+                return len;
+            }
+
+            final int initialOff = off;
+
+            if (amt > 0) {
+                // Drain everything available from the buffer.
+                System.arraycopy(buf, start, b, off, amt);
+                mEnd = start;
+                off += amt;
+                len -= amt;
+                mPos += amt;
+            }
+
+            doRead: {
+                // Bypass buffer if parameter is large enough.
+                while (len >= buf.length) {
+                    amt = Stream.this.read(mPos, b, off, len);
+                    if (amt <= 0) {
+                        break doRead;
+                    }
+                    off += amt;
+                    len -= amt;
+                    mPos += amt;
+                    if (len <= 0) {
+                        break doRead;
+                    }
+                }
+
+                // Read into buffer and copy to parameter.
+                while (true) {
+                    amt = Stream.this.read(mPos, buf, 0, buf.length);
+                    if (amt <= 0) {
+                        break doRead;
+                    }
+                    if (amt >= len) {
+                        System.arraycopy(buf, 0, b, off, len);
+                        off += len;
+                        mPos += len;
+                        mStart = len;
+                        mEnd = amt;
+                        break doRead;
+                    }
+                    // Drain everything available from the buffer.
+                    System.arraycopy(buf, 0, b, off, amt);
+                    off += amt;
+                    len -= amt;
+                    mPos += amt;
+                }
+            }
+
+            amt = off - initialOff;
+            return amt <= 0 ? -1 : amt;
         }
 
         @Override
         public long skip(long n) throws IOException {
-            // FIXME
-            throw null;
+            checkOpen(mOpenState);
+
+            if (n <= 0) {
+                return 0;
+            }
+
+            int start = mStart;
+            int amt = mEnd - start;
+
+            if (amt > 0) {
+                if (n >= amt) {
+                    // Skip the entire buffer.
+                    mEnd = start;
+                } else {
+                    amt = (int) n;
+                    mStart = start + amt;
+                }
+                mPos += amt;
+                return amt;
+            }
+
+            long pos = mPos;
+            long newPos = Math.min(pos + n, length());
+
+            if (newPos > pos) {
+                mPos = newPos;
+                return newPos - pos;
+            } else {
+                return 0;
+            }
         }
 
         @Override
         public int available() throws IOException {
-            // FIXME
-            throw null;
+            checkOpen(mOpenState);
+            return mEnd - mStart;
         }
 
         @Override
         public void close() throws IOException {
-            Stream.this.close();
+            Object openState = mOpenState;
+            mOpenState = null;
+            Stream.this.close(openState);
         }
     }
 
     final class Out extends OutputStream {
+        private Object mOpenState;
+
+        private long mPos;
+
+        private final byte[] mBuffer;
+
+        Out(Object openState, long pos, byte[] buffer) {
+            if (openState == null) {
+                Stream.this.mOpenState = openState = this;
+            }
+            mOpenState = openState;
+            mPos = pos;
+            mBuffer = buffer;
+        }
+
         @Override
         public void write(int b) throws IOException {
+            checkOpen(mOpenState);
             // FIXME
             throw null;
         }
 
         @Override
-        public void write(byte[] buf, int off, int len) throws IOException {
-            boundsCheck(buf, off, len);
+        public void write(byte[] b, int off, int len) throws IOException {
+            boundsCheck(b, off, len);
+            checkOpen(mOpenState);
             // FIXME
             throw null;
         }
 
         @Override
         public void flush() throws IOException {
+            checkOpen(mOpenState);
             // FIXME
             throw null;
         }
 
         @Override
         public void close() throws IOException {
-            Stream.this.close();
+            Object openState = mOpenState;
+            mOpenState = null;
+            Stream.this.close(openState);
         }
     }
 }

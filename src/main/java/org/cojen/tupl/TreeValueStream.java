@@ -27,7 +27,7 @@ import static org.cojen.tupl.Utils.*;
  */
 final class TreeValueStream extends Stream {
     // Op ordinals are relevant.
-    private static final int OP_LENGTH = -1, OP_READ = 0, OP_SET_LENGTH = 1, OP_WRITE = 2;
+    private static final int OP_LENGTH = 0, OP_READ = 1, OP_SET_LENGTH = 2, OP_WRITE = 3;
 
     private final TreeCursor mCursor;
 
@@ -70,9 +70,21 @@ final class TreeValueStream extends Stream {
     }
 
     @Override
-    void doWrite(long pos, byte[] buf, int off, int len) throws IOException {
+    int doWrite(long pos, byte[] buf, int off, int len) throws IOException {
         // FIXME: txn undo/redo
-        action(OP_WRITE, pos, buf, off, len);
+        return (int) action(OP_WRITE, pos, buf, off, len);
+    }
+
+    @Override
+    int pageSize() {
+        return mCursor.mTree.mDatabase.pageSize();
+    }
+
+    @Override
+    void checkOpen() {
+        if (mCursor.key() == null) {
+            throw new IllegalStateException("Stream closed");
+        }
     }
 
     @Override
@@ -94,7 +106,7 @@ final class TreeValueStream extends Stream {
         if (nodePos < 0) {
             if (op <= OP_READ) {
                 node.releaseShared();
-                return op;
+                return -1;
             }
             // FIXME: write ops; create the value
             node.releaseExclusive();
@@ -122,7 +134,7 @@ final class TreeValueStream extends Stream {
                 // ghost
                 if (op <= OP_READ) {
                     node.releaseShared();
-                    return op;
+                    return -1;
                 }
                 // FIXME: write ops; create the value
                 node.releaseExclusive();
@@ -169,8 +181,21 @@ final class TreeValueStream extends Stream {
                         bLen = 0;
                     } else {
                         bLen = Math.min((int) (vLen - pos), bLen);
-                        System.out.println("header: " + header);
-                        // FIXME
+                        if ((header & 0x02) != 0) {
+                            System.out.println("inline!");
+                            // FIXME
+                            throw null;
+                        }
+                        if ((header & 0x01) == 0) {
+                            System.out.println("direct!");
+                            // Direct pointers.
+                            // FIXME
+                            throw null;
+                        } else {
+                            // Indirect pointers.
+                            // FIXME
+                            throw null;
+                        }
                     }
                     node.releaseShared();
                     return bLen;

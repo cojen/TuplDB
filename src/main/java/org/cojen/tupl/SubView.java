@@ -45,6 +45,15 @@ abstract class SubView implements View {
     }
 
     @Override
+    public byte[] exchange(Transaction txn, byte[] key, byte[] value) throws IOException {
+        if (inRange(key)) {
+            return mSource.exchange(txn, key, value);
+        } else {
+            throw new IllegalArgumentException("Key is outside allowed range");
+        }
+    }
+
+    @Override
     public boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException {
         if (inRange(key)) {
             return mSource.insert(txn, key, value);
