@@ -65,6 +65,12 @@ public interface Index extends View, Closeable {
      * {@inheritDoc}
      */
     @Override
+    public byte[] exchange(Transaction txn, byte[] key, byte[] value) throws IOException;
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException;
 
     /**
