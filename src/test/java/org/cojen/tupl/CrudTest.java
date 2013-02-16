@@ -116,6 +116,27 @@ public class CrudTest {
     }
 
     @Test
+    public void testExchangeBasic() throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        byte[] key = "hello".getBytes();
+        byte[] key2 = "howdy".getBytes();
+        byte[] value = "everyone".getBytes();
+        byte[] value2 = "world".getBytes();
+
+        assertEquals(null, ix.exchange(null, key, value));
+        assertArrayEquals(value, ix.load(null, key));
+
+        assertArrayEquals(value, ix.exchange(null, key, value2));
+        assertArrayEquals(value2, ix.load(null, key));
+
+        assertNull(ix.load(null, key2));
+
+        assertArrayEquals(value2, ix.exchange(null, key, null));
+        assertNull(ix.load(null, key));
+    }
+
+    @Test
     public void testInsertBasic1() throws Exception {
         testInsertBasic(null);
     }

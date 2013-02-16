@@ -175,6 +175,19 @@ final class Tree implements Index {
     }
 
     @Override
+    public byte[] exchange(Transaction txn, byte[] key, byte[] value) throws IOException {
+        if (key == null) {
+            throw new NullPointerException("Key is null");
+        }
+        TreeCursor cursor = new TreeCursor(this, txn);
+        try {
+            return cursor.findAndStore(key, value);
+        } catch (Throwable e) {
+            throw closeOnFailure(cursor, e);
+        }
+    }
+
+    @Override
     public boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException {
         if (key == null) {
             throw new NullPointerException("Key is null");
