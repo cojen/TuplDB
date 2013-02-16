@@ -2961,7 +2961,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
         leftChildNode.releaseExclusive();
 
         // At this point, only one node latch is held, and it should merge with
-        // a sibling node. Node is guaranteed to be a internal node.
+        // a sibling node. Node is guaranteed to be an internal node.
 
         TreeCursorFrame parentFrame = frame.mParentFrame;
         node.releaseExclusive();
@@ -3188,7 +3188,10 @@ final class TreeCursor extends CauseCloseable implements Cursor {
             }
             try {
                 node.finishSplitRoot(tree, stub);
-                return node;
+                // Must return the node as referenced by the frame, which is no
+                // longer the root node.
+                node.releaseExclusive();
+                return frame.acquireExclusive();
             } catch (Throwable e) {
                 node.releaseExclusive();
                 throw rethrow(e);
