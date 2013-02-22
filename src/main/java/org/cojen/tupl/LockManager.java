@@ -26,6 +26,9 @@ import static org.cojen.tupl.LockResult.*;
  * @author Brian S O'Neill
  */
 final class LockManager {
+    // Parameter passed to LockHT.tryLock.
+    static final int TYPE_SHARED = 1, TYPE_UPGRADABLE = 0x80000000, TYPE_EXCLUSIVE = ~0;
+
     private final long mDefaultTimeoutNanos;
 
     private final LockHT[] mHashTables;
@@ -71,7 +74,7 @@ final class LockManager {
         LockHT ht = getLockHT(hash);
         ht.acquireShared();
         try {
-            Lock lock = ht.lockFor(indexId, key, hash, false);
+            Lock lock = ht.lockFor(indexId, key, hash);
             return lock == null ? true : lock.isAvailable(locker);
         } finally {
             ht.releaseShared();
@@ -82,85 +85,11 @@ final class LockManager {
         LockHT ht = getLockHT(hash);
         ht.acquireShared();
         try {
-            Lock lock = ht.lockFor(indexId, key, hash, false);
+            Lock lock = ht.lockFor(indexId, key, hash);
             return lock == null ? LockResult.UNOWNED : lock.check(locker);
         } finally {
             ht.releaseShared();
         }
-    }
-
-    final LockResult tryLockShared(Locker locker, long indexId, byte[] key, int hash,
-                                   long nanosTimeout)
-    {
-        LockHT ht = getLockHT(hash);
-
-        Lock lock;
-        LockResult result;
-        {
-            ht.acquireExclusive();
-            try {
-                lock = ht.lockFor(indexId, key, hash, true);
-                result = lock.tryLockShared(ht, locker, nanosTimeout);
-            } finally {
-                ht.releaseExclusive();
-            }
-        }
-
-        if (result == ACQUIRED) {
-            locker.push(lock, 0);
-        }
-
-        return result;
-    }
-
-    final LockResult tryLockUpgradable(Locker locker, long indexId, byte[] key, int hash,
-                                       long nanosTimeout)
-    {
-        LockHT ht = getLockHT(hash);
-
-        Lock lock;
-        LockResult result;
-        {
-            ht.acquireExclusive();
-            try {
-                lock = ht.lockFor(indexId, key, hash, true);
-                result = lock.tryLockUpgradable(ht, locker, nanosTimeout);
-            } finally {
-                ht.releaseExclusive();
-            }
-        }
-
-        if (result == ACQUIRED) {
-            locker.push(lock, 0);
-        }
-
-        return result;
-    }
-
-    final LockResult tryLockExclusive(Locker locker, long indexId, byte[] key, int hash,
-                                      long nanosTimeout)
-    {
-        LockHT ht = getLockHT(hash);
-
-        Lock lock;
-        LockResult result;
-        {
-            ht.acquireExclusive();
-            try {
-                lock = ht.lockFor(indexId, key, hash, true);
-                result = lock.tryLockExclusive(ht, locker, nanosTimeout);
-            } finally {
-                ht.releaseExclusive();
-            }
-        }
-
-        if (result == ACQUIRED) {
-            locker.push(lock, 0);
-        } else if (result == UPGRADED) {
-            locker.push(lock, 1);
-        }
-
-        return result;
     }
 
     final void unlock(Locker locker, Lock lock) {
@@ -215,7 +144,7 @@ final class LockManager {
         LockHT ht = getLockHT(hash);
         ht.acquireExclusive();
         try {
-            ht.lockFor(tree.mId, key, hash, false).mSharedLockersObj = tree;
+            ht.lockFor(tree.mId, key, hash).mSharedLockersObj = tree;
         } finally {
             ht.releaseExclusive();
         }
@@ -223,7 +152,8 @@ final class LockManager {
 
     final Locker lockSharedLocal(long indexId, byte[] key, int hash) throws LockFailureException {
         Locker locker = localLocker();
-        LockResult result = tryLockShared(locker, indexId, key, hash, mDefaultTimeoutNanos);
+        LockResult result = getLockHT(hash)
+            .tryLock(TYPE_SHARED, locker, indexId, key, hash, mDefaultTimeoutNanos);
         if (result.isHeld()) {
             return locker;
         }
@@ -234,7 +164,8 @@ final class LockManager {
         throws LockFailureException
     {
         Locker locker = localLocker();
-        LockResult result = tryLockExclusive(locker, indexId, key, hash, mDefaultTimeoutNanos);
+        LockResult result = getLockHT(hash)
+            .tryLock(TYPE_EXCLUSIVE, locker, indexId, key, hash, mDefaultTimeoutNanos);
         if (result.isHeld()) {
             return locker;
         }
@@ -271,7 +202,7 @@ final class LockManager {
         return hash ^ (hash >>> 7) ^ (hash >>> 4);
     }
 
-    private LockHT getLockHT(int hash) {
+    LockHT getLockHT(int hash) {
         return mHashTables[hash >>> mHashTableShift];
     }
 
@@ -303,8 +234,10 @@ final class LockManager {
 
         /**
          * Caller must hold latch.
+         *
+         * @return null if not found
          */
-        Lock lockFor(long indexId, byte[] key, int hash, boolean create) {
+        Lock lockFor(long indexId, byte[] key, int hash) {
             Lock[] entries = mEntries;
             int index = hash & (entries.length - 1);
             for (Lock e = entries[index]; e != null; e = e.mLockManagerNext) {
@@ -312,40 +245,101 @@ final class LockManager {
                     return e;
                 }
             }
+            return null;
+        }
 
-            if (!create) {
-                return null;
-            }
+        /**
+         * @param type defined in Lock class
+         */
+        LockResult tryLock(int type,
+                           Locker locker, long indexId, byte[] key, int hash,
+                           long nanosTimeout)
+        {
+            Lock lock;
+            LockResult result;
+            lockEx: {
+                lockNonEx: {
+                    acquireExclusive();
+                    try {
+                        Lock[] entries = mEntries;
+                        int index = hash & (entries.length - 1);
+                        for (lock = entries[index]; lock != null; lock = lock.mLockManagerNext) {
+                            if (lock.matches(indexId, key, hash)) {
+                                if (type == TYPE_SHARED) {
+                                    result = lock.tryLockShared(this, locker, nanosTimeout);
+                                    break lockNonEx;
+                                } else if (type == TYPE_UPGRADABLE) {
+                                    result = lock.tryLockUpgradable(this, locker, nanosTimeout);
+                                    break lockNonEx;
+                                } else {
+                                    result = lock.tryLockExclusive(this, locker, nanosTimeout);
+                                    break lockEx;
+                                }
+                            }
+                        }
 
-            if (mSize >= mGrowThreshold) {
-                int capacity = entries.length << 1;
-                Lock[] newEntries = new Lock[capacity];
-                int newMask = capacity - 1;
+                        if (mSize >= mGrowThreshold) {
+                            int capacity = entries.length << 1;
+                            Lock[] newEntries = new Lock[capacity];
+                            int newMask = capacity - 1;
 
-                for (int i=entries.length; --i>=0 ;) {
-                    for (Lock e = entries[i]; e != null; ) {
-                        Lock next = e.mLockManagerNext;
-                        int ix = e.mHashCode & newMask;
-                        e.mLockManagerNext = newEntries[ix];
-                        newEntries[ix] = e;
-                        e = next;
+                            for (int i=entries.length; --i>=0 ;) {
+                                for (Lock e = entries[i]; e != null; ) {
+                                    Lock next = e.mLockManagerNext;
+                                    int ix = e.mHashCode & newMask;
+                                    e.mLockManagerNext = newEntries[ix];
+                                    newEntries[ix] = e;
+                                    e = next;
+                                }
+                            }
+
+                            mEntries = entries = newEntries;
+                            mGrowThreshold = (int) (capacity * LOAD_FACTOR);
+                            index = hash & newMask;
+                        }
+
+                        lock = new Lock();
+
+                        lock.mIndexId = indexId;
+                        lock.mKey = key;
+                        lock.mHashCode = hash;
+                        lock.mLockManagerNext = entries[index];
+
+                        lock.mLockCount = type;
+                        if (type == TYPE_SHARED) {
+                            lock.mSharedLockersObj = locker;
+                        } else {
+                            lock.mLocker = locker;
+                        }
+
+                        entries[index] = lock;
+                        mSize++;
+                    } finally {
+                        releaseExclusive();
                     }
+
+                    locker.push(lock, 0);
+                    return LockResult.ACQUIRED;
                 }
 
-                mEntries = entries = newEntries;
-                mGrowThreshold = (int) (capacity * LOAD_FACTOR);
-                index = hash & newMask;
+                // Result of shared/upgradable attempt for existing Lock.
+
+                if (result == ACQUIRED) {
+                    locker.push(lock, 0);
+                }
+
+                return result;
             }
 
-            Lock lock = new Lock();
-            lock.mIndexId = indexId;
-            lock.mKey = key;
-            lock.mHashCode = hash;
-            lock.mLockManagerNext = entries[index];
-            entries[index] = lock;
-            mSize++;
+            // Result of exclusive attempt for existing Lock.
 
-            return lock;
+            if (result == ACQUIRED) {
+                locker.push(lock, 0);
+            } else if (result == UPGRADED) {
+                locker.push(lock, 1);
+            }
+
+            return result;
         }
 
         /**
