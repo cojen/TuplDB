@@ -16,7 +16,7 @@
 
 package org.cojen.tupl;
 
-import static org.cojen.tupl.LockManager.hash;
+import static org.cojen.tupl.LockManager.*;
 
 /**
  * Accumulates a scoped stack of locks, bound to arbitrary keys. Locker
@@ -79,7 +79,8 @@ class Locker {
     final LockResult tryLockShared(long indexId, byte[] key, int hash, long nanosTimeout)
         throws DeadlockException
     {
-        LockResult result = mManager.tryLockShared(this, indexId, key, hash, nanosTimeout);
+        LockResult result = mManager.getLockHT(hash)
+            .tryLock(TYPE_SHARED, this, indexId, key, hash, nanosTimeout);
         if (result == LockResult.TIMED_OUT_LOCK) {
             detectDeadlock(nanosTimeout);
         }
@@ -113,7 +114,8 @@ class Locker {
     final LockResult lockShared(long indexId, byte[] key, int hash, long nanosTimeout)
         throws LockFailureException
     {
-        LockResult result = mManager.tryLockShared(this, indexId, key, hash, nanosTimeout);
+        LockResult result = mManager.getLockHT(hash)
+            .tryLock(TYPE_SHARED, this, indexId, key, hash, nanosTimeout);
         if (result.isHeld()) {
             return result;
         }
@@ -131,7 +133,8 @@ class Locker {
     final LockResult lockSharedNT(long indexId, byte[] key, int hash, long nanosTimeout)
         throws LockFailureException
     {
-        LockResult result = mManager.tryLockShared(this, indexId, key, hash, nanosTimeout);
+        LockResult result = mManager.getLockHT(hash)
+            .tryLock(TYPE_SHARED, this, indexId, key, hash, nanosTimeout);
         return result.isHeld() ? result : nt(result, indexId, key, nanosTimeout);
     }
 
@@ -163,7 +166,8 @@ class Locker {
     final LockResult tryLockUpgradable(long indexId, byte[] key, int hash, long nanosTimeout)
         throws DeadlockException
     {
-        LockResult result = mManager.tryLockUpgradable(this, indexId, key, hash, nanosTimeout);
+        LockResult result = mManager.getLockHT(hash)
+            .tryLock(TYPE_UPGRADABLE, this, indexId, key, hash, nanosTimeout);
         if (result == LockResult.TIMED_OUT_LOCK) {
             detectDeadlock(nanosTimeout);
         }
@@ -195,7 +199,8 @@ class Locker {
     final LockResult lockUpgradable(long indexId, byte[] key, int hash, long nanosTimeout)
         throws LockFailureException
     {
-        LockResult result = mManager.tryLockUpgradable(this, indexId, key, hash, nanosTimeout);
+        LockResult result = mManager.getLockHT(hash)
+            .tryLock(TYPE_UPGRADABLE, this, indexId, key, hash, nanosTimeout);
         if (result.isHeld()) {
             return result;
         }
@@ -213,7 +218,8 @@ class Locker {
     final LockResult lockUpgradableNT(long indexId, byte[] key, int hash, long nanosTimeout)
         throws LockFailureException
     {
-        LockResult result = mManager.tryLockUpgradable(this, indexId, key, hash, nanosTimeout);
+        LockResult result = mManager.getLockHT(hash)
+            .tryLock(TYPE_UPGRADABLE, this, indexId, key, hash, nanosTimeout);
         return result.isHeld() ? result : nt(result, indexId, key, nanosTimeout);
     }
 
@@ -244,7 +250,8 @@ class Locker {
     final LockResult tryLockExclusive(long indexId, byte[] key, int hash, long nanosTimeout)
         throws DeadlockException
     {
-        LockResult result = mManager.tryLockExclusive(this, indexId, key, hash, nanosTimeout);
+        LockResult result = mManager.getLockHT(hash)
+            .tryLock(TYPE_EXCLUSIVE, this, indexId, key, hash, nanosTimeout);
         if (result == LockResult.TIMED_OUT_LOCK) {
             detectDeadlock(nanosTimeout);
         }
@@ -275,7 +282,8 @@ class Locker {
     final LockResult lockExclusive(long indexId, byte[] key, int hash, long nanosTimeout)
         throws LockFailureException
     {
-        LockResult result = mManager.tryLockExclusive(this, indexId, key, hash, nanosTimeout);
+        LockResult result = mManager.getLockHT(hash)
+            .tryLock(TYPE_EXCLUSIVE, this, indexId, key, hash, nanosTimeout);
         if (result.isHeld()) {
             return result;
         }
@@ -293,7 +301,8 @@ class Locker {
     final LockResult lockExclusiveNT(long indexId, byte[] key, int hash, long nanosTimeout)
         throws LockFailureException
     {
-        LockResult result = mManager.tryLockExclusive(this, indexId, key, hash, nanosTimeout);
+        LockResult result = mManager.getLockHT(hash)
+            .tryLock(TYPE_EXCLUSIVE, this, indexId, key, hash, nanosTimeout);
         return result.isHeld() ? result : nt(result, indexId, key, nanosTimeout);
     }
 
