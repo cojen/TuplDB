@@ -451,8 +451,9 @@ final class TreeCursor extends CauseCloseable implements Cursor {
 
             if (parentPos < parentNode.highestInternalPos()) {
                 parentFrame.mNodePos = (parentPos += 2);
-                return toFirst(latchChild(parentNode, parentPos, true),
-                               new TreeCursorFrame(parentFrame));
+                // Recycle old frame.
+                frame.mParentFrame = parentFrame;
+                return toFirst(latchChild(parentNode, parentPos, true), frame);
             }
 
             frame = parentFrame;
@@ -599,9 +600,9 @@ final class TreeCursor extends CauseCloseable implements Cursor {
 
                 if (parentPos < parentNode.highestInternalPos()) {
                     parentFrame.mNodePos = (parentPos += 2);
-                    if (!toFirst(latchChild(parentNode, parentPos, true),
-                                 new TreeCursorFrame(parentFrame)))
-                    {
+                    // Recycle old frame.
+                    frame.mParentFrame = parentFrame;
+                    if (!toFirst(latchChild(parentNode, parentPos, true), frame)) {
                         return null;
                     }
                     frame = mLeaf;
@@ -791,8 +792,9 @@ final class TreeCursor extends CauseCloseable implements Cursor {
 
             if (parentPos > 0) {
                 parentFrame.mNodePos = (parentPos -= 2);
-                return toLast(latchChild(parentNode, parentPos, true),
-                              new TreeCursorFrame(parentFrame));
+                // Recycle old frame.
+                frame.mParentFrame = parentFrame;
+                return toLast(latchChild(parentNode, parentPos, true), frame);
             }
 
             frame = parentFrame;
@@ -939,9 +941,9 @@ final class TreeCursor extends CauseCloseable implements Cursor {
 
                 if (parentPos > 0) {
                     parentFrame.mNodePos = (parentPos -= 2);
-                    if (!toLast(latchChild(parentNode, parentPos, true),
-                                new TreeCursorFrame(parentFrame)))
-                    {
+                    // Recycle old frame.
+                    frame.mParentFrame = parentFrame;
+                    if (!toLast(latchChild(parentNode, parentPos, true), frame)) {
                         return null;
                     }
                     frame = mLeaf;
