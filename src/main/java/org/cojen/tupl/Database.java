@@ -1437,26 +1437,40 @@ public final class Database extends CauseCloseable {
                     } else {
                         treeIdBytes = new byte[8];
 
+                        // Non-transactional operations are critical, in that
+                        // any failure is treated as non-recoverable.
+                        boolean critical = true;
                         try {
                             do {
+                                critical = false;
                                 treeId = nextTreeId();
                                 writeLongBE(treeIdBytes, 0, treeId);
+                                critical = true;
                             } while (!mRegistry.insert
                                      (Transaction.BOGUS, treeIdBytes, EMPTY_BYTES));
 
+                            critical = false;
                             if (!mRegistryKeyMap.insert(null, nameKey, treeIdBytes)) {
+                                critical = true;
                                 mRegistry.delete(Transaction.BOGUS, treeIdBytes);
                                 throw new DatabaseException("Unable to insert index name");
                             }
 
                             idKey = newKey(KEY_TYPE_INDEX_ID, treeIdBytes);
 
+                            critical = false;
                             if (!mRegistryKeyMap.insert(null, idKey, name)) {
                                 mRegistryKeyMap.delete(null, nameKey);
+                                critical = true;
                                 mRegistry.delete(Transaction.BOGUS, treeIdBytes);
                                 throw new DatabaseException("Unable to insert index id");
                             }
                         } catch (Throwable e) {
+                            if (!critical && e instanceof DatabaseException &&
+                                ((DatabaseException) e).isRecoverable())
+                            {
+                                throw (DatabaseException) e;
+                            }
                             throw closeOnFailure(this, e);
                         }
                     }
