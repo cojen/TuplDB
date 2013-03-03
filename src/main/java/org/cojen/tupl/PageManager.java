@@ -45,7 +45,6 @@ final class PageManager {
     private static final int I_TOTAL_PAGE_COUNT = 0;
     private static final int I_REGULAR_QUEUE    = I_TOTAL_PAGE_COUNT + 8;
     private static final int I_RECYCLE_QUEUE    = I_REGULAR_QUEUE + PageQueue.HEADER_SIZE;
-    private static final int HEADER_SIZE        = I_RECYCLE_QUEUE + PageQueue.HEADER_SIZE;
 
     private final PageArray mPageArray;
 
@@ -126,10 +125,6 @@ final class PageManager {
 
     static long readTotalPageCount(byte[] header, int offset) {
         return Utils.readLongLE(header, offset + I_TOTAL_PAGE_COUNT);
-    }
-
-    public int headerSize() {
-        return HEADER_SIZE;
     }
 
     public PageArray pageArray() {
