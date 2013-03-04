@@ -292,8 +292,8 @@ class DurablePageDb extends PageDb {
     }
 
     @Override
-    public long allocPageCount() {
-        return mPageManager.allocPageCount();
+    public long getAllocPageCount() {
+        return mPageManager.getAllocPageCount();
     }
 
     @Override

@@ -112,7 +112,7 @@ abstract class PageDb extends CauseCloseable {
     /**
      * Returns the amount of recycled pages available for allocation.
      */
-    public abstract long allocPageCount();
+    public abstract long getAllocPageCount();
 
     /**
      * Writes to an allocated page, but doesn't commit it. A written page is
