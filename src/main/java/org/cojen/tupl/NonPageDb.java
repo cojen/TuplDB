@@ -89,11 +89,6 @@ class NonPageDb extends PageDb {
     }
 
     @Override
-    public long getAllocPageCount() {
-        return 0;
-    }
-
-    @Override
     public void writePage(long id, byte[] buf) throws IOException {
         fail(true);
     }
