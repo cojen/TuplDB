@@ -126,10 +126,10 @@ final class PageQueue implements IntegerRef {
     /**
      * Initialize a fresh (non-restored) queue.
      */
-    void init() throws IOException {
+    void init(long headNodeId) throws IOException {
         mAppendLock.lock();
         try {
-            mRemoveStoppedId = mAppendHeadId = mAppendTailId = mManager.allocPage();
+            mRemoveStoppedId = mAppendHeadId = mAppendTailId = headNodeId;
         } finally {
             mAppendLock.unlock();
         }
@@ -238,7 +238,7 @@ final class PageQueue implements IntegerRef {
     /**
      * Caller must hold remove lock.
      */
-    long removePageCount() {
+    long getRemovePageCount() {
         return mRemovePageCount;
     }
 

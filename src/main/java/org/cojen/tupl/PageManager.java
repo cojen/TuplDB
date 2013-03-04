@@ -89,8 +89,8 @@ final class PageManager {
         if (!restored) {
             // Pages 0 and 1 are reserved.
             mTotalPageCount = 2;
-            mRegularFreeList.init();
-            mRecycleFreeList.init();
+            mRegularFreeList.init(createPage());
+            mRecycleFreeList.init(createPage());
         } else {
             mTotalPageCount = readTotalPageCount(header, offset + I_TOTAL_PAGE_COUNT);
 
@@ -160,11 +160,11 @@ final class PageManager {
         }
     }
 
-    public long allocPageCount() {
+    public long getAllocPageCount() {
         final Lock lock = mRemoveLock;
         lock.lock();
         try {
-            return mRegularFreeList.removePageCount();
+            return mRegularFreeList.getRemovePageCount();
         } finally {
             lock.unlock();
         }

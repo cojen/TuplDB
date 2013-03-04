@@ -89,7 +89,7 @@ class NonPageDb extends PageDb {
     }
 
     @Override
-    public long allocPageCount() {
+    public long getAllocPageCount() {
         return 0;
     }
 
