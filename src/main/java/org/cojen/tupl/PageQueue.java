@@ -271,7 +271,8 @@ final class PageQueue implements IntegerRef {
     }
 
     /**
-     * Removes a page which was recently appended.
+     * Removes a page which was recently appended. To avoid deadlock, don't invoke with remove
+     * lock held.
      *
      * @return 0 if none available
      */
