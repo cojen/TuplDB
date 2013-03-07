@@ -319,39 +319,40 @@ public final class Database extends CauseCloseable {
             }
         }
 
-        // Create lock file and write info file of properties.
-        if (baseFile == null || openMode == OPEN_TEMP) {
-            mLockFile = null;
-        } else {
-            mLockFile = new LockedFile(new File(baseFile.getPath() + ".lock"), config.mReadOnly);
-            if (!config.mReadOnly) {
-                File infoFile = new File(baseFile.getPath() + ".info");
-                Writer w = new BufferedWriter
-                    (new OutputStreamWriter(new FileOutputStream(infoFile), "UTF-8"));
-                try {
-                    config.writeInfo(w);
-                } finally {
-                    w.close();
+        try {
+            // Create lock file and write info file of properties.
+            if (baseFile == null || openMode == OPEN_TEMP) {
+                mLockFile = null;
+            } else {
+                mLockFile = new LockedFile
+                    (new File(baseFile.getPath() + ".lock"), config.mReadOnly);
+                if (!config.mReadOnly) {
+                    File infoFile = new File(baseFile.getPath() + ".info");
+                    Writer w = new BufferedWriter
+                        (new OutputStreamWriter(new FileOutputStream(infoFile), "UTF-8"));
+                    try {
+                        config.writeInfo(w);
+                    } finally {
+                        w.close();
+                    }
                 }
             }
-        }
 
-        EnumSet<OpenOption> options = config.createOpenOptions();
-        if (baseFile != null && openMode == OPEN_DESTROY) {
-            // Delete old redo log files.
-            deleteNumberedFiles(baseFile, ".redo.");
-        }
+            EnumSet<OpenOption> options = config.createOpenOptions();
+            if (baseFile != null && openMode == OPEN_DESTROY) {
+                // Delete old redo log files.
+                deleteNumberedFiles(baseFile, ".redo.");
+            }
 
-        if (dataFiles == null) {
-            mPageDb = new NonPageDb(pageSize);
-        } else {
-            mPageDb = new DurablePageDb
-                (pageSize, dataFiles, options, config.mCrypto, openMode == OPEN_DESTROY);
-        }
+            if (dataFiles == null) {
+                mPageDb = new NonPageDb(pageSize);
+            } else {
+                mPageDb = new DurablePageDb
+                    (pageSize, dataFiles, options, config.mCrypto, openMode == OPEN_DESTROY);
+            }
 
-        mSharedCommitLock = mPageDb.sharedCommitLock();
+            mSharedCommitLock = mPageDb.sharedCommitLock();
 
-        try {
             // Pre-allocate nodes. They are automatically added to the usage
             // list, and so nothing special needs to be done to allow them to
             // get used. Since the initial state is clean, evicting these
@@ -1204,7 +1205,10 @@ public final class Database extends CauseCloseable {
             }
         }
 
-        mSharedCommitLock.lock();
+        Lock lock = mSharedCommitLock;
+        if (lock != null) {
+            lock.lock();
+        }
         try {
             closeNodeCache();
 
@@ -1224,7 +1228,9 @@ public final class Database extends CauseCloseable {
                 throw ex;
             }
         } finally {
-            mSharedCommitLock.unlock();
+            if (lock != null) {
+                lock.unlock();
+            }
         }
     }
 
