@@ -126,10 +126,10 @@ final class PageQueue implements IntegerRef {
     /**
      * Initialize a fresh (non-restored) queue.
      */
-    void init() throws IOException {
+    void init(long headNodeId) throws IOException {
         mAppendLock.lock();
         try {
-            mRemoveStoppedId = mAppendHeadId = mAppendTailId = mManager.allocPage();
+            mRemoveStoppedId = mAppendHeadId = mAppendTailId = headNodeId;
         } finally {
             mAppendLock.unlock();
         }
@@ -236,13 +236,6 @@ final class PageQueue implements IntegerRef {
     }
 
     /**
-     * Caller must hold remove lock.
-     */
-    long removePageCount() {
-        return mRemovePageCount;
-    }
-
-    /**
      * Append a page which has been deleted.
      *
      * @throws IllegalArgumentException if id is less than or equal to one
@@ -271,7 +264,8 @@ final class PageQueue implements IntegerRef {
     }
 
     /**
-     * Removes a page which was recently appended.
+     * Removes a page which was recently appended. To avoid deadlock, don't invoke with remove
+     * lock held.
      *
      * @return 0 if none available
      */
