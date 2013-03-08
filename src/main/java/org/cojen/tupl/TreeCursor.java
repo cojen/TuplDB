@@ -2632,7 +2632,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
      */
     TreeCursorFrame leafExclusiveNotSplitDirty() throws IOException {
         TreeCursorFrame frame = leafExclusive();
-        notSplitDirty(leafExclusive());
+        notSplitDirty(frame);
         return frame;
     }
 
