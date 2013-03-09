@@ -407,21 +407,11 @@ final class PageQueue implements IntegerRef {
             return count;
         }
 
-        class NodeOffsetRef implements IntegerRef {
-            int offset;
-            public int get() {
-                return offset;
-            }
-            public void set(int v) {
-                offset = v;
-            }
-        }
-
-        NodeOffsetRef nodeOffsetRef = new NodeOffsetRef();
+        IntegerRef.Value nodeOffsetRef = new IntegerRef.Value();
 
         byte[] node = mRemoveHead.clone();
         long pageId = mRemoveHeadFirstPageId;
-        nodeOffsetRef.offset = mRemoveHeadOffset;
+        nodeOffsetRef.value = mRemoveHeadOffset;
 
         while (true) {
             /*
@@ -433,7 +423,7 @@ final class PageQueue implements IntegerRef {
             count++;
             clearPageBit(pages, pageId);
 
-            if (nodeOffsetRef.offset < node.length) {
+            if (nodeOffsetRef.value < node.length) {
                 long delta = readUnsignedVarLong(node, nodeOffsetRef);
                 if (delta > 0) {
                     pageId += delta;
@@ -454,7 +444,7 @@ final class PageQueue implements IntegerRef {
 
             mManager.pageArray().readPage(nodeId, node);
             pageId = readLongBE(node, I_FIRST_PAGE_ID);
-            nodeOffsetRef.offset = I_NODE_START;
+            nodeOffsetRef.value = I_NODE_START;
         }
 
         return count;
