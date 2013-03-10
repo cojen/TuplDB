@@ -45,7 +45,6 @@ final class PageManager {
     private static final int I_TOTAL_PAGE_COUNT = 0;
     private static final int I_REGULAR_QUEUE    = I_TOTAL_PAGE_COUNT + 8;
     private static final int I_RECYCLE_QUEUE    = I_REGULAR_QUEUE + PageQueue.HEADER_SIZE;
-    private static final int HEADER_SIZE        = I_RECYCLE_QUEUE + PageQueue.HEADER_SIZE;
 
     private final PageArray mPageArray;
 
@@ -90,8 +89,8 @@ final class PageManager {
         if (!restored) {
             // Pages 0 and 1 are reserved.
             mTotalPageCount = 2;
-            mRegularFreeList.init();
-            mRecycleFreeList.init();
+            mRegularFreeList.init(createPage());
+            mRecycleFreeList.init(createPage());
         } else {
             mTotalPageCount = readTotalPageCount(header, offset + I_TOTAL_PAGE_COUNT);
 
@@ -128,10 +127,6 @@ final class PageManager {
         return Utils.readLongLE(header, offset + I_TOTAL_PAGE_COUNT);
     }
 
-    public int headerSize() {
-        return HEADER_SIZE;
-    }
-
     public PageArray pageArray() {
         return mPageArray;
     }
@@ -160,16 +155,6 @@ final class PageManager {
         }
         try {
             return createPage();
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    public long allocPageCount() {
-        final Lock lock = mRemoveLock;
-        lock.lock();
-        try {
-            return mRegularFreeList.removePageCount();
         } finally {
             lock.unlock();
         }
