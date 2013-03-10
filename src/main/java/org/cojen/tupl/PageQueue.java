@@ -126,10 +126,10 @@ final class PageQueue implements IntegerRef {
     /**
      * Initialize a fresh (non-restored) queue.
      */
-    void init() throws IOException {
+    void init(long headNodeId) throws IOException {
         mAppendLock.lock();
         try {
-            mRemoveStoppedId = mAppendHeadId = mAppendTailId = mManager.allocPage();
+            mRemoveStoppedId = mAppendHeadId = mAppendTailId = headNodeId;
         } finally {
             mAppendLock.unlock();
         }
@@ -168,7 +168,12 @@ final class PageQueue implements IntegerRef {
      */
     long tryRemove(Lock lock, boolean aggressive) throws IOException {
         if (mRemoveHeadId == 0) {
-            return 0;
+            if (!aggressive || mRemoveStoppedId == mAppendTailId) {
+                return 0;
+            }
+            // Can continue removing aggressively now that a new append tail exists.
+            loadRemoveNode(mRemoveStoppedId);
+            mRemoveStoppedId = 0;
         }
 
         long pageId;
@@ -236,13 +241,6 @@ final class PageQueue implements IntegerRef {
     }
 
     /**
-     * Caller must hold remove lock.
-     */
-    long removePageCount() {
-        return mRemovePageCount;
-    }
-
-    /**
      * Append a page which has been deleted.
      *
      * @throws IllegalArgumentException if id is less than or equal to one
@@ -271,7 +269,8 @@ final class PageQueue implements IntegerRef {
     }
 
     /**
-     * Removes a page which was recently appended.
+     * Removes a page which was recently appended. To avoid deadlock, don't invoke with remove
+     * lock held.
      *
      * @return 0 if none available
      */
@@ -413,21 +412,11 @@ final class PageQueue implements IntegerRef {
             return count;
         }
 
-        class NodeOffsetRef implements IntegerRef {
-            int offset;
-            public int get() {
-                return offset;
-            }
-            public void set(int v) {
-                offset = v;
-            }
-        }
-
-        NodeOffsetRef nodeOffsetRef = new NodeOffsetRef();
+        IntegerRef.Value nodeOffsetRef = new IntegerRef.Value();
 
         byte[] node = mRemoveHead.clone();
         long pageId = mRemoveHeadFirstPageId;
-        nodeOffsetRef.offset = mRemoveHeadOffset;
+        nodeOffsetRef.value = mRemoveHeadOffset;
 
         while (true) {
             /*
@@ -439,7 +428,7 @@ final class PageQueue implements IntegerRef {
             count++;
             clearPageBit(pages, pageId);
 
-            if (nodeOffsetRef.offset < node.length) {
+            if (nodeOffsetRef.value < node.length) {
                 long delta = readUnsignedVarLong(node, nodeOffsetRef);
                 if (delta > 0) {
                     pageId += delta;
@@ -460,7 +449,7 @@ final class PageQueue implements IntegerRef {
 
             mManager.pageArray().readPage(nodeId, node);
             pageId = readLongBE(node, I_FIRST_PAGE_ID);
-            nodeOffsetRef.offset = I_NODE_START;
+            nodeOffsetRef.value = I_NODE_START;
         }
 
         return count;

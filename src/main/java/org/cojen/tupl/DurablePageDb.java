@@ -292,11 +292,6 @@ class DurablePageDb extends PageDb {
     }
 
     @Override
-    public long allocPageCount() {
-        return mPageManager.allocPageCount();
-    }
-
-    @Override
     public void writePage(long id, byte[] buf) throws IOException {
         writePage(id, buf, 0);
     }

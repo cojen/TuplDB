@@ -110,11 +110,6 @@ abstract class PageDb extends CauseCloseable {
     public abstract long allocPage() throws IOException;
 
     /**
-     * Returns the amount of recycled pages available for allocation.
-     */
-    public abstract long allocPageCount();
-
-    /**
      * Writes to an allocated page, but doesn't commit it. A written page is
      * immediately readable even if not committed. An uncommitted page can be
      * deleted, but it remains readable until after a commit.
