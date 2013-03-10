@@ -168,7 +168,12 @@ final class PageQueue implements IntegerRef {
      */
     long tryRemove(Lock lock, boolean aggressive) throws IOException {
         if (mRemoveHeadId == 0) {
-            return 0;
+            if (!aggressive || mRemoveStoppedId == mAppendTailId) {
+                return 0;
+            }
+            // Can continue removing aggressively now that a new append tail exists.
+            loadRemoveNode(mRemoveStoppedId);
+            mRemoveStoppedId = 0;
         }
 
         long pageId;
