@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2013 Brian S O'Neill
+ *  Copyright 2013 Brian S O'Neill
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -23,16 +23,44 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-final class ReverseView implements View {
+final class UnmodifiableView implements Index {
+    static View apply(View view) {
+        return view.isUnmodifiable() ? view : new UnmodifiableView(view);
+    }
+
     private final View mSource;
 
-    ReverseView(View source) {
+    UnmodifiableView(View source) {
         mSource = source;
     }
 
     @Override
+    public long getId() {
+        if (mSource instanceof Index) {
+            return ((Index) mSource).getId();
+        }
+        return 0;
+    }
+
+    @Override
+    public byte[] getName() {
+        if (mSource instanceof Index) {
+            return ((Index) mSource).getName();
+        }
+        return null;
+    }
+
+    @Override
+    public String getNameString() {
+        if (mSource instanceof Index) {
+            return ((Index) mSource).getNameString();
+        }
+        return "null";
+    }
+
+    @Override
     public Cursor newCursor(Transaction txn) {
-        return new ReverseCursor(mSource.newCursor(txn));
+        return new UnmodifiableCursor(mSource.newCursor(txn));
     }
 
     @Override
@@ -42,78 +70,96 @@ final class ReverseView implements View {
 
     @Override
     public void store(Transaction txn, byte[] key, byte[] value) throws IOException {
-        mSource.store(txn, key, value);
+        throw new UnmodifiableViewException();
     }
 
     @Override
     public byte[] exchange(Transaction txn, byte[] key, byte[] value) throws IOException {
-        return mSource.exchange(txn, key, value);
+        throw new UnmodifiableViewException();
     }
 
     @Override
     public boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException {
-        return mSource.insert(txn, key, value);
+        throw new UnmodifiableViewException();
     }
 
     @Override
     public boolean replace(Transaction txn, byte[] key, byte[] value) throws IOException {
-        return mSource.replace(txn, key, value);
+        throw new UnmodifiableViewException();
     }
 
     @Override
     public boolean update(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException
     {
-        return mSource.update(txn, key, oldValue, newValue);
+        throw new UnmodifiableViewException();
     }
 
     @Override
     public boolean delete(Transaction txn, byte[] key) throws IOException {
-        return mSource.delete(txn, key);
+        throw new UnmodifiableViewException();
     }
 
     @Override
     public boolean remove(Transaction txn, byte[] key, byte[] value) throws IOException {
-        return mSource.remove(txn, key, value);
-    }
-
-    @Override
-    public Stream newStream() {
-        return mSource.newStream();
+        throw new UnmodifiableViewException();
     }
 
     @Override
     public View viewGe(byte[] key) {
-        return new ReverseView(mSource.viewLe(key));
+        return new UnmodifiableView(mSource.viewGe(key));
     }
 
     @Override
     public View viewGt(byte[] key) {
-        return new ReverseView(mSource.viewLt(key));
+        return new UnmodifiableView(mSource.viewGt(key));
     }
 
     @Override
     public View viewLe(byte[] key) {
-        return new ReverseView(mSource.viewGe(key));
+        return new UnmodifiableView(mSource.viewLe(key));
     }
 
     @Override
     public View viewLt(byte[] key) {
-        return new ReverseView(mSource.viewGt(key));
+        return new UnmodifiableView(mSource.viewLt(key));
     }
 
     @Override
     public View viewReverse() {
-        return mSource;
+        return new UnmodifiableView(mSource.viewReverse());
     }
 
     @Override
     public View viewUnmodifiable() {
-        return UnmodifiableView.apply(this);
+        return this;
     }
 
     @Override
     public boolean isUnmodifiable() {
-        return mSource.isUnmodifiable();
+        return true;
+    }
+
+    @Override
+    public boolean verify(VerificationObserver observer) throws IOException {
+        if (mSource instanceof Index) {
+            return ((Index) mSource).verify(observer);
+        }
+        return true;
+    }
+
+    @Override
+    public void close() throws IOException {
+        throw new UnmodifiableViewException();
+    }
+
+    @Override
+    public boolean isClosed() {
+        return false;
+    }
+
+    @Override
+    public void drop() throws IOException {
+        throw new UnmodifiableViewException();
     }
 }

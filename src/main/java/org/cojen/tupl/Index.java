@@ -101,12 +101,6 @@ public interface Index extends View, Closeable {
     /**
      * {@inheritDoc}
      */
-    //@Override
-    //public byte[] swap(Transaction txn, byte[] key, byte[] newValue) throws IOException;
-
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public Stream newStream();
 
