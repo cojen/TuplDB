@@ -1104,31 +1104,32 @@ public final class Database extends CauseCloseable {
             }
 
             Cursor all = allIndexes();
+            try {
+                for (all.first(); all.key() != null; all.next()) {
+                    long id = readLongBE(all.value(), 0);
 
-            for (all.first(); all.key() != null; all.next()) {
-                long id = readLongBE(all.value(), 0);
-
-                Tree index = lookupIndexById(id);
-                if (index != null) {
-                    if (!verify(passedRef, index, observer)) {
-                        break indexes;
-                    }
-                } else {
-                    // Open the index.
-                    index = (Tree) indexById(id);
-                    boolean keepGoing = verify(passedRef, index, observer);
-                    try {
-                        index.close();
-                    } catch (IllegalStateException e) {
-                        // Leave open if in use now.
-                    }
-                    if (!keepGoing) {
-                        break indexes;
+                    Tree index = lookupIndexById(id);
+                    if (index != null) {
+                        if (!verify(passedRef, index, observer)) {
+                            break indexes;
+                        }
+                    } else {
+                        // Open the index.
+                        index = (Tree) indexById(id);
+                        boolean keepGoing = verify(passedRef, index, observer);
+                        try {
+                            index.close();
+                        } catch (IllegalStateException e) {
+                            // Leave open if in use now.
+                        }
+                        if (!keepGoing) {
+                            break indexes;
+                        }
                     }
                 }
+            } finally {
+                all.reset();
             }
-
-            all.reset();
         }
 
         return passedRef[0];
@@ -1137,8 +1138,7 @@ public final class Database extends CauseCloseable {
     /**
      * @return false if should stop
      */
-    private boolean verify(boolean[] passedRef, Tree tree,
-                           VerificationObserver observer)
+    private boolean verify(boolean[] passedRef, Tree tree, VerificationObserver observer)
         throws IOException
     {
         observer.failed = false;
