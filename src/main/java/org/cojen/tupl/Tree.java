@@ -419,26 +419,46 @@ final class Tree implements Index {
     }
 
     @Override
+    public View viewUnmodifiable() {
+        return new UnmodifiableView(this);
+    }
+
+    @Override
+    public boolean isUnmodifiable() {
+        return false;
+    }
+
+    @Override
     public boolean verify(VerificationObserver observer) throws IOException {
         if (observer == null) {
             observer = new VerificationObserver();
         }
+        Index view = observableView();
         observer.failed = false;
-        verifyTree(observer);
+        verifyTree(view, observer);
         boolean passed = !observer.failed;
-        observer.indexComplete(this, passed, null);
+        observer.indexComplete(view, passed, null);
         return passed;
     }
 
     /**
+     * Returns a view which can be passed to an observer. Internal trees are returned as
+     * unmodifiable.
+     */
+    Index observableView() {
+        return isInternal(mId) ? new UnmodifiableView(this) : this;
+    }
+
+    /**
+     * @param view view to pass to observer
      * @return false if should stop
      */
-    boolean verifyTree(VerificationObserver observer) throws IOException {
+    boolean verifyTree(Index view, VerificationObserver observer) throws IOException {
         TreeCursor cursor = new TreeCursor(this, Transaction.BOGUS);
         try {
             cursor.first();
             int height = cursor.height();
-            if (!observer.indexBegin(this, height)) {
+            if (!observer.indexBegin(view, height)) {
                 return false;
             }
             if (!cursor.verify(height, observer)) {

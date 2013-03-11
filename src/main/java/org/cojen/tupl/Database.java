@@ -1141,11 +1141,12 @@ public final class Database extends CauseCloseable {
     private boolean verify(boolean[] passedRef, Tree tree, VerificationObserver observer)
         throws IOException
     {
+        Index view = tree.observableView();
         observer.failed = false;
-        boolean keepGoing = tree.verifyTree(observer);
+        boolean keepGoing = tree.verifyTree(view, observer);
         passedRef[0] &= !observer.failed;
         if (keepGoing) {
-            keepGoing = observer.indexComplete(tree, !observer.failed, null);
+            keepGoing = observer.indexComplete(view, !observer.failed, null);
         }
         return keepGoing;
     }

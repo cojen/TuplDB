@@ -295,4 +295,16 @@ public interface View {
      * Returns a view, backed by this one, whose natural order is reversed.
      */
     public View viewReverse();
+
+    /**
+     * Returns a view, backed by this one, whose entries cannot be modified. Any attempt to do
+     * so causes an {@link UnmodifiableViewException} to be thrown.
+     */
+    public View viewUnmodifiable();
+
+    /**
+     * Returns true if any attempt to modify this view causes an {@link
+     * UnmodifiableViewException} to be thrown.
+     */
+    public boolean isUnmodifiable();
 }
