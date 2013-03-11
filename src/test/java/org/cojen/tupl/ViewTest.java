@@ -529,6 +529,91 @@ public class ViewTest {
         assertEquals(90, i);
     }
 
+    @Test
+    public void unmodifiable() throws Exception {
+        for (int i=0; i<8; i++) {
+            unmodifiable(i);
+        }
+    }
+
+    /**
+     * @param mode bit 0: flip construction order; 1: sub view; 2: reverse view
+     */
+    private void unmodifiable(int mode) throws Exception {
+        Index ix = fill();
+
+        View view = ix;
+        if ((mode & 4) == 0) {
+            view = ix.viewUnmodifiable();
+        }
+        if ((mode & 2) != 0) {
+            view = view.viewGe(key(1));
+        }
+        if ((mode & 1) != 0) {
+            view = view.viewReverse();
+        }
+        if ((mode & 4) != 0) {
+            view = ix.viewUnmodifiable();
+        }
+
+        fastAssertArrayEquals(key(20), view.load(null, key(20)));
+
+        try {
+            view.store(null, key(1), key(1));
+            fail();
+        } catch (UnmodifiableViewException e) {
+        }
+
+        try {
+            view.exchange(null, key(1), key(1));
+            fail();
+        } catch (UnmodifiableViewException e) {
+        }
+
+        try {
+            view.insert(null, key(1), key(1));
+            fail();
+        } catch (UnmodifiableViewException e) {
+        }
+
+        try {
+            view.replace(null, key(1), key(1));
+            fail();
+        } catch (UnmodifiableViewException e) {
+        }
+
+        try {
+            view.update(null, key(1), key(1), key(2));
+            fail();
+        } catch (UnmodifiableViewException e) {
+        }
+
+        try {
+            view.delete(null, key(1));
+            fail();
+        } catch (UnmodifiableViewException e) {
+        }
+
+        try {
+            view.remove(null, key(1), key(1));
+            fail();
+        } catch (UnmodifiableViewException e) {
+        }
+
+        Cursor c = view.newCursor(null);
+
+        c.find(key(20));
+        fastAssertArrayEquals(key(20), c.key());
+
+        try {
+            c.store(key(20));
+            fail();
+        } catch (UnmodifiableViewException e) {
+        }
+
+        c.reset();
+    }
+
     private Index fill() throws Exception {
         Index ix = mDb.openIndex("views");
         for (int i=20; i<=90; i+=10) {
