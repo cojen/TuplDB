@@ -100,5 +100,15 @@ abstract class SubView implements View {
         return new ReverseView(this);
     }
 
+    @Override
+    public View viewUnmodifiable() {
+        return UnmodifiableView.apply(this);
+    }
+
+    @Override
+    public boolean isUnmodifiable() {
+        return mSource.isUnmodifiable();
+    }
+
     abstract boolean inRange(byte[] key);
 }
