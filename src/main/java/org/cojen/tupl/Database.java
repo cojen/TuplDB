@@ -1607,9 +1607,9 @@ public final class Database extends CauseCloseable {
     }
 
     /**
-     * Trees retain a references to an unevictable root node. If tree is no
-     * longer in use, evict everything, including the root node. Method cannot
-     * be called while a checkpoint is in progress.
+     * Trees instances retain a reference to an unevictable root node. If tree is no longer in
+     * use, evict everything, including the root node. Method cannot be called while a
+     * checkpoint is in progress.
      */
     private void cleanupUnreferencedTrees(Transaction txn) throws IOException {
         final ReferenceQueue queue = mOpenTreesRefQueue;
@@ -2092,7 +2092,7 @@ public final class Database extends CauseCloseable {
     }
 
     /**
-     * Indicate that non-root node is most recently used. Root node is not
+     * Indicate that a non-root node is most recently used. Root node is not
      * managed in usage list and cannot be evicted. Caller must hold any latch
      * on node. Latch is never released by this method, even if an exception is
      * thrown.
