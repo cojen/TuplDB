@@ -68,7 +68,7 @@ class FragmentedTrash {
             cursor.store(payload);
             cursor.reset();
         } catch (Throwable e) {
-            txn.borked(e);
+            txn.borked(e, false);
             throw closeOnFailure(cursor, e);
         }
 
