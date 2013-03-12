@@ -953,38 +953,33 @@ final class UndoLog {
     static class Scope {
         long mSavepoint;
 
-        // Locks are recovered in the opposite order in which they were
-        // acquired. Gather them in a stack to reverse the order.
-        Deque<Lock> mLocks;
+        // Locks are recovered in the opposite order in which they were acquired. Gather them
+        // in a stack to reverse the order. Re-use the LockManager collision chain field and
+        // form a linked list.
+        org.cojen.tupl.Lock mTopLock;
 
         Scope() {
         }
 
         void addLock(long indexId, byte[] key) {
-            Deque<Lock> locks = mLocks;
-            if (locks == null) {
-                mLocks = locks = new ArrayDeque<Lock>();
-            }
-            locks.addFirst(new Lock(indexId, key));
+            org.cojen.tupl.Lock lock = new org.cojen.tupl.Lock();
+            lock.mIndexId = indexId;
+            lock.mKey = key;
+            lock.mHashCode = LockManager.hash(indexId, key);
+            lock.mLockManagerNext = mTopLock;
+            mTopLock = lock;
         }
 
         void acquireLocks(Transaction txn) throws LockFailureException {
-            Deque<Lock> locks = mLocks;
-            if (locks != null) {
-                Lock lock;
-                while ((lock = locks.pollFirst()) != null) {
-                    txn.lockExclusive(lock.mIndexId, lock.mKey);
+            org.cojen.tupl.Lock lock = mTopLock;
+            if (lock != null) while (true) {
+                // Copy next before the field is overwritten.
+                org.cojen.tupl.Lock next = lock.mLockManagerNext;
+                txn.lockExclusive(lock);
+                if (next == null) {
+                    break;
                 }
-            }
-        }
-
-        static class Lock {
-            final long mIndexId;
-            final byte[] mKey;
-
-            Lock(long indexId, byte[] key) {
-                mIndexId = indexId;
-                mKey = key;
+                mTopLock = lock = next;
             }
         }
     }
