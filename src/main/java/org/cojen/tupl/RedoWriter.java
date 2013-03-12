@@ -263,17 +263,12 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
             writeTerminator();
             doFlush();
 
-            if (op == OP_CLOSE) {
-                try {
-                    forceAndClose();
-                } catch (IOException e) {
-                    throw rethrow(e, mCause);
-                }
-                return;
+            try {
+                forceAndClose();
+            } catch (IOException e) {
+                throw rethrow(e, mCause);
             }
         }
-
-        force(true);
     }
 
     // Caller must be synchronized.
