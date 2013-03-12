@@ -561,6 +561,14 @@ public final class Transaction extends Locker {
         return super.lockExclusive(indexId, key, hash, mLockTimeoutNanos);
     }
 
+    /**
+     * @param newLock Lock instance to insert, unless another already exists. The mIndexId,
+     * mKey, and mHashCode fields must be set.
+     */
+    final LockResult lockExclusive(org.cojen.tupl.Lock lock) throws LockFailureException {
+        return super.lockExclusive(lock, mLockTimeoutNanos);
+    }
+
     final void recoveryCleanup() throws IOException {
         UndoLog undo = mUndoLog;
         if (undo != null) {
