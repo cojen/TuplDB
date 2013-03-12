@@ -343,6 +343,71 @@ final class LockManager {
         }
 
         /**
+         * @param newLock Lock instance to insert, unless another already exists. The mIndexId,
+         * mKey, and mHashCode fields must be set.
+         */
+        LockResult tryLockExclusive(Locker locker, Lock newLock, long nanosTimeout) {
+            int hash = newLock.mHashCode;
+
+            Lock lock;
+            LockResult result;
+            lockEx: {
+                acquireExclusive();
+                try {
+                    Lock[] entries = mEntries;
+                    int index = hash & (entries.length - 1);
+                    for (lock = entries[index]; lock != null; lock = lock.mLockManagerNext) {
+                        if (lock.matches(newLock.mIndexId, newLock.mKey, hash)) {
+                            result = lock.tryLockExclusive(this, locker, nanosTimeout);
+                            break lockEx;
+                        }
+                    }
+
+                    if (mSize >= mGrowThreshold) {
+                        int capacity = entries.length << 1;
+                        Lock[] newEntries = new Lock[capacity];
+                        int newMask = capacity - 1;
+
+                        for (int i=entries.length; --i>=0 ;) {
+                            for (Lock e = entries[i]; e != null; ) {
+                                Lock next = e.mLockManagerNext;
+                                int ix = e.mHashCode & newMask;
+                                e.mLockManagerNext = newEntries[ix];
+                                newEntries[ix] = e;
+                                e = next;
+                            }
+                        }
+
+                        mEntries = entries = newEntries;
+                        mGrowThreshold = (int) (capacity * LOAD_FACTOR);
+                        index = hash & newMask;
+                    }
+
+                    lock = newLock;
+                    lock.mLockManagerNext = entries[index];
+                    lock.mLockCount = ~0;
+                    lock.mLocker = locker;
+
+                    entries[index] = lock;
+                    mSize++;
+                } finally {
+                    releaseExclusive();
+                }
+
+                locker.push(lock, 0);
+                return LockResult.ACQUIRED;
+            }
+
+            if (result == ACQUIRED) {
+                locker.push(lock, 0);
+            } else if (result == UPGRADED) {
+                locker.push(lock, 1);
+            }
+
+            return result;
+        }
+
+        /**
          * Caller must hold latch and ensure that Lock is in hashtable.
          *
          * @throws NullPointerException if lock is not in hashtable
