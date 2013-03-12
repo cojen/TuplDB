@@ -324,7 +324,7 @@ public final class Transaction extends Locker {
                 }
             }
         } catch (Throwable e) {
-            throw borked(e);
+            throw borked(e, true);
         }
     }
 
@@ -349,7 +349,7 @@ public final class Transaction extends Locker {
             // Scope and commit states are set upon first actual use of this scope.
             mHasState &= ~(HAS_SCOPE | HAS_COMMIT);
         } catch (Throwable e) {
-            throw borked(e);
+            throw borked(e, true);
         }
     }
 
@@ -409,7 +409,7 @@ public final class Transaction extends Locker {
                 mSavepoint = parentScope.mSavepoint;
             }
         } catch (Throwable e) {
-            throw borked(e);
+            throw borked(e, true);
         }
     }
 
@@ -453,7 +453,7 @@ public final class Transaction extends Locker {
 
             mTxnId = 0;
         } catch (Throwable e) {
-            throw borked(e);
+            throw borked(e, true);
         }
     }
 
@@ -629,8 +629,7 @@ public final class Transaction extends Locker {
                 }
             }
         } catch (Throwable e) {
-            // FIXME: If caused by redo disallowing writes, just rethrow.
-            throw borked(e);
+            throw borked(e, false);
         }
     }
 
@@ -672,7 +671,7 @@ public final class Transaction extends Locker {
         try {
             undoLog().push(indexId, op, payload, off, len);
         } catch (Throwable e) {
-            throw borked(e);
+            throw borked(e, false);
         }
     }
 
@@ -684,7 +683,7 @@ public final class Transaction extends Locker {
         try {
             undoLog().push(indexId, UndoLog.OP_DELETE, key, 0, key.length);
         } catch (Throwable e) {
-            throw borked(e);
+            throw borked(e, false);
         }
     }
 
@@ -700,7 +699,7 @@ public final class Transaction extends Locker {
         try {
             undoLog().push(indexId, UndoLog.OP_RECLAIM_FRAGMENTED, payload, off, len);
         } catch (Throwable e) {
-            throw borked(e);
+            throw borked(e, false);
         }
     }
 
@@ -725,11 +724,15 @@ public final class Transaction extends Locker {
         return undo;
     }
 
-    RuntimeException borked(Throwable e) {
+    /**
+     * @param rollback Rollback should only be performed by user operations -- the public API.
+     * Otherwise a latch deadlock can occur.
+     */
+    RuntimeException borked(Throwable e, boolean rollback) {
         if (mBorked == null) {
             if (mDatabase.mClosed) {
                 mBorked = e;
-            } else {
+            } else if (rollback) {
                 // Attempt to rollback the mess and release the locks.
                 UndoLog undo = mUndoLog;
                 try {
