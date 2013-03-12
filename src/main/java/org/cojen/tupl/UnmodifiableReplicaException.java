@@ -17,7 +17,7 @@
 package org.cojen.tupl;
 
 /**
- * Thrown when attempting to make a read-only replica.
+ * Thrown when attempting to make changes to a read-only replica.
  *
  * @author Brian S O'Neill
  */
