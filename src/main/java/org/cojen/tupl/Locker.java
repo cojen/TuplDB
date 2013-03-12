@@ -291,6 +291,19 @@ class Locker {
     }
 
     /**
+     * @param newLock Lock instance to insert, unless another already exists. The mIndexId,
+     * mKey, and mHashCode fields must be set.
+     */
+    final LockResult lockExclusive(Lock lock, long nanosTimeout) throws LockFailureException {
+        LockResult result = mManager.getLockHT(lock.mHashCode)
+            .tryLockExclusive(this, lock, nanosTimeout);
+        if (result.isHeld()) {
+            return result;
+        }
+        throw failed(result, lock.mIndexId, lock.mKey, nanosTimeout);
+    }
+
+    /**
      * NT == No Timeout or deadlock exception thrown
      *
      * @return {@link LockResult#TIMED_OUT_LOCK TIMED_OUT_LOCK}, {@link
