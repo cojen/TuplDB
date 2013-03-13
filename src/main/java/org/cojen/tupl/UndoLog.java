@@ -315,7 +315,9 @@ final class UndoLog {
             node.mGarbage = pos;
 
             if (remaining <= 0 && available >= (1 + varIntLen)) {
-                writeUnsignedVarInt(page, pos -= varIntLen, len);
+                if (varIntLen > 0) {
+                    writeUnsignedVarInt(page, pos -= varIntLen, len);
+                }
                 page[--pos] = op;
                 node.mGarbage = pos;
                 node.releaseExclusive();
@@ -418,17 +420,18 @@ final class UndoLog {
                     node.acquireExclusive();
                     while ((node = popNode(node, true)) != null) {
                         if (commit) {
-                            // When shared lock is released, log can be
-                            // checkpointed in an incomplete state. Update the
-                            // top node to indicate that undo log is committed.
+                            // When shared lock is released, log can be checkpointed in an
+                            // incomplete state. Although caller must have already pushed the
+                            // commit op, any of the remaining nodes might be referened by an
+                            // older master undo log entry.
                             mDatabase.redirty(node);
                             byte[] page = node.mPage;
                             int end = page.length - 1;
                             node.mGarbage = end;
                             page[end] = OP_COMMIT_TRUNCATE;
                         }
-                        // Release and re-acquire, to unblock any threads
-                        // waiting for checkpoint to begin.
+                        // Release and re-acquire, to unblock any threads waiting for
+                        // checkpoint to begin.
                         sharedCommitLock.unlock();
                         sharedCommitLock.lock();
                     }
@@ -895,7 +898,7 @@ final class UndoLog {
 
             case OP_COMMIT:
             case OP_COMMIT_TRUNCATE:
-                // Handled by processRemaining.
+                // Handled by Transaction.recoveryCleanup.
                 break;
 
             case OP_SCOPE_ENTER:
