@@ -263,12 +263,23 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
             writeTerminator();
             doFlush();
 
-            try {
-                forceAndClose();
-            } catch (IOException e) {
-                throw rethrow(e, mCause);
+            // If shutdown hook is invoked, don't close the stream. It may interfere with other
+            // shutdown hooks the user may have installed, causing unexpected exceptions to be
+            // thrown during the whole shutdown sequence. Recovery may see additional
+            // operations after the shutdown op and it may also see an unexpected end of file.
+            // This is not harmful, and recovery needs to handle these cases anyhow.
+
+            if (op == OP_CLOSE) {
+                try {
+                    forceAndClose();
+                } catch (IOException e) {
+                    throw rethrow(e, mCause);
+                }
+                return;
             }
         }
+
+        force(true);
     }
 
     // Caller must be synchronized.
