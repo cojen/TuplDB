@@ -178,9 +178,9 @@ public class DatabaseConfig implements Cloneable, Serializable {
     }
 
     /**
-     * Set the minimum redo log size required for an automatic {@link
-     * Database#checkpoint checkpoint} to actually be performed. Default is 1
-     * MiB.
+     * Set the minimum redo log size required for an automatic {@link Database#checkpoint
+     * checkpoint} to actually be performed. Default is 1 MiB. If database is used primarily
+     * for non-transactional operations, the threshold should be set to zero.
      */
     public DatabaseConfig checkpointSizeThreshold(long bytes) {
         mCheckpointSizeThreshold = bytes;
@@ -188,9 +188,10 @@ public class DatabaseConfig implements Cloneable, Serializable {
     }
 
     /**
-     * Set the maximum delay before an automatic {@link Database#checkpoint
-     * checkpoint} is performed, regardless of the redo log size
-     * threshold. Default is 1 minute, and a negative delay is infinite.
+     * Set the maximum delay before an automatic {@link Database#checkpoint checkpoint} is
+     * performed, regardless of the redo log size threshold. Default is 1 minute, and a
+     * negative delay is infinite. If database is used primarily for non-transactional
+     * operations, the threshold should be set to zero.
      *
      * @param unit required unit if delay is more than zero
      */
