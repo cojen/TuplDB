@@ -2037,8 +2037,20 @@ public final class Database extends CauseCloseable {
      * released by this method, even if an exception is thrown.
      */
     void deleteNode(Node node) throws IOException {
+        deleteNode(node, true);
+    }
+
+    /**
+     * @param canRecycle true if node's page can be immediately re-used
+     */
+    void deleteNode(Node node, boolean canRecycle) throws IOException {
         try {
-            deletePage(node.mId, node.mCachedState);
+            long id = node.mId;
+            if (canRecycle) {
+                deletePage(id, node.mCachedState);
+            } else if (id != 0) {
+                mPageDb.deletePage(id);
+            }
 
             node.mId = 0;
             // TODO: child node array should be recycled
