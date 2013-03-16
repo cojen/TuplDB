@@ -27,21 +27,44 @@ import static java.lang.System.arraycopy;
  *
  * @author Brian S O'Neill
  */
-class DataIn extends InputStream {
-    private final InputStream mIn;
+abstract class DataIn extends InputStream {
+    static class Stream extends DataIn {
+        private final InputStream mIn;
+
+        Stream(InputStream in) {
+            this(in, 4096);
+        }
+
+        Stream(InputStream in, int bufferSize) {
+            super(bufferSize);
+            mIn = in;
+        }
+
+        @Override
+        int doRead(byte[] buf, int off, int len) throws IOException {
+            return mIn.read(buf, off, len);
+        }
+
+        @Override
+        public void close() throws IOException {
+            mIn.close();
+        }
+    }
+
     private final byte[] mBuffer;
 
     private int mStart;
     private int mEnd;
 
-    DataIn(InputStream in) {
-        this(in, 4096);
+    DataIn() {
+        this(4096);
     }
 
-    DataIn(InputStream in, int bufferSize) {
-        mIn = in;
+    DataIn(int bufferSize) {
         mBuffer = new byte[bufferSize];
     }
+
+    abstract int doRead(byte[] buf, int off, int len) throws IOException;
 
     @Override
     public int read() throws IOException {
@@ -50,7 +73,7 @@ class DataIn extends InputStream {
             mStart = start + 1;
             return mBuffer[start] & 0xff;
         } else {
-            int amt = mIn.read(mBuffer);
+            int amt = doRead(mBuffer, 0, mBuffer.length);
             if (amt <= 0) {
                 return -1;
             } else {
@@ -79,9 +102,9 @@ class DataIn extends InputStream {
             if (avail > 0) {
                 return avail;
             } else if (len >= mBuffer.length) {
-                return mIn.read(b, off, len);
+                return doRead(b, off, len);
             } else {
-                int amt = mIn.read(mBuffer, 0, mBuffer.length);
+                int amt = doRead(mBuffer, 0, mBuffer.length);
                 if (amt <= 0) {
                     return amt;
                 } else {
@@ -93,11 +116,6 @@ class DataIn extends InputStream {
                 }
             }
         }
-    }
-
-    @Override
-    public void close() throws IOException {
-        mIn.close();
     }
 
     public int readIntBE() throws IOException {
@@ -311,7 +329,7 @@ class DataIn extends InputStream {
         }
 
         while (true) {
-            int amt = mIn.read(mBuffer, mEnd, mBuffer.length - mEnd);
+            int amt = doRead(mBuffer, mEnd, mBuffer.length - mEnd);
             if (amt <= 0) {
                 throw new EOFException();
             }
