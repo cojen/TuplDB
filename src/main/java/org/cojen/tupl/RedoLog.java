@@ -134,7 +134,7 @@ final class RedoLog extends RedoWriter {
 
                     files.add(file);
 
-                    replay(new DataIn(in), visitor, listener);
+                    replay(new DataIn.Stream(in), visitor, listener);
                 } catch (EOFException e) {
                     // End of log didn't get completely flushed.
                 } finally {
@@ -335,7 +335,7 @@ final class RedoLog extends RedoWriter {
         return x;
     }
 
-    private void replay(DataIn in, RedoVisitor visitor, final EventListener listener)
+    private void replay(DataIn in, RedoVisitor visitor, EventListener listener)
         throws IOException
     {
         long magic = in.readLongLE();
@@ -360,28 +360,8 @@ final class RedoLog extends RedoWriter {
 
         mTermRndSeed = in.readIntLE();
 
-        RedoDecoder decoder = new RedoDecoder(in, true, 0) {
-            @Override
-            protected boolean verifyTerminator(DataIn in) throws IOException {
-                try {
-                    if (in.readIntLE() == nextTermRnd()) {
-                        return true;
-                    }
-                    if (listener != null) {
-                        listener.notify
-                            (EventType.RECOVERY_REDO_LOG_CORRUPTION, "Invalid message terminator");
-                    }
-                    return false;
-                } catch (EOFException e) {
-                    listener.notify
-                        (EventType.RECOVERY_REDO_LOG_CORRUPTION, "Unexpected end of file");
-                    return false;
-                }
-            }
-        };
-
         try {
-            decoder.run(visitor);
+            new RedoLogDecoder(this, in, listener).run(visitor);
         } catch (EOFException e) {
             listener.notify(EventType.RECOVERY_REDO_LOG_CORRUPTION, "Unexpected end of file");
         }
