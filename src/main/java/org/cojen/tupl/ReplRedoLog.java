@@ -86,12 +86,12 @@ class ReplRedoLog extends RedoWriter {
     }
 
     @Override
-    void prepareCheckpoint() throws IOException {
+    void checkpointPrepare() throws IOException {
         // Nothing to prepare.
     }
 
     @Override
-    synchronized void captureCheckpointState() {
+    synchronized void checkpointSwitch() {
         mCheckpointPos = mPosition;
         mCheckpointTxnId = lastTransactionId();
     }
@@ -107,9 +107,9 @@ class ReplRedoLog extends RedoWriter {
     }
 
     @Override
-    void checkpointed(long position) throws IOException {
+    void checkpointed() throws IOException {
         // FIXME
-        System.out.println("checkpointed: " + position);
+        System.out.println("checkpointed");
     }
 
     @Override
