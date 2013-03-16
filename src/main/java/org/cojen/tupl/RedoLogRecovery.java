@@ -49,6 +49,7 @@ class RedoLogRecovery implements RedoRecovery {
         RedoLogApplier applier = new RedoLogApplier(db, txns);
         RedoLog redoLog = new RedoLog(config, logId, true);
 
+        // As a side-effect, log id is set one higher than last file observed.
         mRedoFiles = redoLog.replay
             (applier, config.mEventListener, EventType.RECOVERY_APPLY_REDO_LOG,
              "Applying redo log: %1$d");
@@ -56,7 +57,7 @@ class RedoLogRecovery implements RedoRecovery {
         mHighestTxnId = applier.mHighestTxnId;
 
         // Always set to one higher than the last file observed.
-        mNewLogId = redoLog.checkpointPosition();
+        mNewLogId = redoLog.currentLogId();
 
         return !mRedoFiles.isEmpty();
     }

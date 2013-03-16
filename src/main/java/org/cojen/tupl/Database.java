@@ -2842,8 +2842,8 @@ public final class Database extends CauseCloseable {
 
             final RedoWriter redo = mRedoWriter;
             if (redo != null) {
-                // File-based redo log should begin writing to a new file.
-                redo.prepareCheckpoint();
+                // File-based redo log should create a new file, but not write to it yet.
+                redo.checkpointPrepare();
             }
 
             {
@@ -2880,8 +2880,8 @@ public final class Database extends CauseCloseable {
                 redoPos = 0;
                 redoTxnId = 0;
             } else {
-                // Capture state while commit lock is held.
-                redo.captureCheckpointState();
+                // Switch and capture state while commit lock is held.
+                redo.checkpointSwitch();
                 redoPos = redo.checkpointPosition();
                 redoTxnId = redo.checkpointTransactionId();
             }
@@ -2946,7 +2946,7 @@ public final class Database extends CauseCloseable {
             // get skipped if process exits at this point. Data is discarded
             // again when database is re-opened.
             if (mRedoWriter != null) {
-                mRedoWriter.checkpointed(redoPos);
+                mRedoWriter.checkpointed();
             }
 
             if (mEventListener != null) {

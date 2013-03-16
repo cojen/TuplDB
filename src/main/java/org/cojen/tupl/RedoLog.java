@@ -43,7 +43,7 @@ final class RedoLog extends RedoWriter {
     private static final long MAGIC_NUMBER = 431399725605778814L;
     private static final int ENCODING_VERSION = 20130106;
 
-    private static int randomInt() {
+    static int randomInt() {
         Random rnd = new Random();
         int x;
         // Cannot return zero, since it breaks Xorshift RNG.
@@ -61,6 +61,8 @@ final class RedoLog extends RedoWriter {
     private volatile FileChannel mChannel;
 
     private int mTermRndSeed;
+
+    private NextFile mCheckpointState;
 
     /**
      * @param logId first log id to open
@@ -82,7 +84,7 @@ final class RedoLog extends RedoWriter {
         synchronized (this) {
             mLogId = logId;
             if (!replay) {
-                openNewFile(logId);
+                applyNextFile(openNextFile(logId));
             }
         }
     }
@@ -144,38 +146,43 @@ final class RedoLog extends RedoWriter {
         }
     }
 
+    synchronized long currentLogId() {
+        return mLogId;
+    }
+
     static void deleteOldFile(File baseFile, long logId) {
         fileFor(baseFile, logId).delete();
     }
 
-    private void openNewFile(long logId) throws IOException {
-        final File file = fileFor(mBaseFile, logId);
-        if (file.exists()) {
-            throw new FileNotFoundException("Log file already exists: " + file.getPath());
-        }
-
+    static class NextFile {
+        final long logId;
         final OutputStream out;
         final FileChannel channel;
         final int termRndSeed;
-        {
+
+        NextFile(long logId, File file, Crypto crypto) throws IOException {
+            this.logId = logId;
+
             FileOutputStream fout = new FileOutputStream(file);
             channel = fout.getChannel();
-            if (mCrypto == null) {
+            if (crypto == null) {
                 out = fout;
             } else {
                 try {
-                    out = mCrypto.newEncryptingStream(logId, fout);
+                    out = crypto.newEncryptingStream(logId, fout);
                 } catch (GeneralSecurityException e) {
                     throw new DatabaseException(e);
                 }
             }
+
+            termRndSeed = randomInt();
 
             byte[] buf = new byte[8 + 4 + 8 + 4];
             int offset = 0;
             Utils.writeLongLE(buf, offset, MAGIC_NUMBER); offset += 8;
             Utils.writeIntLE(buf, offset, ENCODING_VERSION); offset += 4;
             Utils.writeLongLE(buf, offset, logId); offset += 8;
-            Utils.writeIntLE(buf, offset, termRndSeed = randomInt()); offset += 4;
+            Utils.writeIntLE(buf, offset, termRndSeed); offset += 4;
             if (offset != buf.length) {
                 throw new AssertionError();
             }
@@ -188,7 +195,17 @@ final class RedoLog extends RedoWriter {
                 throw e;
             }
         }
+    }
 
+    private NextFile openNextFile(long logId) throws IOException {
+        final File file = fileFor(mBaseFile, logId);
+        if (file.exists()) {
+            throw new FileNotFoundException("Log file already exists: " + file.getPath());
+        }
+        return new NextFile(logId, file, mCrypto);
+    }
+
+    private void applyNextFile(NextFile nf) throws IOException {
         final OutputStream oldOut;
         final FileChannel oldChannel;
         synchronized (this) {
@@ -199,10 +216,10 @@ final class RedoLog extends RedoWriter {
                 endFile();
             }
 
-            mOut = out;
-            mChannel = channel;
-            mTermRndSeed = termRndSeed;
-            mLogId = logId;
+            mOut = nf.out;
+            mChannel = nf.channel;
+            mTermRndSeed = nf.termRndSeed;
+            mLogId = nf.logId;
 
             timestamp();
             reset();
@@ -242,7 +259,7 @@ final class RedoLog extends RedoWriter {
     }
 
     @Override
-    void prepareCheckpoint() throws IOException {
+    void checkpointPrepare() throws IOException {
         if (mReplayMode) {
             throw new IllegalStateException();
         }
@@ -250,17 +267,17 @@ final class RedoLog extends RedoWriter {
         synchronized (this) {
             logId = mLogId;
         }
-        openNewFile(logId + 1);
+        mCheckpointState = openNextFile(logId + 1);
     }
 
     @Override
-    void captureCheckpointState() {
-        // Was captured by prepare method.
+    void checkpointSwitch() throws IOException {
+        applyNextFile(mCheckpointState);
     }
 
     @Override
-    synchronized long checkpointPosition() {
-        return mLogId;
+    long checkpointPosition() {
+        return mCheckpointState.logId;
     }
 
     @Override
@@ -270,8 +287,9 @@ final class RedoLog extends RedoWriter {
     }
 
     @Override
-    void checkpointed(long highestLogId) throws IOException {
-        deleteOldFile(mBaseFile, highestLogId - 1);
+    void checkpointed() throws IOException {
+        deleteOldFile(mBaseFile, mCheckpointState.logId - 1);
+        mCheckpointState = null;
     }
 
     @Override
