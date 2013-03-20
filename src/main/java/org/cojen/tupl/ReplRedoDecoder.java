@@ -72,7 +72,7 @@ final class ReplRedoDecoder extends RedoDecoder {
     }
 
     static final class In extends DataIn {
-        private final ReplicationManager.Input mIn;
+        private final ReplicationManager mManager;
 
         In(ReplicationManager manager) {
             this(manager, 4096);
@@ -80,12 +80,12 @@ final class ReplRedoDecoder extends RedoDecoder {
 
         In(ReplicationManager manager, int bufferSize) {
             super(manager.position(), bufferSize);
-            mIn = manager.in();
+            mManager = manager;
         }
 
         @Override
         int doRead(byte[] buf, int off, int len) throws IOException {
-            return mIn.read(buf, off, len);
+            return mManager.read(buf, off, len);
         }
 
         @Override

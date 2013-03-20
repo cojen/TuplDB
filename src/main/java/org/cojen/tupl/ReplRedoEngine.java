@@ -33,6 +33,8 @@ import static org.cojen.tupl.Utils.*;
  * @author Brian S O'Neill
  */
 class ReplRedoEngine implements RedoVisitor {
+    // FIXME: support encryption
+
     final ReplicationManager mManager;
     final Database mDb;
 
@@ -75,7 +77,7 @@ class ReplRedoEngine implements RedoVisitor {
         mManager = manager;
         mDb = db;
 
-        mWriter = new ReplRedoWriter(this, manager.out());
+        mWriter = new ReplRedoWriter(this);
 
         mIndexes = new LHashTable.Obj<SoftReference<Index>>(16);
 
@@ -598,11 +600,10 @@ class ReplRedoEngine implements RedoVisitor {
         }
 
         mDecoder = null;
-        ReplicationManager.Output out = mManager.out();
         mDecodeLatch.releaseExclusive();
 
         try {
-            mWriter.leaderNotify(out);
+            mWriter.leaderNotify();
         } catch (UnmodifiableReplicaException e) {
             // Should already be receiving.
         } catch (IOException e) {

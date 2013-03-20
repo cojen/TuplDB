@@ -23,7 +23,6 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-// FIXME: Interface can go away
 interface RedoRecovery {
     /**
      * Perform main recovery workflow. As new transactions are recovered, they

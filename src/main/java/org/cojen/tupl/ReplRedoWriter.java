@@ -26,21 +26,17 @@ import java.io.IOException;
  */
 final class ReplRedoWriter extends RedoWriter {
     private final ReplRedoEngine mEngine;
-
-    private ReplicationManager.Output mOut;
+    private final ReplicationManager mManager;
 
     private long mCheckpointPos;
     private long mCheckpointTxnId;
 
     private boolean mIsLeader;
 
-    ReplRedoWriter(ReplRedoEngine engine, ReplicationManager.Output out) {
+    ReplRedoWriter(ReplRedoEngine engine) {
         super(4096, 0);
         mEngine = engine;
-        synchronized (this) {
-            // Initially unmodifiable. Requires notification from engine.
-            mOut = NonOut.THE;
-        }
+        mManager = engine.mManager;
     }
 
     @Override
@@ -50,7 +46,7 @@ final class ReplRedoWriter extends RedoWriter {
         long pos;
         synchronized (this) {
             super.store(indexId, key, value, DurabilityMode.NO_SYNC);
-            pos = mOut.commit();
+            pos = mManager.commit();
         }
         if (pos < 0) {
             throw unmodifiable();
@@ -65,7 +61,7 @@ final class ReplRedoWriter extends RedoWriter {
         long pos;
         synchronized (this) {
             super.storeNoLock(indexId, key, value, DurabilityMode.NO_SYNC);
-            pos = mOut.commit();
+            pos = mManager.commit();
         }
         if (pos < 0) {
             throw unmodifiable();
@@ -78,7 +74,7 @@ final class ReplRedoWriter extends RedoWriter {
         long pos;
         synchronized (this) {
             super.txnCommitFinal(txnId, DurabilityMode.NO_SYNC);
-            pos = mOut.commit();
+            pos = mManager.commit();
         }
         if (pos < 0) {
             throw unmodifiable();
@@ -111,7 +107,7 @@ final class ReplRedoWriter extends RedoWriter {
     synchronized boolean shouldCheckpoint(long sizeThreshold) {
         long pos;
         if (mIsLeader) {
-            pos = mEngine.mManager.position();
+            pos = mManager.position();
         } else {
             pos = mEngine.mDecodePosition;
         }
@@ -127,7 +123,7 @@ final class ReplRedoWriter extends RedoWriter {
     @Override
     synchronized void checkpointSwitch() {
         if (mIsLeader) {
-            mCheckpointPos = mEngine.mManager.position();
+            mCheckpointPos = mManager.position();
             mCheckpointTxnId = lastTransactionId();
         } else {
             mCheckpointPos = mEngine.mDecodePosition;
@@ -159,7 +155,7 @@ final class ReplRedoWriter extends RedoWriter {
 
     @Override
     void write(byte[] buffer, int len) throws IOException {
-        if (!mOut.write(buffer, 0, len)) {
+        if (!mManager.write(buffer, 0, len)) {
             throw unmodifiable();
         }
     }
@@ -172,7 +168,7 @@ final class ReplRedoWriter extends RedoWriter {
         synchronized (this) {
             position = mPosition;
         }
-        if (!mOut.sync(position)) {
+        if (!mManager.sync(position)) {
             throw unmodifiable();
         }
         */
@@ -194,12 +190,10 @@ final class ReplRedoWriter extends RedoWriter {
      * Called by ReplRedoEngine when local instance has become the leader.
      */
     // FIXME: need an up-to-date txn id passed in
-    synchronized void leaderNotify(ReplicationManager.Output out)
-        throws UnmodifiableReplicaException, IOException
-    {
-        if (out != mOut) {
+    synchronized void leaderNotify() throws UnmodifiableReplicaException, IOException {
+        if (!mIsLeader) {
+            mManager.flip();
             mIsLeader = true;
-            mOut = out;
             // FIXME: provide txn id to clearAndReset
             clearAndReset();
             flush();
@@ -208,6 +202,7 @@ final class ReplRedoWriter extends RedoWriter {
 
     private synchronized UnmodifiableReplicaException unmodifiable() {
         if (mIsLeader) {
+            mManager.flip();
             mIsLeader = false;
 
             // Invoke from a separate thread, avoiding deadlock during the transition.
@@ -221,31 +216,5 @@ final class ReplRedoWriter extends RedoWriter {
         }
 
         return new UnmodifiableReplicaException();
-    }
-
-    static final class NonOut implements ReplicationManager.Output {
-        static final NonOut THE = new NonOut();
-
-        private NonOut() {}
-
-        @Override
-        public boolean write(byte[] b, int off, int len) {
-            return false;
-        }
-
-        @Override
-        public long commit() throws IOException {
-            return -1;
-        }
-
-        @Override
-        public boolean confirm(long position, long timeoutNanos) {
-            return false;
-        }
-
-        @Override
-        public boolean sync(long position) {
-            return false;
-        }
     }
 }
