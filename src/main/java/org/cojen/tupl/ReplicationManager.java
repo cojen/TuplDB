@@ -41,6 +41,23 @@ public interface ReplicationManager {
     // commit. They all rollback when observing the special message.
 
     /**
+     * Start the replication manager in replica mode. Invocation of this method implies that
+     * all data lower than the given position is confirmed. All data at or higher than the
+     * given position might be discarded.
+     *
+     * @param position position to start reading from; 0 is the lowest position
+     * @throws IllegalArgumentException if position is negative
+     * @throws IllegalStateException if already started
+     */
+    void start(long position) throws IOException;
+
+    /**
+     * Returns the next position a replica will read from, or the highest confirmed position if
+     * the leader. Position is never negative and never retreats.
+     */
+    long position();
+
+    /**
      * Indicates that all data prior to the given log position has been durably
      * checkpointed. The log can discard the old data. This method is never
      * invoked concurrently, and the implementation should return quickly.
@@ -60,20 +77,20 @@ public interface ReplicationManager {
      * -1 and must be discarded. This method and the stream are never invoked
      * concurrently.
      *
-     * @param position log position to start reading from
-     * @return null if local instance is the leader
+     * @return non-null stream
+     * @throws IllegalStateException if not started
      */
-    Input in(long position) throws IOException;
+    Input in();
 
     /**
      * Provides a stream for the leader to write into. Upon losing the
      * leader role, the stream returns false and must be discarded. This method
      * and the stream are never invoked concurrently.
      *
-     * @param position log position to start writing to
-     * @return null if local instance is not the leader
+     * @return non-null stream
+     * @throws IllegalStateException if not started
      */
-    Output out(long position) throws IOException;
+    Output out();
 
     /**
      * Forward a change from a replica to the leader. Change must arrive back
@@ -86,9 +103,14 @@ public interface ReplicationManager {
     //boolean forward(byte[] b, int off, int len) throws IOException;
 
     /**
-     * 
+     *
      */
     static interface Input {
+        /**
+         * Returns the next read position, never negative.
+         */
+        //long readPosition();
+
         /**
          * Blocks at most once, reading as much replication input as
          * possible. Returns -1 if local instance has become the leader.
@@ -103,20 +125,25 @@ public interface ReplicationManager {
      */
     static interface Output {
         /**
-         * Fully writes the given data, blocking until complete. Returns false
-         * if local instance if not the leader.
+         * Returns the highest confirmed position written to, never negative.
+         */
+        //long confirmedPosition();
+
+        /**
+         * Fully writes the given data, returning false if local instance is not the leader.
          *
-         * @return true if written; false if not leader
+         * @return false if not leader
          */
         boolean write(byte[] b, int off, int len) throws IOException;
 
         /**
-         * Durably flushes all modifications to local non-volatile storage.
+         * Commit all buffered writes and defines a confirmation position. When
+         * the local instance loses leaderhsip, all data rolls back to the
+         * highest confirmed position.
          *
-         * @param position all data less than this position must be sync'd
-         * @return true if written; false if not leader
+         * @return confirmation position, or -1 if not leader
          */
-        boolean sync(long position) throws IOException;
+        long commit() throws IOException;
 
         /**
          * Blocks until all data up to the given log position is confirmed.
@@ -126,5 +153,13 @@ public interface ReplicationManager {
          * @return true if confirmed; false if not leader or timed out
          */
         boolean confirm(long position, long timeoutNanos) throws IOException;
+
+        /**
+         * Durably flushes all modifications to local non-volatile storage.
+         *
+         * @param position all data less than this position must be sync'd
+         * @return true if written; false if not leader
+         */
+        boolean sync(long position) throws IOException;
     }
 }

@@ -230,7 +230,7 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
     }
 
     @Override
-    public synchronized void close() throws IOException {
+    public final synchronized void close() throws IOException {
         close(null);
     }
 
@@ -314,10 +314,16 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
     abstract long checkpointTransactionId() throws IOException;
 
     /**
+     * Called after exclusive commit lock is released. Dirty pages start flushing as soon as
+     * this method returns.
+     */
+    abstract void checkpointStarted() throws IOException;
+
+    /**
      * Writer can discard all redo data lower than the checkpointed position, which was
      * captured earlier.
      */
-    abstract void checkpointed() throws IOException;
+    abstract void checkpointFinished() throws IOException;
 
     // Caller must be synchronized.
     abstract void write(byte[] buffer, int len) throws IOException;

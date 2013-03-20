@@ -274,7 +274,7 @@ public final class Transaction extends Locker {
                         }
                         // Indicates that undo log should be truncated instead
                         // of rolled back during recovery. Commit lock can now
-                        // be released safely. See UndoLog.processRemaining.
+                        // be released safely. See recoveryCleanup.
                         undo.pushCommit();
                     } finally {
                         sharedCommitLock.unlock();
