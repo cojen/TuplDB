@@ -23,7 +23,6 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-// FIXME: This class can probably just go away.
 class ReplRedoRecovery implements RedoRecovery {
     private final ReplicationManager mReplManager;
 
