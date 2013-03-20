@@ -27,21 +27,25 @@ import java.io.IOException;
 class ReplRedoRecovery implements RedoRecovery {
     private final ReplicationManager mReplManager;
 
-    private ReplRedoReceiver mReceiver;
+    private ReplRedoEngine mEngine;
 
     ReplRedoRecovery(ReplicationManager manager) {
         mReplManager = manager;
     }
 
+    /**
+     * @param txns cleared as a side effect
+     */
     @Override
     public boolean recover(Database db, DatabaseConfig config,
                            long position, long txnId,
                            LHashTable.Obj<Transaction> txns)
         throws IOException
     {
-        // FIXME: position and txnId
-        mReceiver = new ReplRedoReceiver(db, txns);
-        // FIXME
+        mReplManager.start(position);
+        mEngine = new ReplRedoEngine(mReplManager, db, txns);
+        mEngine.startReceiving(txnId);
+        // FIXME: Wait until caught up?
         return false;
     }
 
@@ -53,8 +57,7 @@ class ReplRedoRecovery implements RedoRecovery {
 
     @Override
     public RedoWriter newWriter() throws IOException {
-        // FIXME: position
-        return new ReplRedoLog(mReplManager, 0, mReceiver);
+        return mEngine.getWriter();
     }
 
     @Override

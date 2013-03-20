@@ -281,7 +281,12 @@ final class RedoLog extends RedoWriter {
     }
 
     @Override
-    void checkpointed() throws IOException {
+    void checkpointStarted() throws IOException {
+        // Nothing to do.
+    }
+
+    @Override
+    void checkpointFinished() throws IOException {
         deleteOldFile(mBaseFile, mNextLogId - 1);
     }
 

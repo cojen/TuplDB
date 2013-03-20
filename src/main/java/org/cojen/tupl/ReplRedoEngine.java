@@ -32,8 +32,11 @@ import static org.cojen.tupl.Utils.*;
  *
  * @author Brian S O'Neill
  */
-class ReplRedoReceiver extends Latch implements RedoVisitor {
-    private final Database mDb;
+class ReplRedoEngine implements RedoVisitor {
+    final ReplicationManager mManager;
+    final Database mDb;
+
+    private final ReplRedoWriter mWriter;
 
     // Maintain soft references to indexes, allowing them to get closed if not
     // used for awhile. Without the soft references, Database maintains only
@@ -50,15 +53,34 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
     private final AtomicInteger mIdleThreads;
     private final ConcurrentMap<DecodeTask, Object> mTaskThreadSet;
 
-    private RedoDecoder mDecoder;
-    private ReplRedoLog mLog;
+    // Latch must be held exclusively while reading from decoder.
+    private final Latch mDecodeLatch;
+
+    private ReplRedoDecoder mDecoder;
+
+    // Shared latch held when applying operations. Checkpoint suspends all tasks by acquiring
+    // an exclusive latch. If any operation fails to be applied, shared latch is still held,
+    // preventing checkpoints.
+    final Latch mOpLatch;
+
+    // Updated by ReplRedoDecoder with decode latch exclusive and op latch shared. Values can
+    // be read with op latch exclusively held, when engine is suspended.
+    long mDecodePosition;
+    long mDecodeTransactionId;
 
     /**
      * @param txns recovered transactions; can be null; cleared as a side-effect
      */
-    ReplRedoReceiver(Database db, LHashTable.Obj<Transaction> txns) {
+    ReplRedoEngine(ReplicationManager manager, Database db, LHashTable.Obj<Transaction> txns) {
+        mManager = manager;
         mDb = db;
+
+        mWriter = new ReplRedoWriter(this, manager.out());
+
         mIndexes = new LHashTable.Obj<SoftReference<Index>>(16);
+
+        mDecodeLatch = new Latch();
+        mOpLatch = new Latch();
 
         // FIXME: configurable
         mMaxThreads = 32;
@@ -86,33 +108,44 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
                     long scrambledTxnId = scramble(entry.key);
                     Latch latch = selectLatch(scrambledTxnId);
                     txnTable.insert(scrambledTxnId).init(entry.value, latch);
+                    // Delete entry.
                     return true;
                 }
             });
         }
 
         mTransactions = txnTable;
+
+        // Initialize the decode position early.
+        mDecodeLatch.acquireExclusive();
+        mDecodePosition = manager.position();
+        mDecodeLatch.releaseExclusive();
     }
 
-    /**
-     * @param log can be null for testing
-     */
-    public void setDecoder(RedoDecoder decoder, ReplRedoLog log) {
-        acquireExclusive();
-        try {
-            if (mDecoder != null) {
-                throw new IllegalStateException();
+    public RedoWriter getWriter() {
+        return mWriter;
+    }
+
+    public void startReceiving(long initialTxnId) {
+        mDecodeLatch.acquireExclusive();
+        if (mDecoder == null) {
+            try {
+                mDecoder = new ReplRedoDecoder(this, initialTxnId);
+            } catch (Throwable e) {
+                mDecodeLatch.releaseExclusive();
+                throw rethrow(e);
             }
-            mDecoder = decoder;
-            mLog = log;
             nextTask();
-        } finally {
-            releaseExclusive();
+        } else {
+            mDecodeLatch.releaseExclusive();
         }
     }
 
     @Override
     public boolean reset() throws IOException {
+        // Acquire latch before performing operations wth side-effects.
+        mOpLatch.acquireShared();
+
         // Reset and discard all transactions.
         mTransactions.traverse(new LHashTable.Visitor<TxnEntry, IOException>() {
             public boolean visit(TxnEntry entry) throws IOException {
@@ -125,6 +158,9 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
                 return true;
             }
         });
+
+        // Only release if no exception.
+        mOpLatch.releaseShared();
 
         // Return true and allow RedoDecoder to loop back.
         return true;
@@ -154,6 +190,9 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
     public boolean store(long indexId, byte[] key, byte[] value) throws IOException {
         Index ix = getIndex(indexId);
 
+        // Allow side-effect free operations to be performed before acquiring latch.
+        mOpLatch.acquireShared();
+
         // Locks must be acquired in their original order to avoid
         // deadlock, so don't allow another task thread to run yet.
         Locker locker = mDb.mLockManager.localLocker();
@@ -167,6 +206,9 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
         } finally {
             locker.scopeUnlockAll();
         }
+
+        // Only release if no exception.
+        mOpLatch.releaseShared();
 
         // Return false to prevent RedoDecoder from looping back.
         return false;
@@ -194,10 +236,17 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
         long scrambledTxnId = scramble(txnId);
         TxnEntry e = mTransactions.get(scrambledTxnId);
 
+        // Allow side-effect free operations to be performed before acquiring latch.
+        mOpLatch.acquireShared();
+
         if (e == null) {
             Latch latch = selectLatch(scrambledTxnId);
             mTransactions.insert(scrambledTxnId)
                 .init(new Transaction(mDb, txnId, LockMode.UPGRADABLE_READ, -1), latch);
+
+            // Only release if no exception.
+            mOpLatch.releaseShared();
+
             return true;
         }
 
@@ -209,6 +258,9 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
             latch.releaseExclusive();
         }
 
+        // Only release if no exception.
+        mOpLatch.releaseShared();
+
         // Return true and allow RedoDecoder to loop back.
         return true;
     }
@@ -216,6 +268,9 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
     @Override
     public boolean txnRollback(long txnId) throws IOException {
         TxnEntry e = getTxnEntry(txnId);
+
+        // Allow side-effect free operations to be performed before acquiring latch.
+        mOpLatch.acquireShared();
 
         Latch latch = e.latch();
         try {
@@ -227,12 +282,18 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
             latch.releaseExclusive();
         }
 
+        // Only release if no exception.
+        mOpLatch.releaseShared();
+
         // Return false to prevent RedoDecoder from looping back.
         return false;
     }
 
     @Override
     public boolean txnRollbackFinal(long txnId) throws IOException {
+        // Acquire latch before performing operations wth side-effects.
+        mOpLatch.acquireShared();
+
         TxnEntry e = removeTxnEntry(txnId);
 
         Latch latch = e.latch();
@@ -245,6 +306,9 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
             latch.releaseExclusive();
         }
 
+        // Only release if no exception.
+        mOpLatch.releaseShared();
+
         // Return false to prevent RedoDecoder from looping back.
         return false;
     }
@@ -252,6 +316,9 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
     @Override
     public boolean txnCommit(long txnId) throws IOException {
         TxnEntry e = getTxnEntry(txnId);
+
+        // Allow side-effect free operations to be performed before acquiring latch.
+        mOpLatch.acquireShared();
 
         Latch latch = e.latch();
         try {
@@ -268,12 +335,18 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
             latch.releaseExclusive();
         }
 
+        // Only release if no exception.
+        mOpLatch.releaseShared();
+
         // Return true and allow RedoDecoder to loop back.
         return true;
     }
 
     @Override
     public boolean txnCommitFinal(long txnId) throws IOException {
+        // Acquire latch before performing operations wth side-effects.
+        mOpLatch.acquireShared();
+
         TxnEntry e = removeTxnEntry(txnId);
 
         Latch latch = e.latch();
@@ -291,6 +364,9 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
             latch.releaseExclusive();
         }
 
+        // Only release if no exception.
+        mOpLatch.releaseShared();
+
         // Return true and allow RedoDecoder to loop back.
         return true;
     }
@@ -301,6 +377,9 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
     {
         Index ix = getIndex(indexId);
         TxnEntry e = getTxnEntry(txnId);
+
+        // Allow side-effect free operations to be performed before acquiring latch.
+        mOpLatch.acquireShared();
 
         Latch latch = e.latch();
         try {
@@ -318,6 +397,9 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
             latch.releaseExclusive();
         }
 
+        // Only release if no exception.
+        mOpLatch.releaseShared();
+
         // Return false to prevent RedoDecoder from looping back.
         return false;
     }
@@ -328,6 +410,9 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
     {
         Index ix = getIndex(indexId);
         TxnEntry e = getTxnEntry(txnId);
+
+        // Allow side-effect free operations to be performed before acquiring latch.
+        mOpLatch.acquireShared();
 
         Latch latch = e.latch();
         try {
@@ -350,11 +435,21 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
             latch.releaseExclusive();
         }
 
+        // Only release if no exception.
+        mOpLatch.releaseShared();
+
         // Return false to prevent RedoDecoder from looping back.
         return false;
     }
 
-    // Caller must hold exclusive latch, which is released by this method.
+    /**
+     * Launch a task thread to continue processing more redo entries
+     * concurrently. Caller must return false from the visitor method, to
+     * prevent multiple threads from trying to decode the redo input stream. If
+     * thread limit is reached, the remaining task threads continue working.
+     *
+     * Caller must hold exclusive decode latch, which is released by this method.
+     */
     private void nextTask() {
         if (mIdleThreads.get() == 0) {
             int total = mTotalThreads.get();
@@ -364,6 +459,7 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
                     task = new DecodeTask();
                     task.start();
                 } catch (Throwable e) {
+                    mDecodeLatch.releaseExclusive();
                     mTotalThreads.decrementAndGet();
                     throw rethrow(e);
                 }
@@ -372,7 +468,19 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
         }
 
         // Allow task thread to proceed.
-        releaseExclusive();
+        mDecodeLatch.releaseExclusive();
+    }
+
+    /**
+     * Waits for all incoming replication operations to finish and prevents new ones from
+     * starting.
+     */
+    void suspend() {
+        mOpLatch.acquireExclusive();
+    }
+
+    void resume() {
+        mOpLatch.releaseExclusive();
     }
 
     /**
@@ -451,7 +559,7 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
         try {
             while (true) {
                 try {
-                    if (tryAcquireExclusiveNanos(IDLE_TIMEOUT_NANOS)) {
+                    if (mDecodeLatch.tryAcquireExclusiveNanos(IDLE_TIMEOUT_NANOS)) {
                         break;
                     }
                 } catch (InterruptedException e) {
@@ -468,9 +576,11 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
             mIdleThreads.decrementAndGet();
         }
 
+        // At this point, decode latch is held exclusively.
+
         RedoDecoder decoder = mDecoder;
         if (decoder == null) {
-            releaseExclusive();
+            mDecodeLatch.releaseExclusive();
             return false;
         }
 
@@ -478,23 +588,28 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
             if (!decoder.run(this)) {
                 return true;
             }
-            // End of stream reached.
+            // End of stream reached, and so local instance is now leader.
             reset();
         } catch (Throwable e) {
-            releaseExclusive();
+            mDecodeLatch.releaseExclusive();
             // FIXME: panic
             e.printStackTrace(System.out);
             return false;
         }
 
         mDecoder = null;
-        ReplRedoLog log = mLog;
-        mLog = null;
-        releaseExclusive();
+        ReplicationManager.Output out = mManager.out();
+        mDecodeLatch.releaseExclusive();
 
-        if (log != null) {
-            // FIXME: position
-            log.leaderNotify(0);
+        try {
+            mWriter.leaderNotify(out);
+        } catch (UnmodifiableReplicaException e) {
+            // Should already be receiving.
+        } catch (IOException e) {
+            // FIXME: log it?
+            e.printStackTrace(System.out);
+            // A reset op is expected, and so the initial transaction id can be zero.
+            startReceiving(0);
         }
 
         return false;
@@ -508,12 +623,12 @@ class ReplRedoReceiver extends Latch implements RedoVisitor {
 
     class DecodeTask extends Thread {
         DecodeTask() {
-            super("RedoReceiver-" + taskNumber());
+            super("ReplicationReceiver-" + taskNumber());
             setDaemon(true);
         }
 
         public void run() {
-            while (ReplRedoReceiver.this.decode());
+            while (ReplRedoEngine.this.decode());
             mTaskThreadSet.remove(this);
         }
     }

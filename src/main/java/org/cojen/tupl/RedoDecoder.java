@@ -43,9 +43,15 @@ abstract class RedoDecoder {
      * @return true if end of stream reached; false if visitor returned false
      */
     boolean run(RedoVisitor visitor) throws IOException {
-        DataIn in = in();
-        int op;
-        while ((op = in.read()) >= 0) {
+        while (true) {
+            // Must be called before each operation, for the benefit of subclasses.
+            DataIn in = in();
+
+            int op = in.read();
+            if (op < 0) {
+                break;
+            }
+
             switch (op &= 0xff) {
             case 0:
                 if (mLenient) {
@@ -268,10 +274,13 @@ abstract class RedoDecoder {
         return true;
     }
 
-    private long readTxnId(DataIn in) throws IOException {
+    long readTxnId(DataIn in) throws IOException {
         return mTxnId += in.readSignedVarLong();
     }
 
+    /**
+     * Invoked before each operation is read.
+     */
     abstract DataIn in();
 
     /**

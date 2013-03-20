@@ -2955,7 +2955,7 @@ public final class Database extends CauseCloseable {
             // get skipped if process exits at this point. Data is discarded
             // again when database is re-opened.
             if (mRedoWriter != null) {
-                mRedoWriter.checkpointed();
+                mRedoWriter.checkpointFinished();
             }
 
             if (mEventListener != null) {
@@ -2986,6 +2986,10 @@ public final class Database extends CauseCloseable {
         mCommitState = (byte) (stateToFlush ^ 1);
         root.releaseShared();
         mPageDb.exclusiveCommitLock().unlock();
+
+        if (mRedoWriter != null) {
+            mRedoWriter.checkpointStarted();
+        }
 
         if (mEventListener != null) {
             mEventListener.notify(EventType.CHECKPOINT_FLUSH, "Flushing all dirty nodes");
