@@ -18,6 +18,7 @@ package org.cojen.tupl;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.*;
 import static org.junit.Assert.*;
@@ -38,14 +39,84 @@ public class SnapshotTest {
     }
 
     @Test
-    public void test() throws Exception {
+    public void suspend() throws Exception {
+        final int rateMillis = 500;
+
+        DatabaseConfig config = new DatabaseConfig()
+            .checkpointRate(rateMillis, TimeUnit.MILLISECONDS)
+            .checkpointSizeThreshold(0)
+            .checkpointDelayThreshold(0, null)
+            .durabilityMode(DurabilityMode.NO_FLUSH);
+        Database db = newTempDatabase(config);
+
+        Index ix = db.openIndex("suspend");
+
+        db.suspendCheckpoints();
+        ix.store(Transaction.BOGUS, "hello".getBytes(), "world".getBytes());
+        sleep(rateMillis * 2);
+        db.close();
+
+        db = reopenTempDatabase(db, config);
+
+        ix = db.openIndex("suspend");
+        assertNull(ix.load(null, "hello".getBytes()));
+
+        db.suspendCheckpoints();
+        ix.store(Transaction.BOGUS, "hello".getBytes(), "world".getBytes());
+        sleep(rateMillis * 2);
+        db.checkpoint();
+        db.close();
+        
+        db = reopenTempDatabase(db, config);
+
+        ix = db.openIndex("suspend");
+        fastAssertArrayEquals("world".getBytes(), ix.load(null, "hello".getBytes()));
+
+        try {
+            db.resumeCheckpoints();
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        db.suspendCheckpoints();
+        db.suspendCheckpoints();
+        ix.store(Transaction.BOGUS, "hello".getBytes(), "universe".getBytes());
+        sleep(rateMillis * 2);
+        db.resumeCheckpoints();
+        sleep(rateMillis * 2);
+        db.close();
+
+        db = reopenTempDatabase(db, config);
+
+        ix = db.openIndex("suspend");
+        fastAssertArrayEquals("world".getBytes(), ix.load(null, "hello".getBytes()));
+
+        db.suspendCheckpoints();
+        db.suspendCheckpoints();
+        ix.store(Transaction.BOGUS, "hello".getBytes(), "universe".getBytes());
+        sleep(rateMillis * 2);
+        db.resumeCheckpoints();
+        db.resumeCheckpoints();
+        sleep(rateMillis * 2);
+        db.close();
+
+        db = reopenTempDatabase(db, config);
+
+        ix = db.openIndex("suspend");
+        fastAssertArrayEquals("universe".getBytes(), ix.load(null, "hello".getBytes()));
+
+        deleteTempDatabase(db);
+    }
+
+    @Test
+    public void snapshot() throws Exception {
         File base = newTempBaseFile();
         File snapshotBase = newTempBaseFile();
-        test(base, snapshotBase);
+        snapshot(base, snapshotBase);
         deleteTempDatabases();
     }
 
-    private void test(File base, File snapshotBase) throws Exception {
+    private void snapshot(File base, File snapshotBase) throws Exception {
         File snapshot = new File(snapshotBase.getParentFile(), snapshotBase.getName() + ".db");
 
         DatabaseConfig config = new DatabaseConfig()
