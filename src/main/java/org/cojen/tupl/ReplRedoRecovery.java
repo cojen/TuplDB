@@ -25,11 +25,13 @@ import java.io.IOException;
  */
 class ReplRedoRecovery implements RedoRecovery {
     private final ReplicationManager mReplManager;
+    private final int mMaxReplicaThreads;
 
     private ReplRedoEngine mEngine;
 
-    ReplRedoRecovery(ReplicationManager manager) {
+    ReplRedoRecovery(ReplicationManager manager, int maxReplicaThreads) {
         mReplManager = manager;
+        mMaxReplicaThreads = maxReplicaThreads;
     }
 
     /**
@@ -42,7 +44,7 @@ class ReplRedoRecovery implements RedoRecovery {
         throws IOException
     {
         mReplManager.start(position);
-        mEngine = new ReplRedoEngine(mReplManager, db, txns);
+        mEngine = new ReplRedoEngine(mReplManager, mMaxReplicaThreads, db, txns);
         mEngine.startReceiving(txnId);
         // FIXME: Wait until caught up?
         return false;

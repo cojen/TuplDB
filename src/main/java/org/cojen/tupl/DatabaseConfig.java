@@ -53,6 +53,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
     boolean mReadOnly;
     int mPageSize;
     transient ReplicationManager mReplManager;
+    int mMaxReplicaThreads;
     transient Crypto mCrypto;
 
     public DatabaseConfig() {
@@ -240,6 +241,16 @@ public class DatabaseConfig implements Cloneable, Serializable {
      */
     public DatabaseConfig replicate(ReplicationManager manager) {
         mReplManager = manager;
+        return this;
+    }
+
+    /**
+     * If replication is enabled, specify the maximum number of threads to process incoming
+     * changes. Default number is availableProcessors. If a negative number is provided, the
+     * actual number applied is (-num * availableProcessors).
+     */
+    public DatabaseConfig maxReplicaThreads(int num) {
+        mMaxReplicaThreads = num;
         return this;
     }
 
