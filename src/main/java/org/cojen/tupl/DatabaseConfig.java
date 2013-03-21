@@ -249,8 +249,8 @@ public class DatabaseConfig implements Cloneable, Serializable {
 
     /**
      * If replication is enabled, specify the maximum number of threads to process incoming
-     * changes. Default number is availableProcessors. If a negative number is provided, the
-     * actual number applied is (-num * availableProcessors).
+     * changes. Default is the number of available processors. If a negative number is
+     * provided, the actual number applied is {@code (-num * availableProcessors)}.
      */
     public DatabaseConfig maxReplicaThreads(int num) {
         mMaxReplicaThreads = num;
