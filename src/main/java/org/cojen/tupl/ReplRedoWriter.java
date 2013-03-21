@@ -28,6 +28,7 @@ final class ReplRedoWriter extends RedoWriter {
     private final ReplRedoEngine mEngine;
     private final ReplicationManager mManager;
 
+    private long mCheckpointNum;
     private long mCheckpointPos;
     private long mCheckpointTxnId;
 
@@ -37,6 +38,10 @@ final class ReplRedoWriter extends RedoWriter {
         super(4096, 0);
         mEngine = engine;
         mManager = engine.mManager;
+    }
+
+    synchronized void initCheckpointNumber(long num) {
+        mCheckpointNum = num;
     }
 
     void startReceiving(long initialTxnId) {
@@ -126,6 +131,7 @@ final class ReplRedoWriter extends RedoWriter {
 
     @Override
     synchronized void checkpointSwitch() {
+        mCheckpointNum++;
         if (mIsLeader) {
             mCheckpointPos = mManager.position();
             mCheckpointTxnId = lastTransactionId();
@@ -136,14 +142,17 @@ final class ReplRedoWriter extends RedoWriter {
     }
 
     @Override
+    long checkpointNumber() {
+        return mCheckpointNum;
+    }
+
+    @Override
     long checkpointPosition() {
-        System.out.println("checkpointPosition: " + mCheckpointPos);
         return mCheckpointPos;
     }
 
     @Override
     long checkpointTransactionId() {
-        System.out.println("checkpointTransactionId: " + mCheckpointTxnId);
         return mCheckpointTxnId;
     }
 

@@ -31,12 +31,12 @@ abstract class DataIn extends InputStream {
     static final class Stream extends DataIn {
         private final InputStream mIn;
 
-        Stream(InputStream in) {
-            this(in, 4096);
+        Stream(long pos, InputStream in) {
+            this(pos, in, 4096);
         }
 
-        Stream(InputStream in, int bufferSize) {
-            super(0, bufferSize);
+        Stream(long pos, InputStream in, int bufferSize) {
+            super(pos, bufferSize);
             mIn = in;
         }
 

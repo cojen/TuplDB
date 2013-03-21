@@ -136,7 +136,8 @@ class ReplRedoEngine implements RedoVisitor {
         mDecodeLatch.releaseExclusive();
     }
 
-    public RedoWriter getWriter() {
+    public RedoWriter initWriter(long redoNum) {
+        mWriter.initCheckpointNumber(redoNum);
         return mWriter;
     }
 
