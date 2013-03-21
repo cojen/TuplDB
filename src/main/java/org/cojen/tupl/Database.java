@@ -476,7 +476,7 @@ public final class Database extends CauseCloseable {
                     if (rm == null) {
                         recovery = new RedoLogRecovery();
                     } else {
-                        recovery = new ReplRedoRecovery(rm);
+                        recovery = new ReplRedoRecovery(rm, config.mMaxReplicaThreads);
                     }
                 }
 

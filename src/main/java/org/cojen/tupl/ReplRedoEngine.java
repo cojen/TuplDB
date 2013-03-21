@@ -73,7 +73,17 @@ class ReplRedoEngine implements RedoVisitor {
     /**
      * @param txns recovered transactions; can be null; cleared as a side-effect
      */
-    ReplRedoEngine(ReplicationManager manager, Database db, LHashTable.Obj<Transaction> txns) {
+    ReplRedoEngine(ReplicationManager manager, int maxThreads,
+                   Database db, LHashTable.Obj<Transaction> txns)
+    {
+        if (maxThreads <= 0) {
+            int procs = Runtime.getRuntime().availableProcessors();
+            maxThreads = maxThreads == 0 ? procs : (-maxThreads * procs);
+            if (maxThreads <= 0) {
+                maxThreads = Integer.MAX_VALUE;
+            }
+        }
+
         mManager = manager;
         mDb = db;
 
@@ -84,13 +94,17 @@ class ReplRedoEngine implements RedoVisitor {
         mDecodeLatch = new Latch();
         mOpLatch = new Latch();
 
-        // FIXME: configurable
-        mMaxThreads = 32;
+        mMaxThreads = maxThreads;
         mTotalThreads = new AtomicInteger();
         mIdleThreads = new AtomicInteger();
         mTaskThreadSet = new ConcurrentHashMap<DecodeTask, Object>(16, 0.75f, 1);
 
-        mLatches = new Latch[roundUpPower2(mMaxThreads * 2)];
+        int latchCount = roundUpPower2(maxThreads * 2);
+        if (latchCount <= 0) {
+            latchCount = 1 << 30;
+        }
+
+        mLatches = new Latch[latchCount];
         mLatchesMask = mLatches.length - 1;
         for (int i=0; i<mLatches.length; i++) {
             mLatches[i] = new Latch();
