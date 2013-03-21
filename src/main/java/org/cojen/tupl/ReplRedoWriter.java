@@ -155,7 +155,9 @@ final class ReplRedoWriter extends RedoWriter {
 
     @Override
     void write(byte[] buffer, int len) throws IOException {
-        if (!mManager.write(buffer, 0, len)) {
+        // Length check is included because super class can invoke this method to flush the
+        // buffer even when empty. Operation should never fail.
+        if (len > 0 && !mManager.write(buffer, 0, len)) {
             throw unmodifiable();
         }
     }
