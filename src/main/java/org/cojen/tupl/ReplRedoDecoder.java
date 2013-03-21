@@ -43,11 +43,13 @@ final class ReplRedoDecoder extends RedoDecoder {
 
     @Override
     long readTxnId(DataIn in) throws IOException {
-        long txnId = super.readTxnId(in);
-
+        // Capture the last transaction id, before a delta is applied.
         // See "in()" comments below regarding updates to this field.
+        long txnId = mTxnId;
         mEngine.mDecodeTransactionId = txnId;
 
+        txnId += in.readSignedVarLong();
+        mTxnId = txnId;
         return txnId;
     }
 
