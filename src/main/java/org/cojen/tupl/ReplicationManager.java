@@ -24,6 +24,7 @@ import java.io.IOException;
  * durability will not pass through the replication manager.
  *
  * @author Brian S O'Neill
+ * @see DatabaseConfig#replicate
  */
 public interface ReplicationManager {
     /**
