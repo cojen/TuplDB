@@ -39,6 +39,10 @@ final class ReplRedoWriter extends RedoWriter {
         mManager = engine.mManager;
     }
 
+    void startReceiving(long initialTxnId) {
+        mEngine.startReceiving(initialTxnId);
+    }
+
     @Override
     public void store(long indexId, byte[] key, byte[] value, DurabilityMode mode)
         throws IOException

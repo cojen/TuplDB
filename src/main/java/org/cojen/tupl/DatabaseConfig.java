@@ -56,6 +56,9 @@ public class DatabaseConfig implements Cloneable, Serializable {
     int mMaxReplicaThreads;
     transient Crypto mCrypto;
 
+    // Set as a side-effect of constructing a replicated Database.
+    transient long mReplInitialTxnId;
+
     public DatabaseConfig() {
         createFilePath(true);
         durabilityMode(null);
@@ -255,11 +258,14 @@ public class DatabaseConfig implements Cloneable, Serializable {
     }
 
     /**
-     * Enable full encryption of the data files, transaction logs, and
-     * snapshots. Option has no effect if database is non-durable. Allocated
-     * but never used pages within the data files are unencrypted, although
-     * they contain no information. Temporary files used by in-progress
-     * snapshots contain encrypted content.
+     * Enable full encryption of the data files, transaction logs, and snapshots. Option has no
+     * effect if database is non-durable. If replication is enabled, encryption is not applied
+     * to the replication stream. A {@link ReplicationManager} implementation must perform its
+     * own encryption.
+     *
+     * <p>Allocated but never used pages within the data files are unencrypted, although they
+     * contain no information. Temporary files used by in-progress snapshots contain encrypted
+     * content.
      */
     public DatabaseConfig encrypt(Crypto crypto) {
         mCrypto = crypto;

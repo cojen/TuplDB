@@ -33,8 +33,6 @@ import static org.cojen.tupl.Utils.*;
  * @author Brian S O'Neill
  */
 class ReplRedoEngine implements RedoVisitor {
-    // FIXME: support encryption
-
     final ReplicationManager mManager;
     final Database mDb;
 
