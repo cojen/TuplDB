@@ -1074,6 +1074,33 @@ public final class Database extends CauseCloseable {
     }
 
     /**
+     * Temporarily suspend automatic checkpoints without waiting for any in-progress checkpoint
+     * to complete. Suspend may be invoked multiple times, but each must be paired with a
+     * {@link #resumeCheckpoints resume} call to enable automatic checkpoints again.
+     *
+     * @throws IllegalStateException if suspended more than 2^31 times
+     */
+    public void suspendCheckpoints() {
+        Checkpointer c = mCheckpointer;
+        if (c != null) {
+            c.suspend();
+        }
+    }
+
+    /**
+     * Resume automatic checkpoints after having been temporarily {@link #suspendCheckpoints
+     * suspended}.
+     *
+     * @throws IllegalStateException if resumed more than suspended
+     */
+    public void resumeCheckpoints() {
+        Checkpointer c = mCheckpointer;
+        if (c != null) {
+            c.resume();
+        }
+    }
+
+    /**
      * Verifies the integrity of the database and all indexes.
      *
      * @param observer optional observer; pass null for default

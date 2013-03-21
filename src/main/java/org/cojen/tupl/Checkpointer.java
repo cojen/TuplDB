@@ -22,6 +22,8 @@ import java.lang.ref.ReferenceQueue;
 import java.util.ArrayList;
 import java.util.List;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
  * 
  *
@@ -30,6 +32,7 @@ import java.util.List;
 final class Checkpointer implements Runnable {
     private static int cThreadCounter;
 
+    private final AtomicInteger mSuspendCount;
     private final ReferenceQueue<Database> mRefQueue;
     private final WeakReference<Database> mDatabaseRef;
     private final long mRateNanos;
@@ -40,6 +43,8 @@ final class Checkpointer implements Runnable {
     private List<Shutdown> mToShutdown;
 
     Checkpointer(Database db, DatabaseConfig config) {
+        mSuspendCount = new AtomicInteger();
+
         mRateNanos = config.mCheckpointRateNanos;
         mSizeThreshold = config.mCheckpointSizeThreshold;
         mDelayThresholdNanos = config.mCheckpointDelayThresholdNanos;
@@ -51,7 +56,6 @@ final class Checkpointer implements Runnable {
             mRefQueue = null;
             mDatabaseRef = new WeakReference<Database>(db);
         }
-
     }
 
     void start() {
@@ -88,11 +92,16 @@ final class Checkpointer implements Runnable {
                     return;
                 }
 
-                long startNanos = System.nanoTime();
-                db.checkpoint(false, mSizeThreshold, mDelayThresholdNanos);
-                long endNanos = System.nanoTime();
+                if (mSuspendCount.get() != 0) {
+                    // Don't actually suspend the thread, allowing for weak reference checks.
+                    lastDurationNanos = 0;
+                } else {
+                    long startNanos = System.nanoTime();
+                    db.checkpoint(false, mSizeThreshold, mDelayThresholdNanos);
+                    long endNanos = System.nanoTime();
 
-                lastDurationNanos = endNanos - startNanos;
+                    lastDurationNanos = endNanos - startNanos;
+                }
             }
         } catch (Throwable e) {
             if (!mClosed) {
@@ -145,6 +154,27 @@ final class Checkpointer implements Runnable {
 
         obj.shutdown();
         return false;
+    }
+
+    void suspend() {
+        suspend(+1);
+    }
+
+    void resume() {
+        suspend(-1);
+    }
+
+    private void suspend(int amt) {
+        while (true) {
+            int count = mSuspendCount.get() + amt;
+            if (count < 0) {
+                // Overflowed or too many resumes.
+                throw new IllegalStateException();
+            }
+            if (mSuspendCount.compareAndSet(count - amt, count)) {
+                break;
+            }
+        }
     }
 
     void close() {
