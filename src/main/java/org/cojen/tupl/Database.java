@@ -128,9 +128,10 @@ public final class Database extends CauseCloseable {
     private static final int I_ROOT_PAGE_ID            = I_ENCODING_VERSION + 4;
     private static final int I_MASTER_UNDO_LOG_PAGE_ID = I_ROOT_PAGE_ID + 8;
     private static final int I_TRANSACTION_ID          = I_MASTER_UNDO_LOG_PAGE_ID + 8;
-    private static final int I_REDO_POSITION           = I_TRANSACTION_ID + 8;
-    private static final int I_REDO_TXN_ID             = I_REDO_POSITION + 8;
-    private static final int HEADER_SIZE               = I_REDO_TXN_ID + 8;
+    private static final int I_CHECKPOINT_NUMBER       = I_TRANSACTION_ID + 8;
+    private static final int I_REDO_TXN_ID             = I_CHECKPOINT_NUMBER + 8;
+    private static final int I_REDO_POSITION           = I_REDO_TXN_ID + 8;
+    private static final int HEADER_SIZE               = I_REDO_POSITION + 8;
 
     private static final int DEFAULT_PAGE_SIZE = 4096;
     private static final int MINIMUM_PAGE_SIZE = 512;
@@ -416,6 +417,7 @@ public final class Database extends CauseCloseable {
                 mTxnId = readLongLE(header, I_TRANSACTION_ID);
             }
 
+            long redoNum = readLongLE(header, I_CHECKPOINT_NUMBER);
             long redoPos = readLongLE(header, I_REDO_POSITION);
             long redoTxnId = readLongLE(header, I_REDO_TXN_ID);
 
@@ -476,14 +478,14 @@ public final class Database extends CauseCloseable {
                     rm.start(redoPos);
                     ReplRedoEngine engine = new ReplRedoEngine
                         (rm, config.mMaxReplicaThreads, this, txns);
-                    mRedoWriter = engine.getWriter();
+                    mRedoWriter = engine.initWriter(redoNum);
 
                     // Cannot start receiving until constructor is finished and final field
                     // values are visible to other threads. Pass the initial transaction to the
                     // caller through the config object.
                     config.mReplInitialTxnId = redoTxnId;
                 } else {
-                    long logId = redoPos;
+                    long logId = redoNum;
 
                     // Make sure old redo logs are deleted. Process might have exited
                     // before last checkpoint could delete them.
@@ -492,10 +494,10 @@ public final class Database extends CauseCloseable {
                     }
 
                     RedoLogApplier applier = new RedoLogApplier(this, txns);
-                    RedoLog redoLog = new RedoLog(config, logId, true);
+                    RedoLog replayLog = new RedoLog(config, logId, redoPos);
 
                     // As a side-effect, log id is set one higher than last file scanned.
-                    Set<File> redoFiles = redoLog.replay
+                    Set<File> redoFiles = replayLog.replay
                         (applier, mEventListener, EventType.RECOVERY_APPLY_REDO_LOG,
                          "Applying redo log: %1$d");
 
@@ -537,7 +539,7 @@ public final class Database extends CauseCloseable {
                     }
 
                     // New redo logs begin with identifiers one higher than last scanned.
-                    mRedoWriter = new RedoLog(config, redoLog.currentLogId(), false);
+                    mRedoWriter = new RedoLog(config, replayLog);
 
                     if (doCheckpoint) {
                         checkpoint(true, 0, 0);
@@ -587,13 +589,14 @@ public final class Database extends CauseCloseable {
             return;
         }
 
-        mCheckpointer = new Checkpointer(this, config);
+        Checkpointer c = new Checkpointer(this, config);
+        mCheckpointer = c;
 
         // Register objects to automatically shutdown.
-        mCheckpointer.register(mRedoWriter);
-        mCheckpointer.register(mTempFileManager);
+        c.register(mRedoWriter);
+        c.register(mTempFileManager);
 
-        mCheckpointer.start();
+        c.start();
 
         if (mRedoWriter instanceof ReplRedoWriter) {
             // Start replication.
@@ -2942,13 +2945,15 @@ public final class Database extends CauseCloseable {
                 }
             }
 
-            final long redoPos, redoTxnId;
+            final long redoNum, redoPos, redoTxnId;
             if (redo == null) {
+                redoNum = 0;
                 redoPos = 0;
                 redoTxnId = 0;
             } else {
                 // Switch and capture state while commit lock is held.
                 redo.checkpointSwitch();
+                redoNum = redo.checkpointNumber();
                 redoPos = redo.checkpointPosition();
                 redoTxnId = redo.checkpointTransactionId();
             }
@@ -2990,7 +2995,7 @@ public final class Database extends CauseCloseable {
                 mPageDb.commit(new PageDb.CommitCallback() {
                     @Override
                     public byte[] prepare() throws IOException {
-                        return flush(redoPos, redoTxnId, masterUndoLogId);
+                        return flush(redoNum, redoPos, redoTxnId, masterUndoLogId);
                     }
                 });
             } catch (IOException e) {
@@ -3029,7 +3034,8 @@ public final class Database extends CauseCloseable {
      * Method is invoked with exclusive commit lock and shared root node latch
      * held. Both are released by this method.
      */
-    private byte[] flush(final long redoPos, final long redoTxnId, final long masterUndoLogId)
+    private byte[] flush(final long redoNum, final long redoPos, final long redoTxnId,
+                         final long masterUndoLogId)
         throws IOException
     {
         final long txnId;
@@ -3064,8 +3070,9 @@ public final class Database extends CauseCloseable {
         writeLongLE(header, I_ROOT_PAGE_ID, rootId);
         writeLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
         writeLongLE(header, I_TRANSACTION_ID, txnId);
-        writeLongLE(header, I_REDO_POSITION, redoPos);
+        writeLongLE(header, I_CHECKPOINT_NUMBER, redoNum);
         writeLongLE(header, I_REDO_TXN_ID, redoTxnId);
+        writeLongLE(header, I_REDO_POSITION, redoPos);
 
         return header;
     }

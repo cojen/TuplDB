@@ -303,6 +303,11 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
     abstract void checkpointSwitch() throws IOException;
 
     /**
+     * Returns the checkpoint number for the first change after the checkpoint switch.
+     */
+    abstract long checkpointNumber() throws IOException;
+
+    /**
      * Returns the redo position for the first change after the checkpoint switch.
      */
     abstract long checkpointPosition() throws IOException;

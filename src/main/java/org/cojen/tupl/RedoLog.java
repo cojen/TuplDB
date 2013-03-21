@@ -57,27 +57,42 @@ final class RedoLog extends RedoWriter {
     private final boolean mReplayMode;
 
     private long mLogId;
+    private long mPosition;
     private OutputStream mOut;
     private volatile FileChannel mChannel;
 
     private int mTermRndSeed;
 
     private long mNextLogId;
+    private long mNextPosition;
     private OutputStream mNextOut;
     private FileChannel mNextChannel;
     private int mNextTermRndSeed;
 
     /**
+     * Open for replay.
+     *
      * @param logId first log id to open
      */
-    RedoLog(DatabaseConfig config, long logId, boolean replay) throws IOException {
-        this(config.mCrypto, config.mBaseFile, logId, replay);
+    RedoLog(DatabaseConfig config, long logId, long redoPos) throws IOException {
+        this(config.mCrypto, config.mBaseFile, logId, redoPos, true);
+    }
+
+    /**
+     * Open after replay.
+     *
+     * @param logId first log id to open
+     */
+    RedoLog(DatabaseConfig config, RedoLog replayed) throws IOException {
+        this(config.mCrypto, config.mBaseFile, replayed.mLogId, replayed.mPosition, false);
     }
 
     /**
      * @param logId first log id to open
      */
-    RedoLog(Crypto crypto, File baseFile, long logId, boolean replay) throws IOException {
+    RedoLog(Crypto crypto, File baseFile, long logId, long redoPos, boolean replay)
+        throws IOException
+    {
         super(4096, 0);
 
         mCrypto = crypto;
@@ -86,6 +101,7 @@ final class RedoLog extends RedoWriter {
 
         synchronized (this) {
             mLogId = logId;
+            mPosition = redoPos;
             if (!replay) {
                 openNextFile(logId);
                 applyNextFile();
@@ -134,7 +150,9 @@ final class RedoLog extends RedoWriter {
 
                     files.add(file);
 
-                    replay(new DataIn.Stream(in), visitor, listener);
+                    DataIn din = new DataIn.Stream(mPosition, in);
+                    replay(din, visitor, listener);
+                    mPosition = din.mPos;
                 } catch (EOFException e) {
                     // End of log didn't get completely flushed.
                 } finally {
@@ -148,10 +166,6 @@ final class RedoLog extends RedoWriter {
         } catch (IOException e) {
             throw Utils.rethrow(e, mCause);
         }
-    }
-
-    synchronized long currentLogId() {
-        return mLogId;
     }
 
     static void deleteOldFile(File baseFile, long logId) {
@@ -209,6 +223,8 @@ final class RedoLog extends RedoWriter {
             if (oldOut != null) {
                 endFile();
             }
+
+            mNextPosition = mPosition;
 
             mOut = mNextOut;
             mChannel = mNextChannel;
@@ -270,8 +286,13 @@ final class RedoLog extends RedoWriter {
     }
 
     @Override
-    long checkpointPosition() {
+    long checkpointNumber() {
         return mNextLogId;
+    }
+
+    @Override
+    long checkpointPosition() {
+        return mNextPosition;
     }
 
     @Override
@@ -292,6 +313,7 @@ final class RedoLog extends RedoWriter {
 
     @Override
     void write(byte[] buffer, int len) throws IOException {
+        mPosition += len;
         mOut.write(buffer, 0, len);
     }
 
