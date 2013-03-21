@@ -38,6 +38,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.Set;
 
 import java.util.concurrent.TimeUnit;
 
@@ -220,7 +221,7 @@ public final class Database extends CauseCloseable {
     public static Database open(DatabaseConfig config) throws IOException {
         config = config.clone();
         Database db = new Database(config, OPEN_REGULAR);
-        db.startCheckpointer(config);
+        db.startBackgroundThreads(config);
         return db;
     }
 
@@ -235,7 +236,7 @@ public final class Database extends CauseCloseable {
             throw new IllegalArgumentException("Cannot destroy read-only database");
         }
         Database db = new Database(config, OPEN_DESTROY);
-        db.startCheckpointer(config);
+        db.startBackgroundThreads(config);
         return db;
     }
 
@@ -470,60 +471,81 @@ public final class Database extends CauseCloseable {
                     }
                 }
 
-                RedoRecovery recovery;
-                {
-                    ReplicationManager rm = config.mReplManager;
-                    if (rm == null) {
-                        recovery = new RedoLogRecovery();
-                    } else {
-                        recovery = new ReplRedoRecovery(rm, config.mMaxReplicaThreads);
+                ReplicationManager rm = config.mReplManager;
+                if (rm != null) {
+                    rm.start(redoPos);
+                    ReplRedoEngine engine = new ReplRedoEngine
+                        (rm, config.mMaxReplicaThreads, this, txns);
+                    mRedoWriter = engine.getWriter();
+
+                    // Cannot start receiving until constructor is finished and final field
+                    // values are visible to other threads. Pass the initial transaction to the
+                    // caller through the config object.
+                    config.mReplInitialTxnId = redoTxnId;
+                } else {
+                    long logId = redoPos;
+
+                    // Make sure old redo logs are deleted. Process might have exited
+                    // before last checkpoint could delete them.
+                    for (int i=1; i<=2; i++) {
+                        RedoLog.deleteOldFile(config.mBaseFile, logId - i);
                     }
-                }
 
-                boolean doCheckpoint = recovery.recover(this, config, redoPos, redoTxnId, txns);
+                    RedoLogApplier applier = new RedoLogApplier(this, txns);
+                    RedoLog redoLog = new RedoLog(config, logId, true);
 
-                // Avoid re-using transaction ids used by recovery.
-                redoTxnId = recovery.highestTxnId();
-                if (redoTxnId != 0) {
-                    synchronized (mTxnIdLock) {
-                        // Subtract for modulo comparison.
-                        if (mTxnId == 0 || (redoTxnId - mTxnId) > 0) {
-                            mTxnId = redoTxnId;
+                    // As a side-effect, log id is set one higher than last file scanned.
+                    Set<File> redoFiles = redoLog.replay
+                        (applier, mEventListener, EventType.RECOVERY_APPLY_REDO_LOG,
+                         "Applying redo log: %1$d");
+
+                    boolean doCheckpoint = !redoFiles.isEmpty();
+
+                    // Avoid re-using transaction ids used by recovery.
+                    redoTxnId = applier.mHighestTxnId;
+                    if (redoTxnId != 0) {
+                        synchronized (mTxnIdLock) {
+                            // Subtract for modulo comparison.
+                            if (mTxnId == 0 || (redoTxnId - mTxnId) > 0) {
+                                mTxnId = redoTxnId;
+                            }
                         }
                     }
-                }
 
-                if (txns.size() > 0) {
-                    // Rollback or truncate all remaining transactions. They
-                    // were never explicitly rolled back, or they were
-                    // committed but not cleaned up.
+                    if (txns.size() > 0) {
+                        // Rollback or truncate all remaining transactions. They were never
+                        // explicitly rolled back, or they were committed but not cleaned up.
 
-                    if (mEventListener != null) {
-                        mEventListener.notify
-                            (EventType.RECOVERY_PROCESS_REMAINING,
-                             "Processing remaining transactions");
-                    }
+                        if (mEventListener != null) {
+                            mEventListener.notify
+                                (EventType.RECOVERY_PROCESS_REMAINING,
+                                 "Processing remaining transactions");
+                        }
 
-                    txns.traverse(new LHashTable.Visitor
-                                  <LHashTable.ObjEntry<Transaction>, IOException>()
-                    {
-                        public boolean visit(LHashTable.ObjEntry<Transaction> entry)
-                            throws IOException
+                        txns.traverse(new LHashTable.Visitor
+                                      <LHashTable.ObjEntry<Transaction>, IOException>()
                         {
-                            entry.value.recoveryCleanup();
-                            return false;
+                            public boolean visit(LHashTable.ObjEntry<Transaction> entry)
+                                throws IOException
+                            {
+                                entry.value.recoveryCleanup();
+                                return false;
+                            }
+                        });
+
+                        doCheckpoint = true;
+                    }
+
+                    // New redo logs begin with identifiers one higher than last scanned.
+                    mRedoWriter = new RedoLog(config, redoLog.currentLogId(), false);
+
+                    if (doCheckpoint) {
+                        checkpoint(true, 0, 0);
+                        // Only cleanup after successful checkpoint.
+                        for (File file : redoFiles) {
+                            file.delete();
                         }
-                    });
-
-                    doCheckpoint = true;
-                }
-
-                mRedoWriter = recovery.newWriter();
-
-                if (doCheckpoint) {
-                    checkpoint(true, 0, 0);
-                    // Only cleanup after successful checkpoint.
-                    recovery.cleanup();
+                    }
                 }
             }
 
@@ -559,7 +581,7 @@ public final class Database extends CauseCloseable {
         }
     }
 
-    private void startCheckpointer(DatabaseConfig config) {
+    private void startBackgroundThreads(DatabaseConfig config) {
         if (mRedoWriter == null && mTempFileManager == null) {
             // Nothing is durable and nothing to ever clean up 
             return;
@@ -572,6 +594,15 @@ public final class Database extends CauseCloseable {
         mCheckpointer.register(mTempFileManager);
 
         mCheckpointer.start();
+
+        if (mRedoWriter instanceof ReplRedoWriter) {
+            // Start replication.
+
+            ReplRedoWriter writer = (ReplRedoWriter) mRedoWriter;
+            writer.startReceiving(config.mReplInitialTxnId);
+
+            // FIXME: Wait until caught up? If so, immediate checkpoint afterwards.
+        }
     }
 
     /*
