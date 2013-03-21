@@ -548,20 +548,10 @@ public final class Database extends CauseCloseable {
                             file.delete();
                         }
                     }
-                }
-            }
 
-            // Delete lingering fragmented values after undo logs have been
-            // processed, ensuring deletes were committed.
-            // FIXME: Only when non-replicated. Empty trash after replica reset.
-            if (mFragmentedTrash != null) {
-                if (mEventListener != null) {
-                    mEventListener.notify(EventType.RECOVERY_DELETE_FRAGMENTS,
-                                          "Deleting unused large fragments");
-                }
-                
-                if (mFragmentedTrash.emptyAllTrash()) {
-                    checkpoint(false, 0, 0);
+                    // Delete lingering fragmented values after undo logs have been processed,
+                    // ensuring deletes were committed.
+                    emptyAllFragmentedTrash(true);
                 }
             }
 
@@ -2801,6 +2791,24 @@ public final class Database extends CauseCloseable {
 
     private static long levelCap(int pageLength, int level) {
         return pageLength * (long) Math.pow(pageLength / 6, level);
+    }
+
+    /**
+     * If fragmented trash exists, non-transactionally delete all fragmented values. Expected
+     * to be called only during recovery or replication leader switch.
+     */
+    void emptyAllFragmentedTrash(boolean checkpoint) throws IOException {
+        FragmentedTrash trash = mFragmentedTrash;
+        if (trash != null) {
+            if (mEventListener != null) {
+                mEventListener.notify(EventType.RECOVERY_DELETE_FRAGMENTS,
+                                      "Deleting unused large fragments");
+            }
+                
+            if (trash.emptyAllTrash() && checkpoint) {
+                checkpoint(false, 0, 0);
+            }
+        }
     }
 
     /**

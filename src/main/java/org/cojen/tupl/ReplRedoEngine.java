@@ -158,7 +158,7 @@ class ReplRedoEngine implements RedoVisitor {
 
     @Override
     public boolean reset() throws IOException {
-        // Acquire latch before performing operations wth side-effects.
+        // Acquire latch before performing operations with side-effects.
         mOpLatch.acquireShared();
 
         // Reset and discard all transactions.
@@ -173,6 +173,9 @@ class ReplRedoEngine implements RedoVisitor {
                 return true;
             }
         });
+
+        // Now's a good time to clean out any lingering trash.
+        mDb.emptyAllFragmentedTrash(false);
 
         // Only release if no exception.
         mOpLatch.releaseShared();
@@ -306,7 +309,7 @@ class ReplRedoEngine implements RedoVisitor {
 
     @Override
     public boolean txnRollbackFinal(long txnId) throws IOException {
-        // Acquire latch before performing operations wth side-effects.
+        // Acquire latch before performing operations with side-effects.
         mOpLatch.acquireShared();
 
         TxnEntry e = removeTxnEntry(txnId);
@@ -359,7 +362,7 @@ class ReplRedoEngine implements RedoVisitor {
 
     @Override
     public boolean txnCommitFinal(long txnId) throws IOException {
-        // Acquire latch before performing operations wth side-effects.
+        // Acquire latch before performing operations with side-effects.
         mOpLatch.acquireShared();
 
         TxnEntry e = removeTxnEntry(txnId);
