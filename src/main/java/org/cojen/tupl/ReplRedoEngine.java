@@ -65,7 +65,7 @@ class ReplRedoEngine implements RedoVisitor {
     // preventing checkpoints.
     final Latch mOpLatch;
 
-    // Updated by ReplRedoDecoder with decode latch exclusive and op latch shared. Values can
+    // Updated by ReplRedoDecoder with exclusive decode latch and shared op latch. Values can
     // be read with op latch exclusively held, when engine is suspended.
     long mDecodePosition;
     long mDecodeTransactionId;

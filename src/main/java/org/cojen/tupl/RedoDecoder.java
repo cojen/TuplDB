@@ -29,7 +29,7 @@ import static org.cojen.tupl.RedoOps.*;
 abstract class RedoDecoder {
     private final boolean mLenient;
 
-    private long mTxnId;
+    long mTxnId;
 
     RedoDecoder(boolean lenient, long initialTxnId) {
         mLenient = lenient;
