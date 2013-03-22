@@ -244,8 +244,30 @@ class ReplRedoEngine implements RedoVisitor {
 
     @Override
     public boolean dropIndex(long indexId) throws IOException {
-        // FIXME: 
-        throw null;
+        // Acquire latch before performing operations with side-effects.
+        mOpLatch.acquireShared();
+
+        Index ix;
+        {
+            LHashTable.ObjEntry<SoftReference<Index>> entry = mIndexes.remove(indexId);
+            if (entry == null || (ix = entry.value.get()) == null) {
+                ix = mDb.anyIndexById(indexId);
+            }
+        }
+
+        if (ix != null) {
+            try {
+                ix.drop();
+            } catch (IllegalStateException e) {
+                // FIXME: ignore? log it?
+            }
+        }
+
+        // Only release if no exception.
+        mOpLatch.releaseShared();
+
+        // Return true and allow RedoDecoder to loop back.
+        return true;
     }
 
     @Override
