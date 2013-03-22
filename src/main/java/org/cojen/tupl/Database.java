@@ -814,12 +814,19 @@ public final class Database extends CauseCloseable {
      * @return non-zero transaction id
      */
     long nextTransactionId() throws IOException {
+        RedoWriter redo = mRedoWriter;
+        if (redo != null) {
+            // Replicas cannot create loggable transactions.
+            redo.opWriteCheck();
+        }
+
         long txnId;
         do {
             synchronized (mTxnIdLock) {
                 txnId = ++mTxnId;
             }
         } while (txnId == 0);
+
         return txnId;
     }
 

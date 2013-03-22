@@ -32,7 +32,7 @@ final class ReplRedoWriter extends RedoWriter {
     private long mCheckpointPos;
     private long mCheckpointTxnId;
 
-    private boolean mIsLeader;
+    private volatile boolean mIsLeader;
 
     ReplRedoWriter(ReplRedoEngine engine) {
         super(4096, 0);
@@ -167,6 +167,13 @@ final class ReplRedoWriter extends RedoWriter {
     }
 
     @Override
+    void opWriteCheck() throws IOException {
+        if (!mIsLeader) {
+            throw unmodifiable();
+        }
+    }
+
+    @Override
     void write(byte[] buffer, int len) throws IOException {
         // Length check is included because super class can invoke this method to flush the
         // buffer even when empty. Operation should never fail.
@@ -177,21 +184,11 @@ final class ReplRedoWriter extends RedoWriter {
 
     @Override
     void force(boolean metadata) throws IOException {
-        // FIXME: If not leader, don't throw any exception from this method.
-        /* FIXME
-        long position;
-        synchronized (this) {
-            position = mPosition;
-        }
-        if (!mManager.sync(position)) {
-            throw unmodifiable();
-        }
-        */
+        mManager.sync();
     }
 
     @Override
     void forceAndClose() throws IOException {
-        // FIXME: If not leader, don't throw any exception from this method.
         force(false);
         // FIXME: Close stuff..
     }

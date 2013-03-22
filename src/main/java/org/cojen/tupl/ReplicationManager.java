@@ -99,12 +99,9 @@ public interface ReplicationManager {
     boolean confirm(long position, long timeoutNanos) throws IOException;
 
     /**
-     * Durably flushes all modifications to local non-volatile storage.
-     *
-     * @param position all data less than this position must be sync'd
-     * @return true if written; false if not leader
+     * Durably flushes all local data to non-volatile storage, up to the current position.
      */
-    boolean sync(long position) throws IOException;
+    void sync() throws IOException;
 
     /**
      * Forward a change from a replica to the leader. Change must arrive back through the input
