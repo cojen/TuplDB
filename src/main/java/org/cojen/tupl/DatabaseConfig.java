@@ -56,7 +56,8 @@ public class DatabaseConfig implements Cloneable, Serializable {
     int mMaxReplicaThreads;
     transient Crypto mCrypto;
 
-    // Set as a side-effect of constructing a replicated Database.
+    // Fields are set as a side-effect of constructing a replicated Database.
+    transient long mReplRecoveryStartNanos;
     transient long mReplInitialTxnId;
 
     public DatabaseConfig() {

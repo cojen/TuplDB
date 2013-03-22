@@ -69,6 +69,7 @@ class ReplRedoEngine implements RedoVisitor {
     long mDecodeTransactionId;
 
     /**
+     * @param manager already started
      * @param txns recovered transactions; can be null; cleared as a side-effect
      */
     ReplRedoEngine(ReplicationManager manager, int maxThreads,

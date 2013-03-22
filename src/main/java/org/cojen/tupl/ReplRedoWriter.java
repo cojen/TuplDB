@@ -44,8 +44,9 @@ final class ReplRedoWriter extends RedoWriter {
         mCheckpointNum = num;
     }
 
-    void startReceiving(long initialTxnId) {
+    public void recover(long initialTxnId, EventListener listener) throws IOException {
         mEngine.startReceiving(initialTxnId);
+        mManager.recover(listener);
     }
 
     @Override

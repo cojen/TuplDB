@@ -222,7 +222,7 @@ public final class Database extends CauseCloseable {
     public static Database open(DatabaseConfig config) throws IOException {
         config = config.clone();
         Database db = new Database(config, OPEN_REGULAR);
-        db.startBackgroundThreads(config);
+        db.finishInit(config);
         return db;
     }
 
@@ -237,7 +237,7 @@ public final class Database extends CauseCloseable {
             throw new IllegalArgumentException("Cannot destroy read-only database");
         }
         Database db = new Database(config, OPEN_DESTROY);
-        db.startBackgroundThreads(config);
+        db.finishInit(config);
         return db;
     }
 
@@ -480,9 +480,10 @@ public final class Database extends CauseCloseable {
                         (rm, config.mMaxReplicaThreads, this, txns);
                     mRedoWriter = engine.initWriter(redoNum);
 
-                    // Cannot start receiving until constructor is finished and final field
-                    // values are visible to other threads. Pass the initial transaction to the
-                    // caller through the config object.
+                    // Cannot start recovery until constructor is finished and final field
+                    // values are visible to other threads. Pass the state to the caller
+                    // through the config object.
+                    config.mReplRecoveryStartNanos = recoveryStart;
                     config.mReplInitialTxnId = redoTxnId;
                 } else {
                     long logId = redoNum;
@@ -552,6 +553,8 @@ public final class Database extends CauseCloseable {
                     // Delete lingering fragmented values after undo logs have been processed,
                     // ensuring deletes were committed.
                     emptyAllFragmentedTrash(true);
+
+                    recoveryComplete(recoveryStart);
                 }
             }
 
@@ -560,20 +563,16 @@ public final class Database extends CauseCloseable {
             } else {
                 mTempFileManager = new TempFileManager(baseFile);
             }
-
-            if (mRedoWriter != null && mEventListener != null) {
-                double duration = (System.nanoTime() - recoveryStart) / 1000000000.0;
-                mEventListener.notify(EventType.RECOVERY_COMPLETE,
-                                      "Recovery completed in %1$1.3f seconds",
-                                      duration, TimeUnit.SECONDS);
-            }
         } catch (Throwable e) {
             closeQuietly(null, this, e);
             throw rethrow(e);
         }
     }
 
-    private void startBackgroundThreads(DatabaseConfig config) {
+    /**
+     * Post construction, allow additional threads access to the database.
+     */
+    private void finishInit(DatabaseConfig config) throws IOException {
         if (mRedoWriter == null && mTempFileManager == null) {
             // Nothing is durable and nothing to ever clean up 
             return;
@@ -586,15 +585,29 @@ public final class Database extends CauseCloseable {
         c.register(mRedoWriter);
         c.register(mTempFileManager);
 
-        c.start();
-
         if (mRedoWriter instanceof ReplRedoWriter) {
-            // Start replication.
-
+            // Start replication and recovery.
             ReplRedoWriter writer = (ReplRedoWriter) mRedoWriter;
-            writer.startReceiving(config.mReplInitialTxnId);
+            try {
+                // Pass the original listener, in case it has been specialized.
+                writer.recover(config.mReplInitialTxnId, config.mEventListener);
+            } catch (Throwable e) {
+                closeQuietly(null, this, e);
+                throw rethrow(e);
+            }
+            checkpoint();
+            recoveryComplete(config.mReplRecoveryStartNanos);
+        }
 
-            // FIXME: Wait until caught up? If so, immediate checkpoint afterwards.
+        c.start();
+    }
+
+    private void recoveryComplete(long recoveryStart) {
+        if (mRedoWriter != null && mEventListener != null) {
+            double duration = (System.nanoTime() - recoveryStart) / 1000000000.0;
+            mEventListener.notify(EventType.RECOVERY_COMPLETE,
+                                  "Recovery completed in %1$1.3f seconds",
+                                  duration, TimeUnit.SECONDS);
         }
     }
 

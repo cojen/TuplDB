@@ -32,11 +32,24 @@ public interface ReplicationManager {
      * all data lower than the given position is confirmed. All data at or higher than the
      * given position might be discarded.
      *
+     * <p>After started, the reported {@link #position position} must match the one provided to
+     * this method. The position can change only after read and write operations have been
+     * performed.
+     *
      * @param position position to start reading from; 0 is the lowest position
      * @throws IllegalArgumentException if position is negative
      * @throws IllegalStateException if already started
      */
     void start(long position) throws IOException;
+
+    /**
+     * Called after replication threads have started, providing an opportunity to wait until
+     * replication has sufficiently "caught up". The thread which is opening the database
+     * invokes this method, and so it blocks until recovery completes.
+     *
+     * @param listener optional listener for posting recovery events to
+     */
+    void recover(EventListener listener) throws IOException;
 
     /**
      * Returns the next position a replica will read from, or the highest confirmed position if
