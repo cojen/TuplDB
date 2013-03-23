@@ -2988,7 +2988,7 @@ public final class Database extends CauseCloseable {
 
             if (mEventListener != null) {
                 mEventListener.notify(EventType.CHECKPOINT_BEGIN,
-                                      "Checkpoint begin: %1$d", redoPos);
+                                      "Checkpoint begin: %1$d, %2$d", redoNum, redoPos);
             }
 
             mCheckpointFlushState = CHECKPOINT_FLUSH_PREPARE;
