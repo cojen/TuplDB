@@ -159,6 +159,9 @@ final class ReplRedoWriter extends RedoWriter {
 
     @Override
     void checkpointStarted() throws IOException {
+        // Make sure that durable replication data is not behind local database.
+        mManager.sync();
+
         mEngine.resume();
     }
 
