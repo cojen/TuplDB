@@ -205,12 +205,10 @@ final class ReplRedoWriter extends RedoWriter {
     /**
      * Called by ReplRedoEngine when local instance has become the leader.
      */
-    // FIXME: need an up-to-date txn id passed in
     synchronized void leaderNotify() throws UnmodifiableReplicaException, IOException {
         if (!mIsLeader) {
             mManager.flip();
             mIsLeader = true;
-            // FIXME: provide txn id to clearAndReset
             clearAndReset();
             flush();
         }

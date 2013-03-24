@@ -560,28 +560,45 @@ final class UndoLog {
             break;
 
         case OP_DELETE:
-            do {
+            while (true) {
                 activeIndex = findIndex(activeIndex);
-                activeIndex.delete(Transaction.BOGUS, entry);
-            } while (activeIndex.isClosed()); // handle concurrent close
+                try {
+                    activeIndex.delete(Transaction.BOGUS, entry);
+                    break;
+                } catch (ClosedIndexException e) {
+                    // User closed the shared index reference, so re-open it.
+                    activeIndex = null;
+                }
+            }
             break;
 
         case OP_UPDATE:
-        case OP_INSERT:
-            do {
+        case OP_INSERT: {
+            byte[][] pair = Node.retrieveKeyValueAtLoc(entry, 0);
+            while (true) {
                 activeIndex = findIndex(activeIndex);
-                {
-                    byte[][] pair = Node.retrieveKeyValueAtLoc(entry, 0);
+                try {
                     activeIndex.store(Transaction.BOGUS, pair[0], pair[1]);
+                    break;
+                } catch (ClosedIndexException e) {
+                    // User closed the shared index reference, so re-open it.
+                    activeIndex = null;
                 }
-            } while (activeIndex.isClosed()); // handle concurrent close
+            }
             break;
+        }
 
         case OP_RECLAIM_FRAGMENTED:
-            do {
+            while (true) {
                 activeIndex = findIndex(activeIndex);
-                mDatabase.fragmentedTrash().remove(mTxnId, (Tree) activeIndex, entry);
-            } while (activeIndex.isClosed()); // handle concurrent close
+                try {
+                    mDatabase.fragmentedTrash().remove(mTxnId, (Tree) activeIndex, entry);
+                    break;
+                } catch (ClosedIndexException e) {
+                    // User closed the shared index reference, so re-open it.
+                    activeIndex = null;
+                }
+            }
             break;
         }
 
@@ -591,8 +608,8 @@ final class UndoLog {
     private Index findIndex(Index activeIndex) throws IOException {
         if (activeIndex == null || activeIndex.isClosed()) {
             if ((activeIndex = mDatabase.anyIndexById(mActiveIndexId)) == null) {
-                // FIXME: If index was deleted, use a "dev/null" index. Some
-                // callers of this method will try to cast the index to a Tree.
+                // FIXME: If index was deleted, use a "dev/null" index. Note that some callers
+                // of this method will try to cast the Index to a Tree.
                 throw new DatabaseException("Index not found: " + mActiveIndexId);
             }
         }
