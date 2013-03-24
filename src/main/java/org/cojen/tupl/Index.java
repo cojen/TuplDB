@@ -132,11 +132,9 @@ public interface Index extends View, Closeable {
 
     /**
      * Fully closes and removes an empty index. An exception is thrown if the index isn't empty
-     * or if the close constraints aren't met. In particular, an index cannot be closed if any
-     * cursors are accessing it. Also, an index cannot be dropped when referenced by an
-     * in-progress transaction which has modified it.
+     * or if an in-progress transaction is modifying it.
      *
-     * @throws IllegalStateException if index isn't empty or if close fails
+     * @throws IllegalStateException if index isn't empty or any pending transactional changes
      * @throws ClosedIndexException if this index reference is closed
      */
     public void drop() throws IOException;

@@ -139,7 +139,7 @@ public final class Database extends CauseCloseable {
 
     private static final int OPEN_REGULAR = 0, OPEN_DESTROY = 1, OPEN_TEMP = 2;
 
-    private final EventListener mEventListener;
+    final EventListener mEventListener;
 
     private final LockedFile mLockFile;
 

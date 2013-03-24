@@ -221,7 +221,15 @@ class ReplRedoEngine implements RedoVisitor {
         nextTask();
 
         try {
-            ix.store(Transaction.BOGUS, key, value);
+            while (true) {
+                try {
+                    ix.store(Transaction.BOGUS, key, value);
+                    break;
+                } catch (ClosedIndexException e) {
+                    // User closed the shared index reference, so re-open it.
+                    ix = openIndex(indexId, null);
+                }
+            }
         } finally {
             locker.scopeUnlockAll();
         }
@@ -258,9 +266,21 @@ class ReplRedoEngine implements RedoVisitor {
 
         if (ix != null) {
             try {
-                ix.drop();
+                while (true) {
+                    try {
+                        ix.drop();
+                        break;
+                    } catch (ClosedIndexException e) {
+                        // User closed the shared index reference, so re-open it.
+                        ix = openIndex(indexId, null);
+                    }
+                }
             } catch (IllegalStateException e) {
-                // FIXME: ignore? log it?
+                EventListener listener = mDb.mEventListener;
+                if (listener != null) {
+                    listener.notify(EventType.REPLICATION_WARNING,
+                                    "Unable to drop index: %1$s", rootCause(e));
+                }
             }
         }
 
@@ -308,17 +328,17 @@ class ReplRedoEngine implements RedoVisitor {
 
     @Override
     public boolean txnRollback(long txnId) throws IOException {
-        TxnEntry e = getTxnEntry(txnId);
+        TxnEntry te = getTxnEntry(txnId);
 
         // Allow side-effect free operations to be performed before acquiring latch.
         mOpLatch.acquireShared();
 
-        Latch latch = e.latch();
+        Latch latch = te.latch();
         try {
             // Allow another task thread to run while operation completes.
             nextTask();
 
-            e.mTxn.exit();
+            te.mTxn.exit();
         } finally {
             latch.releaseExclusive();
         }
@@ -335,14 +355,14 @@ class ReplRedoEngine implements RedoVisitor {
         // Acquire latch before performing operations with side-effects.
         mOpLatch.acquireShared();
 
-        TxnEntry e = removeTxnEntry(txnId);
+        TxnEntry te = removeTxnEntry(txnId);
 
-        Latch latch = e.latch();
+        Latch latch = te.latch();
         try {
             // Allow another task thread to run while operation completes.
             nextTask();
 
-            e.mTxn.reset();
+            te.mTxn.reset();
         } finally {
             latch.releaseExclusive();
         }
@@ -356,17 +376,17 @@ class ReplRedoEngine implements RedoVisitor {
 
     @Override
     public boolean txnCommit(long txnId) throws IOException {
-        TxnEntry e = getTxnEntry(txnId);
+        TxnEntry te = getTxnEntry(txnId);
 
         // Allow side-effect free operations to be performed before acquiring latch.
         mOpLatch.acquireShared();
 
-        Latch latch = e.latch();
+        Latch latch = te.latch();
         try {
             // Commit is expected to complete quickly, so don't let another
             // task thread run.
 
-            Transaction txn = e.mTxn;
+            Transaction txn = te.mTxn;
             try {
                 txn.commit();
             } finally {
@@ -388,14 +408,14 @@ class ReplRedoEngine implements RedoVisitor {
         // Acquire latch before performing operations with side-effects.
         mOpLatch.acquireShared();
 
-        TxnEntry e = removeTxnEntry(txnId);
+        TxnEntry te = removeTxnEntry(txnId);
 
-        Latch latch = e.latch();
+        Latch latch = te.latch();
         try {
             // Commit is expected to complete quickly, so don't let another
             // task thread run.
 
-            Transaction txn = e.mTxn;
+            Transaction txn = te.mTxn;
             try {
                 txn.commit();
             } finally {
@@ -417,14 +437,14 @@ class ReplRedoEngine implements RedoVisitor {
         throws IOException
     {
         Index ix = getIndex(indexId);
-        TxnEntry e = getTxnEntry(txnId);
+        TxnEntry te = getTxnEntry(txnId);
 
         // Allow side-effect free operations to be performed before acquiring latch.
         mOpLatch.acquireShared();
 
-        Latch latch = e.latch();
+        Latch latch = te.latch();
         try {
-            Transaction txn = e.mTxn;
+            Transaction txn = te.mTxn;
 
             // Locks must be acquired in their original order to avoid
             // deadlock, so don't allow another task thread to run yet.
@@ -433,7 +453,15 @@ class ReplRedoEngine implements RedoVisitor {
             // Allow another task thread to run while operation completes.
             nextTask();
 
-            ix.store(txn, key, value);
+            while (true) {
+                try {
+                    ix.store(txn, key, value);
+                    break;
+                } catch (ClosedIndexException e) {
+                    // User closed the shared index reference, so re-open it.
+                    ix = openIndex(indexId, null);
+                }
+            }
         } finally {
             latch.releaseExclusive();
         }
@@ -450,14 +478,14 @@ class ReplRedoEngine implements RedoVisitor {
         throws IOException
     {
         Index ix = getIndex(indexId);
-        TxnEntry e = getTxnEntry(txnId);
+        TxnEntry te = getTxnEntry(txnId);
 
         // Allow side-effect free operations to be performed before acquiring latch.
         mOpLatch.acquireShared();
 
-        Latch latch = e.latch();
+        Latch latch = te.latch();
         try {
-            Transaction txn = e.mTxn;
+            Transaction txn = te.mTxn;
 
             // Locks must be acquired in their original order to avoid
             // deadlock, so don't allow another task thread to run yet.
@@ -467,7 +495,15 @@ class ReplRedoEngine implements RedoVisitor {
             nextTask();
 
             try {
-                ix.store(txn, key, value);
+                while (true) {
+                    try {
+                        ix.store(txn, key, value);
+                        break;
+                    } catch (ClosedIndexException e) {
+                        // User closed the shared index reference, so re-open it.
+                        ix = openIndex(indexId, null);
+                    }
+                }
                 txn.commit();
             } finally {
                 txn.exit();
@@ -550,6 +586,9 @@ class ReplRedoEngine implements RedoVisitor {
         return e;
     }
 
+    /**
+     * Returns the index from the local cache, opening it if necessary.
+     */
     private Index getIndex(long indexId) throws IOException {
         LHashTable.ObjEntry<SoftReference<Index>> entry = mIndexes.get(indexId);
         if (entry != null) {
@@ -558,7 +597,15 @@ class ReplRedoEngine implements RedoVisitor {
                 return ix;
             }
         }
+        return openIndex(indexId, entry);
+    }
 
+    /**
+     * Opens the index and puts it into the local cache, replacing the existing entry.
+     */
+    private Index openIndex(long indexId, LHashTable.ObjEntry<SoftReference<Index>> entry)
+        throws IOException
+    {
         Index ix = mDb.anyIndexById(indexId);
         if (ix == null) {
             // TODO: Throw a better exception.
@@ -633,8 +680,8 @@ class ReplRedoEngine implements RedoVisitor {
             reset();
         } catch (Throwable e) {
             mDecodeLatch.releaseExclusive();
-            // FIXME: panic
-            e.printStackTrace(System.out);
+            // Panic.
+            closeQuietly(null, mDb, e);
             return false;
         }
 
@@ -644,12 +691,10 @@ class ReplRedoEngine implements RedoVisitor {
         try {
             mWriter.leaderNotify();
         } catch (UnmodifiableReplicaException e) {
-            // Should already be receiving.
-        } catch (IOException e) {
-            // FIXME: log it?
-            e.printStackTrace(System.out);
-            // A reset op is expected, and so the initial transaction id can be zero.
-            startReceiving(0);
+            // Should already be receiving again due to this exception.
+        } catch (Throwable e) {
+            // Could try to switch to receiving mode, but panic seems to be the safe option.
+            closeQuietly(null, mDb, e);
         }
 
         return false;
