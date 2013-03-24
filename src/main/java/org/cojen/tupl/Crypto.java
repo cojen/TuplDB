@@ -23,9 +23,10 @@ import java.io.OutputStream;
 import java.security.GeneralSecurityException;
 
 /**
- * Support for {@link DatabaseConfig#encrypt encrypting} an entire database.
+ * Support for encrypting an entire database.
  *
  * @author Brian S O'Neill
+ * @see DatabaseConfig#encrypt
  */
 public interface Crypto {
     /**

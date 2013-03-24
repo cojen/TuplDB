@@ -52,7 +52,13 @@ public class DatabaseConfig implements Cloneable, Serializable {
     boolean mFileSync;
     boolean mReadOnly;
     int mPageSize;
+    transient ReplicationManager mReplManager;
+    int mMaxReplicaThreads;
     transient Crypto mCrypto;
+
+    // Fields are set as a side-effect of constructing a replicated Database.
+    transient long mReplRecoveryStartNanos;
+    transient long mReplInitialTxnId;
 
     public DatabaseConfig() {
         createFilePath(true);
@@ -235,11 +241,32 @@ public class DatabaseConfig implements Cloneable, Serializable {
     }
 
     /**
-     * Enable full encryption of the data files, transaction logs, and
-     * snapshots. Option has no effect if database is non-durable. Allocated
-     * but never used pages within the data files are unencrypted, although
-     * they contain no information. Temporary files used by in-progress
-     * snapshots contain encrypted content.
+     * Enable replication by providing a {@link ReplicationManager} instance.
+     */
+    public DatabaseConfig replicate(ReplicationManager manager) {
+        mReplManager = manager;
+        return this;
+    }
+
+    /**
+     * If replication is enabled, specify the maximum number of threads to process incoming
+     * changes. Default is the number of available processors. If a negative number is
+     * provided, the actual number applied is {@code (-num * availableProcessors)}.
+     */
+    public DatabaseConfig maxReplicaThreads(int num) {
+        mMaxReplicaThreads = num;
+        return this;
+    }
+
+    /**
+     * Enable full encryption of the data files, transaction logs, and snapshots. Option has no
+     * effect if database is non-durable. If replication is enabled, encryption is not applied
+     * to the replication stream. A {@link ReplicationManager} implementation must perform its
+     * own encryption.
+     *
+     * <p>Allocated but never used pages within the data files are unencrypted, although they
+     * contain no information. Temporary files used by in-progress snapshots contain encrypted
+     * content.
      */
     public DatabaseConfig encrypt(Crypto crypto) {
         mCrypto = crypto;
