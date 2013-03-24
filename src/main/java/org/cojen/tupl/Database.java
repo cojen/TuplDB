@@ -38,6 +38,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.Set;
 
 import java.util.concurrent.TimeUnit;
 
@@ -127,9 +128,10 @@ public final class Database extends CauseCloseable {
     private static final int I_ROOT_PAGE_ID            = I_ENCODING_VERSION + 4;
     private static final int I_MASTER_UNDO_LOG_PAGE_ID = I_ROOT_PAGE_ID + 8;
     private static final int I_TRANSACTION_ID          = I_MASTER_UNDO_LOG_PAGE_ID + 8;
-    private static final int I_REDO_POSITION           = I_TRANSACTION_ID + 8;
-    private static final int I_REDO_TXN_ID             = I_REDO_POSITION + 8;
-    private static final int HEADER_SIZE               = I_REDO_TXN_ID + 8;
+    private static final int I_CHECKPOINT_NUMBER       = I_TRANSACTION_ID + 8;
+    private static final int I_REDO_TXN_ID             = I_CHECKPOINT_NUMBER + 8;
+    private static final int I_REDO_POSITION           = I_REDO_TXN_ID + 8;
+    private static final int HEADER_SIZE               = I_REDO_POSITION + 8;
 
     private static final int DEFAULT_PAGE_SIZE = 4096;
     private static final int MINIMUM_PAGE_SIZE = 512;
@@ -220,7 +222,7 @@ public final class Database extends CauseCloseable {
     public static Database open(DatabaseConfig config) throws IOException {
         config = config.clone();
         Database db = new Database(config, OPEN_REGULAR);
-        db.startCheckpointer(config);
+        db.finishInit(config);
         return db;
     }
 
@@ -235,7 +237,7 @@ public final class Database extends CauseCloseable {
             throw new IllegalArgumentException("Cannot destroy read-only database");
         }
         Database db = new Database(config, OPEN_DESTROY);
-        db.startCheckpointer(config);
+        db.finishInit(config);
         return db;
     }
 
@@ -415,6 +417,7 @@ public final class Database extends CauseCloseable {
                 mTxnId = readLongLE(header, I_TRANSACTION_ID);
             }
 
+            long redoNum = readLongLE(header, I_CHECKPOINT_NUMBER);
             long redoPos = readLongLE(header, I_REDO_POSITION);
             long redoTxnId = readLongLE(header, I_REDO_TXN_ID);
 
@@ -470,65 +473,88 @@ public final class Database extends CauseCloseable {
                     }
                 }
 
-                RedoRecovery recovery = new RedoLogRecovery();
+                ReplicationManager rm = config.mReplManager;
+                if (rm != null) {
+                    rm.start(redoPos);
+                    ReplRedoEngine engine = new ReplRedoEngine
+                        (rm, config.mMaxReplicaThreads, this, txns);
+                    mRedoWriter = engine.initWriter(redoNum);
 
-                boolean doCheckpoint = recovery.recover(this, config, redoPos, redoTxnId, txns);
+                    // Cannot start recovery until constructor is finished and final field
+                    // values are visible to other threads. Pass the state to the caller
+                    // through the config object.
+                    config.mReplRecoveryStartNanos = recoveryStart;
+                    config.mReplInitialTxnId = redoTxnId;
+                } else {
+                    long logId = redoNum;
 
-                // Avoid re-using transaction ids used by recovery.
-                redoTxnId = recovery.highestTxnId();
-                if (redoTxnId != 0) {
-                    synchronized (mTxnIdLock) {
-                        // Subtract for modulo comparison.
-                        if (mTxnId == 0 || (redoTxnId - mTxnId) > 0) {
-                            mTxnId = redoTxnId;
+                    // Make sure old redo logs are deleted. Process might have exited
+                    // before last checkpoint could delete them.
+                    for (int i=1; i<=2; i++) {
+                        RedoLog.deleteOldFile(config.mBaseFile, logId - i);
+                    }
+
+                    RedoLogApplier applier = new RedoLogApplier(this, txns);
+                    RedoLog replayLog = new RedoLog(config, logId, redoPos);
+
+                    // As a side-effect, log id is set one higher than last file scanned.
+                    Set<File> redoFiles = replayLog.replay
+                        (applier, mEventListener, EventType.RECOVERY_APPLY_REDO_LOG,
+                         "Applying redo log: %1$d");
+
+                    boolean doCheckpoint = !redoFiles.isEmpty();
+
+                    // Avoid re-using transaction ids used by recovery.
+                    redoTxnId = applier.mHighestTxnId;
+                    if (redoTxnId != 0) {
+                        synchronized (mTxnIdLock) {
+                            // Subtract for modulo comparison.
+                            if (mTxnId == 0 || (redoTxnId - mTxnId) > 0) {
+                                mTxnId = redoTxnId;
+                            }
                         }
                     }
-                }
 
-                if (txns.size() > 0) {
-                    // Rollback or truncate all remaining transactions. They
-                    // were never explicitly rolled back, or they were
-                    // committed but not cleaned up.
+                    if (txns.size() > 0) {
+                        // Rollback or truncate all remaining transactions. They were never
+                        // explicitly rolled back, or they were committed but not cleaned up.
 
-                    if (mEventListener != null) {
-                        mEventListener.notify
-                            (EventType.RECOVERY_PROCESS_REMAINING,
-                             "Processing remaining transactions");
-                    }
+                        if (mEventListener != null) {
+                            mEventListener.notify
+                                (EventType.RECOVERY_PROCESS_REMAINING,
+                                 "Processing remaining transactions");
+                        }
 
-                    txns.traverse(new LHashTable.Visitor
-                                  <LHashTable.ObjEntry<Transaction>, IOException>()
-                    {
-                        public boolean visit(LHashTable.ObjEntry<Transaction> entry)
-                            throws IOException
+                        txns.traverse(new LHashTable.Visitor
+                                      <LHashTable.ObjEntry<Transaction>, IOException>()
                         {
-                            entry.value.recoveryCleanup();
-                            return false;
+                            public boolean visit(LHashTable.ObjEntry<Transaction> entry)
+                                throws IOException
+                            {
+                                entry.value.recoveryCleanup();
+                                return false;
+                            }
+                        });
+
+                        doCheckpoint = true;
+                    }
+
+                    // New redo logs begin with identifiers one higher than last scanned.
+                    mRedoWriter = new RedoLog(config, replayLog);
+
+                    if (doCheckpoint) {
+                        checkpoint(true, 0, 0);
+                        // Only cleanup after successful checkpoint.
+                        for (File file : redoFiles) {
+                            file.delete();
                         }
-                    });
+                    }
 
-                    doCheckpoint = true;
-                }
+                    // Delete lingering fragmented values after undo logs have been processed,
+                    // ensuring deletes were committed.
+                    emptyAllFragmentedTrash(true);
 
-                mRedoWriter = recovery.newWriter();
-
-                if (doCheckpoint) {
-                    checkpoint(true, 0, 0);
-                    // Only cleanup after successful checkpoint.
-                    recovery.cleanup();
-                }
-            }
-
-            // Delete lingering fragmented values after undo logs have been
-            // processed, ensuring deletes were committed.
-            if (mFragmentedTrash != null) {
-                if (mEventListener != null) {
-                    mEventListener.notify(EventType.RECOVERY_DELETE_FRAGMENTS,
-                                          "Deleting unused large fragments");
-                }
-                
-                if (mFragmentedTrash.emptyAllTrash()) {
-                    checkpoint(false, 0, 0);
+                    recoveryComplete(recoveryStart);
                 }
             }
 
@@ -537,32 +563,52 @@ public final class Database extends CauseCloseable {
             } else {
                 mTempFileManager = new TempFileManager(baseFile);
             }
-
-            if (mRedoWriter != null && mEventListener != null) {
-                double duration = (System.nanoTime() - recoveryStart) / 1000000000.0;
-                mEventListener.notify(EventType.RECOVERY_COMPLETE,
-                                      "Recovery completed in %1$1.3f seconds",
-                                      duration, TimeUnit.SECONDS);
-            }
         } catch (Throwable e) {
             closeQuietly(null, this, e);
             throw rethrow(e);
         }
     }
 
-    private void startCheckpointer(DatabaseConfig config) {
+    /**
+     * Post construction, allow additional threads access to the database.
+     */
+    private void finishInit(DatabaseConfig config) throws IOException {
         if (mRedoWriter == null && mTempFileManager == null) {
             // Nothing is durable and nothing to ever clean up 
             return;
         }
 
-        mCheckpointer = new Checkpointer(this, config);
+        Checkpointer c = new Checkpointer(this, config);
+        mCheckpointer = c;
 
         // Register objects to automatically shutdown.
-        mCheckpointer.register(mRedoWriter);
-        mCheckpointer.register(mTempFileManager);
+        c.register(mRedoWriter);
+        c.register(mTempFileManager);
 
-        mCheckpointer.start();
+        if (mRedoWriter instanceof ReplRedoWriter) {
+            // Start replication and recovery.
+            ReplRedoWriter writer = (ReplRedoWriter) mRedoWriter;
+            try {
+                // Pass the original listener, in case it has been specialized.
+                writer.recover(config.mReplInitialTxnId, config.mEventListener);
+            } catch (Throwable e) {
+                closeQuietly(null, this, e);
+                throw rethrow(e);
+            }
+            checkpoint();
+            recoveryComplete(config.mReplRecoveryStartNanos);
+        }
+
+        c.start();
+    }
+
+    private void recoveryComplete(long recoveryStart) {
+        if (mRedoWriter != null && mEventListener != null) {
+            double duration = (System.nanoTime() - recoveryStart) / 1000000000.0;
+            mEventListener.notify(EventType.RECOVERY_COMPLETE,
+                                  "Recovery completed in %1$1.3f seconds",
+                                  duration, TimeUnit.SECONDS);
+        }
     }
 
     /*
@@ -781,12 +827,19 @@ public final class Database extends CauseCloseable {
      * @return non-zero transaction id
      */
     long nextTransactionId() throws IOException {
+        RedoWriter redo = mRedoWriter;
+        if (redo != null) {
+            // Replicas cannot create loggable transactions.
+            redo.opWriteCheck();
+        }
+
         long txnId;
         do {
             synchronized (mTxnIdLock) {
                 txnId = ++mTxnId;
             }
         } while (txnId == 0);
+
         return txnId;
     }
 
@@ -1070,6 +1123,33 @@ public final class Database extends CauseCloseable {
                 closeQuietly(null, this, e);
                 throw rethrow(e);
             }
+        }
+    }
+
+    /**
+     * Temporarily suspend automatic checkpoints without waiting for any in-progress checkpoint
+     * to complete. Suspend may be invoked multiple times, but each must be paired with a
+     * {@link #resumeCheckpoints resume} call to enable automatic checkpoints again.
+     *
+     * @throws IllegalStateException if suspended more than 2^31 times
+     */
+    public void suspendCheckpoints() {
+        Checkpointer c = mCheckpointer;
+        if (c != null) {
+            c.suspend();
+        }
+    }
+
+    /**
+     * Resume automatic checkpoints after having been temporarily {@link #suspendCheckpoints
+     * suspended}.
+     *
+     * @throws IllegalStateException if resumed more than suspended
+     */
+    public void resumeCheckpoints() {
+        Checkpointer c = mCheckpointer;
+        if (c != null) {
+            c.resume();
         }
     }
 
@@ -2734,6 +2814,24 @@ public final class Database extends CauseCloseable {
     }
 
     /**
+     * If fragmented trash exists, non-transactionally delete all fragmented values. Expected
+     * to be called only during recovery or replication leader switch.
+     */
+    void emptyAllFragmentedTrash(boolean checkpoint) throws IOException {
+        FragmentedTrash trash = mFragmentedTrash;
+        if (trash != null) {
+            if (mEventListener != null) {
+                mEventListener.notify(EventType.RECOVERY_DELETE_FRAGMENTS,
+                                      "Deleting unused large fragments");
+            }
+                
+            if (trash.emptyAllTrash() && checkpoint) {
+                checkpoint(false, 0, 0);
+            }
+        }
+    }
+
+    /**
      * Obtain the trash for transactionally deleting fragmented values.
      */
     FragmentedTrash fragmentedTrash() throws IOException {
@@ -2842,8 +2940,8 @@ public final class Database extends CauseCloseable {
 
             final RedoWriter redo = mRedoWriter;
             if (redo != null) {
-                // File-based redo log should begin writing to a new file.
-                redo.prepareCheckpoint();
+                // File-based redo log should create a new file, but not write to it yet.
+                redo.checkpointPrepare();
             }
 
             {
@@ -2875,20 +2973,22 @@ public final class Database extends CauseCloseable {
                 }
             }
 
-            final long redoPos, redoTxnId;
+            final long redoNum, redoPos, redoTxnId;
             if (redo == null) {
+                redoNum = 0;
                 redoPos = 0;
                 redoTxnId = 0;
             } else {
-                // Capture state while commit lock is held.
-                redo.captureCheckpointState();
+                // Switch and capture state while commit lock is held.
+                redo.checkpointSwitch();
+                redoNum = redo.checkpointNumber();
                 redoPos = redo.checkpointPosition();
                 redoTxnId = redo.checkpointTransactionId();
             }
 
             if (mEventListener != null) {
                 mEventListener.notify(EventType.CHECKPOINT_BEGIN,
-                                      "Checkpoint begin: %1$d", redoPos);
+                                      "Checkpoint begin: %1$d, %2$d", redoNum, redoPos);
             }
 
             mCheckpointFlushState = CHECKPOINT_FLUSH_PREPARE;
@@ -2923,7 +3023,7 @@ public final class Database extends CauseCloseable {
                 mPageDb.commit(new PageDb.CommitCallback() {
                     @Override
                     public byte[] prepare() throws IOException {
-                        return flush(redoPos, redoTxnId, masterUndoLogId);
+                        return flush(redoNum, redoPos, redoTxnId, masterUndoLogId);
                     }
                 });
             } catch (IOException e) {
@@ -2946,7 +3046,7 @@ public final class Database extends CauseCloseable {
             // get skipped if process exits at this point. Data is discarded
             // again when database is re-opened.
             if (mRedoWriter != null) {
-                mRedoWriter.checkpointed(redoPos);
+                mRedoWriter.checkpointFinished();
             }
 
             if (mEventListener != null) {
@@ -2962,7 +3062,8 @@ public final class Database extends CauseCloseable {
      * Method is invoked with exclusive commit lock and shared root node latch
      * held. Both are released by this method.
      */
-    private byte[] flush(final long redoPos, final long redoTxnId, final long masterUndoLogId)
+    private byte[] flush(final long redoNum, final long redoPos, final long redoTxnId,
+                         final long masterUndoLogId)
         throws IOException
     {
         final long txnId;
@@ -2977,6 +3078,10 @@ public final class Database extends CauseCloseable {
         mCommitState = (byte) (stateToFlush ^ 1);
         root.releaseShared();
         mPageDb.exclusiveCommitLock().unlock();
+
+        if (mRedoWriter != null) {
+            mRedoWriter.checkpointStarted();
+        }
 
         if (mEventListener != null) {
             mEventListener.notify(EventType.CHECKPOINT_FLUSH, "Flushing all dirty nodes");
@@ -2993,8 +3098,9 @@ public final class Database extends CauseCloseable {
         writeLongLE(header, I_ROOT_PAGE_ID, rootId);
         writeLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
         writeLongLE(header, I_TRANSACTION_ID, txnId);
-        writeLongLE(header, I_REDO_POSITION, redoPos);
+        writeLongLE(header, I_CHECKPOINT_NUMBER, redoNum);
         writeLongLE(header, I_REDO_TXN_ID, redoTxnId);
+        writeLongLE(header, I_REDO_POSITION, redoPos);
 
         return header;
     }

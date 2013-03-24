@@ -130,15 +130,8 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
     }
 
     public synchronized void reset() throws IOException {
-        byte[] buffer = mBuffer;
-        int pos = mBufferPos;
-        if (pos >= buffer.length - 1) {
-            doFlush(buffer, pos);
-            pos = 0;
-        }
+        writeOp(OP_RESET);
         mLastTxnId = 0;
-        buffer[pos] = OP_RESET;
-        mBufferPos = pos + 1;
         writeTerminator();
     }
 
@@ -230,7 +223,7 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
     }
 
     @Override
-    public synchronized void close() throws IOException {
+    public final synchronized void close() throws IOException {
         close(null);
     }
 
@@ -291,34 +284,47 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
     abstract boolean shouldCheckpoint(long sizeThreshold);
 
     /**
-     * Captures the checkpoint position and transaction id, and possibly opens
-     * a new file.
+     * Called before checkpointSwitch, to perform any expensive operations like opening a new
+     * file. Method must not perform any checkpoint state transition.
      */
-    abstract void prepareCheckpoint() throws IOException;
+    abstract void checkpointPrepare() throws IOException;
 
     /**
-     * With excluisve commit lock held, capture the checkpoint position and
-     * transaction id.
+     * With excluisve commit lock held, switch to the previously prepared state, also capturing
+     * the checkpoint position and transaction id.
      */
-    abstract void captureCheckpointState() throws IOException;
+    abstract void checkpointSwitch() throws IOException;
 
     /**
-     * Returns the redo position for the first change after capturing
-     * checkpoint state.
+     * Returns the checkpoint number for the first change after the checkpoint switch.
+     */
+    abstract long checkpointNumber() throws IOException;
+
+    /**
+     * Returns the redo position for the first change after the checkpoint switch.
      */
     abstract long checkpointPosition() throws IOException;
 
     /**
-     * Returns the transaction id for the first change after capturing
-     * checkpoint state.
+     * Returns the transaction id for the first change after the checkpoint switch, which is
+     * later used by recovery. If not needed by recovery, simply return 0.
      */
     abstract long checkpointTransactionId() throws IOException;
 
     /**
-     * Writer can discard all redo data lower than the checkpointed position,
-     * which was captured earlier.
+     * Called after exclusive commit lock is released. Dirty pages start flushing as soon as
+     * this method returns.
      */
-    abstract void checkpointed(long position) throws IOException;
+    abstract void checkpointStarted() throws IOException;
+
+    /**
+     * Writer can discard all redo data lower than the checkpointed position, which was
+     * captured earlier.
+     */
+    abstract void checkpointFinished() throws IOException;
+
+    // Caller must be synchronized.
+    abstract void opWriteCheck() throws IOException;
 
     // Caller must be synchronized.
     abstract void write(byte[] buffer, int len) throws IOException;
@@ -353,7 +359,7 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
     }
 
     // Caller must be synchronized.
-    void writeLongLE(long v) throws IOException {
+    private void writeLongLE(long v) throws IOException {
         byte[] buffer = mBuffer;
         int pos = mBufferPos;
         if (pos > buffer.length - 8) {
@@ -365,7 +371,7 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
     }
 
     // Caller must be synchronized.
-    void writeUnsignedVarInt(int v) throws IOException {
+    private void writeUnsignedVarInt(int v) throws IOException {
         byte[] buffer = mBuffer;
         int pos = mBufferPos;
         if (pos > buffer.length - 5) {
@@ -376,12 +382,12 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
     }
 
     // Caller must be synchronized.
-    void writeBytes(byte[] bytes) throws IOException {
+    private void writeBytes(byte[] bytes) throws IOException {
         writeBytes(bytes, 0, bytes.length);
     }
 
     // Caller must be synchronized.
-    void writeBytes(byte[] bytes, int offset, int length) throws IOException {
+    private void writeBytes(byte[] bytes, int offset, int length) throws IOException {
         if (length == 0) {
             return;
         }
@@ -403,7 +409,21 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
     }
 
     // Caller must be synchronized.
+    public void writeOp(byte op) throws IOException {
+        opWriteCheck();
+        byte[] buffer = mBuffer;
+        int pos = mBufferPos;
+        if (pos >= buffer.length - 1) { // 1 for op
+            doFlush(buffer, pos);
+            pos = 0;
+        }
+        buffer[pos] = op;
+        mBufferPos = pos + 1;
+    }
+
+    // Caller must be synchronized.
     private void writeOp(byte op, long operand) throws IOException {
+        opWriteCheck();
         byte[] buffer = mBuffer;
         int pos = mBufferPos;
         if (pos >= buffer.length - (1 + 8)) { // 1 for op, 8 for operand
@@ -417,6 +437,7 @@ abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdow
 
     // Caller must be synchronized.
     private void writeTxnOp(byte op, long txnId) throws IOException {
+        opWriteCheck();
         byte[] buffer = mBuffer;
         int pos = mBufferPos;
         if (pos >= buffer.length - (1 + 9)) { // 1 for op, up to 9 for txn delta
