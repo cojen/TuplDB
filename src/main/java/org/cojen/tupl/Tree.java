@@ -538,10 +538,6 @@ final class Tree implements Index {
                 throw new IllegalStateException("Cannot drop a non-empty index");
             }
 
-            if (root.mLastCursorFrame != null) {
-                throw new IllegalStateException("Cannot close an index which has active cursors");
-            }
-
             if (isInternal(mId)) {
                 throw new IllegalStateException("Cannot close an internal index");
             }

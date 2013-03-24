@@ -276,7 +276,6 @@ class ReplRedoEngine implements RedoVisitor {
                     }
                 }
             } catch (IllegalStateException e) {
-                // TODO: Try to relax the open cursor check.
                 EventListener listener = mDb.mEventListener;
                 if (listener != null) {
                     listener.notify(EventType.REPLICATION_WARNING,

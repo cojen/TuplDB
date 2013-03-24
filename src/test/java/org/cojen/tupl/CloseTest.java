@@ -252,18 +252,18 @@ public class CloseTest {
 
         ix.store(null, "hello".getBytes(), null);
 
-        try {
-            ix.drop();
-            fail();
-        } catch (IllegalStateException e) {
-            // Active cursor.
-        }
+        ix.drop();
 
         c.load();
+        assertArrayEquals("hello".getBytes(), c.key());
         assertNull(c.value());
         c.reset();
 
-        ix.drop();
+        try {
+            ix.drop();
+            fail();
+        } catch (ClosedIndexException e) {
+        }
 
         assertNull(mDb.findIndex("drop"));
         assertNull(mDb.indexById(id2));
