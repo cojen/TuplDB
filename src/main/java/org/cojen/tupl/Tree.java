@@ -532,9 +532,12 @@ final class Tree implements Index {
             }
 
             if (!root.isLeaf() || root.hasKeys()) {
+                // Note that this check also covers the transactional case, because deletes
+                // store ghosts. The message could be more accurate, but it would require
+                // scanning the whole index looking for ghosts.
                 throw new IllegalStateException("Cannot drop a non-empty index");
             }
-        
+
             if (root.mLastCursorFrame != null) {
                 throw new IllegalStateException("Cannot close an index which has active cursors");
             }

@@ -47,6 +47,9 @@ public enum EventType {
     /** Signals the end of database recovery, reporting the duration. */
     RECOVERY_COMPLETE(Category.RECOVERY, Level.INFO),
 
+    /** Generic warning message from the replication system. */
+    REPLICATION_WARNING(Category.REPLICATION, Level.WARNING),
+
     /** Signals the beginning of a checkpoint. */
     CHECKPOINT_BEGIN(Category.CHECKPOINT, Level.INFO),
     /** Signals the checkpoint phase which flushes all dirty nodes to the main database file. */
@@ -76,6 +79,9 @@ public enum EventType {
 
         /** Recovery processes transactions which did not get included in the last checkpoint. */
         RECOVERY,
+
+        /** Event category for replication tasks performed by background threads. */
+        REPLICATION,
 
         /** Checkpoints commit transactional and non-transactional changes to the main database. */
         CHECKPOINT,
