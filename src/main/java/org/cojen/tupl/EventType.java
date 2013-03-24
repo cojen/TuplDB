@@ -32,6 +32,8 @@ public enum EventType {
 
     /** Signals the beginning of database recovery. */
     RECOVERY_BEGIN(Category.RECOVERY, Level.INFO),
+    /** Generic recovery progress message. */
+    RECOVERY_PROGRESS(Category.RECOVERY, Level.INFO),
     /** Signals that undo logs of in-flight transactions are being loaded. */
     RECOVERY_LOAD_UNDO_LOGS(Category.RECOVERY, Level.INFO),
     /** Signals that non-checkpointed transactions are being committed or rolled back. */
