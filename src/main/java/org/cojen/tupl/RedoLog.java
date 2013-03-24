@@ -43,7 +43,7 @@ final class RedoLog extends RedoWriter {
     private static final long MAGIC_NUMBER = 431399725605778814L;
     private static final int ENCODING_VERSION = 20130106;
 
-    private static int randomInt() {
+    static int randomInt() {
         Random rnd = new Random();
         int x;
         // Cannot return zero, since it breaks Xorshift RNG.
@@ -57,22 +57,42 @@ final class RedoLog extends RedoWriter {
     private final boolean mReplayMode;
 
     private long mLogId;
+    private long mPosition;
     private OutputStream mOut;
     private volatile FileChannel mChannel;
 
     private int mTermRndSeed;
 
+    private long mNextLogId;
+    private long mNextPosition;
+    private OutputStream mNextOut;
+    private FileChannel mNextChannel;
+    private int mNextTermRndSeed;
+
     /**
+     * Open for replay.
+     *
      * @param logId first log id to open
      */
-    RedoLog(DatabaseConfig config, long logId, boolean replay) throws IOException {
-        this(config.mCrypto, config.mBaseFile, logId, replay);
+    RedoLog(DatabaseConfig config, long logId, long redoPos) throws IOException {
+        this(config.mCrypto, config.mBaseFile, logId, redoPos, true);
+    }
+
+    /**
+     * Open after replay.
+     *
+     * @param logId first log id to open
+     */
+    RedoLog(DatabaseConfig config, RedoLog replayed) throws IOException {
+        this(config.mCrypto, config.mBaseFile, replayed.mLogId, replayed.mPosition, false);
     }
 
     /**
      * @param logId first log id to open
      */
-    RedoLog(Crypto crypto, File baseFile, long logId, boolean replay) throws IOException {
+    RedoLog(Crypto crypto, File baseFile, long logId, long redoPos, boolean replay)
+        throws IOException
+    {
         super(4096, 0);
 
         mCrypto = crypto;
@@ -81,8 +101,10 @@ final class RedoLog extends RedoWriter {
 
         synchronized (this) {
             mLogId = logId;
+            mPosition = redoPos;
             if (!replay) {
-                openNewFile(logId);
+                openNextFile(logId);
+                applyNextFile();
             }
         }
     }
@@ -128,7 +150,9 @@ final class RedoLog extends RedoWriter {
 
                     files.add(file);
 
-                    replay(new DataIn(in), visitor, listener);
+                    DataIn din = new DataIn.Stream(mPosition, in);
+                    replay(din, visitor, listener);
+                    mPosition = din.mPos;
                 } catch (EOFException e) {
                     // End of log didn't get completely flushed.
                 } finally {
@@ -148,47 +172,48 @@ final class RedoLog extends RedoWriter {
         fileFor(baseFile, logId).delete();
     }
 
-    private void openNewFile(long logId) throws IOException {
+    private void openNextFile(long logId) throws IOException {
         final File file = fileFor(mBaseFile, logId);
         if (file.exists()) {
             throw new FileNotFoundException("Log file already exists: " + file.getPath());
         }
 
-        final OutputStream out;
-        final FileChannel channel;
-        final int termRndSeed;
-        {
-            FileOutputStream fout = new FileOutputStream(file);
-            channel = fout.getChannel();
-            if (mCrypto == null) {
-                out = fout;
-            } else {
-                try {
-                    out = mCrypto.newEncryptingStream(logId, fout);
-                } catch (GeneralSecurityException e) {
-                    throw new DatabaseException(e);
-                }
-            }
+        mNextLogId = logId;
 
-            byte[] buf = new byte[8 + 4 + 8 + 4];
-            int offset = 0;
-            Utils.writeLongLE(buf, offset, MAGIC_NUMBER); offset += 8;
-            Utils.writeIntLE(buf, offset, ENCODING_VERSION); offset += 4;
-            Utils.writeLongLE(buf, offset, logId); offset += 8;
-            Utils.writeIntLE(buf, offset, termRndSeed = randomInt()); offset += 4;
-            if (offset != buf.length) {
-                throw new AssertionError();
-            }
-
+        FileOutputStream fout = new FileOutputStream(file);
+        mNextChannel = fout.getChannel();
+        if (mCrypto == null) {
+            mNextOut = fout;
+        } else {
             try {
-                out.write(buf);
-            } catch (IOException e) {
-                Utils.closeQuietly(null, out);
-                file.delete();
-                throw e;
+                mNextOut = mCrypto.newEncryptingStream(logId, fout);
+            } catch (GeneralSecurityException e) {
+                throw new DatabaseException(e);
             }
         }
 
+        mNextTermRndSeed = randomInt();
+
+        byte[] buf = new byte[8 + 4 + 8 + 4];
+        int offset = 0;
+        Utils.writeLongLE(buf, offset, MAGIC_NUMBER); offset += 8;
+        Utils.writeIntLE(buf, offset, ENCODING_VERSION); offset += 4;
+        Utils.writeLongLE(buf, offset, logId); offset += 8;
+        Utils.writeIntLE(buf, offset, mNextTermRndSeed); offset += 4;
+        if (offset != buf.length) {
+            throw new AssertionError();
+        }
+
+        try {
+            mNextOut.write(buf);
+        } catch (IOException e) {
+            Utils.closeQuietly(null, mNextOut);
+            file.delete();
+            throw e;
+        }
+    }
+
+    private void applyNextFile() throws IOException {
         final OutputStream oldOut;
         final FileChannel oldChannel;
         synchronized (this) {
@@ -199,10 +224,12 @@ final class RedoLog extends RedoWriter {
                 endFile();
             }
 
-            mOut = out;
-            mChannel = channel;
-            mTermRndSeed = termRndSeed;
-            mLogId = logId;
+            mNextPosition = mPosition;
+
+            mOut = mNextOut;
+            mChannel = mNextChannel;
+            mTermRndSeed = mNextTermRndSeed;
+            mLogId = mNextLogId;
 
             timestamp();
             reset();
@@ -242,25 +269,34 @@ final class RedoLog extends RedoWriter {
     }
 
     @Override
-    void prepareCheckpoint() throws IOException {
+    void checkpointPrepare() throws IOException {
         if (mReplayMode) {
             throw new IllegalStateException();
         }
+
         final long logId;
         synchronized (this) {
             logId = mLogId;
         }
-        openNewFile(logId + 1);
+        openNextFile(logId + 1);
+
+        // Force most of the old log file changes out before acquiring excluisve commit lock.
+        sync();
     }
 
     @Override
-    void captureCheckpointState() {
-        // Was captured by prepare method.
+    void checkpointSwitch() throws IOException {
+        applyNextFile();
     }
 
     @Override
-    synchronized long checkpointPosition() {
-        return mLogId;
+    long checkpointNumber() {
+        return mNextLogId;
+    }
+
+    @Override
+    long checkpointPosition() {
+        return mNextPosition;
     }
 
     @Override
@@ -270,12 +306,23 @@ final class RedoLog extends RedoWriter {
     }
 
     @Override
-    void checkpointed(long highestLogId) throws IOException {
-        deleteOldFile(mBaseFile, highestLogId - 1);
+    void checkpointStarted() throws IOException {
+        // Nothing to do.
+    }
+
+    @Override
+    void checkpointFinished() throws IOException {
+        deleteOldFile(mBaseFile, mNextLogId - 1);
+    }
+
+    @Override
+    void opWriteCheck() {
+        // Always writable.
     }
 
     @Override
     void write(byte[] buffer, int len) throws IOException {
+        mPosition += len;
         mOut.write(buffer, 0, len);
     }
 
@@ -324,7 +371,7 @@ final class RedoLog extends RedoWriter {
         return x;
     }
 
-    private void replay(DataIn in, RedoVisitor visitor, final EventListener listener)
+    private void replay(DataIn in, RedoVisitor visitor, EventListener listener)
         throws IOException
     {
         long magic = in.readLongLE();
@@ -349,28 +396,8 @@ final class RedoLog extends RedoWriter {
 
         mTermRndSeed = in.readIntLE();
 
-        RedoDecoder decoder = new RedoDecoder(in, true, 0) {
-            @Override
-            protected boolean verifyTerminator(DataIn in) throws IOException {
-                try {
-                    if (in.readIntLE() == nextTermRnd()) {
-                        return true;
-                    }
-                    if (listener != null) {
-                        listener.notify
-                            (EventType.RECOVERY_REDO_LOG_CORRUPTION, "Invalid message terminator");
-                    }
-                    return false;
-                } catch (EOFException e) {
-                    listener.notify
-                        (EventType.RECOVERY_REDO_LOG_CORRUPTION, "Unexpected end of file");
-                    return false;
-                }
-            }
-        };
-
         try {
-            decoder.run(visitor);
+            new RedoLogDecoder(this, in, listener).run(visitor);
         } catch (EOFException e) {
             listener.notify(EventType.RECOVERY_REDO_LOG_CORRUPTION, "Unexpected end of file");
         }

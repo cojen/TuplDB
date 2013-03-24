@@ -26,14 +26,12 @@ import static org.cojen.tupl.RedoOps.*;
  * @author Brian S O'Neill
  * @see RedoWriter
  */
-class RedoDecoder {
-    private final DataIn mIn;
+abstract class RedoDecoder {
     private final boolean mLenient;
 
-    private long mTxnId;
+    long mTxnId;
 
-    RedoDecoder(DataIn in, boolean lenient, long initialTxnId) {
-        mIn = in;
+    RedoDecoder(boolean lenient, long initialTxnId) {
         mLenient = lenient;
         mTxnId = initialTxnId;
     }
@@ -45,9 +43,15 @@ class RedoDecoder {
      * @return true if end of stream reached; false if visitor returned false
      */
     boolean run(RedoVisitor visitor) throws IOException {
-        DataIn in = mIn;
-        int op;
-        while ((op = in.read()) >= 0) {
+        while (true) {
+            // Must be called before each operation, for the benefit of subclasses.
+            DataIn in = in();
+
+            int op = in.read();
+            if (op < 0) {
+                break;
+            }
+
             switch (op &= 0xff) {
             case 0:
                 if (mLenient) {
@@ -270,15 +274,18 @@ class RedoDecoder {
         return true;
     }
 
-    private long readTxnId(DataIn in) throws IOException {
+    long readTxnId(DataIn in) throws IOException {
         return mTxnId += in.readSignedVarLong();
     }
+
+    /**
+     * Invoked before each operation is read.
+     */
+    abstract DataIn in();
 
     /**
      * If false is returned, assume rest of redo data is corrupt.
      * Implementation can return true if no redo terminators were written.
      */
-    boolean verifyTerminator(DataIn in) throws IOException {
-        return true;
-    }
+    abstract boolean verifyTerminator(DataIn in) throws IOException;
 }

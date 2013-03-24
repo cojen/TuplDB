@@ -99,6 +99,17 @@ class Latch extends AbstractQueuedSynchronizer {
     }
 
     /**
+     * Releases exclusive or shared latch.
+     */
+    public final void releaseEither() {
+        if (getState() < 0) {
+            release(0);
+        } else {
+            releaseShared(0);
+        }
+    }
+
+    /**
      * Attempt to acquire a shared latch, barging ahead of any waiting threads
      * if possible.
      */

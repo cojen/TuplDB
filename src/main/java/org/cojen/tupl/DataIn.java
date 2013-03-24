@@ -27,35 +27,65 @@ import static java.lang.System.arraycopy;
  *
  * @author Brian S O'Neill
  */
-class DataIn extends InputStream {
-    private final InputStream mIn;
+abstract class DataIn extends InputStream {
+    static final class Stream extends DataIn {
+        private final InputStream mIn;
+
+        Stream(long pos, InputStream in) {
+            this(pos, in, 4096);
+        }
+
+        Stream(long pos, InputStream in, int bufferSize) {
+            super(pos, bufferSize);
+            mIn = in;
+        }
+
+        @Override
+        int doRead(byte[] buf, int off, int len) throws IOException {
+            return mIn.read(buf, off, len);
+        }
+
+        @Override
+        public void close() throws IOException {
+            mIn.close();
+        }
+    }
+
     private final byte[] mBuffer;
 
     private int mStart;
     private int mEnd;
 
-    DataIn(InputStream in) {
-        this(in, 4096);
-    }
+    long mPos;
 
-    DataIn(InputStream in, int bufferSize) {
-        mIn = in;
+    DataIn(long pos, int bufferSize) {
+        if (pos < 0) {
+            throw new IllegalArgumentException("Negative position: " + pos);
+        }
+        mPos = pos;
         mBuffer = new byte[bufferSize];
     }
+
+    /**
+     * @return -1 if EOF
+     */
+    abstract int doRead(byte[] buf, int off, int len) throws IOException;
 
     @Override
     public int read() throws IOException {
         int start = mStart;
         if (mEnd - start > 0) {
             mStart = start + 1;
+            mPos++;
             return mBuffer[start] & 0xff;
         } else {
-            int amt = mIn.read(mBuffer);
+            int amt = doRead(mBuffer, 0, mBuffer.length);
             if (amt <= 0) {
                 return -1;
             } else {
                 mStart = 1;
                 mEnd = amt;
+                mPos++;
                 return mBuffer[0] & 0xff;
             }
         }
@@ -68,6 +98,7 @@ class DataIn extends InputStream {
         if (avail >= len) {
             arraycopy(mBuffer, start, b, off, len);
             mStart = start + len;
+            mPos += len;
             return len;
         } else {
             arraycopy(mBuffer, start, b, off, avail);
@@ -77,11 +108,16 @@ class DataIn extends InputStream {
             len -= avail;
 
             if (avail > 0) {
+                mPos += avail;
                 return avail;
             } else if (len >= mBuffer.length) {
-                return mIn.read(b, off, len);
+                int amt = doRead(b, off, len);
+                if (amt > 0) {
+                    mPos += amt;
+                }
+                return amt;
             } else {
-                int amt = mIn.read(mBuffer, 0, mBuffer.length);
+                int amt = doRead(mBuffer, 0, mBuffer.length);
                 if (amt <= 0) {
                     return amt;
                 } else {
@@ -89,21 +125,18 @@ class DataIn extends InputStream {
                     arraycopy(mBuffer, 0, b, off, fill);
                     mStart = fill;
                     mEnd = amt;
+                    mPos += fill;
                     return fill;
                 }
             }
         }
     }
 
-    @Override
-    public void close() throws IOException {
-        mIn.close();
-    }
-
     public int readIntBE() throws IOException {
         int start = require(4);
         int v = Utils.readIntBE(mBuffer, start);
         mStart = start + 4;
+        mPos += 4;
         return v;
     }
 
@@ -111,6 +144,7 @@ class DataIn extends InputStream {
         int start = require(4);
         int v = Utils.readIntLE(mBuffer, start);
         mStart = start + 4;
+        mPos += 4;
         return v;
     }
 
@@ -118,6 +152,7 @@ class DataIn extends InputStream {
         int start = require(8);
         long v = Utils.readLongBE(mBuffer, start);
         mStart = start + 8;
+        mPos += 8;
         return v;
     }
 
@@ -125,6 +160,7 @@ class DataIn extends InputStream {
         int start = require(8);
         long v = Utils.readLongLE(mBuffer, start);
         mStart = start + 8;
+        mPos += 8;
         return v;
     }
 
@@ -132,6 +168,7 @@ class DataIn extends InputStream {
         int start = require(1);
         byte[] b = mBuffer;
         int v = b[start++];
+        int amt = 1;
 
         if (v < 0) {
             switch ((v >> 4) & 0x07) {
@@ -140,6 +177,7 @@ class DataIn extends InputStream {
                 v = (1 << 7)
                     + (((v & 0x3f) << 8)
                        | (b[start++] & 0xff));
+                amt = 2;
                 break;
             case 0x04: case 0x05:
                 start = require(start, 2);
@@ -147,6 +185,7 @@ class DataIn extends InputStream {
                     + (((v & 0x1f) << 16)
                        | ((b[start++] & 0xff) << 8)
                        | (b[start++] & 0xff));
+                amt = 3;
                 break;
             case 0x06:
                 start = require(start, 3);
@@ -155,6 +194,7 @@ class DataIn extends InputStream {
                        | ((b[start++] & 0xff) << 16)
                        | ((b[start++] & 0xff) << 8)
                        | (b[start++] & 0xff));
+                amt = 4;
                 break;
             default:
                 start = require(start, 4);
@@ -163,11 +203,13 @@ class DataIn extends InputStream {
                        | ((b[start++] & 0xff) << 16)
                        | ((b[start++] & 0xff) << 8)
                        | (b[start++] & 0xff));
+                amt = 5;
                 break;
             }
         }
 
         mStart = start;
+        mPos += amt;
         return v;
     }
 
@@ -175,10 +217,12 @@ class DataIn extends InputStream {
         int start = require(1);
         byte[] b = mBuffer;
         int d = b[start++];
+        int amt;
 
         long v;
         if (d >= 0) {
             v = (long) d;
+            amt = 1;
         } else {
             switch ((d >> 4) & 0x07) {
             case 0x00: case 0x01: case 0x02: case 0x03:
@@ -186,6 +230,7 @@ class DataIn extends InputStream {
                 v = (1L << 7) +
                     (((d & 0x3f) << 8)
                      | (b[start++] & 0xff));
+                amt = 2;
                 break;
             case 0x04: case 0x05:
                 start = require(start, 2);
@@ -193,6 +238,7 @@ class DataIn extends InputStream {
                     + (((d & 0x1f) << 16)
                        | ((b[start++] & 0xff) << 8)
                        | (b[start++] & 0xff));
+                amt = 3;
                 break;
             case 0x06:
                 start = require(start, 3);
@@ -201,6 +247,7 @@ class DataIn extends InputStream {
                        | ((b[start++] & 0xff) << 16)
                        | ((b[start++] & 0xff) << 8)
                        | (b[start++] & 0xff));
+                amt = 4;
                 break;
             default:
                 switch (d & 0x0f) {
@@ -212,6 +259,7 @@ class DataIn extends InputStream {
                            | (((long) (b[start++] & 0xff)) << 16)
                            | (((long) (b[start++] & 0xff)) << 8)
                            | ((long) (b[start++] & 0xff)));
+                    amt = 5;
                     break;
                 case 0x08: case 0x09: case 0x0a: case 0x0b:
                     start = require(start, 5);
@@ -223,6 +271,7 @@ class DataIn extends InputStream {
                            | (((long) (b[start++] & 0xff)) << 16)
                            | (((long) (b[start++] & 0xff)) << 8)
                            | ((long) (b[start++] & 0xff)));
+                    amt = 6;
                     break;
                 case 0x0c: case 0x0d:
                     start = require(start, 6);
@@ -235,6 +284,7 @@ class DataIn extends InputStream {
                            | (((long) (b[start++] & 0xff)) << 16)
                            | (((long) (b[start++] & 0xff)) << 8)
                            | ((long) (b[start++] & 0xff)));
+                    amt = 7;
                     break;
                 case 0x0e:
                     start = require(start, 7);
@@ -247,6 +297,7 @@ class DataIn extends InputStream {
                            | (((long) (b[start++] & 0xff)) << 16)
                            | (((long) (b[start++] & 0xff)) << 8)
                            | ((long) (b[start++] & 0xff)));
+                    amt = 8;
                     break;
                 case 0x0f:
                     start = require(start, 8);
@@ -260,6 +311,7 @@ class DataIn extends InputStream {
                            | (((long) (b[start++] & 0xff)) << 16)
                            | (((long) (b[start++] & 0xff)) << 8L)
                            | ((long) (b[start++] & 0xff)));
+                    amt = 9;
                     break;
                 }
                 break;
@@ -267,6 +319,7 @@ class DataIn extends InputStream {
         }
 
         mStart = start;
+        mPos += amt;
         return v;
     }
 
@@ -291,7 +344,7 @@ class DataIn extends InputStream {
     /**
      * @return start
      */
-    public int require(int amount) throws IOException {
+    private int require(int amount) throws IOException {
         return require(mStart, amount);
     }
 
@@ -311,7 +364,7 @@ class DataIn extends InputStream {
         }
 
         while (true) {
-            int amt = mIn.read(mBuffer, mEnd, mBuffer.length - mEnd);
+            int amt = doRead(mBuffer, mEnd, mBuffer.length - mEnd);
             if (amt <= 0) {
                 throw new EOFException();
             }
