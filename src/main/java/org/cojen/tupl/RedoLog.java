@@ -273,11 +273,15 @@ final class RedoLog extends RedoWriter {
         if (mReplayMode) {
             throw new IllegalStateException();
         }
+
         final long logId;
         synchronized (this) {
             logId = mLogId;
         }
         openNextFile(logId + 1);
+
+        // Force most of the old log file changes out before acquiring excluisve commit lock.
+        sync();
     }
 
     @Override
