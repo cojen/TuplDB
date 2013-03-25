@@ -2469,23 +2469,27 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     }
 
     /**
-     * Verifies from the current node to the last.
+     * Move to the next tree node.
+     */
+    void nextNode() throws IOException {
+        // Move to next node by first setting current node position higher than possible.
+        mLeaf.mNodePos = Integer.MAX_VALUE - 1;
+        next();
+    }
+
+    /**
+     * Verifies from the current node to the last, unless stopped by observer.
      *
      * @return false if should stop
      */
     boolean verify(final int height, VerificationObserver observer) throws IOException {
         if (height > 0) {
             final Node[] stack = new Node[height];
-
             while (key() != null) {
                 verifyFrames(height, stack, mLeaf, observer);
-                // Move to next node by first setting current node position higher
-                // than possible.
-                mLeaf.mNodePos = Integer.MAX_VALUE - 1;
-                next();
+                nextNode();
             }
         }
-
         return true;
     }
 
