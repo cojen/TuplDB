@@ -268,4 +268,27 @@ public class CloseTest {
         assertNull(mDb.findIndex("drop"));
         assertNull(mDb.indexById(id2));
     }
+
+    @Test
+    public void sneakyDrop() throws Exception {
+        Index ix = mDb.openIndex("drop");
+
+        Transaction txn = mDb.newTransaction();
+        assertTrue(ix.insert(txn, "hello".getBytes(), "world".getBytes()));
+
+        try {
+            ix.drop();
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        // Delete the entry, bypassing the transaction, and then drop the index.
+        assertTrue(ix.delete(Transaction.BOGUS, "hello".getBytes()));
+        ix.drop();
+
+        // Rollback will attempt to access missing index, but nothing should happen.
+        txn.reset();
+
+        assertNull(mDb.findIndex("drop"));
+    }
 }
