@@ -541,7 +541,11 @@ final class Tree implements Index {
             if (!root.isLeaf() || root.hasKeys()) {
                 // Note that this check also covers the transactional case, because deletes
                 // store ghosts. The message could be more accurate, but it would require
-                // scanning the whole index looking for ghosts.
+                // scanning the whole index looking for ghosts. Using LockMode.UNSAFE deletes
+                // it's possible to subvert the transactional case, allowing the drop to
+                // proceed. The rollback logic in UndoLog accounts for this, ignoring undo
+                // operations for missing indexes. Preventing the drop in this case isn't worth
+                // the trouble, because UNSAFE is what it is.
                 throw new IllegalStateException("Cannot drop a non-empty index");
             }
 
