@@ -522,15 +522,16 @@ final class UndoLog {
             case OP_INSERT:
                 // Since transaction was committed, don't insert an entry
                 // to undo a delete, but instead delete the ghost.
-                activeIndex = findIndex(activeIndex);
-                byte[] key = Node.retrieveKeyAtLoc(entry, 0);
-                TreeCursor cursor = new TreeCursor((Tree) activeIndex, null);
-                try {
-                    // No need to handle case where Tree is closed, because
-                    // this method can only be called during recovery.
-                    cursor.deleteGhost(key);
-                } catch (Throwable e) {
-                    throw closeOnFailure(cursor, e);
+                if ((activeIndex = findIndex(activeIndex)) != null) {
+                    byte[] key = Node.retrieveKeyAtLoc(entry, 0);
+                    TreeCursor cursor = new TreeCursor((Tree) activeIndex, null);
+                    try {
+                        // No need to handle case where Tree is closed, because
+                        // this method can only be called during recovery.
+                        cursor.deleteGhost(key);
+                    } catch (Throwable e) {
+                        throw closeOnFailure(cursor, e);
+                    }
                 }
                 break;
             }
@@ -560,8 +561,7 @@ final class UndoLog {
             break;
 
         case OP_DELETE:
-            while (true) {
-                activeIndex = findIndex(activeIndex);
+            while ((activeIndex = findIndex(activeIndex)) != null) {
                 try {
                     activeIndex.delete(Transaction.BOGUS, entry);
                     break;
@@ -575,8 +575,7 @@ final class UndoLog {
         case OP_UPDATE:
         case OP_INSERT: {
             byte[][] pair = Node.retrieveKeyValueAtLoc(entry, 0);
-            while (true) {
-                activeIndex = findIndex(activeIndex);
+            while ((activeIndex = findIndex(activeIndex)) != null) {
                 try {
                     activeIndex.store(Transaction.BOGUS, pair[0], pair[1]);
                     break;
@@ -589,8 +588,7 @@ final class UndoLog {
         }
 
         case OP_RECLAIM_FRAGMENTED:
-            while (true) {
-                activeIndex = findIndex(activeIndex);
+            while ((activeIndex = findIndex(activeIndex)) != null) {
                 try {
                     mDatabase.fragmentedTrash().remove(mTxnId, (Tree) activeIndex, entry);
                     break;
@@ -605,13 +603,12 @@ final class UndoLog {
         return activeIndex;
     }
 
+    /**
+     * @return null if index was deleted
+     */
     private Index findIndex(Index activeIndex) throws IOException {
         if (activeIndex == null || activeIndex.isClosed()) {
-            if ((activeIndex = mDatabase.anyIndexById(mActiveIndexId)) == null) {
-                // FIXME: If index was deleted, use a "dev/null" index. Note that some callers
-                // of this method will try to cast the Index to a Tree.
-                throw new DatabaseException("Index not found: " + mActiveIndexId);
-            }
+            activeIndex = mDatabase.anyIndexById(mActiveIndexId);
         }
         return activeIndex;
     }
