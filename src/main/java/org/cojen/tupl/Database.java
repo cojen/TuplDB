@@ -1166,69 +1166,79 @@ public final class Database extends CauseCloseable {
             observer = new VerificationObserver();
         }
 
-        boolean[] passedRef = {true};
+        final boolean[] passedRef = {true};
+        final VerificationObserver fobserver = observer;
 
-        indexes: {
-            if (!verify(passedRef, mRegistry, observer)) {
-                break indexes;
-            }
-            if (!verify(passedRef, mRegistryKeyMap, observer)) {
-                break indexes;
-            }
-
-            FragmentedTrash trash = mFragmentedTrash;
-            if (trash != null) {
-                if (!verify(passedRef, trash.mTrash, observer)) {
-                    break indexes;
+        scanAllIndexes(new ScanVisitor() {
+            public boolean apply(Tree tree) throws IOException {
+                Index view = tree.observableView();
+                fobserver.failed = false;
+                boolean keepGoing = tree.verifyTree(view, fobserver);
+                passedRef[0] &= !fobserver.failed;
+                if (keepGoing) {
+                    keepGoing = fobserver.indexComplete(view, !fobserver.failed, null);
                 }
+                return keepGoing;
             }
-
-            Cursor all = allIndexes();
-            try {
-                for (all.first(); all.key() != null; all.next()) {
-                    long id = readLongBE(all.value(), 0);
-
-                    Tree index = lookupIndexById(id);
-                    if (index != null) {
-                        if (!verify(passedRef, index, observer)) {
-                            break indexes;
-                        }
-                    } else {
-                        // Open the index.
-                        index = (Tree) indexById(id);
-                        boolean keepGoing = verify(passedRef, index, observer);
-                        try {
-                            index.close();
-                        } catch (IllegalStateException e) {
-                            // Leave open if in use now.
-                        }
-                        if (!keepGoing) {
-                            break indexes;
-                        }
-                    }
-                }
-            } finally {
-                all.reset();
-            }
-        }
+        });
 
         return passedRef[0];
     }
 
+    static interface ScanVisitor {
+        /**
+         * @return false if should stop
+         */
+        boolean apply(Tree tree) throws IOException;
+    }
+
     /**
-     * @return false if should stop
+     * @return false if stopped
      */
-    private boolean verify(boolean[] passedRef, Tree tree, VerificationObserver observer)
-        throws IOException
-    {
-        Index view = tree.observableView();
-        observer.failed = false;
-        boolean keepGoing = tree.verifyTree(view, observer);
-        passedRef[0] &= !observer.failed;
-        if (keepGoing) {
-            keepGoing = observer.indexComplete(view, !observer.failed, null);
+    private boolean scanAllIndexes(ScanVisitor visitor) throws IOException {
+        if (!visitor.apply(mRegistry)) {
+            return false;
         }
-        return keepGoing;
+        if (!visitor.apply(mRegistryKeyMap)) {
+            return false;
+        }
+
+        FragmentedTrash trash = mFragmentedTrash;
+        if (trash != null) {
+            if (!visitor.apply(trash.mTrash)) {
+                return false;
+            }
+        }
+
+        Cursor all = allIndexes();
+        try {
+            for (all.first(); all.key() != null; all.next()) {
+                long id = readLongBE(all.value(), 0);
+
+                Tree index = lookupIndexById(id);
+                if (index != null) {
+                    if (!visitor.apply(index)) {
+                        return false;
+                    }
+                } else {
+                    // Open the index.
+                    index = (Tree) indexById(id);
+                    boolean keepGoing = visitor.apply(index);
+                    try {
+                        index.close();
+                    } catch (IllegalStateException e) {
+                        // Leave open if in use now.
+                    }
+                    if (!keepGoing) {
+                        return false;
+                    }
+                }
+            }
+        } finally {
+            all.reset();
+        }
+
+        return true;
     }
 
     /**
