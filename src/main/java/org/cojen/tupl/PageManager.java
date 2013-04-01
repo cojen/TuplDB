@@ -267,13 +267,13 @@ final class PageManager {
     }
 
     void addTo(PageDb.Stats stats) {
-        mRemoveLock.lock();
+        fullLock();
         try {
             stats.totalPages += mTotalPageCount;
             mRegularFreeList.addTo(stats);
             mRecycleFreeList.addTo(stats);
         } finally {
-            mRemoveLock.unlock();
+            fullUnlock();
         }
     }
 
