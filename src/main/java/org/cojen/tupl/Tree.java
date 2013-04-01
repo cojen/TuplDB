@@ -76,12 +76,16 @@ final class Tree implements Index {
 
     @Override
     public String toString() {
-        StringBuilder b = new StringBuilder(getClass().getName());
-        b.append('@').append(Integer.toHexString(hashCode()));
+        return toString(this);
+    }
+
+    static String toString(Index ix) {
+        StringBuilder b = new StringBuilder(ix.getClass().getName());
+        b.append('@').append(Integer.toHexString(ix.hashCode()));
         b.append(" {");
-        b.append("name").append(": ").append(getNameString());
+        b.append("name").append(": ").append(ix.getNameString());
         b.append(", ");
-        b.append("id").append(": ").append(mId);
+        b.append("id").append(": ").append(ix.getId());
         return b.append('}').toString();
     }
 

@@ -35,6 +35,14 @@ final class UnmodifiableView implements Index {
     }
 
     @Override
+    public String toString() {
+        if (mSource instanceof Index) {
+            return Tree.toString(this);
+        }
+        return super.toString();
+    }
+
+    @Override
     public long getId() {
         if (mSource instanceof Index) {
             return ((Index) mSource).getId();
