@@ -2630,7 +2630,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     }
 
     /**
-     * Latches and returns leaf frame, not split.
+     * Latches and returns leaf frame, not split. Caller must hold shared commit lock.
      *
      * @throws IllegalStateException if unpositioned
      */

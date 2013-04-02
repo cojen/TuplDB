@@ -76,12 +76,16 @@ final class Tree implements Index {
 
     @Override
     public String toString() {
-        StringBuilder b = new StringBuilder(getClass().getName());
-        b.append('@').append(Integer.toHexString(hashCode()));
+        return toString(this);
+    }
+
+    static String toString(Index ix) {
+        StringBuilder b = new StringBuilder(ix.getClass().getName());
+        b.append('@').append(Integer.toHexString(ix.hashCode()));
         b.append(" {");
-        b.append("name").append(": ").append(getNameString());
+        b.append("name").append(": ").append(ix.getNameString());
         b.append(", ");
-        b.append("id").append(": ").append(mId);
+        b.append("id").append(": ").append(ix.getId());
         return b.append('}').toString();
     }
 
@@ -435,6 +439,14 @@ final class Tree implements Index {
         return false;
     }
 
+    /**
+     * Returns a view which can be passed to an observer. Internal trees are returned as
+     * unmodifiable.
+     */
+    Index observableView() {
+        return isInternal(mId) ? new UnmodifiableView(this) : this;
+    }
+
     @Override
     public boolean verify(VerificationObserver observer) throws IOException {
         if (observer == null) {
@@ -446,14 +458,6 @@ final class Tree implements Index {
         boolean passed = !observer.failed;
         observer.indexComplete(view, passed, null);
         return passed;
-    }
-
-    /**
-     * Returns a view which can be passed to an observer. Internal trees are returned as
-     * unmodifiable.
-     */
-    Index observableView() {
-        return isInternal(mId) ? new UnmodifiableView(this) : this;
     }
 
     /**

@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.concurrent.locks.Lock;
+
 import static org.cojen.tupl.Utils.*;
 
 /**
@@ -61,7 +63,13 @@ final class TreeValueStream extends Stream {
     @Override
     public void setLength(long length) throws IOException {
         // FIXME: txn undo/redo
-        action(OP_SET_LENGTH, length, null, 0, 0);
+        final Lock sharedCommitLock = mCursor.mTree.mDatabase.sharedCommitLock();
+        sharedCommitLock.lock();
+        try {
+            action(OP_SET_LENGTH, length, null, 0, 0);
+        } finally {
+            sharedCommitLock.unlock();
+        }
     }
 
     @Override
@@ -72,7 +80,13 @@ final class TreeValueStream extends Stream {
     @Override
     int doWrite(long pos, byte[] buf, int off, int len) throws IOException {
         // FIXME: txn undo/redo
-        return (int) action(OP_WRITE, pos, buf, off, len);
+        final Lock sharedCommitLock = mCursor.mTree.mDatabase.sharedCommitLock();
+        sharedCommitLock.lock();
+        try {
+            return (int) action(OP_WRITE, pos, buf, off, len);
+        } finally {
+            sharedCommitLock.unlock();
+        }
     }
 
     @Override
@@ -97,6 +111,7 @@ final class TreeValueStream extends Stream {
         if (op <= OP_READ) {
             frame = mCursor.leafSharedNotSplit();
         } else {
+            // For this reason, write operations must acquire shared commit lock.
             frame = mCursor.leafExclusiveNotSplitDirty();
         }
 
@@ -187,7 +202,7 @@ final class TreeValueStream extends Stream {
                             throw null;
                         }
                         if ((header & 0x01) == 0) {
-                            System.out.println("direct!");
+                            System.out.println("direct! " + pos);
                             // Direct pointers.
                             // FIXME
                             throw null;
