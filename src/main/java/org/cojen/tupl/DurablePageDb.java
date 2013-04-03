@@ -55,9 +55,9 @@ class DurablePageDb extends PageDb {
     | int:  page size                          |
     | int:  commit number                      |
     | int:  checksum                           |
-    | page manager header (96 bytes)           |
+    | page manager header (140 bytes)          |
     +------------------------------------------+
-    | reserved (140 bytes)                     |
+    | reserved (96 bytes)                      |
     +------------------------------------------+
     | extra data (256 bytes)                   |
     +------------------------------------------+
@@ -342,6 +342,31 @@ class DurablePageDb extends PageDb {
         } finally {
             mCommitLock.readLock().unlock();
         }
+    }
+
+    @Override
+    public boolean compactionStart(long targetPageCount) throws IOException {
+        return mPageManager.compactionStart(targetPageCount);
+    }
+
+    @Override
+    public boolean compactionScanFreeList() throws IOException {
+        return mPageManager.compactionScanFreeList();
+    }
+
+    @Override
+    public boolean compactionVerify() throws IOException {
+        return mPageManager.compactionVerify();
+    }
+
+    @Override
+    public boolean compactionEnd() throws IOException {
+        return mPageManager.compactionEnd();
+    }
+
+    @Override
+    public void truncatePages() throws IOException {
+        mPageManager.truncatePages();
     }
 
     @Override

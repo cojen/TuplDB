@@ -432,6 +432,35 @@ final class Tree implements Index {
         return false;
     }
 
+    /**
+     * Returns a view which can be passed to an observer. Internal trees are returned as
+     * unmodifiable.
+     */
+    Index observableView() {
+        return isInternal(mId) ? new UnmodifiableView(this) : this;
+    }
+
+    /**
+     * @param view view to pass to observer
+     * @return false if compaction should stop
+     */
+    boolean compactTree(Index view, long highestNodeId, CompactionObserver observer)
+        throws IOException
+    {
+        if (!observer.indexBegin(view)) {
+            return false;
+        }
+        TreeCursor cursor = new TreeCursor(this, Transaction.BOGUS);
+        try {
+            cursor.first();
+            // Note the short circuit 'and' operator. Observer is notified only if compaction
+            // completed without aborting.
+            return cursor.compact(highestNodeId, observer) && observer.indexComplete(view);
+        } finally {
+            cursor.reset();
+        }
+    }
+
     @Override
     public boolean verify(VerificationObserver observer) throws IOException {
         if (observer == null) {
@@ -443,14 +472,6 @@ final class Tree implements Index {
         boolean passed = !observer.failed;
         observer.indexComplete(view, passed, null);
         return passed;
-    }
-
-    /**
-     * Returns a view which can be passed to an observer. Internal trees are returned as
-     * unmodifiable.
-     */
-    Index observableView() {
-        return isInternal(mId) ? new UnmodifiableView(this) : this;
     }
 
     /**

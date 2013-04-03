@@ -31,20 +31,22 @@ import java.util.concurrent.locks.ReentrantLock;
 final class PageManager {
     /*
 
-    Header structure is encoded as follows, in 96 bytes:
+    Header structure is encoded as follows, in 140 bytes:
 
     +--------------------------------------------+
     | long: total page count                     |
     | PageQueue: regular free list (44 bytes)    |
     | PageQueue: recycle free list (44 bytes)    |
+    | PageQueue: reserve list (44 bytes)         |
     +--------------------------------------------+
 
     */
 
     // Indexes of entries in header.
-    private static final int I_TOTAL_PAGE_COUNT = 0;
-    private static final int I_REGULAR_QUEUE    = I_TOTAL_PAGE_COUNT + 8;
-    private static final int I_RECYCLE_QUEUE    = I_REGULAR_QUEUE + PageQueue.HEADER_SIZE;
+    private static final int I_TOTAL_PAGE_COUNT  = 0;
+    private static final int I_REGULAR_QUEUE     = I_TOTAL_PAGE_COUNT + 8;
+    private static final int I_RECYCLE_QUEUE     = I_REGULAR_QUEUE + PageQueue.HEADER_SIZE;
+    private static final int I_RESERVE_QUEUE     = I_RECYCLE_QUEUE + PageQueue.HEADER_SIZE;
 
     private final PageArray mPageArray;
 
@@ -54,6 +56,16 @@ final class PageManager {
 
     private final PageQueue mRegularFreeList;
     private final PageQueue mRecycleFreeList;
+
+    private final ReentrantLock mCompactionLock;
+    private volatile boolean mCompacting;
+    private long mCompactionTargetPageCount;
+    private PageQueue mReserveList;
+
+    static final int
+        ALLOC_TRY_RESERVE = -1, // Create pages: no.  Compaction zone: yes
+        ALLOC_NORMAL = 0,       // Create pages: yes. Compaction zone: no
+        ALLOC_RESERVE = 1;      // Create pages: yes. Compaction zone: yes
 
     /**
      * Create a new PageManager.
@@ -83,8 +95,10 @@ final class PageManager {
 
         // Lock must be reentrant and unfair. See notes in PageQueue.
         mRemoveLock = new ReentrantLock(false);
-        mRegularFreeList = new PageQueue(this);
-        mRecycleFreeList = new PageQueue(this);
+        mRegularFreeList = new PageQueue(this, ALLOC_NORMAL, false);
+        mRecycleFreeList = new PageQueue(this, ALLOC_NORMAL, true);
+
+        mCompactionLock = new ReentrantLock(false);
 
         if (!restored) {
             // Pages 0 and 1 are reserved.
@@ -113,12 +127,26 @@ final class PageManager {
                 */
             }
 
+            PageQueue reserve;
             fullLock();
             try {
                 mRegularFreeList.init(header, offset + I_REGULAR_QUEUE);
                 mRecycleFreeList.init(header, offset + I_RECYCLE_QUEUE);
+
+                if (PageQueue.exists(header, offset + I_RESERVE_QUEUE)) {
+                    reserve = new PageQueue(this, ALLOC_RESERVE, true);
+                    reserve.init(header, offset + I_RESERVE_QUEUE);
+                } else {
+                    reserve = null;
+                }
             } finally {
                 fullUnlock();
+            }
+
+            if (reserve != null) {
+                // Reclaim reserved pages from an aborted compaction. Pages are immediately
+                // usable, because a commit had completed.
+                reserve.reclaim(mRemoveLock, mTotalPageCount, true);
             }
         }
     }
@@ -138,25 +166,58 @@ final class PageManager {
      * @return non-zero page id
      */
     public long allocPage() throws IOException {
-        // Remove recently recycled pages first, reducing page writes caused by queue drains.
-        long pageId = mRecycleFreeList.tryUnappend();
-        if (pageId != 0) {
+        return allocPage(ALLOC_NORMAL);
+    }
+
+    /**
+     * @param mode ALLOC_TRY_RESERVE, ALLOC_NORMAL, ALLOC_RESERVE
+     * @return 0 if mode is ALLOC_TRY_RESERVE and free lists are empty
+     */
+    long allocPage(int mode) throws IOException {
+        while (true) {
+            long pageId;
+            alloc: {
+                // Remove recently recycled pages first, reducing page writes caused by queue
+                // drains. For allocations by the reserve lists (during compaction), pages can
+                // come from the reserve lists themselves. This favors using pages in the
+                // compaction zone, since the reserve lists will be discarded anyhow.
+
+                pageId = mRecycleFreeList.tryUnappend();
+                if (pageId != 0) {
+                    break alloc;
+                }
+                final Lock lock = mRemoveLock;
+                lock.lock();
+                pageId = mRecycleFreeList.tryRemove(lock);
+                if (pageId != 0) {
+                    break alloc;
+                }
+                pageId = mRegularFreeList.tryRemove(lock);
+                if (pageId != 0) {
+                    break alloc;
+                }
+                try {
+                    return mode >= ALLOC_NORMAL ? createPage() : 0;
+                } finally {
+                    lock.unlock();
+                }
+            }
+
+            if (mode == ALLOC_NORMAL && mCompacting) {
+                Lock compactionLock = mCompactionLock;
+                compactionLock.lock();
+                try {
+                    if (mCompacting && pageId >= mCompactionTargetPageCount) {
+                        // Page is in the compaction zone, so allocate another.
+                        mReserveList.append(pageId);
+                        continue;
+                    }
+                } finally {
+                    compactionLock.unlock();
+                }
+            }
+
             return pageId;
-        }
-        final Lock lock = mRemoveLock;
-        lock.lock();
-        pageId = mRecycleFreeList.tryRemove(lock, true);
-        if (pageId != 0) {
-            return pageId;
-        }
-        pageId = mRegularFreeList.tryRemove(lock, false);
-        if (pageId != 0) {
-            return pageId;
-        }
-        try {
-            return createPage();
-        } finally {
-            lock.unlock();
         }
     }
 
@@ -167,7 +228,7 @@ final class PageManager {
      * @throws IllegalArgumentException if id is less than or equal to one
      */
     public void deletePage(long id) throws IOException {
-        mRegularFreeList.append(id);
+        deletePage(id, false);
     }
 
     /**
@@ -176,7 +237,29 @@ final class PageManager {
      * @throws IllegalArgumentException if id is less than or equal to one
      */
     public void recyclePage(long id) throws IOException {
-        mRecycleFreeList.append(id);
+        deletePage(id, true);
+    }
+
+    void deletePage(long id, boolean recycle) throws IOException {
+        if (mCompacting) {
+            Lock compactionLock = mCompactionLock;
+            compactionLock.lock();
+            try {
+                if (mCompacting && id >= mCompactionTargetPageCount) {
+                    // Page is in the compaction zone.
+                    mReserveList.append(id);
+                    return;
+                }
+            } finally {
+                compactionLock.unlock();
+            }
+        }
+
+        if (recycle) {
+            mRecycleFreeList.append(id);
+        } else {
+            mRegularFreeList.append(id);
+        }
     }
 
     /**
@@ -212,6 +295,166 @@ final class PageManager {
     }
 
     /**
+     * @return false if target cannot be met
+     */
+    public boolean compactionStart(long targetPageCount) throws IOException {
+        Lock lock = mCompactionLock;
+        lock.lock();
+        try {
+            if (mCompacting) {
+                throw new IllegalStateException("Compaction in progress");
+            }
+            if (mReserveList != null) {
+                throw new IllegalStateException();
+            }
+
+            if (targetPageCount < 2) {
+                return false;
+            }
+
+            mRemoveLock.lock();
+            try {
+                if (targetPageCount >= mTotalPageCount) {
+                    return false;
+                }
+            } finally {
+                mRemoveLock.unlock();
+            }
+
+            long initPageId = allocPage(ALLOC_TRY_RESERVE);
+            if (initPageId == 0) {
+                return false;
+            }
+
+            try {
+                // Allocate as agressive, allowing reclamation access to all pages.
+                mReserveList = new PageQueue(this, ALLOC_RESERVE, true);
+                mReserveList.init(initPageId);
+            } catch (Throwable e) {
+                mReserveList = null;
+                try {
+                    recyclePage(initPageId);
+                } catch (Throwable e2) {
+                    // Ignore.
+                }
+                throw Utils.rethrow(e);
+            }
+
+            mCompactionTargetPageCount = targetPageCount;
+            mCompacting = true;
+        } finally {
+            lock.unlock();
+        }
+
+        return mCompacting;
+    }
+
+    /**
+     * @return false if aborted
+     */
+    public boolean compactionScanFreeList() throws IOException {
+        return compactionScanFreeList(mRecycleFreeList)
+            && compactionScanFreeList(mRegularFreeList);
+    }
+
+    private boolean compactionScanFreeList(PageQueue list) throws IOException {
+        // FIXME: Detect when recycle has looped back by examining the append node instead of
+        // using a count.
+        long count;
+        {
+            PageDb.Stats stats = new PageDb.Stats();
+            list.appendLock().lock();
+            mRemoveLock.lock();
+            list.addTo(stats);
+            list.appendLock().unlock();
+            mRemoveLock.unlock();
+            count = stats.freePages;
+        }
+
+        for (int i=0; i<count; i++) {
+            if (!mCompacting) {
+                return false;
+            }
+            mRemoveLock.lock();
+            long pageId = list.tryRemove(mRemoveLock);
+            if (pageId == 0) {
+                mRemoveLock.unlock();
+                break;
+            }
+            if (pageId >= mCompactionTargetPageCount) {
+                mReserveList.append(pageId);
+            } else {
+                mRecycleFreeList.append(pageId);
+            }
+        }
+
+        return mCompacting;
+    }
+
+    /**
+     * @return false if verification failed
+     */
+    public boolean compactionVerify() throws IOException {
+        if (!mCompacting) {
+            // Prevent caller from doing any more work.
+            return true;
+        }
+        long total;
+        mRemoveLock.lock();
+        total = mTotalPageCount;
+        mRemoveLock.unlock();
+        return mReserveList.verifyPageRange(mCompactionTargetPageCount, total);
+    }
+
+    /**
+     * @return false if aborted
+     */
+    public boolean compactionEnd() throws IOException {
+        // Default will reclaim everything.
+        long upperBound = Long.MAX_VALUE;
+        boolean result = false;
+
+        if (mCompacting) {
+            if (!compactionVerify()) {
+                mCompacting = false;
+            } else {
+                fullLock();
+                if (mCompacting && mTotalPageCount > mCompactionTargetPageCount) {
+                    // When lock is released, compaction is commit-ready. All pages in the
+                    // compaction zone are accounted for, but the reserve list's queue nodes
+                    // might be in the valid zone. Most pages will simply be discarded.
+                    mTotalPageCount = mCompactionTargetPageCount;
+                    upperBound = mTotalPageCount - 1;
+                    result = true;
+                }
+                mCompacting = false;
+                fullUnlock();
+            }
+        }
+
+        if (mReserveList != null) {
+            mReserveList.reclaim(mRemoveLock, upperBound, false);
+            mReserveList = null;
+        }
+
+        return result;
+    }
+
+    /**
+     * Called after compaction, to actually shrink the file.
+     */
+    public void truncatePages() throws IOException {
+        mRemoveLock.lock();
+        try {
+            if (mTotalPageCount < mPageArray.getPageCount()) {
+                mPageArray.setPageCount(mTotalPageCount);
+            }
+        } finally {
+            mRemoveLock.unlock();
+        }
+    }
+
+    /**
      * Initiates the process for making page allocations and deletions permanent.
      *
      * @param header destination for writing page manager structures
@@ -223,6 +466,9 @@ final class PageManager {
             // Pre-commit all first, draining the append heaps.
             mRegularFreeList.preCommit();
             mRecycleFreeList.preCommit();
+            if (mReserveList != null) {
+                mReserveList.preCommit();
+            }
 
             // Total page count is written after append heaps have been
             // drained, because additional pages might have been allocated.
@@ -230,6 +476,9 @@ final class PageManager {
 
             mRegularFreeList.commitStart(header, offset + I_REGULAR_QUEUE);
             mRecycleFreeList.commitStart(header, offset + I_RECYCLE_QUEUE);
+            if (mReserveList != null) {
+                mReserveList.commitStart(header, offset + I_RESERVE_QUEUE);
+            }
         } finally {
             fullUnlock();
         }
@@ -246,24 +495,36 @@ final class PageManager {
         try {
             mRegularFreeList.commitEnd(header, offset + I_REGULAR_QUEUE);
             mRecycleFreeList.commitEnd(header, offset + I_RECYCLE_QUEUE);
+            if (mReserveList != null) {
+                mReserveList.commitEnd(header, offset + I_RESERVE_QUEUE);
+            }
         } finally {
             mRemoveLock.unlock();
         }
     }
 
     private void fullLock() {
-        // Avoid deadlock by acquiring append locks before remove lock. This
-        // matches the lock order used by the deletePage method, which might
-        // call allocPage, which in turn acquires remove lock.
+        // Avoid deadlock by acquiring append locks before remove lock. This matches the lock
+        // order used by the deletePage method, which might call allocPage, which in turn
+        // acquires remove lock. Compaction lock is acquired before append lock because
+        // allocPage may call append with compaction lock held.
+        mCompactionLock.lock();
         mRegularFreeList.appendLock().lock();
         mRecycleFreeList.appendLock().lock();
+        if (mReserveList != null) {
+            mReserveList.appendLock().lock();
+        }
         mRemoveLock.lock();
     }
 
     private void fullUnlock() {
         mRemoveLock.unlock();
+        if (mReserveList != null) {
+            mReserveList.appendLock().unlock();
+        }
         mRecycleFreeList.appendLock().unlock();
         mRegularFreeList.appendLock().unlock();
+        mCompactionLock.unlock();
     }
 
     void addTo(PageDb.Stats stats) {
@@ -272,6 +533,9 @@ final class PageManager {
             stats.totalPages += mTotalPageCount;
             mRegularFreeList.addTo(stats);
             mRecycleFreeList.addTo(stats);
+            if (mReserveList != null) {
+                mReserveList.addTo(stats);
+            }
         } finally {
             fullUnlock();
         }
@@ -306,11 +570,18 @@ final class PageManager {
      * invoked with remove lock held.
      */
     private long createPage() throws IOException {
+        // Compaction cannot succeed if store is growing. Check first before performing
+        // volatile write.
+        if (mCompacting) {
+            System.out.println("createPage; abort compaction");
+            new Exception().printStackTrace(System.out);
+            mCompacting = false;
+        }
         return mTotalPageCount++;
     }
 
     /**
-     * Method is invoked with allocation lock held.
+     * Method is invoked with remove lock held.
      */
     boolean isPageOutOfBounds(long id) {
         return id <= 1 || id >= mTotalPageCount;
