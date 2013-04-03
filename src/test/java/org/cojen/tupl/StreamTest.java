@@ -68,10 +68,10 @@ public class StreamTest {
         } catch (IndexOutOfBoundsException e) {
         }
 
-        assertEquals(0, s.read(0, new byte[0], 0, 0));
-        assertEquals(0, s.read(0, new byte[10], 0, 5));
-        assertEquals(0, s.read(0, new byte[10], 1, 5));
-        assertEquals(0, s.read(10, new byte[10], 1, 5));
+        assertEquals(-1, s.read(0, new byte[0], 0, 0));
+        assertEquals(-1, s.read(0, new byte[10], 0, 5));
+        assertEquals(-1, s.read(0, new byte[10], 1, 5));
+        assertEquals(-1, s.read(10, new byte[10], 1, 5));
 
         s.close();
 
@@ -110,8 +110,8 @@ public class StreamTest {
         assertEquals('l', (char) buf[3]);
         assertEquals('u', (char) buf[4]);
 
-        assertEquals(0, s.read(5, buf, 0, 5));
-        assertEquals(0, s.read(500, buf, 0, 5));
+        assertEquals(-1, s.read(5, buf, 0, 5));
+        assertEquals(-1, s.read(500, buf, 0, 5));
 
         s.close();
     }
@@ -125,14 +125,33 @@ public class StreamTest {
 
         for (int i=1; i<=100; i++) {
             byte[] key = ("key" + i).getBytes();
-            byte[] value = randomStr(rnd, 50 * i);
+            int length = 50 * i;
+            byte[] value = randomStr(rnd, length);
             ix.store(null, key, value);
 
             Stream s = ix.newStream();
             s.open(null, key);
-            byte[] actual = new byte[value.length];
-            assertEquals(value.length, s.read(0, actual, 0, actual.length));
-            fastAssertArrayEquals(value, actual);
+
+            byte[] buf = new byte[length + 10];
+
+            // Attempt to read nothing past the end.
+            assertEquals(0, s.read(length, buf, 10, 0));
+
+            // Attempt to read past the end.
+            assertEquals(-1, s.read(length, buf, 10, 10));
+
+            // Read many different slices, extending beyond as well.
+
+            for (int start=0; start<length; start += 3) {
+                for (int end=start; end<length+2; end += 7) {
+                    int amt = s.read(start, buf, 1, end - start);
+                    int expected = Math.min(end - start, length - start);
+                    assertEquals(expected, amt);
+                    int cmp = Utils.compareKeys(value, start, amt, buf, 1, amt);
+                    assertEquals(0, cmp);
+                }
+            }
+
             s.close();
 
             //ix.delete(null, key);
