@@ -2059,9 +2059,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
      * method if an exception is thrown
      * @return latch to release, or null if already released
      */
-    private Node store(Transaction txn, final TreeCursorFrame leaf, byte[] value)
-        throws IOException
-    {
+    Node store(Transaction txn, final TreeCursorFrame leaf, byte[] value) throws IOException {
         byte[] key = mKey;
         Node node = leaf.mNode;
         try {
@@ -2237,14 +2235,13 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     }
 
     /**
-     * Non-transactional insert of a fragmented value. Cursor value is
+     * Non-transactional insert of a fragmented value as an undo action. Cursor value is
      * NOT_LOADED as a side-effect.
      *
-     * @param leaf leaf frame, latched exclusively, which is released by this method
+     * @return false if already exists
      */
-    boolean insertFragmented(byte[] value) throws IOException {
-        byte[] key = mKey;
-        if (key == null) {
+    boolean replaceFragmented(byte[] value) throws IOException {
+        if (mKey == null) {
             throw new IllegalStateException("Cursor position is undefined");
         }
         if (value == null) {
@@ -2265,64 +2262,96 @@ final class TreeCursor extends CauseCloseable implements Cursor {
                     }
                     // Replace ghost.
                     node.updateLeafValue(mTree, pos, Node.VALUE_FRAGMENTED, value);
+                    if (node.mSplit != null) {
+                        node = finishSplit(leaf, node);
+                    }
                 } else {
-                    int newPos = ~pos;
-                    node.insertFragmentedLeafEntry(mTree, newPos, key, value);
-
-                    leaf.mNodePos = newPos;
-                    leaf.mNotFoundKey = null;
-
-                    // Fix all cursors bound to the node.
-                    // Note: Same code as in store method.
-                    TreeCursorFrame frame = node.mLastCursorFrame;
-                    do {
-                        if (frame == leaf) {
-                            // Don't need to fix self.
-                            continue;
-                        }
-
-                        int framePos = frame.mNodePos;
-
-                        if (framePos == pos) {
-                            // Other cursor is at same not-found position as this one
-                            // was. If keys are the same, then other cursor switches
-                            // to a found state as well. If key is greater, then
-                            // position needs to be updated.
-
-                            byte[] frameKey = frame.mNotFoundKey;
-                            int compare = compareKeys
-                                (frameKey, 0, frameKey.length, key, 0, key.length);
-                            if (compare > 0) {
-                                // Position is a complement, so subtract instead of add.
-                                frame.mNodePos = framePos - 2;
-                            } else if (compare == 0) {
-                                frame.mNodePos = newPos;
-                                frame.mNotFoundKey = null;
-                            }
-                        } else if (framePos >= newPos) {
-                            frame.mNodePos = framePos + 2;
-                        } else if (framePos < pos) {
-                            // Position is a complement, so subtract instead of add.
-                            frame.mNodePos = framePos - 2;
-                        }
-                    } while ((frame = frame.mPrevCousin) != null);
-                }
-
-                if (node.mSplit != null) {
-                    node = finishSplit(leaf, node);
+                    node = insertFragmented(leaf, node, value, value.length);
                 }
 
                 mValue = NOT_LOADED;
             } finally {
                 node.releaseExclusive();
             }
+
+            return true;
         } catch (Throwable e) {
             throw handleException(e);
         } finally {
             sharedCommitLock.unlock();
         }
+    }
 
-        return true;
+    /**
+     * Non-transactional insert of a fragmented value. Caller must hold shared commmit lock and
+     * have verified that insert is a valid operation.
+     *
+     * @param leaf leaf frame, latched exclusively, which is released by this
+     * method if an exception is thrown
+     * @param node frame node, not split, dirtied
+     * @param value can be null to insert a blank value; might not be fragmented
+     * @return replacement node, latched
+     */
+    Node insertFragmented(TreeCursorFrame leaf, Node node, byte[] value, long vlength)
+        throws IOException
+    {
+        byte[] key = mKey;
+
+        try {
+            final int pos = leaf.mNodePos;
+            final int newPos = ~pos;
+            if (value == null) {
+                node.insertBlankLeafEntry(mTree, newPos, key, vlength);
+            } else {
+                node.insertFragmentedLeafEntry(mTree, newPos, key, value);
+            }
+
+            leaf.mNodePos = newPos;
+            leaf.mNotFoundKey = null;
+
+            // Fix all cursors bound to the node.
+            // Note: Same code as in store method.
+            TreeCursorFrame frame = node.mLastCursorFrame;
+            do {
+                if (frame == leaf) {
+                    // Don't need to fix self.
+                    continue;
+                }
+
+                int framePos = frame.mNodePos;
+
+                if (framePos == pos) {
+                    // Other cursor is at same not-found position as this one
+                    // was. If keys are the same, then other cursor switches
+                    // to a found state as well. If key is greater, then
+                    // position needs to be updated.
+
+                    byte[] frameKey = frame.mNotFoundKey;
+                    int compare = compareKeys(frameKey, 0, frameKey.length, key, 0, key.length);
+                    if (compare > 0) {
+                        // Position is a complement, so subtract instead of add.
+                        frame.mNodePos = framePos - 2;
+                    } else if (compare == 0) {
+                        frame.mNodePos = newPos;
+                        frame.mNotFoundKey = null;
+                    }
+                } else if (framePos >= newPos) {
+                    frame.mNodePos = framePos + 2;
+                } else if (framePos < pos) {
+                    // Position is a complement, so subtract instead of add.
+                    frame.mNodePos = framePos - 2;
+                }
+            } while ((frame = frame.mPrevCousin) != null);
+
+            if (node.mSplit != null) {
+                node = finishSplit(leaf, node);
+            }
+        } catch (Throwable e) {
+            node.releaseExclusive();
+            rethrow(e);
+        }
+
+        return node;
     }
 
     private IOException handleException(Throwable e) throws IOException {

@@ -24,6 +24,7 @@ import java.io.IOException;
 
 import java.math.BigInteger;
 
+import java.util.Arrays;
 import java.util.Random;
 
 import java.util.concurrent.TimeUnit;
@@ -115,6 +116,17 @@ class Utils {
         } else {
             arrayCopies(page, start2, dest2, length2, start3, dest3, length3);
             arraycopy(page, start1, page, dest1, length1);
+        }
+    }
+
+    /**
+     * Performs an array copy as usual, but if src is null, treats it as zeros.
+     */
+    static void arrayCopyOrFill(byte[] src, int srcPos, byte[] dest, int destPos, int length) {
+        if (src == null) {
+            Arrays.fill(dest, destPos, destPos + length, (byte) 0);
+        } else {
+            arraycopy(src, srcPos, dest, destPos, length);
         }
     }
 
