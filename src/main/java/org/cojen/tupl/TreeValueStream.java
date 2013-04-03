@@ -159,6 +159,8 @@ final class TreeValueStream extends Stream {
             if ((header & Node.VALUE_FRAGMENTED) == 0) {
                 vLen = len;
             } else {
+                // Operate against a fragmented value. First read the fragment header, as
+                // described by the Database.fragment method.
                 header = page[loc++];
 
                 switch ((header >> 2) & 0x03) {
@@ -184,36 +186,75 @@ final class TreeValueStream extends Stream {
                     break;
                 }
 
-                // Operate against a fragmented value.
+                // Advance past the value length field.
+                loc += 2 + ((header >> 1) & 0x06);
 
                 switch (op) {
                 case OP_LENGTH: default:
                     node.releaseShared();
                     return vLen;
 
-                case OP_READ:
+                case OP_READ: {
                     if (pos >= vLen) {
-                        bLen = 0;
-                    } else {
-                        bLen = Math.min((int) (vLen - pos), bLen);
-                        if ((header & 0x02) != 0) {
-                            System.out.println("inline!");
-                            // FIXME
-                            throw null;
-                        }
-                        if ((header & 0x01) == 0) {
-                            System.out.println("direct! " + pos);
-                            // Direct pointers.
-                            // FIXME
-                            throw null;
+                        node.releaseShared();
+                        return bLen == 0 ? 0 : -1;
+                    }
+
+                    bLen = Math.min((int) (vLen - pos), bLen);
+                    final int total = bLen;
+
+                    if ((header & 0x02) != 0) {
+                        // Inline content.
+                        int inLen = readUnsignedShortLE(page, loc);
+                        loc += 2;
+                        int amt = (int) (inLen - pos);
+                        if (amt <= 0) {
+                            // Not reading any inline content.
+                            pos -= inLen;
+                        } else if (bLen <= amt) {
+                            System.arraycopy(page, (int) (loc + pos), b, bOff, bLen);
+                            node.releaseShared();
+                            return bLen;
                         } else {
-                            // Indirect pointers.
-                            // FIXME
-                            throw null;
+                            System.arraycopy(page, (int) (loc + pos), b, bOff, amt);
+                            bLen -= amt;
+                            bOff += amt;
+                            pos = 0;
+                        }
+                        loc += inLen;
+                    }
+
+                    final FragmentCache fc = mCursor.mTree.mDatabase.mFragmentCache;
+
+                    if ((header & 0x01) == 0) {
+                        // Direct pointers.
+                        int ipos = (int) pos;
+                        loc += (ipos / page.length) * 6;
+                        int fNodeOff = ipos % page.length;
+                        while (true) {
+                            int amt = Math.min(bLen, page.length - fNodeOff);
+                            long fNodeId = readUnsignedInt48LE(page, loc);
+                            Node fNode = fc.get(node, fNodeId);
+                            try {
+                                System.arraycopy(fNode.mPage, fNodeOff, b, bOff, amt);
+                                bLen -= amt;
+                                if (bLen <= 0) {
+                                    node.releaseShared();
+                                    return total;
+                                }
+                            } finally {
+                                fNode.releaseShared();
+                            }
+                            bOff += amt;
+                            loc += 6;
+                            fNodeOff = 0;
                         }
                     }
-                    node.releaseShared();
-                    return bLen;
+                         
+                    // Indirect pointers.
+                    // FIXME
+                    throw null;
+                }
 
                 case OP_SET_LENGTH:
                     // FIXME
@@ -237,7 +278,9 @@ final class TreeValueStream extends Stream {
 
         case OP_READ:
             if (pos >= vLen) {
-                bLen = 0;
+                if (bLen > 0) {
+                    bLen = -1;
+                }
             } else {
                 bLen = Math.min((int) (vLen - pos), bLen);
                 System.arraycopy(page, (int) (loc + pos), b, bOff, bLen);

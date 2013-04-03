@@ -190,7 +190,7 @@ public final class Database extends CauseCloseable {
 
     private final PageAllocator mAllocator;
 
-    private final FragmentCache mFragmentCache;
+    final FragmentCache mFragmentCache;
     final int mMaxFragmentedEntrySize;
 
     // Fragmented values which are transactionally deleted go here.
