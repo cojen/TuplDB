@@ -2478,6 +2478,93 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     }
 
     /**
+     * Used by file compaction mode. Compacts from the current node to the last, unless stopped
+     * by observer or aborted. Caller must issue a checkpoint after entering compaction mode
+     * and before calling this method. This ensures completion of any splits in progress before
+     * compaction began. Any new splits will be created during compaction and will
+     * allocate pages outside of the compaction zone.
+     *
+     * @param highestNodeId defines the highest node before the compaction zone; anything
+     * higher is in the compaction zone
+     * @return false if compaction should stop
+     */
+    boolean compact(long highestNodeId, CompactionObserver observer) throws IOException {
+        int height = height();
+        if (height <= 0) {
+            return true;
+        }
+
+        // FIXME: LARGE VALUES!!!!
+
+        // Reference to frame nodes, to detect when cursor has moved past a node. Index 0
+        // represents the leaf node. Detection may also be triggered by concurrent
+        // modifications to the tree, but this is not harmful.
+        Node[] frameNodes = new Node[height];
+
+        while (key() != null) {
+            TreeCursorFrame frame = mLeaf;
+            for (int level = 0; level < height; level++) {
+                Node node = frame.acquireShared();
+                if (frameNodes[level] == node) {
+                    // No point in checking upwards if this level is unchanged.
+                    node.releaseShared();
+                    break;
+                } else {
+                    frameNodes[level] = node;
+                    long id = compactFrame(highestNodeId, frame, node);
+                    if (id == 0 || !observer.indexNodeVisited(id)) {
+                        // Abort compaction.
+                        return false;
+                    }
+                }
+                frame = frame.mParentFrame;
+            }
+
+            nextNode();
+        }
+
+        return true;
+    }
+
+    /**
+     * Moves the frame's node out of the compaction zone if necessary.
+     *
+     * @param frame frame with shared latch held; always released as a side-effect
+     * @return new node id or 0 if aborted
+     */
+    private long compactFrame(long highestNodeId, TreeCursorFrame frame, Node node)
+        throws IOException
+    {
+        long id = node.mId;
+        node.releaseShared();
+
+        if (id > highestNodeId) {
+            Database db = mTree.mDatabase;
+            Lock sharedCommitLock = db.sharedCommitLock();
+            sharedCommitLock.lock();
+            try {
+                node = frame.acquireExclusive();
+                id = node.mId;
+                if (id > highestNodeId) {
+                    // Marking as dirty forces an allocation, which should be outside the
+                    // compaction zone.
+                    node = notSplitDirty(frame);
+                    id = node.mId;
+                    if (id > highestNodeId) {
+                        // Abort compaction.
+                        id = 0;
+                    }
+                }
+                node.releaseExclusive();
+            } finally {
+                sharedCommitLock.unlock();
+            }
+        }
+
+        return id;
+    }
+
+    /**
      * Verifies from the current node to the last, unless stopped by observer.
      *
      * @return false if should stop

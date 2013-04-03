@@ -115,6 +115,30 @@ class NonPageDb extends PageDb {
     }
 
     @Override
+    public boolean compactionStart(long targetPageCount) throws IOException {
+        return false;
+    }
+
+    @Override
+    public boolean compactionScanFreeList() throws IOException {
+        return false;
+    }
+
+    @Override
+    public boolean compactionVerify() throws IOException {
+        return false;
+    }
+
+    @Override
+    public boolean compactionEnd() throws IOException {
+        return false;
+    }
+
+    @Override
+    public void truncatePages() throws IOException {
+    }
+
+    @Override
     public void commit(final CommitCallback callback) throws IOException {
         fail(false);
     }
