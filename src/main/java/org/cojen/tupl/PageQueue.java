@@ -385,10 +385,12 @@ final class PageQueue implements IntegerRef {
     }
 
     /**
-     * Caller must hold remove lock.
+     * Caller must hold append and remove locks.
      */
     void addTo(PageDb.Stats stats) {
-        stats.freePages += mRemovePageCount + mRemoveNodeCount;
+        stats.freePages +=
+            mRemovePageCount + mAppendPageCount +
+            mRemoveNodeCount + mAppendNodeCount;
     }
 
     /**
