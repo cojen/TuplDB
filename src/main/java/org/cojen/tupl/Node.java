@@ -1414,7 +1414,8 @@ final class Node extends Latch {
             fragmented = 0;
         } else {
             Database db = tree.mDatabase;
-            value = db.fragment(this, value, db.mMaxFragmentedEntrySize - encodedKeyLen);
+            value = db.fragment(this, value, value.length,
+                                db.mMaxFragmentedEntrySize - encodedKeyLen);
             if (value == null) {
                 throw new LargeKeyException(key.length);
             }
@@ -1431,6 +1432,40 @@ final class Node extends Latch {
         }
     }
 
+    /**
+     * @param pos complement of position as provided by binarySearch; must be positive
+     */
+    void insertBlankLeafEntry(Tree tree, int pos, byte[] key, long vlength) throws IOException {
+        int encodedKeyLen = calculateKeyLength(key);
+        long encodedLen = encodedKeyLen + calculateLeafValueLength(vlength);
+
+        int fragmented;
+        byte[] value;
+        if (encodedLen <= tree.mMaxEntrySize) {
+            fragmented = 0;
+            value = new byte[(int) vlength];
+        } else {
+            Database db = tree.mDatabase;
+            value = db.fragment(this, null, vlength, db.mMaxFragmentedEntrySize - encodedKeyLen);
+            if (value == null) {
+                throw new LargeKeyException(key.length);
+            }
+            encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
+            fragmented = VALUE_FRAGMENTED;
+        }
+
+        int entryLoc = createLeafEntry(tree, pos, (int) encodedLen);
+
+        if (entryLoc < 0) {
+            splitLeafAndCreateEntry(tree, key, fragmented, value, (int) encodedLen, pos, true);
+        } else {
+            copyToLeafEntry(key, fragmented, value, entryLoc);
+        }
+    }
+
+    /**
+     * @param pos complement of position as provided by binarySearch; must be positive
+     */
     void insertFragmentedLeafEntry(Tree tree, int pos, byte[] key, byte[] value)
         throws IOException
     {
@@ -1801,6 +1836,7 @@ final class Node extends Latch {
 
     /**
      * @param pos position as provided by binarySearch; must be positive
+     * @param fragmented 0 or VALUE_FRAGMENTED
      */
     void updateLeafValue(Tree tree, int pos, int fragmented, byte[] value) throws IOException {
         final byte[] page = mPage;
@@ -1885,7 +1921,8 @@ final class Node extends Latch {
             encodedLen = keyLen + calculateLeafValueLength(value);
             if (encodedLen > tree.mMaxEntrySize) {
                 Database db = tree.mDatabase;
-                value = db.fragment(this, value, db.mMaxFragmentedEntrySize - keyLen);
+                value = db.fragment(this, value, value.length,
+                                    db.mMaxFragmentedEntrySize - keyLen);
                 if (value == null) {
                     // TODO: Supply proper key length, not the encoded
                     // length. Subtracting 2 is just a guess.
@@ -1925,7 +1962,7 @@ final class Node extends Latch {
                     Database db = tree.mDatabase;
                     int max = Math.min(db.mMaxFragmentedEntrySize,
                                        garbage + leftSpace + rightSpace);
-                    value = db.fragment(this, value, max);
+                    value = db.fragment(this, value, value.length, max);
                     if (value == null) {
                         throw new LargeKeyException(key.length);
                     }
@@ -2288,6 +2325,13 @@ final class Node extends Latch {
     /**
      * Calculate encoded value length for leaf, including header.
      */
+    private static long calculateLeafValueLength(long vlength) {
+        return vlength + ((vlength <= 127) ? 1 : ((vlength <= 8192) ? 2 : 3));
+    }
+
+    /**
+     * Calculate encoded value length for leaf, including header.
+     */
     private static int calculateFragmentedValueLength(byte[] value) {
         int len = value.length;
         return len + ((len <= 8192) ? 2 : 3);
@@ -2314,7 +2358,7 @@ final class Node extends Latch {
     }
 
     /**
-     * @param fragmented pass VALUE_FRAGMENTED if fragmented
+     * @param fragmented 0 or VALUE_FRAGMENTED
      */
     private void copyToLeafEntry(byte[] key, int fragmented, byte[] value, int entryLoc) {
         final byte[] page = mPage;
@@ -2332,7 +2376,7 @@ final class Node extends Latch {
     }
 
     /**
-     * @param fragmented pass VALUE_FRAGMENTED if fragmented; 0 otherwise
+     * @param fragmented 0 or VALUE_FRAGMENTED
      * @return page location for first byte of value (first location after header)
      */
     private static int copyToLeafValue(byte[] page, int fragmented, byte[] value, int valueLoc) {
@@ -2421,8 +2465,7 @@ final class Node extends Latch {
     }
 
     /**
-     *
-     * @param fragmented pass VALUE_FRAGMENTED if fragmented
+     * @param fragmented 0 or VALUE_FRAGMENTED
      * @param encodedLen length of new entry to allocate
      * @param pos normalized search vector position of entry to insert/update
      */
@@ -2690,6 +2733,8 @@ final class Node extends Latch {
 
     /**
      * Store an entry into a node which has just been split and has room.
+     *
+     * @param fragmented 0 or VALUE_FRAGMENTED
      */
     private void storeIntoSplitLeaf(Tree tree, byte[] key, int fragmented, byte[] value,
                                     int encodedLen, boolean forInsert)
@@ -2709,7 +2754,7 @@ final class Node extends Latch {
                 Database db = tree.mDatabase;
                 int max = Math.min(~entryLoc, db.mMaxFragmentedEntrySize);
                 int encodedKeyLen = calculateKeyLength(key);
-                value = db.fragment(this, value, max - encodedKeyLen);
+                value = db.fragment(this, value, value.length, max - encodedKeyLen);
                 if (value == null) {
                     throw new LargeKeyException(key.length);
                 }

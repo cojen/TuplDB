@@ -18,7 +18,11 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.Arrays;
+
 import java.util.concurrent.locks.Lock;
+
+import static java.lang.System.arraycopy;
 
 import static org.cojen.tupl.Utils.*;
 
@@ -66,7 +70,7 @@ final class TreeValueStream extends Stream {
         final Lock sharedCommitLock = mCursor.mTree.mDatabase.sharedCommitLock();
         sharedCommitLock.lock();
         try {
-            action(OP_SET_LENGTH, length, null, 0, 0);
+            action(OP_SET_LENGTH, length, EMPTY_BYTES, 0, 0);
         } finally {
             sharedCommitLock.unlock();
         }
@@ -106,12 +110,16 @@ final class TreeValueStream extends Stream {
         mCursor.reset();
     }
 
+    /**
+     * Caller must hold shared commit lock when using OP_SET_LENGTH or OP_WRITE.
+     *
+     * @param b must be EMPTY_BYTES for OP_SET_LENGTH; can be null for OP_LENGTH
+     */
     private long action(int op, long pos, byte[] b, int bOff, int bLen) throws IOException {
         TreeCursorFrame frame;
         if (op <= OP_READ) {
             frame = mCursor.leafSharedNotSplit();
         } else {
-            // For this reason, write operations must acquire shared commit lock.
             frame = mCursor.leafExclusiveNotSplitDirty();
         }
 
@@ -123,9 +131,16 @@ final class TreeValueStream extends Stream {
                 node.releaseShared();
                 return -1;
             }
-            // FIXME: write ops; create the value
+
+            // Handle OP_SET_LENGTH and OP_WRITE.
+
+            // Method releases latch if an exception is thrown.
+            node = mCursor.insertFragmented(frame, node, null, pos + bLen);
+
+            // FIXME: Append the rest.
             node.releaseExclusive();
-            throw null;
+
+            return bLen;
         }
 
         final byte[] page = node.mPage;
@@ -212,11 +227,11 @@ final class TreeValueStream extends Stream {
                             // Not reading any inline content.
                             pos -= inLen;
                         } else if (bLen <= amt) {
-                            System.arraycopy(page, (int) (loc + pos), b, bOff, bLen);
+                            arraycopy(page, (int) (loc + pos), b, bOff, bLen);
                             node.releaseShared();
                             return bLen;
                         } else {
-                            System.arraycopy(page, (int) (loc + pos), b, bOff, amt);
+                            arraycopy(page, (int) (loc + pos), b, bOff, amt);
                             bLen -= amt;
                             bOff += amt;
                             pos = 0;
@@ -234,23 +249,28 @@ final class TreeValueStream extends Stream {
                         while (true) {
                             int amt = Math.min(bLen, page.length - fNodeOff);
                             long fNodeId = readUnsignedInt48LE(page, loc);
-                            Node fNode = fc.get(node, fNodeId);
-                            try {
-                                System.arraycopy(fNode.mPage, fNodeOff, b, bOff, amt);
-                                bLen -= amt;
-                                if (bLen <= 0) {
-                                    node.releaseShared();
-                                    return total;
+                            if (fNodeId == 0) {
+                                // Reconstructing a sparse value.
+                                Arrays.fill(b, bOff, bOff + amt, (byte) 0);
+                            } else {
+                                Node fNode = fc.get(node, fNodeId);
+                                try {
+                                    arraycopy(fNode.mPage, fNodeOff, b, bOff, amt);
+                                } finally {
+                                    fNode.releaseShared();
                                 }
-                            } finally {
-                                fNode.releaseShared();
+                            }
+                            bLen -= amt;
+                            if (bLen <= 0) {
+                                node.releaseShared();
+                                return total;
                             }
                             bOff += amt;
                             loc += 6;
                             fNodeOff = 0;
                         }
                     }
-                         
+
                     // Indirect pointers.
                     // FIXME
                     throw null;
@@ -283,7 +303,7 @@ final class TreeValueStream extends Stream {
                 }
             } else {
                 bLen = Math.min((int) (vLen - pos), bLen);
-                System.arraycopy(page, (int) (loc + pos), b, bOff, bLen);
+                arraycopy(page, (int) (loc + pos), b, bOff, bLen);
             }
             node.releaseShared();
             return bLen;

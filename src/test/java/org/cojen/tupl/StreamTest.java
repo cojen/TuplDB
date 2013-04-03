@@ -16,6 +16,7 @@
 
 package org.cojen.tupl;
 
+import java.util.Arrays;
 import java.util.Random;
 
 import org.junit.*;
@@ -155,6 +156,65 @@ public class StreamTest {
             s.close();
 
             //ix.delete(null, key);
+        }
+    }
+
+    // FIXME: enable
+    //@Test
+    public void extendBlank() throws Exception {
+        extendBlank(false);
+        extendBlank(true);
+    }
+
+    private void extendBlank(boolean useWrite) throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        byte[] buf = new byte[102];
+
+        for (int i=0; i<100000; i+=100) {
+            Stream s = ix.newStream();
+
+            byte[] key = "key".getBytes();
+            s.open(null, key);
+
+            if (useWrite) {
+                s.write(i, key, 0, 0);
+            } else {
+                s.setLength(i);
+            }
+
+            assertEquals(i, s.length());
+
+            byte[] value = ix.load(null, key);
+            assertNotNull(value);
+            assertEquals(i, value.length);
+            for (int j=0; j<i; j++) {
+                assertEquals(0, value[j]);
+            }
+
+            Arrays.fill(buf, 0, buf.length, (byte) 55);
+
+            if (i == 0) {
+                int amt = s.read(0, buf, 1, 100);
+                assertEquals(-1, amt);
+            } else {
+                if (i == 100) {
+                    int amt = s.read(0, buf, 1, 100);
+                    assertEquals(100, amt);
+                } else {
+                    int amt = s.read(100, buf, 1, 100);
+                    assertEquals(100, amt);
+                }
+                assertEquals(55, buf[0]);
+                for (int j=1; j<100; j++) {
+                    assertEquals(0, buf[j]);
+                }
+                assertEquals(55, buf[buf.length - 1]);
+            }
+
+            ix.delete(null, key);
+            assertEquals(-1, s.length());
+            assertNull(ix.load(null, key));
         }
     }
 }
