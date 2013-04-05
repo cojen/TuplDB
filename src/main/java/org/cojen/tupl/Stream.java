@@ -72,14 +72,16 @@ public abstract class Stream implements Closeable {
     public abstract void setLength(long length) throws IOException;
 
     /**
-     * Read from the value, starting from any position. Read operations can be partial, but at
-     * least one byte is read if at least one is requested.
+     * Read from the value, starting from any position. The full requested amount of bytes are
+     * read, unless the end is reached. A return value of -1 indicates that value doesn't exist
+     * at all, even when the requested amount is zero.
      *
      * @param pos start position to read from
      * @param buf buffer to read into
      * @param off buffer start offset
-     * @param len maximum length to read
-     * @return actual amount read, which can be less than requested; -1 if end reached
+     * @param len maximum amount to read
+     * @return actual amount read, which is less than requested only if the end was reached, or
+     * -1 of value doesn't exist
      * @throws IllegalArgumentException if position is negative
      * @throws IndexOutOfBoundsException
      * @throws IllegalStateException if closed
@@ -96,37 +98,38 @@ public abstract class Stream implements Closeable {
 
     /**
      * Write into the value, starting from any position. Value is extended when writing past
-     * the end, even if the written amount is zero. Write operations can be partial, but at
-     * least one byte is written if at least one is provided.
+     * the end, even if the written amount is zero.
      *
      * @param pos start position to write to
      * @param buf buffer to write from
      * @param off buffer start offset
      * @param len maximum length to write
-     * @return actual amount written, which can be less than provided
      * @throws IllegalArgumentException if position is negative
      * @throws IndexOutOfBoundsException
      * @throws IllegalStateException if closed
      * @throws IllegalUpgradeException if not locked for writing
      */
-    public final int write(long pos, byte[] buf, int off, int len) throws IOException {
+    public final void write(long pos, byte[] buf, int off, int len) throws IOException {
         if (pos < 0) {
             throw new IllegalArgumentException();
         }
         boundsCheck(buf, off, len);
-        return doWrite(pos, buf, off, len);
+        doWrite(pos, buf, off, len);
     }
 
-    abstract int doWrite(long pos, byte[] buf, int off, int len) throws IOException;
+    abstract void doWrite(long pos, byte[] buf, int off, int len) throws IOException;
 
     /**
      * Returns a new buffered InputStream instance, which reads from this Stream. When the
      * InputStream is closed, it closes the Stream too. The InputStream is bound to the Stream,
-     * and so only one thread can access either at a time. Unlike the {@link Stream#read
-     * Stream.read} method, reads from the InputStream return as much as possible.
+     * and so only one thread can access either at a time.
+     *
+     * <p>Reading past the end of the stream returns -1 (EOF), as per the InputStream contract.
+     * Reading from a value which doesn't exist causes a {@link NoSuchValueException} to be
+     * thrown.
      *
      * @param pos start position to read from
-     * @return buffered unsynchronized InputStream; performs full reads
+     * @return buffered unsynchronized InputStream
      * @throws IllegalArgumentException if position is negative
      */
     public final InputStream newInputStream(long pos) throws IOException {
@@ -136,12 +139,15 @@ public abstract class Stream implements Closeable {
     /**
      * Returns a new buffered InputStream instance, which reads from this Stream. When the
      * InputStream is closed, it closes the Stream too. The InputStream is bound to the Stream,
-     * and so only one thread can access either at a time. Unlike the {@link Stream#read
-     * Stream.read} method, reads from the InputStream return as much as possible.
+     * and so only one thread can access either at a time.
+     *
+     * <p>Reading past the end of the stream returns -1 (EOF), as per the InputStream contract.
+     * Reading from a value which doesn't exist causes a {@link NoSuchValueException} to be
+     * thrown.
      *
      * @param pos start position to read from
      * @param bufferSize requested buffer size; actual size may differ
-     * @return buffered unsynchronized InputStream; performs full reads
+     * @return buffered unsynchronized InputStream
      * @throws IllegalArgumentException if position is negative
      * @throws IllegalStateException if closed
      */
@@ -267,6 +273,9 @@ public abstract class Stream implements Closeable {
             int amt = Stream.this.read(pos, buf, 0, buf.length);
 
             if (amt <= 0) {
+                if (amt < 0) {
+                    throw new NoSuchValueException();
+                }
                 return -1;
             }
 
@@ -342,7 +351,15 @@ public abstract class Stream implements Closeable {
             }
 
             amt = off - initialOff;
-            return amt <= 0 ? -1 : amt;
+
+            if (amt <= 0) {
+                if (amt < 0) {
+                    throw new NoSuchValueException();
+                }
+                return -1;
+            }
+
+            return amt;
         }
 
         @Override
