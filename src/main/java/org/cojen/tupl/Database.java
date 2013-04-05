@@ -150,6 +150,7 @@ public final class Database extends CauseCloseable {
     final LockManager mLockManager;
     final RedoWriter mRedoWriter;
     final PageDb mPageDb;
+    final int mPageSize;
 
     private final BufferPool mSpareBufferPool;
 
@@ -355,6 +356,9 @@ public final class Database extends CauseCloseable {
                     (pageSize, dataFiles, options, config.mCrypto, openMode == OPEN_DESTROY);
             }
 
+            // Actual page size might differ from configured size.
+            mPageSize = mPageDb.pageSize();
+
             mSharedCommitLock = mPageDb.sharedCommitLock();
 
             // Pre-allocate nodes. They are automatically added to the usage
@@ -390,7 +394,7 @@ public final class Database extends CauseCloseable {
             }
 
             int spareBufferCount = Runtime.getRuntime().availableProcessors();
-            mSpareBufferPool = new BufferPool(mPageDb.pageSize(), spareBufferCount);
+            mSpareBufferPool = new BufferPool(mPageSize, spareBufferCount);
 
             mSharedCommitLock.lock();
             try {
@@ -874,7 +878,7 @@ public final class Database extends CauseCloseable {
      */
     public long preallocate(long bytes) throws IOException {
         if (!mClosed && mPageDb instanceof DurablePageDb) {
-            int pageSize = pageSize();
+            int pageSize = mPageSize;
             long pageCount = (bytes + pageSize - 1) / pageSize;
             if (pageCount > 0) {
                 pageCount = mPageDb.allocatePages(pageCount);
@@ -954,7 +958,7 @@ public final class Database extends CauseCloseable {
     public Stats stats() {
         Stats stats = new Stats();
 
-        stats.mPageSize = pageSize();
+        stats.mPageSize = mPageSize;
 
         mSharedCommitLock.lock();
         try {
@@ -1783,7 +1787,7 @@ public final class Database extends CauseCloseable {
      * Returns the fixed size of all pages in the store, in bytes.
      */
     int pageSize() {
-        return mPageDb.pageSize();
+        return mPageSize;
     }
 
     /**
@@ -1820,7 +1824,7 @@ public final class Database extends CauseCloseable {
 
                 if (mNodeCount < max) {
                     checkClosed();
-                    Node node = new Node(pageSize());
+                    Node node = new Node(mPageSize);
                     node.acquireExclusive();
                     mNodeCount++;
                     if (evictable) {
@@ -2247,7 +2251,7 @@ public final class Database extends CauseCloseable {
     byte[] fragment(Node caller, final byte[] value, final long vlength, int max)
         throws IOException
     {
-        int pageSize = pageSize();
+        int pageSize = mPageSize;
         long pageCount = vlength / pageSize;
         int remainder = (int) (vlength % pageSize);
 
@@ -2386,9 +2390,9 @@ public final class Database extends CauseCloseable {
                     // Value is sparse, so just store a null pointer.
                     writeInt48LE(newValue, offset, 0);
                 } else {
-                    int levels = calculateInodeLevels(vlength, pageSize);
                     Node inode = allocDirtyNode();
                     writeInt48LE(newValue, offset, inode.mId);
+                    int levels = calculateInodeLevels(vlength, pageSize);
                     writeMultilevelFragments(caller, levels, inode, value, 0, vlength);
                 }
             }
@@ -2410,7 +2414,7 @@ public final class Database extends CauseCloseable {
         return newValue;
     }
 
-    private static int calculateInodeLevels(long vlength, int pageSize) {
+    static int calculateInodeLevels(long vlength, int pageSize) {
         int levels = 0;
 
         if (vlength >= 0 && vlength < (Long.MAX_VALUE / 2)) {
@@ -2596,7 +2600,7 @@ public final class Database extends CauseCloseable {
                 int pLen;
                 if (nodeId == 0) {
                     // Reconstructing a sparse value. Array is already zero-filled.
-                    pLen = Math.min(vLen, pageSize());
+                    pLen = Math.min(vLen, mPageSize);
                 } else {
                     Node node = mFragmentCache.get(caller, nodeId);
                     try {
@@ -2612,10 +2616,10 @@ public final class Database extends CauseCloseable {
             }
         } else {
             // Indirect pointers.
-            int levels = calculateInodeLevels(vLen, pageSize());
-            long nodeId = readUnsignedInt48LE(fragmented, off);
-            if (nodeId != 0) {
-                Node inode = mFragmentCache.get(caller, nodeId);
+            long inodeId = readUnsignedInt48LE(fragmented, off);
+            if (inodeId != 0) {
+                Node inode = mFragmentCache.get(caller, inodeId);
+                int levels = calculateInodeLevels(vLen, mPageSize);
                 readMultilevelFragments(caller, levels, inode, value, 0, vLen);
             }
         }
@@ -2624,89 +2628,9 @@ public final class Database extends CauseCloseable {
     }
 
     /**
-     * Trace the pages of fragmented value.
-     *
-     * @param caller optional tree node which is latched and calling this method
-     */
-    /*
-    void traceFragmented(java.util.BitSet bits,
-                         Node caller, byte[] fragmented, int off, int len)
-        throws IOException
-    {
-        int header = fragmented[off++];
-        len--;
-
-        // TODO: code duplication with reconstruct
-        // TODO: no LargeValueException
-        int vLen;
-        switch ((header >> 2) & 0x03) {
-        default:
-            vLen = readUnsignedShortLE(fragmented, off);
-            break;
-
-        case 1:
-            vLen = readIntLE(fragmented, off);
-            if (vLen < 0) {
-                throw new LargeValueException(vLen & 0xffffffffL);
-            }
-            break;
-
-        case 2:
-            long vLenL = readUnsignedInt48LE(fragmented, off);
-            if (vLenL > Integer.MAX_VALUE) {
-                throw new LargeValueException(vLenL);
-            }
-            vLen = (int) vLenL;
-            break;
-
-        case 3:
-            vLenL = readLongLE(fragmented, off);
-            if (vLenL < 0 || vLenL > Integer.MAX_VALUE) {
-                throw new LargeValueException(vLenL);
-            }
-            vLen = (int) vLenL;
-            break;
-        }
-
-        {
-            int vLenFieldSize = 2 + ((header >> 1) & 0x06);
-            off += vLenFieldSize;
-            len -= vLenFieldSize;
-        }
-
-        if ((header & 0x02) != 0) {
-            // Inline content.
-            int inLen = readUnsignedShortLE(fragmented, off);
-            off += 2 + inLen;
-            len -= 2 + inLen;
-        }
-
-        if ((header & 0x01) == 0) {
-            // Direct pointers.
-            while (len >= 6) {
-                long nodeId = readUnsignedInt48LE(fragmented, off);
-                off += 6;
-                len -= 6;
-                bits.clear((int) nodeId);
-            }
-        } else {
-            // Indirect pointers.
-            // TODO
-            throw new DatabaseException("TODO");
-            /*
-            int levels = calculateInodeLevels(vLen, pageSize());
-            long nodeId = readUnsignedInt48LE(fragmented, off);
-            Node inode = mFragmentCache.get(caller, nodeId);
-            readMultilevelFragments(caller, levels, inode, value, 0, vLen);
-            * /
-        }
-    }
-    */
-
-    /**
      * @param level inode level; at least 1
      * @param inode shared latched parent inode; always released by this method
-     * @param value slice of complete value being reconstructed
+     * @param value slice of complete value being reconstructed; initially filled with zeros
      */
     private void readMultilevelFragments(Node caller,
                                          int level, Node inode,
@@ -2797,10 +2721,10 @@ public final class Database extends CauseCloseable {
             }
         } else {
             // Indirect pointers.
-            int levels = calculateInodeLevels(vLen, pageSize());
-            long nodeId = readUnsignedInt48LE(fragmented, off);
-            if (nodeId != 0) {
-                Node inode = removeInode(caller, nodeId);
+            long inodeId = readUnsignedInt48LE(fragmented, off);
+            if (inodeId != 0) {
+                Node inode = removeInode(caller, inodeId);
+                int levels = calculateInodeLevels(vLen, mPageSize);
                 deleteMultilevelFragments(caller, levels, inode, vLen);
             }
         }
@@ -2872,8 +2796,15 @@ public final class Database extends CauseCloseable {
         }
     }
 
-    private static long levelCap(int pageLength, int level) {
-        return pageLength * (long) Math.pow(pageLength / 6, level);
+    static long levelCap(int pageSize, int level) {
+        if (level == 0) {
+            return pageSize;
+        } else if (level == 1) {
+            return pageSize * (pageSize / 6);
+        } else {
+            // Works for all levels, but why do floating point stuff for the common cases?
+            return pageSize * (long) Math.pow((double) (pageSize / 6), level);
+        }
     }
 
     /**
