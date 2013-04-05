@@ -49,7 +49,7 @@ public class StreamTest {
     protected Database mDb;
 
     @Test
-    public void readEmpty() throws Exception {
+    public void readMissing() throws Exception {
         Index ix = mDb.openIndex("test");
 
         Stream s = ix.newStream();
@@ -95,6 +95,23 @@ public class StreamTest {
     }
 
     @Test
+    public void readEmpty() throws Exception {
+        Index ix = mDb.openIndex("test");
+        ix.store(null, "key".getBytes(), new byte[0]);
+        Stream s = ix.newStream();
+        s.open(null, "key".getBytes());
+        assertEquals(0, s.length());
+
+        byte[] buf = new byte[5];
+        assertEquals(0, s.read(0, buf, 0, 5));
+        assertEquals(0, s.read(1, buf, 2, 3));
+        assertEquals(0, s.read(5, buf, 0, 5));
+        assertEquals(0, s.read(500, buf, 0, 5));
+
+        s.close();
+    }
+
+    @Test
     public void readSmall() throws Exception {
         Index ix = mDb.openIndex("test");
         ix.store(null, "key".getBytes(), "value".getBytes());
@@ -111,8 +128,8 @@ public class StreamTest {
         assertEquals('l', (char) buf[3]);
         assertEquals('u', (char) buf[4]);
 
-        assertEquals(-1, s.read(5, buf, 0, 5));
-        assertEquals(-1, s.read(500, buf, 0, 5));
+        assertEquals(0, s.read(5, buf, 0, 5));
+        assertEquals(0, s.read(500, buf, 0, 5));
 
         s.close();
     }
@@ -139,7 +156,7 @@ public class StreamTest {
             assertEquals(0, s.read(length, buf, 10, 0));
 
             // Attempt to read past the end.
-            assertEquals(-1, s.read(length, buf, 10, 10));
+            assertEquals(0, s.read(length, buf, 10, 10));
 
             // Read many different slices, extending beyond as well.
 
@@ -159,8 +176,49 @@ public class StreamTest {
         }
     }
 
-    // FIXME: enable
-    //@Test
+    @Test
+    public void readLargeFragmented() throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        final long seed = 3984574;
+        Random rnd = new Random(seed);
+
+        for (int i=1; i<=30; i++) {
+            byte[] key = ("key" + i).getBytes();
+            int length = 5000 * i;
+            byte[] value = randomStr(rnd, length);
+            ix.store(null, key, value);
+
+            Stream s = ix.newStream();
+            s.open(null, key);
+
+            byte[] buf = new byte[length + 10];
+
+            // Attempt to read nothing past the end.
+            assertEquals(0, s.read(length, buf, 10, 0));
+
+            // Attempt to read past the end.
+            assertEquals(0, s.read(length, buf, 10, 10));
+
+            // Read many different slices, extending beyond as well.
+
+            for (int start=0; start<length; start += 311) {
+                for (int end=start; end<length+2; end += (512 + 256)) {
+                    int amt = s.read(start, buf, 1, end - start);
+                    int expected = Math.min(end - start, length - start);
+                    assertEquals(expected, amt);
+                    int cmp = Utils.compareKeys(value, start, amt, buf, 1, amt);
+                    assertEquals(0, cmp);
+                }
+            }
+
+            s.close();
+
+            //ix.delete(null, key);
+        }
+    }
+
+    @Test
     public void extendBlank() throws Exception {
         extendBlank(false);
         extendBlank(true);
@@ -196,7 +254,7 @@ public class StreamTest {
 
             if (i == 0) {
                 int amt = s.read(0, buf, 1, 100);
-                assertEquals(-1, amt);
+                assertEquals(0, amt);
             } else {
                 if (i == 100) {
                     int amt = s.read(0, buf, 1, 100);

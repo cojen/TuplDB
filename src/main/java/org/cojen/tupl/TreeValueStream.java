@@ -86,12 +86,12 @@ final class TreeValueStream extends Stream {
     }
 
     @Override
-    int doWrite(long pos, byte[] buf, int off, int len) throws IOException {
+    void doWrite(long pos, byte[] buf, int off, int len) throws IOException {
         // FIXME: txn undo/redo
         final Lock sharedCommitLock = mDb.sharedCommitLock();
         sharedCommitLock.lock();
         try {
-            return (int) action(OP_WRITE, pos, buf, off, len);
+            action(OP_WRITE, pos, buf, off, len);
         } finally {
             sharedCommitLock.unlock();
         }
@@ -131,6 +131,8 @@ final class TreeValueStream extends Stream {
 
         int nodePos = frame.mNodePos;
         if (nodePos < 0) {
+            // Value doesn't exist.
+
             if (op <= OP_READ) {
                 node.releaseShared();
                 return -1;
@@ -214,10 +216,7 @@ final class TreeValueStream extends Stream {
                     return vLen;
 
                 case OP_READ: try {
-                    if (pos >= vLen) {
-                        return bLen <= 0 ? 0 : -1;
-                    }
-                    if (bLen <= 0) {
+                    if (bLen <= 0 || pos >= vLen) {
                         return 0;
                     }
 
@@ -310,10 +309,8 @@ final class TreeValueStream extends Stream {
             return vLen;
 
         case OP_READ:
-            if (pos >= vLen) {
-                if (bLen > 0) {
-                    bLen = -1;
-                }
+            if (bLen <= 0 || pos >= vLen) {
+                bLen = 0;
             } else {
                 bLen = Math.min((int) (vLen - pos), bLen);
                 arraycopy(page, (int) (loc + pos), b, bOff, bLen);
