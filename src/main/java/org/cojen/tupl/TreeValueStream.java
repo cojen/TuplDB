@@ -24,6 +24,8 @@ import java.util.concurrent.locks.Lock;
 
 import static java.lang.System.arraycopy;
 
+import static java.util.Arrays.fill;
+
 import static org.cojen.tupl.Utils.*;
 
 /**
@@ -36,12 +38,14 @@ final class TreeValueStream extends Stream {
     private static final int OP_LENGTH = 0, OP_READ = 1, OP_SET_LENGTH = 2, OP_WRITE = 3;
 
     private final TreeCursor mCursor;
+    private final Database mDb;
 
     /**
      * @param cursor positioned cursor, not autoloading
      */
     TreeValueStream(TreeCursor cursor) {
         mCursor = cursor;
+        mDb = cursor.mTree.mDatabase;
     }
 
     @Override
@@ -67,7 +71,7 @@ final class TreeValueStream extends Stream {
     @Override
     public void setLength(long length) throws IOException {
         // FIXME: txn undo/redo
-        final Lock sharedCommitLock = mCursor.mTree.mDatabase.sharedCommitLock();
+        final Lock sharedCommitLock = mDb.sharedCommitLock();
         sharedCommitLock.lock();
         try {
             action(OP_SET_LENGTH, length, EMPTY_BYTES, 0, 0);
@@ -84,7 +88,7 @@ final class TreeValueStream extends Stream {
     @Override
     int doWrite(long pos, byte[] buf, int off, int len) throws IOException {
         // FIXME: txn undo/redo
-        final Lock sharedCommitLock = mCursor.mTree.mDatabase.sharedCommitLock();
+        final Lock sharedCommitLock = mDb.sharedCommitLock();
         sharedCommitLock.lock();
         try {
             return (int) action(OP_WRITE, pos, buf, off, len);
@@ -95,7 +99,7 @@ final class TreeValueStream extends Stream {
 
     @Override
     int pageSize() {
-        return mCursor.mTree.mDatabase.pageSize();
+        return mDb.mPageSize;
     }
 
     @Override
@@ -209,10 +213,12 @@ final class TreeValueStream extends Stream {
                     node.releaseShared();
                     return vLen;
 
-                case OP_READ: {
+                case OP_READ: try {
                     if (pos >= vLen) {
-                        node.releaseShared();
-                        return bLen == 0 ? 0 : -1;
+                        return bLen <= 0 ? 0 : -1;
+                    }
+                    if (bLen <= 0) {
+                        return 0;
                     }
 
                     bLen = Math.min((int) (vLen - pos), bLen);
@@ -228,7 +234,6 @@ final class TreeValueStream extends Stream {
                             pos -= inLen;
                         } else if (bLen <= amt) {
                             arraycopy(page, (int) (loc + pos), b, bOff, bLen);
-                            node.releaseShared();
                             return bLen;
                         } else {
                             arraycopy(page, (int) (loc + pos), b, bOff, amt);
@@ -239,7 +244,7 @@ final class TreeValueStream extends Stream {
                         loc += inLen;
                     }
 
-                    final FragmentCache fc = mCursor.mTree.mDatabase.mFragmentCache;
+                    final FragmentCache fc = mDb.mFragmentCache;
 
                     if ((header & 0x01) == 0) {
                         // Direct pointers.
@@ -250,19 +255,15 @@ final class TreeValueStream extends Stream {
                             int amt = Math.min(bLen, page.length - fNodeOff);
                             long fNodeId = readUnsignedInt48LE(page, loc);
                             if (fNodeId == 0) {
-                                // Reconstructing a sparse value.
-                                Arrays.fill(b, bOff, bOff + amt, (byte) 0);
+                                // Reading a sparse value.
+                                fill(b, bOff, bOff + amt, (byte) 0);
                             } else {
                                 Node fNode = fc.get(node, fNodeId);
-                                try {
-                                    arraycopy(fNode.mPage, fNodeOff, b, bOff, amt);
-                                } finally {
-                                    fNode.releaseShared();
-                                }
+                                arraycopy(fNode.mPage, fNodeOff, b, bOff, amt);
+                                fNode.releaseShared();
                             }
                             bLen -= amt;
                             if (bLen <= 0) {
-                                node.releaseShared();
                                 return total;
                             }
                             bOff += amt;
@@ -272,8 +273,20 @@ final class TreeValueStream extends Stream {
                     }
 
                     // Indirect pointers.
-                    // FIXME
-                    throw null;
+
+                    long inodeId = readUnsignedInt48LE(page, loc);
+                    if (inodeId == 0) {
+                        // Reading a sparse value.
+                        fill(b, bOff, bOff + bLen, (byte) 0);
+                    } else {
+                        Node inode = fc.get(node, inodeId);
+                        int levels = Database.calculateInodeLevels(vLen, page.length);
+                        readMultilevelFragments(node, pos, levels, inode, b, bOff, bLen);
+                    }
+
+                    return total;
+                } finally {
+                    node.releaseShared();
                 }
 
                 case OP_SET_LENGTH:
@@ -317,6 +330,61 @@ final class TreeValueStream extends Stream {
             // FIXME
             node.releaseExclusive();
             throw null;
+        }
+    }
+
+    /**
+     * @param pos value position being read
+     * @param level inode level; at least 1
+     * @param inode shared latched parent inode; always released by this method
+     * @param value slice of complete value being reconstructed
+     */
+    private void readMultilevelFragments(Node caller,
+                                         long pos, int level, Node inode,
+                                         byte[] b, int bOff, int bLen)
+        throws IOException
+    {
+        byte[] page = inode.mPage;
+        level--;
+        long levelCap = Database.levelCap(page.length, level);
+
+        int firstChild = (int) (pos / levelCap);
+        int lastChild = (int) ((pos + bLen - 1) / levelCap);
+
+        // Copy all child node ids and release parent latch early.
+        // FragmentCache can then safely evict the parent node if necessary.
+        long[] childNodeIds = new long[lastChild - firstChild + 1];
+        for (int poffset = firstChild * 6, i=0; i<childNodeIds.length; poffset += 6, i++) {
+            childNodeIds[i] = readUnsignedInt48LE(page, poffset);
+        }
+        inode.releaseShared();
+
+        final FragmentCache fc = mDb.mFragmentCache;
+
+        // Handle a possible partial read from the first page.
+        long ppos = pos % levelCap;
+
+        for (long childNodeId : childNodeIds) {
+            int len = (int) Math.min(levelCap - ppos, bLen);
+            if (childNodeId == 0) {
+                // Reading a sparse value.
+                fill(b, bOff, bOff + len, (byte) 0);
+            } else {
+                Node childNode = fc.get(caller, childNodeId);
+                if (level <= 0) {
+                    arraycopy(childNode.mPage, (int) ppos, b, bOff, len);
+                    childNode.releaseShared();
+                } else {
+                    readMultilevelFragments(caller, ppos, level, childNode, b, bOff, len);
+                }
+            }
+            bLen -= len;
+            if (bLen <= 0) {
+                break;
+            }
+            bOff += len;
+            // Remaining reads begin at the start of the page.
+            ppos = 0;
         }
     }
 }
