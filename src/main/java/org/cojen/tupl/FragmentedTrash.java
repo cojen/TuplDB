@@ -160,11 +160,11 @@ class FragmentedTrash {
         cursor = new TreeCursor(index, Transaction.BOGUS);
         try {
             cursor.find(indexKey);
-            if (!cursor.replaceFragmented(fragmented)) {
+            if (!cursor.insertFragmented(fragmented)) {
                 // Assume undo operation applies to an update operation. Delete
                 // the uncommitted value and insert again.
                 cursor.store(null);
-                cursor.replaceFragmented(fragmented);
+                cursor.insertFragmented(fragmented);
             }
             cursor.reset();
         } catch (Throwable e) {

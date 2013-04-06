@@ -2059,7 +2059,9 @@ final class TreeCursor extends CauseCloseable implements Cursor {
      * method if an exception is thrown
      * @return latch to release, or null if already released
      */
-    Node store(Transaction txn, final TreeCursorFrame leaf, byte[] value) throws IOException {
+    private Node store(Transaction txn, final TreeCursorFrame leaf, byte[] value)
+        throws IOException
+    {
         byte[] key = mKey;
         Node node = leaf.mNode;
 
@@ -2263,7 +2265,7 @@ final class TreeCursor extends CauseCloseable implements Cursor {
      *
      * @return false if already exists
      */
-    boolean replaceFragmented(byte[] value) throws IOException {
+    boolean insertFragmented(byte[] value) throws IOException {
         if (mKey == null) {
             throw new IllegalStateException("Cursor position is undefined");
         }
@@ -2323,75 +2325,25 @@ final class TreeCursor extends CauseCloseable implements Cursor {
     }
 
     /**
-     * Non-transactional insert of a fragmented value. Caller must hold shared commmit lock and
+     * Non-transactional insert of a blank value. Caller must hold shared commmit lock and
      * have verified that insert is a valid operation.
      *
      * @param leaf leaf frame, latched exclusively, which is released by this
      * method if an exception is thrown
      * @param node frame node, not split, dirtied
-     * @param value can be null to insert a blank value; might not be fragmented
+     * @param vlength length of blank value
      * @return replacement node, latched
      */
-    Node insertFragmented(TreeCursorFrame leaf, Node node, byte[] value, long vlength)
-        throws IOException
-    {
+    Node insertBlank(TreeCursorFrame leaf, Node node, long vlength) throws IOException {
         byte[] key = mKey;
-
         try {
-            final int pos = leaf.mNodePos;
-            final int newPos = ~pos;
-            if (value == null) {
-                node.insertBlankLeafEntry(mTree, newPos, key, vlength);
-            } else {
-                node.insertFragmentedLeafEntry(mTree, newPos, key, value);
-            }
-
-            leaf.mNodePos = newPos;
-            leaf.mNotFoundKey = null;
-
-            // Fix all cursors bound to the node.
-            // Note: Same code as in store method.
-            TreeCursorFrame frame = node.mLastCursorFrame;
-            do {
-                if (frame == leaf) {
-                    // Don't need to fix self.
-                    continue;
-                }
-
-                int framePos = frame.mNodePos;
-
-                if (framePos == pos) {
-                    // Other cursor is at same not-found position as this one
-                    // was. If keys are the same, then other cursor switches
-                    // to a found state as well. If key is greater, then
-                    // position needs to be updated.
-
-                    byte[] frameKey = frame.mNotFoundKey;
-                    int compare = compareKeys(frameKey, 0, frameKey.length, key, 0, key.length);
-                    if (compare > 0) {
-                        // Position is a complement, so subtract instead of add.
-                        frame.mNodePos = framePos - 2;
-                    } else if (compare == 0) {
-                        frame.mNodePos = newPos;
-                        frame.mNotFoundKey = null;
-                    }
-                } else if (framePos >= newPos) {
-                    frame.mNodePos = framePos + 2;
-                } else if (framePos < pos) {
-                    // Position is a complement, so subtract instead of add.
-                    frame.mNodePos = framePos - 2;
-                }
-            } while ((frame = frame.mPrevCousin) != null);
-
-            if (node.mSplit != null) {
-                node = finishSplit(leaf, node);
-            }
+            node.insertBlankLeafEntry(mTree, ~leaf.mNodePos, key, vlength);
         } catch (Throwable e) {
             node.releaseExclusive();
-            rethrow(e);
+            throw rethrow(e);
         }
-
-        return node;
+        // Releases latch if an exception is thrown.
+        return postInsert(leaf, node, key);
     }
 
     private IOException handleException(Throwable e) throws IOException {

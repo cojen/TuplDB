@@ -141,7 +141,7 @@ final class TreeValueStream extends Stream {
             // Handle OP_SET_LENGTH and OP_WRITE.
 
             // Method releases latch if an exception is thrown.
-            node = mCursor.insertFragmented(frame, node, null, pos + bLen);
+            node = mCursor.insertBlank(frame, node, pos + bLen);
 
             // FIXME: Append the rest.
             node.releaseExclusive();
