@@ -50,8 +50,7 @@ class FragmentCache {
     }
 
     /**
-     * Returns the node with the given id, possibly loading it and evicting
-     * another.
+     * Returns the node with the given id, possibly loading it and evicting another.
      *
      * @param caller optional tree node which is latched and calling this method
      * @return node with shared latch held
@@ -120,8 +119,7 @@ class FragmentCache {
         }
 
         /**
-         * Returns the node with the given id, possibly loading it and evicting
-         * another.
+         * Returns the node with the given id, possibly loading it and evicting another.
          *
          * @param caller optional tree node which is latched and calling this method
          * @return node with shared latch held
@@ -135,8 +133,9 @@ class FragmentCache {
                 final Node[] entries = mEntries;
                 final int index = hash & (entries.length - 1);
                 Node existing = entries[index];
+                int incr = 0;
                 if (existing == null) {
-                    mSize++;
+                    incr = 1;
                 } else {
                     if (existing == caller || existing.mType != TYPE_FRAGMENT) {
                         existing = null;
@@ -157,8 +156,7 @@ class FragmentCache {
                     }
                 }
 
-                // Need to have an exclusive lock before making
-                // modifications to hashtable.
+                // Need to have an exclusive lock before making modifications to hashtable.
                 if (!htEx) {
                     htEx = true;
                     if (!tryUpgrade()) {
@@ -187,6 +185,8 @@ class FragmentCache {
                         continue;
                     }
                 }
+
+                mSize += incr;
 
                 // Allocate node and reserve slot.
                 final Node node = mDatabase.allocLatchedNode();
