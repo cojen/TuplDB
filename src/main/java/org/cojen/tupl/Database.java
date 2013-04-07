@@ -48,6 +48,8 @@ import java.util.concurrent.locks.Lock;
 
 import static java.lang.System.arraycopy;
 
+import static java.util.Arrays.fill;
+
 import static org.cojen.tupl.Node.*;
 import static org.cojen.tupl.Utils.*;
 
@@ -2339,10 +2341,13 @@ public final class Database extends CauseCloseable {
                         try {
                             mFragmentCache.put(caller, node);
                             writeInt48LE(newValue, offset, node.mId);
+                            byte[] page = node.mPage;
                             if (pageCount > 1) {
-                                arraycopy(value, voffset, node.mPage, 0, pageSize);
+                                arraycopy(value, voffset, page, 0, pageSize);
                             } else {
-                                arraycopy(value, voffset, node.mPage, 0, remainder);
+                                arraycopy(value, voffset, page, 0, remainder);
+                                // Zero fill the rest, making it easier to extend later.
+                                fill(page, remainder, page.length, (byte) 0);
                                 break;
                             }
                         } finally {
@@ -2430,7 +2435,8 @@ public final class Database extends CauseCloseable {
             childNodeIds = new long[childNodeCount];
             childNodes = new Node[childNodeCount];
             try {
-                for (int poffset = 0, i=0; i<childNodeCount; poffset += 6, i++) {
+                int poffset = 0;
+                for (int i=0; i<childNodeCount; poffset += 6, i++) {
                     Node childNode = allocDirtyNode();
                     writeInt48LE(page, poffset, childNodeIds[i] = childNode.mId);
                     childNodes[i] = childNode;
@@ -2438,6 +2444,8 @@ public final class Database extends CauseCloseable {
                     childNode.mCachedState = CACHED_CLEAN;
                     childNode.releaseExclusive();
                 }
+                // Zero fill the rest, making it easier to extend later.
+                fill(page, poffset, page.length, (byte) 0);
             } catch (Throwable e) {
                 for (Node childNode : childNodes) {
                     if (childNode != null) {
@@ -2476,7 +2484,10 @@ public final class Database extends CauseCloseable {
 
             int len = (int) Math.min(levelCap, vlength);
             if (level <= 0) {
-                arraycopy(value, voffset, childNode.mPage, 0, len);
+                byte[] childPage = childNode.mPage;
+                arraycopy(value, voffset, childPage, 0, len);
+                // Zero fill the rest, making it easier to extend later.
+                fill(childPage, len, childPage.length, (byte) 0);
                 mFragmentCache.put(caller, childNode);
                 childNode.releaseExclusive();
             } else {
