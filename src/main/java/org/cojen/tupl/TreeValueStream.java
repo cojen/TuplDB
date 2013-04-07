@@ -343,7 +343,7 @@ final class TreeValueStream extends Stream {
     {
         byte[] page = inode.mPage;
         level--;
-        long levelCap = Database.levelCap(page.length, level);
+        long levelCap = mDb.levelCap(level);
 
         int firstChild = (int) (pos / levelCap);
         int lastChild = (int) ((pos + bLen - 1) / levelCap);
