@@ -28,7 +28,7 @@ package org.cojen.tupl;
  *
  * <p>Modes ordered from strongest to weakest:
  * <ul>
- * <li>{@link #UPGRADABLE_READ}
+ * <li>{@link #UPGRADABLE_READ} (default)
  * <li>{@link #REPEATABLE_READ}
  * <li>{@link #READ_COMMITTED}
  * <li>{@link #READ_UNCOMMITTED}
@@ -36,6 +36,7 @@ package org.cojen.tupl;
  * </ul>
  *
  * @author Brian S O'Neill
+ * @see Transaction#lockMode
  */
 public enum LockMode {
     /**
@@ -51,6 +52,8 @@ public enum LockMode {
      * them to the end of the transaction or scope. Attempting to modify
      * entries guarded by a shared lock is {@link LockResult#ILLEGAL
      * illegal}. Consider using {@link #UPGRADABLE_READ} instead.
+     *
+     * @see LockUpgradeMode
      */
     REPEATABLE_READ(false),
 

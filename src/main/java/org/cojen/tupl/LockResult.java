@@ -27,6 +27,7 @@ public enum LockResult {
     /**
      * Lock rejection caused by illegal lock mode upgrade.
      * @see IllegalUpgradeException
+     * @see LockUpgradeMode
      */
     ILLEGAL(0),
 

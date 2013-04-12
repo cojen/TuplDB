@@ -83,7 +83,7 @@ public class LockTest {
 
     @Before
     public void setup() {
-        mManager = new LockManager(-1);
+        mManager = new LockManager(null, -1);
     }
 
     @After
