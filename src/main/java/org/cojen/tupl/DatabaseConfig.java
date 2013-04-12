@@ -44,6 +44,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
     long mMinCachedBytes;
     long mMaxCachedBytes;
     DurabilityMode mDurabilityMode;
+    LockUpgradeMode mLockUpgradeMode;
     long mLockTimeoutNanos;
     long mCheckpointRateNanos;
     long mCheckpointSizeThreshold;
@@ -156,6 +157,18 @@ public class DatabaseConfig implements Cloneable, Serializable {
             durabilityMode = DurabilityMode.SYNC;
         }
         mDurabilityMode = durabilityMode;
+        return this;
+    }
+
+    /**
+     * Set the default lock upgrade mode, which is {@link LockUpgradeMode#STRICT STRICT} if not
+     * overridden.
+     */
+    public DatabaseConfig lockUpgradeMode(LockUpgradeMode lockUpgradeMode) {
+        if (lockUpgradeMode == null) {
+            lockUpgradeMode = LockUpgradeMode.STRICT;
+        }
+        mLockUpgradeMode = lockUpgradeMode;
         return this;
     }
 

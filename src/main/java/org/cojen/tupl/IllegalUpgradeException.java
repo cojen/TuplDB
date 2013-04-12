@@ -24,6 +24,7 @@ package org.cojen.tupl;
  * @author Brian S O'Neill
  * @see Transaction#lockMode Transaction.lockMode
  * @see LockResult#ILLEGAL
+ * @see LockUpgradeMode
  */
 public class IllegalUpgradeException extends LockFailureException {
     private static final long serialVersionUID = 1L;

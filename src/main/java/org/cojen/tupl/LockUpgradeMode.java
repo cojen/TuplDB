@@ -1,0 +1,52 @@
+/*
+ *  Copyright 2013 Brian S O'Neill
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.cojen.tupl;
+
+/**
+ * Defines transaction lock upgrade behavior when not using the {@link LockMode#UPGRADABLE_READ
+ * UPGRADABLE_READ} lock mode.
+ *
+ * <p>Modes ordered from strongest to weakest:
+ * <ul>
+ * <li>{@link #STRICT} (default)
+ * <li>{@link #LENIENT}
+ * <li>{@link #UNCHECKED}
+ * </ul>
+ *
+ * @author Brian S O'Neill
+ * @see DatabaseConfig#lockUpgradeMode
+ */
+public enum LockUpgradeMode {
+    /**
+     * Upgrade mode which is always {@link LockResult#ILLEGAL illegal} when attempting to
+     * upgrade a lock which is held shared by the acting transaction.
+     */
+    STRICT,
+
+    /**
+     * Upgrade mode which allows an upgrade to succeed, but only when the acting transaction is
+     * the sole shared lock owner. If other transactions are also holding the lock, the upgrade
+     * attempt is {@link LockResult#ILLEGAL illegal}.
+     */
+    LENIENT,
+
+    /**
+     * Upgrade mode which always attempts an upgrade, potentially causing a {@link
+     * DeadlockException deadlock} if multiple transactions are making the same attempt.
+     */
+    UNCHECKED
+}
