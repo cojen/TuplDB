@@ -48,6 +48,8 @@ import java.util.concurrent.locks.Lock;
 
 import static java.lang.System.arraycopy;
 
+import static java.util.Arrays.fill;
+
 import static org.cojen.tupl.Node.*;
 import static org.cojen.tupl.Utils.*;
 
@@ -148,6 +150,7 @@ public final class Database extends CauseCloseable {
     final LockManager mLockManager;
     final RedoWriter mRedoWriter;
     final PageDb mPageDb;
+    final int mPageSize;
 
     private final BufferPool mSpareBufferPool;
 
@@ -195,6 +198,9 @@ public final class Database extends CauseCloseable {
 
     // Fragmented values which are transactionally deleted go here.
     private volatile FragmentedTrash mFragmentedTrash;
+
+    // Pre-calculated maximum capacities for inode levels.
+    private final long[] mFragmentInodeLevelCaps;
 
     private final Object mTxnIdLock = new Object();
     // The following fields are guarded by mTxnIdLock.
@@ -312,7 +318,7 @@ public final class Database extends CauseCloseable {
 
         mDurabilityMode = config.mDurabilityMode;
         mDefaultLockTimeoutNanos = config.mLockTimeoutNanos;
-        mLockManager = new LockManager(mDefaultLockTimeoutNanos);
+        mLockManager = new LockManager(config.mLockUpgradeRule, mDefaultLockTimeoutNanos);
 
         if (baseFile != null && !config.mReadOnly && config.mMkdirs) {
             baseFile.getParentFile().mkdirs();
@@ -353,6 +359,9 @@ public final class Database extends CauseCloseable {
                     (pageSize, dataFiles, options, config.mCrypto, openMode == OPEN_DESTROY);
             }
 
+            // Actual page size might differ from configured size.
+            mPageSize = mPageDb.pageSize();
+
             mSharedCommitLock = mPageDb.sharedCommitLock();
 
             // Pre-allocate nodes. They are automatically added to the usage
@@ -388,7 +397,7 @@ public final class Database extends CauseCloseable {
             }
 
             int spareBufferCount = Runtime.getRuntime().availableProcessors();
-            mSpareBufferPool = new BufferPool(mPageDb.pageSize(), spareBufferCount);
+            mSpareBufferPool = new BufferPool(mPageSize, spareBufferCount);
 
             mSharedCommitLock.lock();
             try {
@@ -448,6 +457,8 @@ public final class Database extends CauseCloseable {
             // fit. Each also requires 2 bytes for pointer and up to 3 bytes
             // for value length field.
             mMaxFragmentedEntrySize = (pageSize - Node.TN_HEADER_SIZE - (2 + 3 + 2 + 3)) >> 1;
+
+            mFragmentInodeLevelCaps = calculateInodeLevelCaps(mPageSize);
 
             long recoveryStart = 0;
             if (baseFile == null || openMode == OPEN_TEMP) {
@@ -872,7 +883,7 @@ public final class Database extends CauseCloseable {
      */
     public long preallocate(long bytes) throws IOException {
         if (!mClosed && mPageDb instanceof DurablePageDb) {
-            int pageSize = pageSize();
+            int pageSize = mPageSize;
             long pageCount = (bytes + pageSize - 1) / pageSize;
             if (pageCount > 0) {
                 pageCount = mPageDb.allocatePages(pageCount);
@@ -952,7 +963,7 @@ public final class Database extends CauseCloseable {
     public Stats stats() {
         Stats stats = new Stats();
 
-        stats.mPageSize = pageSize();
+        stats.mPageSize = mPageSize;
 
         mSharedCommitLock.lock();
         try {
@@ -1863,7 +1874,7 @@ public final class Database extends CauseCloseable {
      * Returns the fixed size of all pages in the store, in bytes.
      */
     int pageSize() {
-        return mPageDb.pageSize();
+        return mPageSize;
     }
 
     /**
@@ -1900,7 +1911,7 @@ public final class Database extends CauseCloseable {
 
                 if (mNodeCount < max) {
                     checkClosed();
-                    Node node = new Node(pageSize());
+                    Node node = new Node(mPageSize);
                     node.acquireExclusive();
                     mNodeCount++;
                     if (evictable) {
@@ -1982,7 +1993,7 @@ public final class Database extends CauseCloseable {
                 if (node.tryAcquireExclusive()) {
                     Node[] childNodes = node.mChildNodes;
                     if (childNodes != null) {
-                        Arrays.fill(childNodes, null);
+                        fill(childNodes, null);
                     }
                     node.releaseExclusive();
                 }
@@ -2326,7 +2337,7 @@ public final class Database extends CauseCloseable {
      * @return null if max is too small
      */
     byte[] fragment(Node caller, byte[] value, int max) throws IOException {
-        int pageSize = pageSize();
+        int pageSize = mPageSize;
         int pageCount = value.length / pageSize;
         int remainder = value.length % pageSize;
 
@@ -2421,10 +2432,13 @@ public final class Database extends CauseCloseable {
                         try {
                             mFragmentCache.put(caller, node);
                             writeInt48LE(newValue, offset, node.mId);
+                            byte[] page = node.mPage;
                             if (pageCount > 1) {
-                                arraycopy(value, voffset, node.mPage, 0, pageSize);
+                                arraycopy(value, voffset, page, 0, pageSize);
                             } else {
-                                arraycopy(value, voffset, node.mPage, 0, remainder);
+                                arraycopy(value, voffset, page, 0, remainder);
+                                // Zero fill the rest, making it easier to extend later.
+                                fill(page, remainder, page.length, (byte) 0);
                                 break;
                             }
                         } finally {
@@ -2502,7 +2516,7 @@ public final class Database extends CauseCloseable {
         try {
             byte[] page = inode.mPage;
             level--;
-            levelCap = levelCap(page.length, level);
+            levelCap = levelCap(level);
 
             // Pre-allocate and reference the required child nodes in order for
             // parent node latch to be released early. FragmentCache can then
@@ -2512,7 +2526,8 @@ public final class Database extends CauseCloseable {
             childNodeIds = new long[childNodeCount];
             childNodes = new Node[childNodeCount];
             try {
-                for (int poffset = 0, i=0; i<childNodeCount; poffset += 6, i++) {
+                int poffset = 0;
+                for (int i=0; i<childNodeCount; poffset += 6, i++) {
                     Node childNode = allocDirtyNode();
                     writeInt48LE(page, poffset, childNodeIds[i] = childNode.mId);
                     childNodes[i] = childNode;
@@ -2520,6 +2535,8 @@ public final class Database extends CauseCloseable {
                     childNode.mCachedState = CACHED_CLEAN;
                     childNode.releaseExclusive();
                 }
+                // Zero fill the rest, making it easier to extend later.
+                fill(page, poffset, page.length, (byte) 0);
             } catch (Throwable e) {
                 for (Node childNode : childNodes) {
                     if (childNode != null) {
@@ -2558,7 +2575,10 @@ public final class Database extends CauseCloseable {
 
             int len = (int) Math.min(levelCap, vlength);
             if (level <= 0) {
-                arraycopy(value, voffset, childNode.mPage, 0, len);
+                byte[] childPage = childNode.mPage;
+                arraycopy(value, voffset, childPage, 0, len);
+                // Zero fill the rest, making it easier to extend later.
+                fill(childPage, len, childPage.length, (byte) 0);
                 mFragmentCache.put(caller, childNode);
                 childNode.releaseExclusive();
             } else {
@@ -2755,7 +2775,7 @@ public final class Database extends CauseCloseable {
     {
         byte[] page = inode.mPage;
         level--;
-        long levelCap = levelCap(page.length, level);
+        long levelCap = levelCap(level);
 
         // Copy all child node ids and release parent latch early.
         // FragmentCache can then safely evict the parent node if necessary.
@@ -2853,7 +2873,7 @@ public final class Database extends CauseCloseable {
     {
         byte[] page = inode.mPage;
         level--;
-        long levelCap = levelCap(page.length, level);
+        long levelCap = levelCap(level);
 
         // Copy all child node ids and release parent latch early.
         int childNodeCount = (int) ((vlength + (levelCap - 1)) / levelCap);
@@ -2901,8 +2921,33 @@ public final class Database extends CauseCloseable {
         }
     }
 
-    private static long levelCap(int pageLength, int level) {
-        return pageLength * (long) Math.pow(pageLength / 6, level);
+    private static long[] calculateInodeLevelCaps(int pageSize) {
+        long[] caps = new long[10];
+        long cap = pageSize;
+        long scalar = pageSize / 6; // 6-byte pointers
+
+        int i = 0;
+        while (i < caps.length) {
+            caps[i++] = cap;
+            long next = cap * scalar;
+            if (next / scalar != cap) {
+                caps[i++] = Long.MAX_VALUE;
+                break;
+            }
+            cap = next;
+        }
+
+        if (i < caps.length) {
+            long[] newCaps = new long[i];
+            arraycopy(caps, 0, newCaps, 0, i);
+            caps = newCaps;
+        }
+
+        return caps;
+    }
+
+    long levelCap(int level) {
+        return mFragmentInodeLevelCaps[level];
     }
 
     /**

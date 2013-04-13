@@ -83,7 +83,7 @@ public class LockTest {
 
     @Before
     public void setup() {
-        mManager = new LockManager(-1);
+        mManager = new LockManager(null, -1);
     }
 
     @After
@@ -321,6 +321,85 @@ public class LockTest {
 
         locker.scopeExitAll();
         locker2.scopeExitAll();
+    }
+
+    @Test
+    public void lenientUpgradeRule() throws Exception {
+        LockManager manager = new LockManager(LockUpgradeRule.LENIENT, -1);
+
+        Locker locker1 = new Locker(manager);
+        Locker locker2 = new Locker(manager);
+
+        assertEquals(ACQUIRED, locker1.tryLockShared(0, k1, -1));
+        assertEquals(OWNED_UPGRADABLE, locker1.tryLockUpgradable(0, k1, -1));
+        locker1.scopeExitAll();
+
+        assertEquals(ACQUIRED, locker1.tryLockShared(0, k1, -1));
+        assertEquals(ACQUIRED, locker2.tryLockShared(0, k1, -1));
+
+        assertEquals(ILLEGAL, locker1.tryLockUpgradable(0, k1, -1));
+        assertEquals(ILLEGAL, locker2.tryLockExclusive(0, k1, -1));
+
+        locker1.scopeExitAll();
+
+        assertEquals(UPGRADED, locker2.tryLockExclusive(0, k1, -1));
+        locker2.unlockToUpgradable();
+        assertEquals(UPGRADED, locker2.tryLockExclusive(0, k1, -1));
+        locker2.unlockToShared();
+        assertEquals(OWNED_UPGRADABLE, locker2.tryLockUpgradable(0, k1, -1));
+        locker2.unlock();
+
+        assertEquals(ACQUIRED, locker1.tryLockExclusive(0, k1, -1));
+        locker1.unlock();
+    }
+
+    @Test
+    public void uncheckedUpgradeRule() throws Exception {
+        LockManager manager = new LockManager(LockUpgradeRule.UNCHECKED, -1);
+
+        Locker locker1 = new Locker(manager);
+        Locker locker2 = new Locker(manager);
+
+        assertEquals(ACQUIRED, locker1.tryLockShared(0, k1, -1));
+        assertEquals(OWNED_UPGRADABLE, locker1.tryLockUpgradable(0, k1, -1));
+        locker1.scopeExitAll();
+
+        assertEquals(ACQUIRED, locker1.tryLockShared(0, k1, -1));
+        assertEquals(ACQUIRED, locker2.tryLockShared(0, k1, -1));
+
+        assertEquals(OWNED_UPGRADABLE, locker1.tryLockUpgradable(0, k1, -1));
+        try {
+            locker2.tryLockExclusive(0, k1, 0);
+            fail();
+        } catch (DeadlockException e) {
+        }
+
+        try {
+            locker1.tryLockExclusive(0, k1, 10);
+            fail();
+        } catch (DeadlockException e) {
+        }
+
+        locker1.unlockToShared();
+
+        assertEquals(OWNED_UPGRADABLE, locker2.tryLockUpgradable(0, k1, -1));
+        try {
+            locker2.tryLockExclusive(0, k1, 0);
+            fail();
+        } catch (DeadlockException e) {
+        }
+
+        locker1.unlock();
+
+        assertEquals(UPGRADED, locker2.tryLockExclusive(0, k1, -1));
+        locker2.unlockToUpgradable();
+        assertEquals(UPGRADED, locker2.tryLockExclusive(0, k1, -1));
+        locker2.unlockToShared();
+        assertEquals(OWNED_UPGRADABLE, locker2.tryLockUpgradable(0, k1, -1));
+        locker2.unlock();
+
+        assertEquals(ACQUIRED, locker1.tryLockExclusive(0, k1, -1));
+        locker1.unlock();
     }
 
     @Test
