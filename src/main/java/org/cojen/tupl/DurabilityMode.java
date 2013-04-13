@@ -24,13 +24,14 @@ package org.cojen.tupl;
  *
  * <p>Modes ordered from strongest to weakest:
  * <ul>
- * <li>{@link #SYNC}
+ * <li>{@link #SYNC} (default)
  * <li>{@link #NO_SYNC}
  * <li>{@link #NO_FLUSH}
  * <li>{@link #NO_REDO}
  * </ul>
  *
  * @author Brian S O'Neill
+ * @see DatabaseConfig#durabilityMode
  */
 public enum DurabilityMode {
     /**

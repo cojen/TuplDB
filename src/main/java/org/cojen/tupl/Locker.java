@@ -319,6 +319,21 @@ class Locker {
         return result.isHeld() ? result : nt(result, indexId, key, nanosTimeout);
     }
 
+    /**
+     * Checks if an upgrade attempt should be made when the locker only holds a shared lock.
+     *
+     * @param count current lock count, not zero
+     */
+    final boolean canAttemptUpgrade(int count) {
+        LockManager manager = mManager;
+        if (manager == null) {
+            return false;
+        }
+        LockUpgradeRule lockUpgradeRule = manager.mDefaultLockUpgradeRule;
+        return lockUpgradeRule == LockUpgradeRule.UNCHECKED
+            | (lockUpgradeRule == LockUpgradeRule.LENIENT & count == 1);
+    }
+
     @SuppressWarnings("incomplete-switch")
     LockFailureException failed(LockResult result,
                                 long indexId, byte[] key, long nanosTimeout)
