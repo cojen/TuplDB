@@ -329,9 +329,9 @@ class Locker {
         if (manager == null) {
             return false;
         }
-        LockUpgradeMode lockUpgradeMode = manager.mDefaultLockUpgradeMode;
-        return lockUpgradeMode == LockUpgradeMode.UNCHECKED
-            | (lockUpgradeMode == LockUpgradeMode.LENIENT & count == 1);
+        LockUpgradeRule lockUpgradeRule = manager.mDefaultLockUpgradeRule;
+        return lockUpgradeRule == LockUpgradeRule.UNCHECKED
+            | (lockUpgradeRule == LockUpgradeRule.LENIENT & count == 1);
     }
 
     @SuppressWarnings("incomplete-switch")

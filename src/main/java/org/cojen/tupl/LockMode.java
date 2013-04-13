@@ -53,7 +53,7 @@ public enum LockMode {
      * entries guarded by a shared lock is {@link LockResult#ILLEGAL
      * illegal}. Consider using {@link #UPGRADABLE_READ} instead.
      *
-     * @see LockUpgradeMode
+     * @see LockUpgradeRule
      */
     REPEATABLE_READ(false),
 
