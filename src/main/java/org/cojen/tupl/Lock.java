@@ -169,7 +169,16 @@ final class Lock {
 
         int count = mLockCount;
         if (count != 0 && isSharedLocker(locker)) {
-            return ILLEGAL;
+            if (!locker.canAttemptUpgrade(count)) {
+                return ILLEGAL;
+            }
+            if (count > 0) {
+                // Give the impression that lock was always held upgradable. This prevents
+                // pushing the lock into the locker twice.
+                mLockCount = (count - 1) | 0x80000000;
+                mLocker = locker;
+                return OWNED_UPGRADABLE;
+            }
         }
 
         WaitQueue queueU = mQueueU;
@@ -220,12 +229,21 @@ final class Lock {
 
             count = mLockCount;
             if (count != 0 && isSharedLocker(locker)) {
-                // Signal that another waiter can get the lock instead.
-                if (queueU != null) {
-                    queueU.signal();
+                if (!locker.canAttemptUpgrade(count)) {
+                    // Signal that another waiter can get the lock instead.
+                    if (queueU != null) {
+                        queueU.signal();
+                    }
+                    locker.mWaitingFor = null;
+                    return ILLEGAL;
                 }
-                locker.mWaitingFor = null;
-                return ILLEGAL;
+                if (count > 0) {
+                    // Give the impression that lock was always held upgradable. This prevents
+                    // pushing the lock into the locker twice.
+                    mLockCount = (count - 1) | 0x80000000;
+                    mLocker = locker;
+                    return OWNED_UPGRADABLE;
+                }
             }
 
             if (count >= 0) {

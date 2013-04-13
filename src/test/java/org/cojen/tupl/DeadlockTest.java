@@ -39,7 +39,7 @@ public class DeadlockTest {
 
     @Before
     public void setup() {
-        mManager = new LockManager(-1);
+        mManager = new LockManager(null, -1);
         mTasks = new ArrayList<Task>();
     }
 

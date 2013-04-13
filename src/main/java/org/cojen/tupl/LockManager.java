@@ -29,6 +29,7 @@ final class LockManager {
     // Parameter passed to LockHT.tryLock.
     static final int TYPE_SHARED = 1, TYPE_UPGRADABLE = 0x80000000, TYPE_EXCLUSIVE = ~0;
 
+    final LockUpgradeRule mDefaultLockUpgradeRule;
     private final long mDefaultTimeoutNanos;
 
     private final LockHT[] mHashTables;
@@ -36,11 +37,15 @@ final class LockManager {
 
     private final ThreadLocal<WeakReference<Locker>> mLocalLockerRef;
 
-    LockManager(long timeoutNanos) {
-        this(timeoutNanos, Runtime.getRuntime().availableProcessors() * 16);
+    LockManager(LockUpgradeRule lockUpgradeRule, long timeoutNanos) {
+        this(lockUpgradeRule, timeoutNanos, Runtime.getRuntime().availableProcessors() * 16);
     }
 
-    private LockManager(long timeoutNanos, int numHashTables) {
+    private LockManager(LockUpgradeRule lockUpgradeRule, long timeoutNanos, int numHashTables) {
+        if (lockUpgradeRule == null) {
+            lockUpgradeRule = LockUpgradeRule.STRICT;
+        }
+        mDefaultLockUpgradeRule = lockUpgradeRule;
         mDefaultTimeoutNanos = timeoutNanos;
 
         numHashTables = Utils.roundUpPower2(Math.max(2, numHashTables));
