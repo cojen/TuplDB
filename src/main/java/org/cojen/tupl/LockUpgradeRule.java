@@ -17,10 +17,10 @@
 package org.cojen.tupl;
 
 /**
- * Defines transaction lock upgrade behavior when not using the {@link LockMode#UPGRADABLE_READ
- * UPGRADABLE_READ} lock mode.
+ * Defines transaction lock upgrade behavior when using the {@link LockMode#REPEATABLE_READ
+ * REPEATABLE_READ} lock mode.
  *
- * <p>Modes ordered from strongest to weakest:
+ * <p>Rules ordered from strongest to weakest:
  * <ul>
  * <li>{@link #STRICT} (default)
  * <li>{@link #LENIENT}
@@ -28,25 +28,25 @@ package org.cojen.tupl;
  * </ul>
  *
  * @author Brian S O'Neill
- * @see DatabaseConfig#lockUpgradeMode
+ * @see DatabaseConfig#lockUpgradeRule
  */
-public enum LockUpgradeMode {
+public enum LockUpgradeRule {
     /**
-     * Upgrade mode which is always {@link LockResult#ILLEGAL illegal} when attempting to
-     * upgrade a lock which is held shared by the acting transaction.
+     * Rule which rejects any shared lock upgrade as {@link LockResult#ILLEGAL illegal}. The
+     * lock must first be acquired as {@link LockMode#UPGRADABLE_READ upgradable}.
      */
     STRICT,
 
     /**
-     * Upgrade mode which allows an upgrade to succeed, but only when the acting transaction is
-     * the sole shared lock owner. If other transactions are also holding the lock, the upgrade
+     * Rule which allows an upgrade to succeed, but only when the acting transaction is the
+     * sole shared lock owner. If other transactions are also holding the lock, the upgrade
      * attempt is {@link LockResult#ILLEGAL illegal}.
      */
     LENIENT,
 
     /**
-     * Upgrade mode which always attempts an upgrade, potentially causing a {@link
-     * DeadlockException deadlock} if multiple transactions are making the same attempt.
+     * Rule which always attempts an upgrade, potentially causing a {@link DeadlockException
+     * deadlock} if multiple transactions are making the same attempt.
      */
     UNCHECKED
 }

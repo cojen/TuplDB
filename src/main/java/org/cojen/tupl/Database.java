@@ -318,7 +318,7 @@ public final class Database extends CauseCloseable {
 
         mDurabilityMode = config.mDurabilityMode;
         mDefaultLockTimeoutNanos = config.mLockTimeoutNanos;
-        mLockManager = new LockManager(config.mLockUpgradeMode, mDefaultLockTimeoutNanos);
+        mLockManager = new LockManager(config.mLockUpgradeRule, mDefaultLockTimeoutNanos);
 
         if (baseFile != null && !config.mReadOnly && config.mMkdirs) {
             baseFile.getParentFile().mkdirs();
