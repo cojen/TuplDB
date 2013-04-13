@@ -42,6 +42,9 @@ final class LockManager {
     }
 
     private LockManager(LockUpgradeRule lockUpgradeRule, long timeoutNanos, int numHashTables) {
+        if (lockUpgradeRule == null) {
+            lockUpgradeRule = LockUpgradeRule.STRICT;
+        }
         mDefaultLockUpgradeRule = lockUpgradeRule;
         mDefaultTimeoutNanos = timeoutNanos;
 
