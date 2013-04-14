@@ -52,6 +52,7 @@ import static java.util.Arrays.fill;
 
 import org.cojen.tupl.io.CauseCloseable;
 import org.cojen.tupl.io.OpenOption;
+import org.cojen.tupl.io.PageArray;
 
 import static org.cojen.tupl.Node.*;
 import static org.cojen.tupl.Utils.*;
@@ -325,8 +326,10 @@ public final class Database implements CauseCloseable {
 
         if (baseFile != null && !config.mReadOnly && config.mMkdirs) {
             baseFile.getParentFile().mkdirs();
-            for (File f : dataFiles) {
-                f.getParentFile().mkdirs();
+            if (dataFiles != null) {
+                for (File f : dataFiles) {
+                    f.getParentFile().mkdirs();
+                }
             }
         }
 
@@ -356,7 +359,13 @@ public final class Database implements CauseCloseable {
             }
 
             if (dataFiles == null) {
-                mPageDb = new NonPageDb(pageSize);
+                PageArray dataPageArray = config.mDataPageArray;
+                if (dataPageArray == null) {
+                    mPageDb = new NonPageDb(pageSize);
+                } else {
+                    mPageDb = new DurablePageDb
+                        (dataPageArray, config.mCrypto, openMode == OPEN_DESTROY);
+                }
             } else {
                 mPageDb = new DurablePageDb
                     (pageSize, dataFiles, options, config.mCrypto, openMode == OPEN_DESTROY);
@@ -943,20 +952,39 @@ public final class Database implements CauseCloseable {
     public static Database restoreFromSnapshot(DatabaseConfig config, InputStream in)
         throws IOException
     {
+        PageDb restored;
+
         File[] dataFiles = config.dataFiles();
         if (dataFiles == null) {
-            throw new UnsupportedOperationException("Restore only allowed for durable databases");
-        }
-        if (!config.mReadOnly && config.mMkdirs) {
-            for (File f : dataFiles) {
-                f.getParentFile().mkdirs();
+            PageArray dataPageArray = config.mDataPageArray;
+
+            if (dataPageArray == null) {
+                throw new UnsupportedOperationException
+                    ("Restore only allowed for durable databases");
             }
+
+            // Delete old redo log files.
+            deleteNumberedFiles(config.mBaseFile, ".redo.");
+
+            restored = DurablePageDb.restoreFromSnapshot(dataPageArray, config.mCrypto, in);
+        } else {
+            if (!config.mReadOnly && config.mMkdirs) {
+                for (File f : dataFiles) {
+                    f.getParentFile().mkdirs();
+                }
+            }
+
+            EnumSet<OpenOption> options = config.createOpenOptions();
+
+            // Delete old redo log files.
+            deleteNumberedFiles(config.mBaseFile, ".redo.");
+
+            restored = DurablePageDb.restoreFromSnapshot
+                (config.mPageSize, dataFiles, options, config.mCrypto, in);
         }
-        EnumSet<OpenOption> options = config.createOpenOptions();
-        // Delete old redo log files.
-        deleteNumberedFiles(config.mBaseFile, ".redo.");
-        DurablePageDb.restoreFromSnapshot
-            (config.mPageSize, dataFiles, options, config.mCrypto, in).close();
+
+        restored.close();
+
         return Database.open(config);
     }
 

@@ -29,6 +29,7 @@ import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 import org.cojen.tupl.io.OpenOption;
+import org.cojen.tupl.io.PageArray;
 
 import static org.cojen.tupl.Utils.*;
 
@@ -43,6 +44,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
     File mBaseFile;
     boolean mMkdirs;
     File[] mDataFiles;
+    transient PageArray mDataPageArray;
     long mMinCachedBytes;
     long mMaxCachedBytes;
     DurabilityMode mDurabilityMode;
@@ -125,6 +127,18 @@ public class DatabaseConfig implements Cloneable, Serializable {
                 dataFiles[i] = abs(files[i]);
             }
             mDataFiles = dataFiles;
+            mDataPageArray = null;
+        }
+        return this;
+    }
+
+    /**
+     * Use a custom storage layer instead of the default data file.
+     */
+    public DatabaseConfig dataPageArray(PageArray array) {
+        mDataPageArray = array;
+        if (array != null) {
+            mDataFiles = null;
         }
         return this;
     }
@@ -298,8 +312,8 @@ public class DatabaseConfig implements Cloneable, Serializable {
     }
 
     /**
-     * Checks that base and data files are valid and returns the applicable
-     * data files. Null is returned when base file is null.
+     * Checks that base and data files are valid and returns the applicable data files. Null is
+     * returned when base file is null or if a custom PageArray should be used.
      */
     File[] dataFiles() {
         File[] dataFiles = mDataFiles;
@@ -313,6 +327,11 @@ public class DatabaseConfig implements Cloneable, Serializable {
 
         if (mBaseFile.isDirectory()) {
             throw new IllegalArgumentException("Base file is a directory: " + mBaseFile);
+        }
+
+        if (mDataPageArray != null) {
+            // Return after the base file checks have been performed.
+            return null;
         }
 
         if (dataFiles == null || dataFiles.length == 0) {
