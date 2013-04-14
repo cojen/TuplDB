@@ -24,6 +24,8 @@ import java.util.BitSet;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.cojen.tupl.io.PageArray;
+
 import static org.cojen.tupl.Utils.*;
 
 /**

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2013 Brian S O'Neill
+ *  Copyright 2013 Brian S O'Neill
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -14,13 +14,7 @@
  *  limitations under the License.
  */
 
-package org.cojen.tupl;
-
 /**
- * 
- *
- * @author Brian S O'Neill
+ * Low-level I/O abstraction layer.
  */
-enum OpenOption {
-    READ_ONLY, CREATE, SYNC_IO, DIRECT_IO, RANDOM, SEQUENTIAL,
-}
+package org.cojen.tupl.io;

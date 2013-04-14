@@ -19,6 +19,8 @@ package org.cojen.tupl;
 import java.io.Flushable;
 import java.io.IOException;
 
+import org.cojen.tupl.io.CauseCloseable;
+
 import static org.cojen.tupl.RedoOps.*;
 import static org.cojen.tupl.Utils.*;
 
@@ -28,7 +30,7 @@ import static org.cojen.tupl.Utils.*;
  * @author Brian S O'Neill
  * @see RedoDecoder
  */
-abstract class RedoWriter extends CauseCloseable implements Checkpointer.Shutdown, Flushable {
+abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flushable {
     private final byte[] mBuffer;
     private int mBufferPos;
 
