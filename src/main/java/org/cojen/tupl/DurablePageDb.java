@@ -131,7 +131,7 @@ class DurablePageDb extends PageDb {
         }
     }
 
-    private DurablePageDb(final PageArray rawArray, Crypto crypto, boolean destroy)
+    DurablePageDb(final PageArray rawArray, Crypto crypto, boolean destroy)
         throws IOException
     {
         PageArray array = crypto == null ? rawArray : new CryptoPageArray(rawArray, crypto);
@@ -467,6 +467,26 @@ class DurablePageDb extends PageDb {
             index++;
         }
 
+        return restoreFromSnapshot(crypto, in, buffer, pa, index);
+    }
+
+    /**
+     * @param in snapshot source; does not require extra buffering; auto-closed
+     */
+    static PageDb restoreFromSnapshot(PageArray pa, Crypto crypto, InputStream in)
+        throws IOException
+    {
+        if (!pa.isEmpty()) {
+            throw new DatabaseException("Cannot restore into a non-empty file");
+        }
+
+        return restoreFromSnapshot(crypto, in, new byte[pa.pageSize()], pa, 0);
+    }
+
+    private static PageDb restoreFromSnapshot(Crypto crypto, InputStream in,
+                                              byte[] buffer, PageArray pa, long index)
+        throws IOException
+    {
         try {
             while (true) {
                 try {
