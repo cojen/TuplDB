@@ -22,7 +22,7 @@ import java.io.Closeable;
 import java.io.IOException;
 
 /**
- * 
+ * Generic I/O utility methods.
  *
  * @author Brian S O'Neill
  */
@@ -30,7 +30,12 @@ public class Utils {
     protected Utils() {
     }
 
-    public static IOException closeOnFailure(final Closeable c, final Throwable e)
+    /**
+     * Closes the given resource, passing the cause if the resource implements {@link
+     * CauseCloseable}. The cause is then rethrown, wrapped by {@link CorruptDatabaseException}
+     * if not an {@link IOException} or unchecked.
+     */
+    public static IOException closeOnFailure(final Closeable resource, final Throwable cause)
         throws IOException
     {
         // Close in a separate thread, in case of deadlock.
@@ -39,7 +44,7 @@ public class Utils {
             closer = new Thread() {
                 public void run() {
                     try {
-                        close(c, e);
+                        close(resource, cause);
                     } catch (IOException e2) {
                         // Ignore.
                     }
@@ -53,7 +58,7 @@ public class Utils {
 
         if (closer == null) {
             try {
-                close(c, e);
+                close(resource, cause);
             } catch (IOException e2) {
                 // Ignore.
             }
@@ -65,28 +70,31 @@ public class Utils {
             }
         }
 
-        if (e instanceof RuntimeException) {
-            throw (RuntimeException) e;
+        if (cause instanceof RuntimeException) {
+            throw (RuntimeException) cause;
         }
-        if (e instanceof Error) {
-            throw (Error) e;
+        if (cause instanceof Error) {
+            throw (Error) cause;
         }
-        if (e instanceof IOException) {
-            throw (IOException) e;
+        if (cause instanceof IOException) {
+            throw (IOException) cause;
         }
 
-        throw new CorruptDatabaseException(e);
+        throw new CorruptDatabaseException(cause);
     }
 
     /**
+     * Closes a resource without throwing another exception. If closing a chain of resources,
+     * pass in the first caught exception, and all others are discarded.
+     *
      * @param first returned if non-null
-     * @param c can be null
-     * @return IOException which was caught, unless e was non-null
+     * @param resource can be null
+     * @return IOException which was caught, unless first was non-null
      */
-    public static IOException closeQuietly(IOException first, Closeable c) {
-        if (c != null) {
+    public static IOException closeQuietly(IOException first, Closeable resource) {
+        if (resource != null) {
             try {
-                c.close();
+                resource.close();
             } catch (IOException e) {
                 if (first == null) {
                     return e;
@@ -97,14 +105,19 @@ public class Utils {
     }
 
     /**
+     * Closes a resource without throwing another exception. If closing a chain of resources,
+     * pass in the first caught exception, and all others are discarded.
+     *
      * @param first returned if non-null
-     * @param c can be null
-     * @return IOException which was caught, unless e was non-null
+     * @param resource can be null
+     * @param cause passed to resource if it implements {@link CauseCloseable}
+     * @return IOException which was caught, unless first was non-null
      */
-    public static IOException closeQuietly(IOException first, Closeable c, Throwable cause) {
-        if (c != null) {
+    public static IOException closeQuietly(IOException first, Closeable resource, Throwable cause)
+    {
+        if (resource != null) {
             try {
-                close(c, cause);
+                close(resource, cause);
             } catch (IOException e) {
                 if (first == null) {
                     return e;
@@ -114,14 +127,24 @@ public class Utils {
         return first;
     }
 
-    public static void close(Closeable c, Throwable cause) throws IOException {
-        if (c instanceof CauseCloseable) {
-            ((CauseCloseable) c).close(cause);
+    /**
+     * Closes a resource, which may throw a new exception.
+     *
+     * @param cause passed to resource if it implements {@link CauseCloseable}
+     */
+    public static void close(Closeable resource, Throwable cause) throws IOException {
+        if (resource instanceof CauseCloseable) {
+            ((CauseCloseable) resource).close(cause);
         } else {
-            c.close();
+            resource.close();
         }
     }
 
+    /**
+     * Returns the root cause of the given exception.
+     *
+     * @return non-null cause, unless given exception was null
+     */
     public static Throwable rootCause(Throwable e) {
         while (true) {
             Throwable cause = e.getCause();
@@ -132,16 +155,31 @@ public class Utils {
         }
     }
 
+    /**
+     * Convenience method to pass the given exception to the current thread's uncaught
+     * exception handler.
+     */
     public static void uncaught(Throwable e) {
         Thread t = Thread.currentThread();
         t.getUncaughtExceptionHandler().uncaughtException(t, e);
     }
 
+    /**
+     * Rethrows the given exception without the compiler complaining about it being checked or
+     * not. Use as follows: {@code throw rethrow(e)}
+     */
     public static RuntimeException rethrow(Throwable e) {
         Utils.<RuntimeException>castAndThrow(e);
         return null;
     }
 
+    /**
+     * Rethrows the given exception without the compiler complaining about it being checked or
+     * not. The exception can have a root cause initialized, which will be the root cause of
+     * the one given. Use as follows: {@code throw rethrow(e, cause)}
+     *
+     * @param cause initialize the exception's cause, unless it already has one
+     */
     public static RuntimeException rethrow(Throwable e, Throwable cause) {
         if (cause != null && e != cause && e.getCause() == null) {
             try {
