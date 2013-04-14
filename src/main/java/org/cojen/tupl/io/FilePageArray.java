@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.util.EnumSet;
 
 /**
- * 
+ * Basic {@link PageArray} implementation which access a file.
  *
  * @author Brian S O'Neill
  */

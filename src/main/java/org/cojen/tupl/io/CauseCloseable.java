@@ -20,10 +20,13 @@ import java.io.Closeable;
 import java.io.IOException;
 
 /**
- * 
+ * Closeable interface which allows a failure cause to be specified.
  *
  * @author Brian S O'Neill
  */
 public interface CauseCloseable extends Closeable {
+    /**
+     * @param cause exception which is responsible for this resource being closed
+     */
     public abstract void close(Throwable cause) throws IOException;
 }

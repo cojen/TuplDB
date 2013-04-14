@@ -19,7 +19,8 @@ package org.cojen.tupl.io;
 import java.io.IOException;
 
 /**
- * 
+ * {@link PageArray} implementation which stripes pages in a <a
+ * href="http://en.wikipedia.org/wiki/Raid_0#RAID_0">RAID 0</a> fashion.
  *
  * @author Brian S O'Neill
  */
