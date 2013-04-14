@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package org.cojen.tupl;
+package org.cojen.tupl.io;
 
 import java.io.File;
 import java.io.IOException;
@@ -22,14 +22,14 @@ import java.io.IOException;
 import java.util.EnumSet;
 
 /**
- * 
+ * Basic {@link PageArray} implementation which access a file.
  *
  * @author Brian S O'Neill
  */
-class FilePageArray extends PageArray {
+public class FilePageArray extends PageArray {
     final FileIO mFio;
 
-    FilePageArray(int pageSize, File file, EnumSet<OpenOption> options) throws IOException {
+    public FilePageArray(int pageSize, File file, EnumSet<OpenOption> options) throws IOException {
         this(pageSize, JavaFileIO.open(file, options));
     }
 
@@ -88,6 +88,7 @@ class FilePageArray extends PageArray {
         return length;
     }
 
+    /*
     @Override
     public int readCluster(long index, byte[] buf, int offset, int count)
         throws IOException
@@ -100,15 +101,16 @@ class FilePageArray extends PageArray {
         mFio.read(index * pageSize, buf, offset, len);
         return len;
     }
+    */
 
     @Override
-    void doWritePage(long index, byte[] buf, int offset) throws IOException {
+    public void writePage(long index, byte[] buf, int offset) throws IOException {
         int pageSize = mPageSize;
         mFio.write(index * pageSize, buf, offset, pageSize);
     }
 
     @Override
-    void doWritePageDurably(long index, byte[] buf, int offset) throws IOException {
+    public void writePageDurably(long index, byte[] buf, int offset) throws IOException {
         int pageSize = mPageSize;
         mFio.writeDurably(index * pageSize, buf, offset, pageSize);
     }

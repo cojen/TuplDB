@@ -22,12 +22,14 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.cojen.tupl.io.CauseCloseable;
+
 /**
  * 
  *
  * @author Brian S O'Neill
  */
-class TempFileManager extends CauseCloseable implements Checkpointer.Shutdown {
+class TempFileManager implements CauseCloseable, Checkpointer.Shutdown {
     private File mBaseFile;
     private long mCount;
     private Map<File, CauseCloseable> mFiles;

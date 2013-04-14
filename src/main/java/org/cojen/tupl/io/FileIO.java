@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package org.cojen.tupl;
+package org.cojen.tupl.io;
 
 import java.io.Closeable;
 import java.io.IOException;
