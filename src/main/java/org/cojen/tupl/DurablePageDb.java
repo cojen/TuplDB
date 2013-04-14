@@ -24,6 +24,11 @@ import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.zip.CRC32;
 
+import org.cojen.tupl.io.FilePageArray;
+import org.cojen.tupl.io.OpenOption;
+import org.cojen.tupl.io.PageArray;
+import org.cojen.tupl.io.StripedPageArray;
+
 import static java.lang.System.arraycopy;
 
 import static org.cojen.tupl.Utils.*;
@@ -76,7 +81,7 @@ class DurablePageDb extends PageDb {
 
     private static final int MINIMUM_PAGE_SIZE = 512;
 
-    private final PageArray mPageArray;
+    private final SnapshotPageArray mPageArray;
     private final PageManager mPageManager;
 
     private final Latch mHeaderLatch;
@@ -126,16 +131,16 @@ class DurablePageDb extends PageDb {
         }
     }
 
-    private DurablePageDb(PageArray pa, Crypto crypto, boolean destroy) throws IOException {
-        if (crypto != null) {
-            pa = new CryptoPageArray(pa, crypto);
-        }
+    DurablePageDb(final PageArray rawArray, Crypto crypto, boolean destroy)
+        throws IOException
+    {
+        PageArray array = crypto == null ? rawArray : new CryptoPageArray(rawArray, crypto);
 
-        mPageArray = pa;
+        mPageArray = new SnapshotPageArray(array, rawArray);
         mHeaderLatch = new Latch();
 
         try {
-            int pageSize = pa.pageSize();
+            int pageSize = mPageArray.pageSize();
             checkPageSize(pageSize);
 
             open: {
@@ -487,6 +492,26 @@ class DurablePageDb extends PageDb {
             index++;
         }
 
+        return restoreFromSnapshot(crypto, in, buffer, pa, index);
+    }
+
+    /**
+     * @param in snapshot source; does not require extra buffering; auto-closed
+     */
+    static PageDb restoreFromSnapshot(PageArray pa, Crypto crypto, InputStream in)
+        throws IOException
+    {
+        if (!pa.isEmpty()) {
+            throw new DatabaseException("Cannot restore into a non-empty file");
+        }
+
+        return restoreFromSnapshot(crypto, in, new byte[pa.pageSize()], pa, 0);
+    }
+
+    private static PageDb restoreFromSnapshot(Crypto crypto, InputStream in,
+                                              byte[] buffer, PageArray pa, long index)
+        throws IOException
+    {
         try {
             while (true) {
                 try {

@@ -24,12 +24,14 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import org.cojen.tupl.io.CauseCloseable;
+
 /**
  * @author Brian S O'Neill
  * @see DurablePageDb
  * @see NonPageDb
  */
-abstract class PageDb extends CauseCloseable {
+abstract class PageDb implements CauseCloseable {
     final ReadWriteLock mCommitLock;
 
     PageDb() {

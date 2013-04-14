@@ -1,5 +1,5 @@
 /*
- *  Copyright 2011-2013 Brian S O'Neill
+ *  Copyright 2013 Brian S O'Neill
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -23,172 +23,88 @@ import java.io.OutputStream;
 
 import static java.lang.System.arraycopy;
 
+import org.cojen.tupl.io.CauseCloseable;
+import org.cojen.tupl.io.PageArray;
+
 import static org.cojen.tupl.Utils.*;
 
 /**
- * Defines a persistent, array of fixed sized pages. Each page is uniquely
- * identified by a 64-bit index, starting at zero.
+ * 
  *
  * @author Brian S O'Neill
  */
-abstract class PageArray extends CauseCloseable {
-    final int mPageSize;
+final class SnapshotPageArray extends PageArray {
+    private final PageArray mSource;
+    private final PageArray mRawSource;
 
-    volatile Object mSnapshots;
+    private Object mSnapshots;
 
-    PageArray(int pageSize) {
-        if (pageSize < 1) {
-            throw new IllegalArgumentException("Page size must be at least 1: " + pageSize);
-        }
-        mPageSize = pageSize;
+    SnapshotPageArray(PageArray source, PageArray rawSource) {
+        super(source.pageSize());
+        mSource = source;
+        // Snapshot does not decrypt pages.
+        mRawSource = source;
     }
 
-    /**
-     * Returns the fixed size of all pages in the array, in bytes.
-     */
-    public final int pageSize() {
-        return mPageSize;
+    @Override
+    public boolean isReadOnly() {
+        return mSource.isReadOnly();
     }
 
-    public PageArray rawPageArray() {
-        return this;
+    @Override
+    public boolean isEmpty() throws IOException {
+        return mSource.isEmpty();
     }
 
-    public abstract boolean isReadOnly();
+    @Override
+    public long getPageCount() throws IOException {
+        return mSource.getPageCount();
+    }
 
-    public abstract boolean isEmpty() throws IOException;
+    @Override
+    public void setPageCount(long count) throws IOException {
+        mSource.setPageCount(count);
+    }
 
-    /**
-     * Returns the total count of pages in the array.
-     */
-    public abstract long getPageCount() throws IOException;
-
-    /**
-     * Set the total count of pages, truncating or growing the array as necessary.
-     *
-     * @throws IllegalArgumentException if count is negative
-     */
-    public abstract void setPageCount(long count) throws IOException;
-
-    /**
-     * @param index zero-based page index to read
-     * @param buf receives read data
-     * @throws IndexOutOfBoundsException if index is negative
-     * @throws IOException if index is greater than or equal to page count
-     */
+    @Override
     public void readPage(long index, byte[] buf) throws IOException {
-        readPage(index, buf, 0);
+        mSource.readPage(index, buf);
     }
 
-    /**
-     * @param index zero-based page index to read
-     * @param buf receives read data
-     * @param offset offset into data buffer
-     * @throws IndexOutOfBoundsException if index is negative
-     * @throws IOException if index is greater than or equal to page count
-     */
-    public abstract void readPage(long index, byte[] buf, int offset) throws IOException;
+    @Override
+    public void readPage(long index, byte[] buf, int offset) throws IOException {
+        mSource.readPage(index, buf, offset);
+    }
 
-    /**
-     * Subclass should override to improve performance.
-     *
-     * @param index zero-based page index to read
-     * @param start start of page to read
-     * @param buf receives read data
-     * @param offset offset into data buffer
-     * @param length length to read
-     * @return actual length read
-     * @throws IndexOutOfBoundsException if index is negative
-     * @throws IOException if index is greater than or equal to page count
-     */
+    @Override
     public int readPartial(long index, int start, byte[] buf, int offset, int length)
         throws IOException
     {
-        int pageSize = mPageSize;
-        if (start == 0 && length == pageSize) {
-            readPage(index, buf, offset);
-        } else {
-            byte[] page = new byte[pageSize];
-            readPage(index, page, 0);
-            arraycopy(page, start, buf, offset, length);
-        }
-        return length;
+        return mSource.readPartial(index, start, buf, offset, length);
     }
 
-    /**
-     * Subclass should override to improve performance.
-     *
-     * @param index zero-based page index to read
-     * @param buf receives read data
-     * @param offset offset into data buffer
-     * @param count number of pages to read
-     * @return length read (always page size times count)
-     * @throws IndexOutOfBoundsException if index is negative
-     * @throws IOException if index is greater than or equal to page count
-     */
-    public int readCluster(long index, byte[] buf, int offset, int count) throws IOException {
-        int pageSize = mPageSize;
-        if (count > 0) while (true) {
-            readPage(index, buf, offset);
-            if (--count <= 0) {
-                break;
-            }
-            index++;
-            offset += pageSize;
-        }
-        return pageSize * count;
-    }
-
-    /**
-     * Writes a page, which is lazily flushed. The array grows automatically if
-     * the index is greater than or equal to the current page count.
-     *
-     * @param index zero-based page index to write
-     * @param buf data to write
-     * @throws IndexOutOfBoundsException if index is negative
-     */
+    @Override
     public void writePage(long index, byte[] buf) throws IOException {
-        writePage(index, buf, 0);
-    }
-
-    /**
-     * Writes a page, which is lazily flushed. The array grows automatically if
-     * the index is greater than or equal to the current page count.
-     *
-     * @param index zero-based page index to write
-     * @param buf data to write
-     * @param offset offset into data buffer
-     * @throws IndexOutOfBoundsException if index is negative
-     */
-    public final void writePage(long index, byte[] buf, int offset) throws IOException {
         prepareToWrite(index);
-        doWritePage(index, buf, offset);
+        mSource.writePage(index, buf);
     }
 
-    /**
-     * Writes a page, which is immediately flushed. The array grows automatically if
-     * the index is greater than or equal to the current page count.
-     *
-     * @param index zero-based page index to write
-     * @param buf data to write
-     * @throws IndexOutOfBoundsException if index is negative
-     */
+    @Override
+    public void writePage(long index, byte[] buf, int offset) throws IOException {
+        prepareToWrite(index);
+        mSource.writePage(index, buf, offset);
+    }
+
+    @Override
     public void writePageDurably(long index, byte[] buf) throws IOException {
-        writePageDurably(index, buf, 0);
+        prepareToWrite(index);
+        mSource.writePageDurably(index, buf);
     }
 
-    /**
-     * Writes a page, which is immediately flushed. The array grows automatically if
-     * the index is greater than or equal to the current page count.
-     *
-     * @param index zero-based page index to write
-     * @param buf data to write
-     * @param offset offset into data buffer
-     * @throws IndexOutOfBoundsException if index is negative
-     */
-    public final void writePageDurably(long index, byte[] buf, int offset) throws IOException {
+    @Override
+    public void writePageDurably(long index, byte[] buf, int offset) throws IOException {
         prepareToWrite(index);
-        doWritePageDurably(index, buf, offset);
+        mSource.writePageDurably(index, buf, offset);
     }
 
     private void prepareToWrite(long index) {
@@ -206,36 +122,14 @@ abstract class PageArray extends CauseCloseable {
         }
     }
 
-    /**
-     * Writes a page, which is lazily flushed. The array grows automatically if
-     * the index is greater than or equal to the current page count.
-     *
-     * @param index zero-based page index to write (never negative)
-     * @param buf data to write
-     * @param offset offset into data buffer
-     */
-    abstract void doWritePage(long index, byte[] buf, int offset) throws IOException;
-
-    /**
-     * Writes a page, which is immediately flushed. The array grows automatically if
-     * the index is greater than or equal to the current page count.
-     *
-     * @param index zero-based page index to write (never negative)
-     * @param buf data to write
-     * @param offset offset into data buffer
-     */
-    abstract void doWritePageDurably(long index, byte[] buf, int offset) throws IOException;
-
-    /**
-     * Durably flushes all writes to the underlying device.
-     *
-     * @param metadata pass true to flush all file metadata
-     */
-    public abstract void sync(boolean metadata) throws IOException;
+    @Override
+    public void sync(boolean metadata) throws IOException {
+        mSource.sync(metadata);
+    }
 
     @Override
-    public void close() throws IOException {
-        close(null);
+    public void close(Throwable cause) throws IOException {
+        mSource.close(cause);
     }
 
     /**
@@ -304,7 +198,7 @@ abstract class PageArray extends CauseCloseable {
         mSnapshots = newSnapshots;
     }
 
-    class SnapshotImpl extends CauseCloseable implements Snapshot {
+    class SnapshotImpl implements CauseCloseable, Snapshot {
         private final PageArray mRawPageArray;
 
         private final TempFileManager mTempFileManager;
@@ -328,13 +222,13 @@ abstract class PageArray extends CauseCloseable {
         private Throwable mAbortCause;
 
         SnapshotImpl(TempFileManager tfm, long pageCount) throws IOException {
-            // Snapshot does not decrypt the pages.
-            mRawPageArray = rawPageArray();
+            // Snapshot does not decrypt pages.
+            mRawPageArray = SnapshotPageArray.this.mRawSource;
 
             mTempFileManager = tfm;
             mSnapshotPageCount = pageCount;
 
-            int pageSize = mPageSize;
+            int pageSize = pageSize();
 
             DatabaseConfig config = new DatabaseConfig()
                 .pageSize(pageSize).minCacheSize(pageSize * 100);
@@ -353,7 +247,7 @@ abstract class PageArray extends CauseCloseable {
 
         @Override
         public long length() {
-            return mSnapshotPageCount * mPageSize;
+            return mSnapshotPageCount * pageSize();
         }
 
         @Override
@@ -371,7 +265,7 @@ abstract class PageArray extends CauseCloseable {
 
             Cursor c = null;
             try {
-                final byte[] buffer = new byte[mPageSize];
+                final byte[] buffer = new byte[pageSize()];
                 final byte[] key = new byte[8];
                 final long count = mSnapshotPageCount;
 
