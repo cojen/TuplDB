@@ -50,6 +50,9 @@ import static java.lang.System.arraycopy;
 
 import static java.util.Arrays.fill;
 
+import org.cojen.tupl.io.CauseCloseable;
+import org.cojen.tupl.io.OpenOption;
+
 import static org.cojen.tupl.Node.*;
 import static org.cojen.tupl.Utils.*;
 
@@ -94,7 +97,7 @@ import static org.cojen.tupl.Utils.*;
  * @author Brian S O'Neill
  * @see DatabaseConfig
  */
-public final class Database extends CauseCloseable {
+public final class Database implements CauseCloseable {
     private static final int DEFAULT_CACHED_NODES = 1000;
     // +2 for registry and key map root nodes, +1 for one user index, and +2
     // for usage list to function correctly. It always assumes that the least
@@ -1262,8 +1265,15 @@ public final class Database extends CauseCloseable {
         close(null);
     }
 
+    /**
+     * Closes the database after an unexpected failure. No checkpoint is performed by this
+     * method, and so non-transactional modifications can be lost.
+     *
+     * @param cause if non-null, delivers a {@link EventType#PANIC_UNHANDLED_EXCEPTION panic}
+     * event and future database accesses will rethrow the cause
+     */
     @Override
-    void close(Throwable cause) throws IOException {
+    public void close(Throwable cause) throws IOException {
         if (cause != null) {
             if (cClosedCauseUpdater.compareAndSet(this, null, cause) && mEventListener != null) {
                 mEventListener.notify(EventType.PANIC_UNHANDLED_EXCEPTION,

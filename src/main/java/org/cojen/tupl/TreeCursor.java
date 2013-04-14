@@ -23,6 +23,8 @@ import java.util.Random;
 
 import java.util.concurrent.locks.Lock;
 
+import org.cojen.tupl.io.CauseCloseable;
+
 import static org.cojen.tupl.Utils.*;
 
 /**
@@ -30,7 +32,7 @@ import static org.cojen.tupl.Utils.*;
  *
  * @author Brian S O'Neill
  */
-final class TreeCursor extends CauseCloseable implements Cursor {
+final class TreeCursor implements CauseCloseable, Cursor {
     // Sign is important because values are passed to Node.retrieveKeyCmp
     // method. Bit 0 is set for inclusive variants and clear for exclusive.
     private static final int LIMIT_LE = 1, LIMIT_LT = 2, LIMIT_GE = -1, LIMIT_GT = -2;

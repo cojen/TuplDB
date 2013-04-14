@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package org.cojen.tupl;
+package org.cojen.tupl.io;
 
 import java.io.IOException;
 
@@ -23,11 +23,11 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-class StripedPageArray extends PageArray {
+public class StripedPageArray extends PageArray {
     private final PageArray[] mArrays;
     private final boolean mReadOnly;
 
-    StripedPageArray(PageArray... arrays) {
+    public StripedPageArray(PageArray... arrays) {
         super(pageSize(arrays));
         mArrays = arrays;
         boolean readOnly = false;
@@ -98,6 +98,7 @@ class StripedPageArray extends PageArray {
             .readPartial(index / stripes, start, buf, offset, length);
     }
 
+    /*
     @Override
     public int readCluster(long index, byte[] buf, int offset, int count)
         throws IOException
@@ -126,19 +127,20 @@ class StripedPageArray extends PageArray {
 
         return pageSize * count;
     }
+    */
 
     @Override
-    void doWritePage(long index, byte[] buf, int offset) throws IOException {
+    public void writePage(long index, byte[] buf, int offset) throws IOException {
         PageArray[] arrays = mArrays;
         int stripes = arrays.length;
-        arrays[(int) (index % stripes)].doWritePage(index / stripes, buf, offset);
+        arrays[(int) (index % stripes)].writePage(index / stripes, buf, offset);
     }
 
     @Override
-    void doWritePageDurably(long index, byte[] buf, int offset) throws IOException {
+    public void writePageDurably(long index, byte[] buf, int offset) throws IOException {
         PageArray[] arrays = mArrays;
         int stripes = arrays.length;
-        arrays[(int) (index % stripes)].doWritePageDurably(index / stripes, buf, offset);
+        arrays[(int) (index % stripes)].writePageDurably(index / stripes, buf, offset);
     }
 
     @Override

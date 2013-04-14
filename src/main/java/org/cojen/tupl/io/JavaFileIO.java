@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package org.cojen.tupl;
+package org.cojen.tupl.io;
 
 import java.io.EOFException;
 import java.io.File;
@@ -25,7 +25,7 @@ import java.io.RandomAccessFile;
 
 import java.util.EnumSet;
 
-import static org.cojen.tupl.Utils.*;
+import static org.cojen.tupl.io.Utils.*;
 
 /**
  * Basic FileIO implementation which uses the Java RandomAccessFile class,
@@ -33,7 +33,7 @@ import static org.cojen.tupl.Utils.*;
  *
  * @author Brian S O'Neill
  */
-class JavaFileIO extends CauseCloseable implements FileIO {
+class JavaFileIO implements CauseCloseable, FileIO {
     static FileIO open(File file, EnumSet<OpenOption> options)
         throws IOException
     {
