@@ -14,16 +14,23 @@
  *  limitations under the License.
  */
 
-package org.cojen.tupl;
-
-import java.io.Closeable;
-import java.io.IOException;
+package org.cojen.tupl.io;
 
 /**
- * 
+ * Open options for {@link FilePageArray}.
  *
  * @author Brian S O'Neill
  */
-abstract class CauseCloseable implements Closeable {
-    abstract void close(Throwable cause) throws IOException;
+public enum OpenOption {
+    /** Open file in read-only mode. */
+    READ_ONLY,
+
+    /** Create the file if it doesn't already exist. */
+    CREATE,
+
+    /** All file I/O should be durable. */
+    SYNC_IO,
+
+    /** All file I/O should be durable and bypass the file system cache, if possible. */
+    DIRECT_IO,
 }

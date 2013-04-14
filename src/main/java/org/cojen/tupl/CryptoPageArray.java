@@ -20,6 +20,8 @@ import java.io.IOException;
 
 import java.security.GeneralSecurityException;
 
+import org.cojen.tupl.io.PageArray;
+
 /**
  * 
  *
@@ -33,11 +35,6 @@ class CryptoPageArray extends PageArray {
         super(source.pageSize());
         mSource = source;
         mCrypto = crypto;
-    }
-
-    @Override
-    public PageArray rawPageArray() {
-        return mSource;
     }
 
     @Override
@@ -64,33 +61,33 @@ class CryptoPageArray extends PageArray {
     public void readPage(long index, byte[] buf, int offset) throws IOException {
         try {
             mSource.readPage(index, buf, offset);
-            mCrypto.decryptPage(index, mPageSize, buf, offset);
+            mCrypto.decryptPage(index, pageSize(), buf, offset);
         } catch (GeneralSecurityException e) {
             throw new DatabaseException(e);
         }
     }
 
     @Override
-    void doWritePage(long index, byte[] buf, int offset) throws IOException {
+    public void writePage(long index, byte[] buf, int offset) throws IOException {
         try {
-            int pageSize = mPageSize;
+            int pageSize = pageSize();
             // Unknown if buf contents can be destroyed, so create a new one.
             byte[] encrypted = new byte[pageSize];
             mCrypto.encryptPage(index, pageSize, buf, offset, encrypted, 0);
-            mSource.doWritePage(index, encrypted, 0);
+            mSource.writePage(index, encrypted, 0);
         } catch (GeneralSecurityException e) {
             throw new DatabaseException(e);
         }
     }
 
     @Override
-    void doWritePageDurably(long index, byte[] buf, int offset) throws IOException {
+    public void writePageDurably(long index, byte[] buf, int offset) throws IOException {
         try {
-            int pageSize = mPageSize;
+            int pageSize = pageSize();
             // Unknown if buf contents can be destroyed, so create a new one.
             byte[] encrypted = new byte[pageSize];
             mCrypto.encryptPage(index, pageSize, buf, offset, encrypted, 0);
-            mSource.doWritePageDurably(index, encrypted, 0);
+            mSource.writePageDurably(index, encrypted, 0);
         } catch (GeneralSecurityException e) {
             throw new DatabaseException(e);
         }
