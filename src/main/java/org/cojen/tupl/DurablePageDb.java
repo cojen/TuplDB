@@ -24,6 +24,11 @@ import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.zip.CRC32;
 
+import org.cojen.tupl.io.FilePageArray;
+import org.cojen.tupl.io.OpenOption;
+import org.cojen.tupl.io.PageArray;
+import org.cojen.tupl.io.StripedPageArray;
+
 import static java.lang.System.arraycopy;
 
 import static org.cojen.tupl.Utils.*;
@@ -76,7 +81,7 @@ class DurablePageDb extends PageDb {
 
     private static final int MINIMUM_PAGE_SIZE = 512;
 
-    private final PageArray mPageArray;
+    private final SnapshotPageArray mPageArray;
     private final PageManager mPageManager;
 
     private final Latch mHeaderLatch;
@@ -126,16 +131,16 @@ class DurablePageDb extends PageDb {
         }
     }
 
-    private DurablePageDb(PageArray pa, Crypto crypto, boolean destroy) throws IOException {
-        if (crypto != null) {
-            pa = new CryptoPageArray(pa, crypto);
-        }
+    private DurablePageDb(final PageArray rawArray, Crypto crypto, boolean destroy)
+        throws IOException
+    {
+        PageArray array = crypto == null ? rawArray : new CryptoPageArray(rawArray, crypto);
 
-        mPageArray = pa;
+        mPageArray = new SnapshotPageArray(array, rawArray);
         mHeaderLatch = new Latch();
 
         try {
-            int pageSize = pa.pageSize();
+            int pageSize = mPageArray.pageSize();
             checkPageSize(pageSize);
 
             open: {

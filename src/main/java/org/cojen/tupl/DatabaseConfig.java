@@ -28,6 +28,8 @@ import java.util.Properties;
 
 import java.util.concurrent.TimeUnit;
 
+import org.cojen.tupl.io.OpenOption;
+
 import static org.cojen.tupl.Utils.*;
 
 /**

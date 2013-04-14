@@ -14,16 +14,13 @@
  *  limitations under the License.
  */
 
-package org.cojen.tupl;
-
-import java.io.Closeable;
-import java.io.IOException;
+package org.cojen.tupl.io;
 
 /**
  * 
  *
  * @author Brian S O'Neill
  */
-abstract class CauseCloseable implements Closeable {
-    abstract void close(Throwable cause) throws IOException;
+public enum OpenOption {
+    READ_ONLY, CREATE, SYNC_IO, DIRECT_IO,
 }
