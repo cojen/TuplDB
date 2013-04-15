@@ -138,7 +138,13 @@ public class DatabaseConfig implements Cloneable, Serializable {
     public DatabaseConfig dataPageArray(PageArray array) {
         mDataPageArray = array;
         if (array != null) {
+            int expected = mDataPageArray.pageSize();
+            if (mPageSize != 0 && mPageSize != expected) {
+                throw new IllegalArgumentException
+                    ("Page size doesn't match data page array: " + mPageSize + " != " + expected);
+            }
             mDataFiles = null;
+            mPageSize = expected;
         }
         return this;
     }
@@ -265,6 +271,13 @@ public class DatabaseConfig implements Cloneable, Serializable {
      * Set the page size, which is 4096 bytes by default.
      */
     public DatabaseConfig pageSize(int size) {
+        if (mDataPageArray != null) {
+            int expected = mDataPageArray.pageSize();
+            if (expected != size) {
+                throw new IllegalArgumentException
+                    ("Page size doesn't match data page array: " + size + " != " + expected);
+            }
+        }
         mPageSize = size;
         return this;
     }
