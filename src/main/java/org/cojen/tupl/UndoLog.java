@@ -422,8 +422,13 @@ final class UndoLog {
                         if (commit) {
                             // When shared lock is released, log can be checkpointed in an
                             // incomplete state. Although caller must have already pushed the
-                            // commit op, any of the remaining nodes might be referened by an
-                            // older master undo log entry.
+                            // commit op, any of the remaining nodes might be referenced by an
+                            // older master undo log entry. Must call prepareToDelete before
+                            // calling redirty, in case node contains data which has been
+                            // marked to be written out with the active checkpoint. The state
+                            // assigned by redirty is such that the node might be written
+                            // by the next checkpoint.
+                            mDatabase.prepareToDelete(node);
                             mDatabase.redirty(node);
                             byte[] page = node.mPage;
                             int end = page.length - 1;
@@ -899,6 +904,7 @@ final class UndoLog {
         Deque<Scope> scopes = new ArrayDeque<Scope>();
         scopes.addFirst(scope);
 
+        boolean acquireLocks = true;
         int depth = 1;
 
         while (mLength > 0) {
@@ -914,7 +920,9 @@ final class UndoLog {
 
             case OP_COMMIT:
             case OP_COMMIT_TRUNCATE:
-                // Handled by Transaction.recoveryCleanup.
+                // Handled by Transaction.recoveryCleanup, but don't acquire
+                // locks. This avoids deadlocks with later transactions.
+                acquireLocks = false;
                 break;
 
             case OP_SCOPE_ENTER:
@@ -952,15 +960,19 @@ final class UndoLog {
 
         Transaction txn = new Transaction
             (mDatabase, mTxnId, lockMode, timeoutNanos,
-             // Blindy assume trash must be deleted. No harm if none exists.
+             // Blindly assume trash must be deleted. No harm if none exists.
              Transaction.HAS_TRASH);
 
         scope = scopes.pollFirst();
-        scope.acquireLocks(txn);
+        if (acquireLocks) {
+            scope.acquireLocks(txn);
+        }
 
         while ((scope = scopes.pollFirst()) != null) {
             txn.recoveredScope(scope.mSavepoint, Transaction.HAS_TRASH);
-            scope.acquireLocks(txn);
+            if (acquireLocks) {
+                scope.acquireLocks(txn);
+            }
         }
 
         return txn;
