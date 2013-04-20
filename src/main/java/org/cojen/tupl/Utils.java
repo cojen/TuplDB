@@ -55,7 +55,7 @@ class Utils extends org.cojen.tupl.io.Utils {
 
     static BigInteger valueOfUnsigned(long v) {
         byte[] temp = new byte[9];
-        writeLongBE(temp, 1, v);
+        encodeLongBE(temp, 1, v);
         return new BigInteger(temp);
     }
 
@@ -161,72 +161,10 @@ class Utils extends org.cojen.tupl.io.Utils {
         }
     }
 
-    public static final int readUnsignedShortBE(byte[] b, int offset) {
-        return ((b[offset] & 0xff) << 8) | ((b[offset + 1] & 0xff));
-    }
-
-    public static final int readUnsignedShortLE(byte[] b, int offset) {
-        return ((b[offset] & 0xff)) | ((b[offset + 1] & 0xff) << 8);
-    }
-
-    public static final int readIntBE(byte[] b, int offset) {
-        return (b[offset] << 24) | ((b[offset + 1] & 0xff) << 16) |
-            ((b[offset + 2] & 0xff) << 8) | (b[offset + 3] & 0xff);
-    }
-
-    public static final int readIntLE(byte[] b, int offset) {
-        return (b[offset] & 0xff) | ((b[offset + 1] & 0xff) << 8) |
-            ((b[offset + 2] & 0xff) << 16) | (b[offset + 3] << 24);
-    }
-
-    public static final long readUnsignedInt48BE(byte[] b, int offset) {
-        return
-            (((long)(((b[offset    ] & 0xff) << 8 ) |
-                     ((b[offset + 1] & 0xff)      ))              ) << 32) |
-            (((long)(((b[offset + 2]       ) << 24) |
-                     ((b[offset + 3] & 0xff) << 16) |
-                     ((b[offset + 4] & 0xff) << 8 ) |
-                     ((b[offset + 5] & 0xff)      )) & 0xffffffffL)      );
-    }
-
-    public static final long readUnsignedInt48LE(byte[] b, int offset) {
-        return
-            (((long)(((b[offset    ] & 0xff)      ) |
-                     ((b[offset + 1] & 0xff) << 8 ) |
-                     ((b[offset + 2] & 0xff) << 16) |
-                     ((b[offset + 3]       ) << 24)) & 0xffffffffL)      ) |
-            (((long)(((b[offset + 4] & 0xff)      ) |
-                     ((b[offset + 5] & 0xff) << 8 ))              ) << 32);
-    }
-
-    public static final long readLongBE(byte[] b, int offset) {
-        return
-            (((long)(((b[offset    ]       ) << 24) |
-                     ((b[offset + 1] & 0xff) << 16) |
-                     ((b[offset + 2] & 0xff) << 8 ) |
-                     ((b[offset + 3] & 0xff)      ))              ) << 32) |
-            (((long)(((b[offset + 4]       ) << 24) |
-                     ((b[offset + 5] & 0xff) << 16) |
-                     ((b[offset + 6] & 0xff) << 8 ) |
-                     ((b[offset + 7] & 0xff)      )) & 0xffffffffL)      );
-    }
-
-    public static final long readLongLE(byte[] b, int offset) {
-        return
-            (((long)(((b[offset    ] & 0xff)      ) |
-                     ((b[offset + 1] & 0xff) << 8 ) |
-                     ((b[offset + 2] & 0xff) << 16) |
-                     ((b[offset + 3]       ) << 24)) & 0xffffffffL)      ) |
-            (((long)(((b[offset + 4] & 0xff)      ) |
-                     ((b[offset + 5] & 0xff) << 8 ) |
-                     ((b[offset + 6] & 0xff) << 16) |
-                     ((b[offset + 7]       ) << 24))              ) << 32);
-    }
-
     /**
-     * Reads an integer as encoded by writeUnsignedVarInt.
+     * Decodes an integer as encoded by encodeUnsignedVarInt.
      */
-    public static int readUnsignedVarInt(byte[] b, int offset) {
+    public static int decodeUnsignedVarInt(byte[] b, int offset) {
         int v = b[offset];
         if (v >= 0) {
             return v;
@@ -257,9 +195,9 @@ class Utils extends org.cojen.tupl.io.Utils {
     }
 
     /**
-     * Reads an integer as encoded by writeUnsignedVarInt.
+     * Decodes an integer as encoded by encodeUnsignedVarInt.
      */
-    public static int readUnsignedVarInt(byte[] b, int start, int end) throws EOFException {
+    public static int decodeUnsignedVarInt(byte[] b, int start, int end) throws EOFException {
         if (start >= end) {
             throw new EOFException();
         }
@@ -305,25 +243,25 @@ class Utils extends org.cojen.tupl.io.Utils {
     }
 
     /**
-     * Reads an integer as encoded by writeSignedVarInt.
+     * Decodes an integer as encoded by encodeSignedVarInt.
      */
-    public static int readSignedVarInt(byte[] b, int offset) {
-        int v = readUnsignedVarInt(b, offset);
+    public static int decodeSignedVarInt(byte[] b, int offset) {
+        int v = decodeUnsignedVarInt(b, offset);
         return ((v & 1) != 0) ? ((~(v >> 1)) | (1 << 31)) : (v >>> 1);
     }
 
     /**
-     * Reads an integer as encoded by writeSignedVarLong.
+     * Decodes an integer as encoded by encodeSignedVarLong.
      */
-    public static long readSignedVarLong(byte[] b, IntegerRef offsetRef) {
-        long v = readUnsignedVarLong(b, offsetRef);
+    public static long decodeSignedVarLong(byte[] b, IntegerRef offsetRef) {
+        long v = decodeUnsignedVarLong(b, offsetRef);
         return ((v & 1) != 0) ? ((~(v >> 1)) | (1 << 31)) : (v >>> 1);
     }
 
     /**
-     * Reads a long integer as encoded by writeUnsignedVarLong.
+     * Decodes a long integer as encoded by encodeUnsignedVarLong.
      */
-    public static long readUnsignedVarLong(byte[] b, IntegerRef offsetRef) {
+    public static long decodeUnsignedVarLong(byte[] b, IntegerRef offsetRef) {
         int offset = offsetRef.get();
         int val = b[offset++];
         if (val >= 0) {
@@ -412,78 +350,6 @@ class Utils extends org.cojen.tupl.io.Utils {
         return decoded;
     }
 
-    public static final void writeShortBE(byte[] b, int offset, int v) {
-        b[offset    ] = (byte)(v >> 8);
-        b[offset + 1] = (byte)v;
-    }
-
-    public static final void writeShortLE(byte[] b, int offset, int v) {
-        b[offset    ] = (byte)v;
-        b[offset + 1] = (byte)(v >> 8);
-    }
-
-    public static final void writeIntBE(byte[] b, int offset, int v) {
-        b[offset    ] = (byte)(v >> 24);
-        b[offset + 1] = (byte)(v >> 16);
-        b[offset + 2] = (byte)(v >> 8);
-        b[offset + 3] = (byte)v;
-    }
-
-    public static final void writeIntLE(byte[] b, int offset, int v) {
-        b[offset    ] = (byte)v;
-        b[offset + 1] = (byte)(v >> 8);
-        b[offset + 2] = (byte)(v >> 16);
-        b[offset + 3] = (byte)(v >> 24);
-    }
-
-    public static final void writeInt48BE(byte[] b, int offset, long v) {
-        int w = (int)(v >> 32);
-        b[offset    ] = (byte)(w >> 8);
-        b[offset + 1] = (byte)w;
-        w = (int)v;
-        b[offset + 2] = (byte)(w >> 24);
-        b[offset + 3] = (byte)(w >> 16);
-        b[offset + 4] = (byte)(w >> 8);
-        b[offset + 5] = (byte)w;
-    }
-
-    public static final void writeInt48LE(byte[] b, int offset, long v) {
-        int w = (int)v;
-        b[offset    ] = (byte)w;
-        b[offset + 1] = (byte)(w >> 8);
-        b[offset + 2] = (byte)(w >> 16);
-        b[offset + 3] = (byte)(w >> 24);
-        w = (int)(v >> 32);
-        b[offset + 4] = (byte)w;
-        b[offset + 5] = (byte)(w >> 8);
-    }
-
-    public static final void writeLongBE(byte[] b, int offset, long v) {
-        int w = (int)(v >> 32);
-        b[offset    ] = (byte)(w >> 24);
-        b[offset + 1] = (byte)(w >> 16);
-        b[offset + 2] = (byte)(w >> 8);
-        b[offset + 3] = (byte)w;
-        w = (int)v;
-        b[offset + 4] = (byte)(w >> 24);
-        b[offset + 5] = (byte)(w >> 16);
-        b[offset + 6] = (byte)(w >> 8);
-        b[offset + 7] = (byte)w;
-    }
-
-    public static final void writeLongLE(byte[] b, int offset, long v) {
-        int w = (int)v;
-        b[offset    ] = (byte)w;
-        b[offset + 1] = (byte)(w >> 8);
-        b[offset + 2] = (byte)(w >> 16);
-        b[offset + 3] = (byte)(w >> 24);
-        w = (int)(v >> 32);
-        b[offset + 4] = (byte)w;
-        b[offset + 5] = (byte)(w >> 8);
-        b[offset + 6] = (byte)(w >> 16);
-        b[offset + 7] = (byte)(w >> 24);
-    }
-
     public static int calcUnsignedVarIntLength(int v) {
         if (v < (1 << 7)) {
             return v < 0 ? 5 : 1;
@@ -504,7 +370,7 @@ class Utils extends org.cojen.tupl.io.Utils {
     }
 
     /**
-     * Write the given integer using 1 to 5 bytes. Values closer to zero are
+     * Encode the given integer using 1 to 5 bytes. Values closer to zero are
      * encoded in fewer bytes.
      *
      * <pre>
@@ -519,7 +385,7 @@ class Utils extends org.cojen.tupl.io.Utils {
      *
      * @return new offset
      */
-    public static int writeUnsignedVarInt(byte[] b, int offset, int v) {
+    public static int encodeUnsignedVarInt(byte[] b, int offset, int v) {
         if (v < (1 << 7)) {
             if (v < 0) {
                 v -= (1 << 28) + (1 << 21) + (1 << 14) + (1 << 7);
@@ -555,7 +421,7 @@ class Utils extends org.cojen.tupl.io.Utils {
     }
 
     /**
-     * Write the given integer using 1 to 5 bytes. Values closer to zero are
+     * Encode the given integer using 1 to 5 bytes. Values closer to zero are
      * encoded in fewer bytes.
      *
      * <pre>
@@ -570,7 +436,7 @@ class Utils extends org.cojen.tupl.io.Utils {
      *
      * @return new offset
      */
-    public static int writeSignedVarInt(byte[] b, int offset, int v) {
+    public static int encodeSignedVarInt(byte[] b, int offset, int v) {
         if (v < 0) {
             // Complement negative value to turn all the ones to zeros, which
             // can be compacted. Shift and put sign bit at LSB.
@@ -579,13 +445,13 @@ class Utils extends org.cojen.tupl.io.Utils {
             // Shift and put sign bit at LSB.
             v <<= 1;
         }
-        return writeUnsignedVarInt(b, offset, v);
+        return encodeUnsignedVarInt(b, offset, v);
     }
 
     /**
      * @return new offset
      */
-    public static int writeSignedVarLong(byte[] b, int offset, long v) {
+    public static int encodeSignedVarLong(byte[] b, int offset, long v) {
         if (v < 0) {
             // Complement negative value to turn all the ones to zeros, which
             // can be compacted. Shift and put sign bit at LSB.
@@ -594,7 +460,7 @@ class Utils extends org.cojen.tupl.io.Utils {
             // Shift and put sign bit at LSB.
             v <<= 1;
         }
-        return writeUnsignedVarLong(b, offset, v);
+        return encodeUnsignedVarLong(b, offset, v);
     }
 
     public static int calcUnsignedVarLongLength(long v) {
@@ -633,7 +499,7 @@ class Utils extends org.cojen.tupl.io.Utils {
     }
 
     /**
-     * Write the given long integer using 1 to 9 bytes. Values closer to zero
+     * Encode the given long integer using 1 to 9 bytes. Values closer to zero
      * are encoded in fewer bytes.
      *
      * <pre>
@@ -652,7 +518,7 @@ class Utils extends org.cojen.tupl.io.Utils {
      *
      * @return new offset
      */
-    public static int writeUnsignedVarLong(byte[] b, int offset, long v) {
+    public static int encodeUnsignedVarLong(byte[] b, int offset, long v) {
         if (v < (1L << 7)) {
             if (v < 0) {
                 v -= (1L << 56) + (1L << 49) + (1L << 42) + (1L << 35)
@@ -842,7 +708,7 @@ class Utils extends org.cojen.tupl.io.Utils {
                     }
                 } else {
                     String pair = "000".concat
-                        (Integer.toHexString(readUnsignedShortBE(b, offset + pos)));
+                        (Integer.toHexString(decodeUnsignedShortBE(b, offset + pos)));
                     pair = pair.substring(pair.length() - 4);
                     bob.append(pair);
                     bob.append(' ');
