@@ -196,10 +196,10 @@ final class RedoLog extends RedoWriter {
 
         byte[] buf = new byte[8 + 4 + 8 + 4];
         int offset = 0;
-        Utils.writeLongLE(buf, offset, MAGIC_NUMBER); offset += 8;
-        Utils.writeIntLE(buf, offset, ENCODING_VERSION); offset += 4;
-        Utils.writeLongLE(buf, offset, logId); offset += 8;
-        Utils.writeIntLE(buf, offset, mNextTermRndSeed); offset += 4;
+        Utils.encodeLongLE(buf, offset, MAGIC_NUMBER); offset += 8;
+        Utils.encodeIntLE(buf, offset, ENCODING_VERSION); offset += 4;
+        Utils.encodeLongLE(buf, offset, logId); offset += 8;
+        Utils.encodeIntLE(buf, offset, mNextTermRndSeed); offset += 4;
         if (offset != buf.length) {
             throw new AssertionError();
         }

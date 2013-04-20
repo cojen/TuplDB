@@ -356,7 +356,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
             doFlush(buffer, pos);
             pos = 0;
         }
-        Utils.writeIntLE(buffer, pos, v);
+        Utils.encodeIntLE(buffer, pos, v);
         mBufferPos = pos + 4;
     }
 
@@ -368,7 +368,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
             doFlush(buffer, pos);
             pos = 0;
         }
-        Utils.writeLongLE(buffer, pos, v);
+        Utils.encodeLongLE(buffer, pos, v);
         mBufferPos = pos + 8;
     }
 
@@ -380,7 +380,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
             doFlush(buffer, pos);
             pos = 0;
         }
-        mBufferPos = Utils.writeUnsignedVarInt(buffer, pos, v);
+        mBufferPos = Utils.encodeUnsignedVarInt(buffer, pos, v);
     }
 
     // Caller must be synchronized.
@@ -433,7 +433,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
             pos = 0;
         }
         buffer[pos] = op;
-        Utils.writeLongLE(buffer, pos + 1, operand);
+        Utils.encodeLongLE(buffer, pos + 1, operand);
         mBufferPos = pos + 9;
     }
 
@@ -447,7 +447,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
             pos = 0;
         }
         buffer[pos] = op;
-        mBufferPos = Utils.writeSignedVarLong(buffer, pos + 1, txnId - mLastTxnId);
+        mBufferPos = Utils.encodeSignedVarLong(buffer, pos + 1, txnId - mLastTxnId);
         mLastTxnId = txnId;
     }
 
