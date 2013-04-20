@@ -66,10 +66,10 @@ public class UtilsTest {
         assertEquals(size, calcUnsignedVarIntLength(value));
 
         byte[] b = new byte[size];
-        int offset = writeUnsignedVarInt(b, 0, value);
+        int offset = encodeUnsignedVarInt(b, 0, value);
         assertEquals(b.length, offset);
 
-        int decoded = readUnsignedVarInt(b, 0);
+        int decoded = decodeUnsignedVarInt(b, 0);
         assertEquals(value, decoded);
     }
 
@@ -119,10 +119,10 @@ public class UtilsTest {
 
     private void varSignedInt(int value, int size) {
         byte[] b = new byte[size];
-        int offset = writeSignedVarInt(b, 0, value);
+        int offset = encodeSignedVarInt(b, 0, value);
         assertEquals(b.length, offset);
 
-        int decoded = readSignedVarInt(b, 0);
+        int decoded = decodeSignedVarInt(b, 0);
         assertEquals(value, decoded);
     }
 
@@ -172,7 +172,7 @@ public class UtilsTest {
         assertEquals(size, calcUnsignedVarLongLength(value));
 
         byte[] b = new byte[size];
-        int offset = writeUnsignedVarLong(b, 0, value);
+        int offset = encodeUnsignedVarLong(b, 0, value);
         assertEquals(b.length, offset);
 
         class Ref implements IntegerRef {
@@ -190,7 +190,7 @@ public class UtilsTest {
         Ref ref = new Ref();
         ref.off = 0;
 
-        long decoded = readUnsignedVarLong(b, ref);
+        long decoded = decodeUnsignedVarLong(b, ref);
         assertEquals(value, decoded);
 
         assertEquals(size, ref.off);
@@ -199,68 +199,68 @@ public class UtilsTest {
     @Test
     public void shortBE() {
         byte[] b = new byte[2];
-        writeShortBE(b, 0, 0x8182);
+        encodeShortBE(b, 0, 0x8182);
         assertArrayEquals(new byte[] {(byte) 0x81, (byte) 0x82}, b);
-        assertEquals(0x8182, readUnsignedShortBE(b, 0));
+        assertEquals(0x8182, decodeUnsignedShortBE(b, 0));
     }
 
     @Test
     public void shortLE() {
         byte[] b = new byte[2];
-        writeShortLE(b, 0, 0x8182);
+        encodeShortLE(b, 0, 0x8182);
         assertArrayEquals(new byte[] {(byte) 0x82, (byte) 0x81}, b);
-        assertEquals(0x8281, readUnsignedShortBE(b, 0));
+        assertEquals(0x8281, decodeUnsignedShortBE(b, 0));
     }
 
     @Test
     public void intBE() {
         byte[] b = new byte[4];
-        writeIntBE(b, 0, 0x81828384);
+        encodeIntBE(b, 0, 0x81828384);
         assertArrayEquals(new byte[] {(byte) 0x81, (byte) 0x82, (byte) 0x83, (byte) 0x84}, b);
-        assertEquals(0x81828384, readIntBE(b, 0));
+        assertEquals(0x81828384, decodeIntBE(b, 0));
     }
 
     @Test
     public void intLE() {
         byte[] b = new byte[4];
-        writeIntLE(b, 0, 0x81828384);
+        encodeIntLE(b, 0, 0x81828384);
         assertArrayEquals(new byte[] {(byte) 0x84, (byte) 0x83, (byte) 0x82, (byte) 0x81}, b);
-        assertEquals(0x81828384, readIntLE(b, 0));
+        assertEquals(0x81828384, decodeIntLE(b, 0));
     }
 
     @Test
     public void int48BE() {
         byte[] b = new byte[6];
-        writeInt48BE(b, 0, 0x818283848586L);
+        encodeInt48BE(b, 0, 0x818283848586L);
         assertArrayEquals(new byte[] {(byte) 0x81, (byte) 0x82, (byte) 0x83, (byte) 0x84,
                                       (byte) 0x85, (byte) 0x86}, b);
-        assertEquals(0x818283848586L, readUnsignedInt48BE(b, 0));
+        assertEquals(0x818283848586L, decodeUnsignedInt48BE(b, 0));
     }
 
     @Test
     public void int48LE() {
         byte[] b = new byte[6];
-        writeInt48LE(b, 0, 0x818283848586L);
+        encodeInt48LE(b, 0, 0x818283848586L);
         assertArrayEquals(new byte[] {(byte) 0x86, (byte) 0x85, (byte) 0x84, (byte) 0x83,
                                       (byte) 0x82, (byte) 0x81}, b);
-        assertEquals(0x818283848586L, readUnsignedInt48LE(b, 0));
+        assertEquals(0x818283848586L, decodeUnsignedInt48LE(b, 0));
     }
 
     @Test
     public void longBE() {
         byte[] b = new byte[8];
-        writeLongBE(b, 0, 0x8182838485868788L);
+        encodeLongBE(b, 0, 0x8182838485868788L);
         assertArrayEquals(new byte[] {(byte) 0x81, (byte) 0x82, (byte) 0x83, (byte) 0x84,
                                       (byte) 0x85, (byte) 0x86, (byte) 0x87, (byte) 0x88}, b);
-        assertEquals(0x8182838485868788L, readLongBE(b, 0));
+        assertEquals(0x8182838485868788L, decodeLongBE(b, 0));
     }
 
     @Test
     public void longLE() {
         byte[] b = new byte[8];
-        writeLongLE(b, 0, 0x8182838485868788L);
+        encodeLongLE(b, 0, 0x8182838485868788L);
         assertArrayEquals(new byte[] {(byte) 0x88, (byte) 0x87, (byte) 0x86, (byte) 0x85,
                                       (byte) 0x84, (byte) 0x83, (byte) 0x82, (byte) 0x81}, b);
-        assertEquals(0x8182838485868788L, readLongLE(b, 0));
+        assertEquals(0x8182838485868788L, decodeLongLE(b, 0));
     }
 }

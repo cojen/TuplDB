@@ -126,7 +126,7 @@ final class PageManager {
     }
 
     static long readTotalPageCount(byte[] header, int offset) {
-        return Utils.readLongLE(header, offset + I_TOTAL_PAGE_COUNT);
+        return Utils.decodeLongLE(header, offset + I_TOTAL_PAGE_COUNT);
     }
 
     public PageArray pageArray() {
@@ -228,7 +228,7 @@ final class PageManager {
 
             // Total page count is written after append heaps have been
             // drained, because additional pages might have been allocated.
-            Utils.writeLongLE(header, offset + I_TOTAL_PAGE_COUNT, mTotalPageCount);
+            Utils.encodeLongLE(header, offset + I_TOTAL_PAGE_COUNT, mTotalPageCount);
 
             mRegularFreeList.commitStart(header, offset + I_REGULAR_QUEUE);
             mRecycleFreeList.commitStart(header, offset + I_RECYCLE_QUEUE);
