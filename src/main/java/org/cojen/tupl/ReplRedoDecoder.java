@@ -81,7 +81,7 @@ final class ReplRedoDecoder extends RedoDecoder {
         }
 
         In(ReplicationManager manager, int bufferSize) {
-            super(manager.position(), bufferSize);
+            super(manager.readPosition(), bufferSize);
             mManager = manager;
         }
 
