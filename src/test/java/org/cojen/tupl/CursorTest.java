@@ -627,7 +627,7 @@ public class CursorTest {
         c = ix.newCursor(null);
         for (int i=0; i<1000000; i++) {
             c.random(null, null);
-            int key = Utils.readIntBE(c.key(), 0);
+            int key = Utils.decodeIntBE(c.key(), 0);
             buckets[key / 1000]++;
         }
 
@@ -680,7 +680,7 @@ public class CursorTest {
             byte[] highKey = key(10000);
             for (int i=0; i<1000000; i++) {
                 c.random(null, null);
-                int key = Utils.readIntBE(c.key(), 0);
+                int key = Utils.decodeIntBE(c.key(), 0);
                 buckets[key / 1000]++;
             }
 
@@ -699,7 +699,7 @@ public class CursorTest {
             byte[] highKey = key(9000);
             for (int i=0; i<10000000; i++) {
                 c.random(lowKey, highKey);
-                int key = Utils.readIntBE(c.key(), 0);
+                int key = Utils.decodeIntBE(c.key(), 0);
                 assertTrue(key >= 1000);
                 assertTrue(key < 9000);
                 buckets[key / 1000]++;
@@ -720,7 +720,7 @@ public class CursorTest {
 
     private byte[] key(int i) {
         byte[] key = new byte[4];
-        Utils.writeIntBE(key, 0, i);
+        Utils.encodeIntBE(key, 0, i);
         return key;
     }
 
