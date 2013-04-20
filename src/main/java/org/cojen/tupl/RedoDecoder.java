@@ -49,7 +49,7 @@ abstract class RedoDecoder {
 
             int op = in.read();
             if (op < 0) {
-                break;
+                return true;
             }
 
             switch (op &= 0xff) {
@@ -270,8 +270,6 @@ abstract class RedoDecoder {
                 break;
             }
         }
-
-        return true;
     }
 
     long readTxnId(DataIn in) throws IOException {
