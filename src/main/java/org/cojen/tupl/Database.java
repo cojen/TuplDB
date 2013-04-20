@@ -435,12 +435,12 @@ public final class Database implements CauseCloseable {
             }
 
             synchronized (mTxnIdLock) {
-                mTxnId = readLongLE(header, I_TRANSACTION_ID);
+                mTxnId = decodeLongLE(header, I_TRANSACTION_ID);
             }
 
-            long redoNum = readLongLE(header, I_CHECKPOINT_NUMBER);
-            long redoPos = readLongLE(header, I_REDO_POSITION);
-            long redoTxnId = readLongLE(header, I_REDO_TXN_ID);
+            long redoNum = decodeLongLE(header, I_CHECKPOINT_NUMBER);
+            long redoPos = decodeLongLE(header, I_REDO_POSITION);
+            long redoTxnId = decodeLongLE(header, I_REDO_TXN_ID);
 
             if (openMode == OPEN_TEMP) {
                 mRegistryKeyMap = null;
@@ -485,7 +485,7 @@ public final class Database implements CauseCloseable {
 
                 LHashTable.Obj<Transaction> txns = new LHashTable.Obj<Transaction>(16);
                 {
-                    long masterNodeId = readLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID);
+                    long masterNodeId = decodeLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID);
                     if (masterNodeId != 0) {
                         if (mEventListener != null) {
                             mEventListener.notify
@@ -724,7 +724,7 @@ public final class Database implements CauseCloseable {
 
             byte[] idKey = new byte[9];
             idKey[0] = KEY_TYPE_INDEX_ID;
-            writeLongBE(idKey, 1, id);
+            encodeLongBE(idKey, 1, id);
 
             byte[] name = mRegistryKeyMap.load(null, idKey);
 
@@ -773,7 +773,7 @@ public final class Database implements CauseCloseable {
         if (id.length != 8) {
             throw new IllegalArgumentException("Expected an 8 byte identifier: " + id.length);
         }
-        return indexById(readLongBE(id, 0));
+        return indexById(decodeLongBE(id, 0));
     }
 
     /**
@@ -1255,7 +1255,7 @@ public final class Database implements CauseCloseable {
         Cursor all = allIndexes();
         try {
             for (all.first(); all.key() != null; all.next()) {
-                long id = readLongBE(all.value(), 0);
+                long id = decodeLongBE(all.value(), 0);
 
                 Tree index = lookupIndexById(id);
                 if (index != null) {
@@ -1509,7 +1509,7 @@ public final class Database implements CauseCloseable {
      * is not eligible for eviction.
      */
     private Node loadRegistryRoot(byte[] header) throws IOException {
-        int version = readIntLE(header, I_ENCODING_VERSION);
+        int version = decodeIntLE(header, I_ENCODING_VERSION);
 
         long rootId;
         if (version == 0) {
@@ -1520,7 +1520,7 @@ public final class Database implements CauseCloseable {
             if (version != ENCODING_VERSION) {
                 throw new CorruptDatabaseException("Unknown encoding version: " + version);
             }
-            rootId = readLongLE(header, I_ROOT_PAGE_ID);
+            rootId = decodeLongLE(header, I_ROOT_PAGE_ID);
         }
 
         return loadTreeRoot(rootId);
@@ -1531,11 +1531,11 @@ public final class Database implements CauseCloseable {
         commitLock.lock();
         try {
             byte[] treeIdBytes = new byte[8];
-            writeLongBE(treeIdBytes, 0, treeId);
+            encodeLongBE(treeIdBytes, 0, treeId);
             byte[] rootIdBytes = mRegistry.load(Transaction.BOGUS, treeIdBytes);
             long rootId;
             if (rootIdBytes != null) {
-                rootId = readLongLE(rootIdBytes, 0);
+                rootId = decodeLongLE(rootIdBytes, 0);
             } else {
                 if (!create) {
                     return null;
@@ -1570,7 +1570,7 @@ public final class Database implements CauseCloseable {
 
             if (treeIdBytes != null) {
                 idKey = null;
-                treeId = readLongBE(treeIdBytes, 0);
+                treeId = decodeLongBE(treeIdBytes, 0);
             } else if (!create) {
                 return null;
             } else {
@@ -1579,7 +1579,7 @@ public final class Database implements CauseCloseable {
                     treeIdBytes = mRegistryKeyMap.load(null, nameKey);
                     if (treeIdBytes != null) {
                         idKey = null;
-                        treeId = readLongBE(treeIdBytes, 0);
+                        treeId = decodeLongBE(treeIdBytes, 0);
                     } else {
                         treeIdBytes = new byte[8];
 
@@ -1590,7 +1590,7 @@ public final class Database implements CauseCloseable {
                             do {
                                 critical = false;
                                 treeId = nextTreeId();
-                                writeLongBE(treeIdBytes, 0, treeId);
+                                encodeLongBE(treeIdBytes, 0, treeId);
                                 critical = true;
                             } while (!mRegistry.insert
                                      (Transaction.BOGUS, treeIdBytes, EMPTY_BYTES));
@@ -1639,7 +1639,7 @@ public final class Database implements CauseCloseable {
                 }
 
                 long rootId = (rootIdBytes == null || rootIdBytes.length == 0) ? 0
-                    : readLongLE(rootIdBytes, 0);
+                    : decodeLongLE(rootIdBytes, 0);
                 tree = new Tree(this, treeId, treeIdBytes, name, loadTreeRoot(rootId));
 
                 TreeRef treeRef = new TreeRef(tree, mOpenTreesRefQueue);
@@ -1692,7 +1692,7 @@ public final class Database implements CauseCloseable {
                     mRegistryKeyMap.store(txn, key, treeIdMaskBytes);
                 }
 
-                treeIdMask = readLongLE(treeIdMaskBytes, 0);
+                treeIdMask = decodeLongLE(treeIdMaskBytes, 0);
             }
 
             byte[] key = {KEY_TYPE_NEXT_TREE_ID};
@@ -1701,14 +1701,14 @@ public final class Database implements CauseCloseable {
             if (nextTreeIdBytes == null) {
                 nextTreeIdBytes = new byte[8];
             }
-            long nextTreeId = readLongLE(nextTreeIdBytes, 0);
+            long nextTreeId = decodeLongLE(nextTreeIdBytes, 0);
 
             long treeId;
             do {
                 treeId = scramble((nextTreeId++) ^ treeIdMask);
             } while (Tree.isInternal(treeId));
 
-            writeLongLE(nextTreeIdBytes, 0, nextTreeId);
+            encodeLongLE(nextTreeIdBytes, 0, nextTreeId);
             mRegistryKeyMap.store(txn, key, nextTreeIdBytes);
             txn.commit();
 
@@ -1777,7 +1777,7 @@ public final class Database implements CauseCloseable {
         // Acquire lock to prevent tree from being reloaded too soon.
 
         byte[] treeIdBytes = new byte[8];
-        writeLongBE(treeIdBytes, 0, ref.mId);
+        encodeLongBE(treeIdBytes, 0, ref.mId);
 
         if (txn == null) {
             txn = newLockTransaction();
@@ -2091,6 +2091,30 @@ public final class Database implements CauseCloseable {
      * Caller must hold commit lock and exclusive latch on node. Method does
      * nothing if node is already dirty. Latch is never released by this method,
      * even if an exception is thrown.
+     *
+     * @return true if just made dirty and id changed
+     */
+    boolean markFragmentDirty(Node node) throws IOException {
+        if (node.mCachedState == mCommitState) {
+            return false;
+        } else {
+            long oldId = node.mId;
+            long newId = mAllocator.allocPage(node);
+            if (oldId != 0) {
+                mPageDb.deletePage(oldId);
+            }
+            if (node.mCachedState != CACHED_CLEAN) {
+                node.write(mPageDb);
+            }
+            dirty(node, newId);
+            return true;
+        }
+    }
+
+    /**
+     * Caller must hold commit lock and exclusive latch on node. Method does
+     * nothing if node is already dirty. Latch is never released by this method,
+     * even if an exception is thrown.
      */
     void markUndoLogDirty(Node node) throws IOException {
         if (node.mCachedState != mCommitState) {
@@ -2118,7 +2142,7 @@ public final class Database implements CauseCloseable {
         }
         if (node == tree.mRoot && tree.mIdBytes != null) {
             byte[] newEncodedId = new byte[8];
-            writeLongLE(newEncodedId, 0, newId);
+            encodeLongLE(newEncodedId, 0, newId);
             mRegistry.store(Transaction.BOGUS, tree.mIdBytes, newEncodedId);
         }
         dirty(node, newId);
@@ -2139,6 +2163,15 @@ public final class Database implements CauseCloseable {
     void redirty(Node node) {
         node.mCachedState = mCommitState;
         mAllocator.dirty(node);
+    }
+
+    /**
+     * Caller must hold commit lock and exclusive latch on node. This method should only be
+     * called for nodes whose existing data is not needed and it is known that node is already
+     * in the allocator's dirty list.
+     */
+    void redirtyQ(Node node) {
+        node.mCachedState = mCommitState;
     }
 
     /**
@@ -2306,8 +2339,8 @@ public final class Database implements CauseCloseable {
             // encoded this way, but do as we're told.
             byte[] newValue = new byte[(1 + 2 + 2) + (int) vlength];
             newValue[0] = 0x02; // ff=0, i=1, p=0
-            writeShortLE(newValue, 1, (int) vlength);     // full length
-            writeShortLE(newValue, 1 + 2, (int) vlength); // inline length
+            encodeShortLE(newValue, 1, (int) vlength);     // full length
+            encodeShortLE(newValue, 1 + 2, (int) vlength); // inline length
             arrayCopyOrFill(value, 0, newValue, (1 + 2 + 2), (int) vlength);
             return newValue;
         } else {
@@ -2356,7 +2389,7 @@ public final class Database implements CauseCloseable {
                         Node node = allocDirtyNode();
                         try {
                             mFragmentCache.put(caller, node);
-                            writeInt48LE(newValue, poffset, node.mId);
+                            encodeInt48LE(newValue, poffset, node.mId);
                             arraycopy(value, voffset, node.mPage, 0, pageSize);
                             if (pageCount == 1) {
                                 break;
@@ -2372,7 +2405,7 @@ public final class Database implements CauseCloseable {
             }
 
             newValue[0] = header;
-            writeShortLE(newValue, offset, remainder); // inline length
+            encodeShortLE(newValue, offset, remainder); // inline length
             arrayCopyOrFill(value, 0, newValue, offset + 2, remainder);
         } else {
             // Remainder doesn't fit inline, so don't encode any inline
@@ -2409,7 +2442,7 @@ public final class Database implements CauseCloseable {
                             Node node = allocDirtyNode();
                             try {
                                 mFragmentCache.put(caller, node);
-                                writeInt48LE(newValue, offset, node.mId);
+                                encodeInt48LE(newValue, offset, node.mId);
                                 byte[] page = node.mPage;
                                 if (pageCount > 1) {
                                     arraycopy(value, voffset, page, 0, pageSize);
@@ -2434,10 +2467,10 @@ public final class Database implements CauseCloseable {
                 newValue = new byte[offset + 6];
                 if (value == null) {
                     // Value is sparse, so just store a null pointer.
-                    writeInt48LE(newValue, offset, 0);
+                    encodeInt48LE(newValue, offset, 0);
                 } else {
                     Node inode = allocDirtyNode();
-                    writeInt48LE(newValue, offset, inode.mId);
+                    encodeInt48LE(newValue, offset, inode.mId);
                     int levels = calculateInodeLevels(vlength, pageSize);
                     writeMultilevelFragments(caller, levels, inode, value, 0, vlength);
                 }
@@ -2448,13 +2481,13 @@ public final class Database implements CauseCloseable {
 
         // Encode full length field.
         if (vlength < (1L << (2 * 8))) {
-            writeShortLE(newValue, 1, (int) vlength);
+            encodeShortLE(newValue, 1, (int) vlength);
         } else if (vlength < (1L << (4 * 8))) {
-            writeIntLE(newValue, 1, (int) vlength);
+            encodeIntLE(newValue, 1, (int) vlength);
         } else if (vlength < (1L << (6 * 8))) {
-            writeInt48LE(newValue, 1, vlength);
+            encodeInt48LE(newValue, 1, vlength);
         } else {
-            writeLongLE(newValue, 1, vlength);
+            encodeLongLE(newValue, 1, vlength);
         }
 
         return newValue;
@@ -2517,7 +2550,7 @@ public final class Database implements CauseCloseable {
                 int poffset = 0;
                 for (int i=0; i<childNodeCount; poffset += 6, i++) {
                     Node childNode = allocDirtyNode();
-                    writeInt48LE(page, poffset, childNodeIds[i] = childNode.mId);
+                    encodeInt48LE(page, poffset, childNodeIds[i] = childNode.mId);
                     childNodes[i] = childNode;
                     // Allow node to be evicted, but don't write anything yet.
                     childNode.mCachedState = CACHED_CLEAN;
@@ -2526,12 +2559,8 @@ public final class Database implements CauseCloseable {
                 // Zero fill the rest, making it easier to extend later.
                 fill(page, poffset, page.length, (byte) 0);
             } catch (Throwable e) {
-                for (Node childNode : childNodes) {
-                    if (childNode != null) {
-                        childNode.acquireExclusive();
-                        deleteNode(childNode);
-                    }
-                }
+                // Panic.
+                close(e);
                 throw rethrow(e);
             }
 
@@ -2548,10 +2577,10 @@ public final class Database implements CauseCloseable {
                 if (childNodeId == childNode.mId) {
                     childNode.acquireExclusive();
                     if (childNodeId == childNode.mId) {
-                        // Since commit lock is held, only need to switch the
-                        // state. Calling redirty is unnecessary and it would
-                        // screw up the dirty list order for no good reason.
-                        childNode.mCachedState = mCommitState;
+                        // Since commit lock is held, only need to switch the state. Calling
+                        // redirty is unnecessary and it would screw up the dirty list order
+                        // for no good reason. Use the quick variant.
+                        redirtyQ(childNode);
                         break latchChild;
                     }
                 }
@@ -2590,18 +2619,18 @@ public final class Database implements CauseCloseable {
         int vLen;
         switch ((header >> 2) & 0x03) {
         default:
-            vLen = readUnsignedShortLE(fragmented, off);
+            vLen = decodeUnsignedShortLE(fragmented, off);
             break;
 
         case 1:
-            vLen = readIntLE(fragmented, off);
+            vLen = decodeIntLE(fragmented, off);
             if (vLen < 0) {
                 throw new LargeValueException(vLen & 0xffffffffL);
             }
             break;
 
         case 2:
-            long vLenL = readUnsignedInt48LE(fragmented, off);
+            long vLenL = decodeUnsignedInt48LE(fragmented, off);
             if (vLenL > Integer.MAX_VALUE) {
                 throw new LargeValueException(vLenL);
             }
@@ -2609,7 +2638,7 @@ public final class Database implements CauseCloseable {
             break;
 
         case 3:
-            vLenL = readLongLE(fragmented, off);
+            vLenL = decodeLongLE(fragmented, off);
             if (vLenL < 0 || vLenL > Integer.MAX_VALUE) {
                 throw new LargeValueException(vLenL);
             }
@@ -2633,7 +2662,7 @@ public final class Database implements CauseCloseable {
         int vOff = 0;
         if ((header & 0x02) != 0) {
             // Inline content.
-            int inLen = readUnsignedShortLE(fragmented, off);
+            int inLen = decodeUnsignedShortLE(fragmented, off);
             off += 2;
             len -= 2;
             arraycopy(fragmented, off, value, vOff, inLen);
@@ -2646,7 +2675,7 @@ public final class Database implements CauseCloseable {
         if ((header & 0x01) == 0) {
             // Direct pointers.
             while (len >= 6) {
-                long nodeId = readUnsignedInt48LE(fragmented, off);
+                long nodeId = decodeUnsignedInt48LE(fragmented, off);
                 off += 6;
                 len -= 6;
                 int pLen;
@@ -2668,7 +2697,7 @@ public final class Database implements CauseCloseable {
             }
         } else {
             // Indirect pointers.
-            long inodeId = readUnsignedInt48LE(fragmented, off);
+            long inodeId = decodeUnsignedInt48LE(fragmented, off);
             if (inodeId != 0) {
                 Node inode = mFragmentCache.get(caller, inodeId);
                 int levels = calculateInodeLevels(vLen, mPageSize);
@@ -2698,7 +2727,7 @@ public final class Database implements CauseCloseable {
         int childNodeCount = (int) ((vlength + (levelCap - 1)) / levelCap);
         long[] childNodeIds = new long[childNodeCount];
         for (int poffset = 0, i=0; i<childNodeCount; poffset += 6, i++) {
-            childNodeIds[i] = readUnsignedInt48LE(page, poffset);
+            childNodeIds[i] = decodeUnsignedInt48LE(page, poffset);
         }
         inode.releaseShared();
 
@@ -2736,16 +2765,16 @@ public final class Database implements CauseCloseable {
         } else {
             switch ((header >> 2) & 0x03) {
             default:
-                vLen = readUnsignedShortLE(fragmented, off);
+                vLen = decodeUnsignedShortLE(fragmented, off);
                 break;
             case 1:
-                vLen = readIntLE(fragmented, off) & 0xffffffffL;
+                vLen = decodeIntLE(fragmented, off) & 0xffffffffL;
                 break;
             case 2:
-                vLen = readUnsignedInt48LE(fragmented, off);
+                vLen = decodeUnsignedInt48LE(fragmented, off);
                 break;
             case 3:
-                vLen = readLongLE(fragmented, off);
+                vLen = decodeLongLE(fragmented, off);
                 break;
             }
         }
@@ -2758,7 +2787,7 @@ public final class Database implements CauseCloseable {
 
         if ((header & 0x02) != 0) {
             // Skip inline content.
-            int inLen = 2 + readUnsignedShortLE(fragmented, off);
+            int inLen = 2 + decodeUnsignedShortLE(fragmented, off);
             off += inLen;
             len -= inLen;
         }
@@ -2766,14 +2795,14 @@ public final class Database implements CauseCloseable {
         if ((header & 0x01) == 0) {
             // Direct pointers.
             while (len >= 6) {
-                long nodeId = readUnsignedInt48LE(fragmented, off);
+                long nodeId = decodeUnsignedInt48LE(fragmented, off);
                 off += 6;
                 len -= 6;
                 deleteFragment(caller, nodeId);
             }
         } else {
             // Indirect pointers.
-            long inodeId = readUnsignedInt48LE(fragmented, off);
+            long inodeId = decodeUnsignedInt48LE(fragmented, off);
             if (inodeId != 0) {
                 Node inode = removeInode(caller, inodeId);
                 int levels = calculateInodeLevels(vLen, mPageSize);
@@ -2798,7 +2827,7 @@ public final class Database implements CauseCloseable {
         int childNodeCount = (int) ((vlength + (levelCap - 1)) / levelCap);
         long[] childNodeIds = new long[childNodeCount];
         for (int poffset = 0, i=0; i<childNodeCount; poffset += 6, i++) {
-            childNodeIds[i] = readUnsignedInt48LE(page, poffset);
+            childNodeIds[i] = decodeUnsignedInt48LE(page, poffset);
         }
         deleteNode(inode);
 
@@ -3158,13 +3187,13 @@ public final class Database implements CauseCloseable {
         }
 
         byte[] header = new byte[HEADER_SIZE];
-        writeIntLE(header, I_ENCODING_VERSION, ENCODING_VERSION);
-        writeLongLE(header, I_ROOT_PAGE_ID, rootId);
-        writeLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
-        writeLongLE(header, I_TRANSACTION_ID, txnId);
-        writeLongLE(header, I_CHECKPOINT_NUMBER, redoNum);
-        writeLongLE(header, I_REDO_TXN_ID, redoTxnId);
-        writeLongLE(header, I_REDO_POSITION, redoPos);
+        encodeIntLE(header, I_ENCODING_VERSION, ENCODING_VERSION);
+        encodeLongLE(header, I_ROOT_PAGE_ID, rootId);
+        encodeLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
+        encodeLongLE(header, I_TRANSACTION_ID, txnId);
+        encodeLongLE(header, I_CHECKPOINT_NUMBER, redoNum);
+        encodeLongLE(header, I_REDO_TXN_ID, redoTxnId);
+        encodeLongLE(header, I_REDO_POSITION, redoPos);
 
         return header;
     }

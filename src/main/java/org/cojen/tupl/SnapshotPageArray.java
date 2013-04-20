@@ -272,7 +272,7 @@ final class SnapshotPageArray extends PageArray {
                 {
                     // Insert a terminator for findNearby efficiency.
                     byte[] k2 = new byte[8];
-                    writeLongBE(k2, 0, ~0L);
+                    encodeLongBE(k2, 0, ~0L);
                     mPageCopyIndex.store(Transaction.BOGUS, k2, EMPTY_BYTES);
                 }
 
@@ -347,7 +347,7 @@ final class SnapshotPageArray extends PageArray {
                             mSnapshotLock.wait();
                         } else {
                             byte[] key = new byte[8];
-                            writeLongBE(key, 0, index);
+                            encodeLongBE(key, 0, index);
                             c = mPageCopyIndex.newCursor(Transaction.BOGUS);
                             c.autoload(false);
                             c.find(key);

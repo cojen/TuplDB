@@ -132,7 +132,7 @@ final class IdHeap {
                 }
             }
             long id = remove();
-            offset = Utils.writeUnsignedVarLong(buffer, offset, id - prevId);
+            offset = Utils.encodeUnsignedVarLong(buffer, offset, id - prevId);
             prevId = id;
         }
         return offset;

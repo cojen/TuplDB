@@ -210,7 +210,7 @@ final class UndoLog {
 
     private void pushIndexId(long indexId) throws IOException {
         byte[] payload = new byte[8];
-        writeLongLE(payload, 0, indexId);
+        encodeLongLE(payload, 0, indexId);
         doPush(OP_INDEX, payload, 0, 8, 1);
     }
 
@@ -316,7 +316,7 @@ final class UndoLog {
 
             if (remaining <= 0 && available >= (1 + varIntLen)) {
                 if (varIntLen > 0) {
-                    writeUnsignedVarInt(page, pos -= varIntLen, len);
+                    encodeUnsignedVarInt(page, pos -= varIntLen, len);
                 }
                 page[--pos] = op;
                 node.mGarbage = pos;
@@ -520,7 +520,7 @@ final class UndoLog {
                 break;
 
             case OP_INDEX:
-                mActiveIndexId = readLongLE(entry, 0);
+                mActiveIndexId = decodeLongLE(entry, 0);
                 activeIndex = null;
                 break;
 
@@ -561,7 +561,7 @@ final class UndoLog {
             break;
 
         case OP_INDEX:
-            mActiveIndexId = readLongLE(entry, 0);
+            mActiveIndexId = decodeLongLE(entry, 0);
             activeIndex = null;
             break;
 
@@ -670,7 +670,7 @@ final class UndoLog {
                 mLength -= 1;
                 return EMPTY_BYTES;
             }
-            int payloadLen = readUnsignedVarInt(buffer, pos);
+            int payloadLen = decodeUnsignedVarInt(buffer, pos);
             int varIntLen = calcUnsignedVarIntLength(payloadLen);
             pos += varIntLen;
             byte[] entry = new byte[payloadLen];
@@ -709,7 +709,7 @@ final class UndoLog {
 
         int payloadLen;
         {
-            payloadLen = readUnsignedVarInt(page, pos);
+            payloadLen = decodeUnsignedVarInt(page, pos);
             int varIntLen = calcUnsignedVarIntLength(payloadLen);
             pos += varIntLen;
             mLength -= 1 + varIntLen + payloadLen;
@@ -771,7 +771,7 @@ final class UndoLog {
      * @return null if none
      */
     private Node latchLowerNode(Node parent) throws IOException {
-        long lowerNodeId = readLongLE(parent.mPage, I_LOWER_NODE_ID);
+        long lowerNodeId = decodeLongLE(parent.mPage, I_LOWER_NODE_ID);
         if (lowerNodeId == 0) {
             return null;
         }
@@ -797,7 +797,7 @@ final class UndoLog {
     {
         dest[destPos] = op;
         if (op >= PAYLOAD_OP) {
-            int payloadPos = writeUnsignedVarInt(dest, destPos + 1, len);
+            int payloadPos = encodeUnsignedVarInt(dest, destPos + 1, len);
             arraycopy(payload, off, dest, payloadPos, len);
         }
     }
@@ -808,7 +808,7 @@ final class UndoLog {
     private Node allocUnevictableNode(long lowerNodeId) throws IOException {
         Node node = mDatabase.allocUnevictableNode();
         node.mType = Node.TYPE_UNDO_LOG;
-        writeLongLE(node.mPage, I_LOWER_NODE_ID, lowerNodeId);
+        encodeLongLE(node.mPage, I_LOWER_NODE_ID, lowerNodeId);
         return node;
     }
 
@@ -836,7 +836,7 @@ final class UndoLog {
                 workspace = new byte[Math.max(INITIAL_BUFFER_SIZE, roundUpPower2(psize))];
             }
             writeHeaderToMaster(workspace);
-            writeShortLE(workspace, (8 + 8), bsize);
+            encodeShortLE(workspace, (8 + 8), bsize);
             arraycopy(buffer, pos, workspace, (8 + 8 + 2), bsize);
             master.doPush(OP_LOG_COPY, workspace, 0, psize,
                           calcUnsignedVarIntLength(psize));
@@ -845,17 +845,17 @@ final class UndoLog {
                 workspace = new byte[INITIAL_BUFFER_SIZE];
             }
             writeHeaderToMaster(workspace);
-            writeLongLE(workspace, (8 + 8), mLength);
-            writeLongLE(workspace, (8 + 8 + 8), node.mId);
-            writeShortLE(workspace, (8 + 8 + 8 + 8), node.mGarbage);
+            encodeLongLE(workspace, (8 + 8), mLength);
+            encodeLongLE(workspace, (8 + 8 + 8), node.mId);
+            encodeShortLE(workspace, (8 + 8 + 8 + 8), node.mGarbage);
             master.doPush(OP_LOG_REF, workspace, 0, (8 + 8 + 8 + 8 + 2), 1);
         }
         return workspace;
     }
 
     private void writeHeaderToMaster(byte[] workspace) {
-        writeLongLE(workspace, 0, mTxnId);
-        writeLongLE(workspace, 8, mActiveIndexId);
+        encodeLongLE(workspace, 0, mTxnId);
+        encodeLongLE(workspace, 8, mActiveIndexId);
     }
 
     static UndoLog recoverMasterUndoLog(Database db, long nodeId) throws IOException {
@@ -939,7 +939,7 @@ final class UndoLog {
                 break;
 
             case OP_INDEX:
-                mActiveIndexId = readLongLE(entry, 0);
+                mActiveIndexId = decodeLongLE(entry, 0);
                 break;
 
             case OP_DELETE:
@@ -1025,21 +1025,21 @@ final class UndoLog {
             throw new DatabaseException("Unknown undo log entry type: " + masterLogOp);
         }
 
-        long txnId = readLongLE(masterLogEntry, 0);
+        long txnId = decodeLongLE(masterLogEntry, 0);
         UndoLog log = new UndoLog(mDatabase, txnId);
-        log.mActiveIndexId = readLongLE(masterLogEntry, 8);
+        log.mActiveIndexId = decodeLongLE(masterLogEntry, 8);
 
         if (masterLogOp == OP_LOG_COPY) {
-            int bsize = readUnsignedShortLE(masterLogEntry, (8 + 8));
+            int bsize = decodeUnsignedShortLE(masterLogEntry, (8 + 8));
             log.mLength = bsize;
             byte[] buffer = new byte[bsize];
             arraycopy(masterLogEntry, (8 + 8 + 2), buffer, 0, bsize);
             log.mBuffer = buffer;
             log.mBufferPos = 0;
         } else {
-            log.mLength = readLongLE(masterLogEntry, (8 + 8));
-            long nodeId = readLongLE(masterLogEntry, (8 + 8 + 8));
-            int topEntry = readUnsignedShortLE(masterLogEntry, (8 + 8 + 8 + 8));
+            log.mLength = decodeLongLE(masterLogEntry, (8 + 8));
+            long nodeId = decodeLongLE(masterLogEntry, (8 + 8 + 8));
+            int topEntry = decodeUnsignedShortLE(masterLogEntry, (8 + 8 + 8 + 8));
             log.mNode = readUndoLogNode(mDatabase, nodeId);
             log.mNode.mGarbage = topEntry;
             log.mNode.releaseExclusive();
