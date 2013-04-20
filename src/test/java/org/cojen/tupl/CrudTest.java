@@ -371,14 +371,14 @@ public class CrudTest {
         byte[] key = new byte[4];
         byte[] value = "small".getBytes();
         for (int i=0; i<1000; i++) {
-            Utils.writeIntBE(key, 0, i);
+            Utils.encodeIntBE(key, 0, i);
             ix.store(Transaction.BOGUS, key, value);
         }
 
         // Update with larger values, forcing nodes to split.
         value = "value is much bigger now".getBytes();
         for (int i=0; i<1000; i++) {
-            Utils.writeIntBE(key, 0, i);
+            Utils.encodeIntBE(key, 0, i);
             ix.store(Transaction.BOGUS, key, value);
             assertTrue(ix.verify(null));
         }

@@ -138,7 +138,7 @@ public class LargeValueTest {
 
     private byte[] key(int i) {
         byte[] key = new byte[4];
-        Utils.writeIntBE(key, 0, i);
+        Utils.encodeIntBE(key, 0, i);
         return key;
     }
         

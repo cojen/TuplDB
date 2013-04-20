@@ -169,8 +169,8 @@ class DurablePageDb extends PageDb {
 
                     try {
                         header0 = readHeader(0);
-                        commitNumber0 = readIntLE(header0, I_COMMIT_NUMBER);
-                        pageSize0 = readIntLE(header0, I_PAGE_SIZE);
+                        commitNumber0 = decodeIntLE(header0, I_COMMIT_NUMBER);
+                        pageSize0 = decodeIntLE(header0, I_PAGE_SIZE);
                         ex0 = null;
                     } catch (CorruptDatabaseException e) {
                         header0 = null;
@@ -187,7 +187,7 @@ class DurablePageDb extends PageDb {
 
                     try {
                         header1 = readHeader(1);
-                        commitNumber1 = readIntLE(header1, I_COMMIT_NUMBER);
+                        commitNumber1 = decodeIntLE(header1, I_COMMIT_NUMBER);
                     } catch (CorruptDatabaseException e) {
                         if (ex0 != null) {
                             // File is completely unusable.
@@ -198,7 +198,7 @@ class DurablePageDb extends PageDb {
                         break findHeader;
                     }
 
-                    int pageSize1 = readIntLE(header1, I_PAGE_SIZE);
+                    int pageSize1 = decodeIntLE(header1, I_PAGE_SIZE);
                     if (pageSize0 != pageSize1) {
                         throw new CorruptDatabaseException
                             ("Mismatched page sizes: " + pageSize0 + " != " + pageSize1);
@@ -444,12 +444,12 @@ class DurablePageDb extends PageDb {
             buffer = new byte[MINIMUM_PAGE_SIZE];
             readFully(in, buffer, 0, buffer.length);
 
-            long magic = readLongLE(buffer, I_MAGIC_NUMBER);
+            long magic = decodeLongLE(buffer, I_MAGIC_NUMBER);
             if (magic != MAGIC_NUMBER) {
                 throw new CorruptDatabaseException("Wrong magic number: " + magic);
             }
 
-            pageSize = readIntLE(buffer, I_PAGE_SIZE);
+            pageSize = decodeIntLE(buffer, I_PAGE_SIZE);
             pa = openPageArray(pageSize, files, options);
 
             if (!pa.isEmpty()) {
@@ -522,9 +522,9 @@ class DurablePageDb extends PageDb {
     {
         final PageArray array = mPageArray;
 
-        writeLongLE(header, I_MAGIC_NUMBER, MAGIC_NUMBER);
-        writeIntLE (header, I_PAGE_SIZE, array.pageSize());
-        writeIntLE (header, I_COMMIT_NUMBER, commitNumber);
+        encodeLongLE(header, I_MAGIC_NUMBER, MAGIC_NUMBER);
+        encodeIntLE (header, I_PAGE_SIZE, array.pageSize());
+        encodeIntLE (header, I_COMMIT_NUMBER, commitNumber);
 
         if (extra != null) {
             // Exception is thrown if extra data exceeds header length.
@@ -566,11 +566,11 @@ class DurablePageDb extends PageDb {
 
     private static int setHeaderChecksum(byte[] header) {
         // Clear checksum field before computing.
-        writeIntLE(header, I_CHECKSUM, 0);
+        encodeIntLE(header, I_CHECKSUM, 0);
         CRC32 crc = new CRC32();
         crc.update(header, 0, MINIMUM_PAGE_SIZE);
         int checksum = (int) crc.getValue();
-        writeIntLE(header, I_CHECKSUM, checksum);
+        encodeIntLE(header, I_CHECKSUM, checksum);
         return checksum;
     }
 
@@ -583,12 +583,12 @@ class DurablePageDb extends PageDb {
             throw new CorruptDatabaseException("File is smaller than expected");
         }
 
-        long magic = readLongLE(header, I_MAGIC_NUMBER);
+        long magic = decodeLongLE(header, I_MAGIC_NUMBER);
         if (magic != MAGIC_NUMBER) {
             throw new CorruptDatabaseException("Wrong magic number: " + magic);
         }
 
-        int checksum = readIntLE(header, I_CHECKSUM);
+        int checksum = decodeIntLE(header, I_CHECKSUM);
 
         int newChecksum = setHeaderChecksum(header);
         if (newChecksum != checksum) {

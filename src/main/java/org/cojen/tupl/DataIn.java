@@ -134,7 +134,7 @@ abstract class DataIn extends InputStream {
 
     public int readIntBE() throws IOException {
         int start = require(4);
-        int v = Utils.readIntBE(mBuffer, start);
+        int v = Utils.decodeIntBE(mBuffer, start);
         mStart = start + 4;
         mPos += 4;
         return v;
@@ -142,7 +142,7 @@ abstract class DataIn extends InputStream {
 
     public int readIntLE() throws IOException {
         int start = require(4);
-        int v = Utils.readIntLE(mBuffer, start);
+        int v = Utils.decodeIntLE(mBuffer, start);
         mStart = start + 4;
         mPos += 4;
         return v;
@@ -150,7 +150,7 @@ abstract class DataIn extends InputStream {
 
     public long readLongBE() throws IOException {
         int start = require(8);
-        long v = Utils.readLongBE(mBuffer, start);
+        long v = Utils.decodeLongBE(mBuffer, start);
         mStart = start + 8;
         mPos += 8;
         return v;
@@ -158,7 +158,7 @@ abstract class DataIn extends InputStream {
 
     public long readLongLE() throws IOException {
         int start = require(8);
-        long v = Utils.readLongLE(mBuffer, start);
+        long v = Utils.decodeLongLE(mBuffer, start);
         mStart = start + 8;
         mPos += 8;
         return v;
