@@ -103,7 +103,7 @@ public interface ReplicationManager {
 
     /**
      * Commit all buffered writes and defines a confirmation position. When the local instance
-     * loses leaderhsip, all data rolls back to the highest confirmed position.
+     * loses leadership, all data rolls back to the highest confirmed position.
      *
      * @return confirmation position, or -1 if not leader
      */
