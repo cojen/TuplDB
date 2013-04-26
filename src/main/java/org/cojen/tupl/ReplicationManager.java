@@ -32,9 +32,9 @@ public interface ReplicationManager {
      * all data lower than the given position is confirmed. All data at or higher than the
      * given position might be discarded.
      *
-     * <p>After started, the reported {@link #position position} must match the one provided to
-     * this method. The position can change only after read and write operations have been
-     * performed.
+     * <p>After started, the reported {@link #readPosition position} must match the one
+     * provided to this method. The position can change only after read and write operations
+     * have been performed.
      *
      * @param position position to start reading from; 0 is the lowest position
      * @throws IllegalArgumentException if position is negative
@@ -52,10 +52,16 @@ public interface ReplicationManager {
     void recover(EventListener listener) throws IOException;
 
     /**
-     * Returns the next position a replica will read from, or the highest confirmed position if
-     * local instance is the leader. Position is never negative and never retreats.
+     * Returns the next position a replica will read from. Position is never
+     * negative and never retreats.
      */
-    long position();
+    long readPosition();
+
+    /**
+     * Returns the next position a leader will write to. Valid only if local
+     * instance is the leader.
+     */
+    long writePosition();
 
     /**
      * Indicates that all data prior to the given log position has been durably
@@ -97,7 +103,7 @@ public interface ReplicationManager {
 
     /**
      * Commit all buffered writes and defines a confirmation position. When the local instance
-     * loses leaderhsip, all data rolls back to the highest confirmed position.
+     * loses leadership, all data rolls back to the highest confirmed position.
      *
      * @return confirmation position, or -1 if not leader
      */
@@ -107,6 +113,7 @@ public interface ReplicationManager {
      * Blocks until all data up to the given log position is confirmed. Returns false if
      * local instance if not the leader or if operation timed out.
      *
+     * @param timeoutNanos pass -1 for infinite
      * @return true if confirmed; false if not leader or timed out
      */
     boolean confirm(long position, long timeoutNanos) throws IOException;
@@ -115,6 +122,14 @@ public interface ReplicationManager {
      * Durably flushes all local data to non-volatile storage, up to the current position.
      */
     void sync() throws IOException;
+
+    /**
+     * Durably flushes all local data to non-volatile storage, up to the given
+     * position, and then blocks until confirmed.
+     *
+     * @param timeoutNanos pass -1 for infinite
+     */
+    void syncConfirm(long position, long timeoutNanos) throws IOException;
 
     /**
      * Forward a change from a replica to the leader. Change must arrive back through the input

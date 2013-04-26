@@ -399,7 +399,9 @@ final class RedoLog extends RedoWriter {
         try {
             new RedoLogDecoder(this, in, listener).run(visitor);
         } catch (EOFException e) {
-            listener.notify(EventType.RECOVERY_REDO_LOG_CORRUPTION, "Unexpected end of file");
+            if (listener != null) {
+                listener.notify(EventType.RECOVERY_REDO_LOG_CORRUPTION, "Unexpected end of file");
+            }
         }
     }
 }
