@@ -117,7 +117,7 @@ final class ReplRedoWriter extends RedoWriter {
     synchronized boolean shouldCheckpoint(long sizeThreshold) {
         long pos;
         if (mIsLeader) {
-            pos = mManager.position();
+            pos = mManager.writePosition();
         } else {
             pos = mEngine.mDecodePosition;
         }
@@ -134,7 +134,7 @@ final class ReplRedoWriter extends RedoWriter {
     synchronized void checkpointSwitch() {
         mCheckpointNum++;
         if (mIsLeader) {
-            mCheckpointPos = mManager.position();
+            mCheckpointPos = mManager.writePosition();
             mCheckpointTxnId = lastTransactionId();
         } else {
             mCheckpointPos = mEngine.mDecodePosition;
@@ -160,7 +160,8 @@ final class ReplRedoWriter extends RedoWriter {
     @Override
     void checkpointStarted() throws IOException {
         // Make sure that durable replication data is not behind local database.
-        mManager.sync();
+        // FIXME: timeout?
+        mManager.syncConfirm(mCheckpointPos, -1);
 
         mEngine.resume();
     }
