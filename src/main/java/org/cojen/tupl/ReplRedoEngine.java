@@ -133,7 +133,7 @@ class ReplRedoEngine implements RedoVisitor {
 
         // Initialize the decode position early.
         mDecodeLatch.acquireExclusive();
-        mDecodePosition = manager.position();
+        mDecodePosition = manager.readPosition();
         mDecodeLatch.releaseExclusive();
     }
 

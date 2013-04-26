@@ -110,6 +110,9 @@ public final class Database implements CauseCloseable {
     // 32-bit pointers.
     private static final int NODE_OVERHEAD = 100;
 
+    private static final String INFO_FILE_SUFFIX = ".info";
+    private static final String LOCK_FILE_SUFFIX = ".lock";
+
     private static int nodeCountFromBytes(long bytes, int pageSize) {
         if (bytes <= 0) {
             return 0;
@@ -147,6 +150,7 @@ public final class Database implements CauseCloseable {
 
     final EventListener mEventListener;
 
+    private final File mBaseFile;
     private final LockedFile mLockFile;
 
     final DurabilityMode mDurabilityMode;
@@ -273,7 +277,7 @@ public final class Database implements CauseCloseable {
     private Database(DatabaseConfig config, int openMode) throws IOException {
         config.mEventListener = mEventListener = SafeEventListener.makeSafe(config.mEventListener);
 
-        final File baseFile = config.mBaseFile;
+        mBaseFile = config.mBaseFile;
         final File[] dataFiles = config.dataFiles();
 
         int pageSize = config.mPageSize;
@@ -324,8 +328,8 @@ public final class Database implements CauseCloseable {
         mDefaultLockTimeoutNanos = config.mLockTimeoutNanos;
         mLockManager = new LockManager(config.mLockUpgradeRule, mDefaultLockTimeoutNanos);
 
-        if (baseFile != null && !config.mReadOnly && config.mMkdirs) {
-            baseFile.getParentFile().mkdirs();
+        if (mBaseFile != null && !config.mReadOnly && config.mMkdirs) {
+            mBaseFile.getParentFile().mkdirs();
             if (dataFiles != null) {
                 for (File f : dataFiles) {
                     f.getParentFile().mkdirs();
@@ -335,13 +339,13 @@ public final class Database implements CauseCloseable {
 
         try {
             // Create lock file and write info file of properties.
-            if (baseFile == null || openMode == OPEN_TEMP) {
+            if (mBaseFile == null || openMode == OPEN_TEMP) {
                 mLockFile = null;
             } else {
                 mLockFile = new LockedFile
-                    (new File(baseFile.getPath() + ".lock"), config.mReadOnly);
+                    (new File(mBaseFile.getPath() + LOCK_FILE_SUFFIX), config.mReadOnly);
                 if (!config.mReadOnly) {
-                    File infoFile = new File(baseFile.getPath() + ".info");
+                    File infoFile = new File(mBaseFile.getPath() + INFO_FILE_SUFFIX);
                     Writer w = new BufferedWriter
                         (new OutputStreamWriter(new FileOutputStream(infoFile), "UTF-8"));
                     try {
@@ -352,10 +356,8 @@ public final class Database implements CauseCloseable {
                 }
             }
 
-            EnumSet<OpenOption> options = config.createOpenOptions();
-            if (baseFile != null && openMode == OPEN_DESTROY) {
-                // Delete old redo log files.
-                deleteNumberedFiles(baseFile, ".redo.");
+            if (openMode == OPEN_DESTROY) {
+                deleteRedoLogFiles();
             }
 
             if (dataFiles == null) {
@@ -367,6 +369,7 @@ public final class Database implements CauseCloseable {
                         (dataPageArray, config.mCrypto, openMode == OPEN_DESTROY);
                 }
             } else {
+                EnumSet<OpenOption> options = config.createOpenOptions();
                 mPageDb = new DurablePageDb
                     (pageSize, dataFiles, options, config.mCrypto, openMode == OPEN_DESTROY);
             }
@@ -450,7 +453,7 @@ public final class Database implements CauseCloseable {
 
             mAllocator = new PageAllocator(mPageDb);
 
-            if (baseFile == null) {
+            if (mBaseFile == null) {
                 // Non-durable database never evicts anything.
                 mFragmentCache = new FragmentMap();
             } else {
@@ -473,7 +476,7 @@ public final class Database implements CauseCloseable {
             mFragmentInodeLevelCaps = calculateInodeLevelCaps(mPageSize);
 
             long recoveryStart = 0;
-            if (baseFile == null || openMode == OPEN_TEMP) {
+            if (mBaseFile == null || openMode == OPEN_TEMP) {
                 mRedoWriter = null;
             } else {
                 // Perform recovery by examining redo and undo logs.
@@ -581,10 +584,10 @@ public final class Database implements CauseCloseable {
                 }
             }
 
-            if (baseFile == null || openMode == OPEN_TEMP) {
+            if (mBaseFile == null || openMode == OPEN_TEMP) {
                 mTempFileManager = null;
             } else {
-                mTempFileManager = new TempFileManager(baseFile);
+                mTempFileManager = new TempFileManager(mBaseFile);
             }
         } catch (Throwable e) {
             closeQuietly(null, this, e);
@@ -631,6 +634,12 @@ public final class Database implements CauseCloseable {
             mEventListener.notify(EventType.RECOVERY_COMPLETE,
                                   "Recovery completed in %1$1.3f seconds",
                                   duration, TimeUnit.SECONDS);
+        }
+    }
+
+    private void deleteRedoLogFiles() throws IOException {
+        if (mBaseFile != null) {
+            deleteNumberedFiles(mBaseFile, ".redo.");
         }
     }
 
@@ -1287,10 +1296,12 @@ public final class Database implements CauseCloseable {
      * Closes the database, ensuring durability of committed transactions. No
      * checkpoint is performed by this method, and so non-transactional
      * modifications can be lost.
+     *
+     * @see #shutdown
      */
     @Override
     public void close() throws IOException {
-        close(null);
+        close(null, false);
     }
 
     /**
@@ -1299,9 +1310,23 @@ public final class Database implements CauseCloseable {
      *
      * @param cause if non-null, delivers a {@link EventType#PANIC_UNHANDLED_EXCEPTION panic}
      * event and future database accesses will rethrow the cause
+     * @see #shutdown
      */
     @Override
     public void close(Throwable cause) throws IOException {
+        close(cause, false);
+    }
+
+    /**
+     * Cleanly closes the database, ensuring durability of all modification. A checkpoint is
+     * issued first, and so a quick recovery is performed when the database is re-opened. As a
+     * side effect of shutting down, all extraneous files are deleted.
+     */
+    public void shutdown() throws IOException {
+        close(null, true);
+    }
+
+    private void close(Throwable cause, boolean shutdown) throws IOException {
         if (cause != null) {
             if (cClosedCauseUpdater.compareAndSet(this, null, cause) && mEventListener != null) {
                 mEventListener.notify(EventType.PANIC_UNHANDLED_EXCEPTION,
@@ -1320,6 +1345,10 @@ public final class Database implements CauseCloseable {
 
         // Synchronize to wait for any in-progress checkpoint to complete.
         synchronized (mCheckpointLock) {
+            if (shutdown) {
+                checkpoint(true, 0, 0);
+            }
+
             // Nothing really needs to be done in the synchronized block, but
             // do something just in case a "smart" compiler thinks an empty
             // synchronized block can be eliminated.
@@ -1351,7 +1380,16 @@ public final class Database implements CauseCloseable {
 
             ex = closeQuietly(ex, mRedoWriter, cause);
             ex = closeQuietly(ex, mPageDb, cause);
-            ex = closeQuietly(ex, mLockFile, cause);
+            ex = closeQuietly(ex, mTempFileManager, cause);
+
+            if (shutdown && mBaseFile != null) {
+                deleteRedoLogFiles();
+                new File(mBaseFile.getPath() + INFO_FILE_SUFFIX).delete();
+                ex = closeQuietly(ex, mLockFile, cause);
+                new File(mBaseFile.getPath() + LOCK_FILE_SUFFIX).delete();
+            } else {
+                ex = closeQuietly(ex, mLockFile, cause);
+            }
 
             mLockManager.close();
 
