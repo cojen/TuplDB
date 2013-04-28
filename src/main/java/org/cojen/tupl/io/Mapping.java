@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2013 Brian S O'Neill
+ *  Copyright 2013 Brian S O'Neill
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -16,24 +16,23 @@
 
 package org.cojen.tupl.io;
 
+import java.io.Closeable;
+import java.io.File;
+import java.io.IOException;
+
 /**
- * Open options for {@link FilePageArray}.
+ * 
  *
  * @author Brian S O'Neill
  */
-public enum OpenOption {
-    /** Open file in read-only mode. */
-    READ_ONLY,
+abstract class Mapping implements Closeable {
+    static Mapping open(File file, boolean readOnly, long position, int size) throws IOException {
+        return new NioMapping(file, readOnly, position, size);
+    }
 
-    /** Create the file if it doesn't already exist. */
-    CREATE,
+    abstract void read(int start, byte[] b, int off, int len);
 
-    /** Map the file into main memory. */
-    MAPPED,
+    abstract void write(int start, byte[] b, int off, int len);
 
-    /** All file I/O should be durable. */
-    SYNC_IO,
-
-    /** All file I/O should be durable and bypass the file system cache, if possible. */
-    DIRECT_IO,
+    abstract void sync(boolean metadata) throws IOException;
 }
