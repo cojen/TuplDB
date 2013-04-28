@@ -87,6 +87,27 @@ final class BoundedView extends SubView {
     }
 
     @Override
+    public View viewPrefix(byte[] prefix, int trim) {
+        SubView.prefixCheck(prefix, trim);
+
+        // Note: Slight optimization is possible, by not creating a short-lived view object.
+        // Current implementation is simpler, and optimization seems unnecessary.
+
+        View view = viewGe(prefix);
+
+        byte[] end = prefix.clone();
+        if (increment(end, 0, end.length)) {
+            view = view.viewLt(end);
+        }
+
+        if (trim > 0) {
+            view = new TrimmedView(view, prefix, trim);
+        }
+
+        return view;
+    }
+
+    @Override
     boolean inRange(byte[] key) {
         return startRangeCompare(key) >= 0 && endRangeCompare(key) <= 0;
     }

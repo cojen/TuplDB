@@ -614,6 +614,166 @@ public class ViewTest {
         c.reset();
     }
 
+    @Test
+    public void prefix() throws Exception {
+        Index ix = fill();
+
+        try {
+            View view = ix.viewPrefix("key-".getBytes(), -1);
+            fail();
+        } catch (IllegalArgumentException e) {
+        }
+
+        try {
+            View view = ix.viewPrefix("key-".getBytes(), 5);
+            fail();
+        } catch (IllegalArgumentException e) {
+        }
+
+        View view = ix.viewPrefix("key-".getBytes(), 4);
+
+        int i = 20;
+        Cursor c = view.newCursor(null);
+        for (c.first(); c.key() != null; c.next()) {
+            assertEquals(String.valueOf(i), new String(c.key()));
+            fastAssertArrayEquals(key(i), c.value());
+            i += 10;
+        }
+        c.reset();
+        assertEquals(100, i);
+
+        view.store(null, "hello".getBytes(), "world".getBytes());
+
+        fastAssertArrayEquals("world".getBytes(), view.load(null, "hello".getBytes()));
+        fastAssertArrayEquals("world".getBytes(), ix.load(null, "key-hello".getBytes()));
+
+        view = ix.viewPrefix("key-".getBytes(), 0);
+        try {
+            view.store(null, "hello".getBytes(), "world".getBytes());
+            fail();
+        } catch (IllegalArgumentException e) {
+            // Key is outside allowed range.
+        }
+
+        view.store(null, "key-hello".getBytes(), "world".getBytes());
+        fastAssertArrayEquals("world".getBytes(), view.load(null, "key-hello".getBytes()));
+        fastAssertArrayEquals("world".getBytes(), ix.load(null, "key-hello".getBytes()));
+
+        ix.store(null, "hello".getBytes(), "world".getBytes());
+
+        assertNull(view.load(null, "hello".getBytes()));
+
+        c = view.newCursor(null);
+        for (c.first(); c.key() != null; c.next()) {
+            assertFalse(new String(c.key()).equals("hello"));
+        }
+        c.reset();
+
+        i = 100;
+        c = view.viewReverse().newCursor(null);
+        for (c.first(); c.key() != null; c.next()) {
+            String strKey = new String(c.key());
+            if (strKey.equals("key-hello")) {
+                continue;
+            }
+            i -= 10;
+            fastAssertArrayEquals(key(i), c.key());
+            fastAssertArrayEquals(key(i), c.value());
+        }
+        assertEquals(20, i);
+
+        view = ix.viewPrefix("key-5".getBytes(), 4);
+
+        i = 50;
+        c = view.newCursor(null);
+        for (c.first(); c.key() != null; c.next()) {
+            assertEquals(String.valueOf(i), new String(c.key()));
+            fastAssertArrayEquals(key(i), c.value());
+            i += 10;
+        }
+        c.reset();
+        assertEquals(60, i);
+    }
+
+    @Test
+    public void registry() throws Exception {
+        Index ix1 = mDb.openIndex("ix1");
+        Index ix2 = mDb.openIndex("ix2");
+
+        {
+            View registry = mDb.indexRegistryByName();
+
+            byte[] idValue = registry.load(null, "ix1".getBytes());
+            assertNotNull(idValue);
+            assertEquals(ix1.getId(), Utils.decodeLongBE(idValue, 0));
+
+            idValue = registry.load(null, "ix2".getBytes());
+            assertNotNull(idValue);
+            assertEquals(ix2.getId(), Utils.decodeLongBE(idValue, 0));
+
+            try {
+                registry.store(null, "hello".getBytes(), "world".getBytes());
+                fail();
+            } catch (UnmodifiableViewException e) {
+            }
+
+            Cursor c = registry.newCursor(null);
+            c.first();
+            fastAssertArrayEquals("ix1".getBytes(), c.key());
+            c.next();
+            fastAssertArrayEquals("ix2".getBytes(), c.key());
+            c.next();
+            assertNull(c.key());
+        }
+
+        {
+            View registry = mDb.indexRegistryById();
+
+            byte[] idKey = new byte[8];
+            Utils.encodeLongBE(idKey, 0, ix1.getId());
+            byte[] name = registry.load(null, idKey);
+            assertNotNull(name);
+            assertEquals(ix1.getNameString(), new String(name));
+
+            Utils.encodeLongBE(idKey, 0, ix2.getId());
+            name = registry.load(null, idKey);
+            assertNotNull(name);
+            assertEquals(ix2.getNameString(), new String(name));
+
+            try {
+                registry.store(null, "hello".getBytes(), "world".getBytes());
+                fail();
+            } catch (UnmodifiableViewException e) {
+            }
+
+            int compare;
+            {
+                // Unsigned comparison.
+                long a = ix1.getId() + Long.MIN_VALUE;
+                long b = ix2.getId() + Long.MIN_VALUE;
+                compare = (a < b) ? -1 : ((a == b) ? 0 : 1);
+            }
+
+            Cursor c = registry.newCursor(null);
+            c.first();
+            if (compare < 0) {
+                Utils.encodeLongBE(idKey, 0, ix1.getId());
+            } else {
+                Utils.encodeLongBE(idKey, 0, ix2.getId());
+            }
+            fastAssertArrayEquals(idKey, c.key());
+            c.next();
+            if (compare < 0) {
+                Utils.encodeLongBE(idKey, 0, ix2.getId());
+            } else {
+                Utils.encodeLongBE(idKey, 0, ix1.getId());
+            }
+            fastAssertArrayEquals(idKey, c.key());
+            c.next();
+            assertNull(c.key());
+        }
+    }
+
     private Index fill() throws Exception {
         Index ix = mDb.openIndex("views");
         for (int i=20; i<=90; i+=10) {
