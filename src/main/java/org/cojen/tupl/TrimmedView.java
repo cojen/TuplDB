@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2013 Brian S O'Neill
+ *  Copyright 2013 Brian S O'Neill
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -23,88 +23,93 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-final class ReverseView implements View {
+class TrimmedView implements View {
     private final View mSource;
+    private final byte[] mPrefix;
+    private final int mTrim;
 
-    ReverseView(View source) {
+    TrimmedView(View source, byte[] prefix, int trim) {
         mSource = source;
+        mPrefix = prefix;
+        mTrim = trim;
     }
 
     @Override
     public Cursor newCursor(Transaction txn) {
-        return new ReverseCursor(mSource.newCursor(txn));
+        return new TrimmedCursor(mSource.newCursor(txn), mTrim);
     }
 
     @Override
     public byte[] load(Transaction txn, byte[] key) throws IOException {
-        return mSource.load(txn, key);
+        return mSource.load(txn, applyPrefix(key));
     }
 
     @Override
     public void store(Transaction txn, byte[] key, byte[] value) throws IOException {
-        mSource.store(txn, key, value);
+        mSource.store(txn, applyPrefix(key), value);
     }
 
     @Override
     public byte[] exchange(Transaction txn, byte[] key, byte[] value) throws IOException {
-        return mSource.exchange(txn, key, value);
+        return mSource.exchange(txn, applyPrefix(key), value);
     }
 
     @Override
     public boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException {
-        return mSource.insert(txn, key, value);
+        return mSource.insert(txn, applyPrefix(key), value);
     }
 
     @Override
     public boolean replace(Transaction txn, byte[] key, byte[] value) throws IOException {
-        return mSource.replace(txn, key, value);
+        return mSource.replace(txn, applyPrefix(key), value);
     }
 
     @Override
     public boolean update(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException
     {
-        return mSource.update(txn, key, oldValue, newValue);
+        return mSource.update(txn, applyPrefix(key), oldValue, newValue);
     }
 
     @Override
     public boolean delete(Transaction txn, byte[] key) throws IOException {
-        return mSource.delete(txn, key);
+        return mSource.delete(txn, applyPrefix(key));
     }
 
     @Override
     public boolean remove(Transaction txn, byte[] key, byte[] value) throws IOException {
-        return mSource.remove(txn, key, value);
+        return mSource.remove(txn, applyPrefix(key), value);
     }
 
     @Override
     public View viewGe(byte[] key) {
-        return new ReverseView(mSource.viewLe(key));
+        return new TrimmedView(mSource.viewGe(applyPrefix(key)), mPrefix, mTrim);
     }
 
     @Override
     public View viewGt(byte[] key) {
-        return new ReverseView(mSource.viewLt(key));
+        return new TrimmedView(mSource.viewGt(applyPrefix(key)), mPrefix, mTrim);
     }
 
     @Override
     public View viewLe(byte[] key) {
-        return new ReverseView(mSource.viewGe(key));
+        return new TrimmedView(mSource.viewLe(applyPrefix(key)), mPrefix, mTrim);
     }
 
     @Override
     public View viewLt(byte[] key) {
-        return new ReverseView(mSource.viewGt(key));
+        return new TrimmedView(mSource.viewLt(applyPrefix(key)), mPrefix, mTrim);
     }
 
     @Override
     public View viewPrefix(byte[] prefix, int trim) {
-        return new ReverseView(mSource.viewPrefix(prefix, trim));
+        SubView.prefixCheck(prefix, trim);
+        return mSource.viewPrefix(applyPrefix(prefix), mTrim + trim);
     }
 
     @Override
     public View viewReverse() {
-        return mSource;
+        return new TrimmedView(mSource.viewReverse(), mPrefix, mTrim);
     }
 
     @Override
@@ -115,5 +120,16 @@ final class ReverseView implements View {
     @Override
     public boolean isUnmodifiable() {
         return mSource.isUnmodifiable();
+    }
+
+    private byte[] applyPrefix(byte[] key) {
+        if (key == null) {
+            throw new NullPointerException("Key is null");
+        }
+        byte[] prefix = mPrefix;
+        byte[] full = new byte[prefix.length + key.length];
+        System.arraycopy(prefix, 0, full, 0, prefix.length);
+        System.arraycopy(key, 0, full, prefix.length, key.length);
+        return full;
     }
 }
