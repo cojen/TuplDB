@@ -292,6 +292,19 @@ public interface View {
     public View viewLt(byte[] key);
 
     /**
+     * Returns a sub-view, backed by this one, whose keys start with the given prefix.
+     * Ownership of the prefix instance is transferred, and so it must not be modified after
+     * calling this method.
+     *
+     * <p>The returned view will throw an IllegalArgumentException on an attempt
+     * to insert a key outside its range.
+     *
+     * @param trim amount of prefix length to trim from all keys in the view
+     * @throws IllegalArgumentException if trim is longer than prefix
+     */
+    public View viewPrefix(byte[] prefix, int trim);
+
+    /**
      * Returns a view, backed by this one, whose natural order is reversed.
      */
     public View viewReverse();
