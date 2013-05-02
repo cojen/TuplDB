@@ -237,6 +237,8 @@ class ReplRedoEngine implements RedoVisitor {
         // Only release if no exception.
         mOpLatch.releaseShared();
 
+        notifyStore(ix, key, value);
+
         // Return false to prevent RedoDecoder from looping back.
         return false;
     }
@@ -469,6 +471,8 @@ class ReplRedoEngine implements RedoVisitor {
         // Only release if no exception.
         mOpLatch.releaseShared();
 
+        notifyStore(ix, key, value);
+
         // Return false to prevent RedoDecoder from looping back.
         return false;
     }
@@ -514,6 +518,8 @@ class ReplRedoEngine implements RedoVisitor {
 
         // Only release if no exception.
         mOpLatch.releaseShared();
+
+        notifyStore(ix, key, value);
 
         // Return false to prevent RedoDecoder from looping back.
         return false;
@@ -698,6 +704,16 @@ class ReplRedoEngine implements RedoVisitor {
         }
 
         return false;
+    }
+
+    private void notifyStore(Index ix, byte[] key, byte[] value) {
+        if (!Tree.isInternal(ix.getId())) {
+            try {
+                mManager.notifyStore(ix, key, value);
+            } catch (Throwable e) {
+                uncaught(e);
+            }
+        }
     }
 
     private static int cTaskNumber;
