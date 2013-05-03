@@ -550,11 +550,8 @@ class DurablePageDb extends PageDb {
 
         mHeaderLatch.acquireExclusive();
         try {
-            // Write the header immediately instead of sitting in the file
-            // system cache. Sadly, this doesn't guarantee that the storage
-            // device has flushed its own cache, and so an additional sync must
-            // be performed before the commit is truly complete.
-            array.writePageDurably(commitNumber & 1, header);
+            // Write the header immediately instead of sitting in the file system cache.
+            array.writePage(commitNumber & 1, header);
             mCommitNumber = commitNumber;
         } finally {
             mHeaderLatch.releaseExclusive();

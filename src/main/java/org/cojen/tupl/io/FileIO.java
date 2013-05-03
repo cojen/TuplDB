@@ -16,24 +16,38 @@
 
 package org.cojen.tupl.io;
 
-import java.io.Closeable;
+import java.io.File;
 import java.io.IOException;
 
+import java.util.EnumSet;
+
 /**
- * Lowest IO interface to a file or device.
+ * Lowest I/O interface to a file or device.
  *
  * @author Brian S O'Neill
  */
-interface FileIO extends Closeable {
-    public boolean isReadOnly();
+public abstract class FileIO implements CauseCloseable {
+    public static FileIO open(File file, EnumSet<OpenOption> options)
+        throws IOException
+    {
+        return open(file, options, 32);
+    }
 
-    public long length() throws IOException;
+    public static FileIO open(File file, EnumSet<OpenOption> options, int openFileCount)
+        throws IOException
+    {
+        return new JavaFileIO(file, options, openFileCount);
+    }
+
+    public abstract boolean isReadOnly();
+
+    public abstract long length() throws IOException;
 
     /**
      * Attempt to set the length of the file. It isn't critical that the
      * operation succeed, and so any exceptions can be suppressed.
      */
-    public void setLength(long length) throws IOException;
+    public abstract void setLength(long length) throws IOException;
 
     /**
      * @param pos zero-based position in file
@@ -42,7 +56,7 @@ interface FileIO extends Closeable {
      * @param length amount of data to read
      * @throws IllegalArgumentException
      */
-    public void read(long pos, byte[] buf, int offset, int length) throws IOException;
+    public abstract void read(long pos, byte[] buf, int offset, int length) throws IOException;
 
     /**
      * @param pos zero-based position in file
@@ -51,21 +65,29 @@ interface FileIO extends Closeable {
      * @param length amount of data
      * @throws IllegalArgumentException
      */
-    public void write(long pos, byte[] buf, int offset, int length) throws IOException;
+    public abstract void write(long pos, byte[] buf, int offset, int length) throws IOException;
 
     /**
-     * @param pos zero-based position in file
-     * @param buf data to write
-     * @param offset offset into data buffer
-     * @param length amount of data
-     * @throws IllegalArgumentException
+     * Maps or remaps the file into main memory, up to the current file length.
      */
-    public void writeDurably(long pos, byte[] buf, int offset, int length) throws IOException;
+    public abstract void map() throws IOException;
+
+    /**
+     * If file is mapped, remaps it if the file length has changed. Method does nothing if not
+     * already mapped.
+     */
+    public abstract void remap() throws IOException;
+
+    /**
+     * Unmaps the file from main memory, leaving the file open. Method does nothing if not
+     * already mapped.
+     */
+    public abstract void unmap() throws IOException;
 
     /**
      * Durably flushes all writes to the underlying device.
      *
      * @param metadata pass true to flush all file metadata
      */
-    public void sync(boolean metadata) throws IOException;
+    public abstract void sync(boolean metadata) throws IOException;
 }
