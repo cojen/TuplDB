@@ -110,14 +110,10 @@ public class FilePageArray extends PageArray {
     }
 
     @Override
-    public void writePageDurably(long index, byte[] buf, int offset) throws IOException {
-        int pageSize = mPageSize;
-        mFio.writeDurably(index * pageSize, buf, offset, pageSize);
-    }
-
-    @Override
     public void sync(boolean metadata) throws IOException {
         mFio.sync(metadata);
+        // If mapped, now is a good time to remap if length has changed.
+        mFio.remap();
     }
 
     @Override
