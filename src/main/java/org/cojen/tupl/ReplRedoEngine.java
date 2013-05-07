@@ -417,12 +417,7 @@ class ReplRedoEngine implements RedoVisitor {
             // Commit is expected to complete quickly, so don't let another
             // task thread run.
 
-            Transaction txn = te.mTxn;
-            try {
-                txn.commit();
-            } finally {
-                txn.reset();
-            }
+            te.mTxn.commitAll();
         } finally {
             latch.releaseExclusive();
         }
@@ -498,20 +493,17 @@ class ReplRedoEngine implements RedoVisitor {
             // Allow another task thread to run while operation completes.
             nextTask();
 
-            try {
-                while (true) {
-                    try {
-                        ix.store(txn, key, value);
-                        break;
-                    } catch (ClosedIndexException e) {
-                        // User closed the shared index reference, so re-open it.
-                        ix = openIndex(indexId, null);
-                    }
+            while (true) {
+                try {
+                    ix.store(txn, key, value);
+                    break;
+                } catch (ClosedIndexException e) {
+                    // User closed the shared index reference, so re-open it.
+                    ix = openIndex(indexId, null);
                 }
-                txn.commit();
-            } finally {
-                txn.exit();
             }
+
+            txn.commitAll();
         } finally {
             latch.releaseExclusive();
         }

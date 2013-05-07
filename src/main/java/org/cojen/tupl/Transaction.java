@@ -329,6 +329,19 @@ public final class Transaction extends Locker {
     }
 
     /**
+     * Commits and exits all transaction scopes.
+     */
+    final void commitAll() throws IOException {
+        while (true) {
+            commit();
+            if (mParentScope == null) {
+                break;
+            }
+            exit();
+        }
+    }
+
+    /**
      * Enters a nested transaction scope.
      */
     public final void enter() throws IOException {
