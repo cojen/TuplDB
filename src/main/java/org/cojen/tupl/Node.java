@@ -1632,7 +1632,7 @@ final class Node extends Latch {
      * @param keyPos 2-based position
      * @param newChildPos 8-based position
      * @param splitChild pass null if split not allowed
-     * @return null if entry must be split, but no split is not allowed
+     * @return null if entry must be split, but split is not allowed
      */
     private InResult createInternalEntry(Tree tree, int keyPos, int encodedLen,
                                          int newChildPos, Node splitChild)
@@ -1713,7 +1713,7 @@ final class Node extends Latch {
                 }
 
                 // FIXME: IOException; how to rollback the damage?
-                result = splitInternal(tree, keyPos, splitChild, newChildPos, encodedLen);
+                result = splitInternal(tree, keyPos, newChildPos, encodedLen);
                 page = result.mPage;
                 keyPos = result.mKeyLoc;
                 newChildPos = result.mNewChildLoc;
@@ -2729,9 +2729,7 @@ final class Node extends Latch {
     }
 
     private InResult splitInternal
-        (final Tree tree, final int keyPos,
-         final Node splitChild,
-         final int newChildPos, final int encodedLen)
+        (final Tree tree, final int keyPos, final int newChildPos, final int encodedLen)
         throws IOException
     {
         if (mSplit != null) {
