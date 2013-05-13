@@ -2765,8 +2765,6 @@ final class Node extends Latch {
         // to charge ahead with the wrong guess. Leaf node splits are more frequent, and
         // incorrect guesses are easily corrected due to the simpler leaf node structure.
 
-        // FIXME: test with large keys
-
         // -2: left
         // -1: guess left
         // +1: guess right
@@ -2810,18 +2808,41 @@ final class Node extends Latch {
                     int entryLoc = decodeUnsignedShortLE(page, searchVecLoc);
                     int entryLen = internalEntryLengthAtLoc(page, entryLoc);
 
-                    searchVecLoc += 2;
-
                     // Size change must incorporate child id, although they are copied later.
                     int sizeChange = entryLen + (2 + 8);
                     size -= sizeChange;
+                    newSize += sizeChange;
 
-                    garbageAccum += entryLen;
+                    sizeCheck: {
+                        if (size <= TN_HEADER_SIZE || newSize >= newPage.length) {
+                            // Moved too many entries to new node, so undo. Code can probably
+                            // be written such that undo is not required, but this case is only
+                            // expected to occur when using large keys.
+                            if (searchVecLoc == keyLoc) {
+                                // New entry doesn't fit.
+                                newKeyLoc = 0;
+                            }
+                            newSearchVecLoc -= 2;
+                            entryLoc = decodeUnsignedShortLE(page, searchVecLoc - 2);
+                            entryLen = internalEntryLengthAtLoc(page, entryLoc);
+                            destLoc += entryLen;
+                        } else {
+                            searchVecLoc += 2;
 
-                    if ((newSize += sizeChange) > size) {
-                        // New node has accumlated enough entries and split key has been found.
+                            // Note that last examined key is not moved but instead
+                            // dropped. Garbage must account for this.
+                            garbageAccum += entryLen;
+
+                            if (newSize < size) {
+                                // Keep moving entries until balanced.
+                                break sizeCheck;
+                            }
+                        }
+
+                        // New node has accumlated enough entries...
 
                         if (newKeyLoc != 0) {
+                            // ...and split key has been found.
                             split = new Split(false, newNode);
                             split.setKey(retrieveKeyAtLoc(page, entryLoc));
                             break;
@@ -2834,7 +2855,9 @@ final class Node extends Latch {
                         }
 
                         // Keep searching on this side for new entry location.
-                        assert splitSide == -2;
+                        if (splitSide != -2) {
+                            throw new AssertionError();
+                        }
                     }
 
                     // Copy key entry and point to it.
@@ -2893,7 +2916,7 @@ final class Node extends Latch {
                 int newSearchVecLoc = newPage.length;
 
                 int searchVecLoc = searchVecEnd + 2;
-                while (true) {
+                moveEntries: while (true) {
                     if (searchVecLoc == keyLoc) {
                         newSearchVecLoc -= 2;
                         newKeyLoc = newSearchVecLoc;
@@ -2909,16 +2932,40 @@ final class Node extends Latch {
                     // Size change must incorporate child id, although they are copied later.
                     int sizeChange = entryLen + (2 + 8);
                     size -= sizeChange;
+                    newSize += sizeChange;
 
-                    garbageAccum += entryLen;
+                    sizeCheck: {
+                        if (size <= TN_HEADER_SIZE || newSize >= newPage.length) {
+                            // Moved too many entries to new node, so undo. Code can probably
+                            // be written such that undo is not required, but this case is only
+                            // expected to occur when using large keys.
+                            searchVecLoc += 2;
+                            if (searchVecLoc == keyLoc) {
+                                // New entry doesn't fit.
+                                newKeyLoc = 0;
+                            }
+                            newSearchVecLoc += 2;
+                            entryLoc = decodeUnsignedShortLE(page, searchVecLoc);
+                            entryLen = internalEntryLengthAtLoc(page, entryLoc);
+                            destLoc -= entryLen;
+                        } else {
+                            // Note that last examined key is not moved but instead
+                            // dropped. Garbage must account for this.
+                            garbageAccum += entryLen;
 
-                    if ((newSize += sizeChange) > size) {
-                        // New node has accumlated enough entries and split key has been found.
+                            if (newSize < size) {
+                                // Keep moving entries until balanced.
+                                break sizeCheck;
+                            }
+                        }
+
+                        // New node has accumlated enough entries...
 
                         if (newKeyLoc != 0) {
+                            // ...and split key has been found.
                             split = new Split(true, newNode);
                             split.setKey(retrieveKeyAtLoc(page, entryLoc));
-                            break;
+                            break moveEntries;
                         }
 
                         if (splitSide == 1) {
@@ -2928,7 +2975,9 @@ final class Node extends Latch {
                         }
 
                         // Keep searching on this side for new entry location.
-                        assert splitSide == 2;
+                        if (splitSide != 2) {
+                            throw new AssertionError();
+                        }
                     }
 
                     // Copy key entry and point to it.
