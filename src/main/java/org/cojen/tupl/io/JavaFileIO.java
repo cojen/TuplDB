@@ -78,6 +78,9 @@ class JavaFileIO extends FileIO {
 
         mFilePool = new RandomAccessFile[openFileCount];
 
+        mRemapLock = new Object();
+        mMappingLock = new ReentrantReadWriteLock(false);
+
         try {
             synchronized (mFilePool) {
                 for (int i=0; i<openFileCount; i++) {
@@ -87,9 +90,6 @@ class JavaFileIO extends FileIO {
         } catch (Throwable e) {
             throw closeOnFailure(this, e);
         }
-
-        mRemapLock = new Object();
-        mMappingLock = new ReentrantReadWriteLock(false);
 
         if (options.contains(OpenOption.MAPPED)) {
             map();
