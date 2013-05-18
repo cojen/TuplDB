@@ -81,19 +81,6 @@ class CryptoPageArray extends PageArray {
     }
 
     @Override
-    public void writePageDurably(long index, byte[] buf, int offset) throws IOException {
-        try {
-            int pageSize = pageSize();
-            // Unknown if buf contents can be destroyed, so create a new one.
-            byte[] encrypted = new byte[pageSize];
-            mCrypto.encryptPage(index, pageSize, buf, offset, encrypted, 0);
-            mSource.writePageDurably(index, encrypted, 0);
-        } catch (GeneralSecurityException e) {
-            throw new DatabaseException(e);
-        }
-    }
-
-    @Override
     public void sync(boolean metadata) throws IOException {
         mSource.sync(metadata);
     }

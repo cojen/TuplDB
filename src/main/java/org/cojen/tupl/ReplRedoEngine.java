@@ -237,6 +237,8 @@ class ReplRedoEngine implements RedoVisitor {
         // Only release if no exception.
         mOpLatch.releaseShared();
 
+        notifyStore(ix, key, value);
+
         // Return false to prevent RedoDecoder from looping back.
         return false;
     }
@@ -415,12 +417,7 @@ class ReplRedoEngine implements RedoVisitor {
             // Commit is expected to complete quickly, so don't let another
             // task thread run.
 
-            Transaction txn = te.mTxn;
-            try {
-                txn.commit();
-            } finally {
-                txn.reset();
-            }
+            te.mTxn.commitAll();
         } finally {
             latch.releaseExclusive();
         }
@@ -469,6 +466,8 @@ class ReplRedoEngine implements RedoVisitor {
         // Only release if no exception.
         mOpLatch.releaseShared();
 
+        notifyStore(ix, key, value);
+
         // Return false to prevent RedoDecoder from looping back.
         return false;
     }
@@ -494,26 +493,25 @@ class ReplRedoEngine implements RedoVisitor {
             // Allow another task thread to run while operation completes.
             nextTask();
 
-            try {
-                while (true) {
-                    try {
-                        ix.store(txn, key, value);
-                        break;
-                    } catch (ClosedIndexException e) {
-                        // User closed the shared index reference, so re-open it.
-                        ix = openIndex(indexId, null);
-                    }
+            while (true) {
+                try {
+                    ix.store(txn, key, value);
+                    break;
+                } catch (ClosedIndexException e) {
+                    // User closed the shared index reference, so re-open it.
+                    ix = openIndex(indexId, null);
                 }
-                txn.commit();
-            } finally {
-                txn.exit();
             }
+
+            txn.commitAll();
         } finally {
             latch.releaseExclusive();
         }
 
         // Only release if no exception.
         mOpLatch.releaseShared();
+
+        notifyStore(ix, key, value);
 
         // Return false to prevent RedoDecoder from looping back.
         return false;
@@ -698,6 +696,16 @@ class ReplRedoEngine implements RedoVisitor {
         }
 
         return false;
+    }
+
+    private void notifyStore(Index ix, byte[] key, byte[] value) {
+        if (!Tree.isInternal(ix.getId())) {
+            try {
+                mManager.notifyStore(ix, key, value);
+            } catch (Throwable e) {
+                uncaught(e);
+            }
+        }
     }
 
     private static int cTaskNumber;

@@ -1343,25 +1343,31 @@ public final class Database implements CauseCloseable {
             }
         }
 
-        mClosed = true;
-
         Checkpointer c = mCheckpointer;
-        if (c != null) {
-            c.close();
-            c = null;
-        }
 
-        // Synchronize to wait for any in-progress checkpoint to complete.
-        synchronized (mCheckpointLock) {
-            if (shutdown) {
+        if (shutdown) {
+            synchronized (mCheckpointLock) {
                 checkpoint(true, 0, 0);
+                mClosed = true;
+                if (c != null) {
+                    c.close();
+                }
             }
-
-            // Nothing really needs to be done in the synchronized block, but
-            // do something just in case a "smart" compiler thinks an empty
-            // synchronized block can be eliminated.
+        } else {
             mClosed = true;
+            if (c != null) {
+                c.close();
+            }
+            // Synchronize to wait for any in-progress checkpoint to complete.
+            synchronized (mCheckpointLock) {
+                // Nothing really needs to be done in the synchronized block, but
+                // do something just in case a "smart" compiler thinks an empty
+                // synchronized block can be eliminated.
+                mClosed = true;
+            }
         }
+
+        mCheckpointer = null;
 
         if (mOpenTrees != null) {
             mOpenTreesLatch.acquireExclusive();
