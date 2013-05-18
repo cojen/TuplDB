@@ -95,18 +95,6 @@ final class SnapshotPageArray extends PageArray {
         mSource.writePage(index, buf, offset);
     }
 
-    @Override
-    public void writePageDurably(long index, byte[] buf) throws IOException {
-        prepareToWrite(index);
-        mSource.writePageDurably(index, buf);
-    }
-
-    @Override
-    public void writePageDurably(long index, byte[] buf, int offset) throws IOException {
-        prepareToWrite(index);
-        mSource.writePageDurably(index, buf, offset);
-    }
-
     private void prepareToWrite(long index) {
         if (index < 0) {
             throw new IndexOutOfBoundsException(String.valueOf(index));

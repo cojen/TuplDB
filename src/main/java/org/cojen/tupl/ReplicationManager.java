@@ -132,6 +132,19 @@ public interface ReplicationManager {
     void syncConfirm(long position, long timeoutNanos) throws IOException;
 
     /**
+     * Notification to replica when an entry is stored into an index. All notifications are
+     * {@link LockMode#READ_UNCOMMITTED uncommitted}, and so loading with an appropriate lock
+     * mode is required for confirmation. The current thread is free to perform any blocking
+     * operations &mdash; it will not suspend replication processing unless {@link
+     * DatabaseConfig#maxReplicaThreads all} replication threads are consumed.
+     *
+     * @param index non-null index
+     * @param key non-null key; contents must not be modified
+     * @param value null if entry is deleted; contents can be modified
+     */
+    void notifyStore(Index index, byte[] key, byte[] value);
+
+    /**
      * Forward a change from a replica to the leader. Change must arrive back through the input
      * stream. This method can be invoked concurrently by multiple threads.
      *

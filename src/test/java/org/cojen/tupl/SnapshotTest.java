@@ -47,6 +47,7 @@ public class SnapshotTest {
             .checkpointSizeThreshold(0)
             .checkpointDelayThreshold(0, null)
             .durabilityMode(DurabilityMode.NO_FLUSH);
+        decorate(config);
         Database db = newTempDatabase(config);
 
         Index ix = db.openIndex("suspend");

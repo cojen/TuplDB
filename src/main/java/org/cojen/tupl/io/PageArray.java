@@ -152,29 +152,6 @@ public abstract class PageArray implements CauseCloseable {
     public abstract void writePage(long index, byte[] buf, int offset) throws IOException;
 
     /**
-     * Writes a page, which is immediately flushed. The array grows automatically if
-     * the index is greater than or equal to the current page count.
-     *
-     * @param index zero-based page index to write
-     * @param buf data to write
-     * @throws IndexOutOfBoundsException if index is negative
-     */
-    public void writePageDurably(long index, byte[] buf) throws IOException {
-        writePageDurably(index, buf, 0);
-    }
-
-    /**
-     * Writes a page, which is immediately flushed. The array grows automatically if
-     * the index is greater than or equal to the current page count.
-     *
-     * @param index zero-based page index to write
-     * @param buf data to write
-     * @param offset offset into data buffer
-     * @throws IndexOutOfBoundsException if index is negative
-     */
-    public abstract void writePageDurably(long index, byte[] buf, int offset) throws IOException;
-
-    /**
      * Durably flushes all writes to the underlying device.
      *
      * @param metadata pass true to flush all file metadata

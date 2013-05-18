@@ -138,8 +138,7 @@ class RedoLogApplier implements RedoVisitor {
         checkHighest(txnId);
         Transaction txn = mTransactions.removeValue(txnId);
         if (txn != null) {
-            txn.commit();
-            txn.reset();
+            txn.commitAll();
         }
         return true;
     }
