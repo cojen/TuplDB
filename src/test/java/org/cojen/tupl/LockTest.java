@@ -1184,6 +1184,18 @@ public class LockTest {
         assertEquals(UNOWNED, locker.lockCheck(0, key("f")));
     }
 
+    @Test
+    public void promoteExitAll() throws Exception {
+        Locker locker = new Locker(mManager);
+        locker.scopeEnter();
+        assertEquals(ACQUIRED, locker.tryLockExclusive(0, k1, -1));
+        locker.promote();
+        locker.scopeExitAll();
+
+        Locker locker2 = new Locker(mManager);
+        assertEquals(ACQUIRED, locker2.tryLockExclusive(0, k1, SHORT_TIMEOUT));
+    }
+
     private long scheduleUnlock(final Locker locker, final long delayMillis) {
         return schedule(locker, delayMillis, 0);
     }

@@ -418,6 +418,29 @@ final class Tree implements Index {
     }
 
     @Override
+    public View viewPrefix(byte[] prefix, int trim) {
+        SubView.prefixCheck(prefix, trim);
+
+        byte[] end = prefix.clone();
+        int mode;
+        if (increment(end, 0, end.length)) {
+            mode = BoundedView.END_EXCLUSIVE;
+        } else {
+            // Prefix is highest possible, so no need for an end bound.
+            end = null;
+            mode = 0;
+        }
+
+        View view = new BoundedView(this, prefix, end, mode);
+
+        if (trim > 0) {
+            view = new TrimmedView(view, prefix, trim);
+        }
+
+        return view;
+    }
+
+    @Override
     public View viewReverse() {
         return new ReverseView(this);
     }

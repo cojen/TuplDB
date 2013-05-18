@@ -111,4 +111,16 @@ abstract class SubView implements View {
     }
 
     abstract boolean inRange(byte[] key);
+
+    static void prefixCheck(byte[] prefix, int trim) {
+        if (prefix == null) {
+            throw new NullPointerException("Prefix is null");
+        }
+        if (trim < 0 | trim > prefix.length) {
+            if (trim < 0) {
+                throw new IllegalArgumentException("Negative trim");
+            }
+            throw new IllegalArgumentException("Trim amount is longer than prefix");
+        }
+    }
 }

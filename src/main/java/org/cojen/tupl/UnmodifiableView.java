@@ -134,6 +134,11 @@ final class UnmodifiableView implements Index {
     }
 
     @Override
+    public View viewPrefix(byte[] prefix, int trim) {
+        return new UnmodifiableView(mSource.viewPrefix(prefix, trim));
+    }
+
+    @Override
     public View viewReverse() {
         return new UnmodifiableView(mSource.viewReverse());
     }

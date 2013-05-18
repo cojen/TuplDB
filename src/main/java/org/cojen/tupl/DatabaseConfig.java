@@ -44,6 +44,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
     File mBaseFile;
     boolean mMkdirs;
     File[] mDataFiles;
+    boolean mMapDataFiles;
     transient PageArray mDataPageArray;
     long mMinCachedBytes;
     long mMaxCachedBytes;
@@ -129,6 +130,15 @@ public class DatabaseConfig implements Cloneable, Serializable {
             mDataFiles = dataFiles;
             mDataPageArray = null;
         }
+        return this;
+    }
+
+    /**
+     * Enable memory mapping of the data files. Not recommended for 32-bit platforms or for
+     * databases which don't fit entirely in main memory.
+     */
+    public DatabaseConfig mapDataFiles(boolean mapped) {
+        mMapDataFiles = mapped;
         return this;
     }
 
@@ -368,6 +378,9 @@ public class DatabaseConfig implements Cloneable, Serializable {
         if (mFileSync) {
             options.add(OpenOption.SYNC_IO);
         }
+        if (mMapDataFiles) {
+            options.add(OpenOption.MAPPED);
+        }
         options.add(OpenOption.CREATE);
         return options;
     }
@@ -408,6 +421,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
                 b.append(']');
                 props.setProperty("dataFiles", b.toString());
             }
+            set(props, "mapDataFiles", mMapDataFiles);
         }
 
         set(props, "minCacheSize", mMinCachedBytes);

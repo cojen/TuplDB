@@ -652,7 +652,7 @@ public final class Database implements CauseCloseable {
         mRegistry.mRoot.tracePages(this, pages, inBuckets, leafBuckets);
         mRegistryKeyMap.mRoot.tracePages(this, pages, inBuckets, leafBuckets);
 
-        Cursor all = allIndexes();
+        Cursor all = indexRegistryByName().newCursor(null);
         for (all.first(); all.key() != null; all.next()) {
             Index ix = indexById(all.value());
             System.out.println(ix.getNameString());
@@ -798,13 +798,21 @@ public final class Database implements CauseCloseable {
     }
 
     /**
-     * Returns a Cursor which maps all available index names to
-     * identifiers. Identifiers are long integers, big-endian encoded.
-     * Attempting to store anything into the Cursor causes an {@link
-     * UnmodifiableViewException} to be thrown.
+     * Returns an {@link UnmodifiableViewException unmodifiable} View which maps all available
+     * index names to identifiers. Identifiers are long integers, {@link
+     * org.cojen.tupl.io.Utils#decodeLongBE big-endian} encoded.
      */
-    public Cursor allIndexes() throws IOException {
-        return new IndexesCursor(mRegistryKeyMap.newCursor(null));
+    public View indexRegistryByName() throws IOException {
+        return mRegistryKeyMap.viewPrefix(new byte[] {KEY_TYPE_INDEX_NAME}, 1).viewUnmodifiable();
+    }
+
+    /**
+     * Returns an {@link UnmodifiableViewException unmodifiable} View which maps all available
+     * index identifiers to names. Identifiers are long integers, {@link
+     * org.cojen.tupl.io.Utils#decodeLongBE big-endian} encoded.
+     */
+    public View indexRegistryById() throws IOException {
+        return mRegistryKeyMap.viewPrefix(new byte[] {KEY_TYPE_INDEX_ID}, 1).viewUnmodifiable();
     }
 
     /**
@@ -1343,7 +1351,7 @@ public final class Database implements CauseCloseable {
             }
         }
 
-        Cursor all = allIndexes();
+        Cursor all = indexRegistryByName().newCursor(null);
         try {
             for (all.first(); all.key() != null; all.next()) {
                 long id = decodeLongBE(all.value(), 0);
@@ -1400,7 +1408,7 @@ public final class Database implements CauseCloseable {
     }
 
     /**
-     * Cleanly closes the database, ensuring durability of all modification. A checkpoint is
+     * Cleanly closes the database, ensuring durability of all modifications. A checkpoint is
      * issued first, and so a quick recovery is performed when the database is re-opened. As a
      * side effect of shutting down, all extraneous files are deleted.
      */
@@ -1417,25 +1425,31 @@ public final class Database implements CauseCloseable {
             }
         }
 
-        mClosed = true;
-
         Checkpointer c = mCheckpointer;
-        if (c != null) {
-            c.close();
-            c = null;
-        }
 
-        // Synchronize to wait for any in-progress checkpoint to complete.
-        synchronized (mCheckpointLock) {
-            if (shutdown) {
+        if (shutdown) {
+            synchronized (mCheckpointLock) {
                 checkpoint(true, 0, 0);
+                mClosed = true;
+                if (c != null) {
+                    c.close();
+                }
             }
-
-            // Nothing really needs to be done in the synchronized block, but
-            // do something just in case a "smart" compiler thinks an empty
-            // synchronized block can be eliminated.
+        } else {
             mClosed = true;
+            if (c != null) {
+                c.close();
+            }
+            // Synchronize to wait for any in-progress checkpoint to complete.
+            synchronized (mCheckpointLock) {
+                // Nothing really needs to be done in the synchronized block, but
+                // do something just in case a "smart" compiler thinks an empty
+                // synchronized block can be eliminated.
+                mClosed = true;
+            }
         }
+
+        mCheckpointer = null;
 
         if (mOpenTrees != null) {
             mOpenTreesLatch.acquireExclusive();
