@@ -39,7 +39,7 @@ import java.util.concurrent.locks.Lock;
  * Transaction txn = ...
  * Cursor c = index.newCursor(txn);
  * for (LockResult result = c.first(); c.key() != null; result = c.next()) {
- *     if (shouldDiscard(c.value()) && result == LockResult.ACQUIRED) {
+ *     if (shouldDiscard(c.value()) &amp;&amp; result == LockResult.ACQUIRED) {
  *         // Unlock record which doesn't belong in the transaction.
  *         txn.unlock();
  *         continue;
@@ -325,6 +325,19 @@ public final class Transaction extends Locker {
             }
         } catch (Throwable e) {
             throw borked(e, true);
+        }
+    }
+
+    /**
+     * Commits and exits all transaction scopes.
+     */
+    final void commitAll() throws IOException {
+        while (true) {
+            commit();
+            if (mParentScope == null) {
+                break;
+            }
+            exit();
         }
     }
 

@@ -25,6 +25,10 @@ import java.io.RandomAccessFile;
 
 import java.util.EnumSet;
 
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.locks.ReadWriteLock;
+
 import static org.cojen.tupl.io.Utils.*;
 
 /**
@@ -33,45 +37,38 @@ import static org.cojen.tupl.io.Utils.*;
  *
  * @author Brian S O'Neill
  */
-class JavaFileIO implements CauseCloseable, FileIO {
-    static FileIO open(File file, EnumSet<OpenOption> options)
-        throws IOException
-    {
-        return open(file, options, 32);
-    }
+class JavaFileIO extends FileIO {
+    private static final int MAPPING_SHIFT = 30;
+    private static final int MAPPING_SIZE = 1 << MAPPING_SHIFT;
 
-    static FileIO open(File file, EnumSet<OpenOption> options, int openFileCount)
-        throws IOException
-    {
-        return new JavaFileIO(file, options, openFileCount);
-    }
+    private final File mFile;
 
     // Access these fields while synchronized on mFilePool.
     private final RandomAccessFile[] mFilePool;
     private int mFilePoolTop;
     private final boolean mReadOnly;
 
-    private final RandomAccessFile mDurableFile;
+    private final Object mRemapLock;
+    private final ReadWriteLock mMappingLock;
+    private Mapping[] mMappings;
+    private int mLastMappingSize;
 
     private volatile Throwable mCause;
 
-    private JavaFileIO(File file, EnumSet<OpenOption> options, int openFileCount)
-        throws IOException
-    {
+    JavaFileIO(File file, EnumSet<OpenOption> options, int openFileCount) throws IOException {
+        mFile = file;
+
         String mode;
         if ((mReadOnly = options.contains(OpenOption.READ_ONLY))) {
             mode = "r";
-            mDurableFile = null;
         } else {
             if (!options.contains(OpenOption.CREATE) && !file.exists()) {
                 throw new FileNotFoundException(file.getPath());
             }
             if (options.contains(OpenOption.SYNC_IO)) {
                 mode = "rwd";
-                mDurableFile = null;
             } else {
                 mode = "rw";
-                mDurableFile = openRaf(file, "rwd");
             }
         }
 
@@ -81,6 +78,9 @@ class JavaFileIO implements CauseCloseable, FileIO {
 
         mFilePool = new RandomAccessFile[openFileCount];
 
+        mRemapLock = new Object();
+        mMappingLock = new ReentrantReadWriteLock(false);
+
         try {
             synchronized (mFilePool) {
                 for (int i=0; i<openFileCount; i++) {
@@ -89,6 +89,10 @@ class JavaFileIO implements CauseCloseable, FileIO {
             }
         } catch (Throwable e) {
             throw closeOnFailure(this, e);
+        }
+
+        if (options.contains(OpenOption.MAPPED)) {
+            map();
         }
     }
 
@@ -123,45 +127,210 @@ class JavaFileIO implements CauseCloseable, FileIO {
 
     @Override
     public void read(long pos, byte[] buf, int offset, int length) throws IOException {
-        try {
-            RandomAccessFile file = accessFile();
-            try {
-                file.seek(pos);
-                file.readFully(buf, offset, length);
-            } finally {
-                yieldFile(file);
-            }
-        } catch (EOFException e) {
-            EOFException eof = new EOFException("Attempt to read past end of file: " + pos);
-            eof.initCause(mCause);
-            throw eof;
-        } catch (IOException e) {
-            throw rethrow(e, mCause);
-        }
+        access(true, pos, buf, offset, length);
     }
 
     @Override
     public void write(long pos, byte[] buf, int offset, int length) throws IOException {
-        RandomAccessFile file = accessFile();
+        access(false, pos, buf, offset, length);
+    }
+
+    private void access(boolean read, long pos, byte[] buf, int offset, int length)
+        throws IOException
+    {
         try {
-            file.seek(pos);
-            file.write(buf, offset, length);
+            Lock lock = mMappingLock.readLock();
+            lock.lock();
+            try {
+                Mapping[] mappings = mMappings;
+                if (mappings != null) {
+                    while (true) {
+                        int mi = (int) (pos >> MAPPING_SHIFT);
+                        int mlen = mappings.length;
+                        if (mi >= mlen) {
+                            break;
+                        }
+
+                        Mapping mapping = mappings[mi];
+                        int mpos = (int) (pos & (MAPPING_SIZE - 1));
+                        int mavail;
+
+                        if (mi == (mlen - 1)) {
+                            mavail = mLastMappingSize - mpos;
+                            if (mavail <= 0) {
+                                break;
+                            }
+                        } else {
+                            mavail = MAPPING_SIZE - mpos;
+                        }
+
+                        if (mavail > length) {
+                            mavail = length;
+                        }
+
+                        if (read) {
+                            mapping.read(mpos, buf, offset, mavail);
+                        } else {
+                            mapping.write(mpos, buf, offset, mavail);
+                        }
+
+                        length -= mavail;
+                        if (length <= 0) {
+                            return;
+                        }
+
+                        pos += mavail;
+                        offset += mavail;
+                    }
+                }
+            } finally {
+                lock.unlock();
+            }
+
+            RandomAccessFile file = accessFile();
+            try {
+                file.seek(pos);
+                if (read) {
+                    file.readFully(buf, offset, length);
+                } else {
+                    file.write(buf, offset, length);
+                }
+            } finally {
+                yieldFile(file);
+            }
         } catch (IOException e) {
+            if (e instanceof EOFException && read) {
+                EOFException eof = new EOFException("Attempt to read past end of file: " + pos);
+                eof.initCause(mCause);
+                throw eof;
+            }
             throw rethrow(e, mCause);
-        } finally {
-            yieldFile(file);
         }
     }
 
     @Override
-    public void writeDurably(long pos, byte[] buf, int offset, int length) throws IOException {
-        RandomAccessFile file = mDurableFile;
-        if (file == null) {
-            // All files are durable.
-            write(pos, buf, offset, length);
-        } else synchronized (file) {
-            file.seek(pos);
-            file.write(buf, offset, length);
+    public void map() throws IOException {
+        map(false);
+    }
+
+    @Override
+    public void remap() throws IOException {
+        map(true);
+    }
+
+    private void map(boolean remap) throws IOException {
+        synchronized (mRemapLock) {
+            Mapping[] oldMappings;
+            int oldMappingDiscardPos;
+            Mapping[] newMappings;
+            int newLastSize;
+
+            prepareNewMappings: {
+                Lock lock = mMappingLock.readLock();
+                lock.lock();
+                try {
+                    oldMappings = mMappings;
+                    if (oldMappings == null && remap) {
+                        // Don't map unless already mapped.
+                        return;
+                    }
+
+                    long length = length();
+
+                    if (oldMappings != null) {
+                        long oldMappedLength = oldMappings.length == 0 ? 0 :
+                            (oldMappings.length - 1) * (long) MAPPING_SIZE + mLastMappingSize;
+                        if (length == oldMappedLength) {
+                            return;
+                        }
+                    }
+
+                    long count = (length + (MAPPING_SIZE - 1)) / MAPPING_SIZE;
+
+                    if (count > Integer.MAX_VALUE) {
+                        throw new IOException("Mapping is too large");
+                    }
+
+                    try {
+                        newMappings = new Mapping[(int) count];
+                    } catch (OutOfMemoryError e) {
+                        throw new IOException("Mapping is too large");
+                    }
+
+                    oldMappings = mMappings;
+                    oldMappingDiscardPos = 0;
+
+                    int i = 0;
+                    long pos = 0;
+
+                    if (oldMappings != null && oldMappings.length > 0) {
+                        i = oldMappings.length;
+                        if (mLastMappingSize != MAPPING_SIZE) {
+                            i--;
+                            oldMappingDiscardPos = i;
+                        }
+                        System.arraycopy(oldMappings, 0, newMappings, 0, i);
+                        pos = i * (long) MAPPING_SIZE;
+                    }
+
+                    while (i < count - 1) {
+                        newMappings[i++] = Mapping.open(mFile, mReadOnly, pos, MAPPING_SIZE);
+                        pos += MAPPING_SIZE;
+                    }
+
+                    if (count == 0) {
+                        newLastSize = 0;
+                    } else {
+                        newLastSize = (int) (MAPPING_SIZE - (count * MAPPING_SIZE - length));
+                        newMappings[i] = Mapping.open(mFile, mReadOnly, pos, newLastSize);
+                    }
+                } finally {
+                    lock.unlock();
+                }
+
+                lock = mMappingLock.writeLock();
+                lock.lock();
+                mMappings = newMappings;
+                mLastMappingSize = newLastSize;
+                lock.unlock();
+
+                if (oldMappings != null) {
+                    IOException ex = null;
+                    while (oldMappingDiscardPos < oldMappings.length) {
+                        ex = Utils.closeQuietly(ex, oldMappings[oldMappingDiscardPos++]);
+                    }
+                    if (ex != null) {
+                        throw ex;
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
+    public void unmap() throws IOException {
+        synchronized (mRemapLock) {
+            Lock lock = mMappingLock.writeLock();
+            lock.lock();
+
+            Mapping[] mappings = mMappings;
+            if (mappings == null) {
+                lock.unlock();
+                return;
+            }
+
+            mMappings = null;
+            mLastMappingSize = 0;
+            lock.unlock();
+
+            IOException ex = null;
+            for (Mapping m : mappings) {
+                ex = Utils.closeQuietly(ex, m);
+            }
+
+            if (ex != null) {
+                throw ex;
+            }
         }
     }
 
@@ -170,6 +339,21 @@ class JavaFileIO implements CauseCloseable, FileIO {
         if (mReadOnly) {
             return;
         }
+
+        Lock lock = mMappingLock.readLock();
+        lock.lock();
+        try {
+            Mapping[] mappings = mMappings;
+            if (mappings != null) {
+                for (Mapping m : mappings) {
+                    // Save metadata sync for last.
+                    m.sync(false);
+                }
+            }
+        } finally {
+            lock.unlock();
+        }
+
         RandomAccessFile file = accessFile();
         try {
             file.getChannel().force(metadata);
@@ -190,16 +374,21 @@ class JavaFileIO implements CauseCloseable, FileIO {
         if (cause != null) {
             mCause = cause;
         }
+
         IOException ex = null;
+        try {
+            unmap();
+        } catch (IOException e) {
+            ex = e;
+        }
+
         RandomAccessFile[] pool = mFilePool;
         synchronized (pool) {
             for (RandomAccessFile file : pool) {
                 ex = closeQuietly(ex, file, cause);
             }
-            if (mDurableFile != null) {
-                ex = closeQuietly(ex, mDurableFile, cause);
-            }
         }
+
         if (ex != null) {
             throw ex;
         }
