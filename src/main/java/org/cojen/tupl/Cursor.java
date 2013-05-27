@@ -164,6 +164,7 @@ public interface Cursor {
      * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
+     * @throws NullPointerException if limit key is null
      * @throws IllegalStateException if position is undefined at invocation time
      */
     public LockResult nextLe(byte[] limitKey) throws IOException;
@@ -177,6 +178,7 @@ public interface Cursor {
      * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
+     * @throws NullPointerException if limit key is null
      * @throws IllegalStateException if position is undefined at invocation time
      */
     public LockResult nextLt(byte[] limitKey) throws IOException;
@@ -204,6 +206,7 @@ public interface Cursor {
      * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
+     * @throws NullPointerException if limit key is null
      * @throws IllegalStateException if position is undefined at invocation time
      */
     public LockResult previousGe(byte[] limitKey) throws IOException;
@@ -217,6 +220,7 @@ public interface Cursor {
      * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
+     * @throws NullPointerException if limit key is null
      * @throws IllegalStateException if position is undefined at invocation time
      */
     public LockResult previousGt(byte[] limitKey) throws IOException;
