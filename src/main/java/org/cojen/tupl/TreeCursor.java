@@ -299,6 +299,10 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     private LockResult nextCmp(byte[] limitKey, int limitMode) throws IOException {
+        if (limitKey == null) {
+            throw new NullPointerException("Key is null");
+        }
+
         Transaction txn = mTxn;
         TreeCursorFrame frame = leafExclusiveNotSplit();
 
@@ -640,6 +644,10 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     private LockResult previousCmp(byte[] limitKey, int limitMode) throws IOException {
+        if (limitKey == null) {
+            throw new NullPointerException("Key is null");
+        }
+
         Transaction txn = mTxn;
         TreeCursorFrame frame = leafExclusiveNotSplit();
 
