@@ -101,6 +101,13 @@ abstract class RedoDecoder {
                 }
                 break;
 
+            case OP_NOP_RANDOM:
+                in.readLongLE();
+                if (!verifyTerminator(in)) {
+                    return false;
+                }
+                break;
+
             case OP_TXN_ENTER:
                 long txnId = readTxnId(in);
                 if (!verifyTerminator(in) || !visitor.txnEnter(txnId)) {
