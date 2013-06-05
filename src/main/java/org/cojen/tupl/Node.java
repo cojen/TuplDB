@@ -481,9 +481,11 @@ final class Node extends Latch {
                 highPos = midPos - 2;
                 highMatch = i;
             } else {
-                byte[] value = retrieveLeafValueAtLoc(this, tree, page, compareLoc + compareLen);
-                releaseShared();
-                return value;
+                try {
+                    return retrieveLeafValueAtLoc(this, tree, page, compareLoc + compareLen);
+                } finally {
+                    releaseShared();
+                }
             }
         }
 
@@ -1431,6 +1433,9 @@ final class Node extends Latch {
         }
     }
 
+    /**
+     * @param pos complement of position as provided by binarySearch; must be positive
+     */
     void insertFragmentedLeafEntry(Tree tree, int pos, byte[] key, byte[] value)
         throws IOException
     {
