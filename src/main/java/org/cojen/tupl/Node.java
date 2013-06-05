@@ -481,9 +481,11 @@ final class Node extends Latch {
                 highPos = midPos - 2;
                 highMatch = i;
             } else {
-                byte[] value = retrieveLeafValueAtLoc(this, tree, page, compareLoc + compareLen);
-                releaseShared();
-                return value;
+                try {
+                    return retrieveLeafValueAtLoc(this, tree, page, compareLoc + compareLen);
+                } finally {
+                    releaseShared();
+                }
             }
         }
 

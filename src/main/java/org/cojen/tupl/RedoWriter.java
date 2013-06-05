@@ -214,6 +214,12 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
         flush();
     }
 
+    public synchronized void nopRandom() throws IOException {
+        writeOp(OP_NOP_RANDOM, random().nextLong());
+        writeTerminator();
+        flush();
+    }
+
     @Override
     public synchronized void flush() throws IOException {
         doFlush();
