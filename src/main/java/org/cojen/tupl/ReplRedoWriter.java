@@ -210,7 +210,16 @@ final class ReplRedoWriter extends RedoWriter {
         if (!mIsLeader) {
             mManager.flip();
             mIsLeader = true;
+
+            // Clear the log state and write a reset op to signal leader transition.
             clearAndReset();
+
+            // Record leader transition epoch.
+            timestamp();
+
+            // Don't trust timestamp alone to help detect divergent logs.
+            nopRandom();
+
             flush();
         }
     }
