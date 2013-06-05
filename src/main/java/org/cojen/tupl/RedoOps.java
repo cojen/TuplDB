@@ -40,6 +40,9 @@ class RedoOps {
         /** timestamp: long */
         OP_END_FILE = 5,
 
+        /** random: long */
+        OP_NOP_RANDOM = 6,
+
         /** indexId: long, keyLength: varInt, key: bytes, valueLength: varInt, value: bytes */
         OP_STORE = 16,
 
