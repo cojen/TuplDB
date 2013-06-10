@@ -28,6 +28,8 @@ final class ReplRedoWriter extends RedoWriter {
     private final ReplRedoEngine mEngine;
     private final ReplicationManager mManager;
 
+    private long mCommitPos;
+
     private long mCheckpointNum;
     private long mCheckpointPos;
     private long mCheckpointTxnId;
@@ -56,7 +58,7 @@ final class ReplRedoWriter extends RedoWriter {
         long pos;
         synchronized (this) {
             super.store(indexId, key, value, DurabilityMode.NO_SYNC);
-            pos = mManager.commit();
+            pos = mCommitPos;
         }
         if (pos < 0) {
             throw unmodifiable();
@@ -71,7 +73,7 @@ final class ReplRedoWriter extends RedoWriter {
         long pos;
         synchronized (this) {
             super.storeNoLock(indexId, key, value, DurabilityMode.NO_SYNC);
-            pos = mManager.commit();
+            pos = mCommitPos;
         }
         if (pos < 0) {
             throw unmodifiable();
@@ -84,7 +86,7 @@ final class ReplRedoWriter extends RedoWriter {
         long pos;
         synchronized (this) {
             super.txnCommitFinal(txnId, DurabilityMode.NO_SYNC);
-            pos = mManager.commit();
+            pos = mCommitPos;
         }
         if (pos < 0) {
             throw unmodifiable();
@@ -179,11 +181,15 @@ final class ReplRedoWriter extends RedoWriter {
     }
 
     @Override
-    void write(byte[] buffer, int len) throws IOException {
+    void write(boolean commit, byte[] buffer, int len) throws IOException {
         // Length check is included because super class can invoke this method to flush the
         // buffer even when empty. Operation should never fail.
-        if (len > 0 && !mManager.write(buffer, 0, len)) {
-            throw unmodifiable();
+        if (len > 0) {
+            if (commit) {
+                mCommitPos = mManager.writeCommit(buffer, 0, len);
+            } else if (!mManager.write(buffer, 0, len)) {
+                throw unmodifiable();
+            }
         }
     }
 

@@ -74,7 +74,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
             }
             writeTerminator();
 
-            sync = conditionalFlush(mode);
+            sync = commitFlush(mode);
         }
 
         if (sync) {
@@ -111,7 +111,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
             }
             writeTerminator();
 
-            sync = conditionalFlush(mode);
+            sync = commitFlush(mode);
         }
 
         if (sync) {
@@ -128,7 +128,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
     public synchronized boolean dropIndex(long indexId, DurabilityMode mode) throws IOException {
         writeOp(OP_DROP_INDEX, indexId);
         writeTerminator();
-        return conditionalFlush(mode);
+        return commitFlush(mode);
     }
 
     public synchronized void reset() throws IOException {
@@ -165,7 +165,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
     {
         writeTxnOp(OP_TXN_COMMIT_FINAL, txnId);
         writeTerminator();
-        return conditionalFlush(mode);
+        return commitFlush(mode);
     }
 
     /**
@@ -222,7 +222,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
 
     @Override
     public synchronized void flush() throws IOException {
-        doFlush();
+        doFlush(false);
     }
 
     public void sync() throws IOException {
@@ -262,7 +262,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
 
             writeOp(op, System.currentTimeMillis());
             writeTerminator();
-            doFlush();
+            doFlush(false);
 
             // If shutdown hook is invoked, don't close the stream. It may interfere with other
             // shutdown hooks the user may have installed, causing unexpected exceptions to be
@@ -334,8 +334,11 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
     // Caller must be synchronized.
     abstract void opWriteCheck() throws IOException;
 
+    /**
+     * @param commit true if invoked from a commit operation
+     */
     // Caller must be synchronized.
-    abstract void write(byte[] buffer, int len) throws IOException;
+    abstract void write(boolean commit, byte[] buffer, int len) throws IOException;
 
     abstract void force(boolean metadata) throws IOException;
 
@@ -359,7 +362,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
         byte[] buffer = mBuffer;
         int pos = mBufferPos;
         if (pos > buffer.length - 4) {
-            doFlush(buffer, pos);
+            doFlush(false, buffer, pos);
             pos = 0;
         }
         Utils.encodeIntLE(buffer, pos, v);
@@ -371,7 +374,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
         byte[] buffer = mBuffer;
         int pos = mBufferPos;
         if (pos > buffer.length - 8) {
-            doFlush(buffer, pos);
+            doFlush(false, buffer, pos);
             pos = 0;
         }
         Utils.encodeLongLE(buffer, pos, v);
@@ -383,7 +386,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
         byte[] buffer = mBuffer;
         int pos = mBufferPos;
         if (pos > buffer.length - 5) {
-            doFlush(buffer, pos);
+            doFlush(false, buffer, pos);
             pos = 0;
         }
         mBufferPos = Utils.encodeUnsignedVarInt(buffer, pos, v);
@@ -409,7 +412,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
             }
             int remaining = buffer.length - pos;
             System.arraycopy(bytes, offset, buffer, pos, remaining);
-            doFlush(buffer, buffer.length);
+            doFlush(false, buffer, buffer.length);
             pos = 0;
             offset += remaining;
             length -= remaining;
@@ -422,7 +425,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
         byte[] buffer = mBuffer;
         int pos = mBufferPos;
         if (pos >= buffer.length - 1) { // 1 for op
-            doFlush(buffer, pos);
+            doFlush(false, buffer, pos);
             pos = 0;
         }
         buffer[pos] = op;
@@ -435,7 +438,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
         byte[] buffer = mBuffer;
         int pos = mBufferPos;
         if (pos >= buffer.length - (1 + 8)) { // 1 for op, 8 for operand
-            doFlush(buffer, pos);
+            doFlush(false, buffer, pos);
             pos = 0;
         }
         buffer[pos] = op;
@@ -449,7 +452,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
         byte[] buffer = mBuffer;
         int pos = mBufferPos;
         if (pos >= buffer.length - (1 + 9)) { // 1 for op, up to 9 for txn delta
-            doFlush(buffer, pos);
+            doFlush(false, buffer, pos);
             pos = 0;
         }
         buffer[pos] = op;
@@ -457,18 +460,24 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
         mLastTxnId = txnId;
     }
 
+    /**
+     * @param commit true if invoked from a commit operation
+     */
     // Caller must be synchronized.
-    private void doFlush() throws IOException {
-        doFlush(mBuffer, mBufferPos);
+    private void doFlush(boolean commit) throws IOException {
+        doFlush(commit, mBuffer, mBufferPos);
     }
 
+    /**
+     * @param commit true if invoked from a commit operation
+     */
     // Caller must be synchronized.
-    private void doFlush(byte[] buffer, int len) throws IOException {
+    private void doFlush(boolean commit, byte[] buffer, int len) throws IOException {
         // Discard buffer even if the write fails. Caller is expected to
         // rollback the transacion, and so redo is not used.
         try {
             mBufferPos = 0;
-            write(buffer, len);
+            write(commit, buffer, len);
         } catch (IOException e) {
             throw rethrow(e, mCause);
         }
@@ -483,20 +492,20 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
     }
 
     // Caller must be synchronized. Returns true if caller should sync.
-    private boolean conditionalFlush(DurabilityMode mode) throws IOException {
+    private boolean commitFlush(DurabilityMode mode) throws IOException {
         switch (mode) {
         default:
             return false;
         case NO_FLUSH:
             if (mAlwaysFlush) {
-                doFlush();
+                doFlush(true);
             }
             return false;
         case SYNC:
-            doFlush();
+            doFlush(true);
             return true;
         case NO_SYNC:
-            doFlush();
+            doFlush(true);
             return false;
         }
     }

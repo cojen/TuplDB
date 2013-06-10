@@ -102,12 +102,12 @@ public interface ReplicationManager {
     boolean write(byte[] b, int off, int len) throws IOException;
 
     /**
-     * Commit all buffered writes and defines a confirmation position. When the local instance
-     * loses leadership, all data rolls back to the highest confirmed position.
+     * Fully writes and commits the given data, defining a confirmation position. When the
+     * local instance loses leadership, all data rolls back to the highest confirmed position.
      *
      * @return confirmation position, or -1 if not leader
      */
-    long commit() throws IOException;
+    long writeCommit(byte[] b, int off, int len) throws IOException;
 
     /**
      * Blocks until all data up to the given log position is confirmed. Returns false if
