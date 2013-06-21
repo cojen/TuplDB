@@ -280,12 +280,16 @@ public class CipherCrypto implements Crypto {
         return b.toString();
     }
 
+    protected Cipher newCipher(String transformation) throws GeneralSecurityException {
+        return Cipher.getInstance(transformation);
+    }
+
     protected Cipher newPageCipher() throws GeneralSecurityException {
-        return Cipher.getInstance(algorithm() + "/CTR/NoPadding");
+        return newCipher(algorithm() + "/CTR/NoPadding");
     }
 
     protected Cipher newStreamCipher() throws GeneralSecurityException {
-        return Cipher.getInstance(algorithm() + "/CTR/NoPadding");
+        return newCipher(algorithm() + "/CTR/NoPadding");
     }
 
     protected void initCipher(Cipher cipher, int opmode, SecretKey key)
