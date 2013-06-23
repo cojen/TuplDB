@@ -43,7 +43,7 @@ final class SnapshotPageArray extends PageArray {
         super(source.pageSize());
         mSource = source;
         // Snapshot does not decrypt pages.
-        mRawSource = source;
+        mRawSource = rawSource;
     }
 
     @Override
