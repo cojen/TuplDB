@@ -321,7 +321,7 @@ final class RedoLog extends RedoWriter {
     }
 
     @Override
-    void write(byte[] buffer, int len) throws IOException {
+    void write(boolean commit, byte[] buffer, int len) throws IOException {
         mPosition += len;
         mOut.write(buffer, 0, len);
     }

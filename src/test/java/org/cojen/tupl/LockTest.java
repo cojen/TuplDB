@@ -368,11 +368,7 @@ public class LockTest {
         assertEquals(ACQUIRED, locker2.tryLockShared(0, k1, -1));
 
         assertEquals(OWNED_UPGRADABLE, locker1.tryLockUpgradable(0, k1, -1));
-        try {
-            locker2.tryLockExclusive(0, k1, 0);
-            fail();
-        } catch (DeadlockException e) {
-        }
+        assertEquals(TIMED_OUT_LOCK, locker2.tryLockExclusive(0, k1, 0));
 
         try {
             locker1.tryLockExclusive(0, k1, 10);
@@ -383,8 +379,9 @@ public class LockTest {
         locker1.unlockToShared();
 
         assertEquals(OWNED_UPGRADABLE, locker2.tryLockUpgradable(0, k1, -1));
+        assertEquals(TIMED_OUT_LOCK, locker2.tryLockExclusive(0, k1, 0));
         try {
-            locker2.tryLockExclusive(0, k1, 0);
+            locker2.tryLockExclusive(0, k1, 1);
             fail();
         } catch (DeadlockException e) {
         }

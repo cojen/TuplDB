@@ -24,14 +24,16 @@ import java.io.IOException;
  * @author Brian S O'Neill
  */
 class TrimmedCursor implements Cursor {
+    private final TrimmedView mView;
     private final Cursor mSource;
     private final int mTrim;
 
     private byte[] mKey;
 
-    TrimmedCursor(Cursor source, int trim) {
+    TrimmedCursor(TrimmedView view, Cursor source) {
+        mView = view;
         mSource = source;
-        mTrim = trim;
+        mTrim = view.mTrim;
     }
 
     @Override
@@ -104,13 +106,13 @@ class TrimmedCursor implements Cursor {
     @Override
     public LockResult nextLe(byte[] limitKey) throws IOException {
         mKey = null;
-        return mSource.nextLe(limitKey);
+        return mSource.nextLe(mView.applyPrefix(limitKey));
     }
 
     @Override
     public LockResult nextLt(byte[] limitKey) throws IOException {
         mKey = null;
-        return mSource.nextLt(limitKey);
+        return mSource.nextLt(mView.applyPrefix(limitKey));
     }
 
     @Override
@@ -122,54 +124,60 @@ class TrimmedCursor implements Cursor {
     @Override
     public LockResult previousGe(byte[] limitKey) throws IOException {
         mKey = null;
-        return mSource.previousGe(limitKey);
+        return mSource.previousGe(mView.applyPrefix(limitKey));
     }
 
     @Override
     public LockResult previousGt(byte[] limitKey) throws IOException {
         mKey = null;
-        return mSource.previousGt(limitKey);
+        return mSource.previousGt(mView.applyPrefix(limitKey));
     }
 
     @Override
     public LockResult find(byte[] key) throws IOException {
         mKey = null;
-        return mSource.find(key);
+        return mSource.find(mView.applyPrefix(key));
     }
 
     @Override
     public LockResult findGe(byte[] key) throws IOException {
         mKey = null;
-        return mSource.findGe(key);
+        return mSource.findGe(mView.applyPrefix(key));
     }
 
     @Override
     public LockResult findGt(byte[] key) throws IOException {
         mKey = null;
-        return mSource.findGt(key);
+        return mSource.findGt(mView.applyPrefix(key));
     }
 
     @Override
     public LockResult findLe(byte[] key) throws IOException {
         mKey = null;
-        return mSource.findLe(key);
+        return mSource.findLe(mView.applyPrefix(key));
     }
 
     @Override
     public LockResult findLt(byte[] key) throws IOException {
         mKey = null;
-        return mSource.findLt(key);
+        return mSource.findLt(mView.applyPrefix(key));
     }
 
     @Override
     public LockResult findNearby(byte[] key) throws IOException {
         mKey = null;
-        return mSource.findNearby(key);
+        return mSource.findNearby(mView.applyPrefix(key));
     }
 
     @Override
     public LockResult random(byte[] lowKey, byte[] highKey) throws IOException {
         mKey = null;
+        if (lowKey != null) {
+            lowKey = mView.applyPrefix(lowKey);
+        }
+        if (highKey != null) {
+            highKey = mView.applyPrefix(highKey);
+        }
         return mSource.random(lowKey, highKey);
     }
 
@@ -185,7 +193,7 @@ class TrimmedCursor implements Cursor {
 
     @Override
     public Cursor copy() {
-        TrimmedCursor c = new TrimmedCursor(mSource.copy(), mTrim);
+        TrimmedCursor c = new TrimmedCursor(mView, mSource.copy());
         c.mKey = mKey;
         return c;
     }
