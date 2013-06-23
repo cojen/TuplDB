@@ -642,6 +642,21 @@ public class ViewTest {
         c.reset();
         assertEquals(100, i);
 
+        {
+            c = view.newCursor(null);
+
+            c.findGe(String.valueOf(20).getBytes());
+            fastAssertArrayEquals(key(20), c.value());
+            c.findGt(String.valueOf(20).getBytes());
+            fastAssertArrayEquals(key(30), c.value());
+            c.findLe(String.valueOf(90).getBytes());
+            fastAssertArrayEquals(key(90), c.value());
+            c.findLt(String.valueOf(90).getBytes());
+            fastAssertArrayEquals(key(80), c.value());
+
+            c.reset();
+        }
+
         view.store(null, "hello".getBytes(), "world".getBytes());
 
         fastAssertArrayEquals("world".getBytes(), view.load(null, "hello".getBytes()));

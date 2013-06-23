@@ -26,7 +26,7 @@ import java.io.IOException;
 class TrimmedView implements View {
     private final View mSource;
     private final byte[] mPrefix;
-    private final int mTrim;
+    final int mTrim;
 
     TrimmedView(View source, byte[] prefix, int trim) {
         mSource = source;
@@ -36,7 +36,7 @@ class TrimmedView implements View {
 
     @Override
     public Cursor newCursor(Transaction txn) {
-        return new TrimmedCursor(mSource.newCursor(txn), mTrim);
+        return new TrimmedCursor(this, mSource.newCursor(txn));
     }
 
     @Override
@@ -122,7 +122,7 @@ class TrimmedView implements View {
         return mSource.isUnmodifiable();
     }
 
-    private byte[] applyPrefix(byte[] key) {
+    byte[] applyPrefix(byte[] key) {
         if (key == null) {
             throw new NullPointerException("Key is null");
         }
