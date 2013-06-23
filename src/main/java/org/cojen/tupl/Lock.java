@@ -91,18 +91,19 @@ final class Lock {
         }
 
         WaitQueue queueSX = mQueueSX;
-        quick: {
-            if (queueSX == null) {
-                LockResult r = tryLockShared(locker);
-                if (r != null) {
-                    return r;
-                }
-                mQueueSX = queueSX = new WaitQueue();
-                break quick;
+        if (queueSX != null) {
+            if (nanosTimeout == 0) {
+                return TIMED_OUT_LOCK;
+            }
+        } else {
+            LockResult r = tryLockShared(locker);
+            if (r != null) {
+                return r;
             }
             if (nanosTimeout == 0) {
                 return TIMED_OUT_LOCK;
             }
+            mQueueSX = queueSX = new WaitQueue();
         }
 
         locker.mWaitingFor = this;
@@ -182,19 +183,20 @@ final class Lock {
         }
 
         WaitQueue queueU = mQueueU;
-        quick: {
-            if (queueU == null) {
-                if (count >= 0) {
-                    mLockCount = count | 0x80000000;
-                    mLocker = locker;
-                    return ACQUIRED;
-                }
-                mQueueU = queueU = new WaitQueue();
-                break quick;
+        if (queueU != null) {
+            if (nanosTimeout == 0) {
+                return TIMED_OUT_LOCK;
+            }
+        } else {
+            if (count >= 0) {
+                mLockCount = count | 0x80000000;
+                mLocker = locker;
+                return ACQUIRED;
             }
             if (nanosTimeout == 0) {
                 return TIMED_OUT_LOCK;
             }
+            mQueueU = queueU = new WaitQueue();
         }
 
         locker.mWaitingFor = this;
@@ -280,14 +282,17 @@ final class Lock {
         }
 
         WaitQueue queueSX = mQueueSX;
-        quick: {
-            if (queueSX == null) {
-                if (mLockCount == 0x80000000) {
-                    mLockCount = ~0;
-                    return ur == OWNED_UPGRADABLE ? UPGRADED : ACQUIRED;
+        if (queueSX != null) {
+            if (nanosTimeout == 0) {
+                if (ur == ACQUIRED) {
+                    unlockUpgradable();
                 }
-                mQueueSX = queueSX = new WaitQueue();
-                break quick;
+                return TIMED_OUT_LOCK;
+            }
+        } else {
+            if (mLockCount == 0x80000000) {
+                mLockCount = ~0;
+                return ur == OWNED_UPGRADABLE ? UPGRADED : ACQUIRED;
             }
             if (nanosTimeout == 0) {
                 if (ur == ACQUIRED) {
@@ -295,6 +300,7 @@ final class Lock {
                 }
                 return TIMED_OUT_LOCK;
             }
+            mQueueSX = queueSX = new WaitQueue();
         }
 
         locker.mWaitingFor = this;

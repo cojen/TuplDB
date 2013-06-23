@@ -39,6 +39,7 @@ public class TestAll {
             RecoverTest.class,
             RecoverMappedTest.class,
             SnapshotTest.class,
+            SnapshotCryptoTest.class,
             SnapshotMappedTest.class,
             TransactionTest.class,
             TransactionNonDurableTest.class,

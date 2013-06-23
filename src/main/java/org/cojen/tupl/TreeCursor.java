@@ -2134,12 +2134,9 @@ final class TreeCursor implements CauseCloseable, Cursor {
             } while ((frame = frame.mPrevCousin) != null);
 
             if (node.shouldLeafMerge()) {
-                try {
-                    mergeLeaf(leaf, node);
-                } finally {
-                    // Always released by mergeLeaf.
-                    node = null;
-                }
+                mergeLeaf(leaf, node);
+                // Always released by mergeLeaf.
+                node = null;
             }
 
             mValue = null;
@@ -2172,12 +2169,9 @@ final class TreeCursor implements CauseCloseable, Cursor {
             }
 
             if (node.shouldLeafMerge()) {
-                try {
-                    mergeLeaf(leaf, node);
-                } finally {
-                    // Always released by mergeLeaf.
-                    node = null;
-                }
+                mergeLeaf(leaf, node);
+                // Always released by mergeLeaf.
+                node = null;
             } else {
                 if (node.mSplit != null) {
                     // Releases latch if an exception is thrown.
