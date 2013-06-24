@@ -219,7 +219,7 @@ public class CipherCrypto implements Crypto {
                                                byte[] salt, SecretKey dataKey)
         throws GeneralSecurityException
     {
-        byte[] iv = new byte[algorithmBlockSizeInBytes()];
+        byte[] iv = new byte[cipher.getBlockSize()];
         Utils.encodeLongLE(iv, 0, pageIndex);
         initCipher(cipher, Cipher.ENCRYPT_MODE, dataKey, new IvParameterSpec(iv));
         return new IvParameterSpec(cipher.doFinal(salt));
@@ -257,13 +257,13 @@ public class CipherCrypto implements Crypto {
         return "AES";
     }
 
-    protected int algorithmBlockSizeInBytes() {
-        return 16;
+    protected int keySize() {
+        return 128;
     }
 
     protected SecretKey generateKey() throws GeneralSecurityException {
         KeyGenerator gen = KeyGenerator.getInstance(algorithm());
-        gen.init(algorithmBlockSizeInBytes() * 8);
+        gen.init(keySize());
         return gen.generateKey();
     }
 
