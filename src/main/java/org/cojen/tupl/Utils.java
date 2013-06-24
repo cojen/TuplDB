@@ -587,13 +587,13 @@ class Utils extends org.cojen.tupl.io.Utils {
      * overflowed, value in byte array is 0x00, 0x00, 0x00...
      *
      * @param value unsigned integer to increment
+     * @param start inclusive index
+     * @param end exclusive index
      * @return false if overflowed
      */
     public static boolean increment(byte[] value, final int start, int end) {
         while (--end >= start) {
-            byte digit = (byte) ((value[end] & 0xff) + 1);
-            value[end] = digit;
-            if (digit != 0) {
+            if (++value[end] != 0) {
                 // No carry bit, so done adding.
                 return true;
             }
@@ -607,13 +607,13 @@ class Utils extends org.cojen.tupl.io.Utils {
      * overflowed, value in byte array is 0xff, 0xff, 0xff...
      *
      * @param value unsigned integer to decrement
+     * @param start inclusive index
+     * @param end exclusive index
      * @return false if overflowed
      */
     public static boolean decrement(byte[] value, final int start, int end) {
         while (--end >= start) {
-            byte digit = (byte) ((value[end] & 0xff) + -1);
-            value[end] = digit;
-            if (digit != -1) {
+            if (--value[end] != -1) {
                 // No borrow bit, so done subtracting.
                 return true;
             }
