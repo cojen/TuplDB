@@ -37,7 +37,7 @@ final class SnapshotPageArray extends PageArray {
     private final PageArray mSource;
     private final PageArray mRawSource;
 
-    private Object mSnapshots;
+    private volatile Object mSnapshots;
 
     SnapshotPageArray(PageArray source, PageArray rawSource) {
         super(source.pageSize());
