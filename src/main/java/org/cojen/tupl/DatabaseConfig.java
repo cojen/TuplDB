@@ -405,6 +405,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
 
         set(props, "baseFile", mBaseFile);
         set(props, "createFilePath", mMkdirs);
+        set(props, "mapDataFiles", mMapDataFiles);
 
         if (mDataFiles != null && mDataFiles.length > 0) {
             if (mDataFiles.length == 1) {
@@ -421,7 +422,6 @@ public class DatabaseConfig implements Cloneable, Serializable {
                 b.append(']');
                 props.setProperty("dataFiles", b.toString());
             }
-            set(props, "mapDataFiles", mMapDataFiles);
         }
 
         set(props, "minCacheSize", mMinCachedBytes);
