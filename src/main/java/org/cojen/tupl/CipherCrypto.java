@@ -33,7 +33,8 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 /**
- * Crypto implementation which defaults to the AES algorithm.
+ * Crypto implementation which uses {@link Cipher} and defaults to the AES algorithm with a
+ * 128-bit key.
  *
  * @author Brian S O'Neill
  */
@@ -42,8 +43,7 @@ public class CipherCrypto implements Crypto {
      * Generates and prints a new key.
      */
     public static void main(String[] args) throws Exception {
-        byte[] encodedKey = new CipherCrypto().secretKey().getEncoded();
-        System.out.println(toString(encodedKey));
+        System.out.println(toString(new CipherCrypto().secretKey()));
     }
 
     private final ThreadLocal<Cipher> mHeaderPageCipher = new ThreadLocal<Cipher>();
@@ -253,21 +253,17 @@ public class CipherCrypto implements Crypto {
         return new CipherInputStream(in, cipher);
     }
 
-    protected String algorithm() {
-        return "AES";
+    /**
+     * Returns a String with a parseable Java byte array declaration.
+     */
+    public static String toString(SecretKey key) {
+        return toString(key.getEncoded());
     }
 
-    protected int keySize() {
-        return 128;
-    }
-
-    protected SecretKey generateKey() throws GeneralSecurityException {
-        KeyGenerator gen = KeyGenerator.getInstance(algorithm());
-        gen.init(keySize());
-        return gen.generateKey();
-    }
-
-    protected static String toString(byte[] key) {
+    /**
+     * Returns a String with a parseable Java byte array declaration.
+     */
+    public static String toString(byte[] key) {
         StringBuilder b = new StringBuilder(200);
         b.append('{');
         for (int i=0; i<key.length; i++) {
@@ -280,24 +276,68 @@ public class CipherCrypto implements Crypto {
         return b.toString();
     }
 
+    /**
+     * Returns "AES" by default; override to change the algorithm.
+     */
+    protected String algorithm() {
+        return "AES";
+    }
+
+    /**
+     * Returns 128 bits by default; override to use any size supported by the algorithm.
+     */
+    protected int keySize() {
+        return 128;
+    }
+
+    /**
+     * Called to generate a key, using the {@link #algorithm algorithm} and {@link #keySize key
+     * size} of this instance.
+     */
+    protected SecretKey generateKey() throws GeneralSecurityException {
+        KeyGenerator gen = KeyGenerator.getInstance(algorithm());
+        gen.init(keySize());
+        return gen.generateKey();
+    }
+
+    /**
+     * Called to instantiate all {@link Cipher} instances, with the given transformation.
+     */
     protected Cipher newCipher(String transformation) throws GeneralSecurityException {
         return Cipher.getInstance(transformation);
     }
 
+    /**
+     * Called to instantiate a {@link Cipher} for encrypting and decrypting database pages,
+     * using the fixed instance {@link #algorithm algorithm}. Mode applied is CTR, with no
+     * padding.
+     */
     protected Cipher newPageCipher() throws GeneralSecurityException {
         return newCipher(algorithm() + "/CTR/NoPadding");
     }
 
+    /**
+     * Called to instantiate a {@link Cipher} for encrypting and decrypting redo logs, using
+     * the fixed instance {@link #algorithm algorithm}. Mode applied is CTR, with no padding.
+     */
     protected Cipher newStreamCipher() throws GeneralSecurityException {
         return newCipher(algorithm() + "/CTR/NoPadding");
     }
 
+    /**
+     * Called to initialize a new or re-used {@link Cipher}, generating a random initialization
+     * vector.
+     */
     protected void initCipher(Cipher cipher, int opmode, SecretKey key)
         throws GeneralSecurityException
     {
         cipher.init(opmode, key);
     }
 
+    /**
+     * Called to initialize a new or re-used {@link Cipher}, using the given initialization
+     * vector.
+     */
     protected void initCipher(Cipher cipher, int opmode, SecretKey key, IvParameterSpec ivSpec)
         throws GeneralSecurityException
     {
