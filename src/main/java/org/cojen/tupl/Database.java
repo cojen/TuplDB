@@ -985,9 +985,13 @@ public final class Database implements CauseCloseable {
 
             restored = DurablePageDb.restoreFromSnapshot(dataPageArray, config.mCrypto, in);
         } else {
-            if (!config.mReadOnly && config.mMkdirs) {
+            if (!config.mReadOnly) {
                 for (File f : dataFiles) {
-                    f.getParentFile().mkdirs();
+                    // Delete old data file.
+                    f.delete();
+                    if (config.mMkdirs) {
+                        f.getParentFile().mkdirs();
+                    }
                 }
             }
 
