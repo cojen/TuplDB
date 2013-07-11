@@ -1029,11 +1029,11 @@ final class TreeCursor implements CauseCloseable, Cursor {
                     }
 
                 case REPEATABLE_READ:
-                    result = txn.tryLockShared(mTree.mId, mKey, keyHash(), 0);
+                    result = txn.tryLockShared(mTree.mId, mKey, keyHash(), 0L);
                     break;
 
                 case UPGRADABLE_READ:
-                    result = txn.tryLockUpgradable(mTree.mId, mKey, keyHash(), 0);
+                    result = txn.tryLockUpgradable(mTree.mId, mKey, keyHash(), 0L);
                     break;
                 }
 
@@ -1116,11 +1116,11 @@ final class TreeCursor implements CauseCloseable, Cursor {
                     }
 
                 case REPEATABLE_READ:
-                    result = txn.tryLockShared(mTree.mId, mKey, keyHash(), 0);
+                    result = txn.tryLockShared(mTree.mId, mKey, keyHash(), 0L);
                     break;
 
                 case UPGRADABLE_READ:
-                    result = txn.tryLockUpgradable(mTree.mId, mKey, keyHash(), 0);
+                    result = txn.tryLockUpgradable(mTree.mId, mKey, keyHash(), 0L);
                     break;
                 }
 
@@ -1565,11 +1565,11 @@ final class TreeCursor implements CauseCloseable, Cursor {
                 return LockResult.UNOWNED;
 
             case REPEATABLE_READ:
-                result = txn.tryLockShared(mTree.mId, mKey, mKeyHash, 0);
+                result = txn.tryLockShared(mTree.mId, mKey, mKeyHash, 0L);
                 break;
 
             case UPGRADABLE_READ:
-                result = txn.tryLockUpgradable(mTree.mId, mKey, mKeyHash, 0);
+                result = txn.tryLockUpgradable(mTree.mId, mKey, mKeyHash, 0L);
                 break;
             }
 
