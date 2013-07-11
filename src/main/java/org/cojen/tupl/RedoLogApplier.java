@@ -96,7 +96,7 @@ class RedoLogApplier implements RedoVisitor {
     public boolean txnEnter(long txnId) throws IOException {
         Transaction txn = txn(txnId);
         if (txn == null) {
-            txn = new Transaction(mDb, txnId, LockMode.UPGRADABLE_READ, 0);
+            txn = new Transaction(mDb, txnId, LockMode.UPGRADABLE_READ, 0L);
             mTransactions.insert(txnId).value = txn;
         } else {
             txn.enter();
