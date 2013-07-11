@@ -33,6 +33,8 @@ import static org.cojen.tupl.Utils.*;
  * @author Brian S O'Neill
  */
 class ReplRedoEngine implements RedoVisitor {
+    private final static long INFINITE_TIMEOUT = -1L;
+
     final ReplicationManager mManager;
     final Database mDb;
 
@@ -215,7 +217,7 @@ class ReplRedoEngine implements RedoVisitor {
         // Locks must be acquired in their original order to avoid
         // deadlock, so don't allow another task thread to run yet.
         Locker locker = mDb.mLockManager.localLocker();
-        locker.lockExclusive(indexId, key, -1);
+        locker.lockExclusive(indexId, key, INFINITE_TIMEOUT);
 
         // Allow another task thread to run while operation completes.
         nextTask();
@@ -303,9 +305,9 @@ class ReplRedoEngine implements RedoVisitor {
         mOpLatch.acquireShared();
 
         if (e == null) {
-            Latch latch = selectLatch(scrambledTxnId);
-            mTransactions.insert(scrambledTxnId)
-                .init(new Transaction(mDb, txnId, LockMode.UPGRADABLE_READ, -1), latch);
+            Transaction txn = new Transaction
+                (mDb, txnId, LockMode.UPGRADABLE_READ, INFINITE_TIMEOUT);
+            mTransactions.insert(scrambledTxnId).init(txn, selectLatch(scrambledTxnId));
 
             // Only release if no exception.
             mOpLatch.releaseShared();
@@ -445,7 +447,7 @@ class ReplRedoEngine implements RedoVisitor {
 
             // Locks must be acquired in their original order to avoid
             // deadlock, so don't allow another task thread to run yet.
-            txn.lockUpgradable(indexId, key, -1);
+            txn.lockUpgradable(indexId, key, INFINITE_TIMEOUT);
 
             // Allow another task thread to run while operation completes.
             nextTask();
@@ -488,7 +490,7 @@ class ReplRedoEngine implements RedoVisitor {
 
             // Locks must be acquired in their original order to avoid
             // deadlock, so don't allow another task thread to run yet.
-            txn.lockUpgradable(indexId, key, -1);
+            txn.lockUpgradable(indexId, key, INFINITE_TIMEOUT);
 
             // Allow another task thread to run while operation completes.
             nextTask();
