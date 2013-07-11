@@ -495,7 +495,7 @@ public final class Database implements CauseCloseable {
                                 (EventType.RECOVERY_LOAD_UNDO_LOGS, "Loading undo logs");
                         }
                         UndoLog.recoverMasterUndoLog(this, masterNodeId)
-                            .recoverTransactions(txns, LockMode.UPGRADABLE_READ, 0);
+                            .recoverTransactions(txns, LockMode.UPGRADABLE_READ, 0L);
                     }
                 }
 
