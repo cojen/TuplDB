@@ -668,6 +668,7 @@ class ReplRedoEngine implements RedoVisitor {
 
         RedoDecoder decoder = mDecoder;
         if (decoder == null) {
+            mTotalThreads.decrementAndGet();
             mDecodeLatch.releaseExclusive();
             return false;
         }
@@ -679,6 +680,7 @@ class ReplRedoEngine implements RedoVisitor {
             // End of stream reached, and so local instance is now leader.
             reset();
         } catch (Throwable e) {
+            mTotalThreads.decrementAndGet();
             mDecodeLatch.releaseExclusive();
             // Panic.
             closeQuietly(null, mDb, e);
@@ -686,6 +688,7 @@ class ReplRedoEngine implements RedoVisitor {
         }
 
         mDecoder = null;
+        mTotalThreads.decrementAndGet();
         mDecodeLatch.releaseExclusive();
 
         try {
