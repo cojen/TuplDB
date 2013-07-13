@@ -22,6 +22,8 @@ DatabaseConfig config = new DatabaseConfig()
     .baseFilePath("/var/lib/tupl")
     .minCacheSize(100_000_000)
     .durabilityMode(DurabilityMode.NO_FLUSH);
+
+Database db = Database.open(config);
 ```
 
 Notice that a minimum cache size is set, and also notice the durability mode. A weak
