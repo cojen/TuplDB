@@ -38,7 +38,7 @@ matches the minimum cache size. When neither is specified, the default cache siz
 pages, where a page is 4096 bytes by default.
 
 Basic operations
-================
+----------------
 
 A Tupl database manages a collection of [indexes](http://cojen.github.io/Tupl/javadoc/org/cojen/tupl/Index.html), which are ordered mappings of `byte[]` keys to `byte[]` values.
 
@@ -96,6 +96,28 @@ try {
 
         // Move to next name, while still being less than the end key.
         namesCursor.nextLt(endKey);
+    }
+} finally {
+    namesCursor.reset();
+}
+```
+
+The above example can also be implemented using a sub-view:
+
+```java
+// View all users whose last name starts with 'J'.
+View userByNameView = userByNameIx.viewPrefix(startKey, 0);
+
+// Scan the entire view of names.
+Cursor namesCursor = userByNameView.newCursor(null);
+try {
+    namesCursor.first();
+    byte[] nameKey;
+    while ((nameKey = namesCursor.key()) != null) {
+        byte[] userKey = namesCursor.value();
+        ...
+
+        namesCursor.next();
     }
 } finally {
     namesCursor.reset();
