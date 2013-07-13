@@ -16,6 +16,7 @@
 
 package org.cojen.tupl;
 
+import java.io.Closeable;
 import java.io.IOException;
 
 /**
@@ -26,7 +27,7 @@ import java.io.IOException;
  * @author Brian S O'Neill
  * @see DatabaseConfig#replicate
  */
-public interface ReplicationManager {
+public interface ReplicationManager extends Closeable {
     /**
      * Start the replication manager in replica mode. Invocation of this method implies that
      * all data lower than the given position is confirmed. All data at or higher than the

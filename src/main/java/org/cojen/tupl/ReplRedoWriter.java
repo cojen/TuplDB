@@ -200,8 +200,22 @@ final class ReplRedoWriter extends RedoWriter {
 
     @Override
     void forceAndClose() throws IOException {
-        force(false);
-        // FIXME: Close stuff..
+        IOException ex = null;
+        try {
+            force(false);
+        } catch (IOException e) {
+            ex = e;
+        }
+        try {
+            mManager.close();
+        } catch (IOException e) {
+            if (ex == null) {
+                ex = e;
+            }
+        }
+        if (ex != null) {
+            throw ex;
+        }
     }
 
     @Override
