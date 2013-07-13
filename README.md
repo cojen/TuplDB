@@ -37,4 +37,67 @@ detected early, yielding an OutOfMemoryError. When not specified, the maximum ca
 matches the minimum cache size. When neither is specified, the default cache size is 1000
 pages, where a page is 4096 bytes by default.
 
+Basic operations
+================
 
+A Tupl database manages a collection of [indexes](http://cojen.github.io/Tupl/javadoc/org/cojen/tupl/Index.html), which are ordered mappings of `byte[]` keys to `byte[]` values.
+
+```java
+Database db = ...
+
+// Open an index, creating it if necessary.
+Index userIx = db.openIndex("user");
+```
+
+Indexes offer a low-level representation of data, and so applications which use it directly are
+responsible performing their own encoding.
+
+```java
+// Store a user in an auto-commit transaction.
+User user = ...
+byte[] userKey = encodeUserKey(user);
+byte[] userValue = encodeUserValue(user);
+userIx.store(null, userKey, userValue);
+```
+
+To bundle multiple operations together, specify an explicit [transaction](http://cojen.github.io/Tupl/javadoc/org/cojen/tupl/Transaction.html):
+
+```java
+Index userByNameIx = ...
+
+byte[] userNameKey = encodeUserName(user);
+
+Transaction txn = db.newTransaction();
+try {
+    userIx.store(txn, userKey, userValue);
+    userByNameIx.store(txn, userNameKey, userKey);
+    txn.commit();
+} finally {
+    txn.reset();
+}
+```
+
+Entries can retrieved by [loading](http://cojen.github.io/Tupl/javadoc/org/cojen/tupl/Index.html#load%28org.cojen.tupl.Transaction,%20byte[]%29) them directly, or via a [cursor](http://cojen.github.io/Tupl/javadoc/org/cojen/tupl/Cursor.html):
+
+```java
+// Find all users whose last name starts with 'J'.
+byte[] startKey = encodeUserName("J");
+byte[] endKey = encodeUserName("K");
+
+// Open a new cursor with an auto-commit transaction.
+Cursor namesCursor = userByNameIx.newCursor(null);
+try {
+    // Find names greater than or equal to the start key.
+    namesCursor.findGe(startKey);
+    byte[] nameKey;
+    while ((nameKey = namesCursor.key()) != null) {
+        byte[] userKey = namesCursor.value();
+        ...
+
+        // Move to next name, while still being less than the end key.
+        namesCursor.nextLt(endKey);
+    }
+} finally {
+    namesCursor.reset();
+}
+```
