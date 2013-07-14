@@ -1339,7 +1339,7 @@ public final class Database implements CauseCloseable {
     }
 
     private void close(Throwable cause, boolean shutdown) throws IOException {
-        if (cause != null) {
+        if (cause != null && !mClosed) {
             if (cClosedCauseUpdater.compareAndSet(this, null, cause) && mEventListener != null) {
                 mEventListener.notify(EventType.PANIC_UNHANDLED_EXCEPTION,
                                       "Closing database due to unhandled exception: %1$s",
