@@ -614,6 +614,7 @@ final class TreeValueStream extends Stream {
                         mDb.redirtyQ(childNode);
                         break latchChild;
                     }
+                    childNode.releaseExclusive();
                 }
                 // Child node was evicted, although it can be overwritten.
                 // FIXME: must reload if partial!
