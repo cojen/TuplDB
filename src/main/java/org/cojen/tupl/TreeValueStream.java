@@ -538,19 +538,17 @@ final class TreeValueStream extends Stream {
                     Node childNode;
                     setPtr: {
                         prepChild: {
-                            if (childNodeId == 0) {
-                                // Node doesn't exist, and it might need to be zero-filled for
-                                // a partial write. Use -1 as the old id.
-                                childNodeIds[childNodeCount + i] = -1;
-                            } else {
-                                // Node already exists, but it must be dirtied.
+                            if (childNodeId != 0) {
+                                // Node exists, but it must be dirtied.
                                 if ((childNode = fc.findw(caller, inode, childNodeId)) == null) {
                                     // Don't bother loading it now, but old page must be
-                                    // deleted. For partial write, old page must be loaded
-                                    // first. Remember the old id for later.
-                                    childNodeIds[childNodeCount + i] = childNodeId;
+                                    // deleted. Old contents can still be read, because no
+                                    // checkpoint is in progress.
                                     mDb.forceDeletePage(childNodeId);
                                 } else {
+                                    // Store negative child id, indicating that it's contents
+                                    // are valid.
+                                    childNodeIds[childNodeCount + i] = -childNodeId;
                                     try {
                                         if (mDb.markFragmentDirty(childNode)) {
                                             // Dirtied now, so update pointer.
@@ -565,6 +563,11 @@ final class TreeValueStream extends Stream {
                                     }
                                 }
                             }
+
+                            // Remember old child id as-is, indicating that it's not loaded or
+                            // doesn't exist. It might need to be zero-filled or loaded for a
+                            // partial write.
+                            childNodeIds[childNodeCount + i] = childNodeId;
 
                             childNode = mDb.allocDirtyNode();
                         }
@@ -595,6 +598,7 @@ final class TreeValueStream extends Stream {
         long ppos = pos % levelCap;
 
         for (int i=0; i<childNodeIds.length; i++) {
+            long oldChildNodeId = childNodeIds[childNodes.length + i];
             long childNodeId = childNodeIds[i];
             Node childNode = childNodes[i];
 
@@ -613,28 +617,40 @@ final class TreeValueStream extends Stream {
                     childNode.releaseExclusive();
                 }
                 // Child node was evicted, although it can be overwritten.
-                // FIXME: must reload if partial!
+                if (oldChildNodeId < 0) {
+                    // Indicate that partial write must load old page contents.
+                    oldChildNodeId = -oldChildNodeId;
+                }
                 childNode = mDb.allocLatchedNode();
                 childNode.mId = childNodeId;
                 mDb.redirty(childNode);
             }
 
             if (level <= 0) {
-                // FIXME: handle zero fill or load partial
                 byte[] childPage = childNode.mPage;
-                arraycopy(b, bOff, childPage, (int) ppos, len);
+                int off = (int) ppos;
+                if (oldChildNodeId >= 0 && (off > 0 || len < childPage.length)) {
+                    // Partial write and existing fragment is unknown.
+                    if (oldChildNodeId == 0) {
+                        // New fragment must be zero-filled first.
+                        fill(childPage, (byte) 0);
+                    } else {
+                        // Load existing fragment first.
+                        mDb.readNodePage(oldChildNodeId, childPage);
+                    }
+                }
+                arraycopy(b, bOff, childPage, off, len);
                 fc.put(caller, childNode);
                 childNode.releaseExclusive();
             } else {
-                long oldChildNodeId = childNodeIds[childNodes.length + i];
-                if (oldChildNodeId != 0) {
-                    byte[] page = childNode.mPage;
-                    if (oldChildNodeId < 0) {
+                if (oldChildNodeId >= 0) {
+                    byte[] childPage = childNode.mPage;
+                    if (oldChildNodeId == 0) {
                         // New inode, which must be zero-filled with child ids.
-                        fill(page, (byte) 0);
+                        fill(childPage, (byte) 0);
                     } else {
                         // Load inode to obtain proper child ids.
-                        mDb.readNodePage(oldChildNodeId, page);
+                        mDb.readNodePage(oldChildNodeId, childPage);
                     }
                 }
                 writeMultilevelFragments(caller, ppos, level, childNode, b, bOff, len);
