@@ -378,22 +378,30 @@ final class TreeValueStream extends Stream {
 
                     // Indirect pointers.
 
-                    long inodeId = decodeUnsignedInt48LE(page, loc);
                     Node inode;
-                    if (inodeId == 0) {
-                        // Writing into a sparse value. Allocate a node and point to it.
-                        inode = mDb.allocDirtyNode();
-                        byte[] ipage = inode.mPage;
-                        fill(ipage, 0, ipage.length, (byte) 0);
-                        try {
-                            fc.put(node, inode);
-                        } catch (IOException e) {
-                            inode.releaseExclusive();
-                            throw e;
+                    setPtr: {
+                        long inodeId = decodeUnsignedInt48LE(page, loc);
+
+                        if (inodeId == 0) {
+                            // Writing into a sparse value. Allocate a node and point to it.
+                            inode = mDb.allocDirtyNode();
+                            byte[] ipage = inode.mPage;
+                            fill(ipage, (byte) 0);
+                            try {
+                                fc.put(node, inode);
+                            } catch (IOException e) {
+                                inode.releaseExclusive();
+                                throw e;
+                            }
+                        } else {
+                            inode = fc.getw(node, inodeId, true);
+                            if (!mDb.markFragmentDirty(inode)) {
+                                // Already dirty, so no need to update the pointer.
+                                break setPtr;
+                            }
                         }
+
                         encodeInt48LE(page, loc, inode.mId);
-                    } else {
-                        inode = fc.getw(node, inodeId, true);
                     }
 
                     int levels = Database.calculateInodeLevels(vLen, page.length);
@@ -526,15 +534,6 @@ final class TreeValueStream extends Stream {
                 int poffset = firstChild * 6;
                 for (int i=0; i<childNodeCount; poffset += 6, i++) {
                     long childNodeId = decodeUnsignedInt48LE(page, poffset);
-                    /*
-                    if (childNodeId > 2000) {
-                        System.out.println("childNodeId: " + childNodeId);
-                        System.out.println("inode: " + inode);
-                        System.out.println(page);
-                        //System.out.println(toHexDump(page));
-                        System.exit(1);
-                    }
-                    */
 
                     Node childNode;
                     setPtr: {
@@ -550,18 +549,20 @@ final class TreeValueStream extends Stream {
                                     // deleted. For partial write, old page must be loaded
                                     // first. Remember the old id for later.
                                     childNodeIds[childNodeCount + i] = childNodeId;
-                                    mDb.deletePage(childNodeId, Node.CACHED_CLEAN);
-                                } else try {
-                                    if (mDb.markFragmentDirty(childNode)) {
-                                        // Dirtied now, so update pointer.
-                                        break prepChild;
-                                    } else {
-                                        // Already dirty.
-                                        break setPtr;
+                                    mDb.forceDeletePage(childNodeId);
+                                } else {
+                                    try {
+                                        if (mDb.markFragmentDirty(childNode)) {
+                                            // Dirtied now, so update pointer.
+                                            break prepChild;
+                                        } else {
+                                            // Already dirty.
+                                            break setPtr;
+                                        }
+                                    } catch (Throwable e) {
+                                        childNode.releaseExclusive();
+                                        throw rethrow(e);
                                     }
-                                } catch (Throwable e) {
-                                    childNode.releaseExclusive();
-                                    throw rethrow(e);
                                 }
                             }
 
@@ -577,7 +578,6 @@ final class TreeValueStream extends Stream {
 
                     // Allow node to be evicted, but don't write anything yet.
                     childNode.mCachedState = Node.CACHED_CLEAN;
-                    //System.out.println("release1: " + childNode);
                     childNode.releaseExclusive();
                 }
             } catch (Throwable e) {
@@ -599,11 +599,7 @@ final class TreeValueStream extends Stream {
             Node childNode = childNodes[i];
 
             int len = (int) Math.min(levelCap - ppos, bLen);
-            //System.out.println("len: " + len + ", level: " + level +
-            //", max: " + (levelCap - ppos));
 
-            // FIXME: zero fill and load partial
-            // FIXME: inode must be fully loaded
             latchChild: {
                 if (childNodeId == childNode.mId) {
                     childNode.acquireExclusive();
@@ -624,13 +620,23 @@ final class TreeValueStream extends Stream {
             }
 
             if (level <= 0) {
+                // FIXME: handle zero fill or load partial
                 byte[] childPage = childNode.mPage;
-                //System.out.println("arraycopy: " + childPage + ", " + childNode);
                 arraycopy(b, bOff, childPage, (int) ppos, len);
                 fc.put(caller, childNode);
-                //System.out.println("release2: " + childNode);
                 childNode.releaseExclusive();
             } else {
+                long oldChildNodeId = childNodeIds[childNodes.length + i];
+                if (oldChildNodeId != 0) {
+                    byte[] page = childNode.mPage;
+                    if (oldChildNodeId < 0) {
+                        // New inode, which must be zero-filled with child ids.
+                        fill(page, (byte) 0);
+                    } else {
+                        // Load inode to obtain proper child ids.
+                        mDb.readNodePage(oldChildNodeId, page);
+                    }
+                }
                 writeMultilevelFragments(caller, ppos, level, childNode, b, bOff, len);
             }
 
