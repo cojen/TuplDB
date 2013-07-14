@@ -83,8 +83,7 @@ class TrimmedView implements View {
 
     @Override
     public Stream newStream() {
-        // FIXME
-        throw null;
+        return new TrimmedStream(this, mSource.newStream());
     }
 
     @Override
