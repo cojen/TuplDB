@@ -49,6 +49,10 @@ public abstract class Stream implements Closeable {
      * @param txn optional transaction; pass null for {@link LockMode#READ_COMMITTED
      * READ_COMMITTED} locking behavior
      * @param key non-null key
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws NullPointerException if key is null
      * @throws IllegalArgumentException if key is outside allowed range
      */
