@@ -115,8 +115,7 @@ final class UnmodifiableView implements Index {
 
     @Override
     public Stream newStream() {
-        // FIXME
-        throw null;
+        return new UnmodifiableStream(mSource.newStream());
     }
 
     @Override
