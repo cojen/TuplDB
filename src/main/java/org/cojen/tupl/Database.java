@@ -2639,6 +2639,7 @@ public final class Database implements CauseCloseable {
                         redirtyQ(childNode);
                         break latchChild;
                     }
+                    childNode.releaseExclusive();
                 }
                 // Child node was evicted, although it was clean.
                 childNode = allocLatchedNode();
