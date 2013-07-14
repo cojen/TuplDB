@@ -545,11 +545,7 @@ final class TreeValueStream extends Stream {
                                 childNodeIds[childNodeCount + i] = -1;
                             } else {
                                 // Node already exists, but it must be dirtied.
-                                //System.out.println(inode.mId + ", " + childNodeId);
-                                // FIXME: id comparison doesn't prevent hash collision
-                                if (childNodeId == inode.mId
-                                    || (childNode = fc.findw(caller, childNodeId)) == null)
-                                {
+                                if ((childNode = fc.findw(caller, inode, childNodeId)) == null) {
                                     // Don't bother loading it now, but old page must be
                                     // deleted. For partial write, old page must be loaded
                                     // first. Remember the old id for later.

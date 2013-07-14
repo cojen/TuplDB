@@ -78,11 +78,12 @@ class FragmentCache {
      * obtaining nodes to write into.
      *
      * @param caller optional tree node which is latched and calling this method
+     * @param parent optional parent inode
      * @return node with exclusive latch held, or null if not found
      */
-    Node findw(Node caller, long nodeId) {
+    Node findw(Node caller, Node parent, long nodeId) {
         int hash = hash(nodeId);
-        return mHashTables[hash >>> mHashTableShift].findw(caller, nodeId, hash);
+        return mHashTables[hash >>> mHashTableShift].findw(caller, parent, nodeId, hash);
     }
 
     /**
@@ -333,14 +334,17 @@ class FragmentCache {
          * obtaining nodes to write into.
          *
          * @param caller optional tree node which is latched and calling this method
+         * @param parent optional parent inode
          * @return node with exclusive latch held, or null if not found
          */
-        Node findw(final Node caller, final long nodeId, final int hash) {
+        Node findw(final Node caller, final Node parent, final long nodeId, final int hash) {
             acquireShared();
             final Node[] entries = mEntries;
             final int index = hash & (entries.length - 1);
             final Node existing = entries[index];
-            if (existing != null && existing != caller && existing.mType == TYPE_FRAGMENT) {
+            if (existing != null && existing != caller && existing != parent &&
+                existing.mType == TYPE_FRAGMENT)
+            {
                 existing.acquireExclusive();
                 if (existing.mId == nodeId) {
                     releaseShared();
