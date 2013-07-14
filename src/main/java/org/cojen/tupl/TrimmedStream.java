@@ -23,52 +23,16 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-class TrimmedStream extends Stream {
+class TrimmedStream extends WrappedStream {
     private final TrimmedView mView;
-    private final Stream mSource;
 
     TrimmedStream(TrimmedView view, Stream source) {
+        super(source);
         mView = view;
-        mSource = source;
     }
 
     @Override
     public LockResult open(Transaction txn, byte[] key) throws IOException {
         return mSource.open(txn, mView.applyPrefix(key));
-    }
-
-    @Override
-    public long length() throws IOException {
-        return mSource.length();
-    }
-
-    @Override
-    public void setLength(long length) throws IOException {
-        mSource.setLength(length);
-    }
-
-    @Override
-    int doRead(long pos, byte[] buf, int off, int len) throws IOException {
-        return mSource.doRead(pos, buf, off, len);
-    }
-
-    @Override
-    void doWrite(long pos, byte[] buf, int off, int len) throws IOException {
-        mSource.doWrite(pos, buf, off, len);
-    }
-
-    @Override
-    int pageSize() {
-        return mSource.pageSize();
-    }
-
-    @Override
-    void checkOpen() {
-        mSource.checkOpen();
-    }
-
-    @Override
-    void doClose() {
-        mSource.close();
     }
 }

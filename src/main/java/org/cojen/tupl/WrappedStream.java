@@ -23,23 +23,45 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-class UnmodifiableStream extends WrappedStream {
-    UnmodifiableStream(Stream source) {
-        super(source);
+abstract class WrappedStream extends Stream {
+    final Stream mSource;
+
+    WrappedStream(Stream source) {
+        mSource = source;
     }
 
     @Override
-    public LockResult open(Transaction txn, byte[] key) throws IOException {
-        return mSource.open(txn, key);
+    public long length() throws IOException {
+        return mSource.length();
     }
 
     @Override
     public void setLength(long length) throws IOException {
-        throw new UnmodifiableViewException();
+        mSource.setLength(length);
+    }
+
+    @Override
+    int doRead(long pos, byte[] buf, int off, int len) throws IOException {
+        return mSource.doRead(pos, buf, off, len);
     }
 
     @Override
     void doWrite(long pos, byte[] buf, int off, int len) throws IOException {
-        throw new UnmodifiableViewException();
+        mSource.doWrite(pos, buf, off, len);
+    }
+
+    @Override
+    int pageSize() {
+        return mSource.pageSize();
+    }
+
+    @Override
+    void checkOpen() {
+        mSource.checkOpen();
+    }
+
+    @Override
+    void doClose() {
+        mSource.close();
     }
 }

@@ -97,7 +97,7 @@ abstract class SubView implements View {
 
     @Override
     public Stream newStream() {
-        return mSource.newStream();
+        return new SubStream(this, mSource.newStream());
     }
 
     @Override
