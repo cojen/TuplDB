@@ -2333,6 +2333,15 @@ public final class Database implements CauseCloseable {
     }
 
     /**
+     * Deletes a page without the possibility of recycling it. Caller must hold commit lock.
+     *
+     * @param id must be greater than one
+     */
+    void forceDeletePage(long id) throws IOException {
+        mPageDb.deletePage(id);
+    }
+
+    /**
      * Indicate that a non-root node is most recently used. Root node is not
      * managed in usage list and cannot be evicted. Caller must hold any latch
      * on node. Latch is never released by this method, even if an exception is
