@@ -23,23 +23,20 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-class UnmodifiableStream extends WrappedStream {
-    UnmodifiableStream(Stream source) {
+class SubStream extends WrappedStream {
+    private final SubView mView;
+
+    SubStream(SubView view, Stream source) {
         super(source);
+        mView = view;
     }
 
     @Override
     public LockResult open(Transaction txn, byte[] key) throws IOException {
-        return mSource.open(txn, key);
-    }
-
-    @Override
-    public void setLength(long length) throws IOException {
-        throw new UnmodifiableViewException();
-    }
-
-    @Override
-    void doWrite(long pos, byte[] buf, int off, int len) throws IOException {
-        throw new UnmodifiableViewException();
+        if (mView.inRange(key)) {
+            return mSource.open(txn, key);
+        } else {
+            throw new IllegalArgumentException("Key is outside allowed range");
+        }
     }
 }
