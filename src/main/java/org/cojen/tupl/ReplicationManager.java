@@ -127,10 +127,8 @@ public interface ReplicationManager extends Closeable {
     /**
      * Durably flushes all local data to non-volatile storage, up to the given
      * position, and then blocks until confirmed.
-     *
-     * @param timeoutNanos pass -1 for infinite
      */
-    void syncConfirm(long position, long timeoutNanos) throws IOException;
+    void syncConfirm(long position) throws IOException;
 
     /**
      * Notification to replica when an entry is stored into an index. All notifications are

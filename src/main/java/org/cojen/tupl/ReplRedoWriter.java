@@ -162,8 +162,7 @@ final class ReplRedoWriter extends RedoWriter {
     @Override
     void checkpointStarted() throws IOException {
         // Make sure that durable replication data is not behind local database.
-        // FIXME: timeout?
-        mManager.syncConfirm(mCheckpointPos, -1);
+        mManager.syncConfirm(mCheckpointPos);
 
         mEngine.resume();
     }
