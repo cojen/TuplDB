@@ -50,6 +50,7 @@ public abstract class Stream implements Closeable {
      * READ_COMMITTED} locking behavior
      * @param key non-null key
      * @throws NullPointerException if key is null
+     * @throws IllegalArgumentException if key is outside allowed range
      */
     public abstract LockResult open(Transaction txn, byte[] key) throws IOException;
 
