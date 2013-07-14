@@ -41,7 +41,7 @@ final class TreeValueStream extends Stream {
     private final Database mDb;
 
     /**
-     * @param cursor positioned cursor, not autoloading
+     * @param cursor unpositioned cursor, not autoloading
      */
     TreeValueStream(TreeCursor cursor) {
         mCursor = cursor;
