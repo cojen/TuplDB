@@ -143,7 +143,7 @@ public interface View {
      * @param value value to insert, which can be null
      * @return false if entry already exists
      * @throws NullPointerException if key is null
-     * @throws IllegalArgumentException if key is outside allowed range and value is null
+     * @throws IllegalArgumentException if key is outside allowed range and value is non-null
      */
     public boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException;
 
