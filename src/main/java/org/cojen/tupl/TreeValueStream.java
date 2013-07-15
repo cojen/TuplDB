@@ -543,10 +543,10 @@ final class TreeValueStream extends Stream {
                                 if ((childNode = fc.findw(caller, inode, childNodeId)) == null) {
                                     // Don't bother loading it now, but old page must be
                                     // deleted. Old contents can still be read, because no
-                                    // checkpoint is in progress.
+                                    // checkpoint switch is in progress.
                                     mDb.forceDeletePage(childNodeId);
                                 } else {
-                                    // Store negative child id, indicating that it's contents
+                                    // Remember negated child id, indicating that it's contents
                                     // are valid.
                                     childNodeIds[childNodeCount + i] = -childNodeId;
                                     try {
@@ -574,13 +574,16 @@ final class TreeValueStream extends Stream {
 
                         childNodeId = childNode.mId;
                         encodeInt48LE(page, poffset, childNodeId);
+
+                        // Since node hasn't been modified yet, don't write anything if it gets
+                        // evicted.
+                        childNode.mCachedState = Node.CACHED_CLEAN;
                     }
 
                     childNodeIds[i] = childNodeId;
                     childNodes[i] = childNode;
 
-                    // Allow node to be evicted, but don't write anything yet.
-                    childNode.mCachedState = Node.CACHED_CLEAN;
+                    // Allow node to be evicted.
                     childNode.releaseExclusive();
                 }
             } catch (Throwable e) {
