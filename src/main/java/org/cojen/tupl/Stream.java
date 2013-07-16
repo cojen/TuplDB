@@ -29,11 +29,12 @@ import java.io.OutputStream;
  * may cause database corruption.
  *
  * @author Brian S O'Neill
+ * @see View#newStream View.newStream
  */
 public abstract class Stream implements Closeable {
     Object mOpenState;
 
-    Stream() {
+    protected Stream() {
     }
 
     /**
