@@ -33,7 +33,7 @@ import static org.cojen.tupl.Utils.*;
  *
  * @author Brian S O'Neill
  */
-final class TreeValueStream extends Stream {
+final class TreeValueStream extends AbstractStream {
     // Op ordinals are relevant.
     private static final int OP_LENGTH = 0, OP_READ = 1, OP_SET_LENGTH = 2, OP_WRITE = 3;
 
@@ -98,8 +98,17 @@ final class TreeValueStream extends Stream {
     }
 
     @Override
-    int pageSize() {
-        return mDb.mPageSize;
+    int selectBufferSize(int bufferSize) {
+        if (bufferSize <= 1) {
+            if (bufferSize < 0) {
+                bufferSize = mDb.mPageSize;
+            } else {
+                bufferSize = 1;
+            }
+        } else if (bufferSize >= 65536) {
+            bufferSize = 65536;
+        }
+        return bufferSize;
     }
 
     @Override
@@ -117,7 +126,7 @@ final class TreeValueStream extends Stream {
     /**
      * Caller must hold shared commit lock when using OP_SET_LENGTH or OP_WRITE.
      *
-     * @param b ignored by OP_LENGTH, OP_SET_LENGTH must pass EMPTY_BYTES
+     * @param b ignored by OP_LENGTH; OP_SET_LENGTH must pass EMPTY_BYTES
      */
     private long action(int op, long pos, byte[] b, int bOff, int bLen) throws IOException {
         TreeCursorFrame frame;

@@ -16,14 +16,16 @@
 
 package org.cojen.tupl;
 
+import java.io.InputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 
 /**
  * 
  *
  * @author Brian S O'Neill
  */
-abstract class WrappedStream extends Stream {
+abstract class WrappedStream implements Stream {
     final Stream mSource;
 
     WrappedStream(Stream source) {
@@ -41,27 +43,33 @@ abstract class WrappedStream extends Stream {
     }
 
     @Override
-    int doRead(long pos, byte[] buf, int off, int len) throws IOException {
-        return mSource.doRead(pos, buf, off, len);
+    public int read(long pos, byte[] buf, int off, int len) throws IOException {
+        return mSource.read(pos, buf, off, len);
     }
 
     @Override
-    void doWrite(long pos, byte[] buf, int off, int len) throws IOException {
-        mSource.doWrite(pos, buf, off, len);
+    public void write(long pos, byte[] buf, int off, int len) throws IOException {
+        mSource.write(pos, buf, off, len);
+    }
+
+    public InputStream newInputStream(long pos) throws IOException {
+        return mSource.newInputStream(pos);
+    }
+
+    public InputStream newInputStream(long pos, int bufferSize) throws IOException {
+        return mSource.newInputStream(pos, bufferSize);
+    }
+
+    public OutputStream newOutputStream(long pos) throws IOException {
+        return newOutputStream(pos);
+    }
+
+    public OutputStream newOutputStream(long pos, int bufferSize) throws IOException {
+        return newOutputStream(pos, bufferSize);
     }
 
     @Override
-    int pageSize() {
-        return mSource.pageSize();
-    }
-
-    @Override
-    void checkOpen() {
-        mSource.checkOpen();
-    }
-
-    @Override
-    void doClose() {
+    public void close() throws IOException {
         mSource.close();
     }
 }
