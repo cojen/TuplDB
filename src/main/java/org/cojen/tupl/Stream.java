@@ -31,12 +31,7 @@ import java.io.OutputStream;
  * @author Brian S O'Neill
  * @see View#newStream View.newStream
  */
-public abstract class Stream implements Closeable {
-    Object mOpenState;
-
-    protected Stream() {
-    }
-
+public interface Stream extends Closeable {
     /**
      * Opens the stream for accessing the value referenced by the given key. If stream is
      * already opened when this method is called, it is closed first. When opening the stream
@@ -57,7 +52,7 @@ public abstract class Stream implements Closeable {
      * @throws NullPointerException if key is null
      * @throws IllegalArgumentException if key is outside allowed range
      */
-    public abstract LockResult open(Transaction txn, byte[] key) throws IOException;
+    public LockResult open(Transaction txn, byte[] key) throws IOException;
 
     /**
      * Returns the total length of the value accessed by the Stream.
@@ -65,7 +60,7 @@ public abstract class Stream implements Closeable {
      * @return value length or -1 if it doesn't exist
      * @throws IllegalStateException if closed
      */
-    public abstract long length() throws IOException;
+    public long length() throws IOException;
 
     /**
      * Extends or truncates the value accessed by the Stream. When extended, the new portion of
@@ -75,7 +70,7 @@ public abstract class Stream implements Closeable {
      * @throws IllegalArgumentException if length is too large
      * @throws IllegalStateException if closed
      */
-    public abstract void setLength(long length) throws IOException;
+    public void setLength(long length) throws IOException;
 
     /**
      * Read from the value, starting from any position. The full requested amount of bytes are
@@ -92,15 +87,7 @@ public abstract class Stream implements Closeable {
      * @throws IndexOutOfBoundsException
      * @throws IllegalStateException if closed
      */
-    public final int read(long pos, byte[] buf, int off, int len) throws IOException {
-        if (pos < 0) {
-            throw new IllegalArgumentException();
-        }
-        boundsCheck(buf, off, len);
-        return doRead(pos, buf, off, len);
-    }
-
-    abstract int doRead(long pos, byte[] buf, int off, int len) throws IOException;
+    public int read(long pos, byte[] buf, int off, int len) throws IOException;
 
     /**
      * Write into the value, starting from any position. Value is extended when writing past
@@ -115,15 +102,7 @@ public abstract class Stream implements Closeable {
      * @throws IllegalStateException if closed
      * @throws IllegalUpgradeException if not locked for writing
      */
-    public final void write(long pos, byte[] buf, int off, int len) throws IOException {
-        if (pos < 0) {
-            throw new IllegalArgumentException();
-        }
-        boundsCheck(buf, off, len);
-        doWrite(pos, buf, off, len);
-    }
-
-    abstract void doWrite(long pos, byte[] buf, int off, int len) throws IOException;
+    public void write(long pos, byte[] buf, int off, int len) throws IOException;
 
     /**
      * Returns a new buffered InputStream instance, which reads from this Stream. When the
@@ -138,9 +117,7 @@ public abstract class Stream implements Closeable {
      * @return buffered unsynchronized InputStream
      * @throws IllegalArgumentException if position is negative
      */
-    public final InputStream newInputStream(long pos) throws IOException {
-        return newInputStream(pos, -1);
-    }
+    public InputStream newInputStream(long pos) throws IOException;
 
     /**
      * Returns a new buffered InputStream instance, which reads from this Stream. When the
@@ -157,13 +134,7 @@ public abstract class Stream implements Closeable {
      * @throws IllegalArgumentException if position is negative
      * @throws IllegalStateException if closed
      */
-    public final InputStream newInputStream(long pos, int bufferSize) throws IOException {
-        if (pos < 0) {
-            throw new IllegalArgumentException();
-        }
-        checkOpen();
-        return new In(mOpenState, pos, allocBuffer(bufferSize));
-    }
+    public InputStream newInputStream(long pos, int bufferSize) throws IOException;
 
     /**
      * Returns a new buffered OutputStream instance, which writes to this Stream. When the
@@ -175,9 +146,7 @@ public abstract class Stream implements Closeable {
      * @throws IllegalArgumentException if position is negative
      * @throws IllegalStateException if closed
      */
-    public final OutputStream newOutputStream(long pos) throws IOException {
-        return newOutputStream(pos, -1);
-    }
+    public OutputStream newOutputStream(long pos) throws IOException;
 
     /**
      * Returns a new buffered OutputStream instance, which writes to this Stream. When the
@@ -190,275 +159,8 @@ public abstract class Stream implements Closeable {
      * @throws IllegalArgumentException if position is negative
      * @throws IllegalStateException if closed
      */
-    public final OutputStream newOutputStream(long pos, int bufferSize) throws IOException {
-        if (pos < 0) {
-            throw new IllegalArgumentException();
-        }
-        checkOpen();
-        return new Out(mOpenState, pos, allocBuffer(bufferSize));
-    }
+    public OutputStream newOutputStream(long pos, int bufferSize) throws IOException;
 
-    abstract int pageSize();
-
-    /**
-     * @throws IllegalStateException if closed
-     */
-    abstract void checkOpen();
-
-    void checkOpen(Object openState) {
-        if (openState != mOpenState) {
-            throw new IllegalStateException("Stream closed");
-        }
-    }
-
-    public final void close() {
-        mOpenState = null;
-        doClose();
-    }
-
-    final void close(Object openState) {
-        if (openState == mOpenState) {
-            mOpenState = null;
-            doClose();
-        }
-    }
-
-    abstract void doClose();
-
-    static void boundsCheck(byte[] buf, int off, int len) {
-        if ((off | len | (off + len) | (buf.length - (off + len))) < 0) {
-            throw new IndexOutOfBoundsException();
-        }
-    }
-
-    private byte[] allocBuffer(int bufferSize) {
-        if (bufferSize <= 1) {
-            if (bufferSize < 0) {
-                bufferSize = pageSize();
-            } else {
-                bufferSize = 1;
-            }
-        } else if (bufferSize >= 65536) {
-            bufferSize = 65536;
-        }
-        return new byte[bufferSize];
-    }
-
-    final class In extends InputStream {
-        private Object mOpenState;
-
-        private long mPos;
-
-        private final byte[] mBuffer;
-        private int mStart;
-        private int mEnd;
-
-        In(Object openState, long pos, byte[] buffer) {
-            if (openState == null) {
-                Stream.this.mOpenState = openState = this;
-            }
-            mOpenState = openState;
-            mPos = pos;
-            mBuffer = buffer;
-        }
-
-        @Override
-        public int read() throws IOException {
-            checkOpen(mOpenState);
-
-            byte[] buf = mBuffer;
-            int start = mStart;
-            if (start < mEnd) {
-                mPos++;
-                int b = buf[start] & 0xff;
-                mStart = start + 1;
-                return b;
-            }
-
-            long pos = mPos;
-            int amt = Stream.this.read(pos, buf, 0, buf.length);
-
-            if (amt <= 0) {
-                if (amt < 0) {
-                    throw new NoSuchValueException();
-                }
-                return -1;
-            }
-
-            mEnd = amt;
-            mPos = pos + 1;
-            mStart = 1;
-            return buf[0] & 0xff;
-        }
-
-        @Override
-        public int read(byte[] b, int off, int len) throws IOException {
-            boundsCheck(b, off, len);
-            checkOpen(mOpenState);
-
-            byte[] buf = mBuffer;
-            int start = mStart;
-            int amt = mEnd - start;
-
-            if (amt >= len) {
-                // Enough available in the buffer.
-                System.arraycopy(buf, start, b, off, len);
-                mStart = start + len;
-                mPos += len;
-                return len;
-            }
-
-            final int initialOff = off;
-
-            if (amt > 0) {
-                // Drain everything available from the buffer.
-                System.arraycopy(buf, start, b, off, amt);
-                mEnd = start;
-                off += amt;
-                len -= amt;
-                mPos += amt;
-            }
-
-            doRead: {
-                // Bypass buffer if parameter is large enough.
-                while (len >= buf.length) {
-                    amt = Stream.this.read(mPos, b, off, len);
-                    if (amt <= 0) {
-                        break doRead;
-                    }
-                    off += amt;
-                    len -= amt;
-                    mPos += amt;
-                    if (len <= 0) {
-                        break doRead;
-                    }
-                }
-
-                // Read into buffer and copy to parameter.
-                while (true) {
-                    amt = Stream.this.read(mPos, buf, 0, buf.length);
-                    if (amt <= 0) {
-                        break doRead;
-                    }
-                    if (amt >= len) {
-                        System.arraycopy(buf, 0, b, off, len);
-                        off += len;
-                        mPos += len;
-                        mStart = len;
-                        mEnd = amt;
-                        break doRead;
-                    }
-                    // Drain everything available from the buffer.
-                    System.arraycopy(buf, 0, b, off, amt);
-                    off += amt;
-                    len -= amt;
-                    mPos += amt;
-                }
-            }
-
-            amt = off - initialOff;
-
-            if (amt <= 0) {
-                if (amt < 0) {
-                    throw new NoSuchValueException();
-                }
-                return -1;
-            }
-
-            return amt;
-        }
-
-        @Override
-        public long skip(long n) throws IOException {
-            checkOpen(mOpenState);
-
-            if (n <= 0) {
-                return 0;
-            }
-
-            int start = mStart;
-            int amt = mEnd - start;
-
-            if (amt > 0) {
-                if (n >= amt) {
-                    // Skip the entire buffer.
-                    mEnd = start;
-                } else {
-                    amt = (int) n;
-                    mStart = start + amt;
-                }
-                mPos += amt;
-                return amt;
-            }
-
-            long pos = mPos;
-            long newPos = Math.min(pos + n, length());
-
-            if (newPos > pos) {
-                mPos = newPos;
-                return newPos - pos;
-            } else {
-                return 0;
-            }
-        }
-
-        @Override
-        public int available() throws IOException {
-            checkOpen(mOpenState);
-            return mEnd - mStart;
-        }
-
-        @Override
-        public void close() throws IOException {
-            Object openState = mOpenState;
-            mOpenState = null;
-            Stream.this.close(openState);
-        }
-    }
-
-    final class Out extends OutputStream {
-        private Object mOpenState;
-
-        private long mPos;
-
-        private final byte[] mBuffer;
-
-        Out(Object openState, long pos, byte[] buffer) {
-            if (openState == null) {
-                Stream.this.mOpenState = openState = this;
-            }
-            mOpenState = openState;
-            mPos = pos;
-            mBuffer = buffer;
-        }
-
-        @Override
-        public void write(int b) throws IOException {
-            checkOpen(mOpenState);
-            // FIXME
-            throw null;
-        }
-
-        @Override
-        public void write(byte[] b, int off, int len) throws IOException {
-            boundsCheck(b, off, len);
-            checkOpen(mOpenState);
-            // FIXME
-            throw null;
-        }
-
-        @Override
-        public void flush() throws IOException {
-            checkOpen(mOpenState);
-            // FIXME
-            throw null;
-        }
-
-        @Override
-        public void close() throws IOException {
-            Object openState = mOpenState;
-            mOpenState = null;
-            Stream.this.close(openState);
-        }
-    }
+    @Override
+    public void close() throws IOException;
 }

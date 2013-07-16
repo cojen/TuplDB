@@ -17,6 +17,7 @@
 package org.cojen.tupl;
 
 import java.io.IOException;
+import java.io.OutputStream;
 
 /**
  * 
@@ -39,7 +40,17 @@ class UnmodifiableStream extends WrappedStream {
     }
 
     @Override
-    void doWrite(long pos, byte[] buf, int off, int len) throws IOException {
+    public void write(long pos, byte[] buf, int off, int len) throws IOException {
+        throw new UnmodifiableViewException();
+    }
+
+    @Override
+    public OutputStream newOutputStream(long pos) throws IOException {
+        throw new UnmodifiableViewException();
+    }
+
+    @Override
+    public OutputStream newOutputStream(long pos, int bufferSize) throws IOException {
         throw new UnmodifiableViewException();
     }
 }
