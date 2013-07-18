@@ -161,11 +161,10 @@ final class ReplRedoWriter extends RedoWriter {
 
     @Override
     void checkpointStarted() throws IOException {
-        // Make sure that durable replication data is not behind local database.
-        // FIXME: timeout?
-        mManager.syncConfirm(mCheckpointPos, -1);
-
         mEngine.resume();
+
+        // Make sure that durable replication data is not behind local database.
+        mManager.syncConfirm(mCheckpointPos);
     }
 
     @Override
@@ -200,8 +199,22 @@ final class ReplRedoWriter extends RedoWriter {
 
     @Override
     void forceAndClose() throws IOException {
-        force(false);
-        // FIXME: Close stuff..
+        IOException ex = null;
+        try {
+            force(false);
+        } catch (IOException e) {
+            ex = e;
+        }
+        try {
+            mManager.close();
+        } catch (IOException e) {
+            if (ex == null) {
+                ex = e;
+            }
+        }
+        if (ex != null) {
+            throw ex;
+        }
     }
 
     @Override
