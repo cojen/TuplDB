@@ -317,4 +317,51 @@ public class StreamTest {
 
         ix.verify(null);
     }
+
+    @Test
+    public void writeNonFragmentedInBounds() throws Exception {
+        // Use large page to test 3-byte value header encoding.
+        Database db = newTempDatabase(new DatabaseConfig().pageSize(32768));
+
+        writeNonFragmentedInBounds(db, 50);
+        writeNonFragmentedInBounds(db, 200);
+        writeNonFragmentedInBounds(db, 10000);
+    }
+
+    private static void writeNonFragmentedInBounds(Database db, int size) throws Exception {
+        Index ix = db.openIndex("test");
+        Random rnd = new Random(size);
+
+        byte[] key = new byte[30];
+        rnd.nextBytes(key);
+
+        byte[] value = new byte[size];
+        rnd.nextBytes(value);
+
+        ix.store(null, key, value);
+
+        int[] offs = {0, 0,   0, 1,   1, 1,   1, 0};
+
+        for (int i=0; i<offs.length; i+=2) {
+            int left = offs[i];
+            int right = offs[i + 1];
+
+            byte[] sub = new byte[size - (left + right)];
+            rnd.nextBytes(sub);
+
+            Stream s = ix.newStream();
+            s.open(null, key);
+            s.write(left, sub, 0, sub.length);
+            s.close();
+
+            byte[] expect = value.clone();
+            System.arraycopy(sub, 0, expect, left, sub.length);
+
+            fastAssertArrayEquals(expect, ix.load(null, key));
+
+            value = expect;
+        }
+
+        ix.verify(null);
+    }
 }

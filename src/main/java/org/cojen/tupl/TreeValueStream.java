@@ -511,6 +511,16 @@ final class TreeValueStream extends AbstractStream {
             throw null;
 
         case OP_WRITE:
+            if (pos < vLen) {
+                final long end = pos + bLen;
+                if (end <= vLen) {
+                    // Writing within existing value region.
+                    arraycopy(b, bOff, page, (int) (loc + pos), bLen);
+                    node.releaseExclusive();
+                    return 0;
+                }
+            }
+
             // FIXME
             node.releaseExclusive();
             throw null;
