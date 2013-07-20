@@ -65,7 +65,12 @@ final class TreeValueStream extends AbstractStream {
 
     @Override
     public long length() throws IOException {
-        return action(OP_LENGTH, 0, null, 0, 0);
+        try {
+            return action(OP_LENGTH, 0, null, 0, 0);
+        } catch (IllegalStateException e) {
+            checkOpen();
+            throw e;
+        }
     }
 
     @Override
@@ -75,6 +80,9 @@ final class TreeValueStream extends AbstractStream {
         sharedCommitLock.lock();
         try {
             action(OP_SET_LENGTH, length, Utils.EMPTY_BYTES, 0, 0);
+        } catch (IllegalStateException e) {
+            checkOpen();
+            throw e;
         } finally {
             sharedCommitLock.unlock();
         }
@@ -82,7 +90,12 @@ final class TreeValueStream extends AbstractStream {
 
     @Override
     int doRead(long pos, byte[] buf, int off, int len) throws IOException {
-        return (int) action(OP_READ, pos, buf, off, len);
+        try {
+            return (int) action(OP_READ, pos, buf, off, len);
+        } catch (IllegalStateException e) {
+            checkOpen();
+            throw e;
+        }
     }
 
     @Override
@@ -92,6 +105,9 @@ final class TreeValueStream extends AbstractStream {
         sharedCommitLock.lock();
         try {
             action(OP_WRITE, pos, buf, off, len);
+        } catch (IllegalStateException e) {
+            checkOpen();
+            throw e;
         } finally {
             sharedCommitLock.unlock();
         }
