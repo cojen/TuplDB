@@ -275,4 +275,46 @@ public class StreamTest {
             assertNull(ix.load(null, key));
         }
     }
+
+    @Test
+    public void truncateNonFragmented() throws Exception {
+        // Use large page to test 3-byte value header encoding.
+        Database db = newTempDatabase(new DatabaseConfig().pageSize(32768));
+
+        truncate(db, 10, 5);     // 1-byte header to 1
+        truncate(db, 200, 50);   // 2-byte header to 1
+        truncate(db, 10000, 50); // 3-byte header to 1
+
+        truncate(db, 200, 150);   // 2-byte header to 2
+        truncate(db, 10000, 200); // 3-byte header to 2
+
+        truncate(db, 20000, 10000); // 3-byte header to 3
+    }
+
+    private static void truncate(Database db, int from, int to) throws Exception {
+        Index ix = db.openIndex("test");
+        Random rnd = new Random(from * 31 + to);
+
+        byte[] key = new byte[30];
+        rnd.nextBytes(key);
+
+        byte[] value = new byte[from];
+        rnd.nextBytes(value);
+
+        ix.store(null, key, value);
+
+        Stream s = ix.newStream();
+        s.open(null, key);
+        s.setLength(to);
+        s.close();
+
+        byte[] truncated = ix.load(null, key);
+        assertEquals(to, truncated.length);
+
+        for (int i=0; i<to; i++) {
+            assertEquals(value[i], truncated[i]);
+        }
+
+        ix.verify(null);
+    }
 }

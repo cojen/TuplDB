@@ -143,9 +143,10 @@ final class TreeValueStream extends AbstractStream {
      * Caller must hold shared commit lock when using OP_SET_LENGTH or OP_WRITE.
      *
      * @param b ignored by OP_LENGTH; OP_SET_LENGTH must pass EMPTY_BYTES
+     * @return applicable only to OP_LENGTH and OP_READ
      */
     private long action(int op, long pos, byte[] b, int bOff, int bLen) throws IOException {
-        TreeCursorFrame frame;
+        final TreeCursorFrame frame;
         if (op <= OP_READ) {
             frame = mCursor.leafSharedNotSplit();
         } else {
@@ -171,7 +172,7 @@ final class TreeValueStream extends AbstractStream {
 
             if (bLen <= 0) {
                 node.releaseExclusive();
-                return bLen;
+                return 0;
             }
 
             // Fallthrough and complete the write operation.
@@ -183,7 +184,8 @@ final class TreeValueStream extends AbstractStream {
         int header = page[loc++];
         loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
 
-        long vLen;
+        final int vHeaderLoc = loc;
+        final long vLen;
 
         header = page[loc++];
         if (header >= 0) {
@@ -255,9 +257,9 @@ final class TreeValueStream extends AbstractStream {
 
                     if ((header & 0x02) != 0) {
                         // Inline content.
-                        int inLen = decodeUnsignedShortLE(page, loc);
+                        final int inLen = decodeUnsignedShortLE(page, loc);
                         loc += 2;
-                        int amt = (int) (inLen - pos);
+                        final int amt = (int) (inLen - pos);
                         if (amt <= 0) {
                             // Not reading any inline content.
                             pos -= inLen;
@@ -277,17 +279,17 @@ final class TreeValueStream extends AbstractStream {
 
                     if ((header & 0x01) == 0) {
                         // Direct pointers.
-                        int ipos = (int) pos;
+                        final int ipos = (int) pos;
                         loc += (ipos / page.length) * 6;
                         int fNodeOff = ipos % page.length;
                         while (true) {
-                            int amt = Math.min(bLen, page.length - fNodeOff);
-                            long fNodeId = decodeUnsignedInt48LE(page, loc);
+                            final int amt = Math.min(bLen, page.length - fNodeOff);
+                            final long fNodeId = decodeUnsignedInt48LE(page, loc);
                             if (fNodeId == 0) {
                                 // Reading a sparse value.
                                 fill(b, bOff, bOff + amt, (byte) 0);
                             } else {
-                                Node fNode = fc.get(node, fNodeId);
+                                final Node fNode = fc.get(node, fNodeId);
                                 arraycopy(fNode.mPage, fNodeOff, b, bOff, amt);
                                 fNode.releaseShared();
                             }
@@ -303,13 +305,13 @@ final class TreeValueStream extends AbstractStream {
 
                     // Indirect pointers.
 
-                    long inodeId = decodeUnsignedInt48LE(page, loc);
+                    final long inodeId = decodeUnsignedInt48LE(page, loc);
                     if (inodeId == 0) {
                         // Reading a sparse value.
                         fill(b, bOff, bOff + bLen, (byte) 0);
                     } else {
-                        Node inode = fc.get(node, inodeId);
-                        int levels = Database.calculateInodeLevels(vLen, page.length);
+                        final Node inode = fc.get(node, inodeId);
+                        final int levels = Database.calculateInodeLevels(vLen, page.length);
                         readMultilevelFragments(node, pos, levels, inode, b, bOff, bLen);
                     }
 
@@ -332,19 +334,18 @@ final class TreeValueStream extends AbstractStream {
                     // FIXME: extend length, accounting for length field growth
 
                     //bLen = Math.min((int) (vLen - pos), bLen);
-                    final int total = bLen;
 
                     if ((header & 0x02) != 0) {
                         // Inline content.
-                        int inLen = decodeUnsignedShortLE(page, loc);
+                        final int inLen = decodeUnsignedShortLE(page, loc);
                         loc += 2;
-                        int amt = (int) (inLen - pos);
+                        final int amt = (int) (inLen - pos);
                         if (amt <= 0) {
                             // Not writing any inline content.
                             pos -= inLen;
                         } else if (bLen <= amt) {
                             arraycopy(b, bOff, page, (int) (loc + pos), bLen);
-                            return bLen;
+                            return 0;
                         } else {
                             arraycopy(b, bOff, page, (int) (loc + pos), amt);
                             bLen -= amt;
@@ -358,15 +359,15 @@ final class TreeValueStream extends AbstractStream {
 
                     if ((header & 0x01) == 0) {
                         // Direct pointers.
-                        int ipos = (int) pos;
+                        final int ipos = (int) pos;
                         loc += (ipos / page.length) * 6;
                         int fNodeOff = ipos % page.length;
                         while (true) {
-                            int amt = Math.min(bLen, page.length - fNodeOff);
-                            long fNodeId = decodeUnsignedInt48LE(page, loc);
+                            final int amt = Math.min(bLen, page.length - fNodeOff);
+                            final long fNodeId = decodeUnsignedInt48LE(page, loc);
                             if (fNodeId == 0) {
                                 // Writing into a sparse value. Allocate a node and point to it.
-                                Node fNode = mDb.allocDirtyNode();
+                                final Node fNode = mDb.allocDirtyNode();
                                 try {
                                     fc.put(node, fNode);
                                     encodeInt48LE(page, loc, fNode.mId);
@@ -381,7 +382,7 @@ final class TreeValueStream extends AbstractStream {
                                 }
                             } else {
                                 // Obtain node from cache, or load it only for partial write.
-                                Node fNode = fc.getw(node, fNodeId, amt < page.length);
+                                final Node fNode = fc.getw(node, fNodeId, amt < page.length);
                                 try {
                                     if (mDb.markFragmentDirty(fNode)) {
                                         encodeInt48LE(page, loc, fNode.mId);
@@ -393,7 +394,7 @@ final class TreeValueStream extends AbstractStream {
                             }
                             bLen -= amt;
                             if (bLen <= 0) {
-                                return total;
+                                return 0;
                             }
                             bOff += amt;
                             loc += 6;
@@ -403,14 +404,14 @@ final class TreeValueStream extends AbstractStream {
 
                     // Indirect pointers.
 
-                    Node inode;
+                    final Node inode;
                     setPtr: {
-                        long inodeId = decodeUnsignedInt48LE(page, loc);
+                        final long inodeId = decodeUnsignedInt48LE(page, loc);
 
                         if (inodeId == 0) {
                             // Writing into a sparse value. Allocate a node and point to it.
                             inode = mDb.allocDirtyNode();
-                            byte[] ipage = inode.mPage;
+                            final byte[] ipage = inode.mPage;
                             fill(ipage, (byte) 0);
                             try {
                                 fc.put(node, inode);
@@ -429,10 +430,10 @@ final class TreeValueStream extends AbstractStream {
                         encodeInt48LE(page, loc, inode.mId);
                     }
 
-                    int levels = Database.calculateInodeLevels(vLen, page.length);
+                    final int levels = Database.calculateInodeLevels(vLen, page.length);
                     writeMultilevelFragments(node, pos, levels, inode, b, bOff, bLen);
 
-                    return total;
+                    return 0;
                 } finally {
                     node.releaseExclusive();
                 }
@@ -458,7 +459,54 @@ final class TreeValueStream extends AbstractStream {
             return bLen;
 
         case OP_SET_LENGTH:
-            // FIXME
+            if (pos <= vLen) {
+                // Truncate length. 
+
+                int newLen = (int) pos;
+                int garbageAccum = ((int) vLen) - newLen;
+
+                shift: {
+                    final int vLoc;
+                    final int vShift;
+
+                    if (newLen <= 127) {
+                        page[vHeaderLoc] = (byte) newLen;
+                        if (vLen <= 127) {
+                            break shift;
+                        } else if (vLen <= 8192) {
+                            vLoc = vHeaderLoc + 2;
+                            vShift = 1;
+                        } else {
+                            vLoc = vHeaderLoc + 3;
+                            vShift = 2;
+                        }
+                    } else if (newLen <= 8192) {
+                        page[vHeaderLoc] = (byte) (0x80 | ((newLen - 1) >> 8));
+                        page[vHeaderLoc + 1] = (byte) (newLen - 1);
+                        if (vLen <= 8192) {
+                            break shift;
+                        } else {
+                            vLoc = vHeaderLoc + 3;
+                            vShift = 1;
+                        }
+                    } else {
+                        page[vHeaderLoc] = (byte) (0xa0 | ((newLen - 1) >> 16));
+                        page[vHeaderLoc + 1] = (byte) ((newLen - 1) >> 8);
+                        page[vHeaderLoc + 2] = (byte) (newLen - 1);
+                        break shift;
+                    }
+
+                    garbageAccum += vShift;
+                    arraycopy(page, vLoc, page, vLoc - vShift, newLen);
+                }
+
+                node.mGarbage += garbageAccum;
+                node.releaseExclusive();
+                return 0;
+            }
+
+            // FIXME: length increase
+
             node.releaseExclusive();
             throw null;
 
