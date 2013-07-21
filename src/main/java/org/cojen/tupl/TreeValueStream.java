@@ -175,7 +175,8 @@ final class TreeValueStream extends AbstractStream {
                 return 0;
             }
 
-            // Fallthrough and complete the write operation.
+            // Fallthrough and complete the write operation. Need to re-assign nodePos, because
+            // the insert operation changed it.
             nodePos = frame.mNodePos;
         }
 
@@ -463,7 +464,8 @@ final class TreeValueStream extends AbstractStream {
                 // Truncate length. 
 
                 int newLen = (int) pos;
-                int garbageAccum = ((int) vLen) - newLen;
+                int oldLen = (int) vLen;
+                int garbageAccum = oldLen - newLen;
 
                 shift: {
                     final int vLoc;
@@ -471,9 +473,9 @@ final class TreeValueStream extends AbstractStream {
 
                     if (newLen <= 127) {
                         page[vHeaderLoc] = (byte) newLen;
-                        if (vLen <= 127) {
+                        if (oldLen <= 127) {
                             break shift;
-                        } else if (vLen <= 8192) {
+                        } else if (oldLen <= 8192) {
                             vLoc = vHeaderLoc + 2;
                             vShift = 1;
                         } else {
@@ -483,7 +485,7 @@ final class TreeValueStream extends AbstractStream {
                     } else if (newLen <= 8192) {
                         page[vHeaderLoc] = (byte) (0x80 | ((newLen - 1) >> 8));
                         page[vHeaderLoc + 1] = (byte) (newLen - 1);
-                        if (vLen <= 8192) {
+                        if (oldLen <= 8192) {
                             break shift;
                         } else {
                             vLoc = vHeaderLoc + 3;
@@ -505,26 +507,38 @@ final class TreeValueStream extends AbstractStream {
                 return 0;
             }
 
-            // FIXME: length increase
-
-            node.releaseExclusive();
-            throw null;
+            // Break out for length increase, by appending an empty value.
+            break;
 
         case OP_WRITE:
-            if (pos < vLen) {
+            overlap: if (pos < vLen) {
                 final long end = pos + bLen;
                 if (end <= vLen) {
                     // Writing within existing value region.
                     arraycopy(b, bOff, page, (int) (loc + pos), bLen);
-                    node.releaseExclusive();
-                    return 0;
+                } else if (pos == 0 && bOff == 0 && bLen == b.length) {
+                    // Writing over the entire value.
+                    node.updateLeafValue(mCursor.mTree, nodePos, 0, b);
+                } else {
+                    // Write the overlapping region, and then append the rest.
+                    int len = (int) (vLen - pos);
+                    arraycopy(b, bOff, page, (int) (loc + pos), len);
+                    pos = vLen;
+                    bOff += len;
+                    bLen -= len;
+                    break overlap;
                 }
+                node.releaseExclusive();
+                return 0;
             }
 
-            // FIXME
-            node.releaseExclusive();
-            throw null;
+            // Break out for append.
+            break;
         }
+
+        // FIXME
+        node.releaseExclusive();
+        throw null;
     }
 
     /**
