@@ -86,6 +86,10 @@ final class TreeValueStream extends AbstractStream {
         try {
             TreeCursorFrame frame;
             try {
+                if (length < 0) {
+                    mCursor.store(null);
+                    return;
+                }
                 frame = mCursor.leafExclusiveNotSplitDirty();
             } catch (IllegalStateException e) {
                 checkOpen();
