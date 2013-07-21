@@ -511,14 +511,21 @@ final class TreeValueStream extends AbstractStream {
             break;
 
         case OP_WRITE:
-            overlap: if (pos < vLen) {
+            if (pos < vLen) {
                 final long end = pos + bLen;
                 if (end <= vLen) {
                     // Writing within existing value region.
                     arraycopy(b, bOff, page, (int) (loc + pos), bLen);
+                    node.releaseExclusive();
+                    return 0;
                 } else if (pos == 0 && bOff == 0 && bLen == b.length) {
                     // Writing over the entire value.
-                    node.updateLeafValue(mCursor.mTree, nodePos, 0, b);
+                    try {
+                        node.updateLeafValue(mCursor.mTree, nodePos, 0, b);
+                    } finally {
+                        node.releaseExclusive();
+                        return 0;
+                    }
                 } else {
                     // Write the overlapping region, and then append the rest.
                     int len = (int) (vLen - pos);
@@ -526,10 +533,7 @@ final class TreeValueStream extends AbstractStream {
                     pos = vLen;
                     bOff += len;
                     bLen -= len;
-                    break overlap;
                 }
-                node.releaseExclusive();
-                return 0;
             }
 
             // Break out for append.
