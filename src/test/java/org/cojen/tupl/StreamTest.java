@@ -135,7 +135,26 @@ public class StreamTest {
     }
 
     @Test
-    public void readFragmented() throws Exception {
+    public void readFragmented1() throws Exception {
+        readFragmented(false, false);
+    }
+
+    @Test
+    public void readFragmented2() throws Exception {
+        readFragmented(false, true);
+    }
+
+    @Test
+    public void readFragmented3() throws Exception {
+        readFragmented(true, false);
+    }
+
+    @Test
+    public void readFragmented4() throws Exception {
+        readFragmented(true, true);
+    }
+
+    private void readFragmented(boolean useWrite, boolean setLength) throws Exception {
         Index ix = mDb.openIndex("test");
 
         final long seed = 3984574;
@@ -145,7 +164,26 @@ public class StreamTest {
             byte[] key = ("key" + i).getBytes();
             int length = 50 * i;
             byte[] value = randomStr(rnd, length);
-            ix.store(null, key, value);
+
+            if (useWrite) {
+                Stream s = ix.newStream();
+                s.open(null, key);
+                if (setLength) {
+                    s.setLength(length);
+                }
+                for (int j=0; j<length; j+=50) {
+                    s.write(j, value, j, 50);
+                }
+                s.close();
+            } else {
+                if (setLength) {
+                    Stream s = ix.newStream();
+                    s.open(null, key);
+                    s.setLength(length);
+                    s.close();
+                }
+                ix.store(null, key, value);
+            }
 
             Stream s = ix.newStream();
             s.open(null, key);
@@ -219,8 +257,12 @@ public class StreamTest {
     }
 
     @Test
-    public void extendBlank() throws Exception {
+    public void extendBlank1() throws Exception {
         extendBlank(false);
+    }
+
+    @Test
+    public void extendBlank2() throws Exception {
         extendBlank(true);
     }
 
@@ -319,16 +361,16 @@ public class StreamTest {
     }
 
     @Test
-    public void writeNonFragmentedInBounds() throws Exception {
+    public void writeNonFragmented() throws Exception {
         // Use large page to test 3-byte value header encoding.
         Database db = newTempDatabase(new DatabaseConfig().pageSize(32768));
 
-        writeNonFragmentedInBounds(db, 50);
-        writeNonFragmentedInBounds(db, 200);
-        writeNonFragmentedInBounds(db, 10000);
+        writeNonFragmented(db, 50);
+        writeNonFragmented(db, 200);
+        writeNonFragmented(db, 10000);
     }
 
-    private static void writeNonFragmentedInBounds(Database db, int size) throws Exception {
+    private static void writeNonFragmented(Database db, int size) throws Exception {
         Index ix = db.openIndex("test");
         Random rnd = new Random(size);
 
@@ -336,17 +378,24 @@ public class StreamTest {
         rnd.nextBytes(key);
 
         byte[] value = new byte[size];
-        rnd.nextBytes(value);
 
-        ix.store(null, key, value);
-
-        int[] offs = {0, 0,   0, 1,   1, 1,   1, 0};
+        int[] offs = {
+            0, 0,  // completely replaced
+            0, -1, // replace all but one byte on the right
+            1, -1, // replace all but one byte on the left and right
+            1, 0,  // replace all but one byte on the left
+            0, 10, // replace all and extend
+            1, 10  // replace all but one and extend
+        };
 
         for (int i=0; i<offs.length; i+=2) {
+            rnd.nextBytes(value);
+            ix.store(null, key, value);
+
             int left = offs[i];
             int right = offs[i + 1];
 
-            byte[] sub = new byte[size - (left + right)];
+            byte[] sub = new byte[size - left + right];
             rnd.nextBytes(sub);
 
             Stream s = ix.newStream();
@@ -354,12 +403,17 @@ public class StreamTest {
             s.write(left, sub, 0, sub.length);
             s.close();
 
-            byte[] expect = value.clone();
-            System.arraycopy(sub, 0, expect, left, sub.length);
+            byte[] expect;
+            if (sub.length <= value.length) {
+                expect = value.clone();
+                System.arraycopy(sub, 0, expect, left, sub.length);
+            } else {
+                expect = new byte[size + right];
+                System.arraycopy(value, 0, expect, 0, size);
+                System.arraycopy(sub, 0, expect, left, sub.length);
+            }
 
             fastAssertArrayEquals(expect, ix.load(null, key));
-
-            value = expect;
         }
 
         ix.verify(null);
