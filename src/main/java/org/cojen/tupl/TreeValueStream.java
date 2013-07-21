@@ -65,12 +65,17 @@ final class TreeValueStream extends AbstractStream {
 
     @Override
     public long length() throws IOException {
+        TreeCursorFrame frame;
         try {
-            return action(OP_LENGTH, 0, null, 0, 0);
+            frame = mCursor.leafSharedNotSplit();
         } catch (IllegalStateException e) {
             checkOpen();
             throw e;
         }
+
+        long result = action(frame, OP_LENGTH, 0, null, 0, 0);
+        frame.mNode.releaseShared();
+        return result;
     }
 
     @Override
@@ -79,10 +84,16 @@ final class TreeValueStream extends AbstractStream {
         final Lock sharedCommitLock = mDb.sharedCommitLock();
         sharedCommitLock.lock();
         try {
-            action(OP_SET_LENGTH, length, Utils.EMPTY_BYTES, 0, 0);
-        } catch (IllegalStateException e) {
-            checkOpen();
-            throw e;
+            TreeCursorFrame frame;
+            try {
+                frame = mCursor.leafExclusiveNotSplitDirty();
+            } catch (IllegalStateException e) {
+                checkOpen();
+                throw e;
+            }
+
+            action(frame, OP_SET_LENGTH, length, Utils.EMPTY_BYTES, 0, 0);
+            frame.mNode.releaseExclusive();
         } finally {
             sharedCommitLock.unlock();
         }
@@ -90,12 +101,17 @@ final class TreeValueStream extends AbstractStream {
 
     @Override
     int doRead(long pos, byte[] buf, int off, int len) throws IOException {
+        TreeCursorFrame frame;
         try {
-            return (int) action(OP_READ, pos, buf, off, len);
+            frame = mCursor.leafSharedNotSplit();
         } catch (IllegalStateException e) {
             checkOpen();
             throw e;
         }
+
+        int result = (int) action(frame, OP_READ, pos, buf, off, len);
+        frame.mNode.releaseShared();
+        return result;
     }
 
     @Override
@@ -104,10 +120,16 @@ final class TreeValueStream extends AbstractStream {
         final Lock sharedCommitLock = mDb.sharedCommitLock();
         sharedCommitLock.lock();
         try {
-            action(OP_WRITE, pos, buf, off, len);
-        } catch (IllegalStateException e) {
-            checkOpen();
-            throw e;
+            TreeCursorFrame frame;
+            try {
+                frame = mCursor.leafExclusiveNotSplitDirty();
+            } catch (IllegalStateException e) {
+                checkOpen();
+                throw e;
+            }
+
+            action(frame, OP_WRITE, pos, buf, off, len);
+            frame.mNode.releaseExclusive();
         } finally {
             sharedCommitLock.unlock();
         }
@@ -142,17 +164,15 @@ final class TreeValueStream extends AbstractStream {
     /**
      * Caller must hold shared commit lock when using OP_SET_LENGTH or OP_WRITE.
      *
+     * @param frame latched shared for read op, exclusive for write op; released only if an
+     * exception is thrown
      * @param b ignored by OP_LENGTH; OP_SET_LENGTH must pass EMPTY_BYTES
      * @return applicable only to OP_LENGTH and OP_READ
      */
-    private long action(int op, long pos, byte[] b, int bOff, int bLen) throws IOException {
-        final TreeCursorFrame frame;
-        if (op <= OP_READ) {
-            frame = mCursor.leafSharedNotSplit();
-        } else {
-            frame = mCursor.leafExclusiveNotSplitDirty();
-        }
-
+    private long action(final TreeCursorFrame frame,
+                        final int op, long pos, final byte[] b, int bOff, int bLen)
+        throws IOException
+    {
         Node node = frame.mNode;
 
         int nodePos = frame.mNodePos;
@@ -161,7 +181,6 @@ final class TreeValueStream extends AbstractStream {
 
             if (op <= OP_READ) {
                 // Handle OP_LENGTH and OP_READ.
-                node.releaseShared();
                 return -1;
             }
 
@@ -171,7 +190,6 @@ final class TreeValueStream extends AbstractStream {
             node = mCursor.insertBlank(frame, node, pos + bLen);
 
             if (bLen <= 0) {
-                node.releaseExclusive();
                 return 0;
             }
 
@@ -202,7 +220,6 @@ final class TreeValueStream extends AbstractStream {
                 // ghost
                 if (op <= OP_READ) {
                     // Handle OP_LENGTH and OP_READ.
-                    node.releaseShared();
                     return -1;
                 }
                 // FIXME: write ops; create the value
@@ -245,7 +262,6 @@ final class TreeValueStream extends AbstractStream {
 
                 switch (op) {
                 case OP_LENGTH: default:
-                    node.releaseShared();
                     return vLen;
 
                 case OP_READ: try {
@@ -317,8 +333,9 @@ final class TreeValueStream extends AbstractStream {
                     }
 
                     return total;
-                } finally {
+                } catch (IOException e) {
                     node.releaseShared();
+                    throw e;
                 }
 
                 case OP_SET_LENGTH:
@@ -435,8 +452,9 @@ final class TreeValueStream extends AbstractStream {
                     writeMultilevelFragments(node, pos, levels, inode, b, bOff, bLen);
 
                     return 0;
-                } finally {
+                } catch (IOException e) {
                     node.releaseExclusive();
+                    throw e;
                 }
                 } // end switch(op)
             }
@@ -446,7 +464,6 @@ final class TreeValueStream extends AbstractStream {
 
         switch (op) {
         case OP_LENGTH: default:
-            node.releaseShared();
             return vLen;
 
         case OP_READ:
@@ -456,7 +473,6 @@ final class TreeValueStream extends AbstractStream {
                 bLen = Math.min((int) (vLen - pos), bLen);
                 arraycopy(page, (int) (loc + pos), b, bOff, bLen);
             }
-            node.releaseShared();
             return bLen;
 
         case OP_SET_LENGTH:
@@ -503,7 +519,6 @@ final class TreeValueStream extends AbstractStream {
                 }
 
                 node.mGarbage += garbageAccum;
-                node.releaseExclusive();
                 return 0;
             }
 
@@ -516,16 +531,16 @@ final class TreeValueStream extends AbstractStream {
                 if (end <= vLen) {
                     // Writing within existing value region.
                     arraycopy(b, bOff, page, (int) (loc + pos), bLen);
-                    node.releaseExclusive();
                     return 0;
                 } else if (pos == 0 && bOff == 0 && bLen == b.length) {
                     // Writing over the entire value.
                     try {
                         node.updateLeafValue(mCursor.mTree, nodePos, 0, b);
-                    } finally {
+                    } catch (IOException e) {
                         node.releaseExclusive();
-                        return 0;
+                        throw e;
                     }
+                    return 0;
                 } else {
                     // Write the overlapping region, and then append the rest.
                     int len = (int) (vLen - pos);
@@ -540,9 +555,26 @@ final class TreeValueStream extends AbstractStream {
             break;
         }
 
-        // FIXME
-        node.releaseExclusive();
-        throw null;
+        // This point is reached for appending to a non-fragmented value. There's all kinds
+        // of optimizations that can be performed here, but keep things simple. Delete the
+        // old value, insert a blank value, and then update it.
+
+        byte[] oldValue = new byte[(int) vLen];
+        System.arraycopy(page, loc, oldValue, 0, oldValue.length);
+
+        node.deleteLeafEntry(mCursor.mTree, nodePos);
+        frame.mNodePos = ~nodePos;
+
+        // Method releases latch if an exception is thrown.
+        mCursor.insertBlank(frame, node, pos + bLen);
+
+        action(frame, OP_WRITE, 0, oldValue, 0, oldValue.length);
+
+        if (bLen > 0) {
+            action(frame, OP_WRITE, pos, b, bOff, bLen);
+        }
+
+        return 0;
     }
 
     /**

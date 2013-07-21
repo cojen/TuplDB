@@ -188,6 +188,8 @@ public class StreamTest {
             Stream s = ix.newStream();
             s.open(null, key);
 
+            assertEquals(length, s.length());
+
             byte[] buf = new byte[length + 10];
 
             // Attempt to read nothing past the end.
