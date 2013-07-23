@@ -126,10 +126,11 @@ final class SnapshotPageArray extends PageArray {
      * processed specially by the restoreFromSnapshot method.
      *
      * @param pageCount total number of pages to include in snapshot
+     * @param redoPos redo log position for the snapshot
      */
-    Snapshot beginSnapshot(TempFileManager tfm, long pageCount) throws IOException {
+    Snapshot beginSnapshot(TempFileManager tfm, long pageCount, long redoPos) throws IOException {
         pageCount = Math.min(pageCount, getPageCount());
-        SnapshotImpl snapshot = new SnapshotImpl(tfm, pageCount);
+        SnapshotImpl snapshot = new SnapshotImpl(tfm, pageCount, redoPos);
 
         synchronized (this) {
             Object obj = mSnapshots;
@@ -191,6 +192,7 @@ final class SnapshotPageArray extends PageArray {
 
         private final TempFileManager mTempFileManager;
         private final long mSnapshotPageCount;
+        private final long mSnapshotRedoPosition;
 
         private final Tree mPageCopyIndex;
         private final File mTempFile;
@@ -209,12 +211,13 @@ final class SnapshotPageArray extends PageArray {
         private volatile boolean mClosed;
         private Throwable mAbortCause;
 
-        SnapshotImpl(TempFileManager tfm, long pageCount) throws IOException {
+        SnapshotImpl(TempFileManager tfm, long pageCount, long redoPos) throws IOException {
             // Snapshot does not decrypt pages.
             mRawPageArray = SnapshotPageArray.this.mRawSource;
 
             mTempFileManager = tfm;
             mSnapshotPageCount = pageCount;
+            mSnapshotRedoPosition = redoPos;
 
             int pageSize = pageSize();
 
@@ -236,6 +239,11 @@ final class SnapshotPageArray extends PageArray {
         @Override
         public long length() {
             return mSnapshotPageCount * pageSize();
+        }
+
+        @Override
+        public long position() {
+            return mSnapshotRedoPosition;
         }
 
         @Override
