@@ -3254,4 +3254,9 @@ public final class Database implements CauseCloseable {
 
         return header;
     }
+
+    // Called by DurablePageDb with header latch held.
+    static long readRedoPosition(byte[] header, int offset) {
+        return decodeLongLE(header, offset + I_REDO_POSITION);
+    }
 }
