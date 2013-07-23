@@ -411,7 +411,8 @@ class DurablePageDb extends PageDb {
         try {
             mPageArray.readPartial(mCommitNumber & 1, 0, header, 0, header.length);
             long pageCount = PageManager.readTotalPageCount(header, I_MANAGER_HEADER);
-            return mPageArray.beginSnapshot(tfm, pageCount);
+            long redoPos = Database.readRedoPosition(header, I_EXTRA_DATA); 
+            return mPageArray.beginSnapshot(tfm, pageCount, redoPos);
         } finally {
             mHeaderLatch.releaseShared();
         }
