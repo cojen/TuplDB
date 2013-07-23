@@ -34,6 +34,11 @@ public interface Snapshot extends Closeable {
     public long length();
 
     /**
+     * Returns the {@link ReplicationManager#start position} that the snapsnot applies to.
+     */
+    public long position();
+
+    /**
      * Writes out snapshot data, and then closes this object. Snapshot aborts
      * if the OutputStream throws an exception or if another thread closes this
      * Snapshot instance.
