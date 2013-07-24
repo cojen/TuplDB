@@ -99,6 +99,54 @@ public interface Index extends View, Closeable {
     public boolean remove(Transaction txn, byte[] key, byte[] value) throws IOException;
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public View viewGe(byte[] key);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public View viewGt(byte[] key);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public View viewLe(byte[] key);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public View viewLt(byte[] key);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public View viewPrefix(byte[] prefix, int trim);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public View viewReverse();
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public View viewUnmodifiable();
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isUnmodifiable();
+
+    /**
      * Verifies the integrity of the index.
      *
      * @param observer optional observer; pass null for default
