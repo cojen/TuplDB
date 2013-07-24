@@ -430,12 +430,12 @@ final class Tree implements Index {
 
     @Override
     public View viewUnmodifiable() {
-        return new UnmodifiableView(this);
+        return UnmodifiableView.apply(this);
     }
 
     @Override
     public boolean isUnmodifiable() {
-        return false;
+        return isClosed();
     }
 
     @Override
