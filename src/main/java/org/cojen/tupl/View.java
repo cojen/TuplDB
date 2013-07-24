@@ -111,6 +111,7 @@ public interface View {
      * @param key non-null key
      * @param value value to store; pass null to delete
      * @throws NullPointerException if key is null
+     * @throws IllegalArgumentException if key is outside allowed range
      */
     public void store(Transaction txn, byte[] key, byte[] value) throws IOException;
 
@@ -125,6 +126,7 @@ public interface View {
      * @param value value to store; pass null to delete
      * @return copy of previous value, or null if none
      * @throws NullPointerException if key is null
+     * @throws IllegalArgumentException if key is outside allowed range
      */
     public byte[] exchange(Transaction txn, byte[] key, byte[] value) throws IOException;
 
@@ -141,6 +143,7 @@ public interface View {
      * @param value value to insert, which can be null
      * @return false if entry already exists
      * @throws NullPointerException if key is null
+     * @throws IllegalArgumentException if key is outside allowed range and value is non-null
      */
     public boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException;
 
@@ -172,6 +175,8 @@ public interface View {
      * @param newValue new value to update to; pass null to delete
      * @return false if existing value doesn't match
      * @throws NullPointerException if key is null
+     * @throws IllegalArgumentException if key is outside allowed range and attempting to
+     * update a null value to non-null
      */
     public boolean update(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException;
