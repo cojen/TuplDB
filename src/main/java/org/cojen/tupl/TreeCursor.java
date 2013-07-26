@@ -2069,7 +2069,6 @@ final class TreeCursor implements CauseCloseable, Cursor {
         throws IOException
     {
         byte[] key = mKey;
-        Node node = leaf.mNode;
 
         if (value == null) {
             // Delete entry...
@@ -2077,11 +2076,11 @@ final class TreeCursor implements CauseCloseable, Cursor {
             if (leaf.mNodePos < 0) {
                 // Entry doesn't exist, so nothing to do.
                 mValue = null;
-                return node;
+                return leaf.mNode;
             }
 
             // Releases latch if an exception is thrown.
-            node = notSplitDirty(leaf);
+            Node node = notSplitDirty(leaf);
             final int pos = leaf.mNodePos;
 
             try {
@@ -2140,7 +2139,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
         }
 
         // Update and insert always dirty the node. Releases latch if an exception is thrown.
-        node = notSplitDirty(leaf);
+        Node node = notSplitDirty(leaf);
         final int pos = leaf.mNodePos;
 
         if (pos >= 0) {
