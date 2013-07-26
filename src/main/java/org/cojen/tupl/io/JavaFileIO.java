@@ -44,7 +44,7 @@ class JavaFileIO extends FileIO {
     private final File mFile;
 
     // Access these fields while synchronized on mFilePool.
-    private final RandomAccessFile[] mFilePool;
+    private final FileAccess[] mFilePool;
     private int mFilePoolTop;
     private final boolean mReadOnly;
 
@@ -76,7 +76,7 @@ class JavaFileIO extends FileIO {
             openFileCount = 1;
         }
 
-        mFilePool = new RandomAccessFile[openFileCount];
+        mFilePool = new FileAccess[openFileCount];
 
         mRemapLock = new Object();
         mMappingLock = new ReentrantReadWriteLock(false);
@@ -419,9 +419,9 @@ class JavaFileIO extends FileIO {
         }
     }
 
-    static RandomAccessFile openRaf(File file, String mode) throws IOException {
+    static FileAccess openRaf(File file, String mode) throws IOException {
         try {
-            return new RandomAccessFile(file, mode);
+            return new FileAccess(file, mode);
         } catch (FileNotFoundException e) {
             String message = null;
 
@@ -461,6 +461,48 @@ class JavaFileIO extends FileIO {
             }
 
             throw new FileNotFoundException(message);
+        }
+    }
+
+    static class FileAccess extends RandomAccessFile {
+        private long mPosition;
+
+        FileAccess(File file, String mode) throws IOException {
+            super(file, mode);
+            seek(0);
+        }
+
+        @Override
+        public void seek(long pos) throws IOException {
+            if (pos != mPosition) {
+                super.seek(pos);
+                mPosition = pos;
+            }
+        }
+
+        @Override
+        public int read(byte[] buf) throws IOException {
+            return read(buf, 0, buf.length);
+        }
+
+        @Override
+        public int read(byte[] buf, int offset, int length) throws IOException {
+            int amt = super.read(buf, offset, length);
+            if (amt > 0) {
+                mPosition += amt;
+            }
+            return amt;
+        }
+
+        @Override
+        public void write(byte[] buf) throws IOException {
+            write(buf, 0, buf.length);
+        }
+
+        @Override
+        public void write(byte[] buf, int offset, int length) throws IOException {
+            super.write(buf, offset, length);
+            mPosition += length;
         }
     }
 }
