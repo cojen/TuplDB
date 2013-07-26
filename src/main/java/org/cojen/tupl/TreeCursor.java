@@ -2069,7 +2069,6 @@ final class TreeCursor implements CauseCloseable, Cursor {
         throws IOException
     {
         byte[] key = mKey;
-        Node node = leaf.mNode;
 
         if (value == null) {
             // Delete entry...
@@ -2077,11 +2076,11 @@ final class TreeCursor implements CauseCloseable, Cursor {
             if (leaf.mNodePos < 0) {
                 // Entry doesn't exist, so nothing to do.
                 mValue = null;
-                return node;
+                return leaf.mNode;
             }
 
             // Releases latch if an exception is thrown.
-            node = notSplitDirty(leaf);
+            Node node = notSplitDirty(leaf);
             final int pos = leaf.mNodePos;
 
             try {
@@ -2140,7 +2139,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
         }
 
         // Update and insert always dirty the node. Releases latch if an exception is thrown.
-        node = notSplitDirty(leaf);
+        Node node = notSplitDirty(leaf);
         final int pos = leaf.mNodePos;
 
         if (pos >= 0) {
@@ -2321,6 +2320,73 @@ final class TreeCursor implements CauseCloseable, Cursor {
             throw handleException(e);
         } finally {
             sharedCommitLock.unlock();
+        }
+    }
+
+    /**
+     * Blindy insert an entry at the current position as if it was the lowest or highest entry
+     * overall. If not at the extremity, index becomes corrupt.
+     *
+     * @param mode 0 for lowest, 2 for highest
+     */
+    void insertExtremity(byte[] key, byte[] value, int mode) throws IOException {
+        if (mKey == null) {
+            find(key);
+            store(value);
+            return;
+        }
+
+        try {
+            final Transaction txn = mTxn;
+            final Locker locker = mTree.lockExclusive(txn, key, keyHash());
+            try {
+                TreeCursorFrame leaf = leafExclusive(); 
+                final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
+                sharedCommitLock.lock();
+                try {
+                    Node node = notSplitDirty(leaf);
+                    int pos = leaf.mNodePos;
+
+                    if (pos < 0) {
+                        pos = ~pos - 2 + mode;
+                    } else {
+                        pos += mode;
+                        leaf.mNodePos = ~pos;
+                    }
+
+                    try {
+                        if (txn == null) {
+                            mTree.redoStore(key, value);
+                        } else if (txn.lockMode() != LockMode.UNSAFE) {
+                            txn.undoDelete(mTree.mId, key);
+                            if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
+                                txn.redoStore(mTree.mId, key, value);
+                            }
+                        } else if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
+                            mTree.redoStoreNoLock(key, value);
+                        }
+
+                        node.insertLeafEntry(mTree, pos, key, value);
+                    } catch (Throwable e) {
+                        node.releaseExclusive();
+                        throw rethrow(e);
+                    }
+
+                    // Releases latch if an exception is thrown.
+                    postInsert(leaf, node, key).releaseExclusive();
+
+                    mKey = key;
+                    mValue = value;
+                } finally {
+                    sharedCommitLock.unlock();
+                }
+            } finally {
+                if (locker != null) {
+                    locker.unlock();
+                }
+            }
+        } catch (Throwable e) {
+            throw handleException(e);
         }
     }
 

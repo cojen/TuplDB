@@ -51,36 +51,52 @@ public interface Index extends View, Closeable {
 
     /**
      * {@inheritDoc}
+     *
+     * @throws NullPointerException {@inheritDoc}
      */
     @Override
     public byte[] load(Transaction txn, byte[] key) throws IOException;
 
     /**
      * {@inheritDoc}
+     *
+     * @throws NullPointerException {@inheritDoc}
+     * @throws IllegalArgumentException {@inheritDoc}
      */
     @Override
     public void store(Transaction txn, byte[] key, byte[] value) throws IOException;
 
     /**
      * {@inheritDoc}
+     *
+     * @throws NullPointerException {@inheritDoc}
+     * @throws IllegalArgumentException {@inheritDoc}
      */
     @Override
     public byte[] exchange(Transaction txn, byte[] key, byte[] value) throws IOException;
 
     /**
      * {@inheritDoc}
+     *
+     * @throws NullPointerException {@inheritDoc}
+     * @throws IllegalArgumentException {@inheritDoc}
      */
     @Override
     public boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException;
 
     /**
      * {@inheritDoc}
+     *
+     * @throws NullPointerException {@inheritDoc}
      */
     @Override
     public boolean replace(Transaction txn, byte[] key, byte[] value) throws IOException;
 
     /**
      * {@inheritDoc}
+     *
+     * @throws NullPointerException {@inheritDoc}
+     * @throws IllegalArgumentException {@inheritDoc}
      */
     @Override
     public boolean update(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
@@ -88,42 +104,58 @@ public interface Index extends View, Closeable {
 
     /**
      * {@inheritDoc}
+     *
+     * @throws NullPointerException {@inheritDoc}
      */
     @Override
     public boolean delete(Transaction txn, byte[] key) throws IOException;
 
     /**
      * {@inheritDoc}
+     *
+     * @throws NullPointerException {@inheritDoc}
      */
     @Override
     public boolean remove(Transaction txn, byte[] key, byte[] value) throws IOException;
 
+
     /**
      * {@inheritDoc}
+     *
+     * @throws NullPointerException {@inheritDoc}
      */
     @Override
     public View viewGe(byte[] key);
 
     /**
      * {@inheritDoc}
+     *
+     * @throws NullPointerException {@inheritDoc}
      */
     @Override
     public View viewGt(byte[] key);
 
     /**
      * {@inheritDoc}
+     *
+     * @throws NullPointerException {@inheritDoc}
      */
     @Override
     public View viewLe(byte[] key);
 
     /**
      * {@inheritDoc}
+     *
+     * @throws NullPointerException {@inheritDoc}
      */
     @Override
     public View viewLt(byte[] key);
 
     /**
      * {@inheritDoc}
+     *
+     * @throws NullPointerException {@inheritDoc}
+     * @throws IllegalArgumentException {@inheritDoc}
      */
     @Override
     public View viewPrefix(byte[] prefix, int trim);
