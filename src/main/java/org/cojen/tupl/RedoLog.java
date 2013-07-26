@@ -69,6 +69,9 @@ final class RedoLog extends RedoWriter {
     private FileChannel mNextChannel;
     private int mNextTermRndSeed;
 
+    private volatile OutputStream mOldOut;
+    private volatile FileChannel mOldChannel;
+
     /**
      * Open for replay.
      *
@@ -133,6 +136,7 @@ final class RedoLog extends RedoWriter {
                     break;
                 }
 
+                boolean finished;
                 try {
                     if (mCrypto != null) {
                         try {
@@ -151,15 +155,19 @@ final class RedoLog extends RedoWriter {
                     files.add(file);
 
                     DataIn din = new DataIn.Stream(mPosition, in);
-                    replay(din, visitor, listener);
+                    finished = replay(din, visitor, listener);
                     mPosition = din.mPos;
-                } catch (EOFException e) {
-                    // End of log didn't get completely flushed.
                 } finally {
                     Utils.closeQuietly(null, in);
                 }
 
                 mLogId++;
+
+                if (!finished) {
+                    // Last log file was truncated, so chuck the rest.
+                    Utils.deleteNumberedFiles(mBaseFile, Database.REDO_FILE_SUFFIX, mLogId);
+                    break;
+                }
             }
 
             return files;
@@ -235,14 +243,8 @@ final class RedoLog extends RedoWriter {
             reset();
         }
 
-        if (oldChannel != null) {
-            // Make sure any exception thrown by this call is not caught here,
-            // because a checkpoint cannot complete successfully if the redo
-            // log has not been durably written.
-            oldChannel.force(true);
-        }
-
-        Utils.closeQuietly(null, oldOut);
+        mOldOut = oldOut;
+        mOldChannel = oldChannel;
     }
 
     /**
@@ -279,9 +281,6 @@ final class RedoLog extends RedoWriter {
             logId = mLogId;
         }
         openNextFile(logId + 1);
-
-        // Force most of the old log file changes out before acquiring excluisve commit lock.
-        sync();
     }
 
     @Override
@@ -307,7 +306,16 @@ final class RedoLog extends RedoWriter {
 
     @Override
     void checkpointStarted() throws IOException {
-        // Nothing to do.
+        FileChannel oldChannel = mOldChannel;
+
+        if (oldChannel != null) {
+            // Make sure any exception thrown by this call is not caught here,
+            // because a checkpoint cannot complete successfully if the redo
+            // log has not been durably written.
+            oldChannel.force(true);
+        }
+
+        Utils.closeQuietly(null, mOldOut);
     }
 
     @Override
@@ -371,16 +379,21 @@ final class RedoLog extends RedoWriter {
         return x;
     }
 
-    private void replay(DataIn in, RedoVisitor visitor, EventListener listener)
+    private boolean replay(DataIn in, RedoVisitor visitor, EventListener listener)
         throws IOException
     {
-        long magic = in.readLongLE();
-        if (magic != MAGIC_NUMBER) {
-            if (magic == 0) {
-                // Assume file was flushed improperly and discard it.
-                return;
+        try {
+            long magic = in.readLongLE();
+            if (magic != MAGIC_NUMBER) {
+                if (magic == 0) {
+                    // Assume file was flushed improperly and discard it.
+                    return false;
+                }
+                throw new DatabaseException("Incorrect magic number in redo log file");
             }
-            throw new DatabaseException("Incorrect magic number in redo log file");
+        } catch (EOFException e) {
+            // Assume file was flushed improperly and discard it.
+            return false;
         }
 
         int version = in.readIntLE();
@@ -397,11 +410,12 @@ final class RedoLog extends RedoWriter {
         mTermRndSeed = in.readIntLE();
 
         try {
-            new RedoLogDecoder(this, in, listener).run(visitor);
+            return new RedoLogDecoder(this, in, listener).run(visitor);
         } catch (EOFException e) {
             if (listener != null) {
                 listener.notify(EventType.RECOVERY_REDO_LOG_CORRUPTION, "Unexpected end of file");
             }
+            return false;
         }
     }
 }
