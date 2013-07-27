@@ -45,6 +45,8 @@ public interface Index extends View, Closeable {
 
     /**
      * {@inheritDoc}
+     *
+     * @throws IllegalArgumentException {@inheritDoc}
      */
     @Override
     public Cursor newCursor(Transaction txn);
@@ -53,6 +55,7 @@ public interface Index extends View, Closeable {
      * {@inheritDoc}
      *
      * @throws NullPointerException {@inheritDoc}
+     * @throws IllegalArgumentException {@inheritDoc}
      */
     @Override
     public byte[] load(Transaction txn, byte[] key) throws IOException;
@@ -88,6 +91,7 @@ public interface Index extends View, Closeable {
      * {@inheritDoc}
      *
      * @throws NullPointerException {@inheritDoc}
+     * @throws IllegalArgumentException {@inheritDoc}
      */
     @Override
     public boolean replace(Transaction txn, byte[] key, byte[] value) throws IOException;
@@ -106,6 +110,7 @@ public interface Index extends View, Closeable {
      * {@inheritDoc}
      *
      * @throws NullPointerException {@inheritDoc}
+     * @throws IllegalArgumentException {@inheritDoc}
      */
     @Override
     public boolean delete(Transaction txn, byte[] key) throws IOException;
@@ -114,6 +119,7 @@ public interface Index extends View, Closeable {
      * {@inheritDoc}
      *
      * @throws NullPointerException {@inheritDoc}
+     * @throws IllegalArgumentException {@inheritDoc}
      */
     @Override
     public boolean remove(Transaction txn, byte[] key, byte[] value) throws IOException;
