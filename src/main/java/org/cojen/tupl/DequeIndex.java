@@ -592,11 +592,13 @@ final class DequeIndex extends Latch implements Index {
     private Locker indexLockExclusive(Transaction txn) throws LockFailureException {
         // Use a full-blown Lock when making updates, enabling deadlock detection.
 
+        LockResult result;
         Locker locker;
+        long timeoutNanos;
+
         acquireExclusive();
         try {
-            long timeoutNanos;
-            if (txn == null) {
+            if (txn == null || txn.lockMode() == LockMode.UNSAFE) {
                 LockManager manager = mSource.mLockManager;
                 locker = manager.localLocker();
                 timeoutNanos = manager.mDefaultTimeoutNanos;
@@ -604,12 +606,16 @@ final class DequeIndex extends Latch implements Index {
                 locker = txn;
                 timeoutNanos = txn.mLockTimeoutNanos;
             }
-            mIndexLock.tryLockExclusive(this, locker, timeoutNanos);
+            result = mIndexLock.tryLockExclusive(this, locker, timeoutNanos);
         } finally {
             releaseExclusive();
         }
 
-        return locker;
+        if (result.isHeld()) {
+            return locker;
+        }
+
+        throw locker.failed(result, timeoutNanos);
     }
 
     private void indexUnlock(Locker locker) {
