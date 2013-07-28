@@ -655,7 +655,7 @@ class Utils extends org.cojen.tupl.io.Utils {
     }
 
     static String toHex(byte[] key) {
-        return toHex(key, 0, key.length);
+        return key == null ? "null" : toHex(key, 0, key.length);
     }
 
     static String toHex(byte[] key, int offset, int length) {
