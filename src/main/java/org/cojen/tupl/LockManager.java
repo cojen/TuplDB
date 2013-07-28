@@ -26,7 +26,8 @@ import static org.cojen.tupl.LockResult.*;
  * @author Brian S O'Neill
  */
 final class LockManager {
-    // Parameter passed to LockHT.tryLock.
+    // Parameter passed to LockHT.tryLock. For new Lock instances, value will be stored as-is
+    // into Lock.mLockCount field, which is why the numbers seem a bit weird.
     static final int TYPE_SHARED = 1, TYPE_UPGRADABLE = 0x80000000, TYPE_EXCLUSIVE = ~0;
 
     final LockUpgradeRule mDefaultLockUpgradeRule;
