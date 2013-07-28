@@ -24,6 +24,56 @@ import static org.cojen.tupl.Utils.*;
  * @author Brian S O'Neill
  */
 final class BoundedView extends SubView {
+    static View viewGe(View view, byte[] key) {
+        if (key == null) {
+            throw new NullPointerException("Key is null");
+        }
+        return new BoundedView(view, key, null, 0);
+    }
+
+    static View viewGt(View view, byte[] key) {
+        if (key == null) {
+            throw new NullPointerException("Key is null");
+        }
+        return new BoundedView(view, key, null, START_EXCLUSIVE);
+    }
+
+    static View viewLe(View view, byte[] key) {
+        if (key == null) {
+            throw new NullPointerException("Key is null");
+        }
+        return new BoundedView(view, null, key, 0);
+    }
+
+    static View viewLt(View view, byte[] key) {
+        if (key == null) {
+            throw new NullPointerException("Key is null");
+        }
+        return new BoundedView(view, null, key, END_EXCLUSIVE);
+    }
+
+    static View viewPrefix(View view, byte[] prefix, int trim) {
+        prefixCheck(prefix, trim);
+
+        byte[] end = prefix.clone();
+        int mode;
+        if (increment(end, 0, end.length)) {
+            mode = END_EXCLUSIVE;
+        } else {
+            // Prefix is highest possible, so no need for an end bound.
+            end = null;
+            mode = 0;
+        }
+
+        view = new BoundedView(view, prefix, end, mode);
+
+        if (trim > 0) {
+            view = new TrimmedView(view, prefix, trim);
+        }
+
+        return view;
+    }
+
     static final int START_EXCLUSIVE = 0xfffffffe, END_EXCLUSIVE = 1;
 
     final byte[] mStart;

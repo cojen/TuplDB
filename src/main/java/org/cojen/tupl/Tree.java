@@ -370,57 +370,27 @@ final class Tree implements Index {
 
     @Override
     public View viewGe(byte[] key) {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
-        return new BoundedView(this, key, null, 0);
+        return BoundedView.viewGe(this, key);
     }
 
     @Override
     public View viewGt(byte[] key) {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
-        return new BoundedView(this, key, null, BoundedView.START_EXCLUSIVE);
+        return BoundedView.viewGt(this, key);
     }
 
     @Override
     public View viewLe(byte[] key) {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
-        return new BoundedView(this, null, key, 0);
+        return BoundedView.viewLe(this, key);
     }
 
     @Override
     public View viewLt(byte[] key) {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
-        return new BoundedView(this, null, key, BoundedView.END_EXCLUSIVE);
+        return BoundedView.viewLt(this, key);
     }
 
     @Override
     public View viewPrefix(byte[] prefix, int trim) {
-        SubView.prefixCheck(prefix, trim);
-
-        byte[] end = prefix.clone();
-        int mode;
-        if (increment(end, 0, end.length)) {
-            mode = BoundedView.END_EXCLUSIVE;
-        } else {
-            // Prefix is highest possible, so no need for an end bound.
-            end = null;
-            mode = 0;
-        }
-
-        View view = new BoundedView(this, prefix, end, mode);
-
-        if (trim > 0) {
-            view = new TrimmedView(view, prefix, trim);
-        }
-
-        return view;
+        return BoundedView.viewPrefix(this, prefix, trim);
     }
 
     @Override
