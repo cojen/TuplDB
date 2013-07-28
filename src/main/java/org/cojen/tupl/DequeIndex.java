@@ -28,10 +28,12 @@ import java.util.Arrays;
  */
 final class DequeIndex extends Latch implements Index {
     private final Tree mSource;
+    private final Lock mIndexLock;
     private final TreeCursor mLowCursor, mHighCursor;
 
     DequeIndex(Tree source) {
         mSource = source;
+        mIndexLock = new Lock();
 
         mLowCursor = new TreeCursor(source, Transaction.BOGUS);
         mLowCursor.autoload(false);
@@ -72,7 +74,7 @@ final class DequeIndex extends Latch implements Index {
             return;
         }
 
-        acquireExclusive();
+        Locker locker = indexLockExclusive(txn);
         try {
             int compare = highExtremityCompare(key);
 
@@ -110,13 +112,13 @@ final class DequeIndex extends Latch implements Index {
 
             mSource.store(txn, key, value);
         } finally {
-            releaseExclusive();
+            indexUnlock(locker);
         }
     }
 
     @Override
     public byte[] exchange(Transaction txn, byte[] key, byte[] value) throws IOException {
-        acquireExclusive();
+        Locker locker = indexLockExclusive(txn);
         try {
             int compare = highExtremityCompare(key);
 
@@ -133,7 +135,7 @@ final class DequeIndex extends Latch implements Index {
                         if (value != null) {
                             highCursor.insertExtremity(key, value, 2);
                         } else {
-                            lockExclusive(txn, key);
+                            entryLockExclusive(txn, key);
                         }
                         return null;
                     }
@@ -161,7 +163,7 @@ final class DequeIndex extends Latch implements Index {
                         if (value != null) {
                             lowCursor.insertExtremity(key, value, 0);
                         } else {
-                            lockExclusive(txn, key);
+                            entryLockExclusive(txn, key);
                         }
                         return null;
                     }
@@ -176,7 +178,7 @@ final class DequeIndex extends Latch implements Index {
 
             return mSource.exchange(txn, key, value);
         } finally {
-            releaseExclusive();
+            indexUnlock(locker);
         }
     }
 
@@ -186,13 +188,13 @@ final class DequeIndex extends Latch implements Index {
             return replace(txn, key, null);
         }
 
-        acquireExclusive();
+        Locker locker = indexLockExclusive(txn);
         try {
             int compare = highExtremityCompare(key);
 
             if (compare >= 0) {
                 if (compare == 0) {
-                    lockExclusive(txn, key);
+                    entryLockExclusive(txn, key);
                     return false;
                 } else {
                     TreeCursor highCursor = mHighCursor;
@@ -210,7 +212,7 @@ final class DequeIndex extends Latch implements Index {
 
             if (compare <= 0) {
                 if (compare == 0) {
-                    lockExclusive(txn, key);
+                    entryLockExclusive(txn, key);
                     return false;
                 } else {
                     TreeCursor lowCursor = mLowCursor;
@@ -226,13 +228,13 @@ final class DequeIndex extends Latch implements Index {
 
             return mSource.insert(txn, key, value);
         } finally {
-            releaseExclusive();
+            indexUnlock(locker);
         }
     }
 
     @Override
     public boolean replace(Transaction txn, byte[] key, byte[] value) throws IOException {
-        acquireExclusive();
+        Locker locker = indexLockExclusive(txn);
         try {
             int compare = highExtremityCompare(key);
 
@@ -250,7 +252,7 @@ final class DequeIndex extends Latch implements Index {
                     }
                     return true;
                 } else {
-                    lockExclusive(txn, key);
+                    entryLockExclusive(txn, key);
                     return false;
                 }
             }
@@ -271,14 +273,14 @@ final class DequeIndex extends Latch implements Index {
                     }
                     return true;
                 } else {
-                    lockExclusive(txn, key);
+                    entryLockExclusive(txn, key);
                     return false;
                 }
             }
 
             return mSource.replace(txn, key, value);
         } finally {
-            releaseExclusive();
+            indexUnlock(locker);
         }
     }
 
@@ -290,7 +292,7 @@ final class DequeIndex extends Latch implements Index {
             return insert(txn, key, newValue);
         }
 
-        acquireExclusive();
+        Locker locker = indexLockExclusive(txn);
         try {
             int compare = highExtremityCompare(key);
 
@@ -313,7 +315,7 @@ final class DequeIndex extends Latch implements Index {
                     }
                     return true;
                 } else {
-                    lockExclusive(txn, key);
+                    entryLockExclusive(txn, key);
                     return false;
                 }
             }
@@ -339,20 +341,20 @@ final class DequeIndex extends Latch implements Index {
                     }
                     return true;
                 } else {
-                    lockExclusive(txn, key);
+                    entryLockExclusive(txn, key);
                     return false;
                 }
             }
 
             return mSource.update(txn, key, oldValue, newValue);
         } finally {
-            releaseExclusive();
+            indexUnlock(locker);
         }
     }
 
     @Override
     public boolean delete(Transaction txn, byte[] key) throws IOException {
-        acquireExclusive();
+        Locker locker = indexLockExclusive(txn);
         try {
             int compare = highExtremityCompare(key);
 
@@ -368,7 +370,7 @@ final class DequeIndex extends Latch implements Index {
                     highCursor.previous();
                     return true;
                 } else {
-                    lockExclusive(txn, key);
+                    entryLockExclusive(txn, key);
                     return false;
                 }
             }
@@ -387,14 +389,14 @@ final class DequeIndex extends Latch implements Index {
                     lowCursor.next();
                     return true;
                 } else {
-                    lockExclusive(txn, key);
+                    entryLockExclusive(txn, key);
                     return false;
                 }
             }
 
             return mSource.delete(txn, key);
         } finally {
-            releaseExclusive();
+            indexUnlock(locker);
         }
     }
 
@@ -450,13 +452,13 @@ final class DequeIndex extends Latch implements Index {
 
     @Override
     public void close() throws IOException {
-        acquireExclusive();
+        Locker locker = indexLockExclusive(null);
         try {
             mLowCursor.reset();
             mHighCursor.reset();
             mSource.close();
         } finally {
-            releaseExclusive();
+            indexUnlock(locker);
         }
     }
 
@@ -467,13 +469,13 @@ final class DequeIndex extends Latch implements Index {
 
     @Override
     public void drop() throws IOException {
-        acquireExclusive();
+        Locker locker = indexLockExclusive(null);
         try {
             mLowCursor.reset();
             mHighCursor.reset();
             mSource.drop();
         } finally {
-            releaseExclusive();
+            indexUnlock(locker);
         }
     }
 
@@ -485,7 +487,7 @@ final class DequeIndex extends Latch implements Index {
 
         Transaction txn = cursor.mTxn;
 
-        acquireExclusive();
+        Locker locker = indexLockExclusive(txn);
         try {
             int compare = highExtremityCompare(key);
 
@@ -501,7 +503,7 @@ final class DequeIndex extends Latch implements Index {
                         }
                         highCursor.previous();
                     } else {
-                        lockExclusive(txn, key);
+                        entryLockExclusive(txn, key);
                     }
                 } else {
                     highCursor.link(txn);
@@ -532,7 +534,7 @@ final class DequeIndex extends Latch implements Index {
                         }
                         lowCursor.next();
                     } else {
-                        lockExclusive(txn, key);
+                        entryLockExclusive(txn, key);
                     }
                 } else {
                     lowCursor.link(txn);
@@ -551,7 +553,7 @@ final class DequeIndex extends Latch implements Index {
 
             cursor.store(value);
         } finally {
-            releaseExclusive();
+            indexUnlock(locker);
         }
     }
 
@@ -587,7 +589,41 @@ final class DequeIndex extends Latch implements Index {
         return Utils.compareKeys(key, low);
     }
 
-    private void lockExclusive(Transaction txn, byte[] key) throws LockFailureException {
+    private Locker indexLockExclusive(Transaction txn) throws LockFailureException {
+        // Use a full-blown Lock when making updates, enabling deadlock detection.
+
+        Locker locker;
+        acquireExclusive();
+        try {
+            long timeoutNanos;
+            if (txn == null) {
+                LockManager manager = mSource.mLockManager;
+                locker = manager.localLocker();
+                timeoutNanos = manager.mDefaultTimeoutNanos;
+            } else {
+                locker = txn;
+                timeoutNanos = txn.mLockTimeoutNanos;
+            }
+            mIndexLock.tryLockExclusive(this, locker, timeoutNanos);
+        } finally {
+            releaseExclusive();
+        }
+
+        return locker;
+    }
+
+    private void indexUnlock(Locker locker) {
+        acquireExclusive();
+        try {
+            // Second parameter is an entry latch for ghost deletion, but there are no ghosts
+            // associated with this lock. Just pass in something, but it won't be used.
+            mIndexLock.unlock(locker, this);
+        } finally {
+            releaseExclusive();
+        }
+    }
+
+    private void entryLockExclusive(Transaction txn, byte[] key) throws LockFailureException {
         Tree tree = mSource;
         int hash = LockManager.hash(tree.mId, key);
         if (txn == null) {

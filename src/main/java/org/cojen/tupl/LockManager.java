@@ -31,7 +31,7 @@ final class LockManager {
     static final int TYPE_SHARED = 1, TYPE_UPGRADABLE = 0x80000000, TYPE_EXCLUSIVE = ~0;
 
     final LockUpgradeRule mDefaultLockUpgradeRule;
-    private final long mDefaultTimeoutNanos;
+    final long mDefaultTimeoutNanos;
 
     private final LockHT[] mHashTables;
     private final int mHashTableShift;
