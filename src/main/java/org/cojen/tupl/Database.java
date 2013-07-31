@@ -112,6 +112,7 @@ public final class Database implements CauseCloseable {
 
     private static final String INFO_FILE_SUFFIX = ".info";
     private static final String LOCK_FILE_SUFFIX = ".lock";
+    static final String REDO_FILE_SUFFIX = ".redo.";
 
     private static int nodeCountFromBytes(long bytes, int pageSize) {
         if (bytes <= 0) {
@@ -639,7 +640,7 @@ public final class Database implements CauseCloseable {
 
     private void deleteRedoLogFiles() throws IOException {
         if (mBaseFile != null) {
-            deleteNumberedFiles(mBaseFile, ".redo.");
+            deleteNumberedFiles(mBaseFile, REDO_FILE_SUFFIX);
         }
     }
 
@@ -981,7 +982,7 @@ public final class Database implements CauseCloseable {
             }
 
             // Delete old redo log files.
-            deleteNumberedFiles(config.mBaseFile, ".redo.");
+            deleteNumberedFiles(config.mBaseFile, REDO_FILE_SUFFIX);
 
             restored = DurablePageDb.restoreFromSnapshot(dataPageArray, config.mCrypto, in);
         } else {
@@ -998,7 +999,7 @@ public final class Database implements CauseCloseable {
             EnumSet<OpenOption> options = config.createOpenOptions();
 
             // Delete old redo log files.
-            deleteNumberedFiles(config.mBaseFile, ".redo.");
+            deleteNumberedFiles(config.mBaseFile, REDO_FILE_SUFFIX);
 
             restored = DurablePageDb.restoreFromSnapshot
                 (config.mPageSize, dataFiles, options, config.mCrypto, in);
