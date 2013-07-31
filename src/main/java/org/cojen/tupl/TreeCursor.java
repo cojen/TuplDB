@@ -2350,17 +2350,13 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     /**
-     * Blindy insert an entry at the current position as if it was the lowest or highest entry
+     * Blindly insert an entry at the current position as if it was the lowest or highest entry
      * overall. If not at the extremity, index becomes corrupt.
      *
      * @param mode 0 for lowest, 2 for highest
      */
     void insertExtremity(byte[] key, byte[] value, int mode) throws IOException {
-        if (mKey == null) {
-            find(key);
-            store(value);
-            return;
-        }
+        key = key.clone();
 
         try {
             final Transaction txn = mTxn;

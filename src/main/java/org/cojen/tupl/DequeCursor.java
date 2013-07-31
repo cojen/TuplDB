@@ -19,22 +19,25 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 /**
- * Returned by {@link UnmodifiableView}.
+ * Returned by {@link DequeIndex}.
  *
  * @author Brian S O'Neill
  */
-final class UnmodifiableCursor extends WrappedCursor<Cursor> {
-    UnmodifiableCursor(Cursor source) {
+final class DequeCursor extends WrappedCursor<TreeCursor> {
+    private final DequeIndex mIndex;
+
+    DequeCursor(DequeIndex index, TreeCursor source) {
         super(source);
+        mIndex = index;
     }
 
     @Override
     public void store(byte[] value) throws IOException {
-        throw new UnmodifiableViewException();
+        mIndex.storeInto(mSource, value);
     }
 
     @Override
     public Cursor copy() {
-        return new UnmodifiableCursor(mSource.copy());
+        return new DequeCursor(mIndex, mSource.copy());
     }
 }
