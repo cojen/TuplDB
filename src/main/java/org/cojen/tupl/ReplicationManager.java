@@ -65,20 +65,6 @@ public interface ReplicationManager extends Closeable {
     long writePosition();
 
     /**
-     * Indicates that all data prior to the given log position has been durably
-     * checkpointed. The log can discard the old data. This method is never invoked
-     * concurrently, and the implementation should return quickly.
-     *
-     * @param position log position immediately after the checkpoint position
-     */
-    //void checkpointed(long position) throws IOException;
-
-    /**
-     * Instruct that all data starting at the given position must be deleted.
-     */
-    //void truncate(long position) throws IOException;
-
-    /**
      * Blocks at most once, reading as much replication input as possible. Returns -1 if local
      * instance has become the leader.
      *
@@ -129,6 +115,20 @@ public interface ReplicationManager extends Closeable {
      * position, and then blocks until confirmed.
      */
     void syncConfirm(long position) throws IOException;
+
+    /**
+     * Indicates that all data prior to the given log position has been durably
+     * checkpointed. The log can discard the old data. This method is never invoked
+     * concurrently, and the implementation should return quickly.
+     *
+     * @param position log position immediately after the checkpoint position
+     */
+    void checkpointed(long position) throws IOException;
+
+    /**
+     * Instruct that all data starting at the given position must be deleted.
+     */
+    //void truncate(long position) throws IOException;
 
     /**
      * Notification to replica when an entry is stored into an index. All notifications are
