@@ -26,11 +26,12 @@ import static org.cojen.tupl.LockResult.*;
  * @author Brian S O'Neill
  */
 final class LockManager {
-    // Parameter passed to LockHT.tryLock.
+    // Parameter passed to LockHT.tryLock. For new Lock instances, value will be stored as-is
+    // into Lock.mLockCount field, which is why the numbers seem a bit weird.
     static final int TYPE_SHARED = 1, TYPE_UPGRADABLE = 0x80000000, TYPE_EXCLUSIVE = ~0;
 
     final LockUpgradeRule mDefaultLockUpgradeRule;
-    private final long mDefaultTimeoutNanos;
+    final long mDefaultTimeoutNanos;
 
     private final LockHT[] mHashTables;
     private final int mHashTableShift;
@@ -162,7 +163,7 @@ final class LockManager {
         if (result.isHeld()) {
             return locker;
         }
-        throw locker.failed(result, indexId, key, mDefaultTimeoutNanos);
+        throw locker.failed(result, mDefaultTimeoutNanos);
     }
 
     final Locker lockExclusiveLocal(long indexId, byte[] key, int hash)
@@ -174,7 +175,7 @@ final class LockManager {
         if (result.isHeld()) {
             return locker;
         }
-        throw locker.failed(result, indexId, key, mDefaultTimeoutNanos);
+        throw locker.failed(result, mDefaultTimeoutNanos);
     }
 
     final Locker localLocker() {

@@ -38,7 +38,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
     private static final int LIMIT_LE = 1, LIMIT_LT = 2, LIMIT_GE = -1, LIMIT_GT = -2;
 
     final Tree mTree;
-    private Transaction mTxn;
+    Transaction mTxn;
 
     // Top stack frame for cursor, always a leaf.
     private TreeCursorFrame mLeaf;
@@ -55,6 +55,10 @@ final class TreeCursor implements CauseCloseable, Cursor {
         tree.check(txn);
         mTree = tree;
         mTxn = txn;
+    }
+
+    TreeCursor(Tree tree) {
+        mTree = tree;
     }
 
     @Override
@@ -2324,17 +2328,13 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     /**
-     * Blindy insert an entry at the current position as if it was the lowest or highest entry
+     * Blindly insert an entry at the current position as if it was the lowest or highest entry
      * overall. If not at the extremity, index becomes corrupt.
      *
      * @param mode 0 for lowest, 2 for highest
      */
     void insertExtremity(byte[] key, byte[] value, int mode) throws IOException {
-        if (mKey == null) {
-            find(key);
-            store(value);
-            return;
-        }
+        key = key.clone();
 
         try {
             final Transaction txn = mTxn;

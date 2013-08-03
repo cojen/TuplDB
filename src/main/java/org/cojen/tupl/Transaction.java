@@ -74,7 +74,7 @@ public final class Transaction extends Locker {
     final DurabilityMode mDurabilityMode;
 
     private LockMode mLockMode;
-    private long mLockTimeoutNanos;
+    long mLockTimeoutNanos;
     private int mHasState;
     private long mSavepoint;
     private long mTxnId;
