@@ -169,7 +169,7 @@ final class ReplRedoWriter extends RedoWriter {
 
     @Override
     void checkpointFinished() throws IOException {
-        // Nothing to do.
+        mManager.checkpointed(mCheckpointPos);
     }
 
     @Override

@@ -655,7 +655,7 @@ class Utils extends org.cojen.tupl.io.Utils {
     }
 
     static String toHex(byte[] key) {
-        return toHex(key, 0, key.length);
+        return key == null ? "null" : toHex(key, 0, key.length);
     }
 
     static String toHex(byte[] key, int offset, int length) {
@@ -735,17 +735,30 @@ class Utils extends org.cojen.tupl.io.Utils {
      * "base<pattern><number>". For example, mybase.redo.123
      */
     static void deleteNumberedFiles(File baseFile, String pattern) throws IOException {
+        deleteNumberedFiles(baseFile, pattern, 0);
+    }
+
+    /**
+     * Deletes all files in the base file's directory which are named like
+     * "base<pattern><number>". For example, mybase.redo.123
+     *
+     * @param min delete numbers greater than or equal to this
+     */
+    static void deleteNumberedFiles(File baseFile, String pattern, long min) throws IOException {
         String prefix = baseFile.getName() + pattern;
         for (File file : baseFile.getParentFile().listFiles()) {
             String name = file.getName();
             if (name.startsWith(prefix)) {
                 String suffix = name.substring(prefix.length());
+                long num;
                 try {
-                    Long.parseLong(suffix);
+                    num = Long.parseLong(suffix);
                 } catch (NumberFormatException e) {
                     continue;
                 }
-                file.delete();
+                if (num >= min) {
+                    file.delete();
+                }
             }
         }
     }

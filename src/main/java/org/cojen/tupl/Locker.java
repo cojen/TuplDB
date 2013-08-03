@@ -119,7 +119,7 @@ class Locker {
         if (result.isHeld()) {
             return result;
         }
-        throw failed(result, indexId, key, nanosTimeout);
+        throw failed(result, nanosTimeout);
     }
 
     /**
@@ -204,7 +204,7 @@ class Locker {
         if (result.isHeld()) {
             return result;
         }
-        throw failed(result, indexId, key, nanosTimeout);
+        throw failed(result, nanosTimeout);
     }
 
     /**
@@ -287,7 +287,7 @@ class Locker {
         if (result.isHeld()) {
             return result;
         }
-        throw failed(result, indexId, key, nanosTimeout);
+        throw failed(result, nanosTimeout);
     }
 
     /**
@@ -300,7 +300,7 @@ class Locker {
         if (result.isHeld()) {
             return result;
         }
-        throw failed(result, lock.mIndexId, lock.mKey, nanosTimeout);
+        throw failed(result, nanosTimeout);
     }
 
     /**
@@ -335,10 +335,7 @@ class Locker {
     }
 
     @SuppressWarnings("incomplete-switch")
-    LockFailureException failed(LockResult result,
-                                long indexId, byte[] key, long nanosTimeout)
-        throws DeadlockException
-    {
+    LockFailureException failed(LockResult result, long nanosTimeout) throws DeadlockException {
         switch (result) {
         case TIMED_OUT_LOCK:
             detectDeadlock(nanosTimeout);
