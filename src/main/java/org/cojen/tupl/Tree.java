@@ -610,18 +610,24 @@ final class Tree implements Index {
         return mLockManager.lockExclusiveLocal(mId, key, hash);
     }
 
-    void redoStore(byte[] key, byte[] value) throws IOException {
+    /**
+     * @return non-zero position if caller should call txnCommitSync
+     */
+    long redoStore(byte[] key, byte[] value) throws IOException {
         RedoWriter redo = mDatabase.mRedoWriter;
-        if (redo != null) {
-            redo.store(mId, key, value, mDatabase.mDurabilityMode);
-        }
+        return redo == null ? 0 : redo.store(mId, key, value, mDatabase.mDurabilityMode);
     }
 
-    void redoStoreNoLock(byte[] key, byte[] value) throws IOException {
+    /**
+     * @return non-zero position if caller should call txnCommitSync
+     */
+    long redoStoreNoLock(byte[] key, byte[] value) throws IOException {
         RedoWriter redo = mDatabase.mRedoWriter;
-        if (redo != null) {
-            redo.storeNoLock(mId, key, value, mDatabase.mDurabilityMode);
-        }
+        return redo == null ? 0 : redo.storeNoLock(mId, key, value, mDatabase.mDurabilityMode);
+    }
+
+    void txnCommitSync(long commitPos) throws IOException {
+        mDatabase.mRedoWriter.txnCommitSync(commitPos);
     }
 
     /**
