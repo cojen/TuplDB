@@ -298,7 +298,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
     abstract void checkpointPrepare() throws IOException;
 
     /**
-     * With excluisve commit lock held, switch to the previously prepared state, also capturing
+     * With exclusive commit lock held, switch to the previously prepared state, also capturing
      * the checkpoint position and transaction id.
      */
     abstract void checkpointSwitch() throws IOException;
