@@ -1786,17 +1786,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
             final Transaction txn = mTxn;
             final Locker locker = mTree.lockExclusive(txn, key, keyHash());
             try {
-                TreeCursorFrame leaf = leafExclusive(); 
-                final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
-                sharedCommitLock.lock();
-                try {
-                    Node node = store(txn, leaf, value);
-                    if (node != null) {
-                        node.releaseExclusive();
-                    }
-                } finally {
-                    sharedCommitLock.unlock();
-                }
+                store(txn, leafExclusive(), value, false);
             } finally {
                 if (locker != null) {
                     locker.unlock();
@@ -1874,22 +1864,8 @@ final class TreeCursor implements CauseCloseable, Cursor {
                 // Find with no lock because it has already been acquired.
                 find(null, key, hash, VARIANT_NO_LOCK);
                 byte[] oldValue = mValue;
-
-                final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
-                sharedCommitLock.lock();
-                try {
-                    Node node = store(txn, mLeaf, value);
-                    sharedCommitLock.unlock();
-                    if (node == null) {
-                        reset();
-                    } else {
-                        resetLatched(node);
-                    }
-                    return oldValue;
-                } catch (IOException e) {
-                    sharedCommitLock.unlock();
-                    throw e;
-                }
+                store(txn, mLeaf, value, true);
+                return oldValue;
             } finally {
                 if (locker != null) {
                     locker.unlock();
@@ -2001,21 +1977,8 @@ final class TreeCursor implements CauseCloseable, Cursor {
             return false;
         }
 
-        final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
-        sharedCommitLock.lock();
-        try {
-            Node node = store(txn, mLeaf, newValue);
-            sharedCommitLock.unlock();
-            if (node == null) {
-                reset();
-            } else {
-                resetLatched(node);
-            }
-            return true;
-        } catch (IOException e) {
-            sharedCommitLock.unlock();
-            throw e;
-        }
+        store(txn, mLeaf, newValue, true);
+        return true;
     }
 
     /**
@@ -2037,20 +2000,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
             }
 
             if (mValue == null) {
-                final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
-                sharedCommitLock.lock();
-                try {
-                    Node node = store(Transaction.BOGUS, leaf, null);
-                    sharedCommitLock.unlock();
-                    if (node == null) {
-                        reset();
-                    } else {
-                        resetLatched(node);
-                    }
-                } catch (IOException e) {
-                    sharedCommitLock.unlock();
-                    throw e;
-                }
+                store(Transaction.BOGUS, leaf, null, true);
             } else {
                 resetLatched(leaf.mNode);
             }
@@ -2062,152 +2012,173 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     /**
-     * Caller must hold shared commit lock, to prevent checkpoints from
-     * observing in-progress splits.
+     * Shared commit lock is acquired, to prevent checkpoints from observing in-progress
+     * splits.
      *
-     * @param leaf leaf frame, latched exclusively, which is released by this
-     * method if an exception is thrown
-     * @return latch to release, or null if already released
+     * @param leaf leaf frame, latched exclusively, which is always released by this method
+     * @param reset true to reset cursor when finished
      */
-    private Node store(Transaction txn, final TreeCursorFrame leaf, byte[] value)
+    private void store(final Transaction txn, final TreeCursorFrame leaf,
+                       final byte[] value, final boolean reset)
         throws IOException
     {
         byte[] key = mKey;
+        Node node;
+        long commitPos = 0;
 
-        if (value == null) {
+        if (value == null) doDelete: {
             // Delete entry...
 
             if (leaf.mNodePos < 0) {
                 // Entry doesn't exist, so nothing to do.
-                mValue = null;
-                return leaf.mNode;
+                node = leaf.mNode;
+                break doDelete;
             }
 
-            // Releases latch if an exception is thrown.
-            Node node = notSplitDirty(leaf);
-            final int pos = leaf.mNodePos;
+            final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
+            sharedCommitLock.lock();
+            withCommitLock: try {
+                // Releases latch if an exception is thrown.
+                node = notSplitDirty(leaf);
+                final int pos = leaf.mNodePos;
 
+                try {
+                    if (txn == null) {
+                        commitPos = mTree.redoStore(key, null);
+                        node.deleteLeafEntry(mTree, pos);
+                    } else if (txn.lockMode() != LockMode.UNSAFE) {
+                        node.txnDeleteLeafEntry(txn, mTree, key, keyHash(), pos);
+                        // Above operation leaves a ghost, so no cursors to fix.
+                        break withCommitLock;
+                    } else {
+                        if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
+                            commitPos = mTree.redoStoreNoLock(key, null);
+                        }
+                        node.deleteLeafEntry(mTree, pos);
+                    }
+                } catch (Throwable e) {
+                    node.releaseExclusive();
+                    throw rethrow(e);
+                }
+
+                int newPos = ~pos;
+                leaf.mNodePos = newPos;
+                leaf.mNotFoundKey = key;
+
+                // Fix all cursors bound to the node.
+                TreeCursorFrame frame = node.mLastCursorFrame;
+                do {
+                    if (frame == leaf) {
+                        // Don't need to fix self.
+                        continue;
+                    }
+
+                    int framePos = frame.mNodePos;
+
+                    if (framePos == pos) {
+                        frame.mNodePos = newPos;
+                        frame.mNotFoundKey = key;
+                    } else if (framePos > pos) {
+                        frame.mNodePos = framePos - 2;
+                    } else if (framePos < newPos) {
+                        // Position is a complement, so add instead of subtract.
+                        frame.mNodePos = framePos + 2;
+                    }
+                } while ((frame = frame.mPrevCousin) != null);
+
+                if (node.shouldLeafMerge()) {
+                    mergeLeaf(leaf, node);
+                    // Always released by mergeLeaf.
+                    node = null;
+                }
+            } finally {
+                sharedCommitLock.unlock();
+            }
+        } else {
+            final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
+            sharedCommitLock.lock();
             try {
-                if (txn == null) {
-                    mTree.redoStore(key, null);
-                    node.deleteLeafEntry(mTree, pos);
-                } else if (txn.lockMode() != LockMode.UNSAFE) {
-                    node.txnDeleteLeafEntry(txn, mTree, key, keyHash(), pos);
-                    // Above operation leaves a ghost, so no cursors to fix.
-                    mValue = null;
-                    return node;
+                // Update and insert always dirty the node. Releases latch if an exception is
+                // thrown.
+                node = notSplitDirty(leaf);
+                final int pos = leaf.mNodePos;
+
+                if (pos >= 0) {
+                    // Update entry...
+
+                    try {
+                        if (txn == null) {
+                            commitPos = mTree.redoStore(key, value);
+                        } else if (txn.lockMode() != LockMode.UNSAFE) {
+                            node.txnPreUpdateLeafEntry(txn, mTree, key, pos);
+                            if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
+                                txn.redoStore(mTree.mId, key, value);
+                            }
+                        } else if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
+                            commitPos = mTree.redoStoreNoLock(key, value);
+                        }
+
+                        node.updateLeafValue(mTree, pos, 0, value);
+                    } catch (Throwable e) {
+                        node.releaseExclusive();
+                        throw rethrow(e);
+                    }
+
+                    if (node.shouldLeafMerge()) {
+                        mergeLeaf(leaf, node);
+                        // Always released by mergeLeaf.
+                        node = null;
+                    } else {
+                        if (node.mSplit != null) {
+                            // Releases latch if an exception is thrown.
+                            node = finishSplit(leaf, node);
+                        }
+                    }
                 } else {
-                    if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
-                        mTree.redoStoreNoLock(key, null);
+                    // Insert entry...
+
+                    try {
+                        if (txn == null) {
+                            commitPos = mTree.redoStore(key, value);
+                        } else if (txn.lockMode() != LockMode.UNSAFE) {
+                            txn.undoDelete(mTree.mId, key);
+                            if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
+                                txn.redoStore(mTree.mId, key, value);
+                            }
+                        } else if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
+                            commitPos = mTree.redoStoreNoLock(key, value);
+                        }
+
+                        node.insertLeafEntry(mTree, ~pos, key, value);
+                    } catch (Throwable e) {
+                        node.releaseExclusive();
+                        throw rethrow(e);
                     }
-                    node.deleteLeafEntry(mTree, pos);
-                }
-            } catch (Throwable e) {
-                node.releaseExclusive();
-                throw rethrow(e);
-            }
 
-            int newPos = ~pos;
-            leaf.mNodePos = newPos;
-            leaf.mNotFoundKey = key;
-
-            // Fix all cursors bound to the node.
-            TreeCursorFrame frame = node.mLastCursorFrame;
-            do {
-                if (frame == leaf) {
-                    // Don't need to fix self.
-                    continue;
-                }
-
-                int framePos = frame.mNodePos;
-
-                if (framePos == pos) {
-                    frame.mNodePos = newPos;
-                    frame.mNotFoundKey = key;
-                } else if (framePos > pos) {
-                    frame.mNodePos = framePos - 2;
-                } else if (framePos < newPos) {
-                    // Position is a complement, so add instead of subtract.
-                    frame.mNodePos = framePos + 2;
-                }
-            } while ((frame = frame.mPrevCousin) != null);
-
-            if (node.shouldLeafMerge()) {
-                mergeLeaf(leaf, node);
-                // Always released by mergeLeaf.
-                node = null;
-            }
-
-            mValue = null;
-            return node;
-        }
-
-        // Update and insert always dirty the node. Releases latch if an exception is thrown.
-        Node node = notSplitDirty(leaf);
-        final int pos = leaf.mNodePos;
-
-        if (pos >= 0) {
-            // Update entry...
-
-            try {
-                if (txn == null) {
-                    mTree.redoStore(key, value);
-                } else if (txn.lockMode() != LockMode.UNSAFE) {
-                    node.txnPreUpdateLeafEntry(txn, mTree, key, pos);
-                    if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
-                        txn.redoStore(mTree.mId, key, value);
-                    }
-                } else if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
-                    mTree.redoStoreNoLock(key, value);
-                }
-
-                node.updateLeafValue(mTree, pos, 0, value);
-            } catch (Throwable e) {
-                node.releaseExclusive();
-                throw rethrow(e);
-            }
-
-            if (node.shouldLeafMerge()) {
-                mergeLeaf(leaf, node);
-                // Always released by mergeLeaf.
-                node = null;
-            } else {
-                if (node.mSplit != null) {
                     // Releases latch if an exception is thrown.
-                    node = finishSplit(leaf, node);
+                    node = postInsert(leaf, node, key);
                 }
+            } finally {
+                sharedCommitLock.unlock();
             }
-
-            mValue = value;
-            return node;
         }
 
-        // Insert entry...
-
-        try {
-            if (txn == null) {
-                mTree.redoStore(key, value);
-            } else if (txn.lockMode() != LockMode.UNSAFE) {
-                txn.undoDelete(mTree.mId, key);
-                if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
-                    txn.redoStore(mTree.mId, key, value);
-                }
-            } else if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
-                mTree.redoStoreNoLock(key, value);
+        if (reset) {
+            if (node == null) {
+                reset();
+            } else {
+                resetLatched(node);
             }
-
-            node.insertLeafEntry(mTree, ~pos, key, value);
-        } catch (Throwable e) {
+        } else if (node != null) {
             node.releaseExclusive();
-            throw rethrow(e);
         }
-
-        // Releases latch if an exception is thrown.
-        node = postInsert(leaf, node, key);
 
         mValue = value;
 
-        return node;
+        if (commitPos != 0) {
+            // Wait for commit sync without holding commit lock and node latch.
+            mTree.txnCommitSync(commitPos);
+        }
     }
 
     /**
@@ -2341,6 +2312,9 @@ final class TreeCursor implements CauseCloseable, Cursor {
             final Locker locker = mTree.lockExclusive(txn, key, keyHash());
             try {
                 TreeCursorFrame leaf = leafExclusive(); 
+
+                long commitPos = 0;
+
                 final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
                 sharedCommitLock.lock();
                 try {
@@ -2356,14 +2330,14 @@ final class TreeCursor implements CauseCloseable, Cursor {
 
                     try {
                         if (txn == null) {
-                            mTree.redoStore(key, value);
+                            commitPos = mTree.redoStore(key, value);
                         } else if (txn.lockMode() != LockMode.UNSAFE) {
                             txn.undoDelete(mTree.mId, key);
                             if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
                                 txn.redoStore(mTree.mId, key, value);
                             }
                         } else if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
-                            mTree.redoStoreNoLock(key, value);
+                            commitPos = mTree.redoStoreNoLock(key, value);
                         }
 
                         node.insertLeafEntry(mTree, pos, key, value);
@@ -2374,11 +2348,16 @@ final class TreeCursor implements CauseCloseable, Cursor {
 
                     // Releases latch if an exception is thrown.
                     postInsert(leaf, node, key).releaseExclusive();
-
-                    mKey = key;
-                    mValue = value;
                 } finally {
                     sharedCommitLock.unlock();
+                }
+
+                mKey = key;
+                mValue = value;
+
+                if (commitPos != 0) {
+                    // Wait for commit sync without holding commit lock.
+                    mTree.txnCommitSync(commitPos);
                 }
             } finally {
                 if (locker != null) {

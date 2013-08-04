@@ -83,6 +83,54 @@ class Utils extends org.cojen.tupl.io.Utils {
         return v + (v << 31);
     }
 
+    static TimeUnit inferUnit(TimeUnit unit, long value) {
+        infer: {
+            if (value == 0) break infer;
+            if ((value - (value /= 1000) * 1000) != 0) break infer;
+            unit = TimeUnit.MICROSECONDS;
+            if ((value - (value /= 1000) * 1000) != 0) break infer;
+            unit = TimeUnit.MILLISECONDS;
+            if ((value - (value /= 1000) * 1000) != 0) break infer;
+            unit = TimeUnit.SECONDS;
+            if ((value - (value /= 60) * 60) != 0) break infer;
+            unit = TimeUnit.MINUTES;
+            if ((value - (value /= 60) * 60) != 0) break infer;
+            unit = TimeUnit.HOURS;
+            if ((value - (value / 24) * 24) != 0) break infer;
+            unit = TimeUnit.DAYS;
+        }
+
+        return unit;
+    }
+
+    static String timeoutMessage(long nanosTimeout, DatabaseException ex) {
+        if (nanosTimeout == 0) {
+            return "Never waited";
+        } else if (nanosTimeout < 0) {
+            return "Infinite wait";
+        } else {
+            StringBuilder b = new StringBuilder("Waited ");
+            appendTimeout(b, ex.getTimeout(), ex.getUnit());
+            return b.toString();
+        }
+    }
+
+    static void appendTimeout(StringBuilder b, long timeout, TimeUnit unit) {
+        if (timeout == 0) {
+            b.append('0');
+        } else if (timeout < 0) {
+            b.append("infinite");
+        } else {
+            b.append(timeout);
+            b.append(' ');
+            String unitStr = unit.toString().toLowerCase();
+            if (timeout == 1) {
+                unitStr = unitStr.substring(0, unitStr.length() - 1);
+            }
+            b.append(unitStr);
+        }
+    }
+
     /**
      * Performs multiple array copies, correctly ordered to prevent clobbering. The copies
      * must not overlap, and start1 must be less than start2.

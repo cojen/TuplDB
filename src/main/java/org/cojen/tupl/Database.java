@@ -1473,6 +1473,7 @@ public final class Database implements CauseCloseable {
         RedoWriter redo = mRedoWriter;
 
         byte[] idKey, nameKey;
+        long commitPos;
 
         final Lock commitLock = sharedCommitLock();
         commitLock.lock();
@@ -1518,9 +1519,8 @@ public final class Database implements CauseCloseable {
                 mRegistryKeyMap.remove(txn, nameKey, tree.mIdBytes);
                 mRegistry.delete(txn, tree.mIdBytes);
 
-                if (redo != null && !redo.dropIndex(tree.mId, mDurabilityMode.alwaysRedo())) {
-                    redo = null;
-                }
+                commitPos = redo == null ? 0
+                    : redo.dropIndex(tree.mId, mDurabilityMode.alwaysRedo());
 
                 txn.commit();
             } catch (Throwable e) {
@@ -1532,9 +1532,9 @@ public final class Database implements CauseCloseable {
             commitLock.unlock();
         }
 
-        if (redo != null) {
+        if (redo != null && commitPos != 0) {
             // Don't hold commit lock during sync.
-            redo.txnCommitSync();
+            redo.txnCommitSync(commitPos);
         }
     }
 
