@@ -252,8 +252,9 @@ public final class Transaction extends Locker {
                     int hasState = mHasState;
                     if ((hasState & HAS_COMMIT) != 0) {
                         RedoWriter redo = mDatabase.mRedoWriter;
-                        if (redo.txnCommitFinal(mTxnId, mDurabilityMode)) {
-                            redo.txnCommitSync();
+                        long commitPos = redo.txnCommitFinal(mTxnId, mDurabilityMode);
+                        if (commitPos != 0) {
+                            redo.txnCommitSync(commitPos);
                         }
                         mHasState = hasState & ~(HAS_SCOPE | HAS_COMMIT);
                     }
@@ -266,10 +267,11 @@ public final class Transaction extends Locker {
                     // transactions.
                     final Lock sharedCommitLock = mDatabase.sharedCommitLock();
                     sharedCommitLock.lock();
-                    boolean sync;
+                    long commitPos;
                     try {
-                        if (sync = ((mHasState & HAS_COMMIT) != 0)) {
-                            sync = mDatabase.mRedoWriter.txnCommitFinal(mTxnId, mDurabilityMode);
+                        if ((commitPos = (mHasState & HAS_COMMIT)) != 0) {
+                            commitPos = mDatabase.mRedoWriter
+                                .txnCommitFinal(mTxnId, mDurabilityMode);
                             mHasState &= ~(HAS_SCOPE | HAS_COMMIT);
                         }
                         // Indicates that undo log should be truncated instead
@@ -280,10 +282,10 @@ public final class Transaction extends Locker {
                         sharedCommitLock.unlock();
                     }
 
-                    if (sync) {
+                    if (commitPos != 0) {
                         // Durably sync the redo log after releasing the commit
                         // lock, preventing additional blocking.
-                        mDatabase.mRedoWriter.txnCommitSync();
+                        mDatabase.mRedoWriter.txnCommitSync(commitPos);
                     }
 
                     // Calling this deletes any ghosts too.
@@ -488,8 +490,8 @@ public final class Transaction extends Locker {
         b.append("lockMode").append(": ").append(mLockMode);
         b.append(", ");
         b.append("lockTimeout").append(": ");
-        TimeUnit unit = LockTimeoutException.inferUnit(TimeUnit.NANOSECONDS, mLockTimeoutNanos);
-        LockTimeoutException.appendTimeout(b, lockTimeout(unit), unit);
+        TimeUnit unit = Utils.inferUnit(TimeUnit.NANOSECONDS, mLockTimeoutNanos);
+        Utils.appendTimeout(b, lockTimeout(unit), unit);
 
         Object borked = mBorked;
         if (borked != null) {
