@@ -1195,7 +1195,7 @@ public final class Database implements CauseCloseable {
      * to complete. Suspend may be invoked multiple times, but each must be paired with a
      * {@link #resumeCheckpoints resume} call to enable automatic checkpoints again.
      *
-     * @throws IllegalStateException if suspended more than 2^31 times
+     * @throws IllegalStateException if suspended more than 2<sup>31</sup> times
      */
     public void suspendCheckpoints() {
         Checkpointer c = mCheckpointer;
