@@ -796,10 +796,9 @@ final class Node extends Latch {
      * method when an exception is thrown.
      */
     void forceEvictTree(PageDb db) throws IOException {
-        // Verify that node isn't referenced by active operations.
-        if (mLastCursorFrame != null) {
-            throw new AssertionError();
-        }
+        // Cursor frames might still exist, if cursors are not being reset properly. Since tree
+        // is not referenced, the original cursors are gone. The frames are just garbage.
+        mLastCursorFrame = null;
 
         Node[] childNodes = mChildNodes;
         if (childNodes != null) for (int i=0; i<childNodes.length; i++) {
