@@ -97,25 +97,21 @@ public interface ReplicationManager extends Closeable {
     long writeCommit(byte[] b, int off, int len) throws IOException;
 
     /**
-     * Blocks until all data up to the given log position is confirmed. Returns false if local
-     * instance if not the leader.
+     * Blocks until all data up to the given log position is confirmed.
      *
-     * @return true if confirmed; false if not leader
      * @throws ConfirmationTimeoutException if position not confirmed before the default
      * timeout elapsed
      */
-    boolean confirm(long position) throws IOException;
+    void confirm(long position) throws IOException;
 
     /**
-     * Blocks until all data up to the given log position is confirmed. Returns false if local
-     * instance if not the leader.
+     * Blocks until all data up to the given log position is confirmed.
      *
      * @param timeoutNanos pass -1 for infinite
-     * @return true if confirmed; false if not leader
      * @throws ConfirmationTimeoutException if position not confirmed before the given
      * timeout elapsed
      */
-    boolean confirm(long position, long timeoutNanos) throws IOException;
+    void confirm(long position, long timeoutNanos) throws IOException;
 
     /**
      * Durably flushes all local data to non-volatile storage, up to the current position.
@@ -126,22 +122,20 @@ public interface ReplicationManager extends Closeable {
      * Durably flushes all local data to non-volatile storage, up to the given
      * position, and then blocks until confirmed.
      *
-     * @return true if confirmed; false if not leader
      * @throws ConfirmationTimeoutException if position not confirmed before the default
      * timeout elapsed
      */
-    boolean syncConfirm(long position) throws IOException;
+    void syncConfirm(long position) throws IOException;
 
     /**
      * Durably flushes all local data to non-volatile storage, up to the given
      * position, and then blocks until confirmed.
      *
      * @param timeoutNanos pass -1 for infinite
-     * @return true if confirmed; false if not leader
      * @throws ConfirmationTimeoutException if position not confirmed before the given
      * timeout elapsed
      */
-    boolean syncConfirm(long position, long timeoutNanos) throws IOException;
+    void syncConfirm(long position, long timeoutNanos) throws IOException;
 
     /**
      * Indicates that all data prior to the given log position has been durably
