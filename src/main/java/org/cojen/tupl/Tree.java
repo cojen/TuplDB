@@ -170,12 +170,8 @@ final class Tree implements Index {
             throw new NullPointerException("Key is null");
         }
         TreeCursor cursor = new TreeCursor(this, txn);
-        try {
-            cursor.autoload(false);
-            cursor.findAndStore(key, value);
-        } catch (Throwable e) {
-            throw closeOnFailure(cursor, e);
-        }
+        cursor.autoload(false);
+        cursor.findAndStore(key, value);
     }
 
     @Override
@@ -183,12 +179,7 @@ final class Tree implements Index {
         if (key == null) {
             throw new NullPointerException("Key is null");
         }
-        TreeCursor cursor = new TreeCursor(this, txn);
-        try {
-            return cursor.findAndStore(key, value);
-        } catch (Throwable e) {
-            throw closeOnFailure(cursor, e);
-        }
+        return new TreeCursor(this, txn).findAndStore(key, value);
     }
 
     @Override
@@ -197,12 +188,8 @@ final class Tree implements Index {
             throw new NullPointerException("Key is null");
         }
         TreeCursor cursor = new TreeCursor(this, txn);
-        try {
-            cursor.autoload(false);
-            return cursor.findAndModify(key, TreeCursor.MODIFY_INSERT, value);
-        } catch (Throwable e) {
-            throw closeOnFailure(cursor, e);
-        }
+        cursor.autoload(false);
+        return cursor.findAndModify(key, TreeCursor.MODIFY_INSERT, value);
     }
 
     @Override
@@ -211,12 +198,8 @@ final class Tree implements Index {
             throw new NullPointerException("Key is null");
         }
         TreeCursor cursor = new TreeCursor(this, txn);
-        try {
-            cursor.autoload(false);
-            return cursor.findAndModify(key, TreeCursor.MODIFY_REPLACE, value);
-        } catch (Throwable e) {
-            throw closeOnFailure(cursor, e);
-        }
+        cursor.autoload(false);
+        return cursor.findAndModify(key, TreeCursor.MODIFY_REPLACE, value);
     }
 
     @Override
@@ -226,12 +209,7 @@ final class Tree implements Index {
         if (key == null) {
             throw new NullPointerException("Key is null");
         }
-        TreeCursor cursor = new TreeCursor(this, txn);
-        try {
-            return cursor.findAndModify(key, oldValue, newValue);
-        } catch (Throwable e) {
-            throw closeOnFailure(cursor, e);
-        }
+        return new TreeCursor(this, txn).findAndModify(key, oldValue, newValue);
     }
 
     @Override
