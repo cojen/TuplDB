@@ -1195,7 +1195,7 @@ public final class Database implements CauseCloseable {
      * to complete. Suspend may be invoked multiple times, but each must be paired with a
      * {@link #resumeCheckpoints resume} call to enable automatic checkpoints again.
      *
-     * @throws IllegalStateException if suspended more than 2^31 times
+     * @throws IllegalStateException if suspended more than 2<sup>31</sup> times
      */
     public void suspendCheckpoints() {
         Checkpointer c = mCheckpointer;
@@ -1555,6 +1555,7 @@ public final class Database implements CauseCloseable {
         RedoWriter redo = mRedoWriter;
 
         byte[] idKey, nameKey;
+        long commitPos;
 
         final Lock commitLock = sharedCommitLock();
         commitLock.lock();
@@ -1600,9 +1601,8 @@ public final class Database implements CauseCloseable {
                 mRegistryKeyMap.remove(txn, nameKey, tree.mIdBytes);
                 mRegistry.delete(txn, tree.mIdBytes);
 
-                if (redo != null && !redo.dropIndex(tree.mId, mDurabilityMode.alwaysRedo())) {
-                    redo = null;
-                }
+                commitPos = redo == null ? 0
+                    : redo.dropIndex(tree.mId, mDurabilityMode.alwaysRedo());
 
                 txn.commit();
             } catch (Throwable e) {
@@ -1614,9 +1614,9 @@ public final class Database implements CauseCloseable {
             commitLock.unlock();
         }
 
-        if (redo != null) {
+        if (redo != null && commitPos != 0) {
             // Don't hold commit lock during sync.
-            redo.txnCommitSync();
+            redo.txnCommitSync(commitPos);
         }
     }
 

@@ -28,8 +28,6 @@ final class ReplRedoWriter extends RedoWriter {
     private final ReplRedoEngine mEngine;
     private final ReplicationManager mManager;
 
-    private long mCommitPos;
-
     private long mCheckpointNum;
     private long mCheckpointPos;
     private long mCheckpointTxnId;
@@ -52,53 +50,48 @@ final class ReplRedoWriter extends RedoWriter {
     }
 
     @Override
-    public void store(long indexId, byte[] key, byte[] value, DurabilityMode mode)
+    public long store(long indexId, byte[] key, byte[] value, DurabilityMode mode)
         throws IOException
     {
-        long pos;
-        synchronized (this) {
-            super.store(indexId, key, value, DurabilityMode.NO_SYNC);
-            pos = mCommitPos;
-        }
+        // Pass SYNC mode to flush the buffer and obtain the commit position. Return value from
+        // this method indicates if an actual sync should be performed.
+        long pos = super.store(indexId, key, value, DurabilityMode.SYNC);
         if (pos < 0) {
             throw unmodifiable();
         }
-        // FIXME: mode stuff; wait for confirmation unless NO_FLUSH
+        // Replication makes no distinction between SYNC and NO_SYNC durability. The NO_REDO
+        // mode is not expected to be passed into this method.
+        return mode == DurabilityMode.NO_FLUSH ? 0 : pos;
     }
 
     @Override
-    public void storeNoLock(long indexId, byte[] key, byte[] value, DurabilityMode mode)
+    public long storeNoLock(long indexId, byte[] key, byte[] value, DurabilityMode mode)
         throws IOException
     {
-        long pos;
-        synchronized (this) {
-            super.storeNoLock(indexId, key, value, DurabilityMode.NO_SYNC);
-            pos = mCommitPos;
-        }
+        // Ditto comments from above.
+        long pos = super.storeNoLock(indexId, key, value, DurabilityMode.SYNC);
         if (pos < 0) {
             throw unmodifiable();
         }
-        // FIXME: mode stuff; wait for confirmation unless NO_FLUSH
+        return mode == DurabilityMode.NO_FLUSH ? 0 : pos;
     }
 
     @Override
-    public boolean txnCommitFinal(long txnId, DurabilityMode mode) throws IOException {
-        long pos;
-        synchronized (this) {
-            super.txnCommitFinal(txnId, DurabilityMode.NO_SYNC);
-            pos = mCommitPos;
-        }
+    public long txnCommitFinal(long txnId, DurabilityMode mode) throws IOException {
+        // Ditto comments from above.
+        long pos = super.txnCommitFinal(txnId, DurabilityMode.SYNC);
         if (pos < 0) {
             throw unmodifiable();
         }
-        // FIXME: mode stuff; wait for confirmation unless NO_FLUSH
-        return false;
+        return mode == DurabilityMode.NO_FLUSH ? 0 : pos;
     }
 
     @Override
-    public void txnCommitSync() throws IOException {
-        // FIXME
-        super.txnCommitSync();
+    public void txnCommitSync(long commitPos) throws IOException {
+        super.txnCommitSync(commitPos);
+        if (commitPos > 0) {
+            mManager.confirm(commitPos);
+        }
     }
 
     @Override
@@ -164,7 +157,7 @@ final class ReplRedoWriter extends RedoWriter {
         mEngine.resume();
 
         // Make sure that durable replication data is not behind local database.
-        mManager.syncConfirm(mCheckpointPos);
+        mManager.syncConfirm(mCheckpointPos, -1);
     }
 
     @Override
@@ -180,16 +173,22 @@ final class ReplRedoWriter extends RedoWriter {
     }
 
     @Override
-    void write(boolean commit, byte[] buffer, int len) throws IOException {
+    void write(byte[] buffer, int len) throws IOException {
+        // Length check is included because super class can invoke this method to flush the
+        // buffer even when empty. Operation should never fail.
+        if (len > 0 && !mManager.write(buffer, 0, len)) {
+            throw unmodifiable();
+        }
+    }
+
+    @Override
+    long writeCommit(byte[] buffer, int len) throws IOException {
         // Length check is included because super class can invoke this method to flush the
         // buffer even when empty. Operation should never fail.
         if (len > 0) {
-            if (commit) {
-                mCommitPos = mManager.writeCommit(buffer, 0, len);
-            } else if (!mManager.write(buffer, 0, len)) {
-                throw unmodifiable();
-            }
+            return mManager.writeCommit(buffer, 0, len);
         }
+        return 0;
     }
 
     @Override

@@ -51,15 +51,15 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
      * @param indexId non-zero index id
      * @param key non-null key
      * @param value value to store; null to delete
+     * @return non-zero position if caller should call txnCommitSync
      */
-    public void store(long indexId, byte[] key, byte[] value, DurabilityMode mode)
+    public long store(long indexId, byte[] key, byte[] value, DurabilityMode mode)
         throws IOException
     {
         if (key == null) {
             throw new NullPointerException("Key is null");
         }
 
-        boolean sync;
         synchronized (this) {
             if (value == null) {
                 writeOp(OP_DELETE, indexId);
@@ -74,11 +74,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
             }
             writeTerminator();
 
-            sync = commitFlush(mode);
-        }
-
-        if (sync) {
-            sync(false);
+            return commitFlush(mode);
         }
     }
 
@@ -88,15 +84,15 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
      * @param indexId non-zero index id
      * @param key non-null key
      * @param value value to store; null to delete
+     * @return non-zero position if caller should call txnCommitSync
      */
-    public void storeNoLock(long indexId, byte[] key, byte[] value, DurabilityMode mode)
+    public long storeNoLock(long indexId, byte[] key, byte[] value, DurabilityMode mode)
         throws IOException
     {
         if (key == null) {
             throw new NullPointerException("Key is null");
         }
 
-        boolean sync;
         synchronized (this) {
             if (value == null) {
                 writeOp(OP_DELETE_NO_LOCK, indexId);
@@ -111,11 +107,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
             }
             writeTerminator();
 
-            sync = commitFlush(mode);
-        }
-
-        if (sync) {
-            sync(false);
+            return commitFlush(mode);
         }
     }
 
@@ -123,9 +115,9 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
      * Auto-commit index drop.
      *
      * @param indexId non-zero index id
-     * @return true if caller should call txnCommitSync
+     * @return non-zero position if caller should call txnCommitSync
      */
-    public synchronized boolean dropIndex(long indexId, DurabilityMode mode) throws IOException {
+    public synchronized long dropIndex(long indexId, DurabilityMode mode) throws IOException {
         writeOp(OP_DROP_INDEX, indexId);
         writeTerminator();
         return commitFlush(mode);
@@ -158,9 +150,9 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
     }
 
     /**
-     * @return true if caller should call txnCommitSync
+     * @return non-zero position if caller should call txnCommitSync
      */
-    public synchronized boolean txnCommitFinal(long txnId, DurabilityMode mode)
+    public synchronized long txnCommitFinal(long txnId, DurabilityMode mode)
         throws IOException
     {
         writeTxnOp(OP_TXN_COMMIT_FINAL, txnId);
@@ -170,8 +162,10 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
 
     /**
      * Called after txnCommitFinal.
+     *
+     * @param commitPos highest position to sync (exclusive)
      */
-    public void txnCommitSync() throws IOException {
+    public void txnCommitSync(long commitPos) throws IOException {
         sync(false);
     }
 
@@ -222,7 +216,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
 
     @Override
     public synchronized void flush() throws IOException {
-        doFlush(false);
+        doFlush();
     }
 
     public void sync() throws IOException {
@@ -262,7 +256,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
 
             writeOp(op, System.currentTimeMillis());
             writeTerminator();
-            doFlush(false);
+            doFlush();
 
             // If shutdown hook is invoked, don't close the stream. It may interfere with other
             // shutdown hooks the user may have installed, causing unexpected exceptions to be
@@ -298,7 +292,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
     abstract void checkpointPrepare() throws IOException;
 
     /**
-     * With excluisve commit lock held, switch to the previously prepared state, also capturing
+     * With exclusive commit lock held, switch to the previously prepared state, also capturing
      * the checkpoint position and transaction id.
      */
     abstract void checkpointSwitch() throws IOException;
@@ -335,10 +329,18 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
     abstract void opWriteCheck() throws IOException;
 
     /**
-     * @param commit true if invoked from a commit operation
+     * Write to the physical log.
      */
     // Caller must be synchronized.
-    abstract void write(boolean commit, byte[] buffer, int len) throws IOException;
+    abstract void write(byte[] buffer, int len) throws IOException;
+
+    /**
+     * Write to the physical log and commit.
+     *
+     * @return highest log position afterwards
+     */
+    // Caller must be synchronized.
+    abstract long writeCommit(byte[] buffer, int len) throws IOException;
 
     abstract void force(boolean metadata) throws IOException;
 
@@ -362,7 +364,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
         byte[] buffer = mBuffer;
         int pos = mBufferPos;
         if (pos > buffer.length - 4) {
-            doFlush(false, buffer, pos);
+            doFlush(buffer, pos);
             pos = 0;
         }
         Utils.encodeIntLE(buffer, pos, v);
@@ -374,7 +376,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
         byte[] buffer = mBuffer;
         int pos = mBufferPos;
         if (pos > buffer.length - 8) {
-            doFlush(false, buffer, pos);
+            doFlush(buffer, pos);
             pos = 0;
         }
         Utils.encodeLongLE(buffer, pos, v);
@@ -386,7 +388,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
         byte[] buffer = mBuffer;
         int pos = mBufferPos;
         if (pos > buffer.length - 5) {
-            doFlush(false, buffer, pos);
+            doFlush(buffer, pos);
             pos = 0;
         }
         mBufferPos = Utils.encodeUnsignedVarInt(buffer, pos, v);
@@ -412,7 +414,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
             }
             int remaining = buffer.length - pos;
             System.arraycopy(bytes, offset, buffer, pos, remaining);
-            doFlush(false, buffer, buffer.length);
+            doFlush(buffer, buffer.length);
             pos = 0;
             offset += remaining;
             length -= remaining;
@@ -425,7 +427,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
         byte[] buffer = mBuffer;
         int pos = mBufferPos;
         if (pos >= buffer.length - 1) { // 1 for op
-            doFlush(false, buffer, pos);
+            doFlush(buffer, pos);
             pos = 0;
         }
         buffer[pos] = op;
@@ -438,7 +440,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
         byte[] buffer = mBuffer;
         int pos = mBufferPos;
         if (pos >= buffer.length - (1 + 8)) { // 1 for op, 8 for operand
-            doFlush(false, buffer, pos);
+            doFlush(buffer, pos);
             pos = 0;
         }
         buffer[pos] = op;
@@ -452,7 +454,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
         byte[] buffer = mBuffer;
         int pos = mBufferPos;
         if (pos >= buffer.length - (1 + 9)) { // 1 for op, up to 9 for txn delta
-            doFlush(false, buffer, pos);
+            doFlush(buffer, pos);
             pos = 0;
         }
         buffer[pos] = op;
@@ -460,24 +462,18 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
         mLastTxnId = txnId;
     }
 
-    /**
-     * @param commit true if invoked from a commit operation
-     */
     // Caller must be synchronized.
-    private void doFlush(boolean commit) throws IOException {
-        doFlush(commit, mBuffer, mBufferPos);
+    private void doFlush() throws IOException {
+        doFlush(mBuffer, mBufferPos);
     }
 
-    /**
-     * @param commit true if invoked from a commit operation
-     */
     // Caller must be synchronized.
-    private void doFlush(boolean commit, byte[] buffer, int len) throws IOException {
+    private void doFlush(byte[] buffer, int len) throws IOException {
         // Discard buffer even if the write fails. Caller is expected to
-        // rollback the transacion, and so redo is not used.
+        // rollback the transaction, and so redo is not used.
         try {
             mBufferPos = 0;
-            write(commit, buffer, len);
+            write(buffer, len);
         } catch (IOException e) {
             throw rethrow(e, mCause);
         }
@@ -491,22 +487,37 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
         }
     }
 
-    // Caller must be synchronized. Returns true if caller should sync.
-    private boolean commitFlush(DurabilityMode mode) throws IOException {
-        switch (mode) {
-        default:
-            return false;
-        case NO_FLUSH:
-            if (mAlwaysFlush) {
-                doFlush(true);
+    // Caller must be synchronized. Returns sync position.
+    private long commitFlush(DurabilityMode mode) throws IOException {
+        try {
+            switch (mode) {
+            default:
+                return 0;
+            case NO_FLUSH:
+                if (mAlwaysFlush) {
+                    doCommitFlush();
+                }
+                return 0;
+            case SYNC:
+                return doCommitFlush();
+            case NO_SYNC:
+                doCommitFlush();
+                return 0;
             }
-            return false;
-        case SYNC:
-            doFlush(true);
-            return true;
-        case NO_SYNC:
-            doFlush(true);
-            return false;
+        } catch (IOException e) {
+            throw rethrow(e, mCause);
         }
+    }
+
+    /**
+     * @return highest log position afterwards
+     */
+    // Caller must be synchronized.
+    private long doCommitFlush() throws IOException {
+        // Discard buffer even if the write fails. Caller is expected to
+        // rollback the transaction, and so redo is not used.
+        int len = mBufferPos;
+        mBufferPos = 0;
+        return writeCommit(mBuffer, len);
     }
 }
