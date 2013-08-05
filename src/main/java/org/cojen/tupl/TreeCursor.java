@@ -1872,6 +1872,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                 }
             }
         } catch (Throwable e) {
+            reset();
             throw handleException(e);
         }
     }
@@ -1933,6 +1934,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                 }
             }
         } catch (Throwable e) {
+            reset();
             throw handleException(e);
         }
     }
@@ -2007,6 +2009,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
 
             return true;
         } catch (Throwable e) {
+            reset();
             throw handleException(e);
         }
     }
@@ -2171,9 +2174,8 @@ final class TreeCursor implements CauseCloseable, Cursor {
             }
         } else if (node != null) {
             node.releaseExclusive();
+            mValue = value;
         }
-
-        mValue = value;
 
         if (commitPos != 0) {
             // Wait for commit sync without holding commit lock and node latch.
