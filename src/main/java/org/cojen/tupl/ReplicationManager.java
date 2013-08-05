@@ -97,13 +97,21 @@ public interface ReplicationManager extends Closeable {
     long writeCommit(byte[] b, int off, int len) throws IOException;
 
     /**
-     * Blocks until all data up to the given log position is confirmed. Returns false if
-     * local instance if not the leader or if operation timed out.
+     * Blocks until all data up to the given log position is confirmed.
+     *
+     * @throws ConfirmationTimeoutException if position not confirmed before the default
+     * timeout elapsed
+     */
+    void confirm(long position) throws IOException;
+
+    /**
+     * Blocks until all data up to the given log position is confirmed.
      *
      * @param timeoutNanos pass -1 for infinite
-     * @return true if confirmed; false if not leader or timed out
+     * @throws ConfirmationTimeoutException if position not confirmed before the given
+     * timeout elapsed
      */
-    boolean confirm(long position, long timeoutNanos) throws IOException;
+    void confirm(long position, long timeoutNanos) throws IOException;
 
     /**
      * Durably flushes all local data to non-volatile storage, up to the current position.
@@ -113,8 +121,21 @@ public interface ReplicationManager extends Closeable {
     /**
      * Durably flushes all local data to non-volatile storage, up to the given
      * position, and then blocks until confirmed.
+     *
+     * @throws ConfirmationTimeoutException if position not confirmed before the default
+     * timeout elapsed
      */
     void syncConfirm(long position) throws IOException;
+
+    /**
+     * Durably flushes all local data to non-volatile storage, up to the given
+     * position, and then blocks until confirmed.
+     *
+     * @param timeoutNanos pass -1 for infinite
+     * @throws ConfirmationTimeoutException if position not confirmed before the given
+     * timeout elapsed
+     */
+    void syncConfirm(long position, long timeoutNanos) throws IOException;
 
     /**
      * Indicates that all data prior to the given log position has been durably
@@ -124,11 +145,6 @@ public interface ReplicationManager extends Closeable {
      * @param position log position immediately after the checkpoint position
      */
     void checkpointed(long position) throws IOException;
-
-    /**
-     * Instruct that all data starting at the given position must be deleted.
-     */
-    //void truncate(long position) throws IOException;
 
     /**
      * Notification to replica when an entry is stored into an index. All notifications are

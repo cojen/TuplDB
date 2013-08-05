@@ -1,5 +1,5 @@
 /*
- *  Copyright 2011-2013 Brian S O'Neill
+ *  Copyright 2013 Brian S O'Neill
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -19,14 +19,11 @@ package org.cojen.tupl;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Thrown when a lock request by a {@link Transaction transaction} timed out. A
- * {@link DatabaseConfig#lockTimeout default} timeout is defined, which can be
- * {@link Transaction#lockTimeout overridden} by a transaction.
+ * Thrown by {@link ReplicationManager} when replication cannot be confirmed.
  *
  * @author Brian S O'Neill
- * @see LockResult#TIMED_OUT_LOCK
  */
-public class LockTimeoutException extends LockFailureException {
+public class ConfirmationTimeoutException extends DatabaseException {
     private static final long serialVersionUID = 1L;
 
     private final long mNanosTimeout;
@@ -36,7 +33,7 @@ public class LockTimeoutException extends LockFailureException {
     /**
      * @param nanosTimeout negative is interpreted as infinite wait
      */
-    public LockTimeoutException(long nanosTimeout) {
+    public ConfirmationTimeoutException(long nanosTimeout) {
         super((String) null);
         mNanosTimeout = nanosTimeout;
     }
@@ -58,5 +55,10 @@ public class LockTimeoutException extends LockFailureException {
             return unit;
         }
         return mUnit = Utils.inferUnit(TimeUnit.NANOSECONDS, mNanosTimeout);
+    }
+
+    @Override
+    boolean isRecoverable() {
+        return true;
     }
 }
