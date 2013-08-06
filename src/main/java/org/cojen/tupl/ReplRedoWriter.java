@@ -101,6 +101,11 @@ final class ReplRedoWriter extends RedoWriter {
     }
 
     @Override
+    public final long encoding() {
+        return mManager.encoding();
+    }
+
+    @Override
     boolean isOpen() {
         // Returning false all the time prevents close and shutdown messages from being
         // written. They aren't very useful anyhow, considering that they don't prevent new log

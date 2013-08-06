@@ -141,7 +141,8 @@ public final class Database implements CauseCloseable {
     private static final int I_CHECKPOINT_NUMBER       = I_TRANSACTION_ID + 8;
     private static final int I_REDO_TXN_ID             = I_CHECKPOINT_NUMBER + 8;
     private static final int I_REDO_POSITION           = I_REDO_TXN_ID + 8;
-    private static final int HEADER_SIZE               = I_REDO_POSITION + 8;
+    private static final int I_REPL_ENCODING           = I_REDO_POSITION + 8;
+    private static final int HEADER_SIZE               = I_REPL_ENCODING + 8;
 
     private static final int DEFAULT_PAGE_SIZE = 4096;
     private static final int MINIMUM_PAGE_SIZE = 512;
@@ -425,7 +426,10 @@ public final class Database implements CauseCloseable {
             byte[] header = new byte[HEADER_SIZE];
             mPageDb.readExtraCommitData(header);
 
-            mRegistry = new Tree(this, Tree.REGISTRY_ID, null, null, loadRegistryRoot(header));
+            // Also verifies the database and replication encodings.
+            Node rootNode = loadRegistryRoot(header, config.mReplManager);
+
+            mRegistry = new Tree(this, Tree.REGISTRY_ID, null, null, rootNode);
 
             mOpenTreesLatch = new Latch();
             if (openMode == OPEN_TEMP) {
@@ -1565,7 +1569,7 @@ public final class Database implements CauseCloseable {
      * Loads the root registry node, or creates one if store is new. Root node
      * is not eligible for eviction.
      */
-    private Node loadRegistryRoot(byte[] header) throws IOException {
+    private Node loadRegistryRoot(byte[] header, ReplicationManager rm) throws IOException {
         int version = decodeIntLE(header, I_ENCODING_VERSION);
 
         long rootId;
@@ -1577,6 +1581,28 @@ public final class Database implements CauseCloseable {
             if (version != ENCODING_VERSION) {
                 throw new CorruptDatabaseException("Unknown encoding version: " + version);
             }
+
+            long replEncoding = decodeLongLE(header, I_REPL_ENCODING);
+
+            if (rm == null) {
+                if (replEncoding != 0) {
+                    throw new DatabaseException
+                        ("Database must be configured with a replication manager, " +
+                         "identified by: " + replEncoding);
+                }
+            } else {
+                if (replEncoding == 0) {
+                    throw new DatabaseException
+                        ("Database was created initially without a replication manager");
+                }
+                long expectedReplEncoding = rm.encoding();
+                if (replEncoding != expectedReplEncoding) {
+                    throw new DatabaseException
+                        ("Database was created initially with a different replication manager, " +
+                         "identified by: " + replEncoding);
+                }
+            }
+
             rootId = decodeLongLE(header, I_ROOT_PAGE_ID);
         }
 
@@ -3252,6 +3278,7 @@ public final class Database implements CauseCloseable {
         encodeLongLE(header, I_CHECKPOINT_NUMBER, redoNum);
         encodeLongLE(header, I_REDO_TXN_ID, redoTxnId);
         encodeLongLE(header, I_REDO_POSITION, redoPos);
+        encodeLongLE(header, I_REPL_ENCODING, mRedoWriter == null ? 0 : mRedoWriter.encoding());
 
         return header;
     }
