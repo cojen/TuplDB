@@ -255,6 +255,11 @@ final class RedoLog extends RedoWriter {
     }
 
     @Override
+    public final long encoding() {
+        return 0;
+    }
+
+    @Override
     boolean isOpen() {
         FileChannel channel = mChannel;
         return channel != null && channel.isOpen();
