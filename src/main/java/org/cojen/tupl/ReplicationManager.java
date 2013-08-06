@@ -29,6 +29,13 @@ import java.io.IOException;
  */
 public interface ReplicationManager extends Closeable {
     /**
+     * Return a fixed non-zero value which identifies the replication manager implementation
+     * and its encoding format. Value should be chosen randomly, so as not to collide with
+     * other implementations.
+     */
+    long encoding();
+
+    /**
      * Start the replication manager in replica mode. Invocation of this method implies that
      * all data lower than the given position is confirmed. All data at or higher than the
      * given position might be discarded.

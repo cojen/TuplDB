@@ -277,6 +277,8 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
         force(true);
     }
 
+    public abstract long encoding();
+
     // Caller must be synchronized.
     abstract boolean isOpen();
 

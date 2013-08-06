@@ -335,10 +335,18 @@ public class DatabaseConfig implements Cloneable, Serializable {
     }
 
     /**
-     * Checks that base and data files are valid and returns the applicable data files. Null is
-     * returned when base file is null or if a custom PageArray should be used.
+     * Performs configuration check and returns the applicable data files. Null is returned
+     * when base file is null or if a custom PageArray should be used.
      */
     File[] dataFiles() {
+        if (mReplManager != null) {
+            long encoding = mReplManager.encoding();
+            if (encoding == 0) {
+                throw new IllegalArgumentException
+                    ("Illegal replication manager encoding: " + encoding);
+            }
+        }
+
         File[] dataFiles = mDataFiles;
         if (mBaseFile == null) {
             if (dataFiles != null && dataFiles.length > 0) {
