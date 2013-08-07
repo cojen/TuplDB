@@ -333,7 +333,7 @@ public final class Transaction extends Locker {
     /**
      * Commits and exits all transaction scopes.
      */
-    final void commitAll() throws IOException {
+    public final void commitAll() throws IOException {
         while (true) {
             commit();
             if (mParentScope == null) {
