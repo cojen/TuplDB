@@ -88,7 +88,6 @@ final class ReplRedoWriter extends RedoWriter {
 
     @Override
     public void txnCommitSync(long commitPos) throws IOException {
-        super.txnCommitSync(commitPos);
         if (commitPos > 0) {
             mManager.confirm(commitPos);
         }
