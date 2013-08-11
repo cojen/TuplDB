@@ -1830,7 +1830,7 @@ public final class Database implements CauseCloseable {
     }
 
     /**
-     * Trees instances retain a reference to an unevictable root node. If tree is no longer in
+     * Tree instances retain a reference to an unevictable root node. If tree is no longer in
      * use, evict everything, including the root node. Method cannot be called while a
      * checkpoint is in progress.
      */
