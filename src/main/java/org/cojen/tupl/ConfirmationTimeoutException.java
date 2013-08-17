@@ -19,11 +19,11 @@ package org.cojen.tupl;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Thrown by {@link ReplicationManager} when replication cannot be confirmed.
+ * Thrown by {@link ReplicationManager} when replication confirmation timed out.
  *
  * @author Brian S O'Neill
  */
-public class ConfirmationTimeoutException extends DatabaseException {
+public class ConfirmationTimeoutException extends ConfirmationFailureException {
     private static final long serialVersionUID = 1L;
 
     private final long mNanosTimeout;
