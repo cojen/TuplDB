@@ -311,6 +311,11 @@ final class RedoLog extends RedoWriter {
 
     @Override
     void checkpointStarted() throws IOException {
+        /* Forcing the old redo log increases I/O and slows down the checkpoint. If the
+           checkpoint completes, then durable persistence of the old redo log file was
+           unnecessary. Applications which require stronger durability can select an
+           appropriate mode or call sync periodically.
+
         FileChannel oldChannel = mOldChannel;
 
         if (oldChannel != null) {
@@ -318,13 +323,17 @@ final class RedoLog extends RedoWriter {
             // because a checkpoint cannot complete successfully if the redo
             // log has not been durably written.
             oldChannel.force(true);
+            mOldChannel = null;
         }
 
         Utils.closeQuietly(null, mOldOut);
+        */
     }
 
     @Override
     void checkpointFinished() throws IOException {
+        mOldChannel = null;
+        Utils.closeQuietly(null, mOldOut);
         deleteOldFile(mBaseFile, mNextLogId - 1);
     }
 
@@ -349,6 +358,17 @@ final class RedoLog extends RedoWriter {
 
     @Override
     void force(boolean metadata) throws IOException {
+        FileChannel oldChannel = mOldChannel;
+        if (oldChannel != null) {
+            // Ensure old file is forced before current file. Proper ordering is critical.
+            try {
+                oldChannel.force(metadata);
+            } catch (ClosedChannelException e) {
+                // Ignore.
+            }
+            mOldChannel = null;
+        }
+
         FileChannel channel = mChannel;
         if (channel != null) {
             try {
