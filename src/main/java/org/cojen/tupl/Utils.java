@@ -83,6 +83,48 @@ class Utils extends org.cojen.tupl.io.Utils {
         return v + (v << 31);
     }
 
+    /*
+    public static long unscramble(long v) {
+        // http://naml.us/blog/2012/03/inverse-of-a-hash-function
+
+        long tmp;
+
+        // Invert v = v + (v << 31)
+        tmp = v - (v << 31);
+        v = v - (tmp << 31);
+
+        // Invert v = v ^ (v >>> 28)
+        tmp = v ^ v >>> 28;
+        v = v ^ tmp >>> 28;
+
+        // Invert v *= 21
+        //v *= 14933078535860113213u;
+        v = (v * 7466539267930056606L) + (v * 7466539267930056607L);
+
+        // Invert v = v ^ (v >>> 14)
+        tmp = v ^ v >>> 14;
+        tmp = v ^ tmp >>> 14;
+        tmp = v ^ tmp >>> 14;
+        v = v ^ tmp >>> 14;
+
+        // Invert v *= 265
+        //v *= 15244667743933553977u;
+        v = (v * 7622333871966776988L) + (v * 7622333871966776989L);
+
+        // Invert v = v ^ (v >>> 24)
+        tmp = v ^ v >>> 24;
+        v = v ^ tmp >>> 24;
+
+        // Invert v = (~v) + (v << 21)
+        tmp = ~v;
+        tmp = ~(v - (tmp << 21));
+        tmp = ~(v - (tmp << 21));
+        v = ~(v - (tmp << 21));
+
+        return v;
+    }
+    */
+
     static TimeUnit inferUnit(TimeUnit unit, long value) {
         infer: {
             if (value == 0) break infer;
