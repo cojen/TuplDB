@@ -497,6 +497,9 @@ final class Node extends Latch {
      * With this parent node held exclusively, loads child with exclusive latch
      * held. Caller must ensure that child is not already loaded. If an
      * exception is thrown, parent and child latches are always released.
+     *
+     * @param releaseParent when true, release this node latch always; when false, release only
+     * if an exception is thrown
      */
     Node loadChild(Database db, int childPos, long childId, boolean releaseParent)
         throws IOException
@@ -532,6 +535,12 @@ final class Node extends Latch {
             childNode.mId = 0;
             childNode.mType = TYPE_NONE;
             childNode.releaseExclusive();
+
+            if (!releaseParent) {
+                // Obey the method contract and release latch due to exception.
+                releaseExclusive();
+            }
+
             throw rethrow(e);
         }
 
