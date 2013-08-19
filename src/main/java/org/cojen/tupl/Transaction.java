@@ -746,6 +746,13 @@ public final class Transaction extends Locker {
     RuntimeException borked(Throwable e, boolean rollback) {
         if (mBorked == null) {
             if (mDatabase.mClosed) {
+                Throwable cause = mDatabase.mClosedCause;
+                if (cause != null) {
+                    try {
+                        e.initCause(cause);
+                    } catch (IllegalStateException e2) {
+                    }
+                }
                 mBorked = e;
             } else if (rollback) {
                 // Attempt to rollback the mess and release the locks.
@@ -764,9 +771,19 @@ public final class Transaction extends Locker {
                     // transactions cannot see the partial changes made by this
                     // transaction. A restart is required, which then performs
                     // a clean rollback.
-                    if (!mDatabase.mClosed) {
+                    if (mDatabase.mClosed) {
+                        Throwable cause = mDatabase.mClosedCause;
+                        if (cause != null) {
+                            try {
+                                e.initCause(cause);
+                            } catch (IllegalStateException e3) {
+                            }
+                        }
+                    }
+                    try {
                         e2.initCause(e);
                         e = e2;
+                    } catch (IllegalStateException e3) {
                     }
                     mBorked = e;
                 }
