@@ -25,6 +25,8 @@ import java.io.RandomAccessFile;
 
 import java.util.EnumSet;
 
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -41,6 +43,12 @@ class JavaFileIO extends FileIO {
     private static final int MAPPING_SHIFT = 30;
     private static final int MAPPING_SIZE = 1 << MAPPING_SHIFT;
 
+    // If sync is taking longer than 10 seconds, start slowing down access.
+    private static final long SYNC_YIELD_THRESHOLD_NANOS = 10L * 1000 * 1000 * 1000;
+
+    private static final AtomicIntegerFieldUpdater<JavaFileIO> cSyncCountUpdater =
+        AtomicIntegerFieldUpdater.newUpdater(JavaFileIO.class, "mSyncCount");
+
     private final File mFile;
 
     // Access these fields while synchronized on mFilePool.
@@ -54,6 +62,9 @@ class JavaFileIO extends FileIO {
     private int mLastMappingSize;
 
     private volatile Throwable mCause;
+
+    private volatile int mSyncCount;
+    private volatile long mSyncStartNanos;
 
     JavaFileIO(File file, EnumSet<OpenOption> options, int openFileCount) throws IOException {
         mFile = file;
@@ -138,6 +149,19 @@ class JavaFileIO extends FileIO {
     private void access(boolean read, long pos, byte[] buf, int offset, int length)
         throws IOException
     {
+        if (mSyncCount != 0) {
+            long syncTimeNanos = System.nanoTime() - mSyncStartNanos;
+            if (syncTimeNanos > SYNC_YIELD_THRESHOLD_NANOS) {
+                // Yield 10ms for each second that sync has been running.
+                long sleepMillis = syncTimeNanos / (1000L * 1000 * 1000);
+                try {
+                    Thread.sleep(sleepMillis);
+                } catch (InterruptedException e) {
+                    throw new InterruptedIOException();
+                }
+            }
+        }
+
         try {
             Lock lock = mMappingLock.readLock();
             lock.lock();
@@ -340,27 +364,36 @@ class JavaFileIO extends FileIO {
             return;
         }
 
-        Lock lock = mMappingLock.readLock();
-        lock.lock();
+        int count = cSyncCountUpdater.getAndIncrement(this);
         try {
-            Mapping[] mappings = mMappings;
-            if (mappings != null) {
-                for (Mapping m : mappings) {
-                    // Save metadata sync for last.
-                    m.sync(false);
+            if (count == 0) {
+                mSyncStartNanos = System.nanoTime();
+            }
+
+            Lock lock = mMappingLock.readLock();
+            lock.lock();
+            try {
+                Mapping[] mappings = mMappings;
+                if (mappings != null) {
+                    for (Mapping m : mappings) {
+                        // Save metadata sync for last.
+                        m.sync(false);
+                    }
                 }
+            } finally {
+                lock.unlock();
+            }
+
+            RandomAccessFile file = accessFile();
+            try {
+                file.getChannel().force(metadata);
+            } catch (IOException e) {
+                throw rethrow(e, mCause);
+            } finally {
+                yieldFile(file);
             }
         } finally {
-            lock.unlock();
-        }
-
-        RandomAccessFile file = accessFile();
-        try {
-            file.getChannel().force(metadata);
-        } catch (IOException e) {
-            throw rethrow(e, mCause);
-        } finally {
-            yieldFile(file);
+            cSyncCountUpdater.decrementAndGet(this);
         }
     }
 
