@@ -1941,7 +1941,7 @@ public final class Database implements CauseCloseable {
         final Latch usageLatch = mUsageLatch;
         for (int trial = 1; trial <= 3; trial++) {
             usageLatch.acquireExclusive();
-            alloc: try {
+            alloc: {
                 int max = mMaxNodeCount;
 
                 if (max == 0) {
@@ -1949,19 +1949,24 @@ public final class Database implements CauseCloseable {
                 }
 
                 if (mNodeCount < max) {
-                    checkClosed();
-                    Node node = new Node(mPageSize);
-                    node.acquireExclusive();
-                    mNodeCount++;
-                    if (evictable) {
-                        if ((node.mLessUsed = mMostRecentlyUsed) == null) {
-                            mLeastRecentlyUsed = node;
-                        } else {
-                            mMostRecentlyUsed.mMoreUsed = node;
+                    try {
+                        checkClosed();
+                        Node node = new Node(mPageSize);
+                        node.acquireExclusive();
+                        mNodeCount++;
+                        if (evictable) {
+                            if ((node.mLessUsed = mMostRecentlyUsed) == null) {
+                                mLeastRecentlyUsed = node;
+                            } else {
+                                mMostRecentlyUsed.mMoreUsed = node;
+                            }
+                            mMostRecentlyUsed = node;
                         }
-                        mMostRecentlyUsed = node;
+                        // Return with node latch still held.
+                        return node;
+                    } finally {
+                        usageLatch.releaseExclusive();
                     }
-                    return node;
                 }
 
                 if (!evictable && mLeastRecentlyUsed.mMoreUsed == mMostRecentlyUsed) {
@@ -1976,19 +1981,51 @@ public final class Database implements CauseCloseable {
                     (node.mLessUsed = mMostRecentlyUsed).mMoreUsed = node;
                     mMostRecentlyUsed = node;
 
-                    if (node.tryAcquireExclusive() && (node = Node.evict(node, mPageDb)) != null) {
-                        if (!evictable) {
-                            // Detach from linked list.
-                            (mMostRecentlyUsed = node.mLessUsed).mMoreUsed = null;
-                            node.mLessUsed = null;
+                    if (!node.tryAcquireExclusive()) {
+                        continue;
+                    }
+
+                    if (trial == 1) {
+                        // For first attempt, release the usage latch early to prevent blocking
+                        // other allocations while node is evicted. Subsequent attempts retain
+                        // the latch, preventing potential allocation starvation.
+
+                        usageLatch.releaseExclusive();
+
+                        if ((node = Node.evict(node, mPageDb)) != null) {
+                            if (!evictable) {
+                                makeUnevictable(node);
+                            }
+                            // Return with node latch still held.
+                            return node;
                         }
-                        // Return with latch still held.
-                        return node;
+
+                        usageLatch.acquireExclusive();
+
+                        if (mMaxNodeCount == 0) {
+                            break alloc;
+                        }
+                    } else {
+                        try {
+                            if ((node = Node.evict(node, mPageDb)) != null) {
+                                if (!evictable) {
+                                    // Detach from linked list.
+                                    (mMostRecentlyUsed = node.mLessUsed).mMoreUsed = null;
+                                    node.mLessUsed = null;
+                                }
+                                usageLatch.releaseExclusive();
+                                // Return with node latch still held.
+                                return node;
+                            }
+                        } catch (Throwable e) {
+                            usageLatch.releaseExclusive();
+                            throw rethrow(e);
+                        }
                     }
                 } while (--max > 0);
-            } finally {
-                usageLatch.releaseExclusive();
             }
+
+            usageLatch.releaseExclusive();
 
             checkClosed();
 
