@@ -62,6 +62,7 @@ final class PageAllocator {
         final Latch latch = mLatch;
         latch.acquireExclusive();
         try {
+            /*
             // If a flush is in progress, throttle any threads which are
             // dirtying more nodes, by forcing them to do some of the work.
             int dirtyState = mFlushDirtyState;
@@ -74,6 +75,7 @@ final class PageAllocator {
                 }
                 latch.acquireExclusive();
             }
+            */
 
             final Node next = node.mNextDirty;
             final Node prev = node.mPrevDirty;
