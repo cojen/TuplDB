@@ -144,13 +144,14 @@ final class TreeCursor implements CauseCloseable, Cursor {
     private boolean toFirst(Node node, TreeCursorFrame frame) throws IOException {
         try {
             while (true) {
+                Split split = node.mSplit;
+                if (split != null) {
+                    node = split.latchLeft(node);
+                }
                 frame.bind(node, 0);
                 if (node.isLeaf()) {
                     mLeaf = frame;
                     return node.hasKeys() ? true : toNext(frame);
-                }
-                if (node.mSplit != null) {
-                    node = node.mSplit.latchLeft(node);
                 }
                 node = latchChild(node, 0, true);
                 frame = new TreeCursorFrame(frame);
@@ -198,14 +199,14 @@ final class TreeCursor implements CauseCloseable, Cursor {
     private boolean toLast(Node node, TreeCursorFrame frame) throws IOException {
         try {
             while (true) {
+                Split split = node.mSplit;
+                if (split != null) {
+                    node = split.latchRight(node);
+                }
+
                 if (node.isLeaf()) {
                     // Note: Highest pos is -2 if leaf node has no keys.
-                    int pos;
-                    if (node.mSplit == null) {
-                        pos = node.highestLeafPos();
-                    } else {
-                        pos = node.mSplit.highestLeafPos(node);
-                    }
+                    int pos = node.highestLeafPos();
                     mLeaf = frame;
                     if (pos < 0) {
                         frame.bind(node, 0);
@@ -216,34 +217,10 @@ final class TreeCursor implements CauseCloseable, Cursor {
                     }
                 }
 
-                Split split = node.mSplit;
-                if (split == null) {
-                    // Note: Highest pos is 0 if internal node has no keys.
-                    int childPos = node.highestInternalPos();
-                    frame.bind(node, childPos);
-                    node = latchChild(node, childPos, true);
-                } else {
-                    // Follow highest position of split, binding this frame to the
-                    // unsplit node as if it had not split. The binding will be
-                    // corrected when split is finished.
-
-                    final Node sibling = split.latchSibling();
-
-                    final Node left, right;
-                    if (split.mSplitRight) {
-                        left = node;
-                        right = sibling;
-                    } else {
-                        left = sibling;
-                        right = node;
-                    }
-
-                    int highestRightPos = right.highestInternalPos();
-                    frame.bind(node, left.highestInternalPos() + 2 + highestRightPos);
-                    left.releaseExclusive();
-
-                    node = latchChild(right, highestRightPos, true);
-                }
+                // Note: Highest pos is 0 if internal node has no keys.
+                int childPos = node.highestInternalPos();
+                frame.bind(node, childPos);
+                node = latchChild(node, childPos, true);
 
                 frame = new TreeCursorFrame(frame);
             }
