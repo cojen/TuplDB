@@ -144,16 +144,6 @@ final class Split {
     }
 
     /**
-     * Returns the highest position within the original node as if it had not split.
-     */
-    final int highestLeafPos(Node node) {
-        Node sibling = latchSibling();
-        int pos = node.highestLeafPos() + sibling.highestLeafPos() + 2;
-        sibling.releaseExclusive();
-        return pos;
-    }
-
-    /**
      * Return the left split node, latched exclusively. Other node is unlatched.
      */
     final Node latchLeft(Node node) {
@@ -163,6 +153,18 @@ final class Split {
         Node sibling = latchSibling();
         node.releaseExclusive();
         return sibling;
+    }
+
+    /**
+     * Return the right split node, latched exclusively. Other node is unlatched.
+     */
+    final Node latchRight(Node node) {
+        if (mSplitRight) {
+            Node sibling = latchSibling();
+            node.releaseExclusive();
+            return sibling;
+        }
+        return node;
     }
 
     /**
