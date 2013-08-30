@@ -28,6 +28,7 @@ import java.util.Properties;
 
 import java.util.concurrent.TimeUnit;
 
+import org.cojen.tupl.io.FileFactory;
 import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
 
@@ -46,6 +47,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
     File[] mDataFiles;
     boolean mMapDataFiles;
     transient PageArray mDataPageArray;
+    FileFactory mFileFactory;
     long mMinCachedBytes;
     long mMaxCachedBytes;
     DurabilityMode mDurabilityMode;
@@ -156,6 +158,15 @@ public class DatabaseConfig implements Cloneable, Serializable {
             mDataFiles = null;
             mPageSize = expected;
         }
+        return this;
+    }
+
+    /**
+     * Optionally define a custom factory for every file and directory created by the
+     * database.
+     */
+    public DatabaseConfig fileFactory(FileFactory factory) {
+        mFileFactory = factory;
         return this;
     }
 

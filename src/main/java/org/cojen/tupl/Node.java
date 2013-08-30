@@ -1565,12 +1565,6 @@ final class Node extends Latch {
     void insertSplitChildRef(Tree tree, int keyPos, Node splitChild)
         throws IOException
     {
-        Database db = tree.mDatabase;
-        if (db.shouldMarkDirty(splitChild)) {
-            // It should be dirty as a result of the split itself.
-            throw new AssertionError("Split child is not already marked dirty");
-        }
-
         final Split split = splitChild.mSplit;
         final Node newChild = splitChild.rebindSplitFrames(split);
         splitChild.mSplit = null;
@@ -1634,7 +1628,7 @@ final class Node extends Latch {
         newChild.releaseExclusive();
 
         // Split complete, so allow new node to be evictable.
-        db.makeEvictable(newChild);
+        tree.mDatabase.makeEvictable(newChild);
     }
 
     /**
