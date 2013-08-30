@@ -51,6 +51,7 @@ import static java.lang.System.arraycopy;
 import static java.util.Arrays.fill;
 
 import org.cojen.tupl.io.CauseCloseable;
+import org.cojen.tupl.io.FileFactory;
 import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
 
@@ -331,10 +332,23 @@ public final class Database implements CauseCloseable {
         mLockManager = new LockManager(config.mLockUpgradeRule, mDefaultLockTimeoutNanos);
 
         if (mBaseFile != null && !config.mReadOnly && config.mMkdirs) {
-            mBaseFile.getParentFile().mkdirs();
+            FileFactory factory = config.mFileFactory;
+
+            File baseDir = mBaseFile.getParentFile();
+            if (factory == null) {
+                baseDir.mkdirs();
+            } else {
+                factory.createDirectories(baseDir);
+            }
+
             if (dataFiles != null) {
                 for (File f : dataFiles) {
-                    f.getParentFile().mkdirs();
+                    File dataDir = f.getParentFile();
+                    if (factory == null) {
+                        dataDir.mkdirs();
+                    } else {
+                        factory.createDirectories(dataDir);
+                    }
                 }
             }
         }
@@ -344,12 +358,25 @@ public final class Database implements CauseCloseable {
             if (mBaseFile == null || openMode == OPEN_TEMP) {
                 mLockFile = null;
             } else {
-                mLockFile = new LockedFile
-                    (new File(mBaseFile.getPath() + LOCK_FILE_SUFFIX), config.mReadOnly);
+                File lockFile = new File(mBaseFile.getPath() + LOCK_FILE_SUFFIX);
+
+                FileFactory factory = config.mFileFactory;
+                if (factory != null && !config.mReadOnly) {
+                    factory.createFile(lockFile);
+                }
+
+                mLockFile = new LockedFile(lockFile, config.mReadOnly);
+
                 if (!config.mReadOnly) {
                     File infoFile = new File(mBaseFile.getPath() + INFO_FILE_SUFFIX);
+
+                    if (factory != null) {
+                        factory.createFile(infoFile);
+                    }
+
                     Writer w = new BufferedWriter
                         (new OutputStreamWriter(new FileOutputStream(infoFile), "UTF-8"));
+
                     try {
                         config.writeInfo(w);
                     } finally {
@@ -373,7 +400,8 @@ public final class Database implements CauseCloseable {
             } else {
                 EnumSet<OpenOption> options = config.createOpenOptions();
                 mPageDb = new DurablePageDb
-                    (pageSize, dataFiles, options, config.mCrypto, openMode == OPEN_DESTROY);
+                    (pageSize, dataFiles, config.mFileFactory, options, config.mCrypto,
+                     openMode == OPEN_DESTROY);
             }
 
             // Actual page size might differ from configured size.
@@ -592,7 +620,7 @@ public final class Database implements CauseCloseable {
             if (mBaseFile == null || openMode == OPEN_TEMP) {
                 mTempFileManager = null;
             } else {
-                mTempFileManager = new TempFileManager(mBaseFile);
+                mTempFileManager = new TempFileManager(mBaseFile, config.mFileFactory);
             }
         } catch (Throwable e) {
             closeQuietly(null, this, e);
@@ -1000,13 +1028,14 @@ public final class Database implements CauseCloseable {
                 }
             }
 
+            FileFactory factory = config.mFileFactory;
             EnumSet<OpenOption> options = config.createOpenOptions();
 
             // Delete old redo log files.
             deleteNumberedFiles(config.mBaseFile, REDO_FILE_SUFFIX);
 
             restored = DurablePageDb.restoreFromSnapshot
-                (config.mPageSize, dataFiles, options, config.mCrypto, in);
+                (config.mPageSize, dataFiles, factory, options, config.mCrypto, in);
         }
 
         restored.close();

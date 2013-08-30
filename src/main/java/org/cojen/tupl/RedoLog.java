@@ -34,6 +34,8 @@ import java.nio.channels.FileChannel;
 
 import java.security.GeneralSecurityException;
 
+import org.cojen.tupl.io.FileFactory;
+
 /**
  * 
  *
@@ -53,6 +55,7 @@ final class RedoLog extends RedoWriter {
 
     private final Crypto mCrypto;
     private final File mBaseFile;
+    private final FileFactory mFileFactory;
 
     private final boolean mReplayMode;
 
@@ -78,7 +81,7 @@ final class RedoLog extends RedoWriter {
      * @param logId first log id to open
      */
     RedoLog(DatabaseConfig config, long logId, long redoPos) throws IOException {
-        this(config.mCrypto, config.mBaseFile, logId, redoPos, true);
+        this(config.mCrypto, config.mBaseFile, config.mFileFactory, logId, redoPos, true);
     }
 
     /**
@@ -87,19 +90,23 @@ final class RedoLog extends RedoWriter {
      * @param logId first log id to open
      */
     RedoLog(DatabaseConfig config, RedoLog replayed) throws IOException {
-        this(config.mCrypto, config.mBaseFile, replayed.mLogId, replayed.mPosition, false);
+        this(config.mCrypto, config.mBaseFile, config.mFileFactory,
+             replayed.mLogId, replayed.mPosition, false);
     }
 
     /**
+     * @param factory optional
      * @param logId first log id to open
      */
-    RedoLog(Crypto crypto, File baseFile, long logId, long redoPos, boolean replay)
+    RedoLog(Crypto crypto, File baseFile, FileFactory factory,
+            long logId, long redoPos, boolean replay)
         throws IOException
     {
         super(4096, 0);
 
         mCrypto = crypto;
         mBaseFile = baseFile;
+        mFileFactory = factory;
         mReplayMode = replay;
 
         synchronized (this) {
@@ -187,6 +194,10 @@ final class RedoLog extends RedoWriter {
         }
 
         mNextLogId = logId;
+
+        if (mFileFactory != null) {
+            mFileFactory.createFile(file);
+        }
 
         FileOutputStream fout = new FileOutputStream(file);
         mNextChannel = fout.getChannel();
