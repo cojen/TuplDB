@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.util.EnumSet;
 
 /**
- * Basic {@link PageArray} implementation which access a file.
+ * Basic {@link PageArray} implementation which accesses a file.
  *
  * @author Brian S O'Neill
  */
@@ -30,12 +30,22 @@ public class FilePageArray extends PageArray {
     final FileIO mFio;
 
     public FilePageArray(int pageSize, File file, EnumSet<OpenOption> options) throws IOException {
-        this(pageSize, JavaFileIO.open(file, options));
+        this(pageSize, file, null, options);
     }
 
-    FilePageArray(int pageSize, FileIO fio) {
+    public FilePageArray(int pageSize, File file, FileFactory factory,
+                         EnumSet<OpenOption> options)
+        throws IOException
+    {
         super(pageSize);
-        mFio = fio;
+
+        if (factory != null
+            && options.contains(OpenOption.CREATE) && !options.contains(OpenOption.READ_ONLY))
+        {
+            factory.createFile(file);
+        }
+
+        mFio = JavaFileIO.open(file, options);
     }
 
     @Override
