@@ -24,6 +24,7 @@ import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.zip.CRC32;
 
+import org.cojen.tupl.io.FileFactory;
 import org.cojen.tupl.io.FilePageArray;
 import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
@@ -88,14 +89,18 @@ class DurablePageDb extends PageDb {
     // Commit number is the highest one which has been committed.
     private int mCommitNumber;
 
-    DurablePageDb(int pageSize, File[] files, EnumSet<OpenOption> options,
+    /**
+     * @param factory optional
+     */
+    DurablePageDb(int pageSize, File[] files, FileFactory factory, EnumSet<OpenOption> options,
                   Crypto crypto, boolean destroy)
         throws IOException
     {
-        this(openPageArray(pageSize, files, options), crypto, destroy);
+        this(openPageArray(pageSize, files, factory, options), crypto, destroy);
     }
 
-    private static PageArray openPageArray(int pageSize, File[] files, EnumSet<OpenOption> options)
+    private static PageArray openPageArray(int pageSize, File[] files, FileFactory factory,
+                                           EnumSet<OpenOption> options)
         throws IOException
     {
         checkPageSize(pageSize);
@@ -113,12 +118,12 @@ class DurablePageDb extends PageDb {
         }
 
         if (files.length == 1) {
-            return new FilePageArray(pageSize, files[0], options);
+            return new FilePageArray(pageSize, files[0], factory, options);
         }
 
         PageArray[] arrays = new PageArray[files.length];
         for (int i=0; i<files.length; i++) {
-            arrays[i] = new FilePageArray(pageSize, files[i], options);
+            arrays[i] = new FilePageArray(pageSize, files[i], factory, options);
         }
 
         return new StripedPageArray(arrays);
@@ -419,9 +424,11 @@ class DurablePageDb extends PageDb {
     }
 
     /**
+     * @param factory optional
      * @param in snapshot source; does not require extra buffering; auto-closed
      */
-    static PageDb restoreFromSnapshot(int pageSize, File[] files, EnumSet<OpenOption> options,
+    static PageDb restoreFromSnapshot(int pageSize, File[] files, FileFactory factory,
+                                      EnumSet<OpenOption> options,
                                       Crypto crypto, InputStream in)
         throws IOException
     {
@@ -435,7 +442,7 @@ class DurablePageDb extends PageDb {
 
         if (crypto != null) {
             buffer = new byte[pageSize];
-            pa = openPageArray(pageSize, files, options);
+            pa = openPageArray(pageSize, files, factory, options);
             if (!pa.isEmpty()) {
                 throw new DatabaseException("Cannot restore into a non-empty file");
             }
@@ -451,7 +458,7 @@ class DurablePageDb extends PageDb {
             }
 
             pageSize = decodeIntLE(buffer, I_PAGE_SIZE);
-            pa = openPageArray(pageSize, files, options);
+            pa = openPageArray(pageSize, files, factory, options);
 
             if (!pa.isEmpty()) {
                 throw new DatabaseException("Cannot restore into a non-empty file");

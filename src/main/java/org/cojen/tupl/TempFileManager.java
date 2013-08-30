@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.cojen.tupl.io.CauseCloseable;
+import org.cojen.tupl.io.FileFactory;
 
 /**
  * 
@@ -31,13 +32,18 @@ import org.cojen.tupl.io.CauseCloseable;
  */
 class TempFileManager implements CauseCloseable, Checkpointer.Shutdown {
     private File mBaseFile;
+    private final FileFactory mFileFactory;
     private long mCount;
     private Map<File, CauseCloseable> mFiles;
 
     private Throwable mCause;
 
-    TempFileManager(File baseFile) throws IOException {
+    /**
+     * @param factory optional
+     */
+    TempFileManager(File baseFile, FileFactory factory) throws IOException {
         mBaseFile = baseFile;
+        mFileFactory = factory;
 
         // Delete old files.
         Utils.deleteNumberedFiles(baseFile, ".temp.");
@@ -59,10 +65,12 @@ class TempFileManager implements CauseCloseable, Checkpointer.Shutdown {
                 }
                 mFiles.put(file, null);
             }
-            if (file.createNewFile()) {
+
+            if (mFileFactory == null && file.createNewFile() || mFileFactory.createFile(file)) {
                 // Note: File.deleteOnExit should never be used, since it leaks memory.
                 return file;
             }
+
             synchronized (this) {
                 mFiles.remove(file);
             }
