@@ -21,6 +21,9 @@ import org.cojen.tupl.CorruptDatabaseException;
 import java.io.Closeable;
 import java.io.IOException;
 
+import java.util.WeakHashMap;
+import java.util.Map;
+
 /**
  * Generic data and I/O utility methods.
  *
@@ -276,6 +279,17 @@ public class Utils {
                      ((b[offset + 7]       ) << 24))              ) << 32);
     }
 
+    private static Map<Closeable, Thread> cCloseThreads;
+
+    static synchronized void unregister(Closeable resource) {
+        if (cCloseThreads != null) {
+            cCloseThreads.remove(resource);
+            if (cCloseThreads.isEmpty()) {
+                cCloseThreads = null;
+            }
+        }
+    }
+
     /**
      * Closes the given resource, passing the cause if the resource implements {@link
      * CauseCloseable}. The cause is then rethrown, wrapped by {@link CorruptDatabaseException}
@@ -286,20 +300,43 @@ public class Utils {
     {
         // Close in a separate thread, in case of deadlock.
         Thread closer;
-        try {
-            closer = new Thread() {
-                public void run() {
-                    try {
-                        close(resource, cause);
-                    } catch (IOException e2) {
-                        // Ignore.
+        int joinMillis;
+        obtainThread: try {
+            synchronized (Utils.class) {
+                if (cCloseThreads == null) {
+                    cCloseThreads = new WeakHashMap<Closeable, Thread>();
+                } else {
+                    closer = cCloseThreads.get(resource);
+                    if (closer != null) {
+                        // First thread waited, which is sufficient.
+                        joinMillis = 0;
+                        break obtainThread;
                     }
                 }
-            };
+
+                closer = new Thread() {
+                    public void run() {
+                        try {
+                            close(resource, cause);
+                        } catch (IOException e2) {
+                            // Ignore.
+                        } finally {
+                            unregister(resource);
+                        }
+                    }
+                };
+
+                cCloseThreads.put(resource, closer);
+            }
+
             closer.setDaemon(true);
             closer.start();
+
+            // Wait up to one second for close to finish.
+            joinMillis = 1000;
         } catch (Throwable e2) {
             closer = null;
+            joinMillis = 0;
         }
 
         if (closer == null) {
@@ -307,11 +344,12 @@ public class Utils {
                 close(resource, cause);
             } catch (IOException e2) {
                 // Ignore.
+            } finally {
+                unregister(resource);
             }
-        } else {
-            // Block up to one second.
+        } else if (joinMillis > 0) {
             try {
-                closer.join(1000);
+                closer.join(joinMillis);
             } catch (InterruptedException e2) {
             }
         }
