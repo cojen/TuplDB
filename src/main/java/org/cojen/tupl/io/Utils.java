@@ -21,7 +21,7 @@ import org.cojen.tupl.CorruptDatabaseException;
 import java.io.Closeable;
 import java.io.IOException;
 
-import java.util.WeakHashMap;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -304,7 +304,7 @@ public class Utils {
         obtainThread: try {
             synchronized (Utils.class) {
                 if (cCloseThreads == null) {
-                    cCloseThreads = new WeakHashMap<Closeable, Thread>();
+                    cCloseThreads = new HashMap<Closeable, Thread>(4);
                 } else {
                     closer = cCloseThreads.get(resource);
                     if (closer != null) {
