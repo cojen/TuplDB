@@ -1751,8 +1751,9 @@ final class Node extends Latch {
                     return null;
                 }
 
-                // FIXME: IOException; how to rollback the damage?
+                // No side-effects if an IOException is thrown here.
                 result = splitInternal(tree, keyPos, newChildPos, encodedLen);
+
                 page = result.mPage;
                 keyPos = result.mKeyLoc;
                 newChildPos = result.mNewChildLoc;
@@ -2775,6 +2776,9 @@ final class Node extends Latch {
         }
     }
 
+    /**
+     * @throws IOException if new node could not be allocated; no side-effects
+     */
     private InResult splitInternal
         (final Tree tree, final int keyPos, final int newChildPos, final int encodedLen)
         throws IOException
