@@ -177,6 +177,13 @@ public class StripedPageArray extends PageArray {
     }
 
     @Override
+    public void syncPage(long index) throws IOException {
+        PageArray[] arrays = mArrays;
+        int stripes = arrays.length;
+        arrays[(int) (index % stripes)].syncPage(index / stripes);
+    }
+
+    @Override
     public void close(Throwable cause) throws IOException {
         mSyncService.shutdown();
         IOException ex = null;
