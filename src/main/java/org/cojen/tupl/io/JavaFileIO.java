@@ -404,7 +404,7 @@ class JavaFileIO extends FileIO {
 
     @Override
     public void close(Throwable cause) throws IOException {
-        if (cause != null) {
+        if (cause != null && mCause == null) {
             mCause = cause;
         }
 
