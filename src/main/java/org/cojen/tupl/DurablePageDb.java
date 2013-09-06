@@ -558,7 +558,6 @@ class DurablePageDb extends PageDb {
 
         mHeaderLatch.acquireExclusive();
         try {
-            // Write the header immediately instead of sitting in the file system cache.
             array.writePage(commitNumber & 1, header);
             mCommitNumber = commitNumber;
         } finally {
@@ -566,7 +565,7 @@ class DurablePageDb extends PageDb {
         }
 
         // Final sync to ensure the header is durable.
-        array.sync(false);
+        array.syncPage(commitNumber & 1);
     }
 
     private static int setHeaderChecksum(byte[] header) {
