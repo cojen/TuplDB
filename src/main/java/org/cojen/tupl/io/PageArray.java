@@ -158,6 +158,14 @@ public abstract class PageArray implements CauseCloseable {
      */
     public abstract void sync(boolean metadata) throws IOException;
 
+    /**
+     * Durably flushes the page at the given index, but implementation might flush more pages.
+     * File metadata is not flushed.
+     */
+    public void syncPage(long index) throws IOException {
+        sync(false);
+    }
+
     @Override
     public void close() throws IOException {
         close(null);

@@ -16,7 +16,12 @@
 
 package org.cojen.tupl.io;
 
+import java.io.InterruptedIOException;
 import java.io.IOException;
+
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 
 /**
  * {@link PageArray} implementation which stripes pages in a <a
@@ -28,6 +33,9 @@ public class StripedPageArray extends PageArray {
     private final PageArray[] mArrays;
     private final boolean mReadOnly;
 
+    private final ExecutorService mSyncService;
+    private final Syncer[] mSyncers;
+
     public StripedPageArray(PageArray... arrays) {
         super(pageSize(arrays));
         mArrays = arrays;
@@ -36,6 +44,13 @@ public class StripedPageArray extends PageArray {
             readOnly |= pa.isReadOnly();
         }
         mReadOnly = readOnly;
+
+        mSyncService = Executors.newCachedThreadPool();
+        mSyncers = new Syncer[arrays.length - 1];
+
+        for (int i=0; i<mSyncers.length; i++) {
+            mSyncers[i] = new Syncer(arrays[i]);
+        }
     }
 
     private static int pageSize(PageArray... arrays) {
@@ -139,19 +154,88 @@ public class StripedPageArray extends PageArray {
 
     @Override
     public void sync(boolean metadata) throws IOException {
-        for (PageArray pa : mArrays) {
-            pa.sync(metadata);
+        Syncer[] syncers = mSyncers;
+        int i;
+        for (i=0; i<syncers.length; i++) {
+            Syncer syncer = syncers[i];
+            syncer.reset(metadata);
+            try {
+                mSyncService.execute(syncer);
+            } catch (RejectedExecutionException e) {
+                if (mSyncService.isShutdown()) {
+                    return;
+                }
+                throw new IOException(e);
+            }
+        }
+
+        mArrays[i].sync(metadata);
+
+        for (Syncer syncer : syncers) {
+            syncer.check();
         }
     }
 
     @Override
+    public void syncPage(long index) throws IOException {
+        PageArray[] arrays = mArrays;
+        int stripes = arrays.length;
+        arrays[(int) (index % stripes)].syncPage(index / stripes);
+    }
+
+    @Override
     public void close(Throwable cause) throws IOException {
+        mSyncService.shutdown();
         IOException ex = null;
         for (PageArray pa : mArrays) {
             ex = Utils.closeQuietly(ex, pa, cause);
         }
         if (ex != null) {
             throw ex;
+        }
+    }
+
+    private static class Syncer implements Runnable {
+        private final PageArray mArray;
+
+        private boolean mMetadata;
+        private boolean mFinished;
+        private Throwable mException;
+
+        Syncer(PageArray pa) {
+            mArray = pa;
+        }
+
+        @Override
+        public synchronized void run() {
+            try {
+                mArray.sync(mMetadata);
+            } catch (Throwable e) {
+                mException = e;
+            } finally {
+                mFinished = true;
+                notify();
+            }
+        }
+
+        synchronized void reset(boolean metadata) {
+            mMetadata = metadata;
+            mFinished = false;
+            mException = null;
+        }
+
+        synchronized void check() throws IOException {
+            try {
+                while (!mFinished) {
+                    wait();
+                }
+            } catch (InterruptedException e) {
+                throw new InterruptedIOException();
+            }
+            Throwable e = mException;
+            if (e != null) {
+                throw new IOException(e.toString(), e);
+            }
         }
     }
 }
