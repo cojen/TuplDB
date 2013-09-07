@@ -25,6 +25,8 @@ import java.io.RandomAccessFile;
 
 import java.util.EnumSet;
 
+import java.util.concurrent.TimeUnit;
+
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 import java.util.concurrent.locks.Lock;
@@ -63,6 +65,7 @@ class JavaFileIO extends FileIO {
 
     private volatile Throwable mCause;
 
+    private final ReadWriteLock mSyncLock;
     private volatile int mSyncCount;
     private volatile long mSyncStartNanos;
 
@@ -91,6 +94,7 @@ class JavaFileIO extends FileIO {
 
         mRemapLock = new Object();
         mMappingLock = new ReentrantReadWriteLock(false);
+        mSyncLock = new ReentrantReadWriteLock(false);
 
         try {
             synchronized (mFilePool) {
@@ -152,10 +156,14 @@ class JavaFileIO extends FileIO {
         if (mSyncCount != 0) {
             long syncTimeNanos = System.nanoTime() - mSyncStartNanos;
             if (syncTimeNanos > SYNC_YIELD_THRESHOLD_NANOS) {
-                // Yield 10ms for each second that sync has been running.
+                // Yield 1ms for each second that sync has been running. Use a RW lock instead
+                // of a sleep, preventing prolonged sleep after sync finishes.
                 long sleepMillis = syncTimeNanos / (1000L * 1000 * 1000);
                 try {
-                    Thread.sleep(sleepMillis);
+                    Lock lock = mSyncLock.writeLock();
+                    if (lock.tryLock(sleepMillis, TimeUnit.MILLISECONDS)) {
+                        lock.unlock();
+                    }
                 } catch (InterruptedException e) {
                     throw new InterruptedIOException();
                 }
@@ -370,27 +378,32 @@ class JavaFileIO extends FileIO {
                 mSyncStartNanos = System.nanoTime();
             }
 
-            Lock lock = mMappingLock.readLock();
-            lock.lock();
+            mSyncLock.readLock().lock();
             try {
-                Mapping[] mappings = mMappings;
-                if (mappings != null) {
-                    for (Mapping m : mappings) {
-                        // Save metadata sync for last.
-                        m.sync(false);
+                Lock lock = mMappingLock.readLock();
+                lock.lock();
+                try {
+                    Mapping[] mappings = mMappings;
+                    if (mappings != null) {
+                        for (Mapping m : mappings) {
+                            // Save metadata sync for last.
+                            m.sync(false);
+                        }
                     }
+                } finally {
+                    lock.unlock();
+                }
+
+                RandomAccessFile file = accessFile();
+                try {
+                    file.getChannel().force(metadata);
+                } catch (IOException e) {
+                    throw rethrow(e, mCause);
+                } finally {
+                    yieldFile(file);
                 }
             } finally {
-                lock.unlock();
-            }
-
-            RandomAccessFile file = accessFile();
-            try {
-                file.getChannel().force(metadata);
-            } catch (IOException e) {
-                throw rethrow(e, mCause);
-            } finally {
-                yieldFile(file);
+                mSyncLock.readLock().unlock();
             }
         } finally {
             cSyncCountUpdater.decrementAndGet(this);
