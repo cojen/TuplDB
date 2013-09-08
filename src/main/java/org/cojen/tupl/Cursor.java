@@ -48,7 +48,7 @@ public interface Cursor {
     public static final byte[] NOT_LOADED = new byte[0];
 
     /**
-     * Returns the key ordering in this cursor.
+     * Returns the key ordering for this cursor.
      */
     public Ordering getOrdering();
 

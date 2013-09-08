@@ -27,7 +27,7 @@ import java.io.IOException;
  */
 public interface View {
     /**
-     * Returns the key ordering in this view.
+     * Returns the key ordering for this view.
      */
     public Ordering getOrdering();
 
