@@ -37,6 +37,11 @@ class TrimmedCursor implements Cursor {
     }
 
     @Override
+    public Ordering getOrdering() {
+        return mSource.getOrdering();
+    }
+
+    @Override
     public Transaction link(Transaction txn) {
         return mSource.link(txn);
     }
