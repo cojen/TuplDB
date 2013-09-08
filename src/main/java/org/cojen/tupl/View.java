@@ -27,6 +27,11 @@ import java.io.IOException;
  */
 public interface View {
     /**
+     * Returns the key ordering in this view.
+     */
+    public Ordering getOrdering();
+
+    /**
      * @param txn optional transaction for Cursor to {@link Cursor#link link} to
      * @return a new unpositioned cursor
      * @throws IllegalArgumentException if transaction belongs to another database instance

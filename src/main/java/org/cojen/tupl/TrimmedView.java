@@ -35,6 +35,11 @@ class TrimmedView implements View {
     }
 
     @Override
+    public Ordering getOrdering() {
+        return mSource.getOrdering();
+    }
+
+    @Override
     public Cursor newCursor(Transaction txn) {
         return new TrimmedCursor(this, mSource.newCursor(txn));
     }

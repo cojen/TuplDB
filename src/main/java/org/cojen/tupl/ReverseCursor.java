@@ -31,6 +31,11 @@ final class ReverseCursor implements Cursor {
     }
 
     @Override
+    public Ordering getOrdering() {
+        return mSource.getOrdering().reverse();
+    }
+
+    @Override
     public Transaction link(Transaction txn) {
         return mSource.link(txn);
     }

@@ -88,6 +88,11 @@ final class BoundedView extends SubView {
     }
 
     @Override
+    public Ordering getOrdering() {
+        return mSource.getOrdering();
+    }
+
+    @Override
     public Cursor newCursor(Transaction txn) {
         return new BoundedCursor(this, mSource.newCursor(txn));
     }
