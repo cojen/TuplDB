@@ -45,6 +45,12 @@ public interface Index extends View, Closeable {
 
     /**
      * {@inheritDoc}
+     */
+    @Override
+    public Ordering getOrdering();
+
+    /**
+     * {@inheritDoc}
      *
      * @throws IllegalArgumentException {@inheritDoc}
      */
