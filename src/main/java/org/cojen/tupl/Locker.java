@@ -543,14 +543,11 @@ class Locker {
             } else {
                 Block tail = (Block) tailObj;
                 if (tail != null) {
-                    while (true) {
+                    do {
                         tail.unlockToSavepoint(this, 0);
-                        if (tail.isFirstBlock()) {
-                            break;
-                        }
                         tail = tail.pop();
-                    }
-                    mTailBlock = tail;
+                    } while (tail != null);
+                    mTailBlock = null;
                 }
             }
         } else if (parentTailObj instanceof Lock) {
@@ -558,12 +555,14 @@ class Locker {
             if (tailObj instanceof Block) {
                 Block tail = (Block) tailObj;
                 while (true) {
-                    if (tail.isFirstBlock()) {
+                    Block prev = tail.peek();
+                    if (prev == null) {
                         tail.unlockToSavepoint(this, 1);
                         break;
                     }
                     tail.unlockToSavepoint(this, 0);
-                    tail = tail.pop();
+                    tail.discard();
+                    tail = prev;
                 }
                 mTailBlock = tail;
             }
@@ -646,6 +645,7 @@ class Locker {
 
         private Lock[] mLocks;
         private long mUpgrades;
+        // Size must always be least 1.
         int mSize;
 
         private Block mPrev;
@@ -707,10 +707,6 @@ class Locker {
             return mLocks[mSize - 1];
         }
 
-        boolean isFirstBlock() {
-            return mPrev == null;
-        }
-
         void unlockLast(Locker locker) {
             int size = mSize - 1;
 
@@ -762,6 +758,10 @@ class Locker {
             }
         }
 
+        /**
+         * Note: If target size is zero, caller MUST pop and discard the block. Otherwise, the
+         * block size will be zero, which is illegal.
+         */
         void unlockToSavepoint(Locker locker, int targetSize) {
             int size = mSize;
             if (size > targetSize) {
@@ -793,6 +793,14 @@ class Locker {
             Block prev = mPrev;
             mPrev = null;
             return prev;
+        }
+
+        Block peek() {
+            return mPrev;
+        }
+
+        void discard() {
+            mPrev = null;
         }
     }
 

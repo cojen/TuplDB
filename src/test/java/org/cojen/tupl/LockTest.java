@@ -1139,6 +1139,28 @@ public class LockTest {
     }
 
     @Test
+    public void unlockSavepoint() throws Exception {
+        Locker locker = new Locker(mManager);
+
+        locker.scopeEnter();
+        locker.lockExclusive(0, k1, -1);
+        locker.lockExclusive(0, k2, -1);
+        locker.scopeUnlockAll();
+
+        try {
+            locker.lastLockedKey();
+        } catch (IllegalStateException e) {
+            // Good.
+        }
+
+        try {
+            locker.unlock();
+        } catch (IllegalStateException e) {
+            // Good.
+        }
+    }
+
+    @Test
     public void promote() throws Exception {
         Locker locker = new Locker(mManager);
 
