@@ -687,7 +687,7 @@ class Locker {
             // Don't push lock upgrade if it applies to the last acquisition
             // within this scope. This is required for unlockLast.
             ParentScope parent;
-            if (upgrade != 0 && size != 0
+            if (upgrade != 0
                 && ((parent = locker.mParentScope) == null || parent.mTailBlockSize != size)
                 && locks[size - 1] == lock)
             {
