@@ -40,7 +40,7 @@ abstract class SubView implements View {
         if (inRange(key)) {
             mSource.store(txn, key, value);
         } else {
-            throw new IllegalArgumentException("Key is outside allowed range");
+            throw new ViewConstraintException("Key is outside allowed range");
         }
     }
 
@@ -49,7 +49,7 @@ abstract class SubView implements View {
         if (inRange(key)) {
             return mSource.exchange(txn, key, value);
         } else {
-            throw new IllegalArgumentException("Key is outside allowed range");
+            throw new ViewConstraintException("Key is outside allowed range");
         }
     }
 
@@ -61,7 +61,7 @@ abstract class SubView implements View {
         if (value == null) {
             return true;
         }
-        throw new IllegalArgumentException("Key is outside allowed range");
+        throw new ViewConstraintException("Key is outside allowed range");
     }
 
     @Override
@@ -80,7 +80,7 @@ abstract class SubView implements View {
             if (newValue == null) {
                 return true;
             }
-            throw new IllegalArgumentException("Key is outside allowed range");
+            throw new ViewConstraintException("Key is outside allowed range");
         }
         return false;
     }
