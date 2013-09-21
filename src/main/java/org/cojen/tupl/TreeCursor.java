@@ -62,6 +62,11 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     @Override
+    public Ordering getOrdering() {
+        return Ordering.ASCENDING;
+    }
+
+    @Override
     public Transaction link(Transaction txn) {
         mTree.check(txn);
         Transaction old = mTxn;

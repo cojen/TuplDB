@@ -48,6 +48,11 @@ public interface Cursor {
     public static final byte[] NOT_LOADED = new byte[0];
 
     /**
+     * Returns the key ordering for this cursor.
+     */
+    public Ordering getOrdering();
+
+    /**
      * Link to a transaction, which can be null for auto-commit mode. All
      * entries visited by the cursor become part of the given transaction.  To
      * continue using a cursor after the transaction is complete, link it to
@@ -353,6 +358,7 @@ public interface Cursor {
      *
      * @param value value to store; pass null to delete
      * @throws IllegalStateException if position is undefined at invocation time
+     * @throws ViewConstraintException if value is not permitted
      */
     public void store(byte[] value) throws IOException;
 

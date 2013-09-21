@@ -43,6 +43,11 @@ final class UnmodifiableView implements Index {
     }
 
     @Override
+    public Ordering getOrdering() {
+        return mSource.getOrdering();
+    }
+
+    @Override
     public long getId() {
         if (mSource instanceof Index) {
             return ((Index) mSource).getId();

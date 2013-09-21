@@ -90,6 +90,11 @@ final class Tree implements Index {
     }
 
     @Override
+    public Ordering getOrdering() {
+        return Ordering.ASCENDING;
+    }
+
+    @Override
     public long getId() {
         return mId;
     }

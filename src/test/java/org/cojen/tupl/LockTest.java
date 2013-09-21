@@ -1139,6 +1139,28 @@ public class LockTest {
     }
 
     @Test
+    public void unlockSavepoint() throws Exception {
+        Locker locker = new Locker(mManager);
+
+        locker.scopeEnter();
+        locker.lockExclusive(0, k1, -1);
+        locker.lockExclusive(0, k2, -1);
+        locker.scopeUnlockAll();
+
+        try {
+            locker.lastLockedKey();
+        } catch (IllegalStateException e) {
+            // Good.
+        }
+
+        try {
+            locker.unlock();
+        } catch (IllegalStateException e) {
+            // Good.
+        }
+    }
+
+    @Test
     public void promote() throws Exception {
         Locker locker = new Locker(mManager);
 
@@ -1191,6 +1213,33 @@ public class LockTest {
 
         Locker locker2 = new Locker(mManager);
         assertEquals(ACQUIRED, locker2.tryLockExclusive(0, k1, SHORT_TIMEOUT));
+    }
+
+    @Test
+    public void blockDiscard() throws Exception {
+        // Test for a bug which caused a parent scope to reference a Block, but the current
+        // (child) scope referenced a Lock. This is an illegal combination, resulting in a
+        // class cast exception when rolling back.
+
+        Locker locker = new Locker(mManager);
+
+        locker.lockExclusive(0, k1, -1);
+        locker.lockExclusive(0, k2, -1);
+
+        // Must not leave an empty Block behind, which is illegal.
+        locker.scopeUnlockAll();
+
+        locker.scopeEnter();
+        locker.lockExclusive(0, k3, -1);
+
+        // If current reference is a Block, it gets null'd as a side-effect.
+        locker.unlock();
+
+        // If reference was null'd, this creates a Lock reference.
+        locker.lockExclusive(0, k4, -1);
+
+        // If parent references a Block and current reference is a Lock, this call fails.
+        locker.scopeUnlockAll();
     }
 
     private long scheduleUnlock(final Locker locker, final long delayMillis) {

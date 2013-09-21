@@ -45,7 +45,7 @@ public class StripedPageArray extends PageArray {
         }
         mReadOnly = readOnly;
 
-        mSyncService = Executors.newCachedThreadPool();
+        mSyncService = Executors.newCachedThreadPool(new NamedThreadFactory("Syncer"));
         mSyncers = new Syncer[arrays.length - 1];
 
         for (int i=0; i<mSyncers.length; i++) {
