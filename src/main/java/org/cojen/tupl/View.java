@@ -288,7 +288,7 @@ public interface View {
      * equal to the given key. Ownership of the key instance is transferred,
      * and so it must not be modified after calling this method.
      *
-     * <p>The returned view will throw an {@link ViewConstraintException} on an attempt to
+     * <p>The returned view will throw a {@link ViewConstraintException} on an attempt to
      * insert a key outside its range.
      *
      * @throws NullPointerException if key is null
@@ -300,7 +300,7 @@ public interface View {
      * given key. Ownership of the key instance is transferred, and so it must
      * not be modified after calling this method.
      *
-     * <p>The returned view will throw an {@link ViewConstraintException} on an attempt to
+     * <p>The returned view will throw a {@link ViewConstraintException} on an attempt to
      * insert a key outside its range.
      *
      * @throws NullPointerException if key is null
@@ -312,7 +312,7 @@ public interface View {
      * equal to the given key. Ownership of the key instance is transferred,
      * and so it must not be modified after calling this method.
      *
-     * <p>The returned view will throw an {@link ViewConstraintException} on an attempt to
+     * <p>The returned view will throw a {@link ViewConstraintException} on an attempt to
      * insert a key outside its range.
      *
      * @throws NullPointerException if key is null
@@ -324,7 +324,7 @@ public interface View {
      * given key. Ownership of the key instance is transferred, and so it must
      * not be modified after calling this method.
      *
-     * <p>The returned view will throw an {@link ViewConstraintException} on an attempt to
+     * <p>The returned view will throw a {@link ViewConstraintException} on an attempt to
      * insert a key outside its range.
      *
      * @throws NullPointerException if key is null
@@ -336,7 +336,7 @@ public interface View {
      * Ownership of the prefix instance is transferred, and so it must not be modified after
      * calling this method.
      *
-     * <p>The returned view will throw an {@link ViewConstraintException} on an attempt to
+     * <p>The returned view will throw a {@link ViewConstraintException} on an attempt to
      * insert a key outside its range.
      *
      * @param trim amount of prefix length to trim from all keys in the view
