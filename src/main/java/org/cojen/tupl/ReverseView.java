@@ -31,6 +31,11 @@ final class ReverseView implements View {
     }
 
     @Override
+    public Ordering getOrdering() {
+        return mSource.getOrdering().reverse();
+    }
+
+    @Override
     public Cursor newCursor(Transaction txn) {
         return new ReverseCursor(mSource.newCursor(txn));
     }
