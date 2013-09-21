@@ -132,14 +132,14 @@ public interface Index extends View, Closeable {
 
     /**
      * {@inheritDoc}
-     *
-     * @throws NullPointerException {@inheritDoc}
      */
     @Override
     public Stream newStream();
 
     /**
      * {@inheritDoc}
+     *
+     * @throws NullPointerException {@inheritDoc}
      */
     @Override
     public View viewGe(byte[] key);

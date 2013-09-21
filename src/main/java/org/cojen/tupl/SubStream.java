@@ -36,7 +36,7 @@ class SubStream extends WrappedStream {
         if (mView.inRange(key)) {
             return mSource.open(txn, key);
         } else {
-            throw new IllegalArgumentException("Key is outside allowed range");
+            throw new ViewConstraintException("Key is outside allowed range");
         }
     }
 }
