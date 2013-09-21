@@ -71,7 +71,7 @@ public class ViewTest {
         try {
             view.store(null, key(start - 1), key(start - 1));
             fail();
-        } catch (IllegalArgumentException e) {
+        } catch (ViewConstraintException e) {
         }
 
         view.store(null, key(start), key(start));
@@ -182,13 +182,13 @@ public class ViewTest {
         try {
             view.store(null, key(start - 1), key(start - 1));
             fail();
-        } catch (IllegalArgumentException e) {
+        } catch (ViewConstraintException e) {
         }
 
         try {
             view.store(null, key(start), key(start));
             fail();
-        } catch (IllegalArgumentException e) {
+        } catch (ViewConstraintException e) {
         }
 
         int i = start < 20 ? 20 : (start < 30 ? 30 : 40);
@@ -294,7 +294,7 @@ public class ViewTest {
         try {
             view.store(null, key(end + 1), key(end + 1));
             fail();
-        } catch (IllegalArgumentException e) {
+        } catch (ViewConstraintException e) {
         }
 
         view.store(null, key(end), key(end));
@@ -405,13 +405,13 @@ public class ViewTest {
         try {
             view.store(null, key(end + 1), key(end + 1));
             fail();
-        } catch (IllegalArgumentException e) {
+        } catch (ViewConstraintException e) {
         }
 
         try {
             view.store(null, key(end), key(end));
             fail();
-        } catch (IllegalArgumentException e) {
+        } catch (ViewConstraintException e) {
         }
 
         int i = end > 90 ? 90 : (end > 80 ? 80 : 70);
@@ -666,7 +666,7 @@ public class ViewTest {
         try {
             view.store(null, "hello".getBytes(), "world".getBytes());
             fail();
-        } catch (IllegalArgumentException e) {
+        } catch (ViewConstraintException e) {
             // Key is outside allowed range.
         }
 
