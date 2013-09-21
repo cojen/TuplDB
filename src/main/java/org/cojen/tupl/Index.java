@@ -130,7 +130,6 @@ public interface Index extends View, Closeable {
     @Override
     public boolean remove(Transaction txn, byte[] key, byte[] value) throws IOException;
 
-
     /**
      * {@inheritDoc}
      *

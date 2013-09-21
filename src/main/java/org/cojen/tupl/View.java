@@ -122,8 +122,8 @@ public interface View {
      * @param key non-null key
      * @param value value to store; pass null to delete
      * @throws NullPointerException if key is null
-     * @throws IllegalArgumentException if key is outside allowed range or if transaction
-     * belongs to another database instance
+     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws ViewConstraintException if entry is not permitted
      */
     public void store(Transaction txn, byte[] key, byte[] value) throws IOException;
 
@@ -138,8 +138,8 @@ public interface View {
      * @param value value to store; pass null to delete
      * @return copy of previous value, or null if none
      * @throws NullPointerException if key is null
-     * @throws IllegalArgumentException if key is outside allowed range or if transaction
-     * belongs to another database instance
+     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws ViewConstraintException if entry is not permitted
      */
     public byte[] exchange(Transaction txn, byte[] key, byte[] value) throws IOException;
 
@@ -156,8 +156,8 @@ public interface View {
      * @param value value to insert, which can be null
      * @return false if entry already exists
      * @throws NullPointerException if key is null
-     * @throws IllegalArgumentException if key is outside allowed range and value is non-null,
-     * or if transaction belongs to another database instance
+     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws ViewConstraintException if entry is not permitted
      */
     public boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException;
 
@@ -174,6 +174,7 @@ public interface View {
      * @return false if no existing entry
      * @throws NullPointerException if key is null
      * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws ViewConstraintException if entry is not permitted
      */
     public boolean replace(Transaction txn, byte[] key, byte[] value) throws IOException;
 
@@ -190,8 +191,8 @@ public interface View {
      * @param newValue new value to update to; pass null to delete
      * @return false if existing value doesn't match
      * @throws NullPointerException if key is null
-     * @throws IllegalArgumentException if key is outside allowed range and attempting to
-     * update a null value to non-null, or if transaction belongs to another database instance
+     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws ViewConstraintException if entry is not permitted
      */
     public boolean update(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException;
@@ -208,6 +209,7 @@ public interface View {
      * @return false if no existing entry
      * @throws NullPointerException if key is null
      * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws ViewConstraintException if remove is not permitted
      */
     public boolean delete(Transaction txn, byte[] key) throws IOException;
 
@@ -224,6 +226,7 @@ public interface View {
      * @return false if existing value doesn't match
      * @throws NullPointerException if key is null
      * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws ViewConstraintException if remove is not permitted
      */
     public boolean remove(Transaction txn, byte[] key, byte[] value) throws IOException;
 
@@ -280,8 +283,8 @@ public interface View {
      * equal to the given key. Ownership of the key instance is transferred,
      * and so it must not be modified after calling this method.
      *
-     * <p>The returned view will throw an IllegalArgumentException on an attempt
-     * to insert a key outside its range.
+     * <p>The returned view will throw an {@link ViewConstraintException} on an attempt to
+     * insert a key outside its range.
      *
      * @throws NullPointerException if key is null
      */
@@ -292,8 +295,8 @@ public interface View {
      * given key. Ownership of the key instance is transferred, and so it must
      * not be modified after calling this method.
      *
-     * <p>The returned view will throw an IllegalArgumentException on an attempt
-     * to insert a key outside its range.
+     * <p>The returned view will throw an {@link ViewConstraintException} on an attempt to
+     * insert a key outside its range.
      *
      * @throws NullPointerException if key is null
      */
@@ -304,8 +307,8 @@ public interface View {
      * equal to the given key. Ownership of the key instance is transferred,
      * and so it must not be modified after calling this method.
      *
-     * <p>The returned view will throw an IllegalArgumentException on an attempt
-     * to insert a key outside its range.
+     * <p>The returned view will throw an {@link ViewConstraintException} on an attempt to
+     * insert a key outside its range.
      *
      * @throws NullPointerException if key is null
      */
@@ -316,8 +319,8 @@ public interface View {
      * given key. Ownership of the key instance is transferred, and so it must
      * not be modified after calling this method.
      *
-     * <p>The returned view will throw an IllegalArgumentException on an attempt
-     * to insert a key outside its range.
+     * <p>The returned view will throw an {@link ViewConstraintException} on an attempt to
+     * insert a key outside its range.
      *
      * @throws NullPointerException if key is null
      */
@@ -328,8 +331,8 @@ public interface View {
      * Ownership of the prefix instance is transferred, and so it must not be modified after
      * calling this method.
      *
-     * <p>The returned view will throw an IllegalArgumentException on an attempt
-     * to insert a key outside its range.
+     * <p>The returned view will throw an {@link ViewConstraintException} on an attempt to
+     * insert a key outside its range.
      *
      * @param trim amount of prefix length to trim from all keys in the view
      * @throws NullPointerException if prefix is null

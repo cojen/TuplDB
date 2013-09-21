@@ -358,6 +358,7 @@ public interface Cursor {
      *
      * @param value value to store; pass null to delete
      * @throws IllegalStateException if position is undefined at invocation time
+     * @throws ViewConstraintException if value is not permitted
      */
     public void store(byte[] value) throws IOException;
 
