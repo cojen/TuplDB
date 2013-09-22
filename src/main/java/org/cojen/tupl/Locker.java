@@ -513,12 +513,9 @@ class Locker {
         Object tailObj = mTailBlock;
         if (tailObj != null) {
             ParentScope parent = mParentScope;
-            if (tailObj instanceof Lock) {
-                parent.mTailBlock = tailObj;
-            } else {
-                Block tail = (Block) tailObj;
-                parent.mTailBlock = tail;
-                parent.mTailBlockSize = tail.mSize;
+            parent.mTailBlock = tailObj;
+            if (tailObj instanceof Block) {
+                parent.mTailBlockSize = ((Block) tailObj).mSize;
             }
         }
     }
