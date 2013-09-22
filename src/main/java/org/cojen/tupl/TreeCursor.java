@@ -2283,6 +2283,28 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     /**
+     * Non-transactional insert of a blank value. Caller must hold shared commmit lock and
+     * have verified that insert is a valid operation.
+     *
+     * @param leaf leaf frame, latched exclusively, which is released by this
+     * method if an exception is thrown
+     * @param node frame node, not split, dirtied
+     * @param vlength length of blank value
+     * @return replacement node, latched
+     */
+    Node insertBlank(TreeCursorFrame leaf, Node node, long vlength) throws IOException {
+        byte[] key = mKey;
+        try {
+            node.insertBlankLeafEntry(mTree, ~leaf.mNodePos, key, vlength);
+        } catch (Throwable e) {
+            node.releaseExclusive();
+            throw rethrow(e);
+        }
+        // Releases latch if an exception is thrown.
+        return postInsert(leaf, node, key);
+    }
+
+    /**
      * Blindly insert an entry at the current position as if it was the lowest or highest entry
      * overall. If not at the extremity, index becomes corrupt.
      *
@@ -2735,7 +2757,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
      *
      * @throws IllegalStateException if unpositioned
      */
-    private TreeCursorFrame leafExclusiveNotSplit() throws IOException {
+    TreeCursorFrame leafExclusiveNotSplit() throws IOException {
         TreeCursorFrame leaf = leaf();
         Node node = leaf.acquireExclusive();
         if (node.mSplit != null) {
@@ -2745,11 +2767,22 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     /**
+     * Latches and returns leaf frame, not split. Caller must hold shared commit lock.
+     *
+     * @throws IllegalStateException if unpositioned
+     */
+    TreeCursorFrame leafExclusiveNotSplitDirty() throws IOException {
+        TreeCursorFrame frame = leafExclusive();
+        notSplitDirty(frame);
+        return frame;
+    }
+
+    /**
      * Latches and returns leaf frame, not split.
      *
      * @throws IllegalStateException if unpositioned
      */
-    private TreeCursorFrame leafSharedNotSplit() throws IOException {
+    TreeCursorFrame leafSharedNotSplit() throws IOException {
         TreeCursorFrame leaf = leaf();
         Node node = leaf.acquireShared();
         if (node.mSplit != null) {

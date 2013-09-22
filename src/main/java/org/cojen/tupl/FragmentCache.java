@@ -61,9 +61,34 @@ class FragmentCache {
     }
 
     /**
-     * Stores the node, and possibly evicts another. As a side-effect, node
-     * type is set to TYPE_FRAGMENT. Node latch is not released, even if an
-     * exception is thrown.
+     * Returns the node with the given id, possibly evicting another. Method is intended for
+     * obtaining nodes to write into.
+     *
+     * @param caller optional tree node which is latched and calling this method
+     * @param load true if node should be fully loaded
+     * @return node with exclusive latch held
+     */
+    Node getw(Node caller, long nodeId, boolean load) throws IOException {
+        int hash = hash(nodeId);
+        return mHashTables[hash >>> mHashTableShift].getw(caller, nodeId, load, hash);
+    }
+
+    /**
+     * Returns the node with the given id, if already in the cache. Method is intended for
+     * obtaining nodes to write into.
+     *
+     * @param caller optional tree node which is latched and calling this method
+     * @param parent optional parent inode
+     * @return node with exclusive latch held, or null if not found
+     */
+    Node findw(Node caller, Node parent, long nodeId) {
+        int hash = hash(nodeId);
+        return mHashTables[hash >>> mHashTableShift].findw(caller, parent, nodeId, hash);
+    }
+
+    /**
+     * Stores the node, and possibly evicts another. As a side-effect, node type is set to
+     * TYPE_FRAGMENT. Node latch is not released, even if an exception is thrown.
      *
      * @param caller optional tree node which is latched and calling this method
      * @param node exclusively latched node
@@ -216,8 +241,125 @@ class FragmentCache {
         }
 
         /**
-         * Stores the node, and possibly evicts another. Node latch is not
-         * released, even if an exception is thrown.
+         * Returns the node with the given id, possibly evicting another. Method is intended
+         * for obtaining nodes to write into.
+         *
+         * @param caller optional tree node which is latched and calling this method
+         * @param load true if node should be fully loaded
+         * @return node with exclusive latch held
+         */
+        Node getw(final Node caller, final long nodeId, final boolean load, final int hash)
+            throws IOException
+        {
+            acquireShared();
+            boolean htEx = false;
+
+            while (true) {
+                final Node[] entries = mEntries;
+                final int index = hash & (entries.length - 1);
+                Node existing = entries[index];
+                int incr = 0;
+                if (existing == null) {
+                    incr = 1;
+                } else {
+                    if (existing == caller || existing.mType != TYPE_FRAGMENT) {
+                        existing = null;
+                    } else {
+                        existing.acquireExclusive();
+                        if (existing.mId == nodeId) {
+                            release(htEx);
+                            mDatabase.used(existing);
+                            return existing;
+                        }
+                    }
+                }
+
+                // Need to have an exclusive lock before making modifications to hashtable.
+                if (!htEx) {
+                    htEx = true;
+                    if (!tryUpgrade()) {
+                        if (existing != null) {
+                            existing.releaseExclusive();
+                        }
+                        releaseShared();
+                        acquireExclusive();
+                        continue;
+                    }
+                }
+
+                if (existing != null) {
+                    if (existing.mType != TYPE_FRAGMENT) {
+                        // Hashtable slot can be used without evicting anything.
+                        existing.releaseExclusive();
+                        existing = null;
+                    } else if (rehash(caller, null, existing)) {
+                        // See if rehash eliminates collision.
+                        existing.releaseExclusive();
+                        continue;
+                    }
+                }
+
+                mSize += incr;
+
+                // Allocate node and reserve slot.
+                final Node node = mDatabase.allocLatchedNode();
+                node.mId = nodeId;
+                node.mType = TYPE_FRAGMENT;
+                entries[index] = node;
+
+                // Evict without ht latch held.
+                releaseExclusive();
+
+                if (existing != null) {
+                    try {
+                        existing.doEvict(mDatabase.mPageDb);
+                        existing.releaseExclusive();
+                    } catch (IOException e) {
+                        node.mId = 0;
+                        node.releaseExclusive();
+                        throw e;
+                    }
+                }
+
+                if (load) {
+                    node.mCachedState = mDatabase.readNodePage(nodeId, node.mPage);
+                }
+
+                return node;
+            }
+        }
+
+        /**
+         * Returns the node with the given id, if already in the cache. Method is intended for
+         * obtaining nodes to write into.
+         *
+         * @param caller optional tree node which is latched and calling this method
+         * @param parent optional parent inode
+         * @return node with exclusive latch held, or null if not found
+         */
+        Node findw(final Node caller, final Node parent, final long nodeId, final int hash) {
+            acquireShared();
+            final Node[] entries = mEntries;
+            final int index = hash & (entries.length - 1);
+            final Node existing = entries[index];
+            if (existing != null && existing != caller && existing != parent &&
+                existing.mType == TYPE_FRAGMENT)
+            {
+                existing.acquireExclusive();
+                if (existing.mId == nodeId) {
+                    releaseShared();
+                    mDatabase.used(existing);
+                    return existing;
+                }
+                existing.releaseExclusive();
+            }
+            releaseShared();
+            return null;
+        }
+
+        /**
+         * Stores the node, and possibly evicts another. As a side-effect, node type is set to
+         * TYPE_FRAGMENT. Node latch is not released, even if an exception is thrown.
          *
          * @param caller optional tree node which is latched and calling this method
          * @param node exclusively latched node; evictable

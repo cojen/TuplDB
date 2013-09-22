@@ -119,6 +119,11 @@ final class UnmodifiableView implements Index {
     }
 
     @Override
+    public Stream newStream() {
+        return new UnmodifiableStream(mSource.newStream());
+    }
+
+    @Override
     public View viewGe(byte[] key) {
         return new UnmodifiableView(mSource.viewGe(key));
     }

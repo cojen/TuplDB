@@ -1424,7 +1424,8 @@ final class Node extends Latch {
             fragmented = 0;
         } else {
             Database db = tree.mDatabase;
-            value = db.fragment(this, value, db.mMaxFragmentedEntrySize - encodedKeyLen);
+            value = db.fragment(this, value, value.length,
+                                db.mMaxFragmentedEntrySize - encodedKeyLen);
             if (value == null) {
                 throw new LargeKeyException(key.length);
             }
@@ -1436,6 +1437,37 @@ final class Node extends Latch {
 
         if (entryLoc < 0) {
             splitLeafAndCreateEntry(tree, key, fragmented, value, encodedLen, pos, true);
+        } else {
+            copyToLeafEntry(key, fragmented, value, entryLoc);
+        }
+    }
+
+    /**
+     * @param pos complement of position as provided by binarySearch; must be positive
+     */
+    void insertBlankLeafEntry(Tree tree, int pos, byte[] key, long vlength) throws IOException {
+        int encodedKeyLen = calculateKeyLength(key);
+        long encodedLen = encodedKeyLen + calculateLeafValueLength(vlength);
+
+        int fragmented;
+        byte[] value;
+        if (encodedLen <= tree.mMaxEntrySize) {
+            fragmented = 0;
+            value = new byte[(int) vlength];
+        } else {
+            Database db = tree.mDatabase;
+            value = db.fragment(this, null, vlength, db.mMaxFragmentedEntrySize - encodedKeyLen);
+            if (value == null) {
+                throw new LargeKeyException(key.length);
+            }
+            encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
+            fragmented = VALUE_FRAGMENTED;
+        }
+
+        int entryLoc = createLeafEntry(tree, pos, (int) encodedLen);
+
+        if (entryLoc < 0) {
+            splitLeafAndCreateEntry(tree, key, fragmented, value, (int) encodedLen, pos, true);
         } else {
             copyToLeafEntry(key, fragmented, value, entryLoc);
         }
@@ -1894,7 +1926,8 @@ final class Node extends Latch {
             encodedLen = keyLen + calculateLeafValueLength(value);
             if (encodedLen > tree.mMaxEntrySize) {
                 Database db = tree.mDatabase;
-                value = db.fragment(this, value, db.mMaxFragmentedEntrySize - keyLen);
+                value = db.fragment(this, value, value.length,
+                                    db.mMaxFragmentedEntrySize - keyLen);
                 if (value == null) {
                     // TODO: Supply proper key length, not the encoded
                     // length. Subtracting 2 is just a guess.
@@ -1934,7 +1967,7 @@ final class Node extends Latch {
                     Database db = tree.mDatabase;
                     int max = Math.min(db.mMaxFragmentedEntrySize,
                                        garbage + leftSpace + rightSpace);
-                    value = db.fragment(this, value, max);
+                    value = db.fragment(this, value, value.length, max);
                     if (value == null) {
                         throw new LargeKeyException(key.length);
                     }
@@ -2292,6 +2325,13 @@ final class Node extends Latch {
     private static int calculateLeafValueLength(byte[] value) {
         int len = value.length;
         return len + ((len <= 127) ? 1 : ((len <= 8192) ? 2 : 3));
+    }
+
+    /**
+     * Calculate encoded value length for leaf, including header.
+     */
+    private static long calculateLeafValueLength(long vlength) {
+        return vlength + ((vlength <= 127) ? 1 : ((vlength <= 8192) ? 2 : 3));
     }
 
     /**
@@ -2719,7 +2759,7 @@ final class Node extends Latch {
                 Database db = tree.mDatabase;
                 int max = Math.min(~entryLoc, db.mMaxFragmentedEntrySize);
                 int encodedKeyLen = calculateKeyLength(key);
-                value = db.fragment(this, value, max - encodedKeyLen);
+                value = db.fragment(this, value, value.length, max - encodedKeyLen);
                 if (value == null) {
                     throw new LargeKeyException(key.length);
                 }

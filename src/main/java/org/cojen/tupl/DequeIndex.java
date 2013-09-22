@@ -411,6 +411,12 @@ final class DequeIndex extends Latch implements Index {
     }
 
     @Override
+    public Stream newStream() {
+        // FIXME
+        throw null;
+    }
+
+    @Override
     public View viewGe(byte[] key) {
         return BoundedView.viewGe(this, key);
     }

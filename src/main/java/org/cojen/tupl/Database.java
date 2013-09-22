@@ -204,7 +204,7 @@ public final class Database implements CauseCloseable {
 
     private final PageAllocator mAllocator;
 
-    private final FragmentCache mFragmentCache;
+    final FragmentCache mFragmentCache;
     final int mMaxFragmentedEntrySize;
 
     // Fragmented values which are transactionally deleted go here.
@@ -600,6 +600,9 @@ public final class Database implements CauseCloseable {
 
                     // New redo logs begin with identifiers one higher than last scanned.
                     mRedoWriter = new RedoLog(config, replayLog);
+
+                    // FIXME: If any exception is thrown before checkpoint is complete, delete
+                    // the newly created redo log file.
 
                     if (doCheckpoint) {
                         checkpoint(true, 0, 0);
@@ -2322,6 +2325,30 @@ public final class Database implements CauseCloseable {
      * Caller must hold commit lock and exclusive latch on node. Method does
      * nothing if node is already dirty. Latch is never released by this method,
      * even if an exception is thrown.
+     *
+     * @return true if just made dirty and id changed
+     */
+    boolean markFragmentDirty(Node node) throws IOException {
+        if (node.mCachedState == mCommitState) {
+            return false;
+        } else {
+            long oldId = node.mId;
+            long newId = mAllocator.allocPage(node);
+            if (oldId != 0) {
+                mPageDb.deletePage(oldId);
+            }
+            if (node.mCachedState != CACHED_CLEAN) {
+                node.write(mPageDb);
+            }
+            dirty(node, newId);
+            return true;
+        }
+    }
+
+    /**
+     * Caller must hold commit lock and exclusive latch on node. Method does
+     * nothing if node is already dirty. Latch is never released by this method,
+     * even if an exception is thrown.
      */
     void markUndoLogDirty(Node node) throws IOException {
         if (node.mCachedState != mCommitState) {
@@ -2370,6 +2397,15 @@ public final class Database implements CauseCloseable {
     void redirty(Node node) {
         node.mCachedState = mCommitState;
         mAllocator.dirty(node);
+    }
+
+    /**
+     * Caller must hold commit lock and exclusive latch on node. This method should only be
+     * called for nodes whose existing data is not needed and it is known that node is already
+     * in the allocator's dirty list.
+     */
+    void redirtyQ(Node node) {
+        node.mCachedState = mCommitState;
     }
 
     /**
@@ -2475,6 +2511,15 @@ public final class Database implements CauseCloseable {
     }
 
     /**
+     * Deletes a page without the possibility of recycling it. Caller must hold commit lock.
+     *
+     * @param id must be greater than one
+     */
+    void forceDeletePage(long id) throws IOException {
+        mPageDb.deletePage(id);
+    }
+
+    /**
      * Indicate that a non-root node is most recently used. Root node is not
      * managed in usage list and cannot be evicted. Caller must hold any latch
      * on node. Latch is never released by this method, even if an exception is
@@ -2511,34 +2556,35 @@ public final class Database implements CauseCloseable {
      *
      * 0b0000_ffip
      *
-     * The leading 4 bits define the encoding type, which must be 0. The 'f'
-     * bits define the full value length field size: 2, 4, 6, or 8 bytes. The
-     * array is limited to a 4 byte length, and so only the 2 and 4 byte forms
-     * apply. The 'i' bit defines the inline content length field size: 0 or 2
-     * bytes. The 'p' bit is clear if direct pointers are used, and set for
-     * indirect pointers. Pointers are always 6 bytes.
+     * The leading 4 bits define the encoding type, which must be 0. The 'f' bits define the
+     * full value length field size: 2, 4, 6, or 8 bytes. The 'i' bit defines the inline
+     * content length field size: 0 or 2 bytes. The 'p' bit is clear if direct pointers are
+     * used, and set for indirect pointers. Pointers are always 6 bytes.
      *
      * @param caller optional tree node which is latched and calling this method
+     * @param value can be null if value is all zeros
      * @param max maximum allowed size for returned byte array; must not be
      * less than 11 (can be 9 if full value length is < 65536)
      * @return null if max is too small
      */
-    byte[] fragment(Node caller, byte[] value, int max) throws IOException {
+    byte[] fragment(Node caller, final byte[] value, final long vlength, int max)
+        throws IOException
+    {
         int pageSize = mPageSize;
-        int pageCount = value.length / pageSize;
-        int remainder = value.length % pageSize;
+        long pageCount = vlength / pageSize;
+        int remainder = (int) (vlength % pageSize);
 
-        if (value.length >= 65536) {
+        if (vlength >= 65536) {
             // Subtract header size, full length field size, and size of one pointer.
             max -= (1 + 4 + 6);
         } else if (pageCount == 0 && remainder <= (max - (1 + 2 + 2))) {
             // Entire value fits inline. It didn't really need to be
             // encoded this way, but do as we're told.
-            byte[] newValue = new byte[(1 + 2 + 2) + value.length];
+            byte[] newValue = new byte[(1 + 2 + 2) + (int) vlength];
             newValue[0] = 0x02; // ff=0, i=1, p=0
-            encodeShortLE(newValue, 1, value.length);     // full length
-            encodeShortLE(newValue, 1 + 2, value.length); // inline length
-            arraycopy(value, 0, newValue, (1 + 2 + 2), value.length);
+            encodeShortLE(newValue, 1, (int) vlength);     // full length
+            encodeShortLE(newValue, 1 + 2, (int) vlength); // inline length
+            arrayCopyOrFill(value, 0, newValue, (1 + 2 + 2), (int) vlength);
             return newValue;
         } else {
             // Subtract header size, full length field size, and size of one pointer.
@@ -2549,7 +2595,7 @@ public final class Database implements CauseCloseable {
             return null;
         }
 
-        int pointerSpace = pageCount * 6;
+        long pointerSpace = pageCount * 6;
 
         byte[] newValue;
         if (remainder <= max && remainder < 65536
@@ -2560,39 +2606,50 @@ public final class Database implements CauseCloseable {
 
             byte header;
             int offset;
-            if (value.length >= 65536) {
-                header = 0x06; // ff = 1, i=1
-                offset = 1 + 4;
-            } else {
+            if (vlength < (1L << (2 * 8))) {
                 header = 0x02; // ff = 0, i=1
                 offset = 1 + 2;
+            } else if (vlength < (1L << (4 * 8))) {
+                header = 0x06; // ff = 1, i=1
+                offset = 1 + 4;
+            } else if (vlength < (1L << (6 * 8))) {
+                header = 0x0a; // ff = 2, i=1
+                offset = 1 + 6;
+            } else {
+                header = 0x0e; // ff = 3, i=1
+                offset = 1 + 8;
             }
 
             int poffset = offset + 2 + remainder;
-            newValue = new byte[poffset + pointerSpace];
+            newValue = new byte[poffset + (int) pointerSpace];
             if (pageCount > 0) {
-                int voffset = remainder;
-                while (true) {
-                    Node node = allocDirtyNode();
-                    try {
-                        mFragmentCache.put(caller, node);
-                        encodeInt48LE(newValue, poffset, node.mId);
-                        arraycopy(value, voffset, node.mPage, 0, pageSize);
-                        if (pageCount == 1) {
-                            break;
+                if (value == null) {
+                    // Value is sparse, so just fill with null pointers.
+                    fill(newValue, poffset, poffset + ((int) pageCount) * 6, (byte) 0);
+                } else {
+                    int voffset = remainder;
+                    while (true) {
+                        Node node = allocDirtyNode();
+                        try {
+                            mFragmentCache.put(caller, node);
+                            encodeInt48LE(newValue, poffset, node.mId);
+                            arraycopy(value, voffset, node.mPage, 0, pageSize);
+                            if (pageCount == 1) {
+                                break;
+                            }
+                        } finally {
+                            node.releaseExclusive();
                         }
-                    } finally {
-                        node.releaseExclusive();
+                        pageCount--;
+                        poffset += 6;
+                        voffset += pageSize;
                     }
-                    pageCount--;
-                    poffset += 6;
-                    voffset += pageSize;
                 }
             }
 
             newValue[0] = header;
             encodeShortLE(newValue, offset, remainder); // inline length
-            arraycopy(value, 0, newValue, offset + 2, remainder);
+            arrayCopyOrFill(value, 0, newValue, offset + 2, remainder);
         } else {
             // Remainder doesn't fit inline, so don't encode any inline
             // content. Last extra page will not be full.
@@ -2601,69 +2658,89 @@ public final class Database implements CauseCloseable {
 
             byte header;
             int offset;
-            if (value.length >= 65536) {
-                header = 0x04; // ff = 1, i=0
-                offset = 1 + 4;
-            } else {
+            if (vlength < (1L << (2 * 8))) {
                 header = 0x00; // ff = 0, i=0
                 offset = 1 + 2;
+            } else if (vlength < (1L << (4 * 8))) {
+                header = 0x04; // ff = 1, i=0
+                offset = 1 + 4;
+            } else if (vlength < (1L << (6 * 8))) {
+                header = 0x08; // ff = 2, i=0
+                offset = 1 + 6;
+            } else {
+                header = 0x0c; // ff = 3, i=0
+                offset = 1 + 8;
             }
 
             if (pointerSpace <= (max + 6)) {
                 // All pointers fit, so encode as direct.
-                newValue = new byte[offset + pointerSpace];
+                newValue = new byte[offset + (int) pointerSpace];
                 if (pageCount > 0) {
-                    int voffset = 0;
-                    while (true) {
-                        Node node = allocDirtyNode();
-                        try {
-                            mFragmentCache.put(caller, node);
-                            encodeInt48LE(newValue, offset, node.mId);
-                            byte[] page = node.mPage;
-                            if (pageCount > 1) {
-                                arraycopy(value, voffset, page, 0, pageSize);
-                            } else {
-                                arraycopy(value, voffset, page, 0, remainder);
-                                // Zero fill the rest, making it easier to extend later.
-                                fill(page, remainder, page.length, (byte) 0);
-                                break;
+                    if (value == null) {
+                        // Value is sparse, so just fill with null pointers.
+                        fill(newValue, offset, offset + ((int) pageCount) * 6, (byte) 0);
+                    } else {
+                        int voffset = 0;
+                        while (true) {
+                            Node node = allocDirtyNode();
+                            try {
+                                mFragmentCache.put(caller, node);
+                                encodeInt48LE(newValue, offset, node.mId);
+                                byte[] page = node.mPage;
+                                if (pageCount > 1) {
+                                    arraycopy(value, voffset, page, 0, pageSize);
+                                } else {
+                                    arraycopy(value, voffset, page, 0, remainder);
+                                    // Zero fill the rest, making it easier to extend later.
+                                    fill(page, remainder, page.length, (byte) 0);
+                                    break;
+                                }
+                            } finally {
+                                node.releaseExclusive();
                             }
-                        } finally {
-                            node.releaseExclusive();
+                            pageCount--;
+                            offset += 6;
+                            voffset += pageSize;
                         }
-                        pageCount--;
-                        offset += 6;
-                        voffset += pageSize;
                     }
                 }
             } else {
                 // Use indirect pointers.
                 header |= 0x01;
                 newValue = new byte[offset + 6];
-                int levels = calculateInodeLevels(value.length, pageSize);
-                Node inode = allocDirtyNode();
-                encodeInt48LE(newValue, offset, inode.mId);
-                writeMultilevelFragments(caller, levels, inode, value, 0, value.length);
+                if (value == null) {
+                    // Value is sparse, so just store a null pointer.
+                    encodeInt48LE(newValue, offset, 0);
+                } else {
+                    Node inode = allocDirtyNode();
+                    encodeInt48LE(newValue, offset, inode.mId);
+                    int levels = calculateInodeLevels(vlength, pageSize);
+                    writeMultilevelFragments(caller, levels, inode, value, 0, vlength);
+                }
             }
 
             newValue[0] = header;
         }
 
         // Encode full length field.
-        if (value.length >= 65536) {
-            encodeIntLE(newValue, 1, value.length);
+        if (vlength < (1L << (2 * 8))) {
+            encodeShortLE(newValue, 1, (int) vlength);
+        } else if (vlength < (1L << (4 * 8))) {
+            encodeIntLE(newValue, 1, (int) vlength);
+        } else if (vlength < (1L << (6 * 8))) {
+            encodeInt48LE(newValue, 1, vlength);
         } else {
-            encodeShortLE(newValue, 1, value.length);
+            encodeLongLE(newValue, 1, vlength);
         }
 
         return newValue;
     }
 
-    private static int calculateInodeLevels(long valueLength, int pageSize) {
+    static int calculateInodeLevels(long vlength, int pageSize) {
         int levels = 0;
 
-        if (valueLength >= 0 && valueLength < (Long.MAX_VALUE / 2)) {
-            long len = (valueLength + (pageSize - 1)) / pageSize;
+        if (vlength >= 0 && vlength < (Long.MAX_VALUE / 2)) {
+            long len = (vlength + (pageSize - 1)) / pageSize;
             if (len > 1) {
                 int ptrCount = pageSize / 6;
                 do {
@@ -2672,7 +2749,7 @@ public final class Database implements CauseCloseable {
             }
         } else {
             BigInteger bPageSize = BigInteger.valueOf(pageSize);
-            BigInteger bLen = (valueOfUnsigned(valueLength)
+            BigInteger bLen = (valueOfUnsigned(vlength)
                                .add(bPageSize.subtract(BigInteger.ONE))).divide(bPageSize);
             if (bLen.compareTo(BigInteger.ONE) > 0) {
                 BigInteger bPtrCount = bPageSize.divide(BigInteger.valueOf(6));
@@ -2690,11 +2767,11 @@ public final class Database implements CauseCloseable {
     /**
      * @param level inode level; at least 1
      * @param inode exclusive latched parent inode; always released by this method
-     * @param value slice of complete value being fragmented
+     * @param value slice of complete value being fragmented; can be null if all zeros
      */
     private void writeMultilevelFragments(Node caller,
                                           int level, Node inode,
-                                          byte[] value, int voffset, int vlength)
+                                          byte[] value, int voffset, long vlength)
         throws IOException
     {
         long levelCap;
@@ -2725,12 +2802,8 @@ public final class Database implements CauseCloseable {
                 // Zero fill the rest, making it easier to extend later.
                 fill(page, poffset, page.length, (byte) 0);
             } catch (Throwable e) {
-                for (Node childNode : childNodes) {
-                    if (childNode != null) {
-                        childNode.acquireExclusive();
-                        deleteNode(childNode);
-                    }
-                }
+                // Panic.
+                close(e);
                 throw rethrow(e);
             }
 
@@ -2747,10 +2820,10 @@ public final class Database implements CauseCloseable {
                 if (childNodeId == childNode.mId) {
                     childNode.acquireExclusive();
                     if (childNodeId == childNode.mId) {
-                        // Since commit lock is held, only need to switch the
-                        // state. Calling redirty is unnecessary and it would
-                        // screw up the dirty list order for no good reason.
-                        childNode.mCachedState = mCommitState;
+                        // Since commit lock is held, only need to switch the state. Calling
+                        // redirty is unnecessary and it would screw up the dirty list order
+                        // for no good reason. Use the quick variant.
+                        redirtyQ(childNode);
                         break latchChild;
                     }
                     childNode.releaseExclusive();
@@ -2849,112 +2922,40 @@ public final class Database implements CauseCloseable {
                 long nodeId = decodeUnsignedInt48LE(fragmented, off);
                 off += 6;
                 len -= 6;
-                Node node = mFragmentCache.get(caller, nodeId);
-                try {
-                    byte[] page = node.mPage;
-                    int pLen = Math.min(vLen, page.length);
-                    arraycopy(page, 0, value, vOff, pLen);
-                    vOff += pLen;
-                    vLen -= pLen;
-                } finally {
-                    node.releaseShared();
+                int pLen;
+                if (nodeId == 0) {
+                    // Reconstructing a sparse value. Array is already zero-filled.
+                    pLen = Math.min(vLen, mPageSize);
+                } else {
+                    Node node = mFragmentCache.get(caller, nodeId);
+                    try {
+                        byte[] page = node.mPage;
+                        pLen = Math.min(vLen, page.length);
+                        arraycopy(page, 0, value, vOff, pLen);
+                    } finally {
+                        node.releaseShared();
+                    }
                 }
+                vOff += pLen;
+                vLen -= pLen;
             }
         } else {
             // Indirect pointers.
-            int levels = calculateInodeLevels(vLen, pageSize());
-            long nodeId = decodeUnsignedInt48LE(fragmented, off);
-            Node inode = mFragmentCache.get(caller, nodeId);
-            readMultilevelFragments(caller, levels, inode, value, 0, vLen);
+            long inodeId = decodeUnsignedInt48LE(fragmented, off);
+            if (inodeId != 0) {
+                Node inode = mFragmentCache.get(caller, inodeId);
+                int levels = calculateInodeLevels(vLen, mPageSize);
+                readMultilevelFragments(caller, levels, inode, value, 0, vLen);
+            }
         }
 
         return value;
     }
 
     /**
-     * Trace the pages of fragmented value.
-     *
-     * @param caller optional tree node which is latched and calling this method
-     */
-    /*
-    void traceFragmented(java.util.BitSet bits,
-                         Node caller, byte[] fragmented, int off, int len)
-        throws IOException
-    {
-        int header = fragmented[off++];
-        len--;
-
-        // TODO: code duplication with reconstruct
-        // TODO: no LargeValueException
-        int vLen;
-        switch ((header >> 2) & 0x03) {
-        default:
-            vLen = readUnsignedShortLE(fragmented, off);
-            break;
-
-        case 1:
-            vLen = readIntLE(fragmented, off);
-            if (vLen < 0) {
-                throw new LargeValueException(vLen & 0xffffffffL);
-            }
-            break;
-
-        case 2:
-            long vLenL = readUnsignedInt48LE(fragmented, off);
-            if (vLenL > Integer.MAX_VALUE) {
-                throw new LargeValueException(vLenL);
-            }
-            vLen = (int) vLenL;
-            break;
-
-        case 3:
-            vLenL = readLongLE(fragmented, off);
-            if (vLenL < 0 || vLenL > Integer.MAX_VALUE) {
-                throw new LargeValueException(vLenL);
-            }
-            vLen = (int) vLenL;
-            break;
-        }
-
-        {
-            int vLenFieldSize = 2 + ((header >> 1) & 0x06);
-            off += vLenFieldSize;
-            len -= vLenFieldSize;
-        }
-
-        if ((header & 0x02) != 0) {
-            // Inline content.
-            int inLen = readUnsignedShortLE(fragmented, off);
-            off += 2 + inLen;
-            len -= 2 + inLen;
-        }
-
-        if ((header & 0x01) == 0) {
-            // Direct pointers.
-            while (len >= 6) {
-                long nodeId = readUnsignedInt48LE(fragmented, off);
-                off += 6;
-                len -= 6;
-                bits.clear((int) nodeId);
-            }
-        } else {
-            // Indirect pointers.
-            // TODO
-            throw new DatabaseException("TODO");
-            /*
-            int levels = calculateInodeLevels(vLen, pageSize());
-            long nodeId = readUnsignedInt48LE(fragmented, off);
-            Node inode = mFragmentCache.get(caller, nodeId);
-            readMultilevelFragments(caller, levels, inode, value, 0, vLen);
-            * /
-        }
-    }
-    */
-
-    /**
      * @param level inode level; at least 1
      * @param inode shared latched parent inode; always released by this method
-     * @param value slice of complete value being reconstructed
+     * @param value slice of complete value being reconstructed; initially filled with zeros
      */
     private void readMultilevelFragments(Node caller,
                                          int level, Node inode,
@@ -2975,13 +2976,15 @@ public final class Database implements CauseCloseable {
         inode.releaseShared();
 
         for (long childNodeId : childNodeIds) {
-            Node childNode = mFragmentCache.get(caller, childNodeId);
             int len = (int) Math.min(levelCap, vlength);
-            if (level <= 0) {
-                arraycopy(childNode.mPage, 0, value, voffset, len);
-                childNode.releaseShared();
-            } else {
-                readMultilevelFragments(caller, level, childNode, value, voffset, len);
+            if (childNodeId != 0) {
+                Node childNode = mFragmentCache.get(caller, childNodeId);
+                if (level <= 0) {
+                    arraycopy(childNode.mPage, 0, value, voffset, len);
+                    childNode.releaseShared();
+                } else {
+                    readMultilevelFragments(caller, level, childNode, value, voffset, len);
+                }
             }
             vlength -= len;
             voffset += len;
@@ -2989,8 +2992,7 @@ public final class Database implements CauseCloseable {
     }
 
     /**
-     * Delete the extra pages of a fragmented value. Caller must hold commit
-     * lock.
+     * Delete the extra pages of a fragmented value. Caller must hold commit lock.
      *
      * @param caller optional tree node which is latched and calling this method
      */
@@ -3044,10 +3046,12 @@ public final class Database implements CauseCloseable {
             }
         } else {
             // Indirect pointers.
-            int levels = calculateInodeLevels(vLen, pageSize());
-            long nodeId = decodeUnsignedInt48LE(fragmented, off);
-            Node inode = removeInode(caller, nodeId);
-            deleteMultilevelFragments(caller, levels, inode, vLen);
+            long inodeId = decodeUnsignedInt48LE(fragmented, off);
+            if (inodeId != 0) {
+                Node inode = removeInode(caller, inodeId);
+                int levels = calculateInodeLevels(vLen, mPageSize);
+                deleteMultilevelFragments(caller, levels, inode, vLen);
+            }
         }
     }
 
@@ -3074,14 +3078,17 @@ public final class Database implements CauseCloseable {
         if (level <= 0) for (long childNodeId : childNodeIds) {
             deleteFragment(caller, childNodeId);
         } else for (long childNodeId : childNodeIds) {
-            Node childNode = removeInode(caller, childNodeId);
             long len = Math.min(levelCap, vlength);
-            deleteMultilevelFragments(caller, level, childNode, len);
+            if (childNodeId != 0) {
+                Node childNode = removeInode(caller, childNodeId);
+                deleteMultilevelFragments(caller, level, childNode, len);
+            }
             vlength -= len;
         }
     }
 
     /**
+     * @param nodeId must not be zero
      * @return non-null Node with exclusive latch held
      */
     private Node removeInode(Node caller, long nodeId) throws IOException {
@@ -3095,17 +3102,22 @@ public final class Database implements CauseCloseable {
         return node;
     }
 
+    /**
+     * @param nodeId can be zero
+     */
     private void deleteFragment(Node caller, long nodeId) throws IOException {
-        Node node = mFragmentCache.remove(caller, nodeId);
-        if (node != null) {
-            deleteNode(node);
-        } else if (!mHasCheckpointed) {
-            // Page was never used if nothing has ever been checkpointed.
-            mAllocator.recyclePage(nodeId);
-        } else {
-            // Page is clean if not in a Node, and so it must survive until
-            // after the next checkpoint.
-            mPageDb.deletePage(nodeId);
+        if (nodeId != 0) {
+            Node node = mFragmentCache.remove(caller, nodeId);
+            if (node != null) {
+                deleteNode(node);
+            } else if (!mHasCheckpointed) {
+                // Page was never used if nothing has ever been checkpointed.
+                mAllocator.recyclePage(nodeId);
+            } else {
+                // Page is clean if not in a Node, and so it must survive until
+                // after the next checkpoint.
+                mPageDb.deletePage(nodeId);
+            }
         }
     }
 

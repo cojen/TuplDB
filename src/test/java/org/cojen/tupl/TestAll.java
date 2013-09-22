@@ -48,6 +48,7 @@ public class TestAll {
             ViewTest.class,
             CloseTest.class,
             CloseNonDurableTest.class,
+            StreamTest.class,
         };
 
         String[] names = new String[classes.length];
