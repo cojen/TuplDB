@@ -495,15 +495,17 @@ class Locker {
      * @return new parent scope
      */
     final ParentScope scopeEnter() {
-        ParentScope scope = new ParentScope();
-        scope.mParentScope = mParentScope;
+        ParentScope parent = new ParentScope();
+        parent.mParentScope = mParentScope;
         Object tailObj = mTailBlock;
-        scope.mTailBlock = tailObj;
+        parent.mTailBlock = tailObj;
         if (tailObj != null) {
-            scope.mTailBlockSize = (tailObj instanceof Block) ? (((Block) tailObj).mSize) : 1;
+            if (tailObj instanceof Block) {
+                parent.mTailBlockSize = ((Block) tailObj).mSize;
+            }
         }
-        mParentScope = scope;
-        return scope;
+        mParentScope = parent;
+        return parent;
     }
 
     /**
@@ -515,9 +517,7 @@ class Locker {
             ParentScope parent = mParentScope;
             if (tailObj instanceof Lock) {
                 if (parent.mTailBlock == null) {
-                    Lock tailLock = (Lock) tailObj;
-                    parent.mTailBlock = tailLock;
-                    mTailBlock = null;
+                    parent.mTailBlock = tailObj;
                 }
             } else {
                 Block tail = (Block) tailObj;
@@ -807,6 +807,7 @@ class Locker {
     static final class ParentScope {
         ParentScope mParentScope;
         Object mTailBlock;
+        // Must be zero if tail is not a block.
         int mTailBlockSize;
 
         // These fields are used by Transaction.
