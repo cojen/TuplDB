@@ -591,7 +591,9 @@ class Locker {
      * Releases all locks held by this Locker, and exits all scopes.
      */
     final void scopeExitAll() {
-        while (scopeExit() != null);
+        mParentScope = null;
+        scopeUnlockAll();
+        mTailBlock = null;
     }
 
     @Override
