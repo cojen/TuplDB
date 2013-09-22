@@ -499,10 +499,8 @@ class Locker {
         parent.mParentScope = mParentScope;
         Object tailObj = mTailBlock;
         parent.mTailBlock = tailObj;
-        if (tailObj != null) {
-            if (tailObj instanceof Block) {
-                parent.mTailBlockSize = ((Block) tailObj).mSize;
-            }
+        if (tailObj instanceof Block) {
+            parent.mTailBlockSize = ((Block) tailObj).mSize;
         }
         mParentScope = parent;
         return parent;
@@ -591,7 +589,9 @@ class Locker {
      * Releases all locks held by this Locker, and exits all scopes.
      */
     final void scopeExitAll() {
-        while (scopeExit() != null);
+        mParentScope = null;
+        scopeUnlockAll();
+        mTailBlock = null;
     }
 
     @Override
