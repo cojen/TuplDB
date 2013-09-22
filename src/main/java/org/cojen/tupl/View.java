@@ -279,6 +279,11 @@ public interface View {
     */
 
     /**
+     * Returns an unopened stream for accessing values in this view.
+     */
+    /*public*/ Stream newStream();
+
+    /**
      * Returns a sub-view, backed by this one, whose keys are greater than or
      * equal to the given key. Ownership of the key instance is transferred,
      * and so it must not be modified after calling this method.

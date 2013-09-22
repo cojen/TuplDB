@@ -87,6 +87,11 @@ class TrimmedView implements View {
     }
 
     @Override
+    public Stream newStream() {
+        return new TrimmedStream(this, mSource.newStream());
+    }
+
+    @Override
     public View viewGe(byte[] key) {
         return new TrimmedView(mSource.viewGe(applyPrefix(key)), mPrefix, mTrim);
     }
