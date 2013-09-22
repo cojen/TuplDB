@@ -22,7 +22,7 @@ package org.cojen.tupl;
  *
  * @author Brian S O'Neill
  */
-public class NoSuchValueException extends DatabaseException {
+/*public*/ class NoSuchValueException extends DatabaseException {
     private static final long serialVersionUID = 1L;
 
     public NoSuchValueException() {

@@ -134,7 +134,7 @@ public interface Index extends View, Closeable {
      * {@inheritDoc}
      */
     @Override
-    public Stream newStream();
+    /*public*/ Stream newStream();
 
     /**
      * {@inheritDoc}

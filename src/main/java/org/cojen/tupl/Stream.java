@@ -31,7 +31,7 @@ import java.io.OutputStream;
  * @author Brian S O'Neill
  * @see View#newStream View.newStream
  */
-public interface Stream extends Closeable {
+/*public*/ interface Stream extends Closeable {
     /**
      * Opens the stream for accessing the value referenced by the given key. If stream is
      * already opened when this method is called, it is closed first. When opening the stream
