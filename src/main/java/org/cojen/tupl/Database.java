@@ -601,6 +601,9 @@ public final class Database implements CauseCloseable {
                     // New redo logs begin with identifiers one higher than last scanned.
                     mRedoWriter = new RedoLog(config, replayLog);
 
+                    // FIXME: If any exception is thrown before checkpoint is complete, delete
+                    // the newly created redo log file.
+
                     if (doCheckpoint) {
                         checkpoint(true, 0, 0);
                         // Only cleanup after successful checkpoint.
