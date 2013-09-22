@@ -1242,6 +1242,36 @@ public class LockTest {
         locker.scopeUnlockAll();
     }
 
+    @Test
+    public void promoteUnlockUpgraded() throws Exception {
+        Locker locker = new Locker(mManager);
+
+        // Enter, lock, promote...
+        locker.scopeEnter();
+        assertEquals(ACQUIRED, locker.tryLockUpgradable(0, k1, -1));
+        locker.promote();
+
+        assertEquals(ACQUIRED, locker.tryLockUpgradable(0, k2, -1));
+        assertEquals(UPGRADED, locker.tryLockExclusive(0, k2, -1));
+        locker.unlock();
+
+        assertEquals(OWNED_UPGRADABLE, locker.lockCheck(0, k1));
+        assertEquals(UNOWNED, locker.lockCheck(0, k2));
+
+        locker.scopeExitAll();
+
+        // Same initial state but without promote.
+        assertEquals(ACQUIRED, locker.tryLockUpgradable(0, k1, -1));
+        locker.scopeEnter();
+
+        assertEquals(ACQUIRED, locker.tryLockUpgradable(0, k2, -1));
+        assertEquals(UPGRADED, locker.tryLockExclusive(0, k2, -1));
+        locker.unlock();
+
+        assertEquals(OWNED_UPGRADABLE, locker.lockCheck(0, k1));
+        assertEquals(UNOWNED, locker.lockCheck(0, k2));
+    }
+
     private long scheduleUnlock(final Locker locker, final long delayMillis) {
         return schedule(locker, delayMillis, 0);
     }
