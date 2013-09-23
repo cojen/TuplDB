@@ -2685,7 +2685,7 @@ public final class Database implements CauseCloseable {
     /**
      * @param level inode level; at least 1
      * @param inode exclusive latched parent inode; always released by this method
-     * @param value slice of complete value being fragmented; can be null if all zeros
+     * @param value slice of complete value being fragmented
      */
     private void writeMultilevelFragments(Node caller,
                                           int level, Node inode,
