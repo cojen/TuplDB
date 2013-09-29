@@ -430,7 +430,9 @@ class Locker {
      * lock operation was an upgrade, for a lock not immediately acquired,
      * unlock is not allowed. Instead, an IllegalStateException is thrown.
      *
-     * <p><i>Note: This method is intended for advanced use cases.</i>
+     * <p><i>Note: This method is intended for advanced use cases.</i> Also, the current
+     * implementation does not accurately track scopes. It may permit an unlock operation to
+     * cross a scope boundary, which has undefined behavior.
      *
      * @throws IllegalStateException if no locks held, or if unlocking a
      * non-immediate upgrade
@@ -454,7 +456,9 @@ class Locker {
      * immediately acquired, unlock is not allowed. Instead, an
      * IllegalStateException is thrown.
      *
-     * <p><i>Note: This method is intended for advanced use cases.</i>
+     * <p><i>Note: This method is intended for advanced use cases.</i> Also, the current
+     * implementation does not accurately track scopes. It may permit an unlock operation to
+     * cross a scope boundary, which has undefined behavior.
      *
      * @throws IllegalStateException if no locks held, or if too many shared
      * locks, or if unlocking a non-immediate upgrade
@@ -475,7 +479,9 @@ class Locker {
      * Releases last lock acquired or upgraded, within the current scope,
      * retaining an upgradable lock.
      *
-     * <p><i>Note: This method is intended for advanced use cases.</i>
+     * <p><i>Note: This method is intended for advanced use cases.</i> Also, the current
+     * implementation does not accurately track scopes. It may permit an unlock operation to
+     * cross a scope boundary, which has undefined behavior.
      *
      * @throws IllegalStateException if no locks held, or if last lock is shared
      */
