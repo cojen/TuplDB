@@ -50,7 +50,7 @@ Index userIx = db.openIndex("user");
 ```
 
 Indexes offer a low-level representation of data, and so applications which use it directly are
-responsible performing their own encoding.
+responsible for performing their own encoding.
 
 ```java
 // Store a user in an auto-commit transaction.
