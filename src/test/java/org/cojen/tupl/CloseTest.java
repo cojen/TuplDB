@@ -91,15 +91,24 @@ public class CloseTest {
         fastAssertArrayEquals("hello".getBytes(), c.key());
         fastAssertArrayEquals("world".getBytes(), c.value());
 
+        ix2.close();
+
+        fastAssertArrayEquals("hello".getBytes(), c.key());
+        fastAssertArrayEquals("world".getBytes(), c.value());
+
         try {
-            ix2.close();
+            c.store("value".getBytes());
             fail();
-        } catch (IllegalStateException e) {
-            // expected -- active cursor
+        } catch (ClosedIndexException e) {
+            // expected -- index is closed
         }
 
         fastAssertArrayEquals("hello".getBytes(), c.key());
         fastAssertArrayEquals("world".getBytes(), c.value());
+
+        c.next();
+        assertNull(c.key());
+        assertNull(c.value());
 
         c.reset();
         ix2.close();

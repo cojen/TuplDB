@@ -850,6 +850,62 @@ final class Node extends Latch {
     }
 
     /**
+     * Invalidate all cursors, starting from the root. Used when closing an index which still
+     * has active cursors. Caller must hold exclusive latch on node.
+     *
+     * @param emptyParent pass null if this is the root node
+     */
+    void invalidateCursors(Node emptyParent) {
+        Node empty;
+        obtainEmpty: {
+            if (emptyParent == null) {
+                empty = new Node(EMPTY_BYTES);
+            } else {
+                Node[] parentChildNodes = emptyParent.mChildNodes;
+                if (parentChildNodes != null) {
+                    empty = parentChildNodes[0];
+                    break obtainEmpty;
+                }
+                empty = new Node(EMPTY_BYTES);
+                emptyParent.mChildNodes = new Node[] {empty};
+            }
+
+            empty.mId = STUB_ID;
+            empty.mCachedState = CACHED_CLEAN;
+            empty.mType = mType;
+            empty.mSearchVecStart = 2;
+            empty.mSearchVecEnd = 0;
+        }
+
+        int pos = empty.mType == TYPE_TN_LEAF ? -1 : 0;
+
+        for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
+            frame.mNode = empty;
+            frame.mNodePos = pos;
+            frame = frame.mPrevCousin;
+        }
+
+        Node[] childNodes = mChildNodes;
+        if (childNodes == null) {
+            return;
+        }
+
+        for (int i=0; i<childNodes.length; i++) {
+            Node child = childNodes[i];
+            if (child != null) {
+                long childId = retrieveChildRefIdFromIndex(i);
+                if (childId == child.mId) {
+                    child.acquireExclusive();
+                    if (childId == child.mId) {
+                        child.invalidateCursors(empty);
+                    }
+                    child.releaseExclusive();
+                }
+            }
+        }
+    }
+
+    /**
      * Caller must hold any latch.
      */
     boolean isLeaf() {

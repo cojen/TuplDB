@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.concurrent.locks.Lock;
+
 import static org.cojen.tupl.Utils.*;
 
 /**
@@ -453,12 +455,27 @@ final class Tree implements Index {
                 return;
             }
 
-            if (root.mLastCursorFrame != null) {
-                throw new IllegalStateException("Cannot close an index which has active cursors");
-            }
-
             if (isInternal(mId)) {
                 throw new IllegalStateException("Cannot close an internal index");
+            }
+
+            if (root.mLastCursorFrame != null) {
+                // If any active cursors, they might be in the middle of performing node splits
+                // and merges. With the exclusive commit lock held, this is no longer the case.
+                // Once acquired, update the cursors such that they refer to empty nodes.
+                root.releaseExclusive();
+                Lock commitLock = mDatabase.acquireExclusiveCommitLock();
+                try {
+                    root.acquireExclusive();
+                    if (root.mPage == EMPTY_BYTES) {
+                        return;
+                    }
+                    if (root.mLastCursorFrame != null) {
+                        root.invalidateCursors(null);
+                    }
+                } finally {
+                    commitLock.unlock();
+                }
             }
 
             if (mDatabase.mPageDb.isDurable()) {
