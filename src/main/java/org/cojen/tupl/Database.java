@@ -1956,6 +1956,27 @@ public final class Database implements CauseCloseable {
     }
 
     /**
+     * Acquires the excluisve commit lock, which prevents any database modifications.
+     */
+    Lock acquireExclusiveCommitLock() throws InterruptedIOException {
+        // If the commit lock cannot be immediately obtained, it's due to a shared lock being
+        // held for a long time. While waiting for the exclusive lock, all other shared
+        // requests are queued. By waiting a timed amount and giving up, the exclusive lock
+        // request is effectively de-prioritized. For each retry, the timeout is doubled, to
+        // ensure that the checkpoint request is not starved.
+        Lock commitLock = mPageDb.exclusiveCommitLock();
+        try {
+            long timeoutMillis = 1;
+            while (!commitLock.tryLock(timeoutMillis, TimeUnit.MILLISECONDS)) {
+                timeoutMillis <<= 1;
+            }
+            return commitLock;
+        } catch (InterruptedException e) {
+            throw new InterruptedIOException();
+        }
+    }
+
+    /**
      * Returns a new or recycled Node instance, latched exclusively, with an id
      * of zero and a clean state.
      */
@@ -3199,33 +3220,17 @@ public final class Database implements CauseCloseable {
                 redo.checkpointPrepare();
             }
 
-            {
-                // If the commit lock cannot be immediately obtained, it's due to a
-                // shared lock being held for a long time. While waiting for the
-                // exclusive lock, all other shared requests are queued. By waiting
-                // a timed amount and giving up, the exclusive lock request is
-                // effectively de-prioritized. For each retry, the timeout is
-                // doubled, to ensure that the checkpoint request is not starved.
-                Lock commitLock = mPageDb.exclusiveCommitLock();
-                while (true) {
-                    try {
-                        long timeoutMillis = 1;
-                        while (!commitLock.tryLock(timeoutMillis, TimeUnit.MILLISECONDS)) {
-                            timeoutMillis <<= 1;
-                        }
-                    } catch (InterruptedException e) {
-                        throw new InterruptedIOException();
-                    }
+            while (true) {
+                Lock commitLock = acquireExclusiveCommitLock();
 
-                    // Registry root is infrequently modified, and so shared latch
-                    // is usually available. If not, cause might be a deadlock. To
-                    // be safe, always release commit lock and start over.
-                    if (root.tryAcquireShared()) {
-                        break;
-                    }
-
-                    commitLock.unlock();
+                // Registry root is infrequently modified, and so shared latch
+                // is usually available. If not, cause might be a deadlock. To
+                // be safe, always release commit lock and start over.
+                if (root.tryAcquireShared()) {
+                    break;
                 }
+
+                commitLock.unlock();
             }
 
             final long redoNum, redoPos, redoTxnId;
