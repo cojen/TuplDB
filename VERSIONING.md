@@ -1,7 +1,7 @@
 Versioning
 ==========
 
-Tupl uses a four numbered semantic versioning scheme, W.X.Y.Z:
+Tupl uses a four digit semantic versioning scheme, W.X.Y.Z:
 
 * W - Incompatible API and database format changes.
 * X - Backwards-compatible database format changes.
