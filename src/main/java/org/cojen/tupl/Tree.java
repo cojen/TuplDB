@@ -511,6 +511,9 @@ final class Tree implements Index {
 
     @Override
     public void drop() throws IOException {
+        long rootId;
+        int cachedState;
+
         Node root = mRoot;
         root.acquireExclusive();
         try {
@@ -536,14 +539,16 @@ final class Tree implements Index {
             // Root node reference cannot be cleared, so instead make it non-functional. Move
             // the page reference into a new evictable Node object, allowing it to be recycled.
 
-            long rootId = root.mId;
-            int cachedState = root.mCachedState;
+            rootId = root.mId;
+            cachedState = root.mCachedState;
 
             mDatabase.makeEvictable(root.closeRoot(false));
-            mDatabase.dropClosedTree(this, rootId, cachedState);
         } finally {
             root.releaseExclusive();
         }
+
+        // Drop with root latch released, avoiding deadlock when commit lock is acquired.
+        mDatabase.dropClosedTree(this, rootId, cachedState);
     }
 
     void check(Transaction txn) throws IllegalArgumentException {
