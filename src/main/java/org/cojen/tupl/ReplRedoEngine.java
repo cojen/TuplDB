@@ -272,6 +272,22 @@ class ReplRedoEngine implements RedoVisitor {
             try {
                 while (true) {
                     try {
+                        // Sweep through index, waiting for any concurrent deletes to
+                        // finish. Need to use a transaction for upgradable locks. No changes
+                        // are being made, and so this doesn't create a transaction id.
+                        Transaction txn = mDb.newTransaction();
+                        try {
+                            Cursor c = ix.newCursor(txn);
+                            try {
+                                c.autoload(false);
+                                c.first();
+                            } finally {
+                                c.reset();
+                            }
+                        } finally {
+                            txn.reset();
+                        }
+                            
                         ix.drop();
                         break;
                     } catch (ClosedIndexException e) {
