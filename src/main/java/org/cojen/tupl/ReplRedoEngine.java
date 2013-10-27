@@ -300,12 +300,22 @@ class ReplRedoEngine implements RedoVisitor {
                 if (listener != null) {
                     listener.notify(EventType.REPLICATION_WARNING,
                                     "Unable to drop index: %1$s", rootCause(e));
+                    // Disable notification.
+                    ix = null;
                 }
             }
         }
 
         // Only release if no exception.
         mOpLatch.releaseShared();
+
+        if (ix != null) {
+            try {
+                mManager.notifyDrop(ix);
+            } catch (Throwable e) {
+                uncaught(e);
+            }
+        }
 
         // Return true and allow RedoDecoder to loop back.
         return true;
@@ -314,6 +324,7 @@ class ReplRedoEngine implements RedoVisitor {
     @Override
     public boolean renameIndex(long indexId, byte[] newName) throws IOException {
         Index ix = getIndex(indexId);
+        byte[] oldName = ix.getName();
 
         // Acquire latch before performing operations with side-effects.
         mOpLatch.acquireShared();
@@ -325,11 +336,21 @@ class ReplRedoEngine implements RedoVisitor {
             if (listener != null) {
                 listener.notify(EventType.REPLICATION_WARNING,
                                 "Unable to rename index: %1$s", rootCause(e));
+                // Disable notification.
+                ix = null;
             }
         }
 
         // Only release if no exception.
         mOpLatch.releaseShared();
+
+        if (ix != null) {
+            try {
+                mManager.notifyRename(ix, oldName, newName.clone());
+            } catch (Throwable e) {
+                uncaught(e);
+            }
+        }
 
         // Return true and allow RedoDecoder to loop back.
         return true;
