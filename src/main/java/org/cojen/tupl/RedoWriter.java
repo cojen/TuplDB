@@ -123,6 +123,23 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
         return commitFlush(mode);
     }
 
+    /**
+     * Auto-commit index rename.
+     *
+     * @param indexId non-zero index id
+     * @param newName non-null new index name
+     * @return non-zero position if caller should call txnCommitSync
+     */
+    public synchronized long renameIndex(long indexId, byte[] newName, DurabilityMode mode)
+        throws IOException
+    {
+        writeOp(OP_RENAME_INDEX, indexId);
+        writeUnsignedVarInt(newName.length);
+        writeBytes(newName);
+        writeTerminator();
+        return commitFlush(mode);
+    }
+
     public synchronized void reset() throws IOException {
         writeOp(OP_RESET);
         mLastTxnId = 0;

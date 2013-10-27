@@ -90,6 +90,12 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
+    public boolean renameIndex(long indexId, byte[] newName) {
+        mOut.println("renameIndex: indexId=" + indexId + ", newName=" + toHex(newName));
+        return true;
+    }
+
+    @Override
     public boolean txnEnter(long txnId) {
         mOut.println("txnEnter: txnId=" + txnId);
         return true;

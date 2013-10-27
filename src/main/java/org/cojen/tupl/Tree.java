@@ -50,7 +50,7 @@ final class Tree implements Index {
     final byte[] mIdBytes;
 
     // Name is null for all internal trees.
-    final byte[] mName;
+    volatile byte[] mName;
 
     // Although tree roots can be created and deleted, the object which refers
     // to the root remains the same. Internal state is transferred to/from this
