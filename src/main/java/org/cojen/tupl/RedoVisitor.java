@@ -72,6 +72,13 @@ interface RedoVisitor {
     public boolean dropIndex(long indexId) throws IOException;
 
     /**
+     * @param indexId non-zero index id
+     * @param newName non-null new index name
+     * @return false to stop visiting
+     */
+    public boolean renameIndex(long indexId, byte[] newName) throws IOException;
+
+    /**
      * @param txnId non-zero transaction id
      * @return false to stop visiting
      */

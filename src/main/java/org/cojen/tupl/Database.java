@@ -834,6 +834,151 @@ public final class Database implements CauseCloseable {
     }
 
     /**
+     * Renames the given index to the one given.
+     *
+     * @param index non-null open index
+     * @param newName new non-null name
+     * @throws ClosedIndexException if index reference is closed
+     * @throws IllegalStateException if name is already in use by another index
+     * @throws IllegalArgumentException if index belongs to another database instance
+     */
+    public void renameIndex(Index index, byte[] newName) throws IOException {
+        renameIndex(index, newName.clone(), true);
+    }
+
+    /**
+     * Renames the given index to the one given. Name is UTF-8 encoded.
+     *
+     * @param index non-null open index
+     * @param newName new non-null name
+     * @throws ClosedIndexException if index reference is closed
+     * @throws IllegalStateException if name is already in use by another index
+     * @throws IllegalArgumentException if index belongs to another database instance
+     */
+    public void renameIndex(Index index, String newName) throws IOException {
+        renameIndex(index, newName.getBytes("UTF-8"), true);
+    }
+
+    /**
+     * @param newName not cloned
+     */
+    void renameIndex(Index index, byte[] newName, boolean doRedo) throws IOException {
+        // Design note: Rename is a Database method instead of an Index method because it
+        // offers an extra degree of safety. It's too easy to call rename and pass a byte[] by
+        // an accident when something like remove was desired instead. Requiring access to the
+        // Database instance makes this operation a bit more of a hassle to use, which is
+        // desirable. Rename is not expected to be a common operation.
+
+        Tree tree;
+        check: {
+            try {
+                if ((tree = ((Tree) index)).mDatabase == this) {
+                    break check;
+                }
+            } catch (ClassCastException e) {
+                // Cast and catch an exception instead of calling instanceof to cause a
+                // NullPointerException to be thrown if index is null.
+            }
+            throw new IllegalArgumentException("Index belongs to a different database");
+        }
+
+        byte[] idKey;
+        byte[] oldName, oldNameKey;
+        byte[] newNameKey;
+
+        Transaction txn;
+
+        Node root = tree.mRoot;
+        root.acquireExclusive();
+        try {
+            if (root.mPage == EMPTY_BYTES) {
+                throw new ClosedIndexException();
+            }
+
+            if (Tree.isInternal(tree.mId)) {
+                throw new IllegalStateException("Cannot rename an internal index");
+            }
+
+            oldName = tree.mName;
+            if (Arrays.equals(oldName, newName)) {
+                return;
+            }
+
+            idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
+            oldNameKey = newKey(KEY_TYPE_INDEX_NAME, oldName);
+            newNameKey = newKey(KEY_TYPE_INDEX_NAME, newName);
+
+            txn = newNoRedoTransaction();
+            try {
+                txn.lockExclusive(mRegistryKeyMap.mId, idKey);
+                // Lock in a consistent order, avoiding deadlocks.
+                if (compareKeys(oldNameKey, newNameKey) <= 0) {
+                    txn.lockExclusive(mRegistryKeyMap.mId, oldNameKey);
+                    txn.lockExclusive(mRegistryKeyMap.mId, newNameKey);
+                } else {
+                    txn.lockExclusive(mRegistryKeyMap.mId, newNameKey);
+                    txn.lockExclusive(mRegistryKeyMap.mId, oldNameKey);
+                }
+            } catch (Throwable e) {
+                txn.reset();
+                throw rethrow(e);
+            }
+        } finally {
+            // Can release now that registry entries are locked. Those locks will prevent
+            // concurrent renames of the same index.
+            root.releaseExclusive();
+        }
+
+        RedoWriter redo;
+        long commitPos = 0;
+
+        try {
+            Cursor c = mRegistryKeyMap.newCursor(txn);
+            try {
+                c.autoload(false);
+                c.find(newNameKey);
+                if (c.value() != null) {
+                    throw new IllegalStateException("New name is used by another index");
+                }
+                c.store(tree.mIdBytes);
+            } finally {
+                c.reset();
+            }
+
+            if (!doRedo) {
+                redo = null;
+            } else if ((redo = mRedoWriter) != null) {
+                commitPos = redo.renameIndex(tree.mId, newName, mDurabilityMode);
+            }
+
+            mRegistryKeyMap.delete(txn, oldNameKey);
+            mRegistryKeyMap.store(txn, idKey, newName);
+
+            TreeRef ref = null;
+            mOpenTreesLatch.acquireExclusive();
+            try {
+                txn.commit();
+
+                tree.mName = newName;
+                mOpenTrees.put(newName, mOpenTrees.remove(oldName));
+            } finally {
+                mOpenTreesLatch.releaseExclusive();
+            }
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Throwable e) {
+            throw closeOnFailure(this, e);
+        } finally {
+            txn.reset();
+        }
+
+        if (redo != null && commitPos != 0) {
+            // Don't hold locks and latches during sync.
+            redo.txnCommitSync(commitPos);
+        }
+    }
+
+    /**
      * Returns an {@link UnmodifiableViewException unmodifiable} View which maps all available
      * index names to identifiers. Identifiers are long integers, {@link
      * org.cojen.tupl.io.Utils#decodeLongBE big-endian} encoded.
@@ -874,9 +1019,9 @@ public final class Database implements CauseCloseable {
 
     /**
      * Convenience method which returns a transaction intended for locking. Caller can make
-     * modifications only if commit lock is held.
+     * modifications, but they won't go to the redo log.
      */
-    Transaction newLockTransaction() {
+    Transaction newNoRedoTransaction() {
         return new Transaction(this, DurabilityMode.NO_REDO, LockMode.UPGRADABLE_READ, -1);
     }
 
@@ -1525,7 +1670,7 @@ public final class Database implements CauseCloseable {
                 idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
                 nameKey = newKey(KEY_TYPE_INDEX_NAME, tree.mName);
 
-                txn = newLockTransaction();
+                txn = newNoRedoTransaction();
                 try {
                     // Acquire locks to prevent tree from being re-opened. No deadlocks should
                     // be possible with tree latch held exclusively, but order in a safe
@@ -1742,7 +1887,7 @@ public final class Database implements CauseCloseable {
 
             // Use a transaction to ensure that only one thread loads the
             // requested index. Nothing is written into it.
-            Transaction txn = newLockTransaction();
+            Transaction txn = newNoRedoTransaction();
             try {
                 // Pass the transaction to acquire the lock.
                 byte[] rootIdBytes = mRegistry.load(txn, treeIdBytes);
@@ -1895,7 +2040,7 @@ public final class Database implements CauseCloseable {
         encodeLongBE(treeIdBytes, 0, ref.mId);
 
         if (txn == null) {
-            txn = newLockTransaction();
+            txn = newNoRedoTransaction();
         } else {
             txn.enter();
         }

@@ -93,6 +93,15 @@ class RedoLogApplier implements RedoVisitor {
     }
 
     @Override
+    public boolean renameIndex(long indexId, byte[] newName) throws IOException {
+        Index ix = openIndex(indexId);
+        if (ix != null) {
+            mDb.renameIndex(ix, newName, false);
+        }
+        return true;
+    }
+
+    @Override
     public boolean txnEnter(long txnId) throws IOException {
         Transaction txn = txn(txnId);
         if (txn == null) {

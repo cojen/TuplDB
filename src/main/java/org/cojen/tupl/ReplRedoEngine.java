@@ -312,6 +312,30 @@ class ReplRedoEngine implements RedoVisitor {
     }
 
     @Override
+    public boolean renameIndex(long indexId, byte[] newName) throws IOException {
+        Index ix = getIndex(indexId);
+
+        // Acquire latch before performing operations with side-effects.
+        mOpLatch.acquireShared();
+
+        try {
+            mDb.renameIndex(ix, newName, false);
+        } catch (RuntimeException e) {
+            EventListener listener = mDb.mEventListener;
+            if (listener != null) {
+                listener.notify(EventType.REPLICATION_WARNING,
+                                "Unable to rename index: %1$s", rootCause(e));
+            }
+        }
+
+        // Only release if no exception.
+        mOpLatch.releaseShared();
+
+        // Return true and allow RedoDecoder to loop back.
+        return true;
+    }
+
+    @Override
     public boolean txnEnter(long txnId) throws IOException {
         // Reduce hash collisions.
         long scrambledTxnId = scramble(txnId);

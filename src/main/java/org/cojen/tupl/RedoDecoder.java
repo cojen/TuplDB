@@ -184,6 +184,14 @@ abstract class RedoDecoder {
                 }
                 break;
 
+            case OP_RENAME_INDEX:
+                indexId = in.readLongLE();
+                byte[] newName = in.readBytes();
+                if (!verifyTerminator(in) || !visitor.renameIndex(indexId, newName)) {
+                    return false;
+                }
+                break;
+
             case OP_TXN_ENTER_STORE:
                 txnId = readTxnId(in);
                 indexId = in.readLongLE();
