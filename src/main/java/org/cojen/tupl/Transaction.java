@@ -627,21 +627,21 @@ public final class Transaction extends Locker {
                     if (parentScope != null) {
                         setScopeState(redo, parentScope);
                     }
-
                     if (value == null) {
                         redo.txnDelete(RedoOps.OP_TXN_ENTER_DELETE, txnId, indexId, key);
                     } else {
                         redo.txnStore(RedoOps.OP_TXN_ENTER_STORE, txnId, indexId, key, value);
                     }
-                    mHasState = hasState | (HAS_SCOPE | HAS_COMMIT);
+                    hasState |= (HAS_SCOPE | HAS_COMMIT);
                 } else {
                     if (value == null) {
                         redo.txnDelete(RedoOps.OP_TXN_DELETE, txnId, indexId, key);
                     } else {
                         redo.txnStore(RedoOps.OP_TXN_STORE, txnId, indexId, key, value);
                     }
-                    mHasState = hasState | HAS_COMMIT;
+                    hasState |= HAS_COMMIT;
                 }
+                mHasState = hasState;
             }
         } catch (Throwable e) {
             throw borked(e, false);
