@@ -61,7 +61,8 @@ abstract class RedoDecoder {
                 // fallthrough to next case...
 
             default:
-                throw new DatabaseException("Unknown redo log operation: " + op);
+                throw new DatabaseException
+                    ("Unknown redo log operation: " + op + " at " + (in.mPos - 1));
 
             case OP_RESET:
                 if (!verifyTerminator(in)) {
