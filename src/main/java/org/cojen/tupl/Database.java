@@ -1281,36 +1281,37 @@ public final class Database implements CauseCloseable {
         }
 
         /**
-         * Returns the amount of locks currently allocated. Locks are created
-         * as transactions access or modify records, and they are destroyed
-         * when transactions exit or reset. An accumulation of locks can
-         * indicate that transactions are not being reset properly.
+         * Returns the amount of locks currently allocated. Locks are created as transactions
+         * access or modify records, and they are destroyed when transactions exit or reset. An
+         * accumulation of locks can indicate that transactions are not being reset properly.
          */
         public long lockCount() {
             return mLockCount;
         }
 
         /**
-         * Returns the amount of cursors which are in a non-reset state. An
-         * accumulation of cursors can indicate that cursors are not being
-         * reset properly.
+         * Returns the amount of cursors which are in a non-reset state. An accumulation of
+         * cursors can indicate that they are not being reset properly.
          */
         public long cursorCount() {
             return mCursorCount;
         }
 
         /**
-         * Returns the amount of transactions which are in a non-reset
-         * state. An accumulation of transactions can indicate that
-         * transactions are not being reset properly.
+         * Returns the amount of fully-established transactions which are in a non-reset
+         * state. This value is unaffected by transactions which make no changes, and it is
+         * also unaffected by auto-commit transactions. An accumulation of transactions can
+         * indicate that they are not being reset properly.
          */
         public long transactionCount() {
             return mTxnCount;
         }
 
         /**
-         * Returns the total amount of transactions explicitly created over the
-         * life of the database.
+         * Returns the total amount of fully-established transactions created over the life of
+         * the database. This value is unaffected by transactions which make no changes, and it
+         * is also unaffected by auto-commit transactions. A resurrected transaction can become
+         * fully-established again, further increasing the total created value.
          */
         public long transactionsCreated() {
             return mTxnsCreated;
