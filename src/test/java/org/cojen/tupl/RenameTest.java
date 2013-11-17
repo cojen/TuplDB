@@ -33,15 +33,18 @@ public class RenameTest {
 
     @Before
     public void createTempDb() throws Exception {
-        mDb = newTempDatabase();
+        mConfig = new DatabaseConfig().durabilityMode(DurabilityMode.NO_FLUSH);
+        mDb = newTempDatabase(mConfig);
     }
 
     @After
     public void teardown() throws Exception {
         deleteTempDatabases();
         mDb = null;
+        mConfig = null;
     }
 
+    protected DatabaseConfig mConfig;
     protected Database mDb;
 
     @Test
@@ -91,5 +94,22 @@ public class RenameTest {
         ix1 = mDb.openIndex("c");
         assertEquals(id, ix1.getId());
         assertEquals(ix1, mDb.indexById(id));
+    }
+
+    @Test
+    public void renameOpen() throws Exception {
+        Index ix1 = mDb.openIndex("a");
+        ix1.store(null, "hello".getBytes(), "world".getBytes());
+        mDb.renameIndex(ix1, "b");
+
+        mDb = reopenTempDatabase(mDb, mConfig);
+
+        assertNull(mDb.findIndex("a"));
+
+        Index ix2 = mDb.findIndex("b");
+        assertEquals(ix1.getId(), ix2.getId());
+        assertEquals("b", ix2.getNameString());
+
+        fastAssertArrayEquals("world".getBytes(), ix2.load(null, "hello".getBytes()));
     }
 }
