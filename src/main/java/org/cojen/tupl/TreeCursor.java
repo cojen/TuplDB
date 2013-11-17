@@ -3162,7 +3162,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
         byte[] parentPage = parentNode.mPage;
         int parentEntryLoc = decodeUnsignedShortLE
             (parentPage, parentNode.mSearchVecStart + leftPos);
-        int parentEntryLen = Node.internalEntryLengthAtLoc(parentPage, parentEntryLoc);
+        int parentEntryLen = Node.keyLengthAtLoc(parentPage, parentEntryLoc);
         int remaining = leftAvail - parentEntryLen
             + rightAvail - parentPage.length + (Node.TN_HEADER_SIZE - 2);
 
