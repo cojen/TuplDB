@@ -2597,6 +2597,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
 
             if (left) {
                 if (compare >= 0) {
+                    observer.failed = true;
                     if (!observer.indexNodeFailed
                         (childId, level, "Child keys are not less than parent key"))
                     {
@@ -2604,6 +2605,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                     }
                 }
             } else if (compare < 0) {
+                observer.failed = true;
                 if (!observer.indexNodeFailed
                     (childId, level, "Child keys are not greater than or equal to parent key"))
                 {
@@ -2616,6 +2618,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
             switch (parentNode.mType) {
             case Node.TYPE_TN_IN:
                 if (childNode.mType == Node.TYPE_TN_LEAF) {
+                    observer.failed = true;
                     if (!observer.indexNodeFailed
                         (childId, level,
                          "Child is a leaf, but parent is a regular internal node"))
@@ -2626,6 +2629,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                 break;
             case Node.TYPE_TN_BIN:
                 if (childNode.mType != Node.TYPE_TN_LEAF) {
+                    observer.failed = true;
                     if (!observer.indexNodeFailed
                         (childId, level,
                          "Child is not a leaf, but parent is a bottom internal node"))
@@ -2635,6 +2639,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                 }
                 break;
             case Node.TYPE_TN_LEAF:
+                observer.failed = true;
                 if (!observer.indexNodeFailed(childId, level, "Child parent is a leaf node")) {
                     return false;
                 }
