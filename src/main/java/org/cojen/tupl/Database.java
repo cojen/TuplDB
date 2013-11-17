@@ -1518,7 +1518,7 @@ public final class Database implements CauseCloseable {
      * side effect of shutting down, all extraneous files are deleted.
      */
     public void shutdown() throws IOException {
-        close(null, true);
+        close(null, mPageDb instanceof DurablePageDb);
     }
 
     private void close(Throwable cause, boolean shutdown) throws IOException {
