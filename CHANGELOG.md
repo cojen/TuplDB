@@ -10,6 +10,7 @@ v1.0.1
 * Added ability to rename an index.
 * Added index rename and drop notifications.
 * Database shutdown method works for non-durable databases.
+* Added node rebalancing to reduce splits and reduce storage overhead.
 
 v1.0.0
 ------
