@@ -9,6 +9,7 @@ v1.0.1
   throw a ClosedIndexException.
 * Added ability to rename an index.
 * Added index rename and drop notifications.
+* Database shutdown method works for non-durable databases.
 
 v1.0.0
 ------
