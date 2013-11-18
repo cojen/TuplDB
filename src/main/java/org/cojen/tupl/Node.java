@@ -1626,8 +1626,8 @@ final class Node extends Latch {
                     // Do full compaction and free up the garbage, or else node must be split.
 
                     if (mGarbage + remaining < 0) {
-                        // Compaction won't make enough room, but attempt to rebalance before
-                        // splitting.
+                        // Node compaction won't make enough room, but attempt to rebalance
+                        // before splitting.
 
                         TreeCursorFrame frame = mLastCursorFrame;
                         if (frame == null || (frame = frame.mParentFrame) == null) {
@@ -1635,15 +1635,28 @@ final class Node extends Latch {
                             break compact;
                         }
 
-                        // FIXME: select left/right "randomly", try other if first fails
-
-                        int posAdjust = tryRebalanceLeafLeft(tree, frame, pos, -remaining);
-                        if (posAdjust == 0) {
-                            // Rebalance attempt failed.
-                            break compact;
+                        // "Randomly" choose left or right node first.
+                        if ((mId & 1) == 0) {
+                            int posAdjust = tryRebalanceLeafLeft(tree, frame, pos, -remaining);
+                            if (posAdjust == 0) {
+                                // First rebalance attempt failed.
+                                if (!tryRebalanceLeafRight(tree, frame, pos, -remaining)) {
+                                    // Second rebalance attempt failed too, so split.
+                                    break compact;
+                                }
+                            } else {
+                                pos -= posAdjust;
+                            }
+                        } else if (!tryRebalanceLeafRight(tree, frame, pos, -remaining)) {
+                            // First rebalance attempt failed.
+                            int posAdjust = tryRebalanceLeafLeft(tree, frame, pos, -remaining);
+                            if (posAdjust == 0) {
+                                // Second rebalance attempt failed too, so split.
+                                break compact;
+                            } else {
+                                pos -= posAdjust;
+                            }
                         }
-
-                        pos -= posAdjust;
                     }
 
                     return compactLeaf(tree, encodedLen, pos, true);
@@ -1735,7 +1748,7 @@ final class Node extends Latch {
         }
 
         final int childPos = parentFrame.mNodePos;
-        if (childPos < 2
+        if (childPos <= 0
             || parent.mCachedState != mCachedState
             || parent.mChildNodes[childPos >> 1] != this)
         {
@@ -1756,7 +1769,7 @@ final class Node extends Latch {
             return 0;
         }
 
-        // Notice that try-finlly pattern is not used to release the latches. An uncaught
+        // Notice that try-finally pattern is not used to release the latches. An uncaught
         // exception can only be caused by a bug. Leaving the latches held prevents database
         // corruption from being persisted.
 
@@ -1825,28 +1838,19 @@ final class Node extends Latch {
         mGarbage += garbageAccum;
         mSearchVecStart = lastSearchVecLoc;
 
-        // Fix cursor positions or move to the left node.
+        // Fix cursor positions or move them to the left node.
         final int leftEndPos = left.highestLeafPos() + 2;
         for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
             // Capture previous frame from linked list before changing the links.
             TreeCursorFrame prev = frame.mPrevCousin;
             int framePos = frame.mNodePos;
-            if (framePos < 0) {
-                int newPos = ~framePos - lastPos;
-                if (newPos < 0) {
-                    frame.unbind();
-                    frame.bind(left, ~(leftEndPos + framePos));
-                } else {
-                    frame.mNodePos = ~newPos;
-                }
+            int mask = framePos >> 31;
+            int newPos = (framePos ^ mask) - lastPos;
+            if (newPos < 0) {
+                frame.unbind();
+                frame.bind(left, (leftEndPos + framePos) ^ mask);
             } else {
-                int newPos = framePos - lastPos;
-                if (newPos < 0) {
-                    frame.unbind();
-                    frame.bind(left, leftEndPos + framePos);
-                } else {
-                    frame.mNodePos = newPos;
-                }
+                frame.mNodePos = newPos ^ mask;
             }
             frame = prev;
         }
@@ -1855,6 +1859,158 @@ final class Node extends Latch {
         parent.releaseExclusive();
 
         return lastPos;
+    }
+
+    /**
+     * Attempt to make room in this node by moving entries to the right sibling node. First
+     * determines if moving entries to the right node is allowed and would free up enough space.
+     * Next, attempts to latch parent and child nodes without waiting, avoiding deadlocks.
+     *
+     * @param tree required
+     * @param parentFrame required
+     * @param pos position to insert into; this position cannot move right
+     * @param minAmount minimum amount of bytes to move to make room 
+     */
+    private boolean tryRebalanceLeafRight(Tree tree, TreeCursorFrame parentFrame,
+                                          int pos, int minAmount)
+    {
+        final byte[] page = mPage;
+
+        int moveAmount = 0;
+        final int firstSearchVecLoc;
+
+        check: {
+            int searchVecStart = mSearchVecStart + pos;
+            int searchVecLoc = mSearchVecEnd;
+
+            // Note that loop doesn't examine first entry. At least one must remain.
+            for (; searchVecLoc > searchVecStart; searchVecLoc -= 2) {
+                int entryLoc = decodeUnsignedShortLE(page, searchVecLoc);
+                int len = leafEntryLengthAtLoc(page, entryLoc) + 2;
+                moveAmount += len;
+                if (moveAmount >= minAmount) {
+                    firstSearchVecLoc = searchVecLoc;
+                    break check;
+                }
+            }
+
+            return false;
+        }
+
+        final Node parent = parentFrame.tryAcquireExclusive();
+        if (parent == null) {
+            return false;
+        }
+
+        final int childPos = parentFrame.mNodePos;
+        if (childPos >= parent.highestInternalPos()
+            || parent.mCachedState != mCachedState
+            || parent.mChildNodes[childPos >> 1] != this)
+        {
+            // No right child or sanity checks failed.
+            parent.releaseExclusive();
+            return false;
+        }
+
+        final Node right;
+        try {
+            right = parent.tryLatchChildNotSplit(tree, childPos + 2);
+        } catch (IOException e) {
+            return false;
+        }
+
+        if (right == null) {
+            parent.releaseExclusive();
+            return false;
+        }
+
+        // Notice that try-finally pattern is not used to release the latches. An uncaught
+        // exception can only be caused by a bug. Leaving the latches held prevents database
+        // corruption from being persisted.
+
+        try {
+            if (tree.mDatabase.markDirty(tree, right)) {
+                parent.updateChildRefId(childPos + 2, right.mId);
+            }
+        } catch (IOException e) {
+            right.releaseExclusive();
+            parent.releaseExclusive();
+            return false;
+        }
+
+        final byte[] leftPage;
+        final int searchKeyLoc;
+        final int searchKeyLen;
+        final byte[] parentPage;
+        final int parentKeyLoc;
+        final int parentKeyGrowth;
+
+        check: {
+            int rightAvail = right.availableLeafBytes();
+            if (rightAvail >= moveAmount) {
+                // Parent search key will be updated, so verify that it has room.
+                leftPage = mPage;
+                searchKeyLoc = decodeUnsignedShortLE(leftPage, firstSearchVecLoc);
+                searchKeyLen = keyLengthAtLoc(leftPage, searchKeyLoc);
+                parentPage = parent.mPage;
+                parentKeyLoc = decodeUnsignedShortLE
+                    (parentPage, parent.mSearchVecStart + childPos);
+                parentKeyGrowth = searchKeyLen - keyLengthAtLoc(parentPage, parentKeyLoc);
+                if (parentKeyGrowth <= 0 || parentKeyGrowth <= parent.availableInternalBytes()) {
+                    // Parent has room for the new search key, so proceed with rebalancing.
+                    break check;
+                }
+            }
+            right.releaseExclusive();
+            parent.releaseExclusive();
+            return false;
+        }
+
+        // Update the parent key.
+        if (parentKeyGrowth <= 0) {
+            System.arraycopy(leftPage, searchKeyLoc, parentPage, parentKeyLoc, searchKeyLen);
+            parent.mGarbage -= parentKeyGrowth;
+        } else {
+            // FIXME: delete/insert
+            right.releaseExclusive();
+            parent.releaseExclusive();
+            return false;
+        }
+
+        int garbageAccum = 0;
+        int searchVecLoc = mSearchVecEnd;
+
+        for (; searchVecLoc >= firstSearchVecLoc; searchVecLoc -= 2) {
+            int entryLoc = decodeUnsignedShortLE(leftPage, searchVecLoc);
+            int encodedLen = leafEntryLengthAtLoc(leftPage, entryLoc);
+            int rightEntryLoc = right.createLeafEntry(tree, 0, encodedLen);
+            // Note: Must access left page each time, since compaction can replace it.
+            arraycopy(leftPage, entryLoc, right.mPage, rightEntryLoc, encodedLen);
+            garbageAccum += encodedLen;
+        }
+
+        mGarbage += garbageAccum;
+        mSearchVecEnd = firstSearchVecLoc - 2;
+
+        // Move affected cursor frames to the right node.
+        final int leftEndPos = firstSearchVecLoc - mSearchVecStart;
+        for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
+            // Capture previous frame from linked list before changing the links.
+            TreeCursorFrame prev = frame.mPrevCousin;
+            int framePos = frame.mNodePos;
+            int mask = framePos >> 31;
+            int newPos = (framePos ^ mask) - leftEndPos;
+            if (newPos >= 0) {
+                frame.unbind();
+                frame.bind(right, newPos ^ mask);
+            }
+            frame = prev;
+        }
+
+        right.releaseExclusive();
+        parent.releaseExclusive();
+
+        return true;
     }
 
     /**
