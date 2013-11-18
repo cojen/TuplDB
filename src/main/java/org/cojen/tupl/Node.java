@@ -1850,7 +1850,7 @@ final class Node extends Latch {
             int newPos = (framePos ^ mask) - lastPos;
             if (newPos < 0) {
                 frame.unbind();
-                frame.bind(left, (leftEndPos + framePos) ^ mask);
+                frame.bind(left, (leftEndPos + newPos) ^ mask);
             } else {
                 frame.mNodePos = newPos ^ mask;
             }
