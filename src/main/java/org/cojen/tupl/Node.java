@@ -1826,6 +1826,7 @@ final class Node extends Latch {
 
         int garbageAccum = 0;
         int searchVecLoc = mSearchVecStart;
+        final int leftEndPos = mSearchVecEnd - searchKeyLoc + 2;
         final int lastPos = lastSearchVecLoc - searchVecLoc;
 
         for (; searchVecLoc < lastSearchVecLoc; searchVecLoc += 2) {
@@ -1841,7 +1842,6 @@ final class Node extends Latch {
         mSearchVecStart = lastSearchVecLoc;
 
         // Fix cursor positions or move them to the left node.
-        final int leftEndPos = left.highestLeafPos() + 2;
         for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
             // Capture previous frame from linked list before changing the links.
             TreeCursorFrame prev = frame.mPrevCousin;
