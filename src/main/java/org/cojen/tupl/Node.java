@@ -559,7 +559,9 @@ final class Node extends Latch {
         long childId = retrieveChildRefId(childPos);
 
         if (childNode != null && childId == childNode.mId) {
-            childNode.acquireExclusive();
+            if (!childNode.tryAcquireExclusive()) {
+                return null;
+            }
             // Need to check again in case evict snuck in.
             if (childId != childNode.mId) {
                 childNode.releaseExclusive();
