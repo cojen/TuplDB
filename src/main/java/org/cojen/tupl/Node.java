@@ -1981,18 +1981,27 @@ final class Node extends Latch {
 
         int garbageAccum = 0;
         int searchVecLoc = mSearchVecEnd;
+        final int moved = searchVecLoc - firstSearchVecLoc + 2;
 
         for (; searchVecLoc >= firstSearchVecLoc; searchVecLoc -= 2) {
             int entryLoc = decodeUnsignedShortLE(leftPage, searchVecLoc);
             int encodedLen = leafEntryLengthAtLoc(leftPage, entryLoc);
             int rightEntryLoc = right.createLeafEntry(tree, 0, encodedLen);
-            // Note: Must access left page each time, since compaction can replace it.
+            // Note: Must access right page each time, since compaction can replace it.
             arraycopy(leftPage, entryLoc, right.mPage, rightEntryLoc, encodedLen);
             garbageAccum += encodedLen;
         }
 
         mGarbage += garbageAccum;
         mSearchVecEnd = firstSearchVecLoc - 2;
+
+        // Fix cursor positions in the right node.
+        for (TreeCursorFrame frame = right.mLastCursorFrame; frame != null; ) {
+            int framePos = frame.mNodePos;
+            int mask = framePos >> 31;
+            frame.mNodePos = ((framePos ^ mask) + moved) ^ mask;
+            frame = frame.mPrevCousin;
+        }
 
         // Move affected cursor frames to the right node.
         final int leftEndPos = firstSearchVecLoc - mSearchVecStart;
