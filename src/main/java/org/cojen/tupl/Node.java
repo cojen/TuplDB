@@ -1721,7 +1721,7 @@ final class Node extends Latch {
     private int tryRebalanceLeafLeft(Tree tree, TreeCursorFrame parentFrame,
                                      int pos, int minAmount)
     {
-        final byte[] page = mPage;
+        final byte[] rightPage = mPage;
 
         int moveAmount = 0;
         final int lastSearchVecLoc;
@@ -1732,8 +1732,8 @@ final class Node extends Latch {
 
             // Note that loop doesn't examine last entry. At least one must remain.
             for (; searchVecLoc < searchVecEnd; searchVecLoc += 2) {
-                int entryLoc = decodeUnsignedShortLE(page, searchVecLoc);
-                int len = leafEntryLengthAtLoc(page, entryLoc) + 2;
+                int entryLoc = decodeUnsignedShortLE(rightPage, searchVecLoc);
+                int len = leafEntryLengthAtLoc(rightPage, entryLoc) + 2;
                 moveAmount += len;
                 if (moveAmount >= minAmount) {
                     lastSearchVecLoc = searchVecLoc + 2; // +2 to be exclusive
@@ -1785,7 +1785,6 @@ final class Node extends Latch {
             return 0;
         }
 
-        final byte[] rightPage;
         final int searchKeyLoc;
         final int searchKeyLen;
         final byte[] parentPage;
@@ -1796,7 +1795,6 @@ final class Node extends Latch {
             int leftAvail = left.availableLeafBytes();
             if (leftAvail >= moveAmount) {
                 // Parent search key will be updated, so verify that it has room.
-                rightPage = mPage;
                 searchKeyLoc = decodeUnsignedShortLE(rightPage, lastSearchVecLoc);
                 searchKeyLen = keyLengthAtLoc(rightPage, searchKeyLoc);
                 parentPage = parent.mPage;
@@ -1826,7 +1824,6 @@ final class Node extends Latch {
 
         int garbageAccum = 0;
         int searchVecLoc = mSearchVecStart;
-        final int leftEndPos = mSearchVecEnd - searchKeyLoc + 2;
         final int lastPos = lastSearchVecLoc - searchVecLoc;
 
         for (; searchVecLoc < lastSearchVecLoc; searchVecLoc += 2) {
@@ -1842,6 +1839,7 @@ final class Node extends Latch {
         mSearchVecStart = lastSearchVecLoc;
 
         // Fix cursor positions or move them to the left node.
+        final int leftEndPos = left.highestLeafPos() + 2;
         for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
             // Capture previous frame from linked list before changing the links.
             TreeCursorFrame prev = frame.mPrevCousin;
@@ -1851,6 +1849,7 @@ final class Node extends Latch {
             if (newPos < 0) {
                 frame.unbind();
                 frame.bind(left, (leftEndPos + newPos) ^ mask);
+                frame.mParentFrame.mNodePos -= 2;
             } else {
                 frame.mNodePos = newPos ^ mask;
             }
@@ -1876,7 +1875,7 @@ final class Node extends Latch {
     private boolean tryRebalanceLeafRight(Tree tree, TreeCursorFrame parentFrame,
                                           int pos, int minAmount)
     {
-        final byte[] page = mPage;
+        final byte[] leftPage = mPage;
 
         int moveAmount = 0;
         final int firstSearchVecLoc;
@@ -1887,8 +1886,8 @@ final class Node extends Latch {
 
             // Note that loop doesn't examine first entry. At least one must remain.
             for (; searchVecLoc > searchVecStart; searchVecLoc -= 2) {
-                int entryLoc = decodeUnsignedShortLE(page, searchVecLoc);
-                int len = leafEntryLengthAtLoc(page, entryLoc) + 2;
+                int entryLoc = decodeUnsignedShortLE(leftPage, searchVecLoc);
+                int len = leafEntryLengthAtLoc(leftPage, entryLoc) + 2;
                 moveAmount += len;
                 if (moveAmount >= minAmount) {
                     firstSearchVecLoc = searchVecLoc;
@@ -1940,7 +1939,6 @@ final class Node extends Latch {
             return false;
         }
 
-        final byte[] leftPage;
         final int searchKeyLoc;
         final int searchKeyLen;
         final byte[] parentPage;
@@ -1951,7 +1949,6 @@ final class Node extends Latch {
             int rightAvail = right.availableLeafBytes();
             if (rightAvail >= moveAmount) {
                 // Parent search key will be updated, so verify that it has room.
-                leftPage = mPage;
                 searchKeyLoc = decodeUnsignedShortLE(leftPage, firstSearchVecLoc);
                 searchKeyLen = keyLengthAtLoc(leftPage, searchKeyLoc);
                 parentPage = parent.mPage;
@@ -2014,6 +2011,7 @@ final class Node extends Latch {
             if (newPos >= 0) {
                 frame.unbind();
                 frame.bind(right, newPos ^ mask);
+                frame.mParentFrame.mNodePos += 2;
             }
             frame = prev;
         }
