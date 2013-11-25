@@ -2008,7 +2008,11 @@ final class Node extends Latch {
             int framePos = frame.mNodePos;
             int mask = framePos >> 31;
             int newPos = (framePos ^ mask) - leftEndPos;
-            if (newPos >= 0) {
+            // This checks for nodes which should move, but it excludes not-found frames at the
+            // high position. They would otherwise move to position zero of the right node, but
+            // the parent key has changed. A new search would position the frame just beyond
+            // the high position of the left node, which is where it is now.
+            if (newPos >= 0 & newPos != 0 | mask == 0) {
                 frame.unbind();
                 frame.bind(right, newPos ^ mask);
                 frame.mParentFrame.mNodePos += 2;
