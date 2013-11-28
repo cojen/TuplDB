@@ -1846,7 +1846,12 @@ final class Node extends Latch {
             int framePos = frame.mNodePos;
             int mask = framePos >> 31;
             int newPos = (framePos ^ mask) - lastPos;
-            if (newPos < 0) {
+            // This checks for nodes which should move and also includes not-found frames at
+            // the low position. They need to move just higher than the left node high
+            // position, because the parent key has changed. A new search would position the
+            // search there. Note that tryRebalanceLeafRight has an identical check, after
+            // applying De Morgan's law.
+            if (newPos < 0 | (newPos == 0 & mask != 0)) {
                 frame.unbind();
                 frame.bind(left, (leftEndPos + newPos) ^ mask);
                 frame.mParentFrame.mNodePos -= 2;
@@ -2011,7 +2016,8 @@ final class Node extends Latch {
             // This checks for nodes which should move, but it excludes not-found frames at the
             // high position. They would otherwise move to position zero of the right node, but
             // the parent key has changed. A new search would position the frame just beyond
-            // the high position of the left node, which is where it is now.
+            // the high position of the left node, which is where it is now. Note that
+            // tryRebalanceLeafLeft has an identical check, after applying De Morgan's law.
             if (newPos >= 0 & (newPos != 0 | mask == 0)) {
                 frame.unbind();
                 frame.bind(right, newPos ^ mask);
