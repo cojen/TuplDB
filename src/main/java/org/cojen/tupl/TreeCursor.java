@@ -2532,6 +2532,34 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     /**
+     * Test method which confirms that the given cursor is positioned exactly the same as this
+     * one.
+     */
+    public boolean equalPositions(TreeCursor other) {
+        if (this == other) {
+            return true;
+        }
+
+        TreeCursorFrame thisFrame = mLeaf;
+        TreeCursorFrame otherFrame = other.mLeaf;
+        while (true) {
+            if (thisFrame == null) {
+                return otherFrame == null;
+            } else if (otherFrame == null) {
+                return false;
+            }
+            if (thisFrame.mNode != otherFrame.mNode) {
+                return false;
+            }
+            if (thisFrame.mNodePos != otherFrame.mNodePos) {
+                return false;
+            }
+            thisFrame = thisFrame.mParentFrame;
+            otherFrame = otherFrame.mParentFrame;
+        }
+    }
+
+    /**
      * Verifies from the current node to the last, unless stopped by observer.
      *
      * @return false if should stop

@@ -16,6 +16,8 @@
 
 package org.cojen.tupl;
 
+import java.util.Random;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -715,6 +717,51 @@ public class CursorTest {
                 }
                 assertTrue(diff < tolerance);
             }
+        }
+    }
+
+    @Test
+    public void stability() throws Exception {
+        // Verifies that cursors are positioned properly after making structural modifications
+        // to the tree.
+
+        Index ix = mDb.openIndex("test");
+
+        Random rnd = new Random(793846);
+        byte[] value = new byte[0];
+
+        final int count = 100000;
+        Cursor[] foundCursors = new Cursor[count];
+        Cursor[] notFoundCursors = new Cursor[count];
+
+        for (int i=0; i<count; i++) {
+            byte[] key = key(rnd.nextInt());
+
+            Cursor c = ix.newCursor(Transaction.BOGUS);
+            c.find(key);
+            c.store(value);
+            foundCursors[i] = c;
+
+            c = ix.newCursor(Transaction.BOGUS);
+            key = key(rnd.nextInt());
+            c.find(key);
+            notFoundCursors[i] = c;
+        }
+
+        assertTrue(ix.verify(null));
+
+        verifyPositions(ix, foundCursors);
+        verifyPositions(ix, notFoundCursors);
+    }
+
+    private static void verifyPositions(Index ix, Cursor[] cursors) throws Exception {
+        for (Cursor existing : cursors) {
+            TreeCursor c = (TreeCursor) ix.newCursor(Transaction.BOGUS);
+            byte[] key = existing.key();
+            c.find(key);
+            assertTrue(c.equalPositions((TreeCursor) existing));
+            c.reset();
+            existing.reset();
         }
     }
 
