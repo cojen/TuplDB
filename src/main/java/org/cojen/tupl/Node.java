@@ -1751,6 +1751,7 @@ final class Node extends Latch {
 
         final int childPos = parentFrame.mNodePos;
         if (childPos <= 0
+            || parent.mSplit != null
             || parent.mCachedState != mCachedState
             || parent.mChildNodes[childPos >> 1] != this)
         {
@@ -1775,16 +1776,6 @@ final class Node extends Latch {
         // exception can only be caused by a bug. Leaving the latches held prevents database
         // corruption from being persisted.
 
-        try {
-            if (tree.mDatabase.markDirty(tree, left)) {
-                parent.updateChildRefId(childPos - 2, left.mId);
-            }
-        } catch (IOException e) {
-            left.releaseExclusive();
-            parent.releaseExclusive();
-            return 0;
-        }
-
         final int searchKeyLoc;
         final int searchKeyLen;
         final byte[] parentPage;
@@ -1806,6 +1797,16 @@ final class Node extends Latch {
                     break check;
                 }
             }
+            left.releaseExclusive();
+            parent.releaseExclusive();
+            return 0;
+        }
+
+        try {
+            if (tree.mDatabase.markDirty(tree, left)) {
+                parent.updateChildRefId(childPos - 2, left.mId);
+            }
+        } catch (IOException e) {
             left.releaseExclusive();
             parent.releaseExclusive();
             return 0;
@@ -1910,6 +1911,7 @@ final class Node extends Latch {
 
         final int childPos = parentFrame.mNodePos;
         if (childPos >= parent.highestInternalPos()
+            || parent.mSplit != null
             || parent.mCachedState != mCachedState
             || parent.mChildNodes[childPos >> 1] != this)
         {
@@ -1934,16 +1936,6 @@ final class Node extends Latch {
         // exception can only be caused by a bug. Leaving the latches held prevents database
         // corruption from being persisted.
 
-        try {
-            if (tree.mDatabase.markDirty(tree, right)) {
-                parent.updateChildRefId(childPos + 2, right.mId);
-            }
-        } catch (IOException e) {
-            right.releaseExclusive();
-            parent.releaseExclusive();
-            return false;
-        }
-
         final int searchKeyLoc;
         final int searchKeyLen;
         final byte[] parentPage;
@@ -1965,6 +1957,16 @@ final class Node extends Latch {
                     break check;
                 }
             }
+            right.releaseExclusive();
+            parent.releaseExclusive();
+            return false;
+        }
+
+        try {
+            if (tree.mDatabase.markDirty(tree, right)) {
+                parent.updateChildRefId(childPos + 2, right.mId);
+            }
+        } catch (IOException e) {
             right.releaseExclusive();
             parent.releaseExclusive();
             return false;
