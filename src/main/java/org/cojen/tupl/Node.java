@@ -1817,10 +1817,14 @@ final class Node extends Latch {
             System.arraycopy(rightPage, searchKeyLoc, parentPage, parentKeyLoc, searchKeyLen);
             parent.mGarbage -= parentKeyGrowth;
         } else {
-            // FIXME: delete/insert
-            left.releaseExclusive();
-            parent.releaseExclusive();
-            return 0;
+            try {
+                parent.updateInternalKey
+                    (tree, childPos - 2, parentKeyGrowth, rightPage, searchKeyLoc, searchKeyLen);
+            } catch (IOException e) {
+                left.releaseExclusive();
+                parent.releaseExclusive();
+                return 0;
+            }
         }
 
         int garbageAccum = 0;
@@ -1977,10 +1981,14 @@ final class Node extends Latch {
             System.arraycopy(leftPage, searchKeyLoc, parentPage, parentKeyLoc, searchKeyLen);
             parent.mGarbage -= parentKeyGrowth;
         } else {
-            // FIXME: delete/insert
-            right.releaseExclusive();
-            parent.releaseExclusive();
-            return false;
+            try {
+                parent.updateInternalKey
+                    (tree, childPos, parentKeyGrowth, leftPage, searchKeyLoc, searchKeyLen);
+            } catch (IOException e) {
+                right.releaseExclusive();
+                parent.releaseExclusive();
+                return false;
+            }
         }
 
         int garbageAccum = 0;
@@ -2463,6 +2471,95 @@ final class Node extends Latch {
         // Copy existing key, and then copy value.
         arraycopy(page, start, page, entryLoc, keyLen);
         copyToLeafValue(page, fragmented, value, entryLoc + keyLen);
+        encodeShortLE(page, pos, entryLoc);
+
+        mGarbage = garbage;
+    }
+
+    /**
+     * Update an internal node key to be larger than what is currently allocated. Caller must
+     * ensure that node has enough space available and that it's not split. New key must not
+     * force this node to split.
+     *
+     * @param pos must be positive
+     * @param growth key size growth
+     */
+    void updateInternalKey(Tree tree, int pos, int growth,
+                           byte[] key, int keyStart, int encodedLen)
+        throws IOException
+    {
+        int garbage = mGarbage + encodedLen - growth;
+
+        // What follows is similar to createInternalEntry method, except the search
+        // vector doesn't grow.
+
+        int searchVecStart = mSearchVecStart;
+        int searchVecEnd = mSearchVecEnd;
+
+        int leftSpace = searchVecStart - mLeftSegTail;
+        int rightSpace = mRightSegTail - searchVecEnd
+            - ((searchVecEnd - searchVecStart) << 2) - 17;
+
+        byte[] page = mPage;
+
+        int entryLoc;
+        alloc: {
+            if ((entryLoc = allocPageEntry(encodedLen, leftSpace, rightSpace)) >= 0) {
+                pos += searchVecStart;
+                break alloc;
+            }
+
+            // Compute remaining space surrounding search vector after update completes.
+            int remaining = leftSpace + rightSpace - encodedLen;
+
+            if (garbage > remaining) {
+                // Do full compaction and free up the garbage.
+                if ((garbage + remaining) < 0) {
+                    // New key doesn't fit.
+                    throw new AssertionError();
+                }
+                mGarbage = garbage;
+                entryLoc = compactInternal(tree, encodedLen, pos, Integer.MIN_VALUE).mEntryLoc;
+                arraycopy(key, keyStart, mPage, entryLoc, encodedLen);
+                return;
+            }
+
+            int vecLen = searchVecEnd - searchVecStart + 2;
+            int childIdsLen = (vecLen << 2) + 8;
+            int newSearchVecStart;
+
+            if (remaining > 0 || (mRightSegTail & 1) != 0) {
+                // Re-center search vector, biased to the right, ensuring proper alignment.
+                newSearchVecStart =
+                    (mRightSegTail - vecLen - childIdsLen + 1 - (remaining >> 1)) & ~1;
+
+                // Allocate entry from left segment.
+                entryLoc = mLeftSegTail;
+                mLeftSegTail = entryLoc + encodedLen;
+            } else if ((mLeftSegTail & 1) == 0) {
+                // Move search vector left, ensuring proper alignment.
+                newSearchVecStart = mLeftSegTail + ((remaining >> 1) & ~1);
+
+                // Allocate entry from right segment.
+                entryLoc = mRightSegTail - encodedLen + 1;
+                mRightSegTail = entryLoc - 1;
+            } else {
+                // Search vector is misaligned, so do full compaction.
+                mGarbage = garbage;
+                entryLoc = compactInternal(tree, encodedLen, pos, Integer.MIN_VALUE).mEntryLoc;
+                arraycopy(key, keyStart, mPage, entryLoc, encodedLen);
+                return;
+            }
+
+            arraycopy(page, searchVecStart, page, newSearchVecStart, vecLen + childIdsLen);
+
+            pos += newSearchVecStart;
+            mSearchVecStart = newSearchVecStart;
+            mSearchVecEnd = newSearchVecStart + vecLen - 2;
+        }
+
+        // Copy new key and point to it.
+        arraycopy(key, keyStart, page, entryLoc, encodedLen);
         encodeShortLE(page, pos, entryLoc);
 
         mGarbage = garbage;
@@ -3559,16 +3656,17 @@ final class Node extends Latch {
      * vector points to it.
      *
      * @param encodedLen length of new entry to allocate
-     * @param keyPos normalized search vector position of key to insert
-     * @param childPos normalized search vector position of child node id to insert
+     * @param keyPos normalized search vector position of key to insert/update
+     * @param childPos normalized search vector position of child node id to insert; pass
+     * MIN_VALUE if updating
      */
     private InResult compactInternal(Tree tree, int encodedLen, int keyPos, int childPos) {
         byte[] page = mPage;
 
         int searchVecLoc = mSearchVecStart;
         keyPos += searchVecLoc;
-        // Size of search vector, with new entry.
-        int newSearchVecSize = mSearchVecEnd - searchVecLoc + (2 + 2);
+        // Size of search vector, possibly with new entry.
+        int newSearchVecSize = mSearchVecEnd - searchVecLoc + (2 + 2) + (childPos >> 30);
 
         // Determine new location of search vector, with room to grow on both ends.
         int newSearchVecStart;
@@ -3590,7 +3688,11 @@ final class Node extends Latch {
         for (; searchVecLoc <= searchVecEnd; searchVecLoc += 2, newSearchVecLoc += 2) {
             if (searchVecLoc == keyPos) {
                 newLoc = newSearchVecLoc;
-                newSearchVecLoc += 2;
+                if (childPos >= 0) {
+                    newSearchVecLoc += 2;
+                } else {
+                    continue;
+                }
             }
             encodeShortLE(dest, newSearchVecLoc, destLoc);
             int sourceLoc = decodeUnsignedShortLE(page, searchVecLoc);
@@ -3599,16 +3701,25 @@ final class Node extends Latch {
             destLoc += len;
         }
 
-        if (newLoc == 0) {
-            newLoc = newSearchVecLoc;
-            newSearchVecLoc += 2;
-        }
+        if (childPos >= 0) {
+            if (newLoc == 0) {
+                newLoc = newSearchVecLoc;
+                newSearchVecLoc += 2;
+            }
 
-        // Copy child ids, and leave room for inserted child id.
-        arraycopy(page, mSearchVecEnd + 2, dest, newSearchVecLoc, childPos);
-        arraycopy(page, mSearchVecEnd + 2 + childPos,
-                  dest, newSearchVecLoc + childPos + 8,
-                  (newSearchVecSize << 2) - childPos);
+            // Copy child ids, and leave room for inserted child id.
+            arraycopy(page, mSearchVecEnd + 2, dest, newSearchVecLoc, childPos);
+            arraycopy(page, mSearchVecEnd + 2 + childPos,
+                      dest, newSearchVecLoc + childPos + 8,
+                      (newSearchVecSize << 2) - childPos);
+        } else {
+            if (newLoc == 0) {
+                newLoc = newSearchVecLoc;
+            }
+
+            // Copy child ids.
+            arraycopy(page, mSearchVecEnd + 2, dest, newSearchVecLoc, (newSearchVecSize << 2) + 8);
+        }
 
         // Recycle old page buffer.
         db.addSpareBuffer(page);
