@@ -271,7 +271,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
     }
 
     /**
-     * Set true to ensure all writes the main database file are immediately
+     * Set true to ensure all writes to the main database file are immediately
      * durable, although not checkpointed. This option typically reduces
      * overall performance, but checkpoints complete more quickly. As a result,
      * the main database file requires less pre-allocated pages and is smaller.

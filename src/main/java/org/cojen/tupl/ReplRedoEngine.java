@@ -272,6 +272,22 @@ class ReplRedoEngine implements RedoVisitor {
             try {
                 while (true) {
                     try {
+                        // Sweep through index, waiting for any concurrent deletes to
+                        // finish. Need to use a transaction for upgradable locks. No changes
+                        // are being made, and so this doesn't create a transaction id.
+                        Transaction txn = mDb.newTransaction();
+                        try {
+                            Cursor c = ix.newCursor(txn);
+                            try {
+                                c.autoload(false);
+                                c.first();
+                            } finally {
+                                c.reset();
+                            }
+                        } finally {
+                            txn.reset();
+                        }
+                            
                         ix.drop();
                         break;
                     } catch (ClosedIndexException e) {
@@ -284,12 +300,57 @@ class ReplRedoEngine implements RedoVisitor {
                 if (listener != null) {
                     listener.notify(EventType.REPLICATION_WARNING,
                                     "Unable to drop index: %1$s", rootCause(e));
+                    // Disable notification.
+                    ix = null;
                 }
             }
         }
 
         // Only release if no exception.
         mOpLatch.releaseShared();
+
+        if (ix != null) {
+            try {
+                mManager.notifyDrop(ix);
+            } catch (Throwable e) {
+                uncaught(e);
+            }
+        }
+
+        // Return true and allow RedoDecoder to loop back.
+        return true;
+    }
+
+    @Override
+    public boolean renameIndex(long indexId, byte[] newName) throws IOException {
+        Index ix = getIndex(indexId);
+        byte[] oldName = ix.getName();
+
+        // Acquire latch before performing operations with side-effects.
+        mOpLatch.acquireShared();
+
+        try {
+            mDb.renameIndex(ix, newName, false);
+        } catch (RuntimeException e) {
+            EventListener listener = mDb.mEventListener;
+            if (listener != null) {
+                listener.notify(EventType.REPLICATION_WARNING,
+                                "Unable to rename index: %1$s", rootCause(e));
+                // Disable notification.
+                ix = null;
+            }
+        }
+
+        // Only release if no exception.
+        mOpLatch.releaseShared();
+
+        if (ix != null) {
+            try {
+                mManager.notifyRename(ix, oldName, newName.clone());
+            } catch (Throwable e) {
+                uncaught(e);
+            }
+        }
 
         // Return true and allow RedoDecoder to loop back.
         return true;

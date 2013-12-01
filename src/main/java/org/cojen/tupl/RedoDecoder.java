@@ -61,7 +61,8 @@ abstract class RedoDecoder {
                 // fallthrough to next case...
 
             default:
-                throw new DatabaseException("Unknown redo log operation: " + op);
+                throw new DatabaseException
+                    ("Unknown redo log operation: " + op + " at " + (in.mPos - 1));
 
             case OP_RESET:
                 if (!verifyTerminator(in)) {
@@ -180,6 +181,14 @@ abstract class RedoDecoder {
             case OP_DROP_INDEX:
                 indexId = in.readLongLE();
                 if (!verifyTerminator(in) || !visitor.dropIndex(indexId)) {
+                    return false;
+                }
+                break;
+
+            case OP_RENAME_INDEX:
+                indexId = in.readLongLE();
+                byte[] newName = in.readBytes();
+                if (!verifyTerminator(in) || !visitor.renameIndex(indexId, newName)) {
                     return false;
                 }
                 break;

@@ -281,7 +281,7 @@ public interface View {
     /**
      * Returns an unopened stream for accessing values in this view.
      */
-    /*public*/ Stream newStream();
+    public Stream newStream();
 
     /**
      * Returns a sub-view, backed by this one, whose keys are greater than or

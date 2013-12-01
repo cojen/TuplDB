@@ -381,7 +381,8 @@ public interface Cursor {
     public Cursor copy();
 
     /**
-     * Resets Cursor and moves it to an undefined position.
+     * Resets Cursor and moves it to an undefined position. The key and value references are
+     * also cleared.
      */
     public void reset();
 }
