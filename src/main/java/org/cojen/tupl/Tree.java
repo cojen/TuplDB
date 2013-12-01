@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.concurrent.locks.Lock;
+
 import static org.cojen.tupl.Utils.*;
 
 /**
@@ -48,7 +50,7 @@ final class Tree implements Index {
     final byte[] mIdBytes;
 
     // Name is null for all internal trees.
-    final byte[] mName;
+    volatile byte[] mName;
 
     // Although tree roots can be created and deleted, the object which refers
     // to the root remains the same. Internal state is transferred to/from this
@@ -474,12 +476,27 @@ final class Tree implements Index {
                 return;
             }
 
-            if (root.mLastCursorFrame != null) {
-                throw new IllegalStateException("Cannot close an index which has active cursors");
-            }
-
             if (isInternal(mId)) {
                 throw new IllegalStateException("Cannot close an internal index");
+            }
+
+            if (root.mLastCursorFrame != null) {
+                // If any active cursors, they might be in the middle of performing node splits
+                // and merges. With the exclusive commit lock held, this is no longer the case.
+                // Once acquired, update the cursors such that they refer to empty nodes.
+                root.releaseExclusive();
+                Lock commitLock = mDatabase.acquireExclusiveCommitLock();
+                try {
+                    root.acquireExclusive();
+                    if (root.mPage == EMPTY_BYTES) {
+                        return;
+                    }
+                    if (root.mLastCursorFrame != null) {
+                        root.invalidateCursors(null);
+                    }
+                } finally {
+                    commitLock.unlock();
+                }
             }
 
             if (mDatabase.mPageDb.isDurable()) {
@@ -515,6 +532,9 @@ final class Tree implements Index {
 
     @Override
     public void drop() throws IOException {
+        long rootId;
+        int cachedState;
+
         Node root = mRoot;
         root.acquireExclusive();
         try {
@@ -540,14 +560,16 @@ final class Tree implements Index {
             // Root node reference cannot be cleared, so instead make it non-functional. Move
             // the page reference into a new evictable Node object, allowing it to be recycled.
 
-            long rootId = root.mId;
-            int cachedState = root.mCachedState;
+            rootId = root.mId;
+            cachedState = root.mCachedState;
 
             mDatabase.makeEvictable(root.closeRoot(false));
-            mDatabase.dropClosedTree(this, rootId, cachedState);
         } finally {
             root.releaseExclusive();
         }
+
+        // Drop with root latch released, avoiding deadlock when commit lock is acquired.
+        mDatabase.dropClosedTree(this, rootId, cachedState);
     }
 
     void check(Transaction txn) throws IllegalArgumentException {

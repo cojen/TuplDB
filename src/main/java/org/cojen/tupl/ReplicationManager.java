@@ -156,11 +156,31 @@ public interface ReplicationManager extends Closeable {
      * operations &mdash; it will not suspend replication processing unless {@link
      * DatabaseConfig#maxReplicaThreads all} replication threads are consumed.
      *
-     * @param index non-null index
+     * @param index non-null index reference
      * @param key non-null key; contents must not be modified
      * @param value null if entry is deleted; contents can be modified
      */
     void notifyStore(Index index, byte[] key, byte[] value);
+
+    /**
+     * Notification to replica after an index is renamed. The current thread is free to perform
+     * any blocking operations &mdash; it will not suspend replication processing unless {@link
+     * DatabaseConfig#maxReplicaThreads all} replication threads are consumed.
+     *
+     * @param index non-null index reference
+     * @param oldName non-null old index name
+     * @param newName non-null new index name
+     */
+    void notifyRename(Index index, byte[] oldName, byte[] newName);
+
+    /**
+     * Notification to replica after an index is dropped. The current thread is free to perform
+     * any blocking operations &mdash; it will not suspend replication processing unless {@link
+     * DatabaseConfig#maxReplicaThreads all} replication threads are consumed.
+     *
+     * @param index non-null closed and dropped index reference
+     */
+    void notifyDrop(Index index);
 
     /**
      * Forward a change from a replica to the leader. Change must arrive back through the input

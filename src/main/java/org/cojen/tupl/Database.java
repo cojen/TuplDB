@@ -834,6 +834,151 @@ public final class Database implements CauseCloseable {
     }
 
     /**
+     * Renames the given index to the one given.
+     *
+     * @param index non-null open index
+     * @param newName new non-null name
+     * @throws ClosedIndexException if index reference is closed
+     * @throws IllegalStateException if name is already in use by another index
+     * @throws IllegalArgumentException if index belongs to another database instance
+     */
+    public void renameIndex(Index index, byte[] newName) throws IOException {
+        renameIndex(index, newName.clone(), true);
+    }
+
+    /**
+     * Renames the given index to the one given. Name is UTF-8 encoded.
+     *
+     * @param index non-null open index
+     * @param newName new non-null name
+     * @throws ClosedIndexException if index reference is closed
+     * @throws IllegalStateException if name is already in use by another index
+     * @throws IllegalArgumentException if index belongs to another database instance
+     */
+    public void renameIndex(Index index, String newName) throws IOException {
+        renameIndex(index, newName.getBytes("UTF-8"), true);
+    }
+
+    /**
+     * @param newName not cloned
+     */
+    void renameIndex(Index index, byte[] newName, boolean doRedo) throws IOException {
+        // Design note: Rename is a Database method instead of an Index method because it
+        // offers an extra degree of safety. It's too easy to call rename and pass a byte[] by
+        // an accident when something like remove was desired instead. Requiring access to the
+        // Database instance makes this operation a bit more of a hassle to use, which is
+        // desirable. Rename is not expected to be a common operation.
+
+        Tree tree;
+        check: {
+            try {
+                if ((tree = ((Tree) index)).mDatabase == this) {
+                    break check;
+                }
+            } catch (ClassCastException e) {
+                // Cast and catch an exception instead of calling instanceof to cause a
+                // NullPointerException to be thrown if index is null.
+            }
+            throw new IllegalArgumentException("Index belongs to a different database");
+        }
+
+        byte[] idKey;
+        byte[] oldName, oldNameKey;
+        byte[] newNameKey;
+
+        Transaction txn;
+
+        Node root = tree.mRoot;
+        root.acquireExclusive();
+        try {
+            if (root.mPage == EMPTY_BYTES) {
+                throw new ClosedIndexException();
+            }
+
+            if (Tree.isInternal(tree.mId)) {
+                throw new IllegalStateException("Cannot rename an internal index");
+            }
+
+            oldName = tree.mName;
+            if (Arrays.equals(oldName, newName)) {
+                return;
+            }
+
+            idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
+            oldNameKey = newKey(KEY_TYPE_INDEX_NAME, oldName);
+            newNameKey = newKey(KEY_TYPE_INDEX_NAME, newName);
+
+            txn = newNoRedoTransaction();
+            try {
+                txn.lockExclusive(mRegistryKeyMap.mId, idKey);
+                // Lock in a consistent order, avoiding deadlocks.
+                if (compareKeys(oldNameKey, newNameKey) <= 0) {
+                    txn.lockExclusive(mRegistryKeyMap.mId, oldNameKey);
+                    txn.lockExclusive(mRegistryKeyMap.mId, newNameKey);
+                } else {
+                    txn.lockExclusive(mRegistryKeyMap.mId, newNameKey);
+                    txn.lockExclusive(mRegistryKeyMap.mId, oldNameKey);
+                }
+            } catch (Throwable e) {
+                txn.reset();
+                throw rethrow(e);
+            }
+        } finally {
+            // Can release now that registry entries are locked. Those locks will prevent
+            // concurrent renames of the same index.
+            root.releaseExclusive();
+        }
+
+        RedoWriter redo;
+        long commitPos = 0;
+
+        try {
+            Cursor c = mRegistryKeyMap.newCursor(txn);
+            try {
+                c.autoload(false);
+                c.find(newNameKey);
+                if (c.value() != null) {
+                    throw new IllegalStateException("New name is used by another index");
+                }
+                c.store(tree.mIdBytes);
+            } finally {
+                c.reset();
+            }
+
+            if (!doRedo) {
+                redo = null;
+            } else if ((redo = mRedoWriter) != null) {
+                commitPos = redo.renameIndex(tree.mId, newName, mDurabilityMode);
+            }
+
+            mRegistryKeyMap.delete(txn, oldNameKey);
+            mRegistryKeyMap.store(txn, idKey, newName);
+
+            TreeRef ref = null;
+            mOpenTreesLatch.acquireExclusive();
+            try {
+                txn.commit();
+
+                tree.mName = newName;
+                mOpenTrees.put(newName, mOpenTrees.remove(oldName));
+            } finally {
+                mOpenTreesLatch.releaseExclusive();
+            }
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Throwable e) {
+            throw closeOnFailure(this, e);
+        } finally {
+            txn.reset();
+        }
+
+        if (redo != null && commitPos != 0) {
+            // Don't hold locks and latches during sync.
+            redo.txnCommitSync(commitPos);
+        }
+    }
+
+    /**
      * Returns an {@link UnmodifiableViewException unmodifiable} View which maps all available
      * index names to identifiers. Identifiers are long integers, {@link
      * org.cojen.tupl.io.Utils#decodeLongBE big-endian} encoded.
@@ -874,9 +1019,9 @@ public final class Database implements CauseCloseable {
 
     /**
      * Convenience method which returns a transaction intended for locking. Caller can make
-     * modifications only if commit lock is held.
+     * modifications, but they won't go to the redo log.
      */
-    Transaction newLockTransaction() {
+    Transaction newNoRedoTransaction() {
         return new Transaction(this, DurabilityMode.NO_REDO, LockMode.UPGRADABLE_READ, -1);
     }
 
@@ -1136,36 +1281,37 @@ public final class Database implements CauseCloseable {
         }
 
         /**
-         * Returns the amount of locks currently allocated. Locks are created
-         * as transactions access or modify records, and they are destroyed
-         * when transactions exit or reset. An accumulation of locks can
-         * indicate that transactions are not being reset properly.
+         * Returns the amount of locks currently allocated. Locks are created as transactions
+         * access or modify records, and they are destroyed when transactions exit or reset. An
+         * accumulation of locks can indicate that transactions are not being reset properly.
          */
         public long lockCount() {
             return mLockCount;
         }
 
         /**
-         * Returns the amount of cursors which are in a non-reset state. An
-         * accumulation of cursors can indicate that cursors are not being
-         * reset properly.
+         * Returns the amount of cursors which are in a non-reset state. An accumulation of
+         * cursors can indicate that they are not being reset properly.
          */
         public long cursorCount() {
             return mCursorCount;
         }
 
         /**
-         * Returns the amount of transactions which are in a non-reset
-         * state. An accumulation of transactions can indicate that
-         * transactions are not being reset properly.
+         * Returns the amount of fully-established transactions which are in a non-reset
+         * state. This value is unaffected by transactions which make no changes, and it is
+         * also unaffected by auto-commit transactions. An accumulation of transactions can
+         * indicate that they are not being reset properly.
          */
         public long transactionCount() {
             return mTxnCount;
         }
 
         /**
-         * Returns the total amount of transactions explicitly created over the
-         * life of the database.
+         * Returns the total amount of fully-established transactions created over the life of
+         * the database. This value is unaffected by transactions which make no changes, and it
+         * is also unaffected by auto-commit transactions. A resurrected transaction can become
+         * fully-established again, further increasing the total created value.
          */
         public long transactionsCreated() {
             return mTxnsCreated;
@@ -1454,7 +1600,7 @@ public final class Database implements CauseCloseable {
      * side effect of shutting down, all extraneous files are deleted.
      */
     public void shutdown() throws IOException {
-        close(null, true);
+        close(null, mPageDb instanceof DurablePageDb);
     }
 
     private void close(Throwable cause, boolean shutdown) throws IOException {
@@ -1607,7 +1753,7 @@ public final class Database implements CauseCloseable {
                 idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
                 nameKey = newKey(KEY_TYPE_INDEX_NAME, tree.mName);
 
-                txn = newLockTransaction();
+                txn = newNoRedoTransaction();
                 try {
                     // Acquire locks to prevent tree from being re-opened. No deadlocks should
                     // be possible with tree latch held exclusively, but order in a safe
@@ -1824,7 +1970,7 @@ public final class Database implements CauseCloseable {
 
             // Use a transaction to ensure that only one thread loads the
             // requested index. Nothing is written into it.
-            Transaction txn = newLockTransaction();
+            Transaction txn = newNoRedoTransaction();
             try {
                 // Pass the transaction to acquire the lock.
                 byte[] rootIdBytes = mRegistry.load(txn, treeIdBytes);
@@ -1977,7 +2123,7 @@ public final class Database implements CauseCloseable {
         encodeLongBE(treeIdBytes, 0, ref.mId);
 
         if (txn == null) {
-            txn = newLockTransaction();
+            txn = newNoRedoTransaction();
         } else {
             txn.enter();
         }
@@ -2035,6 +2181,27 @@ public final class Database implements CauseCloseable {
      */
     Lock sharedCommitLock() {
         return mSharedCommitLock;
+    }
+
+    /**
+     * Acquires the excluisve commit lock, which prevents any database modifications.
+     */
+    Lock acquireExclusiveCommitLock() throws InterruptedIOException {
+        // If the commit lock cannot be immediately obtained, it's due to a shared lock being
+        // held for a long time. While waiting for the exclusive lock, all other shared
+        // requests are queued. By waiting a timed amount and giving up, the exclusive lock
+        // request is effectively de-prioritized. For each retry, the timeout is doubled, to
+        // ensure that the checkpoint request is not starved.
+        Lock commitLock = mPageDb.exclusiveCommitLock();
+        try {
+            long timeoutMillis = 1;
+            while (!commitLock.tryLock(timeoutMillis, TimeUnit.MILLISECONDS)) {
+                timeoutMillis <<= 1;
+            }
+            return commitLock;
+        } catch (InterruptedException e) {
+            throw new InterruptedIOException();
+        }
     }
 
     /**
@@ -2767,7 +2934,7 @@ public final class Database implements CauseCloseable {
     /**
      * @param level inode level; at least 1
      * @param inode exclusive latched parent inode; always released by this method
-     * @param value slice of complete value being fragmented; can be null if all zeros
+     * @param value slice of complete value being fragmented
      */
     private void writeMultilevelFragments(Node caller,
                                           int level, Node inode,
@@ -3281,33 +3448,17 @@ public final class Database implements CauseCloseable {
                 redo.checkpointPrepare();
             }
 
-            {
-                // If the commit lock cannot be immediately obtained, it's due to a
-                // shared lock being held for a long time. While waiting for the
-                // exclusive lock, all other shared requests are queued. By waiting
-                // a timed amount and giving up, the exclusive lock request is
-                // effectively de-prioritized. For each retry, the timeout is
-                // doubled, to ensure that the checkpoint request is not starved.
-                Lock commitLock = mPageDb.exclusiveCommitLock();
-                while (true) {
-                    try {
-                        long timeoutMillis = 1;
-                        while (!commitLock.tryLock(timeoutMillis, TimeUnit.MILLISECONDS)) {
-                            timeoutMillis <<= 1;
-                        }
-                    } catch (InterruptedException e) {
-                        throw new InterruptedIOException();
-                    }
+            while (true) {
+                Lock commitLock = acquireExclusiveCommitLock();
 
-                    // Registry root is infrequently modified, and so shared latch
-                    // is usually available. If not, cause might be a deadlock. To
-                    // be safe, always release commit lock and start over.
-                    if (root.tryAcquireShared()) {
-                        break;
-                    }
-
-                    commitLock.unlock();
+                // Registry root is infrequently modified, and so shared latch
+                // is usually available. If not, cause might be a deadlock. To
+                // be safe, always release commit lock and start over.
+                if (root.tryAcquireShared()) {
+                    break;
                 }
+
+                commitLock.unlock();
             }
 
             final long redoNum, redoPos, redoTxnId;

@@ -63,7 +63,6 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
     private static final float LOAD_FACTOR = 0.75f;
 
     private E[] mEntries;
-    private int mMask;
     private int mSize;
     private int mGrowThreshold;
 
@@ -89,7 +88,6 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
             java.util.Arrays.fill(entries, null);
         } else {
             mEntries = (E[]) new Entry[capacity];
-            mMask = capacity - 1;
             mGrowThreshold = (int) (capacity * LOAD_FACTOR);
         }
         mSize = 0;
@@ -99,7 +97,8 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
      * @return null if entry not found
      */
     public final E get(long key) {
-        for (E e = mEntries[((int) key) & mMask]; e != null; e = e.next) {
+        E[] entries = mEntries;
+        for (E e = entries[((int) key) & (entries.length - 1)]; e != null; e = e.next) {
             if (e.key == key) {
                 return e;
             }
@@ -112,7 +111,7 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
      */
     public final E insert(long key) {
         E[] entries = mEntries;
-        int index = ((int) key) & mMask;
+        int index = ((int) key) & (entries.length - 1);
         for (E e = entries[index]; e != null; e = e.next) {
             if (e.key == key) {
                 return e;
@@ -120,7 +119,7 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
         }
         if (grow()) {
             entries = mEntries;
-            index = ((int) key) & mMask;
+            index = ((int) key) & (entries.length - 1);
         }
         mSize++;
         return entries[index] = newEntry(key, entries[index]);
@@ -131,7 +130,7 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
      */
     public final E replace(long key) {
         E[] entries = mEntries;
-        int index = ((int) key) & mMask;
+        int index = ((int) key) & (entries.length - 1);
         for (E e = entries[index], prev = null; e != null; e = e.next) {
             if (e.key == key) {
                 if (prev == null) {
@@ -146,7 +145,7 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
         }
         if (grow()) {
             entries = mEntries;
-            index = ((int) key) & mMask;
+            index = ((int) key) & (entries.length - 1);
         }
         mSize++;
         return entries[index] = newEntry(key, entries[index]);
@@ -157,7 +156,7 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
      */
     public final E remove(long key) {
         E[] entries = mEntries;
-        int index = ((int) key) & mMask;
+        int index = ((int) key) & (entries.length - 1);
         for (E e = entries[index], prev = null; e != null; e = e.next) {
             if (e.key == key) {
                 if (prev == null) {
@@ -229,7 +228,6 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
         }
 
         mEntries = newEntries;
-        mMask = newMask;
         mGrowThreshold = (int) (capacity * LOAD_FACTOR);
 
         return true;

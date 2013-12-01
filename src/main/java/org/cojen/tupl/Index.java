@@ -134,7 +134,7 @@ public interface Index extends View, Closeable {
      * {@inheritDoc}
      */
     @Override
-    /*public*/ Stream newStream();
+    public Stream newStream();
 
     /**
      * {@inheritDoc}
@@ -204,17 +204,12 @@ public interface Index extends View, Closeable {
     public boolean verify(VerificationObserver observer) throws IOException;
 
     /**
-     * Closes this index reference, causing it to become empty and {@link
-     * ClosedIndexException unmodifiable}. The underlying index is still valid
-     * and can be re-opened.  Closing an index is relatively expensive, and so
-     * it should be kept open if frequently accessed.
+     * Closes this index reference, causing it to appear empty and {@link ClosedIndexException
+     * unmodifiable}. The underlying index is still valid and can be re-opened. Closing an
+     * index is relatively expensive, and so it should be kept open if frequently accessed.
      *
-     * <p>An index cannot be closed if any cursors are accessing it. Also,
-     * indexes should not be closed if they are referenced by active
-     * transactions. Although closing the index is safe, the transaction might
-     * re-open it.
-     *
-     * @throws IllegalStateException if any cursors are active in this index
+     * <p>In general, indexes should not be closed if they are referenced by active
+     * transactions. Although closing the index is safe, the transaction might re-open it.
      */
     @Override
     public void close() throws IOException;
