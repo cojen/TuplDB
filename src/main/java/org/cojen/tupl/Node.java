@@ -1611,7 +1611,7 @@ final class Node extends Latch {
 
             if (remaining > 0 || (mRightSegTail & 1) != 0) {
                 // Re-center search vector, biased to the right, ensuring proper alignment.
-                newSearchVecStart = (mRightSegTail - vecLen - 1 - (remaining >> 1)) & ~1;
+                newSearchVecStart = (mRightSegTail - vecLen + (1 - 2) - (remaining >> 1)) & ~1;
 
                 // Allocate entry from left segment.
                 entryLoc = mLeftSegTail;
@@ -1824,7 +1824,7 @@ final class Node extends Latch {
             if (remaining > 0 || (mRightSegTail & 1) != 0) {
                 // Re-center search vector, biased to the right, ensuring proper alignment.
                 newSearchVecStart =
-                    (mRightSegTail - vecLen - childIdsLen - 9 - (remaining >> 1)) & ~1;
+                    (mRightSegTail - vecLen - childIdsLen + (1 - 10) - (remaining >> 1)) & ~1;
 
                 // Allocate entry from left segment.
                 entryLoc = mLeftSegTail;
@@ -2041,7 +2041,7 @@ final class Node extends Latch {
 
             if (remaining > 0 || (mRightSegTail & 1) != 0) {
                 // Re-center search vector, biased to the right, ensuring proper alignment.
-                newSearchVecStart = (mRightSegTail - vecLen - 1 - (remaining >> 1)) & ~1;
+                newSearchVecStart = (mRightSegTail - vecLen + (1 - 0) - (remaining >> 1)) & ~1;
 
                 // Allocate entry from left segment.
                 entryLoc = mLeftSegTail;
