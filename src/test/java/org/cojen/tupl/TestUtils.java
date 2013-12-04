@@ -226,6 +226,11 @@ class TestUtils {
         }
     }
 
+    static boolean is64bit() {
+        return "amd64".equals(System.getProperty("os.arch"))
+            || "64".equals(System.getProperty("sun.arch.data.model"));
+    }
+
     private static volatile Object cForceGcRef;
 
     static void forceGc() {
