@@ -37,4 +37,36 @@ public class RecoverMappedTest extends RecoverTest {
             .mapDataFiles(true);
         mDb = TestUtils.newTempDatabase(mConfig);
     }
+
+    @Test
+    @Override
+    public void largeUndo() throws Exception {
+        if (TestUtils.is64bit()) {
+            super.largeUndo();
+        }
+    }
+
+    @Test
+    @Override
+    public void largeUndoExit() throws Exception {
+        if (TestUtils.is64bit()) {
+            super.largeUndoExit();
+        }
+    }
+
+    @Test
+    @Override
+    public void largeRedo() throws Exception {
+        if (TestUtils.is64bit()) {
+            super.largeRedo();
+        }
+    }
+
+    @Test
+    @Override
+    public void largeRedoExit() throws Exception {
+        if (TestUtils.is64bit()) {
+            super.largeRedoExit();
+        }
+    }
 }
