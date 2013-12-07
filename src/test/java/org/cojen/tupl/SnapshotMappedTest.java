@@ -16,6 +16,8 @@
 
 package org.cojen.tupl;
 
+import org.junit.Test;
+
 /**
  * 
  *
@@ -29,5 +31,13 @@ public class SnapshotMappedTest extends SnapshotTest {
     @Override
     public void decorate(DatabaseConfig config) throws Exception {
         config.mapDataFiles(true);
+    }
+
+    @Test
+    @Override
+    public void snapshot() throws Exception {
+        if (TestUtils.is64bit()) {
+            super.snapshot();
+        }
     }
 }
