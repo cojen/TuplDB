@@ -575,8 +575,6 @@ final class PageManager {
         // Compaction cannot succeed if store is growing. Check first before performing
         // volatile write.
         if (mCompacting) {
-            System.out.println("createPage; abort compaction");
-            new Exception().printStackTrace(System.out);
             mCompacting = false;
         }
         return mTotalPageCount++;
@@ -585,7 +583,7 @@ final class PageManager {
     /**
      * Method is invoked with remove lock held.
      */
-    boolean isPageOutOfBounds(long id) {
-        return id <= 1 || id >= mTotalPageCount;
+    long totalPageCount() {
+        return mTotalPageCount;
     }
 }
