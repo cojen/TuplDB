@@ -148,7 +148,7 @@ final class PageManager {
             if (reserve != null) {
                 // Reclaim reserved pages from an aborted compaction. Pages are immediately
                 // usable, because a commit had completed.
-                reserve.reclaim(mRemoveLock, mTotalPageCount, true);
+                reserve.reclaim(mRemoveLock, mTotalPageCount - 1, true);
             }
         }
     }
