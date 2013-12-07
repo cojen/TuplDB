@@ -1407,8 +1407,7 @@ public final class Database implements CauseCloseable {
      * <p>If the compaction target cannot be met, the entire operation aborts. If the database
      * is being concurrently modified, large compaction targets will likely never succeed.
      * Although compacting by smaller amounts is more likely to succeed, the entire database
-     * must still be scanned. A minimum target of 0.5 is recommended, and 0.0 disables file
-     * compaction.
+     * must still be scanned. A minimum target of 0.5 is recommended.
      *
      * @param observer optional observer; pass null for default
      * @param target database file compaction target [0.0, 1.0]
