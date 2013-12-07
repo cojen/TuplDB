@@ -468,7 +468,8 @@ final class PageQueue implements IntegerRef {
         // Be extra paranoid and use a hash for duplicate detection.
         long expectedHash = 0;
         for (long i=startId; i<endId; i++) {
-            // Addition is commutative. Pages will not be observed in order.
+            // Pages will not be observed in order, but addition is commutative. Note that xor
+            // is not used here. If a page is triple counted, xor will not detect this.
             expectedHash += scramble(i);
         }
 
