@@ -186,6 +186,10 @@ final class PageQueue implements IntegerRef {
             throw new IllegalStateException();
         }
 
+        removeLock.lock();
+        mManager.reserveReclaimUpperBound(upperBound);
+        removeLock.unlock();
+
         long pageId;
         while ((pageId = tryUnappend()) != 0) {
             if (pageId <= upperBound) {
@@ -236,7 +240,7 @@ final class PageQueue implements IntegerRef {
         try {
             pageId = mRemoveHeadFirstPageId;
 
-            if (isPageOutOfBounds(pageId)) {
+            if (mAllocMode != ALLOC_RESERVE && mManager.isPageOutOfBounds(pageId)) {
                 throw new CorruptDatabaseException("Invalid page id in free list: " + pageId);
             }
 
@@ -255,10 +259,8 @@ final class PageQueue implements IntegerRef {
 
             oldHeadId = mRemoveHeadId;
 
-            if (mAllocMode == ALLOC_RESERVE && oldHeadId >= mManager.totalPageCount()) {
-                // Removing a reserve list node in the compaction zone, after primary
-                // compaction has completed. It's out of bounds now, so don't add it to the
-                // free list.
+            if (mAllocMode == ALLOC_RESERVE && oldHeadId > mManager.reserveReclaimUpperBound()) {
+                // Don't add to free list if not in the reclamation range.
                 oldHeadId = 0;
             }
 
@@ -293,7 +295,7 @@ final class PageQueue implements IntegerRef {
 
     // Caller must hold remove lock.
     private void loadRemoveNode(long id) throws IOException {
-        if (isPageOutOfBounds(id)) {
+        if (mAllocMode != ALLOC_RESERVE && mManager.isPageOutOfBounds(id)) {
             throw new CorruptDatabaseException("Invalid node id in free list: " + id);
         }
         byte[] head = mRemoveHead;
@@ -301,11 +303,6 @@ final class PageQueue implements IntegerRef {
         mRemoveHeadId = id;
         mRemoveHeadOffset = I_NODE_START;
         mRemoveHeadFirstPageId = decodeLongBE(head, I_FIRST_PAGE_ID);
-    }
-
-    // Caller must hold remove lock.
-    private boolean isPageOutOfBounds(long id) {
-        return id <= 1 || (mAllocMode != ALLOC_RESERVE && id >= mManager.totalPageCount());
     }
 
     /**
