@@ -62,6 +62,7 @@ final class PageManager {
     private final ReentrantLock mCompactionLock;
     private volatile boolean mCompacting;
     private long mCompactionTargetPageCount;
+    private long mReserveReclaimUpperBound;
     private PageQueue mReserveList;
 
     static final int
@@ -581,9 +582,23 @@ final class PageManager {
     }
 
     /**
-     * Method is invoked with remove lock held.
+     * Method must be invoked with remove lock held.
      */
-    long totalPageCount() {
-        return mTotalPageCount;
+    boolean isPageOutOfBounds(long id) {
+        return id <= 1 || id >= mTotalPageCount;
+    }
+
+    /**
+     * Method must be invoked with remove lock held.
+     */
+    void reserveReclaimUpperBound(long upperBound) {
+        mReserveReclaimUpperBound = upperBound;
+    }
+
+    /**
+     * Method must be invoked with remove lock held.
+     */
+    long reserveReclaimUpperBound() {
+        return mReserveReclaimUpperBound;
     }
 }
