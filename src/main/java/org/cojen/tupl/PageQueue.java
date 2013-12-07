@@ -468,8 +468,8 @@ final class PageQueue implements IntegerRef {
         // Be extra paranoid and use a hash for duplicate detection.
         long expectedHash = 0;
         for (long i=startId; i<endId; i++) {
-            // Addition is commutative. Pages will not be observed in order.
-            expectedHash += scramble(i);
+            // Xor is commutative. Pages will not be observed in order.
+            expectedHash ^= scramble(i);
         }
 
         long hash = 0;
@@ -489,7 +489,7 @@ final class PageQueue implements IntegerRef {
                     return false;
                 }
 
-                hash += scramble(pageId);
+                hash ^= scramble(pageId);
                 count++;
 
                 if (nodeOffsetRef.value < node.length) {
@@ -502,7 +502,7 @@ final class PageQueue implements IntegerRef {
 
                 if (nodeId >= startId && nodeId < endId) {
                     // Count in-range queue nodes too.
-                    hash += scramble(nodeId);
+                    hash ^= scramble(nodeId);
                     count++;
                 }
 
