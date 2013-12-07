@@ -26,6 +26,8 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.cojen.tupl.io.PageArray;
 
+import static org.cojen.tupl.PageManager.ALLOC_NORMAL;
+import static org.cojen.tupl.PageManager.ALLOC_RESERVE;
 import static org.cojen.tupl.Utils.*;
 
 /**
@@ -114,7 +116,7 @@ final class PageQueue implements IntegerRef {
 
     /**
      * @param manager used for allocating and deleting pages for the queue itself
-     * @param allocMode PageManager.ALLOC_NORMAL or ALLOC_RESERVE
+     * @param allocMode ALLOC_NORMAL or ALLOC_RESERVE
      * @param aggressive pass true if most appended pages are safe to remove
      */
     PageQueue(PageManager manager, int allocMode, boolean aggressive) {
@@ -180,7 +182,7 @@ final class PageQueue implements IntegerRef {
      * @param upperBound inclusive; pages greater than the upper bound are discarded
      */
     void reclaim(Lock removeLock, long upperBound, boolean recycle) throws IOException {
-        if (mAllocMode != PageManager.ALLOC_RESERVE || !mAggressive) {
+        if (mAllocMode != ALLOC_RESERVE || !mAggressive) {
             throw new IllegalStateException();
         }
 
@@ -234,7 +236,7 @@ final class PageQueue implements IntegerRef {
         try {
             pageId = mRemoveHeadFirstPageId;
 
-            if (mManager.isPageOutOfBounds(pageId) && mAllocMode != PageManager.ALLOC_RESERVE) {
+            if (isPageOutOfBounds(pageId)) {
                 throw new CorruptDatabaseException("Invalid page id in free list: " + pageId);
             }
 
@@ -252,6 +254,13 @@ final class PageQueue implements IntegerRef {
             }
 
             oldHeadId = mRemoveHeadId;
+
+            if (mAllocMode == ALLOC_RESERVE && oldHeadId >= mManager.totalPageCount()) {
+                // Removing a reserve list node in the compaction zone, after primary
+                // compaction has completed. It's out of bounds now, so don't add it to the
+                // free list.
+                oldHeadId = 0;
+            }
 
             // Move to the next node in the list.
             long nextId = decodeLongBE(head, I_NEXT_NODE_ID);
@@ -275,14 +284,16 @@ final class PageQueue implements IntegerRef {
         // commit. Lock acquisition order wouldn't match. Note that node is
         // deleted instead of used for next allocation. This ensures that no
         // important data is overwritten until after commit.
-        mManager.deletePage(oldHeadId);
+        if (oldHeadId != 0) {
+            mManager.deletePage(oldHeadId);
+        }
 
         return pageId;
     }
 
     // Caller must hold remove lock.
     private void loadRemoveNode(long id) throws IOException {
-        if (mManager.isPageOutOfBounds(id)) {
+        if (isPageOutOfBounds(id)) {
             throw new CorruptDatabaseException("Invalid node id in free list: " + id);
         }
         byte[] head = mRemoveHead;
@@ -290,6 +301,11 @@ final class PageQueue implements IntegerRef {
         mRemoveHeadId = id;
         mRemoveHeadOffset = I_NODE_START;
         mRemoveHeadFirstPageId = decodeLongBE(head, I_FIRST_PAGE_ID);
+    }
+
+    // Caller must hold remove lock.
+    private boolean isPageOutOfBounds(long id) {
+        return id <= 1 || (mAllocMode != ALLOC_RESERVE && id >= mManager.totalPageCount());
     }
 
     /**
