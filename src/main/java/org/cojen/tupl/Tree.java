@@ -420,6 +420,7 @@ final class Tree implements Index {
         }
         TreeCursor cursor = new TreeCursor(this, Transaction.BOGUS);
         try {
+            cursor.autoload(false);
             cursor.first();
             // Note the short circuit 'and' operator. Observer is notified only if compaction
             // completed without aborting.
