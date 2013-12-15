@@ -2535,7 +2535,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
      * Used by file compaction mode. Compacts from the current node to the last, unless stopped
      * by observer or aborted. Caller must issue a checkpoint after entering compaction mode
      * and before calling this method. This ensures completion of any splits in progress before
-     * compaction began. Any new splits will be created during compaction and will
+     * compaction began. Any new splits will be created during compaction and so they will
      * allocate pages outside of the compaction zone.
      *
      * @param highestNodeId defines the highest node before the compaction zone; anything
@@ -2548,15 +2548,14 @@ final class TreeCursor implements CauseCloseable, Cursor {
             return true;
         }
 
-        // FIXME: LARGE VALUES!!!!
-
-        // Reference to frame nodes, to detect when cursor has moved past a node. Index 0
+        // Reference to frame nodes, to detect when cursor has moved past a node. Level 0
         // represents the leaf node. Detection may also be triggered by concurrent
         // modifications to the tree, but this is not harmful.
         Node[] frameNodes = new Node[height];
 
-        while (key() != null) {
-            TreeCursorFrame frame = mLeaf;
+        TreeCursorFrame frame = mLeaf;
+
+        outer: while (true) {
             for (int level = 0; level < height; level++) {
                 Node node = frame.acquireShared();
                 if (frameNodes[level] == node) {
@@ -2566,7 +2565,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                 } else {
                     frameNodes[level] = node;
                     long id = compactFrame(highestNodeId, frame, node);
-                    if (id == 0 || !observer.indexNodeVisited(id)) {
+                    if (id > highestNodeId || !observer.indexNodeVisited(id)) {
                         // Abort compaction.
                         return false;
                     }
@@ -2574,17 +2573,83 @@ final class TreeCursor implements CauseCloseable, Cursor {
                 frame = frame.mParentFrame;
             }
 
-            nextNode();
-        }
+            // Search leaf for fragmented values.
 
-        return true;
+            frame = leafSharedNotSplit();
+            Node node = frame.mNode;
+
+            // Quick check avoids excessive node re-latching.
+            quick: {
+                final int end = node.highestLeafPos();
+                for (int pos = frame.mNodePos; pos <= end; pos += 2) {
+                    if (node.isFragmentedLeafValue(pos)) {
+                        // Found one, so abort the quick check.
+                        break quick;
+                    }
+                }
+                // No fragmented values found.
+                node.releaseShared();
+                nextNode();
+                if ((frame = mLeaf) == null) {
+                    // No more entries to examine.
+                    return true;
+                }
+                continue outer;
+            }
+
+            while (true) {
+                try {
+                    if (node.isFragmentedLeafValue(frame.mNodePos)) {
+                        int pLen = node.mPage.length;
+                        TreeValueStream stream = new TreeValueStream(this);
+                        long pos = 0;
+                        while (true) {
+                            int result = stream.compactCheck(frame, pos, highestNodeId);
+                            if (result < 0) {
+                                break;
+                            }
+                            if (result > 0) {
+                                node.releaseShared();
+                                stream.doWrite(pos, TreeValueStream.TOUCH_VALUE, 0, 0);
+                                frame = leafSharedNotSplit();
+                                node = frame.mNode;
+                                if (node.mId > highestNodeId) {
+                                    // Abort compaction.
+                                    return false;
+                                }
+                            }
+                            pos += pLen;
+                        }
+                    }
+                } finally {
+                    node.releaseShared();
+                }
+
+                next();
+
+                if ((frame = mLeaf) == null) {
+                    // No more entries to examine.
+                    return true;
+                }
+
+                if (frame.mNode != node) {
+                    break;
+                }
+
+                Node next = frame.acquireShared();
+                if (next != node) {
+                    next.releaseShared();
+                    break;
+                }
+            }
+        }
     }
 
     /**
      * Moves the frame's node out of the compaction zone if necessary.
      *
      * @param frame frame with shared latch held; always released as a side-effect
-     * @return new node id or 0 if aborted
+     * @return new node id; caller must check if it is outside compaction zone and abort
      */
     private long compactFrame(long highestNodeId, TreeCursorFrame frame, Node node)
         throws IOException
@@ -2604,10 +2669,6 @@ final class TreeCursor implements CauseCloseable, Cursor {
                     // compaction zone.
                     node = notSplitDirty(frame);
                     id = node.mId;
-                    if (id > highestNodeId) {
-                        // Abort compaction.
-                        id = 0;
-                    }
                 }
                 node.releaseExclusive();
             } finally {

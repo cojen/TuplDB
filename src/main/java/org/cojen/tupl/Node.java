@@ -1325,6 +1325,18 @@ final class Node extends Latch {
     }
 
     /**
+     * @param pos position as provided by binarySearch; must be positive
+     */
+    boolean isFragmentedLeafValue(int pos) {
+        final byte[] page = mPage;
+        int loc = decodeUnsignedShortLE(page, mSearchVecStart + pos);
+        int header = page[loc++];
+        loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
+        header = page[loc];
+        return ((header & 0xc0) >= 0xc0) & (header < -1);
+    }
+
+    /**
      * Transactionally delete a leaf entry, replacing the value with a
      * ghost. When read back, it is interpreted as null. Ghosts are used by
      * transactional deletes, to ensure that they are not visible by cursors in
