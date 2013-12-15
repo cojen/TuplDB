@@ -138,7 +138,7 @@ public class CipherCrypto implements Crypto {
             initCipher(cipher, Cipher.ENCRYPT_MODE, mRootKey);
 
             // Store IV and addtional keys at end of header page, which (presently) has at
-            // least 204 bytes available. Max AES block size is 32 bytes, so required space is
+            // least 196 bytes available. Max AES block size is 32 bytes, so required space is
             // 99 bytes. If block size is 64 bytes, required header space is 195 bytes.
 
             byte[] srcCopy = new byte[pageSize];
