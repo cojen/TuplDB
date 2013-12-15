@@ -82,7 +82,7 @@ import java.io.OutputStream;
      * @param off buffer start offset
      * @param len maximum amount to read
      * @return actual amount read, which is less than requested only if the end was reached, or
-     * -1 of value doesn't exist
+     * -1 if value doesn't exist
      * @throws IllegalArgumentException if position is negative
      * @throws IndexOutOfBoundsException
      * @throws IllegalStateException if closed
