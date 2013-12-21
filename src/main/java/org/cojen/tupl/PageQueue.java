@@ -225,7 +225,7 @@ final class PageQueue implements IntegerRef {
 
     // Caller must hold remove lock.
     boolean isRemoveScanComplete(long target) {
-        // Subtract for modulo comparison.
+        // Subtract for modulo comparison (not that it's really necessary).
         return (mRemovedNodeCounter - target) >= 0;
     }
 
