@@ -361,28 +361,14 @@ final class PageManager {
     }
 
     private boolean compactionScanFreeList(PageQueue list) throws IOException {
-        // FIXME: Detect when recycle has looped back by examining the append node instead of
-        // using a count.
-        long count;
-        {
-            PageDb.Stats stats = new PageDb.Stats();
-            list.appendLock().lock();
-            mRemoveLock.lock();
-            list.addTo(stats);
-            list.appendLock().unlock();
-            mRemoveLock.unlock();
-            count = stats.freePages;
-        }
+        long target = list.getRemoveScanTarget();
 
-        for (int i=0; i<count; i++) {
-            if (!mCompacting) {
-                return false;
-            }
+        while (mCompacting) {
             mRemoveLock.lock();
-            long pageId = list.tryRemove(mRemoveLock);
-            if (pageId == 0) {
+            long pageId;
+            if (list.isRemoveScanComplete(target) || (pageId = list.tryRemove(mRemoveLock)) == 0) {
                 mRemoveLock.unlock();
-                break;
+                return mCompacting;
             }
             if (pageId >= mCompactionTargetPageCount) {
                 mReserveList.append(pageId);
@@ -391,7 +377,7 @@ final class PageManager {
             }
         }
 
-        return mCompacting;
+        return false;
     }
 
     /**
