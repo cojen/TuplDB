@@ -92,6 +92,7 @@ final class PageQueue implements IntegerRef {
     private int mRemoveHeadOffset;
     private long mRemoveHeadFirstPageId;
     private long mRemoveStoppedId;
+    private long mRemovedNodeCounter; // non-persistent count of nodes removed
 
     // Barrier between the remove and append lists. Remove stops when it
     // encounters the append head. Modification is permitted with the append
@@ -217,6 +218,17 @@ final class PageQueue implements IntegerRef {
         }
     }
 
+    // Caller must hold remove lock.
+    long getRemoveScanTarget() {
+        return mRemovedNodeCounter + mRemoveNodeCount;
+    }
+
+    // Caller must hold remove lock.
+    boolean isRemoveScanComplete(long target) {
+        // Subtract for modulo comparison.
+        return (mRemovedNodeCounter - target) >= 0;
+    }
+
     /**
      * Remove a page to satisfy an allocation request. Caller must acquire
      * remove lock, which might be released by this method.
@@ -278,6 +290,7 @@ final class PageQueue implements IntegerRef {
             }
 
             mRemoveNodeCount--;
+            mRemovedNodeCounter++;
         } finally {
             lock.unlock();
         }
