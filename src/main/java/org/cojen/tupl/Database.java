@@ -1430,8 +1430,6 @@ public final class Database implements CauseCloseable {
             return true;
         }
 
-        // FIXME: IOException aborts compaction(?)
-
         long targetPageCount;
         synchronized (mCheckpointLock) {
             PageDb.Stats stats = mPageDb.stats();
