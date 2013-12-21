@@ -21,7 +21,9 @@ import java.io.IOException;
 import java.util.BitSet;
 
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.cojen.tupl.io.PageArray;
 
@@ -59,7 +61,7 @@ final class PageManager {
     private final PageQueue mRegularFreeList;
     private final PageQueue mRecycleFreeList;
 
-    private final ReentrantLock mCompactionLock;
+    private final ReentrantReadWriteLock mCompactionLock;
     private volatile boolean mCompacting;
     private long mCompactionTargetPageCount;
     private long mReserveReclaimUpperBound;
@@ -101,7 +103,7 @@ final class PageManager {
         mRegularFreeList = new PageQueue(this, ALLOC_NORMAL, false);
         mRecycleFreeList = new PageQueue(this, ALLOC_NORMAL, true);
 
-        mCompactionLock = new ReentrantLock(false);
+        mCompactionLock = new ReentrantReadWriteLock(false);
 
         if (!restored) {
             // Pages 0 and 1 are reserved.
@@ -207,7 +209,7 @@ final class PageManager {
             }
 
             if (mode == ALLOC_NORMAL && mCompacting) {
-                Lock compactionLock = mCompactionLock;
+                final Lock compactionLock = mCompactionLock.readLock();
                 compactionLock.lock();
                 try {
                     if (mCompacting && pageId >= mCompactionTargetPageCount) {
@@ -245,7 +247,7 @@ final class PageManager {
 
     void deletePage(long id, boolean recycle) throws IOException {
         if (mCompacting) {
-            Lock compactionLock = mCompactionLock;
+            final Lock compactionLock = mCompactionLock.readLock();
             compactionLock.lock();
             try {
                 if (mCompacting && id >= mCompactionTargetPageCount) {
@@ -301,7 +303,7 @@ final class PageManager {
      * @return false if target cannot be met
      */
     public boolean compactionStart(long targetPageCount) throws IOException {
-        Lock lock = mCompactionLock;
+        final Lock lock = mCompactionLock.writeLock();
         lock.lock();
         try {
             if (mCompacting) {
@@ -497,7 +499,7 @@ final class PageManager {
         // order used by the deletePage method, which might call allocPage, which in turn
         // acquires remove lock. Compaction lock is acquired before append lock because
         // allocPage may call append with compaction lock held.
-        mCompactionLock.lock();
+        mCompactionLock.writeLock().lock();
         mRegularFreeList.appendLock().lock();
         mRecycleFreeList.appendLock().lock();
         if (mReserveList != null) {
@@ -513,7 +515,7 @@ final class PageManager {
         }
         mRecycleFreeList.appendLock().unlock();
         mRegularFreeList.appendLock().unlock();
-        mCompactionLock.unlock();
+        mCompactionLock.writeLock().unlock();
     }
 
     void addTo(PageDb.Stats stats) {
