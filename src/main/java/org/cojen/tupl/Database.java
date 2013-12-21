@@ -1409,6 +1409,11 @@ public final class Database implements CauseCloseable {
      * Although compacting by smaller amounts is more likely to succeed, the entire database
      * must still be scanned. A minimum target of 0.5 is recommended.
      *
+     * <p>Compaction requires some amount of free space for page movement, and so very high
+     * compaction targets are unlikely to be met. A compaction target of 1.0 almost always
+     * aborts, but a compaction target of 0.95 is more likely to succeed. Higher compaction is
+     * possible with multiple iterations, each time increasing the target.
+     *
      * @param observer optional observer; pass null for default
      * @param target database file compaction target [0.0, 1.0]
      * @return false if file compaction aborted
