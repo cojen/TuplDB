@@ -1,6 +1,14 @@
 Changelog
 =========
 
+v1.0.2
+------
+
+* Prevent corruption of recycle free list due to high recycle rate and checkpoints.
+* Add equals and hashCode methods to Database.Stats object.
+* Restrict page size to be even. Doesn't break compatibility because odd sized pages would lead
+  to database corruption anyhow. Supporting odd sized pages isn't worth the effort.
+
 v1.0.1
 ------
 
