@@ -1318,6 +1318,33 @@ public final class Database implements CauseCloseable {
         }
 
         @Override
+        public int hashCode() {
+            long hash = mFreePages;
+            hash = hash * 31 + mTotalPages;
+            hash = hash * 31 + mTxnsCreated;
+            return (int) scramble(hash);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj instanceof Stats) {
+                Stats other = (Stats) obj;
+                return mPageSize == other.mPageSize
+                    && mFreePages == other.mFreePages
+                    && mTotalPages == other.mTotalPages
+                    && mOpenIndexes == other.mOpenIndexes
+                    && mLockCount == other.mLockCount
+                    && mCursorCount == other.mCursorCount
+                    && mTxnCount == other.mTxnCount
+                    && mTxnsCreated == other.mTxnsCreated;
+            }
+            return false;
+        }
+
+        @Override
         public String toString() {
             return "Database.Stats {pageSize=" + mPageSize
                 + ", freePages=" + mFreePages
