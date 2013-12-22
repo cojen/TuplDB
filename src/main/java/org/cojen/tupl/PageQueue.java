@@ -377,7 +377,9 @@ final class PageQueue implements IntegerRef {
     void commitEnd(byte[] header, int offset) throws IOException {
         long newAppendHeadId = decodeLongLE(header, offset + I_APPEND_HEAD_ID);
 
-        if (mRemoveHeadId == 0 && mRemoveStoppedId != newAppendHeadId) {
+        if (mRemoveHeadId == 0
+            && mRemoveStoppedId != newAppendHeadId && mRemoveStoppedId != mAppendTailId)
+        {
             // Allow removing of previously appended pages.
             loadRemoveNode(mRemoveStoppedId);
             mRemoveStoppedId = 0;
