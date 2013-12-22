@@ -292,6 +292,9 @@ public final class Database implements CauseCloseable {
         } else if (pageSize > MAXIMUM_PAGE_SIZE) {
             throw new IllegalArgumentException
                 ("Page size is too large: " + pageSize + " > " + MAXIMUM_PAGE_SIZE);
+        } else if ((pageSize & 1) != 0) {
+            throw new IllegalArgumentException
+                ("Page size must be even: " + pageSize);
         }
 
         int minCache, maxCache;
