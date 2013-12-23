@@ -318,6 +318,10 @@ final class TreeValueStream extends AbstractStream {
 
             // Handle OP_SET_LENGTH and OP_WRITE.
 
+            if (b == TOUCH_VALUE) {
+                return 0;
+            }
+
             // Method releases latch if an exception is thrown.
             node = mCursor.insertBlank(frame, node, pos + bLen);
 
@@ -354,6 +358,11 @@ final class TreeValueStream extends AbstractStream {
                     // Handle OP_LENGTH and OP_READ.
                     return -1;
                 }
+
+                if (b == TOUCH_VALUE) {
+                    return 0;
+                }
+
                 // FIXME: write ops; create the value
                 node.releaseExclusive();
                 throw null;
@@ -663,6 +672,10 @@ final class TreeValueStream extends AbstractStream {
             break;
 
         case OP_WRITE:
+            if (b == TOUCH_VALUE) {
+                return 0;
+            }
+
             if (pos < vLen) {
                 final long end = pos + bLen;
                 if (end <= vLen) {
