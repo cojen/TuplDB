@@ -100,8 +100,8 @@ final class PageManager {
 
         // Lock must be reentrant and unfair. See notes in PageQueue.
         mRemoveLock = new ReentrantLock(false);
-        mRegularFreeList = new PageQueue(this, ALLOC_NORMAL, false);
-        mRecycleFreeList = new PageQueue(this, ALLOC_NORMAL, true);
+        mRegularFreeList = PageQueue.newRegularFreeList(this);
+        mRecycleFreeList = PageQueue.newRecycleFreeList(this);
 
         mCompactionLock = new ReentrantReadWriteLock(false);
 
@@ -139,7 +139,7 @@ final class PageManager {
                 mRecycleFreeList.init(header, offset + I_RECYCLE_QUEUE);
 
                 if (PageQueue.exists(header, offset + I_RESERVE_QUEUE)) {
-                    reserve = new PageQueue(this, ALLOC_RESERVE, true);
+                    reserve = mRegularFreeList.newReserveFreeList();
                     reserve.init(header, offset + I_RESERVE_QUEUE);
                 } else {
                     reserve = null;
@@ -333,7 +333,7 @@ final class PageManager {
 
             try {
                 // Allocate as agressive, allowing reclamation access to all pages.
-                mReserveList = new PageQueue(this, ALLOC_RESERVE, true);
+                mReserveList = mRegularFreeList.newReserveFreeList();
                 mReserveList.init(initPageId);
             } catch (Throwable e) {
                 mReserveList = null;
@@ -409,6 +409,7 @@ final class PageManager {
             if (!compactionVerify()) {
                 mCompacting = false;
             } else {
+                // FIXME: deadlock possible
                 fullLock();
                 if (mCompacting && mTotalPageCount > mCompactionTargetPageCount) {
                     // When lock is released, compaction is commit-ready. All pages in the
