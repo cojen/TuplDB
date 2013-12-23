@@ -32,7 +32,7 @@ import org.cojen.tupl.io.CauseCloseable;
  * @see NonPageDb
  */
 abstract class PageDb implements CauseCloseable {
-    final ReadWriteLock mCommitLock;
+    final ReentrantReadWriteLock mCommitLock;
 
     PageDb() {
         // Need to use a reentrant lock instead of a latch to simplify the
