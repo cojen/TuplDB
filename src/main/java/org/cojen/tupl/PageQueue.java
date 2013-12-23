@@ -117,10 +117,26 @@ final class PageQueue implements IntegerRef {
 
     /**
      * @param manager used for allocating and deleting pages for the queue itself
+     */
+    static PageQueue newRegularFreeList(PageManager manager) {
+        return new PageQueue(manager, ALLOC_NORMAL, false, null);
+    }
+
+    /**
+     * @param manager used for allocating and deleting pages for the queue itself
+     */
+    static PageQueue newRecycleFreeList(PageManager manager) {
+        return new PageQueue(manager, ALLOC_NORMAL, true, null);
+    }
+
+    /**
+     * @param manager used for allocating and deleting pages for the queue itself
      * @param allocMode ALLOC_NORMAL or ALLOC_RESERVE
      * @param aggressive pass true if most appended pages are safe to remove
      */
-    PageQueue(PageManager manager, int allocMode, boolean aggressive) {
+    private PageQueue(PageManager manager, int allocMode, boolean aggressive,
+                      ReentrantLock appendLock)
+    {
         mManager = manager;
         mAllocMode = allocMode;
         mAggressive = aggressive;
@@ -128,17 +144,34 @@ final class PageQueue implements IntegerRef {
 
         mRemoveHead = new byte[array.pageSize()];
 
-        // This lock must be reentrant. The appendPage method can call into
-        // drainAppendHeap, which calls allocPage, which can re-acquire the
-        // append lock. The commit method acquires the remove lock too, and
-        // then it calls drainAppendHeap, acquiring the locks again. Note
-        // that locks are unfair. Pages are allocated and deleted by tree
-        // operations, which unfairly acquire latches. Waiting for a fair lock
-        // afterwards leads to priority inversion.
-        mAppendLock = new ReentrantLock(false);
+        if (appendLock == null) {
+            // This lock must be reentrant. The appendPage method can call into
+            // drainAppendHeap, which calls allocPage, which can re-acquire the append
+            // lock. The commit method acquires the remove lock too, and then it calls
+            // drainAppendHeap, acquiring the locks again. Note that locks are unfair. Pages
+            // are allocated and deleted by tree operations, which unfairly acquire
+            // latches. Waiting for a fair lock afterwards leads to priority inversion.
+            mAppendLock = new ReentrantLock(false);
+        } else {
+            mAppendLock = appendLock;
+        }
 
         mAppendHeap = new IdHeap(array.pageSize() - I_NODE_START);
         mAppendTail = new byte[array.pageSize()];
+    }
+
+    /**
+     * @throws IllegalStateException if this is not a regular free list
+     */
+    PageQueue newReserveFreeList() {
+        if (mAggressive) {
+            throw new IllegalStateException();
+        }
+        // Needs to share the sane lock as the regular free list to avoid deadlocks. The
+        // reserve list might append to the regular list when deleting nodes, and the regular
+        // list might append to the reserve list when doing the same thing. Neither will ever
+        // call into the recycle list, since free list nodes cannot safely be recycled.
+        return new PageQueue(mManager, ALLOC_RESERVE, true, mAppendLock);
     }
 
     /**
