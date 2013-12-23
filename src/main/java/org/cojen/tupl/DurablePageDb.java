@@ -356,12 +356,23 @@ class DurablePageDb extends PageDb {
 
     @Override
     public boolean compactionStart(long targetPageCount) throws IOException {
-        return mPageManager.compactionStart(targetPageCount);
+        mCommitLock.readLock().lock();
+        try {
+            return mPageManager.compactionStart(targetPageCount);
+        } catch (Throwable e) {
+            throw closeOnFailure(e);
+        } finally {
+            mCommitLock.readLock().unlock();
+        }
     }
 
     @Override
     public boolean compactionScanFreeList() throws IOException {
-        return mPageManager.compactionScanFreeList();
+        try {
+            return mPageManager.compactionScanFreeList(mCommitLock);
+        } catch (Throwable e) {
+            throw closeOnFailure(e);
+        }
     }
 
     @Override
@@ -371,7 +382,14 @@ class DurablePageDb extends PageDb {
 
     @Override
     public boolean compactionEnd() throws IOException {
-        return mPageManager.compactionEnd();
+        mCommitLock.readLock().lock();
+        try {
+            return mPageManager.compactionEnd();
+        } catch (Throwable e) {
+            throw closeOnFailure(e);
+        } finally {
+            mCommitLock.readLock().unlock();
+        }
     }
 
     @Override

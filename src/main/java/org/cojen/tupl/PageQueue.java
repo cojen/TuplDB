@@ -167,10 +167,11 @@ final class PageQueue implements IntegerRef {
         if (mAggressive) {
             throw new IllegalStateException();
         }
-        // Needs to share the sane lock as the regular free list to avoid deadlocks. The
+        // Needs to share the same lock as the regular free list to avoid deadlocks. The
         // reserve list might append to the regular list when deleting nodes, and the regular
         // list might append to the reserve list when doing the same thing. Neither will ever
         // call into the recycle list, since free list nodes cannot safely be recycled.
+        // Allocate as aggressive, allowing reclamation access to all pages.
         return new PageQueue(mManager, ALLOC_RESERVE, true, mAppendLock);
     }
 

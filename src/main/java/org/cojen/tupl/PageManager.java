@@ -332,7 +332,6 @@ final class PageManager {
             }
 
             try {
-                // Allocate as agressive, allowing reclamation access to all pages.
                 mReserveList = mRegularFreeList.newReserveFreeList();
                 mReserveList.init(initPageId);
             } catch (Throwable e) {
@@ -357,26 +356,40 @@ final class PageManager {
     /**
      * @return false if aborted
      */
-    public boolean compactionScanFreeList() throws IOException {
-        return compactionScanFreeList(mRecycleFreeList)
-            && compactionScanFreeList(mRegularFreeList);
+    public boolean compactionScanFreeList(ReentrantReadWriteLock commitLock) throws IOException {
+        return compactionScanFreeList(commitLock, mRecycleFreeList)
+            && compactionScanFreeList(commitLock, mRegularFreeList);
     }
 
-    private boolean compactionScanFreeList(PageQueue list) throws IOException {
+    private boolean compactionScanFreeList(ReentrantReadWriteLock commitLock, PageQueue list)
+        throws IOException
+    {
+        Lock sharedCommitLock = commitLock.readLock();
         long target = list.getRemoveScanTarget();
 
-        while (mCompacting) {
-            mRemoveLock.lock();
-            long pageId;
-            if (list.isRemoveScanComplete(target) || (pageId = list.tryRemove(mRemoveLock)) == 0) {
-                mRemoveLock.unlock();
-                return mCompacting;
+        sharedCommitLock.lock();
+        try {
+            while (mCompacting) {
+                mRemoveLock.lock();
+                long pageId;
+                if (list.isRemoveScanComplete(target)
+                    || (pageId = list.tryRemove(mRemoveLock)) == 0)
+                {
+                    mRemoveLock.unlock();
+                    return mCompacting;
+                }
+                if (pageId >= mCompactionTargetPageCount) {
+                    mReserveList.append(pageId);
+                } else {
+                    mRecycleFreeList.append(pageId);
+                }
+                if (commitLock.hasQueuedThreads()) {
+                    sharedCommitLock.unlock();
+                    sharedCommitLock.lock();
+                }
             }
-            if (pageId >= mCompactionTargetPageCount) {
-                mReserveList.append(pageId);
-            } else {
-                mRecycleFreeList.append(pageId);
-            }
+        } finally {
+            sharedCommitLock.unlock();
         }
 
         return false;
