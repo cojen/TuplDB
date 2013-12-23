@@ -19,7 +19,8 @@ package org.cojen.tupl;
 import java.util.NoSuchElementException;
 
 /**
- * Allows long ids to be added any order, but removed in sorted order.
+ * Allows long ids to be added any order, but removed in sorted order. Data structure is a
+ * binary heap.
  *
  * @author Brian S O'Neill
  */
@@ -53,7 +54,7 @@ final class IdHeap {
             pos = parentPos;
         }
         ids[pos] = id;
-        // Increment after possible array bounds exception.
+        // Increment only if no array bounds exception.
         mSize++;
     }
 
