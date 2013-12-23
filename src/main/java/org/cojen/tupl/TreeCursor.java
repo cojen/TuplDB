@@ -2581,7 +2581,11 @@ final class TreeCursor implements CauseCloseable, Cursor {
             // Quick check avoids excessive node re-latching.
             quick: {
                 final int end = node.highestLeafPos();
-                for (int pos = frame.mNodePos; pos <= end; pos += 2) {
+                int pos = frame.mNodePos;
+                if (pos < 0) {
+                    pos = ~pos;
+                }
+                for (; pos <= end; pos += 2) {
                     if (node.isFragmentedLeafValue(pos)) {
                         // Found one, so abort the quick check.
                         break quick;
@@ -2599,7 +2603,9 @@ final class TreeCursor implements CauseCloseable, Cursor {
 
             while (true) {
                 try {
-                    if (node.isFragmentedLeafValue(frame.mNodePos)) {
+                    int nodePos = frame.mNodePos;
+                    // FIXME: Fragment in fragment trash is lost upon txn undo!
+                    if (nodePos >= 0 && node.isFragmentedLeafValue(nodePos)) {
                         int pLen = node.mPage.length;
                         TreeValueStream stream = new TreeValueStream(this);
                         long pos = 0;
@@ -2610,6 +2616,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                             }
                             if (result > 0) {
                                 node.releaseShared();
+                                node = null;
                                 stream.doWrite(pos, TreeValueStream.TOUCH_VALUE, 0, 0);
                                 frame = leafSharedNotSplit();
                                 node = frame.mNode;
@@ -2622,21 +2629,21 @@ final class TreeCursor implements CauseCloseable, Cursor {
                         }
                     }
                 } finally {
-                    node.releaseShared();
+                    if (node != null) {
+                        node.releaseShared();
+                    }
                 }
 
                 next();
 
-                if ((frame = mLeaf) == null) {
+                if (mLeaf == null) {
                     // No more entries to examine.
                     return true;
                 }
 
-                if (frame.mNode != node) {
-                    break;
-                }
+                frame = leafSharedNotSplit();
+                Node next = frame.mNode;
 
-                Node next = frame.acquireShared();
                 if (next != node) {
                     next.releaseShared();
                     break;
