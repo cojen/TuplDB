@@ -50,6 +50,7 @@ public class TestAll {
             CloseNonDurableTest.class,
             RenameTest.class,
             StreamTest.class,
+            PageSizeTest.class,
         };
 
         String[] names = new String[classes.length];
