@@ -400,13 +400,13 @@ class DurablePageDb extends PageDb {
 
     @Override
     public boolean compactionStart(long targetPageCount) throws IOException {
-        mCommitLock.readLock().lock();
+        mCommitLock.writeLock().lock();
         try {
             return mPageManager.compactionStart(targetPageCount);
         } catch (Throwable e) {
             throw closeOnFailure(e);
         } finally {
-            mCommitLock.readLock().unlock();
+            mCommitLock.writeLock().unlock();
         }
     }
 
@@ -421,6 +421,8 @@ class DurablePageDb extends PageDb {
 
     @Override
     public boolean compactionVerify() throws IOException {
+        // Only performs reads and so no commit lock is required. Holding it would block
+        // checkpoints during reserve list scan, which is not desirable.
         return mPageManager.compactionVerify();
     }
 
