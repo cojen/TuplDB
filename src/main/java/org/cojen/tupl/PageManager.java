@@ -63,7 +63,7 @@ final class PageManager {
 
     private final ReentrantReadWriteLock mCompactionLock;
     private volatile boolean mCompacting;
-    private long mCompactionTargetPageCount;
+    private long mCompactionTargetPageCount = Long.MAX_VALUE;
     private long mReserveReclaimUpperBound;
     private PageQueue mReserveList;
 
@@ -208,18 +208,10 @@ final class PageManager {
                 }
             }
 
-            if (mode == ALLOC_NORMAL && mCompacting) {
-                final Lock compactionLock = mCompactionLock.readLock();
-                compactionLock.lock();
-                try {
-                    if (mCompacting && pageId >= mCompactionTargetPageCount) {
-                        // Page is in the compaction zone, so allocate another.
-                        mReserveList.append(pageId);
-                        continue;
-                    }
-                } finally {
-                    compactionLock.unlock();
-                }
+            if (mode == ALLOC_NORMAL && pageId >= mCompactionTargetPageCount && mCompacting) {
+                // Page is in the compaction zone, so allocate another.
+                mReserveList.append(pageId);
+                continue;
             }
 
             return pageId;
@@ -246,21 +238,10 @@ final class PageManager {
     }
 
     void deletePage(long id, boolean recycle) throws IOException {
-        if (mCompacting) {
-            final Lock compactionLock = mCompactionLock.readLock();
-            compactionLock.lock();
-            try {
-                if (mCompacting && id >= mCompactionTargetPageCount) {
-                    // Page is in the compaction zone.
-                    mReserveList.append(id);
-                    return;
-                }
-            } finally {
-                compactionLock.unlock();
-            }
-        }
-
-        if (recycle) {
+        if (id >= mCompactionTargetPageCount && mCompacting) {
+            // Page is in the compaction zone.
+            mReserveList.append(id);
+        } else if (recycle) {
             mRecycleFreeList.append(id);
         } else {
             mRegularFreeList.append(id);
@@ -300,57 +281,54 @@ final class PageManager {
     }
 
     /**
+     * Caller must hold exclusive commit lock.
+     *
      * @return false if target cannot be met
      */
     public boolean compactionStart(long targetPageCount) throws IOException {
-        final Lock lock = mCompactionLock.writeLock();
-        lock.lock();
-        try {
-            if (mCompacting) {
-                throw new IllegalStateException("Compaction in progress");
-            }
-            if (mReserveList != null) {
-                throw new IllegalStateException();
-            }
-
-            if (targetPageCount < 2) {
-                return false;
-            }
-
-            mRemoveLock.lock();
-            try {
-                if (targetPageCount >= mTotalPageCount) {
-                    return false;
-                }
-            } finally {
-                mRemoveLock.unlock();
-            }
-
-            long initPageId = allocPage(ALLOC_TRY_RESERVE);
-            if (initPageId == 0) {
-                return false;
-            }
-
-            try {
-                mReserveList = mRegularFreeList.newReserveFreeList();
-                mReserveList.init(initPageId);
-            } catch (Throwable e) {
-                mReserveList = null;
-                try {
-                    recyclePage(initPageId);
-                } catch (Throwable e2) {
-                    // Ignore.
-                }
-                throw Utils.rethrow(e);
-            }
-
-            mCompactionTargetPageCount = targetPageCount;
-            mCompacting = true;
-        } finally {
-            lock.unlock();
+        if (mCompacting) {
+            throw new IllegalStateException("Compaction in progress");
         }
 
-        return mCompacting;
+        if (mReserveList != null) {
+            throw new IllegalStateException();
+        }
+
+        if (targetPageCount < 2) {
+            return false;
+        }
+
+        mRemoveLock.lock();
+        try {
+            if (targetPageCount >= mTotalPageCount) {
+                return false;
+            }
+        } finally {
+            mRemoveLock.unlock();
+        }
+
+        long initPageId = allocPage(ALLOC_TRY_RESERVE);
+        if (initPageId == 0) {
+            return false;
+        }
+
+        try {
+            mReserveList = mRegularFreeList.newReserveFreeList();
+            mReserveList.init(initPageId);
+        } catch (Throwable e) {
+            mReserveList = null;
+            try {
+                recyclePage(initPageId);
+            } catch (Throwable e2) {
+                // Ignore.
+            }
+            throw Utils.rethrow(e);
+        }
+
+        mCompactionTargetPageCount = targetPageCount;
+        mCompacting = true;
+
+        return true;
     }
 
     /**
@@ -421,10 +399,13 @@ final class PageManager {
         if (mCompacting) {
             if (!compactionVerify()) {
                 mCompacting = false;
+                // Write to long value is not guarateed to be atomic. Caller is required to
+                // check mCompacting after reading mCompactionTargetPageCount, so setting it
+                // false beforehand prevents any problems.
+                mCompactionTargetPageCount = Long.MAX_VALUE;
             } else {
-                // FIXME: deadlock possible
                 fullLock();
-                if (mCompacting && mTotalPageCount > mCompactionTargetPageCount) {
+                if (mTotalPageCount > mCompactionTargetPageCount && mCompacting) {
                     // When lock is released, compaction is commit-ready. All pages in the
                     // compaction zone are accounted for, but the reserve list's queue nodes
                     // might be in the valid zone. Most pages will simply be discarded.
@@ -433,6 +414,7 @@ final class PageManager {
                     result = true;
                 }
                 mCompacting = false;
+                mCompactionTargetPageCount = Long.MAX_VALUE;
                 fullUnlock();
             }
         }
@@ -511,9 +493,7 @@ final class PageManager {
     private void fullLock() {
         // Avoid deadlock by acquiring append locks before remove lock. This matches the lock
         // order used by the deletePage method, which might call allocPage, which in turn
-        // acquires remove lock. Compaction lock is acquired before append lock because
-        // allocPage may call append with compaction lock held.
-        mCompactionLock.writeLock().lock();
+        // acquires remove lock.
         mRegularFreeList.appendLock().lock();
         mRecycleFreeList.appendLock().lock();
         if (mReserveList != null) {
@@ -529,7 +509,6 @@ final class PageManager {
         }
         mRecycleFreeList.appendLock().unlock();
         mRegularFreeList.appendLock().unlock();
-        mCompactionLock.writeLock().unlock();
     }
 
     void addTo(PageDb.Stats stats) {
