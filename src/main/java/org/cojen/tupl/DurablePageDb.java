@@ -92,11 +92,33 @@ class DurablePageDb extends PageDb {
     /**
      * @param factory optional
      */
-    DurablePageDb(int pageSize, File[] files, FileFactory factory, EnumSet<OpenOption> options,
-                  Crypto crypto, boolean destroy)
+    static DurablePageDb open(boolean explicitPageSize, int pageSize,
+                              File[] files, FileFactory factory, EnumSet<OpenOption> options,
+                              Crypto crypto, boolean destroy)
         throws IOException
     {
-        this(openPageArray(pageSize, files, factory, options), crypto, destroy);
+        while (true) {
+            try {
+                return new DurablePageDb
+                    (openPageArray(pageSize, files, factory, options), crypto, destroy);
+            } catch (WrongPageSize e) {
+                if (explicitPageSize) {
+                    throw e.rethrow();
+                }
+                pageSize = e.mActual;
+                explicitPageSize = true;
+            }
+        }
+    }
+
+    static DurablePageDb open(PageArray rawArray, Crypto crypto, boolean destroy)
+        throws IOException
+    {
+        try {
+            return new DurablePageDb(rawArray, crypto, destroy);
+        } catch (WrongPageSize e) {
+            throw e.rethrow();
+        }
     }
 
     private static PageArray openPageArray(int pageSize, File[] files, FileFactory factory,
@@ -136,8 +158,29 @@ class DurablePageDb extends PageDb {
         }
     }
 
-    DurablePageDb(final PageArray rawArray, Crypto crypto, boolean destroy)
-        throws IOException
+    static class WrongPageSize extends Exception {
+        private final int mExpected;
+        private final int mActual;
+
+        WrongPageSize(int expected, int actual) {
+            mExpected = expected;
+            mActual = actual;
+        }
+
+        @Override
+        public Throwable fillInStackTrace() {
+            return this;
+        }
+
+        DatabaseException rethrow() throws DatabaseException {
+            throw new DatabaseException
+                ("Actual page size does not match configured page size: "
+                 + mActual + " != " + mExpected);
+        }
+    }
+
+    private DurablePageDb(final PageArray rawArray, Crypto crypto, boolean destroy)
+        throws IOException, WrongPageSize
     {
         PageArray array = crypto == null ? rawArray : new CryptoPageArray(rawArray, crypto);
 
@@ -185,9 +228,7 @@ class DurablePageDb extends PageDb {
                     }
 
                     if (pageSize0 != pageSize) {
-                        throw new DatabaseException
-                            ("Actual page size does not match configured page size: "
-                             + pageSize0 + " != " + pageSize);
+                        throw new WrongPageSize(pageSize, pageSize0);
                     }
 
                     try {
@@ -234,6 +275,9 @@ class DurablePageDb extends PageDb {
 
                 mPageManager = new PageManager(mPageArray, header, I_MANAGER_HEADER);
             }
+        } catch (WrongPageSize e) {
+            closeQuietly(null, this);
+            throw e;
         } catch (Throwable e) {
             throw closeOnFailure(e);
         }
@@ -552,7 +596,11 @@ class DurablePageDb extends PageDb {
             closeQuietly(null, in);
         }
 
-        return new DurablePageDb(pa, crypto, false);
+        try {
+            return new DurablePageDb(pa, crypto, false);
+        } catch (WrongPageSize e) {
+            throw e.rethrow();
+        }
     }
 
     private IOException closeOnFailure(Throwable e) throws IOException {
