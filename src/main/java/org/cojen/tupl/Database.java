@@ -284,8 +284,10 @@ public final class Database implements CauseCloseable {
         final File[] dataFiles = config.dataFiles();
 
         int pageSize = config.mPageSize;
+        boolean explicitPageSize = true;
         if (pageSize <= 0) {
             config.pageSize(pageSize = DEFAULT_PAGE_SIZE);
+            explicitPageSize = false;
         } else if (pageSize < MINIMUM_PAGE_SIZE) {
             throw new IllegalArgumentException
                 ("Page size is too small: " + pageSize + " < " + MINIMUM_PAGE_SIZE);
@@ -357,7 +359,7 @@ public final class Database implements CauseCloseable {
         }
 
         try {
-            // Create lock file and write info file of properties.
+            // Create lock file, preventing database from being opened multiple times.
             if (mBaseFile == null || openMode == OPEN_TEMP) {
                 mLockFile = null;
             } else {
@@ -369,23 +371,6 @@ public final class Database implements CauseCloseable {
                 }
 
                 mLockFile = new LockedFile(lockFile, config.mReadOnly);
-
-                if (!config.mReadOnly) {
-                    File infoFile = new File(mBaseFile.getPath() + INFO_FILE_SUFFIX);
-
-                    if (factory != null) {
-                        factory.createFile(infoFile);
-                    }
-
-                    Writer w = new BufferedWriter
-                        (new OutputStreamWriter(new FileOutputStream(infoFile), "UTF-8"));
-
-                    try {
-                        config.writeInfo(w);
-                    } finally {
-                        w.close();
-                    }
-                }
             }
 
             if (openMode == OPEN_DESTROY) {
@@ -397,18 +382,39 @@ public final class Database implements CauseCloseable {
                 if (dataPageArray == null) {
                     mPageDb = new NonPageDb(pageSize);
                 } else {
-                    mPageDb = new DurablePageDb
+                    mPageDb = DurablePageDb.open
                         (dataPageArray, config.mCrypto, openMode == OPEN_DESTROY);
                 }
             } else {
                 EnumSet<OpenOption> options = config.createOpenOptions();
-                mPageDb = new DurablePageDb
-                    (pageSize, dataFiles, config.mFileFactory, options, config.mCrypto,
-                     openMode == OPEN_DESTROY);
+                mPageDb = DurablePageDb.open
+                    (explicitPageSize, pageSize,
+                     dataFiles, config.mFileFactory, options,
+                     config.mCrypto, openMode == OPEN_DESTROY);
             }
 
             // Actual page size might differ from configured size.
-            mPageSize = mPageDb.pageSize();
+            config.pageSize(mPageSize = mPageDb.pageSize());
+
+            // Write info file of properties, after database has been opened and after page
+            // size is truly known.
+            if (mBaseFile != null && openMode != OPEN_TEMP && !config.mReadOnly) {
+                File infoFile = new File(mBaseFile.getPath() + INFO_FILE_SUFFIX);
+
+                FileFactory factory = config.mFileFactory;
+                if (factory != null) {
+                    factory.createFile(infoFile);
+                }
+
+                Writer w = new BufferedWriter
+                    (new OutputStreamWriter(new FileOutputStream(infoFile), "UTF-8"));
+
+                try {
+                    config.writeInfo(w);
+                } finally {
+                    w.close();
+                }
+            }
 
             mSharedCommitLock = mPageDb.sharedCommitLock();
 
@@ -1185,8 +1191,13 @@ public final class Database implements CauseCloseable {
             // Delete old redo log files.
             deleteNumberedFiles(config.mBaseFile, REDO_FILE_SUFFIX);
 
+            int pageSize = config.mPageSize;
+            if (pageSize <= 0) {
+                pageSize = DEFAULT_PAGE_SIZE;
+            }
+
             restored = DurablePageDb.restoreFromSnapshot
-                (config.mPageSize, dataFiles, factory, options, config.mCrypto, in);
+                (pageSize, dataFiles, factory, options, config.mCrypto, in);
         }
 
         restored.close();
