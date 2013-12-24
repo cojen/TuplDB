@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.BitSet;
 
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -61,7 +60,6 @@ final class PageManager {
     private final PageQueue mRegularFreeList;
     private final PageQueue mRecycleFreeList;
 
-    private final ReentrantReadWriteLock mCompactionLock;
     private volatile boolean mCompacting;
     private long mCompactionTargetPageCount = Long.MAX_VALUE;
     private long mReserveReclaimUpperBound;
@@ -102,8 +100,6 @@ final class PageManager {
         mRemoveLock = new ReentrantLock(false);
         mRegularFreeList = PageQueue.newRegularFreeList(this);
         mRecycleFreeList = PageQueue.newRecycleFreeList(this);
-
-        mCompactionLock = new ReentrantReadWriteLock(false);
 
         if (!restored) {
             // Pages 0 and 1 are reserved.
