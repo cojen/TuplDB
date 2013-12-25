@@ -1459,16 +1459,31 @@ public final class Database implements CauseCloseable {
      * @throws IllegalStateException if compaction is already in progress
      */
     public void compact(CompactionObserver observer, final double target) throws IOException {
-        if (!doCompact(observer, target)) {
-            // Compaction target not met, so cut in half repeatedly until it succeeds.
-            double t = target;
-            do {
-                t /= 2;
-            } while (!doCompact(observer, t));
-
-            // Now attempt to reach target by doubling each time.
-            while ((t *= 2) <= target && doCompact(observer, t));
+        if (observer == null) {
+            observer = new CompactionObserver();
         }
+
+        // Clears state as a side-effect.
+        observer.didManualAbort();
+
+        if (doCompact(observer, target) || observer.didManualAbort()) {
+            return;
+        }
+
+        // Compaction target not met, so cut in half repeatedly until it succeeds.
+        double t = target;
+        while (true) {
+            t /= 2;
+            if (doCompact(observer, t)) {
+                if (observer.didManualAbort()) {
+                    return;
+                }
+                break;
+            }
+        }
+
+        // Now attempt to reach target by doubling each time.
+        while ((t *= 2) <= target && doCompact(observer, t) && !observer.didManualAbort());
     }
 
     /**
