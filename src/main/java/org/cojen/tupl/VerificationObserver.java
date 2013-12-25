@@ -17,7 +17,8 @@
 package org.cojen.tupl;
 
 /**
- * Index verification observer. Implementation does not need to be thread-safe.
+ * Index verification observer. Implementation does not need to be thread-safe, but instances
+ * should not be shared by concurrent verifications.
  *
  * @author Brian S O'Neill
  * @see Database#verify Database.verify
