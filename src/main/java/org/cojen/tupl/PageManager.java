@@ -424,15 +424,17 @@ final class PageManager {
     /**
      * Called after compaction, to actually shrink the file.
      */
-    public void truncatePages() throws IOException {
+    public boolean truncatePages() throws IOException {
         mRemoveLock.lock();
         try {
             if (mTotalPageCount < mPageArray.getPageCount()) {
                 mPageArray.setPageCount(mTotalPageCount);
+                return true;
             }
         } finally {
             mRemoveLock.unlock();
         }
+        return false;
     }
 
     /**

@@ -439,8 +439,8 @@ class DurablePageDb extends PageDb {
     }
 
     @Override
-    public void truncatePages() throws IOException {
-        mPageManager.truncatePages();
+    public boolean truncatePages() throws IOException {
+        return mPageManager.truncatePages();
     }
 
     @Override

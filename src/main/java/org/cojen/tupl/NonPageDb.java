@@ -135,7 +135,8 @@ class NonPageDb extends PageDb {
     }
 
     @Override
-    public void truncatePages() throws IOException {
+    public boolean truncatePages() throws IOException {
+        return false;
     }
 
     @Override

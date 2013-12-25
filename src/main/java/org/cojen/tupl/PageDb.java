@@ -206,8 +206,10 @@ abstract class PageDb implements CauseCloseable {
 
     /**
      * Called after compaction, to actually shrink the file.
+     *
+     * @return false if nothing was truncated
      */
-    public abstract void truncatePages() throws IOException;
+    public abstract boolean truncatePages() throws IOException;
 
     /**
      * Durably commits all writes and deletes to the underlying device.
