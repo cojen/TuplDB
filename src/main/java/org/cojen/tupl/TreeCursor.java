@@ -2544,9 +2544,6 @@ final class TreeCursor implements CauseCloseable, Cursor {
      */
     boolean compact(long highestNodeId, CompactionObserver observer) throws IOException {
         int height = height();
-        if (height <= 0) {
-            return true;
-        }
 
         // Reference to frame nodes, to detect when cursor has moved past a node. Level 0
         // represents the leaf node. Detection may also be triggered by concurrent
