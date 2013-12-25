@@ -421,7 +421,12 @@ final class Tree implements Index {
         TreeCursor cursor = new TreeCursor(this, Transaction.BOGUS);
         try {
             cursor.autoload(false);
-            cursor.first();
+
+            // Find the first entry instead of calling first() to ensure that cursor is
+            // positioned. Otherwise, empty trees would be skipped even when the root node
+            // needed to be moved out of the compaction zone.
+            cursor.find(EMPTY_BYTES);
+
             // Note the short circuit 'and' operator. Observer is notified only if compaction
             // completed without aborting.
             return cursor.compact(highestNodeId, observer) && observer.indexComplete(view);
