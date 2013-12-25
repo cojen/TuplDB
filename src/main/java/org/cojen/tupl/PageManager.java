@@ -145,9 +145,8 @@ final class PageManager {
             }
 
             if (reserve != null) {
-                // Reclaim reserved pages from an aborted compaction. Pages are immediately
-                // usable, because a commit had completed.
-                reserve.reclaim(mRemoveLock, mTotalPageCount - 1, true);
+                // Reclaim reserved pages from an aborted compaction.
+                reserve.reclaim(mRemoveLock, mTotalPageCount - 1);
             }
         }
     }
@@ -221,7 +220,12 @@ final class PageManager {
      * @throws IllegalArgumentException if id is less than or equal to one
      */
     public void deletePage(long id) throws IOException {
-        deletePage(id, false);
+        if (id >= mCompactionTargetPageCount && mCompacting) {
+            // Page is in the compaction zone.
+            mReserveList.append(id);
+        } else {
+            mRegularFreeList.append(id);
+        }
     }
 
     /**
@@ -230,17 +234,11 @@ final class PageManager {
      * @throws IllegalArgumentException if id is less than or equal to one
      */
     public void recyclePage(long id) throws IOException {
-        deletePage(id, true);
-    }
-
-    void deletePage(long id, boolean recycle) throws IOException {
         if (id >= mCompactionTargetPageCount && mCompacting) {
             // Page is in the compaction zone.
             mReserveList.append(id);
-        } else if (recycle) {
-            mRecycleFreeList.append(id);
         } else {
-            mRegularFreeList.append(id);
+            mRecycleFreeList.append(id);
         }
     }
 
@@ -416,7 +414,7 @@ final class PageManager {
         }
 
         if (mReserveList != null) {
-            mReserveList.reclaim(mRemoveLock, upperBound, false);
+            mReserveList.reclaim(mRemoveLock, upperBound);
             mReserveList = null;
         }
 
