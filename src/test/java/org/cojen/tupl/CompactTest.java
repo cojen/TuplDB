@@ -47,7 +47,7 @@ public class CompactTest {
 
         final Index ix = mDb.openIndex("test");
         final int seed = 98232;
-        final int count = 100_000;
+        final int count = 100000;
 
         Random rnd = new Random(seed);
         for (int i=0; i<count; i++) {
@@ -88,7 +88,7 @@ public class CompactTest {
 
         // Compact even further.
         for (int i=91; i<=99; i++) {
-            boolean result = mDb.compact(null, i / 100.0);
+            mDb.compact(null, i / 100.0);
         }
 
         Database.Stats stats3 = mDb.stats();
@@ -113,7 +113,7 @@ public class CompactTest {
     public void largeValues() throws Exception {
         mDb = newTempDatabase(new DatabaseConfig()
                               .pageSize(512)
-                              .minCacheSize(10_000_000)
+                              .minCacheSize(10000000)
                               .durabilityMode(DurabilityMode.NO_FLUSH));
 
         final Index ix = mDb.openIndex("test");
@@ -164,7 +164,7 @@ public class CompactTest {
 
         // Compact even further.
         for (int i=91; i<=99; i++) {
-            boolean result = mDb.compact(null, i / 100.0);
+            mDb.compact(null, i / 100.0);
         }
 
         Database.Stats stats3 = mDb.stats();
@@ -193,7 +193,7 @@ public class CompactTest {
 
         final Index ix = mDb.openIndex("test");
         final int seed = 98232;
-        final int count = 100_000;
+        final int count = 100000;
 
         Random rnd = new Random(seed);
         for (int i=0; i<count; i++) {
@@ -222,8 +222,7 @@ public class CompactTest {
             }
         };
 
-        boolean result = mDb.compact(obs, 0.5);
-        assertFalse(result);
+        mDb.compact(obs, 0.5);
 
         Database.Stats stats2 = mDb.stats();
         assertEquals(stats1, stats2);
@@ -237,7 +236,7 @@ public class CompactTest {
 
         final Index ix = mDb.openIndex("test");
         final int seed = 98232;
-        final int count = 100_000;
+        final int count = 100000;
 
         Random rnd = new Random(seed);
         for (int i=0; i<count; i++) {
@@ -287,7 +286,10 @@ public class CompactTest {
             @Override
             public void run() {
                 try {
-                    result = mDb.compact(obs, 0.5);
+                    Database.Stats stats1 = mDb.stats();
+                    mDb.compact(obs, 0.5);
+                    Database.Stats stats2 = mDb.stats();
+                    result = stats2.totalPages() < stats1.totalPages();
                 } catch (Exception e) {
                     result = e;
                 }
