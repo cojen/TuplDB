@@ -416,6 +416,7 @@ final class Tree implements Index {
         throws IOException
     {
         if (!observer.indexBegin(view)) {
+            observer.manualAbort();
             return false;
         }
         TreeCursor cursor = new TreeCursor(this, Transaction.BOGUS);
@@ -427,9 +428,16 @@ final class Tree implements Index {
             // needed to be moved out of the compaction zone.
             cursor.find(EMPTY_BYTES);
 
-            // Note the short circuit 'and' operator. Observer is notified only if compaction
-            // completed without aborting.
-            return cursor.compact(highestNodeId, observer) && observer.indexComplete(view);
+            if (!cursor.compact(highestNodeId, observer)) {
+                return false;
+            }
+
+            if (!observer.indexComplete(view)) {
+                observer.manualAbort();
+                return false;
+            }
+
+            return true;
         } finally {
             cursor.reset();
         }

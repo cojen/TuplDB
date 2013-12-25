@@ -2562,8 +2562,12 @@ final class TreeCursor implements CauseCloseable, Cursor {
                 } else {
                     frameNodes[level] = node;
                     long id = compactFrame(highestNodeId, frame, node);
-                    if (id > highestNodeId || !observer.indexNodeVisited(id)) {
+                    if (id > highestNodeId) {
                         // Abort compaction.
+                        return false;
+                    }
+                    if (!observer.indexNodeVisited(id)) {
+                        observer.manualAbort();
                         return false;
                     }
                 }
