@@ -17,7 +17,8 @@
 package org.cojen.tupl;
 
 /**
- * Index compaction observer. Implementation does not need to be thread-safe.
+ * Index compaction observer. Implementation does not need to be thread-safe, but instances
+ * should not be shared by concurrent compactions.
  *
  * @author Brian S O'Neill
  * @see Database#compact Database.compact
