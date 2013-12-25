@@ -216,7 +216,7 @@ final class PageQueue implements IntegerRef {
      *
      * @param upperBound inclusive; pages greater than the upper bound are discarded
      */
-    void reclaim(Lock removeLock, long upperBound, boolean recycle) throws IOException {
+    void reclaim(Lock removeLock, long upperBound) throws IOException {
         if (mAllocMode != ALLOC_RESERVE || !mAggressive) {
             throw new IllegalStateException();
         }
@@ -228,7 +228,7 @@ final class PageQueue implements IntegerRef {
         long pageId;
         while ((pageId = tryUnappend()) != 0) {
             if (pageId <= upperBound) {
-                mManager.deletePage(pageId, recycle);
+                mManager.deletePage(pageId);
             }
         }
 
@@ -240,7 +240,7 @@ final class PageQueue implements IntegerRef {
                 break;
             }
             if (pageId <= upperBound) {
-                mManager.deletePage(pageId, recycle);
+                mManager.deletePage(pageId);
             }
         }
 

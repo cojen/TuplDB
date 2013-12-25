@@ -1521,6 +1521,9 @@ public final class Database implements CauseCloseable {
             }
         }
 
+        // Allow the reclaimed reserved pages to be immediately usable.
+        checkpoint(true, 0, 0);
+
         return false;
     }
 
