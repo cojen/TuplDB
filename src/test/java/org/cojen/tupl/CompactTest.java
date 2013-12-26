@@ -324,4 +324,76 @@ public class CompactTest {
             fastAssertArrayEquals(key, value);
         }
     }
+
+    @Test
+    public void stress() throws Exception {
+        mDb = newTempDatabase(new DatabaseConfig()
+                              .pageSize(512)
+                              .minCacheSize(100000000)
+                              .durabilityMode(DurabilityMode.NO_FLUSH));
+
+        class Compactor extends Thread {
+            volatile boolean stop;
+            volatile int success;
+            volatile int abort;
+            volatile Exception failed;
+
+            @Override
+            public void run() {
+                try {
+                    while (!stop) {
+                        Database.Stats stats1 = mDb.stats();
+                        mDb.compact(null, 0.5);
+                        Database.Stats stats2 = mDb.stats();
+                        if (stats2.totalPages() < stats1.totalPages()) {
+                            success++;
+                        } else {
+                            abort++;
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace(System.out);
+                    failed = e;
+                }
+            }
+        };
+
+        Compactor comp = new Compactor();
+        comp.start();
+
+        final Index ix = mDb.openIndex("test");
+        final int count = 1000;
+        int seed = 1234;
+
+        for (int round=0; round<1000; round++) {
+            int roundCount = round;
+
+            Random rnd1 = new Random(seed);
+            Random rnd2 = new Random(seed);
+
+            for (int i=0; i<roundCount; i++) {
+                int k = rnd1.nextInt();
+                byte[] key = ("key" + k).getBytes();
+                byte[] value = randomStr(rnd2, 1000);
+                ix.store(Transaction.BOGUS, key, value);
+            }
+
+            rnd1 = new Random(seed);
+            for (int i=0; i<roundCount; i++) {
+                int k = rnd1.nextInt();
+                byte[] key = ("key" + k).getBytes();
+                ix.delete(Transaction.BOGUS, key);
+            }
+
+            seed++;
+        }
+
+        comp.stop = true;
+        comp.join();
+
+        assertNull(comp.failed);
+        assertTrue(comp.abort > 0);
+        // This assertion might fail on a slower machine.
+        assertTrue(comp.success > 0);
+    }
 }
