@@ -178,7 +178,7 @@ final class PageQueue implements IntegerRef {
     /**
      * Initialize a fresh (non-restored) queue.
      */
-    void init(long headNodeId) throws IOException {
+    void init(long headNodeId) {
         mAppendLock.lock();
         try {
             mRemoveStoppedId = mAppendHeadId = mAppendTailId = headNodeId;
