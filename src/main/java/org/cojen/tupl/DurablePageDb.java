@@ -428,13 +428,10 @@ class DurablePageDb extends PageDb {
 
     @Override
     public boolean compactionEnd() throws IOException {
-        mCommitLock.readLock().lock();
         try {
-            return mPageManager.compactionEnd();
+            return mPageManager.compactionEnd(mCommitLock);
         } catch (Throwable e) {
             throw closeOnFailure(e);
-        } finally {
-            mCommitLock.readLock().unlock();
         }
     }
 
