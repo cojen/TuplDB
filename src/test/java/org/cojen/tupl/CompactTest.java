@@ -440,4 +440,38 @@ public class CompactTest {
         assertTrue(stats3.freePages() < stats2.freePages());
         assertTrue(stats3.totalPages() < stats2.totalPages());
     }
+
+    @Test
+    public void trashHiding() throws Exception {
+        // A transaction can move a large value into the fragmented trash and compaction won't
+        // be able to move it. This is not desirable, but at least confirm the behavior. If the
+        // trash could be scanned, it would also need to check if compaction is in progress
+        // when values move to and from the trash.
+
+        mDb = newTempDatabase();
+        Index ix = mDb.openIndex("test");
+
+        byte[] key = "hello".getBytes();
+        byte[] value = randomStr(new Random(), 1000000);
+
+        ix.store(Transaction.BOGUS, key, value);
+        
+        mDb.checkpoint();
+        Database.Stats stats1 = mDb.stats();
+
+        Transaction txn = mDb.newTransaction();
+        ix.delete(txn, key);
+
+        mDb.compact(null, 0.9);
+
+        Database.Stats stats2 = mDb.stats();
+        assertTrue(stats2.totalPages() - stats2.freePages() > 200);
+
+        txn.commit();
+
+        mDb.compact(null, 0.9);
+
+        Database.Stats stats3 = mDb.stats();
+        assertTrue(stats3.totalPages() - stats3.freePages() < 50);
+    }
 }
