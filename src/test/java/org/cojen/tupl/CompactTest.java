@@ -396,4 +396,48 @@ public class CompactTest {
         // This assertion might fail on a slower machine.
         assertTrue(comp.success > 0);
     }
+
+    @Test
+    public void longTransaction() throws Exception {
+        // A transaction with an undo log persisted will not be discovered by the compaction
+        // scan. This is only a problem for long running transactions -- they need to span the
+        // entire duration of the compaction.
+
+        mDb = newTempDatabase();
+        Index ix = mDb.openIndex("test");
+
+        for (int i=100000; i<200000; i++) {
+            byte[] key = ("key-" + i).getBytes();
+            ix.insert(null, key, key);
+        }
+
+        mDb.checkpoint();
+        Database.Stats stats1 = mDb.stats();
+
+        assertEquals(0, stats1.freePages());
+
+        Transaction txn = mDb.newTransaction();
+        for (int i=110000; i<200000; i++) {
+            byte[] key = ("key-" + i).getBytes();
+            ix.delete(txn, key);
+        }
+
+        mDb.checkpoint();
+        Database.Stats stats2 = mDb.stats();
+        assertTrue(stats2.freePages() > 100);
+
+        mDb.compact(null, 0.9);
+
+        // Nothing happened because most pages were in the undo log and not moved.
+        assertEquals(stats2, mDb.stats());
+
+        txn.commit();
+
+        // Compact will work this time now that undo log is gone.
+        mDb.compact(null, 0.9);
+        Database.Stats stats3 = mDb.stats();
+
+        assertTrue(stats3.freePages() < stats2.freePages());
+        assertTrue(stats3.totalPages() < stats2.totalPages());
+    }
 }
