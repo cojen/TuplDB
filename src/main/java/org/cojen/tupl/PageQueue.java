@@ -26,6 +26,8 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.cojen.tupl.io.PageArray;
 
+import static org.cojen.tupl.PageManager.ALLOC_NORMAL;
+import static org.cojen.tupl.PageManager.ALLOC_RESERVE;
 import static org.cojen.tupl.Utils.*;
 
 /**
@@ -79,6 +81,8 @@ final class PageQueue implements IntegerRef {
     private static final int I_NODE_START    = I_FIRST_PAGE_ID + 8;
 
     private final PageManager mManager;
+    private final int mAllocMode;
+    private final boolean mAggressive;
 
     // These fields are guarded by remove lock provided by caller.
     private long mRemovePageCount;
@@ -88,6 +92,7 @@ final class PageQueue implements IntegerRef {
     private int mRemoveHeadOffset;
     private long mRemoveHeadFirstPageId;
     private long mRemoveStoppedId;
+    private long mRemovedNodeCounter; // non-persistent count of nodes removed
 
     // Barrier between the remove and append lists. Remove stops when it
     // encounters the append head. Modification is permitted with the append
@@ -104,31 +109,76 @@ final class PageQueue implements IntegerRef {
     private boolean mDrainInProgress;
 
     /**
+     * Returns true if a valid PageQueue instance is encoded in the header.
+     */
+    static boolean exists(byte[] header, int offset) {
+        return decodeLongLE(header, offset + I_REMOVE_HEAD_ID) != 0;
+    }
+
+    /**
      * @param manager used for allocating and deleting pages for the queue itself
      */
-    PageQueue(PageManager manager) {
+    static PageQueue newRegularFreeList(PageManager manager) {
+        return new PageQueue(manager, ALLOC_NORMAL, false, null);
+    }
+
+    /**
+     * @param manager used for allocating and deleting pages for the queue itself
+     */
+    static PageQueue newRecycleFreeList(PageManager manager) {
+        return new PageQueue(manager, ALLOC_NORMAL, true, null);
+    }
+
+    /**
+     * @param manager used for allocating and deleting pages for the queue itself
+     * @param allocMode ALLOC_NORMAL or ALLOC_RESERVE
+     * @param aggressive pass true if most appended pages are safe to remove
+     */
+    private PageQueue(PageManager manager, int allocMode, boolean aggressive,
+                      ReentrantLock appendLock)
+    {
         mManager = manager;
+        mAllocMode = allocMode;
+        mAggressive = aggressive;
         PageArray array = manager.pageArray();
 
         mRemoveHead = new byte[array.pageSize()];
 
-        // This lock must be reentrant. The appendPage method can call into
-        // drainAppendHeap, which calls allocPage, which can re-acquire the
-        // append lock. The commit method acquires the remove lock too, and
-        // then it calls drainAppendHeap, acquiring the locks again. Note
-        // that locks are unfair. Pages are allocated and deleted by tree
-        // operations, which unfairly acquire latches. Waiting for a fair lock
-        // afterwards leads to priority inversion.
-        mAppendLock = new ReentrantLock(false);
+        if (appendLock == null) {
+            // This lock must be reentrant. The appendPage method can call into
+            // drainAppendHeap, which calls allocPage, which can re-acquire the append
+            // lock. The commit method acquires the remove lock too, and then it calls
+            // drainAppendHeap, acquiring the locks again. Note that locks are unfair. Pages
+            // are allocated and deleted by tree operations, which unfairly acquire
+            // latches. Waiting for a fair lock afterwards leads to priority inversion.
+            mAppendLock = new ReentrantLock(false);
+        } else {
+            mAppendLock = appendLock;
+        }
 
         mAppendHeap = new IdHeap(array.pageSize() - I_NODE_START);
         mAppendTail = new byte[array.pageSize()];
     }
 
     /**
+     * @throws IllegalStateException if this is not a regular free list
+     */
+    PageQueue newReserveFreeList() {
+        if (mAggressive) {
+            throw new IllegalStateException();
+        }
+        // Needs to share the same lock as the regular free list to avoid deadlocks. The
+        // reserve list might append to the regular list when deleting nodes, and the regular
+        // list might append to the reserve list when doing the same thing. Neither will ever
+        // call into the recycle list, since free list nodes cannot safely be recycled.
+        // Allocate as aggressive, allowing reclamation access to all pages.
+        return new PageQueue(mManager, ALLOC_RESERVE, true, mAppendLock);
+    }
+
+    /**
      * Initialize a fresh (non-restored) queue.
      */
-    void init(long headNodeId) throws IOException {
+    void init(long headNodeId) {
         mAppendLock.lock();
         try {
             mRemoveStoppedId = mAppendHeadId = mAppendTailId = headNodeId;
@@ -161,16 +211,68 @@ final class PageQueue implements IntegerRef {
     }
 
     /**
+     * Delete or recycle all pages, effectively deleting this PageQueue. Only works for page
+     * manager reserve list.
+     *
+     * @param upperBound inclusive; pages greater than the upper bound are discarded
+     */
+    void reclaim(Lock removeLock, long upperBound) throws IOException {
+        if (mAllocMode != ALLOC_RESERVE || !mAggressive) {
+            throw new IllegalStateException();
+        }
+
+        removeLock.lock();
+        mManager.reserveReclaimUpperBound(upperBound);
+        removeLock.unlock();
+
+        long pageId;
+        while ((pageId = tryUnappend()) != 0) {
+            if (pageId <= upperBound) {
+                mManager.deletePage(pageId);
+            }
+        }
+
+        while (true) {
+            removeLock.lock();
+            pageId = tryRemove(removeLock);
+            if (pageId == 0) {
+                removeLock.unlock();
+                break;
+            }
+            if (pageId <= upperBound) {
+                mManager.deletePage(pageId);
+            }
+        }
+
+        pageId = mRemoveStoppedId;
+        if (pageId != 0 && pageId <= upperBound) {
+            // Always delete the empty tail node to finish it off. Queue node pages cannot be
+            // recycled until after a commit.
+            mManager.deletePage(pageId);
+        }
+    }
+
+    // Caller must hold remove lock.
+    long getRemoveScanTarget() {
+        return mRemovedNodeCounter + mRemoveNodeCount;
+    }
+
+    // Caller must hold remove lock.
+    boolean isRemoveScanComplete(long target) {
+        // Subtract for modulo comparison (not that it's really necessary).
+        return (mRemovedNodeCounter - target) >= 0;
+    }
+
+    /**
      * Remove a page to satisfy an allocation request. Caller must acquire
      * remove lock, which might be released by this method.
      *
      * @param lock lock to be released by this method, unless return value is 0
-     * @param aggressive pass true if most appended pages are safe to remove
      * @return 0 if queue is empty or if remaining pages are off limits
      */
-    long tryRemove(Lock lock, boolean aggressive) throws IOException {
+    long tryRemove(Lock lock) throws IOException {
         if (mRemoveHeadId == 0) {
-            if (!aggressive || mRemoveStoppedId == mAppendTailId) {
+            if (!mAggressive || mRemoveStoppedId == mAppendTailId) {
                 return 0;
             }
             // Can continue removing aggressively now that a new append tail exists.
@@ -184,7 +286,7 @@ final class PageQueue implements IntegerRef {
         try {
             pageId = mRemoveHeadFirstPageId;
 
-            if (mManager.isPageOutOfBounds(pageId)) {
+            if (mAllocMode != ALLOC_RESERVE && mManager.isPageOutOfBounds(pageId)) {
                 throw new CorruptDatabaseException("Invalid page id in free list: " + pageId);
             }
 
@@ -203,10 +305,15 @@ final class PageQueue implements IntegerRef {
 
             oldHeadId = mRemoveHeadId;
 
+            if (mAllocMode == ALLOC_RESERVE && oldHeadId > mManager.reserveReclaimUpperBound()) {
+                // Don't add to free list if not in the reclamation range.
+                oldHeadId = 0;
+            }
+
             // Move to the next node in the list.
             long nextId = decodeLongBE(head, I_NEXT_NODE_ID);
 
-            if (nextId == (aggressive ? mAppendTailId : mAppendHeadId)) {
+            if (nextId == (mAggressive ? mAppendTailId : mAppendHeadId)) {
                 // Cannot remove from the append list. Those pages are off limits.
                 mRemoveHeadId = 0;
                 mRemoveHeadOffset = 0;
@@ -217,6 +324,7 @@ final class PageQueue implements IntegerRef {
             }
 
             mRemoveNodeCount--;
+            mRemovedNodeCounter++;
         } finally {
             lock.unlock();
         }
@@ -225,14 +333,16 @@ final class PageQueue implements IntegerRef {
         // commit. Lock acquisition order wouldn't match. Note that node is
         // deleted instead of used for next allocation. This ensures that no
         // important data is overwritten until after commit.
-        mManager.deletePage(oldHeadId);
+        if (oldHeadId != 0) {
+            mManager.deletePage(oldHeadId);
+        }
 
         return pageId;
     }
 
     // Caller must hold remove lock.
     private void loadRemoveNode(long id) throws IOException {
-        if (mManager.isPageOutOfBounds(id)) {
+        if (mAllocMode != ALLOC_RESERVE && mManager.isPageOutOfBounds(id)) {
             throw new CorruptDatabaseException("Invalid node id in free list: " + id);
         }
         byte[] head = mRemoveHead;
@@ -279,10 +389,12 @@ final class PageQueue implements IntegerRef {
     long tryUnappend() {
         mAppendLock.lock();
         try {
-            if (mDrainInProgress) {
+            final IdHeap appendHeap = mAppendHeap;
+            if (mDrainInProgress && appendHeap.size() <= 1) {
+                // Must leave at least one page, because drain will remove it.
                 return 0;
             }
-            long id = mAppendHeap.tryRemove();
+            long id = appendHeap.tryRemove();
             if (id != 0) {
                 mAppendPageCount--;
             }
@@ -300,7 +412,7 @@ final class PageQueue implements IntegerRef {
 
         mDrainInProgress = true;
         try {
-            long newTailId = mManager.allocPage();
+            long newTailId = mManager.allocPage(mAllocMode);
             long firstPageId = appendHeap.remove();
 
             byte[] tailBuf = mAppendTail;
@@ -398,6 +510,69 @@ final class PageQueue implements IntegerRef {
     }
 
     /**
+     * Scans all pages in the queue and checks if it matches the given range, assuming no
+     * duplicates exist.
+     */
+    boolean verifyPageRange(long startId, long endId) throws IOException {
+        // Be extra paranoid and use a hash for duplicate detection.
+        long expectedHash = 0;
+        for (long i=startId; i<endId; i++) {
+            // Pages will not be observed in order, but addition is commutative. Note that xor
+            // is not used here. If a page is triple counted, xor will not detect this.
+            expectedHash += scramble(i);
+        }
+
+        long hash = 0;
+        long count = 0;
+
+        long nodeId = mRemoveHeadId;
+
+        if (nodeId != 0) {
+            byte[] node = mRemoveHead.clone();
+            long pageId = mRemoveHeadFirstPageId;
+            IntegerRef.Value nodeOffsetRef = new IntegerRef.Value();
+            nodeOffsetRef.value = mRemoveHeadOffset;
+
+            while (true) {
+                if (pageId < startId || pageId >= endId) {
+                    // Out of bounds.
+                    return false;
+                }
+
+                hash += scramble(pageId);
+                count++;
+
+                if (nodeOffsetRef.value < node.length) {
+                    long delta = decodeUnsignedVarLong(node, nodeOffsetRef);
+                    if (delta > 0) {
+                        pageId += delta;
+                        continue;
+                    }
+                }
+
+                if (nodeId >= startId && nodeId < endId) {
+                    // Count in-range queue nodes too.
+                    hash += scramble(nodeId);
+                    count++;
+                }
+
+                // Move to the next queue node.
+
+                nodeId = decodeLongBE(node, I_NEXT_NODE_ID);
+                if (nodeId == mAppendTailId) {
+                    break;
+                }
+
+                mManager.pageArray().readPage(nodeId, node);
+                pageId = decodeLongBE(node, I_FIRST_PAGE_ID);
+                nodeOffsetRef.value = I_NODE_START;
+            }
+        }
+
+        return hash == expectedHash && count == (endId - startId);
+    }
+
+    /**
      * Clears bits representing all removable pages in the queue. Caller must
      * hold remove lock.
      */
@@ -418,16 +593,15 @@ final class PageQueue implements IntegerRef {
             return count;
         }
 
-        IntegerRef.Value nodeOffsetRef = new IntegerRef.Value();
-
         byte[] node = mRemoveHead.clone();
         long pageId = mRemoveHeadFirstPageId;
+        IntegerRef.Value nodeOffsetRef = new IntegerRef.Value();
         nodeOffsetRef.value = mRemoveHeadOffset;
 
         while (true) {
             /*
-            if (isPageOutOfBounds(pageId)) {
-                throw new CorruptPageStoreException("Invalid page id in free list: " + pageId);
+            if (mManager.isPageOutOfBounds(pageId)) {
+                throw new CorruptDatabaseException("Invalid page id in free list: " + pageId);
             }
             */
 
@@ -449,7 +623,7 @@ final class PageQueue implements IntegerRef {
             clearPageBit(pages, nodeId);
 
             nodeId = decodeLongBE(node, I_NEXT_NODE_ID);
-            if (nodeId == mAppendHeadId) {
+            if (nodeId == mAppendHeadId || nodeId == mAppendTailId) {
                 break;
             }
 

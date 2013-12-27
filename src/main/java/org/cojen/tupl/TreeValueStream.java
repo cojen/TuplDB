@@ -37,11 +37,14 @@ final class TreeValueStream extends AbstractStream {
     // Op ordinals are relevant.
     private static final int OP_LENGTH = 0, OP_READ = 1, OP_SET_LENGTH = 2, OP_WRITE = 3;
 
+    // Touches a fragment without extending the value length. Used for file compaction.
+    static final byte[] TOUCH_VALUE = new byte[0];
+
     private final TreeCursor mCursor;
     private final Database mDb;
 
     /**
-     * @param cursor unpositioned cursor, not autoloading
+     * @param cursor positioned or unpositioned cursor, not autoloading
      */
     TreeValueStream(TreeCursor cursor) {
         mCursor = cursor;
@@ -96,7 +99,7 @@ final class TreeValueStream extends AbstractStream {
                 throw e;
             }
 
-            action(frame, OP_SET_LENGTH, length, Utils.EMPTY_BYTES, 0, 0);
+            action(frame, OP_SET_LENGTH, length, EMPTY_BYTES, 0, 0);
             frame.mNode.releaseExclusive();
         } finally {
             sharedCommitLock.unlock();
@@ -166,6 +169,131 @@ final class TreeValueStream extends AbstractStream {
     }
 
     /**
+     * Determine if any fragment nodes at the given position are outside the compaction zone.
+     *
+     * @param frame latched leaf, not split, never released by this method
+     * @param highestNodeId defines the highest node before the compaction zone; anything
+     * higher is in the compaction zone
+     * @return -1 if position is too high, 0 if no compaction required, or 1 if any nodes are
+     * in the compaction zone
+     */
+    int compactCheck(final TreeCursorFrame frame, long pos, final long highestNodeId)
+        throws IOException
+    {
+        final Node node = frame.mNode;
+
+        int nodePos = frame.mNodePos;
+        if (nodePos < 0) {
+            // Value doesn't exist.
+            return -1;
+        }
+
+        final byte[] page = node.mPage;
+        int loc = decodeUnsignedShortLE(page, node.mSearchVecStart + nodePos);
+        int header = page[loc++];
+        loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
+
+        final int vHeaderLoc = loc;
+        final long vLen;
+
+        header = page[loc++];
+        if (header >= 0) {
+            // Not fragmented.
+            return pos >= header ? -1 : 0;
+        }
+
+        int len;
+        if ((header & 0x20) == 0) {
+            len = 1 + (((header & 0x1f) << 8) | (page[loc++] & 0xff));
+        } else if (header != -1) {
+            len = 1 + (((header & 0x0f) << 16)
+                       | ((page[loc++] & 0xff) << 8) | (page[loc++] & 0xff));
+        } else {
+            // ghost
+            return -1;
+        }
+
+        if ((header & Node.VALUE_FRAGMENTED) == 0) {
+            // Not fragmented.
+            return pos >= len ? -1 : 0;
+        }
+
+        // Read the fragment header, as described by the Database.fragment method.
+        header = page[loc++];
+
+        switch ((header >> 2) & 0x03) {
+        default:
+            vLen = decodeUnsignedShortLE(page, loc);
+            break;
+        case 1:
+            vLen = decodeIntLE(page, loc) & 0xffffffffL;
+            break;
+        case 2:
+            vLen = decodeUnsignedInt48LE(page, loc);
+            break;
+        case 3:
+            vLen = decodeLongLE(page, loc);
+            if (vLen < 0) {
+                // Value is too large.
+                return -1;
+            }
+            break;
+        }
+
+        if (pos >= vLen) {
+            return -1;
+        }
+
+        // Advance past the value length field.
+        loc += 2 + ((header >> 1) & 0x06);
+
+        if ((header & 0x02) != 0) {
+            // Inline content.
+            final int inLen = decodeUnsignedShortLE(page, loc);
+            if (pos < inLen) {
+                // Positioned within inline content.
+                return 0;
+            }
+            pos -= inLen;
+            loc = loc + 2 + inLen;
+        }
+
+        if ((header & 0x01) == 0) {
+            // Direct pointers.
+            loc += (((int) pos) / page.length) * 6;
+            final long fNodeId = decodeUnsignedInt48LE(page, loc);
+            return fNodeId > highestNodeId ? 1 : 0; 
+        }
+
+        // Indirect pointers.
+
+        final long inodeId = decodeUnsignedInt48LE(page, loc);
+        if (inodeId == 0) {
+            // Sparse value.
+            return 0;
+        }
+
+        final FragmentCache fc = mDb.mFragmentCache;
+        Node inode = fc.get(node, inodeId);
+        int level = Database.calculateInodeLevels(vLen, page.length);
+
+        while (true) {
+            level--;
+            long levelCap = mDb.levelCap(level);
+            long childNodeId = decodeUnsignedInt48LE(inode.mPage, ((int) (pos / levelCap)) * 6);
+            inode.releaseShared();
+            if (childNodeId > highestNodeId) {
+                return 1;
+            }
+            if (level <= 0 || childNodeId == 0) {
+                return 0;
+            }
+            inode = fc.get(node, childNodeId);
+            pos %= levelCap;
+        }
+    }
+
+    /**
      * Caller must hold shared commit lock when using OP_SET_LENGTH or OP_WRITE.
      *
      * @param frame latched shared for read op, exclusive for write op; released only if an
@@ -189,6 +317,10 @@ final class TreeValueStream extends AbstractStream {
             }
 
             // Handle OP_SET_LENGTH and OP_WRITE.
+
+            if (b == TOUCH_VALUE) {
+                return 0;
+            }
 
             // Method releases latch if an exception is thrown.
             node = mCursor.insertBlank(frame, node, pos + bLen);
@@ -226,6 +358,11 @@ final class TreeValueStream extends AbstractStream {
                     // Handle OP_LENGTH and OP_READ.
                     return -1;
                 }
+
+                if (b == TOUCH_VALUE) {
+                    return 0;
+                }
+
                 // FIXME: write ops; create the value
                 node.releaseExclusive();
                 throw null;
@@ -348,12 +485,17 @@ final class TreeValueStream extends AbstractStream {
                     throw null;
 
                 case OP_WRITE: try {
-                    if (bLen <= 0) {
+                    if (bLen == 0 & b != TOUCH_VALUE) {
                         return 0;
                     }
 
-                    // FIXME: extend check
-                    // FIXME: extend length, accounting for length field growth
+                    if ((pos + bLen) > vLen) {
+                        if (b == TOUCH_VALUE) {
+                            // Don't extend the value.
+                            return 0;
+                        }
+                        // FIXME: extend length, accounting for length field growth
+                    }
 
                     //bLen = Math.min((int) (vLen - pos), bLen);
 
@@ -530,6 +672,10 @@ final class TreeValueStream extends AbstractStream {
             break;
 
         case OP_WRITE:
+            if (b == TOUCH_VALUE) {
+                return 0;
+            }
+
             if (pos < vLen) {
                 final long end = pos + bLen;
                 if (end <= vLen) {
@@ -585,7 +731,7 @@ final class TreeValueStream extends AbstractStream {
      * @param pos value position being read
      * @param level inode level; at least 1
      * @param inode shared latched parent inode; always released by this method
-     * @param value slice of complete value being reconstructed
+     * @param b slice of complete value being reconstructed
      */
     private void readMultilevelFragments(Node caller,
                                          long pos, int level, Node inode,
@@ -658,7 +804,7 @@ final class TreeValueStream extends AbstractStream {
             levelCap = mDb.levelCap(level);
 
             int firstChild = (int) (pos / levelCap);
-            int lastChild = (int) ((pos + bLen - 1) / levelCap);
+            int lastChild = bLen == 0 ? firstChild : ((int) ((pos + bLen - 1) / levelCap));
 
             // Pre-allocate and reference the required child nodes in order for parent node
             // latch to be released early. FragmentCache can then safely evict the parent node

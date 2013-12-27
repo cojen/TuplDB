@@ -61,9 +61,9 @@ class DurablePageDb extends PageDb {
     | int:  page size                          |
     | int:  commit number                      |
     | int:  checksum                           |
-    | page manager header (96 bytes)           |
+    | page manager header (140 bytes)          |
     +------------------------------------------+
-    | reserved (140 bytes)                     |
+    | reserved (96 bytes)                      |
     +------------------------------------------+
     | extra data (256 bytes)                   |
     +------------------------------------------+
@@ -396,6 +396,48 @@ class DurablePageDb extends PageDb {
         } finally {
             mCommitLock.readLock().unlock();
         }
+    }
+
+    @Override
+    public boolean compactionStart(long targetPageCount) throws IOException {
+        mCommitLock.writeLock().lock();
+        try {
+            return mPageManager.compactionStart(targetPageCount);
+        } catch (Throwable e) {
+            throw closeOnFailure(e);
+        } finally {
+            mCommitLock.writeLock().unlock();
+        }
+    }
+
+    @Override
+    public boolean compactionScanFreeList() throws IOException {
+        try {
+            return mPageManager.compactionScanFreeList(mCommitLock);
+        } catch (Throwable e) {
+            throw closeOnFailure(e);
+        }
+    }
+
+    @Override
+    public boolean compactionVerify() throws IOException {
+        // Only performs reads and so no commit lock is required. Holding it would block
+        // checkpoints during reserve list scan, which is not desirable.
+        return mPageManager.compactionVerify();
+    }
+
+    @Override
+    public boolean compactionEnd() throws IOException {
+        try {
+            return mPageManager.compactionEnd(mCommitLock);
+        } catch (Throwable e) {
+            throw closeOnFailure(e);
+        }
+    }
+
+    @Override
+    public boolean truncatePages() throws IOException {
+        return mPageManager.truncatePages();
     }
 
     @Override

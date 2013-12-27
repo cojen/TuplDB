@@ -51,6 +51,7 @@ public class TestAll {
             RenameTest.class,
             StreamTest.class,
             PageSizeTest.class,
+            CompactTest.class,
         };
 
         String[] names = new String[classes.length];

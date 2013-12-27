@@ -32,7 +32,7 @@ import org.cojen.tupl.io.CauseCloseable;
  * @see NonPageDb
  */
 abstract class PageDb implements CauseCloseable {
-    final ReadWriteLock mCommitLock;
+    final ReentrantReadWriteLock mCommitLock;
 
     PageDb() {
         // Need to use a reentrant lock instead of a latch to simplify the
@@ -164,6 +164,52 @@ abstract class PageDb implements CauseCloseable {
     public Lock exclusiveCommitLock() {
         return mCommitLock.writeLock();
     }
+
+    /**
+     * Caller must ensure that at most one compaction is in progress and that no checkpoints
+     * occur when compaction starts and ends. Only one thread may control the compaction
+     * sequence:
+     *
+     * 1. start
+     * 2. scan free list (finds and moves pages in the compaction zone)
+     * 3. checkpoint (ensures dirty nodes are flushed out)
+     * 4. trace indexes and re-allocate pages which are in the compaction zone
+     * 5. scan free list (finds and moves additional pages)
+     * 6. forced checkpoint (ensures previous scan is applied)
+     * 7. verify; if not, scan and checkpoint again
+     * 8. end (must always be called if start returned true)
+     * 8. truncate
+     *
+     * @return false if target cannot be met or compaction is not supported
+     * @throws IllegalStateException if compaction is already in progress
+     */
+    public abstract boolean compactionStart(long targetPageCount) throws IOException;
+
+    /**
+     * Moves as many free pages as possible from the compaction zone into the reserve
+     * list. Other threads may concurrently allocate pages and might be stalled if they are
+     * required to do this work.
+     *
+     * @return false if aborted
+     */
+    public abstract boolean compactionScanFreeList() throws IOException;
+
+    /**
+     * @return false if verification failed
+     */
+    public abstract boolean compactionVerify() throws IOException;
+
+    /**
+     * @return false if aborted
+     */
+    public abstract boolean compactionEnd() throws IOException;
+
+    /**
+     * Called after compaction, to actually shrink the file.
+     *
+     * @return false if nothing was truncated
+     */
+    public abstract boolean truncatePages() throws IOException;
 
     /**
      * Durably commits all writes and deletes to the underlying device.
