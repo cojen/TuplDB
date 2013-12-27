@@ -1441,6 +1441,143 @@ public final class Database implements CauseCloseable {
     }
 
     /**
+     * Compacts the database by shrinking the database file. The compaction target is the
+     * desired file utilization, and it controls how much compaction should be performed. A
+     * target of 0.0 performs no compaction, and a value of 1.0 attempts to compact as much as
+     * possible.
+     *
+     * <p>Large compaction targets might require multiple passes to complete, and so a smaller
+     * target is preferred to minimize cost. A minimum target of 0.5 is recommended for the
+     * compaction to be worth the effort.
+     *
+     * <p>Compaction requires some additional storage while running, and so attempting to
+     * compact an already compact database might actually cause the file to grow slightly.
+     *
+     * @param observer optional observer; pass null for default
+     * @param target database file compaction target [0.0, 1.0]
+     * @throws IllegalArgumentException if compaction target is out of bounds
+     * @throws IllegalStateException if compaction is already in progress
+     */
+    void compact(CompactionObserver observer, final double target) throws IOException {
+        if (observer == null) {
+            observer = new CompactionObserver();
+        }
+
+        // Clears state as a side-effect.
+        observer.didManualAbort();
+
+        if (doCompact(observer, target) || observer.didManualAbort()) {
+            return;
+        }
+
+        // Compaction target not met, so cut in half repeatedly until it succeeds.
+        double t = target;
+        while (true) {
+            t /= 2;
+            if (doCompact(observer, t)) {
+                if (observer.didManualAbort()) {
+                    return;
+                }
+                break;
+            }
+        }
+
+        // Now attempt to reach target by doubling each time.
+        while ((t *= 2) <= target && doCompact(observer, t) && !observer.didManualAbort());
+    }
+
+    /**
+     * Compacts the database by shrinking the database file. The compaction target is the
+     * desired file utilization, and it controls how much compaction should be performed. A
+     * target of 0.0 performs no compaction, and a value of 1.0 attempts to compact as much as
+     * possible.
+     *
+     * <p>If the compaction target cannot be met, the entire operation aborts. If the database
+     * is being concurrently modified, large compaction targets will likely never succeed.
+     * Although compacting by smaller amounts is more likely to succeed, the entire database
+     * must still be scanned. A minimum target of 0.5 is recommended.
+     *
+     * <p>Compaction requires some amount of free space for page movement, and so very high
+     * compaction targets are unlikely to be met. A compaction target of 1.0 almost always
+     * aborts, but a compaction target of 0.95 is more likely to succeed. Higher compaction is
+     * possible with multiple iterations, each time increasing the target.
+     *
+     * @param observer optional observer; pass null for default
+     * @param target database file compaction target [0.0, 1.0]
+     * @return false if file compaction aborted
+     * @throws IllegalArgumentException if compaction target is out of bounds
+     * @throws IllegalStateException if compaction is already in progress
+     */
+    private boolean doCompact(CompactionObserver observer, double target) throws IOException {
+        if (target < 0 || target > 1) {
+            throw new IllegalArgumentException("Illegal compaction target: " + target);
+        }
+
+        if (target == 0) {
+            // No compaction to do at all, but not aborted.
+            return true;
+        }
+
+        long targetPageCount;
+        synchronized (mCheckpointLock) {
+            PageDb.Stats stats = mPageDb.stats();
+            long usedPages = stats.totalPages - stats.freePages;
+            targetPageCount = Math.max(usedPages, (long) (usedPages / target));
+            if (targetPageCount >= stats.totalPages) {
+                return true;
+            }
+            if (!mPageDb.compactionStart(targetPageCount)) {
+                return false;
+            }
+        }
+
+        if (!mPageDb.compactionScanFreeList()) {
+            synchronized (mCheckpointLock) {
+                mPageDb.compactionEnd();
+            }
+            return false;
+        }
+
+        // Issue a checkpoint to ensure all dirty nodes are flushed out. This ensures that
+        // nodes can be moved out of the compaction zone by simply marking them dirty. If
+        // already dirty, they'll not be in the compaction zone unless compaction aborted.
+        checkpoint();
+
+        if (observer == null) {
+            observer = new CompactionObserver();
+        }
+
+        final long highestNodeId = targetPageCount - 1;
+        final CompactionObserver fobserver = observer;
+
+        boolean completed = scanAllIndexes(new ScanVisitor() {
+            public boolean apply(Tree tree) throws IOException {
+                return tree.compactTree(tree.observableView(), highestNodeId, fobserver);
+            }
+        });
+
+        if (completed && mPageDb.compactionScanFreeList()) {
+            checkpoint(true, 0, 0);
+            if (!mPageDb.compactionVerify() && mPageDb.compactionScanFreeList()) {
+                checkpoint(true, 0, 0);
+            }
+        }
+
+        synchronized (mCheckpointLock) {
+            if (mPageDb.compactionEnd()) {
+                checkpoint(true, 0, 0);
+                // And now, actually shrink the file.
+                return mPageDb.truncatePages();
+            }
+        }
+
+        // Allow the reclaimed reserved pages to be immediately usable.
+        checkpoint(true, 0, 0);
+
+        return false;
+    }
+
+    /**
      * Verifies the integrity of the database and all indexes.
      *
      * @param observer optional observer; pass null for default

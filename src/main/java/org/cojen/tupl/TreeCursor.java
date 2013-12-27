@@ -2532,6 +2532,161 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     /**
+     * Used by file compaction mode. Compacts from the current node to the last, unless stopped
+     * by observer or aborted. Caller must issue a checkpoint after entering compaction mode
+     * and before calling this method. This ensures completion of any splits in progress before
+     * compaction began. Any new splits will be created during compaction and so they will
+     * allocate pages outside of the compaction zone.
+     *
+     * @param highestNodeId defines the highest node before the compaction zone; anything
+     * higher is in the compaction zone
+     * @return false if compaction should stop
+     */
+    boolean compact(long highestNodeId, CompactionObserver observer) throws IOException {
+        int height = height();
+
+        // Reference to frame nodes, to detect when cursor has moved past a node. Level 0
+        // represents the leaf node. Detection may also be triggered by concurrent
+        // modifications to the tree, but this is not harmful.
+        Node[] frameNodes = new Node[height];
+
+        TreeCursorFrame frame = mLeaf;
+
+        outer: while (true) {
+            for (int level = 0; level < height; level++) {
+                Node node = frame.acquireShared();
+                if (frameNodes[level] == node) {
+                    // No point in checking upwards if this level is unchanged.
+                    node.releaseShared();
+                    break;
+                } else {
+                    frameNodes[level] = node;
+                    long id = compactFrame(highestNodeId, frame, node);
+                    if (id > highestNodeId) {
+                        // Abort compaction.
+                        return false;
+                    }
+                    if (!observer.indexNodeVisited(id)) {
+                        observer.manualAbort();
+                        return false;
+                    }
+                }
+                frame = frame.mParentFrame;
+            }
+
+            // Search leaf for fragmented values.
+
+            frame = leafSharedNotSplit();
+            Node node = frame.mNode;
+
+            // Quick check avoids excessive node re-latching.
+            quick: {
+                final int end = node.highestLeafPos();
+                int pos = frame.mNodePos;
+                if (pos < 0) {
+                    pos = ~pos;
+                }
+                for (; pos <= end; pos += 2) {
+                    if (node.isFragmentedLeafValue(pos)) {
+                        // Found one, so abort the quick check.
+                        break quick;
+                    }
+                }
+                // No fragmented values found.
+                node.releaseShared();
+                nextNode();
+                if ((frame = mLeaf) == null) {
+                    // No more entries to examine.
+                    return true;
+                }
+                continue outer;
+            }
+
+            while (true) {
+                try {
+                    int nodePos = frame.mNodePos;
+                    if (nodePos >= 0 && node.isFragmentedLeafValue(nodePos)) {
+                        int pLen = node.mPage.length;
+                        TreeValueStream stream = new TreeValueStream(this);
+                        long pos = 0;
+                        while (true) {
+                            int result = stream.compactCheck(frame, pos, highestNodeId);
+                            if (result < 0) {
+                                break;
+                            }
+                            if (result > 0) {
+                                node.releaseShared();
+                                node = null;
+                                stream.doWrite(pos, TreeValueStream.TOUCH_VALUE, 0, 0);
+                                frame = leafSharedNotSplit();
+                                node = frame.mNode;
+                                if (node.mId > highestNodeId) {
+                                    // Abort compaction.
+                                    return false;
+                                }
+                            }
+                            pos += pLen;
+                        }
+                    }
+                } finally {
+                    if (node != null) {
+                        node.releaseShared();
+                    }
+                }
+
+                next();
+
+                if (mLeaf == null) {
+                    // No more entries to examine.
+                    return true;
+                }
+
+                frame = leafSharedNotSplit();
+                Node next = frame.mNode;
+
+                if (next != node) {
+                    next.releaseShared();
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
+     * Moves the frame's node out of the compaction zone if necessary.
+     *
+     * @param frame frame with shared latch held; always released as a side-effect
+     * @return new node id; caller must check if it is outside compaction zone and abort
+     */
+    private long compactFrame(long highestNodeId, TreeCursorFrame frame, Node node)
+        throws IOException
+    {
+        long id = node.mId;
+        node.releaseShared();
+
+        if (id > highestNodeId) {
+            Database db = mTree.mDatabase;
+            Lock sharedCommitLock = db.sharedCommitLock();
+            sharedCommitLock.lock();
+            try {
+                node = frame.acquireExclusive();
+                id = node.mId;
+                if (id > highestNodeId) {
+                    // Marking as dirty forces an allocation, which should be outside the
+                    // compaction zone.
+                    node = notSplitDirty(frame);
+                    id = node.mId;
+                }
+                node.releaseExclusive();
+            } finally {
+                sharedCommitLock.unlock();
+            }
+        }
+
+        return id;
+    }
+
+    /**
      * Test method which confirms that the given cursor is positioned exactly the same as this
      * one.
      */
