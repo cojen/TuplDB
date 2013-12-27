@@ -23,7 +23,7 @@ package org.cojen.tupl;
  * @author Brian S O'Neill
  * @see Database#compact Database.compact
  */
-public class CompactionObserver {
+class CompactionObserver {
     /** Index currently being compacted.  */
     protected Index index;
 
