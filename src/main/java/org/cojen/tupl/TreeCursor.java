@@ -2605,7 +2605,6 @@ final class TreeCursor implements CauseCloseable, Cursor {
             while (true) {
                 try {
                     int nodePos = frame.mNodePos;
-                    // FIXME: Fragment in fragment trash is lost upon txn undo!
                     if (nodePos >= 0 && node.isFragmentedLeafValue(nodePos)) {
                         int pLen = node.mPage.length;
                         TreeValueStream stream = new TreeValueStream(this);
