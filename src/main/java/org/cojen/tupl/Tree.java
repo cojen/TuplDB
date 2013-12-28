@@ -415,10 +415,16 @@ final class Tree implements Index {
     boolean compactTree(Index view, long highestNodeId, CompactionObserver observer)
         throws IOException
     {
-        if (!observer.indexBegin(view)) {
-            observer.manualAbort();
+        try {
+            if (!observer.indexBegin(view)) {
+                observer.manualAbort();
+                return false;
+            }
+        } catch (Throwable e) {
+            uncaught(e);
             return false;
         }
+
         TreeCursor cursor = new TreeCursor(this, Transaction.BOGUS);
         try {
             cursor.autoload(false);
@@ -432,8 +438,13 @@ final class Tree implements Index {
                 return false;
             }
 
-            if (!observer.indexComplete(view)) {
-                observer.manualAbort();
+            try {
+                if (!observer.indexComplete(view)) {
+                    observer.manualAbort();
+                    return false;
+                }
+            } catch (Throwable e) {
+                uncaught(e);
                 return false;
             }
 
