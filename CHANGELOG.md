@@ -1,6 +1,12 @@
 Changelog
 =========
 
+v1.0.3
+------
+
+* Allow database with non-default page size to be opened without requiring page size to be
+  explicitly configured.
+
 v1.0.2
 ------
 
