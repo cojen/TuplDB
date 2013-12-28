@@ -2566,8 +2566,13 @@ final class TreeCursor implements CauseCloseable, Cursor {
                         // Abort compaction.
                         return false;
                     }
-                    if (!observer.indexNodeVisited(id)) {
-                        observer.manualAbort();
+                    try {
+                        if (!observer.indexNodeVisited(id)) {
+                            observer.manualAbort();
+                            return false;
+                        }
+                    } catch (Throwable e) {
+                        uncaught(e);
                         return false;
                     }
                 }
