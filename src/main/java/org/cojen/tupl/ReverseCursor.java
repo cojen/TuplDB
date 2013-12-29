@@ -166,6 +166,11 @@ final class ReverseCursor implements Cursor {
     }
 
     @Override
+    public Stream newStream() {
+        return mSource.newStream();
+    }
+
+    @Override
     public Cursor copy() {
         return new ReverseCursor(mSource.copy());
     }

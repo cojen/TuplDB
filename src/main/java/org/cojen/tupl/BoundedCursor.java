@@ -481,6 +481,11 @@ final class BoundedCursor implements Cursor {
     }
 
     @Override
+    public Stream newStream() {
+        return new SubStream(mView, mSource.newStream());
+    }
+
+    @Override
     public Cursor copy() {
         return new BoundedCursor(mView, mSource.copy());
     }
