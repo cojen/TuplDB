@@ -34,6 +34,11 @@ final class UnmodifiableCursor extends WrappedCursor<Cursor> {
     }
 
     @Override
+    public Stream newStream() {
+        return new UnmodifiableStream(mSource.newStream());
+    }
+
+    @Override
     public Cursor copy() {
         return new UnmodifiableCursor(mSource.copy());
     }

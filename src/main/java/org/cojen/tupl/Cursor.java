@@ -374,6 +374,13 @@ public interface Cursor {
     //public void append(byte[] data) throws IOException;
 
     /**
+     * Returns an opened stream at the cursor's current position, or an unopened stream if the
+     * cursor is unpositioned. When using a cursor for opening streams, {@link #autoload
+     * autoload} should be disabled.
+     */
+    public Stream newStream();
+
+    /**
      * Returns a new independent Cursor, positioned where this one is, and
      * linked to the same transaction. The original and copied Cursor can be
      * acted upon without affecting each other's state.

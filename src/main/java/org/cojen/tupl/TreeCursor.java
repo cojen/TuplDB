@@ -2398,6 +2398,21 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     @Override
+    public Stream newStream() {
+        TreeCursor copy = new TreeCursor(mTree, mTxn);
+        TreeCursorFrame frame = mLeaf;
+        if (frame != null) {
+            TreeCursorFrame frameCopy = new TreeCursorFrame();
+            frame.copyInto(frameCopy);
+            copy.mLeaf = frameCopy;
+        }
+        copy.mKey = mKey;
+        copy.mKeyHash = mKeyHash;
+        copy.mKeyOnly = true;
+        return new TreeValueStream(copy);
+    }
+
+    @Override
     public TreeCursor copy() {
         TreeCursor copy = new TreeCursor(mTree, mTxn);
         TreeCursorFrame frame = mLeaf;

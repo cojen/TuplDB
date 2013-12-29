@@ -37,6 +37,12 @@ final class DequeCursor extends WrappedCursor<TreeCursor> {
     }
 
     @Override
+    public Stream newStream() {
+        // FIXME
+        throw null;
+    }
+
+    @Override
     public Cursor copy() {
         return new DequeCursor(mIndex, mSource.copy());
     }

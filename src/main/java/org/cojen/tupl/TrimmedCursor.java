@@ -197,6 +197,11 @@ class TrimmedCursor implements Cursor {
     }
 
     @Override
+    public Stream newStream() {
+        return new TrimmedStream(mView, mSource.newStream());
+    }
+
+    @Override
     public Cursor copy() {
         TrimmedCursor c = new TrimmedCursor(mView, mSource.copy());
         c.mKey = mKey;
