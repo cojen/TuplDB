@@ -417,7 +417,6 @@ final class Tree implements Index {
     {
         try {
             if (!observer.indexBegin(view)) {
-                observer.manualAbort();
                 return false;
             }
         } catch (Throwable e) {
@@ -440,7 +439,6 @@ final class Tree implements Index {
 
             try {
                 if (!observer.indexComplete(view)) {
-                    observer.manualAbort();
                     return false;
                 }
             } catch (Throwable e) {

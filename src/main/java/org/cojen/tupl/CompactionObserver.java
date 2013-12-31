@@ -27,8 +27,6 @@ class CompactionObserver {
     /** Index currently being compacted.  */
     protected Index index;
 
-    private boolean manualAbort;
-
     /**
      * Called before full index compaction begins. Default implementation records the index,
      * and then simply returns true.
@@ -63,15 +61,5 @@ class CompactionObserver {
      */
     public boolean indexNodeVisited(long id) {
         return true;
-    }
-
-    void manualAbort() {
-        manualAbort = true;
-    }
-
-    boolean didManualAbort() {
-        boolean did = manualAbort;
-        manualAbort = false;
-        return did;
     }
 }

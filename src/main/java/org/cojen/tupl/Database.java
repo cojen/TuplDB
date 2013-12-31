@@ -1446,61 +1446,15 @@ public final class Database implements CauseCloseable {
      * target of 0.0 performs no compaction, and a value of 1.0 attempts to compact as much as
      * possible.
      *
-     * <p>Large compaction targets might require multiple passes to complete, and so a smaller
-     * target is preferred to minimize cost. A minimum target of 0.5 is recommended for the
-     * compaction to be worth the effort.
-     *
-     * <p>Compaction requires some additional storage while running, and so attempting to
-     * compact an already compact database might actually cause the file to grow slightly.
-     *
-     * @param observer optional observer; pass null for default
-     * @param target database file compaction target [0.0, 1.0]
-     * @throws IllegalArgumentException if compaction target is out of bounds
-     * @throws IllegalStateException if compaction is already in progress
-     */
-    void compact(CompactionObserver observer, final double target) throws IOException {
-        if (observer == null) {
-            observer = new CompactionObserver();
-        }
-
-        // Clears state as a side-effect.
-        observer.didManualAbort();
-
-        if (doCompact(observer, target) || observer.didManualAbort()) {
-            return;
-        }
-
-        // Compaction target not met, so cut in half repeatedly until it succeeds.
-        double t = target;
-        while (true) {
-            t /= 2;
-            if (doCompact(observer, t)) {
-                if (observer.didManualAbort()) {
-                    return;
-                }
-                break;
-            }
-        }
-
-        // Now attempt to reach target by doubling each time.
-        while ((t *= 2) <= target && doCompact(observer, t) && !observer.didManualAbort());
-    }
-
-    /**
-     * Compacts the database by shrinking the database file. The compaction target is the
-     * desired file utilization, and it controls how much compaction should be performed. A
-     * target of 0.0 performs no compaction, and a value of 1.0 attempts to compact as much as
-     * possible.
-     *
      * <p>If the compaction target cannot be met, the entire operation aborts. If the database
      * is being concurrently modified, large compaction targets will likely never succeed.
      * Although compacting by smaller amounts is more likely to succeed, the entire database
-     * must still be scanned. A minimum target of 0.5 is recommended.
+     * must still be scanned. A minimum target of 0.5 is recommended for the compaction to be
+     * worth the effort.
      *
-     * <p>Compaction requires some amount of free space for page movement, and so very high
-     * compaction targets are unlikely to be met. A compaction target of 1.0 almost always
-     * aborts, but a compaction target of 0.95 is more likely to succeed. Higher compaction is
-     * possible with multiple iterations, each time increasing the target.
+     * <p>Compaction requires some amount of free space for page movement, and so some free
+     * space might still linger following a massive compaction. More iterations are required to
+     * fully complete such a compaction.
      *
      * @param observer optional observer; pass null for default
      * @param target database file compaction target [0.0, 1.0]
@@ -1508,7 +1462,7 @@ public final class Database implements CauseCloseable {
      * @throws IllegalArgumentException if compaction target is out of bounds
      * @throws IllegalStateException if compaction is already in progress
      */
-    private boolean doCompact(CompactionObserver observer, double target) throws IOException {
+    boolean compact(CompactionObserver observer, double target) throws IOException {
         if (target < 0 || target > 1) {
             throw new IllegalArgumentException("Illegal compaction target: " + target);
         }
@@ -1523,9 +1477,33 @@ public final class Database implements CauseCloseable {
             PageDb.Stats stats = mPageDb.stats();
             long usedPages = stats.totalPages - stats.freePages;
             targetPageCount = Math.max(usedPages, (long) (usedPages / target));
+
+            // Determine the maximum amount of space required to store the reserve list nodes
+            // and ensure the target includes them.
+            long reserve;
+            {
+                // Total pages freed.
+                long freed = stats.totalPages - targetPageCount;
+
+                // Scale by the maximum size for encoding page identifers, assuming no savings
+                // from delta encoding.
+                freed *= calcUnsignedVarLongLength(stats.totalPages << 1);
+
+                // Divide by the node size, excluding the header (see PageQueue).
+                reserve = freed / (mPageSize - (8 + 8));
+
+                // A minimum is required because the regular and free lists need to allocate
+                // one extra node at checkpoint. Up to three checkpoints may be issued, so pad
+                // by 2 * 3 = 6.
+                reserve += 6;
+            }
+
+            targetPageCount += reserve;
+
             if (targetPageCount >= stats.totalPages) {
                 return true;
             }
+
             if (!mPageDb.compactionStart(targetPageCount)) {
                 return false;
             }

@@ -2583,7 +2583,6 @@ final class TreeCursor implements CauseCloseable, Cursor {
                     }
                     try {
                         if (!observer.indexNodeVisited(id)) {
-                            observer.manualAbort();
                             return false;
                         }
                     } catch (Throwable e) {
