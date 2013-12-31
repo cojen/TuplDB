@@ -1534,23 +1534,26 @@ public final class Database implements CauseCloseable {
             }
         });
 
+        checkpoint(true, 0, 0);
+
         if (completed && mPageDb.compactionScanFreeList()) {
-            checkpoint(true, 0, 0);
             if (!mPageDb.compactionVerify() && mPageDb.compactionScanFreeList()) {
                 checkpoint(true, 0, 0);
             }
         }
 
         synchronized (mCheckpointLock) {
-            if (mPageDb.compactionEnd()) {
-                checkpoint(true, 0, 0);
-                // And now, actually shrink the file.
+            completed &= mPageDb.compactionEnd();
+
+            // If completed, then this allows file to shrink. Otherwise, it allows reclaimed
+            // reserved pages to be immediately usable.
+            checkpoint(true, 0, 0);
+
+            if (completed) {
+                // And now, attempt to actually shrink the file.
                 return mPageDb.truncatePages();
             }
         }
-
-        // Allow the reclaimed reserved pages to be immediately usable.
-        checkpoint(true, 0, 0);
 
         return false;
     }

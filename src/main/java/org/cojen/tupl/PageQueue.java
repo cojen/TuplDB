@@ -93,6 +93,7 @@ final class PageQueue implements IntegerRef {
     private long mRemoveHeadFirstPageId;
     private long mRemoveStoppedId;
     private long mRemovedNodeCounter; // non-persistent count of nodes removed
+    private long mReserveReclaimUpperBound; // used by reclaim method
 
     // Barrier between the remove and append lists. Remove stops when it
     // encounters the append head. Modification is permitted with the append
@@ -171,8 +172,9 @@ final class PageQueue implements IntegerRef {
         // reserve list might append to the regular list when deleting nodes, and the regular
         // list might append to the reserve list when doing the same thing. Neither will ever
         // call into the recycle list, since free list nodes cannot safely be recycled.
-        // Allocate as aggressive, allowing reclamation access to all pages.
-        return new PageQueue(mManager, ALLOC_RESERVE, true, mAppendLock);
+        // Allocate as non-aggressive, preventing page manager from raiding pages that were
+        // deleted instead of recycled. Full reclamation is possible only after a checkpoint.
+        return new PageQueue(mManager, ALLOC_RESERVE, false, mAppendLock);
     }
 
     /**
@@ -211,30 +213,21 @@ final class PageQueue implements IntegerRef {
     }
 
     /**
-     * Delete or recycle all pages, effectively deleting this PageQueue. Only works for page
-     * manager reserve list.
+     * Delete all available pages, effectively deleting this PageQueue. Only works for page
+     * manager reserve list, and only after a checkpoint.
      *
      * @param upperBound inclusive; pages greater than the upper bound are discarded
      */
     void reclaim(Lock removeLock, long upperBound) throws IOException {
-        if (mAllocMode != ALLOC_RESERVE || !mAggressive) {
+        if (mAllocMode != ALLOC_RESERVE) {
             throw new IllegalStateException();
         }
 
         removeLock.lock();
-        mManager.reserveReclaimUpperBound(upperBound);
-        removeLock.unlock();
-
-        long pageId;
-        while ((pageId = tryUnappend()) != 0) {
-            if (pageId <= upperBound) {
-                mManager.deletePage(pageId);
-            }
-        }
+        mReserveReclaimUpperBound = upperBound;
 
         while (true) {
-            removeLock.lock();
-            pageId = tryRemove(removeLock);
+            long pageId = tryRemove(removeLock);
             if (pageId == 0) {
                 removeLock.unlock();
                 break;
@@ -242,12 +235,11 @@ final class PageQueue implements IntegerRef {
             if (pageId <= upperBound) {
                 mManager.deletePage(pageId);
             }
+            removeLock.lock();
         }
 
-        pageId = mRemoveStoppedId;
+        long pageId = mRemoveStoppedId;
         if (pageId != 0 && pageId <= upperBound) {
-            // Always delete the empty tail node to finish it off. Queue node pages cannot be
-            // recycled until after a commit.
             mManager.deletePage(pageId);
         }
     }
@@ -305,7 +297,7 @@ final class PageQueue implements IntegerRef {
 
             oldHeadId = mRemoveHeadId;
 
-            if (mAllocMode == ALLOC_RESERVE && oldHeadId > mManager.reserveReclaimUpperBound()) {
+            if (mAllocMode == ALLOC_RESERVE && oldHeadId > mReserveReclaimUpperBound) {
                 // Don't add to free list if not in the reclamation range.
                 oldHeadId = 0;
             }
