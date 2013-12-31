@@ -1454,7 +1454,8 @@ public final class Database implements CauseCloseable {
      *
      * <p>Compaction requires some amount of free space for page movement, and so some free
      * space might still linger following a massive compaction. More iterations are required to
-     * fully complete such a compaction.
+     * fully complete such a compaction. The first iteration might actually cause the file to
+     * grow slightly. This can be prevented by doing a less massive compaction first.
      *
      * @param observer optional observer; pass null for default
      * @param target database file compaction target [0.0, 1.0]
