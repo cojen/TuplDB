@@ -474,4 +474,53 @@ public class CompactTest {
         Database.Stats stats3 = mDb.stats();
         assertTrue(stats3.totalPages() - stats3.freePages() < 50);
     }
+
+    @Test
+    public void randomInserts() throws Exception {
+        // Random inserts with a small cache size tends to create a lot of extra unused space
+        // in the file. Verify compaction can reclaim the space.
+
+        mDb = newTempDatabase(new DatabaseConfig()
+                              .minCacheSize(1000000)
+                              .durabilityMode(DurabilityMode.NO_FLUSH));
+        
+        Index ix = mDb.openIndex("test");
+
+        final int seed = 793846;
+        final int count = 500000;
+
+        Random rnd = new Random(seed);
+        byte[] value = new byte[0];
+
+        for (int i=0; i<count; i++) {
+            byte[] key = randomStr(rnd, 10, 20);
+            ix.store(null, key, value);
+        }
+
+        Database.Stats stats1 = mDb.stats();
+
+        boolean result = mDb.compact(null, 0.95);
+        if (!result) {
+            result = mDb.compact(null, 0.95);
+        }
+
+        assertTrue(result);
+
+        Database.Stats stats2 = mDb.stats();
+
+        assertTrue(stats1.totalPages() > stats2.totalPages() * 2);
+
+        // Verify no data loss.
+
+        mDb.verify(null);
+
+        rnd = new Random(seed);
+
+        for (int i=0; i<count; i++) {
+            byte[] key = randomStr(rnd, 10, 20);
+            value = ix.load(null, key);
+            assertNotNull(value);
+            assertEquals(0, value.length);
+        }
+    }
 }
