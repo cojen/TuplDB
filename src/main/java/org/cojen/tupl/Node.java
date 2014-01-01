@@ -1829,14 +1829,8 @@ final class Node extends Latch {
             System.arraycopy(rightPage, searchKeyLoc, parentPage, parentKeyLoc, searchKeyLen);
             parent.mGarbage -= parentKeyGrowth;
         } else {
-            try {
-                parent.updateInternalKey
-                    (tree, childPos - 2, parentKeyGrowth, rightPage, searchKeyLoc, searchKeyLen);
-            } catch (IOException e) {
-                left.releaseExclusive();
-                parent.releaseExclusive();
-                return 0;
-            }
+            parent.updateInternalKey
+                (tree, childPos - 2, parentKeyGrowth, rightPage, searchKeyLoc, searchKeyLen);
         }
 
         int garbageAccum = 0;
@@ -1993,14 +1987,8 @@ final class Node extends Latch {
             System.arraycopy(leftPage, searchKeyLoc, parentPage, parentKeyLoc, searchKeyLen);
             parent.mGarbage -= parentKeyGrowth;
         } else {
-            try {
-                parent.updateInternalKey
-                    (tree, childPos, parentKeyGrowth, leftPage, searchKeyLoc, searchKeyLen);
-            } catch (IOException e) {
-                right.releaseExclusive();
-                parent.releaseExclusive();
-                return false;
-            }
+            parent.updateInternalKey
+                (tree, childPos, parentKeyGrowth, leftPage, searchKeyLoc, searchKeyLen);
         }
 
         int garbageAccum = 0;
@@ -2498,7 +2486,6 @@ final class Node extends Latch {
      */
     void updateInternalKey(Tree tree, int pos, int growth,
                            byte[] key, int keyStart, int encodedLen)
-        throws IOException
     {
         int garbage = mGarbage + encodedLen - growth;
 
