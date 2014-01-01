@@ -2399,21 +2399,22 @@ final class TreeCursor implements CauseCloseable, Cursor {
 
     @Override
     public Stream newStream() {
-        TreeCursor copy = new TreeCursor(mTree, mTxn);
-        TreeCursorFrame frame = mLeaf;
-        if (frame != null) {
-            TreeCursorFrame frameCopy = new TreeCursorFrame();
-            frame.copyInto(frameCopy);
-            copy.mLeaf = frameCopy;
-        }
-        copy.mKey = mKey;
-        copy.mKeyHash = mKeyHash;
+        TreeCursor copy = copyNoValue();
         copy.mKeyOnly = true;
         return new TreeValueStream(copy);
     }
 
     @Override
     public TreeCursor copy() {
+        TreeCursor copy = copyNoValue();
+        if (!(copy.mKeyOnly = mKeyOnly)) {
+            byte[] value = mValue;
+            copy.mValue = (value == null || value.length == 0) ? value : value.clone();
+        }
+        return copy;
+    }
+
+    private TreeCursor copyNoValue() {
         TreeCursor copy = new TreeCursor(mTree, mTxn);
         TreeCursorFrame frame = mLeaf;
         if (frame != null) {
@@ -2423,10 +2424,6 @@ final class TreeCursor implements CauseCloseable, Cursor {
         }
         copy.mKey = mKey;
         copy.mKeyHash = mKeyHash;
-        if (!(copy.mKeyOnly = mKeyOnly)) {
-            byte[] value = mValue;
-            copy.mValue = (value == null || value.length == 0) ? value : value.clone();
-        }
         return copy;
     }
 
