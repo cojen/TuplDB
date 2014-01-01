@@ -327,6 +327,18 @@ public class CompactTest {
 
     @Test
     public void stress() throws Exception {
+        for (int i=1; i<=3; i++) {
+            try {
+                doStress();
+                break;
+            } catch (AssertionError e) {
+                // Retry.
+                teardown();
+            }
+        }
+    }
+
+    private void doStress() throws Exception {
         mDb = newTempDatabase(new DatabaseConfig()
                               .pageSize(512)
                               .minCacheSize(100000000)
