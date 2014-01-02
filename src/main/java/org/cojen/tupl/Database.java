@@ -31,11 +31,9 @@ import java.lang.ref.ReferenceQueue;
 
 import java.math.BigInteger;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.Set;
@@ -963,7 +961,6 @@ public final class Database implements CauseCloseable {
             mRegistryKeyMap.delete(txn, oldNameKey);
             mRegistryKeyMap.store(txn, idKey, newName);
 
-            TreeRef ref = null;
             mOpenTreesLatch.acquireExclusive();
             try {
                 txn.commit();
@@ -2173,13 +2170,13 @@ public final class Database implements CauseCloseable {
      * checkpoint is in progress.
      */
     private void cleanupUnreferencedTrees(Transaction txn) throws IOException {
-        final ReferenceQueue queue = mOpenTreesRefQueue;
+        final ReferenceQueue<Tree> queue = mOpenTreesRefQueue;
         if (queue == null) {
             return;
         }
         try {
             while (true) {
-                Reference ref = queue.poll();
+                Reference<? extends Tree> ref = queue.poll();
                 if (ref == null) {
                     break;
                 }

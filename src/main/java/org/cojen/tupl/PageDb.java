@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.BitSet;
 
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.cojen.tupl.io.CauseCloseable;

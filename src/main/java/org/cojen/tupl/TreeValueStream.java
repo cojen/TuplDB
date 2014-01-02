@@ -18,8 +18,6 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import java.util.Arrays;
-
 import java.util.concurrent.locks.Lock;
 
 import static java.lang.System.arraycopy;
@@ -193,7 +191,6 @@ final class TreeValueStream extends AbstractStream {
         int header = page[loc++];
         loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
 
-        final int vHeaderLoc = loc;
         final long vLen;
 
         header = page[loc++];
