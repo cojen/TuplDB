@@ -73,7 +73,7 @@ import static org.cojen.tupl.Utils.*;
  *
  * <pre>
  * DatabaseConfig config = new DatabaseConfig()
- *    .baseFilePath("/var/lib/tupl")
+ *    .baseFilePath("/var/lib/tupl/myapp")
  *    .minCacheSize(100_000_000)
  *    .durabilityMode(DurabilityMode.NO_FLUSH);
  *
@@ -83,16 +83,16 @@ import static org.cojen.tupl.Utils.*;
  * <p>The following files are created by the above example:
  *
  * <ul>
- * <li><code>/var/lib/tupl.db</code> &ndash; primary data file
- * <li><code>/var/lib/tupl.info</code> &ndash; text file describing the database configuration
- * <li><code>/var/lib/tupl.lock</code> &ndash; lock file to ensure that at most one process can have the database open
- * <li><code>/var/lib/tupl.redo.0</code> &ndash; first transaction redo log file
+ * <li><code>/var/lib/tupl/myapp.db</code> &ndash; primary data file
+ * <li><code>/var/lib/tupl/myapp.info</code> &ndash; text file describing the database configuration
+ * <li><code>/var/lib/tupl/myapp.lock</code> &ndash; lock file to ensure that at most one process can have the database open
+ * <li><code>/var/lib/tupl/myapp.redo.0</code> &ndash; first transaction redo log file
  * </ul>
  *
  * <p>New redo log files are created by {@link #checkpoint checkpoints}, which
  * also delete the old files. When {@link #beginSnapshot snapshots} are in
  * progress, one or more numbered temporary files are created. For example:
- * <code>/var/lib/tupl.temp.123</code>.
+ * <code>/var/lib/tupl/myapp.temp.123</code>.
  *
  * @author Brian S O'Neill
  * @see DatabaseConfig
