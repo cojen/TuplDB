@@ -2520,11 +2520,11 @@ final class Node extends Latch {
         }
 
         // Move affected cursor frames to the right node.
-        final int leftEndPos = firstSearchVecLoc - mSearchVecStart;
+        final int adjust = firstSearchVecLoc - mSearchVecStart + 4;
         for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
             // Capture previous frame from linked list before changing the links.
             TreeCursorFrame prev = frame.mPrevCousin;
-            int newPos = frame.mNodePos - leftEndPos;
+            int newPos = frame.mNodePos - adjust;
             if (newPos >= 0) {
                 frame.unbind();
                 frame.bind(right, newPos);
