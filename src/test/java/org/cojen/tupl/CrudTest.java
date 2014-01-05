@@ -416,6 +416,8 @@ public class CrudTest {
             }
         }
 
+        assertTrue(ix.verify(null));
+
         rnd = new Random(seed1);
 
         int expectedCount = 0;
@@ -449,6 +451,8 @@ public class CrudTest {
             }
         }
 
+        assertTrue(ix.verify(null));
+
         rnd = new Random(seed2);
 
         for (int i=0; i<count; i++) {
@@ -477,6 +481,8 @@ public class CrudTest {
             }
         }
 
+        assertTrue(ix.verify(null));
+
         assertEquals(expectedCount, count(ix));
 
         // Delete all remaining entries and verify.
@@ -484,6 +490,8 @@ public class CrudTest {
         for (Map.Entry<byte[], byte[]> e : replaced.entrySet()) {
             assertTrue(ix.delete(Transaction.BOGUS, e.getKey()));
         }
+
+        assertTrue(ix.verify(null));
 
         assertEquals(0, count(ix));
     }
