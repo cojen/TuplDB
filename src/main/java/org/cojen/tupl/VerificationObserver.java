@@ -91,8 +91,20 @@ public class VerificationObserver {
      * @return false if verification should stop
      */
     public boolean indexNodeFailed(long id, int level, String message) {
-        reportFailure("Verification failure: index=" + index.getId() +
-                      ", node=" + id + ", level=" + level + ": " + message);
+        StringBuilder b = new StringBuilder("Verification failure: index=");
+
+        Index index = this.index;
+        if (index == null) {
+            b.append("null");
+        } else {
+            b.append(index.getId());
+        }
+
+        b.append(", node=").append(id).append(", level=").append(level)
+            .append(": ").append(message);
+
+        reportFailure(b.toString());
+
         return true;
     }
 
