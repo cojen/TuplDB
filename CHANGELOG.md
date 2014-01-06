@@ -6,6 +6,7 @@ v1.0.3
 
 * Allow database with non-default page size to be opened without requiring page size to be
   explicitly configured.
+* Added rebalancing for internal nodes (was only leaf nodes before).
 
 v1.0.2
 ------
