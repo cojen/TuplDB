@@ -2043,9 +2043,9 @@ final class Node extends Latch {
     }
 
     /**
-     * Insert into an internal node following a child node split. This parent
-     * node and child node must have an exclusive latch held. Child latch is
-     * released, unless an exception is thrown.
+     * Insert into an internal node following a child node split. This parent node and child
+     * node must have an exclusive latch held. Parent and child latch are always released, even
+     * if an exception is thrown.
      *
      * @param keyPos position to insert split key
      * @param splitChild child node which split
@@ -2055,68 +2055,80 @@ final class Node extends Latch {
     {
         final Split split = splitChild.mSplit;
         final Node newChild = splitChild.rebindSplitFrames(split);
-        splitChild.mSplit = null;
+        try {
+            splitChild.mSplit = null;
 
-        //final Node leftChild;
-        final Node rightChild;
-        int newChildPos = keyPos >> 1;
-        if (split.mSplitRight) {
-            //leftChild = splitChild;
-            rightChild = newChild;
-            newChildPos++;
-        } else {
-            //leftChild = newChild;
-            rightChild = splitChild;
-        }
-
-        // Positions of frames higher than split key need to be incremented.
-        for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
-            int framePos = frame.mNodePos;
-            if (framePos > keyPos) {
-                frame.mNodePos = framePos + 2;
+            //final Node leftChild;
+            final Node rightChild;
+            int newChildPos = keyPos >> 1;
+            if (split.mSplitRight) {
+                //leftChild = splitChild;
+                rightChild = newChild;
+                newChildPos++;
+            } else {
+                //leftChild = newChild;
+                rightChild = splitChild;
             }
-            frame = frame.mPrevCousin;
-        }
 
-        // Positions of frames equal to split key are in the split itself. Only
-        // frames for the right split need to be incremented.
-        for (TreeCursorFrame childFrame = rightChild.mLastCursorFrame; childFrame != null; ) {
-            TreeCursorFrame frame = childFrame.mParentFrame;
-            if (frame.mNode != this) {
-                throw new AssertionError("Invalid cursor frame parent");
+            // Positions of frames higher than split key need to be incremented.
+            for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
+                int framePos = frame.mNodePos;
+                if (framePos > keyPos) {
+                    frame.mNodePos = framePos + 2;
+                }
+                frame = frame.mPrevCousin;
             }
-            frame.mNodePos += 2;
-            childFrame = childFrame.mPrevCousin;
+
+            // Positions of frames equal to split key are in the split itself. Only
+            // frames for the right split need to be incremented.
+            for (TreeCursorFrame childFrame = rightChild.mLastCursorFrame; childFrame != null; ) {
+                TreeCursorFrame frame = childFrame.mParentFrame;
+                if (frame.mNode != this) {
+                    throw new AssertionError("Invalid cursor frame parent");
+                }
+                frame.mNodePos += 2;
+                childFrame = childFrame.mPrevCousin;
+            }
+
+            // Update references to child node instances.
+            {
+                // TODO: recycle child node arrays
+                Node[] newChildNodes = new Node[mChildNodes.length + 1];
+                arraycopy(mChildNodes, 0, newChildNodes, 0, newChildPos);
+                arraycopy(mChildNodes, newChildPos, newChildNodes, newChildPos + 1,
+                          mChildNodes.length - newChildPos);
+                newChildNodes[newChildPos] = newChild;
+                mChildNodes = newChildNodes;
+
+                // Rescale for long ids as encoded in page.
+                newChildPos <<= 3;
+            }
+
+            // FIXME: IOException; how to rollback the damage?
+            InResult result = createInternalEntry
+                (tree, keyPos, split.splitKeyEncodedLength(), newChildPos, splitChild);
+
+            // Write new child id.
+            encodeLongLE(result.mPage, result.mNewChildLoc, newChild.mId);
+            // Write key entry itself.
+            split.copySplitKeyToParent(result.mPage, result.mEntryLoc);
+        } catch (Throwable e) {
+            splitChild.releaseExclusive();
+            newChild.releaseExclusive();
+            releaseExclusive();
+            throw rethrow(e);
         }
-
-        // Update references to child node instances.
-        {
-            // TODO: recycle child node arrays
-            Node[] newChildNodes = new Node[mChildNodes.length + 1];
-            arraycopy(mChildNodes, 0, newChildNodes, 0, newChildPos);
-            arraycopy(mChildNodes, newChildPos, newChildNodes, newChildPos + 1,
-                      mChildNodes.length - newChildPos);
-            newChildNodes[newChildPos] = newChild;
-            mChildNodes = newChildNodes;
-
-            // Rescale for long ids as encoded in page.
-            newChildPos <<= 3;
-        }
-
-        // FIXME: IOException; how to rollback the damage?
-        InResult result = createInternalEntry
-            (tree, keyPos, split.splitKeyEncodedLength(), newChildPos, splitChild);
-
-        // Write new child id.
-        encodeLongLE(result.mPage, result.mNewChildLoc, newChild.mId);
-        // Write key entry itself.
-        split.copySplitKeyToParent(result.mPage, result.mEntryLoc);
-
+        
         splitChild.releaseExclusive();
         newChild.releaseExclusive();
 
-        // Split complete, so allow new node to be evictable.
-        tree.mDatabase.makeEvictable(newChild);
+        try {
+            // Split complete, so allow new node to be evictable.
+            tree.mDatabase.makeEvictable(newChild);
+        } catch (Throwable e) {
+            releaseExclusive();
+            throw rethrow(e);
+        }
     }
 
     /**
@@ -2286,13 +2298,18 @@ final class Node extends Latch {
      */
     private Node rebindSplitFrames(Split split) {
         final Node sibling = split.latchSibling();
-        for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
-            // Capture previous frame from linked list before changing the links.
-            TreeCursorFrame prev = frame.mPrevCousin;
-            split.rebindFrame(frame, sibling);
-            frame = prev;
+        try {
+            for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
+                // Capture previous frame from linked list before changing the links.
+                TreeCursorFrame prev = frame.mPrevCousin;
+                split.rebindFrame(frame, sibling);
+                frame = prev;
+            }
+            return sibling;
+        } catch (Throwable e) {
+            sibling.releaseExclusive();
+            throw rethrow(e);
         }
-        return sibling;
     }
 
     /**
