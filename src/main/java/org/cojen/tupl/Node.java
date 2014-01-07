@@ -1227,20 +1227,6 @@ final class Node extends Latch {
     }
 
     /**
-     * Returns the last key of this node, appended with 0.
-     */
-    private byte[] higherKey() {
-        final byte[] page = mPage;
-        int loc = decodeUnsignedShortLE(page, mSearchVecEnd);
-        int keyLen = page[loc++];
-        keyLen = keyLen >= 0 ? ((keyLen & 0x3f) + 1)
-            : (((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff));
-        byte[] key = new byte[keyLen + 1];
-        arraycopy(page, loc, key, 0, keyLen);
-        return key;
-    }
-
-    /**
      * Used by UndoLog for decoding entries. Only works for non-fragmented values.
      *
      * @param loc absolute location of entry
@@ -3067,10 +3053,7 @@ final class Node extends Latch {
         if (forInsert && pos == 0) {
             // Inserting into left edge of node, possibly because inserts are
             // descending. Split into new left node, but only the new entry
-            // goes into the new node. Split key is copied from this, the right
-            // node. Because internal nodes point to the left child based on a
-            // less-than comparison, future in-between inserts will go into the
-            // left node.
+            // goes into the new node.
 
             mSplit = new Split(false, newNode);
             mSplit.setKey(retrieveKey(0));
@@ -3099,19 +3082,10 @@ final class Node extends Latch {
         if (forInsert && pos == searchVecEnd + 2) {
             // Inserting into right edge of node, possibly because inserts are
             // ascending. Split into new right node, but only the new entry
-            // goes into the new node. Split key is defined as the next higher
-            // key from this node. Because internal nodes point to the right
-            // child based on a greater-than-or-equal comparison, future
-            // in-between inserts will go into the left node.
+            // goes into the new node.
 
             mSplit = new Split(true, newNode);
-
-            // Next higher key might be same as the new key. This is fine,
-            // because the greater-than-or-equal comparison will still be
-            // correct. Note that a "lowerKey" operation is not possible. It
-            // would be like a repeating 0.999... decimal. This is why a
-            // greater-than-or-equal rule is better than less-than-or-equal.
-            mSplit.setKey(higherKey());
+            mSplit.setKey(key);
 
             // Position search vector at extreme right, allowing new entries to
             // be placed in a natural ascending order.
