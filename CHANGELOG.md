@@ -4,8 +4,11 @@ Changelog
 v1.0.3
 ------
 
+* Fix root node corruption when inserting large keys.
 * Allow database with non-default page size to be opened without requiring page size to be
   explicitly configured.
+* Remove unimplemented node rebalancing for deletes and remove unnecessary node dirtying.
+* Added experimental file compaction feature.
 
 v1.0.2
 ------
