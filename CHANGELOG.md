@@ -1,6 +1,10 @@
 Changelog
 =========
 
+v1.0.4
+------
+* Added rebalancing for internal nodes (was only leaf nodes before).
+
 v1.0.3
 ------
 

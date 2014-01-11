@@ -754,6 +754,58 @@ public class CursorTest {
         verifyPositions(ix, notFoundCursors);
     }
 
+    @Test
+    public void stability2() throws Exception {
+        // Checks cursor stability while inserting records in descending order. This should
+        // exercise internal node rebalancing.
+        
+        Index ix = mDb.openIndex("test");
+
+        byte[] value = new byte[200];
+
+        final int count = 10000;
+        Cursor[] cursors = new Cursor[count];
+
+        for (int i=count; --i>=0; ) {
+            byte[] key = key(i);
+
+            Cursor c = ix.newCursor(Transaction.BOGUS);
+            c.find(key);
+            c.store(value);
+            cursors[i] = c;
+        }
+
+        assertTrue(ix.verify(null));
+
+        verifyPositions(ix, cursors);
+    }
+
+    @Test
+    public void stability3() throws Exception {
+        // Checks cursor stability while inserting records in ascending order. This should
+        // exercise internal node rebalancing.
+        
+        Index ix = mDb.openIndex("test");
+
+        byte[] value = new byte[200];
+
+        final int count = 10000;
+        Cursor[] cursors = new Cursor[count];
+
+        for (int i=0; i<count; i++) {
+            byte[] key = key(i);
+
+            Cursor c = ix.newCursor(Transaction.BOGUS);
+            c.find(key);
+            c.store(value);
+            cursors[i] = c;
+        }
+
+        assertTrue(ix.verify(null));
+
+        verifyPositions(ix, cursors);
+    }
+
     private static void verifyPositions(Index ix, Cursor[] cursors) throws Exception {
         for (Cursor existing : cursors) {
             TreeCursor c = (TreeCursor) ix.newCursor(Transaction.BOGUS);
