@@ -620,11 +620,12 @@ final class Node extends Latch {
             right = child;
         }
 
-        int keyLen = split.copySplitKeyToParent(newPage, TN_HEADER_SIZE);
+        int leftSegTail = split.copySplitKeyToParent(newPage, TN_HEADER_SIZE);
 
-        // Create new single-element search vector.
-        final int searchVecStart =
-            ((newPage.length - TN_HEADER_SIZE - keyLen - (2 + 8 + 8)) >> 1) & ~1;
+        // Create new single-element search vector. Center it using the same formula as the
+        // compactInternal method.
+        final int searchVecStart = newPage.length -
+            (((newPage.length - leftSegTail + (2 + 8 + 8)) >> 1) & ~1);
         encodeShortLE(newPage, searchVecStart, TN_HEADER_SIZE);
         encodeLongLE(newPage, searchVecStart + 2, left.mId);
         encodeLongLE(newPage, searchVecStart + 2 + 8, right.mId);
@@ -635,7 +636,7 @@ final class Node extends Latch {
         mPage = newPage;
         mType = mType == TYPE_TN_LEAF ? TYPE_TN_BIN : TYPE_TN_IN;
         mGarbage = 0;
-        mLeftSegTail = TN_HEADER_SIZE + keyLen;
+        mLeftSegTail = leftSegTail;
         mRightSegTail = newPage.length - 1;
         mSearchVecStart = searchVecStart;
         mSearchVecEnd = searchVecStart;

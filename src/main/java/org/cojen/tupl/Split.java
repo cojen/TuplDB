@@ -257,21 +257,20 @@ final class Split {
     /**
      * @param dest destination page of parent internal node
      * @param destLoc location in destination page
-     * @return length of internal node encoded key entry
+     * @return updated destLoc
      */
-    final int copySplitKeyToParent(final byte[] dest, final int destLoc) {
+    final int copySplitKeyToParent(final byte[] dest, int destLoc) {
         final byte[] key = mSplitKey;
         final int keyLen = key.length;
 
-        int loc = destLoc;
         if (keyLen <= 64 && keyLen > 0) {
-            dest[loc++] = (byte) (keyLen - 1);
+            dest[destLoc++] = (byte) (keyLen - 1);
         } else {
-            dest[loc++] = (byte) (0x80 | (keyLen >> 8));
-            dest[loc++] = (byte) keyLen;
+            dest[destLoc++] = (byte) (0x80 | (keyLen >> 8));
+            dest[destLoc++] = (byte) keyLen;
         }
-        System.arraycopy(key, 0, dest, loc, keyLen);
+        System.arraycopy(key, 0, dest, destLoc, keyLen);
 
-        return loc + keyLen - destLoc;
+        return destLoc + keyLen;
     }
 }
