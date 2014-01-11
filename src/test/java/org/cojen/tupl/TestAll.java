@@ -30,6 +30,7 @@ public class TestAll {
             CrudNonDurableTest.class,
             CursorTest.class,
             CursorNonDurableTest.class,
+            LargeKeyTest.class,
             LargeValueTest.class,
             LargeValueNonDurableTest.class,
             ExtraLargeValueTest.class,
