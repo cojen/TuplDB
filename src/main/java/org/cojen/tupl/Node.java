@@ -4050,7 +4050,6 @@ final class Node extends Latch {
                         if (newKeyLoc != 0) {
                             // ...and split key has been found.
                             split = new Split(false, newNode);
-                            // FIXME: suffix compression?
                             split.setKey(retrieveKeyAtLoc(page, entryLoc));
                             break;
                         }
@@ -4171,7 +4170,6 @@ final class Node extends Latch {
                         if (newKeyLoc != 0) {
                             // ...and split key has been found.
                             split = new Split(true, newNode);
-                            // FIXME: suffix compression?
                             split.setKey(retrieveKeyAtLoc(page, entryLoc));
                             break moveEntries;
                         }
