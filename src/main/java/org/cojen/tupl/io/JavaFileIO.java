@@ -257,83 +257,81 @@ class JavaFileIO extends FileIO {
             Mapping[] newMappings;
             int newLastSize;
 
-            prepareNewMappings: {
-                Lock lock = mMappingLock.readLock();
-                lock.lock();
-                try {
-                    oldMappings = mMappings;
-                    if (oldMappings == null && remap) {
-                        // Don't map unless already mapped.
-                        return;
-                    }
-
-                    long length = length();
-
-                    if (oldMappings != null) {
-                        long oldMappedLength = oldMappings.length == 0 ? 0 :
-                            (oldMappings.length - 1) * (long) MAPPING_SIZE + mLastMappingSize;
-                        if (length == oldMappedLength) {
-                            return;
-                        }
-                    }
-
-                    long count = (length + (MAPPING_SIZE - 1)) / MAPPING_SIZE;
-
-                    if (count > Integer.MAX_VALUE) {
-                        throw new IOException("Mapping is too large");
-                    }
-
-                    try {
-                        newMappings = new Mapping[(int) count];
-                    } catch (OutOfMemoryError e) {
-                        throw new IOException("Mapping is too large");
-                    }
-
-                    oldMappings = mMappings;
-                    oldMappingDiscardPos = 0;
-
-                    int i = 0;
-                    long pos = 0;
-
-                    if (oldMappings != null && oldMappings.length > 0) {
-                        i = oldMappings.length;
-                        if (mLastMappingSize != MAPPING_SIZE) {
-                            i--;
-                            oldMappingDiscardPos = i;
-                        }
-                        System.arraycopy(oldMappings, 0, newMappings, 0, i);
-                        pos = i * (long) MAPPING_SIZE;
-                    }
-
-                    while (i < count - 1) {
-                        newMappings[i++] = Mapping.open(mFile, mReadOnly, pos, MAPPING_SIZE);
-                        pos += MAPPING_SIZE;
-                    }
-
-                    if (count == 0) {
-                        newLastSize = 0;
-                    } else {
-                        newLastSize = (int) (MAPPING_SIZE - (count * MAPPING_SIZE - length));
-                        newMappings[i] = Mapping.open(mFile, mReadOnly, pos, newLastSize);
-                    }
-                } finally {
-                    lock.unlock();
+            Lock lock = mMappingLock.readLock();
+            lock.lock();
+            try {
+                oldMappings = mMappings;
+                if (oldMappings == null && remap) {
+                    // Don't map unless already mapped.
+                    return;
                 }
 
-                lock = mMappingLock.writeLock();
-                lock.lock();
-                mMappings = newMappings;
-                mLastMappingSize = newLastSize;
-                lock.unlock();
+                long length = length();
 
                 if (oldMappings != null) {
-                    IOException ex = null;
-                    while (oldMappingDiscardPos < oldMappings.length) {
-                        ex = Utils.closeQuietly(ex, oldMappings[oldMappingDiscardPos++]);
+                    long oldMappedLength = oldMappings.length == 0 ? 0 :
+                        (oldMappings.length - 1) * (long) MAPPING_SIZE + mLastMappingSize;
+                    if (length == oldMappedLength) {
+                        return;
                     }
-                    if (ex != null) {
-                        throw ex;
+                }
+
+                long count = (length + (MAPPING_SIZE - 1)) / MAPPING_SIZE;
+
+                if (count > Integer.MAX_VALUE) {
+                    throw new IOException("Mapping is too large");
+                }
+
+                try {
+                    newMappings = new Mapping[(int) count];
+                } catch (OutOfMemoryError e) {
+                    throw new IOException("Mapping is too large");
+                }
+
+                oldMappings = mMappings;
+                oldMappingDiscardPos = 0;
+
+                int i = 0;
+                long pos = 0;
+
+                if (oldMappings != null && oldMappings.length > 0) {
+                    i = oldMappings.length;
+                    if (mLastMappingSize != MAPPING_SIZE) {
+                        i--;
+                        oldMappingDiscardPos = i;
                     }
+                    System.arraycopy(oldMappings, 0, newMappings, 0, i);
+                    pos = i * (long) MAPPING_SIZE;
+                }
+
+                while (i < count - 1) {
+                    newMappings[i++] = Mapping.open(mFile, mReadOnly, pos, MAPPING_SIZE);
+                    pos += MAPPING_SIZE;
+                }
+
+                if (count == 0) {
+                    newLastSize = 0;
+                } else {
+                    newLastSize = (int) (MAPPING_SIZE - (count * MAPPING_SIZE - length));
+                    newMappings[i] = Mapping.open(mFile, mReadOnly, pos, newLastSize);
+                }
+            } finally {
+                lock.unlock();
+            }
+
+            lock = mMappingLock.writeLock();
+            lock.lock();
+            mMappings = newMappings;
+            mLastMappingSize = newLastSize;
+            lock.unlock();
+
+            if (oldMappings != null) {
+                IOException ex = null;
+                while (oldMappingDiscardPos < oldMappings.length) {
+                    ex = Utils.closeQuietly(ex, oldMappings[oldMappingDiscardPos++]);
+                }
+                if (ex != null) {
+                    throw ex;
                 }
             }
         }
