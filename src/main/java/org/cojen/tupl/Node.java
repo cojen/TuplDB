@@ -1242,6 +1242,55 @@ final class Node extends Latch {
     }
 
     /**
+     * Returns a new key between the low key in this node and the given high key.
+     *
+     * @see Utils#midKey
+     */
+    byte[] midKey(int lowPos, byte[] highKey) {
+        final byte[] lowPage = mPage;
+        int lowLoc = decodeUnsignedShortLE(lowPage, mSearchVecStart + lowPos);
+        int lowKeyLen = lowPage[lowLoc++];
+        lowKeyLen = lowKeyLen >= 0 ? ((lowKeyLen & 0x3f) + 1)
+            : (((lowKeyLen & 0x3f) << 8) | ((lowPage[lowLoc++]) & 0xff));
+        return Utils.midKey(lowPage, lowLoc, lowKeyLen, highKey, 0, highKey.length);
+    }
+
+    /**
+     * Returns a new key between the given low key and the high key in this node.
+     *
+     * @see Utils#midKey
+     */
+    byte[] midKey(byte[] lowKey, int highPos) {
+        final byte[] highPage = mPage;
+        int highLoc = decodeUnsignedShortLE(highPage, mSearchVecStart + highPos);
+        int highKeyLen = highPage[highLoc++];
+        highKeyLen = highKeyLen >= 0 ? ((highKeyLen & 0x3f) + 1)
+            : (((highKeyLen & 0x3f) << 8) | ((highPage[highLoc++]) & 0xff));
+        return Utils.midKey(lowKey, 0, lowKey.length, highPage, highLoc, highKeyLen);
+    }
+
+    /**
+     * Returns a new key between the low key in this node and the high key of another node.
+     *
+     * @see Utils#midKey
+     */
+    byte[] midKey(int lowPos, Node highNode, int highPos) {
+        final byte[] lowPage = mPage;
+        int lowLoc = decodeUnsignedShortLE(lowPage, mSearchVecStart + lowPos);
+        int lowKeyLen = lowPage[lowLoc++];
+        lowKeyLen = lowKeyLen >= 0 ? ((lowKeyLen & 0x3f) + 1)
+            : (((lowKeyLen & 0x3f) << 8) | ((lowPage[lowLoc++]) & 0xff));
+
+        final byte[] highPage = highNode.mPage;
+        int highLoc = decodeUnsignedShortLE(highPage, highNode.mSearchVecStart + highPos);
+        int highKeyLen = highPage[highLoc++];
+        highKeyLen = highKeyLen >= 0 ? ((highKeyLen & 0x3f) + 1)
+            : (((highKeyLen & 0x3f) << 8) | ((highPage[highLoc++]) & 0xff));
+
+        return Utils.midKey(lowPage, lowLoc, lowKeyLen, highPage, highLoc, highKeyLen);
+    }
+
+    /**
      * @param pos position as provided by binarySearch; must be positive
      * @return Cursor.NOT_LOADED if value exists, null if ghost
      */
@@ -1775,8 +1824,8 @@ final class Node extends Latch {
         // exception can only be caused by a bug. Leaving the latches held prevents database
         // corruption from being persisted.
 
-        final int searchKeyLoc;
-        final int searchKeyLen;
+        final byte[] newKey;
+        final int newKeyLen;
         final byte[] parentPage;
         final int parentKeyLoc;
         final int parentKeyGrowth;
@@ -1785,12 +1834,13 @@ final class Node extends Latch {
             int leftAvail = left.availableLeafBytes();
             if (leftAvail >= moveAmount) {
                 // Parent search key will be updated, so verify that it has room.
-                searchKeyLoc = decodeUnsignedShortLE(rightPage, lastSearchVecLoc);
-                searchKeyLen = keyLengthAtLoc(rightPage, searchKeyLoc);
+                int highPos = lastSearchVecLoc - mSearchVecStart;
+                newKey = midKey(highPos - 2, this, highPos);
+                newKeyLen = calculateKeyLength(newKey);
                 parentPage = parent.mPage;
                 parentKeyLoc = decodeUnsignedShortLE
                     (parentPage, parent.mSearchVecStart + childPos - 2);
-                parentKeyGrowth = searchKeyLen - keyLengthAtLoc(parentPage, parentKeyLoc);
+                parentKeyGrowth = newKeyLen - keyLengthAtLoc(parentPage, parentKeyLoc);
                 if (parentKeyGrowth <= 0 || parentKeyGrowth <= parent.availableInternalBytes()) {
                     // Parent has room for the new search key, so proceed with rebalancing.
                     break check;
@@ -1813,11 +1863,10 @@ final class Node extends Latch {
 
         // Update the parent key.
         if (parentKeyGrowth <= 0) {
-            System.arraycopy(rightPage, searchKeyLoc, parentPage, parentKeyLoc, searchKeyLen);
+            encodeKey(newKey, parentPage, parentKeyLoc);
             parent.mGarbage -= parentKeyGrowth;
         } else {
-            parent.updateInternalKey
-                (tree, childPos - 2, parentKeyGrowth, rightPage, searchKeyLoc, searchKeyLen);
+            parent.updateInternalKey2(tree, childPos - 2, parentKeyGrowth, newKey, newKeyLen);
         }
 
         int garbageAccum = 0;
@@ -1845,11 +1894,14 @@ final class Node extends Latch {
             int mask = framePos >> 31;
             int newPos = (framePos ^ mask) - lastPos;
             // This checks for nodes which should move and also includes not-found frames at
-            // the low position. They need to move just higher than the left node high
+            // the low position. They might need to move just higher than the left node high
             // position, because the parent key has changed. A new search would position the
             // search there. Note that tryRebalanceLeafRight has an identical check, after
-            // applying De Morgan's law.
-            if (newPos < 0 | (newPos == 0 & mask != 0)) {
+            // applying De Morgan's law. Because the chosen parent node is not strictly the
+            // lowest from the right, a comparison must be made to the actual new parent node.
+             if (newPos < 0 |
+                ((newPos == 0 & mask != 0) && compareKeys(frame.mNotFoundKey, newKey) < 0))
+            {
                 frame.unbind();
                 frame.bind(left, (leftEndPos + newPos) ^ mask);
                 frame.mParentFrame.mNodePos -= 2;
@@ -1933,8 +1985,8 @@ final class Node extends Latch {
         // exception can only be caused by a bug. Leaving the latches held prevents database
         // corruption from being persisted.
 
-        final int searchKeyLoc;
-        final int searchKeyLen;
+        final byte[] newKey;
+        final int newKeyLen;
         final byte[] parentPage;
         final int parentKeyLoc;
         final int parentKeyGrowth;
@@ -1943,12 +1995,13 @@ final class Node extends Latch {
             int rightAvail = right.availableLeafBytes();
             if (rightAvail >= moveAmount) {
                 // Parent search key will be updated, so verify that it has room.
-                searchKeyLoc = decodeUnsignedShortLE(leftPage, firstSearchVecLoc);
-                searchKeyLen = keyLengthAtLoc(leftPage, searchKeyLoc);
+                int highPos = firstSearchVecLoc - mSearchVecStart;
+                newKey = midKey(highPos - 2, this, highPos);
+                newKeyLen = calculateKeyLength(newKey);
                 parentPage = parent.mPage;
                 parentKeyLoc = decodeUnsignedShortLE
                     (parentPage, parent.mSearchVecStart + childPos);
-                parentKeyGrowth = searchKeyLen - keyLengthAtLoc(parentPage, parentKeyLoc);
+                parentKeyGrowth = newKeyLen - keyLengthAtLoc(parentPage, parentKeyLoc);
                 if (parentKeyGrowth <= 0 || parentKeyGrowth <= parent.availableInternalBytes()) {
                     // Parent has room for the new search key, so proceed with rebalancing.
                     break check;
@@ -1971,11 +2024,10 @@ final class Node extends Latch {
 
         // Update the parent key.
         if (parentKeyGrowth <= 0) {
-            System.arraycopy(leftPage, searchKeyLoc, parentPage, parentKeyLoc, searchKeyLen);
+            encodeKey(newKey, parentPage, parentKeyLoc);
             parent.mGarbage -= parentKeyGrowth;
         } else {
-            parent.updateInternalKey
-                (tree, childPos, parentKeyGrowth, leftPage, searchKeyLoc, searchKeyLen);
+            parent.updateInternalKey2(tree, childPos, parentKeyGrowth, newKey, newKeyLen);
         }
 
         int garbageAccum = 0;
@@ -2011,11 +2063,15 @@ final class Node extends Latch {
             int mask = framePos >> 31;
             int newPos = (framePos ^ mask) - leftEndPos;
             // This checks for nodes which should move, but it excludes not-found frames at the
-            // high position. They would otherwise move to position zero of the right node, but
+            // high position. They might otherwise move to position zero of the right node, but
             // the parent key has changed. A new search would position the frame just beyond
             // the high position of the left node, which is where it is now. Note that
             // tryRebalanceLeafLeft has an identical check, after applying De Morgan's law.
-            if (newPos >= 0 & (newPos != 0 | mask == 0)) {
+            // Because the chosen parent node is not strictly the lowest from the right, a
+            // comparison must be made to the actual new parent node.
+            if (newPos >= 0 &
+                ((newPos != 0 | mask == 0) || compareKeys(frame.mNotFoundKey, newKey) >= 0))
+            {
                 frame.unbind();
                 frame.bind(right, newPos ^ mask);
                 frame.mParentFrame.mNodePos += 2;
@@ -2470,7 +2526,7 @@ final class Node extends Latch {
 
         // Update the parent key after moving it to the left node.
         if (parentKeyGrowth <= 0) {
-            System.arraycopy(rightPage, searchKeyLoc, parentPage, parentKeyLoc, searchKeyLen);
+            arraycopy(rightPage, searchKeyLoc, parentPage, parentKeyLoc, searchKeyLen);
             parent.mGarbage -= parentKeyGrowth;
         } else {
             parent.updateInternalKey
@@ -2483,9 +2539,8 @@ final class Node extends Latch {
             int len = moved << 2;
             int end = left.mSearchVecEnd;
             end = end + ((end - left.mSearchVecStart) << 2) + (2 + 16) - len;
-            System.arraycopy(rightPage, start, left.mPage, end, len);
-            System.arraycopy(rightPage, start + len, rightPage, start,
-                             (start - lastSearchVecLoc) << 2);
+            arraycopy(rightPage, start, left.mPage, end, len);
+            arraycopy(rightPage, start + len, rightPage, start, (start - lastSearchVecLoc) << 2);
         }
 
         mGarbage += garbageAccum;
@@ -2494,11 +2549,10 @@ final class Node extends Latch {
         // Update references to child node instances.
         {
             // TODO: recycle child node arrays
-            System.arraycopy(left.mChildNodes, 0, newLeftChildNodes, 0, left.mChildNodes.length);
-            System.arraycopy(mChildNodes, 0,
-                             newLeftChildNodes, left.mChildNodes.length, moved >> 1);
-            System.arraycopy(mChildNodes, moved >> 1, newRightChildNodes, 0,
-                             newRightChildNodes.length);
+            arraycopy(left.mChildNodes, 0, newLeftChildNodes, 0, left.mChildNodes.length);
+            arraycopy(mChildNodes, 0,
+                      newLeftChildNodes, left.mChildNodes.length, moved >> 1);
+            arraycopy(mChildNodes, moved >> 1, newRightChildNodes, 0, newRightChildNodes.length);
             left.mChildNodes = newLeftChildNodes;
             mChildNodes = newRightChildNodes;
         }
@@ -2677,7 +2731,7 @@ final class Node extends Latch {
 
         // Update the parent key after moving it to the right node.
         if (parentKeyGrowth <= 0) {
-            System.arraycopy(leftPage, searchKeyLoc, parentPage, parentKeyLoc, searchKeyLen);
+            arraycopy(leftPage, searchKeyLoc, parentPage, parentKeyLoc, searchKeyLen);
             parent.mGarbage -= parentKeyGrowth;
         } else {
             parent.updateInternalKey
@@ -2942,7 +2996,9 @@ final class Node extends Latch {
      *
      * @param pos must be positive
      * @param growth key size growth
+     * @param key encoded key (must include header)
      */
+    // FIXME: remove this and rename updateInternalKey2
     void updateInternalKey(Tree tree, int pos, int growth,
                            byte[] key, int keyStart, int encodedLen)
     {
@@ -3018,6 +3074,93 @@ final class Node extends Latch {
 
         // Copy new key and point to it.
         arraycopy(key, keyStart, page, entryLoc, encodedLen);
+        encodeShortLE(page, pos, entryLoc);
+
+        mGarbage = garbage;
+    }
+
+    /**
+     * Update an internal node key to be larger than what is currently allocated. Caller must
+     * ensure that node has enough space available and that it's not split. New key must not
+     * force this node to split.
+     *
+     * @param pos must be positive
+     * @param growth key size growth
+     * @param key unencoded key
+     */
+    void updateInternalKey2(Tree tree, int pos, int growth, byte[] key, int encodedLen) {
+        int garbage = mGarbage + encodedLen - growth;
+
+        // What follows is similar to createInternalEntry method, except the search
+        // vector doesn't grow.
+
+        int searchVecStart = mSearchVecStart;
+        int searchVecEnd = mSearchVecEnd;
+
+        int leftSpace = searchVecStart - mLeftSegTail;
+        int rightSpace = mRightSegTail - searchVecEnd
+            - ((searchVecEnd - searchVecStart) << 2) - 17;
+
+        byte[] page = mPage;
+
+        int entryLoc;
+        alloc: {
+            if ((entryLoc = allocPageEntry(encodedLen, leftSpace, rightSpace)) >= 0) {
+                pos += searchVecStart;
+                break alloc;
+            }
+
+            // Compute remaining space surrounding search vector after update completes.
+            int remaining = leftSpace + rightSpace - encodedLen;
+
+            if (garbage > remaining) {
+                // Do full compaction and free up the garbage.
+                if ((garbage + remaining) < 0) {
+                    // New key doesn't fit.
+                    throw new AssertionError();
+                }
+                mGarbage = garbage;
+                entryLoc = compactInternal(tree, encodedLen, pos, Integer.MIN_VALUE).mEntryLoc;
+                encodeKey(key, mPage, entryLoc);
+                return;
+            }
+
+            int vecLen = searchVecEnd - searchVecStart + 2;
+            int childIdsLen = (vecLen << 2) + 8;
+            int newSearchVecStart;
+
+            if (remaining > 0 || (mRightSegTail & 1) != 0) {
+                // Re-center search vector, biased to the right, ensuring proper alignment.
+                newSearchVecStart =
+                    (mRightSegTail - vecLen - childIdsLen + (1 - 0) - (remaining >> 1)) & ~1;
+
+                // Allocate entry from left segment.
+                entryLoc = mLeftSegTail;
+                mLeftSegTail = entryLoc + encodedLen;
+            } else if ((mLeftSegTail & 1) == 0) {
+                // Move search vector left, ensuring proper alignment.
+                newSearchVecStart = mLeftSegTail + ((remaining >> 1) & ~1);
+
+                // Allocate entry from right segment.
+                entryLoc = mRightSegTail - encodedLen + 1;
+                mRightSegTail = entryLoc - 1;
+            } else {
+                // Search vector is misaligned, so do full compaction.
+                mGarbage = garbage;
+                entryLoc = compactInternal(tree, encodedLen, pos, Integer.MIN_VALUE).mEntryLoc;
+                encodeKey(key, mPage, entryLoc);
+                return;
+            }
+
+            arraycopy(page, searchVecStart, page, newSearchVecStart, vecLen + childIdsLen);
+
+            pos += newSearchVecStart;
+            mSearchVecStart = newSearchVecStart;
+            mSearchVecEnd = newSearchVecStart + vecLen - 2;
+        }
+
+        // Copy new key and point to it.
+        encodeKey(key, page, entryLoc);
         encodeShortLE(page, pos, entryLoc);
 
         mGarbage = garbage;
@@ -3346,6 +3489,25 @@ final class Node extends Latch {
     }
 
     /**
+     * @param key unencoded key
+     * @param dest destination for encoded key, with room for key header
+     * @return updated destLoc
+     */
+    static int encodeKey(final byte[] key, final byte[] dest, int destLoc) {
+        final int keyLen = key.length;
+
+        if (keyLen <= 64 && keyLen > 0) {
+            dest[destLoc++] = (byte) (keyLen - 1);
+        } else {
+            dest[destLoc++] = (byte) (0x80 | (keyLen >> 8));
+            dest[destLoc++] = (byte) keyLen;
+        }
+        arraycopy(key, 0, dest, destLoc, keyLen);
+
+        return destLoc + keyLen;
+    }
+
+    /**
      * @return -1 if not enough contiguous space surrounding search vector
      */
     private int allocPageEntry(int encodedLen, int leftSpace, int rightSpace) {
@@ -3512,7 +3674,8 @@ final class Node extends Latch {
             // goes into the new node.
 
             mSplit = new Split(false, newNode);
-            mSplit.setKey(retrieveKey(0));
+            // Choose an appropriate middle key for suffix compression.
+            mSplit.setKey(midKey(key, 0));
 
             // Position search vector at extreme left, allowing new entries to
             // be placed in a natural descending order.
@@ -3541,7 +3704,8 @@ final class Node extends Latch {
             // goes into the new node.
 
             mSplit = new Split(true, newNode);
-            mSplit.setKey(key);
+            // Choose an appropriate middle key for suffix compression.
+            mSplit.setKey(midKey(pos - searchVecStart - 2, key));
 
             // Position search vector at extreme right, allowing new entries to
             // be placed in a natural ascending order.
@@ -3638,8 +3802,8 @@ final class Node extends Latch {
                     encodeShortLE(newPage, newLoc, destLoc);
                 }
             } finally {
-                // Split key is copied from this, the right node.
-                mSplit.setKey(retrieveKey(0));
+                // Choose an appropriate middle key for suffix compression.
+                mSplit.setKey(newNode.midKey(newNode.highestKeyPos(), this, 0));
                 newNode.mRightSegTail = destLoc - 1;
                 newNode.releaseExclusive();
             }
@@ -3719,8 +3883,8 @@ final class Node extends Latch {
                     destLoc += encodedLen;
                 }
             } finally {
-                // Split key is copied from the new right node.
-                mSplit.setKey(newNode.retrieveKey(0));
+                // Choose an appropriate middle key for suffix compression.
+                mSplit.setKey(this.midKey(this.highestKeyPos(), newNode, 0));
                 newNode.mLeftSegTail = destLoc;
                 newNode.releaseExclusive();
             }
@@ -3886,6 +4050,7 @@ final class Node extends Latch {
                         if (newKeyLoc != 0) {
                             // ...and split key has been found.
                             split = new Split(false, newNode);
+                            // FIXME: suffix compression?
                             split.setKey(retrieveKeyAtLoc(page, entryLoc));
                             break;
                         }
@@ -4006,6 +4171,7 @@ final class Node extends Latch {
                         if (newKeyLoc != 0) {
                             // ...and split key has been found.
                             split = new Split(true, newNode);
+                            // FIXME: suffix compression?
                             split.setKey(retrieveKeyAtLoc(page, entryLoc));
                             break moveEntries;
                         }
@@ -4066,8 +4232,7 @@ final class Node extends Latch {
                     int rightLen = ((newSearchVecEnd - newSearchVecLoc) >> 1) + 2;
                     Node[] rightChildNodes = new Node[rightLen];
                     Node[] leftChildNodes = new Node[mChildNodes.length - rightLen];
-                    arraycopy(mChildNodes, leftChildNodes.length,
-                              rightChildNodes, 0, rightLen);
+                    arraycopy(mChildNodes, leftChildNodes.length, rightChildNodes, 0, rightLen);
                     arraycopy(mChildNodes, 0, leftChildNodes, 0, leftChildNodes.length);
                     newNode.mChildNodes = rightChildNodes;
                     mChildNodes = leftChildNodes;
