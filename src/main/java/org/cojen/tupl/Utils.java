@@ -247,6 +247,32 @@ class Utils extends org.cojen.tupl.io.Utils {
         return alen - blen;
     }
 
+    /**
+     * Returns a new key, midway between the given low and high keys. Returned key is never
+     * equal to the low key, but it might be equal to the high key. If high key is not actually
+     * higher than the given low key, an ArrayIndexOfBoundException might be thrown.
+     *
+     * <p>Method is used for internal node suffix compression. To disable, simply return a copy
+     * of the high key.
+     */
+    static byte[] midKey(byte[] low, int lowOff, int lowLen,
+                         byte[] high, int highOff, int highLen)
+    {
+        for (int i=0; i<lowLen; i++) {
+            byte lo = low[lowOff + i];
+            byte hi = high[highOff + i];
+            if (lo != hi) {
+                byte[] mid = new byte[i + 1];
+                System.arraycopy(low, lowOff, mid, 0, i);
+                mid[i] = (byte) (((lo & 0xff) + (hi & 0xff) + 1) >> 1);
+                return mid;
+            }
+        }
+        byte[] mid = new byte[lowLen + 1];
+        System.arraycopy(high, highOff, mid, 0, mid.length);
+        return mid;
+    }
+
     static void readFully(InputStream in, byte[] b, int off, int len) throws IOException {
         if (len > 0) {
             while (true) {
