@@ -1866,7 +1866,7 @@ final class Node extends Latch {
             encodeKey(newKey, parentPage, parentKeyLoc);
             parent.mGarbage -= parentKeyGrowth;
         } else {
-            parent.updateInternalKey2(tree, childPos - 2, parentKeyGrowth, newKey, newKeyLen);
+            parent.updateInternalKey(tree, childPos - 2, parentKeyGrowth, newKey, -1, newKeyLen);
         }
 
         int garbageAccum = 0;
@@ -2027,7 +2027,7 @@ final class Node extends Latch {
             encodeKey(newKey, parentPage, parentKeyLoc);
             parent.mGarbage -= parentKeyGrowth;
         } else {
-            parent.updateInternalKey2(tree, childPos, parentKeyGrowth, newKey, newKeyLen);
+            parent.updateInternalKey(tree, childPos, parentKeyGrowth, newKey, -1, newKeyLen);
         }
 
         int garbageAccum = 0;
@@ -2996,9 +2996,9 @@ final class Node extends Latch {
      *
      * @param pos must be positive
      * @param growth key size growth
-     * @param key encoded key (must include header)
+     * @param key unencoded or encoded key (encoded includes header)
+     * @param keyStart pass -1 if key is unencoded and starts at 0; >=0 for encoded key
      */
-    // FIXME: remove this and rename updateInternalKey2
     void updateInternalKey(Tree tree, int pos, int growth,
                            byte[] key, int keyStart, int encodedLen)
     {
@@ -3023,144 +3023,72 @@ final class Node extends Latch {
                 break alloc;
             }
 
-            // Compute remaining space surrounding search vector after update completes.
-            int remaining = leftSpace + rightSpace - encodedLen;
+            makeRoom: {
+                // Compute remaining space surrounding search vector after update completes.
+                int remaining = leftSpace + rightSpace - encodedLen;
 
-            if (garbage > remaining) {
-                // Do full compaction and free up the garbage.
-                if ((garbage + remaining) < 0) {
-                    // New key doesn't fit.
-                    throw new AssertionError();
+                if (garbage > remaining) {
+                    // Do full compaction and free up the garbage.
+                    if ((garbage + remaining) < 0) {
+                        // New key doesn't fit.
+                        throw new AssertionError();
+                    }
+                    break makeRoom;
                 }
-                mGarbage = garbage;
-                entryLoc = compactInternal(tree, encodedLen, pos, Integer.MIN_VALUE).mEntryLoc;
-                arraycopy(key, keyStart, mPage, entryLoc, encodedLen);
-                return;
-            }
 
-            int vecLen = searchVecEnd - searchVecStart + 2;
-            int childIdsLen = (vecLen << 2) + 8;
-            int newSearchVecStart;
+                int vecLen = searchVecEnd - searchVecStart + 2;
+                int childIdsLen = (vecLen << 2) + 8;
+                int newSearchVecStart;
 
-            if (remaining > 0 || (mRightSegTail & 1) != 0) {
-                // Re-center search vector, biased to the right, ensuring proper alignment.
-                newSearchVecStart =
-                    (mRightSegTail - vecLen - childIdsLen + (1 - 0) - (remaining >> 1)) & ~1;
+                if (remaining > 0 || (mRightSegTail & 1) != 0) {
+                    // Re-center search vector, biased to the right, ensuring proper alignment.
+                    newSearchVecStart =
+                        (mRightSegTail - vecLen - childIdsLen + (1 - 0) - (remaining >> 1)) & ~1;
 
-                // Allocate entry from left segment.
-                entryLoc = mLeftSegTail;
-                mLeftSegTail = entryLoc + encodedLen;
-            } else if ((mLeftSegTail & 1) == 0) {
-                // Move search vector left, ensuring proper alignment.
-                newSearchVecStart = mLeftSegTail + ((remaining >> 1) & ~1);
+                    // Allocate entry from left segment.
+                    entryLoc = mLeftSegTail;
+                    mLeftSegTail = entryLoc + encodedLen;
+                } else if ((mLeftSegTail & 1) == 0) {
+                    // Move search vector left, ensuring proper alignment.
+                    newSearchVecStart = mLeftSegTail + ((remaining >> 1) & ~1);
 
-                // Allocate entry from right segment.
-                entryLoc = mRightSegTail - encodedLen + 1;
-                mRightSegTail = entryLoc - 1;
-            } else {
-                // Search vector is misaligned, so do full compaction.
-                mGarbage = garbage;
-                entryLoc = compactInternal(tree, encodedLen, pos, Integer.MIN_VALUE).mEntryLoc;
-                arraycopy(key, keyStart, mPage, entryLoc, encodedLen);
-                return;
-            }
+                    // Allocate entry from right segment.
+                    entryLoc = mRightSegTail - encodedLen + 1;
+                    mRightSegTail = entryLoc - 1;
+                } else {
+                    // Search vector is misaligned, so do full compaction.
+                    break makeRoom;
+                }
 
-            arraycopy(page, searchVecStart, page, newSearchVecStart, vecLen + childIdsLen);
+                arraycopy(page, searchVecStart, page, newSearchVecStart, vecLen + childIdsLen);
 
-            pos += newSearchVecStart;
-            mSearchVecStart = newSearchVecStart;
-            mSearchVecEnd = newSearchVecStart + vecLen - 2;
-        }
+                pos += newSearchVecStart;
+                mSearchVecStart = newSearchVecStart;
+                mSearchVecEnd = newSearchVecStart + vecLen - 2;
 
-        // Copy new key and point to it.
-        arraycopy(key, keyStart, page, entryLoc, encodedLen);
-        encodeShortLE(page, pos, entryLoc);
-
-        mGarbage = garbage;
-    }
-
-    /**
-     * Update an internal node key to be larger than what is currently allocated. Caller must
-     * ensure that node has enough space available and that it's not split. New key must not
-     * force this node to split.
-     *
-     * @param pos must be positive
-     * @param growth key size growth
-     * @param key unencoded key
-     */
-    void updateInternalKey2(Tree tree, int pos, int growth, byte[] key, int encodedLen) {
-        int garbage = mGarbage + encodedLen - growth;
-
-        // What follows is similar to createInternalEntry method, except the search
-        // vector doesn't grow.
-
-        int searchVecStart = mSearchVecStart;
-        int searchVecEnd = mSearchVecEnd;
-
-        int leftSpace = searchVecStart - mLeftSegTail;
-        int rightSpace = mRightSegTail - searchVecEnd
-            - ((searchVecEnd - searchVecStart) << 2) - 17;
-
-        byte[] page = mPage;
-
-        int entryLoc;
-        alloc: {
-            if ((entryLoc = allocPageEntry(encodedLen, leftSpace, rightSpace)) >= 0) {
-                pos += searchVecStart;
                 break alloc;
             }
 
-            // Compute remaining space surrounding search vector after update completes.
-            int remaining = leftSpace + rightSpace - encodedLen;
+            // This point is reached for making room via node compaction.
 
-            if (garbage > remaining) {
-                // Do full compaction and free up the garbage.
-                if ((garbage + remaining) < 0) {
-                    // New key doesn't fit.
-                    throw new AssertionError();
-                }
-                mGarbage = garbage;
-                entryLoc = compactInternal(tree, encodedLen, pos, Integer.MIN_VALUE).mEntryLoc;
-                encodeKey(key, mPage, entryLoc);
-                return;
-            }
+            mGarbage = garbage;
+            entryLoc = compactInternal(tree, encodedLen, pos, Integer.MIN_VALUE).mEntryLoc;
 
-            int vecLen = searchVecEnd - searchVecStart + 2;
-            int childIdsLen = (vecLen << 2) + 8;
-            int newSearchVecStart;
-
-            if (remaining > 0 || (mRightSegTail & 1) != 0) {
-                // Re-center search vector, biased to the right, ensuring proper alignment.
-                newSearchVecStart =
-                    (mRightSegTail - vecLen - childIdsLen + (1 - 0) - (remaining >> 1)) & ~1;
-
-                // Allocate entry from left segment.
-                entryLoc = mLeftSegTail;
-                mLeftSegTail = entryLoc + encodedLen;
-            } else if ((mLeftSegTail & 1) == 0) {
-                // Move search vector left, ensuring proper alignment.
-                newSearchVecStart = mLeftSegTail + ((remaining >> 1) & ~1);
-
-                // Allocate entry from right segment.
-                entryLoc = mRightSegTail - encodedLen + 1;
-                mRightSegTail = entryLoc - 1;
+            if (keyStart >= 0) {
+                arraycopy(key, keyStart, mPage, entryLoc, encodedLen);
             } else {
-                // Search vector is misaligned, so do full compaction.
-                mGarbage = garbage;
-                entryLoc = compactInternal(tree, encodedLen, pos, Integer.MIN_VALUE).mEntryLoc;
                 encodeKey(key, mPage, entryLoc);
-                return;
             }
 
-            arraycopy(page, searchVecStart, page, newSearchVecStart, vecLen + childIdsLen);
-
-            pos += newSearchVecStart;
-            mSearchVecStart = newSearchVecStart;
-            mSearchVecEnd = newSearchVecStart + vecLen - 2;
+            return;
         }
 
         // Copy new key and point to it.
-        encodeKey(key, page, entryLoc);
+        if (keyStart >= 0) {
+            arraycopy(key, keyStart, page, entryLoc, encodedLen);
+        } else {
+            encodeKey(key, page, entryLoc);
+        }
         encodeShortLE(page, pos, entryLoc);
 
         mGarbage = garbage;
