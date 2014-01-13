@@ -4,6 +4,7 @@ Changelog
 v1.0.4
 ------
 * Added rebalancing for internal nodes (was only leaf nodes before).
+* Added key suffix compression, which allows more keys to fit inside internal nodes.
 
 v1.0.3
 ------
