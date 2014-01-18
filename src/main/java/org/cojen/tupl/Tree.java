@@ -483,16 +483,17 @@ final class Tree implements Index {
             cursor.first();
             int height = cursor.height();
             if (!observer.indexBegin(view, height)) {
+                cursor.reset();
                 return false;
             }
             if (!cursor.verify(height, observer)) {
+                cursor.reset();
                 return false;
             }
+            cursor.reset();
         } catch (Throwable e) {
             observer.failed = true;
             throw rethrow(e);
-        } finally {
-            cursor.reset();
         }
         return true;
     }
