@@ -1546,11 +1546,11 @@ final class Node extends Latch {
 
     /**
      * @param pos complement of position as provided by binarySearch; must be positive
+     * @param encodedKeyLen from calculateKeyLengthChecked
      */
-    void insertLeafEntry(Tree tree, int pos, byte[] key, byte[] value)
+    void insertLeafEntry(Tree tree, int pos, byte[] key, int encodedKeyLen, byte[] value)
         throws IOException
     {
-        int encodedKeyLen = calculateKeyLength(key);
         int encodedLen = encodedKeyLen + calculateLeafValueLength(value);
 
         int fragmented;
@@ -1561,6 +1561,7 @@ final class Node extends Latch {
             value = db.fragment(this, value, value.length,
                                 db.mMaxFragmentedEntrySize - encodedKeyLen);
             if (value == null) {
+                // Should not happen if key length was checked already.
                 throw new LargeKeyException(key.length);
             }
             encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
@@ -1578,9 +1579,11 @@ final class Node extends Latch {
 
     /**
      * @param pos complement of position as provided by binarySearch; must be positive
+     * @param encodedKeyLen from calculateKeyLengthChecked
      */
-    void insertBlankLeafEntry(Tree tree, int pos, byte[] key, long vlength) throws IOException {
-        int encodedKeyLen = calculateKeyLength(key);
+    void insertBlankLeafEntry(Tree tree, int pos, byte[] key, int encodedKeyLen, long vlength)
+        throws IOException
+    {
         long encodedLen = encodedKeyLen + calculateLeafValueLength(vlength);
 
         int fragmented;
@@ -1592,6 +1595,7 @@ final class Node extends Latch {
             Database db = tree.mDatabase;
             value = db.fragment(this, null, vlength, db.mMaxFragmentedEntrySize - encodedKeyLen);
             if (value == null) {
+                // Should not happen if key length was checked already.
                 throw new LargeKeyException(key.length);
             }
             encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
@@ -1609,11 +1613,11 @@ final class Node extends Latch {
 
     /**
      * @param pos complement of position as provided by binarySearch; must be positive
+     * @param encodedKeyLen from calculateKeyLengthChecked
      */
-    void insertFragmentedLeafEntry(Tree tree, int pos, byte[] key, byte[] value)
+    void insertFragmentedLeafEntry(Tree tree, int pos, byte[] key, int encodedKeyLen, byte[] value)
         throws IOException
     {
-        int encodedKeyLen = calculateKeyLength(key);
         int encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
 
         int entryLoc = createLeafEntry(tree, pos, encodedLen);
@@ -1623,6 +1627,21 @@ final class Node extends Latch {
         } else {
             copyToLeafEntry(key, VALUE_FRAGMENTED, value, entryLoc);
         }
+    }
+
+    /**
+     * Verifies that key can safely fit in the node.
+     */
+    static int calculateKeyLengthChecked(Tree tree, byte[] key) throws LargeKeyException {
+        int len = key.length;
+        if (len <= 64 & len > 0) {
+            // Always safe because minimum node size is 512 bytes.
+            return len + 1;
+        }
+        if (len > tree.mMaxKeySize) {
+            throw new LargeKeyException(len);
+        }
+        return len + 2;
     }
 
     /**
@@ -2898,8 +2917,7 @@ final class Node extends Latch {
                 value = db.fragment(this, value, value.length,
                                     db.mMaxFragmentedEntrySize - keyLen);
                 if (value == null) {
-                    // TODO: Supply proper key length, not the encoded
-                    // length. Subtracting 2 is just a guess.
+                    // Should not happen if key length was checked already.
                     throw new LargeKeyException(keyLen - 2);
                 }
                 encodedLen = keyLen + calculateFragmentedValueLength(value);
@@ -2938,6 +2956,7 @@ final class Node extends Latch {
                                        garbage + leftSpace + rightSpace);
                     value = db.fragment(this, value, value.length, max);
                     if (value == null) {
+                        // Should not happen if key length was checked already.
                         throw new LargeKeyException(key.length);
                     }
                     encodedLen = keyLen + calculateFragmentedValueLength(value);
@@ -3844,6 +3863,7 @@ final class Node extends Latch {
                 int encodedKeyLen = calculateKeyLength(key);
                 value = db.fragment(this, value, value.length, max - encodedKeyLen);
                 if (value == null) {
+                    // Should not happen if key length was checked already.
                     throw new LargeKeyException(key.length);
                 }
                 fragmented = VALUE_FRAGMENTED;

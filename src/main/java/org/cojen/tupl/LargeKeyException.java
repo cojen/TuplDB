@@ -17,8 +17,9 @@
 package org.cojen.tupl;
 
 /**
- * Thrown when a key is too large to fit into a page. Maximum key size
- * supported is little less than half of the page size.
+ * Thrown when a key is too large to fit into a page. Maximum key size is defined as:
+ * {@code min(16383, (pageSize / 2) - 22)}. When using the default page size of 4096
+ * bytes, the maximum key size is 2026 bytes.
  *
  * @author Brian S O'Neill
  */
