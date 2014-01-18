@@ -57,6 +57,7 @@ final class Tree implements Index {
     // object when the tree root changes.
     final Node mRoot;
 
+    final int mMaxKeySize;
     final int mMaxEntrySize;
 
     // Maintain a stack of stubs, which are created when root nodes are
@@ -72,8 +73,15 @@ final class Tree implements Index {
         mIdBytes = idBytes;
         mName = name;
         mRoot = root;
+
+        int pageSize = db.pageSize();
+
+        // Key size is limited to ensure that internal nodes can hold at least two keys.
+        // Absolute maximum is dictated by key encoding, as described in Node class.
+        mMaxKeySize = Math.min(16383, (pageSize >> 1) - 22);
+
         // Limit maximum non-fragmented entry size to 0.75 of usable node size.
-        mMaxEntrySize = ((db.pageSize() - Node.TN_HEADER_SIZE) * 3) >> 2;
+        mMaxEntrySize = ((pageSize - Node.TN_HEADER_SIZE) * 3) >> 2;
     }
 
     @Override

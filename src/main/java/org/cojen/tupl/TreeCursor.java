@@ -2120,6 +2120,9 @@ final class TreeCursor implements CauseCloseable, Cursor {
                     // Insert entry...
 
                     try {
+                        // Check before creating a potentially harmful redo log action.
+                        int encodedKeyLen = Node.calculateKeyLengthChecked(mTree, key);
+
                         if (txn == null) {
                             commitPos = mTree.redoStore(key, value);
                         } else if (txn.lockMode() != LockMode.UNSAFE) {
@@ -2131,7 +2134,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                             commitPos = mTree.redoStoreNoLock(key, value);
                         }
 
-                        node.insertLeafEntry(mTree, ~pos, key, value);
+                        node.insertLeafEntry(mTree, ~pos, key, encodedKeyLen, value);
                     } catch (Throwable e) {
                         node.releaseExclusive();
                         throw rethrow(e);
@@ -2257,7 +2260,8 @@ final class TreeCursor implements CauseCloseable, Cursor {
             } else {
                 byte[] key = mKey;
                 try {
-                    node.insertFragmentedLeafEntry(mTree, ~pos, key, value);
+                    int encodedKeyLen = Node.calculateKeyLengthChecked(mTree, key);
+                    node.insertFragmentedLeafEntry(mTree, ~pos, key, encodedKeyLen, value);
                 } catch (Throwable e) {
                     node.releaseExclusive();
                     rethrow(e);
@@ -2292,7 +2296,8 @@ final class TreeCursor implements CauseCloseable, Cursor {
     Node insertBlank(TreeCursorFrame leaf, Node node, long vlength) throws IOException {
         byte[] key = mKey;
         try {
-            node.insertBlankLeafEntry(mTree, ~leaf.mNodePos, key, vlength);
+            int encodedKeyLen = Node.calculateKeyLengthChecked(mTree, key);
+            node.insertBlankLeafEntry(mTree, ~leaf.mNodePos, key, encodedKeyLen, vlength);
         } catch (Throwable e) {
             node.releaseExclusive();
             throw rethrow(e);
@@ -2332,6 +2337,9 @@ final class TreeCursor implements CauseCloseable, Cursor {
                     }
 
                     try {
+                        // Check before creating a potentially harmful redo log action.
+                        int encodedKeyLen = Node.calculateKeyLengthChecked(mTree, key);
+
                         if (txn == null) {
                             commitPos = mTree.redoStore(key, value);
                         } else if (txn.lockMode() != LockMode.UNSAFE) {
@@ -2343,7 +2351,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                             commitPos = mTree.redoStoreNoLock(key, value);
                         }
 
-                        node.insertLeafEntry(mTree, pos, key, value);
+                        node.insertLeafEntry(mTree, pos, key, encodedKeyLen, value);
                     } catch (Throwable e) {
                         node.releaseExclusive();
                         throw rethrow(e);

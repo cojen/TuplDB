@@ -81,7 +81,7 @@ final class TreeValueStream extends AbstractStream {
 
     @Override
     public void setLength(long length) throws IOException {
-        // FIXME: txn undo/redo
+        // FIXME: txn undo/redo; be careful with large keys to avoid redo corruption
         final Lock sharedCommitLock = mDb.sharedCommitLock();
         sharedCommitLock.lock();
         try {
@@ -121,7 +121,7 @@ final class TreeValueStream extends AbstractStream {
 
     @Override
     void doWrite(long pos, byte[] buf, int off, int len) throws IOException {
-        // FIXME: txn undo/redo
+        // FIXME: txn undo/redo; be careful with large keys to avoid redo corruption
         final Lock sharedCommitLock = mDb.sharedCommitLock();
         sharedCommitLock.lock();
         try {

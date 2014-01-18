@@ -35,7 +35,7 @@ public class LargeKeyTest {
 
     @Test
     public void largeBlanks() throws Exception {
-        Database db = Database.open(new DatabaseConfig());
+        Database db = Database.open(new DatabaseConfig().pageSize(4096));
         Index ix = db.openIndex("test");
 
         byte[] value = new byte[0];
@@ -53,5 +53,74 @@ public class LargeKeyTest {
             byte[] v = ix.load(null, key);
             assertArrayEquals(value, v);
         }
+    }
+
+    @Test
+    public void storeMaxSize() throws Exception {
+        storeMaxSize(512);
+        storeMaxSize(1024);
+        storeMaxSize(2048);
+        storeMaxSize(4096);
+        storeMaxSize(8192);
+        storeMaxSize(16384);
+        storeMaxSize(32768);
+        storeMaxSize(65536);
+    }
+
+    private void storeMaxSize(final int pageSize) throws Exception {
+        Database db = Database.open(new DatabaseConfig().pageSize(pageSize));
+        Index ix = db.openIndex("test");
+
+        byte[] value = new byte[0];
+
+        final int max = Math.min(16383, (pageSize / 2) - 22);
+
+        byte[][] keys = new byte[1000][];
+        Random rnd = new Random(87324);
+        for (int i=0; i<keys.length; i++) {
+            keys[i] = randomStr(rnd, max, max);
+        }
+
+        for (byte[] key : keys) {
+            ix.store(null, key, value);
+        }
+
+        assertTrue("Verification failed for page size of: " + pageSize, ix.verify(null));
+
+        for (byte[] key : keys) {
+            byte[] v = ix.load(null, key);
+            fastAssertArrayEquals(value, v);
+        }
+    }
+
+    @Test
+    public void loadLargeKey() throws Exception {
+        // Attempting to load a too large key is fine, but storing is not.
+
+        final int pageSize = 4096;
+        Database db = Database.open(new DatabaseConfig().pageSize(pageSize));
+        Index ix = db.openIndex("test");
+
+        byte[] key = new byte[3000];
+        assertNull(ix.load(null, key));
+
+        Cursor c = ix.newCursor(null);
+        c.find(key);
+        assertNull(c.value());
+        fastAssertArrayEquals(key, c.key());
+        c.load();
+        assertNull(c.value());
+        fastAssertArrayEquals(key, c.key());
+
+        try {
+            c.store("stuff".getBytes());
+            fail();
+        } catch (LargeKeyException e) {
+            // Expected.
+        }
+
+        // Cursor position is unchanched.
+        assertNull(c.value());
+        fastAssertArrayEquals(key, c.key());
     }
 }
