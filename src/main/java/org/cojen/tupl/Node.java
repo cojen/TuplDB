@@ -2168,12 +2168,20 @@ final class Node extends Latch {
 
             // FIXME: IOException; how to rollback the damage?
             InResult result = createInternalEntry
-                (tree, keyPos, split.splitKeyEncodedLength(), newChildPos, splitChild);
+                (tree, keyPos, split.splitKeyEncodedLength(), newChildPos, true);
 
             // Write new child id.
             encodeLongLE(result.mPage, result.mNewChildLoc, newChild.mId);
-            // Write key entry itself.
-            split.copySplitKeyToParent(result.mPage, result.mEntryLoc);
+
+            int entryLoc = result.mEntryLoc;
+            if (entryLoc < 0) {
+                // If loc is negative, then node was split and new key was chosen to be promoted.
+                // It must be written into the new split.
+                mSplit.setKey(split);
+            } else {
+                // Write key entry itself.
+                split.copySplitKeyToParent(result.mPage, entryLoc);
+            }
         } catch (Throwable e) {
             splitChild.releaseExclusive();
             newChild.releaseExclusive();
@@ -2200,15 +2208,14 @@ final class Node extends Latch {
      *
      * @param keyPos 2-based position
      * @param newChildPos 8-based position
-     * @param splitChild pass null if split not allowed
-     * @return null if entry must be split, but split is not allowed
+     * @param allowSplit true if this internal node can be split as a side-effect
+     * @return result; if node was split, key and entry loc is -1 if new key was promoted to parent
+     * @throws AssertionError if entry must be split to make room but split is not allowed
      */
     private InResult createInternalEntry(Tree tree, int keyPos, int encodedLen,
-                                         int newChildPos, Node splitChild)
+                                         int newChildPos, boolean allowSplit)
         throws IOException
     {
-        InResult result = null;
-
         int searchVecStart = mSearchVecStart;
         int searchVecEnd = mSearchVecEnd;
 
@@ -2313,19 +2320,12 @@ final class Node extends Latch {
 
                 // Node is full, so split it.
 
-                if (splitChild == null) {
-                    // Caller doesn't allow split.
-                    return null;
+                if (!allowSplit) {
+                    throw new AssertionError("Split not allowed");
                 }
 
                 // No side-effects if an IOException is thrown here.
-                result = splitInternal(tree, keyPos, newChildPos, encodedLen);
-
-                page = result.mPage;
-                keyPos = result.mKeyLoc;
-                newChildPos = result.mNewChildLoc;
-                entryLoc = result.mEntryLoc;
-                break alloc;
+                return splitInternal(tree, encodedLen, keyPos, newChildPos);
             }
 
             int vecLen = searchVecEnd - searchVecStart + 2;
@@ -2378,13 +2378,11 @@ final class Node extends Latch {
         // Write pointer to key entry.
         encodeShortLE(page, keyPos, entryLoc);
 
-        if (result == null) {
-            result = new InResult();
-            result.mPage = page;
-            result.mKeyLoc = keyPos;
-            result.mNewChildLoc = newChildPos;
-            result.mEntryLoc = entryLoc;
-        }
+        InResult result = new InResult();
+        result.mPage = page;
+        result.mKeyLoc = keyPos;
+        result.mNewChildLoc = newChildPos;
+        result.mEntryLoc = entryLoc;
 
         return result;
     }
@@ -2524,7 +2522,7 @@ final class Node extends Latch {
             // Leftmost key to move comes from the parent.
             int pos = left.highestInternalPos();
             InResult result = left.createInternalEntry
-                (tree, pos, parentKeyLen, (pos + 2) << 2, null);
+                (tree, pos, parentKeyLen, (pos + 2) << 2, false);
             // Note: Must access left page each time, since compaction can replace it.
             arraycopy(parentPage, parentKeyLoc, left.mPage, result.mEntryLoc, parentKeyLen);
 
@@ -2533,7 +2531,7 @@ final class Node extends Latch {
                 int keyLoc = decodeUnsignedShortLE(rightPage, searchVecLoc);
                 int encodedLen = keyLengthAtLoc(rightPage, keyLoc);
                 pos = left.highestInternalPos();
-                result = left.createInternalEntry(tree, pos, encodedLen, (pos + 2) << 2, null);
+                result = left.createInternalEntry(tree, pos, encodedLen, (pos + 2) << 2, false);
                 // Note: Must access left page each time, since compaction can replace it.
                 arraycopy(rightPage, keyLoc, left.mPage, result.mEntryLoc, encodedLen);
                 garbageAccum += encodedLen;
@@ -2730,7 +2728,7 @@ final class Node extends Latch {
 
         try {
             // Rightmost key to move comes from the parent.
-            InResult result = right.createInternalEntry(tree, 0, parentKeyLen, 0, null);
+            InResult result = right.createInternalEntry(tree, 0, parentKeyLen, 0, false);
             // Note: Must access right page each time, since compaction can replace it.
             arraycopy(parentPage, parentKeyLoc, right.mPage, result.mEntryLoc, parentKeyLen);
 
@@ -2738,7 +2736,7 @@ final class Node extends Latch {
             for (; searchVecLoc > firstSearchVecLoc; searchVecLoc -= 2) {
                 int keyLoc = decodeUnsignedShortLE(leftPage, searchVecLoc);
                 int encodedLen = keyLengthAtLoc(leftPage, keyLoc);
-                result = right.createInternalEntry(tree, 0, encodedLen, 0, null);
+                result = right.createInternalEntry(tree, 0, encodedLen, 0, false);
                 // Note: Must access right page each time, since compaction can replace it.
                 arraycopy(leftPage, keyLoc, right.mPage, result.mEntryLoc, encodedLen);
                 garbageAccum += encodedLen;
@@ -3230,7 +3228,7 @@ final class Node extends Latch {
         // Create space to absorb parent key.
         int leftEndPos = leftNode.highestInternalPos();
         InResult result = leftNode.createInternalEntry
-            (tree, leftEndPos, parentLen, (leftEndPos += 2) << 2, null);
+            (tree, leftEndPos, parentLen, (leftEndPos += 2) << 2, false);
 
         // Copy child id associated with parent key.
         final byte[] rightPage = rightNode.mPage;
@@ -3250,7 +3248,7 @@ final class Node extends Latch {
 
             // Allocate entry for left node.
             int pos = leftNode.highestInternalPos();
-            result = leftNode.createInternalEntry(tree, pos, encodedLen, (pos + 2) << 2, null);
+            result = leftNode.createInternalEntry(tree, pos, encodedLen, (pos + 2) << 2, false);
 
             // Copy child id.
             arraycopy(rightPage, rightChildIdsLoc, result.mPage, result.mNewChildLoc, 8);
@@ -3881,9 +3879,10 @@ final class Node extends Latch {
 
     /**
      * @throws IOException if new node could not be allocated; no side-effects
+     * @return split result; key and entry loc is -1 if new key was promoted to parent
      */
     private InResult splitInternal
-        (final Tree tree, final int keyPos, final int newChildPos, final int encodedLen)
+        (final Tree tree, final int encodedLen, final int keyPos, final int newChildPos)
         throws IOException
     {
         if (mSplit != null) {
@@ -3896,6 +3895,7 @@ final class Node extends Latch {
 
         final byte[] page = mPage;
 
+        // Alloc early in case an exception is thrown.
         final Node newNode = tree.mDatabase.allocUnevictableNode();
         newNode.mType = mType;
         newNode.mGarbage = 0;
@@ -3903,10 +3903,70 @@ final class Node extends Latch {
         final byte[] newPage = newNode.mPage;
 
         final InResult result = new InResult();
-        result.mPage = newPage;
 
         final int searchVecStart = mSearchVecStart;
         final int searchVecEnd = mSearchVecEnd;
+
+        if ((searchVecEnd - searchVecStart) == 2 && keyPos == 2) {
+            // Node has two keys and the key to insert should go in the middle. The new key
+            // should not be inserted, but instead be promoted to the parent. Treat this as a
+            // special case -- the code below only promotes an existing key to the parent.
+            // This case is expected to only occur when using very large keys.
+
+            // Signals that key should not be inserted.
+            result.mKeyLoc = -1;
+            result.mEntryLoc = -1;
+
+            int leftKeyLoc = decodeUnsignedShortLE(page, searchVecStart);
+            int leftKeyLen = keyLengthAtLoc(page, leftKeyLoc);
+
+            // Assume a large key will be inserted later, so arrange it with room: entry at far
+            // left and search vector at far right.
+            arraycopy(page, leftKeyLoc, newPage, TN_HEADER_SIZE, leftKeyLen);
+            int leftSearchVecStart = newPage.length - (2 + 8 + 8);
+            encodeShortLE(newPage, leftSearchVecStart, TN_HEADER_SIZE);
+
+            if (newChildPos == 8) {
+                // Caller must store child id into left node.
+                result.mPage = newPage;
+                result.mNewChildLoc = leftSearchVecStart + (2 + 8);
+            } else {
+                if (newChildPos != 16) {
+                    throw new AssertionError();
+                }
+                // Caller must store child id into right node.
+                result.mPage = page;
+                result.mNewChildLoc = searchVecEnd + (2 + 8);
+            }
+
+            // Copy one or two left existing child ids to left node (newChildPos is 8 or 16).
+            arraycopy(page, searchVecEnd + 2, newPage, leftSearchVecStart + 2, newChildPos);
+
+            // Split references to child node instances. New child node has already
+            // been placed into mChildNodes by caller.
+            // TODO: recycle child node arrays
+            newNode.mChildNodes = new Node[] {mChildNodes[0], mChildNodes[1]};
+            mChildNodes = new Node[] {mChildNodes[2], mChildNodes[3]};
+
+            newNode.mLeftSegTail = TN_HEADER_SIZE + leftKeyLen;
+            newNode.mRightSegTail = leftSearchVecStart + (2 + 8 + 8 - 1);
+            newNode.mSearchVecStart = leftSearchVecStart;
+            newNode.mSearchVecEnd = leftSearchVecStart;
+            newNode.releaseExclusive();
+
+            // Prune off the left end of this node by shifting vector towards child ids.
+            arraycopy(page, searchVecEnd, page, searchVecEnd + 8, 2);
+            mSearchVecStart = mSearchVecEnd = searchVecEnd + 8;
+
+            mGarbage += leftKeyLen;
+
+            // Caller must set the split key.
+            mSplit = new Split(false, newNode);
+
+            return result;
+        }
+
+        result.mPage = newPage;
         final int keyLoc = keyPos + searchVecStart;
 
         int garbageAccum;
@@ -4203,6 +4263,10 @@ final class Node extends Latch {
         mSplit = split;
 
         result.mKeyLoc = newKeyLoc;
+
+        // Write pointer to key entry.
+        encodeShortLE(newPage, newKeyLoc, result.mEntryLoc);
+
         return result;
     }
 
@@ -4306,9 +4370,9 @@ final class Node extends Latch {
      */
     static final class InResult {
         byte[] mPage;
-        int mKeyLoc;
-        int mNewChildLoc;
-        int mEntryLoc;
+        int mKeyLoc;      // location of key reference in search vector
+        int mNewChildLoc; // location of child pointer
+        int mEntryLoc;    // location of key entry, referenced by search vector
     }
 
     /**

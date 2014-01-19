@@ -3,8 +3,11 @@ Changelog
 
 v1.0.4
 ------
+
+* Fix defects when inserting largest possible keys.
 * Added rebalancing for internal nodes (was only leaf nodes before).
 * Added key suffix compression, which allows more keys to fit inside internal nodes.
+* Enforce key size limits. 
 
 v1.0.3
 ------
