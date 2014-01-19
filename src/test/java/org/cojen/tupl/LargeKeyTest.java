@@ -123,4 +123,50 @@ public class LargeKeyTest {
         assertNull(c.value());
         fastAssertArrayEquals(key, c.key());
     }
+
+    @Test
+    public void storeMaxSizeFull() throws Exception {
+        storeMaxSizeFull(512);
+        storeMaxSizeFull(1024);
+        storeMaxSizeFull(2048);
+        storeMaxSizeFull(4096);
+        storeMaxSizeFull(8192);
+        storeMaxSizeFull(16384);
+        storeMaxSizeFull(32768);
+        storeMaxSizeFull(65536);
+    }
+
+    private void storeMaxSizeFull(final int pageSize) throws Exception {
+        // Keys are constructed such that little or no suffix compression is applied. This
+        // reduces the number of keys stored by internal nodes to be at the minimum of 2.
+
+        Database db = Database.open(new DatabaseConfig().pageSize(pageSize));
+        Index ix = db.openIndex("test");
+
+        byte[] value = new byte[0];
+
+        final int max = Math.min(16383, (pageSize / 2) - 22);
+
+        byte[][] keys = new byte[800][];
+        Random rnd = new Random(87324);
+        for (int i=0; i<keys.length; i++) {
+            byte[] key = new byte[max];
+            Arrays.fill(key, (byte) '.');
+            byte[] tail = randomStr(rnd, 4, 4);
+            System.arraycopy(tail, 0, key, key.length - tail.length, tail.length);
+            keys[i] = key;
+        }
+
+        for (byte[] key : keys) {
+            ix.store(null, key, value);
+        }
+
+        assertTrue("Verification failed for page size of: " + pageSize, ix.verify(null));
+
+        for (byte[] key : keys) {
+            byte[] v = ix.load(null, key);
+            fastAssertArrayEquals(value, v);
+        }
+    }
+
 }

@@ -40,6 +40,10 @@ final class Split {
         mSplitKey = splitKey;
     }
 
+    final void setKey(Split split) {
+        mSplitKey = split.mSplitKey;
+    }
+
     /**
      * Compares to the split key, returning <0 if given key is lower, 0 if
      * equal, >0 if greater.
