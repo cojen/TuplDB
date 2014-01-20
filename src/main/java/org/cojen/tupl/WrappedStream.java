@@ -61,11 +61,11 @@ abstract class WrappedStream implements Stream {
     }
 
     public OutputStream newOutputStream(long pos) throws IOException {
-        return newOutputStream(pos);
+        return mSource.newOutputStream(pos);
     }
 
     public OutputStream newOutputStream(long pos, int bufferSize) throws IOException {
-        return newOutputStream(pos, bufferSize);
+        return mSource.newOutputStream(pos, bufferSize);
     }
 
     @Override

@@ -66,8 +66,13 @@ class TempFileManager implements CauseCloseable, Checkpointer.Shutdown {
                 mFiles.put(file, null);
             }
 
-            if (mFileFactory == null && file.createNewFile() || mFileFactory.createFile(file)) {
-                // Note: File.deleteOnExit should never be used, since it leaks memory.
+            // Note: File.deleteOnExit should never be used, since it leaks memory.
+
+            if (mFileFactory == null) {
+                if (file.createNewFile()) {
+                    return file;
+                }
+            } else if (mFileFactory.createFile(file)) {
                 return file;
             }
 
