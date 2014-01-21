@@ -1460,7 +1460,7 @@ public final class Database implements CauseCloseable {
      * @throws IllegalArgumentException if compaction target is out of bounds
      * @throws IllegalStateException if compaction is already in progress
      */
-    boolean compact(CompactionObserver observer, double target) throws IOException {
+    boolean compactFile(CompactionObserver observer, double target) throws IOException {
         if (target < 0 || target > 1) {
             throw new IllegalArgumentException("Illegal compaction target: " + target);
         }

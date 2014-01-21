@@ -67,7 +67,7 @@ public class CompactTest {
 
         Database.Stats stats1 = mDb.stats();
 
-        mDb.compact(null, 0.9);
+        mDb.compactFile(null, 0.9);
 
         Database.Stats stats2 = mDb.stats();
 
@@ -88,7 +88,7 @@ public class CompactTest {
 
         // Compact even further.
         for (int i=91; i<=99; i++) {
-            mDb.compact(null, i / 100.0);
+            mDb.compactFile(null, i / 100.0);
         }
 
         Database.Stats stats3 = mDb.stats();
@@ -141,7 +141,7 @@ public class CompactTest {
 
         Database.Stats stats1 = mDb.stats();
 
-        mDb.compact(null, 0.9);
+        mDb.compactFile(null, 0.9);
 
         Database.Stats stats2 = mDb.stats();
 
@@ -164,7 +164,7 @@ public class CompactTest {
 
         // Compact even further.
         for (int i=91; i<=99; i++) {
-            mDb.compact(null, i / 100.0);
+            mDb.compactFile(null, i / 100.0);
         }
 
         Database.Stats stats3 = mDb.stats();
@@ -222,7 +222,7 @@ public class CompactTest {
             }
         };
 
-        mDb.compact(obs, 0.5);
+        mDb.compactFile(obs, 0.5);
 
         Database.Stats stats2 = mDb.stats();
         assertEquals(stats1, stats2);
@@ -287,7 +287,7 @@ public class CompactTest {
             public void run() {
                 try {
                     Database.Stats stats1 = mDb.stats();
-                    mDb.compact(obs, 0.5);
+                    mDb.compactFile(obs, 0.5);
                     Database.Stats stats2 = mDb.stats();
                     result = stats2.totalPages() < stats1.totalPages();
                 } catch (Exception e) {
@@ -355,7 +355,7 @@ public class CompactTest {
                 try {
                     while (!stop) {
                         Database.Stats stats1 = mDb.stats();
-                        mDb.compact(null, 0.5);
+                        mDb.compactFile(null, 0.5);
                         Database.Stats stats2 = mDb.stats();
                         if (stats2.totalPages() < stats1.totalPages()) {
                             success++;
@@ -438,7 +438,7 @@ public class CompactTest {
         Database.Stats stats2 = mDb.stats();
         assertTrue(stats2.freePages() > 100);
 
-        mDb.compact(null, 0.9);
+        mDb.compactFile(null, 0.9);
 
         // Nothing happened because most pages were in the undo log and not moved.
         assertEquals(stats2, mDb.stats());
@@ -446,7 +446,7 @@ public class CompactTest {
         txn.commit();
 
         // Compact will work this time now that undo log is gone.
-        mDb.compact(null, 0.9);
+        mDb.compactFile(null, 0.9);
         Database.Stats stats3 = mDb.stats();
 
         assertTrue(stats3.freePages() < stats2.freePages());
@@ -474,14 +474,14 @@ public class CompactTest {
         Transaction txn = mDb.newTransaction();
         ix.delete(txn, key);
 
-        mDb.compact(null, 0.9);
+        mDb.compactFile(null, 0.9);
 
         Database.Stats stats2 = mDb.stats();
         assertTrue(stats2.totalPages() - stats2.freePages() > 200);
 
         txn.commit();
 
-        mDb.compact(null, 0.9);
+        mDb.compactFile(null, 0.9);
 
         Database.Stats stats3 = mDb.stats();
         assertTrue(stats3.totalPages() - stats3.freePages() < 50);
@@ -511,9 +511,9 @@ public class CompactTest {
 
         Database.Stats stats1 = mDb.stats();
 
-        boolean result = mDb.compact(null, 0.95);
+        boolean result = mDb.compactFile(null, 0.95);
         if (!result) {
-            result = mDb.compact(null, 0.95);
+            result = mDb.compactFile(null, 0.95);
         }
 
         assertTrue(result);
