@@ -2838,7 +2838,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
 
             switch (parentNode.mType) {
             case Node.TYPE_TN_IN:
-                if (childNode.mType == Node.TYPE_TN_LEAF) {
+                if (childNode.isLeaf()) {
                     observer.failed = true;
                     if (!observer.indexNodeFailed
                         (childId, level,
@@ -2849,7 +2849,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                 }
                 break;
             case Node.TYPE_TN_BIN:
-                if (childNode.mType != Node.TYPE_TN_LEAF) {
+                if (!childNode.isLeaf()) {
                     observer.failed = true;
                     if (!observer.indexNodeFailed
                         (childId, level,
@@ -2859,6 +2859,11 @@ final class TreeCursor implements CauseCloseable, Cursor {
                     }
                 }
                 break;
+            default:
+                if (!parentNode.isLeaf()) {
+                    break;
+                }
+                // Fallthrough...
             case Node.TYPE_TN_LEAF:
                 observer.failed = true;
                 if (!observer.indexNodeFailed(childId, level, "Child parent is a leaf node")) {
