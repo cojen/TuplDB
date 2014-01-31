@@ -1,6 +1,11 @@
 Changelog
 =========
 
+v1.0.5
+------
+
+* Reveal file compaction feature.
+
 v1.0.4
 ------
 

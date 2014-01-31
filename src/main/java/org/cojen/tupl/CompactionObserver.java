@@ -21,9 +21,9 @@ package org.cojen.tupl;
  * should not be shared by concurrent compactions.
  *
  * @author Brian S O'Neill
- * @see Database#compact Database.compact
+ * @see Database#compactFile Database.compactFile
  */
-class CompactionObserver {
+public class CompactionObserver {
     /** Index currently being compacted.  */
     protected Index index;
 
