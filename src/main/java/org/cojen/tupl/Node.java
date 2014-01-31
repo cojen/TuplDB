@@ -634,7 +634,7 @@ final class Node extends Latch {
         mChildNodes = new Node[] {left, right};
 
         mPage = newPage;
-        mType = mType == TYPE_TN_LEAF ? TYPE_TN_BIN : TYPE_TN_IN;
+        mType = isLeaf() ? TYPE_TN_BIN : TYPE_TN_IN;
         mGarbage = 0;
         mLeftSegTail = leftSegTail;
         mRightSegTail = newPage.length - 1;
@@ -699,7 +699,7 @@ final class Node extends Latch {
             if (type == TYPE_TN_IN || type == TYPE_TN_BIN) {
                 // TODO: recycle child node arrays
                 mChildNodes = new Node[numKeys() + 1];
-            } else if (type != TYPE_TN_LEAF) {
+            } else if (type >= 0) {
                 throw new CorruptDatabaseException("Unknown node type: " + type + ", id: " + id);
             }
         }
@@ -908,7 +908,7 @@ final class Node extends Latch {
             empty.mSearchVecEnd = 0;
         }
 
-        int pos = empty.mType == TYPE_TN_LEAF ? -1 : 0;
+        int pos = isLeaf() ? -1 : 0;
 
         for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
             frame.mNode = empty;
@@ -4403,11 +4403,6 @@ final class Node extends Latch {
         String prefix;
 
         switch (mType) {
-        default:
-            return "Node: {id=" + mId +
-                ", cachedState=" + mCachedState +
-                ", lockState=" + super.toString() +
-                '}';
         case TYPE_UNDO_LOG:
             return "UndoNode: {id=" + mId +
                 ", cachedState=" + mCachedState +
@@ -4427,7 +4422,14 @@ final class Node extends Latch {
         case TYPE_TN_BIN:
             prefix = "BottomInternal";
             break;
-
+        default:
+            if (!isLeaf()) {
+                return "Node: {id=" + mId +
+                    ", cachedState=" + mCachedState +
+                    ", lockState=" + super.toString() +
+                    '}';
+            }
+            // Fallthrough...
         case TYPE_TN_LEAF:
             prefix = "Leaf";
             break;
@@ -4449,7 +4451,7 @@ final class Node extends Latch {
      * @return false if should stop
      */
     boolean verifyTreeNode(int level, VerificationObserver observer) {
-        if (mType != TYPE_TN_IN && mType != TYPE_TN_BIN && mType != TYPE_TN_LEAF) {
+        if (mType != TYPE_TN_IN && mType != TYPE_TN_BIN && !isLeaf()) {
             return verifyFailed(level, observer, "Not a tree node");
         }
 
