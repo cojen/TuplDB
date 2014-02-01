@@ -1197,45 +1197,61 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     /**
-     * @return 0 if load operation does not acquire a lock
+     * Checks validity of key, assigns key and hash code to cursor, and returns the linked
+     * transaction.
      */
-    private int keyHashForLoad(Transaction txn, byte[] key) {
-        if (txn != null) {
-            LockMode mode = txn.lockMode();
-            if (mode == LockMode.READ_UNCOMMITTED || mode == LockMode.UNSAFE) {
-                return 0;
-            }
+    private Transaction prepareFind(byte[] key) {
+        if (key == null) {
+            throw new NullPointerException("Key is null");
         }
-        return LockManager.hash(mTree.mId, key);
+        Transaction txn = mTxn;
+        int hash;
+        selectHash: {
+            if (txn != null) {
+                LockMode mode = txn.lockMode();
+                if (mode == LockMode.READ_UNCOMMITTED || mode == LockMode.UNSAFE) {
+                    hash = 0;
+                    break selectHash;
+                }
+            }
+            hash = LockManager.hash(mTree.mId, key);
+        }
+        mKey = key;
+        mKeyHash = hash;
+        return txn;
     }
 
     /**
-     * @return 0 if load operation does not acquire a lock
+     * Assigns key and hash code to cursor, and returns the hash code.
+     *
+     * @param key must not be null
+     * @return 0 if store operation does not acquire a lock
      */
-    private int keyHashForStore(Transaction txn, byte[] key) {
-        return (txn != null && txn.lockMode() == LockMode.UNSAFE) ? 0
+    private int prepareFindForStore(Transaction txn, byte[] key) {
+        int hash = (txn != null && txn.lockMode() == LockMode.UNSAFE) ? 0
             : LockManager.hash(mTree.mId, key);
+        mKey = key;
+        mKeyHash = hash;
+        return hash;
     }
 
     private static final int
         VARIANT_REGULAR = 0,
-        VARIANT_NEARBY  = 1,
-        VARIANT_RETAIN  = 2, // retain node latch only if value is null
-        VARIANT_NO_LOCK = 3, // retain node latch always, don't lock entry
-        VARIANT_CHECK   = 4; // retain node latch always, don't lock entry, don't load entry
+        VARIANT_RETAIN  = 1, // retain node latch only if value is null
+        VARIANT_NO_LOCK = 2, // retain node latch always, don't lock entry
+        VARIANT_CHECK   = 3; // retain node latch always, don't lock entry, don't load entry
 
     @Override
     public LockResult find(byte[] key) throws IOException {
-        Transaction txn = mTxn;
-        return find(txn, key, keyHashForLoad(txn, key), VARIANT_REGULAR);
+        return find(prepareFind(key), key, VARIANT_REGULAR);
     }
 
     @Override
     public LockResult findGe(byte[] key) throws IOException {
         // If isolation level is read committed, then key must be
         // locked. Otherwise, an uncommitted delete could be observed.
-        Transaction txn = mTxn;
-        LockResult result = find(txn, key, keyHashForLoad(txn, key), VARIANT_RETAIN);
+        Transaction txn = prepareFind(key);
+        LockResult result = find(txn, key, VARIANT_RETAIN);
         if (mValue != null) {
             return result;
         } else {
@@ -1249,17 +1265,16 @@ final class TreeCursor implements CauseCloseable, Cursor {
     @Override
     public LockResult findGt(byte[] key) throws IOException {
         // Never lock the requested key.
-        Transaction txn = mTxn;
-        find(txn, key, 0, VARIANT_CHECK);
-        return next(txn, mLeaf);
+        findNoLock(key, VARIANT_CHECK);
+        return next(mTxn, mLeaf);
     }
 
     @Override
     public LockResult findLe(byte[] key) throws IOException {
         // If isolation level is read committed, then key must be
         // locked. Otherwise, an uncommitted delete could be observed.
-        Transaction txn = mTxn;
-        LockResult result = find(txn, key, keyHashForLoad(txn, key), VARIANT_RETAIN);
+        Transaction txn = prepareFind(key);
+        LockResult result = find(txn, key, VARIANT_RETAIN);
         if (mValue != null) {
             return result;
         } else {
@@ -1273,43 +1288,22 @@ final class TreeCursor implements CauseCloseable, Cursor {
     @Override
     public LockResult findLt(byte[] key) throws IOException {
         // Never lock the requested key.
-        Transaction txn = mTxn;
-        find(txn, key, 0, VARIANT_CHECK);
-        return previous(txn, mLeaf);
+        findNoLock(key, VARIANT_CHECK);
+        return previous(mTxn, mLeaf);
     }
 
     @Override
     public LockResult findNearby(byte[] key) throws IOException {
-        Transaction txn = mTxn;
-        return find(txn, key, keyHashForLoad(txn, key), VARIANT_NEARBY);
-    }
-
-    /**
-     * @param hash can pass 0 if no lock is required
-     */
-    private LockResult find(Transaction txn, byte[] key, int hash, int variant)
-        throws IOException
-    {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
-
-        mKey = key;
-        mKeyHash = hash;
+        Transaction txn = prepareFind(key);
 
         Node node;
-        TreeCursorFrame frame;
-
-        nearby: if (variant == VARIANT_NEARBY) {
-            frame = mLeaf;
-            if (frame == null) {
-                // Allocate new frame before latching root -- allocation can block.
-                frame = new TreeCursorFrame();
-                node = mTree.mRoot;
-                node.acquireExclusive();
-                break nearby;
-            }
-
+        TreeCursorFrame frame = mLeaf;
+        if (frame == null) {
+            // Allocate new frame before latching root -- allocation can block.
+            frame = new TreeCursorFrame();
+            node = mTree.mRoot;
+            node.acquireExclusive();
+        } else {
             node = frame.acquireExclusive();
             if (node.mSplit != null) {
                 node = finishSplit(frame, node);
@@ -1402,12 +1396,33 @@ final class TreeCursor implements CauseCloseable, Cursor {
                 frame = new TreeCursorFrame(frame);
                 break;
             }
-        } else {
-            // Other variants always discard existing frames.
-            node = mTree.mRoot;
-            frame = reset(node);
         }
 
+        return find(txn, key, VARIANT_REGULAR, node, frame);
+    }
+
+    private void findNoLock(byte[] key, int variant) throws IOException {
+        if (key == null) {
+            throw new NullPointerException("Key is null");
+        }
+        mKey = key;
+        mKeyHash = 0;
+        find(null, key, variant);
+    }
+    
+    private LockResult find(Transaction txn, byte[] key, int variant) throws IOException {
+        Node node = mTree.mRoot;
+        return find(txn, key, variant, node, reset(node));
+    }
+
+    /**
+     * @param node search node to start from
+     * @param frame fresh frame for node
+     */
+    private LockResult find(Transaction txn, byte[] key, int variant,
+                            Node node, TreeCursorFrame frame)
+        throws IOException
+    {
         while (true) {
             if (node.isLeaf()) {
                 int pos;
@@ -1634,8 +1649,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
 
                 if (node.isLeaf()) {
                     mLeaf = frame;
-                    Transaction txn = mTxn;
-                    mKeyHash = keyHashForLoad(txn, mKey = node.retrieveKey(pos));
+                    Transaction txn = prepareFind(node.retrieveKey(pos));
 
                     LockResult result;
                     if ((result = tryLockKey(txn)) == null) {
@@ -1832,15 +1846,17 @@ final class TreeCursor implements CauseCloseable, Cursor {
 
     /**
      * Atomic find and store operation. Cursor is reset as a side-effect.
+     *
+     * @param key must not be null
      */
     byte[] findAndStore(byte[] key, byte[] value) throws IOException {
         try {
             final Transaction txn = mTxn;
-            final int hash = keyHashForStore(txn, key);
+            final int hash = prepareFindForStore(txn, key);
             final Locker locker = mTree.lockExclusive(txn, key, hash);
             try {
                 // Find with no lock because it has already been acquired.
-                find(null, key, hash, VARIANT_NO_LOCK);
+                find(null, key, VARIANT_NO_LOCK);
                 byte[] oldValue = mValue;
                 store(txn, mLeaf, value, true);
                 return oldValue;
@@ -1859,11 +1875,11 @@ final class TreeCursor implements CauseCloseable, Cursor {
     /**
      * Atomic find and modify operation. Cursor is reset as a side-effect.
      *
+     * @param key must not be null
      * @param oldValue MODIFY_INSERT, MODIFY_REPLACE, else update mode
      */
     boolean findAndModify(byte[] key, byte[] oldValue, byte[] newValue) throws IOException {
         final Transaction txn = mTxn;
-        final int hash = keyHashForStore(txn, key);
 
         try {
             // Note: Acquire exclusive lock instead of performing upgrade
@@ -1871,14 +1887,18 @@ final class TreeCursor implements CauseCloseable, Cursor {
             // latch held, which is deadlock prone.
 
             if (txn == null) {
+                int hash = LockManager.hash(mTree.mId, key);
+                mKey = key;
+                mKeyHash = hash;
                 Locker locker = mTree.lockExclusiveLocal(key, hash);
                 try {
-                    return doFindAndModify(null, key, hash, oldValue, newValue);
+                    return doFindAndModify(null, key, oldValue, newValue);
                 } finally {
                     locker.unlock();
                 }
             }
 
+            int hash = prepareFindForStore(txn, key);
             LockResult result;
 
             LockMode mode = txn.lockMode();
@@ -1897,7 +1917,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
             }
 
             try {
-                if (doFindAndModify(txn, key, hash, oldValue, newValue)) {
+                if (doFindAndModify(txn, key, oldValue, newValue)) {
                     // Indicate that no unlock should be performed.
                     result = LockResult.OWNED_EXCLUSIVE;
                     return true;
@@ -1915,12 +1935,11 @@ final class TreeCursor implements CauseCloseable, Cursor {
         }
     }
 
-    private boolean doFindAndModify(Transaction txn, byte[] key, int hash,
-                                    byte[] oldValue, byte[] newValue)
+    private boolean doFindAndModify(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException
     {
         // Find with no lock because caller must already acquire exclusive lock.
-        find(null, key, hash, VARIANT_NO_LOCK);
+        find(null, key, VARIANT_NO_LOCK);
 
         check: {
             if (oldValue == MODIFY_INSERT) {
@@ -1969,7 +1988,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
         try {
             // Find with no lock because it has already been acquired.
             // TODO: Use nearby optimization when used with transactional Index.clear.
-            find(null, key, 0, VARIANT_NO_LOCK);
+            find(null, key, VARIANT_NO_LOCK);
 
             TreeCursorFrame leaf = mLeaf;
             if (leaf.mNode.mPage == EMPTY_BYTES) {
@@ -1978,6 +1997,8 @@ final class TreeCursor implements CauseCloseable, Cursor {
             }
 
             if (mValue == null) {
+                mKey = key;
+                mKeyHash = 0;
                 store(Transaction.BOGUS, leaf, null, true);
             } else {
                 resetLatched(leaf.mNode);
