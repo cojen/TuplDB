@@ -1337,7 +1337,9 @@ final class TreeCursor implements CauseCloseable, Cursor {
                     node.releaseExclusive();
                 }
                 return doLoad(txn);
-            } else if (pos != ~0 && ~pos <= node.highestLeafPos()) {
+            } else if ((pos != ~0 || (node.mType & Node.LOW_EXTREMITY) != 0) &&
+                       (~pos <= node.highestLeafPos() || (node.mType & Node.HIGH_EXTREMITY) != 0))
+            {
                 // Not found, but insertion pos is in bounds.
                 frame.mNotFoundKey = key;
                 frame.mNodePos = pos;
@@ -1382,7 +1384,9 @@ final class TreeCursor implements CauseCloseable, Cursor {
 
                 pos = Node.internalPos(node.binarySearch(key, frame.mNodePos));
 
-                if (pos == 0 || pos >= node.highestInternalPos()) {
+                if ((pos == 0 && (node.mType & Node.LOW_EXTREMITY) == 0) ||
+                    (pos >= node.highestInternalPos() && (node.mType & Node.HIGH_EXTREMITY) == 0))
+                {
                     // Cannot be certain if position is in this node, so pop up.
                     continue;
                 }
