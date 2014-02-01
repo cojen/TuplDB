@@ -265,13 +265,6 @@ final class SnapshotPageArray extends PageArray {
                 final byte[] key = new byte[8];
                 final long count = mSnapshotPageCount;
 
-                {
-                    // Insert a terminator for findNearby efficiency.
-                    byte[] k2 = new byte[8];
-                    encodeLongBE(k2, 0, ~0L);
-                    mPageCopyIndex.store(Transaction.BOGUS, k2, EMPTY_BYTES);
-                }
-
                 for (long index = 0; index < count; index++, increment(key, 0, 8)) {
                     synchronized (mSnapshotLock) {
                         while (true) {

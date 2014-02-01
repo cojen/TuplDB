@@ -1125,7 +1125,7 @@ final class Node extends Latch {
         }
         midPos += lowPos;
         if (midPos > highPos) {
-            return ~2 - highPos + lowPos;
+            midPos = highPos;
         }
 
         final byte[] page = mPage;
