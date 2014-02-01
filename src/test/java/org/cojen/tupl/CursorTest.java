@@ -673,7 +673,7 @@ public class CursorTest {
         }
         scan.reset();
 
-        ix.verify(null);
+        assertTrue(ix.verify(null));
 
         // Verify that old and new keys exist.
 
@@ -690,6 +690,50 @@ public class CursorTest {
             Utils.increment(high, 0, high.length);
             fastAssertArrayEquals(high, ix.load(Transaction.BOGUS, high));
         }
+
+        verifyExtremities(ix);
+
+        // Delete all and verify extremities.
+
+        int removed = 0;
+        Cursor c = ix.newCursor(Transaction.BOGUS);
+        c.autoload(false);
+        for (c.first(); c.key() != null; c.next()) {
+            c.store(null);
+            removed++;
+            if (removed % 10 == 0) {
+                verifyExtremities(ix);
+                assertTrue(ix.verify(null));
+            }
+        }
+        c.reset();
+
+        c.first();
+        assertNull(c.key());
+
+        verifyExtremities(ix);
+        assertTrue(ix.verify(null));
+
+        // Ordered fill and verify.
+
+        byte[] key = new byte[4];
+        Cursor fill = ix.newCursor(Transaction.BOGUS);
+        for (int i=0; i<10000; i++) {
+            fill.findNearby(key);
+            fill.store(key);
+            key = key.clone();
+            Utils.increment(key, 0, key.length);
+        }
+        fill.reset();
+
+        verifyExtremities(ix);
+        assertTrue(ix.verify(null));
+    }
+
+    private static void verifyExtremities(Index ix) throws Exception {
+        TreeCursor extremity = (TreeCursor) ix.newCursor(Transaction.BOGUS);
+        assertTrue(extremity.verifyExtremities(Node.LOW_EXTREMITY));
+        assertTrue(extremity.verifyExtremities(Node.HIGH_EXTREMITY));
     }
 
     @Test

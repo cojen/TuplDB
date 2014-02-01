@@ -2686,6 +2686,34 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     /**
+     * Test method which confirms that cursor frame nodes are at an extremity. Method is not
+     * tolerant of split nodes.
+     *
+     * @param extremity LOW_EXTREMITY or HIGH_EXTREMITY
+     */
+    public boolean verifyExtremities(byte extremity) throws IOException {
+        Node node = mTree.mRoot;
+        node.acquireExclusive();
+        try {
+            while (true) {
+                if ((node.mType & extremity) == 0) {
+                    return false;
+                }
+                if (node.isLeaf()) {
+                    return true;
+                }
+                int pos = 0;
+                if (extremity == Node.HIGH_EXTREMITY) {
+                    pos = node.highestInternalPos();
+                }
+                node = latchChild(node, pos, true);
+            }
+        } finally {
+            node.releaseExclusive();
+        }
+    }
+
+    /**
      * Verifies from the current node to the last, unless stopped by observer.
      *
      * @return false if should stop
@@ -2726,14 +2754,10 @@ final class TreeCursor implements CauseCloseable, Cursor {
             Node childNode = frame.acquireShared();
             long childId = childNode.mId;
 
-            if (childNode.numKeys() == 0) {
+            if (childNode.numKeys() == 0 || parentNode.numKeys() == 0) {
+                // Nodes can be empty before they're deleted.
                 childNode.releaseShared();
                 parentNode.releaseShared();
-
-                observer.failed = true;
-                if (!observer.indexNodeFailed(childId, level, "Node is empty")) {
-                    return false;
-                }
             } else {
                 int parentPos = parentFrame.mNodePos;
 
@@ -2813,6 +2837,30 @@ final class TreeCursor implements CauseCloseable, Cursor {
                     return false;
                 }
                 break;
+            }
+
+            // Verify extremities.
+
+            if ((childNode.mType & Node.LOW_EXTREMITY) != 0
+                && (parentNode.mType & Node.LOW_EXTREMITY) == 0)
+            {
+                observer.failed = true;
+                if (!observer.indexNodeFailed
+                    (childId, level, "Child is low extremity but parent is not"))
+                {
+                    return false;
+                }
+            }
+
+            if ((childNode.mType & Node.HIGH_EXTREMITY) != 0
+                && (parentNode.mType & Node.HIGH_EXTREMITY) == 0)
+            {
+                observer.failed = true;
+                if (!observer.indexNodeFailed
+                    (childId, level, "Child is high extremity but parent is not"))
+                {
+                    return false;
+                }
             }
         }
 
