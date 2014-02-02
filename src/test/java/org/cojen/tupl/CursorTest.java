@@ -612,6 +612,131 @@ public class CursorTest {
     }
 
     @Test
+    public void findNearby() throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        final int count = 3000;
+        final int seed = 3892476;
+        Random rnd = new Random(seed);
+        for (int i=0; i<count; i++) {
+            byte[] key = randomStr(rnd, 100, 500);
+            ix.store(Transaction.BOGUS, key, key);
+        }
+
+        // Find every key using each key as a starting point.
+
+        Cursor c1 = ix.newCursor(Transaction.BOGUS);
+        for (c1.first(); c1.key() != null; c1.next()) {
+            TreeCursor c2 = (TreeCursor) ix.newCursor(Transaction.BOGUS);
+            for (c2.first(); c2.key() != null; c2.next()) {
+                TreeCursor ref = (TreeCursor) c1.copy();
+                ref.findNearby(c2.key());
+                assertTrue(ref.equalPositions(c2));
+                ref.reset();
+            }
+            c2.reset();
+        }
+        c1.reset();
+    }
+
+    @Test
+    public void storeNearby() throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        final int count = 3000;
+        final int seed = 3892476;
+        Random rnd = new Random(seed);
+        for (int i=0; i<count; i++) {
+            byte[] key = randomStr(rnd, 100, 500);
+            ix.store(Transaction.BOGUS, key, key);
+        }
+
+        // For every key, store a new key directly lower and higher.
+
+        Cursor scan = ix.newCursor(Transaction.BOGUS);
+        for (scan.first(); scan.key() != null; ) {
+            Cursor low = scan.copy();
+            byte[] key = low.key().clone();
+            Utils.decrement(key, 0, key.length);
+            low.findNearby(key);
+            low.store(key);
+            low.reset();
+
+            Cursor high = scan.copy();
+            // Scan past new key.
+            scan.next();
+            key = high.key().clone();
+            Utils.increment(key, 0, key.length);
+            high.findNearby(key);
+            high.store(key);
+            high.reset();
+        }
+        scan.reset();
+
+        assertTrue(ix.verify(null));
+
+        // Verify that old and new keys exist.
+
+        rnd = new Random(seed);
+        for (int i=0; i<count; i++) {
+            byte[] key = randomStr(rnd, 100, 500);
+            fastAssertArrayEquals(key, ix.load(Transaction.BOGUS, key));
+
+            byte[] low = key.clone();
+            Utils.decrement(low, 0, low.length);
+            fastAssertArrayEquals(low, ix.load(Transaction.BOGUS, low));
+
+            byte[] high = key.clone();
+            Utils.increment(high, 0, high.length);
+            fastAssertArrayEquals(high, ix.load(Transaction.BOGUS, high));
+        }
+
+        verifyExtremities(ix);
+
+        // Delete all and verify extremities.
+
+        int removed = 0;
+        Cursor c = ix.newCursor(Transaction.BOGUS);
+        c.autoload(false);
+        for (c.first(); c.key() != null; c.next()) {
+            c.store(null);
+            removed++;
+            if (removed % 10 == 0) {
+                verifyExtremities(ix);
+                assertTrue(ix.verify(null));
+            }
+        }
+        c.reset();
+
+        c.first();
+        assertNull(c.key());
+
+        verifyExtremities(ix);
+        assertTrue(ix.verify(null));
+
+        // Ordered fill and verify.
+
+        byte[] key = new byte[4];
+        Cursor fill = ix.newCursor(Transaction.BOGUS);
+        for (int i=0; i<10000; i++) {
+            fill.findNearby(key);
+            fill.store(key);
+            key = key.clone();
+            Utils.increment(key, 0, key.length);
+        }
+        fill.reset();
+
+        verifyExtremities(ix);
+        assertTrue(ix.verify(null));
+    }
+
+    private static void verifyExtremities(Index ix) throws Exception {
+        TreeCursor extremity = (TreeCursor) ix.newCursor(Transaction.BOGUS);
+        assertTrue(extremity.verifyExtremities(Node.LOW_EXTREMITY));
+        assertTrue(extremity.verifyExtremities(Node.HIGH_EXTREMITY));
+    }
+
+    @Test
     public void random() throws Exception {
         Index ix = mDb.openIndex("test");
 
