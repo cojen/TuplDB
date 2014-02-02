@@ -1,15 +1,11 @@
 Changelog
 =========
 
-v1.0.5.1
---------
-
-* Tolerate, but don't update, b-tree node metadata introduced in version 1.1.0.
-
 v1.0.5
 ------
 
 * Reveal file compaction feature.
+* Tolerate, but don't update, b-tree node metadata introduced in version 1.1.0.
 
 v1.0.4
 ------
