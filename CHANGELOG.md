@@ -1,6 +1,15 @@
 Changelog
 =========
 
+v1.1.0
+------
+
+* Improved performance of findNearby by encoding extra b-tree node metadata. Indexes can be
+  rapidly filled with in-order records using a single cursor which advances to the next key
+  using findNearby. This technique works with reverse ordered records and it allows concurrent
+  accesses as usual. Indexes created in order versions will not have this metadata, and so they
+  must be rebuilt to obtain it.
+
 v1.0.5
 ------
 
