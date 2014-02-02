@@ -229,7 +229,7 @@ final class Node extends Latch {
     void asEmptyRoot() {
         mId = 0;
         mCachedState = CACHED_CLEAN;
-        mType = TYPE_TN_LEAF;
+        mType = TYPE_TN_LEAF | LOW_EXTREMITY | HIGH_EXTREMITY;
         clearEntries();
     }
 
@@ -258,7 +258,7 @@ final class Node extends Latch {
         // Prevent node from being marked dirty.
         mId = STUB_ID;
         mCachedState = CACHED_CLEAN;
-        mType = TYPE_TN_LEAF;
+        mType = TYPE_TN_LEAF | LOW_EXTREMITY | HIGH_EXTREMITY;
         mPage = EMPTY_BYTES;
         mGarbage = 0;
 
@@ -637,7 +637,8 @@ final class Node extends Latch {
         mChildNodes = new Node[] {left, right};
 
         mPage = newPage;
-        mType = isLeaf() ? TYPE_TN_BIN : TYPE_TN_IN;
+        mType = isLeaf() ? (byte) (TYPE_TN_BIN | LOW_EXTREMITY | HIGH_EXTREMITY)
+            : (byte) (TYPE_TN_IN | LOW_EXTREMITY | HIGH_EXTREMITY);
         mGarbage = 0;
         mLeftSegTail = leftSegTail;
         mRightSegTail = newPage.length - 1;
@@ -1124,7 +1125,7 @@ final class Node extends Latch {
         }
         midPos += lowPos;
         if (midPos > highPos) {
-            return ~2 - highPos + lowPos;
+            midPos = highPos;
         }
 
         final byte[] page = mPage;
@@ -3209,6 +3210,9 @@ final class Node extends Latch {
             frame = prev;
         }
 
+        // If right node was high extremity, left node now is.
+        leftNode.mType |= rightNode.mType & HIGH_EXTREMITY;
+
         tree.mDatabase.deleteNode(rightNode);
     }
 
@@ -3281,6 +3285,9 @@ final class Node extends Latch {
             frame.bind(leftNode, leftEndPos + framePos);
             frame = prev;
         }
+
+        // If right node was high extremity, left node now is.
+        leftNode.mType |= rightNode.mType & HIGH_EXTREMITY;
 
         tree.mDatabase.deleteNode(rightNode);
     }
@@ -3612,7 +3619,6 @@ final class Node extends Latch {
         }
 
         Node newNode = tree.mDatabase.allocUnevictableNode();
-        newNode.mType = TYPE_TN_LEAF;
         newNode.mGarbage = 0;
 
         byte[] newPage = newNode.mPage;
@@ -3622,7 +3628,7 @@ final class Node extends Latch {
             // descending. Split into new left node, but only the new entry
             // goes into the new node.
 
-            mSplit = new Split(false, newNode);
+            mSplit = newSplitLeft(newNode);
             // Choose an appropriate middle key for suffix compression.
             mSplit.setKey(midKey(key, 0));
 
@@ -3652,7 +3658,7 @@ final class Node extends Latch {
             // ascending. Split into new right node, but only the new entry
             // goes into the new node.
 
-            mSplit = new Split(true, newNode);
+            mSplit = newSplitRight(newNode);
             // Choose an appropriate middle key for suffix compression.
             mSplit.setKey(midKey(pos - searchVecStart - 2, key));
 
@@ -3729,7 +3735,7 @@ final class Node extends Latch {
             }
 
             // Allocate Split object first, in case it throws an OutOfMemoryError.
-            mSplit = new Split(false, newNode);
+            mSplit = newSplitLeft(newNode);
 
             // Prune off the left end of this node.
             mSearchVecStart = searchVecLoc;
@@ -3810,7 +3816,7 @@ final class Node extends Latch {
             }
 
             // Allocate Split object first, in case it throws an OutOfMemoryError.
-            mSplit = new Split(true, newNode);
+            mSplit = newSplitRight(newNode);
 
             // Prune off the right end of this node.
             mSearchVecEnd = searchVecLoc;
@@ -3901,7 +3907,6 @@ final class Node extends Latch {
 
         // Alloc early in case an exception is thrown.
         final Node newNode = tree.mDatabase.allocUnevictableNode();
-        newNode.mType = mType;
         newNode.mGarbage = 0;
 
         final byte[] newPage = newNode.mPage;
@@ -3965,7 +3970,7 @@ final class Node extends Latch {
             mGarbage += leftKeyLen;
 
             // Caller must set the split key.
-            mSplit = new Split(false, newNode);
+            mSplit = newSplitLeft(newNode);
 
             return result;
         }
@@ -4061,7 +4066,7 @@ final class Node extends Latch {
 
                         if (newKeyLoc != 0) {
                             // ...and split key has been found.
-                            split = new Split(false, newNode);
+                            split = newSplitLeft(newNode);
                             split.setKey(retrieveKeyAtLoc(page, entryLoc));
                             break;
                         }
@@ -4181,7 +4186,7 @@ final class Node extends Latch {
 
                         if (newKeyLoc != 0) {
                             // ...and split key has been found.
-                            split = new Split(true, newNode);
+                            split = newSplitRight(newNode);
                             split.setKey(retrieveKeyAtLoc(page, entryLoc));
                             break moveEntries;
                         }
@@ -4379,6 +4384,22 @@ final class Node extends Latch {
         int mEntryLoc;    // location of key entry, referenced by search vector
     }
 
+    private Split newSplitLeft(Node newNode) {
+        Split split = new Split(false, newNode);
+        // New left node cannot be a high extremity, and this node cannot be a low extremity.
+        newNode.mType = (byte) (mType & ~HIGH_EXTREMITY);
+        mType &= ~LOW_EXTREMITY;
+        return split;
+    }
+
+    private Split newSplitRight(Node newNode) {
+        Split split = new Split(true, newNode);
+        // New right node cannot be a low extremity, and this node cannot be a high extremity.
+        newNode.mType = (byte) (mType & ~LOW_EXTREMITY);
+        mType &= ~HIGH_EXTREMITY;
+        return split;
+    }
+
     /**
      * Count the number of cursors bound to this node.
      */
@@ -4449,6 +4470,7 @@ final class Node extends Latch {
             ", cachedState=" + mCachedState +
             ", isSplit=" + (mSplit != null) +
             ", availableBytes=" + availableBytes() +
+            ", extremity=" + (mType & (LOW_EXTREMITY | HIGH_EXTREMITY)) +
             ", lockState=" + super.toString() +
             '}';
     }
