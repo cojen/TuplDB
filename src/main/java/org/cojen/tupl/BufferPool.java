@@ -21,11 +21,13 @@ package org.cojen.tupl;
  *
  * @author Brian S O'Neill
  */
-final class BufferPool {
+final class BufferPool extends Latch {
+    private final WaitQueue mQueue;
     private final byte[][] mPool;
     private int mPos;
 
     BufferPool(int pageSize, int poolSize) {
+        mQueue = new WaitQueue();
         byte[][] pool = new byte[poolSize][];
         for (int i=0; i<poolSize; i++) {
             pool[i] = new byte[pageSize];
@@ -37,26 +39,32 @@ final class BufferPool {
     /**
      * Remove a buffer from the pool, waiting for one to become available if necessary.
      */
-    synchronized byte[] remove() {
-        int pos;
-        while ((pos = mPos) == 0) {
-            try {
-                wait();
-            } catch (InterruptedException e) {
-                Thread.interrupted();
+    byte[] remove() {
+        acquireExclusive();
+        try {
+            int pos;
+            while ((pos = mPos) == 0) {
+                mQueue.await(this, new WaitQueue.Node(), -1, 0);
             }
+            return mPool[mPos = pos - 1];
+        } finally {
+            releaseExclusive();
         }
-        return mPool[mPos = pos - 1];
     }
 
     /**
      * Add a previously removed buffer back into the pool.
      */
-    synchronized void add(byte[] buffer) {
-        int pos = mPos;
-        mPool[pos] = buffer;
-        // Adjust pos after assignment to prevent harm if an array bounds exception was thrown.
-        mPos = pos + 1;
-        notify();
+    void add(byte[] buffer) {
+        acquireExclusive();
+        try {
+            int pos = mPos;
+            mPool[pos] = buffer;
+            // Adjust pos after assignment to prevent harm if an array bounds exception was thrown.
+            mPos = pos + 1;
+            mQueue.signal();
+        } finally {
+            releaseExclusive();
+        }
     }
 }
