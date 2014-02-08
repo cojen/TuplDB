@@ -49,6 +49,8 @@ public enum EventType {
 
     /** Generic warning message from the replication system. */
     REPLICATION_WARNING(Category.REPLICATION, Level.WARNING),
+    /** Unhandled in the replication system, and the database must be shutdown. */
+    REPLICATION_PANIC(Category.REPLICATION, Level.SEVERE),
 
     /** Signals the beginning of a checkpoint. */
     CHECKPOINT_BEGIN(Category.CHECKPOINT, Level.INFO),
