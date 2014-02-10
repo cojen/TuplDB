@@ -438,7 +438,7 @@ public final class Database implements CauseCloseable {
 
                 throw new OutOfMemoryError
                     ("Unable to allocate the minimum required number of cached nodes: " +
-                     minCache + " (" + (minCache * (pageSize + NODE_OVERHEAD)) + " bytes)");
+                     minCache + " (" + (minCache * (long) (pageSize + NODE_OVERHEAD)) + " bytes)");
             }
 
             if (mEventListener != null) {
