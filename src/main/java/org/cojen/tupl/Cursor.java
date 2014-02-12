@@ -306,10 +306,9 @@ public interface Cursor {
     public LockResult findLt(byte[] key) throws IOException;
 
     /**
-     * Optimized version of the regular find method, which can perform fewer
-     * search steps if the given key is in close proximity to the current
-     * one. Even if not in close proximity, the find behavior is still
-     * identicial, although it may perform more slowly.
+     * Optimized version of the regular find method, which can perform fewer search steps if
+     * the given key is in close proximity to the current one. Even if not in close proximity,
+     * the find outcome is identical, although it may perform more slowly.
      *
      * <p>Ownership of the key instance transfers to the Cursor, and it must
      * not be modified after calling this method.
