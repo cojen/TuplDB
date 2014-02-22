@@ -41,7 +41,7 @@ final class Node extends Latch {
       bits 7..4: major type   0010 (fragment), 0100 (undo log),
                               0110 (internal), 0111 (bottom internal), 1000 (leaf)
       bits 3..1: sub type     for leaf: x0x (normal)
-                              for internal: x0x (6 byte child pointers), x1x (8 byte pointers)
+                              for internal: x1x (6 byte child pointer + 2 byte count), x0x (unused)
                               for both: bit 1 is set if low extremity, bit 3 for high extremity
       bit  0:    endianness   0 (little), 1 (big)
 
@@ -1509,14 +1509,14 @@ final class Node extends Latch {
      * @param pos position as provided by binarySearch; must be positive
      */
     long retrieveChildRefId(int pos) {
-        return decodeLongLE(mPage, mSearchVecEnd + 2 + (pos << 2));
+        return decodeUnsignedInt48LE(mPage, mSearchVecEnd + 2 + (pos << 2));
     }
 
     /**
      * @param index index in child node array
      */
     long retrieveChildRefIdFromIndex(int index) {
-        return decodeLongLE(mPage, mSearchVecEnd + 2 + (index << 3));
+        return decodeUnsignedInt48LE(mPage, mSearchVecEnd + 2 + (index << 3));
     }
 
     /**
@@ -4515,7 +4515,7 @@ final class Node extends Latch {
             LHashTable.Int childIds = new LHashTable.Int(512);
 
             for (int i = childIdsStart; i < childIdsEnd; i += 8) {
-                long childId = decodeLongLE(page, i);
+                long childId = decodeUnsignedInt48LE(page, i);
                 if (childId < 0 || childId == 0 || childId == 1) {
                     return verifyFailed(level, observer, "Illegal child id: " + childId);
                 }
