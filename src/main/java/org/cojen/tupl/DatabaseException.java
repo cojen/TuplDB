@@ -64,4 +64,16 @@ public class DatabaseException extends IOException {
     TimeUnit getUnit() {
         return null;
     }
+
+    /**
+     * Rethrows if given a recoverable exception.
+     */
+    static void rethrowIfRecoverable(Throwable e) throws DatabaseException {
+        if (e instanceof DatabaseException) {
+            DatabaseException de = (DatabaseException) e;
+            if (de.isRecoverable()) {
+                throw de;
+            }
+        }
+    }
 }

@@ -786,9 +786,7 @@ public final class Database implements CauseCloseable {
 
             index = openIndex(name, false);
         } catch (Throwable e) {
-            if (e instanceof DatabaseException && ((DatabaseException) e).isRecoverable()) {
-                throw (DatabaseException) e;
-            }
+            DatabaseException.rethrowIfRecoverable(e);
             throw closeOnFailure(this, e);
         } finally {
             commitLock.unlock();
@@ -973,6 +971,7 @@ public final class Database implements CauseCloseable {
         } catch (IllegalStateException e) {
             throw e;
         } catch (Throwable e) {
+            DatabaseException.rethrowIfRecoverable(e);
             throw closeOnFailure(this, e);
         } finally {
             txn.reset();
@@ -1852,8 +1851,6 @@ public final class Database implements CauseCloseable {
             // or dropped concurrently.
 
             try {
-                deletePage(rootId, cachedState);
-
                 mRegistryKeyMap.remove(txn, idKey, tree.mName);
                 mRegistryKeyMap.remove(txn, nameKey, tree.mIdBytes);
                 mRegistry.delete(txn, tree.mIdBytes);
@@ -1862,7 +1859,10 @@ public final class Database implements CauseCloseable {
                     : redo.dropIndex(tree.mId, mDurabilityMode.alwaysRedo());
 
                 txn.commit();
+
+                deletePage(rootId, cachedState);
             } catch (Throwable e) {
+                DatabaseException.rethrowIfRecoverable(e);
                 throw closeOnFailure(this, e);
             } finally {
                 txn.reset();
@@ -2030,10 +2030,8 @@ public final class Database implements CauseCloseable {
                                 throw new DatabaseException("Unable to insert index id");
                             }
                         } catch (Throwable e) {
-                            if (!critical && e instanceof DatabaseException &&
-                                ((DatabaseException) e).isRecoverable())
-                            {
-                                throw (DatabaseException) e;
+                            if (!critical) {
+                                DatabaseException.rethrowIfRecoverable(e);
                             }
                             throw closeOnFailure(this, e);
                         }
