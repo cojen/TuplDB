@@ -135,7 +135,7 @@ final class ReplRedoWriter extends RedoWriter {
     synchronized void checkpointSwitch() {
         mCheckpointNum++;
         if (mIsLeader) {
-            mCheckpointPos = Math.max(0, mLeaderCommitPos);
+            mCheckpointPos = mLeaderCommitPos;
             mCheckpointTxnId = lastTransactionId();
         } else {
             mCheckpointPos = mEngine.mDecodePosition;
@@ -233,7 +233,7 @@ final class ReplRedoWriter extends RedoWriter {
     synchronized void leaderNotify() throws UnmodifiableReplicaException, IOException {
         if (!mIsLeader) {
             mManager.flip();
-            mLeaderCommitPos = 0;
+            mLeaderCommitPos = mManager.writePosition();
             mIsLeader = true;
 
             // Clear the log state and write a reset op to signal leader transition.
