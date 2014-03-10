@@ -321,6 +321,11 @@ final class RedoLog extends RedoWriter {
     }
 
     @Override
+    void checkpointAborted() {
+        // Nothing to do.
+    }
+
+    @Override
     void checkpointStarted() throws IOException {
         /* Forcing the old redo log increases I/O and slows down the checkpoint. If the
            checkpoint completes, then durable persistence of the old redo log file was

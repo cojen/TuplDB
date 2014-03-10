@@ -3599,6 +3599,9 @@ public final class Database implements CauseCloseable {
                     mCheckpointFlushState = CHECKPOINT_NOT_FLUSHING;
                     root.releaseShared();
                     mPageDb.exclusiveCommitLock().unlock();
+                    if (redo != null) {
+                        redo.checkpointAborted();
+                    }
                 }
                 throw e;
             }

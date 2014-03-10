@@ -159,6 +159,11 @@ final class ReplRedoWriter extends RedoWriter {
     }
 
     @Override
+    void checkpointAborted() {
+        mEngine.resume();
+    }
+
+    @Override
     void checkpointStarted() throws IOException {
         mEngine.resume();
 
