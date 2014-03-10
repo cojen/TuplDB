@@ -333,6 +333,12 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
     abstract long checkpointTransactionId() throws IOException;
 
     /**
+     * Called after checkpointPrepare and exclusive commit lock is released, but checkpoint is
+     * aborted due to an exception.
+     */
+    abstract void checkpointAborted();
+
+    /**
      * Called after exclusive commit lock is released. Dirty pages start flushing as soon as
      * this method returns.
      */
