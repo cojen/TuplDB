@@ -214,7 +214,7 @@ class FragmentedTrash {
      *
      * @return true if any trash was found
      */
-    boolean emptyAllTrash() throws IOException {
+    boolean emptyAllTrash(EventListener listener) throws IOException {
         boolean found = false;
         Database db = mTrash.mDatabase;
         final Lock sharedCommitLock = db.sharedCommitLock();
@@ -222,6 +222,10 @@ class FragmentedTrash {
         try {
             cursor.first();
             if (cursor.key() != null) {
+                if (listener != null) {
+                    listener.notify(EventType.RECOVERY_DELETE_FRAGMENTS,
+                                    "Deleting unused large fragments");
+                }
                 found = true;
                 do {
                     byte[] fragmented = cursor.value();

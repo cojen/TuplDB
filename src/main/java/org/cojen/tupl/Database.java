@@ -3402,15 +3402,8 @@ public final class Database implements CauseCloseable {
      */
     void emptyAllFragmentedTrash(boolean checkpoint) throws IOException {
         FragmentedTrash trash = mFragmentedTrash;
-        if (trash != null) {
-            if (mEventListener != null) {
-                mEventListener.notify(EventType.RECOVERY_DELETE_FRAGMENTS,
-                                      "Deleting unused large fragments");
-            }
-                
-            if (trash.emptyAllTrash() && checkpoint) {
-                checkpoint(false, 0, 0);
-            }
+        if (trash != null && trash.emptyAllTrash(mEventListener) && checkpoint) {
+            checkpoint(false, 0, 0);
         }
     }
 
