@@ -65,8 +65,8 @@ class ReplRedoEngine implements RedoVisitor {
     // preventing checkpoints.
     final Latch mOpLatch;
 
-    // Updated by ReplRedoDecoder with exclusive decode latch and shared op latch. Values can
-    // be read with op latch exclusively held, when engine is suspended.
+    // Updated with exclusive decode latch and shared op latch. Values can be read with op
+    // latch exclusively held, when engine is suspended.
     long mDecodePosition;
     long mDecodeTransactionId;
 
@@ -147,13 +147,19 @@ class ReplRedoEngine implements RedoVisitor {
     public void startReceiving(long initialTxnId) {
         mDecodeLatch.acquireExclusive();
         if (mDecoder == null) {
+            mOpLatch.acquireExclusive();
             try {
-                mDecoder = new ReplRedoDecoder(this, initialTxnId);
-            } catch (Throwable e) {
-                mDecodeLatch.releaseExclusive();
-                throw rethrow(e);
+                try {
+                    mDecoder = new ReplRedoDecoder(mManager, initialTxnId);
+                } catch (Throwable e) {
+                    mDecodeLatch.releaseExclusive();
+                    throw rethrow(e);
+                }
+                mDecodeTransactionId = initialTxnId;
+                nextTask();
+            } finally {
+                mOpLatch.releaseExclusive();
             }
-            nextTask();
         } else {
             mDecodeLatch.releaseExclusive();
         }
@@ -181,7 +187,7 @@ class ReplRedoEngine implements RedoVisitor {
         mDb.emptyAllFragmentedTrash(false);
 
         // Only release if no exception.
-        mOpLatch.releaseShared();
+        opFinished();
 
         // Return true and allow RedoDecoder to loop back.
         return true;
@@ -189,22 +195,22 @@ class ReplRedoEngine implements RedoVisitor {
 
     @Override
     public boolean timestamp(long timestamp) {
-        return true;
+        return nop();
     }
 
     @Override
     public boolean shutdown(long timestamp) {
-        return true;
+        return nop();
     }
 
     @Override
     public boolean close(long timestamp) {
-        return true;
+        return nop();
     }
 
     @Override
     public boolean endFile(long timestamp) {
-        return true;
+        return nop();
     }
 
     @Override
@@ -307,7 +313,7 @@ class ReplRedoEngine implements RedoVisitor {
         }
 
         // Only release if no exception.
-        mOpLatch.releaseShared();
+        opFinished();
 
         if (ix != null) {
             try {
@@ -342,7 +348,7 @@ class ReplRedoEngine implements RedoVisitor {
         }
 
         // Only release if no exception.
-        mOpLatch.releaseShared();
+        opFinished();
 
         if (ix != null) {
             try {
@@ -371,7 +377,7 @@ class ReplRedoEngine implements RedoVisitor {
             mTransactions.insert(scrambledTxnId).init(txn, selectLatch(scrambledTxnId));
 
             // Only release if no exception.
-            mOpLatch.releaseShared();
+            opFinished();
 
             return true;
         }
@@ -385,7 +391,7 @@ class ReplRedoEngine implements RedoVisitor {
         }
 
         // Only release if no exception.
-        mOpLatch.releaseShared();
+        opFinished();
 
         // Return true and allow RedoDecoder to loop back.
         return true;
@@ -421,6 +427,11 @@ class ReplRedoEngine implements RedoVisitor {
         mOpLatch.acquireShared();
 
         TxnEntry te = removeTxnEntry(txnId);
+
+        if (te == null) {
+            opFinished();
+            return true;
+        }
 
         Latch latch = te.latch();
         try {
@@ -462,7 +473,7 @@ class ReplRedoEngine implements RedoVisitor {
         }
 
         // Only release if no exception.
-        mOpLatch.releaseShared();
+        opFinished();
 
         // Return true and allow RedoDecoder to loop back.
         return true;
@@ -475,6 +486,11 @@ class ReplRedoEngine implements RedoVisitor {
 
         TxnEntry te = removeTxnEntry(txnId);
 
+        if (te == null) {
+            // TODO: Throw a better exception.
+            throw new CorruptDatabaseException("Transaction not found: " + txnId);
+        }
+
         Latch latch = te.latch();
         try {
             // Commit is expected to complete quickly, so don't let another
@@ -486,7 +502,7 @@ class ReplRedoEngine implements RedoVisitor {
         }
 
         // Only release if no exception.
-        mOpLatch.releaseShared();
+        opFinished();
 
         // Return true and allow RedoDecoder to loop back.
         return true;
@@ -581,14 +597,45 @@ class ReplRedoEngine implements RedoVisitor {
     }
 
     /**
+     * Called for an operation which is ignored.
+     */
+    private boolean nop() {
+        mOpLatch.acquireShared();
+        opFinished();
+        return true;
+    }
+
+    /**
+     * Called after an operation is finished which didn't spawn a task thread. Caller must hold
+     * shared op latch, which is released by this method. Decode latch must also be held, which
+     * caller must release.
+     */
+    private void opFinished() {
+        // Capture the position for the next operation. Also capture the last transaction id,
+        // before a delta is applied.
+        ReplRedoDecoder decoder = mDecoder;
+        mDecodePosition = decoder.in().mPos;
+        mDecodeTransactionId = decoder.mTxnId;
+
+        mOpLatch.releaseShared();
+    }
+
+    /**
      * Launch a task thread to continue processing more redo entries
      * concurrently. Caller must return false from the visitor method, to
      * prevent multiple threads from trying to decode the redo input stream. If
      * thread limit is reached, the remaining task threads continue working.
      *
-     * Caller must hold exclusive decode latch, which is released by this method.
+     * Caller must hold exclusive decode latch, which is released by this method. Shared op
+     * latch must also be held, which caller must release.
      */
     private void nextTask() {
+        // Capture the position for the next operation. Also capture the last transaction id,
+        // before a delta is applied.
+        ReplRedoDecoder decoder = mDecoder;
+        mDecodePosition = decoder.in().mPos;
+        mDecodeTransactionId = decoder.mTxnId;
+
         if (mIdleThreads.get() == 0) {
             int total = mTotalThreads.get();
             if (total < mMaxThreads && mTotalThreads.compareAndSet(total, total + 1)) {
@@ -627,24 +674,25 @@ class ReplRedoEngine implements RedoVisitor {
     private TxnEntry getTxnEntry(long txnId) throws IOException {
         long scrambledTxnId = scramble(txnId);
         TxnEntry e = mTransactions.get(scrambledTxnId);
+
         if (e == null) {
-            // TODO: Throw a better exception.
-            throw new DatabaseException("Transaction not found: " + txnId);
+            // Create transaction on demand if necessary. Startup transaction recovery only
+            // applies to those which generated undo log entries.
+            Transaction txn = new Transaction
+                (mDb, txnId, LockMode.UPGRADABLE_READ, INFINITE_TIMEOUT);
+            e = mTransactions.insert(scrambledTxnId);
+            e.init(txn, selectLatch(scrambledTxnId));
         }
+
         return e;
     }
 
     /**
-     * @return TxnEntry with scrambled transaction id
+     * @return TxnEntry with scrambled transaction id; null if not found
      */
     private TxnEntry removeTxnEntry(long txnId) throws IOException {
         long scrambledTxnId = scramble(txnId);
-        TxnEntry e = mTransactions.remove(scrambledTxnId);
-        if (e == null) {
-            // TODO: Throw a better exception.
-            throw new DatabaseException("Transaction not found: " + txnId);
-        }
-        return e;
+        return mTransactions.remove(scrambledTxnId);
     }
 
     /**
