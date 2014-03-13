@@ -33,6 +33,7 @@ final class ReplRedoWriter extends RedoWriter {
     private long mCheckpointTxnId;
 
     private long mLeaderCommitPos;
+    private long mLeaderCommitTxnId;
 
     private volatile boolean mIsLeader;
 
@@ -136,7 +137,7 @@ final class ReplRedoWriter extends RedoWriter {
         mCheckpointNum++;
         if (mIsLeader) {
             mCheckpointPos = mLeaderCommitPos;
-            mCheckpointTxnId = lastTransactionId();
+            mCheckpointTxnId = mLeaderCommitTxnId;
         } else {
             mCheckpointPos = mEngine.mDecodePosition;
             mCheckpointTxnId = mEngine.mDecodeTransactionId;
@@ -197,7 +198,9 @@ final class ReplRedoWriter extends RedoWriter {
         // Length check is included because super class can invoke this method to flush the
         // buffer even when empty. Operation should never fail.
         if (len > 0) {
-            return mLeaderCommitPos = mManager.writeCommit(buffer, 0, len);
+            long pos = mManager.writeCommit(buffer, 0, len);
+            mLeaderCommitPos = pos;
+            mLeaderCommitTxnId = lastTransactionId();
         }
         return 0;
     }
@@ -239,6 +242,7 @@ final class ReplRedoWriter extends RedoWriter {
         if (!mIsLeader) {
             mManager.flip();
             mLeaderCommitPos = mManager.writePosition();
+            mLeaderCommitTxnId = 0;
             mIsLeader = true;
 
             // Clear the log state and write a reset op to signal leader transition.
