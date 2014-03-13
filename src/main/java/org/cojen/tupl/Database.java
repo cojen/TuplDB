@@ -1106,6 +1106,7 @@ public final class Database implements CauseCloseable {
                     try {
                         checkpoint(true, 0, 0);
                     } catch (Throwable e) {
+                        DatabaseException.rethrowIfRecoverable(e);
                         closeQuietly(null, this, e);
                         throw rethrow(e);
                     }
@@ -1403,6 +1404,7 @@ public final class Database implements CauseCloseable {
             try {
                 checkpoint(false, 0, 0);
             } catch (Throwable e) {
+                DatabaseException.rethrowIfRecoverable(e);
                 closeQuietly(null, this, e);
                 throw rethrow(e);
             }

@@ -95,12 +95,17 @@ final class Checkpointer implements Runnable {
                 if (mSuspendCount.get() != 0) {
                     // Don't actually suspend the thread, allowing for weak reference checks.
                     lastDurationNanos = 0;
-                } else {
+                } else try {
                     long startNanos = System.nanoTime();
                     db.checkpoint(false, mSizeThreshold, mDelayThresholdNanos);
                     long endNanos = System.nanoTime();
 
                     lastDurationNanos = endNanos - startNanos;
+                } catch (DatabaseException e) {
+                    if (!e.isRecoverable()) {
+                        throw e;
+                    }
+                    lastDurationNanos = 0;
                 }
             }
         } catch (Throwable e) {
