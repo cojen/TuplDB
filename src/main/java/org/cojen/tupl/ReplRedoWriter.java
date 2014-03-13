@@ -199,8 +199,12 @@ final class ReplRedoWriter extends RedoWriter {
         // buffer even when empty. Operation should never fail.
         if (len > 0) {
             long pos = mManager.writeCommit(buffer, 0, len);
-            mLeaderCommitPos = pos;
-            mLeaderCommitTxnId = lastTransactionId();
+            if (pos >= 0) {
+                mLeaderCommitPos = pos;
+                mLeaderCommitTxnId = lastTransactionId();
+            } else {
+                throw unmodifiable();
+            }
         }
         return 0;
     }
