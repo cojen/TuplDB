@@ -18,6 +18,7 @@ package org.cojen.tupl;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InterruptedIOException;
@@ -337,20 +338,30 @@ public final class Database implements CauseCloseable {
         if (mBaseFile != null && !config.mReadOnly && config.mMkdirs) {
             FileFactory factory = config.mFileFactory;
 
+            final boolean baseDirectoriesCreated;
             File baseDir = mBaseFile.getParentFile();
             if (factory == null) {
-                baseDir.mkdirs();
+                baseDirectoriesCreated = baseDir.mkdirs();
             } else {
-                factory.createDirectories(baseDir);
+                baseDirectoriesCreated = factory.createDirectories(baseDir);
+            }
+
+            if (!baseDirectoriesCreated) {
+                throw new FileNotFoundException("Could not create directories " + baseDir);
             }
 
             if (dataFiles != null) {
                 for (File f : dataFiles) {
+                    final boolean dataDirectoriesCreated;
                     File dataDir = f.getParentFile();
                     if (factory == null) {
-                        dataDir.mkdirs();
+                        dataDirectoriesCreated = dataDir.mkdirs();
                     } else {
-                        factory.createDirectories(dataDir);
+                        dataDirectoriesCreated = factory.createDirectories(dataDir);
+                    }
+
+                    if (!dataDirectoriesCreated) {
+                        throw new FileNotFoundException("Could not create directories " + dataDir);
                     }
                 }
             }
