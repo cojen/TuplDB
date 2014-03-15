@@ -346,8 +346,8 @@ public final class Database implements CauseCloseable {
                 baseDirectoriesCreated = factory.createDirectories(baseDir);
             }
 
-            if (!baseDirectoriesCreated) {
-                throw new FileNotFoundException("Could not create directories " + baseDir);
+            if (!baseDirectoriesCreated && !baseDir.exists()) {
+                throw new FileNotFoundException("Could not create directory: " + baseDir);
             }
 
             if (dataFiles != null) {
@@ -360,8 +360,8 @@ public final class Database implements CauseCloseable {
                         dataDirectoriesCreated = factory.createDirectories(dataDir);
                     }
 
-                    if (!dataDirectoriesCreated) {
-                        throw new FileNotFoundException("Could not create directories " + dataDir);
+                    if (!dataDirectoriesCreated && !dataDir.exists()) {
+                        throw new FileNotFoundException("Could not create directory: " + dataDir);
                     }
                 }
             }
