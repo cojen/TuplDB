@@ -231,54 +231,6 @@ public interface View {
     public boolean remove(Transaction txn, byte[] key, byte[] value) throws IOException;
 
     /**
-     * Unconditionally associates a value over a range of keys. The order in
-     * which the range is scanned is determined by the order of the start and
-     * end keys. The range is scanned in forward order when the start key is
-     * less than the end key. When the end key is less then the start key, the
-     * range is scanned in reverse from the end to the start.
-     *
-     * @param txn optional transaction; pass null for auto-commit mode
-     * @param start key range start; pass null for open range
-     * @param startInclusive true if start key is included in the range
-     * @param end key range end; pass null for open range
-     * @param endInclusive true if end key is included in the range
-     * @param value value to store; pass null to delete
-     * @return number of entries scanned and modified
-     * @throws IllegalArgumentException if transaction belongs to another database instance
-     */
-    /*
-    public long rangeStore(Transaction txn,
-                           byte[] start, boolean startInclusive,
-                           byte[] end, boolean endInclusive,
-                           byte[] value)
-        throws IOException;
-    */
-
-    /**
-     * Removes all entries. If transaction is null, only entries which can be
-     * locked are removed, and each removal is automatically committed.
-     *
-     * @param txn optional transaction; pass null for auto-commit mode
-     */
-    //public void clear(Transaction txn) throws IOException;
-
-    /**
-     * Removes a range of entries. If transaction is null, only entries which
-     * can be locked are removed, and each removal is automatically committed.
-     *
-     * @param txn optional transaction; pass null for auto-commit mode
-     * @param start key range start; pass null for open range
-     * @param end key range end; pass null for open range
-     * @throws IllegalArgumentException if transaction belongs to another database instance
-     */
-    /*
-    public void clear(Transaction txn,
-                      byte[] start, boolean startInclusive,
-                      byte[] end, boolean endInclusive)
-        throws IOException;
-    */
-
-    /**
      * Returns an unopened stream for accessing values in this view.
      */
     public Stream newStream();
