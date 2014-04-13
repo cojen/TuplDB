@@ -1794,61 +1794,6 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     /**
-     * Called by Tree.clear method when using auto-commit transaction. Lock
-     * acquisition is lenient. If record cannot be locked, it is skipped.
-     */
-    /*
-    long clearTo(byte[] end, boolean inclusive) throws IOException {
-        byte[] key = mKey;
-        if (key == null) {
-            return 0;
-        }
-
-        final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
-        final long indexId = mTree.mId;
-        final Locker locker = mTree.mLockManager.localLocker();
-
-        long count = 0;
-
-        do {
-            int compare;
-            if (end == null) {
-                compare = -1;
-            } else {
-                compare = compareKeys(key, 0, key.length, end, 0, end.length);
-                if (compare > 0 || (compare == 0 && !inclusive)) {
-                    break;
-                }
-            }
-
-            sharedCommitLock.lock();
-            try {
-                if (locker.tryLockExclusive(indexId, key, keyHash(), 0).isHeld()) {
-                    try {
-                        store(null, leafExclusive(), null);
-                        count++;
-                    } finally {
-                        locker.unlock();
-                    }
-                }
-            } catch (Throwable e) {
-                throw handleException(e, false);
-            } finally {
-                sharedCommitLock.unlock();
-            }
-
-            if (compare >= 0) {
-                break;
-            }
-
-            next();
-        } while ((key = mKey) != null);
-
-        return count;
-    }
-    */
-
-    /**
      * Atomic find and store operation. Cursor is reset as a side-effect.
      *
      * @param key must not be null
