@@ -2703,7 +2703,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
             Node childNode = frame.acquireShared();
             long childId = childNode.mId;
 
-            if (childNode.numKeys() == 0 || parentNode.numKeys() == 0) {
+            if (!childNode.hasKeys() || !parentNode.hasKeys()) {
                 // Nodes can be empty before they're deleted.
                 childNode.releaseShared();
                 parentNode.releaseShared();
@@ -2978,7 +2978,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                 parentNode = finishSplit(parentFrame, parentNode);
             }
 
-            if (parentNode.numKeys() <= 0) {
+            if (!parentNode.hasKeys()) {
                 parentNode.releaseExclusive();
                 return;
             }
@@ -3104,7 +3104,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
     {
         up: {
             if (node.shouldInternalMerge()) {
-                if (node.numKeys() > 0 || node != mTree.mRoot) {
+                if (node.hasKeys() || node != mTree.mRoot) {
                     // Continue merging up the tree.
                     break up;
                 }
@@ -3163,7 +3163,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                 parentNode = finishSplit(parentFrame, parentNode);
             }
 
-            if (parentNode.numKeys() <= 0) {
+            if (!parentNode.hasKeys()) {
                 parentNode.releaseExclusive();
                 return;
             }
