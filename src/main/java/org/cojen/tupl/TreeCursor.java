@@ -1993,17 +1993,15 @@ final class TreeCursor implements CauseCloseable, Cursor {
                 try {
                     if (txn == null) {
                         commitPos = mTree.redoStore(key, null);
-                        node.deleteLeafEntry(mTree, pos);
                     } else if (txn.lockMode() != LockMode.UNSAFE) {
                         node.txnDeleteLeafEntry(txn, mTree, key, keyHash(), pos);
                         // Above operation leaves a ghost, so no cursors to fix.
                         break withCommitLock;
-                    } else {
-                        if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
-                            commitPos = mTree.redoStoreNoLock(key, null);
-                        }
-                        node.deleteLeafEntry(mTree, pos);
+                    } else if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
+                        commitPos = mTree.redoStoreNoLock(key, null);
                     }
+
+                    node.deleteLeafEntry(mTree, pos);
                 } catch (Throwable e) {
                     node.releaseExclusive();
                     throw rethrow(e);
