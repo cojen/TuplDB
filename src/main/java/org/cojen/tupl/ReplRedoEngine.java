@@ -76,6 +76,7 @@ class ReplRedoEngine implements RedoVisitor {
      */
     ReplRedoEngine(ReplicationManager manager, int maxThreads,
                    Database db, LHashTable.Obj<Transaction> txns)
+        throws IOException
     {
         if (maxThreads <= 0) {
             int procs = Runtime.getRuntime().availableProcessors();
@@ -118,13 +119,16 @@ class ReplRedoEngine implements RedoVisitor {
             txnTable = new TxnTable(txns.size());
 
             txns.traverse(new LHashTable.Visitor
-                          <LHashTable.ObjEntry<Transaction>, RuntimeException>()
+                          <LHashTable.ObjEntry<Transaction>, IOException>()
             {
-                public boolean visit(LHashTable.ObjEntry<Transaction> entry) {
+                public boolean visit(LHashTable.ObjEntry<Transaction> entry) throws IOException {
                     // Reduce hash collisions.
                     long scrambledTxnId = scramble(entry.key);
                     Latch latch = selectLatch(scrambledTxnId);
-                    txnTable.insert(scrambledTxnId).init(entry.value, latch);
+                    Transaction txn = entry.value;
+                    if (!txn.recoveryCleanup(false)) {
+                        txnTable.insert(scrambledTxnId).init(txn, latch);
+                    }
                     // Delete entry.
                     return true;
                 }
@@ -175,7 +179,7 @@ class ReplRedoEngine implements RedoVisitor {
             public boolean visit(TxnEntry entry) throws IOException {
                 Latch latch = entry.latch();
                 try {
-                    entry.mTxn.recoveryCleanup();
+                    entry.mTxn.recoveryCleanup(true);
                 } finally {
                     latch.releaseExclusive();
                 }
