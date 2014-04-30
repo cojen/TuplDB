@@ -584,7 +584,11 @@ public final class Transaction extends Locker {
         return super.lockExclusive(lock, mLockTimeoutNanos);
     }
 
-    final void recoveryCleanup() throws IOException {
+    /**
+     * @param resetAlways when false, only resets committed transactions
+     * @return true if was reset
+     */
+    final boolean recoveryCleanup(boolean resetAlways) throws IOException {
         UndoLog undo = mUndoLog;
         if (undo != null) {
             switch (undo.peek(true)) {
@@ -592,20 +596,26 @@ public final class Transaction extends Locker {
                 break;
 
             case UndoLog.OP_COMMIT:
-                // Transaction was actually committed, but redo log is
-                // gone. This can happen when a checkpoint completes in the
-                // middle of the transaction commit operation.
+                // Transaction was actually committed, but redo log is gone. This can happen
+                // when a checkpoint completes in the middle of the transaction commit
+                // operation. Method truncates undo log as a side-effect.
                 undo.deleteGhosts();
+                resetAlways = true;
                 break;
 
             case UndoLog.OP_COMMIT_TRUNCATE:
                 // Like OP_COMMIT, but ghosts have already been deleted.
                 undo.truncate(false);
+                resetAlways = true;
                 break;
             }
         }
 
-        reset();
+        if (resetAlways) {
+            reset();
+        }
+
+        return resetAlways;
     }
 
     /**

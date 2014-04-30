@@ -608,7 +608,7 @@ public final class Database implements CauseCloseable {
                             public boolean visit(LHashTable.ObjEntry<Transaction> entry)
                                 throws IOException
                             {
-                                entry.value.recoveryCleanup();
+                                entry.value.recoveryCleanup(true);
                                 return false;
                             }
                         });
