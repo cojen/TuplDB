@@ -25,7 +25,7 @@ class FragmentMap extends FragmentCache {
     private final IdHashTable<Node> mMap;
 
     FragmentMap() {
-        mMap = new IdHashTable<Node>(16);
+        mMap = new IdHashTable<>(16);
     }
 
     @Override

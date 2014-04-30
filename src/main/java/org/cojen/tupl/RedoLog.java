@@ -131,7 +131,7 @@ final class RedoLog extends RedoWriter {
         }
 
         try {
-            Set<File> files = new LinkedHashSet<File>(2);
+            Set<File> files = new LinkedHashSet<>(2);
 
             while (true) {
                 File file = fileFor(mBaseFile, mLogId);

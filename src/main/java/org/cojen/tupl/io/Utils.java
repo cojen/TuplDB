@@ -304,7 +304,7 @@ public class Utils {
         obtainThread: try {
             synchronized (Utils.class) {
                 if (cCloseThreads == null) {
-                    cCloseThreads = new HashMap<Closeable, Thread>(4);
+                    cCloseThreads = new HashMap<>(4);
                 } else {
                     closer = cCloseThreads.get(resource);
                     if (closer != null) {

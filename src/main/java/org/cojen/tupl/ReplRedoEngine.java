@@ -91,7 +91,7 @@ class ReplRedoEngine implements RedoVisitor {
 
         mWriter = new ReplRedoWriter(this);
 
-        mIndexes = new LHashTable.Obj<SoftReference<Index>>(16);
+        mIndexes = new LHashTable.Obj<>(16);
 
         mDecodeLatch = new Latch();
         mOpLatch = new Latch();
@@ -99,7 +99,7 @@ class ReplRedoEngine implements RedoVisitor {
         mMaxThreads = maxThreads;
         mTotalThreads = new AtomicInteger();
         mIdleThreads = new AtomicInteger();
-        mTaskThreadSet = new ConcurrentHashMap<DecodeTask, Object>(16, 0.75f, 1);
+        mTaskThreadSet = new ConcurrentHashMap<>(16, 0.75f, 1);
 
         int latchCount = roundUpPower2(maxThreads * 2);
         if (latchCount <= 0) {
@@ -157,7 +157,7 @@ class ReplRedoEngine implements RedoVisitor {
                     mDecoder = new ReplRedoDecoder(mManager, initialPosition, initialTxnId);
                 } catch (Throwable e) {
                     mDecodeLatch.releaseExclusive();
-                    throw rethrow(e);
+                    throw e;
                 }
                 mDecodeTransactionId = initialTxnId;
                 nextTask();
@@ -725,7 +725,7 @@ class ReplRedoEngine implements RedoVisitor {
             throw new DatabaseException("Index not found: " + indexId);
         }
 
-        SoftReference<Index> ref = new SoftReference<Index>(ix);
+        SoftReference<Index> ref = new SoftReference<>(ix);
         if (entry == null) {
             mIndexes.insert(indexId).value = ref;
         } else {

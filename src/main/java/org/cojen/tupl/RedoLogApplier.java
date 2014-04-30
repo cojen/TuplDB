@@ -34,7 +34,7 @@ class RedoLogApplier implements RedoVisitor {
     RedoLogApplier(Database db, LHashTable.Obj<Transaction> txns) {
         mDb = db;
         mTransactions = txns;
-        mIndexes = new LHashTable.Obj<Index>(16);
+        mIndexes = new LHashTable.Obj<>(16);
     }
 
     @Override

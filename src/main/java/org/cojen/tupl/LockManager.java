@@ -56,7 +56,7 @@ final class LockManager {
         }
         mHashTableShift = Integer.numberOfLeadingZeros(numHashTables - 1);
 
-        mLocalLockerRef = new ThreadLocal<WeakReference<Locker>>();
+        mLocalLockerRef = new ThreadLocal<>();
     }
 
     /**
@@ -182,7 +182,7 @@ final class LockManager {
         WeakReference<Locker> lockerRef = mLocalLockerRef.get();
         Locker locker;
         if (lockerRef == null || (locker = lockerRef.get()) == null) {
-            mLocalLockerRef.set(new WeakReference<Locker>(locker = new Locker(this)));
+            mLocalLockerRef.set(new WeakReference<>(locker = new Locker(this)));
         }
         return locker;
     }

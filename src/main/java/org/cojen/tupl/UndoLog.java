@@ -901,7 +901,7 @@ final class UndoLog {
 
         // Scopes are recovered in the opposite order in which they were
         // created. Gather them in a stack to reverse the order.
-        Deque<Scope> scopes = new ArrayDeque<Scope>();
+        Deque<Scope> scopes = new ArrayDeque<>();
         scopes.addFirst(scope);
 
         boolean acquireLocks = true;

@@ -42,7 +42,7 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
         }
 
         protected ObjEntry<V> newEntry() {
-            return new ObjEntry<V>();
+            return new ObjEntry<>();
         }
     }
 

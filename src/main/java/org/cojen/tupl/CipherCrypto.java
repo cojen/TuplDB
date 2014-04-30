@@ -46,8 +46,8 @@ public class CipherCrypto implements Crypto {
         System.out.println(toString(new CipherCrypto().secretKey()));
     }
 
-    private final ThreadLocal<Cipher> mHeaderPageCipher = new ThreadLocal<Cipher>();
-    private final ThreadLocal<Cipher> mDataPageCipher = new ThreadLocal<Cipher>();
+    private final ThreadLocal<Cipher> mHeaderPageCipher = new ThreadLocal<>();
+    private final ThreadLocal<Cipher> mDataPageCipher = new ThreadLocal<>();
     private final SecretKey mRootKey;
     private final boolean mIsNewKey;
 
