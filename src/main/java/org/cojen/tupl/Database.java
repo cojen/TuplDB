@@ -453,7 +453,7 @@ public final class Database implements CauseCloseable {
             }
 
             if (mEventListener != null) {
-                double duration = (System.nanoTime() - cacheInitStart) / 1000000000.0;
+                double duration = (System.nanoTime() - cacheInitStart) / 1_000_000_000.0;
                 mEventListener.notify(EventType.CACHE_INIT_COMPLETE,
                                       "Cache initialization completed in %1$1.3f seconds",
                                       duration, TimeUnit.SECONDS);
@@ -480,12 +480,12 @@ public final class Database implements CauseCloseable {
             mOpenTreesLatch = new Latch();
             if (openMode == OPEN_TEMP) {
                 mOpenTrees = Collections.emptyMap();
-                mOpenTreesById = new LHashTable.Obj<TreeRef>(0);
+                mOpenTreesById = new LHashTable.Obj<>(0);
                 mOpenTreesRefQueue = null;
             } else {
-                mOpenTrees = new TreeMap<byte[], TreeRef>(KeyComparator.THE);
-                mOpenTreesById = new LHashTable.Obj<TreeRef>(16);
-                mOpenTreesRefQueue = new ReferenceQueue<Tree>();
+                mOpenTrees = new TreeMap<>(KeyComparator.THE);
+                mOpenTreesById = new LHashTable.Obj<>(16);
+                mOpenTreesRefQueue = new ReferenceQueue<>();
             }
 
             synchronized (mTxnIdLock) {
@@ -537,7 +537,7 @@ public final class Database implements CauseCloseable {
                     recoveryStart = System.nanoTime();
                 }
 
-                LHashTable.Obj<Transaction> txns = new LHashTable.Obj<Transaction>(16);
+                LHashTable.Obj<Transaction> txns = new LHashTable.Obj<>(16);
                 {
                     long masterNodeId = decodeLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID);
                     if (masterNodeId != 0) {
@@ -684,7 +684,7 @@ public final class Database implements CauseCloseable {
 
     private void recoveryComplete(long recoveryStart) {
         if (mRedoWriter != null && mEventListener != null) {
-            double duration = (System.nanoTime() - recoveryStart) / 1000000000.0;
+            double duration = (System.nanoTime() - recoveryStart) / 1_000_000_000.0;
             mEventListener.notify(EventType.RECOVERY_COMPLETE,
                                   "Recovery completed in %1$1.3f seconds",
                                   duration, TimeUnit.SECONDS);
@@ -3626,7 +3626,7 @@ public final class Database implements CauseCloseable {
             }
 
             if (mEventListener != null) {
-                double duration = (System.nanoTime() - mLastCheckpointNanos) / 1000000000.0;
+                double duration = (System.nanoTime() - mLastCheckpointNanos) / 1_000_000_000.0;
                 mEventListener.notify(EventType.CHECKPOINT_BEGIN,
                                       "Checkpoint completed in %1$1.3f seconds",
                                       duration, TimeUnit.SECONDS);

@@ -50,11 +50,11 @@ final class Checkpointer implements Runnable {
         mDelayThresholdNanos = config.mCheckpointDelayThresholdNanos;
 
         if (mRateNanos < 0) {
-            mRefQueue = new ReferenceQueue<Database>();
-            mDatabaseRef = new WeakReference<Database>(db, mRefQueue);
+            mRefQueue = new ReferenceQueue<>();
+            mDatabaseRef = new WeakReference<>(db, mRefQueue);
         } else {
             mRefQueue = null;
-            mDatabaseRef = new WeakReference<Database>(db);
+            mDatabaseRef = new WeakReference<>(db);
         }
     }
 
@@ -149,7 +149,7 @@ final class Checkpointer implements Runnable {
                 }
 
                 if (mToShutdown == null) {
-                    mToShutdown = new ArrayList<Shutdown>(2);
+                    mToShutdown = new ArrayList<>(2);
                 }
 
                 mToShutdown.add(obj);
@@ -200,7 +200,7 @@ final class Checkpointer implements Runnable {
             if (mToShutdown == null) {
                 toShutdown = null;
             } else {
-                toShutdown = new ArrayList<Shutdown>(mToShutdown);
+                toShutdown = new ArrayList<>(mToShutdown);
                 mToShutdown = null;
             }
         }

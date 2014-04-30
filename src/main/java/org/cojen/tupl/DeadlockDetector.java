@@ -45,8 +45,8 @@ class DeadlockDetector {
 
     DeadlockDetector(Locker locker) {
         mOrigin = locker;
-        mLockers = new LinkedHashSet<Locker>();
-        mLocks = new LinkedHashSet<Lock>();
+        mLockers = new LinkedHashSet<>();
+        mLocks = new LinkedHashSet<>();
     }
 
     /**

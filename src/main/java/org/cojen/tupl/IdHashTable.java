@@ -36,7 +36,7 @@ class IdHashTable<V> {
     IdHashTable(int capacity, int segments) {
         segments = Utils.roundUpPower2(Math.max(2, segments));
         mInitalSegmentCapacity = capacity / segments;
-        mSegments = new AtomicReferenceArray<LHashTable.Obj<V>>(segments);
+        mSegments = new AtomicReferenceArray<>(segments);
         mSegmentShift = Long.numberOfLeadingZeros(segments - 1);
     }
 
@@ -59,7 +59,7 @@ class IdHashTable<V> {
 
         LHashTable.Obj<V> segment = mSegments.get(i);
         while (segment == null) {
-            segment = new LHashTable.Obj<V>(mInitalSegmentCapacity);
+            segment = new LHashTable.Obj<>(mInitalSegmentCapacity);
             if (mSegments.compareAndSet(i, null, segment)) {
                 break;
             }

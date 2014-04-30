@@ -58,7 +58,7 @@ class TempFileManager implements CauseCloseable, Checkpointer.Shutdown {
                 }
                 file = new File(mBaseFile.getPath() + ".temp." + (mCount++));
                 if (mFiles == null) {
-                    mFiles = new HashMap<File, CauseCloseable>(4);
+                    mFiles = new HashMap<>(4);
                 }
                 if (mFiles.containsKey(file)) {
                     continue;
@@ -124,7 +124,7 @@ class TempFileManager implements CauseCloseable, Checkpointer.Shutdown {
             if (mFiles == null) {
                 files = null;
             } else {
-                files = new HashMap<File, CauseCloseable>(mFiles);
+                files = new HashMap<>(mFiles);
                 mFiles = null;
             }
         }
