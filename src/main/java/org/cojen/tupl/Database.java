@@ -645,7 +645,7 @@ public final class Database implements CauseCloseable {
             }
         } catch (Throwable e) {
             closeQuietly(null, this, e);
-            throw rethrow(e);
+            throw e;
         }
     }
 
@@ -673,7 +673,7 @@ public final class Database implements CauseCloseable {
                 writer.recover(config.mReplInitialTxnId, config.mEventListener);
             } catch (Throwable e) {
                 closeQuietly(null, this, e);
-                throw rethrow(e);
+                throw e;
             }
             checkpoint();
             recoveryComplete(config.mReplRecoveryStartNanos);
@@ -937,7 +937,7 @@ public final class Database implements CauseCloseable {
                 }
             } catch (Throwable e) {
                 txn.reset();
-                throw rethrow(e);
+                throw e;
             }
         } finally {
             // Can release now that registry entries are locked. Those locks will prevent
@@ -1119,7 +1119,7 @@ public final class Database implements CauseCloseable {
                     } catch (Throwable e) {
                         DatabaseException.rethrowIfRecoverable(e);
                         closeQuietly(null, this, e);
-                        throw rethrow(e);
+                        throw e;
                     }
                 }
                 return pageCount * pageSize;
@@ -1417,7 +1417,7 @@ public final class Database implements CauseCloseable {
             } catch (Throwable e) {
                 DatabaseException.rethrowIfRecoverable(e);
                 closeQuietly(null, this, e);
-                throw rethrow(e);
+                throw e;
             }
         }
     }
@@ -1854,7 +1854,7 @@ public final class Database implements CauseCloseable {
                     mOpenTreesById.remove(tree.mId);
                 } catch (Throwable e) {
                     txn.reset();
-                    throw rethrow(e);
+                    throw e;
                 }
             } finally {
                 mOpenTreesLatch.releaseExclusive();
@@ -2093,7 +2093,7 @@ public final class Database implements CauseCloseable {
                         // Ignore.
                     }
                 }
-                throw rethrow(e);
+                throw e;
             } finally {
                 txn.reset();
             }
@@ -2197,7 +2197,7 @@ public final class Database implements CauseCloseable {
             }
         } catch (Exception e) {
             if (!mClosed) {
-                throw rethrow(e);
+                throw e;
             }
         }
     }
@@ -2386,7 +2386,7 @@ public final class Database implements CauseCloseable {
                             }
                         } catch (Throwable e) {
                             usageLatch.releaseExclusive();
-                            throw rethrow(e);
+                            throw e;
                         }
                     }
                 } while (--max > 0);
@@ -2676,7 +2676,7 @@ public final class Database implements CauseCloseable {
                 node.write(mPageDb);
             } catch (Throwable e) {
                 node.releaseExclusive();
-                throw rethrow(e);
+                throw e;
             }
         }
     }
@@ -3063,7 +3063,7 @@ public final class Database implements CauseCloseable {
             } catch (Throwable e) {
                 // Panic.
                 close(e);
-                throw rethrow(e);
+                throw e;
             }
 
             mFragmentCache.put(caller, inode);

@@ -336,7 +336,7 @@ final class PageManager {
             } catch (Throwable e2) {
                 // Ignore.
             }
-            throw Utils.rethrow(e);
+            throw e;
         }
 
         mRemoveLock.lock();

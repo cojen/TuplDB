@@ -650,7 +650,7 @@ class ReplRedoEngine implements RedoVisitor {
                 } catch (Throwable e) {
                     mDecodeLatch.releaseExclusive();
                     mTotalThreads.decrementAndGet();
-                    throw rethrow(e);
+                    throw e;
                 }
                 mTaskThreadSet.put(task, this);
             }

@@ -1330,7 +1330,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                             return result;
                         } catch (Throwable e) {
                             mValue = NOT_LOADED;
-                            throw rethrow(e);
+                            throw e;
                         }
                     }
                 } finally {
@@ -1478,7 +1478,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                         } catch (Throwable e) {
                             mValue = NOT_LOADED;
                             node.releaseExclusive();
-                            throw rethrow(e);
+                            throw e;
                         }
                         if (variant < VARIANT_NO_LOCK) {
                             node.releaseExclusive();
@@ -1670,7 +1670,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                         } catch (Throwable e) {
                             mValue = NOT_LOADED;
                             node.releaseExclusive();
-                            throw rethrow(e);
+                            throw e;
                         }
                         node.releaseExclusive();
                     }
@@ -2004,7 +2004,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                     node.deleteLeafEntry(mTree, pos);
                 } catch (Throwable e) {
                     node.releaseExclusive();
-                    throw rethrow(e);
+                    throw e;
                 }
 
                 int newPos = ~pos;
@@ -2067,7 +2067,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                         node.updateLeafValue(mTree, pos, 0, value);
                     } catch (Throwable e) {
                         node.releaseExclusive();
-                        throw rethrow(e);
+                        throw e;
                     }
 
                     if (node.shouldLeafMerge()) {
@@ -2101,7 +2101,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                         node.insertLeafEntry(mTree, ~pos, key, encodedKeyLen, value);
                     } catch (Throwable e) {
                         node.releaseExclusive();
-                        throw rethrow(e);
+                        throw e;
                     }
 
                     // Releases latch if an exception is thrown.
@@ -2214,7 +2214,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                     node.updateLeafValue(mTree, pos, Node.VALUE_FRAGMENTED, value);
                 } catch (Throwable e) {
                     node.releaseExclusive();
-                    rethrow(e);
+                    throw e;
                 }
 
                 if (node.mSplit != null) {
@@ -2228,7 +2228,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                     node.insertFragmentedLeafEntry(mTree, ~pos, key, encodedKeyLen, value);
                 } catch (Throwable e) {
                     node.releaseExclusive();
-                    rethrow(e);
+                    throw e;
                 }
                     
                 // Releases latch if an exception is thrown.
@@ -2264,7 +2264,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
             node.insertBlankLeafEntry(mTree, ~leaf.mNodePos, key, encodedKeyLen, vlength);
         } catch (Throwable e) {
             node.releaseExclusive();
-            throw rethrow(e);
+            throw e;
         }
         // Releases latch if an exception is thrown.
         return postInsert(leaf, node, key);
@@ -2911,7 +2911,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                 return node;
             } catch (Throwable e) {
                 node.releaseExclusive();
-                throw rethrow(e);
+                throw e;
             }
         }
 
@@ -2949,7 +2949,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
             return node;
         } catch (Throwable e) {
             node.releaseExclusive();
-            throw rethrow(e);
+            throw e;
         } finally {
             parentNode.releaseExclusive();
         }
@@ -3016,7 +3016,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                         leftNode.releaseExclusive();
                     }
                     node.releaseExclusive();
-                    throw rethrow(e);
+                    throw e;
                 }
 
                 if (rightNode.mSplit != null) {
@@ -3076,7 +3076,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                 leftNode.releaseExclusive();
                 rightNode.releaseExclusive();
                 parentNode.releaseExclusive();
-                throw rethrow(e);
+                throw e;
             }
 
             try {
@@ -3084,7 +3084,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
             } catch (Throwable e) {
                 leftNode.releaseExclusive();
                 parentNode.releaseExclusive();
-                throw rethrow(e);
+                throw e;
             }
             rightNode = null;
             parentNode.deleteChildRef(leftPos + 2);
@@ -3121,7 +3121,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                     }
                     leftChildNode.releaseExclusive();
                     node.releaseExclusive();
-                    throw rethrow(e);
+                    throw e;
                 }
             }
 
@@ -3201,7 +3201,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                         leftNode.releaseExclusive();
                     }
                     node.releaseExclusive();
-                    throw rethrow(e);
+                    throw e;
                 }
 
                 if (rightNode.mSplit != null) {
@@ -3266,7 +3266,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                 leftNode.releaseExclusive();
                 rightNode.releaseExclusive();
                 parentNode.releaseExclusive();
-                throw rethrow(e);
+                throw e;
             }
 
             try {
@@ -3275,7 +3275,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
             } catch (Throwable e) {
                 leftNode.releaseExclusive();
                 parentNode.releaseExclusive();
-                throw rethrow(e);
+                throw e;
             }
             rightNode = null;
             parentNode.deleteChildRef(leftPos + 2);
@@ -3327,7 +3327,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
                 return frame.acquireExclusive();
             } catch (Throwable e) {
                 node.releaseExclusive();
-                throw rethrow(e);
+                throw e;
             }
         }
 
