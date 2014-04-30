@@ -333,7 +333,7 @@ final class Tree implements Index {
             cursor.reset();
         } catch (Throwable e) {
             observer.failed = true;
-            throw rethrow(e);
+            throw e;
         }
         return true;
     }

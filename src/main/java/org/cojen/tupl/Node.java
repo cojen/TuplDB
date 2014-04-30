@@ -514,7 +514,7 @@ final class Node extends Latch {
             mChildNodes[childPos >> 1] = childNode;
         } catch (Throwable e) {
             releaseExclusive();
-            throw rethrow(e);
+            throw e;
         }
 
         // Release parent latch before child has been loaded. Any threads
@@ -544,7 +544,7 @@ final class Node extends Latch {
                 releaseExclusive();
             }
 
-            throw rethrow(e);
+            throw e;
         }
 
         return childNode;
@@ -875,7 +875,7 @@ final class Node extends Latch {
                 mCachedState = CACHED_CLEAN;
             } catch (Throwable e) {
                 releaseExclusive();
-                throw rethrow(e);
+                throw e;
             }
         }
 
@@ -2191,7 +2191,7 @@ final class Node extends Latch {
             splitChild.releaseExclusive();
             newChild.releaseExclusive();
             releaseExclusive();
-            throw rethrow(e);
+            throw e;
         }
         
         splitChild.releaseExclusive();
@@ -2202,7 +2202,7 @@ final class Node extends Latch {
             tree.mDatabase.makeEvictable(newChild);
         } catch (Throwable e) {
             releaseExclusive();
-            throw rethrow(e);
+            throw e;
         }
     }
 
@@ -2825,7 +2825,7 @@ final class Node extends Latch {
             return sibling;
         } catch (Throwable e) {
             sibling.releaseExclusive();
-            throw rethrow(e);
+            throw e;
         }
     }
 

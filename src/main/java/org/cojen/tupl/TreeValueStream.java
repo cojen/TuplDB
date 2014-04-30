@@ -60,7 +60,7 @@ final class TreeValueStream extends AbstractStream {
             return cursor.find(key);
         } catch (Throwable e) {
             mCursor.reset();
-            throw rethrow(e);
+            throw e;
         }
     }
 
@@ -839,7 +839,7 @@ final class TreeValueStream extends AbstractStream {
                                         }
                                     } catch (Throwable e) {
                                         childNode.releaseExclusive();
-                                        throw rethrow(e);
+                                        throw e;
                                     }
                                 }
                             }
@@ -869,7 +869,7 @@ final class TreeValueStream extends AbstractStream {
             } catch (Throwable e) {
                 // Panic.
                 mDb.close(e);
-                throw rethrow(e);
+                throw e;
             }
 
             fc.put(caller, inode);
