@@ -144,13 +144,13 @@ class ReplRedoEngine implements RedoVisitor {
         return mWriter;
     }
 
-    public void startReceiving(long initialTxnId) {
+    public void startReceiving(long initialPosition, long initialTxnId) {
         mDecodeLatch.acquireExclusive();
         if (mDecoder == null) {
             mOpLatch.acquireExclusive();
             try {
                 try {
-                    mDecoder = new ReplRedoDecoder(mManager, initialTxnId);
+                    mDecoder = new ReplRedoDecoder(mManager, initialPosition, initialTxnId);
                 } catch (Throwable e) {
                     mDecodeLatch.releaseExclusive();
                     throw rethrow(e);
@@ -175,7 +175,7 @@ class ReplRedoEngine implements RedoVisitor {
             public boolean visit(TxnEntry entry) throws IOException {
                 Latch latch = entry.latch();
                 try {
-                    entry.mTxn.reset();
+                    entry.mTxn.recoveryCleanup();
                 } finally {
                     latch.releaseExclusive();
                 }
