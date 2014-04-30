@@ -48,7 +48,7 @@ final class ReplRedoWriter extends RedoWriter {
     }
 
     public void recover(long initialTxnId, EventListener listener) throws IOException {
-        mEngine.startReceiving(initialTxnId);
+        mEngine.startReceiving(mManager.readPosition(), initialTxnId);
         mManager.recover(listener);
     }
 
@@ -202,6 +202,7 @@ final class ReplRedoWriter extends RedoWriter {
             if (pos >= 0) {
                 mLeaderCommitPos = pos;
                 mLeaderCommitTxnId = lastTransactionId();
+                return pos;
             } else {
                 throw unmodifiable();
             }
@@ -262,17 +263,19 @@ final class ReplRedoWriter extends RedoWriter {
         }
     }
 
-    private synchronized UnmodifiableReplicaException unmodifiable() {
+    private synchronized UnmodifiableReplicaException unmodifiable() throws IOException {
         if (mIsLeader) {
             mManager.flip();
             mIsLeader = false;
+
+            final long initialPosition = mManager.readPosition();
 
             // Invoke from a separate thread, avoiding deadlock during the transition.
             new Thread() {
                 public void run() {
                     // Start receiving if not, but does nothing if already receiving. A reset
                     // op is expected, and so the initial transaction id can be zero.
-                    mEngine.startReceiving(0);
+                    mEngine.startReceiving(initialPosition, 0);
                 }
             }.start();
         }

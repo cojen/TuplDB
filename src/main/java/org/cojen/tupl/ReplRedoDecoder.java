@@ -27,9 +27,9 @@ import java.io.IOException;
 final class ReplRedoDecoder extends RedoDecoder {
     private final In mIn;
 
-    ReplRedoDecoder(ReplicationManager manager, long initialTxnId) {
+    ReplRedoDecoder(ReplicationManager manager, long initialPosition, long initialTxnId) {
         super(false, initialTxnId);
-        mIn = new In(manager);
+        mIn = new In(initialPosition, manager);
     }
 
     @Override
@@ -46,12 +46,12 @@ final class ReplRedoDecoder extends RedoDecoder {
     static final class In extends DataIn {
         private final ReplicationManager mManager;
 
-        In(ReplicationManager manager) {
-            this(manager, 4096);
+        In(long position, ReplicationManager manager) {
+            this(position, manager, 4096);
         }
 
-        In(ReplicationManager manager, int bufferSize) {
-            super(manager.readPosition(), bufferSize);
+        In(long position, ReplicationManager manager, int bufferSize) {
+            super(position, bufferSize);
             mManager = manager;
         }
 
