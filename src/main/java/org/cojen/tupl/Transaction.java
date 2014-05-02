@@ -84,45 +84,6 @@ public final class Transaction extends Locker {
     // Is an exception if transaction is borked, BOGUS if bogus.
     private Object mBorked;
 
-    // TODO: Define autoCommit(boolean) method.
-
-    // TODO: Add terminate method which can be called by any thread.
-    // Transaction is borked as a result, and the field needs to be volatile to
-    // signal the terminate action. Rollback is performed by the original
-    // thread, to avoid any other race conditions. If transaction is waiting
-    // for a lock, it's possible to wake up all threads in the wait queue, but
-    // which thread is the correct one? A bogus signal can be injected into all
-    // of them, and all threads need to check the lock state again anyhow. If
-    // the mWaitingFor field was cleared, this indicates that transaction was
-    // terminated. Define a new LockResult code: TERMINATED
-
-    /*
-      - Exclusive commit lock. Prevents undos.
-      - Latch all LockManager LockHT instances.
-      - Switch lock mode to no higher than REPEATABLE_READ.
-      - Lock RedoWriter.
-      - If mWaitingFor is not null, clear and signal all threads in Lock's WaitQueues.
-      - Transfer all transaction state to terminator's Transaction.
-      - Original transaction is borked.
-      - Release all latches.
-      - Reset terminator's Transaction.
-    */
-
-    /*
-      How to terminate all transactions:
-
-      - Deactivate RedoWriter.
-      - Fully latch LockManager.
-      - Deactivate LockManager???
-      - For each Lock...
-      - Examine WaitQueues. Clear mWaitingFor for all Lockers in the queues and
-        wake up the waiting threads.
-      - Lock implementation must check mWaitingFor again after waking up. If
-        null, throw LockTerminatedException.
-      - For each Locker found which is a Transaction, 
-
-    */
-
     Transaction(Database db, DurabilityMode durabilityMode, LockMode lockMode, long timeoutNanos) {
         super(db.mLockManager);
         mDatabase = db;
