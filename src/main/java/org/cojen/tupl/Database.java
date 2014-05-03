@@ -44,6 +44,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static java.lang.System.arraycopy;
 
@@ -218,7 +219,9 @@ public final class Database implements CauseCloseable {
     private UndoLog mTopUndoLog;
     private int mUndoLogCount;
 
-    private final Object mCheckpointLock = new Object();
+    // Checkpoint lock is fair, to ensure that user checkpoint requests are not stalled for too
+    // long by checkpoint thread.
+    private final Lock mCheckpointLock = new ReentrantLock(true);
 
     private long mLastCheckpointNanos;
 
@@ -1487,7 +1490,8 @@ public final class Database implements CauseCloseable {
         }
 
         long targetPageCount;
-        synchronized (mCheckpointLock) {
+        mCheckpointLock.lock();
+        try {
             PageDb.Stats stats = mPageDb.stats();
             long usedPages = stats.totalPages - stats.freePages;
             targetPageCount = Math.max(usedPages, (long) (usedPages / target));
@@ -1521,11 +1525,16 @@ public final class Database implements CauseCloseable {
             if (!mPageDb.compactionStart(targetPageCount)) {
                 return false;
             }
+        } finally {
+            mCheckpointLock.unlock();
         }
 
         if (!mPageDb.compactionScanFreeList()) {
-            synchronized (mCheckpointLock) {
+            mCheckpointLock.lock();
+            try {
                 mPageDb.compactionEnd();
+            } finally {
+                mCheckpointLock.unlock();
             }
             return false;
         }
@@ -1556,7 +1565,8 @@ public final class Database implements CauseCloseable {
             }
         }
 
-        synchronized (mCheckpointLock) {
+        mCheckpointLock.lock();
+        try {
             completed &= mPageDb.compactionEnd();
 
             // If completed, then this allows file to shrink. Otherwise, it allows reclaimed
@@ -1567,6 +1577,8 @@ public final class Database implements CauseCloseable {
                 // And now, attempt to actually shrink the file.
                 return mPageDb.truncatePages();
             }
+        } finally {
+            mCheckpointLock.unlock();
         }
 
         return false;
@@ -1706,25 +1718,27 @@ public final class Database implements CauseCloseable {
         Checkpointer c = mCheckpointer;
 
         if (shutdown) {
-            synchronized (mCheckpointLock) {
+            mCheckpointLock.lock();
+            try {
                 checkpoint(true, 0, 0);
                 mClosed = true;
                 if (c != null) {
                     c.close();
                 }
+            } finally {
+                mCheckpointLock.unlock();
             }
         } else {
             mClosed = true;
             if (c != null) {
                 c.close();
             }
-            // Synchronize to wait for any in-progress checkpoint to complete.
-            synchronized (mCheckpointLock) {
-                // Nothing really needs to be done in the synchronized block, but
-                // do something just in case a "smart" compiler thinks an empty
-                // synchronized block can be eliminated.
-                mClosed = true;
-            }
+            // Wait for any in-progress checkpoint to complete.
+            mCheckpointLock.lock();
+            // Nothing really needs to be done with lock held, but do something just in
+            // case a "smart" compiler thinks the lock can be eliminated.
+            mClosed = true;
+            mCheckpointLock.unlock();
         }
 
         mCheckpointer = null;
@@ -3493,7 +3507,8 @@ public final class Database implements CauseCloseable {
         throws IOException
     {
         // Checkpoint lock ensures consistent state between page store and logs.
-        synchronized (mCheckpointLock) {
+        mCheckpointLock.lock();
+        try {
             if (mClosed) {
                 return;
             }
@@ -3645,6 +3660,8 @@ public final class Database implements CauseCloseable {
                                       "Checkpoint completed in %1$1.3f seconds",
                                       duration, TimeUnit.SECONDS);
             }
+        } finally {
+            mCheckpointLock.unlock();
         }
     }
 
