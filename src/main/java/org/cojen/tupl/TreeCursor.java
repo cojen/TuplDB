@@ -32,7 +32,7 @@ import static org.cojen.tupl.Utils.*;
  *
  * @author Brian S O'Neill
  */
-final class TreeCursor implements CauseCloseable, Cursor {
+class TreeCursor implements CauseCloseable, Cursor {
     // Sign is important because values are passed to Node.retrieveKeyCmp
     // method. Bit 0 is set for inclusive variants and clear for exclusive.
     private static final int LIMIT_LE = 1, LIMIT_LT = 2, LIMIT_GE = -1, LIMIT_GT = -2;
@@ -62,12 +62,12 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     @Override
-    public Ordering getOrdering() {
+    public final Ordering getOrdering() {
         return Ordering.ASCENDING;
     }
 
     @Override
-    public Transaction link(Transaction txn) {
+    public final Transaction link(Transaction txn) {
         mTree.check(txn);
         Transaction old = mTxn;
         mTxn = txn;
@@ -75,35 +75,35 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     @Override
-    public byte[] key() {
+    public final byte[] key() {
         return mKey;
     }
 
     @Override
-    public byte[] value() {
+    public final byte[] value() {
         return mValue;
     }
 
     @Override
-    public boolean autoload(boolean mode) {
+    public final boolean autoload(boolean mode) {
         boolean old = mKeyOnly;
         mKeyOnly = !mode;
         return !old;
     }
 
     @Override
-    public int compareKeyTo(byte[] rkey) {
+    public final int compareKeyTo(byte[] rkey) {
         byte[] lkey = mKey;
         return compareKeys(lkey, 0, lkey.length, rkey, 0, rkey.length);
     }
 
     @Override
-    public int compareKeyTo(byte[] rkey, int offset, int length) {
+    public final int compareKeyTo(byte[] rkey, int offset, int length) {
         byte[] lkey = mKey;
         return compareKeys(lkey, 0, lkey.length, rkey, offset, length);
     }
 
-    private int keyHash() {
+    protected final int keyHash() {
         int hash = mKeyHash;
         if (hash == 0) {
             mKeyHash = hash = LockManager.hash(mTree.mId, mKey);
@@ -112,7 +112,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     @Override
-    public LockResult first() throws IOException {
+    public final LockResult first() throws IOException {
         Node root = mTree.mRoot;
         TreeCursorFrame frame = reset(root);
 
@@ -167,7 +167,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     @Override
-    public LockResult last() throws IOException {
+    public final LockResult last() throws IOException {
         Node root = mTree.mRoot;
         TreeCursorFrame frame = reset(root);
 
@@ -235,7 +235,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     @Override
-    public LockResult skip(long amount) throws IOException {
+    public final LockResult skip(long amount) throws IOException {
         if (amount == 0) {
             Transaction txn = mTxn;
             if (txn != null && txn != Transaction.BOGUS) {
@@ -266,17 +266,17 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     @Override
-    public LockResult next() throws IOException {
+    public final LockResult next() throws IOException {
         return next(mTxn, leafExclusiveNotSplit());
     }
 
     @Override
-    public LockResult nextLe(byte[] limitKey) throws IOException {
+    public final LockResult nextLe(byte[] limitKey) throws IOException {
         return nextCmp(limitKey, LIMIT_LE);
     }
 
     @Override
-    public LockResult nextLt(byte[] limitKey) throws IOException {
+    public final LockResult nextLt(byte[] limitKey) throws IOException {
         return nextCmp(limitKey, LIMIT_LT);
     }
 
@@ -611,17 +611,17 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     @Override
-    public LockResult previous() throws IOException {
+    public final LockResult previous() throws IOException {
         return previous(mTxn, leafExclusiveNotSplit());
     }
 
     @Override
-    public LockResult previousGe(byte[] limitKey) throws IOException {
+    public final LockResult previousGe(byte[] limitKey) throws IOException {
         return previousCmp(limitKey, LIMIT_GE);
     }
 
     @Override
-    public LockResult previousGt(byte[] limitKey) throws IOException {
+    public final LockResult previousGt(byte[] limitKey) throws IOException {
         return previousCmp(limitKey, LIMIT_GT);
     }
 
@@ -1242,12 +1242,12 @@ final class TreeCursor implements CauseCloseable, Cursor {
         VARIANT_CHECK   = 3; // retain node latch always, don't lock entry, don't load entry
 
     @Override
-    public LockResult find(byte[] key) throws IOException {
+    public final LockResult find(byte[] key) throws IOException {
         return find(prepareFind(key), key, VARIANT_REGULAR);
     }
 
     @Override
-    public LockResult findGe(byte[] key) throws IOException {
+    public final LockResult findGe(byte[] key) throws IOException {
         // If isolation level is read committed, then key must be
         // locked. Otherwise, an uncommitted delete could be observed.
         Transaction txn = prepareFind(key);
@@ -1263,14 +1263,14 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     @Override
-    public LockResult findGt(byte[] key) throws IOException {
+    public final LockResult findGt(byte[] key) throws IOException {
         // Never lock the requested key.
         findNoLock(key, VARIANT_CHECK);
         return next(mTxn, mLeaf);
     }
 
     @Override
-    public LockResult findLe(byte[] key) throws IOException {
+    public final LockResult findLe(byte[] key) throws IOException {
         // If isolation level is read committed, then key must be
         // locked. Otherwise, an uncommitted delete could be observed.
         Transaction txn = prepareFind(key);
@@ -1286,14 +1286,14 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     @Override
-    public LockResult findLt(byte[] key) throws IOException {
+    public final LockResult findLt(byte[] key) throws IOException {
         // Never lock the requested key.
         findNoLock(key, VARIANT_CHECK);
         return previous(mTxn, mLeaf);
     }
 
     @Override
-    public LockResult findNearby(byte[] key) throws IOException {
+    public final LockResult findNearby(byte[] key) throws IOException {
         Transaction txn = prepareFind(key);
 
         Node node;
@@ -1578,7 +1578,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     @Override
-    public LockResult random(byte[] lowKey, byte[] highKey) throws IOException {
+    public final LockResult random(byte[] lowKey, byte[] highKey) throws IOException {
         Random rnd = Utils.random();
 
         start: while (true) {
@@ -1704,7 +1704,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     @Override
-    public LockResult load() throws IOException {
+    public final LockResult load() throws IOException {
         // This will always acquire a lock if required to. A try-lock pattern
         // can skip the lock acquisition in certain cases, but the optimization
         // doesn't seem worth the trouble.
@@ -1798,7 +1798,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
      *
      * @param key must not be null
      */
-    byte[] findAndStore(byte[] key, byte[] value) throws IOException {
+    final byte[] findAndStore(byte[] key, byte[] value) throws IOException {
         try {
             final Transaction txn = mTxn;
             final int hash = prepareFindForStore(txn, key);
@@ -1827,7 +1827,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
      * @param key must not be null
      * @param oldValue MODIFY_INSERT, MODIFY_REPLACE, else update mode
      */
-    boolean findAndModify(byte[] key, byte[] oldValue, byte[] newValue) throws IOException {
+    final boolean findAndModify(byte[] key, byte[] oldValue, byte[] newValue) throws IOException {
         final Transaction txn = mTxn;
 
         try {
@@ -1933,7 +1933,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
      *
      * @return false if Tree is closed
      */
-    boolean deleteGhost(byte[] key) throws IOException {
+    final boolean deleteGhost(byte[] key) throws IOException {
         try {
             // Find with no lock because it has already been acquired.
             // TODO: Use nearby optimization when used with transactional Index.clear.
@@ -1966,8 +1966,8 @@ final class TreeCursor implements CauseCloseable, Cursor {
      * @param leaf leaf frame, latched exclusively, which is always released by this method
      * @param reset true to reset cursor when finished
      */
-    private void store(final Transaction txn, final TreeCursorFrame leaf,
-                       final byte[] value, final boolean reset)
+    protected final void store(final Transaction txn, final TreeCursorFrame leaf,
+                               final byte[] value, final boolean reset)
         throws IOException
     {
         byte[] key = mKey;
@@ -2187,7 +2187,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
      *
      * @return false if already exists
      */
-    boolean insertFragmented(byte[] value) throws IOException {
+    final boolean insertFragmented(byte[] value) throws IOException {
         if (mKey == null) {
             throw new IllegalStateException("Cursor position is undefined");
         }
@@ -2257,7 +2257,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
      * @param vlength length of blank value
      * @return replacement node, latched
      */
-    Node insertBlank(TreeCursorFrame leaf, Node node, long vlength) throws IOException {
+    final Node insertBlank(TreeCursorFrame leaf, Node node, long vlength) throws IOException {
         byte[] key = mKey;
         try {
             int encodedKeyLen = Node.calculateKeyLengthChecked(mTree, key);
@@ -2270,7 +2270,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
         return postInsert(leaf, node, key);
     }
 
-    private IOException handleException(Throwable e, boolean reset) throws IOException {
+    protected final IOException handleException(Throwable e, boolean reset) throws IOException {
         if (mLeaf == null && e instanceof IllegalStateException) {
             // Exception is caused by cursor state; store is safe.
             if (reset) {
@@ -2300,14 +2300,14 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     @Override
-    public Stream newStream() {
+    public final Stream newStream() {
         TreeCursor copy = copyNoValue();
         copy.mKeyOnly = true;
         return new TreeValueStream(copy);
     }
 
     @Override
-    public TreeCursor copy() {
+    public final TreeCursor copy() {
         TreeCursor copy = copyNoValue();
         if (!(copy.mKeyOnly = mKeyOnly)) {
             byte[] value = mValue;
@@ -2330,7 +2330,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     @Override
-    public void reset() {
+    public final void reset() {
         TreeCursorFrame frame = mLeaf;
         mLeaf = null;
         mKey = null;
@@ -2368,12 +2368,12 @@ final class TreeCursor implements CauseCloseable, Cursor {
     }
 
     @Override
-    public void close() {
+    public final void close() {
         reset();
     }
 
     @Override
-    public void close(Throwable cause) {
+    public final void close(Throwable cause) {
         try {
             if (cause instanceof DatabaseException) {
                 DatabaseException de = (DatabaseException) cause;
@@ -2426,7 +2426,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
         }
     }
 
-    int height() {
+    final int height() {
         int height = 0;
         TreeCursorFrame frame = mLeaf;
         while (frame != null) {
@@ -2439,7 +2439,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
     /**
      * Move to the next tree node.
      */
-    void nextNode() throws IOException {
+    final void nextNode() throws IOException {
         // Move to next node by first setting current node position higher than possible.
         mLeaf.mNodePos = Integer.MAX_VALUE - 1;
         next();
@@ -2456,7 +2456,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
      * higher is in the compaction zone
      * @return false if compaction should stop
      */
-    boolean compact(long highestNodeId, CompactionObserver observer) throws IOException {
+    final boolean compact(long highestNodeId, CompactionObserver observer) throws IOException {
         int height = height();
 
         // Reference to frame nodes, to detect when cursor has moved past a node. Level 0
@@ -2608,7 +2608,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
      * Test method which confirms that the given cursor is positioned exactly the same as this
      * one.
      */
-    public boolean equalPositions(TreeCursor other) {
+    public final boolean equalPositions(TreeCursor other) {
         if (this == other) {
             return true;
         }
@@ -2638,7 +2638,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
      *
      * @param extremity LOW_EXTREMITY or HIGH_EXTREMITY
      */
-    public boolean verifyExtremities(byte extremity) throws IOException {
+    public final boolean verifyExtremities(byte extremity) throws IOException {
         Node node = mTree.mRoot;
         node.acquireExclusive();
         try {
@@ -2665,7 +2665,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
      *
      * @return false if should stop
      */
-    boolean verify(final int height, VerificationObserver observer) throws IOException {
+    final boolean verify(final int height, VerificationObserver observer) throws IOException {
         if (height > 0) {
             final Node[] stack = new Node[height];
             while (key() != null) {
@@ -2828,7 +2828,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
     /**
      * Latches and returns leaf frame, which might be split.
      */
-    private TreeCursorFrame leafExclusive() {
+    protected final TreeCursorFrame leafExclusive() {
         TreeCursorFrame leaf = leaf();
         leaf.acquireExclusive();
         return leaf;
@@ -2839,7 +2839,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
      *
      * @throws IllegalStateException if unpositioned
      */
-    TreeCursorFrame leafExclusiveNotSplit() throws IOException {
+    final TreeCursorFrame leafExclusiveNotSplit() throws IOException {
         TreeCursorFrame leaf = leaf();
         Node node = leaf.acquireExclusive();
         if (node.mSplit != null) {
@@ -2853,7 +2853,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
      *
      * @throws IllegalStateException if unpositioned
      */
-    TreeCursorFrame leafExclusiveNotSplitDirty() throws IOException {
+    final TreeCursorFrame leafExclusiveNotSplitDirty() throws IOException {
         TreeCursorFrame frame = leafExclusive();
         notSplitDirty(frame);
         return frame;
@@ -2864,7 +2864,7 @@ final class TreeCursor implements CauseCloseable, Cursor {
      *
      * @throws IllegalStateException if unpositioned
      */
-    TreeCursorFrame leafSharedNotSplit() throws IOException {
+    final TreeCursorFrame leafSharedNotSplit() throws IOException {
         TreeCursorFrame leaf = leaf();
         Node node = leaf.acquireShared();
         if (node.mSplit != null) {
