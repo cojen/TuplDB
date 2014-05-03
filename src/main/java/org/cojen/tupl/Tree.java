@@ -27,7 +27,7 @@ import static org.cojen.tupl.Utils.*;
  *
  * @author Brian S O'Neill
  */
-final class Tree implements Index {
+class Tree implements Index {
     // Reserved internal tree ids.
     static final int
         REGISTRY_ID = 0,
@@ -85,11 +85,11 @@ final class Tree implements Index {
     }
 
     @Override
-    public String toString() {
+    public final String toString() {
         return toString(this);
     }
 
-    static String toString(Index ix) {
+    static final String toString(Index ix) {
         StringBuilder b = new StringBuilder(ix.getClass().getName());
         b.append('@').append(Integer.toHexString(ix.hashCode()));
         b.append(" {");
@@ -100,23 +100,23 @@ final class Tree implements Index {
     }
 
     @Override
-    public Ordering getOrdering() {
+    public final Ordering getOrdering() {
         return Ordering.ASCENDING;
     }
 
     @Override
-    public long getId() {
+    public final long getId() {
         return mId;
     }
 
     @Override
-    public byte[] getName() {
+    public final byte[] getName() {
         byte[] name = mName;
         return name == null ? null : name.clone();
     }
 
     @Override
-    public String getNameString() {
+    public final String getNameString() {
         byte[] name = mName;
         try {
             return name == null ? "null" : new String(name, "UTF-8");
@@ -131,7 +131,7 @@ final class Tree implements Index {
     }
 
     @Override
-    public byte[] load(Transaction txn, byte[] key) throws IOException {
+    public final byte[] load(Transaction txn, byte[] key) throws IOException {
         check(txn);
         Locker locker = lockForLoad(txn, key);
         try {
@@ -192,12 +192,12 @@ final class Tree implements Index {
     }
 
     @Override
-    public boolean delete(Transaction txn, byte[] key) throws IOException {
+    public final boolean delete(Transaction txn, byte[] key) throws IOException {
         return replace(txn, key, null);
     }
 
     @Override
-    public boolean remove(Transaction txn, byte[] key, byte[] value) throws IOException {
+    public final boolean remove(Transaction txn, byte[] key, byte[] value) throws IOException {
         return update(txn, key, value, null);
     }
 
@@ -209,42 +209,42 @@ final class Tree implements Index {
     }
 
     @Override
-    public View viewGe(byte[] key) {
+    public final View viewGe(byte[] key) {
         return BoundedView.viewGe(this, key);
     }
 
     @Override
-    public View viewGt(byte[] key) {
+    public final View viewGt(byte[] key) {
         return BoundedView.viewGt(this, key);
     }
 
     @Override
-    public View viewLe(byte[] key) {
+    public final View viewLe(byte[] key) {
         return BoundedView.viewLe(this, key);
     }
 
     @Override
-    public View viewLt(byte[] key) {
+    public final View viewLt(byte[] key) {
         return BoundedView.viewLt(this, key);
     }
 
     @Override
-    public View viewPrefix(byte[] prefix, int trim) {
+    public final View viewPrefix(byte[] prefix, int trim) {
         return BoundedView.viewPrefix(this, prefix, trim);
     }
 
     @Override
-    public View viewReverse() {
+    public final View viewReverse() {
         return new ReverseView(this);
     }
 
     @Override
-    public View viewUnmodifiable() {
+    public final View viewUnmodifiable() {
         return UnmodifiableView.apply(this);
     }
 
     @Override
-    public boolean isUnmodifiable() {
+    public final boolean isUnmodifiable() {
         return isClosed();
     }
 
@@ -252,7 +252,7 @@ final class Tree implements Index {
      * Returns a view which can be passed to an observer. Internal trees are returned as
      * unmodifiable.
      */
-    Index observableView() {
+    final Index observableView() {
         return isInternal(mId) ? new UnmodifiableView(this) : this;
     }
 
@@ -260,7 +260,7 @@ final class Tree implements Index {
      * @param view view to pass to observer
      * @return false if compaction should stop
      */
-    boolean compactTree(Index view, long highestNodeId, CompactionObserver observer)
+    final boolean compactTree(Index view, long highestNodeId, CompactionObserver observer)
         throws IOException
     {
         try {
@@ -301,7 +301,7 @@ final class Tree implements Index {
     }
 
     @Override
-    public boolean verify(VerificationObserver observer) throws IOException {
+    public final boolean verify(VerificationObserver observer) throws IOException {
         if (observer == null) {
             observer = new VerificationObserver();
         }
@@ -317,7 +317,7 @@ final class Tree implements Index {
      * @param view view to pass to observer
      * @return false if should stop
      */
-    boolean verifyTree(Index view, VerificationObserver observer) throws IOException {
+    final boolean verifyTree(Index view, VerificationObserver observer) throws IOException {
         TreeCursor cursor = new TreeCursor(this, Transaction.BOGUS);
         try {
             cursor.first();
@@ -339,7 +339,7 @@ final class Tree implements Index {
     }
 
     @Override
-    public void close() throws IOException {
+    public final void close() throws IOException {
         Node root = mRoot;
         root.acquireExclusive();
         try {
@@ -394,7 +394,7 @@ final class Tree implements Index {
     }
 
     @Override 
-    public boolean isClosed() {
+    public final boolean isClosed() {
         Node root = mRoot;
         root.acquireShared();
         boolean closed = root.mPage == EMPTY_BYTES;
@@ -403,7 +403,7 @@ final class Tree implements Index {
     }
 
     @Override
-    public void drop() throws IOException {
+    public final void drop() throws IOException {
         long rootId;
         int cachedState;
 
@@ -444,7 +444,7 @@ final class Tree implements Index {
         mDatabase.dropClosedTree(this, rootId, cachedState);
     }
 
-    void check(Transaction txn) throws IllegalArgumentException {
+    final void check(Transaction txn) throws IllegalArgumentException {
         if (txn != null) {
             Database txnDb = txn.mDatabase;
             if (txnDb != null & txnDb != mDatabase) {
@@ -459,7 +459,7 @@ final class Tree implements Index {
      *
      * @param locker optional locker
      */
-    boolean isLockAvailable(Locker locker, byte[] key, int hash) {
+    final boolean isLockAvailable(Locker locker, byte[] key, int hash) {
         return mLockManager.isAvailable(locker, mId, key, hash);
     }
 
@@ -495,7 +495,7 @@ final class Tree implements Index {
      * @param key non-null key instance
      * @return non-null Locker instance if caller should unlock when write is done
      */
-    Locker lockExclusive(Transaction txn, byte[] key, int hash) throws LockFailureException {
+    final Locker lockExclusive(Transaction txn, byte[] key, int hash) throws LockFailureException {
         if (txn == null) {
             return lockExclusiveLocal(key, hash);
         }
@@ -507,18 +507,18 @@ final class Tree implements Index {
         return null;
     }
 
-    Locker lockSharedLocal(byte[] key, int hash) throws LockFailureException {
+    final Locker lockSharedLocal(byte[] key, int hash) throws LockFailureException {
         return mLockManager.lockSharedLocal(mId, key, hash);
     }
 
-    Locker lockExclusiveLocal(byte[] key, int hash) throws LockFailureException {
+    final Locker lockExclusiveLocal(byte[] key, int hash) throws LockFailureException {
         return mLockManager.lockExclusiveLocal(mId, key, hash);
     }
 
     /**
      * @return non-zero position if caller should call txnCommitSync
      */
-    long redoStore(byte[] key, byte[] value) throws IOException {
+    final long redoStore(byte[] key, byte[] value) throws IOException {
         RedoWriter redo = mDatabase.mRedoWriter;
         return redo == null ? 0 : redo.store(mId, key, value, mDatabase.mDurabilityMode);
     }
@@ -526,33 +526,33 @@ final class Tree implements Index {
     /**
      * @return non-zero position if caller should call txnCommitSync
      */
-    long redoStoreNoLock(byte[] key, byte[] value) throws IOException {
+    final long redoStoreNoLock(byte[] key, byte[] value) throws IOException {
         RedoWriter redo = mDatabase.mRedoWriter;
         return redo == null ? 0 : redo.storeNoLock(mId, key, value, mDatabase.mDurabilityMode);
     }
 
-    void txnCommitSync(long commitPos) throws IOException {
+    final void txnCommitSync(long commitPos) throws IOException {
         mDatabase.mRedoWriter.txnCommitSync(commitPos);
     }
 
     /**
      * @see Database#markDirty
      */
-    boolean markDirty(Node node) throws IOException {
+    final boolean markDirty(Node node) throws IOException {
         return mDatabase.markDirty(this, node);
     }
 
     /**
      * Caller must exclusively hold root latch.
      */
-    void addStub(Node node) {
+    final void addStub(Node node) {
         mStubTail = new Stub(mStubTail, node);
     }
 
     /**
      * Caller must exclusively hold root latch.
      */
-    boolean hasStub() {
+    final boolean hasStub() {
         Stub stub = mStubTail;
         while (stub != null) {
             if (stub.mNode.mId == Node.STUB_ID) {
@@ -569,7 +569,7 @@ final class Tree implements Index {
      * if latch cannot be immediatly obtained. Caller must exclusively hold
      * root latch and have checked that a stub exists.
      */
-    Node tryPopStub() {
+    final Node tryPopStub() {
         Stub stub = mStubTail;
         if (stub.mNode.tryAcquireExclusive()) {
             mStubTail = stub.mParent;
@@ -583,7 +583,7 @@ final class Tree implements Index {
      * hold root latch and have checked that a stub exists.
      */
     /*
-    Node popStub() {
+    final Node popStub() {
         Stub stub = mStubTail;
         stub.mNode.acquireExclusive();
         mStubTail = stub.mParent;
@@ -598,7 +598,7 @@ final class Tree implements Index {
      *
      * @return node if valid, null otherwise
      */
-    static Node validateStub(Node node) {
+    static final Node validateStub(Node node) {
         if (node.mId == Node.STUB_ID && node.mLastCursorFrame != null) {
             return node;
         }

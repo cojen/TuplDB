@@ -475,7 +475,7 @@ public final class Database implements CauseCloseable {
             // Also verifies the database and replication encodings.
             Node rootNode = loadRegistryRoot(header, config.mReplManager);
 
-            mRegistry = new Tree(this, Tree.REGISTRY_ID, null, null, rootNode);
+            mRegistry = newTreeInstance(Tree.REGISTRY_ID, null, null, rootNode);
 
             mOpenTreesLatch = new Latch();
             if (openMode == OPEN_TEMP) {
@@ -1031,6 +1031,10 @@ public final class Database implements CauseCloseable {
     private Transaction doNewTransaction(DurabilityMode durabilityMode) {
         return new Transaction
             (this, durabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
+    }
+
+    Transaction newAlwaysRedoTransaction() {
+        return doNewTransaction(mDurabilityMode.alwaysRedo());
     }
 
     /**
@@ -1807,7 +1811,7 @@ public final class Database implements CauseCloseable {
             TreeRef ref = mOpenTreesById.getValue(tree.mId);
             if (ref != null && ref.get() == tree) {
                 ref.clear();
-                tree = new Tree(this, tree.mId, tree.mIdBytes, tree.mName, newRoot);
+                tree = newTreeInstance(tree.mId, tree.mIdBytes, tree.mName, newRoot);
                 ref = new TreeRef(tree, mOpenTreesRefQueue);
                 mOpenTrees.put(tree.mName, ref);
                 mOpenTreesById.insert(tree.mId).value = ref;
@@ -1973,7 +1977,7 @@ public final class Database implements CauseCloseable {
                 }
                 rootId = 0;
             }
-            return new Tree(this, treeId, treeIdBytes, null, loadTreeRoot(rootId));
+            return newTreeInstance(treeId, treeIdBytes, null, loadTreeRoot(rootId));
         } finally {
             commitLock.unlock();
         }
@@ -2069,7 +2073,7 @@ public final class Database implements CauseCloseable {
 
                 long rootId = (rootIdBytes == null || rootIdBytes.length == 0) ? 0
                     : decodeLongLE(rootIdBytes, 0);
-                tree = new Tree(this, treeId, treeIdBytes, name, loadTreeRoot(rootId));
+                tree = newTreeInstance(treeId, treeIdBytes, name, loadTreeRoot(rootId));
 
                 TreeRef treeRef = new TreeRef(tree, mOpenTreesRefQueue);
 
@@ -2102,11 +2106,21 @@ public final class Database implements CauseCloseable {
         }
     }
 
+    private Tree newTreeInstance(long id, byte[] idBytes, byte[] name, Node root) {
+        if (mRedoWriter instanceof ReplRedoWriter) {
+            // Always need an explcit transaction when using auto-commit, to ensure that
+            // rollback is possible.
+            return new TxnTree(this, id, idBytes, name, root);
+        } else {
+            return new Tree(this, id, idBytes, name, root);
+        }
+    }
+
     private long nextTreeId() throws IOException {
         // By generating identifiers from a 64-bit sequence, it's effectively
         // impossible for them to get re-used after trees are deleted.
 
-        Transaction txn = newTransaction(mDurabilityMode.alwaysRedo());
+        Transaction txn = newAlwaysRedoTransaction();
         try {
             // Tree id mask, to make the identifiers less predictable and
             // non-compatible with other database instances.
