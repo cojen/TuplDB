@@ -527,13 +527,15 @@ final class UndoLog {
             case OP_INSERT:
                 // Since transaction was committed, don't insert an entry
                 // to undo a delete, but instead delete the ghost.
-                if ((activeIndex = findIndex(activeIndex)) != null) {
+                while ((activeIndex = findIndex(activeIndex)) != null) {
                     byte[] key = Node.retrieveKeyAtLoc(entry, 0);
                     TreeCursor cursor = new TreeCursor((Tree) activeIndex, null);
                     try {
-                        // No need to handle case where Tree is closed, because
-                        // this method can only be called during recovery.
                         cursor.deleteGhost(key);
+                        break;
+                    } catch (ClosedIndexException e) {
+                        // User closed the shared index reference, so re-open it.
+                        activeIndex = null;
                     } catch (Throwable e) {
                         throw closeOnFailure(cursor, e);
                     }
