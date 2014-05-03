@@ -63,6 +63,7 @@ final class SnapshotPageArray extends PageArray {
 
     @Override
     public void setPageCount(long count) throws IOException {
+        // FIXME: If reducing the page count, capture all the pages for any snapshots.
         mSource.setPageCount(count);
     }
 
