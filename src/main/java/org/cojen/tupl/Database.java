@@ -1166,8 +1166,9 @@ public final class Database implements CauseCloseable {
     }
 
     /**
-     * Restore from a {@link #beginSnapshot snapshot}, into the data files
-     * defined by the given configuration.
+     * Restore from a {@link #beginSnapshot snapshot}, into the data files defined by the given
+     * configuration. All existing data and redo log files at the snapshot destination are
+     * deleted before the restore begins.
      *
      * @param in snapshot source; does not require extra buffering; auto-closed
      */
