@@ -52,6 +52,8 @@ abstract class PageDb implements CauseCloseable {
      */
     public abstract int pageSize();
 
+    public abstract long pageCount() throws IOException;
+
     /**
      * Returns a snapshot of additional store stats.
      */
