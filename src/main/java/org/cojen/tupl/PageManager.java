@@ -314,7 +314,9 @@ final class PageManager {
 
         mRemoveLock.lock();
         try {
-            if (targetPageCount >= mTotalPageCount) {
+            if (targetPageCount >= mTotalPageCount
+                && targetPageCount >= mPageArray.getPageCount())
+            {
                 return false;
             }
         } finally {
@@ -422,7 +424,9 @@ final class PageManager {
         commitLock.writeLock().lock();
         fullLock();
 
-        if (ready && (ready = mTotalPageCount > mCompactionTargetPageCount && mCompacting)) {
+        if (ready && (ready = mCompacting && (mTotalPageCount > mCompactionTargetPageCount
+                                              || mPageArray.getPageCount() > mTotalPageCount)))
+        {
             // When locks are released, compaction is commit-ready. All pages in the compaction
             // zone are accounted for, but the reserve list's queue nodes might be in the valid
             // zone. Most pages will simply be discarded.
@@ -458,8 +462,13 @@ final class PageManager {
         mRemoveLock.lock();
         try {
             if (mTotalPageCount < mPageArray.getPageCount()) {
-                mPageArray.setPageCount(mTotalPageCount);
-                return true;
+                try {
+                    mPageArray.setPageCount(mTotalPageCount);
+                    return true;
+                } catch (IllegalStateException e) {
+                    // Snapshot in progress.
+                    return false;
+                }
             }
         } finally {
             mRemoveLock.unlock();

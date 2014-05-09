@@ -49,6 +49,11 @@ class NonPageDb extends PageDb {
     }
 
     @Override
+    public long pageCount() {
+        return 0;
+    }
+
+    @Override
     public Stats stats() {
         return new Stats();
     }

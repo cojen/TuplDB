@@ -1519,7 +1519,7 @@ public final class Database implements CauseCloseable {
 
             targetPageCount += reserve;
 
-            if (targetPageCount >= stats.totalPages) {
+            if (targetPageCount >= stats.totalPages && targetPageCount >= mPageDb.pageCount()) {
                 return true;
             }
 

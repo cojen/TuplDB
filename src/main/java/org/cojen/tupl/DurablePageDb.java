@@ -294,6 +294,11 @@ class DurablePageDb extends PageDb {
     }
 
     @Override
+    public long pageCount() throws IOException {
+        return mPageArray.getPageCount();
+    }
+
+    @Override
     public Stats stats() {
         Stats stats = new Stats();
         mPageManager.addTo(stats);

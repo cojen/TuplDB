@@ -16,6 +16,10 @@
 
 package org.cojen.tupl;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+
 import java.util.Random;
 
 import org.junit.*;
@@ -534,5 +538,53 @@ public class CompactTest {
             assertNotNull(value);
             assertEquals(0, value.length);
         }
+    }
+
+    @Test
+    public void snapshotAbort() throws Exception {
+        mDb = newTempDatabase(new DatabaseConfig()
+                              .checkpointRate(-1, null)
+                              .durabilityMode(DurabilityMode.NO_FLUSH));
+
+        Index ix = mDb.openIndex("test");
+
+        for (int i=0; i<100000; i++) {
+            byte[] key = ("key-" + i).getBytes();
+            ix.store(null, key, key);
+        }
+
+        mDb.checkpoint();
+
+        for (int i=0; i<100000; i++) {
+            byte[] key = ("key-" + i).getBytes();
+            ix.delete(null, key);
+        }
+
+        Snapshot snap = mDb.beginSnapshot();
+
+        for (int i=0; i<10; i++) {
+            assertFalse(mDb.compactFile(null, 0.9));
+        }
+
+        File dbFile = new File(baseFileForTempDatabase(mDb).getPath() + ".db");
+        assertTrue(dbFile.length() > 1_000_000);
+
+        ByteArrayOutputStream bout = new ByteArrayOutputStream();
+        snap.writeTo(bout);
+
+        assertTrue(mDb.compactFile(null, 0.9));
+        assertTrue(dbFile.length() < 100_000);
+
+        deleteTempDatabase(mDb);
+
+        ByteArrayInputStream bin = new ByteArrayInputStream(bout.toByteArray());
+
+        DatabaseConfig config = new DatabaseConfig().baseFile(newTempBaseFile());
+
+        mDb = Database.restoreFromSnapshot(config, bin);
+
+        assertTrue(mDb.verify(null));
+
+        mDb.close();
     }
 }
