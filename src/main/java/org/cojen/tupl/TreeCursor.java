@@ -399,7 +399,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                     // Parent latch is held, child latch is not held, but the
                     // frame is still valid.
 
-                    parentNode = finishSplit(parentFrame, parentNode);
+                    parentNode = mTree.finishSplit(parentFrame, parentNode);
                 }
 
                 // When this point is reached, child must be relatched. Parent
@@ -531,7 +531,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                         // Parent latch is held, child latch is not held, but the
                         // frame is still valid.
 
-                        parentNode = finishSplit(parentFrame, parentNode);
+                        parentNode = mTree.finishSplit(parentFrame, parentNode);
                     }
 
                     // When this point is reached, child must be relatched. Parent
@@ -744,7 +744,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                     // Parent latch is held, child latch is not held, but the
                     // frame is still valid.
 
-                    parentNode = finishSplit(parentFrame, parentNode);
+                    parentNode = mTree.finishSplit(parentFrame, parentNode);
                 }
 
                 // When this point is reached, child must be relatched. Parent
@@ -877,7 +877,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                         // Parent latch is held, child latch is not held, but the
                         // frame is still valid.
 
-                        parentNode = finishSplit(parentFrame, parentNode);
+                        parentNode = mTree.finishSplit(parentFrame, parentNode);
                     }
 
                     // When this point is reached, child must be relatched. Parent
@@ -1306,7 +1306,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         } else {
             node = frame.acquireExclusive();
             if (node.mSplit != null) {
-                node = finishSplit(frame, node);
+                node = mTree.finishSplit(frame, node);
             }
 
             int startPos = frame.mNodePos;
@@ -1379,7 +1379,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                 node = frame.acquireExclusive();
 
                 if (node.mSplit != null) {
-                    node = finishSplit(frame, node);
+                    node = mTree.finishSplit(frame, node);
                 }
 
                 pos = Node.internalPos(node.binarySearch(key, frame.mNodePos));
@@ -1441,7 +1441,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                         // so the frame must be completely defined first.
                         frame.mNotFoundKey = key;
                     }
-                    node = finishSplit(frame, node);
+                    node = mTree.finishSplit(frame, node);
                     pos = frame.mNodePos;
                 }
 
@@ -1593,7 +1593,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                 if (node.mSplit != null) {
                     // Bind to anything to finish the split.
                     frame.bind(node, 0);
-                    node = finishSplit(frame, node);
+                    node = mTree.finishSplit(frame, node);
                 }
 
                 int pos;
@@ -2077,7 +2077,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                     } else {
                         if (node.mSplit != null) {
                             // Releases latch if an exception is thrown.
-                            node = finishSplit(leaf, node);
+                            node = mTree.finishSplit(leaf, node);
                         }
                     }
                 } else {
@@ -2175,7 +2175,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         } while ((frame = frame.mPrevCousin) != null);
 
         if (node.mSplit != null) {
-            node = finishSplit(leaf, node);
+            node = mTree.finishSplit(leaf, node);
         }
 
         return node;
@@ -2219,7 +2219,7 @@ class TreeCursor implements CauseCloseable, Cursor {
 
                 if (node.mSplit != null) {
                     // Releases latch if an exception is thrown.
-                    node = finishSplit(leaf, node);
+                    node = mTree.finishSplit(leaf, node);
                 }
             } else {
                 byte[] key = mKey;
@@ -2437,7 +2437,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     }
 
     /**
-     * Move to the next tree node.
+     * Move to the next tree node, loading it if necessary.
      */
     final void nextNode() throws IOException {
         // Move to next node by first setting current node position higher than possible.
@@ -2843,7 +2843,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         TreeCursorFrame leaf = leaf();
         Node node = leaf.acquireExclusive();
         if (node.mSplit != null) {
-            finishSplit(leaf, node);
+            mTree.finishSplit(leaf, node);
         }
         return leaf;
     }
@@ -2876,7 +2876,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                         break doSplit;
                     }
                 }
-                node = finishSplit(leaf, node);
+                node = mTree.finishSplit(leaf, node);
             }
             node.downgrade();
         }
@@ -2896,7 +2896,7 @@ class TreeCursor implements CauseCloseable, Cursor {
 
         if (node.mSplit != null) {
             // Already dirty, but finish the split.
-            return finishSplit(frame, node);
+            return mTree.finishSplit(frame, node);
         }
 
         Database db = mTree.mDatabase;
@@ -2937,7 +2937,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             // method. It would release latches and recheck everything.
             parentNode.insertSplitChildRef(mTree, parentFrame.mNodePos, node);
             if (parentNode.mSplit != null) {
-                parentNode = finishSplit(parentFrame, parentNode);
+                parentNode = mTree.finishSplit(parentFrame, parentNode);
             }
             node = frame.acquireExclusive();
         }
@@ -2973,7 +2973,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         int nodeAvail;
         while (true) {
             if (parentNode.mSplit != null) {
-                parentNode = finishSplit(parentFrame, parentNode);
+                parentNode = mTree.finishSplit(parentFrame, parentNode);
             }
 
             if (!parentNode.hasKeys()) {
@@ -3158,7 +3158,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         int nodeAvail;
         while (true) {
             if (parentNode.mSplit != null) {
-                parentNode = finishSplit(parentFrame, parentNode);
+                parentNode = mTree.finishSplit(parentFrame, parentNode);
             }
 
             if (!parentNode.hasKeys()) {
@@ -3286,69 +3286,6 @@ class TreeCursor implements CauseCloseable, Cursor {
     }
 
     /**
-     * Caller must hold exclusive latch and it must verify that node has
-     * split. Node latch is released if an exception is thrown.
-     *
-     * @return replacement node, still latched
-     */
-    private Node finishSplit(final TreeCursorFrame frame, Node node) throws IOException {
-        Tree tree = mTree;
-
-        while (node == tree.mRoot) {
-            Node stub;
-            if (tree.hasStub()) {
-                // Don't wait for stub latch, to avoid deadlock. The stub stack
-                // is latched up upwards here, but downwards by cursors.
-                stub = tree.tryPopStub();
-                if (stub == null) {
-                    // Latch not immediately available, so release root latch
-                    // and try again. This implementation spins, but root
-                    // splits are expected to be infrequent.
-                    Thread waiter = node.getFirstQueuedThread();
-                    node.releaseExclusive();
-                    do {
-                        Thread.yield();
-                    } while (waiter != null && node.getFirstQueuedThread() == waiter);
-                    node = frame.acquireExclusive();
-                    if (node.mSplit == null) {
-                        return node;
-                    }
-                    continue;
-                }
-                stub = Tree.validateStub(stub);
-            } else {
-                stub = null;
-            }
-            try {
-                node.finishSplitRoot(tree, stub);
-                // Must return the node as referenced by the frame, which is no
-                // longer the root node.
-                node.releaseExclusive();
-                return frame.acquireExclusive();
-            } catch (Throwable e) {
-                node.releaseExclusive();
-                throw e;
-            }
-        }
-
-        final TreeCursorFrame parentFrame = frame.mParentFrame;
-        node.releaseExclusive();
-
-        Node parentNode = parentFrame.acquireExclusive();
-        while (true) {
-            if (parentNode.mSplit != null) {
-                parentNode = finishSplit(parentFrame, parentNode);
-            }
-            node = frame.acquireExclusive();
-            if (node.mSplit == null) {
-                parentNode.releaseExclusive();
-                return node;
-            }
-            parentNode.insertSplitChildRef(tree, parentFrame.mNodePos, node);
-        }
-    }
-
-    /**
      * With parent held exclusively, returns child with exclusive latch held.
      * If an exception is thrown, parent and child latches are always released.
      *
@@ -3416,7 +3353,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             parentNode.releaseShared();
             parentNode = parentFrame.acquireExclusive();
             if (parentNode.mSplit != null) {
-                parentNode = finishSplit(parentFrame, parentNode);
+                parentNode = mTree.finishSplit(parentFrame, parentNode);
             }
         }
 
