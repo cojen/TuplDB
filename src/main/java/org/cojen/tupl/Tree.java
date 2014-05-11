@@ -444,6 +444,69 @@ class Tree implements Index {
         mDatabase.dropClosedTree(this, rootId, cachedState);
     }
 
+    /**
+     * Caller must hold exclusive latch and it must verify that node has
+     * split. Node latch is released if an exception is thrown.
+     *
+     * @param frame bound cursor frame
+     * @param node node which is bound to the frame, latched exclusively
+     * @return replacement node, still latched
+     */
+    final Node finishSplit(final TreeCursorFrame frame, Node node) throws IOException {
+        while (node == mRoot) {
+            Node stub;
+            if (hasStub()) {
+                // Don't wait for stub latch, to avoid deadlock. The stub stack
+                // is latched up upwards here, but downwards by cursors.
+                stub = tryPopStub();
+                if (stub == null) {
+                    // Latch not immediately available, so release root latch
+                    // and try again. This implementation spins, but root
+                    // splits are expected to be infrequent.
+                    Thread waiter = node.getFirstQueuedThread();
+                    node.releaseExclusive();
+                    do {
+                        Thread.yield();
+                    } while (waiter != null && node.getFirstQueuedThread() == waiter);
+                    node = frame.acquireExclusive();
+                    if (node.mSplit == null) {
+                        return node;
+                    }
+                    continue;
+                }
+                stub = Tree.validateStub(stub);
+            } else {
+                stub = null;
+            }
+            try {
+                node.finishSplitRoot(this, stub);
+                // Must return the node as referenced by the frame, which is no
+                // longer the root node.
+                node.releaseExclusive();
+                return frame.acquireExclusive();
+            } catch (Throwable e) {
+                node.releaseExclusive();
+                throw e;
+            }
+        }
+
+        final TreeCursorFrame parentFrame = frame.mParentFrame;
+        node.releaseExclusive();
+
+        Node parentNode = parentFrame.acquireExclusive();
+        while (true) {
+            if (parentNode.mSplit != null) {
+                parentNode = finishSplit(parentFrame, parentNode);
+            }
+            node = frame.acquireExclusive();
+            if (node.mSplit == null) {
+                parentNode.releaseExclusive();
+                return node;
+            }
+            parentNode.insertSplitChildRef(this, parentFrame.mNodePos, node);
+        }
+    }
+
     final void check(Transaction txn) throws IllegalArgumentException {
         if (txn != null) {
             Database txnDb = txn.mDatabase;
