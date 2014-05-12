@@ -20,6 +20,10 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.InputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+
+import java.security.GeneralSecurityException;
+
 import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.zip.CRC32;
@@ -82,6 +86,7 @@ class DurablePageDb extends PageDb {
 
     private static final int MINIMUM_PAGE_SIZE = 512;
 
+    private final Crypto mCrypto;
     private final SnapshotPageArray mPageArray;
     private final PageManager mPageManager;
 
@@ -182,6 +187,8 @@ class DurablePageDb extends PageDb {
     private DurablePageDb(final PageArray rawArray, Crypto crypto, boolean destroy)
         throws IOException, WrongPageSize
     {
+        mCrypto = crypto;
+
         PageArray array = crypto == null ? rawArray : new CryptoPageArray(rawArray, crypto);
 
         mPageArray = new SnapshotPageArray(array, rawArray);
@@ -496,6 +503,34 @@ class DurablePageDb extends PageDb {
         if (mPageArray != null) {
             mPageArray.close(cause);
         }
+    }
+
+    /**
+     * Wraps the output stream if it needs to be encrypted.
+     */
+    OutputStream encrypt(OutputStream out) throws IOException {
+        if (mCrypto != null) {
+            try {
+                out = mCrypto.newEncryptingStream(0, out);
+            } catch (GeneralSecurityException e) {
+                throw new DatabaseException(e);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Wraps the input stream if it needs to be decrypted.
+     */
+    InputStream decrypt(InputStream in) throws IOException {
+        if (mCrypto != null) {
+            try {
+                in = mCrypto.newDecryptingStream(0, in);
+            } catch (GeneralSecurityException e) {
+                throw new DatabaseException(e);
+            }
+        }
+        return in;
     }
 
     /**

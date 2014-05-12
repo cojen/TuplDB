@@ -16,6 +16,8 @@
 
 package org.cojen.tupl;
 
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 
 import java.util.concurrent.locks.Lock;
@@ -442,6 +444,155 @@ class Tree implements Index {
 
         // Drop with root latch released, avoiding deadlock when commit lock is acquired.
         mDatabase.dropClosedTree(this, rootId, cachedState);
+    }
+
+    static interface NodeVisitor {
+        void visit(Node node) throws IOException;
+    }
+
+    /**
+     * Performs a depth-first traversal of the tree, only visting loaded nodes. Nodes passed to
+     * the visitor are latched exclusively, and they must be released by the visitor.
+     */
+    final void traverseLoaded(NodeVisitor visitor) throws IOException {
+        Node node = mRoot;
+        node.acquireExclusive();
+
+        if (node.mSplit != null) {
+            // Create a temporary frame for the root split.
+            TreeCursorFrame frame = new TreeCursorFrame();
+            frame.bind(node, 0);
+            try {
+                node = finishSplit(frame, node);
+            } catch (Throwable e) {
+                TreeCursorFrame.popAll(frame);
+                throw e;
+            }
+        }
+
+        // Frames are only used for backtracking up the tree. Frame creation and binding is
+        // performed late, and none are created for leaf nodes.
+        TreeCursorFrame frame = null;
+        int pos = 0;
+
+        while (true) {
+            toLower: while (true) {
+                Node[] childNodes = node.mChildNodes;
+
+                if (childNodes == null) {
+                    break toLower;
+                }
+
+                while (true) {
+                    int i = pos >> 1;
+                    if (i >= childNodes.length) {
+                        break toLower;
+                    }
+                    Node child = childNodes[i];
+                    if (child != null) {
+                        long childId = node.retrieveChildRefId(pos);
+                        child.acquireExclusive();
+                        // Need to check again in case evict snuck in.
+                        if (childId != child.mId) {
+                            childNodes[i] = null;
+                            child.releaseExclusive();
+                        } else {
+                            frame = new TreeCursorFrame(frame);
+                            frame.bind(node, pos);
+                            node.releaseExclusive();
+                            node = child;
+                            pos = 0;
+                            continue toLower;
+                        }
+                    }
+                    pos += 2;
+                }
+            }
+
+            try {
+                visitor.visit(node);
+            } catch (Throwable e) {
+                TreeCursorFrame.popAll(frame);
+                throw e;
+            }
+
+            if (frame == null) {
+                return;
+            }
+
+            node = frame.acquireExclusive();
+
+            if (node.mSplit != null) {
+                try {
+                    node = finishSplit(frame, node);
+                } catch (Throwable e) {
+                    TreeCursorFrame.popAll(frame);
+                    throw e;
+                }
+            }
+
+            pos = frame.mNodePos;
+            frame = frame.pop();
+            pos += 2;
+        }
+    }
+
+    final void writeCachePrimer(final DataOutput dout) throws IOException {
+        traverseLoaded(new NodeVisitor() {
+            public void visit(Node node) throws IOException {
+                byte[] midKey;
+                try {
+                    if (!node.isLeaf()) {
+                        return;
+                    }
+                    int numKeys = node.numKeys();
+                    if (numKeys > 1) {
+                        int highPos = numKeys & ~1;
+                        midKey = node.midKey(highPos - 2, node, highPos);
+                    } else if (numKeys == 1) {
+                        midKey = node.retrieveKey(0);
+                    } else {
+                        return;
+                    }
+                } finally {
+                    node.releaseExclusive();
+                }
+
+                dout.writeShort(midKey.length);
+                dout.write(midKey);
+            }
+        });
+
+        // Terminator. Key is limited to 16383 bytes; see LargeKeyException.
+        dout.writeShort(0xffff);
+    }
+
+    final void applyCachePrimer(DataInput din) throws IOException {
+        Cursor c = newCursor(Transaction.BOGUS);
+        try {
+            c.autoload(false);
+            while (true) {
+                int len = din.readUnsignedShort();
+                if (len == 0xffff) {
+                    break;
+                }
+                byte[] key = new byte[len];
+                din.readFully(key);
+                c.findNearby(key);
+            }
+        } finally {
+            c.reset();
+        }
+    }
+
+    static final void skipCachePrimer(DataInput din) throws IOException {
+        while (true) {
+            int len = din.readUnsignedShort();
+            if (len == 0xffff) {
+                break;
+            }
+            din.skipBytes(len);
+        }
     }
 
     /**
