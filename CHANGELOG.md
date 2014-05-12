@@ -1,6 +1,13 @@
 Changelog
 =========
 
+v1.1.1
+------
+
+* Target Java 7 only.
+* Added support for cache priming.
+* Various fixes.
+
 v1.1.0
 ------
 
