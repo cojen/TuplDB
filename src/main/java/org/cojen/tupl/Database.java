@@ -16,19 +16,26 @@
 
 package org.cojen.tupl;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Serializable;
 import java.io.Writer;
 
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
 
 import java.math.BigInteger;
 
@@ -111,8 +118,11 @@ public final class Database implements CauseCloseable {
     // 32-bit pointers.
     private static final int NODE_OVERHEAD = 100;
 
+    private static final long PRIMER_MAGIC_NUMBER = 4943712973215968399L;
+
     private static final String INFO_FILE_SUFFIX = ".info";
     private static final String LOCK_FILE_SUFFIX = ".lock";
+    static final String PRIMER_FILE_SUFFIX = ".primer";
     static final String REDO_FILE_SUFFIX = ".redo.";
 
     private static int nodeCountFromBytes(long bytes, int pageSize) {
@@ -540,6 +550,31 @@ public final class Database implements CauseCloseable {
                     recoveryStart = System.nanoTime();
                 }
 
+                if (mPageDb instanceof DurablePageDb) {
+                    File primer = primerFile();
+                    try {
+                        if (config.mCachePriming && primer.exists()) {
+                            if (mEventListener != null) {
+                                mEventListener.notify(EventType.RECOVERY_CACHE_PRIMING,
+                                                      "Cache priming");
+                            }
+                            FileInputStream fin;
+                            try {
+                                fin = new FileInputStream(primer);
+                                try (InputStream bin = new BufferedInputStream(fin)) {
+                                    applyCachePrimer(bin);
+                                } catch (IOException e) {
+                                    fin.close();
+                                    primer.delete();
+                                }
+                            } catch (IOException e) {
+                            }
+                        }
+                    } finally {
+                        primer.delete();
+                    }
+                }
+
                 LHashTable.Obj<Transaction> txns = new LHashTable.Obj<>(16);
                 {
                     long masterNodeId = decodeLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID);
@@ -668,6 +703,10 @@ public final class Database implements CauseCloseable {
         c.register(mRedoWriter);
         c.register(mTempFileManager);
 
+        if (config.mCachePriming && mPageDb instanceof DurablePageDb) {
+            c.register(new ShutdownPrimer(this));
+        }
+
         if (mRedoWriter instanceof ReplRedoWriter) {
             // Start replication and recovery.
             ReplRedoWriter writer = (ReplRedoWriter) mRedoWriter;
@@ -683,6 +722,42 @@ public final class Database implements CauseCloseable {
         }
 
         c.start();
+    }
+
+    static class ShutdownPrimer implements Checkpointer.Shutdown {
+        private final WeakReference<Database> mDatabaseRef;
+
+        ShutdownPrimer(Database db) {
+            mDatabaseRef = new WeakReference<>(db);
+        }
+
+        @Override
+        public void shutdown() {
+            Database db = mDatabaseRef.get();
+            if (db == null) {
+                return;
+            }
+
+            File primer = db.primerFile();
+
+            FileOutputStream fout;
+            try {
+                fout = new FileOutputStream(primer);
+                try {
+                    try (OutputStream bout = new BufferedOutputStream(fout)) {
+                        db.createCachePrimer(bout);
+                    }
+                } catch (IOException e) {
+                    fout.close();
+                    primer.delete();
+                }
+            } catch (IOException e) {
+            }
+        }
+    }
+
+    File primerFile() {
+        return new File(mBaseFile.getPath() + PRIMER_FILE_SUFFIX);
     }
 
     private void recoveryComplete(long recoveryStart) {
@@ -1219,6 +1294,91 @@ public final class Database implements CauseCloseable {
         restored.close();
 
         return Database.open(config);
+    }
+
+    /**
+     * Writes a cache priming set into the given stream, which can then be used later to {@link
+     * #applyCachePrimer prime} the cache.
+     *
+     * @param out cache priming destination; buffering is recommended; not auto-closed
+     * @see DatabaseConfig#cachePriming
+     */
+    public void createCachePrimer(OutputStream out) throws IOException {
+        if (!(mPageDb instanceof DurablePageDb)) {
+            throw new UnsupportedOperationException
+                ("Cache priming only allowed for durable databases");
+        }
+
+        out = ((DurablePageDb) mPageDb).encrypt(out);
+
+        // Create a clone of the open trees, because concurrent iteration is not supported.
+        TreeRef[] openTrees;
+        mOpenTreesLatch.acquireShared();
+        try {
+            openTrees = new TreeRef[mOpenTrees.size()];
+            int i = 0;
+            for (TreeRef treeRef : mOpenTrees.values()) {
+                openTrees[i++] = treeRef;
+            }
+        } finally {
+            mOpenTreesLatch.releaseShared();
+        }
+
+        DataOutputStream dout = new DataOutputStream(out);
+
+        dout.writeLong(PRIMER_MAGIC_NUMBER);
+
+        for (TreeRef treeRef : openTrees) {
+            Tree tree = treeRef.get();
+            if (tree != null && !Tree.isInternal(tree.mId)) {
+                // Encode name instead of identifier, to support priming set portability
+                // between databases. The identifiers won't match, but the names might.
+                byte[] name = tree.mName;
+                dout.writeInt(name.length);
+                dout.write(name);
+                tree.writeCachePrimer(dout);
+            }
+        }
+
+        // Terminator.
+        dout.writeInt(-1);
+    }
+
+    /**
+     * Prime the cache, from a set encoded {@link #createCachePrimer earlier}.
+     *
+     * @param in caching priming source; buffering is recommended; not auto-closed
+     * @see DatabaseConfig#cachePriming
+     */
+    public void applyCachePrimer(InputStream in) throws IOException {
+        if (!(mPageDb instanceof DurablePageDb)) {
+            throw new UnsupportedOperationException
+                ("Cache priming only allowed for durable databases");
+        }
+
+        in = ((DurablePageDb) mPageDb).decrypt(in);
+
+        DataInputStream din = new DataInputStream(in);
+
+        long magic = din.readLong();
+        if (magic != PRIMER_MAGIC_NUMBER) {
+            throw new DatabaseException("Wrong cache primer magic number: " + magic);
+        }
+
+        while (true) {
+            int len = din.readInt();
+            if (len < 0) {
+                break;
+            }
+            byte[] name = new byte[len];
+            din.readFully(name);
+            Index ix = openIndex(name, false);
+            if (ix instanceof Tree) {
+                ((Tree) ix).applyCachePrimer(din);
+            } else {
+                Tree.skipCachePrimer(din);
+            }
+        }
     }
 
     /**

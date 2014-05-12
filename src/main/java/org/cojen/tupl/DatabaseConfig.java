@@ -60,6 +60,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
     boolean mFileSync;
     boolean mReadOnly;
     int mPageSize;
+    boolean mCachePriming;
     transient ReplicationManager mReplManager;
     int mMaxReplicaThreads;
     transient Crypto mCrypto;
@@ -304,6 +305,18 @@ public class DatabaseConfig implements Cloneable, Serializable {
     }
 
     /**
+     * Enable automatic cache priming, which writes a priming set into a special file when the
+     * database is cleanly shutdown. When opened again, the priming set is applied and the file
+     * is deleted. Option has no effect if database is non-durable.
+     *
+     * @see Database#createCachePrimer
+     */
+    public DatabaseConfig cachePriming(boolean priming) {
+        mCachePriming = priming;
+        return this;
+    }
+
+    /**
      * Enable replication by providing a {@link ReplicationManager} instance.
      */
     public DatabaseConfig replicate(ReplicationManager manager) {
@@ -322,10 +335,10 @@ public class DatabaseConfig implements Cloneable, Serializable {
     }
 
     /**
-     * Enable full encryption of the data files, transaction logs, and snapshots. Option has no
-     * effect if database is non-durable. If replication is enabled, encryption is not applied
-     * to the replication stream. A {@link ReplicationManager} implementation must perform its
-     * own encryption.
+     * Enable full encryption of the data files, transaction logs, snapshots, and cache priming
+     * sets. Option has no effect if database is non-durable. If replication is enabled,
+     * encryption is not applied to the replication stream. A {@link ReplicationManager}
+     * implementation must perform its own encryption.
      *
      * <p>Allocated but never used pages within the data files are unencrypted, although they
      * contain no information. Temporary files used by in-progress snapshots contain encrypted
@@ -452,6 +465,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
         set(props, "checkpointDelayThresholdNanos", mCheckpointDelayThresholdNanos);
         set(props, "syncWrites", mFileSync);
         set(props, "pageSize", mPageSize);
+        set(props, "cachePriming", mCachePriming);
 
         props.store(w, Database.class.getName());
     }

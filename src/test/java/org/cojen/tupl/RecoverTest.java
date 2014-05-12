@@ -637,4 +637,35 @@ public class RecoverTest {
         // A transaction is only truly created if it modifies anything.
         assertEquals(txnsCreated, mDb.stats().transactionsCreated());
     }
+
+    @Test
+    public void cachePriming() throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        for (int i=0; i<1_000_000; i++) {
+            byte[] key = ("key-" + i).getBytes();
+            byte[] value = ("value-" + i).getBytes();
+            ix.store(null, key, value);
+        }
+
+        Index ix2 = mDb.openIndex("test2");
+        ix2.store(null, "hello".getBytes(), "world".getBytes());
+
+        File primer = new File(baseFileForTempDatabase(mDb).getPath() + ".primer");
+        assertFalse(primer.exists());
+
+        mDb.close();
+        assertFalse(primer.exists());
+
+        mConfig.cachePriming(true);
+
+        mDb = reopenTempDatabase(mDb, mConfig);
+        assertFalse(primer.exists());
+
+        mDb.close();
+        assertTrue(primer.exists());
+
+        mDb = reopenTempDatabase(mDb, mConfig);
+        assertFalse(primer.exists());
+    }
 }

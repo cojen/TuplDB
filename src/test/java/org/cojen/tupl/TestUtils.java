@@ -173,6 +173,7 @@ class TestUtils {
         deleteDbFile(baseFile, ".db");
         deleteDbFile(baseFile, ".info");
         deleteDbFile(baseFile, ".lock");
+        deleteDbFile(baseFile, ".primer");
         try {
             Utils.deleteNumberedFiles(baseFile, ".redo.");
         } catch (IOException e) {
