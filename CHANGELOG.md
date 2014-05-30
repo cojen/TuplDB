@@ -4,6 +4,9 @@ Changelog
 v1.1.2
 ------
 * Fix rare node eviction bug which left it (partially) in the usage list.
+* Cache growth is no longer aggressive, only doing so to avoid node eviction.
+* Added cache size to stats.
+* Defined new DatabaseFullException for non-durable databases.
 
 v1.1.1
 ------
