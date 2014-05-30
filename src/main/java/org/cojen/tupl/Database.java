@@ -2565,9 +2565,7 @@ public final class Database implements CauseCloseable {
                         try {
                             if ((node = Node.evict(node, mPageDb)) != null) {
                                 if (!evictable) {
-                                    // Detach from linked list.
-                                    (mMostRecentlyUsed = node.mLessUsed).mMoreUsed = null;
-                                    node.mLessUsed = null;
+                                    doMakeUnevictable(node);
                                 }
                                 usageLatch.releaseExclusive();
                                 // Return with node latch still held.
@@ -2723,21 +2721,28 @@ public final class Database implements CauseCloseable {
                 // Closed.
                 return;
             }
-            final Node lessUsed = node.mLessUsed;
-            final Node moreUsed = node.mMoreUsed;
-            if (lessUsed == null) {
-                (mLeastRecentlyUsed = moreUsed).mLessUsed = null;
-            } else if (moreUsed == null) {
-                (mMostRecentlyUsed = lessUsed).mMoreUsed = null;
-            } else {
-                lessUsed.mMoreUsed = moreUsed;
-                moreUsed.mLessUsed = lessUsed;
-            }
-            node.mMoreUsed = null;
-            node.mLessUsed = null;
+            doMakeUnevictable(node);
         } finally {
             usageLatch.releaseExclusive();
         }
+    }
+
+    /**
+     * Caller must hold mUsageLatch.
+     */
+    private void doMakeUnevictable(final Node node) {
+        final Node lessUsed = node.mLessUsed;
+        final Node moreUsed = node.mMoreUsed;
+        if (lessUsed == null) {
+            (mLeastRecentlyUsed = moreUsed).mLessUsed = null;
+        } else if (moreUsed == null) {
+            (mMostRecentlyUsed = lessUsed).mMoreUsed = null;
+        } else {
+            lessUsed.mMoreUsed = moreUsed;
+            moreUsed.mLessUsed = lessUsed;
+        }
+        node.mMoreUsed = null;
+        node.mLessUsed = null;
     }
 
     /**
