@@ -1,6 +1,11 @@
 Changelog
 =========
 
+v1.0.6
+------
+* Fix rare node eviction bug which left it (partially) in the usage list.
+* Decode only 6-byte child pointers, preparing for future support of child entry counts.
+
 v1.0.5
 ------
 
