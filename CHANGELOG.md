@@ -1,6 +1,10 @@
 Changelog
 =========
 
+v1.1.2
+------
+* Fix rare node eviction bug which left it (partially) in the usage list.
+
 v1.1.1
 ------
 
@@ -16,6 +20,7 @@ v1.1.0
   using findNearby. This technique works with reverse ordered records and it allows concurrent
   access as usual. Indexes created in older versions will not have this metadata, and so they
   must be rebuilt to obtain it.
+* Decode only 6-byte child pointers, preparing for future support of child entry counts.
 
 v1.0.5
 ------
