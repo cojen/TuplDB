@@ -454,7 +454,8 @@ public final class Database implements CauseCloseable {
 
             try {
                 for (int i=minCache; --i>=0; ) {
-                    allocLatchedNode(true).releaseExclusive();
+                    mUsageLatch.acquireExclusive();
+                    doAllocLatchedNode(true).releaseExclusive();
                 }
             } catch (OutOfMemoryError e) {
                 mMostRecentlyUsed = null;
@@ -1421,6 +1422,14 @@ public final class Database implements CauseCloseable {
             mSharedCommitLock.unlock();
         }
 
+        mUsageLatch.acquireShared();
+        stats.mCachedPages = mNodeCount;
+        mUsageLatch.releaseShared();
+
+        if (!mPageDb.isDurable() && stats.mTotalPages == 0) {
+            stats.mTotalPages = stats.mCachedPages;
+        }
+
         return stats;
     }
 
@@ -1433,6 +1442,7 @@ public final class Database implements CauseCloseable {
         int mPageSize;
         long mFreePages;
         long mTotalPages;
+        long mCachedPages;
         int mOpenIndexes;
         long mLockCount;
         long mCursorCount;
@@ -1461,6 +1471,13 @@ public final class Database implements CauseCloseable {
          */
         public long totalPages() {
             return mTotalPages;
+        }
+
+        /**
+         * Returns the current size of the cache, in pages.
+         */
+        public long cachedPages() {
+            return mCachedPages;
         }
 
         /**
@@ -1539,6 +1556,7 @@ public final class Database implements CauseCloseable {
             return "Database.Stats {pageSize=" + mPageSize
                 + ", freePages=" + mFreePages
                 + ", totalPages=" + mTotalPages
+                + ", cachedPages=" + mCachedPages
                 + ", openIndexes=" + mOpenIndexes
                 + ", lockCount=" + mLockCount
                 + ", cursorCount=" + mCursorCount
@@ -2504,25 +2522,11 @@ public final class Database implements CauseCloseable {
                     break alloc;
                 }
 
-                if (mNodeCount < max) {
-                    try {
-                        checkClosed();
-                        Node node = new Node(mPageSize);
-                        node.acquireExclusive();
-                        mNodeCount++;
-                        if (evictable) {
-                            if ((node.mLessUsed = mMostRecentlyUsed) == null) {
-                                mLeastRecentlyUsed = node;
-                            } else {
-                                mMostRecentlyUsed.mMoreUsed = node;
-                            }
-                            mMostRecentlyUsed = node;
-                        }
-                        // Return with node latch still held.
-                        return node;
-                    } finally {
-                        usageLatch.releaseExclusive();
-                    }
+                if (mNodeCount < max &&
+                    (trial > 1
+                     || mLeastRecentlyUsed == null || mLeastRecentlyUsed.mMoreUsed == null))
+                {
+                    return doAllocLatchedNode(evictable);
                 }
 
                 if (!evictable && mLeastRecentlyUsed.mMoreUsed == mMostRecentlyUsed) {
@@ -2542,6 +2546,12 @@ public final class Database implements CauseCloseable {
                     }
 
                     if (trial == 1) {
+                        if (node.mCachedState != CACHED_CLEAN && mNodeCount < mMaxNodeCount) {
+                            // Grow the cache instead of evicting.
+                            node.releaseExclusive();
+                            return doAllocLatchedNode(evictable);
+                        }
+
                         // For first attempt, release the usage latch early to prevent blocking
                         // other allocations while node is evicted. Subsequent attempts retain
                         // the latch, preventing potential allocation starvation.
@@ -2594,6 +2604,30 @@ public final class Database implements CauseCloseable {
         }
 
         throw new CacheExhaustedException();
+    }
+
+    /**
+     * Caller must acquire mUsageLatch, which is released by this method.
+     */
+    private Node doAllocLatchedNode(boolean evictable) throws DatabaseException {
+        try {
+            checkClosed();
+            Node node = new Node(mPageSize);
+            node.acquireExclusive();
+            mNodeCount++;
+            if (evictable) {
+                if ((node.mLessUsed = mMostRecentlyUsed) == null) {
+                    mLeastRecentlyUsed = node;
+                } else {
+                    mMostRecentlyUsed.mMoreUsed = node;
+                }
+                mMostRecentlyUsed = node;
+            }
+            // Return with node latch still held.
+            return node;
+        } finally {
+            mUsageLatch.releaseExclusive();
+        }
     }
 
     /**
