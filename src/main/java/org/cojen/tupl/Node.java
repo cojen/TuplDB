@@ -1711,24 +1711,40 @@ final class Node extends Latch {
 
                         // "Randomly" choose left or right node first.
                         if ((mId & 1) == 0) {
-                            int posAdjust = tryRebalanceLeafLeft(tree, frame, pos, -remaining);
-                            if (posAdjust == 0) {
+                            int result = tryRebalanceLeafLeft
+                                (tree, frame, pos, encodedLen, -remaining);
+                            if (result == 0) {
                                 // First rebalance attempt failed.
-                                if (!tryRebalanceLeafRight(tree, frame, pos, -remaining)) {
+                                result = tryRebalanceLeafRight
+                                    (tree, frame, pos, encodedLen, -remaining);
+                                if (result == 0) {
                                     // Second rebalance attempt failed too, so split.
                                     break compact;
+                                } else if (result > 0) {
+                                    return result;
                                 }
+                            } else if (result > 0) {
+                                return result;
                             } else {
-                                pos -= posAdjust;
+                                pos += result;
                             }
-                        } else if (!tryRebalanceLeafRight(tree, frame, pos, -remaining)) {
-                            // First rebalance attempt failed.
-                            int posAdjust = tryRebalanceLeafLeft(tree, frame, pos, -remaining);
-                            if (posAdjust == 0) {
-                                // Second rebalance attempt failed too, so split.
-                                break compact;
-                            } else {
-                                pos -= posAdjust;
+                        } else {
+                            int result = tryRebalanceLeafRight
+                                (tree, frame, pos, encodedLen, -remaining);
+                            if (result == 0) {
+                                // First rebalance attempt failed.
+                                result = tryRebalanceLeafLeft
+                                    (tree, frame, pos, encodedLen, -remaining);
+                                if (result == 0) {
+                                    // Second rebalance attempt failed too, so split.
+                                    break compact;
+                                } else if (result > 0) {
+                                    return result;
+                                } else {
+                                    pos += result;
+                                }
+                            } else if (result > 0) {
+                                return result;
                             }
                         }
                     }
@@ -1787,16 +1803,20 @@ final class Node extends Latch {
      * @param tree required
      * @param parentFrame required
      * @param pos position to insert into; this position cannot move left
-     * @param minAmount minimum amount of bytes to move to make room 
-     * @return 2-based position increment; 0 if try failed
+     * @param insertLen encoded length of entry to insert
+     * @param minAmount minimum amount of bytes to move to make room
+     * @return 0 if try failed, or entry location of re-used slot, or negative 2-based position
+     * decrement if no slot was found
      */
     private int tryRebalanceLeafLeft(Tree tree, TreeCursorFrame parentFrame,
-                                     int pos, int minAmount)
+                                     int pos, int insertLen, int minAmount)
     {
         final byte[] rightPage = mPage;
 
         int moveAmount = 0;
         final int lastSearchVecLoc;
+        int insertLoc = 0;
+        int insertSlack = Integer.MAX_VALUE;
 
         check: {
             int searchVecLoc = mSearchVecStart;
@@ -1805,9 +1825,17 @@ final class Node extends Latch {
             // Note that loop doesn't examine last entry. At least one must remain.
             for (; searchVecLoc < searchVecEnd; searchVecLoc += 2) {
                 int entryLoc = decodeUnsignedShortLE(rightPage, searchVecLoc);
-                int len = leafEntryLengthAtLoc(rightPage, entryLoc) + 2;
-                moveAmount += len;
-                if (moveAmount >= minAmount) {
+                int encodedLen = leafEntryLengthAtLoc(rightPage, entryLoc);
+
+                // Find best fitting slot for insert entry.
+                int slack = encodedLen - insertLen;
+                if (slack >= 0 && slack < insertSlack) {
+                    insertLoc = entryLoc;
+                    insertSlack = slack;
+                }
+
+                moveAmount += encodedLen + 2;
+                if (moveAmount >= minAmount && insertLoc != 0) {
                     lastSearchVecLoc = searchVecLoc + 2; // +2 to be exclusive
                     break check;
                 }
@@ -1923,7 +1951,7 @@ final class Node extends Latch {
             // search there. Note that tryRebalanceLeafRight has an identical check, after
             // applying De Morgan's law. Because the chosen parent node is not strictly the
             // lowest from the right, a comparison must be made to the actual new parent node.
-             if (newPos < 0 |
+            if (newPos < 0 |
                 ((newPos == 0 & mask != 0) && compareKeys(frame.mNotFoundKey, newKey) < 0))
             {
                 frame.unbind();
@@ -1938,7 +1966,18 @@ final class Node extends Latch {
         left.releaseExclusive();
         parent.releaseExclusive();
 
-        return lastPos;
+        /* Not possible unless aggressive compaction is allowed.
+        if (insertLoc == 0) {
+            return -lastPos;
+        }
+        */
+
+        // Expand search vector for inserted entry and write pointer to the re-used slot.
+        mGarbage -= insertLen;
+        pos -= lastPos;
+        System.arraycopy(rightPage, mSearchVecStart, rightPage, mSearchVecStart -= 2, pos);
+        encodeShortLE(rightPage, mSearchVecStart + pos, insertLoc);
+        return insertLoc;
     }
 
     /**
@@ -1949,15 +1988,19 @@ final class Node extends Latch {
      * @param tree required
      * @param parentFrame required
      * @param pos position to insert into; this position cannot move right
-     * @param minAmount minimum amount of bytes to move to make room 
+     * @param insertLen encoded length of entry to insert
+     * @param minAmount minimum amount of bytes to move to make room
+     * @return 0 if try failed, or entry location of re-used slot, or negative if no slot was found
      */
-    private boolean tryRebalanceLeafRight(Tree tree, TreeCursorFrame parentFrame,
-                                          int pos, int minAmount)
+    private int tryRebalanceLeafRight(Tree tree, TreeCursorFrame parentFrame,
+                                      int pos, int insertLen, int minAmount)
     {
         final byte[] leftPage = mPage;
 
         int moveAmount = 0;
         final int firstSearchVecLoc;
+        int insertLoc = 0;
+        int insertSlack = Integer.MAX_VALUE;
 
         check: {
             int searchVecStart = mSearchVecStart + pos;
@@ -1966,20 +2009,28 @@ final class Node extends Latch {
             // Note that loop doesn't examine first entry. At least one must remain.
             for (; searchVecLoc > searchVecStart; searchVecLoc -= 2) {
                 int entryLoc = decodeUnsignedShortLE(leftPage, searchVecLoc);
-                int len = leafEntryLengthAtLoc(leftPage, entryLoc) + 2;
-                moveAmount += len;
-                if (moveAmount >= minAmount) {
+                int encodedLen = leafEntryLengthAtLoc(leftPage, entryLoc);
+
+                // Find best fitting slot for insert entry.
+                int slack = encodedLen - insertLen;
+                if (slack >= 0 && slack < insertSlack) {
+                    insertLoc = entryLoc;
+                    insertSlack = slack;
+                }
+
+                moveAmount += encodedLen + 2;
+                if (moveAmount >= minAmount && insertLoc != 0) {
                     firstSearchVecLoc = searchVecLoc;
                     break check;
                 }
             }
 
-            return false;
+            return 0;
         }
 
         final Node parent = parentFrame.tryAcquireExclusive();
         if (parent == null) {
-            return false;
+            return 0;
         }
 
         final int childPos = parentFrame.mNodePos;
@@ -1990,19 +2041,19 @@ final class Node extends Latch {
         {
             // No right child or sanity checks failed.
             parent.releaseExclusive();
-            return false;
+            return 0;
         }
 
         final Node right;
         try {
             right = parent.tryLatchChildNotSplit(tree, childPos + 2);
         } catch (IOException e) {
-            return false;
+            return 0;
         }
 
         if (right == null) {
             parent.releaseExclusive();
-            return false;
+            return 0;
         }
 
         // Notice that try-finally pattern is not used to release the latches. An uncaught
@@ -2033,7 +2084,7 @@ final class Node extends Latch {
             }
             right.releaseExclusive();
             parent.releaseExclusive();
-            return false;
+            return 0;
         }
 
         try {
@@ -2043,7 +2094,7 @@ final class Node extends Latch {
         } catch (IOException e) {
             right.releaseExclusive();
             parent.releaseExclusive();
-            return false;
+            return 0;
         }
 
         // Update the parent key.
@@ -2106,7 +2157,18 @@ final class Node extends Latch {
         right.releaseExclusive();
         parent.releaseExclusive();
 
-        return true;
+        /* Not possible unless aggressive compaction is allowed.
+        if (insertLoc == 0) {
+            return -1;
+        }
+        */
+
+        // Expand search vector for inserted entry and write pointer to the re-used slot.
+        mGarbage -= insertLen;
+        pos += mSearchVecStart;
+        System.arraycopy(leftPage, pos, leftPage, pos + 2, (mSearchVecEnd += 2) - pos);
+        encodeShortLE(leftPage, pos, insertLoc);
+        return insertLoc;
     }
 
     /**
@@ -2151,7 +2213,8 @@ final class Node extends Latch {
             for (TreeCursorFrame childFrame = rightChild.mLastCursorFrame; childFrame != null; ) {
                 TreeCursorFrame frame = childFrame.mParentFrame;
                 if (frame.mNode != this) {
-                    throw new AssertionError("Invalid cursor frame parent");
+                    throw new AssertionError("Invalid cursor frame parent: " + frame.mNode
+                                             + ", " + this + ", " + newChild);
                 }
                 frame.mNodePos += 2;
                 childFrame = childFrame.mPrevCousin;
@@ -2399,7 +2462,7 @@ final class Node extends Latch {
      * @param tree required
      * @param parentFrame required
      * @param keyPos position to insert into; this position cannot move left
-     * @param minAmount minimum amount of bytes to move to make room 
+     * @param minAmount minimum amount of bytes to move to make room
      * @return 2-based position increment; 0 if try failed
      */
     private int tryRebalanceInternalLeft(Tree tree, TreeCursorFrame parentFrame,
@@ -2609,7 +2672,7 @@ final class Node extends Latch {
      * @param tree required
      * @param parentFrame required
      * @param keyPos position to insert into; this position cannot move right
-     * @param minAmount minimum amount of bytes to move to make room 
+     * @param minAmount minimum amount of bytes to move to make room
      */
     private boolean tryRebalanceInternalRight(Tree tree, TreeCursorFrame parentFrame,
                                               int keyPos, int minAmount)
