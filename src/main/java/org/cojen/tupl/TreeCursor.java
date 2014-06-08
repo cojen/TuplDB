@@ -2669,7 +2669,9 @@ class TreeCursor implements CauseCloseable, Cursor {
         if (height > 0) {
             final Node[] stack = new Node[height];
             while (key() != null) {
-                verifyFrames(height, stack, mLeaf, observer);
+                if (!verifyFrames(height, stack, mLeaf, observer)) {
+                    return false;
+                }
                 nextNode();
             }
         }
