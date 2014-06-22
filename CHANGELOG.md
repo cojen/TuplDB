@@ -1,6 +1,12 @@
 Changelog
 =========
 
+v1.1.3
+------
+* Reduce the number of node compactions caused by leaf rebalancing, by requiring that an
+  existing entry slot be re-used for the inserted entry. More aggressive rebalancing is
+  possible, but it causes even more compaction overhead with little benefit.
+
 v1.1.2
 ------
 * Fix rare node eviction bug which left it (partially) in the usage list.
