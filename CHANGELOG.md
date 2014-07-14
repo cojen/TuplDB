@@ -1,6 +1,10 @@
 Changelog
 =========
 
+v1.1.4
+------
+* Fix corruption when reopening database, caused by aggressive page recycling.
+
 v1.1.3
 ------
 * Reduce the number of node compactions caused by leaf rebalancing, by requiring that an
