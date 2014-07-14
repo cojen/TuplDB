@@ -1,6 +1,10 @@
 Changelog
 =========
 
+v1.0.7
+------
+* Fix corruption when reopening database, caused by aggressive page recycling.
+
 v1.0.6
 ------
 * Fix rare node eviction bug which left it (partially) in the usage list.
