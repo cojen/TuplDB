@@ -279,7 +279,8 @@ final class PageQueue implements IntegerRef {
             pageId = mRemoveHeadFirstPageId;
 
             if (mAllocMode != ALLOC_RESERVE && mManager.isPageOutOfBounds(pageId)) {
-                throw new CorruptDatabaseException("Invalid page id in free list: " + pageId);
+                throw new CorruptDatabaseException
+                    ("Invalid page id in free list: " + pageId + "; list node: " + mRemoveHeadId);
             }
 
             mRemovePageCount--;
@@ -451,7 +452,21 @@ final class PageQueue implements IntegerRef {
         encodeLongLE(header, offset + I_REMOVE_NODE_COUNT, mRemoveNodeCount + mAppendNodeCount);
 
         if (mRemoveHeadId == 0 && mAppendPageCount > 0) {
-            encodeLongLE(header, offset + I_REMOVE_HEAD_ID, mAppendHeadId);
+            long headId = mAppendHeadId;
+            if (headId != mRemoveStoppedId) {
+                // Aggressive recycling has consumed some or all of the append list.
+                if (mRemoveStoppedId == mAppendTailId) {
+                    // Entire append list has been consumed. With no remove list encoded, the
+                    // init method will restore the proper stop position at the append tail.
+                    headId = 0;
+                } else {
+                    // Append list has been partially consumed. The stop position will be
+                    // detected when the append tail is seen.
+                    headId = mRemoveStoppedId;
+                }
+            }
+
+            encodeLongLE(header, offset + I_REMOVE_HEAD_ID, headId);
             encodeIntLE (header, offset + I_REMOVE_HEAD_OFFSET, I_NODE_START);
             // First page is defined in node itself, and init method reads it.
             encodeLongLE(header, offset + I_REMOVE_HEAD_FIRST_PAGE_ID, 0);
