@@ -52,6 +52,7 @@ class JavaFileIO extends FileIO {
         AtomicIntegerFieldUpdater.newUpdater(JavaFileIO.class, "mSyncCount");
 
     private final File mFile;
+    private final String mMode;
 
     // Access these fields while synchronized on mFilePool.
     private final FileAccess[] mFilePool;
@@ -86,6 +87,8 @@ class JavaFileIO extends FileIO {
             }
         }
 
+        mMode = mode;
+
         if (openFileCount < 1) {
             openFileCount = 1;
         }
@@ -118,7 +121,16 @@ class JavaFileIO extends FileIO {
 
     @Override
     public long length() throws IOException {
-        RandomAccessFile file = accessFile();
+        RandomAccessFile file;
+
+        Lock lock = mMappingLock.readLock();
+        lock.lock();
+        try {
+            file = accessFile();
+        } finally {
+            lock.unlock();
+        }
+
         try {
             return file.length();
         } catch (IOException e) {
@@ -130,7 +142,16 @@ class JavaFileIO extends FileIO {
 
     @Override
     public void setLength(long length) throws IOException {
-        RandomAccessFile file = accessFile();
+        RandomAccessFile file;
+
+        Lock lock = mMappingLock.readLock();
+        lock.lock();
+        try {
+            file = accessFile();
+        } finally {
+            lock.unlock();
+        }
+
         try {
             file.setLength(length);
         } catch (IOException e) {
@@ -171,6 +192,8 @@ class JavaFileIO extends FileIO {
         }
 
         try {
+            RandomAccessFile file;
+
             Lock lock = mMappingLock.readLock();
             lock.lock();
             try {
@@ -215,11 +238,12 @@ class JavaFileIO extends FileIO {
                         offset += mavail;
                     }
                 }
+
+                file = accessFile();
             } finally {
                 lock.unlock();
             }
 
-            RandomAccessFile file = accessFile();
             try {
                 file.seek(pos);
                 if (read) {
@@ -342,24 +366,48 @@ class JavaFileIO extends FileIO {
         synchronized (mRemapLock) {
             Lock lock = mMappingLock.writeLock();
             lock.lock();
+            try {
+                Mapping[] mappings = mMappings;
+                if (mappings == null) {
+                    return;
+                }
 
-            Mapping[] mappings = mMappings;
-            if (mappings == null) {
+                mMappings = null;
+                mLastMappingSize = 0;
+
+                IOException ex = null;
+                for (Mapping m : mappings) {
+                    ex = Utils.closeQuietly(ex, m);
+                }
+
+                // Need to replace all the open files. There's otherwise no guarantee that any
+                // changes to the mapped files will be visible.
+
+                for (int i=0; i<mFilePool.length; i++) {
+                    try {
+                        accessFile();
+                    } catch (IOException e) {
+                        if (ex == null) {
+                            ex = e;
+                        }
+                    }
+                }
+
+                for (int i=0; i<mFilePool.length; i++) {
+                    try {
+                        yieldFile(openRaf(mFile, mMode));
+                    } catch (IOException e) {
+                        if (ex == null) {
+                            ex = e;
+                        }
+                    }
+                }
+
+                if (ex != null) {
+                    throw ex;
+                }
+            } finally {
                 lock.unlock();
-                return;
-            }
-
-            mMappings = null;
-            mLastMappingSize = 0;
-            lock.unlock();
-
-            IOException ex = null;
-            for (Mapping m : mappings) {
-                ex = Utils.closeQuietly(ex, m);
-            }
-
-            if (ex != null) {
-                throw ex;
             }
         }
     }
@@ -378,6 +426,8 @@ class JavaFileIO extends FileIO {
 
             mSyncLock.readLock().lock();
             try {
+                RandomAccessFile file;
+
                 Lock lock = mMappingLock.readLock();
                 lock.lock();
                 try {
@@ -388,11 +438,12 @@ class JavaFileIO extends FileIO {
                             m.sync(false);
                         }
                     }
+
+                    file = accessFile();
                 } finally {
                     lock.unlock();
                 }
 
-                RandomAccessFile file = accessFile();
                 try {
                     file.getChannel().force(metadata);
                 } catch (IOException e) {
