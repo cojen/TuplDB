@@ -385,7 +385,7 @@ class JavaFileIO extends FileIO {
 
                 for (int i=0; i<mFilePool.length; i++) {
                     try {
-                        accessFile();
+                        accessFile().close();
                     } catch (IOException e) {
                         if (ex == null) {
                             ex = e;
