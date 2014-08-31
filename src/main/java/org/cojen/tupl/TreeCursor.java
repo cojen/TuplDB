@@ -3097,6 +3097,10 @@ class TreeCursor implements CauseCloseable, Cursor {
 
     /**
      * Caller must hold exclusive latch, which is released by this method.
+     *
+     * @param leftChildNode never null, latched exclusively
+     * @param rightChildNode null if contents merged into left node, otherwise latched
+     * exclusively and should simply be unlatched
      */
     private void mergeInternal(TreeCursorFrame frame, Node node,
                                Node leftChildNode, Node rightChildNode)
@@ -3111,16 +3115,15 @@ class TreeCursor implements CauseCloseable, Cursor {
 
                 // Delete the empty root node, eliminating a tree level.
 
-                // Note: By retaining child latches (although right might have
-                // been deleted), another thread is prevented from splitting
-                // the lone child. The lone child will become the new root.
-                // TODO: Investigate if this creates deadlocks.
+                if (rightChildNode != null) {
+                    throw new AssertionError();
+                }
+
+                // By retaining child latch, another thread is prevented from splitting it. The
+                // lone child will become the new root.
                 try {
-                    node.rootDelete(mTree);
+                    node.rootDelete(mTree, leftChildNode);
                 } catch (Throwable e) {
-                    if (rightChildNode != null) {
-                        rightChildNode.releaseExclusive();
-                    }
                     leftChildNode.releaseExclusive();
                     node.releaseExclusive();
                     throw e;
@@ -3296,10 +3299,10 @@ class TreeCursor implements CauseCloseable, Cursor {
     private Node latchChild(Node parent, int childPos, boolean releaseParent)
         throws IOException
     {
-        Node childNode = parent.mChildNodes[childPos >> 1];
         long childId = parent.retrieveChildRefId(childPos);
+        Node childNode = mTree.mDatabase.mTreeNodeMap.get(childId);
 
-        if (childNode != null && childId == childNode.mId) {
+        if (childNode != null) {
             childNode.acquireExclusive();
             // Need to check again in case evict snuck in.
             if (childId != childNode.mId) {
@@ -3327,10 +3330,10 @@ class TreeCursor implements CauseCloseable, Cursor {
     /*
     private Node latchChildToModify(TreeCursorFrame parentFrame, int childPos) throws IOException {
         Node parentNode = parentFrame.mNode;
-        Node childNode = parentNode.mChildNodes[childPos >> 1];
         long childId = parentNode.retrieveChildRefId(childPos);
+        Node childNode = mTree.mDatabase.mTreeNodeMap.get(childId);
 
-        check: if (childNode != null && childId == childNode.mId) {
+        check: if (childNode != null) {
             if (parentNode.mType == Node.TYPE_TN_BIN) {
                 childNode.acquireExclusive();
                 // Need to check again in case evict snuck in.
