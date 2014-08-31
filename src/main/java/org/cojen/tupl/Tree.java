@@ -366,7 +366,7 @@ class Tree implements Index {
                         return;
                     }
                     if (root.mLastCursorFrame != null) {
-                        root.invalidateCursors(null);
+                        root.invalidateCursors(mDatabase.mTreeNodeMap);
                     }
                 } finally {
                     commitLock.unlock();
@@ -374,7 +374,7 @@ class Tree implements Index {
             }
 
             if (mDatabase.mPageDb.isDurable()) {
-                root.forceEvictTree(mDatabase.mPageDb);
+                root.forceEvictTree(mDatabase);
 
                 // Root node reference cannot be cleared, so instead make it
                 // non-functional. Move the page reference into a new evictable Node object,
@@ -476,25 +476,18 @@ class Tree implements Index {
         int pos = 0;
 
         while (true) {
-            toLower: while (true) {
-                Node[] childNodes = node.mChildNodes;
-
-                if (childNodes == null) {
-                    break toLower;
-                }
-
+            toLower: while (node.isInternal()) {
+                final int highestPos = node.highestInternalPos();
                 while (true) {
-                    int i = pos >> 1;
-                    if (i >= childNodes.length) {
+                    if (pos > highestPos) {
                         break toLower;
                     }
-                    Node child = childNodes[i];
+                    long childId = node.retrieveChildRefId(pos);
+                    Node child = mDatabase.mTreeNodeMap.get(childId);
                     if (child != null) {
-                        long childId = node.retrieveChildRefId(pos);
                         child.acquireExclusive();
                         // Need to check again in case evict snuck in.
                         if (childId != child.mId) {
-                            childNodes[i] = null;
                             child.releaseExclusive();
                         } else {
                             frame = new TreeCursorFrame(frame);

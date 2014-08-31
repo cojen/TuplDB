@@ -47,8 +47,8 @@ final class Node extends Latch {
 
       TN == Tree Node
 
-      Note that leaf type is always negative. If type encoding changes, the
-      isLeaf method might need to be updated.
+      Note that leaf type is always negative. If type encoding changes, the isLeaf and
+      isInternal methods might need to be updated.
 
      */
 
@@ -209,8 +209,8 @@ final class Node extends Latch {
     int mSearchVecStart;
     int mSearchVecEnd;
 
-    // References to child nodes currently available. Is null for leaf nodes.
-    Node[] mChildNodes;
+    // Next in NodeMap collision chain or lower node in UndoLog.
+    Node mNodeChainNext;
 
     // Linked stack of TreeCursorFrames bound to this Node.
     TreeCursorFrame mLastCursorFrame;
@@ -252,7 +252,6 @@ final class Node extends Latch {
             newNode.mRightSegTail = mRightSegTail;
             newNode.mSearchVecStart = mSearchVecStart;
             newNode.mSearchVecEnd = mSearchVecEnd;
-            newNode.mChildNodes = mChildNodes;
         }
 
         // Prevent node from being marked dirty.
@@ -268,9 +267,6 @@ final class Node extends Latch {
         mRightSegTail = 1;
         mSearchVecStart = 2;
         mSearchVecEnd = 0;
-
-        // TODO: child node array should be recycled
-        mChildNodes = null;
 
         return newNode;
     }
@@ -320,11 +316,10 @@ final class Node extends Latch {
 
         loop: while (true) {
             childPos = internalPos(node.binarySearch(key));
-
-            Node childNode = node.mChildNodes[childPos >> 1];
             childId = node.retrieveChildRefId(childPos);
+            Node childNode = tree.mDatabase.mTreeNodeMap.get(childId);
 
-            childCheck: if (childNode != null && childId == childNode.mId) {
+            childCheck: if (childNode != null) {
                 childNode.acquireShared();
 
                 // Need to check again in case evict snuck in.
@@ -511,11 +506,12 @@ final class Node extends Latch {
         try {
             childNode = db.allocLatchedNode();
             childNode.mId = childId;
-            mChildNodes[childPos >> 1] = childNode;
         } catch (Throwable e) {
             releaseExclusive();
             throw e;
         }
+
+        db.mTreeNodeMap.put(childNode);
 
         // Release parent latch before child has been loaded. Any threads
         // which wish to access the same child will block until this thread
@@ -535,6 +531,7 @@ final class Node extends Latch {
         } catch (Throwable e) {
             // Another thread might access child and see that it is invalid because
             // id is zero. It will assume it got evicted and will load child again.
+            db.mTreeNodeMap.remove(childNode, NodeMap.hash(childId));
             childNode.mId = 0;
             childNode.mType = TYPE_NONE;
             childNode.releaseExclusive();
@@ -558,10 +555,10 @@ final class Node extends Latch {
      * @return null or child node, never split
      */
     private Node tryLatchChildNotSplit(Tree tree, int childPos) throws IOException {
-        Node childNode = mChildNodes[childPos >> 1];
         long childId = retrieveChildRefId(childPos);
+        Node childNode = tree.mDatabase.mTreeNodeMap.get(childId);
 
-        if (childNode != null && childId == childNode.mId) {
+        if (childNode != null) {
             if (!childNode.tryAcquireExclusive()) {
                 return null;
             }
@@ -592,6 +589,7 @@ final class Node extends Latch {
 
         Database db = tree.mDatabase;
         Node child = db.allocDirtyNode();
+        db.mTreeNodeMap.put(child);
 
         byte[] newPage = child.mPage;
         child.mPage = mPage;
@@ -601,7 +599,6 @@ final class Node extends Latch {
         child.mRightSegTail = mRightSegTail;
         child.mSearchVecStart = mSearchVecStart;
         child.mSearchVecEnd = mSearchVecEnd;
-        child.mChildNodes = mChildNodes;
         child.mLastCursorFrame = mLastCursorFrame;
 
         // Fix child node cursor frame bindings.
@@ -632,9 +629,6 @@ final class Node extends Latch {
         encodeShortLE(newPage, searchVecStart, TN_HEADER_SIZE);
         encodeLongLE(newPage, searchVecStart + 2, left.mId);
         encodeLongLE(newPage, searchVecStart + 2 + 8, right.mId);
-
-        // TODO: recycle these arrays
-        mChildNodes = new Node[] {left, right};
 
         mPage = newPage;
         mType = isLeaf() ? (byte) (TYPE_TN_BIN | LOW_EXTREMITY | HIGH_EXTREMITY)
@@ -701,10 +695,7 @@ final class Node extends Latch {
             mSearchVecStart = decodeUnsignedShortLE(page, 8);
             mSearchVecEnd = decodeUnsignedShortLE(page, 10);
             type &= ~(LOW_EXTREMITY | HIGH_EXTREMITY);
-            if (type == TYPE_TN_IN || type == TYPE_TN_BIN) {
-                // TODO: recycle child node arrays
-                mChildNodes = new Node[numKeys() + 1];
-            } else if (type >= 0) {
+            if (type >= 0 && type != TYPE_TN_IN && type != TYPE_TN_BIN) {
                 throw new CorruptDatabaseException("Unknown node type: " + mType + ", id: " + id);
             }
         }
@@ -749,35 +740,32 @@ final class Node extends Latch {
      *
      * @return original or another node to be evicted; null if cannot evict
      */
-    static Node evict(Node node, PageDb db) throws IOException {
+    static Node evict(Node node, Database db) throws IOException {
         if (node.mType != TYPE_UNDO_LOG) {
             return node.evictTreeNode(db);
         }
 
         while (true) {
-            Node[] childNodes = node.mChildNodes;
-            if (childNodes != null && childNodes.length > 0) {
-                Node child = childNodes[0];
-                if (child != null) {
-                    long childId = decodeLongLE(node.mPage, UndoLog.I_LOWER_NODE_ID);
-                    // Check id match before lock attempt, as a quick short
-                    // circuit if child has already been evicted.
-                    if (childId == child.mId) {
-                        if (child.tryAcquireExclusive()) {
-                            // Check again in case another evict snuck in.
-                            if (childId == child.mId && child.mCachedState != CACHED_CLEAN) {
-                                // Try evicting the child instead.
-                                node.releaseExclusive();
-                                node = child;
-                                continue;
-                            }
-                            child.releaseExclusive();
-                        } else {
-                            // If latch cannot be acquired, assume child is still
-                            // in use, and so the parent node should be kept.
+            Node child = node.mNodeChainNext;
+            if (child != null) {
+                long childId = decodeLongLE(node.mPage, UndoLog.I_LOWER_NODE_ID);
+                // Check id match before lock attempt, as a quick short
+                // circuit if child has already been evicted.
+                if (childId == child.mId) {
+                    if (child.tryAcquireExclusive()) {
+                        // Check again in case another evict snuck in.
+                        if (childId == child.mId && child.mCachedState != CACHED_CLEAN) {
+                            // Try evicting the child instead.
                             node.releaseExclusive();
-                            return null;
+                            node = child;
+                            continue;
                         }
+                        child.releaseExclusive();
+                    } else {
+                        // If latch cannot be acquired, assume child is still
+                        // in use, and so the parent node should be kept.
+                        node.releaseExclusive();
+                        return null;
                     }
                 }
             }
@@ -786,7 +774,7 @@ final class Node extends Latch {
         }
     }
 
-    private Node evictTreeNode(PageDb db) throws IOException {
+    private Node evictTreeNode(Database db) throws IOException {
         if (mLastCursorFrame != null || mSplit != null) {
             // Cannot evict if in use by a cursor or if splitting. The split
             // check is redundant, since a node cannot be in a split state
@@ -795,37 +783,39 @@ final class Node extends Latch {
             return null;
         }
 
-        if (mId == STUB_ID) {
-            // Stub has one child which is the root or another stub. The child
-            // should never be evicted, because this would cause the entire
-            // tree to be erroneously evicted.
-            mId = 0;
-            // TODO: child node array should be recycled
-            mChildNodes = null;
+        // Check if 0 (already evicted) or stub.
+        if (mId <= STUB_ID) {
+            if (mId == STUB_ID) {
+                // Stub has one child which is the root or another stub. The child
+                // should never be evicted, because this would cause the entire
+                // tree to be erroneously evicted.
+                mId = 0;
+            }
             return this;
         }
 
-        Node[] childNodes = mChildNodes;
-        if (childNodes != null) for (int i=0; i<childNodes.length; i++) {
-            Node child = childNodes[i];
-            if (child != null) {
-                long childId = retrieveChildRefIdFromIndex(i);
-                if (childId != child.mId) {
-                    // Not our child -- it was evicted already.
-                    childNodes[i] = null;
-                } else if (child.tryAcquireExclusive()) {
-                    if (childId == child.mId && child.evictTreeNode(db) == null) {
-                        // Cannot evict child, and so cannot evict parent.
+        // FIXME: With NodeMap, no need to evict child nodes too.
+        if (isInternal()) {
+            final NodeMap map = db.mTreeNodeMap;
+            int childPtr = mSearchVecEnd + 2;
+            final int highestPtr = childPtr + (highestInternalPos() << 2);
+            for (; childPtr <= highestPtr; childPtr += 8) {
+                long childId = decodeUnsignedInt48LE(mPage, childPtr);
+                Node child = map.get(childId);
+                if (child != null) {
+                    if (child.tryAcquireExclusive()) {
+                        if (childId == child.mId && child.evictTreeNode(db) == null) {
+                            // Cannot evict child, and so cannot evict parent.
+                            releaseExclusive();
+                            return null;
+                        }
+                        child.releaseExclusive();
+                    } else {
+                        // If latch cannot be acquired, assume child is still in
+                        // use, and so the parent node should be kept.
                         releaseExclusive();
                         return null;
                     }
-                    childNodes[i] = null;
-                    child.releaseExclusive();
-                } else {
-                    // If latch cannot be acquired, assume child is still in
-                    // use, and so the parent node should be kept.
-                    releaseExclusive();
-                    return null;
                 }
             }
         }
@@ -840,24 +830,29 @@ final class Node extends Latch {
      * Caller must hold exclusive latch on node. Latch is released by this
      * method when an exception is thrown.
      */
-    void forceEvictTree(PageDb db) throws IOException {
+    void forceEvictTree(Database db) throws IOException {
         // Cursor frames might still exist, if cursors are not being reset properly. Since tree
         // is not referenced, the original cursors are gone. The frames are just garbage.
         mLastCursorFrame = null;
 
-        Node[] childNodes = mChildNodes;
-        if (childNodes != null) for (int i=0; i<childNodes.length; i++) {
-            Node child = childNodes[i];
-            if (child != null) {
-                long childId = retrieveChildRefIdFromIndex(i);
-                if (childId == child.mId) {
+        if (mId == 0) {
+            return;
+        }
+
+        if (isInternal()) {
+            final NodeMap map = db.mTreeNodeMap;
+            int childPtr = mSearchVecEnd + 2;
+            final int highestPtr = childPtr + (highestInternalPos() << 2);
+            for (; childPtr <= highestPtr; childPtr += 8) {
+                long childId = decodeUnsignedInt48LE(mPage, childPtr);
+                Node child = map.get(childId);
+                if (child != null) {
                     child.acquireExclusive();
                     if (childId == child.mId) {
                         child.forceEvictTree(db);
                     }
                     child.releaseExclusive();
                 }
-                childNodes[i] = null;
             }
         }
 
@@ -868,10 +863,10 @@ final class Node extends Latch {
      * Caller must hold exclusive latch on node. Latch is released by this
      * method when an exception is thrown.
      */
-    void doEvict(PageDb db) throws IOException {
+    void doEvict(Database db) throws IOException {
         if (mCachedState != CACHED_CLEAN) {
             try {
-                write(db);
+                write(db.mPageDb);
                 mCachedState = CACHED_CLEAN;
             } catch (Throwable e) {
                 releaseExclusive();
@@ -879,40 +874,20 @@ final class Node extends Latch {
             }
         }
 
+        db.mTreeNodeMap.remove(this, NodeMap.hash(mId));
         mId = 0;
         mType = TYPE_NONE;
-        // TODO: child node array should be recycled
-        mChildNodes = null;
     }
 
     /**
      * Invalidate all cursors, starting from the root. Used when closing an index which still
      * has active cursors. Caller must hold exclusive latch on node.
-     *
-     * @param emptyParent pass null if this is the root node
      */
-    void invalidateCursors(Node emptyParent) {
-        Node empty;
-        obtainEmpty: {
-            if (emptyParent == null) {
-                empty = new Node(EMPTY_BYTES);
-            } else {
-                Node[] parentChildNodes = emptyParent.mChildNodes;
-                if (parentChildNodes != null) {
-                    empty = parentChildNodes[0];
-                    break obtainEmpty;
-                }
-                empty = new Node(EMPTY_BYTES);
-                emptyParent.mChildNodes = new Node[] {empty};
-            }
+    void invalidateCursors(NodeMap map) {
+        invalidateCursors(map, createEmptyNode(mType));
+    }
 
-            empty.mId = STUB_ID;
-            empty.mCachedState = CACHED_CLEAN;
-            empty.mType = mType;
-            empty.mSearchVecStart = 2;
-            empty.mSearchVecEnd = 0;
-        }
-
+    private void invalidateCursors(NodeMap map, Node empty) {
         int pos = isLeaf() ? -1 : 0;
 
         for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
@@ -921,24 +896,38 @@ final class Node extends Latch {
             frame = frame.mPrevCousin;
         }
 
-        Node[] childNodes = mChildNodes;
-        if (childNodes == null) {
+        if (!isInternal()) {
             return;
         }
 
-        for (int i=0; i<childNodes.length; i++) {
-            Node child = childNodes[i];
+        empty = null;
+
+        int childPtr = mSearchVecEnd + 2;
+        final int highestPtr = childPtr + (highestInternalPos() << 2);
+        for (; childPtr <= highestPtr; childPtr += 8) {
+            long childId = decodeUnsignedInt48LE(mPage, childPtr);
+            Node child = map.get(childId);
             if (child != null) {
-                long childId = retrieveChildRefIdFromIndex(i);
+                child.acquireExclusive();
                 if (childId == child.mId) {
-                    child.acquireExclusive();
-                    if (childId == child.mId) {
-                        child.invalidateCursors(empty);
+                    if (empty == null) {
+                        empty = createEmptyNode(child.mType);
                     }
-                    child.releaseExclusive();
+                    child.invalidateCursors(map, empty);
                 }
+                child.releaseExclusive();
             }
         }
+    }
+
+    private static Node createEmptyNode(byte type) {
+        Node empty = new Node(EMPTY_BYTES);
+        empty.mId = STUB_ID;
+        empty.mCachedState = CACHED_CLEAN;
+        empty.mType = type;
+        empty.mSearchVecStart = 2;
+        empty.mSearchVecEnd = 0;
+        return empty;
     }
 
     /**
@@ -946,6 +935,13 @@ final class Node extends Latch {
      */
     boolean isLeaf() {
         return mType < 0;
+    }
+
+    /**
+     * Caller must hold any latch.
+     */
+    boolean isInternal() {
+        return (mType & 0x60) == 0x60;
     }
 
     /**
@@ -1513,13 +1509,6 @@ final class Node extends Latch {
     }
 
     /**
-     * @param index index in child node array
-     */
-    long retrieveChildRefIdFromIndex(int index) {
-        return decodeUnsignedInt48LE(mPage, mSearchVecEnd + 2 + (index << 3));
-    }
-
-    /**
      * @return length of encoded entry at given location
      */
     static int leafEntryLengthAtLoc(byte[] page, final int entryLoc) {
@@ -1852,8 +1841,7 @@ final class Node extends Latch {
         final int childPos = parentFrame.mNodePos;
         if (childPos <= 0
             || parent.mSplit != null
-            || parent.mCachedState != mCachedState
-            || parent.mChildNodes[childPos >> 1] != this)
+            || parent.mCachedState != mCachedState)
         {
             // No left child or sanity checks failed.
             parent.releaseExclusive();
@@ -2036,8 +2024,7 @@ final class Node extends Latch {
         final int childPos = parentFrame.mNodePos;
         if (childPos >= parent.highestInternalPos()
             || parent.mSplit != null
-            || parent.mCachedState != mCachedState
-            || parent.mChildNodes[childPos >> 1] != this)
+            || parent.mCachedState != mCachedState)
         {
             // No right child or sanity checks failed.
             parent.releaseExclusive();
@@ -2220,23 +2207,9 @@ final class Node extends Latch {
                 childFrame = childFrame.mPrevCousin;
             }
 
-            // Update references to child node instances.
-            {
-                // TODO: recycle child node arrays
-                Node[] newChildNodes = new Node[mChildNodes.length + 1];
-                arraycopy(mChildNodes, 0, newChildNodes, 0, newChildPos);
-                arraycopy(mChildNodes, newChildPos, newChildNodes, newChildPos + 1,
-                          mChildNodes.length - newChildPos);
-                newChildNodes[newChildPos] = newChild;
-                mChildNodes = newChildNodes;
-
-                // Rescale for long ids as encoded in page.
-                newChildPos <<= 3;
-            }
-
             // FIXME: IOException; how to rollback the damage?
             InResult result = createInternalEntry
-                (tree, keyPos, split.splitKeyEncodedLength(), newChildPos, true);
+                (tree, keyPos, split.splitKeyEncodedLength(), newChildPos << 3, true);
 
             // Write new child id.
             encodeLongLE(result.mPage, result.mNewChildLoc, newChild.mId);
@@ -2476,8 +2449,7 @@ final class Node extends Latch {
         final int childPos = parentFrame.mNodePos;
         if (childPos <= 0
             || parent.mSplit != null
-            || parent.mCachedState != mCachedState
-            || parent.mChildNodes[childPos >> 1] != this)
+            || parent.mCachedState != mCachedState)
         {
             // No left child or sanity checks failed.
             parent.releaseExclusive();
@@ -2578,13 +2550,6 @@ final class Node extends Latch {
         int searchVecLoc = mSearchVecStart;
         final int moved = lastSearchVecLoc - searchVecLoc + 2;
 
-        // Allocate early, in case of a memory error.
-        Node[] newLeftChildNodes, newRightChildNodes;
-        {
-            newLeftChildNodes = new Node[left.mChildNodes.length + (moved >> 1)];
-            newRightChildNodes = new Node[mChildNodes.length - (moved >> 1)];
-        }
-
         try {
             // Leftmost key to move comes from the parent.
             int pos = left.highestInternalPos();
@@ -2630,17 +2595,6 @@ final class Node extends Latch {
         mGarbage += garbageAccum;
         mSearchVecStart = lastSearchVecLoc + 2;
 
-        // Update references to child node instances.
-        {
-            // TODO: recycle child node arrays
-            arraycopy(left.mChildNodes, 0, newLeftChildNodes, 0, left.mChildNodes.length);
-            arraycopy(mChildNodes, 0,
-                      newLeftChildNodes, left.mChildNodes.length, moved >> 1);
-            arraycopy(mChildNodes, moved >> 1, newRightChildNodes, 0, newRightChildNodes.length);
-            left.mChildNodes = newLeftChildNodes;
-            mChildNodes = newRightChildNodes;
-        }
-
         // Fix cursor positions or move them to the left node.
         final int leftEndPos = left.highestInternalPos() + 2;
         for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
@@ -2685,8 +2639,7 @@ final class Node extends Latch {
         final int childPos = parentFrame.mNodePos;
         if (childPos >= parent.highestInternalPos()
             || parent.mSplit != null
-            || parent.mCachedState != mCachedState
-            || parent.mChildNodes[childPos >> 1] != this)
+            || parent.mCachedState != mCachedState)
         {
             // No right child or sanity checks failed.
             parent.releaseExclusive();
@@ -2786,13 +2739,6 @@ final class Node extends Latch {
         int searchVecLoc = mSearchVecEnd;
         final int moved = searchVecLoc - firstSearchVecLoc + 2;
 
-        // Allocate early, in case of a memory error.
-        Node[] newLeftChildNodes, newRightChildNodes;
-        {
-            newLeftChildNodes = new Node[mChildNodes.length - (moved >> 1)];
-            newRightChildNodes = new Node[right.mChildNodes.length + (moved >> 1)];
-        }
-
         try {
             // Rightmost key to move comes from the parent.
             InResult result = right.createInternalEntry(tree, 0, parentKeyLen, 0, false);
@@ -2832,17 +2778,6 @@ final class Node extends Latch {
 
         mGarbage += garbageAccum;
         mSearchVecEnd = firstSearchVecLoc - 2;
-
-        // Update references to child node instances.
-        {
-            // TODO: recycle child node arrays
-            arraycopy(mChildNodes, 0, newLeftChildNodes, 0, newLeftChildNodes.length);
-            arraycopy(mChildNodes, newLeftChildNodes.length, newRightChildNodes, 0, moved >> 1);
-            arraycopy(right.mChildNodes, 0,
-                      newRightChildNodes, moved >> 1, right.mChildNodes.length);
-            mChildNodes = newLeftChildNodes;
-            right.mChildNodes = newRightChildNodes;
-        }
 
         // Fix cursor positions in the right node.
         for (TreeCursorFrame frame = right.mLastCursorFrame; frame != null; ) {
@@ -3330,14 +3265,6 @@ final class Node extends Latch {
             searchVecStart += 2;
         }
 
-        // TODO: recycle child node arrays
-        int leftLen = leftNode.mChildNodes.length;
-        Node[] newChildNodes = new Node[leftLen + rightNode.mChildNodes.length];
-        arraycopy(leftNode.mChildNodes, 0, newChildNodes, 0, leftLen);
-        arraycopy(rightNode.mChildNodes, 0, newChildNodes, leftLen,
-                  rightNode.mChildNodes.length);
-        leftNode.mChildNodes = newChildNodes;
-
         // All cursors in the right node must be moved to the left node.
         for (TreeCursorFrame frame = rightNode.mLastCursorFrame; frame != null; ) {
             // Capture previous frame from linked list before changing the links.
@@ -3377,16 +3304,8 @@ final class Node extends Latch {
         // Increment garbage by the size of the encoded entry.
         mGarbage += keyLengthAtLoc(page, entryLoc);
 
-        // Update references to child node instances.
-        // TODO: recycle child node arrays
-        childPos >>= 1;
-        Node[] newChildNodes = new Node[mChildNodes.length - 1];
-        arraycopy(mChildNodes, 0, newChildNodes, 0, childPos);
-        arraycopy(mChildNodes, childPos + 1, newChildNodes, childPos,
-                  newChildNodes.length - childPos);
-        mChildNodes = newChildNodes;
         // Rescale for long ids as encoded in page.
-        childPos <<= 3;
+        childPos <<= 2;
 
         int searchVecEnd = mSearchVecEnd;
 
@@ -3421,12 +3340,10 @@ final class Node extends Latch {
      * Caller must also ensure that both nodes are not splitting. No latches
      * are released by this method.
      */
-    void rootDelete(Tree tree) throws IOException {
+    void rootDelete(Tree tree, Node child) throws IOException {
         byte[] page = mPage;
-        Node[] childNodes = mChildNodes;
         TreeCursorFrame lastCursorFrame = mLastCursorFrame;
 
-        Node child = childNodes[0];
         tree.mDatabase.prepareToDelete(child);
         long toDelete = child.mId;
         int toDeleteState = child.mCachedState;
@@ -3439,21 +3356,18 @@ final class Node extends Latch {
         mRightSegTail = child.mRightSegTail;
         mSearchVecStart = child.mSearchVecStart;
         mSearchVecEnd = child.mSearchVecEnd;
-        mChildNodes = child.mChildNodes;
         mLastCursorFrame = child.mLastCursorFrame;
 
         // Repurpose the child node into a stub root node. Stub is assigned a
         // reserved id (1) and a clean cached state. It cannot be marked dirty,
         // but it can be evicted when all cursors have unbound from it.
+        tree.mDatabase.mTreeNodeMap.remove(child, NodeMap.hash(toDelete));
         child.mPage = page;
         child.mId = STUB_ID;
         child.mCachedState = CACHED_CLEAN;
         child.mType = stubType;
         child.clearEntries();
-        child.mChildNodes = childNodes;
         child.mLastCursorFrame = lastCursorFrame;
-        // Lone child of stub root points to actual root.
-        childNodes[0] = this;
         // Search vector also needs to point to root.
         encodeLongLE(page, child.mSearchVecEnd + 2, this.mId);
 
@@ -3681,6 +3595,7 @@ final class Node extends Latch {
         }
 
         Node newNode = tree.mDatabase.allocUnevictableNode();
+        tree.mDatabase.mTreeNodeMap.put(newNode);
         newNode.mGarbage = 0;
 
         byte[] newPage = newNode.mPage;
@@ -3969,6 +3884,7 @@ final class Node extends Latch {
 
         // Alloc early in case an exception is thrown.
         final Node newNode = tree.mDatabase.allocUnevictableNode();
+        tree.mDatabase.mTreeNodeMap.put(newNode);
         newNode.mGarbage = 0;
 
         final byte[] newPage = newNode.mPage;
@@ -4011,12 +3927,6 @@ final class Node extends Latch {
 
             // Copy one or two left existing child ids to left node (newChildPos is 8 or 16).
             arraycopy(page, searchVecEnd + 2, newPage, leftSearchVecStart + 2, newChildPos);
-
-            // Split references to child node instances. New child node has already
-            // been placed into mChildNodes by caller.
-            // TODO: recycle child node arrays
-            newNode.mChildNodes = new Node[] {mChildNodes[0], mChildNodes[1]};
-            mChildNodes = new Node[] {mChildNodes[2], mChildNodes[3]};
 
             newNode.mLeftSegTail = TN_HEADER_SIZE + leftKeyLen;
             newNode.mRightSegTail = leftSearchVecStart + (2 + 8 + 8 - 1);
@@ -4164,18 +4074,6 @@ final class Node extends Latch {
                     int tailChildIdsLen = ((searchVecLoc - searchVecStart) << 2) - newChildPos;
                     arraycopy(page, searchVecEnd + 2 + newChildPos,
                               newPage, newSearchVecLoc + newChildPos + 8, tailChildIdsLen);
-
-                    // Split references to child node instances. New child node has already
-                    // been placed into mChildNodes by caller.
-                    // TODO: recycle child node arrays
-                    int leftLen = ((newSearchVecLoc - TN_HEADER_SIZE) >> 1) + 1;
-                    Node[] leftChildNodes = new Node[leftLen];
-                    Node[] rightChildNodes = new Node[mChildNodes.length - leftLen];
-                    arraycopy(mChildNodes, 0, leftChildNodes, 0, leftLen);
-                    arraycopy(mChildNodes, leftLen,
-                              rightChildNodes, 0, rightChildNodes.length);
-                    newNode.mChildNodes = leftChildNodes;
-                    mChildNodes = rightChildNodes;
                 }
 
                 newNode.mLeftSegTail = TN_HEADER_SIZE;
@@ -4301,17 +4199,6 @@ final class Node extends Latch {
                         ((searchVecEnd - searchVecStart) << 2) + 16 - newChildPos;
                     arraycopy(page, searchVecEnd + 2 + newChildPos,
                               newPage, newDestLoc + 8, tailChildIdsLen);
-
-                    // Split references to child node instances. New child node has already
-                    // been placed into mChildNodes by caller.
-                    // TODO: recycle child node arrays
-                    int rightLen = ((newSearchVecEnd - newSearchVecLoc) >> 1) + 2;
-                    Node[] rightChildNodes = new Node[rightLen];
-                    Node[] leftChildNodes = new Node[mChildNodes.length - rightLen];
-                    arraycopy(mChildNodes, leftChildNodes.length, rightChildNodes, 0, rightLen);
-                    arraycopy(mChildNodes, 0, leftChildNodes, 0, leftChildNodes.length);
-                    newNode.mChildNodes = rightChildNodes;
-                    mChildNodes = leftChildNodes;
                 }
 
                 newNode.mLeftSegTail = destLoc + encodedLen;
@@ -4564,11 +4451,6 @@ final class Node extends Latch {
         }
 
         if (!isLeaf()) {
-            if (numKeys() + 1 != mChildNodes.length) {
-                return verifyFailed(level, observer, "Wrong number of child nodes: " +
-                                    (numKeys() + 1) + " != " + mChildNodes.length);
-            }
-
             int childIdsStart = mSearchVecEnd + 2;
             int childIdsEnd = childIdsStart + ((childIdsStart - mSearchVecStart) << 2) + 8;
             if (childIdsEnd > (mRightSegTail + 1)) {
@@ -4685,192 +4567,4 @@ final class Node extends Latch {
         observer.failed = true;
         return observer.indexNodeFailed(id, level, message);
     }
-
-    /**
-     * Counts all the enties in the tree rooted at this node. No latches are
-     * acquired by this method -- it is only used for debugging.
-     */
-    /*
-    long countEntries(Database db) throws IOException {
-        if (isLeaf()) {
-            return 1 + ((mSearchVecEnd - mSearchVecStart) >> 1);
-        }
-
-        Node child = mChildNodes[mChildNodes.length - 1];
-        long childId = retrieveChildRefIdFromIndex(mChildNodes.length - 1);
-
-        if (child == null || childId != child.mId) {
-            child = new Node(db.pageSize());
-            child.read(db, childId);
-        }
-
-        long count = child.countEntries(db);
-
-        for (int pos = mSearchVecEnd - mSearchVecStart; pos >= 0; pos -= 2) {
-            child = mChildNodes[pos >> 1];
-            childId = retrieveChildRefId(pos);
-
-            if (child == null || childId != child.mId) {
-                child = new Node(db.pageSize());
-                child.read(db, childId);
-            }
-
-            count += child.countEntries(db);
-        }
-
-        return count;
-    }
-    */
-
-    /**
-     * Counts all the pages used to store the tree rooted at this node. No
-     * latches are acquired by this method -- it is only used for debugging.
-     */
-    /*
-    long countPages(Database db) throws IOException {
-        if (isLeaf()) {
-            return 1;
-        }
-
-        Node child = mChildNodes[mChildNodes.length - 1];
-        long childId = retrieveChildRefIdFromIndex(mChildNodes.length - 1);
-
-        if (child == null || childId != child.mId) {
-            child = new Node(db.pageSize());
-            child.read(db, childId);
-        }
-
-        long count = child.countPages(db);
-
-        for (int pos = mSearchVecEnd - mSearchVecStart; pos >= 0; pos -= 2) {
-            child = mChildNodes[pos >> 1];
-            childId = retrieveChildRefId(pos);
-
-            if (child == null || childId != child.mId) {
-                child = new Node(db.pageSize());
-                child.read(db, childId);
-            }
-
-            count += child.countPages(db);
-        }
-
-        return count + 1;
-    }
-    */
-
-    /**
-     * Clears a bit for each page used to store the tree rooted at this node. No
-     * latches are acquired by this method -- it is only used for debugging.
-     */
-    /*
-    void tracePages(Database db, java.util.BitSet bits) throws IOException {
-        if (mId == 0) {
-            return;
-        }
-
-        if (!bits.get((int) mId)) {
-            throw new CorruptDatabaseException("Page already seen: " + mId);
-        }
-        bits.clear((int) mId);
-
-        if (isLeaf()) {
-            return;
-        }
-
-        Node child = mChildNodes[mChildNodes.length - 1];
-        long childId = retrieveChildRefIdFromIndex(mChildNodes.length - 1);
-
-        if (child == null || childId != child.mId) {
-            child = new Node(db.pageSize());
-            child.read(db, childId);
-        }
-
-        child.tracePages(db, bits);
-
-        for (int pos = mSearchVecEnd - mSearchVecStart; pos >= 0; pos -= 2) {
-            child = mChildNodes[pos >> 1];
-            childId = retrieveChildRefId(pos);
-
-            if (child == null || childId != child.mId) {
-                child = new Node(db.pageSize());
-                child.read(db, childId);
-            }
-
-            child.tracePages(db, bits);
-        }
-    }
-    */
-
-    /**
-     * Prints the contents of tree rooted at this node. No latches are acquired
-     * by this method -- it is only used for debugging.
-     */
-    /*
-    void dump(Tree tree, String indent) throws IOException {
-        Database db = tree.mDatabase;
-        //verify0();
-
-        if (!hasKeys()) {
-            System.out.println(indent + mId + ": (empty)");
-            return;
-        }
-
-        if (isLeaf()) {
-            if (!hasKeys()) {
-                System.out.println(indent + mId + ": (empty)");
-                return;
-            }
-            for (int pos = mSearchVecEnd - mSearchVecStart; pos >= 0; pos -= 2) {
-                byte[] key = retrieveKey(pos);
-                byte[] value = retrieveLeafValue(tree, pos);
-                System.out.println(indent + mId + ": " +
-                                   dumpToString(key) + " = " + dumpToString(value));
-            }
-            return;
-        }
-
-        Node child = mChildNodes[mChildNodes.length - 1];
-        long childId = retrieveChildRefIdFromIndex(mChildNodes.length - 1);
-
-        if (child == null || childId != child.mId) {
-            System.out.println("child: " + child);
-            System.out.println("childId: " + childId);
-            child = new Node(db.pageSize());
-            child.read(db, childId);
-        }
-
-        if (child != null) {
-            child.dump(tree, indent + "  ");
-        }
-
-        for (int pos = mSearchVecEnd - mSearchVecStart; pos >= 0; pos -= 2) {
-            System.out.println(indent + mId + ": " + dumpToString(retrieveKey(pos)));
-            child = mChildNodes[pos >> 1];
-            childId = retrieveChildRefId(pos);
-
-            if (child == null || childId != child.mId) {
-                System.out.println("child: " + child);
-                System.out.println("childId: " + childId);
-                child = new Node(db.pageSize());
-                child.read(db, childId);
-            }
-
-            if (child != null) {
-                child.dump(tree, indent + "  ");
-            }
-        }
-    }
-
-    private static String dumpToString(byte[] bytes) {
-        if (bytes == null) {
-            return "null";
-        }
-        for (byte b : bytes) {
-            if (b < '-' || b > 'z') {
-                throw new AssertionError(Arrays.toString(bytes));
-            }
-        }
-        return new String(bytes);
-    }
-    */
 }

@@ -326,9 +326,8 @@ final class UndoLog {
 
             Node newNode;
             {
-                Node[] childNodes = new Node[] {node};
                 newNode = allocUnevictableNode(node.mId);
-                newNode.mChildNodes = childNodes;
+                newNode.mNodeChainNext = node;
                 newNode.mGarbage = pos = page.length;
                 available = pos - HEADER_SIZE;
             }
@@ -778,10 +777,8 @@ final class UndoLog {
             return null;
         }
 
-        Node lowerNode;
-        Node[] childNodes = parent.mChildNodes;
-        if (childNodes != null) {
-            lowerNode = childNodes[0];
+        Node lowerNode = parent.mNodeChainNext;
+        if (lowerNode != null) {
             lowerNode.acquireExclusive();
             if (lowerNodeId == lowerNode.mId) {
                 mDatabase.makeUnevictable(lowerNode);

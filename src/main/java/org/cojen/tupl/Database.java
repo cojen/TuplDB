@@ -214,6 +214,9 @@ public final class Database implements CauseCloseable {
 
     private final PageAllocator mAllocator;
 
+    // Map of all loaded non-root nodes.
+    final NodeMap mTreeNodeMap;
+
     final FragmentCache mFragmentCache;
     final int mMaxFragmentedEntrySize;
 
@@ -347,6 +350,8 @@ public final class Database implements CauseCloseable {
         mDurabilityMode = config.mDurabilityMode;
         mDefaultLockTimeoutNanos = config.mLockTimeoutNanos;
         mLockManager = new LockManager(config.mLockUpgradeRule, mDefaultLockTimeoutNanos);
+
+        mTreeNodeMap = new NodeMap(mMaxNodeCount);
 
         if (mBaseFile != null && !config.mReadOnly && config.mMkdirs) {
             FileFactory factory = config.mFileFactory;
@@ -2437,7 +2442,7 @@ public final class Database implements CauseCloseable {
 
             Node root = ref.mRoot;
             root.acquireExclusive();
-            root.forceEvictTree(mPageDb);
+            root.forceEvictTree(this);
             root.releaseExclusive();
 
             mOpenTreesLatch.acquireExclusive();
@@ -2558,7 +2563,7 @@ public final class Database implements CauseCloseable {
 
                         usageLatch.releaseExclusive();
 
-                        if ((node = Node.evict(node, mPageDb)) != null) {
+                        if ((node = Node.evict(node, this)) != null) {
                             if (!evictable) {
                                 makeUnevictable(node);
                             }
@@ -2573,7 +2578,7 @@ public final class Database implements CauseCloseable {
                         }
                     } else {
                         try {
-                            if ((node = Node.evict(node, mPageDb)) != null) {
+                            if ((node = Node.evict(node, this)) != null) {
                                 if (!evictable) {
                                     doMakeUnevictable(node);
                                 }
@@ -2653,17 +2658,10 @@ public final class Database implements CauseCloseable {
                 // Make node appear to be evicted.
                 node.mId = 0;
 
-                // Attempt to unlink child nodes, making them appear to be evicted.
-                if (node.tryAcquireExclusive()) {
-                    Node[] childNodes = node.mChildNodes;
-                    if (childNodes != null) {
-                        fill(childNodes, null);
-                    }
-                    node.releaseExclusive();
-                }
-
                 node = next;
             }
+
+            mTreeNodeMap.clear();
         } finally {
             usageLatch.releaseExclusive();
         }
@@ -2851,6 +2849,7 @@ public final class Database implements CauseCloseable {
         long newId = mAllocator.allocPage(node);
         if (oldId != 0) {
             mPageDb.deletePage(oldId);
+            mTreeNodeMap.remove(node, NodeMap.hash(oldId));
         }
         if (node.mCachedState != CACHED_CLEAN) {
             node.write(mPageDb);
@@ -2861,6 +2860,7 @@ public final class Database implements CauseCloseable {
             mRegistry.store(Transaction.BOGUS, tree.mIdBytes, newEncodedId);
         }
         dirty(node, newId);
+        mTreeNodeMap.put(node);
     }
 
     /**
@@ -2930,9 +2930,8 @@ public final class Database implements CauseCloseable {
                 mPageDb.deletePage(id);
             }
 
+            mTreeNodeMap.remove(node, NodeMap.hash(id));
             node.mId = 0;
-            // TODO: child node array should be recycled
-            node.mChildNodes = null;
 
             // When node is re-allocated, it will be evicted. Ensure that eviction
             // doesn't write anything.
