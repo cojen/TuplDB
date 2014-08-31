@@ -205,7 +205,8 @@ final class LockManager {
         }
         // Scramble the hashcode a bit, just like HashMap does.
         hash ^= (hash >>> 20) ^ (hash >>> 12);
-        return hash ^ (hash >>> 7) ^ (hash >>> 4);
+        hash ^= (hash >>> 7) ^ (hash >>> 4);
+        return hash;
     }
 
     LockHT getLockHT(int hash) {
