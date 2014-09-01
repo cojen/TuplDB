@@ -785,42 +785,11 @@ final class Node extends Latch {
 
         // Check if 0 (already evicted) or stub.
         if (mId <= STUB_ID) {
-            if (mId == STUB_ID) {
-                // Stub has one child which is the root or another stub. The child
-                // should never be evicted, because this would cause the entire
-                // tree to be erroneously evicted.
-                mId = 0;
-            }
-            return this;
+            mId = 0;
+        } else {
+            doEvict(db);
         }
 
-        // FIXME: With NodeMap, no need to evict child nodes too.
-        if (isInternal()) {
-            final NodeMap map = db.mTreeNodeMap;
-            int childPtr = mSearchVecEnd + 2;
-            final int highestPtr = childPtr + (highestInternalPos() << 2);
-            for (; childPtr <= highestPtr; childPtr += 8) {
-                long childId = decodeUnsignedInt48LE(mPage, childPtr);
-                Node child = map.get(childId);
-                if (child != null) {
-                    if (child.tryAcquireExclusive()) {
-                        if (childId == child.mId && child.evictTreeNode(db) == null) {
-                            // Cannot evict child, and so cannot evict parent.
-                            releaseExclusive();
-                            return null;
-                        }
-                        child.releaseExclusive();
-                    } else {
-                        // If latch cannot be acquired, assume child is still in
-                        // use, and so the parent node should be kept.
-                        releaseExclusive();
-                        return null;
-                    }
-                }
-            }
-        }
-
-        doEvict(db);
         return this;
     }
 
