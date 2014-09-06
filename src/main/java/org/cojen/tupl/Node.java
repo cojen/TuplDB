@@ -480,7 +480,7 @@ final class Node extends Latch {
                 highMatch = i;
             } else {
                 try {
-                    return retrieveLeafValueAtLoc(this, tree, page, compareLoc + compareLen);
+                    return retrieveLeafValueAtLoc(tree, page, compareLoc + compareLen);
                 } finally {
                     releaseShared();
                 }
@@ -1208,7 +1208,7 @@ final class Node extends Latch {
             : (((header & 0x3f) << 8) | ((page[loc++]) & 0xff));
         byte[] key = new byte[keyLen];
         arraycopy(page, loc, key, 0, keyLen);
-        return new byte[][] {key, retrieveLeafValueAtLoc(null, null, page, loc + keyLen)};
+        return new byte[][] {key, retrieveLeafValueAtLoc(null, page, loc + keyLen)};
     }
 
     /**
@@ -1281,10 +1281,10 @@ final class Node extends Latch {
         int loc = decodeUnsignedShortLE(page, mSearchVecStart + pos);
         int header = page[loc++];
         loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
-        return retrieveLeafValueAtLoc(this, tree, page, loc);
+        return retrieveLeafValueAtLoc(tree, page, loc);
     }
 
-    private static byte[] retrieveLeafValueAtLoc(Node caller, Tree tree, byte[] page, int loc)
+    private static byte[] retrieveLeafValueAtLoc(Tree tree, byte[] page, int loc)
         throws IOException
     {
         final int header = page[loc++];
@@ -1306,7 +1306,7 @@ final class Node extends Latch {
                 return null;
             }
             if ((header & VALUE_FRAGMENTED) != 0) {
-                return tree.mDatabase.reconstruct(caller, page, loc, len);
+                return tree.mDatabase.reconstruct(page, loc, len);
             }
         }
 
@@ -1327,7 +1327,7 @@ final class Node extends Latch {
         byte[] key = new byte[keyLen];
         arraycopy(page, loc, key, 0, keyLen);
         cursor.mKey = key;
-        cursor.mValue = retrieveLeafValueAtLoc(this, cursor.mTree, page, loc + keyLen);
+        cursor.mValue = retrieveLeafValueAtLoc(cursor.mTree, page, loc + keyLen);
     }
 
     /**
@@ -1521,8 +1521,7 @@ final class Node extends Latch {
             fragmented = 0;
         } else {
             Database db = tree.mDatabase;
-            value = db.fragment(this, value, value.length,
-                                db.mMaxFragmentedEntrySize - encodedKeyLen);
+            value = db.fragment(value, value.length, db.mMaxFragmentedEntrySize - encodedKeyLen);
             if (value == null) {
                 // Should not happen if key length was checked already.
                 throw new LargeKeyException(key.length);
@@ -1556,7 +1555,7 @@ final class Node extends Latch {
             value = new byte[(int) vlength];
         } else {
             Database db = tree.mDatabase;
-            value = db.fragment(this, null, vlength, db.mMaxFragmentedEntrySize - encodedKeyLen);
+            value = db.fragment(null, vlength, db.mMaxFragmentedEntrySize - encodedKeyLen);
             if (value == null) {
                 // Should not happen if key length was checked already.
                 throw new LargeKeyException(key.length);
@@ -2831,7 +2830,7 @@ final class Node extends Latch {
                     break largeValue;
                 }
                 if ((header & VALUE_FRAGMENTED) != 0) {
-                    tree.mDatabase.deleteFragments(this, page, loc, len);
+                    tree.mDatabase.deleteFragments(page, loc, len);
                     // TODO: If new value needs to be fragmented too, try to
                     // re-use existing value slot.
                     if (fragmented == 0) {
@@ -2883,8 +2882,7 @@ final class Node extends Latch {
             encodedLen = keyLen + calculateLeafValueLength(value);
             if (encodedLen > tree.mMaxEntrySize) {
                 Database db = tree.mDatabase;
-                value = db.fragment(this, value, value.length,
-                                    db.mMaxFragmentedEntrySize - keyLen);
+                value = db.fragment(value, value.length, db.mMaxFragmentedEntrySize - keyLen);
                 if (value == null) {
                     // Should not happen if key length was checked already.
                     throw new LargeKeyException(keyLen - 2);
@@ -2923,7 +2921,7 @@ final class Node extends Latch {
                     Database db = tree.mDatabase;
                     int max = Math.min(db.mMaxFragmentedEntrySize,
                                        garbage + leftSpace + rightSpace);
-                    value = db.fragment(this, value, value.length, max);
+                    value = db.fragment(value, value.length, max);
                     if (value == null) {
                         // Should not happen if key length was checked already.
                         throw new LargeKeyException(key.length);
@@ -3117,7 +3115,7 @@ final class Node extends Latch {
                 break largeValue;
             }
             if ((header & VALUE_FRAGMENTED) != 0) {
-                tree.mDatabase.deleteFragments(this, page, loc, len);
+                tree.mDatabase.deleteFragments(page, loc, len);
             }
             loc += len;
         }
@@ -3815,7 +3813,7 @@ final class Node extends Latch {
                 Database db = tree.mDatabase;
                 int max = Math.min(~entryLoc, db.mMaxFragmentedEntrySize);
                 int encodedKeyLen = calculateKeyLength(key);
-                value = db.fragment(this, value, value.length, max - encodedKeyLen);
+                value = db.fragment(value, value.length, max - encodedKeyLen);
                 if (value == null) {
                     // Should not happen if key length was checked already.
                     throw new LargeKeyException(key.length);

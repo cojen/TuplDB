@@ -195,7 +195,7 @@ class FragmentedTrash {
                 byte[] fragmented = cursor.value();
                 sharedCommitLock.lock();
                 try {
-                    db.deleteFragments(null, fragmented, 0, fragmented.length);
+                    db.deleteFragments(fragmented, 0, fragmented.length);
                     cursor.store(null);
                 } finally {
                     sharedCommitLock.unlock();
@@ -231,7 +231,7 @@ class FragmentedTrash {
                     byte[] fragmented = cursor.value();
                     sharedCommitLock.lock();
                     try {
-                        db.deleteFragments(null, fragmented, 0, fragmented.length);
+                        db.deleteFragments(fragmented, 0, fragmented.length);
                         cursor.store(null);
                     } finally {
                         sharedCommitLock.unlock();
