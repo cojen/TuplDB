@@ -271,7 +271,7 @@ final class TreeValueStream extends AbstractStream {
         }
 
         final FragmentCache fc = mDb.mFragmentCache;
-        Node inode = fc.get(node, inodeId);
+        Node inode = fc.get(inodeId);
         int level = Database.calculateInodeLevels(vLen, page.length);
 
         while (true) {
@@ -285,7 +285,7 @@ final class TreeValueStream extends AbstractStream {
             if (level <= 0 || childNodeId == 0) {
                 return 0;
             }
-            inode = fc.get(node, childNodeId);
+            inode = fc.get(childNodeId);
             pos %= levelCap;
         }
     }
@@ -444,7 +444,7 @@ final class TreeValueStream extends AbstractStream {
                                 // Reading a sparse value.
                                 fill(b, bOff, bOff + amt, (byte) 0);
                             } else {
-                                final Node fNode = fc.get(node, fNodeId);
+                                final Node fNode = fc.get(fNodeId);
                                 arraycopy(fNode.mPage, fNodeOff, b, bOff, amt);
                                 fNode.releaseShared();
                             }
@@ -465,9 +465,9 @@ final class TreeValueStream extends AbstractStream {
                         // Reading a sparse value.
                         fill(b, bOff, bOff + bLen, (byte) 0);
                     } else {
-                        final Node inode = fc.get(node, inodeId);
+                        final Node inode = fc.get(inodeId);
                         final int levels = Database.calculateInodeLevels(vLen, page.length);
-                        readMultilevelFragments(node, pos, levels, inode, b, bOff, bLen);
+                        readMultilevelFragments(pos, levels, inode, b, bOff, bLen);
                     }
 
                     return total;
@@ -530,7 +530,7 @@ final class TreeValueStream extends AbstractStream {
                                 // Writing into a sparse value. Allocate a node and point to it.
                                 final Node fNode = mDb.allocDirtyNode();
                                 try {
-                                    fc.put(node, fNode);
+                                    fc.put(fNode);
                                     encodeInt48LE(page, loc, fNode.mId);
 
                                     // Now write to the new page, zero-filling the gaps.
@@ -543,7 +543,7 @@ final class TreeValueStream extends AbstractStream {
                                 }
                             } else {
                                 // Obtain node from cache, or load it only for partial write.
-                                final Node fNode = fc.getw(node, fNodeId, amt < page.length);
+                                final Node fNode = fc.getw(fNodeId, amt < page.length);
                                 try {
                                     if (mDb.markFragmentDirty(fNode)) {
                                         encodeInt48LE(page, loc, fNode.mId);
@@ -574,14 +574,9 @@ final class TreeValueStream extends AbstractStream {
                             inode = mDb.allocDirtyNode();
                             final byte[] ipage = inode.mPage;
                             fill(ipage, (byte) 0);
-                            try {
-                                fc.put(node, inode);
-                            } catch (IOException e) {
-                                inode.releaseExclusive();
-                                throw e;
-                            }
+                            fc.put(inode);
                         } else {
-                            inode = fc.getw(node, inodeId, true);
+                            inode = fc.getw(inodeId, true);
                             if (!mDb.markFragmentDirty(inode)) {
                                 // Already dirty, so no need to update the pointer.
                                 break setPtr;
@@ -592,7 +587,7 @@ final class TreeValueStream extends AbstractStream {
                     }
 
                     final int levels = Database.calculateInodeLevels(vLen, page.length);
-                    writeMultilevelFragments(node, pos, levels, inode, b, bOff, bLen);
+                    writeMultilevelFragments(pos, levels, inode, b, bOff, bLen);
 
                     return 0;
                 } catch (IOException e) {
@@ -730,8 +725,7 @@ final class TreeValueStream extends AbstractStream {
      * @param inode shared latched parent inode; always released by this method
      * @param b slice of complete value being reconstructed
      */
-    private void readMultilevelFragments(Node caller,
-                                         long pos, int level, Node inode,
+    private void readMultilevelFragments(long pos, int level, Node inode,
                                          byte[] b, int bOff, int bLen)
         throws IOException
     {
@@ -761,12 +755,12 @@ final class TreeValueStream extends AbstractStream {
                 // Reading a sparse value.
                 fill(b, bOff, bOff + len, (byte) 0);
             } else {
-                Node childNode = fc.get(caller, childNodeId);
+                Node childNode = fc.get(childNodeId);
                 if (level <= 0) {
                     arraycopy(childNode.mPage, (int) ppos, b, bOff, len);
                     childNode.releaseShared();
                 } else {
-                    readMultilevelFragments(caller, ppos, level, childNode, b, bOff, len);
+                    readMultilevelFragments(ppos, level, childNode, b, bOff, len);
                 }
             }
             bLen -= len;
@@ -785,8 +779,7 @@ final class TreeValueStream extends AbstractStream {
      * @param inode exclusively latched parent inode; always released by this method
      * @param value slice of complete value being written
      */
-    private void writeMultilevelFragments(Node caller,
-                                          long pos, int level, Node inode,
+    private void writeMultilevelFragments(long pos, int level, Node inode,
                                           byte[] b, int bOff, int bLen)
         throws IOException
     {
@@ -820,7 +813,7 @@ final class TreeValueStream extends AbstractStream {
                         prepChild: {
                             if (childNodeId != 0) {
                                 // Node exists, but it must be dirtied.
-                                if ((childNode = fc.findw(caller, inode, childNodeId)) == null) {
+                                if ((childNode = fc.findw(childNodeId)) == null) {
                                     // Don't bother loading it now, but old page must be
                                     // deleted. Old contents can still be read, because no
                                     // checkpoint switch is in progress.
@@ -872,7 +865,7 @@ final class TreeValueStream extends AbstractStream {
                 throw e;
             }
 
-            fc.put(caller, inode);
+            fc.put(inode);
         } finally {
             inode.releaseExclusive();
         }
@@ -923,7 +916,7 @@ final class TreeValueStream extends AbstractStream {
                     }
                 }
                 arraycopy(b, bOff, childPage, off, len);
-                fc.put(caller, childNode);
+                fc.put(childNode);
                 childNode.releaseExclusive();
             } else {
                 if (oldChildNodeId >= 0) {
@@ -936,7 +929,7 @@ final class TreeValueStream extends AbstractStream {
                         mDb.readNodePage(oldChildNodeId, childPage);
                     }
                 }
-                writeMultilevelFragments(caller, ppos, level, childNode, b, bOff, len);
+                writeMultilevelFragments(ppos, level, childNode, b, bOff, len);
             }
 
             bLen -= len;

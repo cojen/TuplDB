@@ -523,13 +523,7 @@ public final class Database implements CauseCloseable {
 
             mAllocator = new PageAllocator(mPageDb);
 
-            if (mBaseFile == null) {
-                // Non-durable database never evicts anything.
-                mFragmentCache = new FragmentMap();
-            } else {
-                // Regular database evicts automatically.
-                mFragmentCache = new FragmentCache(this, mMaxNodeCount);
-            }
+            mFragmentCache = new FragmentCache(this, mTreeNodeMap);
 
             if (openMode != OPEN_TEMP) {
                 Tree tree = openInternalTree(Tree.FRAGMENTED_TRASH_ID, false);
@@ -3041,13 +3035,12 @@ public final class Database implements CauseCloseable {
      * content length field size: 0 or 2 bytes. The 'p' bit is clear if direct pointers are
      * used, and set for indirect pointers. Pointers are always 6 bytes.
      *
-     * @param caller optional tree node which is latched and calling this method
      * @param value can be null if value is all zeros
      * @param max maximum allowed size for returned byte array; must not be
      * less than 11 (can be 9 if full value length is < 65536)
      * @return null if max is too small
      */
-    byte[] fragment(Node caller, final byte[] value, final long vlength, int max)
+    byte[] fragment(final byte[] value, final long vlength, int max)
         throws IOException
     {
         int pageSize = mPageSize;
@@ -3114,7 +3107,7 @@ public final class Database implements CauseCloseable {
                     while (true) {
                         Node node = allocDirtyNode();
                         try {
-                            mFragmentCache.put(caller, node);
+                            mFragmentCache.put(node);
                             encodeInt48LE(newValue, poffset, node.mId);
                             arraycopy(value, voffset, node.mPage, 0, pageSize);
                             if (pageCount == 1) {
@@ -3170,7 +3163,7 @@ public final class Database implements CauseCloseable {
                         while (true) {
                             Node node = allocDirtyNode();
                             try {
-                                mFragmentCache.put(caller, node);
+                                mFragmentCache.put(node);
                                 encodeInt48LE(newValue, offset, node.mId);
                                 byte[] page = node.mPage;
                                 if (pageCount > 1) {
@@ -3201,7 +3194,7 @@ public final class Database implements CauseCloseable {
                     Node inode = allocDirtyNode();
                     encodeInt48LE(newValue, offset, inode.mId);
                     int levels = calculateInodeLevels(vlength, pageSize);
-                    writeMultilevelFragments(caller, levels, inode, value, 0, vlength);
+                    writeMultilevelFragments(levels, inode, value, 0, vlength);
                 }
             }
 
@@ -3255,8 +3248,7 @@ public final class Database implements CauseCloseable {
      * @param inode exclusive latched parent inode; always released by this method
      * @param value slice of complete value being fragmented
      */
-    private void writeMultilevelFragments(Node caller,
-                                          int level, Node inode,
+    private void writeMultilevelFragments(int level, Node inode,
                                           byte[] value, int voffset, long vlength)
         throws IOException
     {
@@ -3293,7 +3285,7 @@ public final class Database implements CauseCloseable {
                 throw e;
             }
 
-            mFragmentCache.put(caller, inode);
+            mFragmentCache.put(inode);
         } finally {
             inode.releaseExclusive();
         }
@@ -3326,10 +3318,10 @@ public final class Database implements CauseCloseable {
                 arraycopy(value, voffset, childPage, 0, len);
                 // Zero fill the rest, making it easier to extend later.
                 fill(childPage, len, childPage.length, (byte) 0);
-                mFragmentCache.put(caller, childNode);
+                mFragmentCache.put(childNode);
                 childNode.releaseExclusive();
             } else {
-                writeMultilevelFragments(caller, level, childNode, value, voffset, len);
+                writeMultilevelFragments(level, childNode, value, voffset, len);
             }
 
             vlength -= len;
@@ -3339,10 +3331,8 @@ public final class Database implements CauseCloseable {
 
     /**
      * Reconstruct a fragmented value.
-     *
-     * @param caller optional tree node which is latched and calling this method
      */
-    byte[] reconstruct(Node caller, byte[] fragmented, int off, int len) throws IOException {
+    byte[] reconstruct(byte[] fragmented, int off, int len) throws IOException {
         int header = fragmented[off++];
         len--;
 
@@ -3413,7 +3403,7 @@ public final class Database implements CauseCloseable {
                     // Reconstructing a sparse value. Array is already zero-filled.
                     pLen = Math.min(vLen, mPageSize);
                 } else {
-                    Node node = mFragmentCache.get(caller, nodeId);
+                    Node node = mFragmentCache.get(nodeId);
                     try {
                         byte[] page = node.mPage;
                         pLen = Math.min(vLen, page.length);
@@ -3429,9 +3419,9 @@ public final class Database implements CauseCloseable {
             // Indirect pointers.
             long inodeId = decodeUnsignedInt48LE(fragmented, off);
             if (inodeId != 0) {
-                Node inode = mFragmentCache.get(caller, inodeId);
+                Node inode = mFragmentCache.get(inodeId);
                 int levels = calculateInodeLevels(vLen, mPageSize);
-                readMultilevelFragments(caller, levels, inode, value, 0, vLen);
+                readMultilevelFragments(levels, inode, value, 0, vLen);
             }
         }
 
@@ -3443,8 +3433,7 @@ public final class Database implements CauseCloseable {
      * @param inode shared latched parent inode; always released by this method
      * @param value slice of complete value being reconstructed; initially filled with zeros
      */
-    private void readMultilevelFragments(Node caller,
-                                         int level, Node inode,
+    private void readMultilevelFragments(int level, Node inode,
                                          byte[] value, int voffset, int vlength)
         throws IOException
     {
@@ -3464,12 +3453,12 @@ public final class Database implements CauseCloseable {
         for (long childNodeId : childNodeIds) {
             int len = (int) Math.min(levelCap, vlength);
             if (childNodeId != 0) {
-                Node childNode = mFragmentCache.get(caller, childNodeId);
+                Node childNode = mFragmentCache.get(childNodeId);
                 if (level <= 0) {
                     arraycopy(childNode.mPage, 0, value, voffset, len);
                     childNode.releaseShared();
                 } else {
-                    readMultilevelFragments(caller, level, childNode, value, voffset, len);
+                    readMultilevelFragments(level, childNode, value, voffset, len);
                 }
             }
             vlength -= len;
@@ -3479,10 +3468,8 @@ public final class Database implements CauseCloseable {
 
     /**
      * Delete the extra pages of a fragmented value. Caller must hold commit lock.
-     *
-     * @param caller optional tree node which is latched and calling this method
      */
-    void deleteFragments(Node caller, byte[] fragmented, int off, int len)
+    void deleteFragments(byte[] fragmented, int off, int len)
         throws IOException
     {
         int header = fragmented[off++];
@@ -3528,15 +3515,15 @@ public final class Database implements CauseCloseable {
                 long nodeId = decodeUnsignedInt48LE(fragmented, off);
                 off += 6;
                 len -= 6;
-                deleteFragment(caller, nodeId);
+                deleteFragment(nodeId);
             }
         } else {
             // Indirect pointers.
             long inodeId = decodeUnsignedInt48LE(fragmented, off);
             if (inodeId != 0) {
-                Node inode = removeInode(caller, inodeId);
+                Node inode = removeInode(inodeId);
                 int levels = calculateInodeLevels(vLen, mPageSize);
-                deleteMultilevelFragments(caller, levels, inode, vLen);
+                deleteMultilevelFragments(levels, inode, vLen);
             }
         }
     }
@@ -3545,8 +3532,7 @@ public final class Database implements CauseCloseable {
      * @param level inode level; at least 1
      * @param inode exclusive latched parent inode; always released by this method
      */
-    private void deleteMultilevelFragments(Node caller,
-                                           int level, Node inode, long vlength)
+    private void deleteMultilevelFragments(int level, Node inode, long vlength)
         throws IOException
     {
         byte[] page = inode.mPage;
@@ -3562,12 +3548,12 @@ public final class Database implements CauseCloseable {
         deleteNode(inode);
 
         if (level <= 0) for (long childNodeId : childNodeIds) {
-            deleteFragment(caller, childNodeId);
+            deleteFragment(childNodeId);
         } else for (long childNodeId : childNodeIds) {
             long len = Math.min(levelCap, vlength);
             if (childNodeId != 0) {
-                Node childNode = removeInode(caller, childNodeId);
-                deleteMultilevelFragments(caller, level, childNode, len);
+                Node childNode = removeInode(childNodeId);
+                deleteMultilevelFragments(level, childNode, len);
             }
             vlength -= len;
         }
@@ -3577,8 +3563,8 @@ public final class Database implements CauseCloseable {
      * @param nodeId must not be zero
      * @return non-null Node with exclusive latch held
      */
-    private Node removeInode(Node caller, long nodeId) throws IOException {
-        Node node = mFragmentCache.remove(caller, nodeId);
+    private Node removeInode(long nodeId) throws IOException {
+        Node node = mFragmentCache.remove(nodeId);
         if (node == null) {
             node = allocLatchedNode(false);
             node.mId = nodeId;
@@ -3591,9 +3577,9 @@ public final class Database implements CauseCloseable {
     /**
      * @param nodeId can be zero
      */
-    private void deleteFragment(Node caller, long nodeId) throws IOException {
+    private void deleteFragment(long nodeId) throws IOException {
         if (nodeId != 0) {
-            Node node = mFragmentCache.remove(caller, nodeId);
+            Node node = mFragmentCache.remove(nodeId);
             if (node != null) {
                 deleteNode(node);
             } else if (!mHasCheckpointed) {
