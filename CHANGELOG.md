@@ -4,7 +4,7 @@ Changelog
 v1.1.5
 ------
 * New node cache implementation. It reduces memory overhead, garbage collection activity, and
-  extra memory copies when inserting records.
+  performs fewer memory copies when inserting records.
 
 v1.1.4
 ------
