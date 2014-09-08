@@ -41,6 +41,18 @@ interface PageCache extends Closeable {
      */
     public boolean remove(long pageId, byte[] page);
 
+    /**
+     * @return maximum supported number of entries
+     */
+    public int capacity();
+
     @Override
     public void close();
+
+    static class Non implements PageCache {
+        public void add(long pageId, byte[] page) {}
+        public boolean remove(long pageId, byte[] page) {return false;}
+        public int capacity() {return 0;};
+        public void close() {}
+    }
 }
