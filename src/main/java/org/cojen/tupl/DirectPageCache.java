@@ -45,6 +45,7 @@ class DirectPageCache extends Latch implements PageCache {
 
     private static final int NODE_SIZE_IN_INTS = CHAIN_NEXT_PTR_FIELD + 1;
 
+    private final long mZeroId;
     private final int[] mHashTable;
 
     private ByteBuffer mNodesByteBuffer;
@@ -56,10 +57,12 @@ class DirectPageCache extends Latch implements PageCache {
 
     /**
      * @param capacity capacity in bytes
+     * @param zeroId identifier used for page zero (might be scrambled)
      */
-    DirectPageCache(int capacity, int pageSize) {
+    DirectPageCache(int capacity, int pageSize, long zeroId) {
         int entryCount = Math.max(2, capacity / (24 + pageSize));
 
+        mZeroId = zeroId;
         mHashTable = new int[entryCount];
 
         acquireExclusive();
@@ -72,12 +75,11 @@ class DirectPageCache extends Latch implements PageCache {
 
         // Initalize the nodes, all linked together.
         int ptr = 0;
-        while (mNodes.hasRemaining()) {
-            mNodes.put(0); mNodes.put(0); // pageId
-            mNodes.put(ptr - NODE_SIZE_IN_INTS); // lessRecentPtr
-            mNodes.put(ptr + NODE_SIZE_IN_INTS); // moreRecentPtr
-            mNodes.put(-1); // chainNextPtr = null
-            ptr += NODE_SIZE_IN_INTS;
+        for (; ptr < entryCount * NODE_SIZE_IN_INTS; ptr += NODE_SIZE_IN_INTS) {
+            setPageId(mNodes, ptr + PAGE_ID_FIELD, zeroId);
+            mNodes.put(ptr + LESS_RECENT_PTR_FIELD, ptr - NODE_SIZE_IN_INTS);
+            mNodes.put(ptr + MORE_RECENT_PTR_FIELD, ptr + NODE_SIZE_IN_INTS);
+            mNodes.put(ptr + CHAIN_NEXT_PTR_FIELD, -1);
         }
 
         mLeastRecentPtr = 0;
@@ -97,6 +99,7 @@ class DirectPageCache extends Latch implements PageCache {
         final IntBuffer nodes = mNodes;
         if (nodes == null) {
             // Closed.
+            releaseExclusive();
             return;
         }
 
@@ -156,6 +159,7 @@ class DirectPageCache extends Latch implements PageCache {
         final IntBuffer nodes = mNodes;
         if (nodes == null) {
             // Closed.
+            releaseExclusive();
             return false;
         }
 
@@ -196,9 +200,8 @@ class DirectPageCache extends Latch implements PageCache {
                         nodes.put(prevPtr + CHAIN_NEXT_PTR_FIELD, chainNextPtr);
                     }
 
-                    // Clear the page id.
-                    nodes.put(ptr + PAGE_ID_FIELD, 0);
-                    nodes.put(ptr + (PAGE_ID_FIELD + 1), 0);
+                    // Zero the page id.
+                    setPageId(nodes, ptr, mZeroId);
 
                     releaseExclusive();
                     return true;
@@ -215,6 +218,11 @@ class DirectPageCache extends Latch implements PageCache {
 
         releaseExclusive();
         return false;
+    }
+
+    @Override
+    public int capacity() {
+        return mHashTable.length;
     }
 
     @Override
