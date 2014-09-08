@@ -20,8 +20,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-import java.lang.reflect.Method;
-
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 
@@ -34,8 +32,6 @@ import static java.nio.channels.FileChannel.MapMode.*;
  * @author Brian S O'Neill
  */
 class NioMapping extends Mapping {
-    private static volatile boolean cUnmapUnsupported;
-
     private final RandomAccessFile mRaf;
     private final FileChannel mChannel;
     private final MappedByteBuffer mBuffer;
@@ -68,28 +64,7 @@ class NioMapping extends Mapping {
 
     @Override
     public void close() throws IOException {
-        // Workaround to unmap the file.
-        // http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4724038
-        if (!cUnmapUnsupported) {
-            try {
-                Method m = mBuffer.getClass().getMethod("cleaner");
-                if (m != null) {
-                    m.setAccessible(true);
-                    Object cleaner = m.invoke(mBuffer);
-                    if (cleaner != null) {
-                        m = cleaner.getClass().getMethod("clean");
-                        if (m != null) {
-                            m.setAccessible(true);
-                            m.invoke(cleaner);
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                // Cannot be unmapped, so leak memory instead.
-                cUnmapUnsupported = true;
-            }
-        }
-
+        Utils.delete(mBuffer);
         mRaf.close();
     }
 }

@@ -21,6 +21,10 @@ import org.cojen.tupl.CorruptDatabaseException;
 import java.io.Closeable;
 import java.io.IOException;
 
+import java.lang.reflect.Method;
+
+import java.nio.Buffer;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -277,6 +281,36 @@ public class Utils {
                      ((b[offset + 5] & 0xff) << 8 ) |
                      ((b[offset + 6] & 0xff) << 16) |
                      ((b[offset + 7]       ) << 24))              ) << 32);
+    }
+
+    private static volatile boolean cDeleteUnsupported;
+
+    /**
+     * Attempt to delete the given direct or mapped byte buffer.
+     */
+    public static boolean delete(Buffer bb) {
+        // http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4724038
+        if (!cDeleteUnsupported) {
+            try {
+                Method m = bb.getClass().getMethod("cleaner");
+                if (m != null) {
+                    m.setAccessible(true);
+                    Object cleaner = m.invoke(bb);
+                    if (cleaner != null) {
+                        m = cleaner.getClass().getMethod("clean");
+                        if (m != null) {
+                            m.setAccessible(true);
+                            m.invoke(cleaner);
+                            return true;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                cDeleteUnsupported = true;
+            }
+        }
+
+        return false;
     }
 
     private static Map<Closeable, Thread> cCloseThreads;
