@@ -26,6 +26,8 @@ import java.nio.IntBuffer;
  * Page cache which uses direct buffers and very few Java objects, eliminating garbage
  * collection overhead. Caller should scramble page ids to reduce hash collisions.
  *
+ * Note: Might need to set -XX:MaxDirectMemorySize=99999m
+ *
  * @author Brian S O'Neill
  */
 class DirectPageCache extends Latch implements PageCache {
@@ -60,7 +62,7 @@ class DirectPageCache extends Latch implements PageCache {
      * @param zeroId identifier used for page zero (might be scrambled)
      */
     DirectPageCache(int capacity, int pageSize, long zeroId) {
-        int entryCount = Math.max(2, capacity / (24 + pageSize));
+        int entryCount = Math.max(2, capacity / ((NODE_SIZE_IN_INTS * 4) + pageSize));
 
         mZeroId = zeroId;
         mHashTable = new int[entryCount];
@@ -221,7 +223,12 @@ class DirectPageCache extends Latch implements PageCache {
     }
 
     @Override
-    public int capacity() {
+    public long capacity() {
+        return mNodesByteBuffer.capacity() + mData.capacity();
+    }
+
+    @Override
+    public long maxEntryCount() {
         return mHashTable.length;
     }
 

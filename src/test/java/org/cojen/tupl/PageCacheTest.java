@@ -51,13 +51,15 @@ public class PageCacheTest {
 
         PageCache cache = new DirectPageCache(1_000_000, 4096, zeroId);
         assertTrue(cache.capacity() > 0);
-        assertTrue(cache.capacity() < 1_000_000);
+        assertTrue(cache.capacity() <= 1_000_000);
+        assertTrue(cache.maxEntryCount() > 0);
+        assertTrue(cache.maxEntryCount() < 1_000_000);
 
         final long seed = System.nanoTime();
         final byte[] page = new byte[4096];
         Random rnd = new Random(seed);
 
-        for (int i = 0; i < cache.capacity(); i++) {
+        for (int i = 0; i < cache.maxEntryCount(); i++) {
             long pageId = i + 1;
             if (scramble) {
                 pageId = Utils.scramble(pageId);
@@ -69,7 +71,7 @@ public class PageCacheTest {
         final byte[] actual = new byte[4096];
         rnd = new Random(seed);
 
-        for (int i=0; i<cache.capacity(); i++) {
+        for (int i = 0; i < cache.maxEntryCount(); i++) {
             long pageId = i + 1;
             if (scramble) {
                 pageId = Utils.scramble(pageId);
@@ -90,7 +92,7 @@ public class PageCacheTest {
     }
 
     @Test
-    public void evictScramled() {
+    public void evictScrambled() {
         evict(true);
     }
 
@@ -106,7 +108,7 @@ public class PageCacheTest {
         final byte[] page = new byte[100];
         Random rnd = new Random(seed);
 
-        for (int i = 0; i < cache.capacity() * 2; i++) {
+        for (int i = 0; i < cache.maxEntryCount() * 2; i++) {
             long pageId = i + 1;
             if (scramble) {
                 pageId = Utils.scramble(pageId);
@@ -118,11 +120,11 @@ public class PageCacheTest {
         final byte[] actual = new byte[100];
         rnd = new Random(seed);
 
-        for (int i = 0; i < cache.capacity(); i++) {
+        for (int i = 0; i < cache.maxEntryCount(); i++) {
             rnd.nextBytes(page);
         }
 
-        for (int i = cache.capacity(); i < cache.capacity() * 2; i++) {
+        for (long i = cache.maxEntryCount(); i < cache.maxEntryCount() * 2; i++) {
             long pageId = i + 1;
             if (scramble) {
                 pageId = Utils.scramble(pageId);
@@ -144,6 +146,45 @@ public class PageCacheTest {
 
         cache.add(1, new byte[4]);
         assertFalse(cache.remove(1, new byte[4]));
+
+        cache.close();
+    }
+
+    @Test
+    public void partitions() {
+        PageCache cache = new PartitionedPageCache(1_000_000, 4096);
+        assertTrue(cache.capacity() > 0);
+        assertTrue(cache.capacity() <= 1_000_000);
+        assertTrue(cache.maxEntryCount() > 0);
+        assertTrue(cache.maxEntryCount() < 1_000_000);
+
+        final long seed = System.nanoTime();
+        final byte[] page = new byte[4096];
+        Random rnd = new Random(seed);
+
+        for (int i = 0; i < cache.maxEntryCount(); i++) {
+            long pageId = i + 1;
+            rnd.nextBytes(page);
+            cache.add(pageId, page);
+        }
+
+        final byte[] actual = new byte[4096];
+        rnd = new Random(seed);
+
+        // Might have evicted some, due to uneven distribution.
+        int removedCount = 0;
+
+        for (int i = 0; i < cache.maxEntryCount(); i++) {
+            long pageId = i + 1;
+            rnd.nextBytes(page);
+            boolean removed = cache.remove(pageId, actual);
+            if (removed) {
+                fastAssertArrayEquals(page, actual);
+                removedCount++;
+            }
+        }
+
+        assertTrue(removedCount >= cache.maxEntryCount() * 0.9);
 
         cache.close();
     }
