@@ -71,35 +71,38 @@ class PartitionedPageCache implements PageCache {
 
     @Override
     public void add(long pageId, byte[] page) {
-        add(pageId, page, 0);
+        add(pageId, page, 0, page.length);
     }
 
     @Override
-    public void add(long pageId, byte[] page, int offset) {
+    public void add(long pageId, byte[] page, int offset, int length) {
         pageId = Utils.scramble(pageId);
-        mPartitions[(int) (pageId >>> mPartitionShift)].add(pageId, page, offset);
+        mPartitions[(int) (pageId >>> mPartitionShift)]
+            .add(pageId, page, offset, length);
     }
 
     @Override
     public boolean find(long pageId, byte[] page) {
-        return find(pageId, page, 0);
+        return find(pageId, page, 0, page.length);
     }
 
     @Override
-    public boolean find(long pageId, byte[] page, int offset) {
+    public boolean find(long pageId, byte[] page, int offset, int length) {
         pageId = Utils.scramble(pageId);
-        return mPartitions[(int) (pageId >>> mPartitionShift)].find(pageId, page, offset);
+        return mPartitions[(int) (pageId >>> mPartitionShift)]
+            .find(pageId, page, offset, length);
     }
 
     @Override
     public boolean remove(long pageId, byte[] page) {
-        return remove(pageId, page, 0);
+        return remove(pageId, page, 0, page.length);
     }
 
     @Override
-    public boolean remove(long pageId, byte[] page, int offset) {
+    public boolean remove(long pageId, byte[] page, int offset, int length) {
         pageId = Utils.scramble(pageId);
-        return mPartitions[(int) (pageId >>> mPartitionShift)].remove(pageId, page, offset);
+        return mPartitions[(int) (pageId >>> mPartitionShift)]
+            .remove(pageId, page, offset, length);
     }
 
     @Override

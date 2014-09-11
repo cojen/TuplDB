@@ -95,11 +95,11 @@ class DirectPageCache extends Latch implements PageCache {
 
     @Override
     public void add(final long pageId, final byte[] page) {
-        add(pageId, page, 0);
+        add(pageId, page, 0, page.length);
     }
 
     @Override
-    public void add(final long pageId, final byte[] page, final int offset) {
+    public void add(final long pageId, final byte[] page, final int offset, final int length) {
         acquireExclusive();
 
         final IntBuffer nodes = mNodes;
@@ -117,8 +117,8 @@ class DirectPageCache extends Latch implements PageCache {
         mMostRecentPtr = ptr;
 
         // Copy page into the data buffer.
-        mData.position((ptr / NODE_SIZE_IN_INTS) * page.length);
-        mData.put(page, offset, page.length);
+        mData.position((ptr / NODE_SIZE_IN_INTS) * length);
+        mData.put(page, offset, length);
 
         final int[] hashTable = mHashTable;
         if (nodes.get(ptr + CHAIN_NEXT_PTR_FIELD) != UNUSED_NODE) {
@@ -160,11 +160,11 @@ class DirectPageCache extends Latch implements PageCache {
 
     @Override
     public boolean find(final long pageId, final byte[] page) {
-        return find(pageId, page, 0);
+        return find(pageId, page, 0, page.length);
     }
 
     @Override
-    public boolean find(final long pageId, final byte[] page, final int offset) {
+    public boolean find(final long pageId, final byte[] page, final int offset, final int length) {
         acquireShared();
 
         final IntBuffer nodes = mNodes;
@@ -186,8 +186,8 @@ class DirectPageCache extends Latch implements PageCache {
                     // Found it.
 
                     // Copy data buffer into the page.
-                    mData.position((ptr / NODE_SIZE_IN_INTS) * page.length);
-                    mData.get(page, offset, page.length);
+                    mData.position((ptr / NODE_SIZE_IN_INTS) * length);
+                    mData.get(page, offset, length);
 
                     releaseShared();
                     return true;
@@ -208,11 +208,13 @@ class DirectPageCache extends Latch implements PageCache {
 
     @Override
     public boolean remove(final long pageId, final byte[] page) {
-        return remove(pageId, page, 0);
+        return remove(pageId, page, 0, page.length);
     }
 
     @Override
-    public boolean remove(final long pageId, final byte[] page, final int offset) {
+    public boolean remove(final long pageId,
+                          final byte[] page, final int offset, final int length)
+    {
         acquireExclusive();
 
         final IntBuffer nodes = mNodes;
@@ -234,8 +236,8 @@ class DirectPageCache extends Latch implements PageCache {
                     // Found it.
 
                     // Copy data buffer into the page.
-                    mData.position((ptr / NODE_SIZE_IN_INTS) * page.length);
-                    mData.get(page, offset, page.length);
+                    mData.position((ptr / NODE_SIZE_IN_INTS) * length);
+                    mData.get(page, offset, length);
 
                     if (ptr != mLeastRecentPtr) {
                         // Move to least recent.
