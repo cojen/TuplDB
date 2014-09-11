@@ -53,6 +53,8 @@ public class TestAll {
             StreamTest.class,
             PageSizeTest.class,
             CompactTest.class,
+            NodeMapTest.class,
+            PageCacheTest.class,
         };
 
         String[] names = new String[classes.length];
