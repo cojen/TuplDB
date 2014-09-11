@@ -47,7 +47,9 @@ class DirectPageCache extends Latch implements PageCache {
 
     private static final int NODE_SIZE_IN_INTS = CHAIN_NEXT_PTR_FIELD + 1;
 
-    private final long mZeroId;
+    private static final int NO_NEXT_ENTRY = -1;
+    private static final int UNUSED_NODE = -2;
+
     private final int[] mHashTable;
 
     private ByteBuffer mNodesByteBuffer;
@@ -59,12 +61,10 @@ class DirectPageCache extends Latch implements PageCache {
 
     /**
      * @param capacity capacity in bytes
-     * @param zeroId identifier used for page zero (might be scrambled)
      */
-    DirectPageCache(int capacity, int pageSize, long zeroId) {
+    DirectPageCache(int capacity, int pageSize) {
         int entryCount = Math.max(2, capacity / ((NODE_SIZE_IN_INTS * 4) + pageSize));
 
-        mZeroId = zeroId;
         mHashTable = new int[entryCount];
 
         acquireExclusive();
@@ -78,17 +78,16 @@ class DirectPageCache extends Latch implements PageCache {
         // Initalize the nodes, all linked together.
         int ptr = 0;
         for (; ptr < entryCount * NODE_SIZE_IN_INTS; ptr += NODE_SIZE_IN_INTS) {
-            setPageId(mNodes, ptr + PAGE_ID_FIELD, zeroId);
             mNodes.put(ptr + LESS_RECENT_PTR_FIELD, ptr - NODE_SIZE_IN_INTS);
             mNodes.put(ptr + MORE_RECENT_PTR_FIELD, ptr + NODE_SIZE_IN_INTS);
-            mNodes.put(ptr + CHAIN_NEXT_PTR_FIELD, -1);
+            mNodes.put(ptr + CHAIN_NEXT_PTR_FIELD, UNUSED_NODE);
         }
 
         mLeastRecentPtr = 0;
         mMostRecentPtr = ptr - NODE_SIZE_IN_INTS;
 
         for (int i=0; i<mHashTable.length; i++) {
-            mHashTable[i] = -1;
+            mHashTable[i] = NO_NEXT_ENTRY;
         }
 
         releaseExclusive();
@@ -96,6 +95,11 @@ class DirectPageCache extends Latch implements PageCache {
 
     @Override
     public void add(final long pageId, final byte[] page) {
+        add(pageId, page, 0);
+    }
+
+    @Override
+    public void add(final long pageId, final byte[] page, final int offset) {
         acquireExclusive();
 
         final IntBuffer nodes = mNodes;
@@ -114,17 +118,17 @@ class DirectPageCache extends Latch implements PageCache {
 
         // Copy page into the data buffer.
         mData.position((ptr / NODE_SIZE_IN_INTS) * page.length);
-        mData.put(page);
+        mData.put(page, offset, page.length);
 
-        // Evict old entry from hashtable.
         final int[] hashTable = mHashTable;
-        {
+        if (nodes.get(ptr + CHAIN_NEXT_PTR_FIELD) != UNUSED_NODE) {
+            // Evict old entry from hashtable.
             final long evictedPageId = getPageId(nodes, ptr);
             final int index = hash(evictedPageId) % hashTable.length;
 
             int entryPtr = hashTable[index];
             if (entryPtr >= 0) {
-                int prevPtr = -1;
+                int prevPtr = NO_NEXT_ENTRY;
                 while (true) {
                     final int chainNextPtr = nodes.get(entryPtr + CHAIN_NEXT_PTR_FIELD);
                     if (getPageId(nodes, entryPtr) == evictedPageId) {
@@ -155,7 +159,60 @@ class DirectPageCache extends Latch implements PageCache {
     }
 
     @Override
+    public boolean find(final long pageId, final byte[] page) {
+        return find(pageId, page, 0);
+    }
+
+    @Override
+    public boolean find(final long pageId, final byte[] page, final int offset) {
+        acquireShared();
+
+        final IntBuffer nodes = mNodes;
+        if (nodes == null) {
+            // Closed.
+            releaseShared();
+            return false;
+        }
+
+        final int[] hashTable = mHashTable;
+        final int index = hash(pageId) % hashTable.length;
+
+        int ptr = hashTable[index];
+        if (ptr >= 0) {
+            int prevPtr = NO_NEXT_ENTRY;
+            while (true) {
+                final int chainNextPtr = nodes.get(ptr + CHAIN_NEXT_PTR_FIELD);
+                if (getPageId(nodes, ptr) == pageId) {
+                    // Found it.
+
+                    // Copy data buffer into the page.
+                    mData.position((ptr / NODE_SIZE_IN_INTS) * page.length);
+                    mData.get(page, offset, page.length);
+
+                    releaseShared();
+                    return true;
+                }
+
+                if (chainNextPtr < 0) {
+                    break;
+                }
+
+                prevPtr = ptr;
+                ptr = chainNextPtr;
+            }
+        }
+
+        releaseShared();
+        return false;
+    }
+
+    @Override
     public boolean remove(final long pageId, final byte[] page) {
+        return remove(pageId, page, 0);
+    }
+
+    @Override
+    public boolean remove(final long pageId, final byte[] page, final int offset) {
         acquireExclusive();
 
         final IntBuffer nodes = mNodes;
@@ -170,7 +227,7 @@ class DirectPageCache extends Latch implements PageCache {
 
         int ptr = hashTable[index];
         if (ptr >= 0) {
-            int prevPtr = -1;
+            int prevPtr = NO_NEXT_ENTRY;
             while (true) {
                 final int chainNextPtr = nodes.get(ptr + CHAIN_NEXT_PTR_FIELD);
                 if (getPageId(nodes, ptr) == pageId) {
@@ -178,7 +235,7 @@ class DirectPageCache extends Latch implements PageCache {
 
                     // Copy data buffer into the page.
                     mData.position((ptr / NODE_SIZE_IN_INTS) * page.length);
-                    mData.get(page);
+                    mData.get(page, offset, page.length);
 
                     if (ptr != mLeastRecentPtr) {
                         // Move to least recent.
@@ -202,8 +259,8 @@ class DirectPageCache extends Latch implements PageCache {
                         nodes.put(prevPtr + CHAIN_NEXT_PTR_FIELD, chainNextPtr);
                     }
 
-                    // Zero the page id.
-                    setPageId(nodes, ptr, mZeroId);
+                    // Node is unused.
+                    nodes.put(ptr + CHAIN_NEXT_PTR_FIELD, UNUSED_NODE);
 
                     releaseExclusive();
                     return true;
