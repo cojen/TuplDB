@@ -137,6 +137,7 @@ class DirectPageCache extends Latch implements PageCache {
                         } else {
                             nodes.put(prevPtr + CHAIN_NEXT_PTR_FIELD, chainNextPtr);
                         }
+                        break;
                     }
 
                     if (chainNextPtr < 0) {
