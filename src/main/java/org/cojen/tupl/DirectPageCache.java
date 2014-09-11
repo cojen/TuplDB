@@ -295,16 +295,14 @@ class DirectPageCache extends Latch implements PageCache {
     public void close() {
         acquireExclusive();
 
-        if (mNodes == null) {
-            return;
-        }
-
-        try {
-            Utils.delete(mNodesByteBuffer);
-            Utils.delete(mData);
-        } finally {
-            mNodes = null;
-            mData = null;
+        if (mNodes != null) {
+            try {
+                Utils.delete(mNodesByteBuffer);
+                Utils.delete(mData);
+            } finally {
+                mNodes = null;
+                mData = null;
+            }
         }
 
         releaseExclusive();
