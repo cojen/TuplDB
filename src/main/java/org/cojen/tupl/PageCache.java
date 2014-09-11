@@ -27,19 +27,54 @@ interface PageCache extends Closeable {
     /**
      * Add an entry as most recent. Caller must ensure that no duplicate entries are created.
      *
-     * @param pageId non-zero page identifier
+     * @param pageId page identifier
      * @param page copy source
      */
     public void add(long pageId, byte[] page);
 
     /**
+     * Add an entry as most recent. Caller must ensure that no duplicate entries are created.
+     *
+     * @param pageId page identifier
+     * @param page copy source
+     */
+    public void add(long pageId, byte[] page, int offset);
+
+    /**
+     * Get an entry if it exists, without affecting eviction priority.
+     *
+     * @param pageId page identifier
+     * @param page copy destination
+     * @return false if not found
+     */
+    public boolean find(long pageId, byte[] page);
+
+    /**
+     * Get an entry if it exists, without affecting eviction priority.
+     *
+     * @param pageId page identifier
+     * @param page copy destination
+     * @return false if not found
+     */
+    public boolean find(long pageId, byte[] page, int offset);
+
+    /**
      * Get and remove an entry if it exists.
      *
-     * @param pageId non-zero page identifier
+     * @param pageId page identifier
      * @param page copy destination
      * @return false if not found
      */
     public boolean remove(long pageId, byte[] page);
+
+    /**
+     * Get and remove an entry if it exists.
+     *
+     * @param pageId page identifier
+     * @param page copy destination
+     * @return false if not found
+     */
+    public boolean remove(long pageId, byte[] page, int offset);
 
     /**
      * @return maximum number of bytes in the cache

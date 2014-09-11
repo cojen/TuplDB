@@ -54,7 +54,7 @@ class PartitionedPageCache implements PageCache {
         try {
             for (int i=0; i<mPartitions.length; i++) {
                 int pcapacity = (int) (((long) ((i + 1) * psize)) - capacity);
-                DirectPageCache partition = new DirectPageCache(pcapacity, pageSize, zeroId);
+                DirectPageCache partition = new DirectPageCache(pcapacity, pageSize);
                 mPartitions[i] = partition;
                 capacity += partition.capacity();
                 maxEntryCount += partition.maxEntryCount();
@@ -71,14 +71,35 @@ class PartitionedPageCache implements PageCache {
 
     @Override
     public void add(long pageId, byte[] page) {
+        add(pageId, page, 0);
+    }
+
+    @Override
+    public void add(long pageId, byte[] page, int offset) {
         pageId = Utils.scramble(pageId);
-        mPartitions[(int) (pageId >>> mPartitionShift)].add(pageId, page);
+        mPartitions[(int) (pageId >>> mPartitionShift)].add(pageId, page, offset);
+    }
+
+    @Override
+    public boolean find(long pageId, byte[] page) {
+        return find(pageId, page, 0);
+    }
+
+    @Override
+    public boolean find(long pageId, byte[] page, int offset) {
+        pageId = Utils.scramble(pageId);
+        return mPartitions[(int) (pageId >>> mPartitionShift)].find(pageId, page, offset);
     }
 
     @Override
     public boolean remove(long pageId, byte[] page) {
+        return remove(pageId, page, 0);
+    }
+
+    @Override
+    public boolean remove(long pageId, byte[] page, int offset) {
         pageId = Utils.scramble(pageId);
-        return mPartitions[(int) (pageId >>> mPartitionShift)].remove(pageId, page);
+        return mPartitions[(int) (pageId >>> mPartitionShift)].remove(pageId, page, offset);
     }
 
     @Override

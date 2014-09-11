@@ -44,12 +44,7 @@ public class PageCacheTest {
     }
 
     private void fill(boolean scramble) {
-        long zeroId = 0;
-        if (scramble) {
-            zeroId = Utils.scramble(zeroId);
-        }
-
-        PageCache cache = new DirectPageCache(1_000_000, 4096, zeroId);
+        PageCache cache = new DirectPageCache(1_000_000, 4096);
         assertTrue(cache.capacity() > 0);
         assertTrue(cache.capacity() <= 1_000_000);
         assertTrue(cache.maxEntryCount() > 0);
@@ -60,7 +55,7 @@ public class PageCacheTest {
         Random rnd = new Random(seed);
 
         for (int i = 0; i < cache.maxEntryCount(); i++) {
-            long pageId = i + 1;
+            long pageId = i;
             if (scramble) {
                 pageId = Utils.scramble(pageId);
             }
@@ -72,7 +67,19 @@ public class PageCacheTest {
         rnd = new Random(seed);
 
         for (int i = 0; i < cache.maxEntryCount(); i++) {
-            long pageId = i + 1;
+            long pageId = i;
+            if (scramble) {
+                pageId = Utils.scramble(pageId);
+            }
+            rnd.nextBytes(page);
+            assertTrue(cache.find(pageId, actual));
+            fastAssertArrayEquals(page, actual);
+        }
+
+        rnd = new Random(seed);
+
+        for (int i = 0; i < cache.maxEntryCount(); i++) {
+            long pageId = i;
             if (scramble) {
                 pageId = Utils.scramble(pageId);
             }
@@ -97,12 +104,7 @@ public class PageCacheTest {
     }
 
     private void evict(boolean scramble) {
-        long zeroId = 0;
-        if (scramble) {
-            zeroId = Utils.scramble(zeroId);
-        }
-
-        PageCache cache = new DirectPageCache(100_000, 100, zeroId);
+        PageCache cache = new DirectPageCache(100_000, 100);
 
         final long seed = System.nanoTime();
         final byte[] page = new byte[100];
@@ -141,7 +143,7 @@ public class PageCacheTest {
 
     @Test
     public void closed() {
-        PageCache cache = new DirectPageCache(256, 4, 0);
+        PageCache cache = new DirectPageCache(256, 4);
         cache.close();
 
         cache.add(1, new byte[4]);
