@@ -27,13 +27,18 @@ import java.util.BitSet;
  *
  * @author Brian S O'Neill
  */
-class NonPageDb extends PageDb {
+final class NonPageDb extends PageDb {
     private final int mPageSize;
+    private final PageCache mCache;
 
     private long mAllocId;
 
-    NonPageDb(int pageSize) {
+    /**
+     * @param cache optional
+     */
+    NonPageDb(int pageSize, PageCache cache) {
         mPageSize = pageSize;
+        mCache = cache;
         // Next assigned id is 2, the first legal identifier.
         mAllocId = 1;
     }
@@ -65,25 +70,30 @@ class NonPageDb extends PageDb {
 
     @Override
     public void readPage(long id, byte[] buf) throws IOException {
-        fail(false);
+        readPage(id, buf, 0);
     }
 
     @Override
     public void readPage(long id, byte[] buf, int offset) throws IOException {
-        fail(false);
+        PageCache cache = mCache;
+        if (cache == null || !cache.remove(id, buf, offset, buf.length)) {
+            fail(false);
+        }
     }
 
     @Override
     public void readPartial(long id, int start, byte[] buf, int offset, int length)
         throws IOException
     {
-        fail(false);
+        PageCache cache = mCache;
+        if (cache == null || !cache.copy(id, start, buf, offset, length)) {
+            fail(false);
+        }
     }
 
     @Override
     public synchronized long allocPage() throws IOException {
-        // For ordinary nodes, the same identifier can be vended out each
-        // time. Fragmented values require unique identifiers.
+        // Cached nodes and fragmented values always require unique identifiers.
         long id = mAllocId + 1;
         if (id == 0) {
             // Wrapped around. In practice, this will not happen in 100 years.
@@ -95,22 +105,46 @@ class NonPageDb extends PageDb {
 
     @Override
     public void writePage(long id, byte[] buf) throws IOException {
-        fail(true);
+        writePage(id, buf, 0);
     }
 
     @Override
     public void writePage(long id, byte[] buf, int offset) throws IOException {
-        fail(true);
+        PageCache cache = mCache;
+        if (cache == null || !cache.add(id, buf, offset, buf.length, false)) {
+            fail(true);
+        }
+    }
+
+    @Override
+    public void cachePage(long id, byte[] buf) throws IOException {
+        cachePage(id, buf, 0);
+    }
+
+    @Override
+    public void cachePage(long id, byte[] buf, int offset) throws IOException {
+        PageCache cache = mCache;
+        if (cache != null && !cache.add(id, buf, offset, buf.length, false)) {
+            fail(false);
+        }
+    }
+
+    @Override
+    public void uncachePage(long id) throws IOException {
+        PageCache cache = mCache;
+        if (cache != null) {
+            cache.remove(id, null, 0, 0);
+        }
     }
 
     @Override
     public void deletePage(long id) throws IOException {
-        // Do nothing.
+        uncachePage(id);
     }
 
     @Override
     public void recyclePage(long id) throws IOException {
-        // Do nothing.
+        uncachePage(id);
     }
 
     @Override
@@ -146,7 +180,8 @@ class NonPageDb extends PageDb {
 
     @Override
     public void commit(final CommitCallback callback) throws IOException {
-        fail(false);
+        // This is more of an assertion failure.
+        throw new DatabaseException("Cannot commit to a non-durable database");
     }
 
     @Override
@@ -155,13 +190,15 @@ class NonPageDb extends PageDb {
     }
 
     @Override
-    public void close() throws IOException {
-        // Do nothing.
+    public void close() {
+        if (mCache != null) {
+            mCache.close();
+        }
     }
 
     @Override
-    public void close(Throwable cause) throws IOException {
-        // Do nothing.
+    public void close(Throwable cause) {
+        close();
     }
 
     private static void fail(boolean forWrite) throws DatabaseException {

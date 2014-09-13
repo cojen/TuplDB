@@ -404,20 +404,28 @@ public final class Database implements CauseCloseable {
                 deleteRedoLogFiles();
             }
 
+            // Create or retrieve optional page cache.
+            PageCache cache = config.pageCache();
+
+            if (cache != null) {
+                // Update config such that info file is correct.
+                config.mSecondaryCacheSize = cache.capacity();
+            }
+
             if (dataFiles == null) {
                 PageArray dataPageArray = config.mDataPageArray;
                 if (dataPageArray == null) {
-                    mPageDb = new NonPageDb(pageSize);
+                    mPageDb = new NonPageDb(pageSize, cache);
                 } else {
                     mPageDb = DurablePageDb.open
-                        (dataPageArray, config.mCrypto, openMode == OPEN_DESTROY);
+                        (dataPageArray, cache, config.mCrypto, openMode == OPEN_DESTROY);
                 }
             } else {
                 EnumSet<OpenOption> options = config.createOpenOptions();
                 mPageDb = DurablePageDb.open
                     (explicitPageSize, pageSize,
                      dataFiles, config.mFileFactory, options,
-                     config.mCrypto, openMode == OPEN_DESTROY);
+                     cache, config.mCrypto, openMode == OPEN_DESTROY);
             }
 
             // Actual page size might differ from configured size.
@@ -1250,6 +1258,8 @@ public final class Database implements CauseCloseable {
     public static Database restoreFromSnapshot(DatabaseConfig config, InputStream in)
         throws IOException
     {
+        PageCache cache = config.pageCache();
+
         PageDb restored;
 
         File[] dataFiles = config.dataFiles();
@@ -1264,7 +1274,7 @@ public final class Database implements CauseCloseable {
             // Delete old redo log files.
             deleteNumberedFiles(config.mBaseFile, REDO_FILE_SUFFIX);
 
-            restored = DurablePageDb.restoreFromSnapshot(dataPageArray, config.mCrypto, in);
+            restored = DurablePageDb.restoreFromSnapshot(dataPageArray, cache, config.mCrypto, in);
         } else {
             if (!config.mReadOnly) {
                 for (File f : dataFiles) {
@@ -1288,7 +1298,7 @@ public final class Database implements CauseCloseable {
             }
 
             restored = DurablePageDb.restoreFromSnapshot
-                (pageSize, dataFiles, factory, options, config.mCrypto, in);
+                (pageSize, dataFiles, factory, options, cache, config.mCrypto, in);
         }
 
         restored.close();

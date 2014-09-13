@@ -36,14 +36,19 @@ import static org.cojen.tupl.Utils.*;
 final class SnapshotPageArray extends PageArray {
     private final PageArray mSource;
     private final PageArray mRawSource;
+    private final PageCache mCache;
 
     private volatile Object mSnapshots;
 
-    SnapshotPageArray(PageArray source, PageArray rawSource) {
+    /**
+     * @param cache optional
+     */
+    SnapshotPageArray(PageArray source, PageArray rawSource, PageCache cache) {
         super(source.pageSize());
         mSource = source;
         // Snapshot does not decrypt pages.
         mRawSource = rawSource;
+        mCache = cache;
     }
 
     @Override
@@ -73,35 +78,26 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, byte[] buf) throws IOException {
-        mSource.readPage(index, buf);
-    }
-
-    @Override
     public void readPage(long index, byte[] buf, int offset) throws IOException {
-        mSource.readPage(index, buf, offset);
+        PageCache cache = mCache;
+        if (cache == null || !cache.remove(index, buf, offset, buf.length)) {
+            mSource.readPage(index, buf, offset);
+        }
     }
 
     @Override
     public int readPartial(long index, int start, byte[] buf, int offset, int length)
         throws IOException
     {
+        PageCache cache = mCache;
+        if (cache != null && cache.copy(index, start, buf, offset, length)) {
+            return length;
+        }
         return mSource.readPartial(index, start, buf, offset, length);
     }
 
     @Override
-    public void writePage(long index, byte[] buf) throws IOException {
-        prepareToWrite(index);
-        mSource.writePage(index, buf);
-    }
-
-    @Override
     public void writePage(long index, byte[] buf, int offset) throws IOException {
-        prepareToWrite(index);
-        mSource.writePage(index, buf, offset);
-    }
-
-    private void prepareToWrite(long index) {
         if (index < 0) {
             throw new IndexOutOfBoundsException(String.valueOf(index));
         }
@@ -114,6 +110,26 @@ final class SnapshotPageArray extends PageArray {
                 snapshot.capture(index);
             }
         }
+
+        cachePage(index, buf, offset);
+
+        mSource.writePage(index, buf, offset);
+    }
+
+    @Override
+    public void cachePage(long index, byte[] buf, int offset) {
+        PageCache cache = mCache;
+        if (cache != null) {
+            cache.add(index, buf, offset, buf.length, true);
+        }
+    }
+
+    @Override
+    public void uncachePage(long index) {
+        PageCache cache = mCache;
+        if (cache != null) {
+            cache.remove(index, null, 0, 0);
+        }
     }
 
     @Override
@@ -123,6 +139,9 @@ final class SnapshotPageArray extends PageArray {
 
     @Override
     public void close(Throwable cause) throws IOException {
+        if (mCache != null) {
+            mCache.close();
+        }
         mSource.close(cause);
     }
 
