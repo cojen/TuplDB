@@ -833,19 +833,22 @@ final class Node extends Latch {
      * method when an exception is thrown.
      */
     void doEvict(Database db) throws IOException {
-        if (mCachedState != CACHED_CLEAN) {
-            try {
+        try {
+            if (mCachedState == CACHED_CLEAN) {
+                // Try to move to a secondary cache.
+                db.mPageDb.cachePage(mId, mPage);
+            } else {
                 write(db.mPageDb);
                 mCachedState = CACHED_CLEAN;
-            } catch (Throwable e) {
-                releaseExclusive();
-                throw e;
             }
-        }
 
-        db.mTreeNodeMap.remove(this, NodeMap.hash(mId));
-        mId = 0;
-        mType = TYPE_NONE;
+            db.mTreeNodeMap.remove(this, NodeMap.hash(mId));
+            mId = 0;
+            mType = TYPE_NONE;
+        } catch (Throwable e) {
+            releaseExclusive();
+            throw e;
+        }
     }
 
     /**

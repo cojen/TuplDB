@@ -134,6 +134,29 @@ abstract class PageDb implements CauseCloseable {
     public abstract void writePage(long id, byte[] buf, int offset) throws IOException;
 
     /**
+     * If supported, copies a page into the cache, but does not write it. Cached copy is
+     * removed when read again, unless evicted sooner.
+     *
+     * @param id previously allocated page id
+     */
+    public abstract void cachePage(long id, byte[] buf) throws IOException;
+
+    /**
+     * If supported, copies a page into the cache, but does not write it. Cached copy is
+     * removed when read again, unless evicted sooner.
+     *
+     * @param id previously allocated page id
+     */
+    public abstract void cachePage(long id, byte[] buf, int offset) throws IOException;
+
+    /**
+     * If supported, removes a page from the cache.
+     *
+     * @param id previously allocated page id
+     */
+    public abstract void uncachePage(long id) throws IOException;
+
+    /**
      * Deletes a page, but doesn't commit it. Deleted pages are not used for
      * new writes, and they are still readable until after a commit. Caller
      * must ensure that a page is deleted at most once between commits.

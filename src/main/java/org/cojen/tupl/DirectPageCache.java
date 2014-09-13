@@ -50,6 +50,7 @@ class DirectPageCache extends Latch implements PageCache {
     private static final int NO_NEXT_ENTRY = -1;
     private static final int UNUSED_NODE = -2;
 
+    private final int mPageSize;
     private final int[] mHashTable;
 
     private ByteBuffer mNodesByteBuffer;
@@ -65,6 +66,7 @@ class DirectPageCache extends Latch implements PageCache {
     DirectPageCache(int capacity, int pageSize) {
         int entryCount = Math.max(2, capacity / ((NODE_SIZE_IN_INTS * 4) + pageSize));
 
+        mPageSize = pageSize;
         mHashTable = new int[entryCount];
 
         acquireExclusive();
@@ -94,122 +96,150 @@ class DirectPageCache extends Latch implements PageCache {
     }
 
     @Override
-    public void add(final long pageId, final byte[] page) {
-        add(pageId, page, 0, page.length);
-    }
-
-    @Override
-    public void add(final long pageId, final byte[] page, final int offset, final int length) {
+    public boolean add(final long pageId,
+                       final byte[] page, final int offset, final int length,
+                       final boolean canEvict)
+    {
         acquireExclusive();
+        try {
+            final IntBuffer nodes = mNodes;
+            if (nodes == null) {
+                // Closed.
+                return false;
+            }
 
-        final IntBuffer nodes = mNodes;
-        if (nodes == null) {
-            // Closed.
-            releaseExclusive();
-            return;
-        }
+            final int[] hashTable = mHashTable;
+            final int index = hash(pageId) % hashTable.length;
 
-        // Select the least recent entry and move to most recent.
-        final int ptr = mLeastRecentPtr;
-        mLeastRecentPtr = nodes.get(ptr + MORE_RECENT_PTR_FIELD);
-        nodes.put(mMostRecentPtr + MORE_RECENT_PTR_FIELD, ptr);
-        nodes.put(ptr + LESS_RECENT_PTR_FIELD, mMostRecentPtr);
-        mMostRecentPtr = ptr;
-
-        // Copy page into the data buffer.
-        mData.position((ptr / NODE_SIZE_IN_INTS) * length);
-        mData.put(page, offset, length);
-
-        final int[] hashTable = mHashTable;
-        if (nodes.get(ptr + CHAIN_NEXT_PTR_FIELD) != UNUSED_NODE) {
-            // Evict old entry from hashtable.
-            final long evictedPageId = getPageId(nodes, ptr);
-            final int index = hash(evictedPageId) % hashTable.length;
-
-            int entryPtr = hashTable[index];
-            if (entryPtr >= 0) {
+            // Try to replace existing entry.
+            int ptr = hashTable[index];
+            if (ptr >= 0) {
                 int prevPtr = NO_NEXT_ENTRY;
                 while (true) {
-                    final int chainNextPtr = nodes.get(entryPtr + CHAIN_NEXT_PTR_FIELD);
-                    if (getPageId(nodes, entryPtr) == evictedPageId) {
-                        if (prevPtr < 0) {
-                            hashTable[index] = chainNextPtr;
-                        } else {
-                            nodes.put(prevPtr + CHAIN_NEXT_PTR_FIELD, chainNextPtr);
-                        }
-                        break;
-                    }
+                    final int chainNextPtr = nodes.get(ptr + CHAIN_NEXT_PTR_FIELD);
+                    if (getPageId(nodes, ptr) == pageId) {
+                        // Found it.
+                        mData.position((ptr / NODE_SIZE_IN_INTS) * mPageSize);
+                        mData.put(page, offset, length);
 
+                        if (ptr != mMostRecentPtr) {
+                            // Move to most recent.
+                            int morePtr = nodes.get(ptr + MORE_RECENT_PTR_FIELD);
+                            if (ptr == mLeastRecentPtr) {
+                                mLeastRecentPtr = morePtr;
+                            } else {
+                                int lessPtr = nodes.get(ptr + LESS_RECENT_PTR_FIELD);
+                                nodes.put(morePtr + LESS_RECENT_PTR_FIELD, lessPtr);
+                                nodes.put(lessPtr + MORE_RECENT_PTR_FIELD, morePtr);
+                            }
+                            nodes.put(mMostRecentPtr + MORE_RECENT_PTR_FIELD, ptr);
+                            nodes.put(ptr + LESS_RECENT_PTR_FIELD, mMostRecentPtr);
+                            mMostRecentPtr = ptr;
+                        }
+
+                        return true;
+                    }
                     if (chainNextPtr < 0) {
                         break;
                     }
-
-                    prevPtr = entryPtr;
-                    entryPtr = chainNextPtr;
+                    prevPtr = ptr;
+                    ptr = chainNextPtr;
                 }
             }
+
+            // Select the least recent entry.
+            ptr = mLeastRecentPtr;
+
+            if (nodes.get(ptr + CHAIN_NEXT_PTR_FIELD) != UNUSED_NODE) {
+                if (!canEvict) {
+                    return false;
+                }
+
+                // Evict old entry from hashtable.
+                final long evictedPageId = getPageId(nodes, ptr);
+                final int evictedIndex = hash(evictedPageId) % hashTable.length;
+
+                int entryPtr = hashTable[evictedIndex];
+                if (entryPtr >= 0) {
+                    int prevPtr = NO_NEXT_ENTRY;
+                    while (true) {
+                        final int chainNextPtr = nodes.get(entryPtr + CHAIN_NEXT_PTR_FIELD);
+                        if (getPageId(nodes, entryPtr) == evictedPageId) {
+                            if (prevPtr < 0) {
+                                hashTable[evictedIndex] = chainNextPtr;
+                            } else {
+                                nodes.put(prevPtr + CHAIN_NEXT_PTR_FIELD, chainNextPtr);
+                            }
+                            break;
+                        }
+                        if (chainNextPtr < 0) {
+                            break;
+                        }
+                        prevPtr = entryPtr;
+                        entryPtr = chainNextPtr;
+                    }
+                }
+            }
+
+            // Move to most recent entry.
+            mLeastRecentPtr = nodes.get(ptr + MORE_RECENT_PTR_FIELD);
+            nodes.put(mMostRecentPtr + MORE_RECENT_PTR_FIELD, ptr);
+            nodes.put(ptr + LESS_RECENT_PTR_FIELD, mMostRecentPtr);
+            mMostRecentPtr = ptr;
+
+            // Copy page into the data buffer.
+            mData.position((ptr / NODE_SIZE_IN_INTS) * mPageSize);
+            mData.put(page, offset, length);
+
+            // Add new entry into the hashtable.
+            nodes.put(ptr + CHAIN_NEXT_PTR_FIELD, hashTable[index]);
+            hashTable[index] = ptr;
+            setPageId(nodes, ptr, pageId);
+
+            return true;
+        } finally {
+            releaseExclusive();
         }
-
-        // Add new entry into the hashtable.
-        final int index = hash(pageId) % hashTable.length;
-        nodes.put(ptr + CHAIN_NEXT_PTR_FIELD, hashTable[index]);
-        hashTable[index] = ptr;
-        setPageId(nodes, ptr, pageId);
-
-        releaseExclusive();
     }
 
     @Override
-    public boolean find(final long pageId, final byte[] page) {
-        return find(pageId, page, 0, page.length);
-    }
-
-    @Override
-    public boolean find(final long pageId, final byte[] page, final int offset, final int length) {
+    public boolean copy(final long pageId, final int start,
+                        final byte[] page, final int offset, final int length)
+    {
         acquireShared();
-
-        final IntBuffer nodes = mNodes;
-        if (nodes == null) {
-            // Closed.
-            releaseShared();
-            return false;
-        }
-
-        final int[] hashTable = mHashTable;
-        final int index = hash(pageId) % hashTable.length;
-
-        int ptr = hashTable[index];
-        if (ptr >= 0) {
-            int prevPtr = NO_NEXT_ENTRY;
-            while (true) {
-                final int chainNextPtr = nodes.get(ptr + CHAIN_NEXT_PTR_FIELD);
-                if (getPageId(nodes, ptr) == pageId) {
-                    // Found it.
-
-                    // Copy data buffer into the page.
-                    mData.position((ptr / NODE_SIZE_IN_INTS) * length);
-                    mData.get(page, offset, length);
-
-                    releaseShared();
-                    return true;
-                }
-
-                if (chainNextPtr < 0) {
-                    break;
-                }
-
-                prevPtr = ptr;
-                ptr = chainNextPtr;
+        try {
+            final IntBuffer nodes = mNodes;
+            if (nodes == null) {
+                // Closed.
+                return false;
             }
+
+            final int[] hashTable = mHashTable;
+            final int index = hash(pageId) % hashTable.length;
+
+            int ptr = hashTable[index];
+            if (ptr >= 0) {
+                int prevPtr = NO_NEXT_ENTRY;
+                while (true) {
+                    final int chainNextPtr = nodes.get(ptr + CHAIN_NEXT_PTR_FIELD);
+                    if (getPageId(nodes, ptr) == pageId) {
+                        // Found it.
+                        mData.position(((ptr / NODE_SIZE_IN_INTS) * mPageSize) + start);
+                        mData.get(page, offset, length);
+                        return true;
+                    }
+                    if (chainNextPtr < 0) {
+                        break;
+                    }
+                    prevPtr = ptr;
+                    ptr = chainNextPtr;
+                }
+            }
+
+            return false;
+        } finally {
+            releaseShared();
         }
-
-        releaseShared();
-        return false;
-    }
-
-    @Override
-    public boolean remove(final long pageId, final byte[] page) {
-        return remove(pageId, page, 0, page.length);
     }
 
     @Override
@@ -217,69 +247,71 @@ class DirectPageCache extends Latch implements PageCache {
                           final byte[] page, final int offset, final int length)
     {
         acquireExclusive();
-
-        final IntBuffer nodes = mNodes;
-        if (nodes == null) {
-            // Closed.
-            releaseExclusive();
-            return false;
-        }
-
-        final int[] hashTable = mHashTable;
-        final int index = hash(pageId) % hashTable.length;
-
-        int ptr = hashTable[index];
-        if (ptr >= 0) {
-            int prevPtr = NO_NEXT_ENTRY;
-            while (true) {
-                final int chainNextPtr = nodes.get(ptr + CHAIN_NEXT_PTR_FIELD);
-                if (getPageId(nodes, ptr) == pageId) {
-                    // Found it.
-
-                    // Copy data buffer into the page.
-                    mData.position((ptr / NODE_SIZE_IN_INTS) * length);
-                    mData.get(page, offset, length);
-
-                    if (ptr != mLeastRecentPtr) {
-                        // Move to least recent.
-                        int lessPtr = nodes.get(ptr + LESS_RECENT_PTR_FIELD);
-                        if (ptr == mMostRecentPtr) {
-                            mMostRecentPtr = lessPtr;
-                        } else {
-                            int morePtr = nodes.get(ptr + MORE_RECENT_PTR_FIELD);
-                            nodes.put(lessPtr + MORE_RECENT_PTR_FIELD, morePtr);
-                            nodes.put(morePtr + LESS_RECENT_PTR_FIELD, lessPtr);
-                        }
-                        nodes.put(mLeastRecentPtr + LESS_RECENT_PTR_FIELD, ptr);
-                        nodes.put(ptr + MORE_RECENT_PTR_FIELD, mLeastRecentPtr);
-                        mLeastRecentPtr = ptr;
-                    }
-
-                    // Remove from hashtable.
-                    if (prevPtr < 0) {
-                        hashTable[index] = chainNextPtr;
-                    } else {
-                        nodes.put(prevPtr + CHAIN_NEXT_PTR_FIELD, chainNextPtr);
-                    }
-
-                    // Node is unused.
-                    nodes.put(ptr + CHAIN_NEXT_PTR_FIELD, UNUSED_NODE);
-
-                    releaseExclusive();
-                    return true;
-                }
-
-                if (chainNextPtr < 0) {
-                    break;
-                }
-
-                prevPtr = ptr;
-                ptr = chainNextPtr;
+        try {
+            final IntBuffer nodes = mNodes;
+            if (nodes == null) {
+                // Closed.
+                return false;
             }
-        }
 
-        releaseExclusive();
-        return false;
+            final int[] hashTable = mHashTable;
+            final int index = hash(pageId) % hashTable.length;
+
+            int ptr = hashTable[index];
+            if (ptr >= 0) {
+                int prevPtr = NO_NEXT_ENTRY;
+                while (true) {
+                    final int chainNextPtr = nodes.get(ptr + CHAIN_NEXT_PTR_FIELD);
+                    if (getPageId(nodes, ptr) == pageId) {
+                        // Found it.
+
+                        if (page != null) {
+                            // Copy data buffer into the page.
+                            mData.position((ptr / NODE_SIZE_IN_INTS) * mPageSize);
+                            mData.get(page, offset, length);
+                        }
+
+                        if (ptr != mLeastRecentPtr) {
+                            // Move to least recent.
+                            int lessPtr = nodes.get(ptr + LESS_RECENT_PTR_FIELD);
+                            if (ptr == mMostRecentPtr) {
+                                mMostRecentPtr = lessPtr;
+                            } else {
+                                int morePtr = nodes.get(ptr + MORE_RECENT_PTR_FIELD);
+                                nodes.put(lessPtr + MORE_RECENT_PTR_FIELD, morePtr);
+                                nodes.put(morePtr + LESS_RECENT_PTR_FIELD, lessPtr);
+                            }
+                            nodes.put(mLeastRecentPtr + LESS_RECENT_PTR_FIELD, ptr);
+                            nodes.put(ptr + MORE_RECENT_PTR_FIELD, mLeastRecentPtr);
+                            mLeastRecentPtr = ptr;
+                        }
+
+                        // Remove from hashtable.
+                        if (prevPtr < 0) {
+                            hashTable[index] = chainNextPtr;
+                        } else {
+                            nodes.put(prevPtr + CHAIN_NEXT_PTR_FIELD, chainNextPtr);
+                        }
+
+                        // Node is unused.
+                        nodes.put(ptr + CHAIN_NEXT_PTR_FIELD, UNUSED_NODE);
+
+                        return true;
+                    }
+
+                    if (chainNextPtr < 0) {
+                        break;
+                    }
+
+                    prevPtr = ptr;
+                    ptr = chainNextPtr;
+                }
+            }
+
+            return false;
+        } finally {
+            releaseExclusive();
+        }
     }
 
     @Override
@@ -295,28 +327,29 @@ class DirectPageCache extends Latch implements PageCache {
     @Override
     public void close() {
         acquireExclusive();
-
-        if (mNodes != null) {
-            try {
-                Utils.delete(mNodesByteBuffer);
-                Utils.delete(mData);
-            } finally {
-                mNodes = null;
-                mData = null;
+        try {
+            if (mNodes != null) {
+                try {
+                    Utils.delete(mNodesByteBuffer);
+                    Utils.delete(mData);
+                } finally {
+                    mNodes = null;
+                    mData = null;
+                }
             }
+        } finally {
+            releaseExclusive();
         }
-
-        releaseExclusive();
     }
 
-    private static long getPageId(IntBuffer nodes, int iptr) {
-        return (nodes.get(iptr + PAGE_ID_FIELD) & 0xffffffffL)
-            | (((long) nodes.get(iptr + (PAGE_ID_FIELD + 1))) << 32);
+    private static long getPageId(IntBuffer nodes, int ptr) {
+        return (nodes.get(ptr + PAGE_ID_FIELD) & 0xffffffffL)
+            | (((long) nodes.get(ptr + (PAGE_ID_FIELD + 1))) << 32);
     }
 
-    private static void setPageId(IntBuffer nodes, int iptr, long pageId) {
-        nodes.put(iptr + PAGE_ID_FIELD, (int) pageId);
-        nodes.put(iptr + (PAGE_ID_FIELD + 1), (int) (pageId >>> 32));
+    private static void setPageId(IntBuffer nodes, int ptr, long pageId) {
+        nodes.put(ptr + PAGE_ID_FIELD, (int) pageId);
+        nodes.put(ptr + (PAGE_ID_FIELD + 1), (int) (pageId >>> 32));
     }
 
     private static int hash(long pageId) {

@@ -50,6 +50,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
     FileFactory mFileFactory;
     long mMinCachedBytes;
     long mMaxCachedBytes;
+    long mSecondaryCacheSize;
     DurabilityMode mDurabilityMode;
     LockUpgradeRule mLockUpgradeRule;
     long mLockTimeoutNanos;
@@ -188,6 +189,23 @@ public class DatabaseConfig implements Cloneable, Serializable {
      */
     public DatabaseConfig maxCacheSize(long maxBytes) {
         mMaxCachedBytes = maxBytes;
+        return this;
+    }
+
+    /**
+     * Set the size of the secondary off-heap cache, which is empty by default. A secondary
+     * cache is slower than a primary cache, but a very large primary cache can cause high
+     * garbage collection overhead. The -XX:MaxDirectMemorySize Java option might be required
+     * when specifying a secondary cache.
+     *
+     * @param size secondary cache size, in bytes
+     */
+    public DatabaseConfig secondaryCacheSize(long size) {
+        if (size < 0) {
+            // Reserve use of negative size.
+            throw new IllegalArgumentException();
+        }
+        mSecondaryCacheSize = size;
         return this;
     }
 
@@ -359,6 +377,22 @@ public class DatabaseConfig implements Cloneable, Serializable {
     }
 
     /**
+     * Optionally returns a new or shared page cache.
+     */
+    PageCache pageCache() {
+        long size = mSecondaryCacheSize;
+        if (size <= 0) {
+            return null;
+        }
+        return new PartitionedPageCache(size, mPageSize);
+
+        // Note: The page cache could be shared with other Database instances, if they have the
+        // same page size. The upper 2 bytes of the page id are unused, and so the cache can be
+        // shared up to 65536 times. A closed database can free up its slot if all of its
+        // lingering cache entries are explicitly removed.
+    }
+
+    /**
      * Performs configuration check and returns the applicable data files. Null is returned
      * when base file is null or if a custom PageArray should be used.
      */
@@ -458,6 +492,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
 
         set(props, "minCacheSize", mMinCachedBytes);
         set(props, "maxCacheSize", mMaxCachedBytes);
+        set(props, "secondaryCacheSize", mSecondaryCacheSize);
         set(props, "durabilityMode", mDurabilityMode);
         set(props, "lockTimeoutNanos", mLockTimeoutNanos);
         set(props, "checkpointRateNanos", mCheckpointRateNanos);

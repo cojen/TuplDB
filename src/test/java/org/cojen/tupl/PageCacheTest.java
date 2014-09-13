@@ -60,7 +60,7 @@ public class PageCacheTest {
                 pageId = Utils.scramble(pageId);
             }
             rnd.nextBytes(page);
-            cache.add(pageId, page);
+            cache.add(pageId, page, 0, page.length, true);
         }
 
         final byte[] actual = new byte[4096];
@@ -72,7 +72,7 @@ public class PageCacheTest {
                 pageId = Utils.scramble(pageId);
             }
             rnd.nextBytes(page);
-            assertTrue(cache.find(pageId, actual));
+            assertTrue(cache.copy(pageId, 0, actual, 0, actual.length));
             fastAssertArrayEquals(page, actual);
         }
 
@@ -84,11 +84,11 @@ public class PageCacheTest {
                 pageId = Utils.scramble(pageId);
             }
             rnd.nextBytes(page);
-            assertTrue(cache.remove(pageId, actual));
+            assertTrue(cache.remove(pageId, actual, 0, actual.length));
             fastAssertArrayEquals(page, actual);
         }
 
-        assertFalse(cache.remove(1, actual));
+        assertFalse(cache.remove(1, actual, 0, actual.length));
 
         cache.close();
     }
@@ -116,7 +116,7 @@ public class PageCacheTest {
                 pageId = Utils.scramble(pageId);
             }
             rnd.nextBytes(page);
-            cache.add(pageId, page);
+            cache.add(pageId, page, 0, page.length, true);
         }
 
         final byte[] actual = new byte[100];
@@ -132,11 +132,11 @@ public class PageCacheTest {
                 pageId = Utils.scramble(pageId);
             }
             rnd.nextBytes(page);
-            assertTrue(cache.remove(pageId, actual));
+            assertTrue(cache.remove(pageId, actual, 0, actual.length));
             fastAssertArrayEquals(page, actual);
         }
 
-        assertFalse(cache.remove(1, actual));
+        assertFalse(cache.remove(1, actual, 0, actual.length));
 
         cache.close();
     }
@@ -146,8 +146,8 @@ public class PageCacheTest {
         PageCache cache = new DirectPageCache(256, 4);
         cache.close();
 
-        cache.add(1, new byte[4]);
-        assertFalse(cache.remove(1, new byte[4]));
+        cache.add(1, new byte[4], 0, 4, true);
+        assertFalse(cache.remove(1, new byte[4], 0, 4));
 
         cache.close();
     }
@@ -167,7 +167,7 @@ public class PageCacheTest {
         for (int i = 0; i < cache.maxEntryCount(); i++) {
             long pageId = i + 1;
             rnd.nextBytes(page);
-            cache.add(pageId, page);
+            cache.add(pageId, page, 0, page.length, true);
         }
 
         final byte[] actual = new byte[4096];
@@ -179,7 +179,7 @@ public class PageCacheTest {
         for (int i = 0; i < cache.maxEntryCount(); i++) {
             long pageId = i + 1;
             rnd.nextBytes(page);
-            boolean removed = cache.remove(pageId, actual);
+            boolean removed = cache.remove(pageId, actual, 0, actual.length);
             if (removed) {
                 fastAssertArrayEquals(page, actual);
                 removedCount++;

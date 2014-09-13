@@ -96,16 +96,18 @@ class DurablePageDb extends PageDb {
 
     /**
      * @param factory optional
+     * @param cache optional
+     * @param crypto optional
      */
     static DurablePageDb open(boolean explicitPageSize, int pageSize,
                               File[] files, FileFactory factory, EnumSet<OpenOption> options,
-                              Crypto crypto, boolean destroy)
+                              PageCache cache, Crypto crypto, boolean destroy)
         throws IOException
     {
         while (true) {
             try {
                 return new DurablePageDb
-                    (openPageArray(pageSize, files, factory, options), crypto, destroy);
+                    (openPageArray(pageSize, files, factory, options), cache, crypto, destroy);
             } catch (WrongPageSize e) {
                 if (explicitPageSize) {
                     throw e.rethrow();
@@ -116,11 +118,15 @@ class DurablePageDb extends PageDb {
         }
     }
 
-    static DurablePageDb open(PageArray rawArray, Crypto crypto, boolean destroy)
+    /**
+     * @param cache optional
+     * @param crypto optional
+     */
+    static DurablePageDb open(PageArray rawArray, PageCache cache, Crypto crypto, boolean destroy)
         throws IOException
     {
         try {
-            return new DurablePageDb(rawArray, crypto, destroy);
+            return new DurablePageDb(rawArray, cache, crypto, destroy);
         } catch (WrongPageSize e) {
             throw e.rethrow();
         }
@@ -184,14 +190,15 @@ class DurablePageDb extends PageDb {
         }
     }
 
-    private DurablePageDb(final PageArray rawArray, Crypto crypto, boolean destroy)
+    private DurablePageDb(final PageArray rawArray, final PageCache cache,
+                          final Crypto crypto, final boolean destroy)
         throws IOException, WrongPageSize
     {
         mCrypto = crypto;
 
         PageArray array = crypto == null ? rawArray : new CryptoPageArray(rawArray, crypto);
 
-        mPageArray = new SnapshotPageArray(array, rawArray);
+        mPageArray = new SnapshotPageArray(array, rawArray, cache);
         mHeaderLatch = new Latch();
 
         try {
@@ -373,6 +380,21 @@ class DurablePageDb extends PageDb {
     }
 
     @Override
+    public void cachePage(long id, byte[] buf) throws IOException {
+        mPageArray.cachePage(id, buf);
+    }
+
+    @Override
+    public void cachePage(long id, byte[] buf, int offset) throws IOException {
+        mPageArray.cachePage(id, buf, offset);
+    }
+
+    @Override
+    public void uncachePage(long id) throws IOException {
+        mPageArray.uncachePage(id);
+    }
+
+    @Override
     public void deletePage(long id) throws IOException {
         checkId(id);
         mCommitLock.readLock().lock();
@@ -383,6 +405,7 @@ class DurablePageDb extends PageDb {
         } finally {
             mCommitLock.readLock().unlock();
         }
+        mPageArray.uncachePage(id);
     }
 
     @Override
@@ -551,11 +574,13 @@ class DurablePageDb extends PageDb {
 
     /**
      * @param factory optional
+     * @param cache optional
+     * @param crypto optional
      * @param in snapshot source; does not require extra buffering; auto-closed
      */
     static PageDb restoreFromSnapshot(int pageSize, File[] files, FileFactory factory,
                                       EnumSet<OpenOption> options,
-                                      Crypto crypto, InputStream in)
+                                      PageCache cache, Crypto crypto, InputStream in)
         throws IOException
     {
         if (options.contains(OpenOption.READ_ONLY)) {
@@ -601,23 +626,25 @@ class DurablePageDb extends PageDb {
             index++;
         }
 
-        return restoreFromSnapshot(crypto, in, buffer, pa, index);
+        return restoreFromSnapshot(cache, crypto, in, buffer, pa, index);
     }
 
     /**
+     * @param cache optional
+     * @param crypto optional
      * @param in snapshot source; does not require extra buffering; auto-closed
      */
-    static PageDb restoreFromSnapshot(PageArray pa, Crypto crypto, InputStream in)
+    static PageDb restoreFromSnapshot(PageArray pa, PageCache cache, Crypto crypto, InputStream in)
         throws IOException
     {
         if (!pa.isEmpty()) {
             throw new DatabaseException("Cannot restore into a non-empty file");
         }
 
-        return restoreFromSnapshot(crypto, in, new byte[pa.pageSize()], pa, 0);
+        return restoreFromSnapshot(cache, crypto, in, new byte[pa.pageSize()], pa, 0);
     }
 
-    private static PageDb restoreFromSnapshot(Crypto crypto, InputStream in,
+    private static PageDb restoreFromSnapshot(PageCache cache, Crypto crypto, InputStream in,
                                               byte[] buffer, PageArray pa, long index)
         throws IOException
     {
@@ -636,7 +663,7 @@ class DurablePageDb extends PageDb {
         }
 
         try {
-            return new DurablePageDb(pa, crypto, false);
+            return new DurablePageDb(pa, cache, crypto, false);
         } catch (WrongPageSize e) {
             throw e.rethrow();
         }

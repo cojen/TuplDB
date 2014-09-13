@@ -25,53 +25,30 @@ import java.io.Closeable;
  */
 interface PageCache extends Closeable {
     /**
-     * Add an entry as most recent. Caller must ensure that no duplicate entries are created.
+     * Add or replace an entry as most recent.
      *
      * @param pageId page identifier
      * @param page copy source
+     * @param canEvict true if another page can be evicted to make room
+     * @return false if close or if cannot evict and cache is full
      */
-    public void add(long pageId, byte[] page);
+    public boolean add(long pageId, byte[] page, int offset, int length, boolean canEvict);
 
     /**
-     * Add an entry as most recent. Caller must ensure that no duplicate entries are created.
+     * Copy all or part of an entry if it exists, without affecting eviction priority.
      *
      * @param pageId page identifier
-     * @param page copy source
-     */
-    public void add(long pageId, byte[] page, int offset, int length);
-
-    /**
-     * Get an entry if it exists, without affecting eviction priority.
-     *
-     * @param pageId page identifier
+     * @param start start of page to copy
      * @param page copy destination
      * @return false if not found
      */
-    public boolean find(long pageId, byte[] page);
-
-    /**
-     * Get an entry if it exists, without affecting eviction priority.
-     *
-     * @param pageId page identifier
-     * @param page copy destination
-     * @return false if not found
-     */
-    public boolean find(long pageId, byte[] page, int offset, int length);
+    public boolean copy(long pageId, int start, byte[] page, int offset, int length);
 
     /**
      * Get and remove an entry if it exists.
      *
      * @param pageId page identifier
-     * @param page copy destination
-     * @return false if not found
-     */
-    public boolean remove(long pageId, byte[] page);
-
-    /**
-     * Get and remove an entry if it exists.
-     *
-     * @param pageId page identifier
-     * @param page copy destination
+     * @param page copy destination; pass null for no copy
      * @return false if not found
      */
     public boolean remove(long pageId, byte[] page, int offset, int length);
