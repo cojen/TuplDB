@@ -16,6 +16,8 @@
 
 package org.cojen.tupl;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
  * Page cache which is spread across several direct page caches, improving concurrency and
  * supporting a much larger maximum capacity.
@@ -38,7 +40,7 @@ class PartitionedPageCache implements PageCache {
     /**
      * @param capacity capacity in bytes
      */
-    PartitionedPageCache(long capacity, int pageSize, int minPartitions) {
+    PartitionedPageCache(long capacity, final int pageSize, int minPartitions) {
         capacity = Math.min(capacity, 0x1000_0000_0000_0000L);
         minPartitions = (int) Math.max(minPartitions, (capacity + 0x3fff_ffffL) / 0x4000_0000L);
 
@@ -46,27 +48,91 @@ class PartitionedPageCache implements PageCache {
         final double psize = capacity / (double) pcount;
         final long zeroId = Utils.scramble(0);
 
-        mPartitions = new DirectPageCache[pcount];
+        final int[] pcapacities = new int[pcount];
 
         capacity = 0;
         long maxEntryCount = 0;
 
+        for (int i=0; i<pcount; i++) {
+            int pcapacity = (int) (((long) ((i + 1) * psize)) - capacity);
+            int pentryCount = DirectPageCache.entryCountFor(pcapacity, pageSize);
+            pcapacities[i] = DirectPageCache.capacityFor(pentryCount, pageSize);
+            capacity += pcapacities[i];
+            maxEntryCount += pentryCount;
+        }
+
+        mPartitions = new DirectPageCache[pcount];
+        mPartitionShift = Long.numberOfLeadingZeros(pcount - 1);
+        mCapacity = capacity;
+        mMaxEntryCount = maxEntryCount;
+
+        int procCount = Runtime.getRuntime().availableProcessors();
+
         try {
-            for (int i=0; i<mPartitions.length; i++) {
-                int pcapacity = (int) (((long) ((i + 1) * psize)) - capacity);
-                DirectPageCache partition = new DirectPageCache(pcapacity, pageSize);
-                mPartitions[i] = partition;
-                capacity += partition.capacity();
-                maxEntryCount += partition.maxEntryCount();
+            if (capacity <= 0x1_000_000L || procCount <= 1) {
+                for (int i=pcount; --i>=0; ) {
+                    mPartitions[i] = new DirectPageCache(pcapacities[i], pageSize);
+                }
+            } else {
+                // Initializing the buffers takes a long time, so do in parallel.
+
+                final AtomicInteger slot = new AtomicInteger(pcount);
+
+                class Init extends Thread {
+                    volatile Throwable mEx;
+
+                    public void run() {
+                        try {
+                            while (true) {
+                                int i = slot.get();
+                                if (i <= 0) {
+                                    break;
+                                }
+                                if (!slot.compareAndSet(i, --i)) {
+                                    continue;
+                                }
+                                mPartitions[i] = new DirectPageCache(pcapacities[i], pageSize);
+                            }
+                        } catch (Throwable e) {
+                            mEx = e;
+                        }
+                    }
+                }
+
+                Init[] inits = new Init[procCount];
+
+                for (int i=0; i<inits.length; i++) {
+                    if (slot.get() <= 0) {
+                        break;
+                    }
+                    (inits[i] = new Init()).start();
+                }
+
+                try {
+                    for (int i=0; i<inits.length; i++) {
+                        Init init = inits[i];
+                        if (init != null) {
+                            init.join();
+                        }
+                    }
+
+                    for (int i=0; i<inits.length; i++) {
+                        Init init = inits[i];
+                        if (init != null) {
+                            Throwable e = init.mEx;
+                            if (e != null) {
+                                throw e;
+                            }
+                        }
+                    }
+                } catch (Throwable e) {
+                    throw Utils.rethrow(e);
+                }
             }
         } catch (Throwable e) {
             close();
             throw e;
         }
-
-        mPartitionShift = Long.numberOfLeadingZeros(pcount - 1);
-        mCapacity = capacity;
-        mMaxEntryCount = maxEntryCount;
     }
 
     @Override

@@ -64,7 +64,7 @@ class DirectPageCache extends Latch implements PageCache {
      * @param capacity capacity in bytes
      */
     DirectPageCache(int capacity, int pageSize) {
-        int entryCount = Math.max(2, capacity / ((NODE_SIZE_IN_INTS * 4) + pageSize));
+        int entryCount = entryCountFor(capacity, pageSize);
 
         mPageSize = pageSize;
         mHashTable = new int[entryCount];
@@ -93,6 +93,14 @@ class DirectPageCache extends Latch implements PageCache {
         }
 
         releaseExclusive();
+    }
+
+    static int entryCountFor(int capacity, int pageSize) {
+        return Math.max(2, capacity / ((NODE_SIZE_IN_INTS * 4) + pageSize));
+    }
+
+    static int capacityFor(int entryCount, int pageSize) {
+        return (entryCount * (NODE_SIZE_IN_INTS * 4)) + (entryCount * pageSize);
     }
 
     @Override
