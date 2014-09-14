@@ -404,8 +404,10 @@ public final class Database implements CauseCloseable {
                 deleteRedoLogFiles();
             }
 
+            final long cacheInitStart = System.nanoTime();
+
             // Create or retrieve optional page cache.
-            PageCache cache = config.pageCache();
+            PageCache cache = config.pageCache(mEventListener);
 
             if (cache != null) {
                 // Update config such that info file is correct.
@@ -458,11 +460,9 @@ public final class Database implements CauseCloseable {
             // get used. Since the initial state is clean, evicting these
             // nodes does nothing.
 
-            long cacheInitStart = 0;
             if (mEventListener != null) {
                 mEventListener.notify(EventType.CACHE_INIT_BEGIN,
                                       "Initializing %1$d cached nodes", minCache);
-                cacheInitStart = System.nanoTime();
             }
 
             try {
@@ -1258,8 +1258,7 @@ public final class Database implements CauseCloseable {
     public static Database restoreFromSnapshot(DatabaseConfig config, InputStream in)
         throws IOException
     {
-        PageCache cache = config.pageCache();
-
+        config = config.clone();
         PageDb restored;
 
         File[] dataFiles = config.dataFiles();
@@ -1274,7 +1273,7 @@ public final class Database implements CauseCloseable {
             // Delete old redo log files.
             deleteNumberedFiles(config.mBaseFile, REDO_FILE_SUFFIX);
 
-            restored = DurablePageDb.restoreFromSnapshot(dataPageArray, cache, config.mCrypto, in);
+            restored = DurablePageDb.restoreFromSnapshot(dataPageArray, null, config.mCrypto, in);
         } else {
             if (!config.mReadOnly) {
                 for (File f : dataFiles) {
@@ -1298,7 +1297,7 @@ public final class Database implements CauseCloseable {
             }
 
             restored = DurablePageDb.restoreFromSnapshot
-                (pageSize, dataFiles, factory, options, cache, config.mCrypto, in);
+                (pageSize, dataFiles, factory, options, null, config.mCrypto, in);
         }
 
         restored.close();

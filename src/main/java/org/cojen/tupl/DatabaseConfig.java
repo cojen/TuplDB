@@ -379,11 +379,17 @@ public class DatabaseConfig implements Cloneable, Serializable {
     /**
      * Optionally returns a new or shared page cache.
      */
-    PageCache pageCache() {
+    PageCache pageCache(EventListener listener) {
         long size = mSecondaryCacheSize;
         if (size <= 0) {
             return null;
         }
+
+        if (listener != null) {
+            listener.notify(EventType.CACHE_INIT_BEGIN,
+                            "Initializing %1$d bytes for secondary cache", size);
+        }
+
         return new PartitionedPageCache(size, mPageSize);
 
         // Note: The page cache could be shared with other Database instances, if they have the
