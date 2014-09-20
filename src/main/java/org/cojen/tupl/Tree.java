@@ -589,6 +589,80 @@ class Tree implements Index {
     }
 
     /**
+     * Non-transactionally insert an entry as the highest overall. Intended for filling up a
+     * new tree with ordered entries.
+     *
+     * @param key new highest key; no existing key can be greater than or equal to it
+     * @param frame frame bound to the tree leaf node
+     */
+    final void append(byte[] key, byte[] value, TreeCursorFrame frame) throws IOException {
+        try {
+            final Lock sharedCommitLock = mDatabase.sharedCommitLock();
+            sharedCommitLock.lock();
+            Node node = latchDirty(frame);
+            try {
+                int encodedKeyLen = Node.calculateKeyLengthChecked(this, key);
+                // TODO: inline and specialize
+                node.insertLeafEntry(this, frame.mNodePos, key, encodedKeyLen, value);
+                frame.mNodePos += 2;
+
+                while (node.mSplit != null) {
+                    if (node == mRoot) {
+                        node.finishSplitRoot(this, null);
+                        break;
+                    }
+                    Node childNode = node;
+                    frame = frame.mParentFrame;
+                    node = frame.mNode;
+                    // Latch coupling upwards is fine because nothing should be searching a
+                    // tree which is filling up.
+                    node.acquireExclusive();
+                    childNode.releaseExclusive();
+                    // TODO: inline and specialize
+                    node.insertSplitChildRef(this, frame.mNodePos, childNode);
+                }
+            } finally {
+                node.releaseExclusive();
+                sharedCommitLock.unlock();
+            }
+        } catch (Throwable e) {
+            throw closeOnFailure(mDatabase, e);
+        }
+    }
+
+    /**
+     * Returns the frame node latched exclusively and marked dirty.
+     */
+    private Node latchDirty(TreeCursorFrame frame) throws IOException {
+        final Database db = mDatabase;
+        Node node = frame.mNode;
+        node.acquireExclusive();
+
+        if (db.shouldMarkDirty(node)) {
+            TreeCursorFrame parentFrame = frame.mParentFrame;
+            if (parentFrame == null) {
+                db.doMarkDirty(this, node);
+            } else {
+                // Latch coupling upwards is fine because nothing should be searching a tree
+                // which is filling up.
+                Node parentNode = latchDirty(parentFrame);
+                try {
+                    if (db.markDirty(this, node)) {
+                        parentNode.updateChildRefId(parentFrame.mNodePos, node.mId);
+                    }
+                } catch (Throwable e) {
+                    node.releaseExclusive();
+                    throw e;
+                } finally {
+                    parentNode.releaseExclusive();
+                }
+            }
+        }
+
+        return node;
+    }
+
+    /**
      * Caller must hold exclusive latch and it must verify that node has
      * split. Node latch is released if an exception is thrown.
      *

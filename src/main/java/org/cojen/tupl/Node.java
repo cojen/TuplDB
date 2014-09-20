@@ -233,6 +233,11 @@ final class Node extends Latch {
         clearEntries();
     }
 
+    void asTrimmedRoot() {
+        mType = TYPE_TN_LEAF | LOW_EXTREMITY | HIGH_EXTREMITY;
+        clearEntries();
+    }
+
     /**
      * Close the root node when closing a tree. Returns a new node which allows
      * the page to be recycled.
@@ -1319,7 +1324,11 @@ final class Node extends Latch {
     }
 
     /**
+     * Sets the cursor key and value references. If mode is key-only, then set value is
+     * Cursor.NOT_LOADED for a value which exists, null if ghost.
+     *
      * @param pos position as provided by binarySearch; must be positive
+     * @param cursor key and value are updated
      */
     void retrieveLeafEntry(int pos, TreeCursor cursor) throws IOException {
         final byte[] page = mPage;
@@ -1330,7 +1339,17 @@ final class Node extends Latch {
         byte[] key = new byte[keyLen];
         arraycopy(page, loc, key, 0, keyLen);
         cursor.mKey = key;
-        cursor.mValue = retrieveLeafValueAtLoc(cursor.mTree, page, loc + keyLen);
+
+        loc += keyLen;
+
+        byte[] value;
+        if (cursor.mKeyOnly) {
+            value = page[loc] == -1 ? null : Cursor.NOT_LOADED;
+        } else {
+            value = retrieveLeafValueAtLoc(cursor.mTree, page, loc);
+        }
+
+        cursor.mValue = value;
     }
 
     /**
@@ -3252,11 +3271,11 @@ final class Node extends Latch {
     }
 
     /**
-     * Delete a parent reference to a merged child.
+     * Delete a parent reference to a right child which merged left.
      *
-     * @param childPos two-based position
+     * @param childPos non-zero two-based position of the right child
      */
-    void deleteChildRef(int childPos) {
+    void deleteRightChildRef(int childPos) {
         // Fix affected cursors.
         for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
             int framePos = frame.mNodePos;
@@ -3266,6 +3285,33 @@ final class Node extends Latch {
             frame = frame.mPrevCousin;
         }
 
+        deleteChildRef(childPos);
+    }
+
+    /**
+     * Delete a parent reference to a left child which merged right.
+     *
+     * @param childPos two-based position of the left child
+     */
+    void deleteLeftChildRef(int childPos) {
+        // Fix affected cursors.
+        for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
+            int framePos = frame.mNodePos;
+            if (framePos > childPos) {
+                frame.mNodePos = framePos - 2;
+            }
+            frame = frame.mPrevCousin;
+        }
+
+        deleteChildRef(childPos);
+    }
+
+    /**
+     * Delete a parent reference to child, but doesn't fix any affected cursors.
+     *
+     * @param childPos two-based position
+     */
+    private void deleteChildRef(int childPos) {
         final byte[] page = mPage;
         int keyPos = childPos == 0 ? 0 : (childPos - 2);
         int searchVecStart = mSearchVecStart;
