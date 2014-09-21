@@ -721,7 +721,7 @@ public final class Transaction extends Locker {
                 if (cause != null) {
                     try {
                         e.initCause(cause);
-                    } catch (IllegalStateException e2) {
+                    } catch (IllegalArgumentException | IllegalStateException e2) {
                     }
                 }
                 mBorked = e;
