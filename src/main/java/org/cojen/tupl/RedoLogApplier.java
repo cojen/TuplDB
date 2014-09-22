@@ -102,6 +102,13 @@ class RedoLogApplier implements RedoVisitor {
     }
 
     @Override
+    public boolean deleteIndex(long indexId) throws IOException {
+        // Nothing to do yet. After recovery is complete, trashed indexes are deleted in a
+        // separate thread.
+        return true;
+    }
+
+    @Override
     public boolean txnEnter(long txnId) throws IOException {
         Transaction txn = txn(txnId);
         if (txn == null) {

@@ -61,6 +61,9 @@ class RedoOps {
         /** indexId: long, nameLength: varInt, name: bytes */
         OP_RENAME_INDEX = 21,
 
+        /** indexId: long */
+        OP_DELETE_INDEX = 22,
+
         /** txnId: delta */
         OP_TXN_ENTER = 24,
 

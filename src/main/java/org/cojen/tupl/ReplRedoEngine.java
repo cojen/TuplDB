@@ -367,6 +367,12 @@ class ReplRedoEngine implements RedoVisitor {
     }
 
     @Override
+    public boolean deleteIndex(long indexId) throws IOException {
+        // FIXME: do what?
+        return true;
+    }
+
+    @Override
     public boolean txnEnter(long txnId) throws IOException {
         // Reduce hash collisions.
         long scrambledTxnId = scramble(txnId);

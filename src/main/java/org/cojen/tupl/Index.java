@@ -222,6 +222,7 @@ public interface Index extends View, Closeable {
      *
      * @throws IllegalStateException if index isn't empty or any pending transactional changes
      * @throws ClosedIndexException if this index reference is closed
+     * @see Database#deleteIndex Database.deleteIndex
      */
     public void drop() throws IOException;
 }

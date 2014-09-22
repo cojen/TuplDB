@@ -96,6 +96,12 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
+    public boolean deleteIndex(long indexId) {
+        mOut.println("deleteIndex: indexId=" + indexId);
+        return true;
+    }
+
+    @Override
     public boolean txnEnter(long txnId) {
         mOut.println("txnEnter: txnId=" + txnId);
         return true;

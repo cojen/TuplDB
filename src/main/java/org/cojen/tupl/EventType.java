@@ -49,6 +49,13 @@ public enum EventType {
     /** Signals the end of database recovery, reporting the duration. */
     RECOVERY_COMPLETE(Category.RECOVERY, Level.INFO),
 
+    /** Signals that deletion of an index has begun. */
+    DELETION_BEGIN(Category.DELETION, Level.INFO),
+    /** Signals that deletion of an index has failed. */
+    DELETION_FAILED(Category.DELETION, Level.WARNING),
+    /** Signals that deletion of an index has completed. */
+    DELETION_COMPLETE(Category.DELETION, Level.INFO),
+
     /** Generic warning message from the replication system. */
     REPLICATION_WARNING(Category.REPLICATION, Level.WARNING),
     /** Unhandled in the replication system, and the database must be shutdown. */
@@ -83,6 +90,9 @@ public enum EventType {
 
         /** Recovery processes transactions which did not get included in the last checkpoint. */
         RECOVERY,
+
+        /** Index deletion event category. */
+        DELETION,
 
         /** Event category for replication tasks performed by background threads. */
         REPLICATION,
