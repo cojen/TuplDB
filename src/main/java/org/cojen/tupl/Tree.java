@@ -406,17 +406,28 @@ class Tree implements Index {
 
     @Override
     public final void drop() throws IOException {
+        drop(DROP_IF_EMPTY);
+    }
+
+    static final int DROP_TO_TRASH = 0, DROP_IF_EMPTY = 1, DROP_EMPTY_FROM_TRASH = 2;
+
+    /**
+     * @param mode DROP_TO_TRASH, DROP_IF_EMPTY, or DROP_EMPTY_FROM_TRASH
+     * @return trashed root node; null if not DROP_TO_TRASH
+     */
+    final Node drop(int mode) throws IOException {
+        Node trashedRoot;
         long rootId;
         int cachedState;
 
-        Node root = mRoot;
+        final Node root = mRoot;
         root.acquireExclusive();
         try {
             if (root.mPage == EMPTY_BYTES) {
                 throw new ClosedIndexException();
             }
 
-            if (!root.isLeaf() || root.hasKeys()) {
+            if (mode != DROP_TO_TRASH && (!root.isLeaf() || root.hasKeys())) {
                 // Note that this check also covers the transactional case, because deletes
                 // store ghosts. The message could be more accurate, but it would require
                 // scanning the whole index looking for ghosts. Using LockMode.UNSAFE deletes
@@ -437,13 +448,32 @@ class Tree implements Index {
             rootId = root.mId;
             cachedState = root.mCachedState;
 
-            mDatabase.makeEvictable(root.closeRoot(false));
+            if (mode == DROP_TO_TRASH) {
+                trashedRoot = root.closeRoot(true);
+            } else {
+                mDatabase.makeEvictable(root.closeRoot(false));
+                trashedRoot = null;
+            }
         } finally {
             root.releaseExclusive();
         }
 
         // Drop with root latch released, avoiding deadlock when commit lock is acquired.
-        mDatabase.dropClosedTree(this, rootId, cachedState);
+        mDatabase.dropClosedTree(this, rootId, cachedState, mode);
+
+        return trashedRoot;
+    }
+
+    /**
+     * Non-transactionally deletes all entries in the tree. No other cursors or threads can be
+     * active in the tree.
+     */
+    final void deleteAll() throws IOException {
+        TreeCursor c = new TreeCursor(this, Transaction.BOGUS);
+        c.autoload(false);
+        for (c.first(); c.key() != null; ) {
+            c.trim();
+        }
     }
 
     static interface NodeVisitor {

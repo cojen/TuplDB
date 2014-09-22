@@ -1,6 +1,12 @@
 Changelog
 =========
 
+v1.1.6
+------
+* Added support for a secondary cache. A secondary cache is slower than a primary cache, but a
+  very large primary cache can cause high garbage collection overhead.
+* Added method to delete a non-empty index.
+
 v1.1.5
 ------
 * New node cache implementation. It reduces memory overhead, garbage collection activity, and

@@ -140,6 +140,18 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
         return commitFlush(mode);
     }
 
+    /**
+     * Auto-commit index delete.
+     *
+     * @param indexId non-zero index id
+     * @return non-zero position if caller should call txnCommitSync
+     */
+    public synchronized long deleteIndex(long indexId, DurabilityMode mode) throws IOException {
+        writeOp(OP_DELETE_INDEX, indexId);
+        writeTerminator();
+        return commitFlush(mode);
+    }
+
     public synchronized void reset() throws IOException {
         writeOp(OP_RESET);
         mLastTxnId = 0;

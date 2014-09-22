@@ -300,4 +300,61 @@ public class CloseTest {
 
         assertNull(mDb.findIndex("drop"));
     }
+
+    @Test
+    public void delete() throws Exception {
+        Index ix = mDb.openIndex("delete");
+        long id = ix.getId();
+
+        ix.store(null, "hello".getBytes(), "world".getBytes());
+
+        Runnable task = mDb.deleteIndex(ix);
+
+        assertNull(mDb.findIndex("delete"));
+        Index ix2 = mDb.openIndex("delete");
+        assertFalse(ix == ix2);
+        assertFalse(id == ix2.getId());
+        // New index should be empty, and so drop should work.
+        ix2.drop();
+
+        try {
+            mDb.deleteIndex(ix2);
+            fail();
+        } catch (ClosedIndexException e) {
+        }
+
+        try {
+            ix.store(null, "hello".getBytes(), "world!".getBytes());
+            fail();
+        } catch (ClosedIndexException e) {
+        }
+
+        task.run();
+
+        // Second run should do nothing.
+        task.run();
+    }
+
+    @Test
+    public void deleteMany() throws Exception {
+        Index ix = mDb.openIndex("delete");
+        long id = ix.getId();
+
+        for (int i=0; i<10000; i++) {
+            ix.store(null, ("hello-" + i).getBytes(), ("world-" + i).getBytes());
+        }
+
+        Runnable task = mDb.deleteIndex(ix);
+
+        Database.Stats stats1 = mDb.stats();
+
+        task.run();
+
+        Database.Stats stats2 = mDb.stats();
+
+        if (stats1.totalPages() < stats1.cachedPages()) {
+            assertEquals(0, stats1.freePages());
+            assertEquals(65, stats2.freePages());
+        }
+    }
 }

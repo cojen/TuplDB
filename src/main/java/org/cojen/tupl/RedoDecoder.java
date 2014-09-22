@@ -193,6 +193,13 @@ abstract class RedoDecoder {
                 }
                 break;
 
+            case OP_DELETE_INDEX:
+                indexId = in.readLongLE();
+                if (!verifyTerminator(in) || !visitor.deleteIndex(indexId)) {
+                    return false;
+                }
+                break;
+
             case OP_TXN_ENTER_STORE:
                 txnId = readTxnId(in);
                 indexId = in.readLongLE();
