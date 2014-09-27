@@ -369,7 +369,66 @@ class ReplRedoEngine implements RedoVisitor {
 
     @Override
     public boolean deleteIndex(long indexId) throws IOException {
-        // FIXME: do what?
+        // Acquire latch before performing operations with side-effects.
+        mOpLatch.acquireShared();
+
+        Index ix;
+        {
+            LHashTable.ObjEntry<SoftReference<Index>> entry = mIndexes.remove(indexId);
+            if (entry == null || (ix = entry.value.get()) == null) {
+                ix = mDb.anyIndexById(indexId);
+            }
+        }
+
+        Runnable task = null;
+
+        try {
+            while (ix != null) {
+                try {
+                    task = mDb.deleteIndex(ix);
+                    break;
+                } catch (ClosedIndexException e) {
+                    // User closed the shared index reference, so re-open it.
+                    ix = openIndex(indexId, null);
+                }
+            }
+        } catch (RuntimeException e) {
+            EventListener listener = mDb.mEventListener;
+            if (listener != null) {
+                listener.notify(EventType.REPLICATION_WARNING,
+                                "Unable to delete index: %1$s", rootCause(e));
+                // Disable notification.
+                ix = null;
+            }
+        }
+
+        // Only release if no exception.
+        opFinished();
+
+        if (ix != null && task != null) {
+            try {
+                mManager.notifyDrop(ix);
+            } catch (Throwable e) {
+                uncaught(e);
+            }
+
+            try {
+                // Allow index deletion to run concurrently. If multiple deletes are received
+                // concurrently, then the application is likely doing concurrent deletes.
+                Thread deletion = new Thread(task, "IndexDeletion");
+                deletion.setDaemon(true);
+                deletion.start();
+            } catch (Throwable e) {
+                EventListener listener = mDb.mEventListener;
+                if (listener != null) {
+                    listener.notify(EventType.REPLICATION_WARNING,
+                                    "Unable to immediately delete index: %1$s", rootCause(e));
+                }
+                // Index will get fully deleted when database is re-opened.
+            }
+        }
+
+        // Return true and allow RedoDecoder to loop back.
         return true;
     }
 
