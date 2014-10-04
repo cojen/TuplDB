@@ -266,7 +266,7 @@ class ReplRedoEngine implements RedoVisitor {
     }
 
     @Override
-    public boolean dropIndex(long indexId) throws IOException {
+    public boolean dropIndex(long txnId, long indexId) throws IOException {
         // Acquire latch before performing operations with side-effects.
         mOpLatch.acquireShared();
 
@@ -330,7 +330,7 @@ class ReplRedoEngine implements RedoVisitor {
     }
 
     @Override
-    public boolean renameIndex(long indexId, byte[] newName) throws IOException {
+    public boolean renameIndex(long txnId, long indexId, byte[] newName) throws IOException {
         Index ix = getIndex(indexId);
         byte[] oldName = null;
 
@@ -340,7 +340,7 @@ class ReplRedoEngine implements RedoVisitor {
         if (ix != null) {
             oldName = ix.getName();
             try {
-                mDb.renameIndex(ix, newName, false);
+                mDb.renameIndex(ix, newName, txnId);
             } catch (RuntimeException e) {
                 EventListener listener = mDb.mEventListener;
                 if (listener != null) {
@@ -368,7 +368,7 @@ class ReplRedoEngine implements RedoVisitor {
     }
 
     @Override
-    public boolean deleteIndex(long indexId) throws IOException {
+    public boolean deleteIndex(long txnId, long indexId) throws IOException {
         // Acquire latch before performing operations with side-effects.
         mOpLatch.acquireShared();
 

@@ -69,20 +69,20 @@ interface RedoVisitor {
      * @param indexId non-zero index id
      * @return false to stop visiting
      */
-    public boolean dropIndex(long indexId) throws IOException;
+    public boolean dropIndex(long tnxId, long indexId) throws IOException;
 
     /**
      * @param indexId non-zero index id
      * @param newName non-null new index name
      * @return false to stop visiting
      */
-    public boolean renameIndex(long indexId, byte[] newName) throws IOException;
+    public boolean renameIndex(long txnId, long indexId, byte[] newName) throws IOException;
 
     /**
      * @param indexId non-zero index id
      * @return false to stop visiting
      */
-    public boolean deleteIndex(long indexId) throws IOException;
+    public boolean deleteIndex(long txnId, long indexId) throws IOException;
 
     /**
      * @param txnId non-zero transaction id

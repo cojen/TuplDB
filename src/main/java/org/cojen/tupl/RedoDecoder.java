@@ -179,23 +179,26 @@ abstract class RedoDecoder {
                 break;
 
             case OP_DROP_INDEX:
+                txnId = readTxnId(in);
                 indexId = in.readLongLE();
-                if (!verifyTerminator(in) || !visitor.dropIndex(indexId)) {
+                if (!verifyTerminator(in) || !visitor.dropIndex(txnId, indexId)) {
                     return false;
                 }
                 break;
 
             case OP_RENAME_INDEX:
+                txnId = readTxnId(in);
                 indexId = in.readLongLE();
                 byte[] newName = in.readBytes();
-                if (!verifyTerminator(in) || !visitor.renameIndex(indexId, newName)) {
+                if (!verifyTerminator(in) || !visitor.renameIndex(txnId, indexId, newName)) {
                     return false;
                 }
                 break;
 
             case OP_DELETE_INDEX:
+                txnId = readTxnId(in);
                 indexId = in.readLongLE();
-                if (!verifyTerminator(in) || !visitor.deleteIndex(indexId)) {
+                if (!verifyTerminator(in) || !visitor.deleteIndex(txnId, indexId)) {
                     return false;
                 }
                 break;
