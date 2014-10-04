@@ -954,7 +954,7 @@ public final class Database implements CauseCloseable {
      * @throws IllegalArgumentException if index belongs to another database instance
      */
     public void renameIndex(Index index, byte[] newName) throws IOException {
-        renameIndex(index, newName.clone(), true);
+        renameIndex(index, newName.clone(), 0);
     }
 
     /**
@@ -967,13 +967,14 @@ public final class Database implements CauseCloseable {
      * @throws IllegalArgumentException if index belongs to another database instance
      */
     public void renameIndex(Index index, String newName) throws IOException {
-        renameIndex(index, newName.getBytes("UTF-8"), true);
+        renameIndex(index, newName.getBytes("UTF-8"), 0);
     }
 
     /**
      * @param newName not cloned
+     * @param txnId non-zero if rename is performed by recovery
      */
-    void renameIndex(Index index, byte[] newName, boolean doRedo) throws IOException {
+    void renameIndex(Index index, byte[] newName, long txnId) throws IOException {
         // Design note: Rename is a Database method instead of an Index method because it
         // offers an extra degree of safety. It's too easy to call rename and pass a byte[] by
         // an accident when something like remove was desired instead. Requiring access to the
@@ -1008,7 +1009,12 @@ public final class Database implements CauseCloseable {
             oldNameKey = newKey(KEY_TYPE_INDEX_NAME, oldName);
             newNameKey = newKey(KEY_TYPE_INDEX_NAME, newName);
 
-            txn = newNoRedoTransaction();
+            if (txnId != 0) {
+                txn = new Transaction(this, txnId, LockMode.UPGRADABLE_READ, -1);
+            } else {
+                txn = newNoRedoTransaction();
+            }
+
             try {
                 txn.lockExclusive(mRegistryKeyMap.mId, idKey);
                 // Lock in a consistent order, avoiding deadlocks.
@@ -1029,7 +1035,7 @@ public final class Database implements CauseCloseable {
             root.releaseExclusive();
         }
 
-        RedoWriter redo;
+        final RedoWriter redo = txnId == 0 ? mRedoWriter : null;
         long commitPos = 0;
 
         try {
@@ -1045,10 +1051,8 @@ public final class Database implements CauseCloseable {
                 c.reset();
             }
 
-            if (!doRedo) {
-                redo = null;
-            } else if ((redo = mRedoWriter) != null) {
-                commitPos = redo.renameIndex(tree.mId, newName, mDurabilityMode);
+            if (redo != null) {
+                commitPos = redo.renameIndex(txn.txnId(), tree.mId, newName, mDurabilityMode);
             }
 
             mRegistryKeyMap.delete(txn, oldNameKey);
@@ -2281,9 +2285,9 @@ public final class Database implements CauseCloseable {
                 } else {
                     DurabilityMode durability = mDurabilityMode.alwaysRedo();
                     if (mode == Tree.DROP_TO_TRASH) {
-                        commitPos = redo.deleteIndex(tree.mId, durability);
+                        commitPos = redo.deleteIndex(txn.txnId(), tree.mId, durability);
                     } else {
-                        commitPos = redo.dropIndex(tree.mId, durability);
+                        commitPos = redo.dropIndex(txn.txnId(), tree.mId, durability);
                     }
                 }
 

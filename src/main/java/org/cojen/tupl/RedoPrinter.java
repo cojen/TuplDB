@@ -84,20 +84,21 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
-    public boolean dropIndex(long indexId) {
-        mOut.println("dropIndex: indexId=" + indexId);
+    public boolean dropIndex(long txnId, long indexId) {
+        mOut.println("dropIndex: txnId=" + txnId + ", indexId=" + indexId);
         return true;
     }
 
     @Override
-    public boolean renameIndex(long indexId, byte[] newName) {
-        mOut.println("renameIndex: indexId=" + indexId + ", newName=" + toHex(newName));
+    public boolean renameIndex(long txnId, long indexId, byte[] newName) {
+        mOut.println("renameIndex: txnId=" + txnId +
+                     ", indexId=" + indexId + ", newName=" + toHex(newName));
         return true;
     }
 
     @Override
-    public boolean deleteIndex(long indexId) {
-        mOut.println("deleteIndex: indexId=" + indexId);
+    public boolean deleteIndex(long txnId, long indexId) {
+        mOut.println("deleteIndex: txnId=" + txnId + ", indexId=" + indexId);
         return true;
     }
 

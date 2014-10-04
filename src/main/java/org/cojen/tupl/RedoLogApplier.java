@@ -78,7 +78,8 @@ class RedoLogApplier implements RedoVisitor {
     }
 
     @Override
-    public boolean dropIndex(long indexId) throws IOException {
+    public boolean dropIndex(long txnId, long indexId) throws IOException {
+        // FIXME: txnId
         Index ix = openIndex(indexId);
         if (ix != null) {
             try {
@@ -93,16 +94,16 @@ class RedoLogApplier implements RedoVisitor {
     }
 
     @Override
-    public boolean renameIndex(long indexId, byte[] newName) throws IOException {
+    public boolean renameIndex(long txnId, long indexId, byte[] newName) throws IOException {
         Index ix = openIndex(indexId);
         if (ix != null) {
-            mDb.renameIndex(ix, newName, false);
+            mDb.renameIndex(ix, newName, txnId);
         }
         return true;
     }
 
     @Override
-    public boolean deleteIndex(long indexId) throws IOException {
+    public boolean deleteIndex(long txnId, long indexId) throws IOException {
         // Nothing to do yet. After recovery is complete, trashed indexes are deleted in a
         // separate thread.
         return true;

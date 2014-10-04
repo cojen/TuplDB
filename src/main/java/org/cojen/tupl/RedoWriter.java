@@ -117,8 +117,11 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
      * @param indexId non-zero index id
      * @return non-zero position if caller should call txnCommitSync
      */
-    public synchronized long dropIndex(long indexId, DurabilityMode mode) throws IOException {
-        writeOp(OP_DROP_INDEX, indexId);
+    public synchronized long dropIndex(long txnId, long indexId, DurabilityMode mode)
+        throws IOException
+    {
+        writeTxnOp(OP_DROP_INDEX, txnId);
+        writeLongLE(indexId);
         writeTerminator();
         return commitFlush(mode);
     }
@@ -130,10 +133,12 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
      * @param newName non-null new index name
      * @return non-zero position if caller should call txnCommitSync
      */
-    public synchronized long renameIndex(long indexId, byte[] newName, DurabilityMode mode)
+    public synchronized long renameIndex(long txnId, long indexId, byte[] newName,
+                                         DurabilityMode mode)
         throws IOException
     {
-        writeOp(OP_RENAME_INDEX, indexId);
+        writeTxnOp(OP_RENAME_INDEX, txnId);
+        writeLongLE(indexId);
         writeUnsignedVarInt(newName.length);
         writeBytes(newName);
         writeTerminator();
@@ -146,8 +151,11 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
      * @param indexId non-zero index id
      * @return non-zero position if caller should call txnCommitSync
      */
-    public synchronized long deleteIndex(long indexId, DurabilityMode mode) throws IOException {
-        writeOp(OP_DELETE_INDEX, indexId);
+    public synchronized long deleteIndex(long txnId, long indexId, DurabilityMode mode)
+        throws IOException
+    {
+        writeTxnOp(OP_DELETE_INDEX, txnId);
+        writeLongLE(indexId);
         writeTerminator();
         return commitFlush(mode);
     }
