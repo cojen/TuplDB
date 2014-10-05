@@ -297,7 +297,12 @@ class ReplRedoEngine implements RedoVisitor {
                         txn.reset();
                     }
 
-                    ix.drop();
+                    if (ix instanceof Tree) {
+                        ((Tree) ix).drop(txnId);
+                    } else {
+                        ix.drop();
+                    }
+
                     break;
                 } catch (ClosedIndexException e) {
                     // User closed the shared index reference, so re-open it.
@@ -385,7 +390,7 @@ class ReplRedoEngine implements RedoVisitor {
         try {
             while (ix != null) {
                 try {
-                    task = mDb.deleteIndex(ix);
+                    task = mDb.deleteIndex(ix, txnId);
                     break;
                 } catch (ClosedIndexException e) {
                     // User closed the shared index reference, so re-open it.
@@ -415,7 +420,7 @@ class ReplRedoEngine implements RedoVisitor {
             try {
                 // Allow index deletion to run concurrently. If multiple deletes are received
                 // concurrently, then the application is likely doing concurrent deletes.
-                Thread deletion = new Thread(task, "IndexDeletion");
+                Thread deletion = new Thread(task, "IndexDeletion-" + ix.getNameString());
                 deletion.setDaemon(true);
                 deletion.start();
             } catch (Throwable e) {

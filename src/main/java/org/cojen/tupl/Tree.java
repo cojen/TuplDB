@@ -342,12 +342,19 @@ class Tree implements Index {
 
     @Override
     public final void close() throws IOException {
+        close(false);
+    }
+
+    /**
+     * @return root node if forDelete; null if already closed
+     */
+    final Node close(boolean forDelete) throws IOException {
         Node root = mRoot;
         root.acquireExclusive();
         try {
             if (root.mPage == EMPTY_BYTES) {
                 // Already closed.
-                return;
+                return null;
             }
 
             if (isInternal(mId)) {
@@ -363,7 +370,7 @@ class Tree implements Index {
                 try {
                     root.acquireExclusive();
                     if (root.mPage == EMPTY_BYTES) {
-                        return;
+                        return null;
                     }
                     if (root.mLastCursorFrame != null) {
                         root.invalidateCursors(mDatabase.mTreeNodeMap);
@@ -373,6 +380,16 @@ class Tree implements Index {
                 }
             }
 
+            if (forDelete) {
+                Node newRoot = root.cloneNode(true);
+                if (mDatabase.mPageDb.isDurable()) {
+                    root.forceEvictTree(mDatabase);
+                }
+                root.closeRoot();
+                mDatabase.treeClosed(this);
+                return newRoot;
+            }
+
             if (mDatabase.mPageDb.isDurable()) {
                 root.forceEvictTree(mDatabase);
 
@@ -380,7 +397,9 @@ class Tree implements Index {
                 // non-functional. Move the page reference into a new evictable Node object,
                 // allowing it to be recycled.
 
-                mDatabase.makeEvictable(root.closeRoot(false));
+                Node discard = root.cloneNode(false);
+                root.closeRoot();
+                mDatabase.makeEvictable(discard);
                 mDatabase.treeClosed(this);
             } else {
                 // Non-durable tree cannot be truly closed because nothing would reference it
@@ -388,8 +407,12 @@ class Tree implements Index {
                 // but also register a replacement tree instance. Closing a non-durable tree
                 // has little practical value.
 
-                mDatabase.replaceClosedTree(this, root.closeRoot(true));
+                Node newRoot = root.cloneNode(true);
+                root.closeRoot();
+                mDatabase.replaceClosedTree(this, newRoot);
             }
+
+            return null;
         } finally {
             root.releaseExclusive();
         }
@@ -406,28 +429,24 @@ class Tree implements Index {
 
     @Override
     public final void drop() throws IOException {
-        drop(DROP_IF_EMPTY);
+        drop(0);
     }
 
-    static final int DROP_TO_TRASH = 0, DROP_IF_EMPTY = 1, DROP_EMPTY_FROM_TRASH = 2;
-
     /**
-     * @param mode DROP_TO_TRASH, DROP_IF_EMPTY, or DROP_EMPTY_FROM_TRASH
-     * @return trashed root node; null if not DROP_TO_TRASH
+     * @param txnId non-zero if drop is performed by recovery
      */
-    final Node drop(int mode) throws IOException {
-        Node trashedRoot;
+    final void drop(long txnId) throws IOException {
         long rootId;
         int cachedState;
 
-        final Node root = mRoot;
+        Node root = mRoot;
         root.acquireExclusive();
         try {
             if (root.mPage == EMPTY_BYTES) {
                 throw new ClosedIndexException();
             }
 
-            if (mode != DROP_TO_TRASH && (!root.isLeaf() || root.hasKeys())) {
+            if (!root.isLeaf() || root.hasKeys()) {
                 // Note that this check also covers the transactional case, because deletes
                 // store ghosts. The message could be more accurate, but it would require
                 // scanning the whole index looking for ghosts. Using LockMode.UNSAFE deletes
@@ -448,20 +467,30 @@ class Tree implements Index {
             rootId = root.mId;
             cachedState = root.mCachedState;
 
-            if (mode == DROP_TO_TRASH) {
-                trashedRoot = root.closeRoot(true);
-            } else {
-                mDatabase.makeEvictable(root.closeRoot(false));
-                trashedRoot = null;
-            }
+            Node discard = root.cloneNode(false);
+            root.closeRoot();
+            mDatabase.makeEvictable(discard);
         } finally {
             root.releaseExclusive();
         }
 
         // Drop with root latch released, avoiding deadlock when commit lock is acquired.
-        mDatabase.dropClosedTree(this, rootId, cachedState, mode);
+        mDatabase.dropClosedTree(this, rootId, cachedState, txnId);
+    }
 
-        return trashedRoot;
+    final void deleteCheck() throws ClosedIndexException {
+        Node root = mRoot;
+        root.acquireExclusive();
+        try {
+            if (root.mPage == EMPTY_BYTES) {
+                throw new ClosedIndexException();
+            }
+            if (isInternal(mId)) {
+                throw new IllegalStateException("Cannot close an internal index");
+            }
+        } finally {
+            root.releaseExclusive();
+        }
     }
 
     /**
