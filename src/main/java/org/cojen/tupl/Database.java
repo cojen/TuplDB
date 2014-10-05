@@ -1052,7 +1052,8 @@ public final class Database implements CauseCloseable {
             }
 
             if (redo != null) {
-                commitPos = redo.renameIndex(txn.txnId(), tree.mId, newName, mDurabilityMode);
+                commitPos = redo.renameIndex
+                    (txn.txnId(), tree.mId, newName, mDurabilityMode.alwaysRedo());
             }
 
             mRegistryKeyMap.delete(txn, oldNameKey);
