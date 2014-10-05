@@ -732,7 +732,7 @@ public final class Database implements CauseCloseable {
 
         c.start();
 
-        Tree trashed = openAnyTrashedTree();
+        Tree trashed = openNextTrashedTree(null);
 
         if (trashed != null) {
             Thread deletion = new Thread(new Deletion(trashed, true), "IndexDeletion");
@@ -983,7 +983,7 @@ public final class Database implements CauseCloseable {
 
         Tree tree = accessTree(index);
 
-        byte[] idKey;
+        byte[] idKey, trashIdKey;
         byte[] oldName, oldNameKey;
         byte[] newNameKey;
 
@@ -1006,17 +1006,14 @@ public final class Database implements CauseCloseable {
             }
 
             idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
+            trashIdKey = newKey(KEY_TYPE_TRASH_ID, tree.mIdBytes);
             oldNameKey = newKey(KEY_TYPE_INDEX_NAME, oldName);
             newNameKey = newKey(KEY_TYPE_INDEX_NAME, newName);
 
-            if (txnId != 0) {
-                txn = new Transaction(this, txnId, LockMode.UPGRADABLE_READ, -1);
-            } else {
-                txn = newNoRedoTransaction();
-            }
-
+            txn = newNoRedoTransaction(txnId);
             try {
                 txn.lockExclusive(mRegistryKeyMap.mId, idKey);
+                txn.lockExclusive(mRegistryKeyMap.mId, trashIdKey);
                 // Lock in a consistent order, avoiding deadlocks.
                 if (compareKeys(oldNameKey, newNameKey) <= 0) {
                     txn.lockExclusive(mRegistryKeyMap.mId, oldNameKey);
@@ -1042,10 +1039,17 @@ public final class Database implements CauseCloseable {
             Cursor c = mRegistryKeyMap.newCursor(txn);
             try {
                 c.autoload(false);
+
+                c.find(trashIdKey);
+                if (c.value() != null) {
+                    throw new IllegalStateException("Index is deleted");
+                }
+
                 c.find(newNameKey);
                 if (c.value() != null) {
                     throw new IllegalStateException("New name is used by another index");
                 }
+
                 c.store(tree.mIdBytes);
             } finally {
                 c.reset();
@@ -1117,55 +1121,105 @@ public final class Database implements CauseCloseable {
      * @see Index#drop Index.drop
      */
     public Runnable deleteIndex(Index index) throws IOException {
+        return deleteIndex(index, 0);
+    }
+
+    /**
+     * @param txnId non-zero if delete is performed by recovery
+     */
+    Runnable deleteIndex(Index index, long txnId) throws IOException {
         // Design note: This is a Database method instead of an Index method because it offers
         // an extra degree of safety. See notes in renameIndex.
-
         Tree tree = accessTree(index);
-        byte[] name = tree.mName;
-        Node trashedRoot = tree.drop(Tree.DROP_TO_TRASH);
-        Tree trashed = newTreeInstance(tree.mId, tree.mIdBytes, name, trashedRoot);
+        tree.deleteCheck();
+
+        boolean moved = moveToTrash(tree, txnId);
+        Node root = tree.close(true);
+
+        if (!moved || root == null) {
+            // Handle concurrent delete attempt.
+            throw new ClosedIndexException();
+        }
+
+        Tree trashed;
+
+        byte[] rootIdBytes = mRegistry.load(Transaction.BOGUS, tree.mIdBytes);
+        if (rootIdBytes == null) {
+            trashed = null;
+        } else {
+            long rootId = decodeLongLE(rootIdBytes, 0);
+            trashed = newTreeInstance(tree.mId, tree.mIdBytes, tree.mName, root);
+        }
 
         return new Deletion(trashed, false);
     }
 
     /**
+     * @param last null to start with first
      * @return null if none available
      */
-    private Tree openAnyTrashedTree() throws IOException {
+    private Tree openNextTrashedTree(byte[] lastIdBytes) throws IOException {
         View view = mRegistryKeyMap.viewPrefix(new byte[] {KEY_TYPE_TRASH_ID}, 1);
+
+        if (lastIdBytes == null) {
+            // Tag all the entries that should be deleted automatically. Entries created later
+            // will have a different prefix, and so they'll be ignored.
+            Cursor c = view.newCursor(Transaction.BOGUS);
+            try {
+                for (c.first(); c.key() != null; c.next()) {
+                    byte[] name = c.value();
+                    if (name.length != 0) {
+                        name[0] |= 0x80;
+                        c.store(name);
+                    }
+                }
+            } finally {
+                c.reset();
+            }
+        }
 
         byte[] treeIdBytes, name, rootIdBytes;
 
-        Cursor c = view.newCursor(null);
+        Cursor c = view.newCursor(Transaction.BOGUS);
         try {
-            c.first();
+            if (lastIdBytes == null) {
+                c.first();
+            } else {
+                c.findGt(lastIdBytes);
+            }
+
             while (true) {
                 treeIdBytes = c.key();
+
                 if (treeIdBytes == null) {
                     return null;
                 }
 
                 rootIdBytes = mRegistry.load(Transaction.BOGUS, treeIdBytes);
-                if (rootIdBytes != null) {
-                    break;
+
+                if (rootIdBytes == null) {
+                    // Clear out bogus entry in the trash.
+                    c.store(null);
+                } else {
+                    name = c.value();
+                    if (name[0] < 0) {
+                        // Found a tagged entry.
+                        break;
+                    }
                 }
 
-                // Clear out bogus entry in the trash.
-                c.store(null);
                 c.next();
             }
-
-            name = c.value();
         } finally {
             c.reset();
         }
 
         long rootId = decodeLongLE(rootIdBytes, 0);
 
-        if (name.length == 0) {
+        if ((name[0] & ~0x80) == 0) {
             name = null;
         } else {
-            // Trim off the first byte.
+            // Trim off the tag byte.
             byte[] actual = new byte[name.length - 1];
             System.arraycopy(name, 1, actual, 0, actual.length);
             name = actual;
@@ -1202,11 +1256,14 @@ public final class Database implements CauseCloseable {
                                 mTrashed.getId(), mTrashed.getNameString());
             }
 
+            final byte[] idBytes = mTrashed.mIdBytes;
+
             try {
                 long start = System.nanoTime();
 
                 mTrashed.deleteAll();
-                mTrashed.drop(Tree.DROP_EMPTY_FROM_TRASH);
+                mTrashed.close();
+                removeFromTrash(mTrashed);
 
                 if (listener != null) {
                     double duration = (System.nanoTime() - start) / 1_000_000_000.0;
@@ -1224,12 +1281,13 @@ public final class Database implements CauseCloseable {
                          "Index deletion failed: %1$d, name: %2$s, exception: %3$s",
                          mTrashed.getId(), mTrashed.getNameString(), rootCause(e));
                 }
+                closeQuietly(null, mTrashed);
                 return;
             }
 
             if (mResumed) {
                 try {
-                    mTrashed = openAnyTrashedTree();
+                    mTrashed = openNextTrashedTree(idBytes);
                 } catch (IOException e) {
                     if ((!mClosed || mClosedCause != null) && listener != null) {
                         listener.notify
@@ -1286,11 +1344,22 @@ public final class Database implements CauseCloseable {
     }
 
     /**
-     * Convenience method which returns a transaction intended for locking. Caller can make
-     * modifications, but they won't go to the redo log.
+     * Convenience method which returns a transaction intended for locking and undo. Caller can
+     * make modifications, but they won't go to the redo log.
      */
     Transaction newNoRedoTransaction() {
         return new Transaction(this, DurabilityMode.NO_REDO, LockMode.UPGRADABLE_READ, -1);
+    }
+
+    /**
+     * Convenience method which returns a transaction intended for locking and undo. Caller can
+     * make modifications, but they won't go to the redo log.
+     *
+     * @param txnId non-zero if operation is performed by recovery
+     */
+    Transaction newNoRedoTransaction(long txnId) {
+        return txnId == 0 ? newNoRedoTransaction() :
+            new Transaction(this, txnId, LockMode.UPGRADABLE_READ, -1);
     }
 
     /**
@@ -2188,65 +2257,45 @@ public final class Database implements CauseCloseable {
     }
 
     /**
-     * @param mode DROP_TO_TRASH, DROP_EMPTY, or DROP_EMPTY_FROM_TRASH
+     * @param txnId non-zero if drop is performed by recovery
      */
-    void dropClosedTree(Tree tree, long rootId, int cachedState, int mode)
-        throws IOException
-    {
-        RedoWriter redo = mRedoWriter;
-
-        long commitPos;
+    void dropClosedTree(Tree tree, long rootId, int cachedState, long txnId) throws IOException {
+        final RedoWriter redo = txnId == 0 ? mRedoWriter : null;
+        long commitPos = 0;
 
         final Lock commitLock = sharedCommitLock();
         commitLock.lock();
         try {
-            final byte[] name, idKey, nameKey, trashIdKey;
+            byte[] name;
+            byte[] idKey = null, nameKey = null;
 
             Transaction txn;
             mOpenTreesLatch.acquireExclusive();
             try {
                 TreeRef ref = mOpenTreesById.getValue(tree.mId);
-
                 if (ref == null || ref.get() != tree) {
-                    if (ref != null || mode != Tree.DROP_EMPTY_FROM_TRASH) {
-                        return;
-                    }
+                    return;
                 }
 
                 name = tree.mName;
-
-                if (name == null) {
-                    idKey = null;
-                    nameKey = null;
-                } else {
+                if (name != null) {
                     idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
                     nameKey = newKey(KEY_TYPE_INDEX_NAME, name);
                 }
 
-                trashIdKey = newKey(KEY_TYPE_TRASH_ID, tree.mIdBytes);
-
-                txn = newNoRedoTransaction();
+                txn = newNoRedoTransaction(txnId);
                 try {
                     // Acquire locks to prevent tree from being re-opened. No deadlocks should
                     // be possible with tree latch held exclusively, but order in a safe
                     // fashion anyhow. A registry lookup can only follow a key map lookup.
-
-                    if (idKey != null) {
+                    if (name != null) {
                         txn.lockExclusive(mRegistryKeyMap.mId, idKey);
-                    }
-                    if (nameKey != null) {
                         txn.lockExclusive(mRegistryKeyMap.mId, nameKey);
                     }
 
-                    txn.lockExclusive(mRegistryKeyMap.mId, trashIdKey);
+                    txn.lockExclusive(mRegistry.mId, tree.mIdBytes);
 
-                    if (mode != Tree.DROP_TO_TRASH) {
-                        txn.lockExclusive(mRegistry.mId, tree.mIdBytes);
-                    }
-
-                    if (ref != null) {
-                        ref.clear();
-                    }
+                    ref.clear();
 
                     if (name != null) {
                         mOpenTrees.remove(name);
@@ -2265,38 +2314,21 @@ public final class Database implements CauseCloseable {
             // or dropped concurrently.
 
             try {
-                if (idKey != null) {
+                if (name != null) {
                     mRegistryKeyMap.remove(txn, idKey, name);
-                }
-                if (nameKey != null) {
                     mRegistryKeyMap.remove(txn, nameKey, tree.mIdBytes);
                 }
 
-                if (mode == Tree.DROP_TO_TRASH) {
-                    byte[] trashedName = nameKey == null ? EMPTY_BYTES : nameKey;
-                    mRegistryKeyMap.store(txn, trashIdKey, trashedName);
-                } else {
-                    mRegistryKeyMap.store(txn, trashIdKey, null);
-                    mRegistry.delete(txn, tree.mIdBytes);
-                }
+                mRegistry.delete(txn, tree.mIdBytes);
 
-                if (redo == null || mode == Tree.DROP_EMPTY_FROM_TRASH) {
-                    // Only record one redo operation when deleting an index.
-                    commitPos = 0;
-                } else {
-                    DurabilityMode durability = mDurabilityMode.alwaysRedo();
-                    if (mode == Tree.DROP_TO_TRASH) {
-                        commitPos = redo.deleteIndex(txn.txnId(), tree.mId, durability);
-                    } else {
-                        commitPos = redo.dropIndex(txn.txnId(), tree.mId, durability);
-                    }
+                if (redo != null) {
+                    commitPos = redo.dropIndex
+                        (txn.txnId(), tree.mId, mDurabilityMode.alwaysRedo());
                 }
 
                 txn.commit();
 
-                if (mode != Tree.DROP_TO_TRASH) {
-                    deletePage(rootId, cachedState);
-                }
+                deletePage(rootId, cachedState);
             } catch (Throwable e) {
                 DatabaseException.rethrowIfRecoverable(e);
                 throw closeOnFailure(this, e);
@@ -2310,6 +2342,82 @@ public final class Database implements CauseCloseable {
         if (redo != null && commitPos != 0) {
             // Don't hold commit lock during sync.
             redo.txnCommitSync(commitPos);
+        }
+    }
+
+    /**
+     * @param txnId non-zero if move is performed by recovery
+     */
+    boolean moveToTrash(Tree tree, long txnId) throws IOException {
+        final RedoWriter redo = txnId == 0 ? mRedoWriter : null;
+        long commitPos = 0;
+
+        byte[] idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
+        byte[] trashIdKey = newKey(KEY_TYPE_TRASH_ID, tree.mIdBytes);
+
+        final Lock commitLock = sharedCommitLock();
+        commitLock.lock();
+        try {
+            Transaction txn = newNoRedoTransaction(txnId);
+            try {
+                if (mRegistryKeyMap.load(txn, trashIdKey) != null) {
+                    // Already in the trash.
+                    return false;
+                }
+
+                byte[] treeName = mRegistryKeyMap.exchange(txn, idKey, null);
+
+                if (treeName == null) {
+                    // A trash entry with just a zero indicates that the name is null.
+                    mRegistryKeyMap.store(txn, trashIdKey, new byte[1]);
+                } else {
+                    byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, treeName);
+                    mRegistryKeyMap.remove(txn, nameKey, tree.mIdBytes);
+                    // Tag the trash entry to indicate that name is non-null. Note that nameKey
+                    // instance is modified directly.
+                    nameKey[0] = 1;
+                    mRegistryKeyMap.store(txn, trashIdKey, nameKey);
+                }
+
+                if (redo != null) {
+                    commitPos = redo.deleteIndex
+                        (txn.txnId(), tree.mId, mDurabilityMode.alwaysRedo());
+                }
+
+                txn.commit();
+            } catch (Throwable e) {
+                DatabaseException.rethrowIfRecoverable(e);
+                throw closeOnFailure(this, e);
+            } finally {
+                txn.reset();
+            }
+        } finally {
+            commitLock.unlock();
+        }
+
+        if (redo != null && commitPos != 0) {
+            // Don't hold commit lock during sync.
+            redo.txnCommitSync(commitPos);
+        }
+
+        return true;
+    }
+
+    /**
+     * Must be called after all entries in the tree have been deleted and tree is closed.
+     */
+    void removeFromTrash(Tree tree) throws IOException {
+        byte[] trashIdKey = newKey(KEY_TYPE_TRASH_ID, tree.mIdBytes);
+
+        final Lock commitLock = sharedCommitLock();
+        commitLock.lock();
+        try {
+            mRegistryKeyMap.delete(Transaction.BOGUS, trashIdKey);
+            mRegistry.delete(Transaction.BOGUS, tree.mIdBytes);
+        } catch (Throwable e) {
+            throw closeOnFailure(this, e);
+        } finally {
+            commitLock.unlock();
         }
     }
 

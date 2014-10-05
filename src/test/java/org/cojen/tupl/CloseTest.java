@@ -354,7 +354,7 @@ public class CloseTest {
 
         if (stats1.totalPages() < stats1.cachedPages()) {
             assertEquals(0, stats1.freePages());
-            assertEquals(65, stats2.freePages());
+            assertTrue(60 <= stats2.freePages() && stats2.freePages() <= 70);
         }
     }
 }
