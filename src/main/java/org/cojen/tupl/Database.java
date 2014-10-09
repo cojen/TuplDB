@@ -1141,15 +1141,7 @@ public final class Database implements CauseCloseable {
             throw new ClosedIndexException();
         }
 
-        Tree trashed;
-
-        byte[] rootIdBytes = mRegistry.load(Transaction.BOGUS, tree.mIdBytes);
-        if (rootIdBytes == null) {
-            trashed = null;
-        } else {
-            long rootId = decodeLongLE(rootIdBytes, 0);
-            trashed = newTreeInstance(tree.mId, tree.mIdBytes, tree.mName, root);
-        }
+        Tree trashed = newTreeInstance(tree.mId, tree.mIdBytes, tree.mName, root);
 
         return new Deletion(trashed, false);
     }

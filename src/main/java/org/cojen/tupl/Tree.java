@@ -384,6 +384,7 @@ class Tree implements Index {
                 Node newRoot = root.cloneNode(true);
                 if (mDatabase.mPageDb.isDurable()) {
                     root.forceEvictTree(mDatabase);
+                    newRoot.mCachedState = Node.CACHED_CLEAN;
                 }
                 root.closeRoot();
                 mDatabase.treeClosed(this);

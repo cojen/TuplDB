@@ -73,7 +73,7 @@ final class Node extends Latch {
     Node mMoreUsed; // points to more recently used node
     Node mLessUsed; // points to less recently used node
 
-    // Links within dirty list, guarded by OrderedPageAllocator.
+    // Links within dirty list, guarded by PageAllocator.
     Node mNextDirty;
     Node mPrevDirty;
 
@@ -239,9 +239,9 @@ final class Node extends Latch {
     }
 
     /**
-     * Close the root node when closing a tree. Returns the page instance to be recycled.
+     * Close the root node when closing a tree.
      */
-    byte[] closeRoot() {
+    void closeRoot() {
         // Prevent node from being marked dirty.
         mId = STUB_ID;
         mCachedState = CACHED_CLEAN;
@@ -255,8 +255,6 @@ final class Node extends Latch {
         mRightSegTail = 1;
         mSearchVecStart = 2;
         mSearchVecEnd = 0;
-
-        return mPage;
     }
 
     /**
