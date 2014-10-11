@@ -2213,7 +2213,10 @@ public final class Database implements CauseCloseable {
         }
     }
 
-    void treeClosed(Tree tree) {
+    /**
+     * @param newRoot optional replacement node, to be stored in the node map; must be latched
+     */
+    void treeClosed(Tree tree, Node newRoot) {
         mOpenTreesLatch.acquireExclusive();
         try {
             TreeRef ref = mOpenTreesById.getValue(tree.mId);
@@ -2221,6 +2224,10 @@ public final class Database implements CauseCloseable {
                 ref.clear();
                 mOpenTrees.remove(tree.mName);
                 mOpenTreesById.remove(tree.mId);
+            }
+            if (newRoot != null) {
+                makeEvictableNow(newRoot);
+                mTreeNodeMap.put(newRoot);
             }
         } finally {
             mOpenTreesLatch.releaseExclusive();
@@ -2423,8 +2430,27 @@ public final class Database implements CauseCloseable {
      * @param rootId pass zero to create
      * @return unlatched and unevictable root node
      */
-    private Node loadTreeRoot(long rootId) throws IOException {
-        Node rootNode = allocLatchedNode(false);
+    private Node loadTreeRoot(final long rootId) throws IOException {
+        if (rootId != 0) {
+            // Check if root node is still around after tree was closed.
+            final int hash = NodeMap.hash(rootId);
+            final Node rootNode = mTreeNodeMap.get(rootId, hash);
+            if (rootNode != null) {
+                rootNode.acquireShared();
+                try {
+                    if (rootId == rootNode.mId) {
+                        makeUnevictable(rootNode);
+                        mTreeNodeMap.remove(rootNode, hash);
+                        return rootNode;
+                    }
+                } finally {
+                    rootNode.releaseShared();
+                }
+            }
+        }
+
+        final Node rootNode = allocLatchedNode(false);
+
         try {
             if (rootId == 0) {
                 rootNode.asEmptyRoot();
@@ -2439,6 +2465,7 @@ public final class Database implements CauseCloseable {
         } finally {
             rootNode.releaseExclusive();
         }
+
         return rootNode;
     }
 
@@ -2520,7 +2547,7 @@ public final class Database implements CauseCloseable {
         commitLock.lock();
         try {
             // Cleaup before opening more indexes.
-            cleanupUnreferencedTrees(null);
+            cleanupUnreferencedTrees();
 
             byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, name);
             byte[] treeIdBytes = mRegistryKeyMap.load(null, nameKey);
@@ -2705,21 +2732,19 @@ public final class Database implements CauseCloseable {
             mOpenTreesLatch.releaseShared();
         }
 
-        // Ensure that all nodes of cleared tree reference are evicted before
-        // potentially replacing them. Weak references are cleared before they
-        // are enqueued, and so polling the queue does not guarantee node
-        // eviction. Process the tree directly.
-        cleanupUnreferencedTree(txn, treeRef);
+        // Ensure that root node of cleared tree reference is available in the node map before
+        // potentially replacing it. Weak references are cleared before they are enqueued, and
+        // so polling the queue does not guarantee node eviction. Process the tree directly.
+        cleanupUnreferencedTree(treeRef);
 
         return null;
     }
 
     /**
      * Tree instances retain a reference to an unevictable root node. If tree is no longer in
-     * use, evict everything, including the root node. Method cannot be called while a
-     * checkpoint is in progress.
+     * use, allow it to be evicted. Method cannot be called while a checkpoint is in progress.
      */
-    private void cleanupUnreferencedTrees(Transaction txn) throws IOException {
+    private void cleanupUnreferencedTrees() throws IOException {
         final ReferenceQueue<Tree> queue = mOpenTreesRefQueue;
         if (queue == null) {
             return;
@@ -2731,7 +2756,7 @@ public final class Database implements CauseCloseable {
                     break;
                 }
                 if (ref instanceof TreeRef) {
-                    cleanupUnreferencedTree(txn, (TreeRef) ref);
+                    cleanupUnreferencedTree((TreeRef) ref);
                 }
             }
         } catch (Exception e) {
@@ -2741,50 +2766,26 @@ public final class Database implements CauseCloseable {
         }
     }
 
-    private void cleanupUnreferencedTree(Transaction txn, TreeRef ref) throws IOException {
-        // Acquire lock to prevent tree from being reloaded too soon.
-
-        byte[] treeIdBytes = new byte[8];
-        encodeLongBE(treeIdBytes, 0, ref.mId);
-
-        if (txn == null) {
-            txn = newNoRedoTransaction();
-        } else {
-            txn.enter();
-        }
-
+    private void cleanupUnreferencedTree(TreeRef ref) throws IOException {
+        Node root = ref.mRoot;
+        root.acquireShared();
         try {
-            // Pass the transaction to acquire the lock.
-            mRegistry.load(txn, treeIdBytes);
-
-            mOpenTreesLatch.acquireShared();
+            mOpenTreesLatch.acquireExclusive();
             try {
                 LHashTable.ObjEntry<TreeRef> entry = mOpenTreesById.get(ref.mId);
                 if (entry == null || entry.value != ref) {
                     return;
                 }
-            } finally {
-                mOpenTreesLatch.releaseShared();
-            }
-
-            Node root = ref.mRoot;
-            root.acquireExclusive();
-            root.forceEvictTree(this);
-            root.releaseExclusive();
-
-            mOpenTreesLatch.acquireExclusive();
-            try {
-                mOpenTreesById.remove(ref.mId);
                 mOpenTrees.remove(ref.mName);
+                mOpenTreesById.remove(ref.mId);
+                makeEvictableNow(root);
+                mTreeNodeMap.put(root);
             } finally {
                 mOpenTreesLatch.releaseExclusive();
             }
         } finally {
-            txn.exit();
+            root.releaseShared();
         }
-
-        // Move root node into usage list, allowing it to be re-used.
-        makeEvictableNow(ref.mRoot);
     }
 
     private static byte[] newKey(byte type, byte[] payload) {
@@ -2929,7 +2930,7 @@ public final class Database implements CauseCloseable {
             commitLock.lock();
             try {
                 // Try to free up nodes from unreferenced trees.
-                cleanupUnreferencedTrees(null);
+                cleanupUnreferencedTrees();
             } finally {
                 commitLock.unlock();
             }
@@ -4040,7 +4041,7 @@ public final class Database implements CauseCloseable {
             }
 
             // Now's a good time to clean things up.
-            cleanupUnreferencedTrees(null);
+            cleanupUnreferencedTrees();
 
             final Node root = mRegistry.mRoot;
 

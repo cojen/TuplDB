@@ -798,41 +798,6 @@ final class Node extends Latch {
     }
 
     /**
-     * Evict all tree nodes, starting from the root. Intended to be used only
-     * when tree is no longer referenced, ensuring all dirty nodes are written.
-     * Caller must hold exclusive latch on node. Latch is released by this
-     * method when an exception is thrown.
-     */
-    void forceEvictTree(Database db) throws IOException {
-        // Cursor frames might still exist, if cursors are not being reset properly. Since tree
-        // is not referenced, the original cursors are gone. The frames are just garbage.
-        mLastCursorFrame = null;
-
-        if (mId == 0) {
-            return;
-        }
-
-        if (isInternal()) {
-            final NodeMap map = db.mTreeNodeMap;
-            int childPtr = mSearchVecEnd + 2;
-            final int highestPtr = childPtr + (highestInternalPos() << 2);
-            for (; childPtr <= highestPtr; childPtr += 8) {
-                long childId = decodeUnsignedInt48LE(mPage, childPtr);
-                Node child = map.get(childId);
-                if (child != null) {
-                    child.acquireExclusive();
-                    if (childId == child.mId) {
-                        child.forceEvictTree(db);
-                    }
-                    child.releaseExclusive();
-                }
-            }
-        }
-
-        doEvict(db);
-    }
-
-    /**
      * Caller must hold exclusive latch on node. Latch is released by this
      * method when an exception is thrown.
      */
