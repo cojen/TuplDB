@@ -382,10 +382,7 @@ class Tree implements Index {
 
             if (forDelete) {
                 Node newRoot = root.cloneNode(true);
-                if (mDatabase.mPageDb.isDurable()) {
-                    root.forceEvictTree(mDatabase);
-                    newRoot.mCachedState = Node.CACHED_CLEAN;
-                }
+                mDatabase.swapIfDirty(root, newRoot);
                 root.closeRoot();
                 mDatabase.treeClosed(this);
                 return newRoot;
@@ -409,6 +406,7 @@ class Tree implements Index {
                 // has little practical value.
 
                 Node newRoot = root.cloneNode(true);
+                mDatabase.swapIfDirty(root, newRoot);
                 root.closeRoot();
                 mDatabase.replaceClosedTree(this, newRoot);
             }
