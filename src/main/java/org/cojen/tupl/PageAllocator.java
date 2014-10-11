@@ -88,6 +88,40 @@ final class PageAllocator {
         }
     }
 
+    /**
+     * Remove the old node from the dirty list and swap in the new node. The cached state of
+     * the nodes is not altered.
+     */
+    void swapIfDirty(Node oldNode, Node newNode) {
+        final Latch latch = mLatch;
+        latch.acquireExclusive();
+        try {
+            Node next = oldNode.mNextDirty;
+            if (next != null) {
+                newNode.mNextDirty = next;
+                next.mPrevDirty = newNode;
+                oldNode.mNextDirty = null;
+            }
+            Node prev = oldNode.mPrevDirty;
+            if (prev != null) {
+                newNode.mPrevDirty = prev;
+                prev.mNextDirty = newNode;
+                oldNode.mPrevDirty = null;
+            }
+            if (oldNode == mFirstDirty) {
+                mFirstDirty = newNode;
+            }
+            if (oldNode == mLastDirty) {
+                mLastDirty = newNode;
+            }
+            if (oldNode == mFlushNext) {
+                mFlushNext = newNode;
+            }
+        } finally {
+            latch.releaseExclusive();
+        }
+    }
+
     void recyclePage(long id) throws IOException {
         mPageDb.recyclePage(id);
     }

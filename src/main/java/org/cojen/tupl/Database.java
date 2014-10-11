@@ -716,6 +716,16 @@ public final class Database implements CauseCloseable {
             c.register(new ShutdownPrimer(this));
         }
 
+        // Must tag the trashed trees before starting replication and recovery. Otherwise,
+        // trees recently deleted might get double deleted.
+        Tree trashed = openNextTrashedTree(null);
+
+        if (trashed != null) {
+            Thread deletion = new Thread(new Deletion(trashed, true), "IndexDeletion");
+            deletion.setDaemon(true);
+            deletion.start();
+        }
+
         if (mRedoWriter instanceof ReplRedoWriter) {
             // Start replication and recovery.
             ReplRedoWriter writer = (ReplRedoWriter) mRedoWriter;
@@ -731,14 +741,6 @@ public final class Database implements CauseCloseable {
         }
 
         c.start();
-
-        Tree trashed = openNextTrashedTree(null);
-
-        if (trashed != null) {
-            Thread deletion = new Thread(new Deletion(trashed, true), "IndexDeletion");
-            deletion.setDaemon(true);
-            deletion.start();
-        }
     }
 
     static class ShutdownPrimer implements Checkpointer.Shutdown {
@@ -1133,10 +1135,9 @@ public final class Database implements CauseCloseable {
         Tree tree = accessTree(index);
         tree.deleteCheck();
 
-        boolean moved = moveToTrash(tree, txnId);
-        Node root = tree.close(true);
+        Node root = moveToTrash(tree, txnId);
 
-        if (!moved || root == null) {
+        if (root == null) {
             // Handle concurrent delete attempt.
             throw new ClosedIndexException();
         }
@@ -2339,13 +2340,16 @@ public final class Database implements CauseCloseable {
 
     /**
      * @param txnId non-zero if move is performed by recovery
+     * @return root node of deleted tree; null if closed or already in the trash
      */
-    boolean moveToTrash(Tree tree, long txnId) throws IOException {
+    Node moveToTrash(Tree tree, long txnId) throws IOException {
         final RedoWriter redo = txnId == 0 ? mRedoWriter : null;
         long commitPos = 0;
 
         byte[] idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
         byte[] trashIdKey = newKey(KEY_TYPE_TRASH_ID, tree.mIdBytes);
+
+        Node root;
 
         final Lock commitLock = sharedCommitLock();
         commitLock.lock();
@@ -2354,7 +2358,7 @@ public final class Database implements CauseCloseable {
             try {
                 if (mRegistryKeyMap.load(txn, trashIdKey) != null) {
                     // Already in the trash.
-                    return false;
+                    return null;
                 }
 
                 byte[] treeName = mRegistryKeyMap.exchange(txn, idKey, null);
@@ -2383,6 +2387,8 @@ public final class Database implements CauseCloseable {
             } finally {
                 txn.reset();
             }
+
+            root = tree.close(true);
         } finally {
             commitLock.unlock();
         }
@@ -2392,7 +2398,7 @@ public final class Database implements CauseCloseable {
             redo.txnCommitSync(commitPos);
         }
 
-        return true;
+        return root;
     }
 
     /**
@@ -3190,6 +3196,14 @@ public final class Database implements CauseCloseable {
     private void dirty(Node node, long newId) {
         node.mId = newId;
         node.mCachedState = mCommitState;
+    }
+
+    /**
+     * Remove the old node from the dirty list and swap in the new node. Caller must hold
+     * commit lock and latched the old node. The cached state of the nodes is not altered.
+     */
+    void swapIfDirty(Node oldNode, Node newNode) {
+        mAllocator.swapIfDirty(oldNode, newNode);
     }
 
     /**
