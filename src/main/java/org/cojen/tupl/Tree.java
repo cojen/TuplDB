@@ -380,34 +380,30 @@ class Tree implements Index {
                 }
             }
 
+            // Root node reference cannot be cleared, so instead make it non-functional. Move
+            // the page reference into a new evictable Node object, allowing it to be recycled.
+
+            Node newRoot = root.cloneNode(true);
+            mDatabase.swapIfDirty(root, newRoot);
+            root.closeRoot();
+
             if (forDelete) {
-                Node newRoot = root.cloneNode(true);
-                mDatabase.swapIfDirty(root, newRoot);
-                root.closeRoot();
-                mDatabase.treeClosed(this);
+                mDatabase.treeClosed(this, null);
                 return newRoot;
             }
 
             if (mDatabase.mPageDb.isDurable()) {
-                root.forceEvictTree(mDatabase);
-
-                // Root node reference cannot be cleared, so instead make it
-                // non-functional. Move the page reference into a new evictable Node object,
-                // allowing it to be recycled.
-
-                Node discard = root.cloneNode(false);
-                root.closeRoot();
-                mDatabase.makeEvictable(discard);
-                mDatabase.treeClosed(this);
+                newRoot.acquireShared();
+                try {
+                    mDatabase.treeClosed(this, newRoot);
+                } finally {
+                    newRoot.releaseShared();
+                }
             } else {
                 // Non-durable tree cannot be truly closed because nothing would reference it
                 // anymore. As per the interface contract, make this reference unmodifiable,
                 // but also register a replacement tree instance. Closing a non-durable tree
                 // has little practical value.
-
-                Node newRoot = root.cloneNode(true);
-                mDatabase.swapIfDirty(root, newRoot);
-                root.closeRoot();
                 mDatabase.replaceClosedTree(this, newRoot);
             }
 

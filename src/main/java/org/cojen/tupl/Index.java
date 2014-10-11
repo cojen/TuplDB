@@ -205,8 +205,7 @@ public interface Index extends View, Closeable {
 
     /**
      * Closes this index reference, causing it to appear empty and {@link ClosedIndexException
-     * unmodifiable}. The underlying index is still valid and can be re-opened. Closing an
-     * index is relatively expensive, and so it should be kept open if frequently accessed.
+     * unmodifiable}. The underlying index is still valid and can be re-opened.
      *
      * <p>In general, indexes should not be closed if they are referenced by active
      * transactions. Although closing the index is safe, the transaction might re-open it.

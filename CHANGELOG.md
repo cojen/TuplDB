@@ -6,6 +6,7 @@ v1.1.6
 * Added support for a secondary cache. A secondary cache is slower than a primary cache, but a
   very large primary cache can cause high garbage collection overhead.
 * Added method to delete a non-empty index.
+* Closing an index no longer forces all the tree nodes to be evicted.
 
 v1.1.5
 ------
