@@ -1037,6 +1037,21 @@ class TreeCursor implements CauseCloseable, Cursor {
     private LockResult tryCopyCurrentCmp(Transaction txn, byte[] limitKey, int limitMode)
         throws IOException
     {
+        try {
+            return doTryCopyCurrentCmp(txn, limitKey, limitMode);
+        } catch (Throwable e) {
+            mLeaf.mNode.releaseExclusive();
+            throw e;
+        }
+    }
+
+    /**
+     * Variant of tryCopyCurrent used by iteration methods which have a
+     * limit. If limit is reached, cursor is reset and UNOWNED is returned.
+     */
+    private LockResult doTryCopyCurrentCmp(Transaction txn, byte[] limitKey, int limitMode)
+        throws IOException
+    {
         final Node node;
         final int pos;
         {
@@ -1067,54 +1082,50 @@ class TreeCursor implements CauseCloseable, Cursor {
 
         mKeyHash = 0;
 
-        try {
+        LockResult result;
+        obtainResult: {
             final LockMode mode;
             if (txn == null) {
                 mode = LockMode.READ_COMMITTED;
             } else if ((mode = txn.lockMode()).noReadLock) {
                 mValue = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(mTree, pos);
-                return LockResult.UNOWNED;
+                result = LockResult.UNOWNED;
+                break obtainResult;
             }
 
             mValue = NOT_LOADED;
-
-            try {
-                LockResult result;
-
-                switch (mode) {
-                default:
-                    if (mTree.isLockAvailable(txn, mKey, keyHash())) {
-                        // No need to acquire full lock.
-                        mValue = mKeyOnly ? node.hasLeafValue(pos)
-                            : node.retrieveLeafValue(mTree, pos);
-                        return LockResult.UNOWNED;
-                    } else {
-                        return null;
-                    }
-
-                case REPEATABLE_READ:
-                    result = txn.tryLockShared(mTree.mId, mKey, keyHash(), 0L);
-                    break;
-
-                case UPGRADABLE_READ:
-                    result = txn.tryLockUpgradable(mTree.mId, mKey, keyHash(), 0L);
-                    break;
-                }
-
-                if (result.isHeld()) {
+        
+            switch (mode) {
+            default:
+                if (mTree.isLockAvailable(txn, mKey, keyHash())) {
+                    // No need to acquire full lock.
                     mValue = mKeyOnly ? node.hasLeafValue(pos)
                         : node.retrieveLeafValue(mTree, pos);
-                    return result;
+                    result = LockResult.UNOWNED;
                 } else {
-                    return null;
+                    result = null;
                 }
-            } catch (DeadlockException e) {
-                // Not expected with timeout of zero anyhow.
-                return null;
+                break obtainResult;
+
+            case REPEATABLE_READ:
+                result = txn.tryLockShared(mTree.mId, mKey, keyHash(), 0L);
+                break;
+
+            case UPGRADABLE_READ:
+                result = txn.tryLockUpgradable(mTree.mId, mKey, keyHash(), 0L);
+                break;
             }
-        } finally {
-            node.releaseExclusive();
+
+            if (result.isHeld()) {
+                mValue = mKeyOnly ? node.hasLeafValue(pos)
+                    : node.retrieveLeafValue(mTree, pos);
+            } else {
+                result = null;
+            }
         }
+
+        node.releaseExclusive();
+        return result;
     }
 
     /**
