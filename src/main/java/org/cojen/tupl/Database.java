@@ -2803,7 +2803,12 @@ public final class Database implements CauseCloseable {
     }
 
     /**
-     * Access the shared commit lock, which prevents commits while held.
+     * Access the shared commit lock, which prevents commits while held. In general, it should
+     * be acquired before any node latches, but postponing acquisition reduces the total time
+     * held. Checkpoints don't have to wait as long for the exclusive commit lock. Because node
+     * latching first isn't the canonical ordering, acquiring the shared commit lock later must
+     * be prepared to abort. Try to acquire first, and if it fails, release the node latch and
+     * do over.
      */
     Lock sharedCommitLock() {
         return mSharedCommitLock;
