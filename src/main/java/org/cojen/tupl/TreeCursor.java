@@ -1989,9 +1989,8 @@ class TreeCursor implements CauseCloseable, Cursor {
                 break doDelete;
             }
 
-            final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
-            sharedCommitLock.lock();
-            withCommitLock: try {
+            final Lock sharedCommitLock = sharedCommitLock(leaf);
+            try {
                 // Releases latch if an exception is thrown.
                 node = notSplitDirty(leaf);
                 final int pos = leaf.mNodePos;
@@ -2002,7 +2001,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                     } else if (txn.lockMode() != LockMode.UNSAFE) {
                         node.txnDeleteLeafEntry(txn, mTree, key, keyHash(), pos);
                         // Above operation leaves a ghost, so no cursors to fix.
-                        break withCommitLock;
+                        break doDelete;
                     } else if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
                         commitPos = mTree.redoStoreNoLock(key, null);
                     }
@@ -2047,8 +2046,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                 sharedCommitLock.unlock();
             }
         } else {
-            final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
-            sharedCommitLock.lock();
+            final Lock sharedCommitLock = sharedCommitLock(leaf);
             try {
                 // Update and insert always dirty the node. Releases latch if an exception is
                 // thrown.
@@ -2201,10 +2199,10 @@ class TreeCursor implements CauseCloseable, Cursor {
             throw new IllegalArgumentException("Value is null");
         }
 
-        Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
-        sharedCommitLock.lock();
+        final TreeCursorFrame leaf = leafExclusive();
+
+        final Lock sharedCommitLock = sharedCommitLock(leaf);
         try {
-            final TreeCursorFrame leaf = leafExclusive();
             Node node = notSplitDirty(leaf);
 
             final int pos = leaf.mNodePos;
@@ -2282,10 +2280,9 @@ class TreeCursor implements CauseCloseable, Cursor {
      * the tree.
      */
     final void trim() throws IOException {
-        TreeCursorFrame leaf = leafExclusive();
+        final TreeCursorFrame leaf = leafExclusive();
 
-        final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
-        sharedCommitLock.lock();
+        final Lock sharedCommitLock = sharedCommitLock(leaf);
         try {
             // Releases latch if an exception is thrown.
             Node node = notSplitDirty(leaf);
@@ -2377,6 +2374,25 @@ class TreeCursor implements CauseCloseable, Cursor {
         db.deleteNode(node);
 
         return next;
+    }
+
+    /**
+     * Safely acquire shared commit lock while node latch is held exclusively. Latch might need
+     * to be released and relatched in order to obtain shared commit lock without deadlocking.
+     * As a result, the caller must not rely on any existing node reference. It must be
+     * accessed again from the leaf frame instance.
+     *
+     * @param leaf leaf frame, latched exclusively, which might be released and relatched
+     * @return held sharedCommitLock
+     */
+    private Lock sharedCommitLock(final TreeCursorFrame leaf) {
+        Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
+        if (!sharedCommitLock.tryLock()) {
+            leaf.mNode.releaseExclusive();
+            sharedCommitLock.lock();
+            leaf.acquireExclusive();
+        }
+        return sharedCommitLock;
     }
 
     protected final IOException handleException(Throwable e, boolean reset) throws IOException {
