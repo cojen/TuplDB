@@ -1822,11 +1822,10 @@ public final class Database implements CauseCloseable {
     }
 
     /**
-     * Durably sync and checkpoint all changes to the database. In addition to
-     * ensuring that all transactions are durable, checkpointing ensures that
-     * non-transactional modifications are durable. Checkpoints are performed
-     * automatically by a background thread, at a {@link
-     * DatabaseConfig#checkpointRate configurable} rate.
+     * Durably sync and checkpoint all changes to the database. In addition to ensuring that
+     * all committed transactions are durable, checkpointing ensures that non-transactional
+     * modifications are durable. Checkpoints are performed automatically by a background
+     * thread, at a {@link DatabaseConfig#checkpointRate configurable} rate.
      */
     public void checkpoint() throws IOException {
         if (!mClosed && mPageDb instanceof DurablePageDb) {
