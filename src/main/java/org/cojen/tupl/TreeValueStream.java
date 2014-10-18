@@ -82,25 +82,25 @@ final class TreeValueStream extends AbstractStream {
     @Override
     public void setLength(long length) throws IOException {
         // FIXME: txn undo/redo; be careful with large keys to avoid redo corruption
-        final Lock sharedCommitLock = mDb.sharedCommitLock();
-        sharedCommitLock.lock();
         try {
-            TreeCursorFrame frame;
-            try {
-                if (length < 0) {
-                    mCursor.store(null);
-                    return;
-                }
-                frame = mCursor.leafExclusiveNotSplitDirty();
-            } catch (IllegalStateException e) {
-                checkOpen();
-                throw e;
+            if (length < 0) {
+                mCursor.store(null);
+                return;
             }
 
-            action(frame, OP_SET_LENGTH, length, EMPTY_BYTES, 0, 0);
-            frame.mNode.releaseExclusive();
-        } finally {
-            sharedCommitLock.unlock();
+            final TreeCursorFrame leaf = mCursor.leafExclusiveNotSplit();
+
+            final Lock sharedCommitLock = mCursor.sharedCommitLock(leaf);
+            try {
+                mCursor.notSplitDirty(leaf);
+                action(leaf, OP_SET_LENGTH, length, EMPTY_BYTES, 0, 0);
+                leaf.mNode.releaseExclusive();
+            } finally {
+                sharedCommitLock.unlock();
+            }
+        } catch (IllegalStateException e) {
+            checkOpen();
+            throw e;
         }
     }
 
@@ -122,21 +122,20 @@ final class TreeValueStream extends AbstractStream {
     @Override
     void doWrite(long pos, byte[] buf, int off, int len) throws IOException {
         // FIXME: txn undo/redo; be careful with large keys to avoid redo corruption
-        final Lock sharedCommitLock = mDb.sharedCommitLock();
-        sharedCommitLock.lock();
         try {
-            TreeCursorFrame frame;
-            try {
-                frame = mCursor.leafExclusiveNotSplitDirty();
-            } catch (IllegalStateException e) {
-                checkOpen();
-                throw e;
-            }
+            final TreeCursorFrame leaf = mCursor.leafExclusiveNotSplit();
 
-            action(frame, OP_WRITE, pos, buf, off, len);
-            frame.mNode.releaseExclusive();
-        } finally {
-            sharedCommitLock.unlock();
+            final Lock sharedCommitLock = mCursor.sharedCommitLock(leaf);
+            try {
+                mCursor.notSplitDirty(leaf);
+                action(leaf, OP_WRITE, pos, buf, off, len);
+                leaf.mNode.releaseExclusive();
+            } finally {
+                sharedCommitLock.unlock();
+            }
+        } catch (IllegalStateException e) {
+            checkOpen();
+            throw e;
         }
     }
 

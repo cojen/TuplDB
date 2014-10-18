@@ -2385,7 +2385,7 @@ class TreeCursor implements CauseCloseable, Cursor {
      * @param leaf leaf frame, latched exclusively, which might be released and relatched
      * @return held sharedCommitLock
      */
-    private Lock sharedCommitLock(final TreeCursorFrame leaf) {
+    final Lock sharedCommitLock(final TreeCursorFrame leaf) {
         Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
         if (!sharedCommitLock.tryLock()) {
             leaf.mNode.releaseExclusive();
@@ -2976,17 +2976,6 @@ class TreeCursor implements CauseCloseable, Cursor {
     }
 
     /**
-     * Latches and returns leaf frame, not split. Caller must hold shared commit lock.
-     *
-     * @throws IllegalStateException if unpositioned
-     */
-    final TreeCursorFrame leafExclusiveNotSplitDirty() throws IOException {
-        TreeCursorFrame frame = leafExclusive();
-        notSplitDirty(frame);
-        return frame;
-    }
-
-    /**
      * Latches and returns leaf frame, not split.
      *
      * @throws IllegalStateException if unpositioned
@@ -3018,7 +3007,7 @@ class TreeCursor implements CauseCloseable, Cursor {
      *
      * @return replacement node, still latched
      */
-    private Node notSplitDirty(final TreeCursorFrame frame) throws IOException {
+    final Node notSplitDirty(final TreeCursorFrame frame) throws IOException {
         Node node = frame.mNode;
 
         if (node.mSplit != null) {
