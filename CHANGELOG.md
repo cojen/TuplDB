@@ -1,6 +1,10 @@
 Changelog
 =========
 
+v1.1.7
+------
+* Fix for temporary deadlock at the beginning of a checkpoint.
+
 v1.1.6
 ------
 * Added support for a secondary cache. A secondary cache is slower than a primary cache, but a
