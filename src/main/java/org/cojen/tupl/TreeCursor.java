@@ -3425,7 +3425,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                 if (releaseParent) {
                     parent.releaseExclusive();
                 }
-                mTree.mDatabase.used(childNode);
+                childNode.used();
                 return childNode;
             }
         }

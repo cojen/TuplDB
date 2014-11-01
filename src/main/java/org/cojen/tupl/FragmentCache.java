@@ -45,7 +45,7 @@ class FragmentCache {
         if (node != null) {
             node.acquireShared();
             if (nodeId == node.mId) {
-                mDatabase.used(node);
+                node.used();
                 return node;
             }
             node.releaseShared();
@@ -76,7 +76,7 @@ class FragmentCache {
         if (node != null) {
             node.acquireExclusive();
             if (nodeId == node.mId) {
-                mDatabase.used(node);
+                node.used();
                 return node;
             }
             node.releaseExclusive();
@@ -106,7 +106,7 @@ class FragmentCache {
         if (node != null) {
             node.acquireExclusive();
             if (nodeId == node.mId) {
-                mDatabase.used(node);
+                node.used();
             } else {
                 node.releaseExclusive();
                 node = null;
