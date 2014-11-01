@@ -896,7 +896,7 @@ final class TreeValueStream extends AbstractStream {
                     // Indicate that partial write must load old page contents.
                     oldChildNodeId = -oldChildNodeId;
                 }
-                childNode = mDb.allocLatchedNode();
+                childNode = mDb.allocLatchedNode(childNodeId);
                 childNode.mId = childNodeId;
                 mDb.redirty(childNode);
             }

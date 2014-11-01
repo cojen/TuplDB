@@ -70,7 +70,7 @@ final class Node extends Latch {
     static final int VALUE_FRAGMENTED = 0x40;
 
     // Usage list this node belongs to.
-    private final NodeUsageList mUsageList;
+    final NodeUsageList mUsageList;
 
     // Links within usage list, guarded by NodeUsageList.
     Node mMoreUsed; // points to more recently used node
@@ -553,7 +553,7 @@ final class Node extends Latch {
     {
         Node childNode;
         try {
-            childNode = db.allocLatchedNode();
+            childNode = db.allocLatchedNode(childId);
             childNode.mId = childId;
         } catch (Throwable e) {
             releaseExclusive();

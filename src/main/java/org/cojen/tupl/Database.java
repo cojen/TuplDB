@@ -108,9 +108,8 @@ import static org.cojen.tupl.Utils.*;
  */
 public final class Database implements CauseCloseable {
     private static final int DEFAULT_CACHED_NODES = 1000;
-    // +2 for registry and key map root nodes, +1 for one user index, and +2
-    // for usage list to function correctly. It always assumes that the least
-    // recently used node points to a valid, more recently used node.
+    // +2 for registry and key map root nodes, +1 for one user index, and +2 for at least one
+    // usage list to function correctly.
     private static final int MIN_CACHED_NODES = 5;
 
     // Approximate byte overhead per node. Influenced by many factors,
@@ -175,7 +174,7 @@ public final class Database implements CauseCloseable {
 
     private final BufferPool mSpareBufferPool;
 
-    private final NodeUsageList mUsageList;
+    private final NodeUsageList[] mUsageLists;
 
     private final Lock mSharedCommitLock;
 
@@ -209,7 +208,7 @@ public final class Database implements CauseCloseable {
     private final LHashTable.Obj<TreeRef> mOpenTreesById;
     private final ReferenceQueue<Tree> mOpenTreesRefQueue;
 
-    private final PageAllocator mAllocator;
+    private final NodeDirtyList mDirtyList;
 
     // Map of all loaded non-root nodes.
     final NodeMap mTreeNodeMap;
@@ -449,27 +448,60 @@ public final class Database implements CauseCloseable {
 
             mSharedCommitLock = mPageDb.sharedCommitLock();
 
-            // Pre-allocate nodes. They are automatically added to the usage
-            // list, and so nothing special needs to be done to allow them to
-            // get used. Since the initial state is clean, evicting these
-            // nodes does nothing.
+            // Pre-allocate nodes. They are automatically added to the usage lists, and so
+            // nothing special needs to be done to allow them to get used. Since the initial
+            // state is clean, evicting these nodes does nothing.
 
             if (mEventListener != null) {
                 mEventListener.notify(EventType.CACHE_INIT_BEGIN,
                                       "Initializing %1$d cached nodes", minCache);
             }
 
-            NodeUsageList usageList = new NodeUsageList(this, maxCache);
+            NodeUsageList[] usageLists;
             try {
-                usageList.preallocate(minCache);
+                int stripes = roundUpPower2(Runtime.getRuntime().availableProcessors() * 4);
+
+                int stripeSize;
+                while (true) {
+                    stripeSize = maxCache / stripes;
+                    if (stripes <= 1 || stripeSize >= 100) {
+                        break;
+                    }
+                    stripes >>= 1;
+                }
+
+                int rem = maxCache % stripes;
+
+                usageLists = new NodeUsageList[stripes];
+  
+                for (int i=0; i<stripes; i++) {
+                    int size = stripeSize;
+                    if (rem > 0) {
+                        size++;
+                        rem--;
+                    }
+                    usageLists[i] = new NodeUsageList(this, size);
+                }
+
+                stripeSize = minCache / stripes;
+                rem = minCache % stripes;
+
+                for (NodeUsageList usageList : usageLists) {
+                    int size = stripeSize;
+                    if (rem > 0) {
+                        size++;
+                        rem--;
+                    }
+                    usageList.initialize(size);
+                }
             } catch (OutOfMemoryError e) {
-                usageList = null;
+                usageLists = null;
                 throw new OutOfMemoryError
                     ("Unable to allocate the minimum required number of cached nodes: " +
                      minCache + " (" + (minCache * (long) (pageSize + NODE_OVERHEAD)) + " bytes)");
             }
 
-            mUsageList = usageList;
+            mUsageLists = usageLists;
 
             if (mEventListener != null) {
                 double duration = (System.nanoTime() - cacheInitStart) / 1_000_000_000.0;
@@ -521,7 +553,7 @@ public final class Database implements CauseCloseable {
                 mRegistryKeyMap = openInternalTree(Tree.REGISTRY_KEY_MAP_ID, true);
             }
 
-            mAllocator = new PageAllocator(mPageDb);
+            mDirtyList = new NodeDirtyList();
 
             mFragmentCache = new FragmentCache(this, mTreeNodeMap);
 
@@ -550,7 +582,7 @@ public final class Database implements CauseCloseable {
                     recoveryStart = System.nanoTime();
                 }
 
-                if (mPageDb instanceof DurablePageDb) {
+                if (mPageDb.isDurable()) {
                     File primer = primerFile();
                     try {
                         if (config.mCachePriming && primer.exists()) {
@@ -703,7 +735,7 @@ public final class Database implements CauseCloseable {
         c.register(mRedoWriter);
         c.register(mTempFileManager);
 
-        if (config.mCachePriming && mPageDb instanceof DurablePageDb) {
+        if (config.mCachePriming && mPageDb.isDurable()) {
             c.register(new ShutdownPrimer(this));
         }
 
@@ -1413,7 +1445,7 @@ public final class Database implements CauseCloseable {
      * @return actual amount allocated
      */
     public long preallocate(long bytes) throws IOException {
-        if (!mClosed && mPageDb instanceof DurablePageDb) {
+        if (!mClosed && mPageDb.isDurable()) {
             int pageSize = mPageSize;
             long pageCount = (bytes + pageSize - 1) / pageSize;
             if (pageCount > 0) {
@@ -1455,7 +1487,7 @@ public final class Database implements CauseCloseable {
      * @return a snapshot control object, which must be closed when no longer needed
      */
     public Snapshot beginSnapshot() throws IOException {
-        if (!(mPageDb instanceof DurablePageDb)) {
+        if (!(mPageDb.isDurable())) {
             throw new UnsupportedOperationException("Snapshot only allowed for durable databases");
         }
         checkClosed();
@@ -1528,7 +1560,7 @@ public final class Database implements CauseCloseable {
      * @see DatabaseConfig#cachePriming
      */
     public void createCachePrimer(OutputStream out) throws IOException {
-        if (!(mPageDb instanceof DurablePageDb)) {
+        if (!(mPageDb.isDurable())) {
             throw new UnsupportedOperationException
                 ("Cache priming only allowed for durable databases");
         }
@@ -1575,7 +1607,7 @@ public final class Database implements CauseCloseable {
      * @see DatabaseConfig#cachePriming
      */
     public void applyCachePrimer(InputStream in) throws IOException {
-        if (!(mPageDb instanceof DurablePageDb)) {
+        if (!(mPageDb.isDurable())) {
             throw new UnsupportedOperationException
                 ("Cache priming only allowed for durable databases");
         }
@@ -1645,7 +1677,9 @@ public final class Database implements CauseCloseable {
             mSharedCommitLock.unlock();
         }
 
-        stats.mCachedPages = mUsageList.size();
+        for (NodeUsageList usageList : mUsageLists) {
+            stats.mCachedPages += usageList.size();
+        }
 
         if (!mPageDb.isDurable() && stats.mTotalPages == 0) {
             stats.mTotalPages = stats.mCachedPages;
@@ -1817,7 +1851,7 @@ public final class Database implements CauseCloseable {
      * thread, at a {@link DatabaseConfig#checkpointRate configurable} rate.
      */
     public void checkpoint() throws IOException {
-        if (!mClosed && mPageDb instanceof DurablePageDb) {
+        if (!mClosed && mPageDb.isDurable()) {
             try {
                 checkpoint(false, 0, 0);
             } catch (Throwable e) {
@@ -2102,7 +2136,7 @@ public final class Database implements CauseCloseable {
      * side effect of shutting down, all extraneous files are deleted.
      */
     public void shutdown() throws IOException {
-        close(null, mPageDb instanceof DurablePageDb);
+        close(null, mPageDb.isDurable());
     }
 
     private void close(Throwable cause, boolean shutdown) throws IOException {
@@ -2157,16 +2191,20 @@ public final class Database implements CauseCloseable {
             lock.lock();
         }
         try {
-            if (mUsageList != null) {
-                mUsageList.close();
+            if (mUsageLists != null) {
+                for (NodeUsageList usageList : mUsageLists) {
+                    if (usageList != null) {
+                        usageList.close();
+                    }
+                }
             }
 
             if (mTreeNodeMap != null) {
                 mTreeNodeMap.clear();
             }
 
-            if (mAllocator != null) {
-                mAllocator.clearDirtyNodes();
+            if (mDirtyList != null) {
+                mDirtyList.clear();
             }
 
             IOException ex = null;
@@ -2445,7 +2483,7 @@ public final class Database implements CauseCloseable {
             }
         }
 
-        final Node rootNode = allocLatchedNode(false);
+        final Node rootNode = allocLatchedNode(rootId, NodeUsageList.MODE_UNEVICTABLE);
 
         try {
             if (rootId == 0) {
@@ -2834,23 +2872,35 @@ public final class Database implements CauseCloseable {
     /**
      * Returns a new or recycled Node instance, latched exclusively, with an id
      * of zero and a clean state.
+     *
+     * @param anyNodeId id of any node, for spreading allocations around
      */
-    Node allocLatchedNode() throws IOException {
-        return allocLatchedNode(true);
+    Node allocLatchedNode(long anyNodeId) throws IOException {
+        return allocLatchedNode(anyNodeId, 0);
     }
 
     /**
      * Returns a new or recycled Node instance, latched exclusively, with an id
      * of zero and a clean state.
      *
-     * @param evictable true if allocated node can be automatically evicted
+     * @param anyNodeId id of any node, for spreading allocations around
+     * @param mode MODE_UNEVICTABLE if allocated node cannot be automatically evicted
      */
-    Node allocLatchedNode(boolean evictable) throws IOException {
-        for (int trial = 1; trial <= 3; trial++) {
-            Node node = mUsageList.tryAllocLatchedNode(trial, evictable);
+    Node allocLatchedNode(long anyNodeId, int mode) throws IOException {
+        mode |= mPageDb.allocMode();
 
-            if (node != null) {
-                return node;
+        NodeUsageList[] usageLists = mUsageLists;
+        int listIx = ((int) anyNodeId) & (usageLists.length - 1);
+
+        for (int trial = 1; trial <= 3; trial++) {
+            for (int i=0; i<usageLists.length; i++) {
+                Node node = usageLists[listIx].tryAllocLatchedNode(trial, mode);
+                if (node != null) {
+                    return node;
+                }
+                if (--listIx < 0) {
+                    listIx = usageLists.length - 1;
+                }
             }
 
             checkClosed();
@@ -2865,7 +2915,11 @@ public final class Database implements CauseCloseable {
             }
         }
 
-        throw new CacheExhaustedException();
+        if (mPageDb.isDurable()) {
+            throw new CacheExhaustedException();
+        } else {
+            throw new DatabaseFullException();
+        }
     }
 
     /**
@@ -2873,14 +2927,11 @@ public final class Database implements CauseCloseable {
      * dirty. Caller must hold commit lock.
      */
     Node allocDirtyNode() throws IOException {
-        Node node = allocLatchedNode(true);
-        try {
-            dirty(node, mAllocator.allocPage(node));
-            return node;
-        } catch (IOException e) {
-            node.releaseExclusive();
-            throw e;
-        }
+        long nodeId = mPageDb.allocPage();
+        Node node = allocLatchedNode(nodeId, 0);
+        mDirtyList.add(node);
+        dirty(node, nodeId);
+        return node;
     }
 
     /**
@@ -2888,15 +2939,11 @@ public final class Database implements CauseCloseable {
      * dirty and unevictable. Caller must hold commit lock.
      */
     Node allocUnevictableNode() throws IOException {
-        Node node = allocLatchedNode(false);
-        try {
-            dirty(node, mAllocator.allocPage(node));
-            return node;
-        } catch (IOException e) {
-            node.makeEvictableNow();
-            node.releaseExclusive();
-            throw e;
-        }
+        long nodeId = mPageDb.allocPage();
+        Node node = allocLatchedNode(nodeId, NodeUsageList.MODE_UNEVICTABLE);
+        mDirtyList.add(node);
+        dirty(node, nodeId);
+        return node;
     }
 
     /**
@@ -2933,8 +2980,9 @@ public final class Database implements CauseCloseable {
         if (node.mCachedState == mCommitState) {
             return false;
         } else {
+            long newId = mPageDb.allocPage();
+            mDirtyList.add(node);
             long oldId = node.mId;
-            long newId = mAllocator.allocPage(node);
             if (oldId != 0) {
                 mPageDb.deletePage(oldId);
             }
@@ -2953,8 +3001,9 @@ public final class Database implements CauseCloseable {
      */
     void markUndoLogDirty(Node node) throws IOException {
         if (node.mCachedState != mCommitState) {
+            long newId = mPageDb.allocPage();
+            mDirtyList.add(node);
             long oldId = node.mId;
-            long newId = mAllocator.allocPage(node);
             mPageDb.deletePage(oldId);
             node.write(mPageDb);
             dirty(node, newId);
@@ -2967,8 +3016,9 @@ public final class Database implements CauseCloseable {
      * method, even if an exception is thrown.
      */
     void doMarkDirty(Tree tree, Node node) throws IOException {
+        long newId = mPageDb.allocPage();
+        mDirtyList.add(node);
         long oldId = node.mId;
-        long newId = mAllocator.allocPage(node);
         if (oldId != 0) {
             mPageDb.deletePage(oldId);
             mTreeNodeMap.remove(node, NodeMap.hash(oldId));
@@ -2998,7 +3048,7 @@ public final class Database implements CauseCloseable {
      * commit lock and latched the old node. The cached state of the nodes is not altered.
      */
     void swapIfDirty(Node oldNode, Node newNode) {
-        mAllocator.swapIfDirty(oldNode, newNode);
+        mDirtyList.swapIfDirty(oldNode, newNode);
     }
 
     /**
@@ -3007,7 +3057,7 @@ public final class Database implements CauseCloseable {
      */
     void redirty(Node node) {
         node.mCachedState = mCommitState;
-        mAllocator.dirty(node);
+        mDirtyList.add(node);
     }
 
     /**
@@ -3080,7 +3130,7 @@ public final class Database implements CauseCloseable {
         if (id != 0) {
             if (cachedState == mCommitState) {
                 // Newly reserved page was never used, so recycle it.
-                mAllocator.recyclePage(id);
+                mPageDb.recyclePage(id);
             } else {
                 // Old data must survive until after checkpoint.
                 mPageDb.deletePage(id);
@@ -3382,7 +3432,7 @@ public final class Database implements CauseCloseable {
                     childNode.releaseExclusive();
                 }
                 // Child node was evicted, although it was clean.
-                childNode = allocLatchedNode();
+                childNode = allocLatchedNode(childNodeId);
                 childNode.mId = childNodeId;
                 redirty(childNode);
             }
@@ -3641,7 +3691,7 @@ public final class Database implements CauseCloseable {
     private Node removeInode(long nodeId) throws IOException {
         Node node = mFragmentCache.remove(nodeId);
         if (node == null) {
-            node = allocLatchedNode(false);
+            node = allocLatchedNode(nodeId, NodeUsageList.MODE_UNEVICTABLE);
             node.mId = nodeId;
             node.mType = TYPE_FRAGMENT;
             node.mCachedState = readNodePage(nodeId, node.mPage);
@@ -3659,7 +3709,7 @@ public final class Database implements CauseCloseable {
                 deleteNode(node);
             } else if (!mHasCheckpointed) {
                 // Page was never used if nothing has ever been checkpointed.
-                mAllocator.recyclePage(nodeId);
+                mPageDb.recyclePage(nodeId);
             } else {
                 // Page is clean if not in a Node, and so it must survive until
                 // after the next checkpoint.
@@ -3955,7 +4005,7 @@ public final class Database implements CauseCloseable {
         }
 
         try {
-            mAllocator.flushDirtyNodes(stateToFlush);
+            mDirtyList.flush(mPageDb, stateToFlush);
         } finally {
             mCheckpointFlushState = CHECKPOINT_NOT_FLUSHING;
         }
