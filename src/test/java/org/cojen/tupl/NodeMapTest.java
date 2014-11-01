@@ -37,7 +37,7 @@ public class NodeMapTest {
         NodeMap map = new NodeMap(size);
 
         for (int i=0; i<count; i++) {
-            Node n = new Node(10);
+            Node n = new Node(null, 10);
             n.mId = i;
             map.put(n, NodeMap.hash(i));
         }
@@ -65,7 +65,7 @@ public class NodeMapTest {
 
         Node[] nodes = new Node[count];
         for (int i=0; i<count; i++) {
-            Node n = new Node(10);
+            Node n = new Node(null, 10);
             n.mId = i;
             map.put(n, NodeMap.hash(i));
             nodes[i] = n;

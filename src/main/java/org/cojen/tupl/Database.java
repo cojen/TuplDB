@@ -175,11 +175,7 @@ public final class Database implements CauseCloseable {
 
     private final BufferPool mSpareBufferPool;
 
-    private final Latch mUsageLatch;
-    private int mMaxNodeCount;
-    private int mNodeCount;
-    private Node mMostRecentlyUsed;
-    private Node mLeastRecentlyUsed;
+    private final NodeUsageList mUsageList;
 
     private final Lock mSharedCommitLock;
 
@@ -345,14 +341,11 @@ public final class Database implements CauseCloseable {
         config.mMinCachedBytes = byteCountFromNodes(minCache, pageSize);
         config.mMaxCachedBytes = byteCountFromNodes(maxCache, pageSize);
 
-        mUsageLatch = new Latch();
-        mMaxNodeCount = maxCache;
-
         mDurabilityMode = config.mDurabilityMode;
         mDefaultLockTimeoutNanos = config.mLockTimeoutNanos;
         mLockManager = new LockManager(config.mLockUpgradeRule, mDefaultLockTimeoutNanos);
 
-        mTreeNodeMap = new NodeMap(mMaxNodeCount);
+        mTreeNodeMap = new NodeMap(maxCache);
 
         if (mBaseFile != null && !config.mReadOnly && config.mMkdirs) {
             FileFactory factory = config.mFileFactory;
@@ -466,19 +459,17 @@ public final class Database implements CauseCloseable {
                                       "Initializing %1$d cached nodes", minCache);
             }
 
+            NodeUsageList usageList = new NodeUsageList(this, maxCache);
             try {
-                for (int i=minCache; --i>=0; ) {
-                    mUsageLatch.acquireExclusive();
-                    doAllocLatchedNode(true).releaseExclusive();
-                }
+                usageList.preallocate(minCache);
             } catch (OutOfMemoryError e) {
-                mMostRecentlyUsed = null;
-                mLeastRecentlyUsed = null;
-
+                usageList = null;
                 throw new OutOfMemoryError
                     ("Unable to allocate the minimum required number of cached nodes: " +
                      minCache + " (" + (minCache * (long) (pageSize + NODE_OVERHEAD)) + " bytes)");
             }
+
+            mUsageList = usageList;
 
             if (mEventListener != null) {
                 double duration = (System.nanoTime() - cacheInitStart) / 1_000_000_000.0;
@@ -1654,9 +1645,7 @@ public final class Database implements CauseCloseable {
             mSharedCommitLock.unlock();
         }
 
-        mUsageLatch.acquireShared();
-        stats.mCachedPages = mNodeCount;
-        mUsageLatch.releaseShared();
+        stats.mCachedPages = mUsageList.size();
 
         if (!mPageDb.isDurable() && stats.mTotalPages == 0) {
             stats.mTotalPages = stats.mCachedPages;
@@ -2168,7 +2157,13 @@ public final class Database implements CauseCloseable {
             lock.lock();
         }
         try {
-            closeNodeCache();
+            if (mUsageList != null) {
+                mUsageList.close();
+            }
+
+            if (mTreeNodeMap != null) {
+                mTreeNodeMap.clear();
+            }
 
             if (mAllocator != null) {
                 mAllocator.clearDirtyNodes();
@@ -2189,7 +2184,9 @@ public final class Database implements CauseCloseable {
                 ex = closeQuietly(ex, mLockFile, cause);
             }
 
-            mLockManager.close();
+            if (mLockManager != null) {
+                mLockManager.close();
+            }
 
             if (ex != null) {
                 throw ex;
@@ -2225,7 +2222,7 @@ public final class Database implements CauseCloseable {
                 mOpenTreesById.remove(tree.mId);
             }
             if (newRoot != null) {
-                makeEvictableNow(newRoot);
+                newRoot.makeEvictableNow();
                 mTreeNodeMap.put(newRoot);
             }
         } finally {
@@ -2438,7 +2435,7 @@ public final class Database implements CauseCloseable {
                 rootNode.acquireShared();
                 try {
                     if (rootId == rootNode.mId) {
-                        makeUnevictable(rootNode);
+                        rootNode.makeUnevictable();
                         mTreeNodeMap.remove(rootNode, hash);
                         return rootNode;
                     }
@@ -2457,7 +2454,7 @@ public final class Database implements CauseCloseable {
                 try {
                     rootNode.read(this, rootId);
                 } catch (IOException e) {
-                    makeEvictableNow(rootNode);
+                    rootNode.makeEvictableNow();
                     throw e;
                 }
             }
@@ -2777,7 +2774,7 @@ public final class Database implements CauseCloseable {
                 }
                 mOpenTrees.remove(ref.mName);
                 mOpenTreesById.remove(ref.mId);
-                makeEvictableNow(root);
+                root.makeEvictableNow();
                 mTreeNodeMap.put(root);
             } finally {
                 mOpenTreesLatch.releaseExclusive();
@@ -2849,84 +2846,12 @@ public final class Database implements CauseCloseable {
      * @param evictable true if allocated node can be automatically evicted
      */
     Node allocLatchedNode(boolean evictable) throws IOException {
-        final Latch usageLatch = mUsageLatch;
         for (int trial = 1; trial <= 3; trial++) {
-            usageLatch.acquireExclusive();
-            alloc: {
-                int max = mMaxNodeCount;
+            Node node = mUsageList.tryAllocLatchedNode(trial, evictable);
 
-                if (max == 0) {
-                    break alloc;
-                }
-
-                if (mNodeCount < max &&
-                    (trial > 1
-                     || mLeastRecentlyUsed == null || mLeastRecentlyUsed.mMoreUsed == null))
-                {
-                    return doAllocLatchedNode(evictable);
-                }
-
-                if (!evictable && mLeastRecentlyUsed.mMoreUsed == mMostRecentlyUsed) {
-                    // Cannot allow list to shrink to less than two elements.
-                    break alloc;
-                }
-
-                do {
-                    Node node = mLeastRecentlyUsed;
-                    (mLeastRecentlyUsed = node.mMoreUsed).mLessUsed = null;
-                    node.mMoreUsed = null;
-                    (node.mLessUsed = mMostRecentlyUsed).mMoreUsed = node;
-                    mMostRecentlyUsed = node;
-
-                    if (!node.tryAcquireExclusive()) {
-                        continue;
-                    }
-
-                    if (trial == 1) {
-                        if (node.mCachedState != CACHED_CLEAN && mNodeCount < mMaxNodeCount) {
-                            // Grow the cache instead of evicting.
-                            node.releaseExclusive();
-                            return doAllocLatchedNode(evictable);
-                        }
-
-                        // For first attempt, release the usage latch early to prevent blocking
-                        // other allocations while node is evicted. Subsequent attempts retain
-                        // the latch, preventing potential allocation starvation.
-
-                        usageLatch.releaseExclusive();
-
-                        if ((node = Node.evict(node, this)) != null) {
-                            if (!evictable) {
-                                makeUnevictable(node);
-                            }
-                            // Return with node latch still held.
-                            return node;
-                        }
-
-                        usageLatch.acquireExclusive();
-
-                        if (mMaxNodeCount == 0) {
-                            break alloc;
-                        }
-                    } else {
-                        try {
-                            if ((node = Node.evict(node, this)) != null) {
-                                if (!evictable) {
-                                    doMakeUnevictable(node);
-                                }
-                                usageLatch.releaseExclusive();
-                                // Return with node latch still held.
-                                return node;
-                            }
-                        } catch (Throwable e) {
-                            usageLatch.releaseExclusive();
-                            throw e;
-                        }
-                    }
-                } while (--max > 0);
+            if (node != null) {
+                return node;
             }
-
-            usageLatch.releaseExclusive();
 
             checkClosed();
 
@@ -2941,62 +2866,6 @@ public final class Database implements CauseCloseable {
         }
 
         throw new CacheExhaustedException();
-    }
-
-    /**
-     * Caller must acquire mUsageLatch, which is released by this method.
-     */
-    private Node doAllocLatchedNode(boolean evictable) throws DatabaseException {
-        try {
-            checkClosed();
-            Node node = new Node(mPageSize);
-            node.acquireExclusive();
-            mNodeCount++;
-            if (evictable) {
-                if ((node.mLessUsed = mMostRecentlyUsed) == null) {
-                    mLeastRecentlyUsed = node;
-                } else {
-                    mMostRecentlyUsed.mMoreUsed = node;
-                }
-                mMostRecentlyUsed = node;
-            }
-            // Return with node latch still held.
-            return node;
-        } finally {
-            mUsageLatch.releaseExclusive();
-        }
-    }
-
-    /**
-     * Unlinks all nodes from each other in usage list, and prevents new nodes
-     * from being allocated.
-     */
-    private void closeNodeCache() {
-        final Latch usageLatch = mUsageLatch;
-        usageLatch.acquireExclusive();
-        try {
-            // Prevent new allocations.
-            mMaxNodeCount = 0;
-
-            Node node = mLeastRecentlyUsed;
-            mLeastRecentlyUsed = null;
-            mMostRecentlyUsed = null;
-
-            while (node != null) {
-                Node next = node.mMoreUsed;
-                node.mLessUsed = null;
-                node.mMoreUsed = null;
-
-                // Make node appear to be evicted.
-                node.mId = 0;
-
-                node = next;
-            }
-
-            mTreeNodeMap.clear();
-        } finally {
-            usageLatch.releaseExclusive();
-        }
     }
 
     /**
@@ -3024,89 +2893,10 @@ public final class Database implements CauseCloseable {
             dirty(node, mAllocator.allocPage(node));
             return node;
         } catch (IOException e) {
-            makeEvictableNow(node);
+            node.makeEvictableNow();
             node.releaseExclusive();
             throw e;
         }
-    }
-
-    /**
-     * Allow a Node which was allocated as unevictable to be evictable,
-     * starting off as the most recently used.
-     */
-    void makeEvictable(Node node) {
-        final Latch usageLatch = mUsageLatch;
-        usageLatch.acquireExclusive();
-        try {
-            if (mMaxNodeCount == 0) {
-                // Closed.
-                return;
-            }
-            if (node.mMoreUsed != null || node.mLessUsed != null) {
-                throw new IllegalStateException();
-            }
-            (node.mLessUsed = mMostRecentlyUsed).mMoreUsed = node;
-            mMostRecentlyUsed = node;
-        } finally {
-            usageLatch.releaseExclusive();
-        }
-    }
-
-    /**
-     * Allow a Node which was allocated as unevictable to be evictable, as the
-     * least recently used.
-     */
-    void makeEvictableNow(Node node) {
-        final Latch usageLatch = mUsageLatch;
-        usageLatch.acquireExclusive();
-        try {
-            if (mMaxNodeCount == 0) {
-                // Closed.
-                return;
-            }
-            if (node.mMoreUsed != null || node.mLessUsed != null) {
-                throw new IllegalStateException();
-            }
-            (node.mMoreUsed = mLeastRecentlyUsed).mLessUsed = node;
-            mLeastRecentlyUsed = node;
-        } finally {
-            usageLatch.releaseExclusive();
-        }
-    }
-
-    /**
-     * Allow a Node which was allocated as evictable to be unevictable.
-     */
-    void makeUnevictable(final Node node) {
-        final Latch usageLatch = mUsageLatch;
-        usageLatch.acquireExclusive();
-        try {
-            if (mMaxNodeCount == 0) {
-                // Closed.
-                return;
-            }
-            doMakeUnevictable(node);
-        } finally {
-            usageLatch.releaseExclusive();
-        }
-    }
-
-    /**
-     * Caller must hold mUsageLatch.
-     */
-    private void doMakeUnevictable(final Node node) {
-        final Node lessUsed = node.mLessUsed;
-        final Node moreUsed = node.mMoreUsed;
-        if (lessUsed == null) {
-            (mLeastRecentlyUsed = moreUsed).mLessUsed = null;
-        } else if (moreUsed == null) {
-            (mMostRecentlyUsed = lessUsed).mMoreUsed = null;
-        } else {
-            lessUsed.mMoreUsed = moreUsed;
-            moreUsed.mLessUsed = lessUsed;
-        }
-        node.mMoreUsed = null;
-        node.mLessUsed = null;
     }
 
     /**
@@ -3280,39 +3070,7 @@ public final class Database implements CauseCloseable {
             node.releaseExclusive();
         }
 
-        // Indicate that node is least recently used, allowing it to be
-        // re-allocated immediately without evicting another node. Node must be
-        // unlatched at this point, to prevent it from being immediately
-        // promoted to most recently used by allocLatchedNode.
-        final Latch usageLatch = mUsageLatch;
-        usageLatch.acquireExclusive();
-        try {
-            if (mMaxNodeCount == 0) {
-                // Closed.
-                return;
-            }
-            Node lessUsed = node.mLessUsed;
-            if (lessUsed == null) {
-                // Node might already be least...
-                if (node.mMoreUsed != null) {
-                    // ...confirmed.
-                    return;
-                }
-                // ...Node isn't in the usage list at all.
-            } else {
-                Node moreUsed = node.mMoreUsed;
-                if ((lessUsed.mMoreUsed = moreUsed) == null) {
-                    mMostRecentlyUsed = lessUsed;
-                } else {
-                    moreUsed.mLessUsed = lessUsed;
-                }
-                node.mLessUsed = null;
-            }
-            (node.mMoreUsed = mLeastRecentlyUsed).mLessUsed = node;
-            mLeastRecentlyUsed = node;
-        } finally {
-            usageLatch.releaseExclusive();
-        }
+        node.unused();
     }
 
     /**
@@ -3337,35 +3095,6 @@ public final class Database implements CauseCloseable {
      */
     void forceDeletePage(long id) throws IOException {
         mPageDb.deletePage(id);
-    }
-
-    /**
-     * Indicate that a non-root node is most recently used. Root node is not
-     * managed in usage list and cannot be evicted. Caller must hold any latch
-     * on node. Latch is never released by this method, even if an exception is
-     * thrown.
-     */
-    void used(Node node) {
-        // Because this method can be a bottleneck, don't wait for exclusive
-        // latch. If node is popular, it will get more chances to be identified
-        // as most recently used. This strategy works well enough because cache
-        // eviction is always a best-guess approach.
-        final Latch usageLatch = mUsageLatch;
-        if (usageLatch.tryAcquireExclusive()) {
-            Node moreUsed = node.mMoreUsed;
-            if (moreUsed != null) {
-                Node lessUsed = node.mLessUsed;
-                if ((moreUsed.mLessUsed = lessUsed) == null) {
-                    mLeastRecentlyUsed = moreUsed;
-                } else {
-                    lessUsed.mMoreUsed = moreUsed;
-                }
-                node.mMoreUsed = null;
-                (node.mLessUsed = mMostRecentlyUsed).mMoreUsed = node;
-                mMostRecentlyUsed = node;
-            }
-            usageLatch.releaseExclusive();
-        }
     }
 
     /**

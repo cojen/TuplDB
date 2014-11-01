@@ -333,7 +333,7 @@ final class UndoLog {
             }
 
             node.releaseExclusive();
-            mDatabase.makeEvictable(node);
+            node.makeEvictable();
             mNode = node = newNode;
         }
     }
@@ -754,9 +754,9 @@ final class UndoLog {
      */
     private Node popNode(Node parent, boolean delete) throws IOException {
         Node lowerNode = latchLowerNode(parent);
-        Database db = mDatabase;
-        db.makeEvictable(parent);
+        parent.makeEvictable();
         if (delete) {
+            Database db = mDatabase;
             db.prepareToDelete(parent);
             // Safer to never recycle undo log nodes. Keep them until the next checkpoint, when
             // there's a guarantee that the master undo log will not reference them anymore.
@@ -781,7 +781,7 @@ final class UndoLog {
         if (lowerNode != null) {
             lowerNode.acquireExclusive();
             if (lowerNodeId == lowerNode.mId) {
-                mDatabase.makeUnevictable(lowerNode);
+                lowerNode.makeUnevictable();
                 return lowerNode;
             }
             lowerNode.releaseExclusive();

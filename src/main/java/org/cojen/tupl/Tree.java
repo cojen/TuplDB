@@ -464,7 +464,7 @@ class Tree implements Index {
 
             Node discard = root.cloneNode(false);
             root.closeRoot();
-            mDatabase.makeEvictable(discard);
+            discard.makeEvictable();
         } finally {
             root.releaseExclusive();
         }

@@ -69,7 +69,10 @@ final class Node extends Latch {
 
     static final int VALUE_FRAGMENTED = 0x40;
 
-    // Links within usage list, guarded by Database.mUsageLatch.
+    // Usage list this node belongs to.
+    private final NodeUsageList mUsageList;
+
+    // Links within usage list, guarded by NodeUsageList.
     Node mMoreUsed; // points to more recently used node
     Node mLessUsed; // points to less recently used node
 
@@ -218,11 +221,12 @@ final class Node extends Latch {
     // Set by a partially completed split.
     Split mSplit;
 
-    Node(int pageSize) {
-        mPage = new byte[pageSize];
+    Node(NodeUsageList usageList, int pageSize) {
+        this(usageList, new byte[pageSize]);
     }
 
-    private Node(byte[] page) {
+    private Node(NodeUsageList usageList, byte[] page) {
+        mUsageList = usageList;
         mPage = page;
     }
 
@@ -261,7 +265,7 @@ final class Node extends Latch {
      * @param full when false, only wrap the page instance
      */
     Node cloneNode(boolean full) {
-        Node newNode = new Node(mPage);
+        Node newNode = new Node(mUsageList, mPage);
         if (full) {
             newNode.mId = mId;
             newNode.mCachedState = mCachedState;
@@ -283,6 +287,47 @@ final class Node extends Latch {
         // Search vector location must be even.
         mSearchVecStart = (TN_HEADER_SIZE + ((pageSize - TN_HEADER_SIZE) >> 1)) & ~1;
         mSearchVecEnd = mSearchVecStart - 2; // inclusive
+    }
+
+    /**
+     * Indicate that a non-root node is most recently used. Root node is not managed in usage
+     * list and cannot be evicted. Caller must hold any latch on node. Latch is never released
+     * by this method, even if an exception is thrown.
+     */
+    void used() {
+        mUsageList.used(this);
+    }
+
+    /**
+     * Indicate that node is least recently used, allowing it to be recycled immediately
+     * without evicting another node. Node must be unlatched at this point, to prevent it from
+     * being immediately promoted to most recently used by tryAllocLatchedNode.
+     */
+    void unused() {
+        mUsageList.unused(this);
+    }
+
+    /**
+     * Allow a Node which was allocated as unevictable to be evictable, starting off as the
+     * most recently used.
+     */
+    void makeEvictable() {
+        mUsageList.makeEvictable(this);
+    }
+
+    /**
+     * Allow a Node which was allocated as unevictable to be evictable, as the least recently
+     * used.
+     */
+    void makeEvictableNow() {
+        mUsageList.makeEvictableNow(this);
+    }
+
+    /**
+     * Allow a Node which was allocated as evictable to be unevictable.
+     */
+    void makeUnevictable() {
+        mUsageList.makeUnevictable(this);
     }
 
     /**
@@ -342,7 +387,7 @@ final class Node extends Latch {
 
                 if (childNode.isLeaf()) {
                     node.release(exclusiveHeld);
-                    tree.mDatabase.used(childNode);
+                    childNode.used();
                     return childNode.subSearchLeaf(tree, key);
                 } else {
                     // Keep shared latch on this parent node, in case sub search
@@ -351,7 +396,7 @@ final class Node extends Latch {
                         node.downgrade();
                         exclusiveHeld = false;
                     }
-                    tree.mDatabase.used(childNode);
+                    childNode.used();
                     // Tail call: return subSearch(tree, childNode, node, key, false);
                     parentLatch = node;
                     node = childNode;
@@ -652,7 +697,7 @@ final class Node extends Latch {
         sibling.releaseExclusive();
 
         // Split complete, so allow new node to be evictable.
-        db.makeEvictable(sibling);
+        sibling.makeEvictable();
 
         if (stub != null) {
             stub.releaseExclusive();
@@ -862,7 +907,7 @@ final class Node extends Latch {
     }
 
     private static Node createEmptyNode(byte type) {
-        Node empty = new Node(EMPTY_BYTES);
+        Node empty = new Node(null, EMPTY_BYTES);
         empty.mId = STUB_ID;
         empty.mCachedState = CACHED_CLEAN;
         empty.mType = type;
@@ -2189,7 +2234,7 @@ final class Node extends Latch {
 
         try {
             // Split complete, so allow new node to be evictable.
-            tree.mDatabase.makeEvictable(newChild);
+            newChild.makeEvictable();
         } catch (Throwable e) {
             releaseExclusive();
             throw e;
