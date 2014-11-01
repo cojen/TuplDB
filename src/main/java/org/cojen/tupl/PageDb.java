@@ -48,6 +48,11 @@ abstract class PageDb implements CauseCloseable {
     public abstract boolean isDurable();
 
     /**
+     * @return 0 or NodeUsageList.MODE_NO_EVICT
+     */
+    public abstract int allocMode();
+
+    /**
      * Returns the fixed size of all pages in the store, in bytes.
      */
     public abstract int pageSize();

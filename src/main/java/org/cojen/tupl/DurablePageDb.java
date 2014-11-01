@@ -303,6 +303,11 @@ class DurablePageDb extends PageDb {
     }
 
     @Override
+    public int allocMode() {
+        return 0;
+    }
+
+    @Override
     public int pageSize() {
         return mPageArray.pageSize();
     }

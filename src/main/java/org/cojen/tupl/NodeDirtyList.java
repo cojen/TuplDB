@@ -19,15 +19,11 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 /**
- * Tracks a list of pages which were allocated, allowing them to be iterated
- * over in the original order.
+ * List of dirty nodes.
  *
  * @author Brian S O'Neill
  */
-final class PageAllocator {
-    private final PageDb mPageDb;
-    private final Latch mLatch;
-
+final class NodeDirtyList extends Latch {
     // Linked list of dirty nodes.
     private Node mFirstDirty;
     private Node mLastDirty;
@@ -35,26 +31,14 @@ final class PageAllocator {
     // Iterator over dirty nodes.
     private Node mFlushNext;
 
-    PageAllocator(PageDb source) {
-        mPageDb = source;
-        mLatch = new Latch();
-    }
-
-    /**
-     * @param forNode node which needs a new page; must be latched
-     */
-    long allocPage(Node forNode) throws IOException {
-        // When allocations are in order, the list maintains the order.
-        dirty(forNode);
-        return mPageDb.allocPage();
+    NodeDirtyList() {
     }
 
     /**
      * Move or add node to the end of the dirty list.
      */
-    void dirty(Node node) {
-        final Latch latch = mLatch;
-        latch.acquireExclusive();
+    void add(Node node) {
+        acquireExclusive();
         try {
             final Node next = node.mNextDirty;
             final Node prev = node.mPrevDirty;
@@ -84,7 +68,7 @@ final class PageAllocator {
                 mFlushNext = next;
             }
         } finally {
-            latch.releaseExclusive();
+            releaseExclusive();
         }
     }
 
@@ -93,8 +77,7 @@ final class PageAllocator {
      * the nodes is not altered.
      */
     void swapIfDirty(Node oldNode, Node newNode) {
-        final Latch latch = mLatch;
-        latch.acquireExclusive();
+        acquireExclusive();
         try {
             Node next = oldNode.mNextDirty;
             if (next != null) {
@@ -118,28 +101,22 @@ final class PageAllocator {
                 mFlushNext = newNode;
             }
         } finally {
-            latch.releaseExclusive();
+            releaseExclusive();
         }
-    }
-
-    void recyclePage(long id) throws IOException {
-        mPageDb.recyclePage(id);
     }
 
     /**
      * Flush all nodes matching the given state. Only one flush at a time is allowed.
      */
-    void flushDirtyNodes(final int dirtyState) throws IOException {
-        final Latch latch = mLatch;
-
-        latch.acquireExclusive();
+    void flush(final PageDb pageDb, final int dirtyState) throws IOException {
+        acquireExclusive();
         mFlushNext = mFirstDirty;
-        latch.releaseExclusive();
+        releaseExclusive();
 
         while (true) {
             Node node;
             while (true) {
-                latch.acquireExclusive();
+                acquireExclusive();
                 try {
                     node = mFlushNext;
                     if (node == null) {
@@ -147,7 +124,7 @@ final class PageAllocator {
                     }
                     mFlushNext = node.mNextDirty;
                 } finally {
-                    latch.releaseExclusive();
+                    releaseExclusive();
                 }
 
                 node.acquireExclusive();
@@ -160,7 +137,7 @@ final class PageAllocator {
             // Remove from list. Because allocPage requires nodes to be latched,
             // there's no need to update mFlushNext. The removed node will never be
             // the same as mFlushNext.
-            latch.acquireExclusive();
+            acquireExclusive();
             try {
                 Node next = node.mNextDirty;
                 Node prev = node.mPrevDirty;
@@ -177,12 +154,12 @@ final class PageAllocator {
                     mFirstDirty = next;
                 }
             } finally {
-                latch.releaseExclusive();
+                releaseExclusive();
             }
 
             node.downgrade();
             try {
-                node.write(mPageDb);
+                node.write(pageDb);
                 // Clean state must be set after write completes. Although latch has been
                 // downgraded to shared, modifying the state is safe because no other thread
                 // could have changed it. This is because the exclusive latch was acquired
@@ -198,8 +175,8 @@ final class PageAllocator {
     /**
      * Remove all nodes from dirty list, as part of close sequence.
      */
-    void clearDirtyNodes() {
-        mLatch.acquireExclusive();
+    void clear() {
+        acquireExclusive();
         try {
             Node node = mFirstDirty;
             mFlushNext = null;
@@ -212,7 +189,7 @@ final class PageAllocator {
                 node = next;
             }
         } finally {
-            mLatch.releaseExclusive();
+            releaseExclusive();
         }
     }
 }

@@ -49,6 +49,11 @@ final class NonPageDb extends PageDb {
     }
 
     @Override
+    public int allocMode() {
+        return NodeUsageList.MODE_NO_EVICT;
+    }
+
+    @Override
     public int pageSize() {
         return mPageSize;
     }

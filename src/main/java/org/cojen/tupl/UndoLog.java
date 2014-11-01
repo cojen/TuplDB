@@ -1051,7 +1051,7 @@ final class UndoLog {
      * @return latched, unevictable node
      */
     private static Node readUndoLogNode(Database db, long nodeId) throws IOException {
-        Node node = db.allocLatchedNode(false);
+        Node node = db.allocLatchedNode(nodeId, NodeUsageList.MODE_UNEVICTABLE);
         node.read(db, nodeId);
         if (node.mType != Node.TYPE_UNDO_LOG) {
             throw new CorruptDatabaseException

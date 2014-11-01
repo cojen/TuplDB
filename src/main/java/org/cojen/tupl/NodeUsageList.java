@@ -26,6 +26,12 @@ import static org.cojen.tupl.Node.*;
  * @author Brian S O'Neill
  */
 final class NodeUsageList extends Latch {
+    // Allocate an unevictable node.
+    static final int MODE_UNEVICTABLE = 1;
+
+    // Don't evict a node when trying to allocate another.
+    static final int MODE_NO_EVICT = 2;
+
     private final Database mDb;
     private int mMaxSize;
     private int mSize;
@@ -39,6 +45,23 @@ final class NodeUsageList extends Latch {
         releaseExclusive();
     }
 
+    /**
+     * Initialize and preallocate a minimum amount of nodes.
+     */
+    void initialize(int min) throws DatabaseException, OutOfMemoryError {
+        // Least recently used node must always point to a valid, more recently used node.
+        min = Math.max(min, 2);
+
+        while (--min >= 0) {
+            acquireExclusive();
+            if (mSize >= mMaxSize) {
+                releaseExclusive();
+                break;
+            }
+            doAllocLatchedNode(0).releaseExclusive();
+        }
+    }
+
     int size() {
         acquireShared();
         int size = mSize;
@@ -47,28 +70,14 @@ final class NodeUsageList extends Latch {
     }
 
     /**
-     * Preallocate a minimum amount of nodes.
-     */
-    void preallocate(int min) throws DatabaseException, OutOfMemoryError {
-        while (--min >= 0) {
-            acquireExclusive();
-            if (mSize >= mMaxSize) {
-                releaseExclusive();
-                break;
-            }
-            doAllocLatchedNode(true).releaseExclusive();
-        }
-    }
-
-    /**
      * Returns a new or recycled Node instance, latched exclusively, with an id
      * of zero and a clean state.
      *
      * @param trial pass 1 for less aggressive recycle attempt
-     * @param evictable true if allocated node can be automatically evicted
+     * @param mode MODE_UNEVICTABLE | MODE_NO_EVICT
      * @return null if no nodes can be recycled or created
      */
-    Node tryAllocLatchedNode(int trial, boolean evictable) throws IOException {
+    Node tryAllocLatchedNode(int trial, int mode) throws IOException {
         acquireExclusive();
         alloc: {
             int max = mMaxSize;
@@ -81,10 +90,12 @@ final class NodeUsageList extends Latch {
                 (trial > 1
                  || mLeastRecentlyUsed == null || mLeastRecentlyUsed.mMoreUsed == null))
             {
-                return doAllocLatchedNode(evictable);
+                return doAllocLatchedNode(mode);
             }
 
-            if (!evictable && mLeastRecentlyUsed.mMoreUsed == mMostRecentlyUsed) {
+            if ((mode & MODE_UNEVICTABLE) != 0
+                && mLeastRecentlyUsed.mMoreUsed == mMostRecentlyUsed)
+            {
                 // Cannot allow list to shrink to less than two elements.
                 break alloc;
             }
@@ -101,10 +112,15 @@ final class NodeUsageList extends Latch {
                 }
 
                 if (trial == 1) {
-                    if (node.mCachedState != CACHED_CLEAN && mSize < mMaxSize) {
-                        // Grow the cache instead of evicting.
-                        node.releaseExclusive();
-                        return doAllocLatchedNode(evictable);
+                    if (node.mCachedState != CACHED_CLEAN) {
+                        if (mSize < mMaxSize) {
+                            // Grow the cache instead of evicting.
+                            node.releaseExclusive();
+                            return doAllocLatchedNode(mode);
+                        } else if ((mode & MODE_NO_EVICT) != 0) {
+                            node.releaseExclusive();
+                            break alloc;
+                        }
                     }
 
                     // For first attempt, release the latch early to prevent blocking other
@@ -114,8 +130,8 @@ final class NodeUsageList extends Latch {
                     releaseExclusive();
 
                     if ((node = Node.evict(node, mDb)) != null) {
-                        if (!evictable) {
-                            makeUnevictable(node);
+                        if ((mode & MODE_UNEVICTABLE) != 0) {
+                            node.mUsageList.makeUnevictable(node);
                         }
                         // Return with node latch still held.
                         return node;
@@ -126,11 +142,18 @@ final class NodeUsageList extends Latch {
                     if (mMaxSize == 0) {
                         break alloc;
                     }
+                } else if ((mode & MODE_NO_EVICT) != 0) {
+                    if (node.mCachedState != CACHED_CLEAN) {
+                        // MODE_NO_EVICT is only used by non-durable database. It ensures that
+                        // all clean nodes are least recently used, so no need to keep looking.
+                        node.releaseExclusive();
+                        break alloc;
+                    }
                 } else {
                     try {
                         if ((node = Node.evict(node, mDb)) != null) {
-                            if (!evictable) {
-                                doMakeUnevictable(node);
+                            if ((mode & MODE_UNEVICTABLE) != 0) {
+                                node.mUsageList.doMakeUnevictable(node);
                             }
                             releaseExclusive();
                             // Return with node latch still held.
@@ -151,14 +174,16 @@ final class NodeUsageList extends Latch {
 
     /**
      * Caller must acquire latch, which is released by this method.
+     *
+     * @param mode MODE_UNEVICTABLE
      */
-    private Node doAllocLatchedNode(boolean evictable) throws DatabaseException {
+    private Node doAllocLatchedNode(int mode) throws DatabaseException {
         try {
             mDb.checkClosed();
             Node node = new Node(this, mDb.mPageSize);
             node.acquireExclusive();
             mSize++;
-            if (evictable) {
+            if ((mode & MODE_UNEVICTABLE) == 0) {
                 if ((node.mLessUsed = mMostRecentlyUsed) == null) {
                     mLeastRecentlyUsed = node;
                 } else {

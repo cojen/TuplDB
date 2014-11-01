@@ -51,7 +51,7 @@ class FragmentCache {
             node.releaseShared();
         }
 
-        node = mDatabase.allocLatchedNode();
+        node = mDatabase.allocLatchedNode(nodeId);
         node.mId = nodeId;
         node.mType = TYPE_FRAGMENT;
 
@@ -82,7 +82,7 @@ class FragmentCache {
             node.releaseExclusive();
         }
 
-        node = mDatabase.allocLatchedNode();
+        node = mDatabase.allocLatchedNode(nodeId);
         node.mId = nodeId;
         node.mType = TYPE_FRAGMENT;
 
