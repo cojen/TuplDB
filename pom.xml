@@ -52,7 +52,7 @@
         <version>2.9</version>
           <configuration>
             <javadocVersion>1.7</javadocVersion>
-            <detectJavaApiLink>false</detectJavaApiLink>
+            <detectJavaApiLink>true</detectJavaApiLink>
             <links>
               <link>http://docs.oracle.com/javase/7/docs/api</link>
             </links>
