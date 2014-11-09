@@ -1022,7 +1022,10 @@ final class Node extends Latch {
     }
 
     boolean shouldMerge(int availBytes) {
-        return mSplit == null && availBytes >= ((mPage.length - TN_HEADER_SIZE) >> 1);
+        return mSplit == null
+            & (((mType & (LOW_EXTREMITY | HIGH_EXTREMITY)) == 0
+                 & availBytes >= ((mPage.length - TN_HEADER_SIZE) >> 1))
+                | !hasKeys());
     }
 
     /**
