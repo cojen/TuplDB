@@ -30,7 +30,7 @@ import static org.cojen.tupl.Utils.*;
  *
  * @author Brian S O'Neill
  */
-class FragmentedTrash {
+final class FragmentedTrash {
     final Tree mTrash;
 
     /**

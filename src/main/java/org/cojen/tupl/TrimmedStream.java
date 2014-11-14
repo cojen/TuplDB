@@ -23,7 +23,7 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-class TrimmedStream extends WrappedStream {
+final class TrimmedStream extends WrappedStream {
     private final TrimmedView mView;
 
     TrimmedStream(TrimmedView view, Stream source) {

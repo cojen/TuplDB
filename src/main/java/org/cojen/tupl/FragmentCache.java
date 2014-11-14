@@ -25,7 +25,7 @@ import static org.cojen.tupl.Node.*;
  *
  * @author Brian S O'Neill
  */
-class FragmentCache {
+final class FragmentCache {
     private final Database mDatabase;
     private final NodeMap mNodeMap;
 

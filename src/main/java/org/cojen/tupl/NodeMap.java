@@ -21,7 +21,7 @@ package org.cojen.tupl;
  *
  * @author Brian S O'Neill
  */
-class NodeMap {
+final class NodeMap {
     private final Node[] mTable;
     private final Latch[] mLatches;
 

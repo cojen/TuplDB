@@ -41,7 +41,7 @@ import static org.cojen.tupl.io.Utils.*;
  *
  * @author Brian S O'Neill
  */
-class JavaFileIO extends FileIO {
+final class JavaFileIO extends FileIO {
     private static final int MAPPING_SHIFT = 30;
     private static final int MAPPING_SIZE = 1 << MAPPING_SHIFT;
 

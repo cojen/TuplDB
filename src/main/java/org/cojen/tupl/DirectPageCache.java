@@ -30,7 +30,7 @@ import java.nio.IntBuffer;
  *
  * @author Brian S O'Neill
  */
-class DirectPageCache extends Latch implements PageCache {
+final class DirectPageCache extends Latch implements PageCache {
     /*
       Node format:
 

@@ -55,7 +55,7 @@ import static org.cojen.tupl.Utils.*;
  *
  * @author Brian S O'Neill
  */
-class DurablePageDb extends PageDb {
+final class DurablePageDb extends PageDb {
     /*
 
     Header format for first and second pages in file, which is always 512 bytes:

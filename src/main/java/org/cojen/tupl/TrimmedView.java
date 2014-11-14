@@ -23,7 +23,7 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-class TrimmedView implements View {
+final class TrimmedView implements View {
     private final View mSource;
     private final byte[] mPrefix;
     final int mTrim;

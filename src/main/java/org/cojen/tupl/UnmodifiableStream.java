@@ -24,7 +24,7 @@ import java.io.OutputStream;
  *
  * @author Brian S O'Neill
  */
-class UnmodifiableStream extends WrappedStream {
+final class UnmodifiableStream extends WrappedStream {
     UnmodifiableStream(Stream source) {
         super(source);
     }

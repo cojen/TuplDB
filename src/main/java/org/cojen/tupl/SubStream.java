@@ -23,7 +23,7 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-class SubStream extends WrappedStream {
+final class SubStream extends WrappedStream {
     private final SubView mView;
 
     SubStream(SubView view, Stream source) {

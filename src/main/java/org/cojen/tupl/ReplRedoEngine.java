@@ -32,7 +32,7 @@ import static org.cojen.tupl.Utils.*;
  *
  * @author Brian S O'Neill
  */
-class ReplRedoEngine implements RedoVisitor {
+final class ReplRedoEngine implements RedoVisitor {
     private final static long INFINITE_TIMEOUT = -1L;
 
     final ReplicationManager mManager;
@@ -911,7 +911,7 @@ class ReplRedoEngine implements RedoVisitor {
         return (++cTaskNumber) & 0xffffffffL;
     }
 
-    class DecodeTask extends Thread {
+    final class DecodeTask extends Thread {
         DecodeTask() {
             super("ReplicationReceiver-" + taskNumber());
             setDaemon(true);

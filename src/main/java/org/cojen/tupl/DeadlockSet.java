@@ -26,7 +26,7 @@ import java.util.Set;
  * @author Brian S O'Neill
  * @see DeadlockException
  */
-public class DeadlockSet implements Serializable {
+public final class DeadlockSet implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final long[] mIndexIds;

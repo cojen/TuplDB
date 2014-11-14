@@ -24,7 +24,7 @@ import java.io.IOException;
  * @author Brian S O'Neill
  * @see RedoLogRecovery
  */
-class RedoLogApplier implements RedoVisitor {
+final class RedoLogApplier implements RedoVisitor {
     private final Database mDb;
     private final LHashTable.Obj<Transaction> mTransactions;
     private final LHashTable.Obj<Index> mIndexes;
