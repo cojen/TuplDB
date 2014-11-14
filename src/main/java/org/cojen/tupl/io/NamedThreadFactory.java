@@ -23,7 +23,7 @@ import java.util.concurrent.ThreadFactory;
  *
  * @author Brian S O'Neill
  */
-class NamedThreadFactory implements ThreadFactory {
+final class NamedThreadFactory implements ThreadFactory {
     private static int cThreadCounter;
 
     private final String mPrefix;

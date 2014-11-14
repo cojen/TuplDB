@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @author Brian S O'Neill
  */
-class PartitionedPageCache implements PageCache {
+final class PartitionedPageCache implements PageCache {
     private final DirectPageCache[] mPartitions;
     private final long mPartitionShift;
     private final long mCapacity;

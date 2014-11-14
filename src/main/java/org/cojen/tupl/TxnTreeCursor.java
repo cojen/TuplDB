@@ -23,7 +23,7 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-class TxnTreeCursor extends TreeCursor {
+final class TxnTreeCursor extends TreeCursor {
     TxnTreeCursor(TxnTree tree, Transaction txn) {
         super(tree, txn);
     }

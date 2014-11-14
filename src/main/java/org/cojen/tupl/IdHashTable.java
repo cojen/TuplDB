@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
  *
  * @author Brian S O'Neill
  */
-class IdHashTable<V> {
+final class IdHashTable<V> {
     private final int mInitalSegmentCapacity;
     private final AtomicReferenceArray<LHashTable.Obj<V>> mSegments;
     private final long mSegmentShift;

@@ -25,7 +25,7 @@ import java.io.IOException;
  * @author Brian S O'Neill
  * @see RedoLog
  */
-class RedoLogDecoder extends RedoDecoder {
+final class RedoLogDecoder extends RedoDecoder {
     private final RedoLog mLog;
     private final DataIn mIn;
     private final EventListener mListener;

@@ -27,7 +27,7 @@ import org.cojen.tupl.io.PageArray;
  *
  * @author Brian S O'Neill
  */
-class CryptoPageArray extends PageArray {
+final class CryptoPageArray extends PageArray {
     private final PageArray mSource;
     private final Crypto mCrypto;
 

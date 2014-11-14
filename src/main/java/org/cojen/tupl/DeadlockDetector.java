@@ -30,7 +30,7 @@ import java.util.Set;
  *
  * @author Brian S O'Neill
  */
-class DeadlockDetector {
+final class DeadlockDetector {
     // Note: This code does not consider proper thread-safety and directly
     // examines the contents of locks and lockers. It never modifies anything,
     // so it is relatively safe and deadlocks are usually detectable. All

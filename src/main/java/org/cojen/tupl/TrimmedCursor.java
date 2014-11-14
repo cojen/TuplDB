@@ -23,7 +23,7 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-class TrimmedCursor implements Cursor {
+final class TrimmedCursor implements Cursor {
     private final TrimmedView mView;
     private final Cursor mSource;
     private final int mTrim;

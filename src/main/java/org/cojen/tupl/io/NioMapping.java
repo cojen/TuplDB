@@ -31,7 +31,7 @@ import static java.nio.channels.FileChannel.MapMode.*;
  *
  * @author Brian S O'Neill
  */
-class NioMapping extends Mapping {
+final class NioMapping extends Mapping {
     private final RandomAccessFile mRaf;
     private final FileChannel mChannel;
     private final MappedByteBuffer mBuffer;
