@@ -188,7 +188,7 @@ final class ReplRedoWriter extends RedoWriter {
     void write(byte[] buffer, int len) throws IOException {
         // Length check is included because super class can invoke this method to flush the
         // buffer even when empty. Operation should never fail.
-        if (len > 0 && !mManager.write(buffer, 0, len)) {
+        if (len > 0 && mManager.write(buffer, 0, len) < 0) {
             throw unmodifiable();
         }
     }
@@ -198,7 +198,7 @@ final class ReplRedoWriter extends RedoWriter {
         // Length check is included because super class can invoke this method to flush the
         // buffer even when empty. Operation should never fail.
         if (len > 0) {
-            long pos = mManager.writeCommit(buffer, 0, len);
+            long pos = mManager.write(buffer, 0, len);
             if (pos >= 0) {
                 mLeaderCommitPos = pos;
                 mLeaderCommitTxnId = lastTransactionId();

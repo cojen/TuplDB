@@ -89,19 +89,12 @@ public interface ReplicationManager extends Closeable {
     void flip();
 
     /**
-     * Fully writes the given data, returning false if local instance is not the leader.
-     *
-     * @return false if not leader
-     */
-    boolean write(byte[] b, int off, int len) throws IOException;
-
-    /**
-     * Fully writes and commits the given data, defining a confirmation position. When the
-     * local instance loses leadership, all data rolls back to the highest confirmed position.
+     * Fully writes the given data, returning a confirmation position. When the local instance
+     * loses leadership, all data rolls back to the highest confirmed position.
      *
      * @return confirmation position, or -1 if not leader
      */
-    long writeCommit(byte[] b, int off, int len) throws IOException;
+    long write(byte[] b, int off, int len) throws IOException;
 
     /**
      * Blocks until all data up to the given log position is confirmed.
