@@ -45,14 +45,6 @@ final class RedoLog extends RedoWriter {
     private static final long MAGIC_NUMBER = 431399725605778814L;
     private static final int ENCODING_VERSION = 20130106;
 
-    static int randomInt() {
-        Random rnd = new Random();
-        int x;
-        // Cannot return zero, since it breaks Xorshift RNG.
-        while ((x = rnd.nextInt()) == 0);
-        return x;
-    }
-
     private final Crypto mCrypto;
     private final File mBaseFile;
     private final FileFactory mFileFactory;
@@ -211,7 +203,7 @@ final class RedoLog extends RedoWriter {
             }
         }
 
-        mNextTermRndSeed = randomInt();
+        mNextTermRndSeed = Utils.randomSeed();
 
         byte[] buf = new byte[8 + 4 + 8 + 4];
         int offset = 0;
@@ -418,14 +410,8 @@ final class RedoLog extends RedoWriter {
     }
 
     // Caller must be synchronized (replay is exempt)
-    int nextTermRnd() throws IOException {
-        // Xorshift RNG by George Marsaglia.
-        int x = mTermRndSeed;
-        x ^= x << 13;
-        x ^= x >>> 17;
-        x ^= x << 5;
-        mTermRndSeed = x;
-        return x;
+    int nextTermRnd() {
+        return mTermRndSeed = Utils.nextRandom(mTermRndSeed);
     }
 
     private boolean replay(DataIn in, RedoVisitor visitor, EventListener listener)

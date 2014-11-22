@@ -599,10 +599,7 @@ class Locker {
     public final int hashCode() {
         int hash = mHashCode;
         if (hash == 0) {
-            // Scramble the hashcode a bit, just like HashMap does.
-            hash = super.hashCode();
-            hash ^= (hash >>> 20) ^ (hash >>> 12);
-            return mHashCode = hash ^ (hash >>> 7) ^ (hash >>> 4);
+            mHashCode = hash = Utils.randomSeed();
         }
         return hash;
     }
