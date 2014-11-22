@@ -1,6 +1,11 @@
 Changelog
 =========
 
+v1.1.8
+------
+* Stripe page allocation to improve concurrency.
+* Merge extremity nodes less aggressively, optimizing for queue access patterns.
+
 v1.1.7
 ------
 * Fix for temporary deadlock at the beginning of a checkpoint.
