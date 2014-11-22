@@ -59,14 +59,36 @@ class Utils extends org.cojen.tupl.io.Utils {
         return new BigInteger(temp);
     }
 
-    private static Random cRnd;
-
+    private static final Random cRnd = new Random();
+    
     static Random random() {
-        Random rnd = cRnd;
-        if (rnd == null) {
-            cRnd = rnd = new Random();
+        return cRnd;
+    }
+
+    private static int cSeedMix = cRnd.nextInt();
+
+    /**
+     * @return non-zero random number, suitable for Xorshift RNG or object hashcode
+     */
+    static int randomSeed() {
+        long id = Thread.currentThread().getId();
+        int seed = ((int) id) ^ ((int) (id >>> 32)) ^ cSeedMix;
+        if (seed == 0) {
+            while ((seed = cRnd.nextInt()) == 0);
         }
-        return rnd;
+        cSeedMix = nextRandom(seed);
+        return seed;
+    }
+
+    /**
+     * @param seed must not be zero
+     * @return next random number using Xorshift RNG by George Marsaglia (also next seed)
+     */
+    static int nextRandom(int seed) {
+        seed ^= seed << 13;
+        seed ^= seed >>> 17;
+        seed ^= seed << 5;
+        return seed;
     }
 
     /**
