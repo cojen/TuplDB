@@ -112,19 +112,10 @@ final class PageManager {
             if (actualPageCount > mTotalPageCount) {
                 if (!array.isReadOnly()) {
                     // Truncate extra uncommitted pages.
-                    /*
-                    System.out.println("Page count is too large: "
-                                       + actualPageCount + " > " + mTotalPageCount);
-                    */
                     array.setPageCount(mTotalPageCount);
                 }
             } else if (actualPageCount < mTotalPageCount) {
-                /* TODO: can be caused by pre-allocated append tail node
-                System.out.println("Page count is too small: " + actualPageCount + " < " +
-                                   mTotalPageCount);
-                throw new CorruptPageStoreException
-                    ("Page count is too small: " + actualPageCount + " < " + mTotalPageCount);
-                */
+                // Not harmful -- can be caused by pre-allocated append tail node.
             }
 
             PageQueue reserve;
