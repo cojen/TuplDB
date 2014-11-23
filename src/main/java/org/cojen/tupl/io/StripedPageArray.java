@@ -83,6 +83,9 @@ public class StripedPageArray extends PageArray {
         long count = 0;
         for (PageArray pa : mArrays) {
             count += pa.getPageCount();
+            if (count < 0) {
+                return Long.MAX_VALUE;
+            }
         }
         return count;
     }

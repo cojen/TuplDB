@@ -46,12 +46,14 @@ public abstract class PageArray implements CauseCloseable {
     public abstract boolean isEmpty() throws IOException;
 
     /**
-     * Returns the total count of pages in the array.
+     * Returns the total count of pages in the array or Long.MAX_VALUE if not applicable.
      */
     public abstract long getPageCount() throws IOException;
 
     /**
-     * Set the total count of pages, truncating or growing the array as necessary.
+     * Set the total count of pages, truncating or growing the array as necessary. Array
+     * implementation might not support setting the page count, in which case this method does
+     * nothing.
      *
      * @throws IllegalArgumentException if count is negative
      */
