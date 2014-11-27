@@ -16,6 +16,9 @@
 
 package org.cojen.tupl;
 
+import java.io.InputStream;
+import java.io.OutputStream;
+
 import java.util.Arrays;
 import java.util.Random;
 
@@ -148,12 +151,6 @@ public class StreamTest {
     @Test
     public void readFragmented3() throws Exception {
         readFragmented(true, false);
-    }
-
-    @Ignore // FIXME
-    @Test
-    public void readFragmented4() throws Exception {
-        readFragmented(true, true);
     }
 
     private void readFragmented(boolean useWrite, boolean setLength) throws Exception {
@@ -421,5 +418,158 @@ public class StreamTest {
         }
 
         ix.verify(null);
+    }
+
+    @Test
+    public void inputRead() throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        final long seed = 1984574;
+        Random rnd = new Random(seed);
+
+        byte[] key = "input".getBytes();
+        byte[] value = randomStr(rnd, 100000);
+
+        Stream s = ix.newStream();
+        s.open(null, key);
+        InputStream in = s.newInputStream(0, 101);
+
+        try {
+            in.read();
+            fail();
+        } catch (NoSuchValueException e) {
+        }
+
+        in.close();
+
+        try {
+            in.read();
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        ix.store(null, key, value);
+
+        s = ix.newStream();
+        s.open(null, key);
+        in = s.newInputStream(0, 101);
+
+        for (int i=0; i<value.length; i++) {
+            assertEquals(value[i], in.read());
+        }
+
+        assertEquals(-1, in.read());
+
+        in.close();
+
+        try {
+            in.read();
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        assertEquals(0, in.available());
+
+        s.open(null, key);
+        in = s.newInputStream(0, 10);
+
+        byte[] buf = new byte[0];
+        assertEquals(0, in.read(buf));
+
+        int i = 0;
+
+        while (true) {
+            buf = new byte[rnd.nextInt(21) + 1];
+            int amt = in.read(buf);
+
+            assertTrue(amt != 0);
+
+            if (amt < 0) {
+                assertEquals(i, value.length);
+                break;
+            }
+
+            for (int j=0; j<amt; j++) {
+                assertEquals(value[i++], buf[j]);
+            }
+        }
+    }
+
+    @Test
+    public void outputWrite() throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        final long seed = 2984574;
+        Random rnd = new Random(seed);
+
+        byte[] key = "output".getBytes();
+        byte[] value = randomStr(rnd, 100000);
+
+        Stream s = ix.newStream();
+        s.open(null, key);
+        OutputStream out = s.newOutputStream(0, 101);
+
+        out.close();
+
+        try {
+            out.write(1);
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        s.open(null, key);
+        s.setLength(value.length);
+
+        out = s.newOutputStream(0, 20);
+
+        for (int i=0; i<value.length; ) {
+            byte[] buf = new byte[Math.min(value.length - i, rnd.nextInt(21) + 1)];
+
+            for (int j=0; j<buf.length; j++) {
+                buf[j] = value[i++];
+            }
+
+            out.write(buf);
+        }
+
+        out.close();
+
+        try {
+            out.write(1);
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        s.open(null, key);
+
+        byte[] actual = new byte[value.length];
+        int amt = s.read(0, actual, 0, actual.length);
+
+        assertEquals(amt, actual.length);
+
+        fastAssertArrayEquals(value, actual);
+
+        // Again, one byte at a time.
+
+        key = "output2".getBytes();
+        value = randomStr(rnd, 100000);
+
+        s.open(null, key);
+        s.setLength(value.length);
+
+        out = s.newOutputStream(0, 20);
+
+        for (int i=0; i<value.length; i++) {
+            out.write(value[i]);
+        }
+
+        out.flush();
+
+        actual = new byte[value.length];
+        amt = s.read(0, actual, 0, actual.length);
+
+        assertEquals(amt, actual.length);
+
+        fastAssertArrayEquals(value, actual);
     }
 }
