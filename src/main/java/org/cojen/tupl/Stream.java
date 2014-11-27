@@ -161,6 +161,9 @@ import java.io.OutputStream;
      */
     public OutputStream newOutputStream(long pos, int bufferSize) throws IOException;
 
+    /**
+     * Closes the stream, but does not flush any OutputStream instances.
+     */
     @Override
     public void close() throws IOException;
 }

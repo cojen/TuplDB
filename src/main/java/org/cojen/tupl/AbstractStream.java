@@ -138,7 +138,7 @@ abstract class AbstractStream implements Stream {
     }
 
     final class In extends InputStream {
-        private Object mIoState;
+        private final Object mIoState;
 
         private long mPos;
 
@@ -169,7 +169,7 @@ abstract class AbstractStream implements Stream {
             }
 
             long pos = mPos;
-            int amt = AbstractStream.this.read(pos, buf, 0, buf.length);
+            int amt = AbstractStream.this.doRead(pos, buf, 0, buf.length);
 
             if (amt <= 0) {
                 if (amt < 0) {
@@ -215,7 +215,7 @@ abstract class AbstractStream implements Stream {
             doRead: {
                 // Bypass buffer if parameter is large enough.
                 while (len >= buf.length) {
-                    amt = AbstractStream.this.read(mPos, b, off, len);
+                    amt = AbstractStream.this.doRead(mPos, b, off, len);
                     if (amt <= 0) {
                         break doRead;
                     }
@@ -229,7 +229,7 @@ abstract class AbstractStream implements Stream {
 
                 // Read into buffer and copy to parameter.
                 while (true) {
-                    amt = AbstractStream.this.read(mPos, buf, 0, buf.length);
+                    amt = AbstractStream.this.doRead(mPos, buf, 0, buf.length);
                     if (amt <= 0) {
                         break doRead;
                     }
@@ -296,25 +296,23 @@ abstract class AbstractStream implements Stream {
         }
 
         @Override
-        public int available() throws IOException {
-            ioCheckOpen(mIoState);
-            return mEnd - mStart;
+        public int available() {
+            return mIoState == AbstractStream.this.mIoState ? (mEnd - mStart) : 0;
         }
 
         @Override
         public void close() throws IOException {
-            Object ioState = mIoState;
-            mIoState = null;
-            AbstractStream.this.ioClose(ioState);
+            AbstractStream.this.ioClose(mIoState);
         }
     }
 
     final class Out extends OutputStream {
-        private Object mIoState;
+        private final Object mIoState;
 
         private long mPos;
 
         private final byte[] mBuffer;
+        private int mEnd;
 
         Out(Object ioState, long pos, byte[] buffer) {
             if (ioState == null) {
@@ -328,30 +326,88 @@ abstract class AbstractStream implements Stream {
         @Override
         public void write(int b) throws IOException {
             ioCheckOpen(mIoState);
-            // FIXME
-            throw null;
+
+            byte[] buf = mBuffer;
+            int end = mEnd;
+
+            if (end >= buf.length) {
+                flush();
+                end = 0;
+            }
+
+            buf[end++] = (byte) b;
+
+            try {
+                if (end >= buf.length) {
+                    AbstractStream.this.doWrite(mPos, buf, 0, end);
+                    mPos += end;
+                    end = 0;
+                }
+            } finally {
+                mEnd = end;
+            }
         }
 
         @Override
         public void write(byte[] b, int off, int len) throws IOException {
             boundsCheck(b, off, len);
             ioCheckOpen(mIoState);
-            // FIXME
-            throw null;
+
+            byte[] buf = mBuffer;
+            int end = mEnd;
+            int avail = buf.length - end;
+
+            if (len < avail) {
+                System.arraycopy(b, off, buf, end, len);
+                mEnd = end + len;
+                return;
+            }
+
+            if (end != 0) {
+                System.arraycopy(b, off, buf, end, avail);
+                off += avail;
+                len -= avail;
+                avail = buf.length;
+                try {
+                    AbstractStream.this.doWrite(mPos, buf, 0, avail);
+                } catch (Throwable e) {
+                    mEnd = avail;
+                    throw e;
+                }
+                mPos += avail;
+                if (len < avail) {
+                    System.arraycopy(b, off, buf, 0, len);
+                    mEnd = len;
+                    return;
+                }
+                mEnd = 0;
+            }
+
+            AbstractStream.this.doWrite(mPos, b, off, len);
+            mPos += len;
         }
 
         @Override
         public void flush() throws IOException {
             ioCheckOpen(mIoState);
-            // FIXME
-            throw null;
+            doFlush();
         }
 
         @Override
         public void close() throws IOException {
-            Object ioState = mIoState;
-            mIoState = null;
-            AbstractStream.this.ioClose(ioState);
+            if (mIoState == AbstractStream.this.mIoState) {
+                doFlush();
+                AbstractStream.this.ioClose(mIoState);
+            }
+        }
+
+        private void doFlush() throws IOException {
+            int end = mEnd;
+            if (end > 0) {
+                AbstractStream.this.doWrite(mPos, mBuffer, 0, end);
+                mPos += end;
+                mEnd = 0;
+            }
         }
     }
 }
