@@ -3,6 +3,7 @@ Changelog
 
 v1.1.8
 ------
+* Fix for corruption caused by parent nodes being evicted before their child nodes.
 * Stripe page allocation to improve concurrency.
 * Merge extremity nodes less aggressively, optimizing for queue access patterns.
 
