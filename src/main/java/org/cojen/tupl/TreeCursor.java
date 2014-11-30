@@ -3422,7 +3422,22 @@ class TreeCursor implements CauseCloseable, Cursor {
             if (childId != childNode.mId) {
                 childNode.releaseExclusive();
             } else {
-                if (releaseParent) {
+                if (childNode.mCachedState != Node.CACHED_CLEAN
+                    && parent.mCachedState == Node.CACHED_CLEAN)
+                {
+                    // Parent was evicted before child. Evict child now and mark as clean. If
+                    // this isn't done, the notSplitDirty method will short-circuit and not
+                    // ensure that all the parent nodes are dirty. The short-circuit check
+                    // could be skipped, but then every change would require a full latch up
+                    // the tree. Another option is to remark the parent as dirty, but this is
+                    // dodgy and also requires a full latch up the tree. Parent-before-child
+                    // eviction is infrequent anyhow.
+                    if (releaseParent) {
+                        parent.releaseExclusive();
+                    }
+                    childNode.write(mTree.mDatabase.mPageDb);
+                    childNode.mCachedState = Node.CACHED_CLEAN;
+                } else if (releaseParent) {
                     parent.releaseExclusive();
                 }
                 childNode.used();
