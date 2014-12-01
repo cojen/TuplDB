@@ -3427,11 +3427,12 @@ class TreeCursor implements CauseCloseable, Cursor {
                 {
                     // Parent was evicted before child. Evict child now and mark as clean. If
                     // this isn't done, the notSplitDirty method will short-circuit and not
-                    // ensure that all the parent nodes are dirty. The short-circuit check
-                    // could be skipped, but then every change would require a full latch up
-                    // the tree. Another option is to remark the parent as dirty, but this is
-                    // dodgy and also requires a full latch up the tree. Parent-before-child
-                    // eviction is infrequent anyhow.
+                    // ensure that all the parent nodes are dirty. The splitting and merging
+                    // code assumes that all nodes referenced by the cursor are dirty. The
+                    // short-circuit check could be skipped, but then every change would
+                    // require a full latch up the tree. Another option is to remark the parent
+                    // as dirty, but this is dodgy and also requires a full latch up the tree.
+                    // Parent-before-child eviction is infrequent, and so simple is better.
                     if (releaseParent) {
                         parent.releaseExclusive();
                     }
