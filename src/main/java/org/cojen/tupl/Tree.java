@@ -638,7 +638,13 @@ class Tree implements Index {
             if (len == 0xffff) {
                 break;
             }
-            din.skipBytes(len);
+            while (len > 0) {
+                int amt = din.skipBytes(len);
+                if (amt <= 0) {
+                    break;
+                }
+                len -= amt;
+            }
         }
     }
 

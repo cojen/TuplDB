@@ -46,8 +46,6 @@ final class PartitionedPageCache implements PageCache {
 
         final int pcount = Utils.roundUpPower2(minPartitions);
         final double psize = capacity / (double) pcount;
-        final long zeroId = Utils.scramble(0);
-
         final int[] pcapacities = new int[pcount];
 
         capacity = 0;

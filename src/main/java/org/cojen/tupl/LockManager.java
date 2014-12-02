@@ -219,7 +219,7 @@ final class LockManager {
     static final class LockHT extends Latch {
         private static final float LOAD_FACTOR = 0.75f;
 
-        private Lock[] mEntries;
+        private transient Lock[] mEntries;
         private int mSize;
         private int mGrowThreshold;
 

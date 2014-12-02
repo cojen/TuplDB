@@ -22,7 +22,7 @@ package org.cojen.tupl;
  * @author Brian S O'Neill
  */
 final class BufferPool extends Latch {
-    private final WaitQueue mQueue;
+    private final transient WaitQueue mQueue;
     private final byte[][] mPool;
     private int mPos;
 
