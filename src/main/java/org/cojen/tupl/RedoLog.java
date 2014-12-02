@@ -370,7 +370,7 @@ final class RedoLog extends RedoWriter {
         if (oldChannel != null) {
             // Ensure old file is forced before current file. Proper ordering is critical.
             try {
-                oldChannel.force(metadata);
+                oldChannel.force(true);
             } catch (ClosedChannelException e) {
                 // Ignore.
             }
@@ -380,7 +380,7 @@ final class RedoLog extends RedoWriter {
         FileChannel channel = mChannel;
         if (channel != null) {
             try {
-                channel.force(metadata);
+                channel.force(true);
             } catch (ClosedChannelException e) {
                 // Ignore.
             }
