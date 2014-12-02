@@ -216,10 +216,10 @@ final class Node extends Latch {
     Node mNodeChainNext;
 
     // Linked stack of TreeCursorFrames bound to this Node.
-    TreeCursorFrame mLastCursorFrame;
+    transient TreeCursorFrame mLastCursorFrame;
 
     // Set by a partially completed split.
-    Split mSplit;
+    transient Split mSplit;
 
     Node(NodeUsageList usageList, int pageSize) {
         this(usageList, new byte[pageSize]);
