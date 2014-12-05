@@ -2987,11 +2987,13 @@ public final class Database implements CauseCloseable, Flushable {
             long oldId = node.mId;
             if (oldId != 0) {
                 mPageDb.deletePage(oldId);
+                mTreeNodeMap.remove(node, NodeMap.hash(oldId));
             }
             if (node.mCachedState != CACHED_CLEAN) {
                 node.write(mPageDb);
             }
             dirty(node, newId);
+            mTreeNodeMap.put(node);
             return true;
         }
     }
@@ -3063,15 +3065,6 @@ public final class Database implements CauseCloseable, Flushable {
     }
 
     /**
-     * Caller must hold commit lock and exclusive latch on node. This method should only be
-     * called for nodes whose existing data is not needed and it is known that node is already
-     * in the allocator's dirty list.
-     */
-    void redirtyQ(Node node) {
-        node.mCachedState = mCommitState;
-    }
-
-    /**
      * Similar to markDirty method except no new page is reserved, and old page
      * is not immediately deleted. Caller must hold commit lock and exclusive
      * latch on node. Latch is never released by this method, unless an
@@ -3138,15 +3131,6 @@ public final class Database implements CauseCloseable, Flushable {
                 mPageDb.deletePage(id);
             }
         }
-    }
-
-    /**
-     * Deletes a page without the possibility of recycling it. Caller must hold commit lock.
-     *
-     * @param id must be greater than one
-     */
-    void forceDeletePage(long id) throws IOException {
-        mPageDb.deletePage(id);
     }
 
     /**
@@ -3319,6 +3303,7 @@ public final class Database implements CauseCloseable, Flushable {
                     encodeInt48LE(newValue, offset, 0);
                 } else {
                     Node inode = allocDirtyNode();
+                    mFragmentCache.put(inode);
                     encodeInt48LE(newValue, offset, inode.mId);
                     int levels = calculateInodeLevels(vlength, pageSize);
                     writeMultilevelFragments(levels, inode, value, 0, vlength);
@@ -3379,80 +3364,42 @@ public final class Database implements CauseCloseable, Flushable {
                                           byte[] value, int voffset, long vlength)
         throws IOException
     {
-        long levelCap;
-        long[] childNodeIds;
-        Node[] childNodes;
         try {
             byte[] page = inode.mPage;
             level--;
-            levelCap = levelCap(level);
-
-            // Pre-allocate and reference the required child nodes in order for
-            // parent node latch to be released early. FragmentCache can then
-            // safely evict the parent node if necessary.
+            long levelCap = levelCap(level);
 
             int childNodeCount = (int) ((vlength + (levelCap - 1)) / levelCap);
-            childNodeIds = new long[childNodeCount];
-            childNodes = new Node[childNodeCount];
-            try {
-                int poffset = 0;
-                for (int i=0; i<childNodeCount; poffset += 6, i++) {
-                    Node childNode = allocDirtyNode();
-                    encodeInt48LE(page, poffset, childNodeIds[i] = childNode.mId);
-                    childNodes[i] = childNode;
-                    // Allow node to be evicted, but don't write anything yet.
-                    childNode.mCachedState = CACHED_CLEAN;
+
+            int poffset = 0;
+            for (int i=0; i<childNodeCount; poffset += 6, i++) {
+                Node childNode = allocDirtyNode();
+                mFragmentCache.put(childNode);
+                encodeInt48LE(page, poffset, childNode.mId);
+
+                int len = (int) Math.min(levelCap, vlength);
+                if (level <= 0) {
+                    byte[] childPage = childNode.mPage;
+                    arraycopy(value, voffset, childPage, 0, len);
+                    // Zero fill the rest, making it easier to extend later.
+                    fill(childPage, len, childPage.length, (byte) 0);
                     childNode.releaseExclusive();
+                } else {
+                    writeMultilevelFragments(level, childNode, value, voffset, len);
                 }
-                // Zero fill the rest, making it easier to extend later.
-                fill(page, poffset, page.length, (byte) 0);
-            } catch (Throwable e) {
-                // Panic.
-                close(e);
-                throw e;
+
+                vlength -= len;
+                voffset += len;
             }
 
-            mFragmentCache.put(inode);
+            // Zero fill the rest, making it easier to extend later.
+            fill(page, poffset, page.length, (byte) 0);
+        } catch (Throwable e) {
+            // Panic.
+            close(e);
+            throw e;
         } finally {
             inode.releaseExclusive();
-        }
-
-        for (int i=0; i<childNodeIds.length; i++) {
-            long childNodeId = childNodeIds[i];
-            Node childNode = childNodes[i];
-
-            latchChild: {
-                if (childNodeId == childNode.mId) {
-                    childNode.acquireExclusive();
-                    if (childNodeId == childNode.mId) {
-                        // Since commit lock is held, only need to switch the state. Calling
-                        // redirty is unnecessary and it would screw up the dirty list order
-                        // for no good reason. Use the quick variant.
-                        redirtyQ(childNode);
-                        break latchChild;
-                    }
-                    childNode.releaseExclusive();
-                }
-                // Child node was evicted, although it was clean.
-                childNode = allocLatchedNode(childNodeId);
-                childNode.mId = childNodeId;
-                redirty(childNode);
-            }
-
-            int len = (int) Math.min(levelCap, vlength);
-            if (level <= 0) {
-                byte[] childPage = childNode.mPage;
-                arraycopy(value, voffset, childPage, 0, len);
-                // Zero fill the rest, making it easier to extend later.
-                fill(childPage, len, childPage.length, (byte) 0);
-                mFragmentCache.put(childNode);
-                childNode.releaseExclusive();
-            } else {
-                writeMultilevelFragments(level, childNode, value, voffset, len);
-            }
-
-            vlength -= len;
-            voffset += len;
         }
     }
 
@@ -3564,32 +3511,32 @@ public final class Database implements CauseCloseable, Flushable {
                                          byte[] value, int voffset, int vlength)
         throws IOException
     {
-        byte[] page = inode.mPage;
-        level--;
-        long levelCap = levelCap(level);
+        try {
+            byte[] page = inode.mPage;
+            level--;
+            long levelCap = levelCap(level);
 
-        // Copy all child node ids and release parent latch early.
-        // FragmentCache can then safely evict the parent node if necessary.
-        int childNodeCount = (int) ((vlength + (levelCap - 1)) / levelCap);
-        long[] childNodeIds = new long[childNodeCount];
-        for (int poffset = 0, i=0; i<childNodeCount; poffset += 6, i++) {
-            childNodeIds[i] = decodeUnsignedInt48LE(page, poffset);
-        }
-        inode.releaseShared();
+            int childNodeCount = (int) ((vlength + (levelCap - 1)) / levelCap);
 
-        for (long childNodeId : childNodeIds) {
-            int len = (int) Math.min(levelCap, vlength);
-            if (childNodeId != 0) {
-                Node childNode = mFragmentCache.get(childNodeId);
-                if (level <= 0) {
-                    arraycopy(childNode.mPage, 0, value, voffset, len);
-                    childNode.releaseShared();
-                } else {
-                    readMultilevelFragments(level, childNode, value, voffset, len);
+            for (int poffset = 0, i=0; i<childNodeCount; poffset += 6, i++) {
+                long childNodeId = decodeUnsignedInt48LE(page, poffset);
+                int len = (int) Math.min(levelCap, vlength);
+
+                if (childNodeId != 0) {
+                    Node childNode = mFragmentCache.get(childNodeId);
+                    if (level <= 0) {
+                        arraycopy(childNode.mPage, 0, value, voffset, len);
+                        childNode.releaseShared();
+                    } else {
+                        readMultilevelFragments(level, childNode, value, voffset, len);
+                    }
                 }
+
+                vlength -= len;
+                voffset += len;
             }
-            vlength -= len;
-            voffset += len;
+        } finally {
+            inode.releaseShared();
         }
     }
 
