@@ -25,6 +25,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.Flushable;
 import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.io.IOException;
@@ -106,7 +107,7 @@ import static org.cojen.tupl.Utils.*;
  * @author Brian S O'Neill
  * @see DatabaseConfig
  */
-public final class Database implements CauseCloseable {
+public final class Database implements CauseCloseable, Flushable {
     private static final int DEFAULT_CACHED_NODES = 1000;
     // +2 for registry and key map root nodes, +1 for one user index, and +2 for at least one
     // usage list to function correctly.
@@ -1826,6 +1827,7 @@ public final class Database implements CauseCloseable {
      * committed with {@link DurabilityMode#NO_FLUSH no-flush} effectively
      * become {@link DurabilityMode#NO_SYNC no-sync} durable.
      */
+    @Override
     public void flush() throws IOException {
         if (!mClosed && mRedoWriter != null) {
             mRedoWriter.flush();
