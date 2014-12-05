@@ -571,14 +571,18 @@ final class TreeValueStream extends AbstractStream {
                         if (inodeId == 0) {
                             // Writing into a sparse value. Allocate a node and point to it.
                             inode = mDb.allocDirtyNode();
-                            final byte[] ipage = inode.mPage;
-                            fill(ipage, (byte) 0);
+                            fill(inode.mPage, (byte) 0);
                             fc.put(inode);
                         } else {
                             inode = fc.getw(inodeId, true);
-                            if (!mDb.markFragmentDirty(inode)) {
-                                // Already dirty, so no need to update the pointer.
-                                break setPtr;
+                            try {
+                                if (!mDb.markFragmentDirty(inode)) {
+                                    // Already dirty, so no need to update the pointer.
+                                    break setPtr;
+                                }
+                            } catch (Throwable e) {
+                                inode.releaseExclusive();
+                                throw e;
                             }
                         }
 
@@ -728,47 +732,47 @@ final class TreeValueStream extends AbstractStream {
                                          byte[] b, int bOff, int bLen)
         throws IOException
     {
-        byte[] page = inode.mPage;
-        level--;
-        long levelCap = mDb.levelCap(level);
+        try {
+            byte[] page = inode.mPage;
+            level--;
+            long levelCap = mDb.levelCap(level);
 
-        int firstChild = (int) (pos / levelCap);
-        int lastChild = (int) ((pos + bLen - 1) / levelCap);
+            int firstChild = (int) (pos / levelCap);
+            int lastChild = (int) ((pos + bLen - 1) / levelCap);
 
-        // Copy all child node ids and release parent latch early.
-        // FragmentCache can then safely evict the parent node if necessary.
-        long[] childNodeIds = new long[lastChild - firstChild + 1];
-        for (int poffset = firstChild * 6, i=0; i<childNodeIds.length; poffset += 6, i++) {
-            childNodeIds[i] = decodeUnsignedInt48LE(page, poffset);
-        }
-        inode.releaseShared();
+            int childNodeCount = lastChild - firstChild + 1;
 
-        final FragmentCache fc = mDb.mFragmentCache;
+            final FragmentCache fc = mDb.mFragmentCache;
 
-        // Handle a possible partial read from the first page.
-        long ppos = pos % levelCap;
+            // Handle a possible partial read from the first page.
+            long ppos = pos % levelCap;
 
-        for (long childNodeId : childNodeIds) {
-            int len = (int) Math.min(levelCap - ppos, bLen);
-            if (childNodeId == 0) {
-                // Reading a sparse value.
-                fill(b, bOff, bOff + len, (byte) 0);
-            } else {
-                Node childNode = fc.get(childNodeId);
-                if (level <= 0) {
-                    arraycopy(childNode.mPage, (int) ppos, b, bOff, len);
-                    childNode.releaseShared();
+            for (int poffset = firstChild * 6, i=0; i<childNodeCount; poffset += 6, i++) {
+                long childNodeId = decodeUnsignedInt48LE(page, poffset);
+                int len = (int) Math.min(levelCap - ppos, bLen);
+
+                if (childNodeId == 0) {
+                    // Reading a sparse value.
+                    fill(b, bOff, bOff + len, (byte) 0);
                 } else {
-                    readMultilevelFragments(ppos, level, childNode, b, bOff, len);
+                    Node childNode = fc.get(childNodeId);
+                    if (level <= 0) {
+                        arraycopy(childNode.mPage, (int) ppos, b, bOff, len);
+                        childNode.releaseShared();
+                    } else {
+                        readMultilevelFragments(ppos, level, childNode, b, bOff, len);
+                    }
                 }
+                bLen -= len;
+                if (bLen <= 0) {
+                    break;
+                }
+                bOff += len;
+                // Remaining reads begin at the start of the page.
+                ppos = 0;
             }
-            bLen -= len;
-            if (bLen <= 0) {
-                break;
-            }
-            bOff += len;
-            // Remaining reads begin at the start of the page.
-            ppos = 0;
+        } finally {
+            inode.releaseShared();
         }
     }
 
@@ -782,162 +786,75 @@ final class TreeValueStream extends AbstractStream {
                                           byte[] b, int bOff, int bLen)
         throws IOException
     {
-        final FragmentCache fc = mDb.mFragmentCache;
-
-        long levelCap;
-        long[] childNodeIds;
-        Node[] childNodes;
         try {
             byte[] page = inode.mPage;
             level--;
-            levelCap = mDb.levelCap(level);
+            long levelCap = mDb.levelCap(level);
 
             int firstChild = (int) (pos / levelCap);
             int lastChild = bLen == 0 ? firstChild : ((int) ((pos + bLen - 1) / levelCap));
 
-            // Pre-allocate and reference the required child nodes in order for parent node
-            // latch to be released early. FragmentCache can then safely evict the parent node
-            // if necessary.
-
             int childNodeCount = lastChild - firstChild + 1;
-            childNodeIds = new long[childNodeCount << 1];
-            childNodes = new Node[childNodeCount];
-            try {
-                int poffset = firstChild * 6;
-                for (int i=0; i<childNodeCount; poffset += 6, i++) {
+
+            final FragmentCache fc = mDb.mFragmentCache;
+
+            // Handle a possible partial write to the first page.
+            long ppos = pos % levelCap;
+
+            for (int poffset = firstChild * 6, i=0; i<childNodeCount; poffset += 6, i++) {
+                int len = (int) Math.min(levelCap - ppos, bLen);
+                int off = (int) ppos;
+
+                final Node childNode;
+                setPtr: {
                     long childNodeId = decodeUnsignedInt48LE(page, poffset);
+                    boolean partial = level > 0 | off > 0 | len < page.length;
 
-                    Node childNode;
-                    setPtr: {
-                        prepChild: {
-                            if (childNodeId != 0) {
-                                // Node exists, but it must be dirtied.
-                                if ((childNode = fc.findw(childNodeId)) == null) {
-                                    // Don't bother loading it now, but old page must be
-                                    // deleted. Old contents can still be read, because no
-                                    // checkpoint switch is in progress.
-                                    mDb.forceDeletePage(childNodeId);
-                                } else {
-                                    // Remember negated child id, indicating that it's contents
-                                    // are valid.
-                                    childNodeIds[childNodeCount + i] = -childNodeId;
-                                    try {
-                                        if (mDb.markFragmentDirty(childNode)) {
-                                            // Dirtied now, so update pointer.
-                                            break prepChild;
-                                        } else {
-                                            // Already dirty.
-                                            break setPtr;
-                                        }
-                                    } catch (Throwable e) {
-                                        childNode.releaseExclusive();
-                                        throw e;
-                                    }
-                                }
-                            }
-
-                            // Remember old child id as-is, indicating that it's not loaded or
-                            // doesn't exist. It might need to be zero-filled or loaded for a
-                            // partial write.
-                            childNodeIds[childNodeCount + i] = childNodeId;
-
-                            childNode = mDb.allocDirtyNode();
+                    if (childNodeId == 0) {
+                        childNode = mDb.allocDirtyNode();
+                        if (partial) {
+                            // New page must be zero-filled.
+                            fill(childNode.mPage, (byte) 0);
                         }
-
-                        childNodeId = childNode.mId;
-                        encodeInt48LE(page, poffset, childNodeId);
-
-                        // Since node hasn't been modified yet, don't write anything if it gets
-                        // evicted.
-                        childNode.mCachedState = Node.CACHED_CLEAN;
+                        fc.put(childNode);
+                    } else {
+                        // Obtain node from cache, or load it only for partial write.
+                        childNode = fc.getw(childNodeId, partial);
+                        try {
+                            if (!mDb.markFragmentDirty(childNode)) {
+                                // Already dirty, so no need to update the pointer.
+                                break setPtr;
+                            }
+                        } catch (Throwable e) {
+                            childNode.releaseExclusive();
+                            throw e;
+                        }
                     }
 
-                    childNodeIds[i] = childNodeId;
-                    childNodes[i] = childNode;
-
-                    // Allow node to be evicted.
-                    childNode.releaseExclusive();
+                    encodeInt48LE(page, poffset, childNode.mId);
                 }
-            } catch (Throwable e) {
-                // Panic.
-                mDb.close(e);
-                throw e;
-            }
 
-            fc.put(inode);
+                if (level <= 0) {
+                    arraycopy(b, bOff, childNode.mPage, off, len);
+                    childNode.releaseExclusive();
+                } else {
+                    writeMultilevelFragments(ppos, level, childNode, b, bOff, len);
+                }
+
+                bLen -= len;
+                if (bLen <= 0) {
+                    break;
+                }
+                bOff += len;
+                // Remaining writes begin at the start of the page.
+                ppos = 0;
+            }
+        } catch (Throwable e) {
+            // Panic.
+            mDb.close(e);
+            throw e;
         } finally {
             inode.releaseExclusive();
-        }
-
-        // Handle a possible partial write to the first page.
-        long ppos = pos % levelCap;
-
-        for (int i=0; i<childNodeIds.length; i++) {
-            long oldChildNodeId = childNodeIds[childNodes.length + i];
-            long childNodeId = childNodeIds[i];
-            Node childNode = childNodes[i];
-
-            int len = (int) Math.min(levelCap - ppos, bLen);
-
-            latchChild: {
-                if (childNodeId == childNode.mId) {
-                    childNode.acquireExclusive();
-                    if (childNodeId == childNode.mId) {
-                        // Since commit lock is held, only need to switch the state. Calling
-                        // redirty is unnecessary and it would screw up the dirty list order
-                        // for no good reason. Use the quick variant.
-                        mDb.redirtyQ(childNode);
-                        break latchChild;
-                    }
-                    childNode.releaseExclusive();
-                }
-                // Child node was evicted, although it can be overwritten.
-                if (oldChildNodeId < 0) {
-                    // Indicate that partial write must load old page contents.
-                    oldChildNodeId = -oldChildNodeId;
-                }
-                childNode = mDb.allocLatchedNode(childNodeId);
-                childNode.mId = childNodeId;
-                mDb.redirty(childNode);
-            }
-
-            if (level <= 0) {
-                byte[] childPage = childNode.mPage;
-                int off = (int) ppos;
-                if (oldChildNodeId >= 0 && (off > 0 || len < childPage.length)) {
-                    // Partial write and existing fragment is unknown.
-                    if (oldChildNodeId == 0) {
-                        // New fragment must be zero-filled first.
-                        fill(childPage, (byte) 0);
-                    } else {
-                        // Load existing fragment first.
-                        mDb.readNodePage(oldChildNodeId, childPage);
-                    }
-                }
-                arraycopy(b, bOff, childPage, off, len);
-                fc.put(childNode);
-                childNode.releaseExclusive();
-            } else {
-                if (oldChildNodeId >= 0) {
-                    byte[] childPage = childNode.mPage;
-                    if (oldChildNodeId == 0) {
-                        // New inode, which must be zero-filled with child ids.
-                        fill(childPage, (byte) 0);
-                    } else {
-                        // Load inode to obtain proper child ids.
-                        mDb.readNodePage(oldChildNodeId, childPage);
-                    }
-                }
-                writeMultilevelFragments(ppos, level, childNode, b, bOff, len);
-            }
-
-            bLen -= len;
-            if (bLen <= 0) {
-                break;
-            }
-            bOff += len;
-            // Remaining writes begin at the start of the page.
-            ppos = 0;
         }
     }
 }
