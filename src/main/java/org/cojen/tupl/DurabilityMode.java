@@ -49,12 +49,11 @@ public enum DurabilityMode {
     NO_SYNC,
 
     /**
-     * Durability mode which writes modifications to the file system when the
-     * in-process buffer is full. This mode is vulnerable to power failures,
-     * operating system crashes, and process crashes. These events can cause
-     * recently committed transactions to get lost. When the process exits
-     * cleanly, a shutdown hook switches this mode to behave like NO_SYNC and
-     * flushes the log.
+     * Durability mode which writes modifications to the file system when the in-process buffer
+     * is full, or by automatic checkpoints. This mode is vulnerable to power failures,
+     * operating system crashes, and process crashes. These events can cause recently committed
+     * transactions to get lost. When the process exits cleanly, a shutdown hook switches this
+     * mode to behave like NO_SYNC and flushes the log.
      */
     NO_FLUSH,
 
