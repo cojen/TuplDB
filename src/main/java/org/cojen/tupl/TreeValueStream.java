@@ -65,6 +65,11 @@ final class TreeValueStream extends AbstractStream {
     }
 
     @Override
+    public Transaction link(Transaction txn) {
+        return mCursor.link(txn);
+    }
+
+    @Override
     public long length() throws IOException {
         TreeCursorFrame frame;
         try {
