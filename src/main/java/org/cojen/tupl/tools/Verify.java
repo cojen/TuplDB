@@ -19,11 +19,12 @@ package org.cojen.tupl.tools;
 import org.cojen.tupl.*;
 
 /**
- * Simple database verification utility. Main method accepts a single argument, a base file
- * path for the database. Main method exits with a status of 1 if verification failed, 0 if
- * succeeded.
+ * Simple database verification utility. Main method accepts a single argument &mdash; a base
+ * file path for the database. Main method exits with a status of 1 if verification failed, 0
+ * if succeeded.
  *
  * @author Brian S O'Neill
+ * @see Database#verify Database.verify
  */
 public class Verify extends VerificationObserver {
     /**
