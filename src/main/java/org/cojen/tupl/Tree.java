@@ -322,6 +322,7 @@ class Tree implements Index {
     final boolean verifyTree(Index view, VerificationObserver observer) throws IOException {
         TreeCursor cursor = new TreeCursor(this, Transaction.BOGUS);
         try {
+            cursor.autoload(false);
             cursor.first();
             int height = cursor.height();
             if (!observer.indexBegin(view, height)) {
