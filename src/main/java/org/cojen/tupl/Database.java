@@ -3744,20 +3744,25 @@ public final class Database implements CauseCloseable, Flushable {
         if (!mHasCheckpointed) {
             // Read is reloading an evicted node which is known to be dirty.
             mSharedCommitLock.lock();
-            try {
-                return mCommitState;
-            } finally {
-                mSharedCommitLock.unlock();
-            }
+            // Need to check again once full lock has been acquired.
+            byte state = mHasCheckpointed ? CACHED_CLEAN : mCommitState;
+            mSharedCommitLock.unlock();
+            return state;
         }
 
-        // TODO: Keep some sort of cache of ids known to be dirty. If reloaded
-        // before commit, then they're still dirty. Without this optimization,
-        // too many pages are allocated when: evictions are high, write rate is
-        // high, and commits are bogged down. A Bloom filter is not
-        // appropriate, because of false positives. A random evicting cache
-        // works well -- it has no collision chains. Evict whatever else was
-        // there in the slot. An array of longs should suffice.
+        // NOTE: An optimization is possible here, but it's a bit tricky. Too many pages are
+        // allocated when evictions are high, write rate is high, and commits are bogged down.
+        // Keep some sort of cache of ids known to be dirty. If reloaded before commit, then
+        // they're still dirty.
+        //
+        // A Bloom filter is not appropriate, because of false positives. A random evicting
+        // cache works well -- it has no collision chains. Evict whatever else was there in the
+        // slot. An array of longs should suffice.
+        //
+        // When a child node is loaded with a dirty state, the parent nodes must be updated as
+        // well. This might force them to be evicted, and then the optimization is lost. A
+        // better approach would avoid the optimization if the parent node is clean or doesn't
+        // match the current commit state.
 
         return CACHED_CLEAN;
     }
