@@ -205,21 +205,22 @@ final class DurablePageDb extends PageDb {
             int pageSize = mPageArray.pageSize();
             checkPageSize(pageSize);
 
-            open: {
-                if (destroy || mPageArray.isEmpty()) {
-                    // Newly created file.
-                    mPageManager = new PageManager(mPageArray);
-                    mCommitNumber = -1;
+            if (destroy || mPageArray.isEmpty()) {
+                // Newly created file.
+                mPageManager = new PageManager(mPageArray);
+                mCommitNumber = -1;
 
-                    // Commit twice to ensure both headers have valid data.
-                    commit(null);
-                    commit(null);
+                // Commit twice to ensure both headers have valid data.
+                commit(null);
+                commit(null);
 
-                    mPageArray.setPageCount(2);
-                    break open;
-                }
-
+                mPageArray.setPageCount(2);
+            } else {
                 // Opened an existing file.
+
+                // Previous header commit operation might have been interrupted before final
+                // header sync completed. Pages cannot be safely recycled without this.
+                mPageArray.sync(false);
 
                 final byte[] header;
                 final int commitNumber;
