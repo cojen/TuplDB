@@ -1,6 +1,12 @@
 Changelog
 =========
 
+v1.1.9
+------
+* Fix assertion failure caused by aggressive eviction before the very first checkpoint.
+* Added simple verification and file compaction tools.
+* Checkpoint and redo durability improvements.
+
 v1.1.8
 ------
 * Fix for corruption caused by parent nodes being evicted before their child nodes.
