@@ -137,7 +137,7 @@ class Tree implements Index {
         check(txn);
         Locker locker = lockForLoad(txn, key);
         try {
-            return mRoot.search(this, key);
+            return Node.search(mRoot, this, key);
         } finally {
             if (locker != null) {
                 locker.unlock();
