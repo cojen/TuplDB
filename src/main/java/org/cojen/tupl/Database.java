@@ -3362,6 +3362,19 @@ public final class Database implements CauseCloseable, Flushable {
         return levels;
     }
 
+    static long decodeFullFragmentedValueLength(int header, byte[] fragmented, int off) {
+        switch ((header >> 2) & 0x03) {
+        default:
+            return decodeUnsignedShortLE(fragmented, off);
+        case 1:
+            return decodeIntLE(fragmented, off) & 0xffffffffL;
+        case 2:
+            return decodeUnsignedInt48LE(fragmented, off);
+        case 3:
+            return decodeLongLE(fragmented, off);
+        }
+    }
+
     /**
      * @param level inode level; at least 1
      * @param inode exclusive latched parent inode; always released by this method

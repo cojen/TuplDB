@@ -195,8 +195,6 @@ final class TreeValueStream extends AbstractStream {
         int header = page[loc++];
         loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
 
-        final long vLen;
-
         header = page[loc++];
         if (header >= 0) {
             // Not fragmented.
@@ -222,24 +220,7 @@ final class TreeValueStream extends AbstractStream {
         // Read the fragment header, as described by the Database.fragment method.
         header = page[loc++];
 
-        switch ((header >> 2) & 0x03) {
-        default:
-            vLen = decodeUnsignedShortLE(page, loc);
-            break;
-        case 1:
-            vLen = decodeIntLE(page, loc) & 0xffffffffL;
-            break;
-        case 2:
-            vLen = decodeUnsignedInt48LE(page, loc);
-            break;
-        case 3:
-            vLen = decodeLongLE(page, loc);
-            if (vLen < 0) {
-                // Value is too large.
-                return -1;
-            }
-            break;
-        }
+        final long vLen = Database.decodeFullFragmentedValueLength(header, page, loc);
 
         if (pos >= vLen) {
             return -1;
