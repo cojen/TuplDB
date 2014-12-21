@@ -2949,6 +2949,16 @@ public final class Database implements CauseCloseable, Flushable {
     }
 
     /**
+     * Returns a new or recycled Node instance, latched exclusively and marked
+     * dirty. Caller must hold commit lock.
+     */
+    Node allocFragmentNode() throws IOException {
+        Node node = allocDirtyNode();
+        mFragmentCache.put(node);
+        return node;
+    }
+
+    /**
      * Caller must hold commit lock and any latch on node.
      */
     boolean shouldMarkDirty(Node node) {
@@ -3216,9 +3226,8 @@ public final class Database implements CauseCloseable, Flushable {
                 } else {
                     int voffset = remainder;
                     while (true) {
-                        Node node = allocDirtyNode();
+                        Node node = allocFragmentNode();
                         try {
-                            mFragmentCache.put(node);
                             encodeInt48LE(newValue, poffset, node.mId);
                             arraycopy(value, voffset, node.mPage, 0, pageSize);
                             if (pageCount == 1) {
@@ -3272,9 +3281,8 @@ public final class Database implements CauseCloseable, Flushable {
                     } else {
                         int voffset = 0;
                         while (true) {
-                            Node node = allocDirtyNode();
+                            Node node = allocFragmentNode();
                             try {
-                                mFragmentCache.put(node);
                                 encodeInt48LE(newValue, offset, node.mId);
                                 byte[] page = node.mPage;
                                 if (pageCount > 1) {
@@ -3302,8 +3310,7 @@ public final class Database implements CauseCloseable, Flushable {
                     // Value is sparse, so just store a null pointer.
                     encodeInt48LE(newValue, offset, 0);
                 } else {
-                    Node inode = allocDirtyNode();
-                    mFragmentCache.put(inode);
+                    Node inode = allocFragmentNode();
                     encodeInt48LE(newValue, offset, inode.mId);
                     int levels = calculateInodeLevels(vlength, pageSize);
                     writeMultilevelFragments(levels, inode, value, 0, vlength);
@@ -3373,8 +3380,7 @@ public final class Database implements CauseCloseable, Flushable {
 
             int poffset = 0;
             for (int i=0; i<childNodeCount; poffset += 6, i++) {
-                Node childNode = allocDirtyNode();
-                mFragmentCache.put(childNode);
+                Node childNode = allocFragmentNode();
                 encodeInt48LE(page, poffset, childNode.mId);
 
                 int len = (int) Math.min(levelCap, vlength);
