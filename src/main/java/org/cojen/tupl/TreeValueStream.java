@@ -316,18 +316,19 @@ final class TreeValueStream extends AbstractStream {
             nodePos = frame.mNodePos;
         }
 
-        final byte[] page = node.mPage;
+        byte[] page = node.mPage;
         int loc = decodeUnsignedShortLE(page, node.mSearchVecStart + nodePos);
+        // Skip the key.
         int header = page[loc++];
         loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
 
-        final int vHeaderLoc = loc;
-        final long vLen;
+        int vHeaderLoc = loc;
+        long vLen;
 
         header = page[loc++];
         if (header >= 0) {
             vLen = header;
-        } else {
+        } else fragmented: {
             int len;
             if ((header & 0x20) == 0) {
                 len = 1 + (((header & 0x1f) << 8) | (page[loc++] & 0xff));
@@ -351,238 +352,241 @@ final class TreeValueStream extends AbstractStream {
             }
 
             if ((header & Node.VALUE_FRAGMENTED) == 0) {
+                // Not really fragmented.
                 vLen = len;
-            } else {
-                // Operate against a fragmented value. First read the fragment header, as
-                // described by the Database.fragment method.
-                header = page[loc++];
-
-                switch ((header >> 2) & 0x03) {
-                default:
-                    vLen = decodeUnsignedShortLE(page, loc);
-                    break;
-                case 1:
-                    vLen = decodeIntLE(page, loc) & 0xffffffffL;
-                    break;
-                case 2:
-                    vLen = decodeUnsignedInt48LE(page, loc);
-                    break;
-                case 3:
-                    vLen = decodeLongLE(page, loc);
-                    if (vLen < 0) {
-                        if (op <= OP_READ) {
-                            node.releaseShared();
-                        } else {
-                            node.releaseExclusive();
-                        }
-                        throw new LargeValueException(vLen);
-                    }
-                    break;
-                }
-
-                // Advance past the value length field.
-                loc += 2 + ((header >> 1) & 0x06);
-
-                switch (op) {
-                case OP_LENGTH: default:
-                    return vLen;
-
-                case OP_READ: try {
-                    if (bLen <= 0 || pos >= vLen) {
-                        return 0;
-                    }
-
-                    bLen = Math.min((int) (vLen - pos), bLen);
-                    final int total = bLen;
-
-                    if ((header & 0x02) != 0) {
-                        // Inline content.
-                        final int inLen = decodeUnsignedShortLE(page, loc);
-                        loc += 2;
-                        final int amt = (int) (inLen - pos);
-                        if (amt <= 0) {
-                            // Not reading any inline content.
-                            pos -= inLen;
-                        } else if (bLen <= amt) {
-                            arraycopy(page, (int) (loc + pos), b, bOff, bLen);
-                            return bLen;
-                        } else {
-                            arraycopy(page, (int) (loc + pos), b, bOff, amt);
-                            bLen -= amt;
-                            bOff += amt;
-                            pos = 0;
-                        }
-                        loc += inLen;
-                    }
-
-                    final FragmentCache fc = mDb.mFragmentCache;
-
-                    if ((header & 0x01) == 0) {
-                        // Direct pointers.
-                        final int ipos = (int) pos;
-                        loc += (ipos / page.length) * 6;
-                        int fNodeOff = ipos % page.length;
-                        while (true) {
-                            final int amt = Math.min(bLen, page.length - fNodeOff);
-                            final long fNodeId = decodeUnsignedInt48LE(page, loc);
-                            if (fNodeId == 0) {
-                                // Reading a sparse value.
-                                fill(b, bOff, bOff + amt, (byte) 0);
-                            } else {
-                                final Node fNode = fc.get(fNodeId);
-                                arraycopy(fNode.mPage, fNodeOff, b, bOff, amt);
-                                fNode.releaseShared();
-                            }
-                            bLen -= amt;
-                            if (bLen <= 0) {
-                                return total;
-                            }
-                            bOff += amt;
-                            loc += 6;
-                            fNodeOff = 0;
-                        }
-                    }
-
-                    // Indirect pointers.
-
-                    final long inodeId = decodeUnsignedInt48LE(page, loc);
-                    if (inodeId == 0) {
-                        // Reading a sparse value.
-                        fill(b, bOff, bOff + bLen, (byte) 0);
-                    } else {
-                        final Node inode = fc.get(inodeId);
-                        final int levels = Database.calculateInodeLevels(vLen, page.length);
-                        readMultilevelFragments(pos, levels, inode, b, bOff, bLen);
-                    }
-
-                    return total;
-                } catch (IOException e) {
-                    node.releaseShared();
-                    throw e;
-                }
-
-                case OP_SET_LENGTH:
-                    // FIXME: If same return, if shorter truncate, else fall through.
-                    node.releaseExclusive();
-                    throw null;
-
-                case OP_WRITE: try {
-                    if (bLen == 0 & b != TOUCH_VALUE) {
-                        return 0;
-                    }
-
-                    if ((pos + bLen) > vLen) {
-                        if (b == TOUCH_VALUE) {
-                            // Don't extend the value.
-                            return 0;
-                        }
-                        // FIXME: extend length, accounting for length field growth
-                    }
-
-                    //bLen = Math.min((int) (vLen - pos), bLen);
-
-                    if ((header & 0x02) != 0) {
-                        // Inline content.
-                        final int inLen = decodeUnsignedShortLE(page, loc);
-                        loc += 2;
-                        final int amt = (int) (inLen - pos);
-                        if (amt <= 0) {
-                            // Not writing any inline content.
-                            pos -= inLen;
-                        } else if (bLen <= amt) {
-                            arraycopy(b, bOff, page, (int) (loc + pos), bLen);
-                            return 0;
-                        } else {
-                            arraycopy(b, bOff, page, (int) (loc + pos), amt);
-                            bLen -= amt;
-                            bOff += amt;
-                            pos = 0;
-                        }
-                        loc += inLen;
-                    }
-
-                    final FragmentCache fc = mDb.mFragmentCache;
-
-                    if ((header & 0x01) == 0) {
-                        // Direct pointers.
-                        final int ipos = (int) pos;
-                        loc += (ipos / page.length) * 6;
-                        int fNodeOff = ipos % page.length;
-                        while (true) {
-                            final int amt = Math.min(bLen, page.length - fNodeOff);
-                            final long fNodeId = decodeUnsignedInt48LE(page, loc);
-                            if (fNodeId == 0) {
-                                // Writing into a sparse value. Allocate a node and point to it.
-	                            final Node fNode = mDb.allocFragmentNode();
-                                try {
-                                    encodeInt48LE(page, loc, fNode.mId);
-
-                                    // Now write to the new page, zero-filling the gaps.
-                                    byte[] fNodePage = fNode.mPage;
-                                    fill(fNodePage, 0, fNodeOff, (byte) 0);
-                                    arraycopy(b, bOff, fNodePage, fNodeOff, amt);
-                                    fill(fNodePage, fNodeOff + amt, fNodePage.length, (byte) 0);
-                                } finally {
-                                    fNode.releaseExclusive();
-                                }
-                            } else {
-                                // Obtain node from cache, or load it only for partial write.
-                                final Node fNode = fc.getw(fNodeId, amt < page.length);
-                                try {
-                                    if (mDb.markFragmentDirty(fNode)) {
-                                        encodeInt48LE(page, loc, fNode.mId);
-                                    }
-                                    arraycopy(b, bOff, fNode.mPage, fNodeOff, amt);
-                                } finally {
-                                    fNode.releaseExclusive();
-                                }
-                            }
-                            bLen -= amt;
-                            if (bLen <= 0) {
-                                return 0;
-                            }
-                            bOff += amt;
-                            loc += 6;
-                            fNodeOff = 0;
-                        }
-                    }
-
-                    // Indirect pointers.
-
-                    final Node inode;
-                    setPtr: {
-                        final long inodeId = decodeUnsignedInt48LE(page, loc);
-
-                        if (inodeId == 0) {
-                            // Writing into a sparse value. Allocate a node and point to it.
-	                        inode = mDb.allocFragmentNode();
-                            fill(inode.mPage, (byte) 0);
-                        } else {
-                            inode = fc.getw(inodeId, true);
-                            try {
-                                if (!mDb.markFragmentDirty(inode)) {
-                                    // Already dirty, so no need to update the pointer.
-                                    break setPtr;
-                                }
-                            } catch (Throwable e) {
-                                inode.releaseExclusive();
-                                throw e;
-                            }
-                        }
-
-                        encodeInt48LE(page, loc, inode.mId);
-                    }
-
-                    final int levels = Database.calculateInodeLevels(vLen, page.length);
-                    writeMultilevelFragments(pos, levels, inode, b, bOff, bLen);
-
-                    return 0;
-                } catch (IOException e) {
-                    node.releaseExclusive();
-                    throw e;
-                }
-                } // end switch(op)
+                break fragmented;
             }
+
+            // Operate against a fragmented value. First read the fragment header, as described
+            // by the Database.fragment method.
+            header = page[loc++];
+
+            switch ((header >> 2) & 0x03) {
+            default:
+                vLen = decodeUnsignedShortLE(page, loc);
+                break;
+            case 1:
+                vLen = decodeIntLE(page, loc) & 0xffffffffL;
+                break;
+            case 2:
+                vLen = decodeUnsignedInt48LE(page, loc);
+                break;
+            case 3:
+                vLen = decodeLongLE(page, loc);
+                if (vLen < 0) {
+                    if (op <= OP_READ) {
+                        node.releaseShared();
+                    } else {
+                        node.releaseExclusive();
+                    }
+                    throw new LargeValueException(vLen);
+                }
+                break;
+            }
+
+            // Advance past the value length field.
+            loc += 2 + ((header >> 1) & 0x06);
+
+            switch (op) {
+            case OP_LENGTH: default:
+                return vLen;
+
+            case OP_READ: try {
+                if (bLen <= 0 || pos >= vLen) {
+                    return 0;
+                }
+
+                bLen = Math.min((int) (vLen - pos), bLen);
+                final int total = bLen;
+
+                if ((header & 0x02) != 0) {
+                    // Inline content.
+                    final int inLen = decodeUnsignedShortLE(page, loc);
+                    loc += 2;
+                    final int amt = (int) (inLen - pos);
+                    if (amt <= 0) {
+                        // Not reading any inline content.
+                        pos -= inLen;
+                    } else if (bLen <= amt) {
+                        arraycopy(page, (int) (loc + pos), b, bOff, bLen);
+                        return bLen;
+                    } else {
+                        arraycopy(page, (int) (loc + pos), b, bOff, amt);
+                        bLen -= amt;
+                        bOff += amt;
+                        pos = 0;
+                    }
+                    loc += inLen;
+                }
+
+                final FragmentCache fc = mDb.mFragmentCache;
+
+                if ((header & 0x01) == 0) {
+                    // Direct pointers.
+                    final int ipos = (int) pos;
+                    loc += (ipos / page.length) * 6;
+                    int fNodeOff = ipos % page.length;
+                    while (true) {
+                        final int amt = Math.min(bLen, page.length - fNodeOff);
+                        final long fNodeId = decodeUnsignedInt48LE(page, loc);
+                        if (fNodeId == 0) {
+                            // Reading a sparse value.
+                            fill(b, bOff, bOff + amt, (byte) 0);
+                        } else {
+                            final Node fNode = fc.get(fNodeId);
+                            arraycopy(fNode.mPage, fNodeOff, b, bOff, amt);
+                            fNode.releaseShared();
+                        }
+                        bLen -= amt;
+                        if (bLen <= 0) {
+                            return total;
+                        }
+                        bOff += amt;
+                        loc += 6;
+                        fNodeOff = 0;
+                    }
+                }
+
+                // Indirect pointers.
+
+                final long inodeId = decodeUnsignedInt48LE(page, loc);
+                if (inodeId == 0) {
+                    // Reading a sparse value.
+                    fill(b, bOff, bOff + bLen, (byte) 0);
+                } else {
+                    final Node inode = fc.get(inodeId);
+                    final int levels = Database.calculateInodeLevels(vLen, page.length);
+                    readMultilevelFragments(pos, levels, inode, b, bOff, bLen);
+                }
+
+                return total;
+            } catch (IOException e) {
+                node.releaseShared();
+                throw e;
+            }
+
+            case OP_SET_LENGTH:
+                // FIXME: If same return, if shorter truncate, else fall through.
+                node.releaseExclusive();
+                throw null;
+
+            case OP_WRITE: try {
+                if (bLen == 0 & b != TOUCH_VALUE) {
+                    return 0;
+                }
+
+                if ((pos + bLen) > vLen) {
+                    if (b == TOUCH_VALUE) {
+                        // Don't extend the value.
+                        return 0;
+                    }
+                    // FIXME: extend length, accounting for length field growth
+                }
+
+                //bLen = Math.min((int) (vLen - pos), bLen);
+
+                if ((header & 0x02) != 0) {
+                    // Inline content.
+                    final int inLen = decodeUnsignedShortLE(page, loc);
+                    loc += 2;
+                    final int amt = (int) (inLen - pos);
+                    if (amt <= 0) {
+                        // Not writing any inline content.
+                        pos -= inLen;
+                    } else if (bLen <= amt) {
+                        arraycopy(b, bOff, page, (int) (loc + pos), bLen);
+                        return 0;
+                    } else {
+                        arraycopy(b, bOff, page, (int) (loc + pos), amt);
+                        bLen -= amt;
+                        bOff += amt;
+                        pos = 0;
+                    }
+                    loc += inLen;
+                    vLen -= inLen;
+                }
+
+                final FragmentCache fc = mDb.mFragmentCache;
+
+                if ((header & 0x01) == 0) {
+                    // Direct pointers.
+                    final int ipos = (int) pos;
+                    loc += (ipos / page.length) * 6;
+                    int fNodeOff = ipos % page.length;
+                    while (true) {
+                        final int amt = Math.min(bLen, page.length - fNodeOff);
+                        final long fNodeId = decodeUnsignedInt48LE(page, loc);
+                        if (fNodeId == 0) {
+                            // Writing into a sparse value. Allocate a node and point to it.
+                            final Node fNode = mDb.allocFragmentNode();
+                            try {
+                                encodeInt48LE(page, loc, fNode.mId);
+
+                                // Now write to the new page, zero-filling the gaps.
+                                byte[] fNodePage = fNode.mPage;
+                                fill(fNodePage, 0, fNodeOff, (byte) 0);
+                                arraycopy(b, bOff, fNodePage, fNodeOff, amt);
+                                fill(fNodePage, fNodeOff + amt, fNodePage.length, (byte) 0);
+                            } finally {
+                                fNode.releaseExclusive();
+                            }
+                        } else {
+                            // Obtain node from cache, or load it only for partial write.
+                            final Node fNode = fc.getw(fNodeId, amt < page.length);
+                            try {
+                                if (mDb.markFragmentDirty(fNode)) {
+                                    encodeInt48LE(page, loc, fNode.mId);
+                                }
+                                arraycopy(b, bOff, fNode.mPage, fNodeOff, amt);
+                            } finally {
+                                fNode.releaseExclusive();
+                            }
+                        }
+                        bLen -= amt;
+                        if (bLen <= 0) {
+                            return 0;
+                        }
+                        bOff += amt;
+                        loc += 6;
+                        fNodeOff = 0;
+                    }
+                }
+
+                // Indirect pointers.
+
+                final Node inode;
+                setPtr: {
+                    final long inodeId = decodeUnsignedInt48LE(page, loc);
+
+                    if (inodeId == 0) {
+                        // Writing into a sparse value. Allocate a node and point to it.
+                        inode = mDb.allocFragmentNode();
+                        fill(inode.mPage, (byte) 0);
+                    } else {
+                        inode = fc.getw(inodeId, true);
+                        try {
+                            if (!mDb.markFragmentDirty(inode)) {
+                                // Already dirty, so no need to update the pointer.
+                                break setPtr;
+                            }
+                        } catch (Throwable e) {
+                            inode.releaseExclusive();
+                            throw e;
+                        }
+                    }
+
+                    encodeInt48LE(page, loc, inode.mId);
+                }
+
+                final int levels = Database.calculateInodeLevels(vLen, page.length);
+                writeMultilevelFragments(pos, levels, inode, b, bOff, bLen);
+
+                return 0;
+            } catch (IOException e) {
+                node.releaseExclusive();
+                throw e;
+            }
+            } // end switch(op)
         }
 
         // Operate against a non-fragmented value.
