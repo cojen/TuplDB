@@ -38,8 +38,6 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 
-import java.math.BigInteger;
-
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -3312,7 +3310,7 @@ public final class Database implements CauseCloseable, Flushable {
                 } else {
                     Node inode = allocFragmentNode();
                     encodeInt48LE(newValue, offset, inode.mId);
-                    int levels = calculateInodeLevels(vlength, pageSize);
+                    int levels = calculateInodeLevels(vlength);
                     writeMultilevelFragments(levels, inode, value, 0, vlength);
                 }
             }
@@ -3334,31 +3332,15 @@ public final class Database implements CauseCloseable, Flushable {
         return newValue;
     }
 
-    static int calculateInodeLevels(long vlength, int pageSize) {
+    int calculateInodeLevels(long vlength) {
+        long[] caps = mFragmentInodeLevelCaps;
         int levels = 0;
-
-        if (vlength >= 0 && vlength < (Long.MAX_VALUE / 2)) {
-            long len = (vlength + (pageSize - 1)) / pageSize;
-            if (len > 1) {
-                int ptrCount = pageSize / 6;
-                do {
-                    levels++;
-                } while ((len = (len + (ptrCount - 1)) / ptrCount) > 1);
+        while (levels < caps.length) {
+            if (vlength <= caps[levels]) {
+                break;
             }
-        } else {
-            BigInteger bPageSize = BigInteger.valueOf(pageSize);
-            BigInteger bLen = (valueOfUnsigned(vlength)
-                               .add(bPageSize.subtract(BigInteger.ONE))).divide(bPageSize);
-            if (bLen.compareTo(BigInteger.ONE) > 0) {
-                BigInteger bPtrCount = bPageSize.divide(BigInteger.valueOf(6));
-                BigInteger bPtrCountM1 = bPtrCount.subtract(BigInteger.ONE);
-                do {
-                    levels++;
-                } while ((bLen = (bLen.add(bPtrCountM1)).divide(bPtrCount))
-                         .compareTo(BigInteger.ONE) > 0);
-            }
+            levels++;
         }
-
         return levels;
     }
 
@@ -3513,7 +3495,7 @@ public final class Database implements CauseCloseable, Flushable {
             long inodeId = decodeUnsignedInt48LE(fragmented, off);
             if (inodeId != 0) {
                 Node inode = mFragmentCache.get(inodeId);
-                int levels = calculateInodeLevels(vLen, mPageSize);
+                int levels = calculateInodeLevels(vLen);
                 readMultilevelFragments(levels, inode, value, 0, vLen);
             }
         }
@@ -3615,7 +3597,7 @@ public final class Database implements CauseCloseable, Flushable {
             long inodeId = decodeUnsignedInt48LE(fragmented, off);
             if (inodeId != 0) {
                 Node inode = removeInode(inodeId);
-                int levels = calculateInodeLevels(vLen, mPageSize);
+                int levels = calculateInodeLevels(vLen);
                 deleteMultilevelFragments(levels, inode, vLen);
             }
         }
