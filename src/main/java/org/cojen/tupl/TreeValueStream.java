@@ -257,7 +257,7 @@ final class TreeValueStream extends AbstractStream {
 
         final FragmentCache fc = mDb.mFragmentCache;
         Node inode = fc.get(inodeId);
-        int level = Database.calculateInodeLevels(vLen, page.length);
+        int level = mDb.calculateInodeLevels(vLen);
 
         while (true) {
             level--;
@@ -543,13 +543,12 @@ final class TreeValueStream extends AbstractStream {
                 loc += inLen;
             }
 
-            final FragmentCache fc = mDb.mFragmentCache;
-
             if ((header & 0x01) == 0) {
                 // Direct pointers.
                 final int ipos = (int) pos;
                 loc += (ipos / page.length) * 6;
                 int fNodeOff = ipos % page.length;
+                final FragmentCache fc = mDb.mFragmentCache;
                 while (true) {
                     final int amt = Math.min(bLen, page.length - fNodeOff);
                     final long fNodeId = decodeUnsignedInt48LE(page, loc);
@@ -578,8 +577,9 @@ final class TreeValueStream extends AbstractStream {
                 // Reading a sparse value.
                 fill(b, bOff, bOff + bLen, (byte) 0);
             } else {
-                final Node inode = fc.get(inodeId);
-                final int levels = Database.calculateInodeLevels(vLen, page.length);
+                Database db = mDb;
+                final Node inode = db.mFragmentCache.get(inodeId);
+                final int levels = db.calculateInodeLevels(vLen);
                 readMultilevelFragments(pos, levels, inode, b, bOff, bLen);
             }
 
@@ -630,8 +630,6 @@ final class TreeValueStream extends AbstractStream {
                 vLen -= inLen;
             }
 
-            final FragmentCache fc = mDb.mFragmentCache;
-
             if ((header & 0x01) == 0) {
                 // Direct pointers.
                 final int ipos = (int) pos;
@@ -656,9 +654,10 @@ final class TreeValueStream extends AbstractStream {
                         }
                     } else {
                         // Obtain node from cache, or load it only for partial write.
-                        final Node fNode = fc.getw(fNodeId, amt < page.length);
+                        Database db = mDb;
+                        final Node fNode = db.mFragmentCache.getw(fNodeId, amt < page.length);
                         try {
-                            if (mDb.markFragmentDirty(fNode)) {
+                            if (db.markFragmentDirty(fNode)) {
                                 encodeInt48LE(page, loc, fNode.mId);
                             }
                             arraycopy(b, bOff, fNode.mPage, fNodeOff, amt);
@@ -687,9 +686,10 @@ final class TreeValueStream extends AbstractStream {
                     inode = mDb.allocFragmentNode();
                     fill(inode.mPage, (byte) 0);
                 } else {
-                    inode = fc.getw(inodeId, true);
+                    Database db = mDb;
+                    inode = db.mFragmentCache.getw(inodeId, true);
                     try {
-                        if (!mDb.markFragmentDirty(inode)) {
+                        if (!db.markFragmentDirty(inode)) {
                             // Already dirty, so no need to update the pointer.
                             break setPtr;
                         }
@@ -702,7 +702,7 @@ final class TreeValueStream extends AbstractStream {
                 encodeInt48LE(page, loc, inode.mId);
             }
 
-            final int levels = Database.calculateInodeLevels(vLen, page.length);
+            final int levels = mDb.calculateInodeLevels(vLen);
             writeMultilevelFragments(pos, levels, inode, b, bOff, bLen);
 
             return 0;
@@ -777,17 +777,17 @@ final class TreeValueStream extends AbstractStream {
                                           byte[] b, int bOff, int bLen)
         throws IOException
     {
+        final Database db = mDb;
+
         try {
             byte[] page = inode.mPage;
             level--;
-            long levelCap = mDb.levelCap(level);
+            long levelCap = db.levelCap(level);
 
             int firstChild = (int) (pos / levelCap);
             int lastChild = bLen == 0 ? firstChild : ((int) ((pos + bLen - 1) / levelCap));
 
             int childNodeCount = lastChild - firstChild + 1;
-
-            final FragmentCache fc = mDb.mFragmentCache;
 
             // Handle a possible partial write to the first page.
             long ppos = pos % levelCap;
@@ -802,16 +802,16 @@ final class TreeValueStream extends AbstractStream {
                     boolean partial = level > 0 | off > 0 | len < page.length;
 
                     if (childNodeId == 0) {
-                        childNode = mDb.allocFragmentNode();
+                        childNode = db.allocFragmentNode();
                         if (partial) {
                             // New page must be zero-filled.
                             fill(childNode.mPage, (byte) 0);
                         }
                     } else {
                         // Obtain node from cache, or load it only for partial write.
-                        childNode = fc.getw(childNodeId, partial);
+                        childNode = db.mFragmentCache.getw(childNodeId, partial);
                         try {
-                            if (!mDb.markFragmentDirty(childNode)) {
+                            if (!db.markFragmentDirty(childNode)) {
                                 // Already dirty, so no need to update the pointer.
                                 break setPtr;
                             }
@@ -841,7 +841,7 @@ final class TreeValueStream extends AbstractStream {
             }
         } catch (Throwable e) {
             // Panic.
-            mDb.close(e);
+            db.close(e);
             throw e;
         } finally {
             inode.releaseExclusive();
