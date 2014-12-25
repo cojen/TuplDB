@@ -520,7 +520,7 @@ final class TreeValueStream extends AbstractStream {
                 return 0;
             }
 
-            bLen = Math.min((int) (vLen - pos), bLen);
+            bLen = (int) Math.min(vLen - pos, bLen);
             final int total = bLen;
 
             if ((header & 0x02) != 0) {
@@ -613,7 +613,7 @@ final class TreeValueStream extends AbstractStream {
                 // Inline content.
                 final int inLen = decodeUnsignedShortLE(page, loc);
                 loc += 2;
-                final int amt = (int) (inLen - pos);
+                final long amt = inLen - pos;
                 if (amt <= 0) {
                     // Not writing any inline content.
                     pos -= inLen;
@@ -621,7 +621,7 @@ final class TreeValueStream extends AbstractStream {
                     arraycopy(b, bOff, page, (int) (loc + pos), bLen);
                     return 0;
                 } else {
-                    arraycopy(b, bOff, page, (int) (loc + pos), amt);
+                    arraycopy(b, bOff, page, (int) (loc + pos), (int) amt);
                     bLen -= amt;
                     bOff += amt;
                     pos = 0;
