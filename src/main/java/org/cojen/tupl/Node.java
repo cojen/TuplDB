@@ -407,7 +407,7 @@ final class Node extends Latch {
 
                     // Succeeded in obtaining an exclusive latch, so now load the child.
 
-                    node = node.loadChild(tree.mDatabase, childPos, childId, true);
+                    node = node.loadChild(tree.mDatabase, childId, true);
 
                     if (node.isLeaf()) {
                         node.downgrade();
@@ -535,9 +535,7 @@ final class Node extends Latch {
      * @param releaseParent when true, release this node latch always; when false, release only
      * if an exception is thrown
      */
-    Node loadChild(Database db, int childPos, long childId, boolean releaseParent)
-        throws IOException
-    {
+    Node loadChild(Database db, long childId, boolean releaseParent) throws IOException {
         Node childNode;
         try {
             childNode = db.allocLatchedNode(childId);
@@ -610,7 +608,7 @@ final class Node extends Latch {
             }
         }
 
-        return loadChild(tree.mDatabase, childPos, childId, false);
+        return loadChild(tree.mDatabase, childId, false);
     }
 
     /**
