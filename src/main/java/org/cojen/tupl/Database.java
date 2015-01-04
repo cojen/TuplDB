@@ -3088,10 +3088,12 @@ public final class Database implements CauseCloseable, Flushable {
             // When node is re-allocated, it will be evicted. Ensure that eviction
             // doesn't write anything.
             node.mCachedState = CACHED_CLEAN;
-        } finally {
+        } catch (Throwable e) {
             node.releaseExclusive();
+            throw e;
         }
 
+        // Always releases the node latch.
         node.unused();
     }
 

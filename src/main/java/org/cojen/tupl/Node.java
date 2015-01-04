@@ -300,8 +300,8 @@ final class Node extends Latch {
 
     /**
      * Indicate that node is least recently used, allowing it to be recycled immediately
-     * without evicting another node. Node must be unlatched at this point, to prevent it from
-     * being immediately promoted to most recently used by tryAllocLatchedNode.
+     * without evicting another node. Node must be latched by caller, which is always released
+     * by this method.
      */
     void unused() {
         mUsageList.unused(this);
