@@ -816,37 +816,6 @@ public final class Database implements CauseCloseable, Flushable {
         }
     }
 
-    /*
-    void trace() throws IOException {
-        int[] inBuckets = new int[16];
-        int[] leafBuckets = new int[16];
-
-        java.util.BitSet pages = mPageDb.tracePages();
-        mRegistry.mRoot.tracePages(this, pages, inBuckets, leafBuckets);
-        mRegistryKeyMap.mRoot.tracePages(this, pages, inBuckets, leafBuckets);
-
-        Cursor all = indexRegistryByName().newCursor(null);
-        for (all.first(); all.key() != null; all.next()) {
-            Index ix = indexById(all.value());
-            System.out.println(ix.getNameString());
-
-            Cursor c = ix.newCursor(Transaction.BOGUS);
-            c.first();
-            System.out.println("height: " + ((TreeCursor) c).height());
-            c.reset();
-
-            ((Tree) ix).mRoot.tracePages(this, pages, inBuckets, leafBuckets);
-            System.out.println("unaccounted: " + pages.cardinality());
-            System.out.println("internal avail: " + Arrays.toString(inBuckets));
-            System.out.println("leaf avail: " + Arrays.toString(leafBuckets));
-        }
-        all.reset();
-
-        System.out.println("unaccounted: " + pages.cardinality());
-        System.out.println(pages);
-    }
-    */
-
     /**
      * Returns the given named index, returning null if not found.
      *
