@@ -678,7 +678,6 @@ class Tree implements Index {
                     // Latch coupling upwards is fine because nothing should be searching a
                     // tree which is filling up.
                     node.acquireExclusive();
-                    childNode.releaseExclusive();
                     // TODO: inline and specialize
                     node.insertSplitChildRef(this, frame.mNodePos, childNode);
                 }
