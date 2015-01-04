@@ -153,7 +153,15 @@ final class NodeUsageList extends Latch {
                     try {
                         if ((node = Node.evict(node, mDb)) != null) {
                             if ((mode & MODE_UNEVICTABLE) != 0) {
-                                node.mUsageList.doMakeUnevictable(node);
+                                NodeUsageList usageList = node.mUsageList;
+                                if (usageList == this) {
+                                    doMakeUnevictable(node);
+                                } else {
+                                    releaseExclusive();
+                                    usageList.makeUnevictable(node);
+                                    // Return with node latch still held.
+                                    return node;
+                                }
                             }
                             releaseExclusive();
                             // Return with node latch still held.
