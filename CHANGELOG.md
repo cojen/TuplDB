@@ -1,6 +1,11 @@
 Changelog
 =========
 
+v1.1.10
+------
+* Fix race conditions in node allocation and recycling code.
+* Minor performance optimizations for large values and for simple loads.
+
 v1.1.9
 ------
 * Fix assertion failure caused by aggressive eviction before the very first checkpoint.
