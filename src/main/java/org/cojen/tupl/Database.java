@@ -2541,7 +2541,7 @@ public final class Database implements CauseCloseable, Flushable {
     private Index openIndex(byte[] name, boolean create) throws IOException {
         checkClosed();
 
-        Tree tree = quickFindIndex(null, name);
+        Tree tree = quickFindIndex(name);
         if (tree != null) {
             return tree;
         }
@@ -2620,7 +2620,7 @@ public final class Database implements CauseCloseable, Flushable {
                 // Pass the transaction to acquire the lock.
                 byte[] rootIdBytes = mRegistry.load(txn, treeIdBytes);
 
-                tree = quickFindIndex(txn, name);
+                tree = quickFindIndex(name);
                 if (tree != null) {
                     // Another thread got the lock first and loaded the index.
                     return tree;
@@ -2719,7 +2719,7 @@ public final class Database implements CauseCloseable, Flushable {
     /**
      * @return null if not found
      */
-    private Tree quickFindIndex(Transaction txn, byte[] name) throws IOException {
+    private Tree quickFindIndex(byte[] name) throws IOException {
         TreeRef treeRef;
         mOpenTreesLatch.acquireShared();
         try {
