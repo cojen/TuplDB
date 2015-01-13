@@ -501,6 +501,12 @@ final class DurablePageDb extends PageDb {
             byte[] extra = callback == null ? null : callback.prepare();
             commitHeader(header, commitNumber, extra);
             mPageManager.commitEnd(header, I_MANAGER_HEADER);
+        } catch (DatabaseException e) {
+            if (e.isRecoverable()) {
+                throw e;
+            } else {
+                throw closeOnFailure(e);
+            }
         } catch (Throwable e) {
             throw closeOnFailure(e);
         } finally {
