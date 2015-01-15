@@ -57,7 +57,7 @@ import java.io.OutputStream;
     /**
      * Link to a transaction, which can be null for auto-commit mode. To continue using a
      * stream after the transaction is complete, link it to null or another
-     * transaction. Otherwise, the orginal transaction will be resurrected.
+     * transaction. Otherwise, the original transaction will be resurrected.
      *
      * @return prior linked transaction
      * @throws IllegalArgumentException if transaction belongs to another database instance
