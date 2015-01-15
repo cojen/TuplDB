@@ -56,7 +56,7 @@ public interface Cursor {
      * Link to a transaction, which can be null for auto-commit mode. All
      * entries visited by the cursor become part of the given transaction.  To
      * continue using a cursor after the transaction is complete, link it to
-     * null or another transaction. Otherwise, the orginal transaction will be
+     * null or another transaction. Otherwise, the original transaction will be
      * resurrected.
      *
      * @return prior linked transaction
