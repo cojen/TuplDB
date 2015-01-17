@@ -180,9 +180,9 @@ public final class Database implements CauseCloseable, Flushable {
     // Is either CACHED_DIRTY_0 or CACHED_DIRTY_1. Access is guarded by commit lock.
     private byte mCommitState;
 
-    // Set true during checkpoint after commit state has switched. If checkpoint aborts, next
-    // checkpoint will not switch the state again.
-    private boolean mCommitStateSwitched;
+    // Set during checkpoint after commit state has switched. If checkpoint aborts, next
+    // checkpoint will apply start with this commit state object.
+    private Object mCommitStateObject;
 
     // Is false for empty databases which have never checkpointed.
     private volatile boolean mHasCheckpointed = true;
@@ -3822,10 +3822,15 @@ public final class Database implements CauseCloseable, Flushable {
                 redoTxnId = 0;
             } else {
                 // Switch and capture state while commit lock is held.
-                redo.checkpointSwitch();
-                redoNum = redo.checkpointNumber();
-                redoPos = redo.checkpointPosition();
-                redoTxnId = redo.checkpointTransactionId();
+                try {
+                    redo.checkpointSwitch();
+                    redoNum = redo.checkpointNumber();
+                    redoPos = redo.checkpointPosition();
+                    redoTxnId = redo.checkpointTransactionId();
+                } catch (Throwable e) {
+                    redo.checkpointAborted();
+                    throw e;
+                }
             }
 
             if (mEventListener != null) {
@@ -3862,15 +3867,15 @@ public final class Database implements CauseCloseable, Flushable {
                     }
                 }
 
-                mPageDb.commit(new PageDb.CommitCallback() {
+                mPageDb.commit(mCommitStateObject, new PageDb.CommitCallback() {
                     @Override
-                    public byte[] prepare() throws IOException {
-                        return flush(redoNum, redoPos, redoTxnId, masterUndoLogId);
+                    public byte[] prepare(Object state) throws IOException {
+                        return flush(state, redoNum, redoPos, redoTxnId, masterUndoLogId);
                     }
                 });
 
                 // Reset for next checkpoint.
-                mCommitStateSwitched = false;
+                mCommitStateObject = null;
             } catch (IOException e) {
                 if (mCheckpointFlushState == CHECKPOINT_FLUSH_PREPARE) {
                     // Exception was thrown with locks still held.
@@ -3921,7 +3926,8 @@ public final class Database implements CauseCloseable, Flushable {
      * Method is invoked with exclusive commit lock and shared root node latch
      * held. Both are released by this method.
      */
-    private byte[] flush(final long redoNum, final long redoPos, final long redoTxnId,
+    private byte[] flush(final Object commitState,
+                         final long redoNum, final long redoPos, final long redoTxnId,
                          final long masterUndoLogId)
         throws IOException
     {
@@ -3933,7 +3939,7 @@ public final class Database implements CauseCloseable, Flushable {
         final long rootId = root.mId;
         final int stateToFlush = mCommitState;
 
-        if (mCommitStateSwitched) {
+        if (mCommitStateObject != null) {
             // Continue after an aborted checkpoint.
             mCheckpointFlushState = stateToFlush ^ 1;
         } else {
@@ -3942,7 +3948,7 @@ public final class Database implements CauseCloseable, Flushable {
             }
             mCheckpointFlushState = stateToFlush;
             mCommitState = (byte) (stateToFlush ^ 1);
-            mCommitStateSwitched = true;
+            mCommitStateObject = commitState;
         }
 
         root.releaseShared();

@@ -211,8 +211,8 @@ final class DurablePageDb extends PageDb {
                 mCommitNumber = -1;
 
                 // Commit twice to ensure both headers have valid data.
-                commit(null);
-                commit(null);
+                commit(null, null);
+                commit(null, null);
 
                 mPageArray.setPageCount(2);
             } else {
@@ -482,7 +482,7 @@ final class DurablePageDb extends PageDb {
     }
 
     @Override
-    public void commit(final CommitCallback callback) throws IOException {
+    public void commit(final Object state, final CommitCallback callback) throws IOException {
         mCommitLock.writeLock().lock();
         mCommitLock.readLock().lock();
 
@@ -495,20 +495,32 @@ final class DurablePageDb extends PageDb {
         mCommitLock.writeLock().unlock();
 
         try {
-            final byte[] header = new byte[pageSize()];
-            mPageManager.commitStart(header, I_MANAGER_HEADER);
-            // Invoke the callback to ensure all dirty pages get written.
-            byte[] extra = callback == null ? null : callback.prepare();
-            commitHeader(header, commitNumber, extra);
-            mPageManager.commitEnd(header, I_MANAGER_HEADER);
-        } catch (DatabaseException e) {
-            if (e.isRecoverable()) {
-                throw e;
-            } else {
+            final byte[] header;
+            final byte[] extra;
+            try {
+                if (state == null) {
+                    header = new byte[pageSize()];
+                    mPageManager.commitStart(header, I_MANAGER_HEADER);
+                } else {
+                    header = (byte[]) state;
+                }
+
+                // Invoke the callback to ensure all dirty pages get written.
+                extra = callback == null ? null : callback.prepare(header);
+            } catch (DatabaseException e) {
+                if (e.isRecoverable()) {
+                    throw e;
+                } else {
+                    throw closeOnFailure(e);
+                }
+            }
+
+            try {
+                commitHeader(header, commitNumber, extra);
+                mPageManager.commitEnd(header, I_MANAGER_HEADER);
+            } catch (Throwable e) {
                 throw closeOnFailure(e);
             }
-        } catch (Throwable e) {
-            throw closeOnFailure(e);
         } finally {
             mCommitLock.readLock().unlock();
         }
