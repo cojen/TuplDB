@@ -243,18 +243,20 @@ abstract class PageDb implements CauseCloseable {
     /**
      * Durably commits all writes and deletes to the underlying device.
      *
+     * @param state optional state object if callback aborted earlier
      * @param callback optional callback to run during commit
      */
-    public abstract void commit(final CommitCallback callback) throws IOException;
+    public abstract void commit(Object state, CommitCallback callback) throws IOException;
 
     public static interface CommitCallback {
         /**
          * Write all allocated pages which should be committed and return extra
          * data. Extra commit data is stored in PageDb header.
          *
+         * @param state state object to use if callback aborts and tries agaain
          * @return optional extra data to commit, up to 256 bytes
          */
-        public byte[] prepare() throws IOException;
+        public byte[] prepare(Object state) throws IOException;
     }
 
     /**
