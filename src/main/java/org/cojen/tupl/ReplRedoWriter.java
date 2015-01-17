@@ -28,14 +28,20 @@ final class ReplRedoWriter extends RedoWriter {
     private final ReplRedoEngine mEngine;
     private final ReplicationManager mManager;
 
-    private long mCheckpointNum;
+    // Is non-null if writes are allowed.
+    private ReplicationManager.Writer mActiveWriter;
+
+    // These fields capture the state of the last written commit.
+    private ReplicationManager.Writer mLastCommitWriter;
+    private long mLastCommitPos;
+    private long mLastCommitTxnId;
+
+    // These fields capture the state of the last written commit at the start of a checkpoint.
+    private ReplicationManager.Writer mCheckpointWriter;
     private long mCheckpointPos;
     private long mCheckpointTxnId;
 
-    private long mLeaderCommitPos;
-    private long mLeaderCommitTxnId;
-
-    private volatile boolean mIsLeader;
+    private long mCheckpointNum;
 
     ReplRedoWriter(ReplRedoEngine engine) {
         super(4096, 0);
@@ -92,7 +98,7 @@ final class ReplRedoWriter extends RedoWriter {
     @Override
     public void txnCommitSync(long commitPos) throws IOException {
         if (commitPos > 0) {
-            mManager.confirm(commitPos);
+            mActiveWriter.confirm(commitPos);
         }
     }
 
@@ -117,12 +123,8 @@ final class ReplRedoWriter extends RedoWriter {
 
     @Override
     synchronized boolean shouldCheckpoint(long sizeThreshold) {
-        long pos;
-        if (mIsLeader) {
-            pos = mManager.writePosition();
-        } else {
-            pos = mEngine.mDecodePosition;
-        }
+        ReplicationManager.Writer writer = mActiveWriter;
+        long pos = writer == null ? mEngine.mDecodePosition : writer.position();
         return (pos - mCheckpointPos) >= sizeThreshold;
     }
 
@@ -133,15 +135,17 @@ final class ReplRedoWriter extends RedoWriter {
     }
 
     @Override
-    synchronized void checkpointSwitch() {
-        mCheckpointNum++;
-        if (mIsLeader) {
-            mCheckpointPos = mLeaderCommitPos;
-            mCheckpointTxnId = mLeaderCommitTxnId;
-        } else {
+    synchronized void checkpointSwitch() throws IOException {
+        ReplicationManager.Writer writer = mLastCommitWriter;
+        mCheckpointWriter = writer;
+        if (writer == null) {
             mCheckpointPos = mEngine.mDecodePosition;
             mCheckpointTxnId = mEngine.mDecodeTransactionId;
+        } else {
+            mCheckpointPos = mLastCommitPos;
+            mCheckpointTxnId = mLastCommitTxnId;
         }
+        mCheckpointNum++;
     }
 
     @Override
@@ -162,6 +166,7 @@ final class ReplRedoWriter extends RedoWriter {
     @Override
     void checkpointAborted() {
         mEngine.resume();
+        mCheckpointWriter = null;
     }
 
     @Override
@@ -169,17 +174,26 @@ final class ReplRedoWriter extends RedoWriter {
         mEngine.resume();
 
         // Make sure that durable replication data is not behind local database.
+
+        ReplicationManager.Writer writer = mLastCommitWriter;
+        if (writer != null) {
+            if (!writer.confirm(mCheckpointPos, -1)) {
+                throw unmodifiable();
+            }
+        }
+
         mManager.syncConfirm(mCheckpointPos, -1);
     }
 
     @Override
     void checkpointFinished() throws IOException {
         mManager.checkpointed(mCheckpointPos);
+        mCheckpointWriter = null;
     }
 
     @Override
     void opWriteCheck() throws IOException {
-        if (!mIsLeader) {
+        if (mActiveWriter == null) {
             throw unmodifiable();
         }
     }
@@ -188,7 +202,7 @@ final class ReplRedoWriter extends RedoWriter {
     void write(byte[] buffer, int len) throws IOException {
         // Length check is included because super class can invoke this method to flush the
         // buffer even when empty. Operation should never fail.
-        if (len > 0 && mManager.write(buffer, 0, len) < 0) {
+        if (len > 0 && mActiveWriter.write(buffer, 0, len) < 0) {
             throw unmodifiable();
         }
     }
@@ -198,10 +212,12 @@ final class ReplRedoWriter extends RedoWriter {
         // Length check is included because super class can invoke this method to flush the
         // buffer even when empty. Operation should never fail.
         if (len > 0) {
-            long pos = mManager.write(buffer, 0, len);
+            ReplicationManager.Writer writer = mActiveWriter;
+            long pos = writer.write(buffer, 0, len);
             if (pos >= 0) {
-                mLeaderCommitPos = pos;
-                mLeaderCommitTxnId = lastTransactionId();
+                mLastCommitWriter = writer;
+                mLastCommitPos = pos;
+                mLastCommitTxnId = lastTransactionId();
                 return pos;
             } else {
                 throw unmodifiable();
@@ -244,11 +260,17 @@ final class ReplRedoWriter extends RedoWriter {
      * Called by ReplRedoEngine when local instance has become the leader.
      */
     synchronized void leaderNotify() throws UnmodifiableReplicaException, IOException {
-        if (!mIsLeader) {
+        if (mActiveWriter == null) {
             mManager.flip();
-            mLeaderCommitPos = mManager.writePosition();
-            mLeaderCommitTxnId = 0;
-            mIsLeader = true;
+
+            if ((mActiveWriter = mManager.writer()) == null) {
+                // False alarm?
+                return;
+            }
+
+            mLastCommitWriter = mActiveWriter;
+            mLastCommitPos = mActiveWriter.position();
+            mLastCommitTxnId = 0;
 
             // Clear the log state and write a reset op to signal leader transition.
             clearAndReset();
@@ -264,9 +286,14 @@ final class ReplRedoWriter extends RedoWriter {
     }
 
     private synchronized UnmodifiableReplicaException unmodifiable() throws IOException {
-        if (mIsLeader) {
+        if (mActiveWriter != null) {
             mManager.flip();
-            mIsLeader = false;
+
+            mActiveWriter = null;
+
+            mLastCommitWriter = null;
+            mLastCommitPos = 0;
+            mLastCommitTxnId = 0;
 
             final long initialPosition = mManager.readPosition();
 
