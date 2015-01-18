@@ -97,8 +97,9 @@ final class ReplRedoWriter extends RedoWriter {
 
     @Override
     public void txnCommitSync(long commitPos) throws IOException {
-        if (commitPos > 0) {
-            mActiveWriter.confirm(commitPos);
+        ReplicationManager.Writer writer;
+        if (commitPos > 0 && ((writer = mActiveWriter) == null || !writer.confirm(commitPos))) {
+            throw unmodifiable();
         }
     }
 
@@ -176,10 +177,8 @@ final class ReplRedoWriter extends RedoWriter {
         // Make sure that durable replication data is not behind local database.
 
         ReplicationManager.Writer writer = mLastCommitWriter;
-        if (writer != null) {
-            if (!writer.confirm(mCheckpointPos, -1)) {
-                throw unmodifiable();
-            }
+        if (writer != null && !writer.confirm(mCheckpointPos, -1)) {
+            throw unmodifiable();
         }
 
         mManager.syncConfirm(mCheckpointPos, -1);
@@ -202,7 +201,8 @@ final class ReplRedoWriter extends RedoWriter {
     void write(byte[] buffer, int len) throws IOException {
         // Length check is included because super class can invoke this method to flush the
         // buffer even when empty. Operation should never fail.
-        if (len > 0 && mActiveWriter.write(buffer, 0, len) < 0) {
+        ReplicationManager.Writer writer;
+        if (len > 0 && ((writer = mActiveWriter) == null || writer.write(buffer, 0, len) < 0)) {
             throw unmodifiable();
         }
     }
@@ -213,8 +213,8 @@ final class ReplRedoWriter extends RedoWriter {
         // buffer even when empty. Operation should never fail.
         if (len > 0) {
             ReplicationManager.Writer writer = mActiveWriter;
-            long pos = writer.write(buffer, 0, len);
-            if (pos >= 0) {
+            long pos;
+            if (writer != null && (pos = writer.write(buffer, 0, len)) >= 0) {
                 mLastCommitWriter = writer;
                 mLastCommitPos = pos;
                 mLastCommitTxnId = lastTransactionId();
