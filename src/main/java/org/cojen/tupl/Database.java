@@ -3937,19 +3937,23 @@ public final class Database implements CauseCloseable, Flushable {
         }
         final Node root = mRegistry.mRoot;
         final long rootId = root.mId;
-        final int stateToFlush = mCommitState;
+        int stateToFlush = mCommitState;
 
         if (mCommitStateObject != null) {
             // Continue after an aborted checkpoint.
-            mCheckpointFlushState = stateToFlush ^ 1;
+            if (mCommitStateObject != commitState) {
+                throw new AssertionError();
+            }
+            stateToFlush ^= 1;
         } else {
             if (!mHasCheckpointed) {
                 mHasCheckpointed = true; // Must be set before switching commit state.
             }
-            mCheckpointFlushState = stateToFlush;
             mCommitState = (byte) (stateToFlush ^ 1);
             mCommitStateObject = commitState;
         }
+
+        mCheckpointFlushState = stateToFlush;
 
         root.releaseShared();
         mPageDb.exclusiveCommitLock().unlock();
