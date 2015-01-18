@@ -38,7 +38,7 @@ final class DeadlockDetector {
     // memory barrier.
 
     private final Locker mOrigin;
-    private final Set<Locker> mLockers;
+    private final Set<LockOwner> mLockers;
     final Set<Lock> mLocks;
 
     boolean mGuilty;
@@ -59,7 +59,7 @@ final class DeadlockDetector {
     /**
      * @return true if deadlock was found
      */
-    private boolean scan(Locker locker) {
+    private boolean scan(LockOwner locker) {
         boolean found = false;
 
         outer: while (true) {
@@ -80,8 +80,8 @@ final class DeadlockDetector {
                 }
             }
 
-            Locker owner = lock.mLocker;
-            Object shared = lock.mSharedLockersObj;
+            LockOwner owner = lock.mOwner;
+            Object shared = lock.mSharedLockOwnersObj;
 
             // If the owner is the locker, then it is trying to upgrade. It's
             // waiting for another locker to release the shared lock.
@@ -101,20 +101,20 @@ final class DeadlockDetector {
                     continue outer;
                 }
 
-                if (!(shared instanceof Lock.LockerHTEntry[])) {
+                if (!(shared instanceof Lock.LockOwnerHTEntry[])) {
                     break scanShared;
                 }
 
-                Lock.LockerHTEntry[] entries = (Lock.LockerHTEntry[]) shared;
+                Lock.LockOwnerHTEntry[] entries = (Lock.LockOwnerHTEntry[]) shared;
                 for (int i=entries.length; --i>=0; ) {
-                    for (Lock.LockerHTEntry e = entries[i]; e != null; ) {
-                        Lock.LockerHTEntry next = e.mNext;
+                    for (Lock.LockOwnerHTEntry e = entries[i]; e != null; ) {
+                        Lock.LockOwnerHTEntry next = e.mNext;
                         if (i == 0 && next == null) {
                             // Tail call.
-                            locker = e.mLocker;
+                            locker = e.mOwner;
                             continue outer;
                         }
-                        found |= scan(e.mLocker);
+                        found |= scan(e.mOwner);
                         e = next;
                     }
                 }

@@ -1400,7 +1400,7 @@ final class Node extends Latch {
         }
 
         // Ghost will be deleted later when locks are released.
-        tree.mLockManager.ghosted(txn, tree, key, keyHash);
+        tree.mLockManager.ghosted(tree, key, keyHash);
 
         // Replace value with ghost.
         page[valueHeaderLoc] = (byte) -1;

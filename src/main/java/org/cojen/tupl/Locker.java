@@ -27,18 +27,13 @@ import static org.cojen.tupl.LockManager.*;
  *
  * @author Brian S O'Neill
  */
-class Locker {
+class Locker extends LockOwner {
     final LockManager mManager;
-
-    private int mHashCode;
 
     ParentScope mParentScope;
 
     // Is null if empty; Lock instance if one; Block if more.
     Object mTailBlock;
-
-    // Locker is currently waiting to acquire this lock. Used for deadlock detection.
-    Lock mWaitingFor;
 
     Locker(LockManager manager) {
         if (manager == null) {
@@ -593,15 +588,6 @@ class Locker {
         mParentScope = null;
         scopeUnlockAll();
         mTailBlock = null;
-    }
-
-    @Override
-    public final int hashCode() {
-        int hash = mHashCode;
-        if (hash == 0) {
-            mHashCode = hash = Utils.randomSeed();
-        }
-        return hash;
     }
 
     /**
