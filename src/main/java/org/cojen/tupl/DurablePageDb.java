@@ -482,7 +482,7 @@ final class DurablePageDb extends PageDb {
     }
 
     @Override
-    public void commit(final Object state, final CommitCallback callback) throws IOException {
+    public void commit(CommitState state, final CommitCallback callback) throws IOException {
         mCommitLock.writeLock().lock();
         mCommitLock.readLock().lock();
 
@@ -501,12 +501,13 @@ final class DurablePageDb extends PageDb {
                 if (state == null) {
                     header = new byte[pageSize()];
                     mPageManager.commitStart(header, I_MANAGER_HEADER);
+                    state = new CommitState(header);
                 } else {
-                    header = (byte[]) state;
+                    header = (byte[]) state.mInternal;
                 }
 
                 // Invoke the callback to ensure all dirty pages get written.
-                extra = callback == null ? null : callback.prepare(header);
+                extra = callback == null ? null : callback.prepare(state);
             } catch (DatabaseException e) {
                 if (e.isRecoverable()) {
                     throw e;

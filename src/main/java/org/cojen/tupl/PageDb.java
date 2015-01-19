@@ -246,7 +246,18 @@ abstract class PageDb implements CauseCloseable {
      * @param state optional state object if callback aborted earlier
      * @param callback optional callback to run during commit
      */
-    public abstract void commit(Object state, CommitCallback callback) throws IOException;
+    public abstract void commit(CommitState state, CommitCallback callback) throws IOException;
+
+    static class CommitState {
+        final Object mInternal;
+
+        // Customizable external state.
+        Object mExternal;
+
+        CommitState(Object internal) {
+            mInternal = internal;
+        }
+    }
 
     public static interface CommitCallback {
         /**
@@ -256,7 +267,7 @@ abstract class PageDb implements CauseCloseable {
          * @param state state object to use if callback aborts and tries agaain
          * @return optional extra data to commit, up to 256 bytes
          */
-        public byte[] prepare(Object state) throws IOException;
+        public byte[] prepare(CommitState state) throws IOException;
     }
 
     /**

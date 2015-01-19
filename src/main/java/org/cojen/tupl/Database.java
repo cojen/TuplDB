@@ -182,7 +182,7 @@ public final class Database implements CauseCloseable, Flushable {
 
     // Set during checkpoint after commit state has switched. If checkpoint aborts, next
     // checkpoint will apply start with this commit state object.
-    private Object mCommitStateObject;
+    private PageDb.CommitState mCommitStateObject;
 
     // Is false for empty databases which have never checkpointed.
     private volatile boolean mHasCheckpointed = true;
@@ -3869,7 +3869,7 @@ public final class Database implements CauseCloseable, Flushable {
 
                 mPageDb.commit(mCommitStateObject, new PageDb.CommitCallback() {
                     @Override
-                    public byte[] prepare(Object state) throws IOException {
+                    public byte[] prepare(PageDb.CommitState state) throws IOException {
                         return flush(state, redoNum, redoPos, redoTxnId, masterUndoLogId);
                     }
                 });
@@ -3926,7 +3926,7 @@ public final class Database implements CauseCloseable, Flushable {
      * Method is invoked with exclusive commit lock and shared root node latch
      * held. Both are released by this method.
      */
-    private byte[] flush(final Object commitState,
+    private byte[] flush(final PageDb.CommitState commitState,
                          final long redoNum, final long redoPos, final long redoTxnId,
                          final long masterUndoLogId)
         throws IOException
@@ -3936,7 +3936,8 @@ public final class Database implements CauseCloseable, Flushable {
             txnId = mTxnId;
         }
         final Node root = mRegistry.mRoot;
-        final long rootId = root.mId;
+
+        long rootId = root.mId;
         int stateToFlush = mCommitState;
 
         if (mCommitStateObject != null) {
@@ -3944,11 +3945,13 @@ public final class Database implements CauseCloseable, Flushable {
             if (mCommitStateObject != commitState) {
                 throw new AssertionError();
             }
+            rootId = (long) commitState.mExternal;
             stateToFlush ^= 1;
         } else {
             if (!mHasCheckpointed) {
                 mHasCheckpointed = true; // Must be set before switching commit state.
             }
+            commitState.mExternal = rootId;
             mCommitState = (byte) (stateToFlush ^ 1);
             mCommitStateObject = commitState;
         }
