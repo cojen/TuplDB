@@ -181,8 +181,8 @@ public final class Database implements CauseCloseable, Flushable {
     private byte mCommitState;
 
     // Set during checkpoint after commit state has switched. If checkpoint aborts, next
-    // checkpoint will apply start with this commit state object.
-    private PageDb.CommitState mCommitStateObject;
+    // checkpoint will resume with this commit header.
+    private byte[] mCommitHeader;
 
     // Is false for empty databases which have never checkpointed.
     private volatile boolean mHasCheckpointed = true;
@@ -3794,6 +3794,17 @@ public final class Database implements CauseCloseable, Flushable {
                 }
             }
 
+            boolean resume = true;
+            byte[] header = mCommitHeader;
+            if (header == null) {
+                // Allocate early, before acquiring locks.
+                header = new byte[mPageDb.pageSize()];
+                resume = false;
+            }
+
+            int hoff = mPageDb.extraCommitDataOffset();
+            encodeIntLE(header, hoff + I_ENCODING_VERSION, ENCODING_VERSION);
+
             mLastCheckpointNanos = nowNanos;
 
             final RedoWriter redo = mRedoWriter;
@@ -3813,6 +3824,10 @@ public final class Database implements CauseCloseable, Flushable {
                 }
 
                 commitLock.unlock();
+            }
+
+            if (!resume) {
+                encodeLongLE(header, hoff + I_ROOT_PAGE_ID, root.mId);
             }
 
             final long redoNum, redoPos, redoTxnId;
@@ -3838,6 +3853,13 @@ public final class Database implements CauseCloseable, Flushable {
                                       "Checkpoint begin: %1$d, %2$d", redoNum, redoPos);
             }
 
+            encodeLongLE(header, hoff + I_CHECKPOINT_NUMBER, redoNum);
+            encodeLongLE(header, hoff + I_REDO_TXN_ID, redoTxnId);
+            encodeLongLE(header, hoff + I_REDO_POSITION, redoPos);
+
+            encodeLongLE(header, hoff + I_REPL_ENCODING,
+                         mRedoWriter == null ? 0 : mRedoWriter.encoding());
+
             mCheckpointFlushState = CHECKPOINT_FLUSH_PREPARE;
 
             UndoLog masterUndoLog = null;
@@ -3848,8 +3870,12 @@ public final class Database implements CauseCloseable, Flushable {
                 // Tree, but this requires more features to be added to Tree
                 // first. Specifically, large values and appending to them.
 
+                final long txnId;
                 final long masterUndoLogId;
+
                 synchronized (mTxnIdLock) {
+                    txnId = mTxnId;
+
                     int count = mUndoLogCount;
                     if (count == 0) {
                         masterUndoLogId = 0;
@@ -3867,15 +3893,18 @@ public final class Database implements CauseCloseable, Flushable {
                     }
                 }
 
-                mPageDb.commit(mCommitStateObject, new PageDb.CommitCallback() {
+                encodeLongLE(header, hoff + I_TRANSACTION_ID, txnId);
+                encodeLongLE(header, hoff + I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
+
+                mPageDb.commit(resume, header, new PageDb.CommitCallback() {
                     @Override
-                    public byte[] prepare(PageDb.CommitState state) throws IOException {
-                        return flush(state, redoNum, redoPos, redoTxnId, masterUndoLogId);
+                    public void prepare(boolean resume, byte[] header) throws IOException {
+                        flush(resume, header);
                     }
                 });
 
                 // Reset for next checkpoint.
-                mCommitStateObject = null;
+                mCommitHeader = null;
             } catch (IOException e) {
                 if (mCheckpointFlushState == CHECKPOINT_FLUSH_PREPARE) {
                     // Exception was thrown with locks still held.
@@ -3926,39 +3955,26 @@ public final class Database implements CauseCloseable, Flushable {
      * Method is invoked with exclusive commit lock and shared root node latch
      * held. Both are released by this method.
      */
-    private byte[] flush(final PageDb.CommitState commitState,
-                         final long redoNum, final long redoPos, final long redoTxnId,
-                         final long masterUndoLogId)
-        throws IOException
-    {
-        final long txnId;
-        synchronized (mTxnIdLock) {
-            txnId = mTxnId;
-        }
-        final Node root = mRegistry.mRoot;
-
-        long rootId = root.mId;
+    private void flush(final boolean resume, final byte[] header) throws IOException {
         int stateToFlush = mCommitState;
 
-        if (mCommitStateObject != null) {
-            // Continue after an aborted checkpoint.
-            if (mCommitStateObject != commitState) {
+        if (resume) {
+            // Resume after an aborted checkpoint.
+            if (header != mCommitHeader) {
                 throw new AssertionError();
             }
-            rootId = (long) commitState.mExternal;
             stateToFlush ^= 1;
         } else {
             if (!mHasCheckpointed) {
                 mHasCheckpointed = true; // Must be set before switching commit state.
             }
-            commitState.mExternal = rootId;
             mCommitState = (byte) (stateToFlush ^ 1);
-            mCommitStateObject = commitState;
+            mCommitHeader = header;
         }
 
         mCheckpointFlushState = stateToFlush;
 
-        root.releaseShared();
+        mRegistry.mRoot.releaseShared();
         mPageDb.exclusiveCommitLock().unlock();
 
         if (mRedoWriter != null) {
@@ -3974,18 +3990,6 @@ public final class Database implements CauseCloseable, Flushable {
         } finally {
             mCheckpointFlushState = CHECKPOINT_NOT_FLUSHING;
         }
-
-        byte[] header = new byte[HEADER_SIZE];
-        encodeIntLE(header, I_ENCODING_VERSION, ENCODING_VERSION);
-        encodeLongLE(header, I_ROOT_PAGE_ID, rootId);
-        encodeLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
-        encodeLongLE(header, I_TRANSACTION_ID, txnId);
-        encodeLongLE(header, I_CHECKPOINT_NUMBER, redoNum);
-        encodeLongLE(header, I_REDO_TXN_ID, redoTxnId);
-        encodeLongLE(header, I_REDO_POSITION, redoPos);
-        encodeLongLE(header, I_REPL_ENCODING, mRedoWriter == null ? 0 : mRedoWriter.encoding());
-
-        return header;
     }
 
     // Called by DurablePageDb with header latch held.
