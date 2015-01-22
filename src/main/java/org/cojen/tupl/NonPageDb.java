@@ -184,7 +184,12 @@ final class NonPageDb extends PageDb {
     }
 
     @Override
-    public void commit(CommitState state, final CommitCallback callback) throws IOException {
+    public int extraCommitDataOffset() {
+        return 0;
+    }
+
+    @Override
+    public void commit(boolean resume, byte[] header, CommitCallback callback) throws IOException {
         // This is more of an assertion failure.
         throw new DatabaseException("Cannot commit to a non-durable database");
     }

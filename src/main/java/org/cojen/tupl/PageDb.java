@@ -241,33 +241,29 @@ abstract class PageDb implements CauseCloseable {
     public abstract boolean truncatePages() throws IOException;
 
     /**
+     * Returns the header offset for writing extra commit data into, up to 256 bytes.
+     */
+    public abstract int extraCommitDataOffset();
+
+    /**
      * Durably commits all writes and deletes to the underlying device.
      *
-     * @param state optional state object if callback aborted earlier
+     * @param resume true if resuming an aborted commit
+     * @param header must be page size
      * @param callback optional callback to run during commit
      */
-    public abstract void commit(CommitState state, CommitCallback callback) throws IOException;
-
-    static class CommitState {
-        final Object mInternal;
-
-        // Customizable external state.
-        Object mExternal;
-
-        CommitState(Object internal) {
-            mInternal = internal;
-        }
-    }
+    public abstract void commit(boolean resume, byte[] header, CommitCallback callback)
+        throws IOException;
 
     public static interface CommitCallback {
         /**
-         * Write all allocated pages which should be committed and return extra
-         * data. Extra commit data is stored in PageDb header.
+         * Write all allocated pages which should be committed. Extra header data provided is
+         * stored in the PageDb header.
          *
-         * @param state state object to use if callback aborts and tries agaain
-         * @return optional extra data to commit, up to 256 bytes
+         * @param resume true if resuming an aborted commit
+         * @param header header to write extra data into, up to 256 bytes
          */
-        public byte[] prepare(CommitState state) throws IOException;
+        public void prepare(boolean resume, byte[] header) throws IOException;
     }
 
     /**
