@@ -65,9 +65,6 @@ final class ReplRedoWriter extends RedoWriter {
         // Pass SYNC mode to flush the buffer and obtain the commit position. Return value from
         // this method indicates if an actual sync should be performed.
         long pos = super.store(indexId, key, value, DurabilityMode.SYNC);
-        if (pos < 0) {
-            throw unmodifiable();
-        }
         // Replication makes no distinction between SYNC and NO_SYNC durability. The NO_REDO
         // mode is not expected to be passed into this method.
         return mode == DurabilityMode.NO_FLUSH ? 0 : pos;
@@ -79,9 +76,31 @@ final class ReplRedoWriter extends RedoWriter {
     {
         // Ditto comments from above.
         long pos = super.storeNoLock(indexId, key, value, DurabilityMode.SYNC);
-        if (pos < 0) {
-            throw unmodifiable();
-        }
+        return mode == DurabilityMode.NO_FLUSH ? 0 : pos;
+    }
+
+    @Override
+    public long dropIndex(long txnId, long indexId, DurabilityMode mode)
+        throws IOException
+    {
+        // Ditto comments from above.
+        long pos = super.dropIndex(txnId, indexId, DurabilityMode.SYNC);
+        return mode == DurabilityMode.NO_FLUSH ? 0 : pos;
+    }
+
+    @Override
+    public long renameIndex(long txnId, long indexId, byte[] newName, DurabilityMode mode)
+        throws IOException
+    {
+        // Ditto comments from above.
+        long pos = super.renameIndex(txnId, indexId, newName, DurabilityMode.SYNC);
+        return mode == DurabilityMode.NO_FLUSH ? 0 : pos;
+    }
+
+    @Override
+    public long deleteIndex(long txnId, long indexId, DurabilityMode mode) throws IOException {
+        // Ditto comments from above.
+        long pos = super.deleteIndex(txnId, indexId, DurabilityMode.SYNC);
         return mode == DurabilityMode.NO_FLUSH ? 0 : pos;
     }
 
@@ -89,9 +108,6 @@ final class ReplRedoWriter extends RedoWriter {
     public long txnCommitFinal(long txnId, DurabilityMode mode) throws IOException {
         // Ditto comments from above.
         long pos = super.txnCommitFinal(txnId, DurabilityMode.SYNC);
-        if (pos < 0) {
-            throw unmodifiable();
-        }
         return mode == DurabilityMode.NO_FLUSH ? 0 : pos;
     }
 
