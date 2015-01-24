@@ -969,24 +969,26 @@ public final class Database implements CauseCloseable, Flushable {
 
     /**
      * @param newName not cloned
-     * @param txnId non-zero if rename is performed by recovery
+     * @param redoTxnId non-zero if rename is performed by recovery
      */
-    void renameIndex(Index index, byte[] newName, long txnId) throws IOException {
+    void renameIndex(final Index index, final byte[] newName, final long redoTxnId)
+        throws IOException
+    {
         // Design note: Rename is a Database method instead of an Index method because it
         // offers an extra degree of safety. It's too easy to call rename and pass a byte[] by
         // an accident when something like remove was desired instead. Requiring access to the
         // Database instance makes this operation a bit more of a hassle to use, which is
         // desirable. Rename is not expected to be a common operation.
 
-        Tree tree = accessTree(index);
+        final Tree tree = accessTree(index);
 
-        byte[] idKey, trashIdKey;
-        byte[] oldName, oldNameKey;
-        byte[] newNameKey;
+        final byte[] idKey, trashIdKey;
+        final byte[] oldName, oldNameKey;
+        final byte[] newNameKey;
 
-        Transaction txn;
+        final Transaction txn;
 
-        Node root = tree.mRoot;
+        final Node root = tree.mRoot;
         root.acquireExclusive();
         try {
             if (root.mPage == EMPTY_BYTES) {
@@ -1007,7 +1009,7 @@ public final class Database implements CauseCloseable, Flushable {
             oldNameKey = newKey(KEY_TYPE_INDEX_NAME, oldName);
             newNameKey = newKey(KEY_TYPE_INDEX_NAME, newName);
 
-            txn = newNoRedoTransaction(txnId);
+            txn = newNoRedoTransaction(redoTxnId);
             try {
                 txn.lockExclusive(mRegistryKeyMap.mId, idKey);
                 txn.lockExclusive(mRegistryKeyMap.mId, trashIdKey);
@@ -1029,9 +1031,6 @@ public final class Database implements CauseCloseable, Flushable {
             root.releaseExclusive();
         }
 
-        final RedoWriter redo = txnId == 0 ? mRedoWriter : null;
-        long commitPos = 0;
-
         try {
             Cursor c = mRegistryKeyMap.newCursor(txn);
             try {
@@ -1052,9 +1051,16 @@ public final class Database implements CauseCloseable, Flushable {
                 c.reset();
             }
 
-            if (redo != null) {
-                commitPos = redo.renameIndex
+            RedoWriter redo;
+            if (redoTxnId == 0 && (redo = mRedoWriter) != null) {
+                long commitPos = redo.renameIndex
                     (txn.txnId(), tree.mId, newName, mDurabilityMode.alwaysRedo());
+                if (commitPos != 0) {
+                    // Must wait for durability confirmation before performing actions below
+                    // which cannot be easily rolled back. No global latches or locks are held
+                    // while waiting.
+                    redo.txnCommitSync(commitPos);
+                }
             }
 
             mRegistryKeyMap.delete(txn, oldNameKey);
@@ -1076,11 +1082,6 @@ public final class Database implements CauseCloseable, Flushable {
             throw closeOnFailure(this, e);
         } finally {
             txn.reset();
-        }
-
-        if (redo != null && commitPos != 0) {
-            // Don't hold locks and latches during sync.
-            redo.txnCommitSync(commitPos);
         }
     }
 
@@ -1122,15 +1123,15 @@ public final class Database implements CauseCloseable, Flushable {
     }
 
     /**
-     * @param txnId non-zero if delete is performed by recovery
+     * @param redoTxnId non-zero if delete is performed by recovery
      */
-    Runnable deleteIndex(Index index, long txnId) throws IOException {
+    Runnable deleteIndex(Index index, long redoTxnId) throws IOException {
         // Design note: This is a Database method instead of an Index method because it offers
         // an extra degree of safety. See notes in renameIndex.
         Tree tree = accessTree(index);
         tree.deleteCheck();
 
-        Node root = moveToTrash(tree, txnId);
+        Node root = moveToTrash(tree, redoTxnId);
 
         if (root == null) {
             // Handle concurrent delete attempt.
@@ -1343,11 +1344,11 @@ public final class Database implements CauseCloseable, Flushable {
      * Convenience method which returns a transaction intended for locking and undo. Caller can
      * make modifications, but they won't go to the redo log.
      *
-     * @param txnId non-zero if operation is performed by recovery
+     * @param redoTxnId non-zero if operation is performed by recovery
      */
-    Transaction newNoRedoTransaction(long txnId) {
-        return txnId == 0 ? newNoRedoTransaction() :
-            new Transaction(this, txnId, LockMode.UPGRADABLE_READ, -1);
+    Transaction newNoRedoTransaction(long redoTxnId) {
+        return redoTxnId == 0 ? newNoRedoTransaction() :
+            new Transaction(this, redoTxnId, LockMode.UPGRADABLE_READ, -1);
     }
 
     /**
@@ -2264,155 +2265,147 @@ public final class Database implements CauseCloseable, Flushable {
     }
 
     /**
-     * @param txnId non-zero if drop is performed by recovery
+     * @param redoTxnId non-zero if drop is performed by recovery
      */
-    void dropClosedTree(Tree tree, long rootId, int cachedState, long txnId) throws IOException {
-        final RedoWriter redo = txnId == 0 ? mRedoWriter : null;
-        long commitPos = 0;
+    void dropClosedTree(final Tree tree, final long rootId,
+                        final int cachedState, final long redoTxnId)
+        throws IOException
+    {
+        final byte[] name;
+        byte[] idKey = null, nameKey = null;
 
-        final Lock commitLock = sharedCommitLock();
-        commitLock.lock();
+        final Transaction txn;
+
+        mOpenTreesLatch.acquireExclusive();
         try {
-            byte[] name;
-            byte[] idKey = null, nameKey = null;
-
-            Transaction txn;
-            mOpenTreesLatch.acquireExclusive();
-            try {
-                TreeRef ref = mOpenTreesById.getValue(tree.mId);
-                if (ref == null || ref.get() != tree) {
-                    return;
-                }
-
-                name = tree.mName;
-                if (name != null) {
-                    idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
-                    nameKey = newKey(KEY_TYPE_INDEX_NAME, name);
-                }
-
-                txn = newNoRedoTransaction(txnId);
-                try {
-                    // Acquire locks to prevent tree from being re-opened. No deadlocks should
-                    // be possible with tree latch held exclusively, but order in a safe
-                    // fashion anyhow. A registry lookup can only follow a key map lookup.
-                    if (name != null) {
-                        txn.lockExclusive(mRegistryKeyMap.mId, idKey);
-                        txn.lockExclusive(mRegistryKeyMap.mId, nameKey);
-                    }
-
-                    txn.lockExclusive(mRegistry.mId, tree.mIdBytes);
-
-                    ref.clear();
-
-                    if (name != null) {
-                        mOpenTrees.remove(name);
-                    }
-
-                    mOpenTreesById.remove(tree.mId);
-                } catch (Throwable e) {
-                    txn.reset();
-                    throw e;
-                }
-            } finally {
-                mOpenTreesLatch.releaseExclusive();
+            TreeRef ref = mOpenTreesById.getValue(tree.mId);
+            if (ref == null || ref.get() != tree) {
+                return;
             }
 
-            // Complete the drop operation without preventing other indexes from being opened
-            // or dropped concurrently.
+            name = tree.mName;
+            if (name != null) {
+                idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
+                nameKey = newKey(KEY_TYPE_INDEX_NAME, name);
+            }
 
+            txn = newNoRedoTransaction(redoTxnId);
             try {
+                // Acquire locks to prevent tree from being re-opened. No deadlocks should
+                // be possible with tree latch held exclusively, but order in a safe
+                // fashion anyhow. A registry lookup can only follow a key map lookup.
                 if (name != null) {
-                    mRegistryKeyMap.remove(txn, idKey, name);
-                    mRegistryKeyMap.remove(txn, nameKey, tree.mIdBytes);
+                    txn.lockExclusive(mRegistryKeyMap.mId, idKey);
+                    txn.lockExclusive(mRegistryKeyMap.mId, nameKey);
                 }
 
-                mRegistry.delete(txn, tree.mIdBytes);
+                txn.lockExclusive(mRegistry.mId, tree.mIdBytes);
 
-                if (redo != null) {
-                    commitPos = redo.dropIndex
-                        (txn.txnId(), tree.mId, mDurabilityMode.alwaysRedo());
+                ref.clear();
+
+                if (name != null) {
+                    mOpenTrees.remove(name);
                 }
 
-                txn.commit();
-
-                deletePage(rootId, cachedState);
+                mOpenTreesById.remove(tree.mId);
             } catch (Throwable e) {
-                DatabaseException.rethrowIfRecoverable(e);
-                throw closeOnFailure(this, e);
-            } finally {
                 txn.reset();
+                throw e;
             }
         } finally {
-            commitLock.unlock();
+            mOpenTreesLatch.releaseExclusive();
         }
 
-        if (redo != null && commitPos != 0) {
-            // Don't hold commit lock during sync.
-            redo.txnCommitSync(commitPos);
+        // Complete the drop operation without preventing other indexes from being opened
+        // or dropped concurrently.
+
+        try {
+            if (name != null) {
+                mRegistryKeyMap.remove(txn, idKey, name);
+                mRegistryKeyMap.remove(txn, nameKey, tree.mIdBytes);
+            }
+
+            mRegistry.delete(txn, tree.mIdBytes);
+
+            RedoWriter redo;
+            if (redoTxnId == 0 && (redo = mRedoWriter) != null) {
+                long commitPos = redo.dropIndex
+                    (txn.txnId(), tree.mId, mDurabilityMode.alwaysRedo());
+                if (commitPos != 0) {
+                    // Must wait for durability confirmation before performing actions below
+                    // which cannot be easily rolled back. No global latches or locks are held
+                    // while waiting.
+                    redo.txnCommitSync(commitPos);
+                }
+            }
+
+            txn.commit();
+
+            final Lock commitLock = sharedCommitLock();
+            commitLock.lock();
+            try {
+                deletePage(rootId, cachedState);
+            } finally {
+                commitLock.unlock();
+            }
+        } catch (Throwable e) {
+            DatabaseException.rethrowIfRecoverable(e);
+            throw closeOnFailure(this, e);
+        } finally {
+            txn.reset();
         }
     }
 
     /**
-     * @param txnId non-zero if move is performed by recovery
+     * @param redoTxnId non-zero if move is performed by recovery
      * @return root node of deleted tree; null if closed or already in the trash
      */
-    Node moveToTrash(Tree tree, long txnId) throws IOException {
-        final RedoWriter redo = txnId == 0 ? mRedoWriter : null;
-        long commitPos = 0;
+    private Node moveToTrash(final Tree tree, final long redoTxnId) throws IOException {
+        final byte[] idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
+        final byte[] trashIdKey = newKey(KEY_TYPE_TRASH_ID, tree.mIdBytes);
 
-        byte[] idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
-        byte[] trashIdKey = newKey(KEY_TYPE_TRASH_ID, tree.mIdBytes);
-
-        Node root;
-
-        final Lock commitLock = sharedCommitLock();
-        commitLock.lock();
+        final Transaction txn = newNoRedoTransaction(redoTxnId);
         try {
-            Transaction txn = newNoRedoTransaction(txnId);
-            try {
-                if (mRegistryKeyMap.load(txn, trashIdKey) != null) {
-                    // Already in the trash.
-                    return null;
-                }
-
-                byte[] treeName = mRegistryKeyMap.exchange(txn, idKey, null);
-
-                if (treeName == null) {
-                    // A trash entry with just a zero indicates that the name is null.
-                    mRegistryKeyMap.store(txn, trashIdKey, new byte[1]);
-                } else {
-                    byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, treeName);
-                    mRegistryKeyMap.remove(txn, nameKey, tree.mIdBytes);
-                    // Tag the trash entry to indicate that name is non-null. Note that nameKey
-                    // instance is modified directly.
-                    nameKey[0] = 1;
-                    mRegistryKeyMap.store(txn, trashIdKey, nameKey);
-                }
-
-                if (redo != null) {
-                    commitPos = redo.deleteIndex
-                        (txn.txnId(), tree.mId, mDurabilityMode.alwaysRedo());
-                }
-
-                txn.commit();
-            } catch (Throwable e) {
-                DatabaseException.rethrowIfRecoverable(e);
-                throw closeOnFailure(this, e);
-            } finally {
-                txn.reset();
+            if (mRegistryKeyMap.load(txn, trashIdKey) != null) {
+                // Already in the trash.
+                return null;
             }
 
-            root = tree.close(true);
+            byte[] treeName = mRegistryKeyMap.exchange(txn, idKey, null);
+
+            if (treeName == null) {
+                // A trash entry with just a zero indicates that the name is null.
+                mRegistryKeyMap.store(txn, trashIdKey, new byte[1]);
+            } else {
+                byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, treeName);
+                mRegistryKeyMap.remove(txn, nameKey, tree.mIdBytes);
+                // Tag the trash entry to indicate that name is non-null. Note that nameKey
+                // instance is modified directly.
+                nameKey[0] = 1;
+                mRegistryKeyMap.store(txn, trashIdKey, nameKey);
+            }
+
+            RedoWriter redo;
+            if (redoTxnId == 0 && (redo = mRedoWriter) != null) {
+                long commitPos = redo.deleteIndex
+                    (txn.txnId(), tree.mId, mDurabilityMode.alwaysRedo());
+                if (commitPos != 0) {
+                    // Must wait for durability confirmation before performing actions below
+                    // which cannot be easily rolled back. No global latches or locks are held
+                    // while waiting.
+                    redo.txnCommitSync(commitPos);
+                }
+            }
+
+            txn.commit();
+        } catch (Throwable e) {
+            DatabaseException.rethrowIfRecoverable(e);
+            throw closeOnFailure(this, e);
         } finally {
-            commitLock.unlock();
+            txn.reset();
         }
 
-        if (redo != null && commitPos != 0) {
-            // Don't hold commit lock during sync.
-            redo.txnCommitSync(commitPos);
-        }
-
-        return root;
+        return tree.close(true);
     }
 
     /**
