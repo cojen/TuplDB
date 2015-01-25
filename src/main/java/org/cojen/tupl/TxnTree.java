@@ -29,7 +29,7 @@ final class TxnTree extends Tree {
     }
 
     @Override
-    public Cursor newCursor(Transaction txn) {
+    public TreeCursor newCursor(Transaction txn) {
         return new TxnTreeCursor(this, txn);
     }
 

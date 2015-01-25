@@ -529,7 +529,12 @@ public final class Database implements CauseCloseable, Flushable {
             // Also verifies the database and replication encodings.
             Node rootNode = loadRegistryRoot(header, config.mReplManager);
 
-            mRegistry = newTreeInstance(Tree.REGISTRY_ID, null, null, rootNode);
+            // Cannot call newTreeInstance because mRedoWriter isn't set yet.
+            if (config.mReplManager != null) {
+                mRegistry = new TxnTree(this, Tree.REGISTRY_ID, null, null, rootNode);
+            } else {
+                mRegistry = new Tree(this, Tree.REGISTRY_ID, null, null, rootNode);
+            }
 
             mOpenTreesLatch = new Latch();
             if (openMode == OPEN_TEMP) {
@@ -553,7 +558,7 @@ public final class Database implements CauseCloseable, Flushable {
             if (openMode == OPEN_TEMP) {
                 mRegistryKeyMap = null;
             } else {
-                mRegistryKeyMap = openInternalTree(Tree.REGISTRY_KEY_MAP_ID, true);
+                mRegistryKeyMap = openInternalTree(Tree.REGISTRY_KEY_MAP_ID, true, config);
             }
 
             mDirtyList = new NodeDirtyList();
@@ -561,7 +566,7 @@ public final class Database implements CauseCloseable, Flushable {
             mFragmentCache = new FragmentCache(this, mTreeNodeMap);
 
             if (openMode != OPEN_TEMP) {
-                Tree tree = openInternalTree(Tree.FRAGMENTED_TRASH_ID, false);
+                Tree tree = openInternalTree(Tree.FRAGMENTED_TRASH_ID, false, config);
                 if (tree != null) {
                     mFragmentedTrash = new FragmentedTrash(tree);
                 }
@@ -752,12 +757,12 @@ public final class Database implements CauseCloseable, Flushable {
             deletion.start();
         }
 
-        if (mRedoWriter instanceof ReplRedoWriter) {
+        if (mRedoWriter instanceof ReplRedoController) {
             // Start replication and recovery.
-            ReplRedoWriter writer = (ReplRedoWriter) mRedoWriter;
+            ReplRedoController controller = (ReplRedoController) mRedoWriter;
             try {
                 // Pass the original listener, in case it has been specialized.
-                writer.recover(config.mReplInitialTxnId, config.mEventListener);
+                controller.recover(config.mReplInitialTxnId, config.mEventListener);
             } catch (Throwable e) {
                 closeQuietly(null, this, e);
                 throw e;
@@ -1333,8 +1338,12 @@ public final class Database implements CauseCloseable, Flushable {
     }
 
     private Transaction doNewTransaction(DurabilityMode durabilityMode) {
+        RedoWriter redo = mRedoWriter;
+        if (redo != null) {
+            redo = redo.txnRedoWriter();
+        }
         return new Transaction
-            (this, durabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
+            (this, redo, durabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
     }
 
     Transaction newAlwaysRedoTransaction() {
@@ -1346,7 +1355,11 @@ public final class Database implements CauseCloseable, Flushable {
      * make modifications, but they won't go to the redo log.
      */
     Transaction newNoRedoTransaction() {
-        return new Transaction(this, DurabilityMode.NO_REDO, LockMode.UPGRADABLE_READ, -1);
+        RedoWriter redo = mRedoWriter;
+        if (redo != null) {
+            redo = redo.txnRedoWriter();
+        }
+        return new Transaction(this, redo, DurabilityMode.NO_REDO, LockMode.UPGRADABLE_READ, -1);
     }
 
     /**
@@ -1383,19 +1396,12 @@ public final class Database implements CauseCloseable, Flushable {
      * @return non-zero transaction id
      */
     long nextTransactionId() throws IOException {
-        RedoWriter redo = mRedoWriter;
-        if (redo != null) {
-            // Replicas cannot create loggable transactions.
-            redo.opWriteCheck();
-        }
-
         long txnId;
         do {
             synchronized (mTxnIdLock) {
                 txnId = ++mTxnId;
             }
         } while (txnId == 0);
-
         return txnId;
     }
 
@@ -2541,6 +2547,12 @@ public final class Database implements CauseCloseable, Flushable {
     }
 
     private Tree openInternalTree(long treeId, boolean create) throws IOException {
+        return openInternalTree(treeId, create, null);
+    }
+
+    private Tree openInternalTree(long treeId, boolean create, DatabaseConfig config)
+        throws IOException
+    {
         final Lock commitLock = sharedCommitLock();
         commitLock.lock();
         try {
@@ -2556,7 +2568,15 @@ public final class Database implements CauseCloseable, Flushable {
                 }
                 rootId = 0;
             }
-            return newTreeInstance(treeId, treeIdBytes, null, loadTreeRoot(rootId));
+
+            Node root = loadTreeRoot(rootId);
+
+            // Cannot call newTreeInstance because mRedoWriter isn't set yet.
+            if (config != null && config.mReplManager != null) {
+                return new TxnTree(this, treeId, treeIdBytes, null, root);
+            }
+
+            return newTreeInstance(treeId, treeIdBytes, null, root);
         } finally {
             commitLock.unlock();
         }

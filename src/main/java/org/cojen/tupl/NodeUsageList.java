@@ -32,14 +32,14 @@ final class NodeUsageList extends Latch {
     // Don't evict a node when trying to allocate another.
     static final int MODE_NO_EVICT = 2;
 
-    private final transient Database mDb;
+    private final transient Database mDatabase;
     private int mMaxSize;
     private int mSize;
     private Node mMostRecentlyUsed;
     private Node mLeastRecentlyUsed;
 
     NodeUsageList(Database db, int maxSize) {
-        mDb = db;
+        mDatabase = db;
         acquireExclusive();
         mMaxSize = maxSize;
         releaseExclusive();
@@ -129,7 +129,7 @@ final class NodeUsageList extends Latch {
 
                     releaseExclusive();
 
-                    if ((node = Node.evict(node, mDb)) != null) {
+                    if ((node = Node.evict(node, mDatabase)) != null) {
                         if ((mode & MODE_UNEVICTABLE) != 0) {
                             node.mUsageList.makeUnevictable(node);
                         }
@@ -151,7 +151,7 @@ final class NodeUsageList extends Latch {
                     }
                 } else {
                     try {
-                        if ((node = Node.evict(node, mDb)) != null) {
+                        if ((node = Node.evict(node, mDatabase)) != null) {
                             if ((mode & MODE_UNEVICTABLE) != 0) {
                                 NodeUsageList usageList = node.mUsageList;
                                 if (usageList == this) {
@@ -187,8 +187,8 @@ final class NodeUsageList extends Latch {
      */
     private Node doAllocLatchedNode(int mode) throws DatabaseException {
         try {
-            mDb.checkClosed();
-            Node node = new Node(this, mDb.mPageSize);
+            mDatabase.checkClosed();
+            Node node = new Node(this, mDatabase.mPageSize);
             node.acquireExclusive();
             mSize++;
             if ((mode & MODE_UNEVICTABLE) == 0) {

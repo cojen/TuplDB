@@ -316,6 +316,11 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
 
     public abstract long encoding();
 
+    /**
+     * Return a new or existing RedoWriter for a new transaction.
+     */
+    public abstract RedoWriter txnRedoWriter();
+
     // Caller must be synchronized.
     abstract boolean isOpen();
 
@@ -371,7 +376,9 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
     abstract void checkpointFinished() throws IOException;
 
     // Caller must be synchronized.
-    abstract void opWriteCheck() throws IOException;
+    void opWriteCheck() throws IOException {
+        // Always writable by default.
+    }
 
     /**
      * Write to the physical log.

@@ -128,7 +128,7 @@ class Tree implements Index {
     }
 
     @Override
-    public Cursor newCursor(Transaction txn) {
+    public TreeCursor newCursor(Transaction txn) {
         return new TreeCursor(this, txn);
     }
 
