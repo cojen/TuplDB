@@ -1053,8 +1053,17 @@ public final class Database implements CauseCloseable, Flushable {
 
             RedoWriter redo;
             if (redoTxnId == 0 && (redo = mRedoWriter) != null) {
-                long commitPos = redo.renameIndex
-                    (txn.txnId(), tree.mId, newName, mDurabilityMode.alwaysRedo());
+                long commitPos;
+
+                final Lock commitLock = sharedCommitLock();
+                commitLock.lock();
+                try {
+                    commitPos = redo.renameIndex
+                        (txn.txnId(), tree.mId, newName, mDurabilityMode.alwaysRedo());
+                } finally {
+                    commitLock.unlock();
+                }
+
                 if (commitPos != 0) {
                     // Must wait for durability confirmation before performing actions below
                     // which cannot be easily rolled back. No global latches or locks are held
@@ -2329,8 +2338,17 @@ public final class Database implements CauseCloseable, Flushable {
 
             RedoWriter redo;
             if (redoTxnId == 0 && (redo = mRedoWriter) != null) {
-                long commitPos = redo.dropIndex
-                    (txn.txnId(), tree.mId, mDurabilityMode.alwaysRedo());
+                long commitPos;
+
+                final Lock commitLock = sharedCommitLock();
+                commitLock.lock();
+                try {
+                    commitPos = redo.dropIndex
+                        (txn.txnId(), tree.mId, mDurabilityMode.alwaysRedo());
+                } finally {
+                    commitLock.unlock();
+                }
+
                 if (commitPos != 0) {
                     // Must wait for durability confirmation before performing actions below
                     // which cannot be easily rolled back. No global latches or locks are held
@@ -2387,8 +2405,17 @@ public final class Database implements CauseCloseable, Flushable {
 
             RedoWriter redo;
             if (redoTxnId == 0 && (redo = mRedoWriter) != null) {
-                long commitPos = redo.deleteIndex
-                    (txn.txnId(), tree.mId, mDurabilityMode.alwaysRedo());
+                long commitPos;
+
+                final Lock commitLock = sharedCommitLock();
+                commitLock.lock();
+                try {
+                    commitPos = redo.deleteIndex
+                        (txn.txnId(), tree.mId, mDurabilityMode.alwaysRedo());
+                } finally {
+                    commitLock.unlock();
+                }
+
                 if (commitPos != 0) {
                     // Must wait for durability confirmation before performing actions below
                     // which cannot be easily rolled back. No global latches or locks are held
