@@ -181,8 +181,9 @@ public final class Database implements CauseCloseable, Flushable {
     private byte mCommitState;
 
     // Set during checkpoint after commit state has switched. If checkpoint aborts, next
-    // checkpoint will resume with this commit header.
+    // checkpoint will resume with this commit header and master undo log.
     private byte[] mCommitHeader;
+    private UndoLog mCommitMasterUndoLog;
 
     // Is false for empty databases which have never checkpointed.
     private volatile boolean mHasCheckpointed = true;
@@ -3835,11 +3836,17 @@ public final class Database implements CauseCloseable, Flushable {
             }
 
             boolean resume = true;
+
             byte[] header = mCommitHeader;
+            UndoLog masterUndoLog = mCommitMasterUndoLog;
+
             if (header == null) {
-                // Allocate early, before acquiring locks.
+                // Not resumed. Allocate new header early, before acquiring locks.
                 header = new byte[mPageDb.pageSize()];
                 resume = false;
+                if (masterUndoLog != null) {
+                    throw new AssertionError();
+                }
             }
 
             int hoff = mPageDb.extraCommitDataOffset();
@@ -3902,8 +3909,6 @@ public final class Database implements CauseCloseable, Flushable {
 
             mCheckpointFlushState = CHECKPOINT_FLUSH_PREPARE;
 
-            UndoLog masterUndoLog = null;
-
             try {
                 // TODO: I don't like all this activity with exclusive commit
                 // lock held. UndoLog can be refactored to store into a special
@@ -3916,20 +3921,27 @@ public final class Database implements CauseCloseable, Flushable {
                 synchronized (mTxnIdLock) {
                     txnId = mTxnId;
 
-                    int count = mUndoLogCount;
-                    if (count == 0) {
-                        masterUndoLogId = 0;
+                    if (resume) {
+                        masterUndoLogId = masterUndoLog == null ? 0 : masterUndoLog.topNodeId();
                     } else {
-                        masterUndoLog = new UndoLog(this, 0);
-                        byte[] workspace = null;
-                        for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
-                            workspace = log.writeToMaster(masterUndoLog, workspace);
+                        int count = mUndoLogCount;
+                        if (count == 0) {
+                            masterUndoLogId = 0;
+                        } else {
+                            masterUndoLog = new UndoLog(this, 0);
+                            byte[] workspace = null;
+                            for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
+                                workspace = log.writeToMaster(masterUndoLog, workspace);
+                            }
+                            masterUndoLogId = masterUndoLog.topNodeId();
+                            if (masterUndoLogId == 0) {
+                                // Nothing was actually written to the log.
+                                masterUndoLog = null;
+                            }
                         }
-                        masterUndoLogId = masterUndoLog.topNodeId();
-                        if (masterUndoLogId == 0) {
-                            // Nothing was actually written to the log.
-                            masterUndoLog = null;
-                        }
+
+                        // Stash it to resume after an aborted checkpoint.
+                        mCommitMasterUndoLog = masterUndoLog;
                     }
                 }
 
@@ -3945,6 +3957,7 @@ public final class Database implements CauseCloseable, Flushable {
 
                 // Reset for next checkpoint.
                 mCommitHeader = null;
+                mCommitMasterUndoLog = null;
             } catch (IOException e) {
                 if (mCheckpointFlushState == CHECKPOINT_FLUSH_PREPARE) {
                     // Exception was thrown with locks still held.
@@ -3955,15 +3968,6 @@ public final class Database implements CauseCloseable, Flushable {
                         redo.checkpointAborted();
                     }
                 }
-
-                if (masterUndoLog != null) {
-                    try {
-                        masterUndoLog.truncate(false);
-                    } catch (Throwable e2) {
-                        e.addSuppressed(e2);
-                    }
-                }
-
                 throw e;
             }
 
