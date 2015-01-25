@@ -87,6 +87,7 @@ final class RedoLog extends RedoWriter {
     }
 
     /**
+     * @param crypto optional
      * @param factory optional
      * @param logId first log id to open
      */
@@ -263,6 +264,11 @@ final class RedoLog extends RedoWriter {
     }
 
     @Override
+    public final RedoWriter txnRedoWriter() {
+        return this;
+    }
+
+    @Override
     boolean isOpen() {
         FileChannel channel = mChannel;
         return channel != null && channel.isOpen();
@@ -343,11 +349,6 @@ final class RedoLog extends RedoWriter {
         mOldChannel = null;
         Utils.closeQuietly(null, mOldOut);
         deleteOldFile(mBaseFile, mNextLogId - 1);
-    }
-
-    @Override
-    void opWriteCheck() {
-        // Always writable.
     }
 
     @Override
