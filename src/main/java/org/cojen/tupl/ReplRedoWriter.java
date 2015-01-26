@@ -33,6 +33,10 @@ class ReplRedoWriter extends RedoWriter {
     long mLastCommitPos;
     long mLastCommitTxnId;
 
+    // These fields capture the state of the highest confirmed commit.
+    long mConfirmedPos;
+    long mConfirmedTxnId;
+
     ReplRedoWriter(ReplRedoEngine engine, ReplicationManager.Writer writer) {
         super(4096, 0);
         mEngine = engine;
@@ -95,13 +99,27 @@ class ReplRedoWriter extends RedoWriter {
     }
 
     @Override
-    public final void txnCommitSync(long commitPos) throws IOException {
+    public final void txnCommitSync(Transaction txn, long commitPos) throws IOException {
         ReplicationManager.Writer writer = mReplWriter;
         if (writer == null) {
             throw new UnmodifiableReplicaException();
         }
+
         if (!writer.confirm(commitPos)) {
+            synchronized (this) {
+                if (mConfirmedPos >= commitPos) {
+                    // Was already was confirmed.
+                    return;
+                }
+            }
             throw unmodifiable();
+        }
+
+        synchronized (this) {
+            if (commitPos > mConfirmedPos) {
+                mConfirmedPos = commitPos;
+                mConfirmedTxnId = txn.txnId();
+            }
         }
     }
 
@@ -244,7 +262,7 @@ class ReplRedoWriter extends RedoWriter {
         return new UnsupportedOperationException();
     }
 
-    private UnmodifiableReplicaException unmodifiable() throws IOException {
+    private UnmodifiableReplicaException unmodifiable() {
         return mEngine.mController.unmodifiable(mReplWriter);
     }
 }

@@ -2129,7 +2129,7 @@ class TreeCursor implements CauseCloseable, Cursor {
 
         if (commitPos != 0) {
             // Wait for commit sync without holding commit lock and node latch.
-            mTree.txnCommitSync(commitPos);
+            mTree.txnCommitSync(txn, commitPos);
         }
     }
 

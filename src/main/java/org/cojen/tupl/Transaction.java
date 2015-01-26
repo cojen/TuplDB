@@ -220,7 +220,7 @@ public class Transaction extends Locker {
                         RedoWriter redo = mRedoWriter;
                         long commitPos = redo.txnCommitFinal(mTxnId, mDurabilityMode);
                         if (commitPos != 0) {
-                            redo.txnCommitSync(commitPos);
+                            redo.txnCommitSync(this, commitPos);
                         }
                         mHasState = hasState & ~(HAS_SCOPE | HAS_COMMIT);
                     }
@@ -250,7 +250,7 @@ public class Transaction extends Locker {
                     if (commitPos != 0) {
                         // Durably sync the redo log after releasing the commit
                         // lock, preventing additional blocking.
-                        mRedoWriter.txnCommitSync(commitPos);
+                        mRedoWriter.txnCommitSync(this, commitPos);
                     }
 
                     // Calling this deletes any ghosts too.
