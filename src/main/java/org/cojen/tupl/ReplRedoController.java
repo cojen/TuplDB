@@ -30,7 +30,7 @@ final class ReplRedoController extends ReplRedoWriter {
     private volatile ReplRedoWriter mTxnRedoWriter;
 
     // These fields capture the state of the last written commit at the start of a checkpoint.
-    private ReplicationManager.Writer mCheckpointWriter;
+    private ReplRedoWriter mCheckpointRedoWriter;
     private long mCheckpointPos;
     private long mCheckpointTxnId;
 
@@ -72,19 +72,21 @@ final class ReplRedoController extends ReplRedoWriter {
 
     @Override
     void checkpointSwitch() throws IOException {
-        ReplRedoWriter redo = mTxnRedoWriter;
-        synchronized (redo) {
+        mCheckpointNum++;
+
+        // Only capture new checkpoint state if previous attempt succeeded.
+        if (mCheckpointPos == 0 && mCheckpointTxnId == 0) {
+            ReplRedoWriter redo = mTxnRedoWriter;
+            mCheckpointRedoWriter = redo;
             ReplicationManager.Writer writer = redo.mReplWriter;
-            mCheckpointWriter = writer;
             if (writer == null) {
                 mCheckpointPos = mEngine.mDecodePosition;
                 mCheckpointTxnId = mEngine.mDecodeTransactionId;
-            } else {
+            } else synchronized (redo) {
                 mCheckpointPos = redo.mLastCommitPos;
                 mCheckpointTxnId = redo.mLastCommitTxnId;
             }
         }
-        mCheckpointNum++;
     }
 
     @Override
@@ -105,19 +107,48 @@ final class ReplRedoController extends ReplRedoWriter {
     @Override
     void checkpointAborted() {
         mEngine.resume();
-        mCheckpointWriter = null;
+        mCheckpointRedoWriter = null;
     }
 
     @Override
     void checkpointStarted() throws IOException {
         mEngine.resume();
 
-        // Make sure that durable replication data is not behind local database.
+        // Attempt to confirm the log position which was captured by the checkpoint switch.
 
-        ReplicationManager.Writer writer = mCheckpointWriter;
-        if (writer != null && !writer.confirm(mCheckpointPos, -1)) {
-            throw unmodifiable(writer);
+        ReplRedoWriter redo = mCheckpointRedoWriter;
+        ReplicationManager.Writer writer = redo.mReplWriter;
+
+        confirm: if (writer != null) {
+            if (writer.confirm(mCheckpointPos, -1)) {
+                synchronized (redo) {
+                    if (mCheckpointPos > redo.mConfirmedPos) {
+                        // Update redo writer, to prevent false undo if leadership is lost.
+                        redo.mConfirmedPos = mCheckpointPos;
+                        redo.mConfirmedTxnId = mCheckpointTxnId;
+                    }
+                }
+            } else {
+                // Leadership lost. Use a known confirmed position for the next checkpoint. If
+                // restored from the checkpoint, any in-progress transactions will re-apply
+                // earlier operations. Transactional operations are expected to be idempotent,
+                // but the transactions will roll back regardless.
+
+                synchronized (redo) {
+                    long confirmedPos = redo.mConfirmedPos;
+                    if (confirmedPos >= mCheckpointPos) {
+                        // Was already confirmed, so okay to proceed.
+                        break confirm;
+                    }
+                    mCheckpointPos = confirmedPos;
+                    mCheckpointTxnId = redo.mConfirmedTxnId;
+                }
+
+                throw unmodifiable(writer);
+            }
         }
+
+        // Make sure that durable replication data is caught up to the local database.
 
         mManager.syncConfirm(mCheckpointPos, -1);
     }
@@ -125,7 +156,9 @@ final class ReplRedoController extends ReplRedoWriter {
     @Override
     void checkpointFinished() throws IOException {
         mManager.checkpointed(mCheckpointPos);
-        mCheckpointWriter = null;
+        mCheckpointRedoWriter = null;
+        mCheckpointPos = 0;
+        mCheckpointTxnId = 0;
     }
 
     @Override
@@ -139,61 +172,74 @@ final class ReplRedoController extends ReplRedoWriter {
     synchronized void leaderNotify() throws UnmodifiableReplicaException, IOException {
         ReplicationManager.Writer writer = mTxnRedoWriter.mReplWriter;
 
-        if (writer == null) { // must be in replica mode
-            mManager.flip();
+        if (writer != null) {
+            // Must be in replica mode.
+            return;
+        }
 
-            if ((writer = mManager.writer()) == null) {
-                // False alarm?
-                return;
-            }
+        mManager.flip();
 
-            ReplRedoWriter redo = new ReplRedoWriter(mEngine, writer);
+        if ((writer = mManager.writer()) == null) {
+            // False alarm?
+            return;
+        }
 
-            synchronized (redo) {
-                // If these initial redo ops fail because leadership is immediately lost, the
-                // unmodifiable method will be called and needs to see the redo writer.
-                mTxnRedoWriter = redo;
+        ReplRedoWriter redo = new ReplRedoWriter(mEngine, writer);
 
-                redo.mLastCommitPos = writer.position();
-                redo.mLastCommitTxnId = 0;
+        synchronized (redo) {
+            // If these initial redo ops fail because leadership is immediately lost, the
+            // unmodifiable method will be called and needs to see the redo writer.
+            mTxnRedoWriter = redo;
 
-                // Clear the log state and write a reset op to signal leader transition.
-                redo.clearAndReset();
+            redo.mConfirmedPos = redo.mLastCommitPos = writer.position();
+            redo.mConfirmedTxnId = redo.mLastCommitTxnId = 0;
 
-                // Record leader transition epoch.
-                redo.timestamp();
+            // Clear the log state and write a reset op to signal leader transition.
+            redo.clearAndReset();
 
-                // Don't trust timestamp alone to help detect divergent logs.
-                redo.nopRandom();
+            // Record leader transition epoch.
+            redo.timestamp();
 
-                redo.flush();
-            }
+            // Don't trust timestamp alone to help detect divergent logs.
+            redo.nopRandom();
+
+            redo.flush();
         }
     }
 
-    synchronized UnmodifiableReplicaException unmodifiable(ReplicationManager.Writer expect)
-        throws IOException
-    {
+    // Also called by synchronized ReplRedoWriter.
+    UnmodifiableReplicaException unmodifiable(ReplicationManager.Writer expect) {
+        switchToReplica(expect, false);
+        return new UnmodifiableReplicaException();
+    }
+
+    void switchToReplica(final ReplicationManager.Writer expect, final boolean syncd) {
         ReplicationManager.Writer writer = mTxnRedoWriter.mReplWriter;
 
-        if (writer != null && writer == expect) { // must be in leader mode
+        if (writer == null || writer != expect) {
+            // Must be in leader mode.
+            return;
+        }
+
+        if (syncd) {
             mManager.flip();
 
             // Use this instance for replica mode.
             mTxnRedoWriter = this;
-
-            final long initialPosition = mManager.readPosition();
-
-            // Invoke from a separate thread, avoiding deadlock during the transition.
+        } else {
+            // Invoke from a separate thread, avoiding deadlock. This method is invoked by
+            // ReplRedoWriter while synchronized, which is an inconsistent order.
             new Thread() {
                 public void run() {
+                    synchronized (ReplRedoController.this) {
+                        switchToReplica(expect, true);
+                    }
+
                     // Start receiving if not, but does nothing if already receiving. A reset
                     // op is expected, and so the initial transaction id can be zero.
-                    mEngine.startReceiving(initialPosition, 0);
+                    mEngine.startReceiving(mManager.readPosition(), 0);
                 }
             }.start();
         }
-
-        return new UnmodifiableReplicaException();
     }
 }

@@ -1074,7 +1074,7 @@ public final class Database implements CauseCloseable, Flushable {
                     // Must wait for durability confirmation before performing actions below
                     // which cannot be easily rolled back. No global latches or locks are held
                     // while waiting.
-                    redo.txnCommitSync(commitPos);
+                    redo.txnCommitSync(txn, commitPos);
                 }
             }
 
@@ -2360,7 +2360,7 @@ public final class Database implements CauseCloseable, Flushable {
                     // Must wait for durability confirmation before performing actions below
                     // which cannot be easily rolled back. No global latches or locks are held
                     // while waiting.
-                    redo.txnCommitSync(commitPos);
+                    redo.txnCommitSync(txn, commitPos);
                 }
             }
 
@@ -2427,7 +2427,7 @@ public final class Database implements CauseCloseable, Flushable {
                     // Must wait for durability confirmation before performing actions below
                     // which cannot be easily rolled back. No global latches or locks are held
                     // while waiting.
-                    redo.txnCommitSync(commitPos);
+                    redo.txnCommitSync(txn, commitPos);
                 }
             }
 

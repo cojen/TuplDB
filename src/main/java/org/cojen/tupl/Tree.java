@@ -872,8 +872,8 @@ class Tree implements Index {
         return redo == null ? 0 : redo.storeNoLock(mId, key, value, mDatabase.mDurabilityMode);
     }
 
-    final void txnCommitSync(long commitPos) throws IOException {
-        mDatabase.mRedoWriter.txnCommitSync(commitPos);
+    final void txnCommitSync(Transaction txn, long commitPos) throws IOException {
+        mDatabase.mRedoWriter.txnCommitSync(txn, commitPos);
     }
 
     /**

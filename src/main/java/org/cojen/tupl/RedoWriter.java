@@ -200,9 +200,10 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
     /**
      * Called after txnCommitFinal.
      *
+     * @param txn transaction committed
      * @param commitPos highest position to sync (exclusive)
      */
-    public void txnCommitSync(long commitPos) throws IOException {
+    public void txnCommitSync(Transaction txn, long commitPos) throws IOException {
         sync(false);
     }
 
