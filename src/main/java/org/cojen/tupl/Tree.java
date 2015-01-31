@@ -732,12 +732,27 @@ class Tree implements Index {
      */
     final Node finishSplit(final TreeCursorFrame frame, Node node) throws IOException {
         while (node == mRoot) {
-            Node stub;
-            if (hasStub()) {
+            Node stubNode = null;
+
+            popStub: {
+                Stub stub = mStubTail;
+                hasStub: {
+                    while (stub != null) {
+                        if (stub.mNode.mId == Node.STUB_ID) {
+                            break hasStub;
+                        }
+                        // Node was evicted, so pop it off and try next one.
+                        mStubTail = stub = stub.mParent;
+                    }
+                    break popStub;
+                }
+
                 // Don't wait for stub latch, to avoid deadlock. The stub stack
                 // is latched up upwards here, but downwards by cursors.
-                stub = tryPopStub();
-                if (stub == null) {
+                stubNode = stub.mNode;
+                if (stubNode.tryAcquireExclusive()) {
+                    mStubTail = stub.mParent;
+                } else {
                     // Latch not immediately available, so release root latch
                     // and try again. This implementation spins, but root
                     // splits are expected to be infrequent.
@@ -752,12 +767,21 @@ class Tree implements Index {
                     }
                     continue;
                 }
-                stub = Tree.validateStub(stub);
-            } else {
-                stub = null;
+
+                // Check if popped stub is still valid. It must not have been evicted and it
+                // actually has cursors bound to it.
+
+                if (stubNode.mId == Node.STUB_ID && stubNode.mLastCursorFrame != null) {
+                    // Allow non-durable database to recycle the old id.
+                    stubNode.mId = -stub.mDeletedId;
+                } else {
+                    stubNode.releaseExclusive();
+                    stubNode = null;
+                }
             }
+
             try {
-                node.finishSplitRoot(this, stub);
+                node.finishSplitRoot(this, stubNode);
                 // Must return the node as referenced by the frame, which is no
                 // longer the root node.
                 node.releaseExclusive();
@@ -886,74 +910,19 @@ class Tree implements Index {
     /**
      * Caller must exclusively hold root latch.
      */
-    final void addStub(Node node) {
-        mStubTail = new Stub(mStubTail, node);
+    final void addStub(Node node, long deletedId) {
+        mStubTail = new Stub(mStubTail, node, deletedId);
     }
 
-    /**
-     * Caller must exclusively hold root latch.
-     */
-    final boolean hasStub() {
-        Stub stub = mStubTail;
-        while (stub != null) {
-            if (stub.mNode.mId == Node.STUB_ID) {
-                return true;
-            }
-            // Node was evicted, so pop it off and try next one.
-            mStubTail = stub = stub.mParent;
-        }
-        return false;
-    }
-
-    /**
-     * Attempts to exclusively latch and pop the tail stub node. Returns null
-     * if latch cannot be immediatly obtained. Caller must exclusively hold
-     * root latch and have checked that a stub exists.
-     */
-    final Node tryPopStub() {
-        Stub stub = mStubTail;
-        if (stub.mNode.tryAcquireExclusive()) {
-            mStubTail = stub.mParent;
-            return stub.mNode;
-        }
-        return null;
-    }
-
-    /**
-     * Exclusively latches and pops the tail stub node. Caller must exclusively
-     * hold root latch and have checked that a stub exists.
-     */
-    /*
-    final Node popStub() {
-        Stub stub = mStubTail;
-        stub.mNode.acquireExclusive();
-        mStubTail = stub.mParent;
-        return stub.mNode;
-    }
-    */
-
-    /**
-     * Checks if popped stub is still valid, because it has not been evicted
-     * and it actually has cursors bound to it. Caller must hold exclusive
-     * latch, which is released if node is not valid.
-     *
-     * @return node if valid, null otherwise
-     */
-    static final Node validateStub(Node node) {
-        if (node.mId == Node.STUB_ID && node.mLastCursorFrame != null) {
-            return node;
-        }
-        node.releaseExclusive();
-        return null;
-    }
-
-    static final class Stub {
+    private static final class Stub {
         final Stub mParent;
         final Node mNode;
+        final long mDeletedId;
 
-        Stub(Stub parent, Node node) {
+        Stub(Stub parent, Node node, long deletedId) {
             mParent = parent;
             mNode = node;
+            mDeletedId = deletedId;
         }
     }
 }

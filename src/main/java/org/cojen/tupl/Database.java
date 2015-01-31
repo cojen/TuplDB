@@ -2884,8 +2884,8 @@ public final class Database implements CauseCloseable, Flushable {
     }
 
     /**
-     * Returns a new or recycled Node instance, latched exclusively, with an id
-     * of zero and a clean state.
+     * Returns a new or recycled Node instance, latched exclusively, with an undefined id and a
+     * clean state.
      *
      * @param anyNodeId id of any node, for spreading allocations around
      */
@@ -2894,8 +2894,8 @@ public final class Database implements CauseCloseable, Flushable {
     }
 
     /**
-     * Returns a new or recycled Node instance, latched exclusively, with an id
-     * of zero and a clean state.
+     * Returns a new or recycled Node instance, latched exclusively, with an undefined id and a
+     * clean state.
      *
      * @param anyNodeId id of any node, for spreading allocations around
      * @param mode MODE_UNEVICTABLE if allocated node cannot be automatically evicted
@@ -2941,22 +2941,19 @@ public final class Database implements CauseCloseable, Flushable {
      * dirty. Caller must hold commit lock.
      */
     Node allocDirtyNode() throws IOException {
-        long nodeId = mPageDb.allocPage();
-        Node node = allocLatchedNode(nodeId, 0);
-        mDirtyList.add(node);
-        dirty(node, nodeId);
-        return node;
+        return allocDirtyNode(0);
     }
 
     /**
      * Returns a new or recycled Node instance, latched exclusively, marked
      * dirty and unevictable. Caller must hold commit lock.
+     *
+     * @param mode MODE_UNEVICTABLE if allocated node cannot be automatically evicted
      */
-    Node allocUnevictableNode() throws IOException {
-        long nodeId = mPageDb.allocPage();
-        Node node = allocLatchedNode(nodeId, NodeUsageList.MODE_UNEVICTABLE);
+    Node allocDirtyNode(int mode) throws IOException {
+        Node node = mPageDb.allocLatchedNode(this, mode);
+        node.mCachedState = mCommitState;
         mDirtyList.add(node);
-        dirty(node, nodeId);
         return node;
     }
 
@@ -2964,7 +2961,7 @@ public final class Database implements CauseCloseable, Flushable {
      * Returns a new or recycled Node instance, latched exclusively and marked
      * dirty. Caller must hold commit lock.
      */
-    Node allocFragmentNode() throws IOException {
+    Node allocDirtyFragmentNode() throws IOException {
         Node node = allocDirtyNode();
         mFragmentCache.put(node);
         return node;
@@ -3128,7 +3125,10 @@ public final class Database implements CauseCloseable, Flushable {
             }
 
             mTreeNodeMap.remove(node, NodeMap.hash(id));
-            node.mId = 0;
+
+            // When id is <= 1, it won't be moved to a secondary cache. Preserve the original
+            // id for non-durable database to recycle it. Durable database relies on free list.
+            node.mId = -id;
 
             // When node is re-allocated, it will be evicted. Ensure that eviction
             // doesn't write anything.
@@ -3240,7 +3240,7 @@ public final class Database implements CauseCloseable, Flushable {
                 } else {
                     int voffset = remainder;
                     while (true) {
-                        Node node = allocFragmentNode();
+                        Node node = allocDirtyFragmentNode();
                         try {
                             encodeInt48LE(newValue, poffset, node.mId);
                             arraycopy(value, voffset, node.mPage, 0, pageSize);
@@ -3295,7 +3295,7 @@ public final class Database implements CauseCloseable, Flushable {
                     } else {
                         int voffset = 0;
                         while (true) {
-                            Node node = allocFragmentNode();
+                            Node node = allocDirtyFragmentNode();
                             try {
                                 encodeInt48LE(newValue, offset, node.mId);
                                 byte[] page = node.mPage;
@@ -3324,7 +3324,7 @@ public final class Database implements CauseCloseable, Flushable {
                     // Value is sparse, so just store a null pointer.
                     encodeInt48LE(newValue, offset, 0);
                 } else {
-                    Node inode = allocFragmentNode();
+                    Node inode = allocDirtyFragmentNode();
                     encodeInt48LE(newValue, offset, inode.mId);
                     int levels = calculateInodeLevels(vlength);
                     writeMultilevelFragments(levels, inode, value, 0, vlength);
@@ -3391,7 +3391,7 @@ public final class Database implements CauseCloseable, Flushable {
 
             int poffset = 0;
             for (int i=0; i<childNodeCount; poffset += 6, i++) {
-                Node childNode = allocFragmentNode();
+                Node childNode = allocDirtyFragmentNode();
                 encodeInt48LE(page, poffset, childNode.mId);
 
                 int len = (int) Math.min(levelCap, vlength);

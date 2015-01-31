@@ -805,7 +805,7 @@ final class UndoLog {
      * Caller must hold db commit lock.
      */
     private Node allocUnevictableNode(long lowerNodeId) throws IOException {
-        Node node = mDatabase.allocUnevictableNode();
+        Node node = mDatabase.allocDirtyNode(NodeUsageList.MODE_UNEVICTABLE);
         node.mType = Node.TYPE_UNDO_LOG;
         encodeLongLE(node.mPage, I_LOWER_NODE_ID, lowerNodeId);
         return node;

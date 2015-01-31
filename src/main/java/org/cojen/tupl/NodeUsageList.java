@@ -70,8 +70,8 @@ final class NodeUsageList extends Latch {
     }
 
     /**
-     * Returns a new or recycled Node instance, latched exclusively, with an id
-     * of zero and a clean state.
+     * Returns a new or recycled Node instance, latched exclusively, with an undefined id and a
+     * clean state.
      *
      * @param trial pass 1 for less aggressive recycle attempt
      * @param mode MODE_UNEVICTABLE | MODE_NO_EVICT

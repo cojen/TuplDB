@@ -640,7 +640,7 @@ final class TreeValueStream extends AbstractStream {
                     final long fNodeId = decodeUnsignedInt48LE(page, loc);
                     if (fNodeId == 0) {
                         // Writing into a sparse value. Allocate a node and point to it.
-                        final Node fNode = mDatabase.allocFragmentNode();
+                        final Node fNode = mDatabase.allocDirtyFragmentNode();
                         try {
                             encodeInt48LE(page, loc, fNode.mId);
 
@@ -683,7 +683,7 @@ final class TreeValueStream extends AbstractStream {
 
                 if (inodeId == 0) {
                     // Writing into a sparse value. Allocate a node and point to it.
-                    inode = mDatabase.allocFragmentNode();
+                    inode = mDatabase.allocDirtyFragmentNode();
                     fill(inode.mPage, (byte) 0);
                 } else {
                     Database db = mDatabase;
@@ -802,7 +802,7 @@ final class TreeValueStream extends AbstractStream {
                     boolean partial = level > 0 | off > 0 | len < page.length;
 
                     if (childNodeId == 0) {
-                        childNode = db.allocFragmentNode();
+                        childNode = db.allocDirtyFragmentNode();
                         if (partial) {
                             // New page must be zero-filled.
                             fill(childNode.mPage, (byte) 0);
