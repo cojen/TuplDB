@@ -309,6 +309,14 @@ final class DurablePageDb extends PageDb {
     }
 
     @Override
+    public Node allocLatchedNode(Database db, int mode) throws IOException {
+        long nodeId = allocPage();
+        Node node = db.allocLatchedNode(nodeId, mode);
+        node.mId = nodeId;
+        return node;
+    }
+
+    @Override
     public int pageSize() {
         return mPageArray.pageSize();
     }
