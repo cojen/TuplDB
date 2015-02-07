@@ -213,12 +213,13 @@ final class ReplRedoController extends ReplRedoWriter {
         return new UnmodifiableReplicaException();
     }
 
-    void switchToReplica(final ReplicationManager.Writer expect, final boolean syncd) {
-        ReplicationManager.Writer writer = mTxnRedoWriter.mReplWriter;
+    boolean switchToReplica(final ReplicationManager.Writer expect, final boolean syncd) {
+        final ReplRedoWriter redo = mTxnRedoWriter;
+        ReplicationManager.Writer writer = redo.mReplWriter;
 
         if (writer == null || writer != expect) {
             // Must be in leader mode.
-            return;
+            return false;
         }
 
         if (syncd) {
@@ -232,14 +233,22 @@ final class ReplRedoController extends ReplRedoWriter {
             new Thread() {
                 public void run() {
                     synchronized (ReplRedoController.this) {
-                        switchToReplica(expect, true);
+                        if (!switchToReplica(expect, true)) {
+                            return;
+                        }
                     }
+
+                    long pos = mManager.readPosition();
+
+                    redo.flipped(pos);
 
                     // Start receiving if not, but does nothing if already receiving. A reset
                     // op is expected, and so the initial transaction id can be zero.
-                    mEngine.startReceiving(mManager.readPosition(), 0);
+                    mEngine.startReceiving(pos, 0);
                 }
             }.start();
         }
+
+        return true;
     }
 }

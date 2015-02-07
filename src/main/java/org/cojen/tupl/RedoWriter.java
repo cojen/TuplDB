@@ -207,6 +207,15 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
         sync(false);
     }
 
+    /**
+     * Called after txnCommitFinal.
+     *
+     * @param pending pending transaction committed
+     */
+    public void txnCommitPending(PendingTxn pending) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
     public synchronized void txnStore(byte op, long txnId, long indexId, byte[] key, byte[] value)
         throws IOException
     {

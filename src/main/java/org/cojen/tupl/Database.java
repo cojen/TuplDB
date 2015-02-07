@@ -1407,7 +1407,8 @@ public final class Database implements CauseCloseable, Flushable {
     }
 
     /**
-     * Called only by UndoLog.
+     * Should only be called after all log entries have been truncated or rolled back. Caller
+     * does not need to hold db commit lock.
      */
     void unregister(UndoLog log) {
         synchronized (mTxnIdLock) {

@@ -562,22 +562,29 @@ final class Lock {
     }
 
     /**
-     * Called with exclusive latch held, which is retained.
+     * Lock must be held by given locker, which is either released or transferred into a lock
+     * set. Exclusive locks are transferred, and any other type is released. Method must be
+     * called by LockManager with appropriate latch held.
+     *
+     * @param pending lock set to add into; can be null initially
+     * @return new or original lock set
+     * @throws IllegalStateException if lock not held
      */
-    /*
-    boolean unlockIfNonExclusive(LockOwner locker) {
+    PendingTxn transferExclusive(LockOwner locker, PendingTxn pending) {
         if (mLockCount == ~0) {
-            // Retain exclusive lock. Since this method is only called via
-            // LockOwner.scopeUnlockAllNonExclusive, lock is already known to be
-            // held at some level. No need to check if mOwner field matches.
-            return false;
+            // Held exclusively. Assume mOwner == locker.
+            if (pending == null) {
+                pending = new PendingTxn(this);
+            } else {
+                pending.add(this);
+            }
+            mOwner = pending;
         } else {
             // Unlock upgradable or shared lock.
-            unlock(locker);
-            return true;
+            unlock(locker, null);
         }
+        return pending;
     }
-    */
 
     boolean matches(long indexId, byte[] key, int hash) {
         return mHashCode == hash && mIndexId == indexId && Arrays.equals(mKey, key);

@@ -37,65 +37,64 @@ class ReplRedoWriter extends RedoWriter {
     long mConfirmedPos;
     long mConfirmedTxnId;
 
+    private volatile PendingTxnWaiter mPendingWaiter;
+
     ReplRedoWriter(ReplRedoEngine engine, ReplicationManager.Writer writer) {
         super(4096, 0);
         mEngine = engine;
         mReplWriter = writer;
     }
 
+    // All inherited methods which accept a DurabilityMode must be overridden and always use
+    // SYNC mode. This ensures that writeCommit is called, to capture the log position. If
+    // Transaction.commit sees that DurabilityMode wasn't actually SYNC, it prepares a
+    // PendingTxn instead of immediately calling txnCommitSync. Replication makes no
+    // distinction between NO_FLUSH and NO_SYNC mode.
+
     @Override
     public final long store(long indexId, byte[] key, byte[] value, DurabilityMode mode)
         throws IOException
     {
-        // Pass SYNC mode to flush the buffer and obtain the commit position. Return value from
-        // this method indicates if an actual sync should be performed.
-        long pos = super.store(indexId, key, value, DurabilityMode.SYNC);
-        // Replication makes no distinction between SYNC and NO_SYNC durability. The NO_REDO
-        // mode is not expected to be passed into this method.
-        return mode == DurabilityMode.NO_FLUSH ? 0 : pos;
+        // Note: This method can only have been called when using an auto-commit transaction,
+        // but this is prohibited by TxnTree. It creates explict transactions if necessary,
+        // ensuring that all store operations can roll back.
+        return super.store(indexId, key, value, DurabilityMode.SYNC);
     }
 
     @Override
     public final long storeNoLock(long indexId, byte[] key, byte[] value, DurabilityMode mode)
         throws IOException
     {
-        // Ditto comments from above.
-        long pos = super.storeNoLock(indexId, key, value, DurabilityMode.SYNC);
-        return mode == DurabilityMode.NO_FLUSH ? 0 : pos;
+        // Note: This method can only be have been called when using a transaction which uses
+        // the unsafe locking mode and also supports redo durability. The store cannot roll
+        // back if leadership is lost, resulting in an inconsistency. Unsafe is what it is.
+        return super.storeNoLock(indexId, key, value, DurabilityMode.SYNC);
     }
 
     @Override
     public final long dropIndex(long txnId, long indexId, DurabilityMode mode)
         throws IOException
     {
-        // Ditto comments from above.
-        long pos = super.dropIndex(txnId, indexId, DurabilityMode.SYNC);
-        return mode == DurabilityMode.NO_FLUSH ? 0 : pos;
+        return super.dropIndex(txnId, indexId, DurabilityMode.SYNC);
     }
 
     @Override
     public final long renameIndex(long txnId, long indexId, byte[] newName, DurabilityMode mode)
         throws IOException
     {
-        // Ditto comments from above.
-        long pos = super.renameIndex(txnId, indexId, newName, DurabilityMode.SYNC);
-        return mode == DurabilityMode.NO_FLUSH ? 0 : pos;
+        return super.renameIndex(txnId, indexId, newName, DurabilityMode.SYNC);
     }
 
     @Override
     public final long deleteIndex(long txnId, long indexId, DurabilityMode mode)
         throws IOException
     {
-        // Ditto comments from above.
-        long pos = super.deleteIndex(txnId, indexId, DurabilityMode.SYNC);
-        return mode == DurabilityMode.NO_FLUSH ? 0 : pos;
+        return super.deleteIndex(txnId, indexId, DurabilityMode.SYNC);
     }
 
     @Override
     public final long txnCommitFinal(long txnId, DurabilityMode mode) throws IOException {
-        // Ditto comments from above.
-        long pos = super.txnCommitFinal(txnId, DurabilityMode.SYNC);
-        return mode == DurabilityMode.NO_FLUSH ? 0 : pos;
+        return super.txnCommitFinal(txnId, DurabilityMode.SYNC);
     }
 
     @Override
@@ -105,22 +104,105 @@ class ReplRedoWriter extends RedoWriter {
             throw new UnmodifiableReplicaException();
         }
 
-        if (!writer.confirm(commitPos)) {
+        if (writer.confirm(commitPos)) {
             synchronized (this) {
-                if (mConfirmedPos >= commitPos) {
-                    // Was already was confirmed.
-                    return;
+                if (commitPos > mConfirmedPos) {
+                    mConfirmedPos = commitPos;
+                    mConfirmedTxnId = txn.txnId();
                 }
             }
-            throw unmodifiable();
+            return;
         }
 
         synchronized (this) {
-            if (commitPos > mConfirmedPos) {
-                mConfirmedPos = commitPos;
-                mConfirmedTxnId = txn.txnId();
+            if (mConfirmedPos >= commitPos) {
+                // Was already was confirmed.
+                return;
             }
         }
+
+        throw unmodifiable();
+    }
+
+    @Override
+    public final void txnCommitPending(PendingTxn pending) throws IOException {
+        PendingTxnWaiter waiter = mPendingWaiter;
+        int action;
+        if (waiter == null || (action = waiter.add(pending)) == PendingTxnWaiter.EXITED) {
+            synchronized (this) {
+                waiter = mPendingWaiter;
+                if (waiter == null || (action = waiter.add(pending)) == PendingTxnWaiter.EXITED) {
+                    waiter = new PendingTxnWaiter(this);
+                    mPendingWaiter = waiter;
+                    action = waiter.add(pending);
+                    if (action == PendingTxnWaiter.PENDING) {
+                        waiter.setName("PendingTxnWaiter-" + waiter.getId());
+                        waiter.setDaemon(true);
+                        waiter.start();
+                    }
+                }
+            }
+        }
+
+        if (action != PendingTxnWaiter.PENDING) {
+            Database db = mEngine.mDatabase;
+            if (action == PendingTxnWaiter.DO_COMMIT) {
+                pending.commit(db);
+            } else if (action == PendingTxnWaiter.DO_ROLLBACK) {
+                pending.rollback(db);
+            }
+        }
+    }
+
+    protected final void flipped(long commitPos) {
+        PendingTxnWaiter waiter;
+        synchronized (this) {
+            waiter = mPendingWaiter;
+            if (waiter == null) {
+                waiter = new PendingTxnWaiter(this);
+                mPendingWaiter = waiter;
+                // Don't start it.
+            }
+            waiter.flipped(commitPos);
+        }
+
+        waiter.finishAll();
+    }
+
+    /**
+     * Block waiting for the given committed position to be confirmed. Returns false if not the
+     * leader.
+     */
+    final boolean confirm(long txnId, long commitPos) {
+        // Note: Similar to txnCommitSync.
+
+        ReplicationManager.Writer writer = mReplWriter;
+        if (writer == null) {
+            return false;
+        }
+
+        try {
+            if (writer.confirm(commitPos)) {
+                synchronized (this) {
+                    if (commitPos > mConfirmedPos) {
+                        mConfirmedPos = commitPos;
+                        mConfirmedTxnId = txnId;
+                    }
+                }
+                return true;
+            }
+        } catch (IOException e) {
+            // Treat as leader switch.
+        }
+
+        synchronized (this) {
+            if (mConfirmedPos >= commitPos) {
+                // Was already was confirmed.
+                return true;
+            }
+        }
+
+        return false;
     }
 
     @Override

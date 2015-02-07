@@ -17,10 +17,9 @@
 package org.cojen.tupl;
 
 /**
- * Various {@link Transaction transaction} durability modes, which control the
- * durability strength of committed transactions. Strong modes offer safety,
- * but they are also relatively slow. Weak modes are faster, but transactions
- * committed in one of these modes can get lost.
+ * Various {@link Transaction transaction} durability modes, which control the durability
+ * strength of committed transactions. Strong modes offer safety, but they are also relatively
+ * slow. Weak modes are faster, but transactions committed in one of these modes can get lost.
  *
  * <p>Modes ordered from strongest to weakest:
  * <ul>
@@ -35,33 +34,33 @@ package org.cojen.tupl;
  */
 public enum DurabilityMode {
     /**
-     * Strongest durability mode, which ensures all modifications are persisted
-     * to non-volatile storage.
+     * Strongest durability mode, which ensures all modifications are persisted to non-volatile
+     * storage.
      */
     SYNC,
 
     /**
-     * Durability mode which permits the operating system to lazily persist
-     * modifications to non-volatile storage. This mode is vulnerable to power
-     * failures and operating system crashes. These events can cause recently
-     * committed transactions to get lost.
+     * Durability mode which permits the operating system to lazily persist modifications to
+     * non-volatile storage. This mode is vulnerable to power failures, operating system
+     * crashes, and replication failures. Any of these events can cause recently committed
+     * transactions to get lost.
      */
     NO_SYNC,
 
     /**
      * Durability mode which writes modifications to the file system when the in-process buffer
-     * is full, or by automatic checkpoints. This mode is vulnerable to power failures,
-     * operating system crashes, and process crashes. These events can cause recently committed
-     * transactions to get lost. When the process exits cleanly, a shutdown hook switches this
-     * mode to behave like NO_SYNC and flushes the log.
+     * is full, or by automatic checkpoints. In addition to the vulnerabilities of NO_SYNC
+     * mode, NO_FLUSH mode can lose recently committed transactions when the process crashes.
+     * When the process exits cleanly, a shutdown hook switches this mode to behave like
+     * NO_SYNC and flushes the log.
      */
     NO_FLUSH,
 
     /**
-     * Weakest durability mode, which doesn't write anything to the redo log.
-     * An unlogged transaction does not become durable until a checkpoint is
-     * performed. In addition to the vulnerabilities of NO_FLUSH mode, NO_REDO
-     * mode can lose recently committed transactions when the process exits.
+     * Weakest durability mode, which doesn't write anything to the redo log or replication
+     * manager. An unlogged transaction does not become durable until a checkpoint is
+     * performed. In addition to the vulnerabilities of NO_FLUSH mode, NO_REDO mode can lose
+     * recently committed transactions when the process exits.
      */
     NO_REDO;
 

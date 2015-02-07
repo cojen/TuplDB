@@ -389,20 +389,6 @@ final class UndoLog {
     }
 
     /**
-     * Should only be called after all log entries have been truncated or
-     * rolled back. Caller does not need to hold db commit lock.
-     */
-    final void unregister() {
-        final Lock sharedCommitLock = mDatabase.sharedCommitLock();
-        sharedCommitLock.lock();
-        try {
-            mDatabase.unregister(this);
-        } finally {
-            sharedCommitLock.unlock();
-        }
-    }
-
-    /**
      * Truncate all log entries. Caller does not need to hold db commit lock.
      *
      * @param commit pass true to indicate that top of stack is a commit op
