@@ -130,17 +130,15 @@ final class LockManager {
         }
     }
 
-    /*
-    final boolean unlockIfNonExclusive(Locker locker, Lock lock) {
+    final PendingTxn transferExclusive(LockOwner locker, Lock lock, PendingTxn pending) {
         LockHT ht = getLockHT(lock.mHashCode);
         ht.acquireExclusive();
         try {
-            return lock.unlockIfNonExclusive(locker);
+            return lock.transferExclusive(locker, pending);
         } finally {
             ht.releaseExclusive();
         }
     }
-    */
 
     /**
      * Mark a lock as referencing a ghosted entry. Caller must ensure that lock

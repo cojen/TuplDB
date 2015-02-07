@@ -248,9 +248,25 @@ public class Transaction extends Locker {
                     }
 
                     if (commitPos != 0) {
-                        // Durably sync the redo log after releasing the commit
-                        // lock, preventing additional blocking.
-                        mRedoWriter.txnCommitSync(this, commitPos);
+                        // Durably sync the redo log after releasing the commit lock,
+                        // preventing additional blocking.
+                        if (mDurabilityMode == DurabilityMode.SYNC) {
+                            mRedoWriter.txnCommitSync(this, commitPos);
+                        } else {
+                            PendingTxn pending = transferExclusive();
+                            pending.mTxnId = mTxnId;
+                            pending.mCommitPos = commitPos;
+                            pending.mUndoLog = undo;
+                            mUndoLog = null;
+                            int hasState = mHasState;
+                            if ((hasState & HAS_TRASH) != 0) {
+                                pending.mHasFragmentedTrash = true;
+                                mHasState = hasState & ~HAS_TRASH;
+                            }
+                            mTxnId = 0;
+                            mRedoWriter.txnCommitPending(pending);
+                            return;
+                        }
                     }
 
                     // Calling this deletes any ghosts too.
@@ -362,7 +378,7 @@ public class Transaction extends Locker {
 
                 mSavepoint = 0;
                 if (undo != null) {
-                    undo.unregister();
+                    mDatabase.unregister(undo);
                     mUndoLog = null;
                 }
 
@@ -427,7 +443,7 @@ public class Transaction extends Locker {
 
             mSavepoint = 0;
             if (undo != null) {
-                undo.unregister();
+                mDatabase.unregister(undo);
                 mUndoLog = null;
             }
 
@@ -746,7 +762,7 @@ public class Transaction extends Locker {
                     }
                     super.scopeExitAll();
                     if (undo != null) {
-                        undo.unregister();
+                        mDatabase.unregister(undo);
                         mUndoLog = null;
                     }
                 } catch (Throwable e2) {
