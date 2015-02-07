@@ -2609,6 +2609,8 @@ public final class Database implements CauseCloseable, Flushable {
             } else if (!create) {
                 return null;
             } else {
+                Transaction createTxn = null;
+
                 mOpenTreesLatch.acquireExclusive();
                 try {
                     treeIdBytes = mRegistryKeyMap.load(null, nameKey);
@@ -2631,20 +2633,35 @@ public final class Database implements CauseCloseable, Flushable {
                                      (Transaction.BOGUS, treeIdBytes, EMPTY_BYTES));
 
                             critical = false;
-                            if (!mRegistryKeyMap.insert(null, nameKey, treeIdBytes)) {
-                                critical = true;
-                                mRegistry.delete(Transaction.BOGUS, treeIdBytes);
-                                throw new DatabaseException("Unable to insert index name");
-                            }
 
-                            idKey = newKey(KEY_TYPE_INDEX_ID, treeIdBytes);
+                            try {
+                                idKey = newKey(KEY_TYPE_INDEX_ID, treeIdBytes);
 
-                            critical = false;
-                            if (!mRegistryKeyMap.insert(null, idKey, name)) {
-                                mRegistryKeyMap.delete(null, nameKey);
+                                if (mRedoWriter instanceof ReplRedoController) {
+                                    // Confirmation is required when replicated.
+                                    createTxn = newTransaction(DurabilityMode.SYNC);
+                                } else {
+                                    createTxn = newAlwaysRedoTransaction();
+                                }
+
+                                if (!mRegistryKeyMap.insert(createTxn, idKey, name)) {
+                                    throw new DatabaseException("Unable to insert index id");
+                                }
+                                if (!mRegistryKeyMap.insert(createTxn, nameKey, treeIdBytes)) {
+                                    throw new DatabaseException("Unable to insert index name");
+                                }
+                            } catch (Throwable e) {
                                 critical = true;
-                                mRegistry.delete(Transaction.BOGUS, treeIdBytes);
-                                throw new DatabaseException("Unable to insert index id");
+                                try {
+                                    if (createTxn != null) {
+                                        createTxn.reset();
+                                    }
+                                    mRegistry.delete(Transaction.BOGUS, treeIdBytes);
+                                    critical = false;
+                                } catch (Throwable e2) {
+                                    e.addSuppressed(e2);
+                                }
+                                throw e;
                             }
                         } catch (Throwable e) {
                             if (!critical) {
@@ -2654,7 +2671,24 @@ public final class Database implements CauseCloseable, Flushable {
                         }
                     }
                 } finally {
+                    // Release to allow opening other indexes while blocked on commit.
                     mOpenTreesLatch.releaseExclusive();
+                }
+
+                if (createTxn != null) {
+                    try {
+                        createTxn.commit();
+                    } catch (Throwable e) {
+                        try {
+                            createTxn.reset();
+                            mRegistry.delete(Transaction.BOGUS, treeIdBytes);
+                        } catch (Throwable e2) {
+                            e.addSuppressed(e2);
+                            throw closeOnFailure(this, e);
+                        }
+                        DatabaseException.rethrowIfRecoverable(e);
+                        throw closeOnFailure(this, e);
+                    }
                 }
             }
 
