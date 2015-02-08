@@ -3870,6 +3870,14 @@ public final class Database implements CauseCloseable, Flushable {
                 }
             }
 
+            mLastCheckpointNanos = nowNanos;
+
+            if (mEventListener != null) {
+                // Note: Events should not be delivered when exclusive commit lock is held.
+                // The listener implementation might introduce extra blocking.
+                mEventListener.notify(EventType.CHECKPOINT_BEGIN, "Checkpoint begin");
+            }
+
             boolean resume = true;
 
             byte[] header = mCommitHeader;
@@ -3886,8 +3894,6 @@ public final class Database implements CauseCloseable, Flushable {
 
             int hoff = mPageDb.extraCommitDataOffset();
             encodeIntLE(header, hoff + I_ENCODING_VERSION, ENCODING_VERSION);
-
-            mLastCheckpointNanos = nowNanos;
 
             final RedoWriter redo = mRedoWriter;
             if (redo != null) {
@@ -3928,11 +3934,6 @@ public final class Database implements CauseCloseable, Flushable {
                     redo.checkpointAborted();
                     throw e;
                 }
-            }
-
-            if (mEventListener != null) {
-                mEventListener.notify(EventType.CHECKPOINT_BEGIN,
-                                      "Checkpoint begin: %1$d, %2$d", redoNum, redoPos);
             }
 
             encodeLongLE(header, hoff + I_CHECKPOINT_NUMBER, redoNum);
@@ -4021,7 +4022,7 @@ public final class Database implements CauseCloseable, Flushable {
 
             if (mEventListener != null) {
                 double duration = (System.nanoTime() - mLastCheckpointNanos) / 1_000_000_000.0;
-                mEventListener.notify(EventType.CHECKPOINT_BEGIN,
+                mEventListener.notify(EventType.CHECKPOINT_COMPLETE,
                                       "Checkpoint completed in %1$1.3f seconds",
                                       duration, TimeUnit.SECONDS);
             }
