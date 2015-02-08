@@ -572,13 +572,17 @@ final class Lock {
      */
     PendingTxn transferExclusive(LockOwner locker, PendingTxn pending) {
         if (mLockCount == ~0) {
-            // Held exclusively. Assume mOwner == locker.
-            if (pending == null) {
-                pending = new PendingTxn(this);
-            } else {
-                pending.add(this);
+            // Held exclusively. Must double check expected owner because Locker tracks Lock
+            // instance multiple times for handling upgrades. Without this check, Lock can be
+            // added to pending set multiple times.
+            if (mOwner == locker) {
+                if (pending == null) {
+                    pending = new PendingTxn(this);
+                } else {
+                    pending.add(this);
+                }
+                mOwner = pending;
             }
-            mOwner = pending;
         } else {
             // Unlock upgradable or shared lock.
             unlock(locker, null);
