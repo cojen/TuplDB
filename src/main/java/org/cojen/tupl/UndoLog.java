@@ -232,11 +232,10 @@ final class UndoLog {
      * Caller must hold db commit lock.
      */
     private void doPush(final byte op, final byte[] payload, final int off, final int len,
-                        int varIntLen)
+                        final int varIntLen)
         throws IOException
     {
         final int encodedLen = 1 + varIntLen + len;
-        mLength += encodedLen;
 
         Node node = mNode;
         if (node != null) {
@@ -289,6 +288,7 @@ final class UndoLog {
 
             writeEntry(buffer, pos -= encodedLen, op, payload, off, len);
             mBufferPos = pos;
+            mLength += encodedLen;
             return;
         }
 
@@ -299,10 +299,12 @@ final class UndoLog {
             writeEntry(node.mPage, pos -= encodedLen, op, payload, off, len);
             node.mGarbage = pos;
             node.releaseExclusive();
+            mLength += encodedLen;
             return;
         }
 
         // Payload doesn't fit into node, so break it up.
+        final int originalPos = node.mGarbage;
         int remaining = len;
 
         while (true) {
@@ -326,7 +328,18 @@ final class UndoLog {
 
             Node newNode;
             {
-                newNode = allocUnevictableNode(node.mId);
+                try {
+                    newNode = allocUnevictableNode(node.mId);
+                } catch (Throwable e) {
+                    // Undo the damage.
+                    while (node != mNode) {
+                        node = popNode(node, true);
+                    }
+                    node.mGarbage = originalPos;
+                    node.releaseExclusive();
+                    throw e;
+                }
+
                 newNode.mNodeChainNext = node;
                 newNode.mGarbage = pos = page.length;
                 available = pos - HEADER_SIZE;
@@ -334,8 +347,11 @@ final class UndoLog {
 
             node.releaseExclusive();
             node.makeEvictable();
-            mNode = node = newNode;
+            node = newNode;
         }
+
+        mNode = node;
+        mLength += encodedLen;
     }
 
     /**
@@ -735,7 +751,7 @@ final class UndoLog {
 
     /**
      * @param parent latched parent node
-     * @param delete true to delete the node too
+     * @param delete true to delete the parent node too
      * @return current (latched) mNode; null if none left
      */
     private Node popNode(Node parent, boolean delete) throws IOException {
