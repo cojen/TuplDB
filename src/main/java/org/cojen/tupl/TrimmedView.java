@@ -118,6 +118,11 @@ final class TrimmedView implements View {
     }
 
     @Override
+    public View viewTransformed(Transformer transformer) {
+        return TransformedView.apply(this, transformer);
+    }
+
+    @Override
     public View viewReverse() {
         return new TrimmedView(mSource.viewReverse(), mPrefix, mTrim);
     }

@@ -45,7 +45,7 @@ public enum LockMode {
      * by an upgradable lock is modified, the lock is first upgraded to be
      * exclusive.
      */
-    UPGRADABLE_READ(false),
+    UPGRADABLE_READ(true, false),
 
     /**
      * Lock mode which acquires shared locks when reading entries and retains
@@ -55,20 +55,20 @@ public enum LockMode {
      *
      * @see LockUpgradeRule
      */
-    REPEATABLE_READ(false),
+    REPEATABLE_READ(true, false),
 
     /**
      * Lock mode which acquires shared locks when reading entries and releases
      * them as soon as possible.
      */
-    READ_COMMITTED(false),
+    READ_COMMITTED(false, false),
 
     /**
      * Lock mode which never acquires locks when reading entries.
      * Modifications made by concurrent transactions are visible for reading,
      * but they might get rolled back.
      */
-    READ_UNCOMMITTED(true),
+    READ_UNCOMMITTED(false, true),
 
     /**
      * Lock mode which never acquires locks. This mode bypasses all
@@ -76,11 +76,21 @@ public enum LockMode {
      * transactions. These modifications are immediately committed, and so
      * rollback is not possible.
      */
-    UNSAFE(true);
+    UNSAFE(false, true);
 
     final boolean noReadLock;
+    private final boolean mRepeatable;
 
-    private LockMode(boolean noReadLock) {
+    private LockMode(boolean repeatable, boolean noReadLock) {
+        mRepeatable = repeatable;
         this.noReadLock = noReadLock;
+    }
+
+    /**
+     * Returns true if acquired locks are retained for the duration of the
+     * transaction. Applicable to {@link #UPGRADABLE_READ} and {@link #REPEATABLE_READ}.
+     */
+    public boolean isRepeatable() {
+        return mRepeatable;
     }
 }

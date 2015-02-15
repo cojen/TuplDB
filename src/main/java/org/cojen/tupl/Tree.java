@@ -113,8 +113,7 @@ class Tree implements Index {
 
     @Override
     public final byte[] getName() {
-        byte[] name = mName;
-        return name == null ? null : name.clone();
+        return cloneArray(mName);
     }
 
     @Override
@@ -233,6 +232,11 @@ class Tree implements Index {
     @Override
     public final View viewPrefix(byte[] prefix, int trim) {
         return BoundedView.viewPrefix(this, prefix, trim);
+    }
+
+    @Override
+    public final View viewTransformed(Transformer transformer) {
+        return TransformedView.apply(this, transformer);
     }
 
     @Override

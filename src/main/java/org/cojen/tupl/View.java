@@ -298,6 +298,17 @@ public interface View {
     public View viewPrefix(byte[] prefix, int trim);
 
     /**
+     * Returns a sub-view, backed by this one, whose entries have been filtered out and
+     * transformed.
+     *
+     * <p>The returned view will throw a {@link ViewConstraintException} on an attempt to
+     * insert an entry not supported by the transformer.
+     *
+     * @throws NullPointerException if transformer is null
+     */
+    public View viewTransformed(Transformer transformer);
+
+    /**
      * Returns a view, backed by this one, whose natural order is reversed.
      */
     public View viewReverse();
