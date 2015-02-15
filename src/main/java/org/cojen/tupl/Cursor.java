@@ -65,6 +65,11 @@ public interface Cursor {
     public Transaction link(Transaction txn);
 
     /**
+     * Returns the transaction the cursor is currently linked to.
+     */
+    public Transaction link();
+
+    /**
      * Returns an uncopied reference to the current key, or null if Cursor is
      * unpositioned. Array contents must not be modified.
      */
@@ -84,6 +89,11 @@ public interface Cursor {
      * @return prior autoload mode
      */
     public boolean autoload(boolean mode);
+
+    /**
+     * Returns the current autoload mode.
+     */
+    public boolean autoload();
 
     /**
      * Compare the current key to the one given.

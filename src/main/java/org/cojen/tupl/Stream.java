@@ -66,6 +66,11 @@ import java.io.OutputStream;
     public Transaction link(Transaction txn);
 
     /**
+     * Returns the transaction the stream is currently linked to.
+     */
+    public Transaction link();
+
+    /**
      * Returns the total length of the value accessed by the Stream.
      *
      * @return value length or -1 if it doesn't exist

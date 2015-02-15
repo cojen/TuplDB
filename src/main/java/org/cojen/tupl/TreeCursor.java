@@ -75,6 +75,11 @@ class TreeCursor implements CauseCloseable, Cursor {
     }
 
     @Override
+    public final Transaction link() {
+        return mTxn;
+    }
+
+    @Override
     public final byte[] key() {
         return mKey;
     }
@@ -89,6 +94,11 @@ class TreeCursor implements CauseCloseable, Cursor {
         boolean old = mKeyOnly;
         mKeyOnly = !mode;
         return !old;
+    }
+
+    @Override
+    public final boolean autoload() {
+        return !mKeyOnly;
     }
 
     @Override
@@ -2435,8 +2445,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     public final TreeCursor copy() {
         TreeCursor copy = copyNoValue();
         if (!(copy.mKeyOnly = mKeyOnly)) {
-            byte[] value = mValue;
-            copy.mValue = (value == null || value.length == 0) ? value : value.clone();
+            copy.mValue = cloneArray(mValue);
         }
         return copy;
     }

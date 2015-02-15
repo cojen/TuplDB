@@ -41,6 +41,11 @@ final class ReverseCursor implements Cursor {
     }
 
     @Override
+    public Transaction link() {
+        return mSource.link();
+    }
+
+    @Override
     public byte[] key() {
         return mSource.key();
     }
@@ -53,6 +58,11 @@ final class ReverseCursor implements Cursor {
     @Override
     public boolean autoload(boolean mode) {
         return mSource.autoload(mode);
+    }
+
+    @Override
+    public boolean autoload() {
+        return mSource.autoload();
     }
 
     @Override

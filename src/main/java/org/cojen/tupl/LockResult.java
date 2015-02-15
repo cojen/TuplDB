@@ -103,7 +103,7 @@ public enum LockResult {
     }
 
     /**
-     * Returns true if lock was already owned when requested. Applicable {@link
+     * Returns true if lock was already owned when requested. Applicable to {@link
      * #OWNED_SHARED}, {@link #OWNED_UPGRADABLE}, and {@link #OWNED_EXCLUSIVE}.
      */
     public boolean alreadyOwned() {
