@@ -101,6 +101,11 @@ abstract class SubView implements View {
     }
 
     @Override
+    public View viewTransformed(Transformer transformer) {
+        return TransformedView.apply(this, transformer);
+    }
+
+    @Override
     public View viewReverse() {
         return new ReverseView(this);
     }

@@ -196,6 +196,13 @@ class Utils extends org.cojen.tupl.io.Utils {
     }
 
     /**
+     * Returns null if given null, or clones into a new array only if not empty.
+     */
+    static byte[] cloneArray(byte[] bytes) {
+        return (bytes == null || bytes.length == 0) ? bytes : bytes.clone();
+    }
+
+    /**
      * Performs multiple array copies, correctly ordered to prevent clobbering. The copies
      * must not overlap, and start1 must be less than start2.
      */

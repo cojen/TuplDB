@@ -55,7 +55,7 @@ import java.util.concurrent.locks.Lock;
  * @author Brian S O'Neill
  * @see Database#newTransaction Database.newTransaction
  */
-public final class Transaction extends Locker {
+public class Transaction extends Locker {
     /**
      * Transaction instance which isn't a transaction at all. It always
      * operates in an {@link LockMode#UNSAFE unsafe} lock mode and a {@link
@@ -71,6 +71,7 @@ public final class Transaction extends Locker {
                            fully deleted after committing the top-level scope. */
 
     final Database mDatabase;
+    final RedoWriter mRedoWriter;
     final DurabilityMode mDurabilityMode;
 
     private LockMode mLockMode;
@@ -84,9 +85,12 @@ public final class Transaction extends Locker {
     // Is an exception if transaction is borked, BOGUS if bogus.
     private Object mBorked;
 
-    Transaction(Database db, DurabilityMode durabilityMode, LockMode lockMode, long timeoutNanos) {
+    Transaction(Database db, RedoWriter redo, DurabilityMode durabilityMode,
+                LockMode lockMode, long timeoutNanos)
+    {
         super(db.mLockManager);
         mDatabase = db;
+        mRedoWriter = redo;
         mDurabilityMode = durabilityMode;
         mLockMode = lockMode;
         mLockTimeoutNanos = timeoutNanos;
@@ -94,13 +98,13 @@ public final class Transaction extends Locker {
 
     // Constructor for redo recovery.
     Transaction(Database db, long txnId, LockMode lockMode, long timeoutNanos) {
-        this(db, DurabilityMode.NO_REDO, lockMode, timeoutNanos);
+        this(db, null, DurabilityMode.NO_REDO, lockMode, timeoutNanos);
         mTxnId = txnId;
     }
 
     // Constructor for undo recovery.
     Transaction(Database db, long txnId, LockMode lockMode, long timeoutNanos, int hasState) {
-        this(db, DurabilityMode.NO_REDO, lockMode, timeoutNanos);
+        this(db, null, DurabilityMode.NO_REDO, lockMode, timeoutNanos);
         mTxnId = txnId;
         mHasState = hasState;
     }
@@ -126,6 +130,7 @@ public final class Transaction extends Locker {
     private Transaction() {
         super();
         mDatabase = null;
+        mRedoWriter = null;
         mDurabilityMode = DurabilityMode.NO_REDO;
         mLockMode = LockMode.UNSAFE;
         mBorked = this;
@@ -212,10 +217,10 @@ public final class Transaction extends Locker {
                 if (undo == null) {
                     int hasState = mHasState;
                     if ((hasState & HAS_COMMIT) != 0) {
-                        RedoWriter redo = mDatabase.mRedoWriter;
+                        RedoWriter redo = mRedoWriter;
                         long commitPos = redo.txnCommitFinal(mTxnId, mDurabilityMode);
                         if (commitPos != 0) {
-                            redo.txnCommitSync(commitPos);
+                            redo.txnCommitSync(this, commitPos);
                         }
                         mHasState = hasState & ~(HAS_SCOPE | HAS_COMMIT);
                     }
@@ -231,8 +236,7 @@ public final class Transaction extends Locker {
                     long commitPos;
                     try {
                         if ((commitPos = (mHasState & HAS_COMMIT)) != 0) {
-                            commitPos = mDatabase.mRedoWriter
-                                .txnCommitFinal(mTxnId, mDurabilityMode);
+                            commitPos = mRedoWriter.txnCommitFinal(mTxnId, mDurabilityMode);
                             mHasState &= ~(HAS_SCOPE | HAS_COMMIT);
                         }
                         // Indicates that undo log should be truncated instead
@@ -244,9 +248,25 @@ public final class Transaction extends Locker {
                     }
 
                     if (commitPos != 0) {
-                        // Durably sync the redo log after releasing the commit
-                        // lock, preventing additional blocking.
-                        mDatabase.mRedoWriter.txnCommitSync(commitPos);
+                        // Durably sync the redo log after releasing the commit lock,
+                        // preventing additional blocking.
+                        if (mDurabilityMode == DurabilityMode.SYNC) {
+                            mRedoWriter.txnCommitSync(this, commitPos);
+                        } else {
+                            PendingTxn pending = transferExclusive();
+                            pending.mTxnId = mTxnId;
+                            pending.mCommitPos = commitPos;
+                            pending.mUndoLog = undo;
+                            mUndoLog = null;
+                            int hasState = mHasState;
+                            if ((hasState & HAS_TRASH) != 0) {
+                                pending.mHasFragmentedTrash = true;
+                                mHasState = hasState & ~HAS_TRASH;
+                            }
+                            mTxnId = 0;
+                            mRedoWriter.txnCommitPending(pending);
+                            return;
+                        }
                     }
 
                     // Calling this deletes any ghosts too.
@@ -274,7 +294,7 @@ public final class Transaction extends Locker {
             } else {
                 int hasState = mHasState;
                 if ((hasState & HAS_COMMIT) != 0) {
-                    mDatabase.mRedoWriter.txnCommit(mTxnId);
+                    mRedoWriter.txnCommit(mTxnId);
                     mHasState = hasState & ~(HAS_SCOPE | HAS_COMMIT);
                     parentScope.mHasState |= HAS_COMMIT;
                 }
@@ -344,7 +364,7 @@ public final class Transaction extends Locker {
             if (parentScope == null) {
                 int hasState = mHasState;
                 if ((hasState & HAS_SCOPE) != 0) {
-                    mDatabase.mRedoWriter.txnRollbackFinal(mTxnId);
+                    mRedoWriter.txnRollbackFinal(mTxnId);
                 }
                 mHasState = 0;
 
@@ -358,7 +378,7 @@ public final class Transaction extends Locker {
 
                 mSavepoint = 0;
                 if (undo != null) {
-                    undo.unregister();
+                    mDatabase.unregister(undo);
                     mUndoLog = null;
                 }
 
@@ -366,7 +386,7 @@ public final class Transaction extends Locker {
             } else {
                 int hasState = mHasState;
                 if ((mHasState & HAS_SCOPE) != 0) {
-                    mDatabase.mRedoWriter.txnRollback(mTxnId);
+                    mRedoWriter.txnRollback(mTxnId);
                     mHasState = hasState & ~(HAS_SCOPE | HAS_COMMIT);
                 }
 
@@ -403,13 +423,13 @@ public final class Transaction extends Locker {
             ParentScope parentScope = mParentScope;
             while (parentScope != null) {
                 if ((hasState & HAS_SCOPE) != 0) {
-                    mDatabase.mRedoWriter.txnRollback(mTxnId);
+                    mRedoWriter.txnRollback(mTxnId);
                 }
                 hasState = parentScope.mHasState;
                 parentScope = parentScope.mParentScope;
             }
             if ((hasState & HAS_SCOPE) != 0) {
-                mDatabase.mRedoWriter.txnRollbackFinal(mTxnId);
+                mRedoWriter.txnRollbackFinal(mTxnId);
             }
             mHasState = 0;
 
@@ -423,7 +443,7 @@ public final class Transaction extends Locker {
 
             mSavepoint = 0;
             if (undo != null) {
-                undo.unregister();
+                mDatabase.unregister(undo);
                 mUndoLog = null;
             }
 
@@ -588,7 +608,7 @@ public final class Transaction extends Locker {
         check();
 
         try {
-            RedoWriter redo = mDatabase.mRedoWriter;
+            RedoWriter redo = mRedoWriter;
             if (redo != null) {
                 long txnId = txnId();
 
@@ -632,9 +652,17 @@ public final class Transaction extends Locker {
         }
     }
 
+    /**
+     * Caller must hold commit lock if transaction id has not been assigned yet.
+     */
     final long txnId() throws IOException {
         long txnId = mTxnId;
         if (txnId == 0) {
+            RedoWriter redo = mRedoWriter;
+            if (redo != null) {
+                // Replicas cannot create loggable transactions.
+                redo.opWriteCheck();
+            }
             mTxnId = txnId = mDatabase.nextTransactionId();
         }
         return txnId;
@@ -714,7 +742,7 @@ public final class Transaction extends Locker {
      * @param rollback Rollback should only be performed by user operations -- the public API.
      * Otherwise a latch deadlock can occur.
      */
-    RuntimeException borked(Throwable e, boolean rollback) {
+    final RuntimeException borked(Throwable e, boolean rollback) {
         if (mBorked == null) {
             if (mDatabase.mClosed) {
                 Throwable cause = mDatabase.mClosedCause;
@@ -734,7 +762,7 @@ public final class Transaction extends Locker {
                     }
                     super.scopeExitAll();
                     if (undo != null) {
-                        undo.unregister();
+                        mDatabase.unregister(undo);
                         mUndoLog = null;
                     }
                 } catch (Throwable e2) {

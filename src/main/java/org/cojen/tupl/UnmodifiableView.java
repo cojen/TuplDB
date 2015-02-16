@@ -149,6 +149,11 @@ final class UnmodifiableView implements Index {
     }
 
     @Override
+    public View viewTransformed(Transformer transformer) {
+        return new UnmodifiableView(mSource.viewTransformed(transformer));
+    }
+
+    @Override
     public View viewReverse() {
         return new UnmodifiableView(mSource.viewReverse());
     }

@@ -75,6 +75,11 @@ class TreeCursor implements CauseCloseable, Cursor {
     }
 
     @Override
+    public final Transaction link() {
+        return mTxn;
+    }
+
+    @Override
     public final byte[] key() {
         return mKey;
     }
@@ -89,6 +94,11 @@ class TreeCursor implements CauseCloseable, Cursor {
         boolean old = mKeyOnly;
         mKeyOnly = !mode;
         return !old;
+    }
+
+    @Override
+    public final boolean autoload() {
+        return !mKeyOnly;
     }
 
     @Override
@@ -2129,7 +2139,7 @@ class TreeCursor implements CauseCloseable, Cursor {
 
         if (commitPos != 0) {
             // Wait for commit sync without holding commit lock and node latch.
-            mTree.txnCommitSync(commitPos);
+            mTree.txnCommitSync(txn, commitPos);
         }
     }
 
@@ -2435,8 +2445,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     public final TreeCursor copy() {
         TreeCursor copy = copyNoValue();
         if (!(copy.mKeyOnly = mKeyOnly)) {
-            byte[] value = mValue;
-            copy.mValue = (value == null || value.length == 0) ? value : value.clone();
+            copy.mValue = cloneArray(mValue);
         }
         return copy;
     }
@@ -3446,53 +3455,6 @@ class TreeCursor implements CauseCloseable, Cursor {
             }
         }
 
-        return parent.loadChild(mTree.mDatabase, childPos, childId, releaseParent);
+        return parent.loadChild(mTree.mDatabase, childId, releaseParent);
     }
-
-    /**
-     * With parent held shared or exclusive, returns child with shared or
-     * exclusive latch held. Exclusive latch is acquired only for leaf nodes.
-     * If an exception is thrown, parent and child latches are always released.
-     *
-     * @param parentFrame parent must be bound to this frame
-     * @return child node, possibly split
-     */
-    /*
-    private Node latchChildToModify(TreeCursorFrame parentFrame, int childPos) throws IOException {
-        Node parentNode = parentFrame.mNode;
-        long childId = parentNode.retrieveChildRefId(childPos);
-        Node childNode = mTree.mDatabase.mTreeNodeMap.get(childId);
-
-        check: if (childNode != null) {
-            if (parentNode.mType == Node.TYPE_TN_BIN) {
-                childNode.acquireExclusive();
-                // Need to check again in case evict snuck in.
-                if (childId != childNode.mId) {
-                    childNode.releaseExclusive();
-                    break check;
-                }
-            } else {
-                childNode.acquireShared();
-                // Need to check again in case evict snuck in.
-                if (childId != childNode.mId) {
-                    childNode.releaseShared();
-                    break check;
-                }
-            }
-            parentNode.releaseEither();
-            mTree.mDatabase.used(childNode);
-            return childNode;
-        }
-
-        if (!parentNode.tryUpgrade()) {
-            parentNode.releaseShared();
-            parentNode = parentFrame.acquireExclusive();
-            if (parentNode.mSplit != null) {
-                parentNode = mTree.finishSplit(parentFrame, parentNode);
-            }
-        }
-
-        return parentNode.loadChild(mTree.mDatabase, childPos, childId, true);
-    }
-    */
 }

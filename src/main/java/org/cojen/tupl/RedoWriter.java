@@ -200,10 +200,20 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
     /**
      * Called after txnCommitFinal.
      *
+     * @param txn transaction committed
      * @param commitPos highest position to sync (exclusive)
      */
-    public void txnCommitSync(long commitPos) throws IOException {
+    public void txnCommitSync(Transaction txn, long commitPos) throws IOException {
         sync(false);
+    }
+
+    /**
+     * Called after txnCommitFinal.
+     *
+     * @param pending pending transaction committed
+     */
+    public void txnCommitPending(PendingTxn pending) throws IOException {
+        throw new UnsupportedOperationException();
     }
 
     public synchronized void txnStore(byte op, long txnId, long indexId, byte[] key, byte[] value)
@@ -316,6 +326,11 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
 
     public abstract long encoding();
 
+    /**
+     * Return a new or existing RedoWriter for a new transaction.
+     */
+    public abstract RedoWriter txnRedoWriter();
+
     // Caller must be synchronized.
     abstract boolean isOpen();
 
@@ -371,7 +386,9 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
     abstract void checkpointFinished() throws IOException;
 
     // Caller must be synchronized.
-    abstract void opWriteCheck() throws IOException;
+    void opWriteCheck() throws IOException {
+        // Always writable by default.
+    }
 
     /**
      * Write to the physical log.

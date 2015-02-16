@@ -32,14 +32,14 @@ final class NodeUsageList extends Latch {
     // Don't evict a node when trying to allocate another.
     static final int MODE_NO_EVICT = 2;
 
-    private final transient Database mDb;
+    private final transient Database mDatabase;
     private int mMaxSize;
     private int mSize;
     private Node mMostRecentlyUsed;
     private Node mLeastRecentlyUsed;
 
     NodeUsageList(Database db, int maxSize) {
-        mDb = db;
+        mDatabase = db;
         acquireExclusive();
         mMaxSize = maxSize;
         releaseExclusive();
@@ -70,8 +70,8 @@ final class NodeUsageList extends Latch {
     }
 
     /**
-     * Returns a new or recycled Node instance, latched exclusively, with an id
-     * of zero and a clean state.
+     * Returns a new or recycled Node instance, latched exclusively, with an undefined id and a
+     * clean state.
      *
      * @param trial pass 1 for less aggressive recycle attempt
      * @param mode MODE_UNEVICTABLE | MODE_NO_EVICT
@@ -129,7 +129,7 @@ final class NodeUsageList extends Latch {
 
                     releaseExclusive();
 
-                    if ((node = Node.evict(node, mDb)) != null) {
+                    if ((node = Node.evict(node, mDatabase)) != null) {
                         if ((mode & MODE_UNEVICTABLE) != 0) {
                             node.mUsageList.makeUnevictable(node);
                         }
@@ -151,9 +151,17 @@ final class NodeUsageList extends Latch {
                     }
                 } else {
                     try {
-                        if ((node = Node.evict(node, mDb)) != null) {
+                        if ((node = Node.evict(node, mDatabase)) != null) {
                             if ((mode & MODE_UNEVICTABLE) != 0) {
-                                node.mUsageList.doMakeUnevictable(node);
+                                NodeUsageList usageList = node.mUsageList;
+                                if (usageList == this) {
+                                    doMakeUnevictable(node);
+                                } else {
+                                    releaseExclusive();
+                                    usageList.makeUnevictable(node);
+                                    // Return with node latch still held.
+                                    return node;
+                                }
                             }
                             releaseExclusive();
                             // Return with node latch still held.
@@ -179,8 +187,8 @@ final class NodeUsageList extends Latch {
      */
     private Node doAllocLatchedNode(int mode) throws DatabaseException {
         try {
-            mDb.checkClosed();
-            Node node = new Node(this, mDb.mPageSize);
+            mDatabase.checkClosed();
+            Node node = new Node(this, mDatabase.mPageSize);
             node.acquireExclusive();
             mSize++;
             if ((mode & MODE_UNEVICTABLE) == 0) {
@@ -226,11 +234,21 @@ final class NodeUsageList extends Latch {
 
     /**
      * Indicate that node is least recently used, allowing it to be recycled immediately
-     * without evicting another node. Node must be unlatched at this point, to prevent it from
-     * being immediately promoted to most recently used by tryAllocLatchedNode.
+     * without evicting another node. Node must be latched by caller, which is always released
+     * by this method.
      */
     void unused(final Node node) {
-        acquireExclusive();
+        // Node latch is held to ensure that it isn't used for new allocations too soon. In
+        // particular, it might be used for an unevictable allocation. This method would end up
+        // erroneously moving the node back into the usage list. 
+
+        try {
+            acquireExclusive();
+        } catch (Throwable e) {
+            node.releaseExclusive();
+            throw e;
+        }
+
         try {
             if (mMaxSize == 0) {
                 // Closed.
@@ -256,6 +274,11 @@ final class NodeUsageList extends Latch {
             (node.mMoreUsed = mLeastRecentlyUsed).mLessUsed = node;
             mLeastRecentlyUsed = node;
         } finally {
+            // The node latch must be released before releasing the usage list latch, to
+            // prevent the node from being immediately promoted to the most recently used by
+            // tryAllocLatchedNode. The caller would acquire the usage list latch, fail to
+            // acquire the node latch, and then the node gets falsely promoted.
+            node.releaseExclusive();
             releaseExclusive();
         }
     }

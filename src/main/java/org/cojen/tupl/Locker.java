@@ -27,18 +27,13 @@ import static org.cojen.tupl.LockManager.*;
  *
  * @author Brian S O'Neill
  */
-class Locker {
+class Locker extends LockOwner {
     final LockManager mManager;
-
-    private int mHashCode;
 
     ParentScope mParentScope;
 
     // Is null if empty; Lock instance if one; Block if more.
     Object mTailBlock;
-
-    // Locker is currently waiting to acquire this lock. Used for deadlock detection.
-    Lock mWaitingFor;
 
     Locker(LockManager manager) {
         if (manager == null) {
@@ -577,6 +572,31 @@ class Locker {
     }
 
     /**
+     * Transfers all exclusive locks held by this Locker, for the top scope only. All other
+     * locks are released.
+     *
+     * @return null if no exclusive locks were held
+     */
+    final PendingTxn transferExclusive() {
+        PendingTxn pending = null;
+
+        Object tailObj = mTailBlock;
+        if (tailObj instanceof Lock) {
+            pending = mManager.transferExclusive(this, (Lock) tailObj, pending);
+        } else {
+            Block tail = (Block) tailObj;
+            while (tail != null) {
+                pending = tail.transferExclusive(this, pending);
+                tail = tail.pop();
+            }
+        }
+
+        mTailBlock = null;
+
+        return pending;
+    }
+
+    /**
      * Exits the current scope, releasing all held locks.
      *
      * @return old parent scope
@@ -593,15 +613,6 @@ class Locker {
         mParentScope = null;
         scopeUnlockAll();
         mTailBlock = null;
-    }
-
-    @Override
-    public final int hashCode() {
-        int hash = mHashCode;
-        if (hash == 0) {
-            mHashCode = hash = Utils.randomSeed();
-        }
-        return hash;
     }
 
     /**
@@ -785,6 +796,22 @@ class Locker {
                 mUpgrades = upgrades & ~(~0L << size);
                 mSize = size;
             }
+        }
+
+        /**
+         * Note: Caller MUST pop and discard the block.
+         */
+        PendingTxn transferExclusive(Locker locker, PendingTxn pending) {
+            int size = mSize;
+            if (size > 0) {
+                Lock[] locks = mLocks;
+                LockManager manager = locker.mManager;
+                do {
+                    Lock lock = locks[--size];
+                    pending = manager.transferExclusive(locker, lock, pending);
+                } while (size != 0);
+            }
+            return pending;
         }
 
         Block pop() {

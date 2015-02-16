@@ -53,6 +53,12 @@ abstract class PageDb implements CauseCloseable {
     public abstract int allocMode();
 
     /**
+     * @param mode NodeUsageList.MODE_UNEVICTABLE | MODE_NO_EVICT
+     * @return node with id assigned
+     */
+    public abstract Node allocLatchedNode(Database db, int mode) throws IOException;
+
+    /**
      * Returns the fixed size of all pages in the store, in bytes.
      */
     public abstract int pageSize();
@@ -241,20 +247,29 @@ abstract class PageDb implements CauseCloseable {
     public abstract boolean truncatePages() throws IOException;
 
     /**
+     * Returns the header offset for writing extra commit data into, up to 256 bytes.
+     */
+    public abstract int extraCommitDataOffset();
+
+    /**
      * Durably commits all writes and deletes to the underlying device.
      *
+     * @param resume true if resuming an aborted commit
+     * @param header must be page size
      * @param callback optional callback to run during commit
      */
-    public abstract void commit(final CommitCallback callback) throws IOException;
+    public abstract void commit(boolean resume, byte[] header, CommitCallback callback)
+        throws IOException;
 
     public static interface CommitCallback {
         /**
-         * Write all allocated pages which should be committed and return extra
-         * data. Extra commit data is stored in PageDb header.
+         * Write all allocated pages which should be committed. Extra header data provided is
+         * stored in the PageDb header.
          *
-         * @return optional extra data to commit, up to 256 bytes
+         * @param resume true if resuming an aborted commit
+         * @param header header to write extra data into, up to 256 bytes
          */
-        public byte[] prepare() throws IOException;
+        public void prepare(boolean resume, byte[] header) throws IOException;
     }
 
     /**

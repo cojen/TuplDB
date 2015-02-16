@@ -1,6 +1,19 @@
 Changelog
 =========
 
+v1.1.11
+------
+* Ensure that any failure to push into the undo log is cleaned up.
+* Modify replication interface to handle race condition during checkpoint.
+* Ensure durability of index creation and alteration operations.
+* Enhancements for safely handling checkpoint abort.
+* Support weaker durability modes with replication.
+
+v1.1.10
+------
+* Fix race conditions in node allocation and recycling code.
+* Minor performance optimizations for large values and for simple loads.
+
 v1.1.9
 ------
 * Fix assertion failure caused by aggressive eviction before the very first checkpoint.

@@ -180,6 +180,11 @@ public final class Database implements CauseCloseable, Flushable {
     // Is either CACHED_DIRTY_0 or CACHED_DIRTY_1. Access is guarded by commit lock.
     private byte mCommitState;
 
+    // Set during checkpoint after commit state has switched. If checkpoint aborts, next
+    // checkpoint will resume with this commit header and master undo log.
+    private byte[] mCommitHeader;
+    private UndoLog mCommitMasterUndoLog;
+
     // Is false for empty databases which have never checkpointed.
     private volatile boolean mHasCheckpointed = true;
 
@@ -525,7 +530,12 @@ public final class Database implements CauseCloseable, Flushable {
             // Also verifies the database and replication encodings.
             Node rootNode = loadRegistryRoot(header, config.mReplManager);
 
-            mRegistry = newTreeInstance(Tree.REGISTRY_ID, null, null, rootNode);
+            // Cannot call newTreeInstance because mRedoWriter isn't set yet.
+            if (config.mReplManager != null) {
+                mRegistry = new TxnTree(this, Tree.REGISTRY_ID, null, null, rootNode);
+            } else {
+                mRegistry = new Tree(this, Tree.REGISTRY_ID, null, null, rootNode);
+            }
 
             mOpenTreesLatch = new Latch();
             if (openMode == OPEN_TEMP) {
@@ -549,7 +559,7 @@ public final class Database implements CauseCloseable, Flushable {
             if (openMode == OPEN_TEMP) {
                 mRegistryKeyMap = null;
             } else {
-                mRegistryKeyMap = openInternalTree(Tree.REGISTRY_KEY_MAP_ID, true);
+                mRegistryKeyMap = openInternalTree(Tree.REGISTRY_KEY_MAP_ID, true, config);
             }
 
             mDirtyList = new NodeDirtyList();
@@ -557,7 +567,7 @@ public final class Database implements CauseCloseable, Flushable {
             mFragmentCache = new FragmentCache(this, mTreeNodeMap);
 
             if (openMode != OPEN_TEMP) {
-                Tree tree = openInternalTree(Tree.FRAGMENTED_TRASH_ID, false);
+                Tree tree = openInternalTree(Tree.FRAGMENTED_TRASH_ID, false, config);
                 if (tree != null) {
                     mFragmentedTrash = new FragmentedTrash(tree);
                 }
@@ -748,12 +758,12 @@ public final class Database implements CauseCloseable, Flushable {
             deletion.start();
         }
 
-        if (mRedoWriter instanceof ReplRedoWriter) {
+        if (mRedoWriter instanceof ReplRedoController) {
             // Start replication and recovery.
-            ReplRedoWriter writer = (ReplRedoWriter) mRedoWriter;
+            ReplRedoController controller = (ReplRedoController) mRedoWriter;
             try {
                 // Pass the original listener, in case it has been specialized.
-                writer.recover(config.mReplInitialTxnId, config.mEventListener);
+                controller.recover(config.mReplInitialTxnId, config.mEventListener);
             } catch (Throwable e) {
                 closeQuietly(null, this, e);
                 throw e;
@@ -815,37 +825,6 @@ public final class Database implements CauseCloseable, Flushable {
             deleteNumberedFiles(mBaseFile, REDO_FILE_SUFFIX);
         }
     }
-
-    /*
-    void trace() throws IOException {
-        int[] inBuckets = new int[16];
-        int[] leafBuckets = new int[16];
-
-        java.util.BitSet pages = mPageDb.tracePages();
-        mRegistry.mRoot.tracePages(this, pages, inBuckets, leafBuckets);
-        mRegistryKeyMap.mRoot.tracePages(this, pages, inBuckets, leafBuckets);
-
-        Cursor all = indexRegistryByName().newCursor(null);
-        for (all.first(); all.key() != null; all.next()) {
-            Index ix = indexById(all.value());
-            System.out.println(ix.getNameString());
-
-            Cursor c = ix.newCursor(Transaction.BOGUS);
-            c.first();
-            System.out.println("height: " + ((TreeCursor) c).height());
-            c.reset();
-
-            ((Tree) ix).mRoot.tracePages(this, pages, inBuckets, leafBuckets);
-            System.out.println("unaccounted: " + pages.cardinality());
-            System.out.println("internal avail: " + Arrays.toString(inBuckets));
-            System.out.println("leaf avail: " + Arrays.toString(leafBuckets));
-        }
-        all.reset();
-
-        System.out.println("unaccounted: " + pages.cardinality());
-        System.out.println(pages);
-    }
-    */
 
     /**
      * Returns the given named index, returning null if not found.
@@ -996,24 +975,26 @@ public final class Database implements CauseCloseable, Flushable {
 
     /**
      * @param newName not cloned
-     * @param txnId non-zero if rename is performed by recovery
+     * @param redoTxnId non-zero if rename is performed by recovery
      */
-    void renameIndex(Index index, byte[] newName, long txnId) throws IOException {
+    void renameIndex(final Index index, final byte[] newName, final long redoTxnId)
+        throws IOException
+    {
         // Design note: Rename is a Database method instead of an Index method because it
         // offers an extra degree of safety. It's too easy to call rename and pass a byte[] by
         // an accident when something like remove was desired instead. Requiring access to the
         // Database instance makes this operation a bit more of a hassle to use, which is
         // desirable. Rename is not expected to be a common operation.
 
-        Tree tree = accessTree(index);
+        final Tree tree = accessTree(index);
 
-        byte[] idKey, trashIdKey;
-        byte[] oldName, oldNameKey;
-        byte[] newNameKey;
+        final byte[] idKey, trashIdKey;
+        final byte[] oldName, oldNameKey;
+        final byte[] newNameKey;
 
-        Transaction txn;
+        final Transaction txn;
 
-        Node root = tree.mRoot;
+        final Node root = tree.mRoot;
         root.acquireExclusive();
         try {
             if (root.mPage == EMPTY_BYTES) {
@@ -1034,7 +1015,7 @@ public final class Database implements CauseCloseable, Flushable {
             oldNameKey = newKey(KEY_TYPE_INDEX_NAME, oldName);
             newNameKey = newKey(KEY_TYPE_INDEX_NAME, newName);
 
-            txn = newNoRedoTransaction(txnId);
+            txn = newNoRedoTransaction(redoTxnId);
             try {
                 txn.lockExclusive(mRegistryKeyMap.mId, idKey);
                 txn.lockExclusive(mRegistryKeyMap.mId, trashIdKey);
@@ -1056,9 +1037,6 @@ public final class Database implements CauseCloseable, Flushable {
             root.releaseExclusive();
         }
 
-        final RedoWriter redo = txnId == 0 ? mRedoWriter : null;
-        long commitPos = 0;
-
         try {
             Cursor c = mRegistryKeyMap.newCursor(txn);
             try {
@@ -1079,9 +1057,25 @@ public final class Database implements CauseCloseable, Flushable {
                 c.reset();
             }
 
-            if (redo != null) {
-                commitPos = redo.renameIndex
-                    (txn.txnId(), tree.mId, newName, mDurabilityMode.alwaysRedo());
+            RedoWriter redo;
+            if (redoTxnId == 0 && (redo = mRedoWriter) != null) {
+                long commitPos;
+
+                final Lock commitLock = sharedCommitLock();
+                commitLock.lock();
+                try {
+                    commitPos = redo.renameIndex
+                        (txn.txnId(), tree.mId, newName, mDurabilityMode.alwaysRedo());
+                } finally {
+                    commitLock.unlock();
+                }
+
+                if (commitPos != 0) {
+                    // Must wait for durability confirmation before performing actions below
+                    // which cannot be easily rolled back. No global latches or locks are held
+                    // while waiting.
+                    redo.txnCommitSync(txn, commitPos);
+                }
             }
 
             mRegistryKeyMap.delete(txn, oldNameKey);
@@ -1103,11 +1097,6 @@ public final class Database implements CauseCloseable, Flushable {
             throw closeOnFailure(this, e);
         } finally {
             txn.reset();
-        }
-
-        if (redo != null && commitPos != 0) {
-            // Don't hold locks and latches during sync.
-            redo.txnCommitSync(commitPos);
         }
     }
 
@@ -1149,15 +1138,15 @@ public final class Database implements CauseCloseable, Flushable {
     }
 
     /**
-     * @param txnId non-zero if delete is performed by recovery
+     * @param redoTxnId non-zero if delete is performed by recovery
      */
-    Runnable deleteIndex(Index index, long txnId) throws IOException {
+    Runnable deleteIndex(Index index, long redoTxnId) throws IOException {
         // Design note: This is a Database method instead of an Index method because it offers
         // an extra degree of safety. See notes in renameIndex.
         Tree tree = accessTree(index);
         tree.deleteCheck();
 
-        Node root = moveToTrash(tree, txnId);
+        Node root = moveToTrash(tree, redoTxnId);
 
         if (root == null) {
             // Handle concurrent delete attempt.
@@ -1350,8 +1339,12 @@ public final class Database implements CauseCloseable, Flushable {
     }
 
     private Transaction doNewTransaction(DurabilityMode durabilityMode) {
+        RedoWriter redo = mRedoWriter;
+        if (redo != null) {
+            redo = redo.txnRedoWriter();
+        }
         return new Transaction
-            (this, durabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
+            (this, redo, durabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
     }
 
     Transaction newAlwaysRedoTransaction() {
@@ -1363,18 +1356,22 @@ public final class Database implements CauseCloseable, Flushable {
      * make modifications, but they won't go to the redo log.
      */
     Transaction newNoRedoTransaction() {
-        return new Transaction(this, DurabilityMode.NO_REDO, LockMode.UPGRADABLE_READ, -1);
+        RedoWriter redo = mRedoWriter;
+        if (redo != null) {
+            redo = redo.txnRedoWriter();
+        }
+        return new Transaction(this, redo, DurabilityMode.NO_REDO, LockMode.UPGRADABLE_READ, -1);
     }
 
     /**
      * Convenience method which returns a transaction intended for locking and undo. Caller can
      * make modifications, but they won't go to the redo log.
      *
-     * @param txnId non-zero if operation is performed by recovery
+     * @param redoTxnId non-zero if operation is performed by recovery
      */
-    Transaction newNoRedoTransaction(long txnId) {
-        return txnId == 0 ? newNoRedoTransaction() :
-            new Transaction(this, txnId, LockMode.UPGRADABLE_READ, -1);
+    Transaction newNoRedoTransaction(long redoTxnId) {
+        return redoTxnId == 0 ? newNoRedoTransaction() :
+            new Transaction(this, redoTxnId, LockMode.UPGRADABLE_READ, -1);
     }
 
     /**
@@ -1400,24 +1397,18 @@ public final class Database implements CauseCloseable, Flushable {
      * @return non-zero transaction id
      */
     long nextTransactionId() throws IOException {
-        RedoWriter redo = mRedoWriter;
-        if (redo != null) {
-            // Replicas cannot create loggable transactions.
-            redo.opWriteCheck();
-        }
-
         long txnId;
         do {
             synchronized (mTxnIdLock) {
                 txnId = ++mTxnId;
             }
         } while (txnId == 0);
-
         return txnId;
     }
 
     /**
-     * Called only by UndoLog.
+     * Should only be called after all log entries have been truncated or rolled back. Caller
+     * does not need to hold db commit lock.
      */
     void unregister(UndoLog log) {
         synchronized (mTxnIdLock) {
@@ -2291,155 +2282,165 @@ public final class Database implements CauseCloseable, Flushable {
     }
 
     /**
-     * @param txnId non-zero if drop is performed by recovery
+     * @param redoTxnId non-zero if drop is performed by recovery
      */
-    void dropClosedTree(Tree tree, long rootId, int cachedState, long txnId) throws IOException {
-        final RedoWriter redo = txnId == 0 ? mRedoWriter : null;
-        long commitPos = 0;
+    void dropClosedTree(final Tree tree, final long rootId,
+                        final int cachedState, final long redoTxnId)
+        throws IOException
+    {
+        final byte[] name;
+        byte[] idKey = null, nameKey = null;
 
-        final Lock commitLock = sharedCommitLock();
-        commitLock.lock();
+        final Transaction txn;
+
+        mOpenTreesLatch.acquireExclusive();
         try {
-            byte[] name;
-            byte[] idKey = null, nameKey = null;
-
-            Transaction txn;
-            mOpenTreesLatch.acquireExclusive();
-            try {
-                TreeRef ref = mOpenTreesById.getValue(tree.mId);
-                if (ref == null || ref.get() != tree) {
-                    return;
-                }
-
-                name = tree.mName;
-                if (name != null) {
-                    idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
-                    nameKey = newKey(KEY_TYPE_INDEX_NAME, name);
-                }
-
-                txn = newNoRedoTransaction(txnId);
-                try {
-                    // Acquire locks to prevent tree from being re-opened. No deadlocks should
-                    // be possible with tree latch held exclusively, but order in a safe
-                    // fashion anyhow. A registry lookup can only follow a key map lookup.
-                    if (name != null) {
-                        txn.lockExclusive(mRegistryKeyMap.mId, idKey);
-                        txn.lockExclusive(mRegistryKeyMap.mId, nameKey);
-                    }
-
-                    txn.lockExclusive(mRegistry.mId, tree.mIdBytes);
-
-                    ref.clear();
-
-                    if (name != null) {
-                        mOpenTrees.remove(name);
-                    }
-
-                    mOpenTreesById.remove(tree.mId);
-                } catch (Throwable e) {
-                    txn.reset();
-                    throw e;
-                }
-            } finally {
-                mOpenTreesLatch.releaseExclusive();
+            TreeRef ref = mOpenTreesById.getValue(tree.mId);
+            if (ref == null || ref.get() != tree) {
+                return;
             }
 
-            // Complete the drop operation without preventing other indexes from being opened
-            // or dropped concurrently.
+            name = tree.mName;
+            if (name != null) {
+                idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
+                nameKey = newKey(KEY_TYPE_INDEX_NAME, name);
+            }
 
+            txn = newNoRedoTransaction(redoTxnId);
             try {
+                // Acquire locks to prevent tree from being re-opened. No deadlocks should
+                // be possible with tree latch held exclusively, but order in a safe
+                // fashion anyhow. A registry lookup can only follow a key map lookup.
                 if (name != null) {
-                    mRegistryKeyMap.remove(txn, idKey, name);
-                    mRegistryKeyMap.remove(txn, nameKey, tree.mIdBytes);
+                    txn.lockExclusive(mRegistryKeyMap.mId, idKey);
+                    txn.lockExclusive(mRegistryKeyMap.mId, nameKey);
                 }
 
-                mRegistry.delete(txn, tree.mIdBytes);
+                txn.lockExclusive(mRegistry.mId, tree.mIdBytes);
 
-                if (redo != null) {
-                    commitPos = redo.dropIndex
-                        (txn.txnId(), tree.mId, mDurabilityMode.alwaysRedo());
+                ref.clear();
+
+                if (name != null) {
+                    mOpenTrees.remove(name);
                 }
 
-                txn.commit();
-
-                deletePage(rootId, cachedState);
+                mOpenTreesById.remove(tree.mId);
             } catch (Throwable e) {
-                DatabaseException.rethrowIfRecoverable(e);
-                throw closeOnFailure(this, e);
-            } finally {
                 txn.reset();
+                throw e;
             }
         } finally {
-            commitLock.unlock();
+            mOpenTreesLatch.releaseExclusive();
         }
 
-        if (redo != null && commitPos != 0) {
-            // Don't hold commit lock during sync.
-            redo.txnCommitSync(commitPos);
+        // Complete the drop operation without preventing other indexes from being opened
+        // or dropped concurrently.
+
+        try {
+            if (name != null) {
+                mRegistryKeyMap.remove(txn, idKey, name);
+                mRegistryKeyMap.remove(txn, nameKey, tree.mIdBytes);
+            }
+
+            mRegistry.delete(txn, tree.mIdBytes);
+
+            RedoWriter redo;
+            if (redoTxnId == 0 && (redo = mRedoWriter) != null) {
+                long commitPos;
+
+                final Lock commitLock = sharedCommitLock();
+                commitLock.lock();
+                try {
+                    commitPos = redo.dropIndex
+                        (txn.txnId(), tree.mId, mDurabilityMode.alwaysRedo());
+                } finally {
+                    commitLock.unlock();
+                }
+
+                if (commitPos != 0) {
+                    // Must wait for durability confirmation before performing actions below
+                    // which cannot be easily rolled back. No global latches or locks are held
+                    // while waiting.
+                    redo.txnCommitSync(txn, commitPos);
+                }
+            }
+
+            txn.commit();
+
+            final Lock commitLock = sharedCommitLock();
+            commitLock.lock();
+            try {
+                deletePage(rootId, cachedState);
+            } finally {
+                commitLock.unlock();
+            }
+        } catch (Throwable e) {
+            DatabaseException.rethrowIfRecoverable(e);
+            throw closeOnFailure(this, e);
+        } finally {
+            txn.reset();
         }
     }
 
     /**
-     * @param txnId non-zero if move is performed by recovery
+     * @param redoTxnId non-zero if move is performed by recovery
      * @return root node of deleted tree; null if closed or already in the trash
      */
-    Node moveToTrash(Tree tree, long txnId) throws IOException {
-        final RedoWriter redo = txnId == 0 ? mRedoWriter : null;
-        long commitPos = 0;
+    private Node moveToTrash(final Tree tree, final long redoTxnId) throws IOException {
+        final byte[] idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
+        final byte[] trashIdKey = newKey(KEY_TYPE_TRASH_ID, tree.mIdBytes);
 
-        byte[] idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
-        byte[] trashIdKey = newKey(KEY_TYPE_TRASH_ID, tree.mIdBytes);
-
-        Node root;
-
-        final Lock commitLock = sharedCommitLock();
-        commitLock.lock();
+        final Transaction txn = newNoRedoTransaction(redoTxnId);
         try {
-            Transaction txn = newNoRedoTransaction(txnId);
-            try {
-                if (mRegistryKeyMap.load(txn, trashIdKey) != null) {
-                    // Already in the trash.
-                    return null;
-                }
-
-                byte[] treeName = mRegistryKeyMap.exchange(txn, idKey, null);
-
-                if (treeName == null) {
-                    // A trash entry with just a zero indicates that the name is null.
-                    mRegistryKeyMap.store(txn, trashIdKey, new byte[1]);
-                } else {
-                    byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, treeName);
-                    mRegistryKeyMap.remove(txn, nameKey, tree.mIdBytes);
-                    // Tag the trash entry to indicate that name is non-null. Note that nameKey
-                    // instance is modified directly.
-                    nameKey[0] = 1;
-                    mRegistryKeyMap.store(txn, trashIdKey, nameKey);
-                }
-
-                if (redo != null) {
-                    commitPos = redo.deleteIndex
-                        (txn.txnId(), tree.mId, mDurabilityMode.alwaysRedo());
-                }
-
-                txn.commit();
-            } catch (Throwable e) {
-                DatabaseException.rethrowIfRecoverable(e);
-                throw closeOnFailure(this, e);
-            } finally {
-                txn.reset();
+            if (mRegistryKeyMap.load(txn, trashIdKey) != null) {
+                // Already in the trash.
+                return null;
             }
 
-            root = tree.close(true);
+            byte[] treeName = mRegistryKeyMap.exchange(txn, idKey, null);
+
+            if (treeName == null) {
+                // A trash entry with just a zero indicates that the name is null.
+                mRegistryKeyMap.store(txn, trashIdKey, new byte[1]);
+            } else {
+                byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, treeName);
+                mRegistryKeyMap.remove(txn, nameKey, tree.mIdBytes);
+                // Tag the trash entry to indicate that name is non-null. Note that nameKey
+                // instance is modified directly.
+                nameKey[0] = 1;
+                mRegistryKeyMap.store(txn, trashIdKey, nameKey);
+            }
+
+            RedoWriter redo;
+            if (redoTxnId == 0 && (redo = mRedoWriter) != null) {
+                long commitPos;
+
+                final Lock commitLock = sharedCommitLock();
+                commitLock.lock();
+                try {
+                    commitPos = redo.deleteIndex
+                        (txn.txnId(), tree.mId, mDurabilityMode.alwaysRedo());
+                } finally {
+                    commitLock.unlock();
+                }
+
+                if (commitPos != 0) {
+                    // Must wait for durability confirmation before performing actions below
+                    // which cannot be easily rolled back. No global latches or locks are held
+                    // while waiting.
+                    redo.txnCommitSync(txn, commitPos);
+                }
+            }
+
+            txn.commit();
+        } catch (Throwable e) {
+            DatabaseException.rethrowIfRecoverable(e);
+            throw closeOnFailure(this, e);
         } finally {
-            commitLock.unlock();
+            txn.reset();
         }
 
-        if (redo != null && commitPos != 0) {
-            // Don't hold commit lock during sync.
-            redo.txnCommitSync(commitPos);
-        }
-
-        return root;
+        return tree.close(true);
     }
 
     /**
@@ -2548,6 +2549,12 @@ public final class Database implements CauseCloseable, Flushable {
     }
 
     private Tree openInternalTree(long treeId, boolean create) throws IOException {
+        return openInternalTree(treeId, create, null);
+    }
+
+    private Tree openInternalTree(long treeId, boolean create, DatabaseConfig config)
+        throws IOException
+    {
         final Lock commitLock = sharedCommitLock();
         commitLock.lock();
         try {
@@ -2563,7 +2570,15 @@ public final class Database implements CauseCloseable, Flushable {
                 }
                 rootId = 0;
             }
-            return newTreeInstance(treeId, treeIdBytes, null, loadTreeRoot(rootId));
+
+            Node root = loadTreeRoot(rootId);
+
+            // Cannot call newTreeInstance because mRedoWriter isn't set yet.
+            if (config != null && config.mReplManager != null) {
+                return new TxnTree(this, treeId, treeIdBytes, null, root);
+            }
+
+            return newTreeInstance(treeId, treeIdBytes, null, root);
         } finally {
             commitLock.unlock();
         }
@@ -2572,7 +2587,7 @@ public final class Database implements CauseCloseable, Flushable {
     private Index openIndex(byte[] name, boolean create) throws IOException {
         checkClosed();
 
-        Tree tree = quickFindIndex(null, name);
+        Tree tree = quickFindIndex(name);
         if (tree != null) {
             return tree;
         }
@@ -2595,6 +2610,8 @@ public final class Database implements CauseCloseable, Flushable {
             } else if (!create) {
                 return null;
             } else {
+                Transaction createTxn = null;
+
                 mOpenTreesLatch.acquireExclusive();
                 try {
                     treeIdBytes = mRegistryKeyMap.load(null, nameKey);
@@ -2617,20 +2634,35 @@ public final class Database implements CauseCloseable, Flushable {
                                      (Transaction.BOGUS, treeIdBytes, EMPTY_BYTES));
 
                             critical = false;
-                            if (!mRegistryKeyMap.insert(null, nameKey, treeIdBytes)) {
-                                critical = true;
-                                mRegistry.delete(Transaction.BOGUS, treeIdBytes);
-                                throw new DatabaseException("Unable to insert index name");
-                            }
 
-                            idKey = newKey(KEY_TYPE_INDEX_ID, treeIdBytes);
+                            try {
+                                idKey = newKey(KEY_TYPE_INDEX_ID, treeIdBytes);
 
-                            critical = false;
-                            if (!mRegistryKeyMap.insert(null, idKey, name)) {
-                                mRegistryKeyMap.delete(null, nameKey);
+                                if (mRedoWriter instanceof ReplRedoController) {
+                                    // Confirmation is required when replicated.
+                                    createTxn = newTransaction(DurabilityMode.SYNC);
+                                } else {
+                                    createTxn = newAlwaysRedoTransaction();
+                                }
+
+                                if (!mRegistryKeyMap.insert(createTxn, idKey, name)) {
+                                    throw new DatabaseException("Unable to insert index id");
+                                }
+                                if (!mRegistryKeyMap.insert(createTxn, nameKey, treeIdBytes)) {
+                                    throw new DatabaseException("Unable to insert index name");
+                                }
+                            } catch (Throwable e) {
                                 critical = true;
-                                mRegistry.delete(Transaction.BOGUS, treeIdBytes);
-                                throw new DatabaseException("Unable to insert index id");
+                                try {
+                                    if (createTxn != null) {
+                                        createTxn.reset();
+                                    }
+                                    mRegistry.delete(Transaction.BOGUS, treeIdBytes);
+                                    critical = false;
+                                } catch (Throwable e2) {
+                                    e.addSuppressed(e2);
+                                }
+                                throw e;
                             }
                         } catch (Throwable e) {
                             if (!critical) {
@@ -2640,7 +2672,24 @@ public final class Database implements CauseCloseable, Flushable {
                         }
                     }
                 } finally {
+                    // Release to allow opening other indexes while blocked on commit.
                     mOpenTreesLatch.releaseExclusive();
+                }
+
+                if (createTxn != null) {
+                    try {
+                        createTxn.commit();
+                    } catch (Throwable e) {
+                        try {
+                            createTxn.reset();
+                            mRegistry.delete(Transaction.BOGUS, treeIdBytes);
+                        } catch (Throwable e2) {
+                            e.addSuppressed(e2);
+                            throw closeOnFailure(this, e);
+                        }
+                        DatabaseException.rethrowIfRecoverable(e);
+                        throw closeOnFailure(this, e);
+                    }
                 }
             }
 
@@ -2651,7 +2700,7 @@ public final class Database implements CauseCloseable, Flushable {
                 // Pass the transaction to acquire the lock.
                 byte[] rootIdBytes = mRegistry.load(txn, treeIdBytes);
 
-                tree = quickFindIndex(txn, name);
+                tree = quickFindIndex(name);
                 if (tree != null) {
                     // Another thread got the lock first and loaded the index.
                     return tree;
@@ -2750,7 +2799,7 @@ public final class Database implements CauseCloseable, Flushable {
     /**
      * @return null if not found
      */
-    private Tree quickFindIndex(Transaction txn, byte[] name) throws IOException {
+    private Tree quickFindIndex(byte[] name) throws IOException {
         TreeRef treeRef;
         mOpenTreesLatch.acquireShared();
         try {
@@ -2870,8 +2919,8 @@ public final class Database implements CauseCloseable, Flushable {
     }
 
     /**
-     * Returns a new or recycled Node instance, latched exclusively, with an id
-     * of zero and a clean state.
+     * Returns a new or recycled Node instance, latched exclusively, with an undefined id and a
+     * clean state.
      *
      * @param anyNodeId id of any node, for spreading allocations around
      */
@@ -2880,8 +2929,8 @@ public final class Database implements CauseCloseable, Flushable {
     }
 
     /**
-     * Returns a new or recycled Node instance, latched exclusively, with an id
-     * of zero and a clean state.
+     * Returns a new or recycled Node instance, latched exclusively, with an undefined id and a
+     * clean state.
      *
      * @param anyNodeId id of any node, for spreading allocations around
      * @param mode MODE_UNEVICTABLE if allocated node cannot be automatically evicted
@@ -2927,22 +2976,19 @@ public final class Database implements CauseCloseable, Flushable {
      * dirty. Caller must hold commit lock.
      */
     Node allocDirtyNode() throws IOException {
-        long nodeId = mPageDb.allocPage();
-        Node node = allocLatchedNode(nodeId, 0);
-        mDirtyList.add(node);
-        dirty(node, nodeId);
-        return node;
+        return allocDirtyNode(0);
     }
 
     /**
      * Returns a new or recycled Node instance, latched exclusively, marked
      * dirty and unevictable. Caller must hold commit lock.
+     *
+     * @param mode MODE_UNEVICTABLE if allocated node cannot be automatically evicted
      */
-    Node allocUnevictableNode() throws IOException {
-        long nodeId = mPageDb.allocPage();
-        Node node = allocLatchedNode(nodeId, NodeUsageList.MODE_UNEVICTABLE);
+    Node allocDirtyNode(int mode) throws IOException {
+        Node node = mPageDb.allocLatchedNode(this, mode);
+        node.mCachedState = mCommitState;
         mDirtyList.add(node);
-        dirty(node, nodeId);
         return node;
     }
 
@@ -2950,7 +2996,7 @@ public final class Database implements CauseCloseable, Flushable {
      * Returns a new or recycled Node instance, latched exclusively and marked
      * dirty. Caller must hold commit lock.
      */
-    Node allocFragmentNode() throws IOException {
+    Node allocDirtyFragmentNode() throws IOException {
         Node node = allocDirtyNode();
         mFragmentCache.put(node);
         return node;
@@ -3114,15 +3160,20 @@ public final class Database implements CauseCloseable, Flushable {
             }
 
             mTreeNodeMap.remove(node, NodeMap.hash(id));
-            node.mId = 0;
+
+            // When id is <= 1, it won't be moved to a secondary cache. Preserve the original
+            // id for non-durable database to recycle it. Durable database relies on free list.
+            node.mId = -id;
 
             // When node is re-allocated, it will be evicted. Ensure that eviction
             // doesn't write anything.
             node.mCachedState = CACHED_CLEAN;
-        } finally {
+        } catch (Throwable e) {
             node.releaseExclusive();
+            throw e;
         }
 
+        // Always releases the node latch.
         node.unused();
     }
 
@@ -3224,7 +3275,7 @@ public final class Database implements CauseCloseable, Flushable {
                 } else {
                     int voffset = remainder;
                     while (true) {
-                        Node node = allocFragmentNode();
+                        Node node = allocDirtyFragmentNode();
                         try {
                             encodeInt48LE(newValue, poffset, node.mId);
                             arraycopy(value, voffset, node.mPage, 0, pageSize);
@@ -3279,7 +3330,7 @@ public final class Database implements CauseCloseable, Flushable {
                     } else {
                         int voffset = 0;
                         while (true) {
-                            Node node = allocFragmentNode();
+                            Node node = allocDirtyFragmentNode();
                             try {
                                 encodeInt48LE(newValue, offset, node.mId);
                                 byte[] page = node.mPage;
@@ -3308,7 +3359,7 @@ public final class Database implements CauseCloseable, Flushable {
                     // Value is sparse, so just store a null pointer.
                     encodeInt48LE(newValue, offset, 0);
                 } else {
-                    Node inode = allocFragmentNode();
+                    Node inode = allocDirtyFragmentNode();
                     encodeInt48LE(newValue, offset, inode.mId);
                     int levels = calculateInodeLevels(vlength);
                     writeMultilevelFragments(levels, inode, value, 0, vlength);
@@ -3375,7 +3426,7 @@ public final class Database implements CauseCloseable, Flushable {
 
             int poffset = 0;
             for (int i=0; i<childNodeCount; poffset += 6, i++) {
-                Node childNode = allocFragmentNode();
+                Node childNode = allocDirtyFragmentNode();
                 encodeInt48LE(page, poffset, childNode.mId);
 
                 int len = (int) Math.min(levelCap, vlength);
@@ -3821,6 +3872,29 @@ public final class Database implements CauseCloseable, Flushable {
 
             mLastCheckpointNanos = nowNanos;
 
+            if (mEventListener != null) {
+                // Note: Events should not be delivered when exclusive commit lock is held.
+                // The listener implementation might introduce extra blocking.
+                mEventListener.notify(EventType.CHECKPOINT_BEGIN, "Checkpoint begin");
+            }
+
+            boolean resume = true;
+
+            byte[] header = mCommitHeader;
+            UndoLog masterUndoLog = mCommitMasterUndoLog;
+
+            if (header == null) {
+                // Not resumed. Allocate new header early, before acquiring locks.
+                header = new byte[mPageDb.pageSize()];
+                resume = false;
+                if (masterUndoLog != null) {
+                    throw new AssertionError();
+                }
+            }
+
+            int hoff = mPageDb.extraCommitDataOffset();
+            encodeIntLE(header, hoff + I_ENCODING_VERSION, ENCODING_VERSION);
+
             final RedoWriter redo = mRedoWriter;
             if (redo != null) {
                 // File-based redo log should create a new file, but not write to it yet.
@@ -3840,6 +3914,10 @@ public final class Database implements CauseCloseable, Flushable {
                 commitLock.unlock();
             }
 
+            if (!resume) {
+                encodeLongLE(header, hoff + I_ROOT_PAGE_ID, root.mId);
+            }
+
             final long redoNum, redoPos, redoTxnId;
             if (redo == null) {
                 redoNum = 0;
@@ -3847,52 +3925,75 @@ public final class Database implements CauseCloseable, Flushable {
                 redoTxnId = 0;
             } else {
                 // Switch and capture state while commit lock is held.
-                redo.checkpointSwitch();
-                redoNum = redo.checkpointNumber();
-                redoPos = redo.checkpointPosition();
-                redoTxnId = redo.checkpointTransactionId();
+                try {
+                    redo.checkpointSwitch();
+                    redoNum = redo.checkpointNumber();
+                    redoPos = redo.checkpointPosition();
+                    redoTxnId = redo.checkpointTransactionId();
+                } catch (Throwable e) {
+                    redo.checkpointAborted();
+                    throw e;
+                }
             }
 
-            if (mEventListener != null) {
-                mEventListener.notify(EventType.CHECKPOINT_BEGIN,
-                                      "Checkpoint begin: %1$d, %2$d", redoNum, redoPos);
-            }
+            encodeLongLE(header, hoff + I_CHECKPOINT_NUMBER, redoNum);
+            encodeLongLE(header, hoff + I_REDO_TXN_ID, redoTxnId);
+            encodeLongLE(header, hoff + I_REDO_POSITION, redoPos);
+
+            encodeLongLE(header, hoff + I_REPL_ENCODING,
+                         mRedoWriter == null ? 0 : mRedoWriter.encoding());
 
             mCheckpointFlushState = CHECKPOINT_FLUSH_PREPARE;
 
-            UndoLog masterUndoLog;
             try {
                 // TODO: I don't like all this activity with exclusive commit
                 // lock held. UndoLog can be refactored to store into a special
                 // Tree, but this requires more features to be added to Tree
                 // first. Specifically, large values and appending to them.
 
+                final long txnId;
                 final long masterUndoLogId;
+
                 synchronized (mTxnIdLock) {
-                    int count = mUndoLogCount;
-                    if (count == 0) {
-                        masterUndoLog = null;
-                        masterUndoLogId = 0;
+                    txnId = mTxnId;
+
+                    if (resume) {
+                        masterUndoLogId = masterUndoLog == null ? 0 : masterUndoLog.topNodeId();
                     } else {
-                        masterUndoLog = new UndoLog(this, 0);
-                        byte[] workspace = null;
-                        for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
-                            workspace = log.writeToMaster(masterUndoLog, workspace);
+                        int count = mUndoLogCount;
+                        if (count == 0) {
+                            masterUndoLogId = 0;
+                        } else {
+                            masterUndoLog = new UndoLog(this, 0);
+                            byte[] workspace = null;
+                            for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
+                                workspace = log.writeToMaster(masterUndoLog, workspace);
+                            }
+                            masterUndoLogId = masterUndoLog.topNodeId();
+                            if (masterUndoLogId == 0) {
+                                // Nothing was actually written to the log.
+                                masterUndoLog = null;
+                            }
                         }
-                        masterUndoLogId = masterUndoLog.topNodeId();
-                        if (masterUndoLogId == 0) {
-                            // Nothing was actually written to the log.
-                            masterUndoLog = null;
-                        }
+
+                        // Stash it to resume after an aborted checkpoint.
+                        mCommitMasterUndoLog = masterUndoLog;
                     }
                 }
 
-                mPageDb.commit(new PageDb.CommitCallback() {
+                encodeLongLE(header, hoff + I_TRANSACTION_ID, txnId);
+                encodeLongLE(header, hoff + I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
+
+                mPageDb.commit(resume, header, new PageDb.CommitCallback() {
                     @Override
-                    public byte[] prepare() throws IOException {
-                        return flush(redoNum, redoPos, redoTxnId, masterUndoLogId);
+                    public void prepare(boolean resume, byte[] header) throws IOException {
+                        flush(resume, header);
                     }
                 });
+
+                // Reset for next checkpoint.
+                mCommitHeader = null;
+                mCommitMasterUndoLog = null;
             } catch (IOException e) {
                 if (mCheckpointFlushState == CHECKPOINT_FLUSH_PREPARE) {
                     // Exception was thrown with locks still held.
@@ -3921,7 +4022,7 @@ public final class Database implements CauseCloseable, Flushable {
 
             if (mEventListener != null) {
                 double duration = (System.nanoTime() - mLastCheckpointNanos) / 1_000_000_000.0;
-                mEventListener.notify(EventType.CHECKPOINT_BEGIN,
+                mEventListener.notify(EventType.CHECKPOINT_COMPLETE,
                                       "Checkpoint completed in %1$1.3f seconds",
                                       duration, TimeUnit.SECONDS);
             }
@@ -3934,21 +4035,26 @@ public final class Database implements CauseCloseable, Flushable {
      * Method is invoked with exclusive commit lock and shared root node latch
      * held. Both are released by this method.
      */
-    private byte[] flush(final long redoNum, final long redoPos, final long redoTxnId,
-                         final long masterUndoLogId)
-        throws IOException
-    {
-        final long txnId;
-        synchronized (mTxnIdLock) {
-            txnId = mTxnId;
+    private void flush(final boolean resume, final byte[] header) throws IOException {
+        int stateToFlush = mCommitState;
+
+        if (resume) {
+            // Resume after an aborted checkpoint.
+            if (header != mCommitHeader) {
+                throw new AssertionError();
+            }
+            stateToFlush ^= 1;
+        } else {
+            if (!mHasCheckpointed) {
+                mHasCheckpointed = true; // Must be set before switching commit state.
+            }
+            mCommitState = (byte) (stateToFlush ^ 1);
+            mCommitHeader = header;
         }
-        final Node root = mRegistry.mRoot;
-        final long rootId = root.mId;
-        final int stateToFlush = mCommitState;
-        mHasCheckpointed = true; // Must be set before switching commit state.
+
         mCheckpointFlushState = stateToFlush;
-        mCommitState = (byte) (stateToFlush ^ 1);
-        root.releaseShared();
+
+        mRegistry.mRoot.releaseShared();
         mPageDb.exclusiveCommitLock().unlock();
 
         if (mRedoWriter != null) {
@@ -3964,18 +4070,6 @@ public final class Database implements CauseCloseable, Flushable {
         } finally {
             mCheckpointFlushState = CHECKPOINT_NOT_FLUSHING;
         }
-
-        byte[] header = new byte[HEADER_SIZE];
-        encodeIntLE(header, I_ENCODING_VERSION, ENCODING_VERSION);
-        encodeLongLE(header, I_ROOT_PAGE_ID, rootId);
-        encodeLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
-        encodeLongLE(header, I_TRANSACTION_ID, txnId);
-        encodeLongLE(header, I_CHECKPOINT_NUMBER, redoNum);
-        encodeLongLE(header, I_REDO_TXN_ID, redoTxnId);
-        encodeLongLE(header, I_REDO_POSITION, redoPos);
-        encodeLongLE(header, I_REPL_ENCODING, mRedoWriter == null ? 0 : mRedoWriter.encoding());
-
-        return header;
     }
 
     // Called by DurablePageDb with header latch held.

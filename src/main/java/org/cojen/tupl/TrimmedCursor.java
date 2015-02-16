@@ -47,6 +47,11 @@ final class TrimmedCursor implements Cursor {
     }
 
     @Override
+    public Transaction link() {
+        return mSource.link();
+    }
+
+    @Override
     public byte[] key() {
         byte[] key = mKey;
         if (key == null) {
@@ -70,6 +75,11 @@ final class TrimmedCursor implements Cursor {
     @Override
     public boolean autoload(boolean mode) {
         return mSource.autoload(mode);
+    }
+
+    @Override
+    public boolean autoload() {
+        return mSource.autoload();
     }
 
     @Override
