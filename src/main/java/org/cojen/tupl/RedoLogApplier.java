@@ -25,14 +25,14 @@ import java.io.IOException;
  * @see RedoLogRecovery
  */
 final class RedoLogApplier implements RedoVisitor {
-    private final Database mDb;
+    private final Database mDatabase;
     private final LHashTable.Obj<Transaction> mTransactions;
     private final LHashTable.Obj<Index> mIndexes;
 
     long mHighestTxnId;
 
     RedoLogApplier(Database db, LHashTable.Obj<Transaction> txns) {
-        mDb = db;
+        mDatabase = db;
         mTransactions = txns;
         mIndexes = new LHashTable.Obj<>(16);
     }
@@ -100,7 +100,7 @@ final class RedoLogApplier implements RedoVisitor {
     public boolean renameIndex(long txnId, long indexId, byte[] newName) throws IOException {
         Index ix = openIndex(indexId);
         if (ix != null) {
-            mDb.renameIndex(ix, newName, txnId);
+            mDatabase.renameIndex(ix, newName, txnId);
         }
         return true;
     }
@@ -116,7 +116,7 @@ final class RedoLogApplier implements RedoVisitor {
     public boolean txnEnter(long txnId) throws IOException {
         Transaction txn = txn(txnId);
         if (txn == null) {
-            txn = new Transaction(mDb, txnId, LockMode.UPGRADABLE_READ, 0L);
+            txn = new Transaction(mDatabase, txnId, LockMode.UPGRADABLE_READ, 0L);
             mTransactions.insert(txnId).value = txn;
         } else {
             txn.enter();
@@ -201,7 +201,7 @@ final class RedoLogApplier implements RedoVisitor {
         if (entry != null) {
             return entry.value;
         }
-        Index ix = mDb.anyIndexById(indexId);
+        Index ix = mDatabase.anyIndexById(indexId);
         if (ix != null) {
             // Maintain a strong reference to the index.
             mIndexes.insert(indexId).value = ix;

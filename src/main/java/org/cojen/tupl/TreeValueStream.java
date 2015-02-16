@@ -39,14 +39,14 @@ final class TreeValueStream extends AbstractStream {
     static final byte[] TOUCH_VALUE = new byte[0];
 
     private final TreeCursor mCursor;
-    private final Database mDb;
+    private final Database mDatabase;
 
     /**
      * @param cursor positioned or unpositioned cursor, not autoloading
      */
     TreeValueStream(TreeCursor cursor) {
         mCursor = cursor;
-        mDb = cursor.mTree.mDatabase;
+        mDatabase = cursor.mTree.mDatabase;
     }
 
     @Override
@@ -67,6 +67,11 @@ final class TreeValueStream extends AbstractStream {
     @Override
     public Transaction link(Transaction txn) {
         return mCursor.link(txn);
+    }
+
+    @Override
+    public Transaction link() {
+        return mCursor.link();
     }
 
     @Override
@@ -148,7 +153,7 @@ final class TreeValueStream extends AbstractStream {
     int selectBufferSize(int bufferSize) {
         if (bufferSize <= 1) {
             if (bufferSize < 0) {
-                bufferSize = mDb.mPageSize;
+                bufferSize = mDatabase.mPageSize;
             } else {
                 bufferSize = 1;
             }
@@ -255,13 +260,13 @@ final class TreeValueStream extends AbstractStream {
             return 0;
         }
 
-        final FragmentCache fc = mDb.mFragmentCache;
+        final FragmentCache fc = mDatabase.mFragmentCache;
         Node inode = fc.get(inodeId);
-        int level = mDb.calculateInodeLevels(vLen);
+        int level = mDatabase.calculateInodeLevels(vLen);
 
         while (true) {
             level--;
-            long levelCap = mDb.levelCap(level);
+            long levelCap = mDatabase.levelCap(level);
             long childNodeId = decodeUnsignedInt48LE(inode.mPage, ((int) (pos / levelCap)) * 6);
             inode.releaseShared();
             if (childNodeId > highestNodeId) {
@@ -549,7 +554,7 @@ final class TreeValueStream extends AbstractStream {
                 final int ipos = (int) pos;
                 loc += (ipos / page.length) * 6;
                 int fNodeOff = ipos % page.length;
-                final FragmentCache fc = mDb.mFragmentCache;
+                final FragmentCache fc = mDatabase.mFragmentCache;
                 while (true) {
                     final int amt = Math.min(bLen, page.length - fNodeOff);
                     final long fNodeId = decodeUnsignedInt48LE(page, loc);
@@ -578,7 +583,7 @@ final class TreeValueStream extends AbstractStream {
                 // Reading a sparse value.
                 fill(b, bOff, bOff + bLen, (byte) 0);
             } else {
-                Database db = mDb;
+                Database db = mDatabase;
                 final Node inode = db.mFragmentCache.get(inodeId);
                 final int levels = db.calculateInodeLevels(vLen);
                 readMultilevelFragments(pos, levels, inode, b, bOff, bLen);
@@ -715,20 +720,20 @@ final class TreeValueStream extends AbstractStream {
                 Node inode = prepareMultilevelWrite(page, loc);
 
                 // Levels required before extending...
-                int levels = mDb.calculateInodeLevels(vLen - inlineLen);
+                int levels = mDatabase.calculateInodeLevels(vLen - inlineLen);
 
                 // Compare to new full indirect length.
                 vLen = endPos - inlineLen;
 
-                if (mDb.levelCap(levels) < vLen) {
+                if (mDatabase.levelCap(levels) < vLen) {
                     // Need to add more inode levels.
-                    int newLevels = mDb.calculateInodeLevels(vLen);
+                    int newLevels = mDatabase.calculateInodeLevels(vLen);
                     if (newLevels <= levels) {
                         throw new AssertionError();
                     }
 
                     do {
-                        Node upper = mDb.allocFragmentNode();
+                        Node upper = mDatabase.allocDirtyFragmentNode();
                         byte[] upage = upper.mPage;
                         encodeInt48LE(upage, 0, inode.mId);
                         inode.releaseExclusive();
@@ -758,7 +763,7 @@ final class TreeValueStream extends AbstractStream {
                     final long fNodeId = decodeUnsignedInt48LE(page, loc);
                     if (fNodeId == 0) {
                         // Writing into a sparse value. Allocate a node and point to it.
-                        final Node fNode = mDb.allocFragmentNode();
+                        final Node fNode = mDatabase.allocDirtyFragmentNode();
                         try {
                             encodeInt48LE(page, loc, fNode.mId);
 
@@ -772,7 +777,7 @@ final class TreeValueStream extends AbstractStream {
                         }
                     } else {
                         // Obtain node from cache, or load it only for partial write.
-                        Database db = mDb;
+                        Database db = mDatabase;
                         final Node fNode = db.mFragmentCache.getw(fNodeId, amt < page.length);
                         try {
                             if (db.markFragmentDirty(fNode)) {
@@ -797,7 +802,7 @@ final class TreeValueStream extends AbstractStream {
 
             final Node inode = prepareMultilevelWrite(page, loc);
 
-            final int levels = mDb.calculateInodeLevels(vLen);
+            final int levels = mDatabase.calculateInodeLevels(vLen);
             writeMultilevelFragments(pos, levels, inode, b, bOff, bLen);
 
             return 0;
@@ -892,14 +897,14 @@ final class TreeValueStream extends AbstractStream {
         try {
             byte[] page = inode.mPage;
             level--;
-            long levelCap = mDb.levelCap(level);
+            long levelCap = mDatabase.levelCap(level);
 
             int firstChild = (int) (pos / levelCap);
             int lastChild = (int) ((pos + bLen - 1) / levelCap);
 
             int childNodeCount = lastChild - firstChild + 1;
 
-            final FragmentCache fc = mDb.mFragmentCache;
+            final FragmentCache fc = mDatabase.mFragmentCache;
 
             // Handle a possible partial read from the first page.
             long ppos = pos % levelCap;
@@ -945,10 +950,10 @@ final class TreeValueStream extends AbstractStream {
 
             if (inodeId == 0) {
                 // Writing into a sparse value. Allocate a node and point to it.
-                inode = mDb.allocFragmentNode();
+                inode = mDatabase.allocDirtyFragmentNode();
                 fill(inode.mPage, (byte) 0);
             } else {
-                Database db = mDb;
+                Database db = mDatabase;
                 inode = db.mFragmentCache.getw(inodeId, true);
                 try {
                     if (!db.markFragmentDirty(inode)) {
@@ -977,7 +982,7 @@ final class TreeValueStream extends AbstractStream {
                                           byte[] b, int bOff, int bLen)
         throws IOException
     {
-        final Database db = mDb;
+        final Database db = mDatabase;
 
         try {
             byte[] page = inode.mPage;
@@ -1003,7 +1008,7 @@ final class TreeValueStream extends AbstractStream {
 
                     if (childNodeId == 0) {
                         // Writing into a sparse value. Allocate a node and point to it.
-                        childNode = db.allocFragmentNode();
+                        childNode = db.allocDirtyFragmentNode();
                         if (partial) {
                             // New page must be zero-filled.
                             fill(childNode.mPage, (byte) 0);
@@ -1155,7 +1160,7 @@ final class TreeValueStream extends AbstractStream {
                 off += decodeUnsignedShortLE(value, off);
             }
 
-            Node inode = tree.mDatabase.allocFragmentNode();
+            Node inode = tree.mDatabase.allocDirtyFragmentNode();
 
             // Copy direct pointers to inode.
             byte[] ipage = inode.mPage;
@@ -1164,7 +1169,7 @@ final class TreeValueStream extends AbstractStream {
             fill(ipage, value.length - off, ipage.length, (byte) 0);
 
             while (--levels != 0) {
-                Node upper = tree.mDatabase.allocFragmentNode();
+                Node upper = tree.mDatabase.allocDirtyFragmentNode();
                 byte[] upage = upper.mPage;
                 encodeInt48LE(upage, 0, inode.mId);
                 inode.releaseExclusive();

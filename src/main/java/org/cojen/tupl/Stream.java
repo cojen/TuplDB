@@ -57,13 +57,18 @@ public interface Stream extends Closeable {
     /**
      * Link to a transaction, which can be null for auto-commit mode. To continue using a
      * stream after the transaction is complete, link it to null or another
-     * transaction. Otherwise, the orginal transaction will be resurrected.
+     * transaction. Otherwise, the original transaction will be resurrected.
      *
      * @return prior linked transaction
      * @throws IllegalArgumentException if transaction belongs to another database instance
      * @see Cursor#link
      */
     public Transaction link(Transaction txn);
+
+    /**
+     * Returns the transaction the stream is currently linked to.
+     */
+    public Transaction link();
 
     /**
      * Returns the total length of the value accessed by the Stream.

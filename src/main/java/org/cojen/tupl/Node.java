@@ -300,8 +300,8 @@ final class Node extends Latch {
 
     /**
      * Indicate that node is least recently used, allowing it to be recycled immediately
-     * without evicting another node. Node must be unlatched at this point, to prevent it from
-     * being immediately promoted to most recently used by tryAllocLatchedNode.
+     * without evicting another node. Node must be latched by caller, which is always released
+     * by this method.
      */
     void unused() {
         mUsageList.unused(this);
@@ -407,7 +407,7 @@ final class Node extends Latch {
 
                     // Succeeded in obtaining an exclusive latch, so now load the child.
 
-                    node = node.loadChild(tree.mDatabase, childPos, childId, true);
+                    node = node.loadChild(tree.mDatabase, childId, true);
 
                     if (node.isLeaf()) {
                         node.downgrade();
@@ -535,9 +535,7 @@ final class Node extends Latch {
      * @param releaseParent when true, release this node latch always; when false, release only
      * if an exception is thrown
      */
-    Node loadChild(Database db, int childPos, long childId, boolean releaseParent)
-        throws IOException
-    {
+    Node loadChild(Database db, long childId, boolean releaseParent) throws IOException {
         Node childNode;
         try {
             childNode = db.allocLatchedNode(childId);
@@ -610,7 +608,7 @@ final class Node extends Latch {
             }
         }
 
-        return loadChild(tree.mDatabase, childPos, childId, false);
+        return loadChild(tree.mDatabase, childId, false);
     }
 
     /**
@@ -819,10 +817,8 @@ final class Node extends Latch {
             return null;
         }
 
-        // Check if 0 (already evicted) or stub.
-        if (mId <= STUB_ID) {
-            mId = 0;
-        } else {
+        // Check if <= 0 (already evicted) or stub.
+        if (mId > STUB_ID) {
             doEvict(db);
         }
 
@@ -1402,7 +1398,7 @@ final class Node extends Latch {
         }
 
         // Ghost will be deleted later when locks are released.
-        tree.mLockManager.ghosted(txn, tree, key, keyHash);
+        tree.mLockManager.ghosted(tree, key, keyHash);
 
         // Replace value with ghost.
         page[valueHeaderLoc] = (byte) -1;
@@ -3384,7 +3380,7 @@ final class Node extends Latch {
             frame = frame.mPrevCousin;
         }
 
-        tree.addStub(child);
+        tree.addStub(child, toDelete);
 
         // The page can be deleted earlier in the method, but doing it here
         // might prevent corruption if an unexpected exception occurs.
@@ -3614,7 +3610,7 @@ final class Node extends Latch {
             throw new ClosedIndexException();
         }
 
-        Node newNode = tree.mDatabase.allocUnevictableNode();
+        Node newNode = tree.mDatabase.allocDirtyNode(NodeUsageList.MODE_UNEVICTABLE);
         tree.mDatabase.mTreeNodeMap.put(newNode);
         newNode.mGarbage = 0;
 
@@ -3903,7 +3899,7 @@ final class Node extends Latch {
         final byte[] page = mPage;
 
         // Alloc early in case an exception is thrown.
-        final Node newNode = tree.mDatabase.allocUnevictableNode();
+        final Node newNode = tree.mDatabase.allocDirtyNode(NodeUsageList.MODE_UNEVICTABLE);
         tree.mDatabase.mTreeNodeMap.put(newNode);
         newNode.mGarbage = 0;
 
@@ -4582,7 +4578,6 @@ final class Node extends Latch {
     }
 
     private boolean verifyFailed(int level, VerificationObserver observer, String message) {
-        System.out.println(message);
         long id = mId;
         releaseShared();
         observer.failed = true;

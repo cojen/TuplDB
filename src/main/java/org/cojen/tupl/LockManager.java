@@ -76,7 +76,7 @@ final class LockManager {
      *
      * @param locker optional locker
      */
-    final boolean isAvailable(Locker locker, long indexId, byte[] key, int hash) {
+    final boolean isAvailable(LockOwner locker, long indexId, byte[] key, int hash) {
         LockHT ht = getLockHT(hash);
         ht.acquireShared();
         try {
@@ -87,7 +87,7 @@ final class LockManager {
         }
     }
 
-    final LockResult check(Locker locker, long indexId, byte[] key, int hash) {
+    final LockResult check(LockOwner locker, long indexId, byte[] key, int hash) {
         LockHT ht = getLockHT(hash);
         ht.acquireShared();
         try {
@@ -98,7 +98,7 @@ final class LockManager {
         }
     }
 
-    final void unlock(Locker locker, Lock lock) {
+    final void unlock(LockOwner locker, Lock lock) {
         LockHT ht = getLockHT(lock.mHashCode);
         ht.acquireExclusive();
         try {
@@ -110,7 +110,7 @@ final class LockManager {
         }
     }
 
-    final void unlockToShared(Locker locker, Lock lock) {
+    final void unlockToShared(LockOwner locker, Lock lock) {
         LockHT ht = getLockHT(lock.mHashCode);
         ht.acquireExclusive();
         try {
@@ -120,7 +120,7 @@ final class LockManager {
         }
     }
 
-    final void unlockToUpgradable(Locker locker, Lock lock) {
+    final void unlockToUpgradable(LockOwner locker, Lock lock) {
         LockHT ht = getLockHT(lock.mHashCode);
         ht.acquireExclusive();
         try {
@@ -130,27 +130,25 @@ final class LockManager {
         }
     }
 
-    /*
-    final boolean unlockIfNonExclusive(Locker locker, Lock lock) {
+    final PendingTxn transferExclusive(LockOwner locker, Lock lock, PendingTxn pending) {
         LockHT ht = getLockHT(lock.mHashCode);
         ht.acquireExclusive();
         try {
-            return lock.unlockIfNonExclusive(locker);
+            return lock.transferExclusive(locker, pending);
         } finally {
             ht.releaseExclusive();
         }
     }
-    */
 
     /**
      * Mark a lock as referencing a ghosted entry. Caller must ensure that lock
      * is already exclusively held.
      */
-    final void ghosted(Locker locker, Tree tree, byte[] key, int hash) {
+    final void ghosted(Tree tree, byte[] key, int hash) {
         LockHT ht = getLockHT(hash);
         ht.acquireExclusive();
         try {
-            ht.lockFor(tree.mId, key, hash).mSharedLockersObj = tree;
+            ht.lockFor(tree.mId, key, hash).mSharedLockOwnersObj = tree;
         } finally {
             ht.releaseExclusive();
         }
@@ -314,9 +312,9 @@ final class LockManager {
 
                         lock.mLockCount = type;
                         if (type == TYPE_SHARED) {
-                            lock.mSharedLockersObj = locker;
+                            lock.mSharedLockOwnersObj = locker;
                         } else {
-                            lock.mLocker = locker;
+                            lock.mOwner = locker;
                         }
 
                         entries[index] = lock;
@@ -393,7 +391,7 @@ final class LockManager {
                     lock = newLock;
                     lock.mLockManagerNext = entries[index];
                     lock.mLockCount = ~0;
-                    lock.mLocker = locker;
+                    lock.mOwner = locker;
 
                     entries[index] = lock;
                     mSize++;
@@ -436,7 +434,7 @@ final class LockManager {
             mSize--;
         }
 
-        void close(Locker locker) {
+        void close(LockOwner locker) {
             acquireExclusive();
             try {
                 if (mSize > 0) {
@@ -447,11 +445,11 @@ final class LockManager {
 
                             if (e.mLockCount == ~0) {
                                 // Transfer exclusive lock.
-                                e.mLocker = locker;
+                                e.mOwner = locker;
                             } else {
                                 // Release and remove lock.
                                 e.mLockCount = 0;
-                                e.mLocker = null;
+                                e.mOwner = null;
                                 if (prev == null) {
                                     entries[i] = next;
                                 } else {
@@ -461,7 +459,7 @@ final class LockManager {
                                 mSize--;
                             }
 
-                            e.mSharedLockersObj = null;
+                            e.mSharedLockOwnersObj = null;
 
                             // Interrupt all waiters.
 

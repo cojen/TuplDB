@@ -211,8 +211,8 @@ final class DurablePageDb extends PageDb {
                 mCommitNumber = -1;
 
                 // Commit twice to ensure both headers have valid data.
-                commit(null);
-                commit(null);
+                commit(false, new byte[pageSize], null);
+                commit(false, new byte[pageSize], null);
 
                 mPageArray.setPageCount(2);
             } else {
@@ -306,6 +306,14 @@ final class DurablePageDb extends PageDb {
     @Override
     public int allocMode() {
         return 0;
+    }
+
+    @Override
+    public Node allocLatchedNode(Database db, int mode) throws IOException {
+        long nodeId = allocPage();
+        Node node = db.allocLatchedNode(nodeId, mode);
+        node.mId = nodeId;
+        return node;
     }
 
     @Override
@@ -482,7 +490,14 @@ final class DurablePageDb extends PageDb {
     }
 
     @Override
-    public void commit(final CommitCallback callback) throws IOException {
+    public int extraCommitDataOffset() {
+        return I_EXTRA_DATA;
+    }
+
+    @Override
+    public void commit(boolean resume, byte[] header, final CommitCallback callback)
+        throws IOException
+    {
         mCommitLock.writeLock().lock();
         mCommitLock.readLock().lock();
 
@@ -495,14 +510,28 @@ final class DurablePageDb extends PageDb {
         mCommitLock.writeLock().unlock();
 
         try {
-            final byte[] header = new byte[pageSize()];
-            mPageManager.commitStart(header, I_MANAGER_HEADER);
-            // Invoke the callback to ensure all dirty pages get written.
-            byte[] extra = callback == null ? null : callback.prepare();
-            commitHeader(header, commitNumber, extra);
-            mPageManager.commitEnd(header, I_MANAGER_HEADER);
-        } catch (Throwable e) {
-            throw closeOnFailure(e);
+            try {
+                if (!resume) {
+                    mPageManager.commitStart(header, I_MANAGER_HEADER);
+                }
+                if (callback != null) {
+                    // Invoke the callback to ensure all dirty pages get written.
+                    callback.prepare(resume, header);
+                }
+            } catch (DatabaseException e) {
+                if (e.isRecoverable()) {
+                    throw e;
+                } else {
+                    throw closeOnFailure(e);
+                }
+            }
+
+            try {
+                commitHeader(header, commitNumber);
+                mPageManager.commitEnd(header, I_MANAGER_HEADER);
+            } catch (Throwable e) {
+                throw closeOnFailure(e);
+            }
         } finally {
             mCommitLock.readLock().unlock();
         }
@@ -688,7 +717,7 @@ final class DurablePageDb extends PageDb {
     /**
      * @param header array length is full page
      */
-    private void commitHeader(final byte[] header, final int commitNumber, final byte[] extra)
+    private void commitHeader(final byte[] header, final int commitNumber)
         throws IOException
     {
         final PageArray array = mPageArray;
@@ -696,11 +725,6 @@ final class DurablePageDb extends PageDb {
         encodeLongLE(header, I_MAGIC_NUMBER, MAGIC_NUMBER);
         encodeIntLE (header, I_PAGE_SIZE, array.pageSize());
         encodeIntLE (header, I_COMMIT_NUMBER, commitNumber);
-
-        if (extra != null) {
-            // Exception is thrown if extra data exceeds header length.
-            arraycopy(extra, 0, header, I_EXTRA_DATA, extra.length);
-        } 
 
         // Durably write the new page store header before returning
         // from this method, to ensure that the manager doesn't start

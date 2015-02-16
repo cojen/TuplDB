@@ -54,6 +54,20 @@ final class NonPageDb extends PageDb {
     }
 
     @Override
+    public Node allocLatchedNode(Database db, int mode) throws IOException {
+        Node node = db.allocLatchedNode(Utils.randomSeed(), mode);
+        long nodeId = node.mId;
+        if (nodeId < 0) {
+            // Recycle the id.
+            nodeId = -nodeId;
+        } else {
+            nodeId = allocPage();
+        }
+        node.mId = nodeId;
+        return node;
+    }
+
+    @Override
     public int pageSize() {
         return mPageSize;
     }
@@ -100,9 +114,9 @@ final class NonPageDb extends PageDb {
     public synchronized long allocPage() throws IOException {
         // Cached nodes and fragmented values always require unique identifiers.
         long id = mAllocId + 1;
-        if (id == 0) {
-            // Wrapped around. In practice, this will not happen in 100 years.
-            throw new DatabaseException("All page identifiers exhausted");
+        if (id > 0x0000_ffff_ffff_ffffL) {
+            // Identifier is limited to 48-bit range.
+            throw new DatabaseFullException();
         }
         mAllocId = id;
         return id;
@@ -184,7 +198,12 @@ final class NonPageDb extends PageDb {
     }
 
     @Override
-    public void commit(final CommitCallback callback) throws IOException {
+    public int extraCommitDataOffset() {
+        return 0;
+    }
+
+    @Override
+    public void commit(boolean resume, byte[] header, CommitCallback callback) throws IOException {
         // This is more of an assertion failure.
         throw new DatabaseException("Cannot commit to a non-durable database");
     }

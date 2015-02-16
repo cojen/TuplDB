@@ -36,9 +36,9 @@ final class ReplRedoEngine implements RedoVisitor {
     private final static long INFINITE_TIMEOUT = -1L;
 
     final ReplicationManager mManager;
-    final Database mDb;
+    final Database mDatabase;
 
-    private final ReplRedoWriter mWriter;
+    final ReplRedoController mController;
 
     // Maintain soft references to indexes, allowing them to get closed if not
     // used for awhile. Without the soft references, Database maintains only
@@ -87,9 +87,9 @@ final class ReplRedoEngine implements RedoVisitor {
         }
 
         mManager = manager;
-        mDb = db;
+        mDatabase = db;
 
-        mWriter = new ReplRedoWriter(this);
+        mController = new ReplRedoController(this);
 
         mIndexes = new LHashTable.Obj<>(16);
 
@@ -144,8 +144,8 @@ final class ReplRedoEngine implements RedoVisitor {
     }
 
     public RedoWriter initWriter(long redoNum) {
-        mWriter.initCheckpointNumber(redoNum);
-        return mWriter;
+        mController.initCheckpointNumber(redoNum);
+        return mController;
     }
 
     public void startReceiving(long initialPosition, long initialTxnId) {
@@ -188,7 +188,7 @@ final class ReplRedoEngine implements RedoVisitor {
         });
 
         // Now's a good time to clean out any lingering trash.
-        mDb.emptyAllFragmentedTrash(false);
+        mDatabase.emptyAllFragmentedTrash(false);
 
         // Only release if no exception.
         opFinished();
@@ -226,7 +226,7 @@ final class ReplRedoEngine implements RedoVisitor {
 
         // Locks must be acquired in their original order to avoid
         // deadlock, so don't allow another task thread to run yet.
-        Locker locker = mDb.mLockManager.localLocker();
+        Locker locker = mDatabase.mLockManager.localLocker();
         locker.lockExclusive(indexId, key, INFINITE_TIMEOUT);
 
         // Allow another task thread to run while operation completes.
@@ -274,7 +274,7 @@ final class ReplRedoEngine implements RedoVisitor {
         {
             LHashTable.ObjEntry<SoftReference<Index>> entry = mIndexes.remove(indexId);
             if (entry == null || (ix = entry.value.get()) == null) {
-                ix = mDb.anyIndexById(indexId);
+                ix = mDatabase.anyIndexById(indexId);
             }
         }
 
@@ -284,7 +284,7 @@ final class ReplRedoEngine implements RedoVisitor {
                     // Sweep through index, waiting for any concurrent deletes to
                     // finish. Need to use a transaction for upgradable locks. No changes
                     // are being made, and so this doesn't create a transaction id.
-                    Transaction txn = mDb.newTransaction();
+                    Transaction txn = mDatabase.newTransaction();
                     try {
                         Cursor c = ix.newCursor(txn);
                         try {
@@ -310,7 +310,7 @@ final class ReplRedoEngine implements RedoVisitor {
                 }
             }
         } catch (IllegalStateException e) {
-            EventListener listener = mDb.mEventListener;
+            EventListener listener = mDatabase.mEventListener;
             if (listener != null) {
                 listener.notify(EventType.REPLICATION_WARNING,
                                 "Unable to drop index: %1$s", rootCause(e));
@@ -345,9 +345,9 @@ final class ReplRedoEngine implements RedoVisitor {
         if (ix != null) {
             oldName = ix.getName();
             try {
-                mDb.renameIndex(ix, newName, txnId);
+                mDatabase.renameIndex(ix, newName, txnId);
             } catch (RuntimeException e) {
-                EventListener listener = mDb.mEventListener;
+                EventListener listener = mDatabase.mEventListener;
                 if (listener != null) {
                     listener.notify(EventType.REPLICATION_WARNING,
                                     "Unable to rename index: %1$s", rootCause(e));
@@ -381,7 +381,7 @@ final class ReplRedoEngine implements RedoVisitor {
         {
             LHashTable.ObjEntry<SoftReference<Index>> entry = mIndexes.remove(indexId);
             if (entry == null || (ix = entry.value.get()) == null) {
-                ix = mDb.anyIndexById(indexId);
+                ix = mDatabase.anyIndexById(indexId);
             }
         }
 
@@ -390,7 +390,7 @@ final class ReplRedoEngine implements RedoVisitor {
         try {
             while (ix != null) {
                 try {
-                    task = mDb.deleteIndex(ix, txnId);
+                    task = mDatabase.deleteIndex(ix, txnId);
                     break;
                 } catch (ClosedIndexException e) {
                     // User closed the shared index reference, so re-open it.
@@ -398,7 +398,7 @@ final class ReplRedoEngine implements RedoVisitor {
                 }
             }
         } catch (RuntimeException e) {
-            EventListener listener = mDb.mEventListener;
+            EventListener listener = mDatabase.mEventListener;
             if (listener != null) {
                 listener.notify(EventType.REPLICATION_WARNING,
                                 "Unable to delete index: %1$s", rootCause(e));
@@ -424,7 +424,7 @@ final class ReplRedoEngine implements RedoVisitor {
                 deletion.setDaemon(true);
                 deletion.start();
             } catch (Throwable e) {
-                EventListener listener = mDb.mEventListener;
+                EventListener listener = mDatabase.mEventListener;
                 if (listener != null) {
                     listener.notify(EventType.REPLICATION_WARNING,
                                     "Unable to immediately delete index: %1$s", rootCause(e));
@@ -448,7 +448,7 @@ final class ReplRedoEngine implements RedoVisitor {
 
         if (e == null) {
             Transaction txn = new Transaction
-                (mDb, txnId, LockMode.UPGRADABLE_READ, INFINITE_TIMEOUT);
+                (mDatabase, txnId, LockMode.UPGRADABLE_READ, INFINITE_TIMEOUT);
             mTransactions.insert(scrambledTxnId).init(txn, selectLatch(scrambledTxnId));
 
             // Only release if no exception.
@@ -754,7 +754,7 @@ final class ReplRedoEngine implements RedoVisitor {
             // Create transaction on demand if necessary. Startup transaction recovery only
             // applies to those which generated undo log entries.
             Transaction txn = new Transaction
-                (mDb, txnId, LockMode.UPGRADABLE_READ, INFINITE_TIMEOUT);
+                (mDatabase, txnId, LockMode.UPGRADABLE_READ, INFINITE_TIMEOUT);
             e = mTransactions.insert(scrambledTxnId);
             e.init(txn, selectLatch(scrambledTxnId));
         }
@@ -794,7 +794,7 @@ final class ReplRedoEngine implements RedoVisitor {
     private Index openIndex(long indexId, LHashTable.ObjEntry<SoftReference<Index>> entry)
         throws IOException
     {
-        Index ix = mDb.anyIndexById(indexId);
+        Index ix = mDatabase.anyIndexById(indexId);
         if (ix == null) {
             return null;
         }
@@ -867,15 +867,17 @@ final class ReplRedoEngine implements RedoVisitor {
             // End of stream reached, and so local instance is now leader.
             reset();
         } catch (Throwable e) {
-            EventListener listener = mDb.mEventListener;
+            EventListener listener = mDatabase.mEventListener;
             if (listener != null) {
                 listener.notify(EventType.REPLICATION_PANIC,
                                 "Unexpected replication exception: %1$s", rootCause(e));
+            } else {
+                uncaught(e);
             }
             mTotalThreads.decrementAndGet();
             mDecodeLatch.releaseExclusive();
             // Panic.
-            closeQuietly(null, mDb, e);
+            closeQuietly(null, mDatabase, e);
             return false;
         }
 
@@ -884,12 +886,12 @@ final class ReplRedoEngine implements RedoVisitor {
         mDecodeLatch.releaseExclusive();
 
         try {
-            mWriter.leaderNotify();
+            mController.leaderNotify();
         } catch (UnmodifiableReplicaException e) {
             // Should already be receiving again due to this exception.
         } catch (Throwable e) {
             // Could try to switch to receiving mode, but panic seems to be the safe option.
-            closeQuietly(null, mDb, e);
+            closeQuietly(null, mDatabase, e);
         }
 
         return false;

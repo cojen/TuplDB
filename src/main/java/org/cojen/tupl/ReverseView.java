@@ -113,6 +113,11 @@ final class ReverseView implements View {
     }
 
     @Override
+    public View viewTransformed(Transformer transformer) {
+        return new ReverseView(mSource.viewTransformed(transformer));
+    }
+
+    @Override
     public View viewReverse() {
         return mSource;
     }

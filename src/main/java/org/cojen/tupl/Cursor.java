@@ -56,13 +56,18 @@ public interface Cursor {
      * Link to a transaction, which can be null for auto-commit mode. All
      * entries visited by the cursor become part of the given transaction.  To
      * continue using a cursor after the transaction is complete, link it to
-     * null or another transaction. Otherwise, the orginal transaction will be
+     * null or another transaction. Otherwise, the original transaction will be
      * resurrected.
      *
      * @return prior linked transaction
      * @throws IllegalArgumentException if transaction belongs to another database instance
      */
     public Transaction link(Transaction txn);
+
+    /**
+     * Returns the transaction the cursor is currently linked to.
+     */
+    public Transaction link();
 
     /**
      * Returns an uncopied reference to the current key, or null if Cursor is
@@ -84,6 +89,11 @@ public interface Cursor {
      * @return prior autoload mode
      */
     public boolean autoload(boolean mode);
+
+    /**
+     * Returns the current autoload mode.
+     */
+    public boolean autoload();
 
     /**
      * Compare the current key to the one given.
