@@ -1610,7 +1610,7 @@ final class Node extends Latch {
      * vector, or negative if leaf must be split. Complement of negative value
      * is maximum space available.
      */
-    private int createLeafEntry(Tree tree, int pos, final int encodedLen) {
+    int createLeafEntry(Tree tree, int pos, final int encodedLen) {
         int searchVecStart = mSearchVecStart;
         int searchVecEnd = mSearchVecEnd;
 
@@ -3118,9 +3118,15 @@ final class Node extends Latch {
             loc += len;
         }
 
-        // Increment garbage by the size of the encoded entry.
-        mGarbage += loc - entryLoc;
+        doDeleteLeafEntry(pos, loc - entryLoc);
+    }
 
+    void doDeleteLeafEntry(int pos, int entryLen) {
+        // Increment garbage by the size of the encoded entry.
+        mGarbage += entryLen;
+
+        byte[] page = mPage;
+        int searchVecStart = mSearchVecStart;
         int searchVecEnd = mSearchVecEnd;
 
         if (pos < ((searchVecEnd - searchVecStart + 2) >> 1)) {
@@ -3408,8 +3414,14 @@ final class Node extends Latch {
      * Calculate encoded value length for leaf, including header.
      */
     private static int calculateFragmentedValueLength(byte[] value) {
-        int len = value.length;
-        return len + ((len <= 8192) ? 2 : 3);
+        return calculateFragmentedValueLength(value.length);
+    }
+
+    /**
+     * Calculate encoded value length for leaf, including header.
+     */
+    static int calculateFragmentedValueLength(int vlength) {
+        return vlength + ((vlength <= 8192) ? 2 : 3);
     }
 
     /**
@@ -3473,20 +3485,32 @@ final class Node extends Latch {
      * @param fragmented 0 or VALUE_FRAGMENTED
      * @return page location for first byte of value (first location after header)
      */
-    private static int copyToLeafValue(byte[] page, int fragmented, byte[] value, int valueLoc) {
-        final int len = value.length;
-        if (len <= 127 && fragmented == 0) {
-            page[valueLoc++] = (byte) len;
-        } else if (len <= 8192) {
-            page[valueLoc++] = (byte) (0x80 | fragmented | ((len - 1) >> 8));
-            page[valueLoc++] = (byte) (len - 1);
+    private static int copyToLeafValue(byte[] page, int fragmented, byte[] value, int vloc) {
+        final int vlen = value.length;
+        vloc = encodeLeafValueHeader(page, fragmented, vlen, vloc);
+        arraycopy(value, 0, page, vloc, vlen);
+        return vloc;
+    }
+
+    /**
+     * @param fragmented 0 or VALUE_FRAGMENTED
+     * @return page location for first byte of value (first location after header)
+     */
+    static int encodeLeafValueHeader(byte[] page, int fragmented, int vlen, int vloc) {
+        if (vlen <= 127 && fragmented == 0) {
+            page[vloc++] = (byte) vlen;
         } else {
-            page[valueLoc++] = (byte) (0xa0 | fragmented | ((len - 1) >> 16));
-            page[valueLoc++] = (byte) ((len - 1) >> 8);
-            page[valueLoc++] = (byte) (len - 1);
+            vlen--;
+            if (vlen <= 8192) {
+                page[vloc++] = (byte) (0x80 | fragmented | (vlen >> 8));
+                page[vloc++] = (byte) vlen;
+            } else {
+                page[vloc++] = (byte) (0xa0 | fragmented | (vlen >> 16));
+                page[vloc++] = (byte) (vlen >> 8);
+                page[vloc++] = (byte) vlen;
+            }
         }
-        arraycopy(value, 0, page, valueLoc, len);
-        return valueLoc;
+        return vloc;
     }
 
     /**
