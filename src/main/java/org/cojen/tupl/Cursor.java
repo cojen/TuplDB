@@ -82,8 +82,9 @@ public interface Cursor {
     public byte[] value();
 
     /**
-     * By default, values are loaded automatically, as they are seen. When
-     * disabled, values must be {@link Cursor#load manually loaded}.
+     * By default, values are loaded automatically, as they are seen. When disabled, values
+     * might need to be {@link Cursor#load manually loaded}. When a {@link Transformer} is
+     * used, the value might still be loaded automatically.
      *
      * @param mode false to disable
      * @return prior autoload mode
