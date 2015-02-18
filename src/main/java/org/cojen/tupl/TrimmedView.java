@@ -92,27 +92,27 @@ final class TrimmedView implements View {
     }
 
     @Override
-    public View viewGe(byte[] key) {
+    public View viewGe(byte[] key) throws IOException {
         return new TrimmedView(mSource.viewGe(applyPrefix(key)), mPrefix, mTrim);
     }
 
     @Override
-    public View viewGt(byte[] key) {
+    public View viewGt(byte[] key) throws IOException {
         return new TrimmedView(mSource.viewGt(applyPrefix(key)), mPrefix, mTrim);
     }
 
     @Override
-    public View viewLe(byte[] key) {
+    public View viewLe(byte[] key) throws IOException {
         return new TrimmedView(mSource.viewLe(applyPrefix(key)), mPrefix, mTrim);
     }
 
     @Override
-    public View viewLt(byte[] key) {
+    public View viewLt(byte[] key) throws IOException {
         return new TrimmedView(mSource.viewLt(applyPrefix(key)), mPrefix, mTrim);
     }
 
     @Override
-    public View viewPrefix(byte[] prefix, int trim) {
+    public View viewPrefix(byte[] prefix, int trim) throws IOException {
         SubView.prefixCheck(prefix, trim);
         return mSource.viewPrefix(applyPrefix(prefix), mTrim + trim);
     }

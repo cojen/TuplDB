@@ -16,6 +16,8 @@
 
 package org.cojen.tupl;
 
+import java.io.IOException;
+
 import static org.cojen.tupl.Utils.*;
 
 /**
@@ -142,7 +144,7 @@ final class BoundedView extends SubView {
     }
 
     @Override
-    public View viewPrefix(byte[] prefix, int trim) {
+    public View viewPrefix(byte[] prefix, int trim) throws IOException {
         SubView.prefixCheck(prefix, trim);
 
         // Note: Slight optimization is possible, by not creating a short-lived view object.

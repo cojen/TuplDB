@@ -248,7 +248,7 @@ final class TransformedView implements View {
     }
 
     @Override
-    public View viewGe(byte[] tkey) {
+    public View viewGe(byte[] tkey) throws IOException {
         byte[] key = inverseTransformKey(tkey);
         if (key == null) {
             key = mTransformer.inverseTransformKeyGt(tkey);
@@ -260,7 +260,7 @@ final class TransformedView implements View {
     }
 
     @Override
-    public View viewGt(byte[] tkey) {
+    public View viewGt(byte[] tkey) throws IOException {
         View subView;
         byte[] key = inverseTransformKey(tkey);
         if (key == null) {
@@ -276,7 +276,7 @@ final class TransformedView implements View {
     }
 
     @Override
-    public View viewLe(byte[] tkey) {
+    public View viewLe(byte[] tkey) throws IOException {
         byte[] key = inverseTransformKey(tkey);
         if (key == null) {
             key = mTransformer.inverseTransformKeyLt(tkey);
@@ -288,7 +288,7 @@ final class TransformedView implements View {
     }
 
     @Override
-    public View viewLt(byte[] tkey) {
+    public View viewLt(byte[] tkey) throws IOException {
         View subView;
         byte[] key = inverseTransformKey(tkey);
         if (key == null) {
@@ -304,7 +304,7 @@ final class TransformedView implements View {
     }
 
     @Override
-    public View viewPrefix(byte[] tprefix, int trim) {
+    public View viewPrefix(byte[] tprefix, int trim) throws IOException {
         SubView.prefixCheck(tprefix, trim);
 
         final byte[] key = inverseTransformKey(tprefix);
@@ -363,7 +363,7 @@ final class TransformedView implements View {
         return mSource.isUnmodifiable();
     }
 
-    private byte[] inverseTransformKey(final byte[] tkey) {
+    private byte[] inverseTransformKey(final byte[] tkey) throws IOException {
         if (tkey == null) {
             throw new NullPointerException("Key is null");
         }

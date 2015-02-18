@@ -124,32 +124,32 @@ final class UnmodifiableView implements Index {
     }
 
     @Override
-    public View viewGe(byte[] key) {
+    public View viewGe(byte[] key) throws IOException {
         return new UnmodifiableView(mSource.viewGe(key));
     }
 
     @Override
-    public View viewGt(byte[] key) {
+    public View viewGt(byte[] key) throws IOException {
         return new UnmodifiableView(mSource.viewGt(key));
     }
 
     @Override
-    public View viewLe(byte[] key) {
+    public View viewLe(byte[] key) throws IOException {
         return new UnmodifiableView(mSource.viewLe(key));
     }
 
     @Override
-    public View viewLt(byte[] key) {
+    public View viewLt(byte[] key) throws IOException {
         return new UnmodifiableView(mSource.viewLt(key));
     }
 
     @Override
-    public View viewPrefix(byte[] prefix, int trim) {
+    public View viewPrefix(byte[] prefix, int trim) throws IOException {
         return new UnmodifiableView(mSource.viewPrefix(prefix, trim));
     }
 
     @Override
-    public View viewTransformed(Transformer transformer) {
+    public View viewTransformed(Transformer transformer) throws IOException {
         return new UnmodifiableView(mSource.viewTransformed(transformer));
     }
 
