@@ -123,23 +123,35 @@ final class TransformedCursor implements Cursor {
 
     @Override
     public LockResult skip(long amount) throws IOException {
+        final Cursor c = mSource;
+
         if (amount == 0) {
-            return mSource.skip(0);
+            return c.skip(0);
         }
 
-        LockResult result;
-
-        if (amount > 0) {
+        if (amount > 0) while (true) {
+            LockResult result;
             do {
-                result = next();
-            } while (--amount > 0);
-        } else {
+                result = transformCurrent(c.next());
+            } while (result == null);
+            if (mKey == null || --amount <= 0) {
+                return result;
+            }
+            if (result == LockResult.ACQUIRED) {
+                c.link().unlock();
+            }
+        } else while (true) {
+            LockResult result;
             do {
-                result = previous();
-            } while (++amount > 0);
+                result = transformCurrent(c.previous());
+            } while (result == null);
+            if (mKey == null || ++amount >= 0) {
+                return result;
+            }
+            if (result == LockResult.ACQUIRED) {
+                c.link().unlock();
+            }
         }
-
-        return result;
     }
 
     @Override
