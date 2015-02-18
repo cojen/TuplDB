@@ -179,6 +179,14 @@ public interface Index extends View, Closeable {
 
     /**
      * {@inheritDoc}
+     *
+     * @throws NullPointerException {@inheritDoc}
+     */
+    @Override
+    public View viewTransformed(Transformer transformer);
+
+    /**
+     * {@inheritDoc}
      */
     @Override
     public View viewReverse();

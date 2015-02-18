@@ -71,42 +71,15 @@ final class TransformedCursor implements Cursor {
     }
 
     @Override
-    public int compareKeyTo(final byte[] rTKey) {
-        final byte[] key = key();
-        byte[] rkey = inverseTransformKey(rTKey);
-        if (rkey != null) {
-            return Utils.compareKeys(key, rkey);
-        }
-
-        rkey = mTransformer.inverseTransformKeyLt(rTKey);
-        if (rkey != null) {
-            int result = Utils.compareKeys(key, rkey);
-            if (result == 0) {
-                result = -1;
-            }
-            return result;
-        }
-
-        rkey = mTransformer.inverseTransformKeyGt(rTKey);
-        if (rkey != null) {
-            int result = Utils.compareKeys(key, rkey);
-            if (result == 0) {
-                result = 1;
-            }
-            return result;
-        }
-
-        throw new NullPointerException("Unsupported key");
+    public final int compareKeyTo(byte[] rkey) {
+        byte[] lkey = mKey;
+        return Utils.compareKeys(lkey, 0, lkey.length, rkey, 0, rkey.length);
     }
 
     @Override
-    public int compareKeyTo(byte[] rTKey, int offset, int length) {
-        if (offset == 0 && length == rTKey.length) {
-            return compareKeyTo(rTKey);
-        }
-        byte[] copy = new byte[length];
-        System.arraycopy(rTKey, offset, copy, 0, length);
-        return compareKeyTo(copy);
+    public final int compareKeyTo(byte[] rkey, int offset, int length) {
+        byte[] lkey = mKey;
+        return Utils.compareKeys(lkey, 0, lkey.length, rkey, offset, length);
     }
 
     @Override
@@ -123,23 +96,35 @@ final class TransformedCursor implements Cursor {
 
     @Override
     public LockResult skip(long amount) throws IOException {
+        final Cursor c = mSource;
+
         if (amount == 0) {
-            return mSource.skip(0);
+            return c.skip(0);
         }
 
-        LockResult result;
-
-        if (amount > 0) {
+        if (amount > 0) while (true) {
+            LockResult result;
             do {
-                result = next();
-            } while (--amount > 0);
-        } else {
+                result = transformCurrent(c.next());
+            } while (result == null);
+            if (mKey == null || --amount <= 0) {
+                return result;
+            }
+            if (result == LockResult.ACQUIRED) {
+                c.link().unlock();
+            }
+        } else while (true) {
+            LockResult result;
             do {
-                result = previous();
-            } while (++amount > 0);
+                result = transformCurrent(c.previous());
+            } while (result == null);
+            if (mKey == null || ++amount >= 0) {
+                return result;
+            }
+            if (result == LockResult.ACQUIRED) {
+                c.link().unlock();
+            }
         }
-
-        return result;
     }
 
     @Override
@@ -440,7 +425,7 @@ final class TransformedCursor implements Cursor {
         mSource.reset();
     }
 
-    private byte[] inverseTransformKey(final byte[] tkey) {
+    private byte[] inverseTransformKey(final byte[] tkey) throws IOException {
         if (tkey == null) {
             throw new NullPointerException("Key is null");
         }
@@ -467,44 +452,33 @@ final class TransformedCursor implements Cursor {
         byte[] value = c.value();
 
         if (value == null) {
-            byte[] tkey = mTransformer.transformKey(key, value);
+            byte[] tkey = mTransformer.transformKey(key, null);
+            mKey = tkey;
+            mValue = null;
             if (tkey != null) {
                 // Retain the position and lock when value doesn't exist.
-                mKey = tkey;
-                mValue = null;
                 return result;
             }
-        } else if (c.autoload() || !mTransformer.requireValue()) {
+        } else {
+            if (value == Cursor.NOT_LOADED && mTransformer.requireValue()) {
+                // Disabling autoload mode makes little sense when using a value
+                // transformer, because the value must be loaded anyhow.
+                c.load();
+                value = c.value();
+            }
             byte[] tkey = mTransformer.transformKey(key, value);
+            mKey = tkey;
             if (tkey != null) {
                 byte[] tvalue = mTransformer.transformValue(value, key, tkey);
                 if (tvalue != null) {
-                    mKey = tkey;
                     mValue = tvalue;
                     return result;
                 }
             }
-        } else {
-            // Disabling autoload mode makes little sense when using a value transformer,
-            // because the value must be loaded anyhow.
-            c.load();
-            value = c.value();
-            byte[] tkey = mTransformer.transformKey(key, value);
-            if (tkey != null) {
-                byte[] tvalue = mTransformer.transformValue(value, key, tkey);
-                if (tvalue != null) {
-                    mKey = tkey;
-                    // Obey the interface contract.
-                    mValue = Cursor.NOT_LOADED;
-                    return result;
-                }
-            }
+            mValue = null;
         }
 
         // This point is reached when the entry was filtered out and the cursor must move.
-
-        mKey = null;
-        mValue = null;
 
         if (result == LockResult.ACQUIRED) {
             // Release the lock when filtered out, but maintain the cursor position.
@@ -532,17 +506,13 @@ final class TransformedCursor implements Cursor {
 
         byte[] tvalue;
 
-        if (c.autoload() || !mTransformer.requireValue()) {
+        if (value != Cursor.NOT_LOADED || !mTransformer.requireValue()) {
             tvalue = mTransformer.transformValue(value, key, tkey);
         } else {
             // Disabling autoload mode makes little sense when using a value transformer,
             // because the value must be loaded anyhow.
             c.load();
             tvalue = mTransformer.transformValue(c.value(), key, tkey);
-            if (tvalue != null) {
-                // Obey the interface contract.
-                tvalue = Cursor.NOT_LOADED;
-            }
         }
 
         mKey = tkey;

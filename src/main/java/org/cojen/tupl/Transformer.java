@@ -16,6 +16,8 @@
 
 package org.cojen.tupl;
 
+import java.io.IOException;
+
 /**
  * Abstract class which supports filtering and transforming the entries within a {@link
  * View}. For pure filtering, consider subclassing {@link Filter} instead.
@@ -43,7 +45,8 @@ public abstract class Transformer {
      * @param tkey non-null transformed key associated with the value
      * @return transformed value or null to discard entry
      */
-    public abstract byte[] transformValue(byte[] value, byte[] key, byte[] tkey);
+    public abstract byte[] transformValue(byte[] value, byte[] key, byte[] tkey)
+        throws IOException;
 
     /**
      * Apply an inverse transformation of the given value, if supported. This method is only
@@ -56,7 +59,7 @@ public abstract class Transformer {
      * @throws ViewConstraintException if inverse transformation of given value is not supported
      */
     public abstract byte[] inverseTransformValue(byte[] tvalue, byte[] key, byte[] tkey)
-        throws ViewConstraintException;
+        throws ViewConstraintException, IOException;
 
     /**
      * Transform or filter out the given key. This method is only called after loading a value
@@ -66,7 +69,7 @@ public abstract class Transformer {
      * @param value nullable value associated with the key
      * @return transformed key or null to discard entry
      */
-    public byte[] transformKey(byte[] key, byte[] value) {
+    public byte[] transformKey(byte[] key, byte[] value) throws IOException {
         return key;
     }
 
