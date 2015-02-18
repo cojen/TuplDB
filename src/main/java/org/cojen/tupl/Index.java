@@ -142,7 +142,7 @@ public interface Index extends View, Closeable {
      * @throws NullPointerException {@inheritDoc}
      */
     @Override
-    public View viewGe(byte[] key) throws IOException;
+    public View viewGe(byte[] key);
 
     /**
      * {@inheritDoc}
@@ -150,7 +150,7 @@ public interface Index extends View, Closeable {
      * @throws NullPointerException {@inheritDoc}
      */
     @Override
-    public View viewGt(byte[] key) throws IOException;
+    public View viewGt(byte[] key);
 
     /**
      * {@inheritDoc}
@@ -158,7 +158,7 @@ public interface Index extends View, Closeable {
      * @throws NullPointerException {@inheritDoc}
      */
     @Override
-    public View viewLe(byte[] key) throws IOException;
+    public View viewLe(byte[] key);
 
     /**
      * {@inheritDoc}
@@ -166,7 +166,7 @@ public interface Index extends View, Closeable {
      * @throws NullPointerException {@inheritDoc}
      */
     @Override
-    public View viewLt(byte[] key) throws IOException;
+    public View viewLt(byte[] key);
 
     /**
      * {@inheritDoc}
@@ -175,7 +175,7 @@ public interface Index extends View, Closeable {
      * @throws IllegalArgumentException {@inheritDoc}
      */
     @Override
-    public View viewPrefix(byte[] prefix, int trim) throws IOException;
+    public View viewPrefix(byte[] prefix, int trim);
 
     /**
      * {@inheritDoc}
@@ -183,7 +183,7 @@ public interface Index extends View, Closeable {
      * @throws NullPointerException {@inheritDoc}
      */
     @Override
-    public View viewTransformed(Transformer transformer) throws IOException;
+    public View viewTransformed(Transformer transformer);
 
     /**
      * {@inheritDoc}
