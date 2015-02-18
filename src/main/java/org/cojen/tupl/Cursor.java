@@ -104,7 +104,7 @@ public interface Cursor {
      * is less than, equal to, or greater than the rkey.
      * @throws NullPointerException if current key or rkey is null
      */
-    public int compareKeyTo(byte[] rkey) throws IOException;
+    public int compareKeyTo(byte[] rkey);
 
     /**
      * Compare the current key to the one given.
@@ -116,7 +116,7 @@ public interface Cursor {
      * is less than, equal to, or greater than the rkey.
      * @throws NullPointerException if current key or rkey is null
      */
-    public int compareKeyTo(byte[] rkey, int offset, int length) throws IOException;
+    public int compareKeyTo(byte[] rkey, int offset, int length);
 
     /**
      * Moves the Cursor to find the first available entry. Cursor key and value
