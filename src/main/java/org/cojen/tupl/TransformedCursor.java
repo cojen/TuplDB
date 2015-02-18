@@ -475,15 +475,11 @@ final class TransformedCursor implements Cursor {
                 return result;
             }
         } else {
-            if (value == Cursor.NOT_LOADED) {
-                if (mTransformer.requireValue()) {
-                    // Disabling autoload mode makes little sense when using a value
-                    // transformer, because the value must be loaded anyhow.
-                    c.load();
-                    value = c.value();
-                } else {
-                    value = null;
-                }
+            if (value == Cursor.NOT_LOADED && mTransformer.requireValue()) {
+                // Disabling autoload mode makes little sense when using a value
+                // transformer, because the value must be loaded anyhow.
+                c.load();
+                value = c.value();
             }
             byte[] tkey = mTransformer.transformKey(key, value);
             mKey = tkey;
