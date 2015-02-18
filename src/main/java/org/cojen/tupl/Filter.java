@@ -16,8 +16,6 @@
 
 package org.cojen.tupl;
 
-import java.io.IOException;
-
 /**
  * View transformer which filters out entries which don't belong. Subclasses only need to
  * implement the {@link #isAllowed isAllowed} method.
@@ -72,7 +70,7 @@ public abstract class Filter extends Transformer {
      * Returns the key incremented by the minimum amount.
      */
     @Override
-    public final byte[] inverseTransformKeyGt(byte[] tkey) throws IOException {
+    public final byte[] inverseTransformKeyGt(byte[] tkey) {
         return super.inverseTransformKeyGt(tkey);
     }
 
@@ -80,7 +78,7 @@ public abstract class Filter extends Transformer {
      * Returns the key decremented by the minimum amount.
      */
     @Override
-    public final byte[] inverseTransformKeyLt(byte[] tkey) throws IOException {
+    public final byte[] inverseTransformKeyLt(byte[] tkey) {
         return super.inverseTransformKeyLt(tkey);
     }
 }

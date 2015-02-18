@@ -81,7 +81,7 @@ public abstract class Transformer {
      * @return inverse transformed key or null if inverse transformation of given key is not
      * supported
      */
-    public byte[] inverseTransformKey(byte[] tkey) throws IOException {
+    public byte[] inverseTransformKey(byte[] tkey) {
         return tkey;
     }
 
@@ -95,7 +95,7 @@ public abstract class Transformer {
      * @return inverse transformed key or null if inverse transformation of given key is not
      * supported
      */
-    public byte[] inverseTransformKeyGt(byte[] tkey) throws IOException {
+    public byte[] inverseTransformKeyGt(byte[] tkey) {
         tkey = tkey.clone();
         return Utils.increment(tkey, 0, tkey.length) ? inverseTransformKey(tkey) : null;
     }
@@ -110,7 +110,7 @@ public abstract class Transformer {
      * @return inverse transformed key or null if inverse transformation of given key is not
      * supported
      */
-    public byte[] inverseTransformKeyLt(byte[] tkey) throws IOException {
+    public byte[] inverseTransformKeyLt(byte[] tkey) {
         tkey = tkey.clone();
         return Utils.decrement(tkey, 0, tkey.length) ? inverseTransformKey(tkey) : null;
     }
