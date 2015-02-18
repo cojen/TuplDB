@@ -88,32 +88,32 @@ final class ReverseView implements View {
     }
 
     @Override
-    public View viewGe(byte[] key) {
+    public View viewGe(byte[] key) throws IOException {
         return new ReverseView(mSource.viewLe(key));
     }
 
     @Override
-    public View viewGt(byte[] key) {
+    public View viewGt(byte[] key) throws IOException {
         return new ReverseView(mSource.viewLt(key));
     }
 
     @Override
-    public View viewLe(byte[] key) {
+    public View viewLe(byte[] key) throws IOException {
         return new ReverseView(mSource.viewGe(key));
     }
 
     @Override
-    public View viewLt(byte[] key) {
+    public View viewLt(byte[] key) throws IOException {
         return new ReverseView(mSource.viewGt(key));
     }
 
     @Override
-    public View viewPrefix(byte[] prefix, int trim) {
+    public View viewPrefix(byte[] prefix, int trim) throws IOException {
         return new ReverseView(mSource.viewPrefix(prefix, trim));
     }
 
     @Override
-    public View viewTransformed(Transformer transformer) {
+    public View viewTransformed(Transformer transformer) throws IOException {
         return new ReverseView(mSource.viewTransformed(transformer));
     }
 

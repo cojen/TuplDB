@@ -71,7 +71,7 @@ final class TransformedCursor implements Cursor {
     }
 
     @Override
-    public int compareKeyTo(final byte[] rTKey) {
+    public int compareKeyTo(final byte[] rTKey) throws IOException {
         final byte[] key = key();
         byte[] rkey = inverseTransformKey(rTKey);
         if (rkey != null) {
@@ -100,7 +100,7 @@ final class TransformedCursor implements Cursor {
     }
 
     @Override
-    public int compareKeyTo(byte[] rTKey, int offset, int length) {
+    public int compareKeyTo(byte[] rTKey, int offset, int length) throws IOException {
         if (offset == 0 && length == rTKey.length) {
             return compareKeyTo(rTKey);
         }
@@ -452,7 +452,7 @@ final class TransformedCursor implements Cursor {
         mSource.reset();
     }
 
-    private byte[] inverseTransformKey(final byte[] tkey) {
+    private byte[] inverseTransformKey(final byte[] tkey) throws IOException {
         if (tkey == null) {
             throw new NullPointerException("Key is null");
         }

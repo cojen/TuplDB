@@ -245,7 +245,7 @@ public interface View {
      *
      * @throws NullPointerException if key is null
      */
-    public View viewGe(byte[] key);
+    public View viewGe(byte[] key) throws IOException;
 
     /**
      * Returns a sub-view, backed by this one, whose keys are greater than the
@@ -257,7 +257,7 @@ public interface View {
      *
      * @throws NullPointerException if key is null
      */
-    public View viewGt(byte[] key);
+    public View viewGt(byte[] key) throws IOException;
 
     /**
      * Returns a sub-view, backed by this one, whose keys are less than or
@@ -269,7 +269,7 @@ public interface View {
      *
      * @throws NullPointerException if key is null
      */
-    public View viewLe(byte[] key);
+    public View viewLe(byte[] key) throws IOException;
 
     /**
      * Returns a sub-view, backed by this one, whose keys are less than the
@@ -281,7 +281,7 @@ public interface View {
      *
      * @throws NullPointerException if key is null
      */
-    public View viewLt(byte[] key);
+    public View viewLt(byte[] key) throws IOException;
 
     /**
      * Returns a sub-view, backed by this one, whose keys start with the given prefix.
@@ -295,7 +295,7 @@ public interface View {
      * @throws NullPointerException if prefix is null
      * @throws IllegalArgumentException if trim is longer than prefix
      */
-    public View viewPrefix(byte[] prefix, int trim);
+    public View viewPrefix(byte[] prefix, int trim) throws IOException;
 
     /**
      * Returns a sub-view, backed by this one, whose entries have been filtered out and
@@ -306,7 +306,7 @@ public interface View {
      *
      * @throws NullPointerException if transformer is null
      */
-    public View viewTransformed(Transformer transformer);
+    public View viewTransformed(Transformer transformer) throws IOException;
 
     /**
      * Returns a view, backed by this one, whose natural order is reversed.

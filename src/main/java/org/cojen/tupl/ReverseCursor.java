@@ -66,12 +66,12 @@ final class ReverseCursor implements Cursor {
     }
 
     @Override
-    public int compareKeyTo(byte[] rkey) {
+    public int compareKeyTo(byte[] rkey) throws IOException {
         return mSource.compareKeyTo(rkey);
     }
 
     @Override
-    public int compareKeyTo(byte[] rkey, int offset, int length) {
+    public int compareKeyTo(byte[] rkey, int offset, int length) throws IOException {
         return mSource.compareKeyTo(rkey, offset, length);
     }
 
