@@ -71,42 +71,15 @@ final class TransformedCursor implements Cursor {
     }
 
     @Override
-    public int compareKeyTo(final byte[] rTKey) throws IOException {
-        final byte[] key = key();
-        byte[] rkey = inverseTransformKey(rTKey);
-        if (rkey != null) {
-            return Utils.compareKeys(key, rkey);
-        }
-
-        rkey = mTransformer.inverseTransformKeyLt(rTKey);
-        if (rkey != null) {
-            int result = Utils.compareKeys(key, rkey);
-            if (result == 0) {
-                result = -1;
-            }
-            return result;
-        }
-
-        rkey = mTransformer.inverseTransformKeyGt(rTKey);
-        if (rkey != null) {
-            int result = Utils.compareKeys(key, rkey);
-            if (result == 0) {
-                result = 1;
-            }
-            return result;
-        }
-
-        throw new NullPointerException("Unsupported key");
+    public final int compareKeyTo(byte[] rkey) {
+        byte[] lkey = mKey;
+        return Utils.compareKeys(lkey, 0, lkey.length, rkey, 0, rkey.length);
     }
 
     @Override
-    public int compareKeyTo(byte[] rTKey, int offset, int length) throws IOException {
-        if (offset == 0 && length == rTKey.length) {
-            return compareKeyTo(rTKey);
-        }
-        byte[] copy = new byte[length];
-        System.arraycopy(rTKey, offset, copy, 0, length);
-        return compareKeyTo(copy);
+    public final int compareKeyTo(byte[] rkey, int offset, int length) {
+        byte[] lkey = mKey;
+        return Utils.compareKeys(lkey, 0, lkey.length, rkey, offset, length);
     }
 
     @Override
