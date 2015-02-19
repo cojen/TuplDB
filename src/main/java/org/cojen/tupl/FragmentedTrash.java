@@ -130,7 +130,7 @@ final class FragmentedTrash {
         // Extract the index and trash keys.
         int loc = 0;
         int keyLen = undoEntry[loc++];
-        keyLen = keyLen >= 0 ? ((keyLen & 0x3f) + 1)
+        keyLen = keyLen >= 0 ? (keyLen + 1)
             : (((keyLen & 0x3f) << 8) | ((undoEntry[loc++]) & 0xff));
         byte[] indexKey = new byte[keyLen];
         arraycopy(undoEntry, loc, indexKey, 0, keyLen);
