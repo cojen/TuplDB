@@ -154,16 +154,17 @@ final class Node extends Latch {
 
       Entries start with a one byte key header:
 
-      0b0pxx_xxxx: key is 1..64 bytes
-      0b1pxx_xxxx: key is 0..16383 bytes
+      0b0xxx_xxxx: key is 1..128 bytes
+      0b1fxx_xxxx: key is 0..16383 bytes
 
-      When the 'p' bit is zero, the entry is a normal key. Otherwise, it
-      indicates that the key starts with the node key prefix.
-
-      For keys 1..64 bytes in length, the length is defined as ((header & 0x3f) + 1). For
+      For keys 1..128 bytes in length, the length is defined as (header + 1). For
       keys 0..16383 bytes in length, a second header byte is used. The second byte is
       unsigned, and the length is defined as (((header & 0x3f) << 8) | header2). The key
       contents immediately follow the header byte(s).
+
+      When the 'f' bit is zero, the entry is a normal key. Very large keys are stored in a
+      fragmented fashion, which is also used by large values. The encoding format is defined by
+      Database.fragment.
 
       The value follows the key, and its header encodes the entry length:
 
@@ -488,7 +489,7 @@ final class Node extends Latch {
 
             int compareLoc = decodeUnsignedShortLE(page, midPos);
             int compareLen = page[compareLoc++];
-            compareLen = compareLen >= 0 ? ((compareLen & 0x3f) + 1)
+            compareLen = compareLen >= 0 ? (compareLen + 1)
                 : (((compareLen & 0x3f) << 8) | ((page[compareLoc++]) & 0xff));
 
             int minLen = Math.min(compareLen, keyLen);
@@ -1028,7 +1029,7 @@ final class Node extends Latch {
 
             int compareLoc = decodeUnsignedShortLE(page, midPos);
             int compareLen = page[compareLoc++];
-            compareLen = compareLen >= 0 ? ((compareLen & 0x3f) + 1)
+            compareLen = compareLen >= 0 ? (compareLen + 1)
                 : (((compareLen & 0x3f) << 8) | ((page[compareLoc++]) & 0xff));
 
             int minLen = Math.min(compareLen, keyLen);
@@ -1087,7 +1088,7 @@ final class Node extends Latch {
             compare: {
                 int compareLoc = decodeUnsignedShortLE(page, midPos);
                 int compareLen = page[compareLoc++];
-                compareLen = compareLen >= 0 ? ((compareLen & 0x3f) + 1)
+                compareLen = compareLen >= 0 ? (compareLen + 1)
                     : (((compareLen & 0x3f) << 8) | ((page[compareLoc++]) & 0xff));
 
                 int minLen = Math.min(compareLen, keyLen);
@@ -1148,7 +1149,7 @@ final class Node extends Latch {
      */
     static byte[] retrieveKeyAtLoc(final byte[] page, int loc) {
         int keyLen = page[loc++];
-        keyLen = keyLen >= 0 ? ((keyLen & 0x3f) + 1)
+        keyLen = keyLen >= 0 ? (keyLen + 1)
             : (((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff));
         byte[] key = new byte[keyLen];
         arraycopy(page, loc, key, 0, keyLen);
@@ -1167,7 +1168,7 @@ final class Node extends Latch {
         final byte[] page = mPage;
         int loc = decodeUnsignedShortLE(page, mSearchVecStart + pos);
         int keyLen = page[loc++];
-        keyLen = keyLen >= 0 ? ((keyLen & 0x3f) + 1)
+        keyLen = keyLen >= 0 ? (keyLen + 1)
             : (((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff));
         int cmp = compareKeys(page, loc, keyLen, limitKey, 0, limitKey.length);
         if (cmp == 0) {
@@ -1188,7 +1189,7 @@ final class Node extends Latch {
      */
     static byte[][] retrieveKeyValueAtLoc(final byte[] page, int loc) throws IOException {
         int header = page[loc++];
-        int keyLen = header >= 0 ? ((header & 0x3f) + 1)
+        int keyLen = header >= 0 ? (header + 1)
             : (((header & 0x3f) << 8) | ((page[loc++]) & 0xff));
         byte[] key = new byte[keyLen];
         arraycopy(page, loc, key, 0, keyLen);
@@ -1204,7 +1205,7 @@ final class Node extends Latch {
         final byte[] lowPage = mPage;
         int lowLoc = decodeUnsignedShortLE(lowPage, mSearchVecStart + lowPos);
         int lowKeyLen = lowPage[lowLoc++];
-        lowKeyLen = lowKeyLen >= 0 ? ((lowKeyLen & 0x3f) + 1)
+        lowKeyLen = lowKeyLen >= 0 ? (lowKeyLen + 1)
             : (((lowKeyLen & 0x3f) << 8) | ((lowPage[lowLoc++]) & 0xff));
         return Utils.midKey(lowPage, lowLoc, lowKeyLen, highKey, 0, highKey.length);
     }
@@ -1218,7 +1219,7 @@ final class Node extends Latch {
         final byte[] highPage = mPage;
         int highLoc = decodeUnsignedShortLE(highPage, mSearchVecStart + highPos);
         int highKeyLen = highPage[highLoc++];
-        highKeyLen = highKeyLen >= 0 ? ((highKeyLen & 0x3f) + 1)
+        highKeyLen = highKeyLen >= 0 ? (highKeyLen + 1)
             : (((highKeyLen & 0x3f) << 8) | ((highPage[highLoc++]) & 0xff));
         return Utils.midKey(lowKey, 0, lowKey.length, highPage, highLoc, highKeyLen);
     }
@@ -1232,13 +1233,13 @@ final class Node extends Latch {
         final byte[] lowPage = mPage;
         int lowLoc = decodeUnsignedShortLE(lowPage, mSearchVecStart + lowPos);
         int lowKeyLen = lowPage[lowLoc++];
-        lowKeyLen = lowKeyLen >= 0 ? ((lowKeyLen & 0x3f) + 1)
+        lowKeyLen = lowKeyLen >= 0 ? (lowKeyLen + 1)
             : (((lowKeyLen & 0x3f) << 8) | ((lowPage[lowLoc++]) & 0xff));
 
         final byte[] highPage = highNode.mPage;
         int highLoc = decodeUnsignedShortLE(highPage, highNode.mSearchVecStart + highPos);
         int highKeyLen = highPage[highLoc++];
-        highKeyLen = highKeyLen >= 0 ? ((highKeyLen & 0x3f) + 1)
+        highKeyLen = highKeyLen >= 0 ? (highKeyLen + 1)
             : (((highKeyLen & 0x3f) << 8) | ((highPage[highLoc++]) & 0xff));
 
         return Utils.midKey(lowPage, lowLoc, lowKeyLen, highPage, highLoc, highKeyLen);
@@ -1251,8 +1252,7 @@ final class Node extends Latch {
     byte[] hasLeafValue(int pos) {
         final byte[] page = mPage;
         int loc = decodeUnsignedShortLE(page, mSearchVecStart + pos);
-        int header = page[loc++];
-        loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
+        loc += keyLengthAtLoc(page, loc);
         return page[loc] == -1 ? null : Cursor.NOT_LOADED;
     }
 
@@ -1263,8 +1263,7 @@ final class Node extends Latch {
     byte[] retrieveLeafValue(Tree tree, int pos) throws IOException {
         final byte[] page = mPage;
         int loc = decodeUnsignedShortLE(page, mSearchVecStart + pos);
-        int header = page[loc++];
-        loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
+        loc += keyLengthAtLoc(page, loc);
         return retrieveLeafValueAtLoc(tree, page, loc);
     }
 
@@ -1310,7 +1309,7 @@ final class Node extends Latch {
         final byte[] page = mPage;
         int loc = decodeUnsignedShortLE(page, mSearchVecStart + pos);
         int header = page[loc++];
-        int keyLen = header >= 0 ? ((header & 0x3f) + 1)
+        int keyLen = header >= 0 ? (header + 1)
             : (((header & 0x3f) << 8) | ((page[loc++]) & 0xff));
         byte[] key = new byte[keyLen];
         arraycopy(page, loc, key, 0, keyLen);
@@ -1334,9 +1333,8 @@ final class Node extends Latch {
     boolean isFragmentedLeafValue(int pos) {
         final byte[] page = mPage;
         int loc = decodeUnsignedShortLE(page, mSearchVecStart + pos);
-        int header = page[loc++];
-        loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
-        header = page[loc];
+        loc += keyLengthAtLoc(page, loc);
+        int header = page[loc];
         return ((header & 0xc0) >= 0xc0) & (header < -1);
     }
 
@@ -1358,13 +1356,12 @@ final class Node extends Latch {
         final int entryLoc = decodeUnsignedShortLE(page, mSearchVecStart + pos);
         int loc = entryLoc;
 
-        // Read key header and skip key.
-        int header = page[loc++];
-        loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
+        // Skip the key.
+        loc += keyLengthAtLoc(page, loc);
 
         // Read value header.
         final int valueHeaderLoc = loc;
-        header = page[loc++];
+        int header = page[loc++];
 
         doUndo: {
             // Note: Similar to leafEntryLengthAtLoc.
@@ -1423,13 +1420,12 @@ final class Node extends Latch {
         final int entryLoc = decodeUnsignedShortLE(page, mSearchVecStart + pos);
         int loc = entryLoc;
 
-        // Read key header and skip key.
-        int header = page[loc++];
-        loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
+        // Skip the key.
+        loc += keyLengthAtLoc(page, loc);
 
         // Read value header.
         final int valueHeaderLoc = loc;
-        header = page[loc++];
+        int header = page[loc++];
 
         examineEntry: {
             // Note: Similar to leafEntryLengthAtLoc.
@@ -1479,10 +1475,8 @@ final class Node extends Latch {
      * @return length of encoded entry at given location
      */
     static int leafEntryLengthAtLoc(byte[] page, final int entryLoc) {
-        int loc = entryLoc;
+        int loc = entryLoc + keyLengthAtLoc(page, entryLoc);
         int header = page[loc++];
-        loc += (header >= 0 ? (header & 0x3f) : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
-        header = page[loc++];
         if (header >= 0) {
             loc += header;
         } else {
@@ -1501,7 +1495,7 @@ final class Node extends Latch {
      */
     static int keyLengthAtLoc(byte[] page, final int keyLoc) {
         int header = page[keyLoc];
-        return (header >= 0 ? (header & 0x3f)
+        return (header >= 0 ? header
                 : (((header & 0x3f) << 8) | (page[keyLoc + 1] & 0xff))) + 2;
     }
 
@@ -2807,14 +2801,14 @@ final class Node extends Latch {
         quick: {
             int loc;
             start = loc = decodeUnsignedShortLE(page, searchVecStart + pos);
-            int header = page[loc++];
-            loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
+            loc += keyLengthAtLoc(page, loc);
 
             final int valueHeaderLoc = loc;
 
             // Note: Similar to leafEntryLengthAtLoc and retrieveLeafValueAtLoc.
             int len = page[loc++];
             if (len < 0) largeValue: {
+                int header;
                 if ((len & 0x20) == 0) {
                     header = len;
                     len = 1 + (((len & 0x1f) << 8) | (page[loc++] & 0xff));
@@ -3096,9 +3090,8 @@ final class Node extends Latch {
 
         // Note: Similar to leafEntryLengthAtLoc and retrieveLeafValueAtLoc.
         int loc = entryLoc;
+        loc += keyLengthAtLoc(page, loc);
         int header = page[loc++];
-        loc += (header >= 0 ? (header & 0x3f) : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
-        header = page[loc++];
         if (header >= 0) {
             loc += header;
         } else largeValue: {
@@ -4513,7 +4506,7 @@ final class Node extends Latch {
             int keyLen;
             try {
                 keyLen = page[loc++];
-                keyLen = keyLen >= 0 ? ((keyLen & 0x3f) + 1)
+                keyLen = keyLen >= 0 ? (keyLen + 1)
                     : (((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff));
             } catch (IndexOutOfBoundsException e) {
                 return verifyFailed(level, observer, "Key location out of bounds");
