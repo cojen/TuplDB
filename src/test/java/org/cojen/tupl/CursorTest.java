@@ -386,7 +386,7 @@ public class CursorTest {
         previousLock(true);
     }
 
-    public void previousLock(boolean first) throws Exception {
+    private void previousLock(boolean first) throws Exception {
         View ix = openIndex("test");
         ix.store(Transaction.BOGUS, key(0), value(0));
         ix.store(Transaction.BOGUS, key(1), value(1));
@@ -1003,10 +1003,10 @@ public class CursorTest {
 
     private void verifyPositions(View ix, Cursor[] cursors) throws Exception {
         for (Cursor existing : cursors) {
-            TreeCursor c = treeCursor(ix.newCursor(Transaction.BOGUS));
+            Cursor c = ix.newCursor(Transaction.BOGUS);
             byte[] key = existing.key();
             c.find(key);
-            assertTrue(c.equalPositions(treeCursor(existing)));
+            assertTrue(treeCursor(c).equalPositions(treeCursor(existing)));
             c.reset();
             existing.reset();
         }
