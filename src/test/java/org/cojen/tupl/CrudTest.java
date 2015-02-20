@@ -44,6 +44,14 @@ public class CrudTest {
         mDb = null;
     }
 
+    protected View openIndex(String name) throws Exception {
+        return mDb.openIndex(name);
+    }
+
+    protected boolean verify(View ix) throws Exception {
+        return ((Index) ix).verify(null);
+    }
+
     protected Database mDb;
 
     @Test
@@ -54,7 +62,7 @@ public class CrudTest {
     }
 
     private void loadNothing(Transaction txn) throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
 
         try {
             ix.load(txn, null);
@@ -75,7 +83,7 @@ public class CrudTest {
     }
 
     private void testStoreBasic(Transaction txn) throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
 
         try {
             ix.store(txn, null, null);
@@ -117,7 +125,7 @@ public class CrudTest {
 
     @Test
     public void testExchangeBasic() throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
 
         byte[] key = "hello".getBytes();
         byte[] key2 = "howdy".getBytes();
@@ -152,7 +160,7 @@ public class CrudTest {
     }
 
     private void testInsertBasic(Transaction txn) throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
 
         try {
             ix.insert(txn, null, null);
@@ -200,7 +208,7 @@ public class CrudTest {
     }
 
     private void testReplaceBasic(Transaction txn) throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
 
         try {
             ix.replace(txn, null, null);
@@ -260,7 +268,7 @@ public class CrudTest {
     }
 
     private void testUpdateBasic(Transaction txn) throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
 
         try {
             ix.update(txn, null, null, null);
@@ -324,7 +332,7 @@ public class CrudTest {
     }
 
     private void testDeleteBasic(Transaction txn) throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
 
         try {
             ix.delete(txn, null);
@@ -365,7 +373,7 @@ public class CrudTest {
 
     @Test
     public void testUpdateSplit() throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
 
         // Fill with ordered entries to create filled nodes.
         byte[] key = new byte[4];
@@ -380,13 +388,13 @@ public class CrudTest {
         for (int i=0; i<1000; i++) {
             Utils.encodeIntBE(key, 0, i);
             ix.store(Transaction.BOGUS, key, value);
-            assertTrue(ix.verify(null));
+            assertTrue(verify(ix));
         }
     }
 
     @Test
     public void testFill() throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
         testFill(ix, 10);
         testFill(ix, 100);
         testFill(ix, 1000);
@@ -394,7 +402,7 @@ public class CrudTest {
         testFill(ix, 100000);
     }
 
-    private void testFill(final Index ix, final int count) throws Exception {
+    private void testFill(final View ix, final int count) throws Exception {
         final long seed1 = 1860635281L + count;
         final long seed2 = 2860635281L + count;
 
@@ -416,7 +424,7 @@ public class CrudTest {
             }
         }
 
-        assertTrue(ix.verify(null));
+        assertTrue(verify(ix));
 
         rnd = new Random(seed1);
 
@@ -451,7 +459,7 @@ public class CrudTest {
             }
         }
 
-        assertTrue(ix.verify(null));
+        assertTrue(verify(ix));
 
         rnd = new Random(seed2);
 
@@ -481,7 +489,7 @@ public class CrudTest {
             }
         }
 
-        assertTrue(ix.verify(null));
+        assertTrue(verify(ix));
 
         assertEquals(expectedCount, count(ix));
 
@@ -491,12 +499,12 @@ public class CrudTest {
             assertTrue(ix.delete(Transaction.BOGUS, e.getKey()));
         }
 
-        assertTrue(ix.verify(null));
+        assertTrue(verify(ix));
 
         assertEquals(0, count(ix));
     }
 
-    static int count(Index ix) throws Exception {
+    static int count(View ix) throws Exception {
         int count1 = 0;
         Cursor c = ix.newCursor(Transaction.BOGUS);
         c.autoload(false);
