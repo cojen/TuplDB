@@ -1584,21 +1584,6 @@ final class Node extends Latch {
     }
 
     /**
-     * Verifies that key can safely fit in the node.
-     */
-    static int calculateKeyLengthChecked(Tree tree, byte[] key) throws LargeKeyException {
-        int len = key.length;
-        if (len <= 64 & len > 0) {
-            // Always safe because minimum node size is 512 bytes.
-            return len + 1;
-        }
-        if (len > tree.mMaxKeySize) {
-            throw new LargeKeyException(len);
-        }
-        return len + 2;
-    }
-
-    /**
      * @param pos complement of position as provided by binarySearch; must be positive
      * @return Location for newly allocated entry, already pointed to by search
      * vector, or negative if leaf must be split. Complement of negative value
@@ -3380,12 +3365,30 @@ final class Node extends Latch {
         tree.mDatabase.deletePage(toDelete, toDeleteState);
     }
 
+    // FIXME: Increase to 128.
+    private static final int SMALL_KEY_LIMIT = 64;
+
+    /**
+     * Verifies that key can safely fit in the node.
+     */
+    static int calculateKeyLengthChecked(Tree tree, byte[] key) throws LargeKeyException {
+        int len = key.length;
+        if (len <= SMALL_KEY_LIMIT & len > 0) {
+            // Always safe because minimum node size is 512 bytes.
+            return len + 1;
+        }
+        if (len > tree.mMaxKeySize) {
+            throw new LargeKeyException(len);
+        }
+        return len + 2;
+    }
+
     /**
      * Calculate encoded key length, including header.
      */
     static int calculateKeyLength(byte[] key) {
         int len = key.length;
-        return len + ((len <= 64 & len > 0) ? 1 : 2);
+        return len + ((len <= SMALL_KEY_LIMIT & len > 0) ? 1 : 2);
     }
 
     /**
@@ -3425,7 +3428,7 @@ final class Node extends Latch {
     static int encodeKey(final byte[] key, final byte[] dest, int destLoc) {
         final int keyLen = key.length;
 
-        if (keyLen <= 64 && keyLen > 0) {
+        if (keyLen <= SMALL_KEY_LIMIT && keyLen > 0) {
             dest[destLoc++] = (byte) (keyLen - 1);
         } else {
             dest[destLoc++] = (byte) (0x80 | (keyLen >> 8));
@@ -3461,17 +3464,7 @@ final class Node extends Latch {
      */
     private void copyToLeafEntry(byte[] key, int fragmented, byte[] value, int entryLoc) {
         final byte[] page = mPage;
-
-        final int len = key.length;
-        if (len <= 64 && len > 0) {
-            page[entryLoc++] = (byte) (len - 1);
-        } else {
-            page[entryLoc++] = (byte) (0x80 | (len >> 8));
-            page[entryLoc++] = (byte) len;
-        }
-        arraycopy(key, 0, page, entryLoc, len);
-
-        copyToLeafValue(page, fragmented, value, entryLoc + len);
+        copyToLeafValue(page, fragmented, value, encodeKey(key, page, entryLoc));
     }
 
     /**
