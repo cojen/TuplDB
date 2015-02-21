@@ -516,7 +516,6 @@ final class UndoLog {
             case OP_COMMIT_TRUNCATE:
             case OP_UNINSERT:
             case OP_UNUPDATE:
-            case OP_UNDELETE_FRAGMENTED:
                 // Ignore.
                 break;
 
@@ -526,6 +525,7 @@ final class UndoLog {
                 break;
 
             case OP_UNDELETE:
+            case OP_UNDELETE_FRAGMENTED:
                 // Since transaction was committed, don't insert an entry
                 // to undo a delete, but instead delete the ghost.
                 while ((activeIndex = findIndex(activeIndex)) != null) {
