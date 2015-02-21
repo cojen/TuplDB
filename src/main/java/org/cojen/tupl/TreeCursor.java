@@ -1724,7 +1724,12 @@ class TreeCursor implements CauseCloseable, Cursor {
         // This will always acquire a lock if required to. A try-lock pattern
         // can skip the lock acquisition in certain cases, but the optimization
         // doesn't seem worth the trouble.
-        return doLoad(mTxn);
+        try {
+            return doLoad(mTxn);
+        } catch (LockFailureException e) {
+            mValue = NOT_LOADED;
+            throw e;
+        }
     }
 
     /**
