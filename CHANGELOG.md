@@ -1,6 +1,10 @@
 Changelog
 =========
 
+v1.1.12
+------
+* Ensure that recovery deletes ghosts of large deleted values.
+
 v1.1.11
 ------
 * Ensure that any failure to push into the undo log is cleaned up.
