@@ -1669,7 +1669,13 @@ class TreeCursor implements CauseCloseable, Cursor {
 
                 if (node.isLeaf()) {
                     mLeaf = frame;
-                    Transaction txn = prepareFind(node.retrieveKey(pos));
+                    Transaction txn;
+                    try {
+                        txn = prepareFind(node.retrieveKey(pos));
+                    } catch (Throwable e) {
+                        resetLatched(node);
+                        throw e;
+                    }
 
                     LockResult result;
                     if ((result = tryLockKey(txn)) == null) {
@@ -2819,6 +2825,7 @@ class TreeCursor implements CauseCloseable, Cursor {
 
     private boolean verifyFrames(int level, Node[] stack, TreeCursorFrame frame,
                                  VerificationObserver observer)
+        throws IOException
     {
         TreeCursorFrame parentFrame = frame.mParentFrame;
 

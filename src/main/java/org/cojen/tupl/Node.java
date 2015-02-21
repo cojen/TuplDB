@@ -1139,7 +1139,7 @@ final class Node extends Latch {
     /**
      * @param pos position as provided by binarySearch; must be positive
      */
-    byte[] retrieveKey(int pos) {
+    byte[] retrieveKey(int pos) throws IOException {
         final byte[] page = mPage;
         return retrieveKeyAtLoc(page, decodeUnsignedShortLE(page, mSearchVecStart + pos));
     }
@@ -1147,7 +1147,7 @@ final class Node extends Latch {
     /**
      * @param loc absolute location of entry
      */
-    static byte[] retrieveKeyAtLoc(final byte[] page, int loc) {
+    static byte[] retrieveKeyAtLoc(final byte[] page, int loc) throws IOException {
         int keyLen = page[loc++];
         keyLen = keyLen >= 0 ? (keyLen + 1)
             : (((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff));
@@ -1164,7 +1164,7 @@ final class Node extends Latch {
      * @param limitKey comparison key
      * @param limitMode positive for LE behavior, negative for GE behavior
      */
-    byte[] retrieveKeyCmp(int pos, byte[] limitKey, int limitMode) {
+    byte[] retrieveKeyCmp(int pos, byte[] limitKey, int limitMode) throws IOException {
         final byte[] page = mPage;
         int loc = decodeUnsignedShortLE(page, mSearchVecStart + pos);
         int keyLen = page[loc++];
@@ -1201,7 +1201,7 @@ final class Node extends Latch {
      *
      * @see Utils#midKey
      */
-    byte[] midKey(int lowPos, byte[] highKey) {
+    private byte[] midKey(int lowPos, byte[] highKey) throws IOException {
         final byte[] lowPage = mPage;
         int lowLoc = decodeUnsignedShortLE(lowPage, mSearchVecStart + lowPos);
         int lowKeyLen = lowPage[lowLoc++];
@@ -1215,7 +1215,7 @@ final class Node extends Latch {
      *
      * @see Utils#midKey
      */
-    byte[] midKey(byte[] lowKey, int highPos) {
+    private byte[] midKey(byte[] lowKey, int highPos) throws IOException {
         final byte[] highPage = mPage;
         int highLoc = decodeUnsignedShortLE(highPage, mSearchVecStart + highPos);
         int highKeyLen = highPage[highLoc++];
@@ -1229,7 +1229,7 @@ final class Node extends Latch {
      *
      * @see Utils#midKey
      */
-    byte[] midKey(int lowPos, Node highNode, int highPos) {
+    byte[] midKey(int lowPos, Node highNode, int highPos) throws IOException {
         final byte[] lowPage = mPage;
         int lowLoc = decodeUnsignedShortLE(lowPage, mSearchVecStart + lowPos);
         int lowKeyLen = lowPage[lowLoc++];
@@ -1816,20 +1816,26 @@ final class Node extends Latch {
         final int parentKeyGrowth;
 
         check: {
-            int leftAvail = left.availableLeafBytes();
-            if (leftAvail >= moveAmount) {
-                // Parent search key will be updated, so verify that it has room.
-                int highPos = lastSearchVecLoc - mSearchVecStart;
-                newKey = midKey(highPos - 2, this, highPos);
-                newKeyLen = calculateKeyLength(newKey);
-                parentPage = parent.mPage;
-                parentKeyLoc = decodeUnsignedShortLE
-                    (parentPage, parent.mSearchVecStart + childPos - 2);
-                parentKeyGrowth = newKeyLen - keyLengthAtLoc(parentPage, parentKeyLoc);
-                if (parentKeyGrowth <= 0 || parentKeyGrowth <= parent.availableInternalBytes()) {
-                    // Parent has room for the new search key, so proceed with rebalancing.
-                    break check;
+            try {
+                int leftAvail = left.availableLeafBytes();
+                if (leftAvail >= moveAmount) {
+                    // Parent search key will be updated, so verify that it has room.
+                    int highPos = lastSearchVecLoc - mSearchVecStart;
+                    newKey = midKey(highPos - 2, this, highPos);
+                    newKeyLen = calculateKeyLength(newKey);
+                    parentPage = parent.mPage;
+                    parentKeyLoc = decodeUnsignedShortLE
+                        (parentPage, parent.mSearchVecStart + childPos - 2);
+                    parentKeyGrowth = newKeyLen - keyLengthAtLoc(parentPage, parentKeyLoc);
+                    if (parentKeyGrowth <= 0 ||
+                        parentKeyGrowth <= parent.availableInternalBytes())
+                    {
+                        // Parent has room for the new search key, so proceed with rebalancing.
+                        break check;
+                    }
                 }
+            } catch (IOException e) {
+                // Caused by failed read of a large key. Abort the rebalance attempt.
             }
             left.releaseExclusive();
             parent.releaseExclusive();
@@ -1999,20 +2005,26 @@ final class Node extends Latch {
         final int parentKeyGrowth;
 
         check: {
-            int rightAvail = right.availableLeafBytes();
-            if (rightAvail >= moveAmount) {
-                // Parent search key will be updated, so verify that it has room.
-                int highPos = firstSearchVecLoc - mSearchVecStart;
-                newKey = midKey(highPos - 2, this, highPos);
-                newKeyLen = calculateKeyLength(newKey);
-                parentPage = parent.mPage;
-                parentKeyLoc = decodeUnsignedShortLE
-                    (parentPage, parent.mSearchVecStart + childPos);
-                parentKeyGrowth = newKeyLen - keyLengthAtLoc(parentPage, parentKeyLoc);
-                if (parentKeyGrowth <= 0 || parentKeyGrowth <= parent.availableInternalBytes()) {
-                    // Parent has room for the new search key, so proceed with rebalancing.
-                    break check;
+            try {
+                int rightAvail = right.availableLeafBytes();
+                if (rightAvail >= moveAmount) {
+                    // Parent search key will be updated, so verify that it has room.
+                    int highPos = firstSearchVecLoc - mSearchVecStart;
+                    newKey = midKey(highPos - 2, this, highPos);
+                    newKeyLen = calculateKeyLength(newKey);
+                    parentPage = parent.mPage;
+                    parentKeyLoc = decodeUnsignedShortLE
+                        (parentPage, parent.mSearchVecStart + childPos);
+                    parentKeyGrowth = newKeyLen - keyLengthAtLoc(parentPage, parentKeyLoc);
+                    if (parentKeyGrowth <= 0 ||
+                        parentKeyGrowth <= parent.availableInternalBytes())
+                    {
+                        // Parent has room for the new search key, so proceed with rebalancing.
+                        break check;
+                    }
                 }
+            } catch (IOException e) {
+                // Caused by failed read of a large key. Abort the rebalance attempt.
             }
             right.releaseExclusive();
             parent.releaseExclusive();
@@ -2152,7 +2164,7 @@ final class Node extends Latch {
                 childFrame = childFrame.mPrevCousin;
             }
 
-            // FIXME: IOException; how to rollback the damage?
+            // FIXME: IOException caused by call to splitInternal; frames are all wrong
             InResult result = createInternalEntry
                 (tree, keyPos, split.splitKeyEncodedLength(), newChildPos << 3, true);
 
@@ -3607,9 +3619,21 @@ final class Node extends Latch {
             // descending. Split into new left node, but only the new entry
             // goes into the new node.
 
-            mSplit = newSplitLeft(newNode);
-            // Choose an appropriate middle key for suffix compression.
-            mSplit.setKey(midKey(key, 0));
+            Split split;
+            try {
+                split = newSplitLeft(newNode);
+                // Choose an appropriate middle key for suffix compression.
+                split.setKey(midKey(key, 0));
+            } catch (Throwable e) {
+                try {
+                    tree.mDatabase.deleteNode(newNode, true);
+                } catch (Throwable e2) {
+                    e.addSuppressed(e2);
+                }
+                throw e;
+            }
+
+            mSplit = split;
 
             // Position search vector at extreme left, allowing new entries to
             // be placed in a natural descending order.
@@ -3637,15 +3661,26 @@ final class Node extends Latch {
             // ascending. Split into new right node, but only the new entry
             // goes into the new node.
 
-            mSplit = newSplitRight(newNode);
-            // Choose an appropriate middle key for suffix compression.
-            mSplit.setKey(midKey(pos - searchVecStart - 2, key));
+            Split split;
+            try {
+                split = newSplitRight(newNode);
+                // Choose an appropriate middle key for suffix compression.
+                split.setKey(midKey(pos - searchVecStart - 2, key));
+            } catch (Throwable e) {
+                try {
+                    tree.mDatabase.deleteNode(newNode, true);
+                } catch (Throwable e2) {
+                    e.addSuppressed(e2);
+                }
+                throw e;
+            }
+
+            mSplit = split;
 
             // Position search vector at extreme right, allowing new entries to
             // be placed in a natural ascending order.
             newNode.mRightSegTail = newPage.length - 1;
-            newNode.mSearchVecStart =
-                newNode.mSearchVecEnd = newPage.length - 2;
+            newNode.mSearchVecStart = newNode.mSearchVecEnd = newPage.length - 2;
 
             newNode.copyToLeafEntry(key, fragmented, value, TN_HEADER_SIZE);
             encodeShortLE(newPage, newPage.length - 2, TN_HEADER_SIZE);
@@ -3713,18 +3748,20 @@ final class Node extends Latch {
                 avail += entryLen + 2;
             }
 
-            // Allocate Split object first, in case it throws an OutOfMemoryError.
-            mSplit = newSplitLeft(newNode);
-
-            // Prune off the left end of this node.
-            mSearchVecStart = searchVecLoc;
-            mGarbage += garbageAccum;
-
             newNode.mLeftSegTail = TN_HEADER_SIZE;
             newNode.mSearchVecStart = TN_HEADER_SIZE;
             newNode.mSearchVecEnd = newSearchVecLoc - 2;
 
+            // Prune off the left end of this node.
+            final int originalStart = mSearchVecStart;
+            final int originalGarbage = mGarbage;
+            mSearchVecStart = searchVecLoc;
+            mGarbage += garbageAccum;
+
+            Split split;
             try {
+                split = newSplitLeft(newNode);
+
                 if (newLoc == 0) {
                     // Unable to insert new entry into left node. Insert it
                     // into the right node, which should have space now.
@@ -3735,12 +3772,24 @@ final class Node extends Latch {
                     newNode.copyToLeafEntry(key, fragmented, value, destLoc);
                     encodeShortLE(newPage, newLoc, destLoc);
                 }
-            } finally {
+
                 // Choose an appropriate middle key for suffix compression.
-                mSplit.setKey(newNode.midKey(newNode.highestKeyPos(), this, 0));
+                split.setKey(newNode.midKey(newNode.highestKeyPos(), this, 0));
+
                 newNode.mRightSegTail = destLoc - 1;
                 newNode.releaseExclusive();
+            } catch (Throwable e) {
+                mSearchVecStart = originalStart;
+                mGarbage = originalGarbage;
+                try {
+                    tree.mDatabase.deleteNode(newNode, true);
+                } catch (Throwable e2) {
+                    e.addSuppressed(e2);
+                }
+                throw e;
             }
+
+            mSplit = split;
         } else {
             // Split into new right node.
 
@@ -3794,18 +3843,20 @@ final class Node extends Latch {
                 avail += entryLen + 2;
             }
 
-            // Allocate Split object first, in case it throws an OutOfMemoryError.
-            mSplit = newSplitRight(newNode);
-
-            // Prune off the right end of this node.
-            mSearchVecEnd = searchVecLoc;
-            mGarbage += garbageAccum;
-
             newNode.mRightSegTail = newPage.length - 1;
             newNode.mSearchVecStart = newSearchVecLoc + 2;
             newNode.mSearchVecEnd = newPage.length - 2;
 
+            // Prune off the right end of this node.
+            final int originalEnd = mSearchVecEnd;
+            final int originalGarbage = mGarbage;
+            mSearchVecEnd = searchVecLoc;
+            mGarbage += garbageAccum;
+
+            Split split;
             try {
+                split = newSplitRight(newNode);
+
                 if (newLoc == 0) {
                     // Unable to insert new entry into new right node. Insert
                     // it into the left node, which should have space now.
@@ -3816,12 +3867,24 @@ final class Node extends Latch {
                     encodeShortLE(newPage, newLoc, destLoc);
                     destLoc += encodedLen;
                 }
-            } finally {
+
                 // Choose an appropriate middle key for suffix compression.
-                mSplit.setKey(this.midKey(this.highestKeyPos(), newNode, 0));
+                split.setKey(this.midKey(this.highestKeyPos(), newNode, 0));
+
                 newNode.mLeftSegTail = destLoc;
                 newNode.releaseExclusive();
+            } catch (Throwable e) {
+                mSearchVecEnd = originalEnd;
+                mGarbage = originalGarbage;
+                try {
+                    tree.mDatabase.deleteNode(newNode, true);
+                } catch (Throwable e2) {
+                    e.addSuppressed(e2);
+                }
+                throw e;
             }
+
+            mSplit = split;
         }
     }
 
@@ -3902,6 +3965,19 @@ final class Node extends Latch {
             // special case -- the code below only promotes an existing key to the parent.
             // This case is expected to only occur when using very large keys.
 
+            // Allocate Split object first, in case it throws an OutOfMemoryError.
+            Split split;
+            try {
+                split = newSplitLeft(newNode);
+            } catch (Throwable e) {
+                try {
+                    tree.mDatabase.deleteNode(newNode, true);
+                } catch (Throwable e2) {
+                    e.addSuppressed(e2);
+                }
+                throw e;
+            }
+
             // Signals that key should not be inserted.
             result.mEntryLoc = -1;
 
@@ -3943,7 +4019,7 @@ final class Node extends Latch {
             mGarbage += leftKeyLen;
 
             // Caller must set the split key.
-            mSplit = newSplitLeft(newNode);
+            mSplit = split;
 
             return result;
         }
@@ -4039,8 +4115,17 @@ final class Node extends Latch {
 
                         if (newKeyLoc != 0) {
                             // ...and split key has been found.
-                            split = newSplitLeft(newNode);
-                            split.setKey(retrieveKeyAtLoc(page, entryLoc));
+                            try {
+                                split = newSplitLeft(newNode);
+                                split.setKey(retrieveKeyAtLoc(page, entryLoc));
+                            } catch (Throwable e) {
+                                try {
+                                    tree.mDatabase.deleteNode(newNode, true);
+                                } catch (Throwable e2) {
+                                    e.addSuppressed(e2);
+                                }
+                                throw e;
+                            }
                             break;
                         }
 
@@ -4147,8 +4232,17 @@ final class Node extends Latch {
 
                         if (newKeyLoc != 0) {
                             // ...and split key has been found.
-                            split = newSplitRight(newNode);
-                            split.setKey(retrieveKeyAtLoc(page, entryLoc));
+                            try {
+                                split = newSplitRight(newNode);
+                                split.setKey(retrieveKeyAtLoc(page, entryLoc));
+                            } catch (Throwable e) {
+                                try {
+                                    tree.mDatabase.deleteNode(newNode, true);
+                                } catch (Throwable e2) {
+                                    e.addSuppressed(e2);
+                                }
+                                throw e;
+                            }
                             break moveEntries;
                         }
 
