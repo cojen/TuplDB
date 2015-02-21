@@ -1391,7 +1391,7 @@ final class Node extends Latch {
             }
 
             // Copy whole entry into undo log.
-            txn.undoStore(tree.mId, UndoLog.OP_INSERT, page, entryLoc, loc - entryLoc);
+            txn.pushUndoStore(tree.mId, UndoLog.OP_UNDELETE, page, entryLoc, loc - entryLoc);
         }
 
         // Ghost will be deleted later when locks are released.
@@ -1461,7 +1461,7 @@ final class Node extends Latch {
         }
 
         // Copy whole entry into undo log.
-        txn.undoStore(tree.mId, UndoLog.OP_UPDATE, page, entryLoc, loc - entryLoc);
+        txn.pushUndoStore(tree.mId, UndoLog.OP_UNUPDATE, page, entryLoc, loc - entryLoc);
     }
 
     /**
