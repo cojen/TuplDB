@@ -100,16 +100,16 @@ final class UndoLog {
     private static final byte OP_INDEX = (byte) 18;
 
     // Payload is key to delete to undo an insert.
-    static final byte OP_DELETE = (byte) 19;
+    static final byte OP_UNINSERT = (byte) 19;
 
-    // Payload is key and value to store to undo an update.
-    static final byte OP_UPDATE = (byte) 20;
+    // Payload is Node-encoded key/value entry to store, to undo an update.
+    static final byte OP_UNUPDATE = (byte) 20;
 
-    // Payload is key and value to store to undo a delete.
-    static final byte OP_INSERT = (byte) 21;
+    // Payload is Node-encoded key/value entry to store, to undo a delete.
+    static final byte OP_UNDELETE = (byte) 21;
 
-    // Payload is key and trash id to undo a fragmented value delete.
-    static final byte OP_RECLAIM_FRAGMENTED = (byte) 22;
+    // Payload is Node-encoded key and trash id, to undo a fragmented value delete.
+    static final byte OP_UNDELETE_FRAGMENTED = (byte) 22;
 
     private final Database mDatabase;
     private final long mTxnId;
@@ -514,9 +514,9 @@ final class UndoLog {
             case OP_SCOPE_COMMIT:
             case OP_COMMIT:
             case OP_COMMIT_TRUNCATE:
-            case OP_DELETE:
-            case OP_UPDATE:
-            case OP_RECLAIM_FRAGMENTED:
+            case OP_UNINSERT:
+            case OP_UNUPDATE:
+            case OP_UNDELETE_FRAGMENTED:
                 // Ignore.
                 break;
 
@@ -525,7 +525,7 @@ final class UndoLog {
                 activeIndex = null;
                 break;
 
-            case OP_INSERT:
+            case OP_UNDELETE:
                 // Since transaction was committed, don't insert an entry
                 // to undo a delete, but instead delete the ghost.
                 while ((activeIndex = findIndex(activeIndex)) != null) {
@@ -568,7 +568,7 @@ final class UndoLog {
             activeIndex = null;
             break;
 
-        case OP_DELETE:
+        case OP_UNINSERT:
             while ((activeIndex = findIndex(activeIndex)) != null) {
                 try {
                     activeIndex.delete(Transaction.BOGUS, entry);
@@ -580,8 +580,8 @@ final class UndoLog {
             }
             break;
 
-        case OP_UPDATE:
-        case OP_INSERT: {
+        case OP_UNUPDATE:
+        case OP_UNDELETE: {
             byte[][] pair = Node.retrieveKeyValueAtLoc(entry, 0);
             while ((activeIndex = findIndex(activeIndex)) != null) {
                 try {
@@ -595,7 +595,7 @@ final class UndoLog {
             break;
         }
 
-        case OP_RECLAIM_FRAGMENTED:
+        case OP_UNDELETE_FRAGMENTED:
             while ((activeIndex = findIndex(activeIndex)) != null) {
                 try {
                     mDatabase.fragmentedTrash().remove(mTxnId, (Tree) activeIndex, entry);
@@ -943,15 +943,15 @@ final class UndoLog {
                 mActiveIndexId = decodeLongLE(entry, 0);
                 break;
 
-            case OP_DELETE:
+            case OP_UNINSERT:
                 if (lockMode != LockMode.UNSAFE) {
                     scope.addLock(mActiveIndexId, entry);
                 }
                 break;
 
-            case OP_UPDATE:
-            case OP_INSERT:
-            case OP_RECLAIM_FRAGMENTED:
+            case OP_UNUPDATE:
+            case OP_UNDELETE:
+            case OP_UNDELETE_FRAGMENTED:
                 if (lockMode != LockMode.UNSAFE) {
                     scope.addLock(mActiveIndexId, Node.retrieveKeyAtLoc(entry, 0));
                 }

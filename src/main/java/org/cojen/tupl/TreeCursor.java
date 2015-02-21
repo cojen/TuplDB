@@ -2109,7 +2109,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                         if (txn == null) {
                             commitPos = mTree.redoStore(key, value);
                         } else if (txn.lockMode() != LockMode.UNSAFE) {
-                            txn.undoDelete(mTree.mId, key);
+                            txn.pushUninsert(mTree.mId, key);
                             if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
                                 txn.redoStore(mTree.mId, key, value);
                             }
