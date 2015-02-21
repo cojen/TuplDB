@@ -675,10 +675,10 @@ public class Transaction extends Locker {
     /**
      * Caller must hold commit lock.
      *
-     * @param op OP_UPDATE or OP_INSERT
-     * @param payload key/value entry, as encoded by leaf node
+     * @param op OP_UNUPDATE or OP_UNDELETE
+     * @param payload Node-encoded key/value entry
      */
-    final void undoStore(long indexId, byte op, byte[] payload, int off, int len)
+    final void pushUndoStore(long indexId, byte op, byte[] payload, int off, int len)
         throws IOException
     {
         check();
@@ -692,10 +692,10 @@ public class Transaction extends Locker {
     /**
      * Caller must hold commit lock.
      */
-    final void undoDelete(long indexId, byte[] key) throws IOException {
+    final void pushUninsert(long indexId, byte[] key) throws IOException {
         check();
         try {
-            undoLog().push(indexId, UndoLog.OP_DELETE, key, 0, key.length);
+            undoLog().push(indexId, UndoLog.OP_UNINSERT, key, 0, key.length);
         } catch (Throwable e) {
             throw borked(e, false);
         }
@@ -704,14 +704,14 @@ public class Transaction extends Locker {
     /**
      * Caller must hold commit lock.
      *
-     * @param payload Node encoded key followed by trash id
+     * @param payload Node-encoded key followed by trash id
      */
-    final void undoReclaimFragmented(long indexId, byte[] payload, int off, int len)
+    final void pushUndeleteFragmented(long indexId, byte[] payload, int off, int len)
         throws IOException
     {
         check();
         try {
-            undoLog().push(indexId, UndoLog.OP_RECLAIM_FRAGMENTED, payload, off, len);
+            undoLog().push(indexId, UndoLog.OP_UNDELETE_FRAGMENTED, payload, off, len);
         } catch (Throwable e) {
             throw borked(e, false);
         }

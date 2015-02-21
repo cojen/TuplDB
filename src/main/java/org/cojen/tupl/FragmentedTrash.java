@@ -83,7 +83,7 @@ final class FragmentedTrash {
         arraycopy(entry, keyStart, payload, 0, keyLen);
         arraycopy(key, 8, payload, keyLen, tidLen);
 
-        txn.undoReclaimFragmented(indexId, payload, 0, payloadLen);
+        txn.pushUndeleteFragmented(indexId, payload, 0, payloadLen);
     }
 
     /**
