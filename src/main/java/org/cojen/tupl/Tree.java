@@ -670,9 +670,8 @@ class Tree implements Index {
             sharedCommitLock.lock();
             Node node = latchDirty(frame);
             try {
-                int encodedKeyLen = Node.calculateKeyLengthChecked(this, key);
                 // TODO: inline and specialize
-                node.insertLeafEntry(this, frame.mNodePos, key, encodedKeyLen, value);
+                node.insertLeafEntry(this, frame.mNodePos, key, value);
                 frame.mNodePos += 2;
 
                 while (node.mSplit != null) {
@@ -913,6 +912,12 @@ class Tree implements Index {
      */
     final boolean markDirty(Node node) throws IOException {
         return mDatabase.markDirty(this, node);
+    }
+
+    final void checkKeyLength(byte[] key) throws LargeKeyException {
+        if (key.length > mMaxKeySize && !mDatabase.mAllowLargeKeys) {
+            throw new LargeKeyException(key.length);                        
+        }
     }
 
     /**
