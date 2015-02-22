@@ -114,4 +114,14 @@ public abstract class Transformer {
         tkey = tkey.clone();
         return Utils.decrement(tkey, 0, tkey.length) ? inverseTransformKey(tkey) : null;
     }
+
+    /**
+     * Returns the natural ordering of keys, after they have been transformed. Default
+     * implementation returns the same ordering.
+     *
+     * @param original natural ordering of view before transformation
+     */
+    public Ordering transformedOrdering(Ordering original) {
+        return original;
+    }
 }
