@@ -506,9 +506,9 @@ final class Node extends Latch implements DatabaseAccess {
                         // Note: An optimized version wouldn't need to copy the whole key.
                         byte[] compareKey = tree.mDatabase
                             .reconstructKey(page, compareLoc, compareLen);
-                        compareLen = compareKey.length;
+                        int fullCompareLen = compareKey.length;
 
-                        int minLen = Math.min(compareLen, keyLen);
+                        int minLen = Math.min(fullCompareLen, keyLen);
                         i = Math.min(lowMatch, highMatch);
                         for (; i<minLen; i++) {
                             byte cb = compareKey[i];
@@ -524,6 +524,12 @@ final class Node extends Latch implements DatabaseAccess {
                                 continue outer;
                             }
                         }
+
+                        // Update compareLen and compareLoc for use by the code after the
+                        // current scope. The compareLoc is completely bogus at this point,
+                        // but is corrected when the value is retrieved below.
+                        compareLoc += compareLen - fullCompareLen;
+                        compareLen = fullCompareLen;
 
                         break compare;
                     }
