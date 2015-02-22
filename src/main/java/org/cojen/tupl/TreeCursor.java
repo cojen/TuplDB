@@ -2106,7 +2106,7 @@ class TreeCursor implements CauseCloseable, Cursor {
 
                     try {
                         // Check before creating a potentially harmful redo log action.
-                        int encodedKeyLen = Node.calculateKeyLengthChecked(mTree, key);
+                        mTree.checkKeyLength(key);
 
                         if (txn == null) {
                             commitPos = mTree.redoStore(key, value);
@@ -2119,7 +2119,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                             commitPos = mTree.redoStoreNoLock(key, value);
                         }
 
-                        node.insertLeafEntry(mTree, ~pos, key, encodedKeyLen, value);
+                        node.insertLeafEntry(mTree, ~pos, key, value);
                     } catch (Throwable e) {
                         node.releaseExclusive();
                         throw e;
@@ -2203,12 +2203,10 @@ class TreeCursor implements CauseCloseable, Cursor {
     }
 
     /**
-     * Non-transactional insert of a fragmented value as an undo action. Cursor value is
+     * Non-transactional store of a fragmented value as an undo action. Cursor value is
      * NOT_LOADED as a side-effect.
-     *
-     * @return false if already exists
      */
-    final boolean insertFragmented(byte[] value) throws IOException {
+    final void storeFragmented(byte[] value) throws IOException {
         if (mKey == null) {
             throw new IllegalStateException("Cursor position is undefined");
         }
@@ -2224,34 +2222,25 @@ class TreeCursor implements CauseCloseable, Cursor {
 
             final int pos = leaf.mNodePos;
             if (pos >= 0) {
-                // Entry already exists.
-                if (mValue != null) {
-                    node.releaseExclusive();
-                    return false;
-                }
-
                 try {
-                    // Replace ghost.
                     node.updateLeafValue(mTree, pos, Node.ENTRY_FRAGMENTED, value);
                 } catch (Throwable e) {
                     node.releaseExclusive();
                     throw e;
                 }
-
                 if (node.mSplit != null) {
                     // Releases latch if an exception is thrown.
                     node = mTree.finishSplit(leaf, node);
                 }
             } else {
+                // This case is possible when entry was deleted concurrently without a lock.
                 byte[] key = mKey;
                 try {
-                    int encodedKeyLen = Node.calculateKeyLengthChecked(mTree, key);
-                    node.insertFragmentedLeafEntry(mTree, ~pos, key, encodedKeyLen, value);
+                    node.insertFragmentedLeafEntry(mTree, ~pos, key, value);
                 } catch (Throwable e) {
                     node.releaseExclusive();
                     throw e;
                 }
-                    
                 // Releases latch if an exception is thrown.
                 node = postInsert(leaf, node, key);
             }
@@ -2259,8 +2248,6 @@ class TreeCursor implements CauseCloseable, Cursor {
             mValue = NOT_LOADED;
 
             node.releaseExclusive();
-
-            return true;
         } catch (Throwable e) {
             throw handleException(e, false);
         } finally {
@@ -2281,8 +2268,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     final Node insertBlank(TreeCursorFrame leaf, Node node, long vlength) throws IOException {
         byte[] key = mKey;
         try {
-            int encodedKeyLen = Node.calculateKeyLengthChecked(mTree, key);
-            node.insertBlankLeafEntry(mTree, ~leaf.mNodePos, key, encodedKeyLen, vlength);
+            node.insertBlankLeafEntry(mTree, ~leaf.mNodePos, key, vlength);
         } catch (Throwable e) {
             node.releaseExclusive();
             throw e;
