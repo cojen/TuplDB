@@ -3400,7 +3400,7 @@ final class Node extends Latch {
      */
     static int calculateKeyLength(byte[] key) {
         int len = key.length;
-        return len + ((len <= SMALL_KEY_LIMIT & len > 0) ? 1 : 2);
+        return --len + ((len & ~(SMALL_KEY_LIMIT - 1)) == 0 ? 2 : 3);
     }
 
     /**
