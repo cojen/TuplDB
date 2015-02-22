@@ -43,7 +43,7 @@ final class TransformedView implements View {
 
     @Override
     public Ordering getOrdering() {
-        return mSource.getOrdering();
+        return mTransformer.transformedOrdering(mSource.getOrdering());
     }
 
     @Override
