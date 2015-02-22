@@ -26,8 +26,15 @@ package org.cojen.tupl;
 public class LargeKeyException extends DatabaseException {
     private static final long serialVersionUID = 1L;
 
-    public LargeKeyException(int length) {
+    private final long mLength;
+
+    public LargeKeyException(long length) {
         super("Key is too large: " + length);
+        mLength = length;
+    }
+
+    public long getLength() {
+        return mLength;
     }
 
     @Override
