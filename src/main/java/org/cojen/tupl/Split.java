@@ -16,6 +16,8 @@
 
 package org.cojen.tupl;
 
+import java.io.IOException;
+
 /**
  * Short-lived object for capturing the state of a partially completed node split.
  *
@@ -117,7 +119,7 @@ final class Split {
      * Performs a binary search against the split, returning the position
      * within the original node as if it had not split.
      */
-    final int binarySearch(Node node, byte[] key) {
+    final int binarySearch(Node node, byte[] key) throws IOException {
         Node sibling = latchSibling();
 
         Node left, right;

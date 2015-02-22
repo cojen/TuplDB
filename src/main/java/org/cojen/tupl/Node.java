@@ -492,25 +492,58 @@ final class Node extends Latch implements DatabaseAccess {
         outer: while (lowPos <= highPos) {
             int midPos = ((lowPos + highPos) >> 1) & ~1;
 
-            int compareLoc = decodeUnsignedShortLE(page, midPos);
-            int compareLen = page[compareLoc++];
-            compareLen = compareLen >= 0 ? (compareLen + 1)
-                : (((compareLen & 0x3f) << 8) | ((page[compareLoc++]) & 0xff));
+            int compareLoc, compareLen, i;
+            compare: {
+                compareLoc = decodeUnsignedShortLE(page, midPos);
+                compareLen = page[compareLoc++];
+                if (compareLen >= 0) {
+                    compareLen++;
+                } else {
+                    int header = compareLen;
+                    compareLen = ((compareLen & 0x3f) << 8) | ((page[compareLoc++]) & 0xff);
 
-            int minLen = Math.min(compareLen, keyLen);
-            int i = Math.min(lowMatch, highMatch);
-            for (; i<minLen; i++) {
-                byte cb = page[compareLoc + i];
-                byte kb = key[i];
-                if (cb != kb) {
-                    if ((cb & 0xff) < (kb & 0xff)) {
-                        lowPos = midPos + 2;
-                        lowMatch = i;
-                    } else {
-                        highPos = midPos - 2;
-                        highMatch = i;
+                    if ((header & ENTRY_FRAGMENTED) != 0) {
+                        // Note: An optimized version wouldn't need to copy the whole key.
+                        byte[] compareKey = tree.mDatabase
+                            .reconstructKey(page, compareLoc, compareLen);
+                        compareLen = compareKey.length;
+
+                        int minLen = Math.min(compareLen, keyLen);
+                        i = Math.min(lowMatch, highMatch);
+                        for (; i<minLen; i++) {
+                            byte cb = compareKey[i];
+                            byte kb = key[i];
+                            if (cb != kb) {
+                                if ((cb & 0xff) < (kb & 0xff)) {
+                                    lowPos = midPos + 2;
+                                    lowMatch = i;
+                                } else {
+                                    highPos = midPos - 2;
+                                    highMatch = i;
+                                }
+                                continue outer;
+                            }
+                        }
+
+                        break compare;
                     }
-                    continue outer;
+                }
+
+                int minLen = Math.min(compareLen, keyLen);
+                i = Math.min(lowMatch, highMatch);
+                for (; i<minLen; i++) {
+                    byte cb = page[compareLoc + i];
+                    byte kb = key[i];
+                    if (cb != kb) {
+                        if ((cb & 0xff) < (kb & 0xff)) {
+                            lowPos = midPos + 2;
+                            lowMatch = i;
+                        } else {
+                            highPos = midPos - 2;
+                            highMatch = i;
+                        }
+                        continue outer;
+                    }
                 }
             }
 
@@ -1021,7 +1054,7 @@ final class Node extends Latch implements DatabaseAccess {
     /**
      * @return 2-based insertion pos, which is negative if key not found
      */
-    int binarySearch(byte[] key) {
+    int binarySearch(byte[] key) throws IOException {
         final byte[] page = mPage;
         final int keyLen = key.length;
         int lowPos = mSearchVecStart;
@@ -1033,25 +1066,58 @@ final class Node extends Latch implements DatabaseAccess {
         outer: while (lowPos <= highPos) {
             int midPos = ((lowPos + highPos) >> 1) & ~1;
 
-            int compareLoc = decodeUnsignedShortLE(page, midPos);
-            int compareLen = page[compareLoc++];
-            compareLen = compareLen >= 0 ? (compareLen + 1)
-                : (((compareLen & 0x3f) << 8) | ((page[compareLoc++]) & 0xff));
+            int compareLen, i;
+            compare: {
+                int compareLoc = decodeUnsignedShortLE(page, midPos);
+                compareLen = page[compareLoc++];
+                if (compareLen >= 0) {
+                    compareLen++;
+                } else {
+                    int header = compareLen;
+                    compareLen = ((compareLen & 0x3f) << 8) | ((page[compareLoc++]) & 0xff);
 
-            int minLen = Math.min(compareLen, keyLen);
-            int i = Math.min(lowMatch, highMatch);
-            for (; i<minLen; i++) {
-                byte cb = page[compareLoc + i];
-                byte kb = key[i];
-                if (cb != kb) {
-                    if ((cb & 0xff) < (kb & 0xff)) {
-                        lowPos = midPos + 2;
-                        lowMatch = i;
-                    } else {
-                        highPos = midPos - 2;
-                        highMatch = i;
+                    if ((header & ENTRY_FRAGMENTED) != 0) {
+                        // Note: An optimized version wouldn't need to copy the whole key.
+                        byte[] compareKey = getDatabase()
+                            .reconstructKey(page, compareLoc, compareLen);
+                        compareLen = compareKey.length;
+
+                        int minLen = Math.min(compareLen, keyLen);
+                        i = Math.min(lowMatch, highMatch);
+                        for (; i<minLen; i++) {
+                            byte cb = compareKey[i];
+                            byte kb = key[i];
+                            if (cb != kb) {
+                                if ((cb & 0xff) < (kb & 0xff)) {
+                                    lowPos = midPos + 2;
+                                    lowMatch = i;
+                                } else {
+                                    highPos = midPos - 2;
+                                    highMatch = i;
+                                }
+                                continue outer;
+                            }
+                        }
+
+                        break compare;
                     }
-                    continue outer;
+                }
+
+                int minLen = Math.min(compareLen, keyLen);
+                i = Math.min(lowMatch, highMatch);
+                for (; i<minLen; i++) {
+                    byte cb = page[compareLoc + i];
+                    byte kb = key[i];
+                    if (cb != kb) {
+                        if ((cb & 0xff) < (kb & 0xff)) {
+                            lowPos = midPos + 2;
+                            lowMatch = i;
+                        } else {
+                            highPos = midPos - 2;
+                            highMatch = i;
+                        }
+                        continue outer;
+                    }
                 }
             }
 
@@ -1073,7 +1139,7 @@ final class Node extends Latch implements DatabaseAccess {
      * @param midPos 2-based starting position
      * @return 2-based insertion pos, which is negative if key not found
      */
-    int binarySearch(byte[] key, int midPos) {
+    int binarySearch(byte[] key, int midPos) throws IOException {
         int lowPos = mSearchVecStart;
         int highPos = mSearchVecEnd;
         if (lowPos > highPos) {
@@ -1092,25 +1158,58 @@ final class Node extends Latch implements DatabaseAccess {
 
         while (true) {
             compare: {
-                int compareLoc = decodeUnsignedShortLE(page, midPos);
-                int compareLen = page[compareLoc++];
-                compareLen = compareLen >= 0 ? (compareLen + 1)
-                    : (((compareLen & 0x3f) << 8) | ((page[compareLoc++]) & 0xff));
+                int compareLen, i;
+                c2: {
+                    int compareLoc = decodeUnsignedShortLE(page, midPos);
+                    compareLen = page[compareLoc++];
+                    if (compareLen >= 0) {
+                        compareLen++;
+                    } else {
+                        int header = compareLen;
+                        compareLen = ((compareLen & 0x3f) << 8) | ((page[compareLoc++]) & 0xff);
 
-                int minLen = Math.min(compareLen, keyLen);
-                int i = Math.min(lowMatch, highMatch);
-                for (; i<minLen; i++) {
-                    byte cb = page[compareLoc + i];
-                    byte kb = key[i];
-                    if (cb != kb) {
-                        if ((cb & 0xff) < (kb & 0xff)) {
-                            lowPos = midPos + 2;
-                            lowMatch = i;
-                        } else {
-                            highPos = midPos - 2;
-                            highMatch = i;
+                        if ((header & ENTRY_FRAGMENTED) != 0) {
+                            // Note: An optimized version wouldn't need to copy the whole key.
+                            byte[] compareKey = getDatabase()
+                                .reconstructKey(page, compareLoc, compareLen);
+                            compareLen = compareKey.length;
+
+                            int minLen = Math.min(compareLen, keyLen);
+                            i = Math.min(lowMatch, highMatch);
+                            for (; i<minLen; i++) {
+                                byte cb = compareKey[i];
+                                byte kb = key[i];
+                                if (cb != kb) {
+                                    if ((cb & 0xff) < (kb & 0xff)) {
+                                        lowPos = midPos + 2;
+                                        lowMatch = i;
+                                    } else {
+                                        highPos = midPos - 2;
+                                        highMatch = i;
+                                    }
+                                    break compare;
+                                }
+                            }
+
+                            break c2;
                         }
-                        break compare;
+                    }
+
+                    int minLen = Math.min(compareLen, keyLen);
+                    i = Math.min(lowMatch, highMatch);
+                    for (; i<minLen; i++) {
+                        byte cb = page[compareLoc + i];
+                        byte kb = key[i];
+                        if (cb != kb) {
+                            if ((cb & 0xff) < (kb & 0xff)) {
+                                lowPos = midPos + 2;
+                                lowMatch = i;
+                            } else {
+                                highPos = midPos - 2;
+                                highMatch = i;
+                            }
+                            break compare;
+                        }
                     }
                 }
 
@@ -4040,7 +4139,7 @@ final class Node extends Latch implements DatabaseAccess {
             // Node has two keys and the key to insert should go in the middle. The new key
             // should not be inserted, but instead be promoted to the parent. Treat this as a
             // special case -- the code below only promotes an existing key to the parent.
-            // This case is expected to only occur when using very large keys.
+            // This case is expected to only occur when using large keys.
 
             // Allocate Split object first, in case it throws an OutOfMemoryError.
             Split split;

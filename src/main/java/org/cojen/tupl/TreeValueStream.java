@@ -91,7 +91,7 @@ final class TreeValueStream extends AbstractStream {
 
     @Override
     public void setLength(long length) throws IOException {
-        // FIXME: txn undo/redo; be careful with large keys to avoid redo corruption
+        // FIXME: txn undo/redo
         try {
             if (length < 0) {
                 mCursor.store(null);
@@ -131,7 +131,7 @@ final class TreeValueStream extends AbstractStream {
 
     @Override
     void doWrite(long pos, byte[] buf, int off, int len) throws IOException {
-        // FIXME: txn undo/redo; be careful with large keys to avoid redo corruption
+        // FIXME: txn undo/redo
         try {
             final TreeCursorFrame leaf = mCursor.leafExclusiveNotSplit();
 
