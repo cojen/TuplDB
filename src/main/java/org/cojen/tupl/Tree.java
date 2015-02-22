@@ -610,12 +610,16 @@ class Tree implements Index {
                     node.releaseExclusive();
                 }
 
-                dout.writeShort(midKey.length);
-                dout.write(midKey);
+                // Omit entries with very large keys. Primer encoding format needs to change
+                // for supporting larger keys.
+                if (midKey.length < 0xffff) {
+                    dout.writeShort(midKey.length);
+                    dout.write(midKey);
+                }
             }
         });
 
-        // Terminator. Key is limited to 16383 bytes; see LargeKeyException.
+        // Terminator.
         dout.writeShort(0xffff);
     }
 
