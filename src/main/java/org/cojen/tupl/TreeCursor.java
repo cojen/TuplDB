@@ -1008,8 +1008,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                 default:
                     if (mTree.isLockAvailable(txn, mKey, keyHash())) {
                         // No need to acquire full lock.
-                        mValue = mKeyOnly ? node.hasLeafValue(pos)
-                            : node.retrieveLeafValue(mTree, pos);
+                        mValue = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
                         return LockResult.UNOWNED;
                     } else {
                         return null;
@@ -1025,8 +1024,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                 }
 
                 if (result.isHeld()) {
-                    mValue = mKeyOnly ? node.hasLeafValue(pos)
-                        : node.retrieveLeafValue(mTree, pos);
+                    mValue = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
                     return result;
                 } else {
                     return null;
@@ -1098,7 +1096,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             if (txn == null) {
                 mode = LockMode.READ_COMMITTED;
             } else if ((mode = txn.lockMode()).noReadLock) {
-                mValue = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(mTree, pos);
+                mValue = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
                 result = LockResult.UNOWNED;
                 break obtainResult;
             }
@@ -1109,8 +1107,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             default:
                 if (mTree.isLockAvailable(txn, mKey, keyHash())) {
                     // No need to acquire full lock.
-                    mValue = mKeyOnly ? node.hasLeafValue(pos)
-                        : node.retrieveLeafValue(mTree, pos);
+                    mValue = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
                     result = LockResult.UNOWNED;
                 } else {
                     result = null;
@@ -1127,8 +1124,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             }
 
             if (result.isHeld()) {
-                mValue = mKeyOnly ? node.hasLeafValue(pos)
-                    : node.retrieveLeafValue(mTree, pos);
+                mValue = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
             } else {
                 result = null;
             }
@@ -1205,7 +1201,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             } else if (mKeyOnly) {
                 return (mValue = node.hasLeafValue(pos)) != null;
             } else {
-                return (mValue = node.retrieveLeafValue(mTree, pos)) != null;
+                return (mValue = node.retrieveLeafValue(pos)) != null;
             }
         } finally {
             node.releaseShared();
@@ -1342,7 +1338,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                     } else {
                         try {
                             mValue = mKeyOnly ? node.hasLeafValue(pos)
-                                : node.retrieveLeafValue(mTree, pos);
+                                : node.retrieveLeafValue(pos);
                             return result;
                         } catch (Throwable e) {
                             mValue = NOT_LOADED;
@@ -1490,7 +1486,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                     } else {
                         try {
                             mValue = mKeyOnly ? node.hasLeafValue(pos)
-                                : node.retrieveLeafValue(mTree, pos);
+                                : node.retrieveLeafValue(pos);
                         } catch (Throwable e) {
                             mValue = NOT_LOADED;
                             node.releaseExclusive();
@@ -1688,7 +1684,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                     } else {
                         try {
                             mValue = mKeyOnly ? node.hasLeafValue(pos)
-                                : node.retrieveLeafValue(mTree, pos);
+                                : node.retrieveLeafValue(pos);
                         } catch (Throwable e) {
                             mValue = NOT_LOADED;
                             node.releaseExclusive();
@@ -1786,7 +1782,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             Node node = frame.mNode;
             try {
                 int pos = frame.mNodePos;
-                mValue = pos >= 0 ? node.retrieveLeafValue(mTree, pos) : null;
+                mValue = pos >= 0 ? node.retrieveLeafValue(pos) : null;
             } finally {
                 node.releaseShared();
             }
@@ -2027,7 +2023,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                         commitPos = mTree.redoStoreNoLock(key, null);
                     }
 
-                    node.deleteLeafEntry(mTree, pos);
+                    node.deleteLeafEntry(pos);
                 } catch (Throwable e) {
                     node.releaseExclusive();
                     throw e;
@@ -2236,7 +2232,7 @@ class TreeCursor implements CauseCloseable, Cursor {
 
                 try {
                     // Replace ghost.
-                    node.updateLeafValue(mTree, pos, Node.VALUE_FRAGMENTED, value);
+                    node.updateLeafValue(mTree, pos, Node.ENTRY_FRAGMENTED, value);
                 } catch (Throwable e) {
                     node.releaseExclusive();
                     throw e;
@@ -2309,7 +2305,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             Node node = notSplitDirty(leaf);
 
             try {
-                node.deleteLeafEntry(mTree, 0);
+                node.deleteLeafEntry(0);
             } catch (Throwable e) {
                 node.releaseExclusive();
                 throw e;

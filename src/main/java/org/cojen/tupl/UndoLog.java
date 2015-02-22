@@ -32,7 +32,7 @@ import static org.cojen.tupl.Utils.*;
  *
  * @author Brian S O'Neill
  */
-final class UndoLog {
+final class UndoLog implements DatabaseAccess {
     // Linked list of UndoLogs registered with Database.
     UndoLog mPrev;
     UndoLog mNext;
@@ -131,6 +131,11 @@ final class UndoLog {
     UndoLog(Database db, long txnId) {
         mDatabase = db;
         mTxnId = txnId;
+    }
+
+    @Override
+    public Database getDatabase() {
+        return mDatabase;
     }
 
     /**
@@ -529,7 +534,7 @@ final class UndoLog {
                 // Since transaction was committed, don't insert an entry
                 // to undo a delete, but instead delete the ghost.
                 while ((activeIndex = findIndex(activeIndex)) != null) {
-                    byte[] key = Node.retrieveKeyAtLoc(entry, 0);
+                    byte[] key = Node.retrieveKeyAtLoc(this, entry, 0);
                     TreeCursor cursor = new TreeCursor((Tree) activeIndex, null);
                     try {
                         cursor.deleteGhost(key);
@@ -582,7 +587,7 @@ final class UndoLog {
 
         case OP_UNUPDATE:
         case OP_UNDELETE: {
-            byte[][] pair = Node.retrieveKeyValueAtLoc(entry, 0);
+            byte[][] pair = Node.retrieveKeyValueAtLoc(this, entry, 0);
             while ((activeIndex = findIndex(activeIndex)) != null) {
                 try {
                     activeIndex.store(Transaction.BOGUS, pair[0], pair[1]);
@@ -953,7 +958,7 @@ final class UndoLog {
             case OP_UNDELETE:
             case OP_UNDELETE_FRAGMENTED:
                 if (lockMode != LockMode.UNSAFE) {
-                    scope.addLock(mActiveIndexId, Node.retrieveKeyAtLoc(entry, 0));
+                    scope.addLock(mActiveIndexId, Node.retrieveKeyAtLoc(this, entry, 0));
                 }
                 break;
             }
