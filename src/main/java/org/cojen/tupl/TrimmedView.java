@@ -87,6 +87,32 @@ final class TrimmedView implements View {
     }
 
     @Override
+    public final LockResult lockShared(Transaction txn, byte[] key)
+        throws LockFailureException, ViewConstraintException
+    {
+        return mSource.lockShared(txn, applyPrefix(key));
+    }
+
+    @Override
+    public final LockResult lockUpgradable(Transaction txn, byte[] key)
+        throws LockFailureException, ViewConstraintException
+    {
+        return mSource.lockUpgradable(txn, applyPrefix(key));
+    }
+
+    @Override
+    public final LockResult lockExclusive(Transaction txn, byte[] key)
+        throws LockFailureException, ViewConstraintException
+    {
+        return mSource.lockExclusive(txn, applyPrefix(key));
+    }
+
+    @Override
+    public final LockResult lockCheck(Transaction txn, byte[] key) throws ViewConstraintException {
+        return mSource.lockCheck(txn, applyPrefix(key));
+    }
+
+    @Override
     public Stream newStream() {
         return new TrimmedStream(this, mSource.newStream());
     }

@@ -40,7 +40,7 @@ abstract class SubView implements View {
         if (inRange(key)) {
             mSource.store(txn, key, value);
         } else {
-            throw new ViewConstraintException("Key is outside allowed range");
+            throw fail();
         }
     }
 
@@ -49,7 +49,7 @@ abstract class SubView implements View {
         if (inRange(key)) {
             return mSource.exchange(txn, key, value);
         } else {
-            throw new ViewConstraintException("Key is outside allowed range");
+            throw fail();
         }
     }
 
@@ -61,7 +61,7 @@ abstract class SubView implements View {
         if (value == null) {
             return true;
         }
-        throw new ViewConstraintException("Key is outside allowed range");
+        throw fail();
     }
 
     @Override
@@ -80,7 +80,7 @@ abstract class SubView implements View {
             if (newValue == null) {
                 return true;
             }
-            throw new ViewConstraintException("Key is outside allowed range");
+            throw fail();
         }
         return false;
     }
@@ -93,6 +93,44 @@ abstract class SubView implements View {
     @Override
     public boolean remove(Transaction txn, byte[] key, byte[] value) throws IOException {
         return inRange(key) ? mSource.remove(txn, key, value) : (value == null);
+    }
+
+    @Override
+    public final LockResult lockShared(Transaction txn, byte[] key)
+        throws LockFailureException, ViewConstraintException
+    {
+        if (inRange(key)) {
+            return mSource.lockShared(txn, key);
+        }
+        throw fail();
+    }
+
+    @Override
+    public final LockResult lockUpgradable(Transaction txn, byte[] key)
+        throws LockFailureException, ViewConstraintException
+    {
+        if (inRange(key)) {
+            return mSource.lockUpgradable(txn, key);
+        }
+        throw fail();
+    }
+
+    @Override
+    public final LockResult lockExclusive(Transaction txn, byte[] key)
+        throws LockFailureException, ViewConstraintException
+    {
+        if (inRange(key)) {
+            return mSource.lockExclusive(txn, key);
+        }
+        throw fail();
+    }
+
+    @Override
+    public final LockResult lockCheck(Transaction txn, byte[] key) throws ViewConstraintException {
+        if (inRange(key)) {
+            return mSource.lockCheck(txn, key);
+        }
+        throw fail();
     }
 
     @Override
@@ -132,5 +170,9 @@ abstract class SubView implements View {
             }
             throw new IllegalArgumentException("Trim amount is longer than prefix");
         }
+    }
+
+    private static ViewConstraintException fail() {
+        return new ViewConstraintException("Key is outside allowed range");
     }
 }

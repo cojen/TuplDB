@@ -203,6 +203,30 @@ class Tree implements Index {
     }
 
     @Override
+    public final LockResult lockShared(Transaction txn, byte[] key) throws LockFailureException {
+        return txn.lockShared(mId, key);
+    }
+
+    @Override
+    public final LockResult lockUpgradable(Transaction txn, byte[] key)
+        throws LockFailureException
+    {
+        return txn.lockUpgradable(mId, key);
+    }
+
+    @Override
+    public final LockResult lockExclusive(Transaction txn, byte[] key)
+        throws LockFailureException
+    {
+        return txn.lockExclusive(mId, key);
+    }
+
+    @Override
+    public final LockResult lockCheck(Transaction txn, byte[] key) {
+        return txn.lockCheck(mId, key);
+    }
+
+    @Override
     public Stream newStream() {
         TreeCursor cursor = new TreeCursor(this);
         cursor.autoload(false);
