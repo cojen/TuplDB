@@ -132,6 +132,48 @@ public interface Index extends View, Closeable {
 
     /**
      * {@inheritDoc}
+     *
+     * @throws IllegalStateException {@inheritDoc}
+     * @throws LockFailureException {@inheritDoc} 
+     * @throws DeadlockException {@inheritDoc}
+     * @throws ViewConstraintException {@inheritDoc}
+     */
+    @Override
+    public LockResult lockShared(Transaction txn, byte[] key)
+        throws LockFailureException, ViewConstraintException;
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws LockFailureException {@inheritDoc}
+     * @throws DeadlockException {@inheritDoc}
+     * @throws ViewConstraintException {@inheritDoc}
+     */
+    @Override
+    public LockResult lockUpgradable(Transaction txn, byte[] key)
+        throws LockFailureException, ViewConstraintException;
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws LockFailureException {@inheritDoc}
+     * @throws DeadlockException {@inheritDoc}
+     * @throws ViewConstraintException {@inheritDoc}
+     */
+    @Override
+    public LockResult lockExclusive(Transaction txn, byte[] key)
+        throws LockFailureException, ViewConstraintException;
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws ViewConstraintException {@inheritDoc}
+     */
+    @Override
+    public LockResult lockCheck(Transaction txn, byte[] key) throws ViewConstraintException;
+
+    /**
+     * {@inheritDoc}
      */
     @Override
     public Stream newStream();
