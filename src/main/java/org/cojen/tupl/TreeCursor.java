@@ -1148,7 +1148,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         if (txn == null) {
             Locker locker = mTree.lockSharedLocal(mKey, keyHash());
             try {
-                if (copyIfExists()) {
+                if (copyIfExists() != null) {
                     return LockResult.UNOWNED;
                 }
             } finally {
@@ -1175,7 +1175,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                 break;
             }
 
-            if (copyIfExists()) {
+            if (copyIfExists() != null) {
                 if (result == LockResult.UNOWNED) {
                     txn.unlock();
                 }
@@ -1191,21 +1191,23 @@ class TreeCursor implements CauseCloseable, Cursor {
         return null;
     }
 
-    private boolean copyIfExists() throws IOException {
+    private byte[] copyIfExists() throws IOException {
+        byte[] value;
+
         TreeCursorFrame frame = leafSharedNotSplit();
         Node node = frame.mNode;
         try {
             int pos = frame.mNodePos;
             if (pos < 0) {
-                return false;
-            } else if (mKeyOnly) {
-                return (mValue = node.hasLeafValue(pos)) != null;
+                value = null;
             } else {
-                return (mValue = node.retrieveLeafValue(pos)) != null;
+                value = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
             }
         } finally {
             node.releaseShared();
         }
+
+        return value;
     }
 
     /**

@@ -83,6 +83,32 @@ final class ReverseView implements View {
     }
 
     @Override
+    public LockResult lockShared(Transaction txn, byte[] key)
+        throws LockFailureException, ViewConstraintException
+    {
+        return mSource.lockShared(txn, key);
+    }
+
+    @Override
+    public LockResult lockUpgradable(Transaction txn, byte[] key)
+        throws LockFailureException, ViewConstraintException
+    {
+        return mSource.lockUpgradable(txn, key);
+    }
+
+    @Override
+    public LockResult lockExclusive(Transaction txn, byte[] key)
+        throws LockFailureException, ViewConstraintException
+    {
+        return mSource.lockExclusive(txn, key);
+    }
+
+    @Override
+    public final LockResult lockCheck(Transaction txn, byte[] key) throws ViewConstraintException {
+        return mSource.lockCheck(txn, key);
+    }
+
+    @Override
     public Stream newStream() {
         return mSource.newStream();
     }
