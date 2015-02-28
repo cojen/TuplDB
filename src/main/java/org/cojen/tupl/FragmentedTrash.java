@@ -83,7 +83,7 @@ final class FragmentedTrash {
         arraycopy(entry, keyStart, payload, 0, keyLen);
         arraycopy(key, 8, payload, keyLen, tidLen);
 
-        txn.undoReclaimFragmented(indexId, payload, 0, payloadLen);
+        txn.pushUndeleteFragmented(indexId, payload, 0, payloadLen);
     }
 
     /**
@@ -128,18 +128,21 @@ final class FragmentedTrash {
      */
     void remove(long txnId, Tree index, byte[] undoEntry) throws IOException {
         // Extract the index and trash keys.
-        int loc = 0;
-        int keyLen = undoEntry[loc++];
-        keyLen = keyLen >= 0 ? ((keyLen & 0x3f) + 1)
-            : (((keyLen & 0x3f) << 8) | ((undoEntry[loc++]) & 0xff));
-        byte[] indexKey = new byte[keyLen];
-        arraycopy(undoEntry, loc, indexKey, 0, keyLen);
-        loc += keyLen;
-        int tidLen = undoEntry.length - loc;
-        byte[] trashKey = new byte[8 + tidLen];
 
-        encodeLongBE(trashKey, 0, txnId);
-        arraycopy(undoEntry, loc, trashKey, 8, tidLen);
+        byte[] indexKey;
+        {
+            DatabaseAccess dbAccess = mTrash.mRoot;
+            indexKey = Node.retrieveKeyAtLoc(dbAccess, undoEntry, 0);
+        }
+
+        byte[] trashKey;
+        {
+            int tidLoc = Node.keyLengthAtLoc(undoEntry, 0);
+            int tidLen = undoEntry.length - tidLoc;
+            trashKey = new byte[8 + tidLen];
+            encodeLongBE(trashKey, 0, txnId);
+            arraycopy(undoEntry, tidLoc, trashKey, 8, tidLen);
+        }
 
         byte[] fragmented;
         TreeCursor cursor = new TreeCursor(mTrash, Transaction.BOGUS);
@@ -160,12 +163,7 @@ final class FragmentedTrash {
         cursor = new TreeCursor(index, Transaction.BOGUS);
         try {
             cursor.find(indexKey);
-            if (!cursor.insertFragmented(fragmented)) {
-                // Assume undo operation applies to an update operation. Delete
-                // the uncommitted value and insert again.
-                cursor.store(null);
-                cursor.insertFragmented(fragmented);
-            }
+            cursor.storeFragmented(fragmented);
             cursor.reset();
         } catch (Throwable e) {
             throw closeOnFailure(cursor, e);

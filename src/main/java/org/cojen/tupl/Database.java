@@ -160,6 +160,7 @@ public final class Database implements CauseCloseable, Flushable {
     private static final int OPEN_REGULAR = 0, OPEN_DESTROY = 1, OPEN_TEMP = 2;
 
     final EventListener mEventListener;
+    final boolean mAllowLargeKeys;
 
     private final File mBaseFile;
     private final LockedFile mLockFile;
@@ -294,6 +295,8 @@ public final class Database implements CauseCloseable, Flushable {
      */
     private Database(DatabaseConfig config, int openMode) throws IOException {
         config.mEventListener = mEventListener = SafeEventListener.makeSafe(config.mEventListener);
+
+        mAllowLargeKeys = config.mAllowLargeKeys;
 
         mBaseFile = config.mBaseFile;
         final File[] dataFiles = config.dataFiles();
@@ -3452,6 +3455,19 @@ public final class Database implements CauseCloseable, Flushable {
             throw e;
         } finally {
             inode.releaseExclusive();
+        }
+    }
+
+    /**
+     * Reconstruct a fragmented key.
+     */
+    byte[] reconstructKey(byte[] fragmented, int off, int len) throws IOException {
+        try {
+            return reconstruct(fragmented, off, len);
+        } catch (LargeValueException e) {
+            LargeKeyException e2 = new LargeKeyException(e.getLength());
+            e2.setStackTrace(e.getStackTrace());
+            throw e2;
         }
     }
 

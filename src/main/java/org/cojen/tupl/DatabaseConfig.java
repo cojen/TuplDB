@@ -65,6 +65,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
     transient ReplicationManager mReplManager;
     int mMaxReplicaThreads;
     transient Crypto mCrypto;
+    boolean mAllowLargeKeys;
 
     // Fields are set as a side-effect of constructing a replicated Database.
     transient long mReplRecoveryStartNanos;
@@ -364,6 +365,15 @@ public class DatabaseConfig implements Cloneable, Serializable {
      */
     public DatabaseConfig encrypt(Crypto crypto) {
         mCrypto = crypto;
+        return this;
+    }
+
+    /**
+     * @deprecated experimental
+     */
+    @Deprecated
+    public DatabaseConfig allowLargeKeys(boolean b) {
+        mAllowLargeKeys = b;
         return this;
     }
 

@@ -203,6 +203,30 @@ class Tree implements Index {
     }
 
     @Override
+    public final LockResult lockShared(Transaction txn, byte[] key) throws LockFailureException {
+        return txn.lockShared(mId, key);
+    }
+
+    @Override
+    public final LockResult lockUpgradable(Transaction txn, byte[] key)
+        throws LockFailureException
+    {
+        return txn.lockUpgradable(mId, key);
+    }
+
+    @Override
+    public final LockResult lockExclusive(Transaction txn, byte[] key)
+        throws LockFailureException
+    {
+        return txn.lockExclusive(mId, key);
+    }
+
+    @Override
+    public final LockResult lockCheck(Transaction txn, byte[] key) {
+        return txn.lockCheck(mId, key);
+    }
+
+    @Override
     public Stream newStream() {
         TreeCursor cursor = new TreeCursor(this);
         cursor.autoload(false);
@@ -610,12 +634,16 @@ class Tree implements Index {
                     node.releaseExclusive();
                 }
 
-                dout.writeShort(midKey.length);
-                dout.write(midKey);
+                // Omit entries with very large keys. Primer encoding format needs to change
+                // for supporting larger keys.
+                if (midKey.length < 0xffff) {
+                    dout.writeShort(midKey.length);
+                    dout.write(midKey);
+                }
             }
         });
 
-        // Terminator. Key is limited to 16383 bytes; see LargeKeyException.
+        // Terminator.
         dout.writeShort(0xffff);
     }
 
@@ -666,9 +694,8 @@ class Tree implements Index {
             sharedCommitLock.lock();
             Node node = latchDirty(frame);
             try {
-                int encodedKeyLen = Node.calculateKeyLengthChecked(this, key);
                 // TODO: inline and specialize
-                node.insertLeafEntry(this, frame.mNodePos, key, encodedKeyLen, value);
+                node.insertLeafEntry(this, frame.mNodePos, key, value);
                 frame.mNodePos += 2;
 
                 while (node.mSplit != null) {
@@ -909,6 +936,16 @@ class Tree implements Index {
      */
     final boolean markDirty(Node node) throws IOException {
         return mDatabase.markDirty(this, node);
+    }
+
+    final void checkKeyLength(byte[] key) throws LargeKeyException {
+        if (key.length > mMaxKeySize && !mDatabase.mAllowLargeKeys) {
+            throw new LargeKeyException(key.length);                        
+        }
+    }
+
+    final byte[] fragmentKey(byte[] key) throws IOException {
+        return mDatabase.fragment(key, key.length, mMaxKeySize);
     }
 
     /**

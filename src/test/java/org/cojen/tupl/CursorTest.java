@@ -44,11 +44,23 @@ public class CursorTest {
         mDb = null;
     }
 
+    protected View openIndex(String name) throws Exception {
+        return mDb.openIndex(name);
+    }
+
+    protected boolean verify(View ix) throws Exception {
+        return ((Index) ix).verify(null);
+    }
+
+    protected TreeCursor treeCursor(Cursor c) {
+        return (TreeCursor) c;
+    }
+
     protected Database mDb;
 
     @Test
     public void empty() throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
         Cursor c = ix.newCursor(Transaction.BOGUS);
         c.first();
         assertNull(c.key());
@@ -101,7 +113,7 @@ public class CursorTest {
     }
 
     private void stubCursor(boolean eviction) throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
 
         for (int i=0; i<1000; i++) {
             ix.store(Transaction.BOGUS, key(i), value(i));
@@ -132,7 +144,7 @@ public class CursorTest {
 
         if (eviction) {
             // Force eviction of stub. Cannot verify directly, however.
-            Index ix2 = mDb.openIndex("test2");
+            View ix2 = openIndex("test2");
             c.reset();
             c2.reset();
 
@@ -173,7 +185,7 @@ public class CursorTest {
 
     @Test
     public void findLock() throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
         ix.store(Transaction.BOGUS, key(0), value(0));
 
         // Lock key 0.
@@ -200,8 +212,38 @@ public class CursorTest {
     }
 
     @Test
+    public void loadLock() throws Exception {
+        View ix = openIndex("test");
+        ix.store(Transaction.BOGUS, key(0), value(0));
+
+        Cursor c = ix.newCursor(null);
+        c.find(key(0));
+
+        // Lock key 0.
+        Transaction txn = mDb.newTransaction();
+        ix.store(txn, key(0), value(0));
+
+        try {
+            c.load();
+            fail();
+        } catch (LockTimeoutException e) {
+        }
+
+        txn.exit();
+
+        // If timed out, cursor is at the desired key, but no value is available.
+        fastAssertArrayEquals(key(0), c.key());
+        assertTrue(c.value() == Cursor.NOT_LOADED);
+
+        c.load();
+        fastAssertArrayEquals(value(0), c.value());
+
+        c.reset();
+    }
+
+    @Test
     public void findGeLock() throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
         ix.store(Transaction.BOGUS, key(0), value(0));
 
         // Lock key 0.
@@ -229,7 +271,7 @@ public class CursorTest {
 
     @Test
     public void findGtLock() throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
         ix.store(Transaction.BOGUS, key(0), value(0));
         ix.store(Transaction.BOGUS, key(1), value(1));
 
@@ -247,7 +289,7 @@ public class CursorTest {
 
     @Test
     public void findLeLock() throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
         ix.store(Transaction.BOGUS, key(0), value(0));
 
         // Lock key 0.
@@ -275,7 +317,7 @@ public class CursorTest {
 
     @Test
     public void findLtLock() throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
         ix.store(Transaction.BOGUS, key(0), value(0));
         ix.store(Transaction.BOGUS, key(1), value(1));
 
@@ -302,7 +344,7 @@ public class CursorTest {
     }
 
     private void nextLock(boolean last) throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
         ix.store(Transaction.BOGUS, key(0), value(0));
         ix.store(Transaction.BOGUS, key(1), value(1));
 
@@ -344,8 +386,8 @@ public class CursorTest {
         previousLock(true);
     }
 
-    public void previousLock(boolean first) throws Exception {
-        Index ix = mDb.openIndex("test");
+    private void previousLock(boolean first) throws Exception {
+        View ix = openIndex("test");
         ix.store(Transaction.BOGUS, key(0), value(0));
         ix.store(Transaction.BOGUS, key(1), value(1));
 
@@ -384,7 +426,7 @@ public class CursorTest {
     }
 
     private void nextLe(int count) throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
         for (int i=0; i<count; i++) {
             ix.store(Transaction.BOGUS, key(i), value(i));
         }
@@ -409,7 +451,7 @@ public class CursorTest {
 
     @Test
     public void nextLeLock() throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
         ix.store(Transaction.BOGUS, key(0), value(0));
         ix.store(Transaction.BOGUS, key(1), value(1));
 
@@ -444,7 +486,7 @@ public class CursorTest {
     }
 
     private void nextLt(int count) throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
         for (int i=0; i<4; i++) {
             ix.store(Transaction.BOGUS, key(i), value(i));
         }
@@ -465,7 +507,7 @@ public class CursorTest {
 
     @Test
     public void nextLtLock() throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
         ix.store(Transaction.BOGUS, key(0), value(0));
         ix.store(Transaction.BOGUS, key(1), value(1));
         ix.store(Transaction.BOGUS, key(2), value(2));
@@ -501,7 +543,7 @@ public class CursorTest {
     }
 
     private void previousGe(int count) throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
         for (int i=0; i<count; i++) {
             ix.store(Transaction.BOGUS, key(i), value(i));
         }
@@ -526,7 +568,7 @@ public class CursorTest {
 
     @Test
     public void previousGeLock() throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
         ix.store(Transaction.BOGUS, key(0), value(0));
         ix.store(Transaction.BOGUS, key(1), value(1));
 
@@ -561,7 +603,7 @@ public class CursorTest {
     }
 
     private void previousGt(int count) throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
         for (int i=0; i<count; i++) {
             ix.store(Transaction.BOGUS, key(i), value(i));
         }
@@ -582,7 +624,7 @@ public class CursorTest {
 
     @Test
     public void previousGtLock() throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
         ix.store(Transaction.BOGUS, key(0), value(0));
         ix.store(Transaction.BOGUS, key(1), value(1));
         ix.store(Transaction.BOGUS, key(2), value(2));
@@ -612,8 +654,36 @@ public class CursorTest {
     }
 
     @Test
+    public void randomLock() throws Exception {
+        View ix = openIndex("test");
+        ix.store(Transaction.BOGUS, key(0), value(0));
+
+        // Lock key 0.
+        Transaction txn = mDb.newTransaction();
+        ix.store(txn, key(0), value(0));
+
+        Cursor c = ix.newCursor(null);
+        try {
+            c.random(key(0), key(1));
+            fail();
+        } catch (LockTimeoutException e) {
+        }
+
+        txn.exit();
+
+        // If timed out, cursor is at the desired key, but no value is available.
+        fastAssertArrayEquals(key(0), c.key());
+        assertTrue(c.value() == Cursor.NOT_LOADED);
+
+        c.load();
+        fastAssertArrayEquals(value(0), c.value());
+
+        c.reset();
+    }
+
+    @Test
     public void findNearby() throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
 
         final int count = 3000;
         final int seed = 3892476;
@@ -627,9 +697,9 @@ public class CursorTest {
 
         Cursor c1 = ix.newCursor(Transaction.BOGUS);
         for (c1.first(); c1.key() != null; c1.next()) {
-            TreeCursor c2 = (TreeCursor) ix.newCursor(Transaction.BOGUS);
+            TreeCursor c2 = treeCursor(ix.newCursor(Transaction.BOGUS));
             for (c2.first(); c2.key() != null; c2.next()) {
-                TreeCursor ref = (TreeCursor) c1.copy();
+                TreeCursor ref = treeCursor(c1.copy());
                 ref.findNearby(c2.key());
                 assertTrue(ref.equalPositions(c2));
                 ref.reset();
@@ -641,7 +711,7 @@ public class CursorTest {
 
     @Test
     public void storeNearby() throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
 
         final int count = 3000;
         final int seed = 3892476;
@@ -673,7 +743,7 @@ public class CursorTest {
         }
         scan.reset();
 
-        assertTrue(ix.verify(null));
+        assertTrue(verify(ix));
 
         // Verify that old and new keys exist.
 
@@ -703,7 +773,7 @@ public class CursorTest {
             removed++;
             if (removed % 10 == 0) {
                 verifyExtremities(ix);
-                assertTrue(ix.verify(null));
+                assertTrue(verify(ix));
             }
         }
         c.reset();
@@ -712,7 +782,7 @@ public class CursorTest {
         assertNull(c.key());
 
         verifyExtremities(ix);
-        assertTrue(ix.verify(null));
+        assertTrue(verify(ix));
 
         // Ordered fill and verify.
 
@@ -727,18 +797,18 @@ public class CursorTest {
         fill.reset();
 
         verifyExtremities(ix);
-        assertTrue(ix.verify(null));
+        assertTrue(verify(ix));
     }
 
-    private static void verifyExtremities(Index ix) throws Exception {
-        TreeCursor extremity = (TreeCursor) ix.newCursor(Transaction.BOGUS);
+    private void verifyExtremities(View ix) throws Exception {
+        TreeCursor extremity = treeCursor(ix.newCursor(Transaction.BOGUS));
         assertTrue(extremity.verifyExtremities(Node.LOW_EXTREMITY));
         assertTrue(extremity.verifyExtremities(Node.HIGH_EXTREMITY));
     }
 
     @Test
     public void random() throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
 
         Cursor c = ix.newCursor(null);
         c.random(null, null);
@@ -769,7 +839,7 @@ public class CursorTest {
     public void randomNotGhost() throws Exception {
         // Verfies that ghosts are not selected.
 
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
         ix.store(Transaction.BOGUS, key(0), value(0));
         ix.store(Transaction.BOGUS, key(1), value(1));
 
@@ -794,7 +864,7 @@ public class CursorTest {
 
     @Test
     public void randomRange() throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
         for (int i=0; i<10000; i++) {
             ix.store(Transaction.BOGUS, key(i), value(i));
         }
@@ -850,7 +920,7 @@ public class CursorTest {
         // Verifies that cursors are positioned properly after making structural modifications
         // to the tree.
 
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
 
         Random rnd = new Random(793846);
         byte[] value = new byte[0];
@@ -873,7 +943,7 @@ public class CursorTest {
             notFoundCursors[i] = c;
         }
 
-        assertTrue(ix.verify(null));
+        assertTrue(verify(ix));
 
         verifyPositions(ix, foundCursors);
         verifyPositions(ix, notFoundCursors);
@@ -884,7 +954,7 @@ public class CursorTest {
         // Checks cursor stability while inserting records in descending order. This should
         // exercise internal node rebalancing.
         
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
 
         byte[] value = new byte[200];
 
@@ -900,7 +970,7 @@ public class CursorTest {
             cursors[i] = c;
         }
 
-        assertTrue(ix.verify(null));
+        assertTrue(verify(ix));
 
         verifyPositions(ix, cursors);
     }
@@ -910,7 +980,7 @@ public class CursorTest {
         // Checks cursor stability while inserting records in ascending order. This should
         // exercise internal node rebalancing.
         
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
 
         byte[] value = new byte[200];
 
@@ -926,17 +996,17 @@ public class CursorTest {
             cursors[i] = c;
         }
 
-        assertTrue(ix.verify(null));
+        assertTrue(verify(ix));
 
         verifyPositions(ix, cursors);
     }
 
-    private static void verifyPositions(Index ix, Cursor[] cursors) throws Exception {
+    private void verifyPositions(View ix, Cursor[] cursors) throws Exception {
         for (Cursor existing : cursors) {
-            TreeCursor c = (TreeCursor) ix.newCursor(Transaction.BOGUS);
+            Cursor c = ix.newCursor(Transaction.BOGUS);
             byte[] key = existing.key();
             c.find(key);
-            assertTrue(c.equalPositions((TreeCursor) existing));
+            assertTrue(treeCursor(c).equalPositions(treeCursor(existing)));
             c.reset();
             existing.reset();
         }
