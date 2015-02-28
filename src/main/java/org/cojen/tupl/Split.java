@@ -266,6 +266,6 @@ final class Split {
      * @return updated destLoc
      */
     final int copySplitKeyToParent(final byte[] dest, final int destLoc) {
-        return Node.encodeKey(mSplitKey, dest, destLoc);
+        return Node.encodeNormalKey(mSplitKey, dest, destLoc);
     }
 }
