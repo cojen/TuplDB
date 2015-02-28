@@ -1203,11 +1203,11 @@ class TreeCursor implements CauseCloseable, Cursor {
             } else {
                 value = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
             }
-            mValue = value;
         } finally {
             node.releaseShared();
         }
 
+        mValue = value;
         return value;
     }
 
