@@ -1743,9 +1743,9 @@ final class Node extends Latch implements DatabaseAccess {
     {
         int encodedLen = encodedKeyLen + calculateLeafValueLength(value);
 
-        int fragmented;
+        int vfrag;
         if (encodedLen <= tree.mMaxEntrySize) {
-            fragmented = 0;
+            vfrag = 0;
         } else {
             Database db = tree.mDatabase;
             value = db.fragment(value, value.length, db.mMaxFragmentedEntrySize - encodedKeyLen);
@@ -1754,15 +1754,15 @@ final class Node extends Latch implements DatabaseAccess {
                 throw new LargeKeyException(key.length);
             }
             encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
-            fragmented = ENTRY_FRAGMENTED;
+            vfrag = ENTRY_FRAGMENTED;
         }
 
         int entryLoc = createLeafEntry(tree, pos, encodedLen);
 
         if (entryLoc < 0) {
-            splitLeafAndCreateEntry(tree, key, fragmented, value, encodedLen, pos, true);
+            splitLeafAndCreateEntry(tree, key, vfrag, value, encodedLen, pos, true);
         } else {
-            copyToLeafEntry(key, fragmented, value, entryLoc);
+            copyToLeafEntry(key, vfrag, value, entryLoc);
         }
 
         return encodedLen;
@@ -1796,10 +1796,10 @@ final class Node extends Latch implements DatabaseAccess {
         long longEncodedLen = encodedKeyLen + calculateLeafValueLength(vlength);
         int encodedLen;
 
-        int fragmented;
+        int vfrag;
         byte[] value;
         if (longEncodedLen <= tree.mMaxEntrySize) {
-            fragmented = 0;
+            vfrag = 0;
             value = new byte[(int) vlength];
             encodedLen = (int) longEncodedLen;
         } else {
@@ -1810,15 +1810,15 @@ final class Node extends Latch implements DatabaseAccess {
                 throw new LargeKeyException(key.length);
             }
             encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
-            fragmented = ENTRY_FRAGMENTED;
+            vfrag = ENTRY_FRAGMENTED;
         }
 
         int entryLoc = createLeafEntry(tree, pos, encodedLen);
 
         if (entryLoc < 0) {
-            splitLeafAndCreateEntry(tree, key, fragmented, value, encodedLen, pos, true);
+            splitLeafAndCreateEntry(tree, key, vfrag, value, encodedLen, pos, true);
         } else {
-            copyToLeafEntry(key, fragmented, value, entryLoc);
+            copyToLeafEntry(key, vfrag, value, entryLoc);
         }
 
         return encodedLen;
@@ -3074,9 +3074,9 @@ final class Node extends Latch implements DatabaseAccess {
 
     /**
      * @param pos position as provided by binarySearch; must be positive
-     * @param fragmented 0 or ENTRY_FRAGMENTED
+     * @param vfrag 0 or ENTRY_FRAGMENTED
      */
-    void updateLeafValue(Tree tree, int pos, int fragmented, byte[] value) throws IOException {
+    void updateLeafValue(Tree tree, int pos, int vfrag, byte[] value) throws IOException {
         final byte[] page = mPage;
         final int searchVecStart = mSearchVecStart;
 
@@ -3110,7 +3110,7 @@ final class Node extends Latch implements DatabaseAccess {
                     tree.mDatabase.deleteFragments(page, loc, len);
                     // TODO: If new value needs to be fragmented too, try to
                     // re-use existing value slot.
-                    if (fragmented == 0) {
+                    if (vfrag == 0) {
                         // Clear fragmented bit in case new value can be quick copied.
                         page[valueHeaderLoc] = (byte) (header & ~ENTRY_FRAGMENTED);
                     }
@@ -3132,13 +3132,13 @@ final class Node extends Latch implements DatabaseAccess {
                     page[valueHeaderLoc] = 0;
                 } else {
                     arraycopy(value, 0, page, loc, valueLen);
-                    if (fragmented != 0) {
-                        page[valueHeaderLoc] |= fragmented;
+                    if (vfrag != 0) {
+                        page[valueHeaderLoc] |= vfrag;
                     }
                 }
             } else {
                 mGarbage += loc + len - copyToLeafValue
-                    (page, fragmented, value, valueHeaderLoc) - valueLen;
+                    (page, vfrag, value, valueHeaderLoc) - valueLen;
             }
 
             return;
@@ -3153,7 +3153,7 @@ final class Node extends Latch implements DatabaseAccess {
         int rightSpace = mRightSegTail - searchVecEnd - 1;
 
         int encodedLen;
-        if (fragmented != 0) {
+        if (vfrag != 0) {
             encodedLen = keyLen + calculateFragmentedValueLength(value);
         } else {
             encodedLen = keyLen + calculateLeafValueLength(value);
@@ -3165,7 +3165,7 @@ final class Node extends Latch implements DatabaseAccess {
                     throw new LargeKeyException(keyLen - 2);
                 }
                 encodedLen = keyLen + calculateFragmentedValueLength(value);
-                fragmented = ENTRY_FRAGMENTED;
+                vfrag = ENTRY_FRAGMENTED;
             }
         }
 
@@ -3186,12 +3186,12 @@ final class Node extends Latch implements DatabaseAccess {
                     if (mSplit == null) {
                         // Node is full, so split it.
                         splitLeafAndCreateEntry
-                            (tree, key, fragmented, value, encodedLen, pos, false);
+                            (tree, key, vfrag, value, encodedLen, pos, false);
                         return;
                     }
 
                     // Node is already split, and so value is too large.
-                    if (fragmented != 0) {
+                    if (vfrag != 0) {
                         // FIXME: Can this happen?
                         throw new DatabaseException("Fragmented entry doesn't fit");
                     }
@@ -3204,11 +3204,11 @@ final class Node extends Latch implements DatabaseAccess {
                         throw new LargeKeyException(key.length);
                     }
                     encodedLen = keyLen + calculateFragmentedValueLength(value);
-                    fragmented = ENTRY_FRAGMENTED;
+                    vfrag = ENTRY_FRAGMENTED;
                 }
 
                 mGarbage = garbage;
-                copyToLeafEntry(key, fragmented, value, compactLeaf(encodedLen, pos, false));
+                copyToLeafEntry(key, vfrag, value, compactLeaf(encodedLen, pos, false));
                 return;
             }
 
@@ -3233,7 +3233,7 @@ final class Node extends Latch implements DatabaseAccess {
                 // Search vector is misaligned, so do full compaction.
                 byte[] key = retrieveKey(pos);
                 mGarbage = garbage;
-                copyToLeafEntry(key, fragmented, value, compactLeaf(encodedLen, pos, false));
+                copyToLeafEntry(key, vfrag, value, compactLeaf(encodedLen, pos, false));
                 return;
             }
 
@@ -3246,7 +3246,7 @@ final class Node extends Latch implements DatabaseAccess {
 
         // Copy existing key, and then copy value.
         arraycopy(page, start, page, entryLoc, keyLen);
-        copyToLeafValue(page, fragmented, value, entryLoc + keyLen);
+        copyToLeafValue(page, vfrag, value, entryLoc + keyLen);
         encodeShortLE(page, pos, entryLoc);
 
         mGarbage = garbage;
@@ -3776,38 +3776,38 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     /**
-     * @param fragmented 0 or ENTRY_FRAGMENTED
+     * @param vfrag 0 or ENTRY_FRAGMENTED
      */
-    private void copyToLeafEntry(byte[] key, int fragmented, byte[] value, int entryLoc) {
+    private void copyToLeafEntry(byte[] key, int vfrag, byte[] value, int entryLoc) {
         final byte[] page = mPage;
-        copyToLeafValue(page, fragmented, value, encodeKey(key, page, entryLoc));
+        copyToLeafValue(page, vfrag, value, encodeKey(key, page, entryLoc));
     }
 
     /**
-     * @param fragmented 0 or ENTRY_FRAGMENTED
+     * @param vfrag 0 or ENTRY_FRAGMENTED
      * @return page location for first byte of value (first location after header)
      */
-    private static int copyToLeafValue(byte[] page, int fragmented, byte[] value, int vloc) {
+    private static int copyToLeafValue(byte[] page, int vfrag, byte[] value, int vloc) {
         final int vlen = value.length;
-        vloc = encodeLeafValueHeader(page, fragmented, vlen, vloc);
+        vloc = encodeLeafValueHeader(page, vfrag, vlen, vloc);
         arraycopy(value, 0, page, vloc, vlen);
         return vloc;
     }
 
     /**
-     * @param fragmented 0 or ENTRY_FRAGMENTED
+     * @param vfrag 0 or ENTRY_FRAGMENTED
      * @return page location for first byte of value (first location after header)
      */
-    static int encodeLeafValueHeader(byte[] page, int fragmented, int vlen, int vloc) {
-        if (vlen <= 127 && fragmented == 0) {
+    static int encodeLeafValueHeader(byte[] page, int vfrag, int vlen, int vloc) {
+        if (vlen <= 127 && vfrag == 0) {
             page[vloc++] = (byte) vlen;
         } else {
             vlen--;
             if (vlen <= 8192) {
-                page[vloc++] = (byte) (0x80 | fragmented | (vlen >> 8));
+                page[vloc++] = (byte) (0x80 | vfrag | (vlen >> 8));
                 page[vloc++] = (byte) vlen;
             } else {
-                page[vloc++] = (byte) (0xa0 | fragmented | (vlen >> 16));
+                page[vloc++] = (byte) (0xa0 | vfrag | (vlen >> 16));
                 page[vloc++] = (byte) (vlen >> 8);
                 page[vloc++] = (byte) vlen;
             }
@@ -3885,11 +3885,11 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     /**
-     * @param fragmented 0 or ENTRY_FRAGMENTED
+     * @param vfrag 0 or ENTRY_FRAGMENTED
      * @param encodedLen length of new entry to allocate
      * @param pos normalized search vector position of entry to insert/update
      */
-    private void splitLeafAndCreateEntry(Tree tree, byte[] key, int fragmented, byte[] value,
+    private void splitLeafAndCreateEntry(Tree tree, byte[] key, int vfrag, byte[] value,
                                          int encodedLen, int pos, boolean forInsert)
         throws IOException
     {
@@ -3946,7 +3946,7 @@ final class Node extends Latch implements DatabaseAccess {
             newNode.mSearchVecEnd = TN_HEADER_SIZE;
 
             int destLoc = newPage.length - encodedLen;
-            newNode.copyToLeafEntry(key, fragmented, value, destLoc);
+            newNode.copyToLeafEntry(key, vfrag, value, destLoc);
             encodeShortLE(newPage, TN_HEADER_SIZE, destLoc);
 
             newNode.mRightSegTail = destLoc - 1;
@@ -3986,7 +3986,7 @@ final class Node extends Latch implements DatabaseAccess {
             newNode.mRightSegTail = newPage.length - 1;
             newNode.mSearchVecStart = newNode.mSearchVecEnd = newPage.length - 2;
 
-            newNode.copyToLeafEntry(key, fragmented, value, TN_HEADER_SIZE);
+            newNode.copyToLeafEntry(key, vfrag, value, TN_HEADER_SIZE);
             encodeShortLE(newPage, newPage.length - 2, TN_HEADER_SIZE);
 
             newNode.mLeftSegTail = TN_HEADER_SIZE + encodedLen;
@@ -4069,11 +4069,11 @@ final class Node extends Latch implements DatabaseAccess {
                 if (newLoc == 0) {
                     // Unable to insert new entry into left node. Insert it
                     // into the right node, which should have space now.
-                    storeIntoSplitLeaf(tree, key, fragmented, value, encodedLen, forInsert);
+                    storeIntoSplitLeaf(tree, key, vfrag, value, encodedLen, forInsert);
                 } else {
                     // Create new entry and point to it.
                     destLoc -= encodedLen;
-                    newNode.copyToLeafEntry(key, fragmented, value, destLoc);
+                    newNode.copyToLeafEntry(key, vfrag, value, destLoc);
                     encodeShortLE(newPage, newLoc, destLoc);
                 }
 
@@ -4164,10 +4164,10 @@ final class Node extends Latch implements DatabaseAccess {
                 if (newLoc == 0) {
                     // Unable to insert new entry into new right node. Insert
                     // it into the left node, which should have space now.
-                    storeIntoSplitLeaf(tree, key, fragmented, value, encodedLen, forInsert);
+                    storeIntoSplitLeaf(tree, key, vfrag, value, encodedLen, forInsert);
                 } else {
                     // Create new entry and point to it.
-                    newNode.copyToLeafEntry(key, fragmented, value, destLoc);
+                    newNode.copyToLeafEntry(key, vfrag, value, destLoc);
                     encodeShortLE(newPage, newLoc, destLoc);
                     destLoc += encodedLen;
                 }
@@ -4195,9 +4195,9 @@ final class Node extends Latch implements DatabaseAccess {
     /**
      * Store an entry into a node which has just been split and has room.
      *
-     * @param fragmented 0 or ENTRY_FRAGMENTED
+     * @param vfrag 0 or ENTRY_FRAGMENTED
      */
-    private void storeIntoSplitLeaf(Tree tree, byte[] key, int fragmented, byte[] value,
+    private void storeIntoSplitLeaf(Tree tree, byte[] key, int vfrag, byte[] value,
                                     int encodedLen, boolean forInsert)
         throws IOException
     {
@@ -4208,7 +4208,7 @@ final class Node extends Latch implements DatabaseAccess {
             }
             int entryLoc = createLeafEntry(tree, ~pos, encodedLen);
             while (entryLoc < 0) {
-                if (fragmented != 0) {
+                if (vfrag != 0) {
                     // FIXME: Can this happen?
                     throw new DatabaseException("Fragmented entry doesn't fit");
                 }
@@ -4220,16 +4220,16 @@ final class Node extends Latch implements DatabaseAccess {
                     // Should not happen if key length was checked already.
                     throw new LargeKeyException(key.length);
                 }
-                fragmented = ENTRY_FRAGMENTED;
+                vfrag = ENTRY_FRAGMENTED;
                 encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
                 entryLoc = createLeafEntry(tree, ~pos, encodedLen);
             }
-            copyToLeafEntry(key, fragmented, value, entryLoc);
+            copyToLeafEntry(key, vfrag, value, entryLoc);
         } else {
             if (pos < 0) {
                 throw new AssertionError("Key not found");
             }
-            updateLeafValue(tree, pos, fragmented, value);
+            updateLeafValue(tree, pos, vfrag, value);
         }
     }
 
