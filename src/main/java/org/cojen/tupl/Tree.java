@@ -944,6 +944,10 @@ class Tree implements Index {
         }
     }
 
+    final byte[] fragmentKey(byte[] key) throws IOException {
+        return mDatabase.fragment(key, key.length, mMaxKeySize);
+    }
+
     /**
      * Caller must exclusively hold root latch.
      */
