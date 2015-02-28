@@ -700,7 +700,7 @@ final class Node extends Latch implements DatabaseAccess {
             right = child;
         }
 
-        int leftSegTail = split.copySplitKeyToParent(newPage, TN_HEADER_SIZE);
+        int leftSegTail = encodeNormalKey(split.mSplitKey, newPage, TN_HEADER_SIZE);
 
         // Create new single-element search vector. Center it using the same formula as the
         // compactInternal method.
@@ -1709,29 +1709,18 @@ final class Node extends Latch implements DatabaseAccess {
 
     /**
      * @param pos complement of position as provided by binarySearch; must be positive
-     */
-    void insertLeafEntry(Tree tree, int pos, byte[] key, byte[] value) throws IOException {
-        int encodedKeyLen = calculateAllowedKeyLength(tree, key);
-
-        if (encodedKeyLen > 0) {
-            insertLeafEntry(tree, pos, key, key, encodedKeyLen, value);
-        } else {
-            // Key must be fragmented.
-            byte[] akey = tree.mDatabase.fragment(key, key.length, tree.mMaxKeySize);
-            insertLeafEntry(tree, pos, key, akey, 2 + akey.length, value);
-        }
-    }
-
-    /**
      * @param okey original key
-     * @param akey key to actually store
-     * @param pos complement of position as provided by binarySearch; must be positive
-     * @param encodedKeyLen from calculateAllowedKeyLength
      */
-    private void insertLeafEntry(Tree tree, int pos, byte[] okey, byte[] akey,
-                                 int encodedKeyLen, byte[] value)
-        throws IOException
-    {
+    void insertLeafEntry(Tree tree, int pos, byte[] okey, byte[] value) throws IOException {
+        byte[] akey = okey;
+        int encodedKeyLen = calculateAllowedKeyLength(tree, okey);
+
+        if (encodedKeyLen < 0) {
+            // Key must be fragmented.
+            akey = tree.mDatabase.fragment(okey, okey.length, tree.mMaxKeySize);
+            encodedKeyLen = 2 + akey.length;
+        }
+
         int encodedLen = encodedKeyLen + calculateLeafValueLength(value);
 
         int vfrag;
@@ -1741,8 +1730,7 @@ final class Node extends Latch implements DatabaseAccess {
             Database db = tree.mDatabase;
             value = db.fragment(value, value.length, db.mMaxFragmentedEntrySize - encodedKeyLen);
             if (value == null) {
-                // Should not happen if key length was checked already.
-                throw new LargeKeyException(akey.length);
+                throw new AssertionError();
             }
             encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
             vfrag = ENTRY_FRAGMENTED;
@@ -1759,29 +1747,18 @@ final class Node extends Latch implements DatabaseAccess {
 
     /**
      * @param pos complement of position as provided by binarySearch; must be positive
-     */
-    void insertBlankLeafEntry(Tree tree, int pos, byte[] key, long vlength) throws IOException {
-        int encodedKeyLen = calculateAllowedKeyLength(tree, key);
-
-        if (encodedKeyLen > 0) {
-            insertBlankLeafEntry(tree, pos, key, key, encodedKeyLen, vlength);
-        } else {
-            // Key must be fragmented.
-            byte[] akey = tree.mDatabase.fragment(key, key.length, tree.mMaxKeySize);
-            insertBlankLeafEntry(tree, pos, key, akey, 2 + akey.length, vlength);
-        }
-    }
-
-    /**
      * @param okey original key
-     * @param akey key to actually store
-     * @param pos complement of position as provided by binarySearch; must be positive
-     * @param encodedKeyLen from calculateAllowedKeyLength
      */
-    void insertBlankLeafEntry(Tree tree, int pos, byte[] okey, byte[] akey,
-                              int encodedKeyLen, long vlength)
-        throws IOException
-    {
+    void insertBlankLeafEntry(Tree tree, int pos, byte[] okey, long vlength) throws IOException {
+        byte[] akey = okey;
+        int encodedKeyLen = calculateAllowedKeyLength(tree, okey);
+
+        if (encodedKeyLen < 0) {
+            // Key must be fragmented.
+            akey = tree.mDatabase.fragment(okey, okey.length, tree.mMaxKeySize);
+            encodedKeyLen = 2 + akey.length;
+        }
+
         long longEncodedLen = encodedKeyLen + calculateLeafValueLength(vlength);
         int encodedLen;
 
@@ -1795,8 +1772,7 @@ final class Node extends Latch implements DatabaseAccess {
             Database db = tree.mDatabase;
             value = db.fragment(null, vlength, db.mMaxFragmentedEntrySize - encodedKeyLen);
             if (value == null) {
-                // Should not happen if key length was checked already.
-                throw new LargeKeyException(akey.length);
+                throw new AssertionError();
             }
             encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
             vfrag = ENTRY_FRAGMENTED;
@@ -1813,31 +1789,20 @@ final class Node extends Latch implements DatabaseAccess {
 
     /**
      * @param pos complement of position as provided by binarySearch; must be positive
-     */
-    void insertFragmentedLeafEntry(Tree tree, int pos, byte[] key, byte[] value)
-        throws IOException
-    {
-        int encodedKeyLen = calculateAllowedKeyLength(tree, key);
-
-        if (encodedKeyLen > 0) {
-            insertFragmentedLeafEntry(tree, pos, key, key, encodedKeyLen, value);
-        } else {
-            // Key must be fragmented.
-            byte[] akey = tree.mDatabase.fragment(key, key.length, tree.mMaxKeySize);
-            insertFragmentedLeafEntry(tree, pos, key, akey, 2 + akey.length, value);
-        }
-    }
-
-    /**
      * @param okey original key
-     * @param akey key to actually store
-     * @param pos complement of position as provided by binarySearch; must be positive
-     * @param encodedKeyLen from calculateAllowedKeyLength
      */
-    private void insertFragmentedLeafEntry(Tree tree, int pos, byte[] okey, byte[] akey,
-                                           int encodedKeyLen, byte[] value)
+    void insertFragmentedLeafEntry(Tree tree, int pos, byte[] okey, byte[] value)
         throws IOException
     {
+        byte[] akey = okey;
+        int encodedKeyLen = calculateAllowedKeyLength(tree, okey);
+
+        if (encodedKeyLen < 0) {
+            // Key must be fragmented.
+            akey = tree.mDatabase.fragment(okey, okey.length, tree.mMaxKeySize);
+            encodedKeyLen = 2 + akey.length;
+        }
+
         int encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
 
         int entryLoc = createLeafEntry(tree, pos, encodedLen);
@@ -2437,9 +2402,11 @@ final class Node extends Latch implements DatabaseAccess {
                 childFrame = childFrame.mPrevCousin;
             }
 
+            byte[] splitKey = split.mSplitKey;
+
             // FIXME: IOException caused by call to splitInternal; frames are all wrong
             InResult result = createInternalEntry
-                (tree, keyPos, split.splitKeyEncodedLength(), newChildPos << 3, true);
+                (tree, keyPos, calculateKeyLength(splitKey), newChildPos << 3, true);
 
             // Write new child id.
             encodeLongLE(result.mPage, result.mNewChildLoc, newChild.mId);
@@ -2448,10 +2415,10 @@ final class Node extends Latch implements DatabaseAccess {
             if (entryLoc < 0) {
                 // If loc is negative, then node was split and new key was chosen to be promoted.
                 // It must be written into the new split.
-                mSplit.setKey(split);
+                mSplit.setKey(splitKey);
             } else {
                 // Write key entry itself.
-                split.copySplitKeyToParent(result.mPage, entryLoc);
+                encodeNormalKey(splitKey, result.mPage, entryLoc);
             }
         } catch (Throwable e) {
             splitChild.releaseExclusive();
@@ -3146,8 +3113,7 @@ final class Node extends Latch implements DatabaseAccess {
                 Database db = tree.mDatabase;
                 value = db.fragment(value, value.length, db.mMaxFragmentedEntrySize - keyLen);
                 if (value == null) {
-                    // Should not happen if key length was checked already.
-                    throw new LargeKeyException(keyLen - 2);
+                    throw new AssertionError();
                 }
                 encodedLen = keyLen + calculateFragmentedValueLength(value);
                 vfrag = ENTRY_FRAGMENTED;
@@ -3191,8 +3157,7 @@ final class Node extends Latch implements DatabaseAccess {
                                        garbage + leftSpace + rightSpace);
                     value = db.fragment(value, value.length, max);
                     if (value == null) {
-                        // Should not happen if key length was checked already.
-                        throw new LargeKeyException(akey.length);
+                        throw new AssertionError();
                     }
                     encodedLen = keyLen + calculateFragmentedValueLength(value);
                     vfrag = ENTRY_FRAGMENTED;
@@ -3703,7 +3668,7 @@ final class Node extends Latch implements DatabaseAccess {
      * Calculate encoded key length, including header. Key must fit in the node or have been
      * fragmented.
      */
-    static int calculateKeyLength(byte[] key) {
+    private static int calculateKeyLength(byte[] key) {
         int len = key.length - 1;
         return len + ((len & ~(SMALL_KEY_LIMIT - 1)) == 0 ? 2 : 3);
     }
@@ -3744,7 +3709,7 @@ final class Node extends Latch implements DatabaseAccess {
      * @param dest destination for encoded key, with room for key header
      * @return updated destLoc
      */
-    static int encodeNormalKey(final byte[] key, final byte[] dest, int destLoc) {
+    private static int encodeNormalKey(final byte[] key, final byte[] dest, int destLoc) {
         final int keyLen = key.length;
 
         if (keyLen <= SMALL_KEY_LIMIT && keyLen > 0) {
@@ -3763,7 +3728,7 @@ final class Node extends Latch implements DatabaseAccess {
      * @param dest destination for encoded key, with room for key header
      * @return updated destLoc
      */
-    static int encodeFragmentedKey(final byte[] key, final byte[] dest, int destLoc) {
+    private static int encodeFragmentedKey(final byte[] key, final byte[] dest, int destLoc) {
         final int keyLen = key.length;
         dest[destLoc++] = (byte) ((0x80 | ENTRY_FRAGMENTED) | (keyLen >> 8));
         dest[destLoc++] = (byte) keyLen;
@@ -4242,8 +4207,7 @@ final class Node extends Latch implements DatabaseAccess {
                 int encodedKeyLen = calculateKeyLength(akey);
                 value = db.fragment(value, value.length, max - encodedKeyLen);
                 if (value == null) {
-                    // Should not happen if key length was checked already.
-                    throw new LargeKeyException(akey.length);
+                    throw new AssertionError();
                 }
                 vfrag = ENTRY_FRAGMENTED;
                 encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
