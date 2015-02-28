@@ -700,7 +700,7 @@ final class Node extends Latch implements DatabaseAccess {
             right = child;
         }
 
-        int leftSegTail = encodeNormalKey(split.mSplitKey, newPage, TN_HEADER_SIZE);
+        int leftSegTail = split.copySplitKeyToParent(newPage, TN_HEADER_SIZE);
 
         // Create new single-element search vector. Center it using the same formula as the
         // compactInternal method.
@@ -1717,7 +1717,7 @@ final class Node extends Latch implements DatabaseAccess {
 
         if (encodedKeyLen < 0) {
             // Key must be fragmented.
-            akey = tree.mDatabase.fragment(okey, okey.length, tree.mMaxKeySize);
+            akey = tree.fragmentKey(okey);
             encodedKeyLen = 2 + akey.length;
         }
 
@@ -1755,7 +1755,7 @@ final class Node extends Latch implements DatabaseAccess {
 
         if (encodedKeyLen < 0) {
             // Key must be fragmented.
-            akey = tree.mDatabase.fragment(okey, okey.length, tree.mMaxKeySize);
+            akey = tree.fragmentKey(okey);
             encodedKeyLen = 2 + akey.length;
         }
 
@@ -1799,7 +1799,7 @@ final class Node extends Latch implements DatabaseAccess {
 
         if (encodedKeyLen < 0) {
             // Key must be fragmented.
-            akey = tree.mDatabase.fragment(okey, okey.length, tree.mMaxKeySize);
+            akey = tree.fragmentKey(okey);
             encodedKeyLen = 2 + akey.length;
         }
 
@@ -2402,11 +2402,9 @@ final class Node extends Latch implements DatabaseAccess {
                 childFrame = childFrame.mPrevCousin;
             }
 
-            byte[] splitKey = split.mSplitKey;
-
             // FIXME: IOException caused by call to splitInternal; frames are all wrong
             InResult result = createInternalEntry
-                (tree, keyPos, calculateKeyLength(splitKey), newChildPos << 3, true);
+                (tree, keyPos, split.splitKeyEncodedLength(), newChildPos << 3, true);
 
             // Write new child id.
             encodeLongLE(result.mPage, result.mNewChildLoc, newChild.mId);
@@ -2415,10 +2413,10 @@ final class Node extends Latch implements DatabaseAccess {
             if (entryLoc < 0) {
                 // If loc is negative, then node was split and new key was chosen to be promoted.
                 // It must be written into the new split.
-                mSplit.setKey(splitKey);
+                mSplit.setKey(split);
             } else {
                 // Write key entry itself.
-                encodeNormalKey(splitKey, result.mPage, entryLoc);
+                split.copySplitKeyToParent(result.mPage, entryLoc);
             }
         } catch (Throwable e) {
             splitChild.releaseExclusive();
@@ -2563,7 +2561,7 @@ final class Node extends Latch implements DatabaseAccess {
                 }
 
                 // No side-effects if an IOException is thrown here.
-                return splitInternal(encodedLen, keyPos, newChildPos);
+                return splitInternal(tree, encodedLen, keyPos, newChildPos);
             }
 
             int vecLen = searchVecEnd - searchVecStart + 2;
@@ -3668,7 +3666,7 @@ final class Node extends Latch implements DatabaseAccess {
      * Calculate encoded key length, including header. Key must fit in the node or have been
      * fragmented.
      */
-    private static int calculateKeyLength(byte[] key) {
+    static int calculateKeyLength(byte[] key) {
         int len = key.length - 1;
         return len + ((len & ~(SMALL_KEY_LIMIT - 1)) == 0 ? 2 : 3);
     }
@@ -3709,7 +3707,7 @@ final class Node extends Latch implements DatabaseAccess {
      * @param dest destination for encoded key, with room for key header
      * @return updated destLoc
      */
-    private static int encodeNormalKey(final byte[] key, final byte[] dest, int destLoc) {
+    static int encodeNormalKey(final byte[] key, final byte[] dest, int destLoc) {
         final int keyLen = key.length;
 
         if (keyLen <= SMALL_KEY_LIMIT && keyLen > 0) {
@@ -3728,7 +3726,7 @@ final class Node extends Latch implements DatabaseAccess {
      * @param dest destination for encoded key, with room for key header
      * @return updated destLoc
      */
-    private static int encodeFragmentedKey(final byte[] key, final byte[] dest, int destLoc) {
+    static int encodeFragmentedKey(final byte[] key, final byte[] dest, int destLoc) {
         final int keyLen = key.length;
         dest[destLoc++] = (byte) ((0x80 | ENTRY_FRAGMENTED) | (keyLen >> 8));
         dest[destLoc++] = (byte) keyLen;
@@ -3915,7 +3913,7 @@ final class Node extends Latch implements DatabaseAccess {
             try {
                 split = newSplitLeft(newNode);
                 // Choose an appropriate middle key for suffix compression.
-                split.setKey(midKey(okey, 0));
+                setSplitKey(tree, split, midKey(okey, 0));
             } catch (Throwable e) {
                 try {
                     tree.mDatabase.deleteNode(newNode, true);
@@ -3957,7 +3955,7 @@ final class Node extends Latch implements DatabaseAccess {
             try {
                 split = newSplitRight(newNode);
                 // Choose an appropriate middle key for suffix compression.
-                split.setKey(midKey(pos - searchVecStart - 2, okey));
+                setSplitKey(tree, split, midKey(pos - searchVecStart - 2, okey));
             } catch (Throwable e) {
                 try {
                     tree.mDatabase.deleteNode(newNode, true);
@@ -4066,7 +4064,7 @@ final class Node extends Latch implements DatabaseAccess {
                 }
 
                 // Choose an appropriate middle key for suffix compression.
-                split.setKey(newNode.midKey(newNode.highestKeyPos(), this, 0));
+                setSplitKey(tree, split, newNode.midKey(newNode.highestKeyPos(), this, 0));
 
                 newNode.mRightSegTail = destLoc - 1;
                 newNode.releaseExclusive();
@@ -4161,7 +4159,7 @@ final class Node extends Latch implements DatabaseAccess {
                 }
 
                 // Choose an appropriate middle key for suffix compression.
-                split.setKey(this.midKey(this.highestKeyPos(), newNode, 0));
+                setSplitKey(tree, split, this.midKey(this.highestKeyPos(), newNode, 0));
 
                 newNode.mLeftSegTail = destLoc;
                 newNode.releaseExclusive();
@@ -4226,7 +4224,8 @@ final class Node extends Latch implements DatabaseAccess {
      * @throws IOException if new node could not be allocated; no side-effects
      * @return split result; key and entry loc is -1 if new key was promoted to parent
      */
-    private InResult splitInternal(final int encodedLen, final int keyPos, final int newChildPos)
+    private InResult splitInternal(final Tree tree, final int encodedLen,
+                                   final int keyPos, final int newChildPos)
         throws IOException
     {
         if (mSplit != null) {
@@ -4410,7 +4409,7 @@ final class Node extends Latch implements DatabaseAccess {
                             // ...and split key has been found.
                             try {
                                 split = newSplitLeft(newNode);
-                                split.setKey(retrieveKeyAtLoc(page, entryLoc));
+                                setSplitKey(tree, split, retrieveKeyAtLoc(page, entryLoc));
                             } catch (Throwable e) {
                                 try {
                                     db.deleteNode(newNode, true);
@@ -4527,7 +4526,7 @@ final class Node extends Latch implements DatabaseAccess {
                             // ...and split key has been found.
                             try {
                                 split = newSplitRight(newNode);
-                                split.setKey(retrieveKeyAtLoc(page, entryLoc));
+                                setSplitKey(tree, split, retrieveKeyAtLoc(page, entryLoc));
                             } catch (Throwable e) {
                                 try {
                                     db.deleteNode(newNode, true);
@@ -4612,6 +4611,17 @@ final class Node extends Latch implements DatabaseAccess {
         encodeShortLE(newPage, newKeyLoc, result.mEntryLoc);
 
         return result;
+    }
+
+    private void setSplitKey(Tree tree, Split split, byte[] fullKey) throws IOException {
+        byte[] actualKey = fullKey;
+
+        if (calculateAllowedKeyLength(tree, fullKey) < 0) {
+            // Key must be fragmented.
+            actualKey = tree.fragmentKey(fullKey);
+        }
+
+        split.setKey(fullKey, actualKey);
     }
 
     /**
