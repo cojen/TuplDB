@@ -49,36 +49,4 @@ public abstract class Filter extends Transformer {
         }
         return tvalue;
     }
-
-    /**
-     * Returns the same key.
-     */
-    @Override
-    public final byte[] transformKey(byte[] key, byte[] value) {
-        return key;
-    }
-
-    /**
-     * Returns the same key.
-     */
-    @Override
-    public final byte[] inverseTransformKey(byte[] tkey) {
-        return tkey;
-    }
-
-    /**
-     * Returns the key incremented by the minimum amount.
-     */
-    @Override
-    public final byte[] inverseTransformKeyGt(byte[] tkey) {
-        return super.inverseTransformKeyGt(tkey);
-    }
-
-    /**
-     * Returns the key decremented by the minimum amount.
-     */
-    @Override
-    public final byte[] inverseTransformKeyLt(byte[] tkey) {
-        return super.inverseTransformKeyLt(tkey);
-    }
 }

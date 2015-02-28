@@ -27,7 +27,7 @@ import static org.cojen.tupl.Utils.*;
  *
  * @author Brian S O'Neill
  */
-final class Node extends Latch {
+final class Node extends Latch implements DatabaseAccess {
     // Note: Changing these values affects how the Database class handles the
     // commit flag. It only needs to flip bit 0 to switch dirty states.
     static final byte
@@ -67,7 +67,7 @@ final class Node extends Latch {
 
     static final int STUB_ID = 1;
 
-    static final int VALUE_FRAGMENTED = 0x40;
+    static final int ENTRY_FRAGMENTED = 0x40;
 
     // Usage list this node belongs to.
     final NodeUsageList mUsageList;
@@ -154,16 +154,17 @@ final class Node extends Latch {
 
       Entries start with a one byte key header:
 
-      0b0pxx_xxxx: key is 1..64 bytes
-      0b1pxx_xxxx: key is 0..16383 bytes
+      0b0xxx_xxxx: key is 1..128 bytes
+      0b1fxx_xxxx: key is 0..16383 bytes
 
-      When the 'p' bit is zero, the entry is a normal key. Otherwise, it
-      indicates that the key starts with the node key prefix.
-
-      For keys 1..64 bytes in length, the length is defined as ((header & 0x3f) + 1). For
+      For keys 1..128 bytes in length, the length is defined as (header + 1). For
       keys 0..16383 bytes in length, a second header byte is used. The second byte is
       unsigned, and the length is defined as (((header & 0x3f) << 8) | header2). The key
       contents immediately follow the header byte(s).
+
+      When the 'f' bit is zero, the entry is a normal key. Very large keys are stored in a
+      fragmented fashion, which is also used by large values. The encoding format is defined by
+      Database.fragment.
 
       The value follows the key, and its header encodes the entry length:
 
@@ -228,6 +229,11 @@ final class Node extends Latch {
     private Node(NodeUsageList usageList, byte[] page) {
         mUsageList = usageList;
         mPage = page;
+    }
+
+    @Override
+    public Database getDatabase() {
+        return mUsageList.mDatabase;
     }
 
     void asEmptyRoot() {
@@ -351,7 +357,17 @@ final class Node extends Latch {
             boolean exclusiveHeld = false;
 
             loop: while (true) {
-                int childPos = internalPos(node.binarySearch(key));
+                int childPos;
+                try {
+                    childPos = internalPos(node.binarySearch(key));
+                } catch (Throwable e) {
+                    node.release(exclusiveHeld);
+                    if (parentLatch != null) {
+                        parentLatch.releaseShared();
+                    }
+                    throw e;
+                }
+
                 long childId = node.retrieveChildRefId(childPos);
                 Node childNode = tree.mDatabase.mTreeNodeMap.get(childId);
 
@@ -486,25 +502,71 @@ final class Node extends Latch {
         outer: while (lowPos <= highPos) {
             int midPos = ((lowPos + highPos) >> 1) & ~1;
 
-            int compareLoc = decodeUnsignedShortLE(page, midPos);
-            int compareLen = page[compareLoc++];
-            compareLen = compareLen >= 0 ? ((compareLen & 0x3f) + 1)
-                : (((compareLen & 0x3f) << 8) | ((page[compareLoc++]) & 0xff));
+            int compareLoc, compareLen, i;
+            compare: {
+                compareLoc = decodeUnsignedShortLE(page, midPos);
+                compareLen = page[compareLoc++];
+                if (compareLen >= 0) {
+                    compareLen++;
+                } else {
+                    int header = compareLen;
+                    compareLen = ((compareLen & 0x3f) << 8) | ((page[compareLoc++]) & 0xff);
 
-            int minLen = Math.min(compareLen, keyLen);
-            int i = Math.min(lowMatch, highMatch);
-            for (; i<minLen; i++) {
-                byte cb = page[compareLoc + i];
-                byte kb = key[i];
-                if (cb != kb) {
-                    if ((cb & 0xff) < (kb & 0xff)) {
-                        lowPos = midPos + 2;
-                        lowMatch = i;
-                    } else {
-                        highPos = midPos - 2;
-                        highMatch = i;
+                    if ((header & ENTRY_FRAGMENTED) != 0) {
+                        // Note: An optimized version wouldn't need to copy the whole key.
+                        byte[] compareKey;
+                        try {
+                            compareKey = tree.mDatabase.reconstructKey
+                                (page, compareLoc, compareLen);
+                        } catch (Throwable e) {
+                            node.releaseShared();
+                            throw e;
+                        }
+
+                        int fullCompareLen = compareKey.length;
+
+                        int minLen = Math.min(fullCompareLen, keyLen);
+                        i = Math.min(lowMatch, highMatch);
+                        for (; i<minLen; i++) {
+                            byte cb = compareKey[i];
+                            byte kb = key[i];
+                            if (cb != kb) {
+                                if ((cb & 0xff) < (kb & 0xff)) {
+                                    lowPos = midPos + 2;
+                                    lowMatch = i;
+                                } else {
+                                    highPos = midPos - 2;
+                                    highMatch = i;
+                                }
+                                continue outer;
+                            }
+                        }
+
+                        // Update compareLen and compareLoc for use by the code after the
+                        // current scope. The compareLoc is completely bogus at this point,
+                        // but is corrected when the value is retrieved below.
+                        compareLoc += compareLen - fullCompareLen;
+                        compareLen = fullCompareLen;
+
+                        break compare;
                     }
-                    continue outer;
+                }
+
+                int minLen = Math.min(compareLen, keyLen);
+                i = Math.min(lowMatch, highMatch);
+                for (; i<minLen; i++) {
+                    byte cb = page[compareLoc + i];
+                    byte kb = key[i];
+                    if (cb != kb) {
+                        if ((cb & 0xff) < (kb & 0xff)) {
+                            lowPos = midPos + 2;
+                            lowMatch = i;
+                        } else {
+                            highPos = midPos - 2;
+                            highMatch = i;
+                        }
+                        continue outer;
+                    }
                 }
             }
 
@@ -516,7 +578,7 @@ final class Node extends Latch {
                 highMatch = i;
             } else {
                 try {
-                    return node.retrieveLeafValueAtLoc(tree, page, compareLoc + compareLen);
+                    return retrieveLeafValueAtLoc(node, page, compareLoc + compareLen);
                 } finally {
                     node.releaseShared();
                 }
@@ -588,9 +650,10 @@ final class Node extends Latch {
      *
      * @return null or child node, never split
      */
-    private Node tryLatchChildNotSplit(Tree tree, int childPos) throws IOException {
-        long childId = retrieveChildRefId(childPos);
-        Node childNode = tree.mDatabase.mTreeNodeMap.get(childId);
+    private Node tryLatchChildNotSplit(int childPos) throws IOException {
+        final long childId = retrieveChildRefId(childPos);
+        final Database db = getDatabase();
+        Node childNode = db.mTreeNodeMap.get(childId);
 
         if (childNode != null) {
             if (!childNode.tryAcquireExclusive()) {
@@ -608,7 +671,7 @@ final class Node extends Latch {
             }
         }
 
-        return loadChild(tree.mDatabase, childId, false);
+        return loadChild(db, childId, false);
     }
 
     /**
@@ -1014,7 +1077,7 @@ final class Node extends Latch {
     /**
      * @return 2-based insertion pos, which is negative if key not found
      */
-    int binarySearch(byte[] key) {
+    int binarySearch(byte[] key) throws IOException {
         final byte[] page = mPage;
         final int keyLen = key.length;
         int lowPos = mSearchVecStart;
@@ -1026,25 +1089,58 @@ final class Node extends Latch {
         outer: while (lowPos <= highPos) {
             int midPos = ((lowPos + highPos) >> 1) & ~1;
 
-            int compareLoc = decodeUnsignedShortLE(page, midPos);
-            int compareLen = page[compareLoc++];
-            compareLen = compareLen >= 0 ? ((compareLen & 0x3f) + 1)
-                : (((compareLen & 0x3f) << 8) | ((page[compareLoc++]) & 0xff));
+            int compareLen, i;
+            compare: {
+                int compareLoc = decodeUnsignedShortLE(page, midPos);
+                compareLen = page[compareLoc++];
+                if (compareLen >= 0) {
+                    compareLen++;
+                } else {
+                    int header = compareLen;
+                    compareLen = ((compareLen & 0x3f) << 8) | ((page[compareLoc++]) & 0xff);
 
-            int minLen = Math.min(compareLen, keyLen);
-            int i = Math.min(lowMatch, highMatch);
-            for (; i<minLen; i++) {
-                byte cb = page[compareLoc + i];
-                byte kb = key[i];
-                if (cb != kb) {
-                    if ((cb & 0xff) < (kb & 0xff)) {
-                        lowPos = midPos + 2;
-                        lowMatch = i;
-                    } else {
-                        highPos = midPos - 2;
-                        highMatch = i;
+                    if ((header & ENTRY_FRAGMENTED) != 0) {
+                        // Note: An optimized version wouldn't need to copy the whole key.
+                        byte[] compareKey = getDatabase()
+                            .reconstructKey(page, compareLoc, compareLen);
+                        compareLen = compareKey.length;
+
+                        int minLen = Math.min(compareLen, keyLen);
+                        i = Math.min(lowMatch, highMatch);
+                        for (; i<minLen; i++) {
+                            byte cb = compareKey[i];
+                            byte kb = key[i];
+                            if (cb != kb) {
+                                if ((cb & 0xff) < (kb & 0xff)) {
+                                    lowPos = midPos + 2;
+                                    lowMatch = i;
+                                } else {
+                                    highPos = midPos - 2;
+                                    highMatch = i;
+                                }
+                                continue outer;
+                            }
+                        }
+
+                        break compare;
                     }
-                    continue outer;
+                }
+
+                int minLen = Math.min(compareLen, keyLen);
+                i = Math.min(lowMatch, highMatch);
+                for (; i<minLen; i++) {
+                    byte cb = page[compareLoc + i];
+                    byte kb = key[i];
+                    if (cb != kb) {
+                        if ((cb & 0xff) < (kb & 0xff)) {
+                            lowPos = midPos + 2;
+                            lowMatch = i;
+                        } else {
+                            highPos = midPos - 2;
+                            highMatch = i;
+                        }
+                        continue outer;
+                    }
                 }
             }
 
@@ -1066,7 +1162,7 @@ final class Node extends Latch {
      * @param midPos 2-based starting position
      * @return 2-based insertion pos, which is negative if key not found
      */
-    int binarySearch(byte[] key, int midPos) {
+    int binarySearch(byte[] key, int midPos) throws IOException {
         int lowPos = mSearchVecStart;
         int highPos = mSearchVecEnd;
         if (lowPos > highPos) {
@@ -1085,25 +1181,58 @@ final class Node extends Latch {
 
         while (true) {
             compare: {
-                int compareLoc = decodeUnsignedShortLE(page, midPos);
-                int compareLen = page[compareLoc++];
-                compareLen = compareLen >= 0 ? ((compareLen & 0x3f) + 1)
-                    : (((compareLen & 0x3f) << 8) | ((page[compareLoc++]) & 0xff));
+                int compareLen, i;
+                c2: {
+                    int compareLoc = decodeUnsignedShortLE(page, midPos);
+                    compareLen = page[compareLoc++];
+                    if (compareLen >= 0) {
+                        compareLen++;
+                    } else {
+                        int header = compareLen;
+                        compareLen = ((compareLen & 0x3f) << 8) | ((page[compareLoc++]) & 0xff);
 
-                int minLen = Math.min(compareLen, keyLen);
-                int i = Math.min(lowMatch, highMatch);
-                for (; i<minLen; i++) {
-                    byte cb = page[compareLoc + i];
-                    byte kb = key[i];
-                    if (cb != kb) {
-                        if ((cb & 0xff) < (kb & 0xff)) {
-                            lowPos = midPos + 2;
-                            lowMatch = i;
-                        } else {
-                            highPos = midPos - 2;
-                            highMatch = i;
+                        if ((header & ENTRY_FRAGMENTED) != 0) {
+                            // Note: An optimized version wouldn't need to copy the whole key.
+                            byte[] compareKey = getDatabase()
+                                .reconstructKey(page, compareLoc, compareLen);
+                            compareLen = compareKey.length;
+
+                            int minLen = Math.min(compareLen, keyLen);
+                            i = Math.min(lowMatch, highMatch);
+                            for (; i<minLen; i++) {
+                                byte cb = compareKey[i];
+                                byte kb = key[i];
+                                if (cb != kb) {
+                                    if ((cb & 0xff) < (kb & 0xff)) {
+                                        lowPos = midPos + 2;
+                                        lowMatch = i;
+                                    } else {
+                                        highPos = midPos - 2;
+                                        highMatch = i;
+                                    }
+                                    break compare;
+                                }
+                            }
+
+                            break c2;
                         }
-                        break compare;
+                    }
+
+                    int minLen = Math.min(compareLen, keyLen);
+                    i = Math.min(lowMatch, highMatch);
+                    for (; i<minLen; i++) {
+                        byte cb = page[compareLoc + i];
+                        byte kb = key[i];
+                        if (cb != kb) {
+                            if ((cb & 0xff) < (kb & 0xff)) {
+                                lowPos = midPos + 2;
+                                lowMatch = i;
+                            } else {
+                                highPos = midPos - 2;
+                                highMatch = i;
+                            }
+                            break compare;
+                        }
                     }
                 }
 
@@ -1138,21 +1267,62 @@ final class Node extends Latch {
     /**
      * @param pos position as provided by binarySearch; must be positive
      */
-    byte[] retrieveKey(int pos) {
+    byte[] retrieveKey(int pos) throws IOException {
         final byte[] page = mPage;
-        return retrieveKeyAtLoc(page, decodeUnsignedShortLE(page, mSearchVecStart + pos));
+        return retrieveKeyAtLoc(this, page, decodeUnsignedShortLE(page, mSearchVecStart + pos));
     }
 
     /**
      * @param loc absolute location of entry
      */
-    static byte[] retrieveKeyAtLoc(final byte[] page, int loc) {
+    byte[] retrieveKeyAtLoc(final byte[] page, int loc) throws IOException {
+        return retrieveKeyAtLoc(this, page, loc);
+    }
+
+    /**
+     * @param loc absolute location of entry
+     */
+    static byte[] retrieveKeyAtLoc(DatabaseAccess dbAccess, final byte[] page, int loc)
+        throws IOException
+    {
         int keyLen = page[loc++];
-        keyLen = keyLen >= 0 ? ((keyLen & 0x3f) + 1)
-            : (((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff));
+        if (keyLen >= 0) {
+            keyLen++;
+        } else {
+            int header = keyLen;
+            keyLen = ((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff);
+            if ((header & ENTRY_FRAGMENTED) != 0) {
+                return dbAccess.getDatabase().reconstructKey(page, loc, keyLen);
+            }
+        }
         byte[] key = new byte[keyLen];
         arraycopy(page, loc, key, 0, keyLen);
         return key;
+    }
+
+    /**
+     * @param loc absolute location of entry
+     * @param akeyRef [0] is set to the actual key
+     * @return false if key is fragmented and actual doesn't match original
+     */
+    private boolean retrieveActualKeyAtLoc(final byte[] page, int loc, final byte[][] akeyRef)
+        throws IOException
+    {
+        boolean result = true;
+
+        int keyLen = page[loc++];
+        if (keyLen >= 0) {
+            keyLen++;
+        } else {
+            int header = keyLen;
+            keyLen = ((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff);
+            result = (header & ENTRY_FRAGMENTED) == 0;
+        }
+        byte[] akey = new byte[keyLen];
+        arraycopy(page, loc, akey, 0, keyLen);
+        akeyRef[0] = akey;
+
+        return result;
     }
 
     /**
@@ -1163,12 +1333,27 @@ final class Node extends Latch {
      * @param limitKey comparison key
      * @param limitMode positive for LE behavior, negative for GE behavior
      */
-    byte[] retrieveKeyCmp(int pos, byte[] limitKey, int limitMode) {
+    byte[] retrieveKeyCmp(int pos, byte[] limitKey, int limitMode) throws IOException {
         final byte[] page = mPage;
         int loc = decodeUnsignedShortLE(page, mSearchVecStart + pos);
         int keyLen = page[loc++];
-        keyLen = keyLen >= 0 ? ((keyLen & 0x3f) + 1)
-            : (((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff));
+        if (keyLen >= 0) {
+            keyLen++;
+        } else {
+            int header = keyLen;
+            keyLen = ((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff);
+
+            if ((header & ENTRY_FRAGMENTED) != 0) {
+                byte[] key = getDatabase().reconstructKey(page, loc, keyLen);
+                int cmp = compareKeys(key, limitKey);
+                if (cmp == 0) {
+                    return limitKey;
+                } else {
+                    return (cmp ^ limitMode) < 0 ? key : null;
+                }
+            }
+        }
+
         int cmp = compareKeys(page, loc, keyLen, limitKey, 0, limitKey.length);
         if (cmp == 0) {
             return limitKey;
@@ -1186,12 +1371,27 @@ final class Node extends Latch {
      *
      * @param loc absolute location of entry
      */
-    static byte[][] retrieveKeyValueAtLoc(final byte[] page, int loc) throws IOException {
+    static byte[][] retrieveKeyValueAtLoc(DatabaseAccess dbAccess, final byte[] page, int loc)
+        throws IOException
+    {
         int header = page[loc++];
-        int keyLen = header >= 0 ? ((header & 0x3f) + 1)
-            : (((header & 0x3f) << 8) | ((page[loc++]) & 0xff));
-        byte[] key = new byte[keyLen];
-        arraycopy(page, loc, key, 0, keyLen);
+
+        int keyLen;
+        byte[] key;
+        copyKey: {
+            if (header >= 0) {
+                keyLen = header + 1;
+            } else {
+                keyLen = ((header & 0x3f) << 8) | ((page[loc++]) & 0xff);
+                if ((header & ENTRY_FRAGMENTED) != 0) {
+                    key = dbAccess.getDatabase().reconstructKey(page, loc, keyLen);
+                    break copyKey;
+                }
+            }
+            key = new byte[keyLen];
+            arraycopy(page, loc, key, 0, keyLen);
+        }
+
         return new byte[][] {key, retrieveLeafValueAtLoc(null, page, loc + keyLen)};
     }
 
@@ -1200,13 +1400,16 @@ final class Node extends Latch {
      *
      * @see Utils#midKey
      */
-    byte[] midKey(int lowPos, byte[] highKey) {
+    private byte[] midKey(int lowPos, byte[] highKey) throws IOException {
         final byte[] lowPage = mPage;
         int lowLoc = decodeUnsignedShortLE(lowPage, mSearchVecStart + lowPos);
-        int lowKeyLen = lowPage[lowLoc++];
-        lowKeyLen = lowKeyLen >= 0 ? ((lowKeyLen & 0x3f) + 1)
-            : (((lowKeyLen & 0x3f) << 8) | ((lowPage[lowLoc++]) & 0xff));
-        return Utils.midKey(lowPage, lowLoc, lowKeyLen, highKey, 0, highKey.length);
+        int lowKeyLen = lowPage[lowLoc];
+        if (lowKeyLen < 0) {
+            // Note: An optimized version wouldn't need to copy the whole key.
+            return Utils.midKey(retrieveKeyAtLoc(lowPage, lowLoc), highKey);
+        } else {
+            return Utils.midKey(lowPage, lowLoc + 1, lowKeyLen + 1, highKey, 0, highKey.length);
+        }
     }
 
     /**
@@ -1214,13 +1417,16 @@ final class Node extends Latch {
      *
      * @see Utils#midKey
      */
-    byte[] midKey(byte[] lowKey, int highPos) {
+    private byte[] midKey(byte[] lowKey, int highPos) throws IOException {
         final byte[] highPage = mPage;
         int highLoc = decodeUnsignedShortLE(highPage, mSearchVecStart + highPos);
-        int highKeyLen = highPage[highLoc++];
-        highKeyLen = highKeyLen >= 0 ? ((highKeyLen & 0x3f) + 1)
-            : (((highKeyLen & 0x3f) << 8) | ((highPage[highLoc++]) & 0xff));
-        return Utils.midKey(lowKey, 0, lowKey.length, highPage, highLoc, highKeyLen);
+        int highKeyLen = highPage[highLoc];
+        if (highKeyLen < 0) {
+            // Note: An optimized version wouldn't need to copy the whole key.
+            return Utils.midKey(lowKey, retrieveKeyAtLoc(highPage, highLoc));
+        } else {
+            return Utils.midKey(lowKey, 0, lowKey.length, highPage, highLoc + 1, highKeyLen + 1);
+        }
     }
 
     /**
@@ -1228,20 +1434,28 @@ final class Node extends Latch {
      *
      * @see Utils#midKey
      */
-    byte[] midKey(int lowPos, Node highNode, int highPos) {
+    byte[] midKey(int lowPos, Node highNode, int highPos) throws IOException {
         final byte[] lowPage = mPage;
         int lowLoc = decodeUnsignedShortLE(lowPage, mSearchVecStart + lowPos);
-        int lowKeyLen = lowPage[lowLoc++];
-        lowKeyLen = lowKeyLen >= 0 ? ((lowKeyLen & 0x3f) + 1)
-            : (((lowKeyLen & 0x3f) << 8) | ((lowPage[lowLoc++]) & 0xff));
+        int lowKeyLen = lowPage[lowLoc];
+        if (lowKeyLen < 0) {
+            // Note: An optimized version wouldn't need to copy the whole key.
+            return highNode.midKey(retrieveKeyAtLoc(lowPage, lowLoc), highPos);
+        }
+
+        lowLoc++;
+        lowKeyLen++;
 
         final byte[] highPage = highNode.mPage;
         int highLoc = decodeUnsignedShortLE(highPage, highNode.mSearchVecStart + highPos);
-        int highKeyLen = highPage[highLoc++];
-        highKeyLen = highKeyLen >= 0 ? ((highKeyLen & 0x3f) + 1)
-            : (((highKeyLen & 0x3f) << 8) | ((highPage[highLoc++]) & 0xff));
+        int highKeyLen = highPage[highLoc];
+        if (highKeyLen < 0) {
+            // Note: An optimized version wouldn't need to copy the whole key.
+            byte[] highKey = retrieveKeyAtLoc(highPage, highLoc);
+            return Utils.midKey(lowPage, lowLoc, lowKeyLen, highKey, 0, highKey.length);
+        }
 
-        return Utils.midKey(lowPage, lowLoc, lowKeyLen, highPage, highLoc, highKeyLen);
+        return Utils.midKey(lowPage, lowLoc, lowKeyLen, highPage, highLoc + 1, highKeyLen + 1);
     }
 
     /**
@@ -1251,8 +1465,7 @@ final class Node extends Latch {
     byte[] hasLeafValue(int pos) {
         final byte[] page = mPage;
         int loc = decodeUnsignedShortLE(page, mSearchVecStart + pos);
-        int header = page[loc++];
-        loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
+        loc += keyLengthAtLoc(page, loc);
         return page[loc] == -1 ? null : Cursor.NOT_LOADED;
     }
 
@@ -1260,15 +1473,14 @@ final class Node extends Latch {
      * @param pos position as provided by binarySearch; must be positive
      * @return null if ghost
      */
-    byte[] retrieveLeafValue(Tree tree, int pos) throws IOException {
+    byte[] retrieveLeafValue(int pos) throws IOException {
         final byte[] page = mPage;
         int loc = decodeUnsignedShortLE(page, mSearchVecStart + pos);
-        int header = page[loc++];
-        loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
-        return retrieveLeafValueAtLoc(tree, page, loc);
+        loc += keyLengthAtLoc(page, loc);
+        return retrieveLeafValueAtLoc(this, page, loc);
     }
 
-    private static byte[] retrieveLeafValueAtLoc(Tree tree, byte[] page, int loc)
+    private static byte[] retrieveLeafValueAtLoc(DatabaseAccess dbAccess, byte[] page, int loc)
         throws IOException
     {
         final int header = page[loc++];
@@ -1289,8 +1501,8 @@ final class Node extends Latch {
                 // ghost
                 return null;
             }
-            if ((header & VALUE_FRAGMENTED) != 0) {
-                return tree.mDatabase.reconstruct(page, loc, len);
+            if ((header & ENTRY_FRAGMENTED) != 0) {
+                return dbAccess.getDatabase().reconstruct(page, loc, len);
             }
         }
 
@@ -1310,19 +1522,31 @@ final class Node extends Latch {
         final byte[] page = mPage;
         int loc = decodeUnsignedShortLE(page, mSearchVecStart + pos);
         int header = page[loc++];
-        int keyLen = header >= 0 ? ((header & 0x3f) + 1)
-            : (((header & 0x3f) << 8) | ((page[loc++]) & 0xff));
-        byte[] key = new byte[keyLen];
-        arraycopy(page, loc, key, 0, keyLen);
-        cursor.mKey = key;
+
+        int keyLen;
+        byte[] key;
+        copyKey: {
+            if (header >= 0) {
+                keyLen = header + 1;
+            } else {
+                keyLen = ((header & 0x3f) << 8) | ((page[loc++]) & 0xff);
+                if ((header & ENTRY_FRAGMENTED) != 0) {
+                    key = getDatabase().reconstructKey(page, loc, keyLen);
+                    break copyKey;
+                }
+            }
+            key = new byte[keyLen];
+            arraycopy(page, loc, key, 0, keyLen);
+        }
 
         loc += keyLen;
+        cursor.mKey = key;
 
         byte[] value;
         if (cursor.mKeyOnly) {
             value = page[loc] == -1 ? null : Cursor.NOT_LOADED;
         } else {
-            value = retrieveLeafValueAtLoc(cursor.mTree, page, loc);
+            value = retrieveLeafValueAtLoc(this, page, loc);
         }
 
         cursor.mValue = value;
@@ -1334,9 +1558,8 @@ final class Node extends Latch {
     boolean isFragmentedLeafValue(int pos) {
         final byte[] page = mPage;
         int loc = decodeUnsignedShortLE(page, mSearchVecStart + pos);
-        int header = page[loc++];
-        loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
-        header = page[loc];
+        loc += keyLengthAtLoc(page, loc);
+        int header = page[loc];
         return ((header & 0xc0) >= 0xc0) & (header < -1);
     }
 
@@ -1358,13 +1581,12 @@ final class Node extends Latch {
         final int entryLoc = decodeUnsignedShortLE(page, mSearchVecStart + pos);
         int loc = entryLoc;
 
-        // Read key header and skip key.
-        int header = page[loc++];
-        loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
+        // Skip the key.
+        loc += keyLengthAtLoc(page, loc);
 
         // Read value header.
         final int valueHeaderLoc = loc;
-        header = page[loc++];
+        int header = page[loc++];
 
         doUndo: {
             // Note: Similar to leafEntryLengthAtLoc.
@@ -1383,7 +1605,7 @@ final class Node extends Latch {
                     break doUndo;
                 }
 
-                if ((header & VALUE_FRAGMENTED) != 0) {
+                if ((header & ENTRY_FRAGMENTED) != 0) {
                     int valueStartLoc = valueHeaderLoc + 2 + ((header & 0x20) >> 5);
                     tree.mDatabase.fragmentedTrash().add
                         (txn, tree.mId, page,
@@ -1394,7 +1616,7 @@ final class Node extends Latch {
             }
 
             // Copy whole entry into undo log.
-            txn.undoStore(tree.mId, UndoLog.OP_INSERT, page, entryLoc, loc - entryLoc);
+            txn.pushUndoStore(tree.mId, UndoLog.OP_UNDELETE, page, entryLoc, loc - entryLoc);
         }
 
         // Ghost will be deleted later when locks are released.
@@ -1423,13 +1645,12 @@ final class Node extends Latch {
         final int entryLoc = decodeUnsignedShortLE(page, mSearchVecStart + pos);
         int loc = entryLoc;
 
-        // Read key header and skip key.
-        int header = page[loc++];
-        loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
+        // Skip the key.
+        loc += keyLengthAtLoc(page, loc);
 
         // Read value header.
         final int valueHeaderLoc = loc;
-        header = page[loc++];
+        int header = page[loc++];
 
         examineEntry: {
             // Note: Similar to leafEntryLengthAtLoc.
@@ -1449,7 +1670,7 @@ final class Node extends Latch {
                     break examineEntry;
                 }
 
-                if ((header & VALUE_FRAGMENTED) != 0) {
+                if ((header & ENTRY_FRAGMENTED) != 0) {
                     int valueStartLoc = valueHeaderLoc + 2 + ((header & 0x20) >> 5);
                     tree.mDatabase.fragmentedTrash().add
                         (txn, tree.mId, page,
@@ -1458,14 +1679,14 @@ final class Node extends Latch {
                     // Clearing the fragmented bit prevents the update from
                     // double-deleting the fragments, and it also allows the
                     // old entry slot to be re-used.
-                    page[valueHeaderLoc] = (byte) (header & ~VALUE_FRAGMENTED);
+                    page[valueHeaderLoc] = (byte) (header & ~ENTRY_FRAGMENTED);
                     return;
                 }
             }
         }
 
         // Copy whole entry into undo log.
-        txn.undoStore(tree.mId, UndoLog.OP_UPDATE, page, entryLoc, loc - entryLoc);
+        txn.pushUndoStore(tree.mId, UndoLog.OP_UNUPDATE, page, entryLoc, loc - entryLoc);
     }
 
     /**
@@ -1479,10 +1700,8 @@ final class Node extends Latch {
      * @return length of encoded entry at given location
      */
     static int leafEntryLengthAtLoc(byte[] page, final int entryLoc) {
-        int loc = entryLoc;
+        int loc = entryLoc + keyLengthAtLoc(page, entryLoc);
         int header = page[loc++];
-        loc += (header >= 0 ? (header & 0x3f) : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
-        header = page[loc++];
         if (header >= 0) {
             loc += header;
         } else {
@@ -1501,107 +1720,116 @@ final class Node extends Latch {
      */
     static int keyLengthAtLoc(byte[] page, final int keyLoc) {
         int header = page[keyLoc];
-        return (header >= 0 ? (header & 0x3f)
+        return (header >= 0 ? header
                 : (((header & 0x3f) << 8) | (page[keyLoc + 1] & 0xff))) + 2;
     }
 
     /**
      * @param pos complement of position as provided by binarySearch; must be positive
-     * @param encodedKeyLen from calculateKeyLengthChecked
+     * @param okey original key
      */
-    void insertLeafEntry(Tree tree, int pos, byte[] key, int encodedKeyLen, byte[] value)
-        throws IOException
-    {
+    void insertLeafEntry(Tree tree, int pos, byte[] okey, byte[] value) throws IOException {
+        byte[] akey = okey;
+        int encodedKeyLen = calculateAllowedKeyLength(tree, okey);
+
+        if (encodedKeyLen < 0) {
+            // Key must be fragmented.
+            akey = tree.fragmentKey(okey);
+            encodedKeyLen = 2 + akey.length;
+        }
+
         int encodedLen = encodedKeyLen + calculateLeafValueLength(value);
 
-        int fragmented;
+        int vfrag;
         if (encodedLen <= tree.mMaxEntrySize) {
-            fragmented = 0;
+            vfrag = 0;
         } else {
             Database db = tree.mDatabase;
             value = db.fragment(value, value.length, db.mMaxFragmentedEntrySize - encodedKeyLen);
             if (value == null) {
-                // Should not happen if key length was checked already.
-                throw new LargeKeyException(key.length);
+                throw new AssertionError();
             }
             encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
-            fragmented = VALUE_FRAGMENTED;
+            vfrag = ENTRY_FRAGMENTED;
         }
 
         int entryLoc = createLeafEntry(tree, pos, encodedLen);
 
         if (entryLoc < 0) {
-            splitLeafAndCreateEntry(tree, key, fragmented, value, encodedLen, pos, true);
+            splitLeafAndCreateEntry(tree, okey, akey, vfrag, value, encodedLen, pos, true);
         } else {
-            copyToLeafEntry(key, fragmented, value, entryLoc);
+            copyToLeafEntry(okey, akey, vfrag, value, entryLoc);
         }
     }
 
     /**
      * @param pos complement of position as provided by binarySearch; must be positive
-     * @param encodedKeyLen from calculateKeyLengthChecked
+     * @param okey original key
      */
-    void insertBlankLeafEntry(Tree tree, int pos, byte[] key, int encodedKeyLen, long vlength)
-        throws IOException
-    {
-        long encodedLen = encodedKeyLen + calculateLeafValueLength(vlength);
+    void insertBlankLeafEntry(Tree tree, int pos, byte[] okey, long vlength) throws IOException {
+        byte[] akey = okey;
+        int encodedKeyLen = calculateAllowedKeyLength(tree, okey);
 
-        int fragmented;
+        if (encodedKeyLen < 0) {
+            // Key must be fragmented.
+            akey = tree.fragmentKey(okey);
+            encodedKeyLen = 2 + akey.length;
+        }
+
+        long longEncodedLen = encodedKeyLen + calculateLeafValueLength(vlength);
+        int encodedLen;
+
+        int vfrag;
         byte[] value;
-        if (encodedLen <= tree.mMaxEntrySize) {
-            fragmented = 0;
+        if (longEncodedLen <= tree.mMaxEntrySize) {
+            vfrag = 0;
             value = new byte[(int) vlength];
+            encodedLen = (int) longEncodedLen;
         } else {
             Database db = tree.mDatabase;
             value = db.fragment(null, vlength, db.mMaxFragmentedEntrySize - encodedKeyLen);
             if (value == null) {
-                // Should not happen if key length was checked already.
-                throw new LargeKeyException(key.length);
+                throw new AssertionError();
             }
             encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
-            fragmented = VALUE_FRAGMENTED;
+            vfrag = ENTRY_FRAGMENTED;
         }
 
-        int entryLoc = createLeafEntry(tree, pos, (int) encodedLen);
+        int entryLoc = createLeafEntry(tree, pos, encodedLen);
 
         if (entryLoc < 0) {
-            splitLeafAndCreateEntry(tree, key, fragmented, value, (int) encodedLen, pos, true);
+            splitLeafAndCreateEntry(tree, okey, akey, vfrag, value, encodedLen, pos, true);
         } else {
-            copyToLeafEntry(key, fragmented, value, entryLoc);
+            copyToLeafEntry(okey, akey, vfrag, value, entryLoc);
         }
     }
 
     /**
      * @param pos complement of position as provided by binarySearch; must be positive
-     * @param encodedKeyLen from calculateKeyLengthChecked
+     * @param okey original key
      */
-    void insertFragmentedLeafEntry(Tree tree, int pos, byte[] key, int encodedKeyLen, byte[] value)
+    void insertFragmentedLeafEntry(Tree tree, int pos, byte[] okey, byte[] value)
         throws IOException
     {
+        byte[] akey = okey;
+        int encodedKeyLen = calculateAllowedKeyLength(tree, okey);
+
+        if (encodedKeyLen < 0) {
+            // Key must be fragmented.
+            akey = tree.fragmentKey(okey);
+            encodedKeyLen = 2 + akey.length;
+        }
+
         int encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
 
         int entryLoc = createLeafEntry(tree, pos, encodedLen);
 
         if (entryLoc < 0) {
-            splitLeafAndCreateEntry(tree, key, VALUE_FRAGMENTED, value, encodedLen, pos, true);
+            splitLeafAndCreateEntry
+                (tree, okey, akey, ENTRY_FRAGMENTED, value, encodedLen, pos, true);
         } else {
-            copyToLeafEntry(key, VALUE_FRAGMENTED, value, entryLoc);
+            copyToLeafEntry(okey, akey, ENTRY_FRAGMENTED, value, entryLoc);
         }
-    }
-
-    /**
-     * Verifies that key can safely fit in the node.
-     */
-    static int calculateKeyLengthChecked(Tree tree, byte[] key) throws LargeKeyException {
-        int len = key.length;
-        if (len <= 64 & len > 0) {
-            // Always safe because minimum node size is 512 bytes.
-            return len + 1;
-        }
-        if (len > tree.mMaxKeySize) {
-            throw new LargeKeyException(len);
-        }
-        return len + 2;
     }
 
     /**
@@ -1704,7 +1932,7 @@ final class Node extends Latch {
                         }
                     }
 
-                    return compactLeaf(tree, encodedLen, pos, true);
+                    return compactLeaf(encodedLen, pos, true);
                 }
 
                 // Determine max possible entry size allowed, accounting too for entry pointer,
@@ -1733,7 +1961,7 @@ final class Node extends Latch {
                 mRightSegTail = entryLoc - 1;
             } else {
                 // Search vector is misaligned, so do full compaction.
-                return compactLeaf(tree, encodedLen, pos, true);
+                return compactLeaf(encodedLen, pos, true);
             }
 
             arrayCopies(page,
@@ -1816,7 +2044,7 @@ final class Node extends Latch {
 
         final Node left;
         try {
-            left = parent.tryLatchChildNotSplit(tree, childPos - 2);
+            left = parent.tryLatchChildNotSplit(childPos - 2);
         } catch (IOException e) {
             return 0;
         }
@@ -1837,20 +2065,29 @@ final class Node extends Latch {
         final int parentKeyGrowth;
 
         check: {
-            int leftAvail = left.availableLeafBytes();
-            if (leftAvail >= moveAmount) {
-                // Parent search key will be updated, so verify that it has room.
-                int highPos = lastSearchVecLoc - mSearchVecStart;
-                newKey = midKey(highPos - 2, this, highPos);
-                newKeyLen = calculateKeyLength(newKey);
-                parentPage = parent.mPage;
-                parentKeyLoc = decodeUnsignedShortLE
-                    (parentPage, parent.mSearchVecStart + childPos - 2);
-                parentKeyGrowth = newKeyLen - keyLengthAtLoc(parentPage, parentKeyLoc);
-                if (parentKeyGrowth <= 0 || parentKeyGrowth <= parent.availableInternalBytes()) {
-                    // Parent has room for the new search key, so proceed with rebalancing.
-                    break check;
+            try {
+                int leftAvail = left.availableLeafBytes();
+                if (leftAvail >= moveAmount) {
+                    // Parent search key will be updated, so verify that it has room.
+                    int highPos = lastSearchVecLoc - mSearchVecStart;
+                    newKey = midKey(highPos - 2, this, highPos);
+                    // Only attempt rebalance if new key doesn't need to be fragmented.
+                    newKeyLen = calculateAllowedKeyLength(tree, newKey);
+                    if (newKeyLen > 0) {
+                        parentPage = parent.mPage;
+                        parentKeyLoc = decodeUnsignedShortLE
+                            (parentPage, parent.mSearchVecStart + childPos - 2);
+                        parentKeyGrowth = newKeyLen - keyLengthAtLoc(parentPage, parentKeyLoc);
+                        if (parentKeyGrowth <= 0 ||
+                            parentKeyGrowth <= parent.availableInternalBytes())
+                        {
+                            // Parent has room for the new search key, so proceed with rebalancing.
+                            break check;
+                        }
+                    }
                 }
+            } catch (IOException e) {
+                // Caused by failed read of a large key. Abort the rebalance attempt.
             }
             left.releaseExclusive();
             parent.releaseExclusive();
@@ -1869,10 +2106,10 @@ final class Node extends Latch {
 
         // Update the parent key.
         if (parentKeyGrowth <= 0) {
-            encodeKey(newKey, parentPage, parentKeyLoc);
+            encodeNormalKey(newKey, parentPage, parentKeyLoc);
             parent.mGarbage -= parentKeyGrowth;
         } else {
-            parent.updateInternalKey(tree, childPos - 2, parentKeyGrowth, newKey, -1, newKeyLen);
+            parent.updateInternalKey(childPos - 2, parentKeyGrowth, newKey, -1, newKeyLen);
         }
 
         int garbageAccum = 0;
@@ -1999,7 +2236,7 @@ final class Node extends Latch {
 
         final Node right;
         try {
-            right = parent.tryLatchChildNotSplit(tree, childPos + 2);
+            right = parent.tryLatchChildNotSplit(childPos + 2);
         } catch (IOException e) {
             return 0;
         }
@@ -2020,20 +2257,29 @@ final class Node extends Latch {
         final int parentKeyGrowth;
 
         check: {
-            int rightAvail = right.availableLeafBytes();
-            if (rightAvail >= moveAmount) {
-                // Parent search key will be updated, so verify that it has room.
-                int highPos = firstSearchVecLoc - mSearchVecStart;
-                newKey = midKey(highPos - 2, this, highPos);
-                newKeyLen = calculateKeyLength(newKey);
-                parentPage = parent.mPage;
-                parentKeyLoc = decodeUnsignedShortLE
-                    (parentPage, parent.mSearchVecStart + childPos);
-                parentKeyGrowth = newKeyLen - keyLengthAtLoc(parentPage, parentKeyLoc);
-                if (parentKeyGrowth <= 0 || parentKeyGrowth <= parent.availableInternalBytes()) {
-                    // Parent has room for the new search key, so proceed with rebalancing.
-                    break check;
+            try {
+                int rightAvail = right.availableLeafBytes();
+                if (rightAvail >= moveAmount) {
+                    // Parent search key will be updated, so verify that it has room.
+                    int highPos = firstSearchVecLoc - mSearchVecStart;
+                    newKey = midKey(highPos - 2, this, highPos);
+                    // Only attempt rebalance if new key doesn't need to be fragmented.
+                    newKeyLen = calculateAllowedKeyLength(tree, newKey);
+                    if (newKeyLen > 0) {
+                        parentPage = parent.mPage;
+                        parentKeyLoc = decodeUnsignedShortLE
+                            (parentPage, parent.mSearchVecStart + childPos);
+                        parentKeyGrowth = newKeyLen - keyLengthAtLoc(parentPage, parentKeyLoc);
+                        if (parentKeyGrowth <= 0 ||
+                            parentKeyGrowth <= parent.availableInternalBytes())
+                        {
+                            // Parent has room for the new search key, so proceed with rebalancing.
+                            break check;
+                        }
+                    }
                 }
+            } catch (IOException e) {
+                // Caused by failed read of a large key. Abort the rebalance attempt.
             }
             right.releaseExclusive();
             parent.releaseExclusive();
@@ -2052,10 +2298,10 @@ final class Node extends Latch {
 
         // Update the parent key.
         if (parentKeyGrowth <= 0) {
-            encodeKey(newKey, parentPage, parentKeyLoc);
+            encodeNormalKey(newKey, parentPage, parentKeyLoc);
             parent.mGarbage -= parentKeyGrowth;
         } else {
-            parent.updateInternalKey(tree, childPos, parentKeyGrowth, newKey, -1, newKeyLen);
+            parent.updateInternalKey(childPos, parentKeyGrowth, newKey, -1, newKeyLen);
         }
 
         int garbageAccum = 0;
@@ -2173,7 +2419,7 @@ final class Node extends Latch {
                 childFrame = childFrame.mPrevCousin;
             }
 
-            // FIXME: IOException; how to rollback the damage?
+            // FIXME: IOException caused by call to splitInternal; frames are all wrong
             InResult result = createInternalEntry
                 (tree, keyPos, split.splitKeyEncodedLength(), newChildPos << 3, true);
 
@@ -2322,7 +2568,7 @@ final class Node extends Latch {
                         }
                     }
 
-                    return compactInternal(tree, encodedLen, keyPos, newChildPos);
+                    return compactInternal(encodedLen, keyPos, newChildPos);
                 }
 
                 // Node is full, so split it.
@@ -2356,7 +2602,7 @@ final class Node extends Latch {
                 mRightSegTail = entryLoc - 1;
             } else {
                 // Search vector is misaligned, so do full compaction.
-                return compactInternal(tree, encodedLen, keyPos, newChildPos);
+                return compactInternal(encodedLen, keyPos, newChildPos);
             }
 
             int newSearchVecEnd = newSearchVecStart + vecLen;
@@ -2462,7 +2708,7 @@ final class Node extends Latch {
 
         final Node left;
         try {
-            left = parent.tryLatchChildNotSplit(tree, childPos - 2);
+            left = parent.tryLatchChildNotSplit(childPos - 2);
         } catch (IOException e) {
             return 0;
         }
@@ -2545,7 +2791,7 @@ final class Node extends Latch {
             parent.mGarbage -= parentKeyGrowth;
         } else {
             parent.updateInternalKey
-                (tree, childPos - 2, parentKeyGrowth, rightPage, searchKeyLoc, searchKeyLen);
+                (childPos - 2, parentKeyGrowth, rightPage, searchKeyLoc, searchKeyLen);
         }
 
         // Move encoded child pointers.
@@ -2651,7 +2897,7 @@ final class Node extends Latch {
 
         final Node right;
         try {
-            right = parent.tryLatchChildNotSplit(tree, childPos + 2);
+            right = parent.tryLatchChildNotSplit(childPos + 2);
         } catch (IOException e) {
             return false;
         }
@@ -2731,7 +2977,7 @@ final class Node extends Latch {
             parent.mGarbage -= parentKeyGrowth;
         } else {
             parent.updateInternalKey
-                (tree, childPos, parentKeyGrowth, leftPage, searchKeyLoc, searchKeyLen);
+                (childPos, parentKeyGrowth, leftPage, searchKeyLoc, searchKeyLen);
         }
 
         // Move encoded child pointers.
@@ -2795,10 +3041,10 @@ final class Node extends Latch {
 
     /**
      * @param pos position as provided by binarySearch; must be positive
-     * @param fragmented 0 or VALUE_FRAGMENTED
+     * @param vfrag 0 or ENTRY_FRAGMENTED
      */
-    void updateLeafValue(Tree tree, int pos, int fragmented, byte[] value) throws IOException {
-        final byte[] page = mPage;
+    void updateLeafValue(Tree tree, int pos, int vfrag, byte[] value) throws IOException {
+        byte[] page = mPage;
         final int searchVecStart = mSearchVecStart;
 
         final int start;
@@ -2807,14 +3053,14 @@ final class Node extends Latch {
         quick: {
             int loc;
             start = loc = decodeUnsignedShortLE(page, searchVecStart + pos);
-            int header = page[loc++];
-            loc += (header >= 0 ? header : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
+            loc += keyLengthAtLoc(page, loc);
 
             final int valueHeaderLoc = loc;
 
             // Note: Similar to leafEntryLengthAtLoc and retrieveLeafValueAtLoc.
             int len = page[loc++];
             if (len < 0) largeValue: {
+                int header;
                 if ((len & 0x20) == 0) {
                     header = len;
                     len = 1 + (((len & 0x1f) << 8) | (page[loc++] & 0xff));
@@ -2827,13 +3073,13 @@ final class Node extends Latch {
                     len = 0;
                     break largeValue;
                 }
-                if ((header & VALUE_FRAGMENTED) != 0) {
+                if ((header & ENTRY_FRAGMENTED) != 0) {
                     tree.mDatabase.deleteFragments(page, loc, len);
                     // TODO: If new value needs to be fragmented too, try to
                     // re-use existing value slot.
-                    if (fragmented == 0) {
+                    if (vfrag == 0) {
                         // Clear fragmented bit in case new value can be quick copied.
-                        page[valueHeaderLoc] = (byte) (header & ~VALUE_FRAGMENTED);
+                        page[valueHeaderLoc] = (byte) (header & ~ENTRY_FRAGMENTED);
                     }
                 }
             }
@@ -2853,13 +3099,13 @@ final class Node extends Latch {
                     page[valueHeaderLoc] = 0;
                 } else {
                     arraycopy(value, 0, page, loc, valueLen);
-                    if (fragmented != 0) {
-                        page[valueHeaderLoc] |= fragmented;
+                    if (vfrag != 0) {
+                        page[valueHeaderLoc] |= vfrag;
                     }
                 }
             } else {
                 mGarbage += loc + len - copyToLeafValue
-                    (page, fragmented, value, valueHeaderLoc) - valueLen;
+                    (page, vfrag, value, valueHeaderLoc) - valueLen;
             }
 
             return;
@@ -2874,7 +3120,7 @@ final class Node extends Latch {
         int rightSpace = mRightSegTail - searchVecEnd - 1;
 
         int encodedLen;
-        if (fragmented != 0) {
+        if (vfrag != 0) {
             encodedLen = keyLen + calculateFragmentedValueLength(value);
         } else {
             encodedLen = keyLen + calculateLeafValueLength(value);
@@ -2882,11 +3128,10 @@ final class Node extends Latch {
                 Database db = tree.mDatabase;
                 value = db.fragment(value, value.length, db.mMaxFragmentedEntrySize - keyLen);
                 if (value == null) {
-                    // Should not happen if key length was checked already.
-                    throw new LargeKeyException(keyLen - 2);
+                    throw new AssertionError();
                 }
                 encodedLen = keyLen + calculateFragmentedValueLength(value);
-                fragmented = VALUE_FRAGMENTED;
+                vfrag = ENTRY_FRAGMENTED;
             }
         }
 
@@ -2902,17 +3147,23 @@ final class Node extends Latch {
 
             if (garbage > remaining) {
                 // Do full compaction and free up the garbage, or split the node.
-                byte[] key = retrieveKey(pos);
+
+                byte[][] akeyRef = new byte[1][];
+                int loc = decodeUnsignedShortLE(page, searchVecStart + pos);
+                boolean isOriginal = retrieveActualKeyAtLoc(page, loc, akeyRef);
+                byte[] akey = akeyRef[0];
+
                 if ((garbage + remaining) < 0) {
                     if (mSplit == null) {
                         // Node is full, so split it.
+                        byte[] okey = isOriginal ? akey : retrieveKeyAtLoc(this, page, loc);
                         splitLeafAndCreateEntry
-                            (tree, key, fragmented, value, encodedLen, pos, false);
+                            (tree, okey, akey, vfrag, value, encodedLen, pos, false);
                         return;
                     }
 
                     // Node is already split, and so value is too large.
-                    if (fragmented != 0) {
+                    if (vfrag != 0) {
                         // FIXME: Can this happen?
                         throw new DatabaseException("Fragmented entry doesn't fit");
                     }
@@ -2921,15 +3172,18 @@ final class Node extends Latch {
                                        garbage + leftSpace + rightSpace);
                     value = db.fragment(value, value.length, max);
                     if (value == null) {
-                        // Should not happen if key length was checked already.
-                        throw new LargeKeyException(key.length);
+                        throw new AssertionError();
                     }
                     encodedLen = keyLen + calculateFragmentedValueLength(value);
-                    fragmented = VALUE_FRAGMENTED;
+                    vfrag = ENTRY_FRAGMENTED;
                 }
 
                 mGarbage = garbage;
-                copyToLeafEntry(key, fragmented, value, compactLeaf(tree, encodedLen, pos, false));
+                entryLoc = compactLeaf(encodedLen, pos, false);
+                page = mPage;
+                entryLoc = isOriginal ? encodeNormalKey(akey, page, entryLoc)
+                    : encodeFragmentedKey(akey, page, entryLoc);
+                copyToLeafValue(page, vfrag, value, entryLoc);
                 return;
             }
 
@@ -2952,9 +3206,17 @@ final class Node extends Latch {
                 mRightSegTail = entryLoc - 1;
             } else {
                 // Search vector is misaligned, so do full compaction.
-                byte[] key = retrieveKey(pos);
+                byte[][] akeyRef = new byte[1][];
+                int loc = decodeUnsignedShortLE(page, searchVecStart + pos);
+                boolean isOriginal = retrieveActualKeyAtLoc(page, loc, akeyRef);
+                byte[] akey = akeyRef[0];
+
                 mGarbage = garbage;
-                copyToLeafEntry(key, fragmented, value, compactLeaf(tree, encodedLen, pos, false));
+                entryLoc = compactLeaf(encodedLen, pos, false);
+                page = mPage;
+                entryLoc = isOriginal ? encodeNormalKey(akey, page, entryLoc)
+                    : encodeFragmentedKey(akey, page, entryLoc);
+                copyToLeafValue(page, vfrag, value, entryLoc);
                 return;
             }
 
@@ -2967,7 +3229,7 @@ final class Node extends Latch {
 
         // Copy existing key, and then copy value.
         arraycopy(page, start, page, entryLoc, keyLen);
-        copyToLeafValue(page, fragmented, value, entryLoc + keyLen);
+        copyToLeafValue(page, vfrag, value, entryLoc + keyLen);
         encodeShortLE(page, pos, entryLoc);
 
         mGarbage = garbage;
@@ -2976,16 +3238,14 @@ final class Node extends Latch {
     /**
      * Update an internal node key to be larger than what is currently allocated. Caller must
      * ensure that node has enough space available and that it's not split. New key must not
-     * force this node to split.
+     * force this node to split. If key is unencoded, it MUST be a normal key.
      *
      * @param pos must be positive
      * @param growth key size growth
      * @param key unencoded or encoded key (encoded includes header)
      * @param keyStart pass -1 if key is unencoded and starts at 0; >=0 for encoded key
      */
-    void updateInternalKey(Tree tree, int pos, int growth,
-                           byte[] key, int keyStart, int encodedLen)
-    {
+    void updateInternalKey(int pos, int growth, byte[] key, int keyStart, int encodedLen) {
         int garbage = mGarbage + encodedLen - growth;
 
         // What follows is similar to createInternalEntry method, except the search
@@ -3056,12 +3316,12 @@ final class Node extends Latch {
             // This point is reached for making room via node compaction.
 
             mGarbage = garbage;
-            entryLoc = compactInternal(tree, encodedLen, pos, Integer.MIN_VALUE).mEntryLoc;
+            entryLoc = compactInternal(encodedLen, pos, Integer.MIN_VALUE).mEntryLoc;
 
             if (keyStart >= 0) {
                 arraycopy(key, keyStart, mPage, entryLoc, encodedLen);
             } else {
-                encodeKey(key, mPage, entryLoc);
+                encodeNormalKey(key, mPage, entryLoc);
             }
 
             return;
@@ -3071,7 +3331,7 @@ final class Node extends Latch {
         if (keyStart >= 0) {
             arraycopy(key, keyStart, page, entryLoc, encodedLen);
         } else {
-            encodeKey(key, page, entryLoc);
+            encodeNormalKey(key, page, entryLoc);
         }
         encodeShortLE(page, pos, entryLoc);
 
@@ -3088,17 +3348,31 @@ final class Node extends Latch {
     /**
      * @param pos position as provided by binarySearch; must be positive
      */
-    void deleteLeafEntry(Tree tree, int pos) throws IOException {
+    void deleteLeafEntry(int pos) throws IOException {
         final byte[] page = mPage;
 
         int searchVecStart = mSearchVecStart;
         final int entryLoc = decodeUnsignedShortLE(page, searchVecStart + pos);
 
         // Note: Similar to leafEntryLengthAtLoc and retrieveLeafValueAtLoc.
+
         int loc = entryLoc;
+
+        {
+            int keyLen = page[loc++];
+            if (keyLen >= 0) {
+                loc += keyLen + 1;
+            } else {
+                int header = keyLen;
+                keyLen = ((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff);
+                if ((header & ENTRY_FRAGMENTED) != 0) {
+                    getDatabase().deleteFragments(page, loc, keyLen);
+                }
+                loc += keyLen;
+            }
+        }
+
         int header = page[loc++];
-        loc += (header >= 0 ? (header & 0x3f) : (((header & 0x3f) << 8) | (page[loc] & 0xff))) + 1;
-        header = page[loc++];
         if (header >= 0) {
             loc += header;
         } else largeValue: {
@@ -3112,8 +3386,8 @@ final class Node extends Latch {
                 // ghost
                 break largeValue;
             }
-            if ((header & VALUE_FRAGMENTED) != 0) {
-                tree.mDatabase.deleteFragments(page, loc, len);
+            if ((header & ENTRY_FRAGMENTED) != 0) {
+                getDatabase().deleteFragments(page, loc, len);
             }
             loc += len;
         }
@@ -3387,16 +3661,36 @@ final class Node extends Latch {
         tree.mDatabase.deletePage(toDelete, toDeleteState);
     }
 
+    // FIXME: Increase to 128.
+    private static final int SMALL_KEY_LIMIT = 64;
+
     /**
-     * Calculate encoded key length, including header.
+     * Calculate encoded key length, including header. Returns -1 if key is too large and must
+     * be fragmented.
      */
-    static int calculateKeyLength(byte[] key) {
-        int len = key.length;
-        return len + ((len <= 64 & len > 0) ? 1 : 2);
+    private static int calculateAllowedKeyLength(Tree tree, byte[] key) {
+        int len = key.length - 1;
+        if ((len & ~(SMALL_KEY_LIMIT - 1)) == 0) {
+            // Always safe because minimum node size is 512 bytes.
+            return len + 2;
+        } else {
+            len++;
+            return len > tree.mMaxKeySize ? -1 : len + 2;
+        }
     }
 
     /**
-     * Calculate encoded value length for leaf, including header.
+     * Calculate encoded key length, including header. Key must fit in the node or have been
+     * fragmented.
+     */
+    static int calculateKeyLength(byte[] key) {
+        int len = key.length - 1;
+        return len + ((len & ~(SMALL_KEY_LIMIT - 1)) == 0 ? 2 : 3);
+    }
+
+    /**
+     * Calculate encoded value length for leaf, including header. Value must fit in the node or
+     * have been fragmented.
      */
     private static int calculateLeafValueLength(byte[] value) {
         int len = value.length;
@@ -3404,7 +3698,8 @@ final class Node extends Latch {
     }
 
     /**
-     * Calculate encoded value length for leaf, including header.
+     * Calculate encoded value length for leaf, including header. Value must fit in the node or
+     * have been fragmented.
      */
     private static long calculateLeafValueLength(long vlength) {
         return vlength + ((vlength <= 127) ? 1 : ((vlength <= 8192) ? 2 : 3));
@@ -3429,10 +3724,10 @@ final class Node extends Latch {
      * @param dest destination for encoded key, with room for key header
      * @return updated destLoc
      */
-    static int encodeKey(final byte[] key, final byte[] dest, int destLoc) {
+    static int encodeNormalKey(final byte[] key, final byte[] dest, int destLoc) {
         final int keyLen = key.length;
 
-        if (keyLen <= 64 && keyLen > 0) {
+        if (keyLen <= SMALL_KEY_LIMIT && keyLen > 0) {
             dest[destLoc++] = (byte) (keyLen - 1);
         } else {
             dest[destLoc++] = (byte) (0x80 | (keyLen >> 8));
@@ -3440,6 +3735,19 @@ final class Node extends Latch {
         }
         arraycopy(key, 0, dest, destLoc, keyLen);
 
+        return destLoc + keyLen;
+    }
+
+    /**
+     * @param key fragmented key
+     * @param dest destination for encoded key, with room for key header
+     * @return updated destLoc
+     */
+    static int encodeFragmentedKey(final byte[] key, final byte[] dest, int destLoc) {
+        final int keyLen = key.length;
+        dest[destLoc++] = (byte) ((0x80 | ENTRY_FRAGMENTED) | (keyLen >> 8));
+        dest[destLoc++] = (byte) keyLen;
+        arraycopy(key, 0, dest, destLoc, keyLen);
         return destLoc + keyLen;
     }
 
@@ -3464,48 +3772,42 @@ final class Node extends Latch {
     }
 
     /**
-     * @param fragmented 0 or VALUE_FRAGMENTED
+     * @param okey original key
+     * @param akey key to actually store
+     * @param vfrag 0 or ENTRY_FRAGMENTED
      */
-    private void copyToLeafEntry(byte[] key, int fragmented, byte[] value, int entryLoc) {
+    private void copyToLeafEntry(byte[] okey, byte[] akey, int vfrag, byte[] value, int entryLoc) {
         final byte[] page = mPage;
-
-        final int len = key.length;
-        if (len <= 64 && len > 0) {
-            page[entryLoc++] = (byte) (len - 1);
-        } else {
-            page[entryLoc++] = (byte) (0x80 | (len >> 8));
-            page[entryLoc++] = (byte) len;
-        }
-        arraycopy(key, 0, page, entryLoc, len);
-
-        copyToLeafValue(page, fragmented, value, entryLoc + len);
+        int vloc = okey == akey ? encodeNormalKey(akey, page, entryLoc)
+            : encodeFragmentedKey(akey, page, entryLoc);
+        copyToLeafValue(page, vfrag, value, vloc);
     }
 
     /**
-     * @param fragmented 0 or VALUE_FRAGMENTED
+     * @param vfrag 0 or ENTRY_FRAGMENTED
      * @return page location for first byte of value (first location after header)
      */
-    private static int copyToLeafValue(byte[] page, int fragmented, byte[] value, int vloc) {
+    private static int copyToLeafValue(byte[] page, int vfrag, byte[] value, int vloc) {
         final int vlen = value.length;
-        vloc = encodeLeafValueHeader(page, fragmented, vlen, vloc);
+        vloc = encodeLeafValueHeader(page, vfrag, vlen, vloc);
         arraycopy(value, 0, page, vloc, vlen);
         return vloc;
     }
 
     /**
-     * @param fragmented 0 or VALUE_FRAGMENTED
+     * @param vfrag 0 or ENTRY_FRAGMENTED
      * @return page location for first byte of value (first location after header)
      */
-    static int encodeLeafValueHeader(byte[] page, int fragmented, int vlen, int vloc) {
-        if (vlen <= 127 && fragmented == 0) {
+    static int encodeLeafValueHeader(byte[] page, int vfrag, int vlen, int vloc) {
+        if (vlen <= 127 && vfrag == 0) {
             page[vloc++] = (byte) vlen;
         } else {
             vlen--;
             if (vlen <= 8192) {
-                page[vloc++] = (byte) (0x80 | fragmented | (vlen >> 8));
+                page[vloc++] = (byte) (0x80 | vfrag | (vlen >> 8));
                 page[vloc++] = (byte) vlen;
             } else {
-                page[vloc++] = (byte) (0xa0 | fragmented | (vlen >> 16));
+                page[vloc++] = (byte) (0xa0 | vfrag | (vlen >> 16));
                 page[vloc++] = (byte) (vlen >> 8);
                 page[vloc++] = (byte) vlen;
             }
@@ -3523,7 +3825,7 @@ final class Node extends Latch {
      * @param pos normalized search vector position of entry to insert/update
      * @return location for newly allocated entry, already pointed to by search vector
      */
-    private int compactLeaf(Tree tree, int encodedLen, int pos, boolean forInsert) {
+    private int compactLeaf(int encodedLen, int pos, boolean forInsert) {
         byte[] page = mPage;
 
         int searchVecLoc = mSearchVecStart;
@@ -3547,7 +3849,7 @@ final class Node extends Latch {
         int newLoc = 0;
         final int searchVecEnd = mSearchVecEnd;
 
-        Database db = tree.mDatabase;
+        Database db = getDatabase();
         byte[] dest = db.removeSpareBuffer();
 
         for (; searchVecLoc <= searchVecEnd; searchVecLoc += 2, newSearchVecLoc += 2) {
@@ -3583,11 +3885,14 @@ final class Node extends Latch {
     }
 
     /**
-     * @param fragmented 0 or VALUE_FRAGMENTED
+     * @param okey original key
+     * @param akey key to actually store
+     * @param vfrag 0 or ENTRY_FRAGMENTED
      * @param encodedLen length of new entry to allocate
      * @param pos normalized search vector position of entry to insert/update
      */
-    private void splitLeafAndCreateEntry(Tree tree, byte[] key, int fragmented, byte[] value,
+    private void splitLeafAndCreateEntry(Tree tree, byte[] okey, byte[] akey,
+                                         int vfrag, byte[] value,
                                          int encodedLen, int pos, boolean forInsert)
         throws IOException
     {
@@ -3621,9 +3926,21 @@ final class Node extends Latch {
             // descending. Split into new left node, but only the new entry
             // goes into the new node.
 
-            mSplit = newSplitLeft(newNode);
-            // Choose an appropriate middle key for suffix compression.
-            mSplit.setKey(midKey(key, 0));
+            Split split;
+            try {
+                split = newSplitLeft(newNode);
+                // Choose an appropriate middle key for suffix compression.
+                setSplitKey(tree, split, midKey(okey, 0));
+            } catch (Throwable e) {
+                try {
+                    tree.mDatabase.deleteNode(newNode, true);
+                } catch (Throwable e2) {
+                    e.addSuppressed(e2);
+                }
+                throw e;
+            }
+
+            mSplit = split;
 
             // Position search vector at extreme left, allowing new entries to
             // be placed in a natural descending order.
@@ -3632,7 +3949,7 @@ final class Node extends Latch {
             newNode.mSearchVecEnd = TN_HEADER_SIZE;
 
             int destLoc = newPage.length - encodedLen;
-            newNode.copyToLeafEntry(key, fragmented, value, destLoc);
+            newNode.copyToLeafEntry(okey, akey, vfrag, value, destLoc);
             encodeShortLE(newPage, TN_HEADER_SIZE, destLoc);
 
             newNode.mRightSegTail = destLoc - 1;
@@ -3651,17 +3968,28 @@ final class Node extends Latch {
             // ascending. Split into new right node, but only the new entry
             // goes into the new node.
 
-            mSplit = newSplitRight(newNode);
-            // Choose an appropriate middle key for suffix compression.
-            mSplit.setKey(midKey(pos - searchVecStart - 2, key));
+            Split split;
+            try {
+                split = newSplitRight(newNode);
+                // Choose an appropriate middle key for suffix compression.
+                setSplitKey(tree, split, midKey(pos - searchVecStart - 2, okey));
+            } catch (Throwable e) {
+                try {
+                    tree.mDatabase.deleteNode(newNode, true);
+                } catch (Throwable e2) {
+                    e.addSuppressed(e2);
+                }
+                throw e;
+            }
+
+            mSplit = split;
 
             // Position search vector at extreme right, allowing new entries to
             // be placed in a natural ascending order.
             newNode.mRightSegTail = newPage.length - 1;
-            newNode.mSearchVecStart =
-                newNode.mSearchVecEnd = newPage.length - 2;
+            newNode.mSearchVecStart = newNode.mSearchVecEnd = newPage.length - 2;
 
-            newNode.copyToLeafEntry(key, fragmented, value, TN_HEADER_SIZE);
+            newNode.copyToLeafEntry(okey, akey, vfrag, value, TN_HEADER_SIZE);
             encodeShortLE(newPage, newPage.length - 2, TN_HEADER_SIZE);
 
             newNode.mLeftSegTail = TN_HEADER_SIZE + encodedLen;
@@ -3727,34 +4055,48 @@ final class Node extends Latch {
                 avail += entryLen + 2;
             }
 
-            // Allocate Split object first, in case it throws an OutOfMemoryError.
-            mSplit = newSplitLeft(newNode);
-
-            // Prune off the left end of this node.
-            mSearchVecStart = searchVecLoc;
-            mGarbage += garbageAccum;
-
             newNode.mLeftSegTail = TN_HEADER_SIZE;
             newNode.mSearchVecStart = TN_HEADER_SIZE;
             newNode.mSearchVecEnd = newSearchVecLoc - 2;
 
+            // Prune off the left end of this node.
+            final int originalStart = mSearchVecStart;
+            final int originalGarbage = mGarbage;
+            mSearchVecStart = searchVecLoc;
+            mGarbage += garbageAccum;
+
+            Split split;
             try {
+                split = newSplitLeft(newNode);
+
                 if (newLoc == 0) {
                     // Unable to insert new entry into left node. Insert it
                     // into the right node, which should have space now.
-                    storeIntoSplitLeaf(tree, key, fragmented, value, encodedLen, forInsert);
+                    storeIntoSplitLeaf(tree, okey, akey, vfrag, value, encodedLen, forInsert);
                 } else {
                     // Create new entry and point to it.
                     destLoc -= encodedLen;
-                    newNode.copyToLeafEntry(key, fragmented, value, destLoc);
+                    newNode.copyToLeafEntry(okey, akey, vfrag, value, destLoc);
                     encodeShortLE(newPage, newLoc, destLoc);
                 }
-            } finally {
+
                 // Choose an appropriate middle key for suffix compression.
-                mSplit.setKey(newNode.midKey(newNode.highestKeyPos(), this, 0));
+                setSplitKey(tree, split, newNode.midKey(newNode.highestKeyPos(), this, 0));
+
                 newNode.mRightSegTail = destLoc - 1;
                 newNode.releaseExclusive();
+            } catch (Throwable e) {
+                mSearchVecStart = originalStart;
+                mGarbage = originalGarbage;
+                try {
+                    tree.mDatabase.deleteNode(newNode, true);
+                } catch (Throwable e2) {
+                    e.addSuppressed(e2);
+                }
+                throw e;
             }
+
+            mSplit = split;
         } else {
             // Split into new right node.
 
@@ -3808,75 +4150,90 @@ final class Node extends Latch {
                 avail += entryLen + 2;
             }
 
-            // Allocate Split object first, in case it throws an OutOfMemoryError.
-            mSplit = newSplitRight(newNode);
-
-            // Prune off the right end of this node.
-            mSearchVecEnd = searchVecLoc;
-            mGarbage += garbageAccum;
-
             newNode.mRightSegTail = newPage.length - 1;
             newNode.mSearchVecStart = newSearchVecLoc + 2;
             newNode.mSearchVecEnd = newPage.length - 2;
 
+            // Prune off the right end of this node.
+            final int originalEnd = mSearchVecEnd;
+            final int originalGarbage = mGarbage;
+            mSearchVecEnd = searchVecLoc;
+            mGarbage += garbageAccum;
+
+            Split split;
             try {
+                split = newSplitRight(newNode);
+
                 if (newLoc == 0) {
                     // Unable to insert new entry into new right node. Insert
                     // it into the left node, which should have space now.
-                    storeIntoSplitLeaf(tree, key, fragmented, value, encodedLen, forInsert);
+                    storeIntoSplitLeaf(tree, okey, akey, vfrag, value, encodedLen, forInsert);
                 } else {
                     // Create new entry and point to it.
-                    newNode.copyToLeafEntry(key, fragmented, value, destLoc);
+                    newNode.copyToLeafEntry(okey, akey, vfrag, value, destLoc);
                     encodeShortLE(newPage, newLoc, destLoc);
                     destLoc += encodedLen;
                 }
-            } finally {
+
                 // Choose an appropriate middle key for suffix compression.
-                mSplit.setKey(this.midKey(this.highestKeyPos(), newNode, 0));
+                setSplitKey(tree, split, this.midKey(this.highestKeyPos(), newNode, 0));
+
                 newNode.mLeftSegTail = destLoc;
                 newNode.releaseExclusive();
+            } catch (Throwable e) {
+                mSearchVecEnd = originalEnd;
+                mGarbage = originalGarbage;
+                try {
+                    tree.mDatabase.deleteNode(newNode, true);
+                } catch (Throwable e2) {
+                    e.addSuppressed(e2);
+                }
+                throw e;
             }
+
+            mSplit = split;
         }
     }
 
     /**
      * Store an entry into a node which has just been split and has room.
      *
-     * @param fragmented 0 or VALUE_FRAGMENTED
+     * @param okey original key
+     * @param akey key to actually store
+     * @param vfrag 0 or ENTRY_FRAGMENTED
      */
-    private void storeIntoSplitLeaf(Tree tree, byte[] key, int fragmented, byte[] value,
+    private void storeIntoSplitLeaf(Tree tree, byte[] okey, byte[] akey, int vfrag, byte[] value,
                                     int encodedLen, boolean forInsert)
         throws IOException
     {
-        int pos = binarySearch(key);
+        int pos = binarySearch(okey);
         if (forInsert) {
             if (pos >= 0) {
                 throw new AssertionError("Key exists");
             }
             int entryLoc = createLeafEntry(tree, ~pos, encodedLen);
             while (entryLoc < 0) {
-                if (fragmented != 0) {
+                if (vfrag != 0) {
                     // FIXME: Can this happen?
                     throw new DatabaseException("Fragmented entry doesn't fit");
                 }
                 Database db = tree.mDatabase;
                 int max = Math.min(~entryLoc, db.mMaxFragmentedEntrySize);
-                int encodedKeyLen = calculateKeyLength(key);
+                int encodedKeyLen = calculateKeyLength(akey);
                 value = db.fragment(value, value.length, max - encodedKeyLen);
                 if (value == null) {
-                    // Should not happen if key length was checked already.
-                    throw new LargeKeyException(key.length);
+                    throw new AssertionError();
                 }
-                fragmented = VALUE_FRAGMENTED;
+                vfrag = ENTRY_FRAGMENTED;
                 encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
                 entryLoc = createLeafEntry(tree, ~pos, encodedLen);
             }
-            copyToLeafEntry(key, fragmented, value, entryLoc);
+            copyToLeafEntry(okey, akey, vfrag, value, entryLoc);
         } else {
             if (pos < 0) {
                 throw new AssertionError("Key not found");
             }
-            updateLeafValue(tree, pos, fragmented, value);
+            updateLeafValue(tree, pos, vfrag, value);
         }
     }
 
@@ -3884,8 +4241,8 @@ final class Node extends Latch {
      * @throws IOException if new node could not be allocated; no side-effects
      * @return split result; key and entry loc is -1 if new key was promoted to parent
      */
-    private InResult splitInternal
-        (final Tree tree, final int encodedLen, final int keyPos, final int newChildPos)
+    private InResult splitInternal(final Tree tree, final int encodedLen,
+                                   final int keyPos, final int newChildPos)
         throws IOException
     {
         if (mSplit != null) {
@@ -3899,8 +4256,9 @@ final class Node extends Latch {
         final byte[] page = mPage;
 
         // Alloc early in case an exception is thrown.
-        final Node newNode = tree.mDatabase.allocDirtyNode(NodeUsageList.MODE_UNEVICTABLE);
-        tree.mDatabase.mTreeNodeMap.put(newNode);
+        final Database db = getDatabase();
+        final Node newNode = db.allocDirtyNode(NodeUsageList.MODE_UNEVICTABLE);
+        db.mTreeNodeMap.put(newNode);
         newNode.mGarbage = 0;
 
         final byte[] newPage = newNode.mPage;
@@ -3914,7 +4272,20 @@ final class Node extends Latch {
             // Node has two keys and the key to insert should go in the middle. The new key
             // should not be inserted, but instead be promoted to the parent. Treat this as a
             // special case -- the code below only promotes an existing key to the parent.
-            // This case is expected to only occur when using very large keys.
+            // This case is expected to only occur when using large keys.
+
+            // Allocate Split object first, in case it throws an OutOfMemoryError.
+            Split split;
+            try {
+                split = newSplitLeft(newNode);
+            } catch (Throwable e) {
+                try {
+                    db.deleteNode(newNode, true);
+                } catch (Throwable e2) {
+                    e.addSuppressed(e2);
+                }
+                throw e;
+            }
 
             // Signals that key should not be inserted.
             result.mEntryLoc = -1;
@@ -3957,7 +4328,7 @@ final class Node extends Latch {
             mGarbage += leftKeyLen;
 
             // Caller must set the split key.
-            mSplit = newSplitLeft(newNode);
+            mSplit = split;
 
             return result;
         }
@@ -4053,8 +4424,17 @@ final class Node extends Latch {
 
                         if (newKeyLoc != 0) {
                             // ...and split key has been found.
-                            split = newSplitLeft(newNode);
-                            split.setKey(retrieveKeyAtLoc(page, entryLoc));
+                            try {
+                                split = newSplitLeft(newNode);
+                                setSplitKey(tree, split, retrieveKeyAtLoc(page, entryLoc));
+                            } catch (Throwable e) {
+                                try {
+                                    db.deleteNode(newNode, true);
+                                } catch (Throwable e2) {
+                                    e.addSuppressed(e2);
+                                }
+                                throw e;
+                            }
                             break;
                         }
 
@@ -4161,8 +4541,17 @@ final class Node extends Latch {
 
                         if (newKeyLoc != 0) {
                             // ...and split key has been found.
-                            split = newSplitRight(newNode);
-                            split.setKey(retrieveKeyAtLoc(page, entryLoc));
+                            try {
+                                split = newSplitRight(newNode);
+                                setSplitKey(tree, split, retrieveKeyAtLoc(page, entryLoc));
+                            } catch (Throwable e) {
+                                try {
+                                    db.deleteNode(newNode, true);
+                                } catch (Throwable e2) {
+                                    e.addSuppressed(e2);
+                                }
+                                throw e;
+                            }
                             break moveEntries;
                         }
 
@@ -4241,6 +4630,17 @@ final class Node extends Latch {
         return result;
     }
 
+    private void setSplitKey(Tree tree, Split split, byte[] fullKey) throws IOException {
+        byte[] actualKey = fullKey;
+
+        if (calculateAllowedKeyLength(tree, fullKey) < 0) {
+            // Key must be fragmented.
+            actualKey = tree.fragmentKey(fullKey);
+        }
+
+        split.setKey(fullKey, actualKey);
+    }
+
     /**
      * Compact internal node by reclaiming garbage and moving search vector
      * towards tail. Caller is responsible for ensuring that new entry will fit
@@ -4252,7 +4652,7 @@ final class Node extends Latch {
      * @param childPos normalized search vector position of child node id to insert; pass
      * MIN_VALUE if updating
      */
-    private InResult compactInternal(Tree tree, int encodedLen, int keyPos, int childPos) {
+    private InResult compactInternal(int encodedLen, int keyPos, int childPos) {
         byte[] page = mPage;
 
         int searchVecLoc = mSearchVecStart;
@@ -4274,7 +4674,7 @@ final class Node extends Latch {
         int newLoc = 0;
         final int searchVecEnd = mSearchVecEnd;
 
-        Database db = tree.mDatabase;
+        Database db = getDatabase();
         byte[] dest = db.removeSpareBuffer();
 
         for (; searchVecLoc <= searchVecEnd; searchVecLoc += 2, newSearchVecLoc += 2) {
@@ -4513,7 +4913,7 @@ final class Node extends Latch {
             int keyLen;
             try {
                 keyLen = page[loc++];
-                keyLen = keyLen >= 0 ? ((keyLen & 0x3f) + 1)
+                keyLen = keyLen >= 0 ? (keyLen + 1)
                     : (((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff));
             } catch (IndexOutOfBoundsException e) {
                 return verifyFailed(level, observer, "Key location out of bounds");
@@ -4550,7 +4950,7 @@ final class Node extends Latch {
                             // ghost
                             break value;
                         }
-                        if ((header & VALUE_FRAGMENTED) != 0) {
+                        if ((header & ENTRY_FRAGMENTED) != 0) {
                             largeValueCount++;
                         }
                     }

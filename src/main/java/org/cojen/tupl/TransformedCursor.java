@@ -84,13 +84,25 @@ final class TransformedCursor implements Cursor {
 
     @Override
     public LockResult first() throws IOException {
-        LockResult result = transformCurrent(mSource.first());
+        LockResult result;
+        try {
+            result = mSource.first();
+        } catch (LockFailureException e) {
+            throw transformCurrent(e);
+        }
+        result = transformCurrent(result);
         return result == null ? next() : result;
     }
 
     @Override
     public LockResult last() throws IOException {
-        LockResult result = transformCurrent(mSource.last());
+        LockResult result;
+        try {
+            result = mSource.last();
+        } catch (LockFailureException e) {
+            throw transformCurrent(e);
+        }
+        result = transformCurrent(result);
         return result == null ? previous() : result;
     }
 
@@ -103,10 +115,7 @@ final class TransformedCursor implements Cursor {
         }
 
         if (amount > 0) while (true) {
-            LockResult result;
-            do {
-                result = transformCurrent(c.next());
-            } while (result == null);
+            LockResult result = next();
             if (mKey == null || --amount <= 0) {
                 return result;
             }
@@ -114,10 +123,7 @@ final class TransformedCursor implements Cursor {
                 c.link().unlock();
             }
         } else while (true) {
-            LockResult result;
-            do {
-                result = transformCurrent(c.previous());
-            } while (result == null);
+            LockResult result = previous();
             if (mKey == null || ++amount >= 0) {
                 return result;
             }
@@ -131,7 +137,13 @@ final class TransformedCursor implements Cursor {
     public LockResult next() throws IOException {
         final Cursor c = mSource;
         while (true) {
-            LockResult result = transformCurrent(c.next());
+            LockResult result;
+            try {
+                result = c.next();
+            } catch (LockFailureException e) {
+                throw transformCurrent(e);
+            }
+            result = transformCurrent(result);
             if (result != null) {
                 return result;
             }
@@ -150,7 +162,13 @@ final class TransformedCursor implements Cursor {
         }
         final Cursor c = mSource;
         while (true) {
-            LockResult result = transformCurrent(c.nextLe(limitKey));
+            LockResult result;
+            try {
+                result = c.nextLe(limitKey);
+            } catch (LockFailureException e) {
+                throw transformCurrent(e);
+            }
+            result = transformCurrent(result);
             if (result != null) {
                 return result;
             }
@@ -169,14 +187,24 @@ final class TransformedCursor implements Cursor {
                 return LockResult.UNOWNED;
             }
             while (true) {
-                result = transformCurrent(c.nextLe(limitKey));
+                try {
+                    result = c.nextLe(limitKey);
+                } catch (LockFailureException e) {
+                    throw transformCurrent(e);
+                }
+                result = transformCurrent(result);
                 if (result != null) {
                     return result;
                 }
             }
         } else {
             while (true) {
-                result = transformCurrent(c.nextLt(limitKey));
+                try {
+                    result = c.nextLt(limitKey);
+                } catch (LockFailureException e) {
+                    throw transformCurrent(e);
+                }
+                result = transformCurrent(result);
                 if (result != null) {
                     return result;
                 }
@@ -188,7 +216,13 @@ final class TransformedCursor implements Cursor {
     public LockResult previous() throws IOException {
         final Cursor c = mSource;
         while (true) {
-            LockResult result = transformCurrent(c.previous());
+            LockResult result;
+            try {
+                result = c.previous();
+            } catch (LockFailureException e) {
+                throw transformCurrent(e);
+            }
+            result = transformCurrent(result);
             if (result != null) {
                 return result;
             }
@@ -207,7 +241,13 @@ final class TransformedCursor implements Cursor {
         }
         final Cursor c = mSource;
         while (true) {
-            LockResult result = transformCurrent(c.previousGe(limitKey));
+            LockResult result;
+            try {
+                result = c.previousGe(limitKey);
+            } catch (LockFailureException e) {
+                throw transformCurrent(e);
+            }
+            result = transformCurrent(result);
             if (result != null) {
                 return result;
             }
@@ -226,14 +266,24 @@ final class TransformedCursor implements Cursor {
                 return LockResult.UNOWNED;
             }
             while (true) {
-                result = transformCurrent(c.previousGe(limitKey));
+                try {
+                    result = c.previousGe(limitKey);
+                } catch (LockFailureException e) {
+                    throw transformCurrent(e);
+                }
+                result = transformCurrent(result);
                 if (result != null) {
                     return result;
                 }
             }
         } else {
             while (true) {
-                result = transformCurrent(c.previousGt(limitKey));
+                try {
+                    result = c.previousGt(limitKey);
+                } catch (LockFailureException e) {
+                    throw transformCurrent(e);
+                }
+                result = transformCurrent(result);
                 if (result != null) {
                     return result;
                 }
@@ -248,6 +298,8 @@ final class TransformedCursor implements Cursor {
             reset();
             return LockResult.UNOWNED;
         }
+        mKey = tkey;
+        mValue = NOT_LOADED;
         return transformCurrent(mSource.find(key), key, tkey);
     }
 
@@ -261,8 +313,15 @@ final class TransformedCursor implements Cursor {
                 return LockResult.UNOWNED;
             }
         }
-        final Cursor c = mSource;
-        LockResult result = transformCurrent(c.findGe(key));
+
+        LockResult result;
+        try {
+            result = mSource.findGe(key);
+        } catch (LockFailureException e) {
+            throw transformCurrent(e);
+        }
+
+        result = transformCurrent(result);
         return result == null ? next() : result;
     }
 
@@ -270,17 +329,22 @@ final class TransformedCursor implements Cursor {
     public LockResult findGt(final byte[] tkey) throws IOException {
         final Cursor c = mSource;
         LockResult result;
-        byte[] key = inverseTransformKey(tkey);
-        if (key == null) {
-            key = mTransformer.inverseTransformKeyGt(tkey);
+        try {
+            byte[] key = inverseTransformKey(tkey);
             if (key == null) {
-                reset();
-                return LockResult.UNOWNED;
+                key = mTransformer.inverseTransformKeyGt(tkey);
+                if (key == null) {
+                    reset();
+                    return LockResult.UNOWNED;
+                }
+                result = c.findGe(key);
+            } else {
+                result = c.findGt(key);
             }
-            result = c.findGe(key);
-        } else {
-            result = c.findGt(key);
+        } catch (LockFailureException e) {
+            throw transformCurrent(e);
         }
+
         result = transformCurrent(result);
         return result == null ? next() : result;
     }
@@ -295,8 +359,15 @@ final class TransformedCursor implements Cursor {
                 return LockResult.UNOWNED;
             }
         }
-        final Cursor c = mSource;
-        LockResult result = transformCurrent(c.findLe(key));
+
+        LockResult result;
+        try {
+            result = mSource.findLe(key);
+        } catch (LockFailureException e) {
+            throw transformCurrent(e);
+        }
+
+        result = transformCurrent(result);
         return result == null ? previous() : result;
     }
 
@@ -304,17 +375,22 @@ final class TransformedCursor implements Cursor {
     public LockResult findLt(final byte[] tkey) throws IOException {
         final Cursor c = mSource;
         LockResult result;
-        byte[] key = inverseTransformKey(tkey);
-        if (key == null) {
-            key = mTransformer.inverseTransformKeyLt(tkey);
+        try {
+            byte[] key = inverseTransformKey(tkey);
             if (key == null) {
-                reset();
-                return LockResult.UNOWNED;
+                key = mTransformer.inverseTransformKeyLt(tkey);
+                if (key == null) {
+                    reset();
+                    return LockResult.UNOWNED;
+                }
+                result = c.findLe(key);
+            } else {
+                result = c.findLt(key);
             }
-            result = c.findLe(key);
-        } else {
-            result = c.findLt(key);
+        } catch (LockFailureException e) {
+            throw transformCurrent(e);
         }
+
         result = transformCurrent(result);
         return result == null ? previous() : result;
     }
@@ -326,6 +402,8 @@ final class TransformedCursor implements Cursor {
             reset();
             return LockResult.UNOWNED;
         }
+        mKey = tkey;
+        mValue = NOT_LOADED;
         return transformCurrent(mSource.findNearby(key), key, tkey);
     }
 
@@ -355,7 +433,14 @@ final class TransformedCursor implements Cursor {
             }
         }
 
-        LockResult result = transformCurrent(mSource.random(lowKey, highKey));
+        LockResult result;
+        try {
+            result = mSource.random(lowKey, highKey);
+        } catch (LockFailureException e) {
+            throw transformCurrent(e);
+        }
+
+        result = transformCurrent(result);
 
         if (result == null) {
             if (Utils.random().nextBoolean()) {
@@ -382,6 +467,8 @@ final class TransformedCursor implements Cursor {
         if (tkey == null) {
             throw new IllegalStateException("Cursor position is undefined");
         }
+        mKey = tkey;
+        mValue = NOT_LOADED;
         final Cursor c = mSource;
         return transformCurrent(c.load(), c.key(), tkey);
     }
@@ -425,11 +512,22 @@ final class TransformedCursor implements Cursor {
         mSource.reset();
     }
 
-    private byte[] inverseTransformKey(final byte[] tkey) throws IOException {
+    private byte[] inverseTransformKey(final byte[] tkey) {
         if (tkey == null) {
             throw new NullPointerException("Key is null");
         }
         return mTransformer.inverseTransformKey(tkey);
+    }
+
+    private LockFailureException transformCurrent(LockFailureException e) throws IOException {
+        mValue = NOT_LOADED;
+        try {
+            mKey = mTransformer.transformKey(mSource.key(), NOT_LOADED);
+        } catch (Throwable e2) {
+            reset();
+            throw e2;
+        }
+        return e;
     }
 
     /**
@@ -460,7 +558,7 @@ final class TransformedCursor implements Cursor {
                 return result;
             }
         } else {
-            if (value == Cursor.NOT_LOADED && mTransformer.requireValue()) {
+            if (value == NOT_LOADED && mTransformer.requireValue()) {
                 // Disabling autoload mode makes little sense when using a value
                 // transformer, because the value must be loaded anyhow.
                 c.load();
@@ -489,7 +587,7 @@ final class TransformedCursor implements Cursor {
     }
 
     /**
-     * As a side-effect, mKey is set to tkey, which must not be null.
+     * @param tkey mKey must have been set to this non-null key already
      */
     private LockResult transformCurrent(LockResult result, final byte[] key, final byte[] tkey)
         throws IOException
@@ -499,14 +597,13 @@ final class TransformedCursor implements Cursor {
 
         if (value == null) {
             // Retain the position and lock when value doesn't exist.
-            mKey = tkey;
             mValue = null;
             return result;
         }
 
         byte[] tvalue;
 
-        if (value != Cursor.NOT_LOADED || !mTransformer.requireValue()) {
+        if (value != NOT_LOADED || !mTransformer.requireValue()) {
             tvalue = mTransformer.transformValue(value, key, tkey);
         } else {
             // Disabling autoload mode makes little sense when using a value transformer,
@@ -515,7 +612,6 @@ final class TransformedCursor implements Cursor {
             tvalue = mTransformer.transformValue(c.value(), key, tkey);
         }
 
-        mKey = tkey;
         mValue = tvalue;
 
         if (tvalue == null && result == LockResult.ACQUIRED) {
@@ -525,5 +621,10 @@ final class TransformedCursor implements Cursor {
         }
 
         return result;
+    }
+
+    // Used by tests.
+    Cursor source() {
+        return mSource;
     }
 }

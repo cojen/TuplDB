@@ -284,6 +284,18 @@ class Utils extends org.cojen.tupl.io.Utils {
      * <p>Method is used for internal node suffix compression. To disable, simply return a copy
      * of the high key.
      */
+    static byte[] midKey(byte[] low, byte[] high) {
+        return midKey(low, 0, low.length, high, 0, high.length);
+    }
+
+    /**
+     * Returns a new key, midway between the given low and high keys. Returned key is never
+     * equal to the low key, but it might be equal to the high key. If high key is not actually
+     * higher than the given low key, an ArrayIndexOfBoundException might be thrown.
+     *
+     * <p>Method is used for internal node suffix compression. To disable, simply return a copy
+     * of the high key.
+     */
     static byte[] midKey(byte[] low, int lowOff, int lowLen,
                          byte[] high, int highOff, int highLen)
     {

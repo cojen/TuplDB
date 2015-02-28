@@ -32,7 +32,7 @@ final class NodeUsageList extends Latch {
     // Don't evict a node when trying to allocate another.
     static final int MODE_NO_EVICT = 2;
 
-    private final transient Database mDatabase;
+    final transient Database mDatabase;
     private int mMaxSize;
     private int mSize;
     private Node mMostRecentlyUsed;

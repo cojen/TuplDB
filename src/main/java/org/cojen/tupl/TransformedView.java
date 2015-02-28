@@ -43,7 +43,7 @@ final class TransformedView implements View {
 
     @Override
     public Ordering getOrdering() {
-        return mSource.getOrdering();
+        return mTransformer.transformedOrdering(mSource.getOrdering());
     }
 
     @Override
@@ -83,7 +83,7 @@ final class TransformedView implements View {
         final byte[] key = inverseTransformKey(tkey);
 
         if (key == null) {
-            throw new ViewConstraintException("Unsupported key");
+            throw fail();
         }
 
         mSource.store(txn, key, mTransformer.inverseTransformValue(tvalue, key, tkey));
@@ -96,7 +96,7 @@ final class TransformedView implements View {
         final byte[] key = inverseTransformKey(tkey);
 
         if (key == null) {
-            throw new ViewConstraintException("Unsupported key");
+            throw fail();
         }
 
         return mTransformer.transformValue
@@ -114,7 +114,7 @@ final class TransformedView implements View {
             if (tvalue == null) {
                 return true;
             }
-            throw new ViewConstraintException("Unsupported key");
+            throw fail();
         }
 
         final byte[] value = mTransformer.inverseTransformValue(tvalue, key, tkey);
@@ -180,7 +180,7 @@ final class TransformedView implements View {
                 if (newTValue == null) {
                     return true;
                 }
-                throw new ViewConstraintException("Unsupported key");
+                throw fail();
             }
             return false;
         }
@@ -240,6 +240,50 @@ final class TransformedView implements View {
         }
 
         return condUpdate(txn, key, value, null);
+    }
+
+    @Override
+    public final LockResult lockShared(Transaction txn, byte[] tkey)
+        throws LockFailureException, ViewConstraintException
+    {
+        byte[] key = inverseTransformKey(tkey);
+        if (key != null) {
+            return mSource.lockShared(txn, key);
+        }
+        throw fail();
+    }
+
+    @Override
+    public final LockResult lockUpgradable(Transaction txn, byte[] tkey)
+        throws LockFailureException, ViewConstraintException
+    {
+        byte[] key = inverseTransformKey(tkey);
+        if (key != null) {
+            return mSource.lockUpgradable(txn, key);
+        }
+        throw fail();
+    }
+
+    @Override
+    public final LockResult lockExclusive(Transaction txn, byte[] tkey)
+        throws LockFailureException, ViewConstraintException
+    {
+        byte[] key = inverseTransformKey(tkey);
+        if (key != null) {
+            return mSource.lockExclusive(txn, key);
+        }
+        throw fail();
+    }
+
+    @Override
+    public final LockResult lockCheck(Transaction txn, byte[] tkey)
+        throws ViewConstraintException
+    {
+        byte[] key = inverseTransformKey(tkey);
+        if (key != null) {
+            return mSource.lockCheck(txn, key);
+        }
+        throw fail();
     }
 
     @Override
@@ -375,5 +419,9 @@ final class TransformedView implements View {
             (new BoundedView(mSource, Utils.EMPTY_BYTES, Utils.EMPTY_BYTES,
                              BoundedView.START_EXCLUSIVE | BoundedView.END_EXCLUSIVE),
              mTransformer);
+    }
+
+    private static ViewConstraintException fail() {
+        return new ViewConstraintException("Unsupported key");
     }
 }
