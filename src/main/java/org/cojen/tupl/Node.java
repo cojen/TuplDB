@@ -1284,6 +1284,31 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     /**
+     * @param loc absolute location of entry
+     * @param akeyRef [0] is set to the actual key
+     * @return false if key is fragmented and actual doesn't match original
+     */
+    private boolean retrieveActualKeyAtLoc(final byte[] page, int loc, final byte[][] akeyRef)
+        throws IOException
+    {
+        boolean result = true;
+
+        int keyLen = page[loc++];
+        if (keyLen >= 0) {
+            keyLen++;
+        } else {
+            int header = keyLen;
+            keyLen = ((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff);
+            result = (header & ENTRY_FRAGMENTED) == 0;
+        }
+        byte[] akey = new byte[keyLen];
+        arraycopy(page, loc, akey, 0, keyLen);
+        akeyRef[0] = akey;
+
+        return result;
+    }
+
+    /**
      * Copies the key at the given position based on a limit. If equal, the
      * limitKey instance is returned. If beyond the limit, null is returned.
      *
@@ -1717,7 +1742,7 @@ final class Node extends Latch implements DatabaseAccess {
             value = db.fragment(value, value.length, db.mMaxFragmentedEntrySize - encodedKeyLen);
             if (value == null) {
                 // Should not happen if key length was checked already.
-                throw new LargeKeyException(okey.length);
+                throw new LargeKeyException(akey.length);
             }
             encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
             vfrag = ENTRY_FRAGMENTED;
@@ -1771,7 +1796,7 @@ final class Node extends Latch implements DatabaseAccess {
             value = db.fragment(null, vlength, db.mMaxFragmentedEntrySize - encodedKeyLen);
             if (value == null) {
                 // Should not happen if key length was checked already.
-                throw new LargeKeyException(okey.length);
+                throw new LargeKeyException(akey.length);
             }
             encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
             vfrag = ENTRY_FRAGMENTED;
@@ -3037,7 +3062,7 @@ final class Node extends Latch implements DatabaseAccess {
      * @param vfrag 0 or ENTRY_FRAGMENTED
      */
     void updateLeafValue(Tree tree, int pos, int vfrag, byte[] value) throws IOException {
-        final byte[] page = mPage;
+        byte[] page = mPage;
         final int searchVecStart = mSearchVecStart;
 
         final int start;
@@ -3141,12 +3166,18 @@ final class Node extends Latch implements DatabaseAccess {
 
             if (garbage > remaining) {
                 // Do full compaction and free up the garbage, or split the node.
-                byte[] key = retrieveKey(pos);
+
+                byte[][] akeyRef = new byte[1][];
+                int loc = decodeUnsignedShortLE(page, searchVecStart + pos);
+                boolean isOriginal = retrieveActualKeyAtLoc(page, loc, akeyRef);
+                byte[] akey = akeyRef[0];
+
                 if ((garbage + remaining) < 0) {
                     if (mSplit == null) {
                         // Node is full, so split it.
+                        byte[] okey = isOriginal ? akey : retrieveKeyAtLoc(this, page, loc);
                         splitLeafAndCreateEntry
-                            (tree, key, key, vfrag, value, encodedLen, pos, false);
+                            (tree, okey, akey, vfrag, value, encodedLen, pos, false);
                         return;
                     }
 
@@ -3161,14 +3192,18 @@ final class Node extends Latch implements DatabaseAccess {
                     value = db.fragment(value, value.length, max);
                     if (value == null) {
                         // Should not happen if key length was checked already.
-                        throw new LargeKeyException(key.length);
+                        throw new LargeKeyException(akey.length);
                     }
                     encodedLen = keyLen + calculateFragmentedValueLength(value);
                     vfrag = ENTRY_FRAGMENTED;
                 }
 
                 mGarbage = garbage;
-                copyToLeafEntry(key, key, vfrag, value, compactLeaf(encodedLen, pos, false));
+                entryLoc = compactLeaf(encodedLen, pos, false);
+                page = mPage;
+                entryLoc = isOriginal ? encodeNormalKey(akey, page, entryLoc)
+                    : encodeFragmentedKey(akey, page, entryLoc);
+                copyToLeafValue(page, vfrag, value, entryLoc);
                 return;
             }
 
@@ -3191,9 +3226,17 @@ final class Node extends Latch implements DatabaseAccess {
                 mRightSegTail = entryLoc - 1;
             } else {
                 // Search vector is misaligned, so do full compaction.
-                byte[] key = retrieveKey(pos);
+                byte[][] akeyRef = new byte[1][];
+                int loc = decodeUnsignedShortLE(page, searchVecStart + pos);
+                boolean isOriginal = retrieveActualKeyAtLoc(page, loc, akeyRef);
+                byte[] akey = akeyRef[0];
+
                 mGarbage = garbage;
-                copyToLeafEntry(key, key, vfrag, value, compactLeaf(encodedLen, pos, false));
+                entryLoc = compactLeaf(encodedLen, pos, false);
+                page = mPage;
+                entryLoc = isOriginal ? encodeNormalKey(akey, page, entryLoc)
+                    : encodeFragmentedKey(akey, page, entryLoc);
+                copyToLeafValue(page, vfrag, value, entryLoc);
                 return;
             }
 
@@ -3215,7 +3258,7 @@ final class Node extends Latch implements DatabaseAccess {
     /**
      * Update an internal node key to be larger than what is currently allocated. Caller must
      * ensure that node has enough space available and that it's not split. New key must not
-     * force this node to split.
+     * force this node to split. If key is unencoded, it MUST be a normal key.
      *
      * @param pos must be positive
      * @param growth key size growth
