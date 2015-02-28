@@ -357,7 +357,17 @@ final class Node extends Latch implements DatabaseAccess {
             boolean exclusiveHeld = false;
 
             loop: while (true) {
-                int childPos = internalPos(node.binarySearch(key));
+                int childPos;
+                try {
+                    childPos = internalPos(node.binarySearch(key));
+                } catch (Throwable e) {
+                    node.release(exclusiveHeld);
+                    if (parentLatch != null) {
+                        parentLatch.releaseShared();
+                    }
+                    throw e;
+                }
+
                 long childId = node.retrieveChildRefId(childPos);
                 Node childNode = tree.mDatabase.mTreeNodeMap.get(childId);
 
@@ -504,8 +514,15 @@ final class Node extends Latch implements DatabaseAccess {
 
                     if ((header & ENTRY_FRAGMENTED) != 0) {
                         // Note: An optimized version wouldn't need to copy the whole key.
-                        byte[] compareKey = tree.mDatabase
-                            .reconstructKey(page, compareLoc, compareLen);
+                        byte[] compareKey;
+                        try {
+                            compareKey = tree.mDatabase.reconstructKey
+                                (page, compareLoc, compareLen);
+                        } catch (Throwable e) {
+                            node.releaseShared();
+                            throw e;
+                        }
+
                         int fullCompareLen = compareKey.length;
 
                         int minLen = Math.min(fullCompareLen, keyLen);

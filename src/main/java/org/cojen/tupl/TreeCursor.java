@@ -1397,7 +1397,12 @@ class TreeCursor implements CauseCloseable, Cursor {
                     node = mTree.finishSplit(frame, node);
                 }
 
-                pos = Node.internalPos(node.binarySearch(key, frame.mNodePos));
+                try {
+                    pos = Node.internalPos(node.binarySearch(key, frame.mNodePos));
+                } catch (Throwable e) {
+                    node.releaseExclusive();
+                    throw cleanup(e, frame);
+                }
 
                 if ((pos == 0 && (node.mType & Node.LOW_EXTREMITY) == 0) ||
                     (pos >= node.highestInternalPos() && (node.mType & Node.HIGH_EXTREMITY) == 0))
@@ -1446,10 +1451,20 @@ class TreeCursor implements CauseCloseable, Cursor {
             if (node.isLeaf()) {
                 int pos;
                 if (node.mSplit == null) {
-                    pos = node.binarySearch(key);
+                    try {
+                        pos = node.binarySearch(key);
+                    } catch (Throwable e) {
+                        node.releaseExclusive();
+                        throw cleanup(e, frame);
+                    }
                     frame.bind(node, pos);
                 } else {
-                    pos = node.mSplit.binarySearch(node, key);
+                    try {
+                        pos = node.mSplit.binarySearch(node, key);
+                    } catch (Throwable e) {
+                        node.releaseExclusive();
+                        throw cleanup(e, frame);
+                    }
                     frame.bind(node, pos);
                     if (pos < 0) {
                         // The finishSplit method will release the latch, and
@@ -1505,7 +1520,13 @@ class TreeCursor implements CauseCloseable, Cursor {
 
             Split split = node.mSplit;
             if (split == null) {
-                int childPos = Node.internalPos(node.binarySearch(key));
+                int childPos;
+                try {
+                    childPos = Node.internalPos(node.binarySearch(key));
+                } catch (Throwable e) {
+                    node.releaseExclusive();
+                    throw cleanup(e, frame);
+                }
                 frame.bind(node, childPos);
                 try {
                     node = latchChild(node, childPos, true);
@@ -1531,16 +1552,22 @@ class TreeCursor implements CauseCloseable, Cursor {
                 final Node selected;
                 final int selectedPos;
 
-                if (split.compare(key) < 0) {
-                    selected = left;
-                    selectedPos = Node.internalPos(left.binarySearch(key));
-                    frame.bind(node, selectedPos);
-                    right.releaseExclusive();
-                } else {
-                    selected = right;
-                    selectedPos = Node.internalPos(right.binarySearch(key));
-                    frame.bind(node, left.highestInternalPos() + 2 + selectedPos);
-                    left.releaseExclusive();
+                try {
+                    if (split.compare(key) < 0) {
+                        selected = left;
+                        selectedPos = Node.internalPos(left.binarySearch(key));
+                        frame.bind(node, selectedPos);
+                        right.releaseExclusive();
+                    } else {
+                        selected = right;
+                        selectedPos = Node.internalPos(right.binarySearch(key));
+                        frame.bind(node, left.highestInternalPos() + 2 + selectedPos);
+                        left.releaseExclusive();
+                    }
+                } catch (Throwable e) {
+                    node.releaseExclusive();
+                    sibling.releaseExclusive();
+                    throw cleanup(e, frame);
                 }
 
                 try {
@@ -1616,7 +1643,12 @@ class TreeCursor implements CauseCloseable, Cursor {
                     if (highKey == null) {
                         pos = node.highestPos() + 2;
                     } else {
-                        pos = node.binarySearch(highKey);
+                        try {
+                            pos = node.binarySearch(highKey);
+                        } catch (Throwable e) {
+                            node.releaseExclusive();
+                            throw cleanup(e, frame);
+                        }
                         if (!node.isLeaf()) {
                             pos = Node.internalPos(pos);
                         } else if (pos < 0) {
@@ -1630,7 +1662,13 @@ class TreeCursor implements CauseCloseable, Cursor {
                             break select;
                         }
                     } else {
-                        int lowPos = node.binarySearch(lowKey);
+                        int lowPos;
+                        try {
+                            lowPos = node.binarySearch(lowKey);
+                        } catch (Throwable e) {
+                            node.releaseExclusive();
+                            throw cleanup(e, frame);
+                        }
                         if (!node.isLeaf()) {
                             lowPos = Node.internalPos(lowPos);
                         } else if (lowPos < 0) {
