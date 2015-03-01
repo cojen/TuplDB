@@ -33,6 +33,11 @@ public class LargeKeyTest {
         org.junit.runner.JUnitCore.main(LargeKeyTest.class.getName());
     }
 
+    @After
+    public void teardown() throws Exception {
+        deleteTempDatabases();
+    }
+
     @Test
     public void largeBlanks() throws Exception {
         Database db = Database.open(new DatabaseConfig().pageSize(4096));
@@ -169,4 +174,53 @@ public class LargeKeyTest {
         }
     }
 
+    @Test
+    public void veryLargeKeys() throws Exception {
+        Database db = newTempDatabase(new DatabaseConfig()
+                                      .checkpointRate(-1, null)
+                                      .allowLargeKeys(true));
+        Index ix = db.openIndex("test");
+
+        final int seed = 23423;
+
+        int[] prefixes = {0, 10, 40, 100, 400, 1000, 2100, 4096, 10000};
+
+        for (int t=0; t<2; t++) {
+            for (int q=0; q<3; q++) {
+                for (int p : prefixes) {
+                    byte[] prefix = new byte[p];
+                    new Random(seed + p).nextBytes(prefix);
+                    View view = ix.viewPrefix(prefix, prefix.length);
+
+                    Random rnd = new Random(seed);
+                    byte[] value = new byte[4];
+
+                    for (int i=0; i<1000; i++) {
+                        int keyLen = rnd.nextInt(10000) + 1;
+                        byte[] key = new byte[keyLen];
+                        rnd.nextBytes(key);
+                        Utils.encodeIntLE(value, 0, hash(key));
+                        if (t == 0) {
+                            view.store(Transaction.BOGUS, key, value);
+                        } else {
+                            byte[] found = view.load(Transaction.BOGUS, key);
+                            fastAssertArrayEquals(value, found);
+                        }
+                    }
+                }
+
+                if (t == 0) {
+                    assertTrue(ix.verify(null));
+                }
+            }
+        }
+    }
+
+    static int hash(byte[] b) {
+        int hash = 0;
+        for (int i=0; i<b.length; i++) {
+            hash = hash * 31 + b[i];
+        }
+        return hash;
+    }
 }
