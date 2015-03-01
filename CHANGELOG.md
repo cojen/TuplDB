@@ -1,7 +1,7 @@
 Changelog
 =========
 
-v1.1.12
+v1.1.12 (2015-03-01)
 ------
 * Ensure that recovery deletes ghosts of large deleted values.
 * Added support for filtering and transforming.
