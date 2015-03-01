@@ -1212,7 +1212,7 @@ final class TreeValueStream extends AbstractStream {
             entryLoc += key.length;
 
             entryLoc = node.encodeLeafValueHeader
-                (page, Node.VALUE_FRAGMENTED, value.length + igrowth, entryLoc);
+                (page, Node.ENTRY_FRAGMENTED, value.length + igrowth, entryLoc);
 
             // Copy existing value.
             if (tail) {
