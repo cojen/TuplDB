@@ -160,7 +160,6 @@ public final class Database implements CauseCloseable, Flushable {
     private static final int OPEN_REGULAR = 0, OPEN_DESTROY = 1, OPEN_TEMP = 2;
 
     final EventListener mEventListener;
-    final boolean mAllowLargeKeys;
 
     private final File mBaseFile;
     private final LockedFile mLockFile;
@@ -295,8 +294,6 @@ public final class Database implements CauseCloseable, Flushable {
      */
     private Database(DatabaseConfig config, int openMode) throws IOException {
         config.mEventListener = mEventListener = SafeEventListener.makeSafe(config.mEventListener);
-
-        mAllowLargeKeys = config.mAllowLargeKeys;
 
         mBaseFile = config.mBaseFile;
         final File[] dataFiles = config.dataFiles();

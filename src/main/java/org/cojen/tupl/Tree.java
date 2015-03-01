@@ -938,12 +938,6 @@ class Tree implements Index {
         return mDatabase.markDirty(this, node);
     }
 
-    final void checkKeyLength(byte[] key) throws LargeKeyException {
-        if (key.length > mMaxKeySize && !mDatabase.mAllowLargeKeys) {
-            throw new LargeKeyException(key.length);                        
-        }
-    }
-
     final byte[] fragmentKey(byte[] key) throws IOException {
         return mDatabase.fragment(key, key.length, mMaxKeySize);
     }

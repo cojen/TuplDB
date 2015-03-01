@@ -3661,8 +3661,7 @@ final class Node extends Latch implements DatabaseAccess {
         tree.mDatabase.deletePage(toDelete, toDeleteState);
     }
 
-    // FIXME: Increase to 128.
-    private static final int SMALL_KEY_LIMIT = 64;
+    private static final int SMALL_KEY_LIMIT = 128;
 
     /**
      * Calculate encoded key length, including header. Returns -1 if key is too large and must

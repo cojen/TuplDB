@@ -1,6 +1,11 @@
 Changelog
 =========
 
+v1.2.0 (2015-03-01)
+------
+* Support large keys (up to 2GiB).
+* Increased small key encoding format from 64 bytes to 128 bytes.
+
 v1.1.12 (2015-03-01)
 ------
 * Ensure that recovery deletes ghosts of large deleted values.
