@@ -223,4 +223,43 @@ public class LargeKeyTest {
         }
         return hash;
     }
+
+    @Test
+    public void updateAgainstLargeKeys() throws Exception {
+        Database db = newTempDatabase(new DatabaseConfig().allowLargeKeys(true));
+        Index ix = db.openIndex("test");
+
+        final int seed = 1234567;
+
+        byte[] value = new byte[0];
+
+        Random rnd = new Random(seed);
+        for (int i=0; i<1000; i++) {
+            byte[] key = randomStr(rnd, 1000, 4000);
+            ix.store(Transaction.BOGUS, key, value);
+        }
+
+        // Now update with larger values. This forces leaf nodes to split or compact.
+
+        value = new byte[1000];
+
+        rnd = new Random(seed);
+        for (int i=0; i<1000; i++) {
+            byte[] key = randomStr(rnd, 1000, 4000);
+            int amt = Math.min(key.length, value.length);
+            System.arraycopy(key, 0, value, 0, amt);
+            ix.store(Transaction.BOGUS, key, value);
+        }
+
+        ix.verify(null);
+
+        rnd = new Random(seed);
+        for (int i=0; i<1000; i++) {
+            byte[] key = randomStr(rnd, 1000, 4000);
+            int amt = Math.min(key.length, value.length);
+            System.arraycopy(key, 0, value, 0, amt);
+            byte[] found = ix.load(Transaction.BOGUS, key);
+            fastAssertArrayEquals(value, found);
+        }
+    }
 }
