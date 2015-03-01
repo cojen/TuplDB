@@ -4,6 +4,9 @@ Changelog
 v1.1.12
 ------
 * Ensure that recovery deletes ghosts of large deleted values.
+* Added support for filtering and transforming.
+* Added direct lock control to views.
+* Support large keys (up to 2GiB) as an experimental option.
 
 v1.1.11
 ------
