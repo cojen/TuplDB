@@ -3661,8 +3661,7 @@ final class Node extends Latch implements DatabaseAccess {
         tree.mDatabase.deletePage(toDelete, toDeleteState);
     }
 
-    // FIXME: Increase to 128.
-    private static final int SMALL_KEY_LIMIT = 64;
+    private static final int SMALL_KEY_LIMIT = 128;
 
     /**
      * Calculate encoded key length, including header. Returns -1 if key is too large and must
@@ -4384,6 +4383,16 @@ final class Node extends Latch implements DatabaseAccess {
                         newSearchVecLoc += 2;
                         // Reserve slot in vector for new entry and account for size increase.
                         newSize += encodedLen + (2 + 8);
+                        if (newSize > newPage.length) {
+                            // New entry doesn't fit.
+                            if (splitSide == -1) {
+                                // Guessed wrong; do over on left side.
+                                splitSide = 2;
+                                continue doSplit;
+                            }
+                            // Impossible split. No room for new entry anywhere.
+                            throw new AssertionError();
+                        }
                     }
 
                     int entryLoc = decodeUnsignedShortLE(page, searchVecLoc);
@@ -4394,32 +4403,15 @@ final class Node extends Latch implements DatabaseAccess {
                     size -= sizeChange;
                     newSize += sizeChange;
 
-                    sizeCheck: {
-                        if (size <= TN_HEADER_SIZE || newSize >= newPage.length) {
-                            // Moved too many entries to new node, so undo. Code can probably
-                            // be written such that undo is not required, but this case is only
-                            // expected to occur when using large keys.
-                            if (searchVecLoc == keyLoc) {
-                                // New entry doesn't fit.
-                                newKeyLoc = 0;
-                            }
-                            newSearchVecLoc -= 2;
-                            entryLoc = decodeUnsignedShortLE(page, searchVecLoc - 2);
-                            entryLen = keyLengthAtLoc(page, entryLoc);
-                            destLoc += entryLen;
-                        } else {
-                            searchVecLoc += 2;
+                    searchVecLoc += 2;
 
-                            // Note that last examined key is not moved but instead
-                            // dropped. Garbage must account for this.
-                            garbageAccum += entryLen;
+                    // Note that last examined key is not moved but is dropped. Garbage must
+                    // account for this.
+                    garbageAccum += entryLen;
 
-                            if (newSize < size) {
-                                // Keep moving entries until balanced.
-                                break sizeCheck;
-                            }
-                        }
+                    boolean full = size < TN_HEADER_SIZE | newSize > newPage.length;
 
+                    if (full || newSize >= size) {
                         // New node has accumlated enough entries...
 
                         if (newKeyLoc != 0) {
@@ -4445,7 +4437,7 @@ final class Node extends Latch implements DatabaseAccess {
                         }
 
                         // Keep searching on this side for new entry location.
-                        if (splitSide != -2) {
+                        if (full || splitSide != -2) {
                             throw new AssertionError();
                         }
                     }
@@ -4500,6 +4492,16 @@ final class Node extends Latch implements DatabaseAccess {
                         newKeyLoc = newSearchVecLoc;
                         // Reserve slot in vector for new entry and account for size increase.
                         newSize += encodedLen + (2 + 8);
+                        if (newSize > newPage.length) {
+                            // New entry doesn't fit.
+                            if (splitSide == 1) {
+                                // Guessed wrong; do over on left side.
+                                splitSide = -2;
+                                continue doSplit;
+                            }
+                            // Impossible split. No room for new entry anywhere.
+                            throw new AssertionError();
+                        }
                     }
 
                     searchVecLoc -= 2;
@@ -4512,31 +4514,13 @@ final class Node extends Latch implements DatabaseAccess {
                     size -= sizeChange;
                     newSize += sizeChange;
 
-                    sizeCheck: {
-                        if (size <= TN_HEADER_SIZE || newSize >= newPage.length) {
-                            // Moved too many entries to new node, so undo. Code can probably
-                            // be written such that undo is not required, but this case is only
-                            // expected to occur when using large keys.
-                            searchVecLoc += 2;
-                            if (searchVecLoc == keyLoc) {
-                                // New entry doesn't fit.
-                                newKeyLoc = 0;
-                            }
-                            newSearchVecLoc += 2;
-                            entryLoc = decodeUnsignedShortLE(page, searchVecLoc);
-                            entryLen = keyLengthAtLoc(page, entryLoc);
-                            destLoc -= entryLen;
-                        } else {
-                            // Note that last examined key is not moved but instead
-                            // dropped. Garbage must account for this.
-                            garbageAccum += entryLen;
+                    // Note that last examined key is not moved but is dropped. Garbage must
+                    // account for this.
+                    garbageAccum += entryLen;
 
-                            if (newSize < size) {
-                                // Keep moving entries until balanced.
-                                break sizeCheck;
-                            }
-                        }
+                    boolean full = size < TN_HEADER_SIZE | newSize > newPage.length;
 
+                    if (full || newSize >= size) {
                         // New node has accumlated enough entries...
 
                         if (newKeyLoc != 0) {
@@ -4562,7 +4546,7 @@ final class Node extends Latch implements DatabaseAccess {
                         }
 
                         // Keep searching on this side for new entry location.
-                        if (splitSide != 2) {
+                        if (full || splitSide != 2) {
                             throw new AssertionError();
                         }
                     }

@@ -17,9 +17,7 @@
 package org.cojen.tupl;
 
 /**
- * Thrown when a key is too large to fit into a page. Maximum key size is defined as:
- * {@code min(16383, (pageSize / 2) - 22)}. When using the default page size of 4096
- * bytes, the maximum key size is 2026 bytes.
+ * Thrown when attempting to load a key which cannot fit into memory.
  *
  * @author Brian S O'Neill
  */
@@ -29,7 +27,12 @@ public class LargeKeyException extends DatabaseException {
     private final long mLength;
 
     public LargeKeyException(long length) {
-        super("Key is too large: " + length);
+        super(createMessage(length));
+        mLength = length;
+    }
+
+    public LargeKeyException(long length, Throwable cause) {
+        super(createMessage(length), cause);
         mLength = length;
     }
 
@@ -40,5 +43,9 @@ public class LargeKeyException extends DatabaseException {
     @Override
     boolean isRecoverable() {
         return true;
+    }
+
+    private static String createMessage(long length) {
+        return "Key is too large: " + Utils.valueOfUnsigned(length);
     }
 }
