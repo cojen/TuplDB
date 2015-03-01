@@ -3465,9 +3465,7 @@ public final class Database implements CauseCloseable, Flushable {
         try {
             return reconstruct(fragmented, off, len);
         } catch (LargeValueException e) {
-            LargeKeyException e2 = new LargeKeyException(e.getLength());
-            e2.setStackTrace(e.getStackTrace());
-            throw e2;
+            throw new LargeKeyException(e.getLength(), e.getCause());
         }
     }
 

@@ -29,7 +29,12 @@ public class LargeKeyException extends DatabaseException {
     private final long mLength;
 
     public LargeKeyException(long length) {
-        super("Key is too large: " + length);
+        super(createMessage(length));
+        mLength = length;
+    }
+
+    public LargeKeyException(long length, Throwable cause) {
+        super(createMessage(length), cause);
         mLength = length;
     }
 
@@ -40,5 +45,9 @@ public class LargeKeyException extends DatabaseException {
     @Override
     boolean isRecoverable() {
         return true;
+    }
+
+    private static String createMessage(long length) {
+        return "Key is too large: " + Utils.valueOfUnsigned(length);
     }
 }
