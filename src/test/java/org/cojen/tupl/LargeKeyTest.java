@@ -99,37 +99,6 @@ public class LargeKeyTest {
     }
 
     @Test
-    public void loadLargeKey() throws Exception {
-        // Attempting to load a too large key is fine, but storing is not.
-
-        final int pageSize = 4096;
-        Database db = Database.open(new DatabaseConfig().pageSize(pageSize));
-        Index ix = db.openIndex("test");
-
-        byte[] key = new byte[3000];
-        assertNull(ix.load(null, key));
-
-        Cursor c = ix.newCursor(null);
-        c.find(key);
-        assertNull(c.value());
-        fastAssertArrayEquals(key, c.key());
-        c.load();
-        assertNull(c.value());
-        fastAssertArrayEquals(key, c.key());
-
-        try {
-            c.store("stuff".getBytes());
-            fail();
-        } catch (LargeKeyException e) {
-            // Expected.
-        }
-
-        // Cursor position is unchanched.
-        assertNull(c.value());
-        fastAssertArrayEquals(key, c.key());
-    }
-
-    @Test
     public void storeMaxSizeFull() throws Exception {
         storeMaxSizeFull(512);
         storeMaxSizeFull(1024);
@@ -176,9 +145,7 @@ public class LargeKeyTest {
 
     @Test
     public void veryLargeKeys() throws Exception {
-        Database db = newTempDatabase(new DatabaseConfig()
-                                      .checkpointRate(-1, null)
-                                      .allowLargeKeys(true));
+        Database db = newTempDatabase(new DatabaseConfig().checkpointRate(-1, null));
         Index ix = db.openIndex("test");
 
         final int seed = 23423;
@@ -226,7 +193,7 @@ public class LargeKeyTest {
 
     @Test
     public void updateAgainstLargeKeys() throws Exception {
-        Database db = newTempDatabase(new DatabaseConfig().allowLargeKeys(true));
+        Database db = newTempDatabase(new DatabaseConfig());
         Index ix = db.openIndex("test");
 
         final int seed = 1234567;
