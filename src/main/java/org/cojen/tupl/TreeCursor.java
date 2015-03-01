@@ -2146,9 +2146,6 @@ class TreeCursor implements CauseCloseable, Cursor {
                     // Insert entry...
 
                     try {
-                        // Check before creating a potentially harmful redo log action.
-                        mTree.checkKeyLength(key);
-
                         if (txn == null) {
                             commitPos = mTree.redoStore(key, value);
                         } else if (txn.lockMode() != LockMode.UNSAFE) {
