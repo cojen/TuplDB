@@ -368,7 +368,7 @@ final class TransformedView implements View {
             byte[] highKey = inverseTransformKey(highTKey);
             if (highKey == null) {
                 highKey = mTransformer.inverseTransformKeyLt(highTKey);
-                if (highTKey == null) {
+                if (highKey == null) {
                     return nonView();
                 }
                 subView = subView.viewLe(highKey);
