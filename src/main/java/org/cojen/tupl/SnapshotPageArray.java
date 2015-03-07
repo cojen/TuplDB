@@ -152,10 +152,21 @@ final class SnapshotPageArray extends PageArray {
      *
      * @param pageCount total number of pages to include in snapshot
      * @param redoPos redo log position for the snapshot
+     * @param nodeCache optional
      */
-    Snapshot beginSnapshot(TempFileManager tfm, long pageCount, long redoPos) throws IOException {
+    Snapshot beginSnapshot(TempFileManager tfm, long pageCount, long redoPos, NodeMap nodeCache)
+        throws IOException
+    {
         pageCount = Math.min(pageCount, getPageCount());
-        SnapshotImpl snapshot = new SnapshotImpl(tfm, pageCount, redoPos);
+
+        // Snapshot does not decrypt pages.
+        PageArray rawSource = mRawSource;
+        if (rawSource != mSource) {
+            // Cache contents are not encrypted, and so it cannot be used.
+            nodeCache = null;
+        }
+
+        SnapshotImpl snapshot = new SnapshotImpl(tfm, pageCount, redoPos, nodeCache, rawSource);
 
         synchronized (this) {
             Object obj = mSnapshots;
@@ -213,6 +224,7 @@ final class SnapshotPageArray extends PageArray {
     }
 
     class SnapshotImpl implements CauseCloseable, Snapshot {
+        private final NodeMap mNodeCache;
         private final PageArray mRawPageArray;
 
         private final TempFileManager mTempFileManager;
@@ -236,9 +248,15 @@ final class SnapshotPageArray extends PageArray {
         private volatile boolean mClosed;
         private Throwable mAbortCause;
 
-        SnapshotImpl(TempFileManager tfm, long pageCount, long redoPos) throws IOException {
-            // Snapshot does not decrypt pages.
-            mRawPageArray = SnapshotPageArray.this.mRawSource;
+        /**
+         * @param nodeCache optional
+         */
+        SnapshotImpl(TempFileManager tfm, long pageCount, long redoPos,
+                     NodeMap nodeCache, PageArray rawPageArray)
+            throws IOException
+        {
+            mNodeCache = nodeCache;
+            mRawPageArray = rawPageArray;
 
             mTempFileManager = tfm;
             mSnapshotPageCount = pageCount;
@@ -286,6 +304,7 @@ final class SnapshotPageArray extends PageArray {
 
             Cursor c = null;
             try {
+                final NodeMap nodeCache = mNodeCache;
                 final byte[] buffer = new byte[pageSize()];
                 final byte[] key = new byte[8];
                 final long count = mSnapshotPageCount;
@@ -318,21 +337,33 @@ final class SnapshotPageArray extends PageArray {
 
                     byte[] value = c.value();
 
-                    if (value == null) {
-                        mRawPageArray.readPage(index, buffer);
-                        synchronized (mSnapshotLock) {
-                            mProgress = index;
-                            mSnapshotLock.notifyAll();
-                        }
-                        out.write(buffer);
-                    } else {
-                        synchronized (mSnapshotLock) {
-                            mProgress = index;
-                            mSnapshotLock.notifyAll();
-                        }
-                        out.write(value);
+                    if (value != null) {
                         c.store(null);
+                    } else read: {
+                        value = buffer;
+
+                        Node node;
+                        if (nodeCache != null && (node = nodeCache.get(index)) != null) {
+                            node.acquireShared();
+                            try {
+                                if (node.mId == index && node.mCachedState == Node.CACHED_CLEAN) {
+                                    arraycopy(node.mPage, 0, buffer, 0, buffer.length);
+                                    break read;
+                                }
+                            } finally {
+                                node.releaseShared();
+                            }
+                        }
+
+                        mRawPageArray.readPage(index, buffer);
                     }
+
+                    synchronized (mSnapshotLock) {
+                        mProgress = index;
+                        mSnapshotLock.notifyAll();
+                    }
+
+                    out.write(value);
                 }
             } finally {
                 if (c != null) {
