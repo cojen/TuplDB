@@ -1482,7 +1482,7 @@ public final class Database implements CauseCloseable, Flushable {
         }
         checkClosed();
         DurablePageDb pageDb = (DurablePageDb) mPageDb;
-        return pageDb.beginSnapshot(mTempFileManager);
+        return pageDb.beginSnapshot(mTempFileManager, mTreeNodeMap);
     }
 
     /**

@@ -592,16 +592,16 @@ final class DurablePageDb extends PageDb {
     }
 
     /**
-     * @see PageArray#beginSnapshot
+     * @see SnapshotPageArray#beginSnapshot
      */
-    Snapshot beginSnapshot(TempFileManager tfm) throws IOException {
+    Snapshot beginSnapshot(TempFileManager tfm, NodeMap nodeCache) throws IOException {
         byte[] header = new byte[MINIMUM_PAGE_SIZE];
         mHeaderLatch.acquireShared();
         try {
             mPageArray.readPartial(mCommitNumber & 1, 0, header, 0, header.length);
             long pageCount = PageManager.readTotalPageCount(header, I_MANAGER_HEADER);
             long redoPos = Database.readRedoPosition(header, I_EXTRA_DATA); 
-            return mPageArray.beginSnapshot(tfm, pageCount, redoPos);
+            return mPageArray.beginSnapshot(tfm, pageCount, redoPos, nodeCache);
         } finally {
             mHeaderLatch.releaseShared();
         }
