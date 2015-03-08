@@ -203,41 +203,6 @@ class Utils extends org.cojen.tupl.io.Utils {
     }
 
     /**
-     * Performs multiple array copies, correctly ordered to prevent clobbering. The copies
-     * must not overlap, and start1 must be less than start2.
-     */
-    static void arrayCopies(byte[] page,
-                            int start1, int dest1, int length1,
-                            int start2, int dest2, int length2)
-    {
-        if (dest1 < start1) {
-            arraycopy(page, start1, page, dest1, length1);
-            arraycopy(page, start2, page, dest2, length2);
-        } else {
-            arraycopy(page, start2, page, dest2, length2);
-            arraycopy(page, start1, page, dest1, length1);
-        }
-    }
-
-    /**
-     * Performs multiple array copies, correctly ordered to prevent clobbering. The copies
-     * must not overlap, start1 must be less than start2, and start2 be less than start3.
-     */
-    static void arrayCopies(byte[] page,
-                            int start1, int dest1, int length1,
-                            int start2, int dest2, int length2,
-                            int start3, int dest3, int length3)
-    {
-        if (dest1 < start1) {
-            arraycopy(page, start1, page, dest1, length1);
-            arrayCopies(page, start2, dest2, length2, start3, dest3, length3);
-        } else {
-            arrayCopies(page, start2, dest2, length2, start3, dest3, length3);
-            arraycopy(page, start1, page, dest1, length1);
-        }
-    }
-
-    /**
      * Performs an array copy as usual, but if src is null, treats it as zeros.
      */
     static void arrayCopyOrFill(byte[] src, int srcPos, byte[] dest, int destPos, int length) {
