@@ -259,7 +259,7 @@ final class Node extends Latch implements DatabaseAccess {
         mId = STUB_ID;
         mCachedState = CACHED_CLEAN;
         mType = TYPE_TN_LEAF | LOW_EXTREMITY | HIGH_EXTREMITY;
-        mPage = EMPTY_BYTES;
+        mPage = p_empty();
         mGarbage = 0;
 
         // Clear entries with the lowest positive values for an empty node.
@@ -957,7 +957,7 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     private static Node createEmptyNode(byte type) {
-        Node empty = new Node(null, EMPTY_BYTES);
+        Node empty = new Node(null, p_empty());
         empty.mId = STUB_ID;
         empty.mCachedState = CACHED_CLEAN;
         empty.mType = type;
@@ -3909,7 +3909,7 @@ final class Node extends Latch implements DatabaseAccess {
 
         byte[] page = mPage;
 
-        if (page == EMPTY_BYTES) {
+        if (page == p_empty()) {
             // Node is a closed tree root.
             throw new ClosedIndexException();
         }

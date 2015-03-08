@@ -62,6 +62,7 @@ import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
 
 import static org.cojen.tupl.Node.*;
+import static org.cojen.tupl.PageOps.*;
 import static org.cojen.tupl.Utils.*;
 
 /**
@@ -573,9 +574,8 @@ public final class Database implements CauseCloseable, Flushable {
                 }
             }
 
-            // Limit maximum fragmented entry size to guarantee that 2 entries
-            // fit. Each also requires 2 bytes for pointer and up to 3 bytes
-            // for value length field.
+            // Limit maximum fragmented entry size to guarantee that 2 entries fit. Each also
+            // requires 2 bytes for pointer and up to 3 bytes for value length field.
             mMaxFragmentedEntrySize = (pageSize - Node.TN_HEADER_SIZE - (2 + 3 + 2 + 3)) >> 1;
 
             mFragmentInodeLevelCaps = calculateInodeLevelCaps(mPageSize);
@@ -997,7 +997,7 @@ public final class Database implements CauseCloseable, Flushable {
         final Node root = tree.mRoot;
         root.acquireExclusive();
         try {
-            if (root.mPage == EMPTY_BYTES) {
+            if (root.mPage == p_empty()) {
                 throw new ClosedIndexException();
             }
 
@@ -3335,11 +3335,11 @@ public final class Database implements CauseCloseable, Flushable {
                                 encodeInt48LE(newValue, offset, node.mId);
                                 byte[] page = node.mPage;
                                 if (pageCount > 1) {
-                                    arraycopy(value, voffset, page, 0, pageSize);
+                                    p_copyFromArray(value, voffset, page, 0, pageSize);
                                 } else {
-                                    arraycopy(value, voffset, page, 0, remainder);
+                                    p_copyFromArray(value, voffset, page, 0, remainder);
                                     // Zero fill the rest, making it easier to extend later.
-                                    fill(page, remainder, page.length, (byte) 0);
+                                    p_clear(page, remainder, p_length(page));
                                     break;
                                 }
                             } finally {
@@ -3432,9 +3432,9 @@ public final class Database implements CauseCloseable, Flushable {
                 int len = (int) Math.min(levelCap, vlength);
                 if (level <= 0) {
                     byte[] childPage = childNode.mPage;
-                    arraycopy(value, voffset, childPage, 0, len);
+                    p_copyFromArray(value, voffset, childPage, 0, len);
                     // Zero fill the rest, making it easier to extend later.
-                    fill(childPage, len, childPage.length, (byte) 0);
+                    p_clear(childPage, len, p_length(childPage));
                     childNode.releaseExclusive();
                 } else {
                     writeMultilevelFragments(level, childNode, value, voffset, len);
@@ -3445,7 +3445,7 @@ public final class Database implements CauseCloseable, Flushable {
             }
 
             // Zero fill the rest, making it easier to extend later.
-            fill(page, poffset, page.length, (byte) 0);
+            p_clear(page, poffset, p_length(page));
         } catch (Throwable e) {
             // Panic.
             close(e);
@@ -3543,8 +3543,8 @@ public final class Database implements CauseCloseable, Flushable {
                     Node node = mFragmentCache.get(nodeId);
                     try {
                         byte[] page = node.mPage;
-                        pLen = Math.min(vLen, page.length);
-                        arraycopy(page, 0, value, vOff, pLen);
+                        pLen = Math.min(vLen, p_length(page));
+                        p_copyToArray(page, 0, value, vOff, pLen);
                     } finally {
                         node.releaseShared();
                     }
@@ -3582,13 +3582,13 @@ public final class Database implements CauseCloseable, Flushable {
             int childNodeCount = (int) ((vlength + (levelCap - 1)) / levelCap);
 
             for (int poffset = 0, i=0; i<childNodeCount; poffset += 6, i++) {
-                long childNodeId = decodeUnsignedInt48LE(page, poffset);
+                long childNodeId = p_uint48GetLE(page, poffset);
                 int len = (int) Math.min(levelCap, vlength);
 
                 if (childNodeId != 0) {
                     Node childNode = mFragmentCache.get(childNodeId);
                     if (level <= 0) {
-                        arraycopy(childNode.mPage, 0, value, voffset, len);
+                        p_copyToArray(childNode.mPage, 0, value, voffset, len);
                         childNode.releaseShared();
                     } else {
                         readMultilevelFragments(level, childNode, value, voffset, len);
@@ -3680,7 +3680,7 @@ public final class Database implements CauseCloseable, Flushable {
         int childNodeCount = (int) ((vlength + (levelCap - 1)) / levelCap);
         long[] childNodeIds = new long[childNodeCount];
         for (int poffset = 0, i=0; i<childNodeCount; poffset += 6, i++) {
-            childNodeIds[i] = decodeUnsignedInt48LE(page, poffset);
+            childNodeIds[i] = p_uint48GetLE(page, poffset);
         }
         deleteNode(inode);
 

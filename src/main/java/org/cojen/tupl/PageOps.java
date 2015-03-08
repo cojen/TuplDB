@@ -24,6 +24,10 @@ import static org.cojen.tupl.Utils.*;
  * @author Brian S O'Neill
  */
 final class PageOps {
+    static byte[] p_empty() {
+        return EMPTY_BYTES;
+    }
+
     static byte[] p_alloc(int size) {
         return new byte[size];
     }
@@ -59,6 +63,26 @@ final class PageOps {
         encodeShortLE(page, index, v);
     }
 
+    static int p_intGetLE(byte[] page, int index) {
+        return decodeIntLE(page, index);
+    }
+
+    static void p_intPutLE(byte[] page, int index, int v) {
+        encodeIntLE(page, index, v);
+    }
+
+    static int p_uintGetVar(byte[] page, int index) {
+        return decodeUnsignedVarInt(page, index);
+    }
+
+    static int p_uintPutVar(byte[] page, int index, int v) {
+        return encodeUnsignedVarInt(page, index, v);
+    }
+
+    static int p_uintVarSize(int v) {
+        return calcUnsignedVarIntLength(v);
+    }
+
     static long p_uint48GetLE(byte[] page, int index) {
         return decodeUnsignedInt48LE(page, index);
     }
@@ -73,6 +97,34 @@ final class PageOps {
 
     static void p_longPutLE(byte[] page, int index, long v) {
         encodeLongLE(page, index, v);
+    }
+
+    static long p_longGetBE(byte[] page, int index) {
+        return decodeLongBE(page, index);
+    }
+
+    static void p_longPutBE(byte[] page, int index, long v) {
+        encodeLongBE(page, index, v);
+    }
+
+    static long p_ulongGetVar(byte[] page, IntegerRef ref) {
+        return decodeUnsignedVarLong(page, ref);
+    }
+
+    static int p_ulongPutVar(byte[] page, int index, long v) {
+        return encodeUnsignedVarLong(page, index, v);
+    }
+
+    static int p_ulongVarSize(long v) {
+        return calcUnsignedVarLongLength(v);
+    }
+
+    static void p_clear(byte[] page) {
+        java.util.Arrays.fill(page, (byte) 0);
+    }
+
+    static void p_clear(byte[] page, int fromIndex, int toIndex) {
+        java.util.Arrays.fill(page, fromIndex, toIndex, (byte) 0);
     }
 
     static void p_copyFromArray(byte[] src, int srcStart, byte[] dstPage, int dstStart, int len) {
