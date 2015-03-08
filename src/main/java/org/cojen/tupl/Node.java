@@ -18,9 +18,12 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import static java.lang.System.arraycopy;
+import static org.cojen.tupl.PageOps.*;
 
-import static org.cojen.tupl.Utils.*;
+import static org.cojen.tupl.Utils.EMPTY_BYTES;
+import static org.cojen.tupl.Utils.closeOnFailure;
+import static org.cojen.tupl.Utils.compareKeys;
+import static org.cojen.tupl.Utils.rethrow;
 
 /**
  * Node within a B-tree, undo log, or a large value fragment.
@@ -223,7 +226,7 @@ final class Node extends Latch implements DatabaseAccess {
     transient Split mSplit;
 
     Node(NodeUsageList usageList, int pageSize) {
-        this(usageList, new byte[pageSize]);
+        this(usageList, p_alloc(pageSize));
     }
 
     private Node(NodeUsageList usageList, byte[] page) {
@@ -288,7 +291,7 @@ final class Node extends Latch implements DatabaseAccess {
     private void clearEntries() {
         mGarbage = 0;
         mLeftSegTail = TN_HEADER_SIZE;
-        int pageSize = mPage.length;
+        int pageSize = p_length(mPage);
         mRightSegTail = pageSize - 1;
         // Search vector location must be even.
         mSearchVecStart = (TN_HEADER_SIZE + ((pageSize - TN_HEADER_SIZE) >> 1)) & ~1;
@@ -504,13 +507,13 @@ final class Node extends Latch implements DatabaseAccess {
 
             int compareLoc, compareLen, i;
             compare: {
-                compareLoc = decodeUnsignedShortLE(page, midPos);
-                compareLen = page[compareLoc++];
+                compareLoc = p_ushortGetLE(page, midPos);
+                compareLen = p_byteGet(page, compareLoc++);
                 if (compareLen >= 0) {
                     compareLen++;
                 } else {
                     int header = compareLen;
-                    compareLen = ((compareLen & 0x3f) << 8) | ((page[compareLoc++]) & 0xff);
+                    compareLen = ((compareLen & 0x3f) << 8) | p_ubyteGet(page, compareLoc++);
 
                     if ((header & ENTRY_FRAGMENTED) != 0) {
                         // Note: An optimized version wouldn't need to copy the whole key.
@@ -555,7 +558,7 @@ final class Node extends Latch implements DatabaseAccess {
                 int minLen = Math.min(compareLen, keyLen);
                 i = Math.min(lowMatch, highMatch);
                 for (; i<minLen; i++) {
-                    byte cb = page[compareLoc + i];
+                    byte cb = p_byteGet(page, compareLoc + i);
                     byte kb = key[i];
                     if (cb != kb) {
                         if ((cb & 0xff) < (kb & 0xff)) {
@@ -721,18 +724,18 @@ final class Node extends Latch implements DatabaseAccess {
 
         // Create new single-element search vector. Center it using the same formula as the
         // compactInternal method.
-        final int searchVecStart = newPage.length -
-            (((newPage.length - leftSegTail + (2 + 8 + 8)) >> 1) & ~1);
-        encodeShortLE(newPage, searchVecStart, TN_HEADER_SIZE);
-        encodeLongLE(newPage, searchVecStart + 2, left.mId);
-        encodeLongLE(newPage, searchVecStart + 2 + 8, right.mId);
+        final int searchVecStart = p_length(newPage) -
+            (((p_length(newPage) - leftSegTail + (2 + 8 + 8)) >> 1) & ~1);
+        p_shortPutLE(newPage, searchVecStart, TN_HEADER_SIZE);
+        p_longPutLE(newPage, searchVecStart + 2, left.mId);
+        p_longPutLE(newPage, searchVecStart + 2 + 8, right.mId);
 
         mPage = newPage;
         mType = isLeaf() ? (byte) (TYPE_TN_BIN | LOW_EXTREMITY | HIGH_EXTREMITY)
             : (byte) (TYPE_TN_IN | LOW_EXTREMITY | HIGH_EXTREMITY);
         mGarbage = 0;
         mLeftSegTail = leftSegTail;
-        mRightSegTail = newPage.length - 1;
+        mRightSegTail = p_length(newPage) - 1;
         mSearchVecStart = searchVecStart;
         mSearchVecEnd = searchVecStart;
         mLastCursorFrame = null;
@@ -780,25 +783,26 @@ final class Node extends Latch implements DatabaseAccess {
         mCachedState = db.readNodePage(id, page);
         mId = id;
 
-        byte type = page[0];
+        byte type = p_byteGet(page, 0);
         mType = type;
 
         // For undo log node, this is top entry pointer.
-        mGarbage = decodeUnsignedShortLE(page, 2);
+        mGarbage = p_ushortGetLE(page, 2);
 
         if (type != TYPE_UNDO_LOG) {
-            mLeftSegTail = decodeUnsignedShortLE(page, 4);
-            mRightSegTail = decodeUnsignedShortLE(page, 6);
-            mSearchVecStart = decodeUnsignedShortLE(page, 8);
-            mSearchVecEnd = decodeUnsignedShortLE(page, 10);
+            mLeftSegTail = p_ushortGetLE(page, 4);
+            mRightSegTail = p_ushortGetLE(page, 6);
+            mSearchVecStart = p_ushortGetLE(page, 8);
+            mSearchVecEnd = p_ushortGetLE(page, 10);
             type &= ~(LOW_EXTREMITY | HIGH_EXTREMITY);
             if (type >= 0 && type != TYPE_TN_IN && type != TYPE_TN_BIN) {
                 throw new CorruptDatabaseException("Unknown node type: " + mType + ", id: " + id);
             }
         }
 
-        if (page[1] != 0) {
-            throw new CorruptDatabaseException("Illegal reserved byte in node: " + page[1]);
+        if (p_byteGet(page, 1) != 0) {
+            throw new CorruptDatabaseException
+                ("Illegal reserved byte in node: " + p_byteGet(page, 1));
         }
     }
 
@@ -813,17 +817,17 @@ final class Node extends Latch implements DatabaseAccess {
         byte[] page = mPage;
 
         if (mType != TYPE_FRAGMENT) {
-            page[0] = mType;
-            page[1] = 0; // reserved
+            p_bytePut(page, 0, mType);
+            p_bytePut(page, 1, 0); // reserved
 
             // For undo log node, this is top entry pointer.
-            encodeShortLE(page, 2, mGarbage);
+            p_shortPutLE(page, 2, mGarbage);
 
             if (mType != TYPE_UNDO_LOG) {
-                encodeShortLE(page, 4, mLeftSegTail);
-                encodeShortLE(page, 6, mRightSegTail);
-                encodeShortLE(page, 8, mSearchVecStart);
-                encodeShortLE(page, 10, mSearchVecEnd);
+                p_shortPutLE(page, 4, mLeftSegTail);
+                p_shortPutLE(page, 6, mRightSegTail);
+                p_shortPutLE(page, 8, mSearchVecStart);
+                p_shortPutLE(page, 10, mSearchVecEnd);
             }
         }
 
@@ -845,7 +849,7 @@ final class Node extends Latch implements DatabaseAccess {
         while (true) {
             Node child = node.mNodeChainNext;
             if (child != null) {
-                long childId = decodeLongLE(node.mPage, UndoLog.I_LOWER_NODE_ID);
+                long childId = p_longGetLE(node.mPage, UndoLog.I_LOWER_NODE_ID);
                 // Check id match before lock attempt, as a quick short
                 // circuit if child has already been evicted.
                 if (childId == child.mId) {
@@ -937,7 +941,7 @@ final class Node extends Latch implements DatabaseAccess {
         int childPtr = mSearchVecEnd + 2;
         final int highestPtr = childPtr + (highestInternalPos() << 2);
         for (; childPtr <= highestPtr; childPtr += 8) {
-            long childId = decodeUnsignedInt48LE(mPage, childPtr);
+            long childId = p_uint48GetLE(mPage, childPtr);
             Node child = map.get(childId);
             if (child != null) {
                 child.acquireExclusive();
@@ -1070,7 +1074,7 @@ final class Node extends Latch implements DatabaseAccess {
     boolean shouldMerge(int availBytes) {
         return mSplit == null
             & (((mType & (LOW_EXTREMITY | HIGH_EXTREMITY)) == 0
-                 & availBytes >= ((mPage.length - TN_HEADER_SIZE) >> 1))
+                 & availBytes >= ((p_length(mPage) - TN_HEADER_SIZE) >> 1))
                 | !hasKeys());
     }
 
@@ -1091,13 +1095,13 @@ final class Node extends Latch implements DatabaseAccess {
 
             int compareLen, i;
             compare: {
-                int compareLoc = decodeUnsignedShortLE(page, midPos);
-                compareLen = page[compareLoc++];
+                int compareLoc = p_ushortGetLE(page, midPos);
+                compareLen = p_byteGet(page, compareLoc++);
                 if (compareLen >= 0) {
                     compareLen++;
                 } else {
                     int header = compareLen;
-                    compareLen = ((compareLen & 0x3f) << 8) | ((page[compareLoc++]) & 0xff);
+                    compareLen = ((compareLen & 0x3f) << 8) | p_ubyteGet(page, compareLoc++);
 
                     if ((header & ENTRY_FRAGMENTED) != 0) {
                         // Note: An optimized version wouldn't need to copy the whole key.
@@ -1129,7 +1133,7 @@ final class Node extends Latch implements DatabaseAccess {
                 int minLen = Math.min(compareLen, keyLen);
                 i = Math.min(lowMatch, highMatch);
                 for (; i<minLen; i++) {
-                    byte cb = page[compareLoc + i];
+                    byte cb = p_byteGet(page, compareLoc + i);
                     byte kb = key[i];
                     if (cb != kb) {
                         if ((cb & 0xff) < (kb & 0xff)) {
@@ -1183,13 +1187,13 @@ final class Node extends Latch implements DatabaseAccess {
             compare: {
                 int compareLen, i;
                 c2: {
-                    int compareLoc = decodeUnsignedShortLE(page, midPos);
-                    compareLen = page[compareLoc++];
+                    int compareLoc = p_ushortGetLE(page, midPos);
+                    compareLen = p_byteGet(page, compareLoc++);
                     if (compareLen >= 0) {
                         compareLen++;
                     } else {
                         int header = compareLen;
-                        compareLen = ((compareLen & 0x3f) << 8) | ((page[compareLoc++]) & 0xff);
+                        compareLen = ((compareLen & 0x3f) << 8) | p_ubyteGet(page, compareLoc++);
 
                         if ((header & ENTRY_FRAGMENTED) != 0) {
                             // Note: An optimized version wouldn't need to copy the whole key.
@@ -1221,7 +1225,7 @@ final class Node extends Latch implements DatabaseAccess {
                     int minLen = Math.min(compareLen, keyLen);
                     i = Math.min(lowMatch, highMatch);
                     for (; i<minLen; i++) {
-                        byte cb = page[compareLoc + i];
+                        byte cb = p_byteGet(page, compareLoc + i);
                         byte kb = key[i];
                         if (cb != kb) {
                             if ((cb & 0xff) < (kb & 0xff)) {
@@ -1269,7 +1273,7 @@ final class Node extends Latch implements DatabaseAccess {
      */
     byte[] retrieveKey(int pos) throws IOException {
         final byte[] page = mPage;
-        return retrieveKeyAtLoc(this, page, decodeUnsignedShortLE(page, mSearchVecStart + pos));
+        return retrieveKeyAtLoc(this, page, p_ushortGetLE(page, mSearchVecStart + pos));
     }
 
     /**
@@ -1285,18 +1289,18 @@ final class Node extends Latch implements DatabaseAccess {
     static byte[] retrieveKeyAtLoc(DatabaseAccess dbAccess, final byte[] page, int loc)
         throws IOException
     {
-        int keyLen = page[loc++];
+        int keyLen = p_byteGet(page, loc++);
         if (keyLen >= 0) {
             keyLen++;
         } else {
             int header = keyLen;
-            keyLen = ((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff);
+            keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++);
             if ((header & ENTRY_FRAGMENTED) != 0) {
                 return dbAccess.getDatabase().reconstructKey(page, loc, keyLen);
             }
         }
         byte[] key = new byte[keyLen];
-        arraycopy(page, loc, key, 0, keyLen);
+        p_copyToArray(page, loc, key, 0, keyLen);
         return key;
     }
 
@@ -1310,16 +1314,16 @@ final class Node extends Latch implements DatabaseAccess {
     {
         boolean result = true;
 
-        int keyLen = page[loc++];
+        int keyLen = p_byteGet(page, loc++);
         if (keyLen >= 0) {
             keyLen++;
         } else {
             int header = keyLen;
-            keyLen = ((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff);
+            keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++);
             result = (header & ENTRY_FRAGMENTED) == 0;
         }
         byte[] akey = new byte[keyLen];
-        arraycopy(page, loc, akey, 0, keyLen);
+        p_copyToArray(page, loc, akey, 0, keyLen);
         akeyRef[0] = akey;
 
         return result;
@@ -1335,13 +1339,13 @@ final class Node extends Latch implements DatabaseAccess {
      */
     byte[] retrieveKeyCmp(int pos, byte[] limitKey, int limitMode) throws IOException {
         final byte[] page = mPage;
-        int loc = decodeUnsignedShortLE(page, mSearchVecStart + pos);
-        int keyLen = page[loc++];
+        int loc = p_ushortGetLE(page, mSearchVecStart + pos);
+        int keyLen = p_byteGet(page, loc++);
         if (keyLen >= 0) {
             keyLen++;
         } else {
             int header = keyLen;
-            keyLen = ((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff);
+            keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++);
 
             if ((header & ENTRY_FRAGMENTED) != 0) {
                 byte[] key = getDatabase().reconstructKey(page, loc, keyLen);
@@ -1359,7 +1363,7 @@ final class Node extends Latch implements DatabaseAccess {
             return limitKey;
         } else if ((cmp ^ limitMode) < 0) {
             byte[] key = new byte[keyLen];
-            arraycopy(page, loc, key, 0, keyLen);
+            p_copyToArray(page, loc, key, 0, keyLen);
             return key;
         } else {
             return null;
@@ -1374,7 +1378,7 @@ final class Node extends Latch implements DatabaseAccess {
     static byte[][] retrieveKeyValueAtLoc(DatabaseAccess dbAccess, final byte[] page, int loc)
         throws IOException
     {
-        int header = page[loc++];
+        int header = p_byteGet(page, loc++);
 
         int keyLen;
         byte[] key;
@@ -1382,14 +1386,14 @@ final class Node extends Latch implements DatabaseAccess {
             if (header >= 0) {
                 keyLen = header + 1;
             } else {
-                keyLen = ((header & 0x3f) << 8) | ((page[loc++]) & 0xff);
+                keyLen = ((header & 0x3f) << 8) | p_ubyteGet(page, loc++);
                 if ((header & ENTRY_FRAGMENTED) != 0) {
                     key = dbAccess.getDatabase().reconstructKey(page, loc, keyLen);
                     break copyKey;
                 }
             }
             key = new byte[keyLen];
-            arraycopy(page, loc, key, 0, keyLen);
+            p_copyToArray(page, loc, key, 0, keyLen);
         }
 
         return new byte[][] {key, retrieveLeafValueAtLoc(null, page, loc + keyLen)};
@@ -1402,8 +1406,8 @@ final class Node extends Latch implements DatabaseAccess {
      */
     private byte[] midKey(int lowPos, byte[] highKey) throws IOException {
         final byte[] lowPage = mPage;
-        int lowLoc = decodeUnsignedShortLE(lowPage, mSearchVecStart + lowPos);
-        int lowKeyLen = lowPage[lowLoc];
+        int lowLoc = p_ushortGetLE(lowPage, mSearchVecStart + lowPos);
+        int lowKeyLen = p_byteGet(lowPage, lowLoc);
         if (lowKeyLen < 0) {
             // Note: An optimized version wouldn't need to copy the whole key.
             return Utils.midKey(retrieveKeyAtLoc(lowPage, lowLoc), highKey);
@@ -1419,8 +1423,8 @@ final class Node extends Latch implements DatabaseAccess {
      */
     private byte[] midKey(byte[] lowKey, int highPos) throws IOException {
         final byte[] highPage = mPage;
-        int highLoc = decodeUnsignedShortLE(highPage, mSearchVecStart + highPos);
-        int highKeyLen = highPage[highLoc];
+        int highLoc = p_ushortGetLE(highPage, mSearchVecStart + highPos);
+        int highKeyLen = p_byteGet(highPage, highLoc);
         if (highKeyLen < 0) {
             // Note: An optimized version wouldn't need to copy the whole key.
             return Utils.midKey(lowKey, retrieveKeyAtLoc(highPage, highLoc));
@@ -1436,8 +1440,8 @@ final class Node extends Latch implements DatabaseAccess {
      */
     byte[] midKey(int lowPos, Node highNode, int highPos) throws IOException {
         final byte[] lowPage = mPage;
-        int lowLoc = decodeUnsignedShortLE(lowPage, mSearchVecStart + lowPos);
-        int lowKeyLen = lowPage[lowLoc];
+        int lowLoc = p_ushortGetLE(lowPage, mSearchVecStart + lowPos);
+        int lowKeyLen = p_byteGet(lowPage, lowLoc);
         if (lowKeyLen < 0) {
             // Note: An optimized version wouldn't need to copy the whole key.
             return highNode.midKey(retrieveKeyAtLoc(lowPage, lowLoc), highPos);
@@ -1447,8 +1451,8 @@ final class Node extends Latch implements DatabaseAccess {
         lowKeyLen++;
 
         final byte[] highPage = highNode.mPage;
-        int highLoc = decodeUnsignedShortLE(highPage, highNode.mSearchVecStart + highPos);
-        int highKeyLen = highPage[highLoc];
+        int highLoc = p_ushortGetLE(highPage, highNode.mSearchVecStart + highPos);
+        int highKeyLen = p_byteGet(highPage, highLoc);
         if (highKeyLen < 0) {
             // Note: An optimized version wouldn't need to copy the whole key.
             byte[] highKey = retrieveKeyAtLoc(highPage, highLoc);
@@ -1464,9 +1468,9 @@ final class Node extends Latch implements DatabaseAccess {
      */
     byte[] hasLeafValue(int pos) {
         final byte[] page = mPage;
-        int loc = decodeUnsignedShortLE(page, mSearchVecStart + pos);
+        int loc = p_ushortGetLE(page, mSearchVecStart + pos);
         loc += keyLengthAtLoc(page, loc);
-        return page[loc] == -1 ? null : Cursor.NOT_LOADED;
+        return p_byteGet(page, loc) == -1 ? null : Cursor.NOT_LOADED;
     }
 
     /**
@@ -1475,7 +1479,7 @@ final class Node extends Latch implements DatabaseAccess {
      */
     byte[] retrieveLeafValue(int pos) throws IOException {
         final byte[] page = mPage;
-        int loc = decodeUnsignedShortLE(page, mSearchVecStart + pos);
+        int loc = p_ushortGetLE(page, mSearchVecStart + pos);
         loc += keyLengthAtLoc(page, loc);
         return retrieveLeafValueAtLoc(this, page, loc);
     }
@@ -1483,7 +1487,7 @@ final class Node extends Latch implements DatabaseAccess {
     private static byte[] retrieveLeafValueAtLoc(DatabaseAccess dbAccess, byte[] page, int loc)
         throws IOException
     {
-        final int header = page[loc++];
+        final int header = p_byteGet(page, loc++);
         if (header == 0) {
             return EMPTY_BYTES;
         }
@@ -1493,10 +1497,10 @@ final class Node extends Latch implements DatabaseAccess {
             len = header;
         } else {
             if ((header & 0x20) == 0) {
-                len = 1 + (((header & 0x1f) << 8) | (page[loc++] & 0xff));
+                len = 1 + (((header & 0x1f) << 8) | p_ubyteGet(page, loc++));
             } else if (header != -1) {
                 len = 1 + (((header & 0x0f) << 16)
-                           | ((page[loc++] & 0xff) << 8) | (page[loc++] & 0xff));
+                           | (p_ubyteGet(page, loc++) << 8) | p_ubyteGet(page, loc++));
             } else {
                 // ghost
                 return null;
@@ -1507,7 +1511,7 @@ final class Node extends Latch implements DatabaseAccess {
         }
 
         byte[] value = new byte[len];
-        arraycopy(page, loc, value, 0, len);
+        p_copyToArray(page, loc, value, 0, len);
         return value;
     }
 
@@ -1520,8 +1524,8 @@ final class Node extends Latch implements DatabaseAccess {
      */
     void retrieveLeafEntry(int pos, TreeCursor cursor) throws IOException {
         final byte[] page = mPage;
-        int loc = decodeUnsignedShortLE(page, mSearchVecStart + pos);
-        int header = page[loc++];
+        int loc = p_ushortGetLE(page, mSearchVecStart + pos);
+        int header = p_byteGet(page, loc++);
 
         int keyLen;
         byte[] key;
@@ -1529,14 +1533,14 @@ final class Node extends Latch implements DatabaseAccess {
             if (header >= 0) {
                 keyLen = header + 1;
             } else {
-                keyLen = ((header & 0x3f) << 8) | ((page[loc++]) & 0xff);
+                keyLen = ((header & 0x3f) << 8) | p_ubyteGet(page, loc++);
                 if ((header & ENTRY_FRAGMENTED) != 0) {
                     key = getDatabase().reconstructKey(page, loc, keyLen);
                     break copyKey;
                 }
             }
             key = new byte[keyLen];
-            arraycopy(page, loc, key, 0, keyLen);
+            p_copyToArray(page, loc, key, 0, keyLen);
         }
 
         loc += keyLen;
@@ -1544,7 +1548,7 @@ final class Node extends Latch implements DatabaseAccess {
 
         byte[] value;
         if (cursor.mKeyOnly) {
-            value = page[loc] == -1 ? null : Cursor.NOT_LOADED;
+            value = p_byteGet(page, loc) == -1 ? null : Cursor.NOT_LOADED;
         } else {
             value = retrieveLeafValueAtLoc(this, page, loc);
         }
@@ -1557,9 +1561,9 @@ final class Node extends Latch implements DatabaseAccess {
      */
     boolean isFragmentedLeafValue(int pos) {
         final byte[] page = mPage;
-        int loc = decodeUnsignedShortLE(page, mSearchVecStart + pos);
+        int loc = p_ushortGetLE(page, mSearchVecStart + pos);
         loc += keyLengthAtLoc(page, loc);
-        int header = page[loc];
+        int header = p_byteGet(page, loc);
         return ((header & 0xc0) >= 0xc0) & (header < -1);
     }
 
@@ -1578,7 +1582,7 @@ final class Node extends Latch implements DatabaseAccess {
         throws IOException
     {
         final byte[] page = mPage;
-        final int entryLoc = decodeUnsignedShortLE(page, mSearchVecStart + pos);
+        final int entryLoc = p_ushortGetLE(page, mSearchVecStart + pos);
         int loc = entryLoc;
 
         // Skip the key.
@@ -1586,7 +1590,7 @@ final class Node extends Latch implements DatabaseAccess {
 
         // Read value header.
         final int valueHeaderLoc = loc;
-        int header = page[loc++];
+        int header = p_byteGet(page, loc++);
 
         doUndo: {
             // Note: Similar to leafEntryLengthAtLoc.
@@ -1596,10 +1600,10 @@ final class Node extends Latch implements DatabaseAccess {
             } else {
                 // Medium value. Move loc to just past end of value.
                 if ((header & 0x20) == 0) {
-                    loc += 2 + (((header & 0x1f) << 8) | (page[loc] & 0xff));
+                    loc += 2 + (((header & 0x1f) << 8) | p_ubyteGet(page, loc));
                 } else if (header != -1) {
                     loc += 3 + (((header & 0x0f) << 16)
-                                | ((page[loc] & 0xff) << 8) | (page[loc + 1] & 0xff));
+                                | (p_ubyteGet(page, loc) << 8) | p_ubyteGet(page, loc + 1));
                 } else {
                     // Already a ghost, so nothing to undo.
                     break doUndo;
@@ -1623,7 +1627,7 @@ final class Node extends Latch implements DatabaseAccess {
         tree.mLockManager.ghosted(tree, key, keyHash);
 
         // Replace value with ghost.
-        page[valueHeaderLoc] = (byte) -1;
+        p_bytePut(page, valueHeaderLoc, -1);
         mGarbage += loc - valueHeaderLoc - 1;
 
         if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
@@ -1642,7 +1646,7 @@ final class Node extends Latch implements DatabaseAccess {
         throws IOException
     {
         final byte[] page = mPage;
-        final int entryLoc = decodeUnsignedShortLE(page, mSearchVecStart + pos);
+        final int entryLoc = p_ushortGetLE(page, mSearchVecStart + pos);
         int loc = entryLoc;
 
         // Skip the key.
@@ -1650,7 +1654,7 @@ final class Node extends Latch implements DatabaseAccess {
 
         // Read value header.
         final int valueHeaderLoc = loc;
-        int header = page[loc++];
+        int header = p_byteGet(page, loc++);
 
         examineEntry: {
             // Note: Similar to leafEntryLengthAtLoc.
@@ -1661,10 +1665,10 @@ final class Node extends Latch implements DatabaseAccess {
             } else {
                 // Medium value. Move loc to just past end of value.
                 if ((header & 0x20) == 0) {
-                    loc += 2 + (((header & 0x1f) << 8) | (page[loc] & 0xff));
+                    loc += 2 + (((header & 0x1f) << 8) | p_ubyteGet(page, loc));
                 } else if (header != -1) {
                     loc += 3 + (((header & 0x0f) << 16)
-                                | ((page[loc] & 0xff) << 8) | (page[loc + 1] & 0xff));
+                                | (p_ubyteGet(page, loc) << 8) | p_ubyteGet(page, loc + 1));
                 } else {
                     // Already a ghost, so nothing to undo.
                     break examineEntry;
@@ -1679,7 +1683,7 @@ final class Node extends Latch implements DatabaseAccess {
                     // Clearing the fragmented bit prevents the update from
                     // double-deleting the fragments, and it also allows the
                     // old entry slot to be re-used.
-                    page[valueHeaderLoc] = (byte) (header & ~ENTRY_FRAGMENTED);
+                    p_bytePut(page, valueHeaderLoc, header & ~ENTRY_FRAGMENTED);
                     return;
                 }
             }
@@ -1693,7 +1697,7 @@ final class Node extends Latch implements DatabaseAccess {
      * @param pos position as provided by binarySearch; must be positive
      */
     long retrieveChildRefId(int pos) {
-        return decodeUnsignedInt48LE(mPage, mSearchVecEnd + 2 + (pos << 2));
+        return p_uint48GetLE(mPage, mSearchVecEnd + 2 + (pos << 2));
     }
 
     /**
@@ -1701,15 +1705,15 @@ final class Node extends Latch implements DatabaseAccess {
      */
     static int leafEntryLengthAtLoc(byte[] page, final int entryLoc) {
         int loc = entryLoc + keyLengthAtLoc(page, entryLoc);
-        int header = page[loc++];
+        int header = p_byteGet(page, loc++);
         if (header >= 0) {
             loc += header;
         } else {
             if ((header & 0x20) == 0) {
-                loc += 2 + (((header & 0x1f) << 8) | (page[loc] & 0xff));
+                loc += 2 + (((header & 0x1f) << 8) | p_ubyteGet(page, loc));
             } else if (header != -1) {
                 loc += 3 + (((header & 0x0f) << 16)
-                            | ((page[loc] & 0xff) << 8) | (page[loc + 1] & 0xff));
+                            | (p_ubyteGet(page, loc) << 8) | p_ubyteGet(page, loc + 1));
             }
         }
         return loc - entryLoc;
@@ -1719,9 +1723,9 @@ final class Node extends Latch implements DatabaseAccess {
      * @return length of encoded key at given location, including the header
      */
     static int keyLengthAtLoc(byte[] page, final int keyLoc) {
-        int header = page[keyLoc];
+        int header = p_byteGet(page, keyLoc);
         return (header >= 0 ? header
-                : (((header & 0x3f) << 8) | (page[keyLoc + 1] & 0xff))) + 2;
+                : (((header & 0x3f) << 8) | p_ubyteGet(page, keyLoc + 1))) + 2;
     }
 
     /**
@@ -1854,7 +1858,7 @@ final class Node extends Latch implements DatabaseAccess {
                 if ((leftSpace -= 2) >= 0 &&
                     (entryLoc = allocPageEntry(encodedLen, leftSpace, rightSpace)) >= 0)
                 {
-                    arraycopy(page, searchVecStart, page, searchVecStart -= 2, pos);
+                    p_copy(page, searchVecStart, page, searchVecStart -= 2, pos);
                     pos += searchVecStart;
                     mSearchVecStart = searchVecStart;
                     break alloc;
@@ -1867,7 +1871,7 @@ final class Node extends Latch implements DatabaseAccess {
                     (entryLoc = allocPageEntry(encodedLen, leftSpace, rightSpace)) >= 0)
                 {
                     pos += searchVecStart;
-                    arraycopy(page, pos, page, pos + 2, (searchVecEnd += 2) - pos);
+                    p_copy(page, pos, page, pos + 2, (searchVecEnd += 2) - pos);
                     mSearchVecEnd = searchVecEnd;
                     break alloc;
                 }
@@ -1964,9 +1968,9 @@ final class Node extends Latch implements DatabaseAccess {
                 return compactLeaf(encodedLen, pos, true);
             }
 
-            arrayCopies(page,
-                        searchVecStart, newSearchVecStart, pos,
-                        searchVecStart + pos, newSearchVecStart + pos + 2, vecLen - pos);
+            p_copies(page,
+                     searchVecStart, newSearchVecStart, pos,
+                     searchVecStart + pos, newSearchVecStart + pos + 2, vecLen - pos);
 
             pos += newSearchVecStart;
             mSearchVecStart = newSearchVecStart;
@@ -1974,7 +1978,7 @@ final class Node extends Latch implements DatabaseAccess {
         }
 
         // Write pointer to new allocation.
-        encodeShortLE(page, pos, entryLoc);
+        p_shortPutLE(page, pos, entryLoc);
         return entryLoc;
     }
 
@@ -2007,7 +2011,7 @@ final class Node extends Latch implements DatabaseAccess {
 
             // Note that loop doesn't examine last entry. At least one must remain.
             for (; searchVecLoc < searchVecEnd; searchVecLoc += 2) {
-                int entryLoc = decodeUnsignedShortLE(rightPage, searchVecLoc);
+                int entryLoc = p_ushortGetLE(rightPage, searchVecLoc);
                 int encodedLen = leafEntryLengthAtLoc(rightPage, entryLoc);
 
                 // Find best fitting slot for insert entry.
@@ -2075,7 +2079,7 @@ final class Node extends Latch implements DatabaseAccess {
                     newKeyLen = calculateAllowedKeyLength(tree, newKey);
                     if (newKeyLen > 0) {
                         parentPage = parent.mPage;
-                        parentKeyLoc = decodeUnsignedShortLE
+                        parentKeyLoc = p_ushortGetLE
                             (parentPage, parent.mSearchVecStart + childPos - 2);
                         parentKeyGrowth = newKeyLen - keyLengthAtLoc(parentPage, parentKeyLoc);
                         if (parentKeyGrowth <= 0 ||
@@ -2117,11 +2121,11 @@ final class Node extends Latch implements DatabaseAccess {
         final int lastPos = lastSearchVecLoc - searchVecLoc;
 
         for (; searchVecLoc < lastSearchVecLoc; searchVecLoc += 2) {
-            int entryLoc = decodeUnsignedShortLE(rightPage, searchVecLoc);
+            int entryLoc = p_ushortGetLE(rightPage, searchVecLoc);
             int encodedLen = leafEntryLengthAtLoc(rightPage, entryLoc);
             int leftEntryLoc = left.createLeafEntry(tree, left.highestLeafPos() + 2, encodedLen);
             // Note: Must access left page each time, since compaction can replace it.
-            arraycopy(rightPage, entryLoc, left.mPage, leftEntryLoc, encodedLen);
+            p_copy(rightPage, entryLoc, left.mPage, leftEntryLoc, encodedLen);
             garbageAccum += encodedLen;
         }
 
@@ -2166,8 +2170,8 @@ final class Node extends Latch implements DatabaseAccess {
         // Expand search vector for inserted entry and write pointer to the re-used slot.
         mGarbage -= insertLen;
         pos -= lastPos;
-        System.arraycopy(rightPage, mSearchVecStart, rightPage, mSearchVecStart -= 2, pos);
-        encodeShortLE(rightPage, mSearchVecStart + pos, insertLoc);
+        p_copy(rightPage, mSearchVecStart, rightPage, mSearchVecStart -= 2, pos);
+        p_shortPutLE(rightPage, mSearchVecStart + pos, insertLoc);
         return insertLoc;
     }
 
@@ -2199,7 +2203,7 @@ final class Node extends Latch implements DatabaseAccess {
 
             // Note that loop doesn't examine first entry. At least one must remain.
             for (; searchVecLoc > searchVecStart; searchVecLoc -= 2) {
-                int entryLoc = decodeUnsignedShortLE(leftPage, searchVecLoc);
+                int entryLoc = p_ushortGetLE(leftPage, searchVecLoc);
                 int encodedLen = leafEntryLengthAtLoc(leftPage, entryLoc);
 
                 // Find best fitting slot for insert entry.
@@ -2267,7 +2271,7 @@ final class Node extends Latch implements DatabaseAccess {
                     newKeyLen = calculateAllowedKeyLength(tree, newKey);
                     if (newKeyLen > 0) {
                         parentPage = parent.mPage;
-                        parentKeyLoc = decodeUnsignedShortLE
+                        parentKeyLoc = p_ushortGetLE
                             (parentPage, parent.mSearchVecStart + childPos);
                         parentKeyGrowth = newKeyLen - keyLengthAtLoc(parentPage, parentKeyLoc);
                         if (parentKeyGrowth <= 0 ||
@@ -2309,11 +2313,11 @@ final class Node extends Latch implements DatabaseAccess {
         final int moved = searchVecLoc - firstSearchVecLoc + 2;
 
         for (; searchVecLoc >= firstSearchVecLoc; searchVecLoc -= 2) {
-            int entryLoc = decodeUnsignedShortLE(leftPage, searchVecLoc);
+            int entryLoc = p_ushortGetLE(leftPage, searchVecLoc);
             int encodedLen = leafEntryLengthAtLoc(leftPage, entryLoc);
             int rightEntryLoc = right.createLeafEntry(tree, 0, encodedLen);
             // Note: Must access right page each time, since compaction can replace it.
-            arraycopy(leftPage, entryLoc, right.mPage, rightEntryLoc, encodedLen);
+            p_copy(leftPage, entryLoc, right.mPage, rightEntryLoc, encodedLen);
             garbageAccum += encodedLen;
         }
 
@@ -2365,8 +2369,8 @@ final class Node extends Latch implements DatabaseAccess {
         // Expand search vector for inserted entry and write pointer to the re-used slot.
         mGarbage -= insertLen;
         pos += mSearchVecStart;
-        System.arraycopy(leftPage, pos, leftPage, pos + 2, (mSearchVecEnd += 2) - pos);
-        encodeShortLE(leftPage, pos, insertLoc);
+        p_copy(leftPage, pos, leftPage, pos + 2, (mSearchVecEnd += 2) - pos);
+        p_shortPutLE(leftPage, pos, insertLoc);
         return insertLoc;
     }
 
@@ -2424,7 +2428,7 @@ final class Node extends Latch implements DatabaseAccess {
                 (tree, keyPos, split.splitKeyEncodedLength(), newChildPos << 3, true);
 
             // Write new child id.
-            encodeLongLE(result.mPage, result.mNewChildLoc, newChild.mId);
+            p_longPutLE(result.mPage, result.mNewChildLoc, newChild.mId);
 
             int entryLoc = result.mEntryLoc;
             if (entryLoc < 0) {
@@ -2488,10 +2492,10 @@ final class Node extends Latch implements DatabaseAccess {
                 if ((leftSpace -= 10) >= 0 &&
                     (entryLoc = allocPageEntry(encodedLen, leftSpace, rightSpace)) >= 0)
                 {
-                    arraycopy(page, searchVecStart, page, searchVecStart - 10, keyPos);
-                    arraycopy(page, searchVecStart + keyPos,
-                              page, searchVecStart + keyPos - 8,
-                              searchVecEnd - searchVecStart + 2 - keyPos + newChildPos);
+                    p_copy(page, searchVecStart, page, searchVecStart - 10, keyPos);
+                    p_copy(page, searchVecStart + keyPos,
+                           page, searchVecStart + keyPos - 8,
+                           searchVecEnd - searchVecStart + 2 - keyPos + newChildPos);
                     mSearchVecStart = searchVecStart -= 10;
                     keyPos += searchVecStart;
                     mSearchVecEnd = searchVecEnd -= 8;
@@ -2510,12 +2514,12 @@ final class Node extends Latch implements DatabaseAccess {
                 if (leftSpace >= 0 && rightSpace >= 0 &&
                     (entryLoc = allocPageEntry(encodedLen, leftSpace, rightSpace)) >= 0)
                 {
-                    arraycopy(page, searchVecStart, page, searchVecStart -= 2, keyPos);
+                    p_copy(page, searchVecStart, page, searchVecStart -= 2, keyPos);
                     mSearchVecStart = searchVecStart;
                     keyPos += searchVecStart;
-                    arraycopy(page, searchVecEnd + newChildPos + 2,
-                              page, searchVecEnd + newChildPos + (2 + 8),
-                              ((searchVecEnd - searchVecStart) << 2) + 8 - newChildPos);
+                    p_copy(page, searchVecEnd + newChildPos + 2,
+                           page, searchVecEnd + newChildPos + (2 + 8),
+                           ((searchVecEnd - searchVecStart) << 2) + 8 - newChildPos);
                     newChildPos += searchVecEnd + 2;
                     break alloc;
                 }
@@ -2607,20 +2611,19 @@ final class Node extends Latch implements DatabaseAccess {
 
             int newSearchVecEnd = newSearchVecStart + vecLen;
 
-            arrayCopies(page,
-                        // Move search vector up to new key position.
-                        searchVecStart, newSearchVecStart, keyPos,
+            p_copies(page,
+                     // Move search vector up to new key position.
+                     searchVecStart, newSearchVecStart, keyPos,
 
-                        // Move search vector after new key position, to new child
-                        // id position.
-                        searchVecStart + keyPos,
-                        newSearchVecStart + keyPos + 2,
-                        vecLen - keyPos + newChildPos,
+                     // Move search vector after new key position, to new child id position.
+                     searchVecStart + keyPos,
+                     newSearchVecStart + keyPos + 2,
+                     vecLen - keyPos + newChildPos,
 
-                        // Move search vector after new child id position.
-                        searchVecEnd + 2 + newChildPos,
-                        newSearchVecEnd + 10 + newChildPos,
-                        childIdsLen - newChildPos);
+                     // Move search vector after new child id position.
+                     searchVecEnd + 2 + newChildPos,
+                     newSearchVecEnd + 10 + newChildPos,
+                     childIdsLen - newChildPos);
 
             keyPos += newSearchVecStart;
             newChildPos += newSearchVecEnd + 2;
@@ -2629,7 +2632,7 @@ final class Node extends Latch implements DatabaseAccess {
         }
 
         // Write pointer to key entry.
-        encodeShortLE(page, keyPos, entryLoc);
+        p_shortPutLE(page, keyPos, entryLoc);
 
         InResult result = new InResult();
         result.mPage = page;
@@ -2682,7 +2685,7 @@ final class Node extends Latch implements DatabaseAccess {
 
             // Note that loop doesn't examine last entry. At least one must remain.
             for (; searchVecLoc < searchVecEnd; searchVecLoc += 2) {
-                int keyLoc = decodeUnsignedShortLE(rightPage, searchVecLoc);
+                int keyLoc = p_ushortGetLE(rightPage, searchVecLoc);
                 int len = keyLengthAtLoc(rightPage, keyLoc) + (2 + 8);
 
                 rightShrink += len;
@@ -2694,8 +2697,7 @@ final class Node extends Latch implements DatabaseAccess {
                     // Leftmost key to move comes from the parent, and first moved key in the
                     // right node does not affect left node growth.
                     leftGrowth -= len;
-                    keyLoc = decodeUnsignedShortLE
-                        (parentPage, parent.mSearchVecStart + childPos - 2);
+                    keyLoc = p_ushortGetLE(parentPage, parent.mSearchVecStart + childPos - 2);
                     leftGrowth += keyLengthAtLoc(parentPage, keyLoc) + (2 + 8);
 
                     break check;
@@ -2732,10 +2734,9 @@ final class Node extends Latch implements DatabaseAccess {
             int leftAvail = left.availableInternalBytes();
             if (leftAvail >= leftGrowth) {
                 // Parent search key will be updated, so verify that it has room.
-                searchKeyLoc = decodeUnsignedShortLE(rightPage, lastSearchVecLoc);
+                searchKeyLoc = p_ushortGetLE(rightPage, lastSearchVecLoc);
                 searchKeyLen = keyLengthAtLoc(rightPage, searchKeyLoc);
-                parentKeyLoc = decodeUnsignedShortLE
-                    (parentPage, parent.mSearchVecStart + childPos - 2);
+                parentKeyLoc = p_ushortGetLE(parentPage, parent.mSearchVecStart + childPos - 2);
                 parentKeyLen = keyLengthAtLoc(parentPage, parentKeyLoc);
                 parentKeyGrowth = searchKeyLen - parentKeyLen;
                 if (parentKeyGrowth <= 0 || parentKeyGrowth <= parent.availableInternalBytes()) {
@@ -2768,16 +2769,16 @@ final class Node extends Latch implements DatabaseAccess {
             InResult result = left.createInternalEntry
                 (tree, pos, parentKeyLen, (pos + 2) << 2, false);
             // Note: Must access left page each time, since compaction can replace it.
-            arraycopy(parentPage, parentKeyLoc, left.mPage, result.mEntryLoc, parentKeyLen);
+            p_copy(parentPage, parentKeyLoc, left.mPage, result.mEntryLoc, parentKeyLen);
 
             // Remaining keys come from the right node.
             for (; searchVecLoc < lastSearchVecLoc; searchVecLoc += 2) {
-                int keyLoc = decodeUnsignedShortLE(rightPage, searchVecLoc);
+                int keyLoc = p_ushortGetLE(rightPage, searchVecLoc);
                 int encodedLen = keyLengthAtLoc(rightPage, keyLoc);
                 pos = left.highestInternalPos();
                 result = left.createInternalEntry(tree, pos, encodedLen, (pos + 2) << 2, false);
                 // Note: Must access left page each time, since compaction can replace it.
-                arraycopy(rightPage, keyLoc, left.mPage, result.mEntryLoc, encodedLen);
+                p_copy(rightPage, keyLoc, left.mPage, result.mEntryLoc, encodedLen);
                 garbageAccum += encodedLen;
             }
         } catch (IOException e) {
@@ -2787,7 +2788,7 @@ final class Node extends Latch implements DatabaseAccess {
 
         // Update the parent key after moving it to the left node.
         if (parentKeyGrowth <= 0) {
-            arraycopy(rightPage, searchKeyLoc, parentPage, parentKeyLoc, searchKeyLen);
+            p_copy(rightPage, searchKeyLoc, parentPage, parentKeyLoc, searchKeyLen);
             parent.mGarbage -= parentKeyGrowth;
         } else {
             parent.updateInternalKey
@@ -2800,8 +2801,8 @@ final class Node extends Latch implements DatabaseAccess {
             int len = moved << 2;
             int end = left.mSearchVecEnd;
             end = end + ((end - left.mSearchVecStart) << 2) + (2 + 16) - len;
-            arraycopy(rightPage, start, left.mPage, end, len);
-            arraycopy(rightPage, start + len, rightPage, start, (start - lastSearchVecLoc) << 2);
+            p_copy(rightPage, start, left.mPage, end, len);
+            p_copy(rightPage, start + len, rightPage, start, (start - lastSearchVecLoc) << 2);
         }
 
         mGarbage += garbageAccum;
@@ -2872,7 +2873,7 @@ final class Node extends Latch implements DatabaseAccess {
 
             // Note that loop doesn't examine first entry. At least one must remain.
             for (; searchVecLoc > searchVecStart; searchVecLoc -= 2) {
-                int keyLoc = decodeUnsignedShortLE(leftPage, searchVecLoc);
+                int keyLoc = p_ushortGetLE(leftPage, searchVecLoc);
                 int len = keyLengthAtLoc(leftPage, keyLoc) + (2 + 8);
 
                 leftShrink += len;
@@ -2884,7 +2885,7 @@ final class Node extends Latch implements DatabaseAccess {
                     // Rightmost key to move comes from the parent, and first moved key in the
                     // left node does not affect right node growth.
                     rightGrowth -= len;
-                    keyLoc = decodeUnsignedShortLE(parentPage, parent.mSearchVecStart + childPos);
+                    keyLoc = p_ushortGetLE(parentPage, parent.mSearchVecStart + childPos);
                     rightGrowth += keyLengthAtLoc(parentPage, keyLoc) + (2 + 8);
 
                     break check;
@@ -2921,10 +2922,9 @@ final class Node extends Latch implements DatabaseAccess {
             int rightAvail = right.availableInternalBytes();
             if (rightAvail >= rightGrowth) {
                 // Parent search key will be updated, so verify that it has room.
-                searchKeyLoc = decodeUnsignedShortLE(leftPage, firstSearchVecLoc);
+                searchKeyLoc = p_ushortGetLE(leftPage, firstSearchVecLoc);
                 searchKeyLen = keyLengthAtLoc(leftPage, searchKeyLoc);
-                parentKeyLoc = decodeUnsignedShortLE
-                    (parentPage, parent.mSearchVecStart + childPos);
+                parentKeyLoc = p_ushortGetLE(parentPage, parent.mSearchVecStart + childPos);
                 parentKeyLen = keyLengthAtLoc(parentPage, parentKeyLoc);
                 parentKeyGrowth = searchKeyLen - parentKeyLen;
                 if (parentKeyGrowth <= 0 || parentKeyGrowth <= parent.availableInternalBytes()) {
@@ -2955,15 +2955,15 @@ final class Node extends Latch implements DatabaseAccess {
             // Rightmost key to move comes from the parent.
             InResult result = right.createInternalEntry(tree, 0, parentKeyLen, 0, false);
             // Note: Must access right page each time, since compaction can replace it.
-            arraycopy(parentPage, parentKeyLoc, right.mPage, result.mEntryLoc, parentKeyLen);
+            p_copy(parentPage, parentKeyLoc, right.mPage, result.mEntryLoc, parentKeyLen);
 
             // Remaining keys come from the left node.
             for (; searchVecLoc > firstSearchVecLoc; searchVecLoc -= 2) {
-                int keyLoc = decodeUnsignedShortLE(leftPage, searchVecLoc);
+                int keyLoc = p_ushortGetLE(leftPage, searchVecLoc);
                 int encodedLen = keyLengthAtLoc(leftPage, keyLoc);
                 result = right.createInternalEntry(tree, 0, encodedLen, 0, false);
                 // Note: Must access right page each time, since compaction can replace it.
-                arraycopy(leftPage, keyLoc, right.mPage, result.mEntryLoc, encodedLen);
+                p_copy(leftPage, keyLoc, right.mPage, result.mEntryLoc, encodedLen);
                 garbageAccum += encodedLen;
             }
         } catch (IOException e) {
@@ -2973,7 +2973,7 @@ final class Node extends Latch implements DatabaseAccess {
 
         // Update the parent key after moving it to the right node.
         if (parentKeyGrowth <= 0) {
-            arraycopy(leftPage, searchKeyLoc, parentPage, parentKeyLoc, searchKeyLen);
+            p_copy(leftPage, searchKeyLoc, parentPage, parentKeyLoc, searchKeyLen);
             parent.mGarbage -= parentKeyGrowth;
         } else {
             parent.updateInternalKey
@@ -2984,8 +2984,8 @@ final class Node extends Latch implements DatabaseAccess {
         {
             int start = mSearchVecEnd + 2;
             int len = ((start - mSearchVecStart) << 2) + 8 - (moved << 2);
-            arraycopy(leftPage, start, leftPage, start - moved, len);
-            arraycopy(leftPage, start + len, right.mPage, right.mSearchVecEnd + 2, moved << 2);
+            p_copy(leftPage, start, leftPage, start - moved, len);
+            p_copy(leftPage, start + len, right.mPage, right.mSearchVecEnd + 2, moved << 2);
         }
 
         mGarbage += garbageAccum;
@@ -3052,22 +3052,22 @@ final class Node extends Latch implements DatabaseAccess {
         final int garbage;
         quick: {
             int loc;
-            start = loc = decodeUnsignedShortLE(page, searchVecStart + pos);
+            start = loc = p_ushortGetLE(page, searchVecStart + pos);
             loc += keyLengthAtLoc(page, loc);
 
             final int valueHeaderLoc = loc;
 
             // Note: Similar to leafEntryLengthAtLoc and retrieveLeafValueAtLoc.
-            int len = page[loc++];
+            int len = p_byteGet(page, loc++);
             if (len < 0) largeValue: {
                 int header;
                 if ((len & 0x20) == 0) {
                     header = len;
-                    len = 1 + (((len & 0x1f) << 8) | (page[loc++] & 0xff));
+                    len = 1 + (((len & 0x1f) << 8) | p_ubyteGet(page, loc++));
                 } else if (len != -1) {
                     header = len;
                     len = 1 + (((len & 0x0f) << 16)
-                               | ((page[loc++] & 0xff) << 8) | (page[loc++] & 0xff));
+                               | (p_ubyteGet(page, loc++) << 8) | p_ubyteGet(page, loc++));
                 } else {
                     // ghost
                     len = 0;
@@ -3079,7 +3079,7 @@ final class Node extends Latch implements DatabaseAccess {
                     // re-use existing value slot.
                     if (vfrag == 0) {
                         // Clear fragmented bit in case new value can be quick copied.
-                        page[valueHeaderLoc] = (byte) (header & ~ENTRY_FRAGMENTED);
+                        p_bytePut(page, valueHeaderLoc, header & ~ENTRY_FRAGMENTED);
                     }
                 }
             }
@@ -3096,11 +3096,11 @@ final class Node extends Latch implements DatabaseAccess {
                 // Quick copy with no garbage created.
                 if (valueLen == 0) {
                     // Ensure ghost is replaced.
-                    page[valueHeaderLoc] = 0;
+                    p_bytePut(page, valueHeaderLoc, 0);
                 } else {
-                    arraycopy(value, 0, page, loc, valueLen);
+                    p_copyFromArray(value, 0, page, loc, valueLen);
                     if (vfrag != 0) {
-                        page[valueHeaderLoc] |= vfrag;
+                        p_bytePut(page, valueHeaderLoc, p_byteGet(page, valueHeaderLoc) | vfrag);
                     }
                 }
             } else {
@@ -3149,7 +3149,7 @@ final class Node extends Latch implements DatabaseAccess {
                 // Do full compaction and free up the garbage, or split the node.
 
                 byte[][] akeyRef = new byte[1][];
-                int loc = decodeUnsignedShortLE(page, searchVecStart + pos);
+                int loc = p_ushortGetLE(page, searchVecStart + pos);
                 boolean isOriginal = retrieveActualKeyAtLoc(page, loc, akeyRef);
                 byte[] akey = akeyRef[0];
 
@@ -3207,7 +3207,7 @@ final class Node extends Latch implements DatabaseAccess {
             } else {
                 // Search vector is misaligned, so do full compaction.
                 byte[][] akeyRef = new byte[1][];
-                int loc = decodeUnsignedShortLE(page, searchVecStart + pos);
+                int loc = p_ushortGetLE(page, searchVecStart + pos);
                 boolean isOriginal = retrieveActualKeyAtLoc(page, loc, akeyRef);
                 byte[] akey = akeyRef[0];
 
@@ -3220,7 +3220,7 @@ final class Node extends Latch implements DatabaseAccess {
                 return;
             }
 
-            arraycopy(page, searchVecStart, page, newSearchVecStart, vecLen);
+            p_copy(page, searchVecStart, page, newSearchVecStart, vecLen);
 
             pos += newSearchVecStart;
             mSearchVecStart = newSearchVecStart;
@@ -3228,9 +3228,9 @@ final class Node extends Latch implements DatabaseAccess {
         }
 
         // Copy existing key, and then copy value.
-        arraycopy(page, start, page, entryLoc, keyLen);
+        p_copy(page, start, page, entryLoc, keyLen);
         copyToLeafValue(page, vfrag, value, entryLoc + keyLen);
-        encodeShortLE(page, pos, entryLoc);
+        p_shortPutLE(page, pos, entryLoc);
 
         mGarbage = garbage;
     }
@@ -3304,7 +3304,7 @@ final class Node extends Latch implements DatabaseAccess {
                     break makeRoom;
                 }
 
-                arraycopy(page, searchVecStart, page, newSearchVecStart, vecLen + childIdsLen);
+                p_copy(page, searchVecStart, page, newSearchVecStart, vecLen + childIdsLen);
 
                 pos += newSearchVecStart;
                 mSearchVecStart = newSearchVecStart;
@@ -3319,7 +3319,7 @@ final class Node extends Latch implements DatabaseAccess {
             entryLoc = compactInternal(encodedLen, pos, Integer.MIN_VALUE).mEntryLoc;
 
             if (keyStart >= 0) {
-                arraycopy(key, keyStart, mPage, entryLoc, encodedLen);
+                p_copyFromArray(key, keyStart, mPage, entryLoc, encodedLen);
             } else {
                 encodeNormalKey(key, mPage, entryLoc);
             }
@@ -3329,11 +3329,11 @@ final class Node extends Latch implements DatabaseAccess {
 
         // Copy new key and point to it.
         if (keyStart >= 0) {
-            arraycopy(key, keyStart, page, entryLoc, encodedLen);
+            p_copyFromArray(key, keyStart, page, entryLoc, encodedLen);
         } else {
             encodeNormalKey(key, page, entryLoc);
         }
-        encodeShortLE(page, pos, entryLoc);
+        p_shortPutLE(page, pos, entryLoc);
 
         mGarbage = garbage;
     }
@@ -3342,7 +3342,7 @@ final class Node extends Latch implements DatabaseAccess {
      * @param pos position as provided by binarySearch; must be positive
      */
     void updateChildRefId(int pos, long id) {
-        encodeLongLE(mPage, mSearchVecEnd + 2 + (pos << 2), id);
+        p_longPutLE(mPage, mSearchVecEnd + 2 + (pos << 2), id);
     }
 
     /**
@@ -3352,19 +3352,19 @@ final class Node extends Latch implements DatabaseAccess {
         final byte[] page = mPage;
 
         int searchVecStart = mSearchVecStart;
-        final int entryLoc = decodeUnsignedShortLE(page, searchVecStart + pos);
+        final int entryLoc = p_ushortGetLE(page, searchVecStart + pos);
 
         // Note: Similar to leafEntryLengthAtLoc and retrieveLeafValueAtLoc.
 
         int loc = entryLoc;
 
         {
-            int keyLen = page[loc++];
+            int keyLen = p_byteGet(page, loc++);
             if (keyLen >= 0) {
                 loc += keyLen + 1;
             } else {
                 int header = keyLen;
-                keyLen = ((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff);
+                keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++);
                 if ((header & ENTRY_FRAGMENTED) != 0) {
                     getDatabase().deleteFragments(page, loc, keyLen);
                 }
@@ -3372,16 +3372,16 @@ final class Node extends Latch implements DatabaseAccess {
             }
         }
 
-        int header = page[loc++];
+        int header = p_byteGet(page, loc++);
         if (header >= 0) {
             loc += header;
         } else largeValue: {
             int len;
             if ((header & 0x20) == 0) {
-                len = 1 + (((header & 0x1f) << 8) | (page[loc++] & 0xff));
+                len = 1 + (((header & 0x1f) << 8) | p_ubyteGet(page, loc++));
             } else if (header != -1) {
                 len = 1 + (((header & 0x0f) << 16)
-                           | ((page[loc++] & 0xff) << 8) | (page[loc++] & 0xff));
+                           | (p_ubyteGet(page, loc++) << 8) | p_ubyteGet(page, loc++));
             } else {
                 // ghost
                 break largeValue;
@@ -3405,12 +3405,12 @@ final class Node extends Latch implements DatabaseAccess {
 
         if (pos < ((searchVecEnd - searchVecStart + 2) >> 1)) {
             // Shift left side of search vector to the right.
-            arraycopy(page, searchVecStart, page, searchVecStart += 2, pos);
+            p_copy(page, searchVecStart, page, searchVecStart += 2, pos);
             mSearchVecStart = searchVecStart;
         } else {
             // Shift right side of search vector to the left.
             pos += searchVecStart;
-            arraycopy(page, pos + 2, page, pos, searchVecEnd - pos);
+            p_copy(page, pos + 2, page, pos, searchVecEnd - pos);
             mSearchVecEnd = searchVecEnd - 2;
         }
     }
@@ -3433,12 +3433,12 @@ final class Node extends Latch implements DatabaseAccess {
 
         int searchVecStart = rightNode.mSearchVecStart;
         while (searchVecStart <= searchVecEnd) {
-            int entryLoc = decodeUnsignedShortLE(rightPage, searchVecStart);
+            int entryLoc = p_ushortGetLE(rightPage, searchVecStart);
             int encodedLen = leafEntryLengthAtLoc(rightPage, entryLoc);
             int leftEntryLoc = leftNode.createLeafEntry
                 (tree, leftNode.highestLeafPos() + 2, encodedLen);
             // Note: Must access left page each time, since compaction can replace it.
-            arraycopy(rightPage, entryLoc, leftNode.mPage, leftEntryLoc, encodedLen);
+            p_copy(rightPage, entryLoc, leftNode.mPage, leftEntryLoc, encodedLen);
             searchVecStart += 2;
         }
 
@@ -3483,17 +3483,17 @@ final class Node extends Latch implements DatabaseAccess {
         // Copy child id associated with parent key.
         final byte[] rightPage = rightNode.mPage;
         int rightChildIdsLoc = rightNode.mSearchVecEnd + 2;
-        arraycopy(rightPage, rightChildIdsLoc, result.mPage, result.mNewChildLoc, 8);
+        p_copy(rightPage, rightChildIdsLoc, result.mPage, result.mNewChildLoc, 8);
         rightChildIdsLoc += 8;
 
         // Write parent key.
-        arraycopy(parentPage, parentLoc, result.mPage, result.mEntryLoc, parentLen);
+        p_copy(parentPage, parentLoc, result.mPage, result.mEntryLoc, parentLen);
 
         final int searchVecEnd = rightNode.mSearchVecEnd;
 
         int searchVecStart = rightNode.mSearchVecStart;
         while (searchVecStart <= searchVecEnd) {
-            int entryLoc = decodeUnsignedShortLE(rightPage, searchVecStart);
+            int entryLoc = p_ushortGetLE(rightPage, searchVecStart);
             int encodedLen = keyLengthAtLoc(rightPage, entryLoc);
 
             // Allocate entry for left node.
@@ -3501,12 +3501,12 @@ final class Node extends Latch implements DatabaseAccess {
             result = leftNode.createInternalEntry(tree, pos, encodedLen, (pos + 2) << 2, false);
 
             // Copy child id.
-            arraycopy(rightPage, rightChildIdsLoc, result.mPage, result.mNewChildLoc, 8);
+            p_copy(rightPage, rightChildIdsLoc, result.mPage, result.mNewChildLoc, 8);
             rightChildIdsLoc += 8;
 
             // Copy key.
             // Note: Must access left page each time, since compaction can replace it.
-            arraycopy(rightPage, entryLoc, result.mPage, result.mEntryLoc, encodedLen);
+            p_copy(rightPage, entryLoc, result.mPage, result.mEntryLoc, encodedLen);
             searchVecStart += 2;
         }
 
@@ -3572,7 +3572,7 @@ final class Node extends Latch implements DatabaseAccess {
         int keyPos = childPos == 0 ? 0 : (childPos - 2);
         int searchVecStart = mSearchVecStart;
 
-        int entryLoc = decodeUnsignedShortLE(page, searchVecStart + keyPos);
+        int entryLoc = p_ushortGetLE(page, searchVecStart + keyPos);
         // Increment garbage by the size of the encoded entry.
         mGarbage += keyLengthAtLoc(page, entryLoc);
 
@@ -3585,17 +3585,17 @@ final class Node extends Latch implements DatabaseAccess {
         // (8 bytes). Determine which shift operations minimize movement.
         if (childPos < (3 * (searchVecEnd - searchVecStart) + keyPos + 8) >> 1) {
             // Shift child ids right by 8, shift search vector right by 10.
-            arraycopy(page, searchVecStart + keyPos + 2,
-                      page, searchVecStart + keyPos + (2 + 8),
-                      searchVecEnd - searchVecStart - keyPos + childPos);
-            arraycopy(page, searchVecStart, page, searchVecStart += 10, keyPos);
+            p_copy(page, searchVecStart + keyPos + 2,
+                   page, searchVecStart + keyPos + (2 + 8),
+                   searchVecEnd - searchVecStart - keyPos + childPos);
+            p_copy(page, searchVecStart, page, searchVecStart += 10, keyPos);
             mSearchVecEnd = searchVecEnd + 8;
         } else {
             // Shift child ids left by 8, shift search vector right by 2.
-            arraycopy(page, searchVecEnd + childPos + (2 + 8),
-                      page, searchVecEnd + childPos + 2,
-                      ((searchVecEnd - searchVecStart) << 2) + 8 - childPos);
-            arraycopy(page, searchVecStart, page, searchVecStart += 2, keyPos);
+            p_copy(page, searchVecEnd + childPos + (2 + 8),
+                   page, searchVecEnd + childPos + 2,
+                   ((searchVecEnd - searchVecStart) << 2) + 8 - childPos);
+            p_copy(page, searchVecStart, page, searchVecStart += 2, keyPos);
         }
 
         mSearchVecStart = searchVecStart;
@@ -3641,7 +3641,7 @@ final class Node extends Latch implements DatabaseAccess {
         child.clearEntries();
         child.mLastCursorFrame = lastCursorFrame;
         // Search vector also needs to point to root.
-        encodeLongLE(page, child.mSearchVecEnd + 2, this.mId);
+        p_longPutLE(page, child.mSearchVecEnd + 2, this.mId);
 
         // Fix cursor bindings for this, the real root node.
         for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
@@ -3720,34 +3720,34 @@ final class Node extends Latch implements DatabaseAccess {
 
     /**
      * @param key unencoded key
-     * @param dest destination for encoded key, with room for key header
-     * @return updated destLoc
+     * @param page destination for encoded key, with room for key header
+     * @return updated pageLoc
      */
-    static int encodeNormalKey(final byte[] key, final byte[] dest, int destLoc) {
+    static int encodeNormalKey(final byte[] key, final byte[] page, int pageLoc) {
         final int keyLen = key.length;
 
         if (keyLen <= SMALL_KEY_LIMIT && keyLen > 0) {
-            dest[destLoc++] = (byte) (keyLen - 1);
+            p_bytePut(page, pageLoc++, keyLen - 1);
         } else {
-            dest[destLoc++] = (byte) (0x80 | (keyLen >> 8));
-            dest[destLoc++] = (byte) keyLen;
+            p_bytePut(page, pageLoc++, 0x80 | (keyLen >> 8));
+            p_bytePut(page, pageLoc++, keyLen);
         }
-        arraycopy(key, 0, dest, destLoc, keyLen);
+        p_copyFromArray(key, 0, page, pageLoc, keyLen);
 
-        return destLoc + keyLen;
+        return pageLoc + keyLen;
     }
 
     /**
      * @param key fragmented key
-     * @param dest destination for encoded key, with room for key header
-     * @return updated destLoc
+     * @param page destination for encoded key, with room for key header
+     * @return updated pageLoc
      */
-    static int encodeFragmentedKey(final byte[] key, final byte[] dest, int destLoc) {
+    static int encodeFragmentedKey(final byte[] key, final byte[] page, int pageLoc) {
         final int keyLen = key.length;
-        dest[destLoc++] = (byte) ((0x80 | ENTRY_FRAGMENTED) | (keyLen >> 8));
-        dest[destLoc++] = (byte) keyLen;
-        arraycopy(key, 0, dest, destLoc, keyLen);
-        return destLoc + keyLen;
+        p_bytePut(page, pageLoc++, (0x80 | ENTRY_FRAGMENTED) | (keyLen >> 8));
+        p_bytePut(page, pageLoc++, keyLen);
+        p_copyFromArray(key, 0, page, pageLoc, keyLen);
+        return pageLoc + keyLen;
     }
 
     /**
@@ -3789,7 +3789,7 @@ final class Node extends Latch implements DatabaseAccess {
     private static int copyToLeafValue(byte[] page, int vfrag, byte[] value, int vloc) {
         final int vlen = value.length;
         vloc = encodeLeafValueHeader(page, vfrag, vlen, vloc);
-        arraycopy(value, 0, page, vloc, vlen);
+        p_copyFromArray(value, 0, page, vloc, vlen);
         return vloc;
     }
 
@@ -3799,16 +3799,16 @@ final class Node extends Latch implements DatabaseAccess {
      */
     static int encodeLeafValueHeader(byte[] page, int vfrag, int vlen, int vloc) {
         if (vlen <= 127 && vfrag == 0) {
-            page[vloc++] = (byte) vlen;
+            p_bytePut(page, vloc++, vlen);
         } else {
             vlen--;
             if (vlen <= 8192) {
-                page[vloc++] = (byte) (0x80 | vfrag | (vlen >> 8));
-                page[vloc++] = (byte) vlen;
+                p_bytePut(page, vloc++, 0x80 | vfrag | (vlen >> 8));
+                p_bytePut(page, vloc++, vlen);
             } else {
-                page[vloc++] = (byte) (0xa0 | vfrag | (vlen >> 16));
-                page[vloc++] = (byte) (vlen >> 8);
-                page[vloc++] = (byte) vlen;
+                p_bytePut(page, vloc++, 0xa0 | vfrag | (vlen >> 16));
+                p_bytePut(page, vloc++, vlen >> 8);
+                p_bytePut(page, vloc++, vlen);
             }
         }
         return vloc;
@@ -3839,7 +3839,7 @@ final class Node extends Latch implements DatabaseAccess {
         int newSearchVecStart;
         // Capacity available to search vector after compaction.
         int searchVecCap = mGarbage + mRightSegTail + 1 - mLeftSegTail - encodedLen;
-        newSearchVecStart = page.length - (((searchVecCap + newSearchVecSize) >> 1) & ~1);
+        newSearchVecStart = p_length(page) - (((searchVecCap + newSearchVecSize) >> 1) & ~1);
 
         // Copy into a fresh buffer.
 
@@ -3860,10 +3860,10 @@ final class Node extends Latch implements DatabaseAccess {
                     continue;
                 }
             }
-            encodeShortLE(dest, newSearchVecLoc, destLoc);
-            int sourceLoc = decodeUnsignedShortLE(page, searchVecLoc);
+            p_shortPutLE(dest, newSearchVecLoc, destLoc);
+            int sourceLoc = p_ushortGetLE(page, searchVecLoc);
             int len = leafEntryLengthAtLoc(page, sourceLoc);
-            arraycopy(page, sourceLoc, dest, destLoc, len);
+            p_copy(page, sourceLoc, dest, destLoc, len);
             destLoc += len;
         }
 
@@ -3871,12 +3871,12 @@ final class Node extends Latch implements DatabaseAccess {
         db.addSpareBuffer(page);
 
         // Write pointer to new allocation.
-        encodeShortLE(dest, newLoc == 0 ? newSearchVecLoc : newLoc, destLoc);
+        p_shortPutLE(dest, newLoc == 0 ? newSearchVecLoc : newLoc, destLoc);
 
         mPage = dest;
         mGarbage = 0;
         mLeftSegTail = destLoc + encodedLen;
-        mRightSegTail = dest.length - 1;
+        mRightSegTail = p_length(dest) - 1;
         mSearchVecStart = newSearchVecStart;
         mSearchVecEnd = newSearchVecStart + newSearchVecSize - 2;
 
@@ -3947,9 +3947,9 @@ final class Node extends Latch implements DatabaseAccess {
             newNode.mSearchVecStart = TN_HEADER_SIZE;
             newNode.mSearchVecEnd = TN_HEADER_SIZE;
 
-            int destLoc = newPage.length - encodedLen;
+            int destLoc = p_length(newPage) - encodedLen;
             newNode.copyToLeafEntry(okey, akey, vfrag, value, destLoc);
-            encodeShortLE(newPage, TN_HEADER_SIZE, destLoc);
+            p_shortPutLE(newPage, TN_HEADER_SIZE, destLoc);
 
             newNode.mRightSegTail = destLoc - 1;
             newNode.releaseExclusive();
@@ -3985,11 +3985,11 @@ final class Node extends Latch implements DatabaseAccess {
 
             // Position search vector at extreme right, allowing new entries to
             // be placed in a natural ascending order.
-            newNode.mRightSegTail = newPage.length - 1;
-            newNode.mSearchVecStart = newNode.mSearchVecEnd = newPage.length - 2;
+            newNode.mRightSegTail = p_length(newPage) - 1;
+            newNode.mSearchVecStart = newNode.mSearchVecEnd = p_length(newPage) - 2;
 
             newNode.copyToLeafEntry(okey, akey, vfrag, value, TN_HEADER_SIZE);
-            encodeShortLE(newPage, newPage.length - 2, TN_HEADER_SIZE);
+            p_shortPutLE(newPage, p_length(newPage) - 2, TN_HEADER_SIZE);
 
             newNode.mLeftSegTail = TN_HEADER_SIZE + encodedLen;
             newNode.releaseExclusive();
@@ -4002,7 +4002,7 @@ final class Node extends Latch implements DatabaseAccess {
 
         int garbageAccum = 0;
         int newLoc = 0;
-        int newAvail = newPage.length - TN_HEADER_SIZE;
+        int newAvail = p_length(newPage) - TN_HEADER_SIZE;
 
         // Guess which way to split by examining search position. This doesn't take into
         // consideration the variable size of the entries. If the guess is wrong, the new
@@ -4011,12 +4011,12 @@ final class Node extends Latch implements DatabaseAccess {
         if ((pos - searchVecStart) < (searchVecEnd - pos)) {
             // Split into new left node.
 
-            int destLoc = newPage.length;
+            int destLoc = p_length(newPage);
             int newSearchVecLoc = TN_HEADER_SIZE;
 
             int searchVecLoc = searchVecStart;
             for (; newAvail > avail; searchVecLoc += 2, newSearchVecLoc += 2) {
-                int entryLoc = decodeUnsignedShortLE(page, searchVecLoc);
+                int entryLoc = p_ushortGetLE(page, searchVecLoc);
                 int entryLen = leafEntryLengthAtLoc(page, entryLoc);
 
                 if (searchVecLoc == pos) {
@@ -4047,8 +4047,8 @@ final class Node extends Latch implements DatabaseAccess {
 
                 // Copy entry and point to it.
                 destLoc -= entryLen;
-                arraycopy(page, entryLoc, newPage, destLoc, entryLen);
-                encodeShortLE(newPage, newSearchVecLoc, destLoc);
+                p_copy(page, entryLoc, newPage, destLoc, entryLen);
+                p_shortPutLE(newPage, newSearchVecLoc, destLoc);
 
                 garbageAccum += entryLen;
                 avail += entryLen + 2;
@@ -4076,7 +4076,7 @@ final class Node extends Latch implements DatabaseAccess {
                     // Create new entry and point to it.
                     destLoc -= encodedLen;
                     newNode.copyToLeafEntry(okey, akey, vfrag, value, destLoc);
-                    encodeShortLE(newPage, newLoc, destLoc);
+                    p_shortPutLE(newPage, newLoc, destLoc);
                 }
 
                 // Choose an appropriate middle key for suffix compression.
@@ -4100,11 +4100,11 @@ final class Node extends Latch implements DatabaseAccess {
             // Split into new right node.
 
             int destLoc = TN_HEADER_SIZE;
-            int newSearchVecLoc = newPage.length - 2;
+            int newSearchVecLoc = p_length(newPage) - 2;
 
             int searchVecLoc = searchVecEnd;
             for (; newAvail > avail; searchVecLoc -= 2, newSearchVecLoc -= 2) {
-                int entryLoc = decodeUnsignedShortLE(page, searchVecLoc);
+                int entryLoc = p_ushortGetLE(page, searchVecLoc);
                 int entryLen = leafEntryLengthAtLoc(page, entryLoc);
 
                 if (forInsert) {
@@ -4141,17 +4141,17 @@ final class Node extends Latch implements DatabaseAccess {
                 }
 
                 // Copy entry and point to it.
-                arraycopy(page, entryLoc, newPage, destLoc, entryLen);
-                encodeShortLE(newPage, newSearchVecLoc, destLoc);
+                p_copy(page, entryLoc, newPage, destLoc, entryLen);
+                p_shortPutLE(newPage, newSearchVecLoc, destLoc);
                 destLoc += entryLen;
 
                 garbageAccum += entryLen;
                 avail += entryLen + 2;
             }
 
-            newNode.mRightSegTail = newPage.length - 1;
+            newNode.mRightSegTail = p_length(newPage) - 1;
             newNode.mSearchVecStart = newSearchVecLoc + 2;
-            newNode.mSearchVecEnd = newPage.length - 2;
+            newNode.mSearchVecEnd = p_length(newPage) - 2;
 
             // Prune off the right end of this node.
             final int originalEnd = mSearchVecEnd;
@@ -4170,7 +4170,7 @@ final class Node extends Latch implements DatabaseAccess {
                 } else {
                     // Create new entry and point to it.
                     newNode.copyToLeafEntry(okey, akey, vfrag, value, destLoc);
-                    encodeShortLE(newPage, newLoc, destLoc);
+                    p_shortPutLE(newPage, newLoc, destLoc);
                     destLoc += encodedLen;
                 }
 
@@ -4289,14 +4289,14 @@ final class Node extends Latch implements DatabaseAccess {
             // Signals that key should not be inserted.
             result.mEntryLoc = -1;
 
-            int leftKeyLoc = decodeUnsignedShortLE(page, searchVecStart);
+            int leftKeyLoc = p_ushortGetLE(page, searchVecStart);
             int leftKeyLen = keyLengthAtLoc(page, leftKeyLoc);
 
             // Assume a large key will be inserted later, so arrange it with room: entry at far
             // left and search vector at far right.
-            arraycopy(page, leftKeyLoc, newPage, TN_HEADER_SIZE, leftKeyLen);
-            int leftSearchVecStart = newPage.length - (2 + 8 + 8);
-            encodeShortLE(newPage, leftSearchVecStart, TN_HEADER_SIZE);
+            p_copy(page, leftKeyLoc, newPage, TN_HEADER_SIZE, leftKeyLen);
+            int leftSearchVecStart = p_length(newPage) - (2 + 8 + 8);
+            p_shortPutLE(newPage, leftSearchVecStart, TN_HEADER_SIZE);
 
             if (newChildPos == 8) {
                 // Caller must store child id into left node.
@@ -4312,7 +4312,7 @@ final class Node extends Latch implements DatabaseAccess {
             }
 
             // Copy one or two left existing child ids to left node (newChildPos is 8 or 16).
-            arraycopy(page, searchVecEnd + 2, newPage, leftSearchVecStart + 2, newChildPos);
+            p_copy(page, searchVecEnd + 2, newPage, leftSearchVecStart + 2, newChildPos);
 
             newNode.mLeftSegTail = TN_HEADER_SIZE + leftKeyLen;
             newNode.mRightSegTail = leftSearchVecStart + (2 + 8 + 8 - 1);
@@ -4321,7 +4321,7 @@ final class Node extends Latch implements DatabaseAccess {
             newNode.releaseExclusive();
 
             // Prune off the left end of this node by shifting vector towards child ids.
-            arraycopy(page, searchVecEnd, page, searchVecEnd + 8, 2);
+            p_copy(page, searchVecEnd, page, searchVecEnd + 8, 2);
             mSearchVecStart = mSearchVecEnd = searchVecEnd + 8;
 
             mGarbage += leftKeyLen;
@@ -4358,7 +4358,7 @@ final class Node extends Latch implements DatabaseAccess {
 
             // Amount of bytes used in unsplit node, including the page header.
             int size = 5 * (searchVecEnd - searchVecStart) + (1 + 8 + 8)
-                + mLeftSegTail + page.length - mRightSegTail - mGarbage;
+                + mLeftSegTail + p_length(page) - mRightSegTail - mGarbage;
 
             int newSize = TN_HEADER_SIZE;
 
@@ -4373,7 +4373,7 @@ final class Node extends Latch implements DatabaseAccess {
                 // don't attempt to properly center the new search vector. Instead,
                 // minimize fragmentation to ensure that split is successful.
 
-                int destLoc = newPage.length;
+                int destLoc = p_length(newPage);
                 int newSearchVecLoc = TN_HEADER_SIZE;
 
                 int searchVecLoc = searchVecStart;
@@ -4383,7 +4383,7 @@ final class Node extends Latch implements DatabaseAccess {
                         newSearchVecLoc += 2;
                         // Reserve slot in vector for new entry and account for size increase.
                         newSize += encodedLen + (2 + 8);
-                        if (newSize > newPage.length) {
+                        if (newSize > p_length(newPage)) {
                             // New entry doesn't fit.
                             if (splitSide == -1) {
                                 // Guessed wrong; do over on left side.
@@ -4395,7 +4395,7 @@ final class Node extends Latch implements DatabaseAccess {
                         }
                     }
 
-                    int entryLoc = decodeUnsignedShortLE(page, searchVecLoc);
+                    int entryLoc = p_ushortGetLE(page, searchVecLoc);
                     int entryLen = keyLengthAtLoc(page, entryLoc);
 
                     // Size change must incorporate child id, although they are copied later.
@@ -4409,7 +4409,7 @@ final class Node extends Latch implements DatabaseAccess {
                     // account for this.
                     garbageAccum += entryLen;
 
-                    boolean full = size < TN_HEADER_SIZE | newSize > newPage.length;
+                    boolean full = size < TN_HEADER_SIZE | newSize > p_length(newPage);
 
                     if (full || newSize >= size) {
                         // New node has accumlated enough entries...
@@ -4444,8 +4444,8 @@ final class Node extends Latch implements DatabaseAccess {
 
                     // Copy key entry and point to it.
                     destLoc -= entryLen;
-                    arraycopy(page, entryLoc, newPage, destLoc, entryLen);
-                    encodeShortLE(newPage, newSearchVecLoc, destLoc);
+                    p_copy(page, entryLoc, newPage, destLoc, entryLen);
+                    p_shortPutLE(newPage, newSearchVecLoc, destLoc);
                     newSearchVecLoc += 2;
                 }
 
@@ -4453,15 +4453,14 @@ final class Node extends Latch implements DatabaseAccess {
 
                 // Copy existing child ids and insert new child id.
                 {
-                    arraycopy(page, searchVecEnd + 2,
-                              newPage, newSearchVecLoc, newChildPos);
+                    p_copy(page, searchVecEnd + 2, newPage, newSearchVecLoc, newChildPos);
 
                     // Leave gap for new child id, to be set by caller.
                     result.mNewChildLoc = newSearchVecLoc + newChildPos;
 
                     int tailChildIdsLen = ((searchVecLoc - searchVecStart) << 2) - newChildPos;
-                    arraycopy(page, searchVecEnd + 2 + newChildPos,
-                              newPage, newSearchVecLoc + newChildPos + 8, tailChildIdsLen);
+                    p_copy(page, searchVecEnd + 2 + newChildPos,
+                           newPage, newSearchVecLoc + newChildPos + 8, tailChildIdsLen);
                 }
 
                 newNode.mLeftSegTail = TN_HEADER_SIZE;
@@ -4473,8 +4472,7 @@ final class Node extends Latch implements DatabaseAccess {
                 // Prune off the left end of this node by shifting vector towards child ids.
                 int shift = (searchVecLoc - searchVecStart) << 2;
                 int len = searchVecEnd - searchVecLoc + 2;
-                arraycopy(page, searchVecLoc,
-                          page, mSearchVecStart = searchVecLoc + shift, len);
+                p_copy(page, searchVecLoc, page, mSearchVecStart = searchVecLoc + shift, len);
                 mSearchVecEnd = searchVecEnd + shift;
             } else {
                 // Split into new right node.
@@ -4483,7 +4481,7 @@ final class Node extends Latch implements DatabaseAccess {
                 // make room for child ids and copy them in place.
 
                 int destLoc = TN_HEADER_SIZE;
-                int newSearchVecLoc = newPage.length;
+                int newSearchVecLoc = p_length(newPage);
 
                 int searchVecLoc = searchVecEnd + 2;
                 moveEntries: while (true) {
@@ -4492,7 +4490,7 @@ final class Node extends Latch implements DatabaseAccess {
                         newKeyLoc = newSearchVecLoc;
                         // Reserve slot in vector for new entry and account for size increase.
                         newSize += encodedLen + (2 + 8);
-                        if (newSize > newPage.length) {
+                        if (newSize > p_length(newPage)) {
                             // New entry doesn't fit.
                             if (splitSide == 1) {
                                 // Guessed wrong; do over on left side.
@@ -4506,7 +4504,7 @@ final class Node extends Latch implements DatabaseAccess {
 
                     searchVecLoc -= 2;
 
-                    int entryLoc = decodeUnsignedShortLE(page, searchVecLoc);
+                    int entryLoc = p_ushortGetLE(page, searchVecLoc);
                     int entryLen = keyLengthAtLoc(page, entryLoc);
 
                     // Size change must incorporate child id, although they are copied later.
@@ -4518,7 +4516,7 @@ final class Node extends Latch implements DatabaseAccess {
                     // account for this.
                     garbageAccum += entryLen;
 
-                    boolean full = size < TN_HEADER_SIZE | newSize > newPage.length;
+                    boolean full = size < TN_HEADER_SIZE | newSize > p_length(newPage);
 
                     if (full || newSize >= size) {
                         // New node has accumlated enough entries...
@@ -4552,9 +4550,9 @@ final class Node extends Latch implements DatabaseAccess {
                     }
 
                     // Copy key entry and point to it.
-                    arraycopy(page, entryLoc, newPage, destLoc, entryLen);
+                    p_copy(page, entryLoc, newPage, destLoc, entryLen);
                     newSearchVecLoc -= 2;
-                    encodeShortLE(newPage, newSearchVecLoc, destLoc);
+                    p_shortPutLE(newPage, newSearchVecLoc, destLoc);
                     destLoc += entryLen;
                 }
 
@@ -4562,11 +4560,11 @@ final class Node extends Latch implements DatabaseAccess {
 
                 // Move new search vector to make room for child ids and be centered between
                 // the segments.
-                int newVecLen = page.length - newSearchVecLoc;
+                int newVecLen = p_length(page) - newSearchVecLoc;
                 {
-                    int highestLoc = newPage.length - (5 * newVecLen) - 8;
+                    int highestLoc = p_length(newPage) - (5 * newVecLen) - 8;
                     int midLoc = ((destLoc + encodedLen + highestLoc + 1) >> 1) & ~1;
-                    arraycopy(newPage, newSearchVecLoc, newPage, midLoc, newVecLen);
+                    p_copy(newPage, newSearchVecLoc, newPage, midLoc, newVecLen);
                     newKeyLoc -= newSearchVecLoc - midLoc;
                     newSearchVecLoc = midLoc;
                 }
@@ -4577,8 +4575,8 @@ final class Node extends Latch implements DatabaseAccess {
                 {
                     int headChildIdsLen = newChildPos - ((searchVecLoc - searchVecStart + 2) << 2);
                     int newDestLoc = newSearchVecEnd + 2;
-                    arraycopy(page, searchVecEnd + 2 + newChildPos - headChildIdsLen,
-                              newPage, newDestLoc, headChildIdsLen);
+                    p_copy(page, searchVecEnd + 2 + newChildPos - headChildIdsLen,
+                           newPage, newDestLoc, headChildIdsLen);
 
                     // Leave gap for new child id, to be set by caller.
                     newDestLoc += headChildIdsLen;
@@ -4586,20 +4584,19 @@ final class Node extends Latch implements DatabaseAccess {
 
                     int tailChildIdsLen =
                         ((searchVecEnd - searchVecStart) << 2) + 16 - newChildPos;
-                    arraycopy(page, searchVecEnd + 2 + newChildPos,
-                              newPage, newDestLoc + 8, tailChildIdsLen);
+                    p_copy(page, searchVecEnd + 2 + newChildPos,
+                           newPage, newDestLoc + 8, tailChildIdsLen);
                 }
 
                 newNode.mLeftSegTail = destLoc + encodedLen;
-                newNode.mRightSegTail = newPage.length - 1;
+                newNode.mRightSegTail = p_length(newPage) - 1;
                 newNode.mSearchVecStart = newSearchVecLoc;
                 newNode.mSearchVecEnd = newSearchVecEnd;
                 newNode.releaseExclusive();
 
                 // Prune off the right end of this node by shifting vector towards child ids.
                 int len = searchVecLoc - searchVecStart;
-                arraycopy(page, searchVecStart,
-                          page, mSearchVecStart = searchVecEnd + 2 - len, len);
+                p_copy(page, searchVecStart, page, mSearchVecStart = searchVecEnd + 2 - len, len);
             }
 
             break;
@@ -4609,7 +4606,7 @@ final class Node extends Latch implements DatabaseAccess {
         mSplit = split;
 
         // Write pointer to key entry.
-        encodeShortLE(newPage, newKeyLoc, result.mEntryLoc);
+        p_shortPutLE(newPage, newKeyLoc, result.mEntryLoc);
 
         return result;
     }
@@ -4648,7 +4645,7 @@ final class Node extends Latch implements DatabaseAccess {
         int newSearchVecStart;
         // Capacity available to search vector after compaction.
         int searchVecCap = mGarbage + mRightSegTail + 1 - mLeftSegTail - encodedLen;
-        newSearchVecStart = page.length -
+        newSearchVecStart = p_length(page) -
             (((searchVecCap + newSearchVecSize + ((newSearchVecSize + 2) << 2)) >> 1) & ~1);
 
         // Copy into a fresh buffer.
@@ -4670,10 +4667,10 @@ final class Node extends Latch implements DatabaseAccess {
                     continue;
                 }
             }
-            encodeShortLE(dest, newSearchVecLoc, destLoc);
-            int sourceLoc = decodeUnsignedShortLE(page, searchVecLoc);
+            p_shortPutLE(dest, newSearchVecLoc, destLoc);
+            int sourceLoc = p_ushortGetLE(page, searchVecLoc);
             int len = keyLengthAtLoc(page, sourceLoc);
-            arraycopy(page, sourceLoc, dest, destLoc, len);
+            p_copy(page, sourceLoc, dest, destLoc, len);
             destLoc += len;
         }
 
@@ -4684,29 +4681,29 @@ final class Node extends Latch implements DatabaseAccess {
             }
 
             // Copy child ids, and leave room for inserted child id.
-            arraycopy(page, mSearchVecEnd + 2, dest, newSearchVecLoc, childPos);
-            arraycopy(page, mSearchVecEnd + 2 + childPos,
-                      dest, newSearchVecLoc + childPos + 8,
-                      (newSearchVecSize << 2) - childPos);
+            p_copy(page, mSearchVecEnd + 2, dest, newSearchVecLoc, childPos);
+            p_copy(page, mSearchVecEnd + 2 + childPos,
+                   dest, newSearchVecLoc + childPos + 8,
+                   (newSearchVecSize << 2) - childPos);
         } else {
             if (newLoc == 0) {
                 newLoc = newSearchVecLoc;
             }
 
             // Copy child ids.
-            arraycopy(page, mSearchVecEnd + 2, dest, newSearchVecLoc, (newSearchVecSize << 2) + 8);
+            p_copy(page, mSearchVecEnd + 2, dest, newSearchVecLoc, (newSearchVecSize << 2) + 8);
         }
 
         // Recycle old page buffer.
         db.addSpareBuffer(page);
 
         // Write pointer to key entry.
-        encodeShortLE(dest, newLoc, destLoc);
+        p_shortPutLE(dest, newLoc, destLoc);
 
         mPage = dest;
         mGarbage = 0;
         mLeftSegTail = destLoc + encodedLen;
-        mRightSegTail = dest.length - 1;
+        mRightSegTail = p_length(dest) - 1;
         mSearchVecStart = newSearchVecStart;
         mSearchVecEnd = newSearchVecLoc - 2;
 
@@ -4776,7 +4773,7 @@ final class Node extends Latch implements DatabaseAccess {
             return "UndoNode: {id=" + mId +
                 ", cachedState=" + mCachedState +
                 ", topEntry=" + mGarbage +
-                ", lowerNodeId=" + + decodeLongLE(mPage, 4) +
+                ", lowerNodeId=" + + p_longGetLE(mPage, 4) +
                 ", lockState=" + super.toString() +
                 '}';
         case TYPE_FRAGMENT:
@@ -4846,7 +4843,7 @@ final class Node extends Latch implements DatabaseAccess {
             return verifyFailed(level, observer, "Search vector end: " + mSearchVecEnd);
         }
 
-        if (mRightSegTail < mSearchVecEnd || mRightSegTail > (page.length - 1)) {
+        if (mRightSegTail < mSearchVecEnd || mRightSegTail > (p_length(page) - 1)) {
             return verifyFailed(level, observer, "Right segment tail: " + mRightSegTail);
         }
 
@@ -4860,7 +4857,7 @@ final class Node extends Latch implements DatabaseAccess {
             LHashTable.Int childIds = new LHashTable.Int(512);
 
             for (int i = childIdsStart; i < childIdsEnd; i += 8) {
-                long childId = decodeUnsignedInt48LE(page, i);
+                long childId = p_uint48GetLE(page, i);
                 if (childId < 0 || childId == 0 || childId == 1) {
                     return verifyFailed(level, observer, "Illegal child id: " + childId);
                 }
@@ -4880,9 +4877,9 @@ final class Node extends Latch implements DatabaseAccess {
         int lastKeyLen = 0;
 
         for (int i = mSearchVecStart; i <= mSearchVecEnd; i += 2) {
-            int loc = decodeUnsignedShortLE(page, i);
+            int loc = p_ushortGetLE(page, i);
 
-            if (loc < TN_HEADER_SIZE || loc >= page.length ||
+            if (loc < TN_HEADER_SIZE || loc >= p_length(page) ||
                 (loc >= mLeftSegTail && loc <= mRightSegTail))
             {
                 return verifyFailed(level, observer, "Entry location: " + loc);
@@ -4896,14 +4893,14 @@ final class Node extends Latch implements DatabaseAccess {
 
             int keyLen;
             try {
-                keyLen = page[loc++];
+                keyLen = p_byteGet(page, loc++);
                 keyLen = keyLen >= 0 ? (keyLen + 1)
-                    : (((keyLen & 0x3f) << 8) | ((page[loc++]) & 0xff));
+                    : (((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++));
             } catch (IndexOutOfBoundsException e) {
                 return verifyFailed(level, observer, "Key location out of bounds");
             }
 
-            if (loc + keyLen > page.length) {
+            if (loc + keyLen > p_length(page)) {
                 return verifyFailed(level, observer, "Key end location: " + (loc + keyLen));
             }
 
@@ -4921,15 +4918,15 @@ final class Node extends Latch implements DatabaseAccess {
                 int len;
                 try {
                     loc += keyLen;
-                    int header = page[loc++];
+                    int header = p_byteGet(page, loc++);
                     if (header >= 0) {
                         len = header;
                     } else {
                         if ((header & 0x20) == 0) {
-                            len = 1 + (((header & 0x1f) << 8) | (page[loc++] & 0xff));
+                            len = 1 + (((header & 0x1f) << 8) | p_ubyteGet(page, loc++));
                         } else if (header != -1) {
                             len = 1 + (((header & 0x0f) << 16)
-                                       | ((page[loc++] & 0xff) << 8) | (page[loc++] & 0xff));
+                                       | (p_ubyteGet(page, loc++) << 8) | p_ubyteGet(page, loc++));
                         } else {
                             // ghost
                             break value;
@@ -4941,13 +4938,13 @@ final class Node extends Latch implements DatabaseAccess {
                 } catch (IndexOutOfBoundsException e) {
                     return verifyFailed(level, observer, "Value location out of bounds");
                 }
-                if (loc + len > page.length) {
+                if (loc + len > p_length(page)) {
                     return verifyFailed(level, observer, "Value end location: " + (loc + len));
                 }
             }
         }
 
-        int garbage = page.length - used;
+        int garbage = p_length(page) - used;
 
         if (mGarbage != garbage) {
             return verifyFailed(level, observer, "Garbage: " + mGarbage + " != " + garbage);
