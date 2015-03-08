@@ -487,6 +487,7 @@ final class TreeValueStream extends AbstractStream {
 
         // Operate against a fragmented value. First read the fragment header, as described by
         // the Database.fragment method.
+        int fHeaderLoc = loc;
         header = page[loc++];
 
         switch ((header >> 2) & 0x03) {
@@ -594,33 +595,29 @@ final class TreeValueStream extends AbstractStream {
         }
 
         case OP_SET_LENGTH:
-            // FIXME: If same return, if shorter truncate, else fall through.
-            node.releaseExclusive();
-            throw null;
-
-        case OP_WRITE: try {
-            if (bLen == 0 & b != TOUCH_VALUE) {
-                return 0;
-            }
-
-            if ((pos + bLen) > vLen) {
-                if (b == TOUCH_VALUE) {
-                    // Don't extend the value.
+            long endPos = pos + bLen;
+            if (endPos <= vLen) {
+                if (endPos == vLen) {
                     return 0;
                 }
-                // FIXME: extend length, accounting for length field growth
+                // FIXME: truncate
+                node.releaseExclusive();
+                throw null;
             }
+            // Fall through to extend length.
 
-            //bLen = Math.min((int) (vLen - pos), bLen);
+        case OP_WRITE: try {
+            endPos = pos + bLen;
 
+            int inlineLen = 0;
             if ((header & 0x02) != 0) {
                 // Inline content.
-                final int inLen = decodeUnsignedShortLE(page, loc);
+                inlineLen = decodeUnsignedShortLE(page, loc);
                 loc += 2;
-                final long amt = inLen - pos;
+                final long amt = inlineLen - pos;
                 if (amt <= 0) {
                     // Not writing any inline content.
-                    pos -= inLen;
+                    pos -= inlineLen;
                 } else if (bLen <= amt) {
                     arraycopy(b, bOff, page, (int) (loc + pos), bLen);
                     return 0;
@@ -630,9 +627,130 @@ final class TreeValueStream extends AbstractStream {
                     bOff += amt;
                     pos = 0;
                 }
-                loc += inLen;
-                vLen -= inLen;
+                // FIXME: needs to be re-applied when loc is re-assigned
+                loc += inlineLen;
+                // FIXME: later
+                // vLen -= inLen;
             }
+
+            if (endPos <= vLen) {
+                if (bLen == 0 & b != TOUCH_VALUE) {
+                    return 0;
+                }
+            } else extend: {
+                if (b == TOUCH_VALUE) {
+                    // Don't extend the value.
+                    return 0;
+                }
+
+                int newLoc = updateLengthField(frame, page, fHeaderLoc, endPos);
+
+                if (newLoc < 0) {
+                    // FIXME: Expand length field; what if inline is too big? Need to make sure
+                    // that if two max entries exist in the node that split still works. Might
+                    // only be a problem with large keys and internal nodes.
+                    // mMaxFragmentedEntrySize is 2037. Enough space can be reclaimed by
+                    // removing one pointer. If indirect this is not possible, and also not
+                    // possible if one direct pointer. The Database.fragment method must limit
+                    // the inline content in these two cases. Note that it doesn't inline when
+                    // creating with indirect pointers. However, the magic size that cannot be
+                    // easily repaired is about 6000 bytes. If converting to indirect doesn't
+                    // free up space, then a simple delete and re-insert might be fine.
+
+                    loc = ~newLoc;
+                    fHeaderLoc = loc;
+                    header = page[loc++];
+                    // Advance past the value length field.
+                    loc += 2 + ((header >> 1) & 0x06);
+                } else if (newLoc != fHeaderLoc) { // FIXME: might not have moved!
+                    // FIXME: looks the same as above...
+                    loc = newLoc;
+                    fHeaderLoc = loc;
+                    header = page[loc++];
+                    // Advance past the value length field.
+                    loc += 2 + ((header >> 1) & 0x06);
+                }
+
+                // Due to compaction. FIXME: messy, this is
+                page = node.mPage;
+
+                // Note: vHeaderLoc is now wrong. Any code below this point cannot use it.
+
+                if ((header & 0x01) == 0) {
+                    // Extend value with direct pointers.
+
+                    long growth;
+                    {
+                        long p = page.length;
+                        growth = ((endPos + p - 1) / p) - ((vLen + p - 1) / p);
+                    }
+
+                    vLen = endPos;
+
+                    if (growth <= 0) {
+                        break extend;
+                    }
+
+                    newLoc = extendFragmentedValue(node, mCursor.mTree, nodePos, growth * 6, true);
+
+                    if (newLoc >= 0) {
+                        int delta = newLoc - fHeaderLoc;
+                        loc += delta;
+                        //fHeaderLoc = newLoc;
+                        // Note: fHeaderLoc is now wrong. Any code below this point
+                        // cannot use it.
+                        // Due to compaction. FIXME: messy, this is
+                        page = node.mPage;
+                        break extend;
+                    }
+
+                    // FIXME: messy, this is
+                    page = node.mPage;
+                    newLoc = ~newLoc;
+                    header = page[newLoc];
+                    int delta = newLoc - fHeaderLoc;
+                    loc += delta;
+
+                    break extend;
+                }
+
+                // Extend value with indirect pointers.
+
+                Node inode = prepareMultilevelWrite(page, loc);
+
+                // Levels required before extending...
+                int levels = mDatabase.calculateInodeLevels(vLen - inlineLen);
+
+                // Compare to new full indirect length.
+                vLen = endPos - inlineLen;
+
+                if (mDatabase.levelCap(levels) < vLen) {
+                    // Need to add more inode levels.
+                    int newLevels = mDatabase.calculateInodeLevels(vLen);
+                    if (newLevels <= levels) {
+                        throw new AssertionError();
+                    }
+
+                    do {
+                        Node upper = mDatabase.allocDirtyFragmentNode();
+                        byte[] upage = upper.mPage;
+                        encodeInt48LE(upage, 0, inode.mId);
+                        inode.releaseExclusive();
+                        // Zero-fill the rest.
+                        fill(upage, 6, upage.length, (byte) 0);
+                        inode = upper;
+                        levels++;
+                    } while (newLevels > levels);
+
+                    encodeInt48LE(page, loc, inode.mId);
+                }
+
+                writeMultilevelFragments(pos, levels, inode, b, bOff, bLen);
+
+                return 0;
+            }
+
+            vLen -= inlineLen;
 
             if ((header & 0x01) == 0) {
                 // Direct pointers.
@@ -681,30 +799,7 @@ final class TreeValueStream extends AbstractStream {
 
             // Indirect pointers.
 
-            final Node inode;
-            setPtr: {
-                final long inodeId = decodeUnsignedInt48LE(page, loc);
-
-                if (inodeId == 0) {
-                    // Writing into a sparse value. Allocate a node and point to it.
-                    inode = mDatabase.allocDirtyFragmentNode();
-                    fill(inode.mPage, (byte) 0);
-                } else {
-                    Database db = mDatabase;
-                    inode = db.mFragmentCache.getw(inodeId, true);
-                    try {
-                        if (!db.markFragmentDirty(inode)) {
-                            // Already dirty, so no need to update the pointer.
-                            break setPtr;
-                        }
-                    } catch (Throwable e) {
-                        inode.releaseExclusive();
-                        throw e;
-                    }
-                }
-
-                encodeInt48LE(page, loc, inode.mId);
-            }
+            final Node inode = prepareMultilevelWrite(page, loc);
 
             final int levels = mDatabase.calculateInodeLevels(vLen);
             writeMultilevelFragments(pos, levels, inode, b, bOff, bLen);
@@ -715,6 +810,77 @@ final class TreeValueStream extends AbstractStream {
             throw e;
         }
         } // end switch(op)
+    }
+
+    /**
+     * @param loc fragmented value header location
+     * @return new value location (after header), negated if converted to indirect format
+     */
+    private int updateLengthField(TreeCursorFrame frame, byte[] page, int loc, long len)
+        throws IOException
+    {
+        int growth;
+        int header = page[loc];
+
+        switch ((header >> 2) & 0x03) {
+        default: // (2 byte length field)
+            if (len < (1L << (2 * 8))) {
+                encodeShortLE(page, loc + 1, (int) len);
+                return loc;
+            }
+            growth = (len < (1L << (4 * 8))) ? 2 : ((len < (1L << (6 * 8))) ? 2 : 4);
+            break;
+        case 1: // (4 byte length field)
+            if (len < (1L << (4 * 8))) {
+                encodeIntLE(page, loc + 1, (int) len);
+                return loc;
+            }
+            growth = (len < (1L << (6 * 8))) ? 2 : 4;
+            break;
+        case 2: // (6 byte length field)
+            if (len < (1L << (6 * 8))) {
+                encodeInt48LE(page, loc + 1, len);
+                return loc;
+            }
+            growth = 2;
+            break;
+        case 3: // (8 byte length field)
+            encodeLongLE(page, loc + 1, len);
+            return loc;
+        }
+
+        Node node = frame.mNode;
+        int nodePos = frame.mNodePos;
+
+        int newLoc = extendFragmentedValue(node, mCursor.mTree, nodePos, growth, false);
+
+        // FIXME: messy, this is
+        page = node.mPage;
+
+        if (newLoc < 0) {
+            loc = ~newLoc;
+            header |= 0x01; // now indirect
+        } else {
+            loc = newLoc;
+        }
+
+        // Clear only the field size bits.
+        header &= ~0b0000_1100;
+
+        if (len < (1L << (4 * 8))) {
+            header |= 0x04; // ff = 1 (4 byte length field)
+            encodeIntLE(page, loc + 1, (int) len);
+        } else if (len < (1L << (6 * 8))) {
+            header |= 0x08; // ff = 2 (6 byte length field)
+            encodeInt48LE(page, loc + 1, len);
+        } else {
+            header |= 0x0c; // ff = 3 (8 byte length field)
+            encodeLongLE(page, loc + 1, len);
+        }
+
+        page[loc] = (byte) header;
+
+        return newLoc;
     }
 
     /**
@@ -772,6 +938,40 @@ final class TreeValueStream extends AbstractStream {
     }
 
     /**
+     * @param loc location of root inode in the page
+     * @return dirtied root inode with exclusive latch held
+     */
+    private Node prepareMultilevelWrite(byte[] page, int loc) throws IOException {
+        final Node inode;
+
+        setPtr: {
+            final long inodeId = decodeUnsignedInt48LE(page, loc);
+
+            if (inodeId == 0) {
+                // Writing into a sparse value. Allocate a node and point to it.
+                inode = mDatabase.allocDirtyFragmentNode();
+                fill(inode.mPage, (byte) 0);
+            } else {
+                Database db = mDatabase;
+                inode = db.mFragmentCache.getw(inodeId, true);
+                try {
+                    if (!db.markFragmentDirty(inode)) {
+                        // Already dirty, so no need to update the pointer.
+                        break setPtr;
+                    }
+                } catch (Throwable e) {
+                    inode.releaseExclusive();
+                    throw e;
+                }
+            }
+
+            encodeInt48LE(page, loc, inode.mId);
+        }
+
+        return inode;
+    }
+
+    /**
      * @param pos value position being read
      * @param level inode level; at least 1
      * @param inode exclusively latched parent inode; always released by this method
@@ -806,6 +1006,7 @@ final class TreeValueStream extends AbstractStream {
                     boolean partial = level > 0 | off > 0 | len < page.length;
 
                     if (childNodeId == 0) {
+                        // Writing into a sparse value. Allocate a node and point to it.
                         childNode = db.allocDirtyFragmentNode();
                         if (partial) {
                             // New page must be zero-filled.
@@ -850,5 +1051,180 @@ final class TreeValueStream extends AbstractStream {
         } finally {
             inode.releaseExclusive();
         }
+    }
+
+    /**
+     * Attempt to extend a fragmented leaf value. Caller must ensure that value is fragmented.
+     * If extending at the tail, growth region is filled with zeros.
+     *
+     * @param pos position as provided by binarySearch; must be positive
+     * @param growth value length increase
+     * @param tail true if growth is at tail end of value
+     * @return new value location (after header), negated if converted to indirect format
+     */
+    private static int extendFragmentedValue(final Node node, final Tree tree, final int pos,
+                                             final long growth, final boolean tail)
+        throws IOException
+    {
+        // FIXME: allow split
+        long avail = node.availableLeafBytes() - growth;
+        if (avail < 0) {
+            throw new Error("split 1: " + node.availableLeafBytes() + ", " + growth);
+        }
+
+        int igrowth = (int) growth;
+        int searchVecStart = node.mSearchVecStart;
+
+        byte[] page = node.mPage;
+        int entryLoc = decodeUnsignedShortLE(page, searchVecStart + pos);
+
+        int loc = entryLoc;
+
+        final byte[] key; // encoded key
+        {
+            final int len = Node.keyLengthAtLoc(page, loc);
+            key = new byte[len];
+            arraycopy(page, loc, key, 0, len);
+            loc += len;
+        }
+
+        byte[] value; // unencoded value
+        {
+            final int len;
+            final int header = page[loc++];
+            if ((header & 0x20) == 0) {
+                len = 1 + (((header & 0x1f) << 8) | (page[loc++] & 0xff));
+            } else {
+                len = 1 + (((header & 0x0f) << 16)
+                           | ((page[loc++] & 0xff) << 8) | (page[loc++] & 0xff));
+            }
+            value = new byte[len];
+            System.arraycopy(page, loc, value, 0, value.length);
+            loc += len;
+        }
+
+        int retMask = 0;
+
+        int newValueLen = node.calculateFragmentedValueLength(value.length + igrowth);
+
+        if ((key.length + newValueLen) > tree.mDatabase.mMaxFragmentedEntrySize) {
+            // Too big, and so value encoding must be modified.
+            final int header = value[0];
+
+            if ((header & 0x01) != 0) {
+                // FIXME: Already indirect and too much inline content (caused by length field
+                // increase).
+                throw new Error("too big and indirect: " + header);
+            }
+
+            long vLen;
+            int off;
+
+            switch ((header >> 2) & 0x03) {
+            default:
+                vLen = decodeUnsignedShortLE(value, 1);
+                off = 3;
+                break;
+            case 1:
+                vLen = decodeIntLE(value, 1) & 0xffffffffL;
+                off = 5;
+                break;
+            case 2:
+                vLen = decodeUnsignedInt48LE(value, 1);
+                off = 7;
+                break;
+            case 3:
+                vLen = decodeLongLE(value, 1);
+                off = 9;
+                break;
+            }
+
+            // FIXME: need length and offset and skip inline
+            int levels = tree.mDatabase.calculateInodeLevels(vLen);
+
+            if (levels <= 0) {
+                // FIXME: Too much inline content.
+                throw new Error("too big and direct: " + header + ", " + levels);
+            }
+
+            if ((header & 0x02) != 0) {
+                // Skip over inline content.
+                off += decodeUnsignedShortLE(value, off);
+            }
+
+            Node inode = tree.mDatabase.allocDirtyFragmentNode();
+
+            // Copy direct pointers to inode.
+            byte[] ipage = inode.mPage;
+            arraycopy(value, off, ipage, 0, value.length - off);
+            // Zero-fill the rest.
+            fill(ipage, value.length - off, ipage.length, (byte) 0);
+
+            while (--levels != 0) {
+                Node upper = tree.mDatabase.allocDirtyFragmentNode();
+                byte[] upage = upper.mPage;
+                encodeInt48LE(upage, 0, inode.mId);
+                inode.releaseExclusive();
+                // Zero-fill the rest.
+                fill(upage, 6, upage.length, (byte) 0);
+                inode = upper;
+            }
+
+            // Trim value of direct pointers and convert to indirect.
+            byte[] ivalue = new byte[off + 6];
+            // Copy header and inline content.
+            arraycopy(value, 0, ivalue, 0, off);
+            // Indirect format.
+            ivalue[0] |= 0x01;
+            // Indirect pointer.
+            encodeInt48LE(ivalue, off, inode.mId);
+
+            inode.releaseExclusive();
+
+            // Negative result indicates that node is now indirect.
+            retMask = ~0;
+
+            value = ivalue;
+
+            if (!tail) {
+                // FIXME: tail yes, head no. Growth must be honored for head.
+                throw new Error("head");
+            }
+
+            newValueLen = node.calculateFragmentedValueLength(value.length);
+            igrowth = 0;
+        }
+
+        // Note: As an optimization, search vector can be left as-is for new entry. Full delete
+        // is simpler and re-uses existing code.
+        node.doDeleteLeafEntry(pos, loc - entryLoc);
+
+        entryLoc = node.createLeafEntry(tree, pos, key.length + newValueLen);
+
+        if (entryLoc < 0) {
+            // FIXME: allow split or convert to indirect
+            throw new Error("split 2");
+        } else {
+            // Node might have been compacted, so a capture a fresh page reference.
+            page = node.mPage;
+
+            arraycopy(key, 0, page, entryLoc, key.length);
+            entryLoc += key.length;
+
+            entryLoc = node.encodeLeafValueHeader
+                (page, Node.ENTRY_FRAGMENTED, value.length + igrowth, entryLoc);
+
+            // Copy existing value.
+            if (tail) {
+                arraycopy(value, 0, page, entryLoc, value.length);
+                int valueLoc = entryLoc + value.length;
+                // Zero fill the extended region.
+                fill(page, valueLoc, valueLoc + igrowth, (byte) 0);
+            } else {
+                arraycopy(value, 0, page, entryLoc + igrowth, value.length);
+            }
+        }
+
+        return entryLoc ^ retMask;
     }
 }
