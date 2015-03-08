@@ -3849,7 +3849,7 @@ final class Node extends Latch implements DatabaseAccess {
         final int searchVecEnd = mSearchVecEnd;
 
         Database db = getDatabase();
-        byte[] dest = db.removeSpareBuffer();
+        byte[] dest = db.removeSparePage();
 
         for (; searchVecLoc <= searchVecEnd; searchVecLoc += 2, newSearchVecLoc += 2) {
             if (searchVecLoc == pos) {
@@ -3868,7 +3868,7 @@ final class Node extends Latch implements DatabaseAccess {
         }
 
         // Recycle old page buffer.
-        db.addSpareBuffer(page);
+        db.addSparePage(page);
 
         // Write pointer to new allocation.
         p_shortPutLE(dest, newLoc == 0 ? newSearchVecLoc : newLoc, destLoc);
@@ -4656,7 +4656,7 @@ final class Node extends Latch implements DatabaseAccess {
         final int searchVecEnd = mSearchVecEnd;
 
         Database db = getDatabase();
-        byte[] dest = db.removeSpareBuffer();
+        byte[] dest = db.removeSparePage();
 
         for (; searchVecLoc <= searchVecEnd; searchVecLoc += 2, newSearchVecLoc += 2) {
             if (searchVecLoc == keyPos) {
@@ -4695,7 +4695,7 @@ final class Node extends Latch implements DatabaseAccess {
         }
 
         // Recycle old page buffer.
-        db.addSpareBuffer(page);
+        db.addSparePage(page);
 
         // Write pointer to key entry.
         p_shortPutLE(dest, newLoc, destLoc);
