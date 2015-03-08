@@ -25,6 +25,7 @@ import java.util.concurrent.locks.Lock;
 
 import org.cojen.tupl.io.CauseCloseable;
 
+import static org.cojen.tupl.PageOps.*;
 import static org.cojen.tupl.Utils.*;
 
 /**
@@ -2004,7 +2005,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             find(null, key, VARIANT_NO_LOCK);
 
             TreeCursorFrame leaf = mLeaf;
-            if (leaf.mNode.mPage == EMPTY_BYTES) {
+            if (leaf.mNode.mPage == p_empty()) {
                 resetLatched(leaf.mNode);
                 return false;
             }
@@ -2689,7 +2690,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                 try {
                     int nodePos = frame.mNodePos;
                     if (nodePos >= 0 && node.isFragmentedLeafValue(nodePos)) {
-                        int pLen = node.mPage.length;
+                        int pLen = p_length(node.mPage);
                         TreeValueStream stream = new TreeValueStream(this);
                         long pos = 0;
                         while (true) {
@@ -3218,7 +3219,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             rightAvail = nodeAvail;
         }
 
-        int remaining = leftAvail + rightAvail - node.mPage.length + Node.TN_HEADER_SIZE;
+        int remaining = leftAvail + rightAvail - p_length(node.mPage) + Node.TN_HEADER_SIZE;
 
         if (remaining >= 0) {
             // Migrate the entire contents of the right node into the left node, and then
@@ -3407,11 +3408,10 @@ class TreeCursor implements CauseCloseable, Cursor {
         }
 
         byte[] parentPage = parentNode.mPage;
-        int parentEntryLoc = decodeUnsignedShortLE
-            (parentPage, parentNode.mSearchVecStart + leftPos);
+        int parentEntryLoc = p_ushortGetLE(parentPage, parentNode.mSearchVecStart + leftPos);
         int parentEntryLen = Node.keyLengthAtLoc(parentPage, parentEntryLoc);
         int remaining = leftAvail - parentEntryLen
-            + rightAvail - parentPage.length + (Node.TN_HEADER_SIZE - 2);
+            + rightAvail - p_length(parentPage) + (Node.TN_HEADER_SIZE - 2);
 
         if (remaining >= 0) {
             // Migrate the entire contents of the right node into the left node, and then
