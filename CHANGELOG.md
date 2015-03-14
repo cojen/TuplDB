@@ -1,6 +1,10 @@
 Changelog
 =========
 
+v1.2.1
+------
+* Prevent search deadlock caused by heavy eviction.
+
 v1.2.0 (2015-03-01)
 ------
 * Support large keys (up to 2GiB).

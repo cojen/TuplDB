@@ -372,7 +372,26 @@ final class Node extends Latch implements DatabaseAccess {
                 Node childNode = tree.mDatabase.mTreeNodeMap.get(childId);
 
                 childCheck: if (childNode != null) {
-                    childNode.acquireShared();
+                    latchChild: if (!childNode.tryAcquireShared()) {
+                        if (!exclusiveHeld) {
+                            childNode.acquireShared();
+                            break latchChild;
+                        }
+                        // If exclusive latch is held, then this node was just loaded. If child
+                        // node cannot be immediately latched, it might have been evicted out
+                        // of order. This can create a deadlock with a thread that may hold the
+                        // exclusive latch and is now trying to latch this node.
+                        if (childId != childNode.mId) {
+                            break childCheck;
+                        }
+                        if (!childNode.tryAcquireShared()) {
+                            // Be safe and start over with a Cursor. It doesn't have the same
+                            // deadlock potential, because it prevents visited nodes from being
+                            // evicted.
+                            node.releaseExclusive();
+                            return searchWithCursor(tree, key);
+                        }
+                    }
 
                     // Need to check again in case evict snuck in.
                     if (childId != childNode.mId) {
@@ -451,15 +470,7 @@ final class Node extends Latch implements DatabaseAccess {
                         parentLatch.releaseShared();
                     }
                     // Retry with a cursor, which is reliable, but slower.
-                    TreeCursor cursor = new TreeCursor(tree, Transaction.BOGUS);
-                    try {
-                        cursor.find(key);
-                        byte[] value = cursor.value();
-                        cursor.reset();
-                        return value;
-                    } catch (Throwable e) {
-                        throw closeOnFailure(cursor, e);
-                    }
+                    return searchWithCursor(tree, key);
                 }
 
                 exclusiveHeld = true;
@@ -641,6 +652,18 @@ final class Node extends Latch implements DatabaseAccess {
         }
 
         return childNode;
+    }
+
+    private static byte[] searchWithCursor(Tree tree, byte[] key) throws IOException {
+        TreeCursor cursor = new TreeCursor(tree, Transaction.BOGUS);
+        try {
+            cursor.find(key);
+            byte[] value = cursor.value();
+            cursor.reset();
+            return value;
+        } catch (Throwable e) {
+            throw closeOnFailure(cursor, e);
+        }
     }
 
     /**
