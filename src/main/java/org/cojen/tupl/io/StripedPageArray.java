@@ -23,6 +23,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 
+import org.cojen.tupl.Page;
+
 /**
  * {@link PageArray} implementation which stripes pages in a <a
  * href="http://en.wikipedia.org/wiki/Raid_0#RAID_0">RAID 0</a> fashion.
@@ -101,14 +103,14 @@ public class StripedPageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, byte[] buf, int offset) throws IOException {
+    public void readPage(long index, @Page byte[] buf, int offset) throws IOException {
         PageArray[] arrays = mArrays;
         int stripes = arrays.length;
         arrays[(int) (index % stripes)].readPage(index / stripes, buf, offset);
     }
 
     @Override
-    public int readPartial(long index, int start, byte[] buf, int offset, int length)
+    public int readPartial(long index, int start, @Page byte[] buf, int offset, int length)
         throws IOException
     {
         PageArray[] arrays = mArrays;
@@ -119,7 +121,7 @@ public class StripedPageArray extends PageArray {
 
     /*
     @Override
-    public int readCluster(long index, byte[] buf, int offset, int count)
+    public int readCluster(long index, @Page byte[] buf, int offset, int count)
         throws IOException
     {
         if (count <= 0) {
@@ -149,7 +151,7 @@ public class StripedPageArray extends PageArray {
     */
 
     @Override
-    public void writePage(long index, byte[] buf, int offset) throws IOException {
+    public void writePage(long index, @Page byte[] buf, int offset) throws IOException {
         PageArray[] arrays = mArrays;
         int stripes = arrays.length;
         arrays[(int) (index % stripes)].writePage(index / stripes, buf, offset);

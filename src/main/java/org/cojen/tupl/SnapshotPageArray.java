@@ -78,7 +78,7 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, byte[] buf, int offset) throws IOException {
+    public void readPage(long index, @Page byte[] buf, int offset) throws IOException {
         PageCache cache = mCache;
         if (cache == null || !cache.remove(index, buf, offset, buf.length)) {
             mSource.readPage(index, buf, offset);
@@ -86,7 +86,7 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
-    public int readPartial(long index, int start, byte[] buf, int offset, int length)
+    public int readPartial(long index, int start, @Page byte[] buf, int offset, int length)
         throws IOException
     {
         PageCache cache = mCache;
@@ -97,7 +97,7 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
-    public void writePage(long index, byte[] buf, int offset) throws IOException {
+    public void writePage(long index, @Page byte[] buf, int offset) throws IOException {
         if (index < 0) {
             throw new IndexOutOfBoundsException(String.valueOf(index));
         }
@@ -117,7 +117,7 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
-    public void cachePage(long index, byte[] buf, int offset) {
+    public void cachePage(long index, @Page byte[] buf, int offset) {
         PageCache cache = mCache;
         if (cache != null) {
             cache.add(index, buf, offset, buf.length, true);

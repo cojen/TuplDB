@@ -105,7 +105,7 @@ final class DirectPageCache extends Latch implements PageCache {
 
     @Override
     public boolean add(final long pageId,
-                       final byte[] page, final int offset, final int length,
+                       final @Page byte[] page, final int offset, final int length,
                        final boolean canEvict)
     {
         acquireExclusive();
@@ -212,7 +212,7 @@ final class DirectPageCache extends Latch implements PageCache {
 
     @Override
     public boolean copy(final long pageId, final int start,
-                        final byte[] page, final int offset, final int length)
+                        final @Page byte[] page, final int offset, final int length)
     {
         acquireShared();
         try {
@@ -252,7 +252,7 @@ final class DirectPageCache extends Latch implements PageCache {
 
     @Override
     public boolean remove(final long pageId,
-                          final byte[] page, final int offset, final int length)
+                          final @Page byte[] page, final int offset, final int length)
     {
         acquireExclusive();
         try {

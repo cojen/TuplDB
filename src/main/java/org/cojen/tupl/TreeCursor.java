@@ -3407,7 +3407,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             rightAvail = nodeAvail;
         }
 
-        byte[] parentPage = parentNode.mPage;
+        @Page byte[] parentPage = parentNode.mPage;
         int parentEntryLoc = p_ushortGetLE(parentPage, parentNode.mSearchVecStart + leftPos);
         int parentEntryLen = Node.keyLengthAtLoc(parentPage, parentEntryLoc);
         int remaining = leftAvail - parentEntryLen
