@@ -1,6 +1,13 @@
 Changelog
 =========
 
+v1.2.1 (2015-03-21)
+------
+* Prevent search deadlock caused by heavy eviction.
+* Handle rare NPE when a non-root node becomes the root node during a split.
+* Snapshot can read from the cache.
+* Allow checkpoint when doing page preallocation.
+
 v1.2.0 (2015-03-01)
 ------
 * Support large keys (up to 2GiB).

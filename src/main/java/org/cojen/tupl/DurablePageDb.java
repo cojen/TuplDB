@@ -28,6 +28,8 @@ import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.zip.CRC32;
 
+import java.util.concurrent.locks.Lock;
+
 import org.cojen.tupl.io.FileFactory;
 import org.cojen.tupl.io.FilePageArray;
 import org.cojen.tupl.io.OpenOption;
@@ -437,14 +439,32 @@ final class DurablePageDb extends PageDb {
 
     @Override
     public long allocatePages(long pageCount) throws IOException {
-        mCommitLock.readLock().lock();
-        try {
-            return mPageManager.allocatePages(pageCount);
-        } catch (Throwable e) {
-            throw closeOnFailure(e);
-        } finally {
-            mCommitLock.readLock().unlock();
+        if (pageCount <= 0) {
+            return 0;
         }
+
+        Stats stats = new Stats();
+        mPageManager.addTo(stats);
+        pageCount -= stats.freePages;
+
+        if (pageCount <= 0) {
+            return 0;
+        }
+
+        final Lock lock = mCommitLock.readLock();
+
+        for (int i=0; i<pageCount; i++) {
+            lock.lock();
+            try {
+                mPageManager.allocAndRecyclePage();
+            } catch (Throwable e) {
+                throw closeOnFailure(e);
+            } finally {
+                lock.unlock();
+            }
+        }
+
+        return pageCount;
     }
 
     @Override

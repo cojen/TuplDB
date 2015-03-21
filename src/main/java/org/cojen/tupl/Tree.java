@@ -763,81 +763,87 @@ class Tree implements Index {
      * @return replacement node, still latched
      */
     final Node finishSplit(final TreeCursorFrame frame, Node node) throws IOException {
-        while (node == mRoot) {
-            Node stubNode = null;
-
-            popStub: {
-                Stub stub = mStubTail;
-                hasStub: {
-                    while (stub != null) {
-                        if (stub.mNode.mId == Node.STUB_ID) {
-                            break hasStub;
-                        }
-                        // Node was evicted, so pop it off and try next one.
-                        mStubTail = stub = stub.mParent;
-                    }
-                    break popStub;
-                }
-
-                // Don't wait for stub latch, to avoid deadlock. The stub stack
-                // is latched up upwards here, but downwards by cursors.
-                stubNode = stub.mNode;
-                if (stubNode.tryAcquireExclusive()) {
-                    mStubTail = stub.mParent;
-                } else {
-                    // Latch not immediately available, so release root latch
-                    // and try again. This implementation spins, but root
-                    // splits are expected to be infrequent.
-                    Thread waiter = node.getFirstQueuedThread();
-                    node.releaseExclusive();
-                    do {
-                        Thread.yield();
-                    } while (waiter != null && node.getFirstQueuedThread() == waiter);
-                    node = frame.acquireExclusive();
-                    if (node.mSplit == null) {
-                        return node;
-                    }
-                    continue;
-                }
-
-                // Check if popped stub is still valid. It must not have been evicted and it
-                // actually has cursors bound to it.
-
-                if (stubNode.mId == Node.STUB_ID && stubNode.mLastCursorFrame != null) {
-                    // Allow non-durable database to recycle the old id.
-                    stubNode.mId = -stub.mDeletedId;
-                } else {
-                    stubNode.releaseExclusive();
-                    stubNode = null;
-                }
-            }
-
-            try {
-                node.finishSplitRoot(this, stubNode);
-                // Must return the node as referenced by the frame, which is no
-                // longer the root node.
-                node.releaseExclusive();
-                return frame.acquireExclusive();
-            } catch (Throwable e) {
-                node.releaseExclusive();
-                throw e;
-            }
-        }
-
-        final TreeCursorFrame parentFrame = frame.mParentFrame;
-        node.releaseExclusive();
-
-        Node parentNode = parentFrame.acquireExclusive();
         while (true) {
-            if (parentNode.mSplit != null) {
-                parentNode = finishSplit(parentFrame, parentNode);
+            if (node == mRoot) {
+                Node stubNode = null;
+
+                popStub: {
+                    Stub stub = mStubTail;
+                    hasStub: {
+                        while (stub != null) {
+                            if (stub.mNode.mId == Node.STUB_ID) {
+                                break hasStub;
+                            }
+                            // Node was evicted, so pop it off and try next one.
+                            mStubTail = stub = stub.mParent;
+                        }
+                        break popStub;
+                    }
+
+                    // Don't wait for stub latch, to avoid deadlock. The stub stack
+                    // is latched up upwards here, but downwards by cursors.
+                    stubNode = stub.mNode;
+                    if (stubNode.tryAcquireExclusive()) {
+                        mStubTail = stub.mParent;
+                    } else {
+                        // Latch not immediately available, so release root latch
+                        // and try again. This implementation spins, but root
+                        // splits are expected to be infrequent.
+                        Thread waiter = node.getFirstQueuedThread();
+                        node.releaseExclusive();
+                        do {
+                            Thread.yield();
+                        } while (waiter != null && node.getFirstQueuedThread() == waiter);
+                        node = frame.acquireExclusive();
+                        if (node.mSplit == null) {
+                            return node;
+                        }
+                        continue;
+                    }
+
+                    // Check if popped stub is still valid. It must not have been evicted and
+                    // it actually has cursors bound to it.
+
+                    if (stubNode.mId == Node.STUB_ID && stubNode.mLastCursorFrame != null) {
+                        // Allow non-durable database to recycle the old id.
+                        stubNode.mId = -stub.mDeletedId;
+                    } else {
+                        stubNode.releaseExclusive();
+                        stubNode = null;
+                    }
+                }
+
+                try {
+                    node.finishSplitRoot(this, stubNode);
+                } finally {
+                    node.releaseExclusive();
+                }
+
+                // Must return the node as referenced by the frame, which is no longer the root.
+                return frame.acquireExclusive();
             }
-            node = frame.acquireExclusive();
-            if (node.mSplit == null) {
-                parentNode.releaseExclusive();
-                return node;
+
+            final TreeCursorFrame parentFrame = frame.mParentFrame;
+            node.releaseExclusive();
+
+            Node parentNode = parentFrame.acquireExclusive();
+            while (true) {
+                if (parentNode.mSplit != null) {
+                    parentNode = finishSplit(parentFrame, parentNode);
+                }
+                node = frame.acquireExclusive();
+                if (node.mSplit == null) {
+                    parentNode.releaseExclusive();
+                    return node;
+                }
+                if (node == mRoot) {
+                    // Node became the root in between the time the latch was released and
+                    // re-acquired. Go back to the case for handling root splits.
+                    parentNode.releaseExclusive();
+                    break;
+                }
+                parentNode.insertSplitChildRef(this, parentFrame.mNodePos, node);
             }
-            parentNode.insertSplitChildRef(this, parentFrame.mNodePos, node);
         }
     }
 
