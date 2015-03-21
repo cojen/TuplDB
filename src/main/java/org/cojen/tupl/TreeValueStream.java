@@ -194,7 +194,7 @@ final class TreeValueStream extends AbstractStream {
             return -1;
         }
 
-        final byte[] page = node.mPage;
+        final @Page byte[] page = node.mPage;
         int loc = p_ushortGetLE(page, node.mSearchVecStart + nodePos);
         // Skip the key.
         loc += Node.keyLengthAtLoc(page, loc);
@@ -320,7 +320,7 @@ final class TreeValueStream extends AbstractStream {
             nodePos = frame.mNodePos;
         }
 
-        byte[] page = node.mPage;
+        @Page byte[] page = node.mPage;
         int loc = p_ushortGetLE(page, node.mSearchVecStart + nodePos);
         // Skip the key.
         loc += Node.keyLengthAtLoc(page, loc);
@@ -732,7 +732,7 @@ final class TreeValueStream extends AbstractStream {
 
                     do {
                         Node upper = mDatabase.allocDirtyFragmentNode();
-                        byte[] upage = upper.mPage;
+                        @Page byte[] upage = upper.mPage;
                         p_int48PutLE(upage, 0, inode.mId);
                         inode.releaseExclusive();
                         // Zero-fill the rest.
@@ -766,7 +766,7 @@ final class TreeValueStream extends AbstractStream {
                             p_int48PutLE(page, loc, fNode.mId);
 
                             // Now write to the new page, zero-filling the gaps.
-                            byte[] fNodePage = fNode.mPage;
+                            @Page byte[] fNodePage = fNode.mPage;
                             p_clear(fNodePage, 0, fNodeOff);
                             p_copyFromArray(b, bOff, fNodePage, fNodeOff, amt);
                             p_clear(fNodePage, fNodeOff + amt, p_length(fNodePage));
@@ -815,7 +815,7 @@ final class TreeValueStream extends AbstractStream {
      * @param loc fragmented value header location
      * @return new value location (after header), negated if converted to indirect format
      */
-    private int updateLengthField(TreeCursorFrame frame, byte[] page, int loc, long len)
+    private int updateLengthField(TreeCursorFrame frame, @Page byte[] page, int loc, long len)
         throws IOException
     {
         int growth;
@@ -893,7 +893,7 @@ final class TreeValueStream extends AbstractStream {
         throws IOException
     {
         try {
-            byte[] page = inode.mPage;
+            @Page byte[] page = inode.mPage;
             level--;
             long levelCap = mDatabase.levelCap(level);
 
@@ -940,7 +940,7 @@ final class TreeValueStream extends AbstractStream {
      * @param loc location of root inode in the page
      * @return dirtied root inode with exclusive latch held
      */
-    private Node prepareMultilevelWrite(byte[] page, int loc) throws IOException {
+    private Node prepareMultilevelWrite(@Page byte[] page, int loc) throws IOException {
         final Node inode;
 
         setPtr: {
@@ -983,7 +983,7 @@ final class TreeValueStream extends AbstractStream {
         final Database db = mDatabase;
 
         try {
-            byte[] page = inode.mPage;
+            @Page byte[] page = inode.mPage;
             level--;
             long levelCap = db.levelCap(level);
 
@@ -1074,7 +1074,7 @@ final class TreeValueStream extends AbstractStream {
         int igrowth = (int) growth;
         int searchVecStart = node.mSearchVecStart;
 
-        byte[] page = node.mPage;
+        @Page byte[] page = node.mPage;
         int entryLoc = p_ushortGetLE(page, searchVecStart + pos);
 
         int loc = entryLoc;
@@ -1154,14 +1154,14 @@ final class TreeValueStream extends AbstractStream {
             Node inode = tree.mDatabase.allocDirtyFragmentNode();
 
             // Copy direct pointers to inode.
-            byte[] ipage = inode.mPage;
+            @Page byte[] ipage = inode.mPage;
             p_copyFromArray(value, off, ipage, 0, value.length - off);
             // Zero-fill the rest.
             p_clear(ipage, value.length - off, p_length(ipage));
 
             while (--levels != 0) {
                 Node upper = tree.mDatabase.allocDirtyFragmentNode();
-                byte[] upage = upper.mPage;
+                @Page byte[] upage = upper.mPage;
                 p_int48PutLE(upage, 0, inode.mId);
                 inode.releaseExclusive();
                 // Zero-fill the rest.

@@ -344,12 +344,12 @@ final class DurablePageDb extends PageDb {
     }
 
     @Override
-    public void readPage(long id, byte[] buf) throws IOException {
+    public void readPage(long id, @Page byte[] buf) throws IOException {
         readPage(id, buf, 0);
     }
 
     @Override
-    public void readPage(long id, byte[] buf, int offset) throws IOException {
+    public void readPage(long id, @Page byte[] buf, int offset) throws IOException {
         try {
             mPageArray.readPage(id, buf, offset);
         } catch (Throwable e) {
@@ -358,7 +358,7 @@ final class DurablePageDb extends PageDb {
     }
 
     @Override
-    public void readPartial(long id, int start, byte[] buf, int offset, int length)
+    public void readPartial(long id, int start, @Page byte[] buf, int offset, int length)
         throws IOException
     {
         try {
@@ -381,12 +381,12 @@ final class DurablePageDb extends PageDb {
     }
 
     @Override
-    public void writePage(long id, byte[] buf) throws IOException {
+    public void writePage(long id, @Page byte[] buf) throws IOException {
         writePage(id, buf, 0);
     }
 
     @Override
-    public void writePage(long id, byte[] buf, int offset) throws IOException {
+    public void writePage(long id, @Page byte[] buf, int offset) throws IOException {
         checkId(id);
         try {
             mPageArray.writePage(id, buf, offset);
@@ -396,12 +396,12 @@ final class DurablePageDb extends PageDb {
     }
 
     @Override
-    public void cachePage(long id, byte[] buf) throws IOException {
+    public void cachePage(long id, @Page byte[] buf) throws IOException {
         mPageArray.cachePage(id, buf);
     }
 
     @Override
-    public void cachePage(long id, byte[] buf, int offset) throws IOException {
+    public void cachePage(long id, @Page byte[] buf, int offset) throws IOException {
         mPageArray.cachePage(id, buf, offset);
     }
 

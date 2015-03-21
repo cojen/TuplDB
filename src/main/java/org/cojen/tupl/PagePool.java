@@ -23,12 +23,12 @@ package org.cojen.tupl;
  */
 final class PagePool extends Latch {
     private final transient WaitQueue mQueue;
-    private final byte[][] mPool;
+    private final @Page byte[][] mPool;
     private int mPos;
 
     PagePool(int pageSize, int poolSize) {
         mQueue = new WaitQueue();
-        byte[][] pool = new byte[poolSize][];
+        @Page byte[][] pool = PageOps.p_allocArray(poolSize);
         for (int i=0; i<poolSize; i++) {
             pool[i] = PageOps.p_alloc(pageSize);
         }
@@ -39,7 +39,7 @@ final class PagePool extends Latch {
     /**
      * Remove a page from the pool, waiting for one to become available if necessary.
      */
-    byte[] remove() {
+    @Page byte[] remove() {
         acquireExclusive();
         try {
             int pos;
@@ -55,7 +55,7 @@ final class PagePool extends Latch {
     /**
      * Add a previously removed page back into the pool.
      */
-    void add(byte[] page) {
+    void add(@Page byte[] page) {
         acquireExclusive();
         try {
             int pos = mPos;

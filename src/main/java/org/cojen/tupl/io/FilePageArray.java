@@ -21,6 +21,8 @@ import java.io.IOException;
 
 import java.util.EnumSet;
 
+import org.cojen.tupl.Page;
+
 /**
  * Basic {@link PageArray} implementation which accesses a file.
  *
@@ -76,7 +78,7 @@ public class FilePageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, byte[] buf, int offset) throws IOException {
+    public void readPage(long index, @Page byte[] buf, int offset) throws IOException {
         if (index < 0) {
             throw new IndexOutOfBoundsException(String.valueOf(index));
         }
@@ -85,7 +87,7 @@ public class FilePageArray extends PageArray {
     }
 
     @Override
-    public int readPartial(long index, int start, byte[] buf, int offset, int length)
+    public int readPartial(long index, int start, @Page byte[] buf, int offset, int length)
         throws IOException
     {
         if (index < 0) {
@@ -100,7 +102,7 @@ public class FilePageArray extends PageArray {
 
     /*
     @Override
-    public int readCluster(long index, byte[] buf, int offset, int count)
+    public int readCluster(long index, @Page byte[] buf, int offset, int count)
         throws IOException
     {
         if (index < 0) {
@@ -114,7 +116,7 @@ public class FilePageArray extends PageArray {
     */
 
     @Override
-    public void writePage(long index, byte[] buf, int offset) throws IOException {
+    public void writePage(long index, @Page byte[] buf, int offset) throws IOException {
         int pageSize = mPageSize;
         mFio.write(index * pageSize, buf, offset, pageSize);
     }

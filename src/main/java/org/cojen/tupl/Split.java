@@ -274,7 +274,7 @@ final class Split {
      * @param destLoc location in destination page
      * @return updated destLoc
      */
-    final int copySplitKeyToParent(final byte[] dest, final int destLoc) {
+    final int copySplitKeyToParent(final @Page byte[] dest, final int destLoc) {
         byte[] actualKey = mActualKey;
         if (actualKey == mFullKey) {
             return Node.encodeNormalKey(actualKey, dest, destLoc);

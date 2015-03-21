@@ -32,7 +32,15 @@ final class PageOps {
         return new byte[size];
     }
 
+    static byte[][] p_allocArray(int size) {
+        return new byte[size][];
+    }
+
     static void p_delete(byte[] page) {
+    }
+
+    static byte[] p_clone(byte[] page) {
+        return page.clone();
     }
 
     static int p_length(byte[] page) {
