@@ -37,7 +37,7 @@ public interface Crypto {
      * @param page initially the original unencrypted page; replaced with encrypted page
      * @param pageOffset offset into page
      */
-    public void encryptPage(long pageIndex, int pageSize, byte[] page, int pageOffset)
+    public void encryptPage(long pageIndex, int pageSize, /*P*/ byte[] page, int pageOffset)
         throws GeneralSecurityException;
 
     /**
@@ -51,7 +51,7 @@ public interface Crypto {
      * @param dstOffset offset into encrypted page
      */
     public void encryptPage(long pageIndex, int pageSize,
-                            byte[] src, int srcOffset, byte[] dst, int dstOffset)
+                            /*P*/ byte[] src, int srcOffset, /*P*/ byte[] dst, int dstOffset)
         throws GeneralSecurityException;
 
     /**
@@ -62,7 +62,7 @@ public interface Crypto {
      * @param page initially the encrypted page; replaced with decrypted page
      * @param pageOffset offset into page
      */
-    public void decryptPage(long pageIndex, int pageSize, byte[] page, int pageOffset)
+    public void decryptPage(long pageIndex, int pageSize, /*P*/ byte[] page, int pageOffset)
         throws GeneralSecurityException;
 
     /**
@@ -76,7 +76,7 @@ public interface Crypto {
      * @param dstOffset offset into decrypted page
      */
     public void decryptPage(long pageIndex, int pageSize,
-                            byte[] src, int srcOffset, byte[] dst, int dstOffset)
+                            /*P*/ byte[] src, int srcOffset, /*P*/ byte[] dst, int dstOffset)
         throws GeneralSecurityException;
 
     /**

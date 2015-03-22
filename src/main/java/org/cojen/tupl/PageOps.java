@@ -16,6 +16,14 @@
 
 package org.cojen.tupl;
 
+import java.nio.ByteBuffer;
+
+import java.security.GeneralSecurityException;
+
+import java.util.zip.CRC32;
+
+import javax.crypto.Cipher;
+
 import static org.cojen.tupl.Utils.*;
 
 /**
@@ -147,6 +155,14 @@ final class PageOps {
         System.arraycopy(srcPage, srcStart, dst, dstStart, len);
     }
 
+    static void p_copyFromBB(ByteBuffer src, byte[] dstPage, int dstStart, int len) {
+        src.get(dstPage, dstStart, len);
+    }
+
+    static void p_copyToBB(byte[] srcPage, int srcStart, ByteBuffer dst, int len) {
+        dst.put(srcPage, srcStart, len);
+    }
+
     static void p_copy(byte[] srcPage, int srcStart, byte[] dstPage, int dstStart, int len) {
         System.arraycopy(srcPage, srcStart, dstPage, dstStart, len);
     }
@@ -184,5 +200,19 @@ final class PageOps {
             p_copies(page, start2, dest2, length2, start3, dest3, length3);
             p_copy(page, start1, page, dest1, length1);
         }
+    }
+
+    static int p_crc32(/*P*/ byte[] srcPage, int srcStart, int len) {
+        CRC32 crc = new CRC32();
+        crc.update(srcPage, srcStart, len);
+        return (int) crc.getValue();
+    }
+
+    static int p_cipherDoFinal(Cipher cipher,
+                               /*P*/ byte[] srcPage, int srcStart, int srcLen,
+                               /*P*/ byte[] dstPage, int dstStart)
+        throws GeneralSecurityException
+    {
+        return cipher.doFinal(srcPage, srcStart, srcLen, dstPage, dstStart);
     }
 }

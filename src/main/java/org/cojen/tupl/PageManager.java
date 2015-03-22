@@ -141,8 +141,8 @@ final class PageManager {
         }
     }
 
-    static long readTotalPageCount(byte[] header, int offset) {
-        return Utils.decodeLongLE(header, offset + I_TOTAL_PAGE_COUNT);
+    static long readTotalPageCount(/*P*/ byte[] header, int offset) {
+        return PageOps.p_longGetLE(header, offset + I_TOTAL_PAGE_COUNT);
     }
 
     public PageArray pageArray() {
@@ -452,7 +452,7 @@ final class PageManager {
      * @param header destination for writing page manager structures
      * @param offset offset into header
      */
-    public void commitStart(byte[] header, int offset) throws IOException {
+    public void commitStart(/*P*/ byte[] header, int offset) throws IOException {
         fullLock();
         try {
             // Pre-commit all first, draining the append heaps.
@@ -464,7 +464,7 @@ final class PageManager {
 
             // Total page count is written after append heaps have been
             // drained, because additional pages might have been allocated.
-            Utils.encodeLongLE(header, offset + I_TOTAL_PAGE_COUNT, mTotalPageCount);
+            PageOps.p_longPutLE(header, offset + I_TOTAL_PAGE_COUNT, mTotalPageCount);
 
             mRegularFreeList.commitStart(header, offset + I_REGULAR_QUEUE);
             mRecycleFreeList.commitStart(header, offset + I_RECYCLE_QUEUE);
@@ -482,7 +482,7 @@ final class PageManager {
      * @param header contains page manager structures
      * @param offset offset into header
      */
-    public void commitEnd(byte[] header, int offset) throws IOException {
+    public void commitEnd(/*P*/ byte[] header, int offset) throws IOException {
         mRemoveLock.lock();
         try {
             mRegularFreeList.commitEnd(header, offset + I_REGULAR_QUEUE);

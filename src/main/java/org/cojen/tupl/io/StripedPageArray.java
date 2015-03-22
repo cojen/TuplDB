@@ -117,37 +117,6 @@ public class StripedPageArray extends PageArray {
             .readPartial(index / stripes, start, buf, offset, length);
     }
 
-    /*
-    @Override
-    public int readCluster(long index, /*P* / byte[] buf, int offset, int count)
-        throws IOException
-    {
-        if (count <= 0) {
-            return 0;
-        }
-
-        int pageSize = pageSize();
-        PageArray[] arrays = mArrays;
-        int stripes = arrays.length;
-        int stripe = (int) (index % stripes);
-        index /= stripes;
-
-        while (true) {
-            arrays[stripe].readPage(index, buf, offset);
-            if (--count < 0) {
-                break;
-            }
-            offset += pageSize;
-            if (++stripe == stripes) {
-                stripe = 0;
-                index++;
-            }
-        }
-
-        return pageSize * count;
-    }
-    */
-
     @Override
     public void writePage(long index, /*P*/ byte[] buf, int offset) throws IOException {
         PageArray[] arrays = mArrays;

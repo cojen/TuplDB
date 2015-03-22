@@ -205,14 +205,16 @@ final class NonPageDb extends PageDb {
     }
 
     @Override
-    public void commit(boolean resume, byte[] header, CommitCallback callback) throws IOException {
+    public void commit(boolean resume, /*P*/ byte[] header, CommitCallback callback)
+        throws IOException
+    {
         // This is more of an assertion failure.
         throw new DatabaseException("Cannot commit to a non-durable database");
     }
 
     @Override
-    public void readExtraCommitData(byte[] extra) throws IOException {
-        Arrays.fill(extra, (byte) 0);
+    public void readExtraCommitData(/*P*/ byte[] extra) throws IOException {
+        p_clear(extra, 0, p_length(extra));
     }
 
     @Override

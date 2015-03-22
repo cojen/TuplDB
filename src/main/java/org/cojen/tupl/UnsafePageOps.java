@@ -16,6 +16,12 @@
 
 package org.cojen.tupl;
 
+import java.nio.ByteBuffer;
+
+import java.security.GeneralSecurityException;
+
+import javax.crypto.Cipher;
+
 /**
  * 
  *
@@ -176,6 +182,16 @@ final class UnsafePageOps {
         throw null;
     }
 
+    static void p_copyFromBB(ByteBuffer src, long dstPage, int dstStart, int len) {
+        // FIXME
+        throw null;
+    }
+
+    static void p_copyToBB(long srcPage, int srcStart, ByteBuffer dst, int len) {
+        // FIXME
+        throw null;
+    }
+
     static void p_copy(long srcPage, int srcStart, long dstPage, int dstStart, int len) {
         // FIXME
         throw null;
@@ -206,5 +222,19 @@ final class UnsafePageOps {
             p_copies(page, start2, dest2, length2, start3, dest3, length3);
             p_copy(page, start1, page, dest1, length1);
         }
+    }
+
+    static int p_crc32(/*P*/ long srcPage, int srcStart, int len) {
+        // FIXME
+        throw null;
+    }
+
+    static int p_cipherDoFinal(Cipher cipher,
+                               /*P*/ long srcPage, int srcStart, int srcLen,
+                               /*P*/ long dstPage, int dstStart)
+        throws GeneralSecurityException
+    {
+        // FIXME
+        throw null;
     }
 }

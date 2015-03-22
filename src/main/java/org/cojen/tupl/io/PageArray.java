@@ -107,34 +107,6 @@ public abstract class PageArray implements CauseCloseable {
     }
 
     /**
-     * Subclass should override to improve performance.
-     *
-     * @param index zero-based page index to read
-     * @param buf receives read data
-     * @param offset offset into data buffer
-     * @param count number of pages to read
-     * @return length read (always page size times count)
-     * @throws IndexOutOfBoundsException if index is negative
-     * @throws IOException if index is greater than or equal to page count
-     */
-    /*
-    public int readCluster(long index, /*P* / byte[] buf, int offset, int count)
-        throws IOException
-    {
-        int pageSize = mPageSize;
-        if (count > 0) while (true) {
-            readPage(index, buf, offset);
-            if (--count <= 0) {
-                break;
-            }
-            index++;
-            offset += pageSize;
-        }
-        return pageSize * count;
-    }
-    */
-
-    /**
      * Writes a page, which is lazily flushed. The array grows automatically if the index is
      * greater than or equal to the current page count. If array supports caching, page must be
      * immediately copied into it.

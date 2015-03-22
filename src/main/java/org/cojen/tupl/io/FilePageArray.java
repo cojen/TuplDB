@@ -98,21 +98,6 @@ public class FilePageArray extends PageArray {
         return length;
     }
 
-    /*
-    @Override
-    public int readCluster(long index, /*P* / byte[] buf, int offset, int count)
-        throws IOException
-    {
-        if (index < 0) {
-            throw new IndexOutOfBoundsException(String.valueOf(index));
-        }
-        int pageSize = mPageSize;
-        int len = pageSize * count;
-        mFio.read(index * pageSize, buf, offset, len);
-        return len;
-    }
-    */
-
     @Override
     public void writePage(long index, /*P*/ byte[] buf, int offset) throws IOException {
         int pageSize = mPageSize;
