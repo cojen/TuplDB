@@ -85,20 +85,6 @@ public class FilePageArray extends PageArray {
     }
 
     @Override
-    public int readPartial(long index, int start, /*P*/ byte[] buf, int offset, int length)
-        throws IOException
-    {
-        if (index < 0) {
-            throw new IndexOutOfBoundsException(String.valueOf(index));
-        }
-        int pageSize = mPageSize;
-        int remaining = pageSize - start;
-        length = remaining <= 0 ? 0 : Math.min(remaining, length);
-        mFio.read(index * pageSize + start, buf, offset, length);
-        return length;
-    }
-
-    @Override
     public void writePage(long index, /*P*/ byte[] buf, int offset) throws IOException {
         int pageSize = mPageSize;
         mFio.write(index * pageSize, buf, offset, pageSize);

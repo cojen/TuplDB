@@ -104,19 +104,6 @@ abstract class PageDb implements CauseCloseable {
     public abstract void readPage(long id, /*P*/ byte[] buf, int offset) throws IOException;
 
     /**
-     * Reads a part of a page without locking. Caller must ensure that a
-     * deleted page is not read during or after a commit.
-     *
-     * @param id page id to read
-     * @param start start of page to read
-     * @param buf receives read data
-     * @param offset offset into data buffer
-     * @param length length to read
-     */
-    public abstract void readPartial(long id, int start, /*P*/ byte[] buf, int offset, int length)
-        throws IOException;
-
-    /**
      * Allocates a page to be written to.
      *
      * @return page id; never zero or one

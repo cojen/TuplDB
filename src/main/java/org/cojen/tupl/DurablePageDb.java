@@ -370,17 +370,6 @@ final class DurablePageDb extends PageDb {
     }
 
     @Override
-    public void readPartial(long id, int start, /*P*/ byte[] buf, int offset, int length)
-        throws IOException
-    {
-        try {
-            mPageArray.readPartial(id, start, buf, offset, length);
-        } catch (Throwable e) {
-            throw closeOnFailure(e);
-        }
-    }
-
-    @Override
     public long allocPage() throws IOException {
         mCommitLock.readLock().lock();
         try {
@@ -574,7 +563,7 @@ final class DurablePageDb extends PageDb {
         try {
             mHeaderLatch.acquireShared();
             try {
-                mPageArray.readPartial(mCommitNumber & 1, I_EXTRA_DATA, extra, 0, p_length(extra));
+                readPartial(mCommitNumber & 1, I_EXTRA_DATA, extra, 0, p_length(extra));
             } finally {
                 mHeaderLatch.releaseShared();
             }
@@ -631,7 +620,7 @@ final class DurablePageDb extends PageDb {
         try {
             mHeaderLatch.acquireShared();
             try {
-                mPageArray.readPartial(mCommitNumber & 1, 0, header, 0, p_length(header));
+                readPartial(mCommitNumber & 1, 0, header, 0, p_length(header));
                 long pageCount = PageManager.readTotalPageCount(header, I_MANAGER_HEADER);
                 long redoPos = Database.readRedoPosition(header, I_EXTRA_DATA); 
                 return mPageArray.beginSnapshot(tfm, pageCount, redoPos, nodeCache);
@@ -807,7 +796,7 @@ final class DurablePageDb extends PageDb {
 
         try {
             try {
-                mPageArray.readPartial(id, 0, header, 0, MINIMUM_PAGE_SIZE);
+                readPartial(id, 0, header, 0, MINIMUM_PAGE_SIZE);
             } catch (EOFException e) {
                 throw new CorruptDatabaseException("File is smaller than expected");
             }
@@ -831,4 +820,23 @@ final class DurablePageDb extends PageDb {
             throw e;
         }
     }
+
+    private int readPartial(long index, int start, /*P*/ byte[] buf, int offset, int length)
+        throws IOException
+    {
+        int pageSize = mPageArray.pageSize();
+        if (start == 0 && length == pageSize) {
+            mPageArray.readPage(index, buf, offset);
+        } else {
+            /*P*/ byte[] page = p_alloc(pageSize);
+            try {
+                mPageArray.readPage(index, page, 0);
+                p_copy(page, start, buf, offset, length);
+            } finally {
+                p_delete(page);
+            }
+        }
+        return length;
+    }
+
 }
