@@ -620,7 +620,7 @@ final class DurablePageDb extends PageDb {
         try {
             mHeaderLatch.acquireShared();
             try {
-                readPartial(mCommitNumber & 1, 0, header, 0, p_length(header));
+                mPageArray.readPage(mCommitNumber & 1, header, 0);
                 long pageCount = PageManager.readTotalPageCount(header, I_MANAGER_HEADER);
                 long redoPos = Database.readRedoPosition(header, I_EXTRA_DATA); 
                 return mPageArray.beginSnapshot(tfm, pageCount, redoPos, nodeCache);
@@ -796,7 +796,7 @@ final class DurablePageDb extends PageDb {
 
         try {
             try {
-                readPartial(id, 0, header, 0, MINIMUM_PAGE_SIZE);
+                mPageArray.readPage(id, header, 0);
             } catch (EOFException e) {
                 throw new CorruptDatabaseException("File is smaller than expected");
             }
@@ -821,14 +821,14 @@ final class DurablePageDb extends PageDb {
         }
     }
 
-    private int readPartial(long index, int start, /*P*/ byte[] buf, int offset, int length)
+    private void readPartial(long index, int start, /*P*/ byte[] buf, int offset, int length)
         throws IOException
     {
         int pageSize = mPageArray.pageSize();
-        if (start == 0 && length == pageSize) {
+        if (start == 0) {
             mPageArray.readPage(index, buf, offset);
         } else {
-            /*P*/ byte[] page = p_alloc(pageSize);
+            /*P*/ byte[] page = p_alloc(start + length);
             try {
                 mPageArray.readPage(index, page, 0);
                 p_copy(page, start, buf, offset, length);
@@ -836,7 +836,5 @@ final class DurablePageDb extends PageDb {
                 p_delete(page);
             }
         }
-        return length;
     }
-
 }
