@@ -159,7 +159,7 @@ final class UndoLog implements DatabaseAccess {
             mNode = node = allocUnevictableNode(0);
             int pos = mBufferPos;
             int size = buffer.length - pos;
-            @Page byte[] page = node.mPage;
+            /*P*/ byte[] page = node.mPage;
             int newPos = p_length(page) - size;
             p_copyFromArray(buffer, pos, page, newPos, size);
             // Set pointer to top entry.
@@ -279,7 +279,7 @@ final class UndoLog implements DatabaseAccess {
                     } else {
                         // Required capacity is large, so just use a node.
                         mNode = node = allocUnevictableNode(0);
-                        @Page byte[] page = node.mPage;
+                        /*P*/ byte[] page = node.mPage;
                         int newPos = p_length(page) - size;
                         p_copyFromArray(buffer, pos, page, newPos, size);
                         // Set pointer to top entry.
@@ -317,7 +317,7 @@ final class UndoLog implements DatabaseAccess {
             pos -= amt;
             available -= amt;
             remaining -= amt;
-            @Page byte[] page = node.mPage;
+            /*P*/ byte[] page = node.mPage;
             p_copyFromArray(payload, off + remaining, page, pos, amt);
             node.mGarbage = pos;
 
@@ -436,7 +436,7 @@ final class UndoLog implements DatabaseAccess {
                             // by the next checkpoint.
                             mDatabase.prepareToDelete(node);
                             mDatabase.redirty(node);
-                            @Page byte[] page = node.mPage;
+                            /*P*/ byte[] page = node.mPage;
                             int end = p_length(page) - 1;
                             node.mGarbage = end;
                             p_bytePut(page, end, OP_COMMIT_TRUNCATE);
@@ -638,7 +638,7 @@ final class UndoLog implements DatabaseAccess {
 
         node.acquireExclusive();
         while (true) {
-            @Page byte[] page = node.mPage;
+            /*P*/ byte[] page = node.mPage;
             int pos = node.mGarbage;
             if (pos < p_length(page)) {
                 byte op = p_byteGet(page, pos);
@@ -689,7 +689,7 @@ final class UndoLog implements DatabaseAccess {
         }
 
         node.acquireExclusive();
-        @Page byte[] page;
+        /*P*/ byte[] page;
         int pos;
         while (true) {
             page = node.mPage;
@@ -808,7 +808,7 @@ final class UndoLog implements DatabaseAccess {
         }
     }
 
-    private static void writePageEntry(@Page byte[] page, int pagePos,
+    private static void writePageEntry(/*P*/ byte[] page, int pagePos,
                                        byte op, byte[] payload, int off, int len)
     {
         p_bytePut(page, pagePos, op);

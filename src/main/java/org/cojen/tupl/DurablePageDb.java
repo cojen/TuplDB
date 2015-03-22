@@ -38,6 +38,7 @@ import org.cojen.tupl.io.StripedPageArray;
 
 import static java.lang.System.arraycopy;
 
+import static org.cojen.tupl.PageOps.*;
 import static org.cojen.tupl.Utils.*;
 
 /**
@@ -344,12 +345,12 @@ final class DurablePageDb extends PageDb {
     }
 
     @Override
-    public void readPage(long id, @Page byte[] buf) throws IOException {
+    public void readPage(long id, /*P*/ byte[] buf) throws IOException {
         readPage(id, buf, 0);
     }
 
     @Override
-    public void readPage(long id, @Page byte[] buf, int offset) throws IOException {
+    public void readPage(long id, /*P*/ byte[] buf, int offset) throws IOException {
         try {
             mPageArray.readPage(id, buf, offset);
         } catch (Throwable e) {
@@ -358,7 +359,7 @@ final class DurablePageDb extends PageDb {
     }
 
     @Override
-    public void readPartial(long id, int start, @Page byte[] buf, int offset, int length)
+    public void readPartial(long id, int start, /*P*/ byte[] buf, int offset, int length)
         throws IOException
     {
         try {
@@ -381,12 +382,12 @@ final class DurablePageDb extends PageDb {
     }
 
     @Override
-    public void writePage(long id, @Page byte[] buf) throws IOException {
+    public void writePage(long id, /*P*/ byte[] buf) throws IOException {
         writePage(id, buf, 0);
     }
 
     @Override
-    public void writePage(long id, @Page byte[] buf, int offset) throws IOException {
+    public void writePage(long id, /*P*/ byte[] buf, int offset) throws IOException {
         checkId(id);
         try {
             mPageArray.writePage(id, buf, offset);
@@ -396,12 +397,12 @@ final class DurablePageDb extends PageDb {
     }
 
     @Override
-    public void cachePage(long id, @Page byte[] buf) throws IOException {
+    public void cachePage(long id, /*P*/ byte[] buf) throws IOException {
         mPageArray.cachePage(id, buf);
     }
 
     @Override
-    public void cachePage(long id, @Page byte[] buf, int offset) throws IOException {
+    public void cachePage(long id, /*P*/ byte[] buf, int offset) throws IOException {
         mPageArray.cachePage(id, buf, offset);
     }
 
@@ -642,12 +643,12 @@ final class DurablePageDb extends PageDb {
             throw new DatabaseException("Cannot restore into a read-only file");
         }
 
-        byte[] buffer;
+        /*P*/ byte[] buffer;
         PageArray pa;
         long index = 0;
 
         if (crypto != null) {
-            buffer = new byte[pageSize];
+            buffer = p_alloc(pageSize);
             pa = openPageArray(pageSize, files, factory, options);
             if (!pa.isEmpty()) {
                 throw new DatabaseException("Cannot restore into a non-empty file");
@@ -655,26 +656,28 @@ final class DurablePageDb extends PageDb {
         } else {
             // Figure out what the actual page size is.
 
-            buffer = new byte[MINIMUM_PAGE_SIZE];
-            readFully(in, buffer, 0, buffer.length);
+            buffer = p_alloc(MINIMUM_PAGE_SIZE);
+            readFully(in, buffer, 0, p_length(buffer));
 
-            long magic = decodeLongLE(buffer, I_MAGIC_NUMBER);
+            long magic = p_longGetLE(buffer, I_MAGIC_NUMBER);
             if (magic != MAGIC_NUMBER) {
                 throw new CorruptDatabaseException("Wrong magic number: " + magic);
             }
 
-            pageSize = decodeIntLE(buffer, I_PAGE_SIZE);
+            pageSize = p_intGetLE(buffer, I_PAGE_SIZE);
             pa = openPageArray(pageSize, files, factory, options);
 
             if (!pa.isEmpty()) {
                 throw new DatabaseException("Cannot restore into a non-empty file");
             }
 
-            if (pageSize != buffer.length) {
-                byte[] newBuffer = new byte[pageSize];
-                arraycopy(buffer, 0, newBuffer, 0, buffer.length);
-                readFully(in, newBuffer, buffer.length, pageSize - buffer.length);
+            if (pageSize != p_length(buffer)) {
+                /*P*/ byte[] newBuffer = p_alloc(pageSize);
+                p_copy(buffer, 0, newBuffer, 0, p_length(buffer));
+                readFully(in, newBuffer, p_length(buffer), pageSize - p_length(buffer));
+                /*P*/ byte[] oldBuffer = buffer;
                 buffer = newBuffer;
+                p_delete(oldBuffer);
             }
 
             pa.writePage(index, buffer);
@@ -696,17 +699,17 @@ final class DurablePageDb extends PageDb {
             throw new DatabaseException("Cannot restore into a non-empty file");
         }
 
-        return restoreFromSnapshot(cache, crypto, in, new byte[pa.pageSize()], pa, 0);
+        return restoreFromSnapshot(cache, crypto, in, p_alloc(pa.pageSize()), pa, 0);
     }
 
     private static PageDb restoreFromSnapshot(PageCache cache, Crypto crypto, InputStream in,
-                                              byte[] buffer, PageArray pa, long index)
+                                              /*P*/ byte[] buffer, PageArray pa, long index)
         throws IOException
     {
         try {
             while (true) {
                 try {
-                    readFully(in, buffer, 0, buffer.length);
+                    readFully(in, buffer, 0, p_length(buffer));
                 } catch (EOFException e) {
                     break;
                 }
@@ -714,6 +717,7 @@ final class DurablePageDb extends PageDb {
                 index++;
             }
         } finally {
+            p_delete(buffer);
             closeQuietly(null, in);
         }
 

@@ -18,8 +18,6 @@ package org.cojen.tupl.io;
 
 import java.io.IOException;
 
-import org.cojen.tupl.Page;
-
 /**
  * Defines a persistent, array of fixed sized pages. Each page is uniquely
  * identified by a 64-bit index, starting at zero.
@@ -67,7 +65,7 @@ public abstract class PageArray implements CauseCloseable {
      * @throws IndexOutOfBoundsException if index is negative
      * @throws IOException if index is greater than or equal to page count
      */
-    public void readPage(long index, @Page byte[] buf) throws IOException {
+    public void readPage(long index, /*P*/ byte[] buf) throws IOException {
         readPage(index, buf, 0);
     }
 
@@ -78,7 +76,7 @@ public abstract class PageArray implements CauseCloseable {
      * @throws IndexOutOfBoundsException if index is negative
      * @throws IOException if index is greater than or equal to page count
      */
-    public abstract void readPage(long index, @Page byte[] buf, int offset) throws IOException;
+    public abstract void readPage(long index, /*P*/ byte[] buf, int offset) throws IOException;
 
     /**
      * Subclass should override to improve performance.
@@ -92,7 +90,7 @@ public abstract class PageArray implements CauseCloseable {
      * @throws IndexOutOfBoundsException if index is negative
      * @throws IOException if index is greater than or equal to page count
      */
-    public int readPartial(long index, int start, @Page byte[] buf, int offset, int length)
+    public int readPartial(long index, int start, /*P*/ byte[] buf, int offset, int length)
         throws IOException
     {
         int pageSize = mPageSize;
@@ -100,7 +98,7 @@ public abstract class PageArray implements CauseCloseable {
             readPage(index, buf, offset);
         } else {
             /* FIXME: remove partial support
-            @Page byte[] page = new byte[pageSize];
+            /*P* / byte[] page = new byte[pageSize];
             readPage(index, page, 0);
             System.arraycopy(page, start, buf, offset, length);
             */
@@ -120,7 +118,7 @@ public abstract class PageArray implements CauseCloseable {
      * @throws IOException if index is greater than or equal to page count
      */
     /*
-    public int readCluster(long index, @Page byte[] buf, int offset, int count)
+    public int readCluster(long index, /*P* / byte[] buf, int offset, int count)
         throws IOException
     {
         int pageSize = mPageSize;
@@ -145,7 +143,7 @@ public abstract class PageArray implements CauseCloseable {
      * @param buf data to write
      * @throws IndexOutOfBoundsException if index is negative
      */
-    public void writePage(long index, @Page byte[] buf) throws IOException {
+    public void writePage(long index, /*P*/ byte[] buf) throws IOException {
         writePage(index, buf, 0);
     }
 
@@ -159,7 +157,7 @@ public abstract class PageArray implements CauseCloseable {
      * @param offset offset into data buffer
      * @throws IndexOutOfBoundsException if index is negative
      */
-    public abstract void writePage(long index, @Page byte[] buf, int offset) throws IOException;
+    public abstract void writePage(long index, /*P*/ byte[] buf, int offset) throws IOException;
 
     /**
      * If supported, copies a page into the cache, but does not write it. Cached copy can be
@@ -168,7 +166,7 @@ public abstract class PageArray implements CauseCloseable {
      * @param index zero-based page index to write
      * @param buf data to write
      */
-    public void cachePage(long index, @Page byte[] buf) throws IOException {
+    public void cachePage(long index, /*P*/ byte[] buf) throws IOException {
         cachePage(index, buf, 0);
     }
 
@@ -180,7 +178,7 @@ public abstract class PageArray implements CauseCloseable {
      * @param buf data to write
      * @param offset offset into data buffer
      */
-    public void cachePage(long index, @Page byte[] buf, int offset) throws IOException {
+    public void cachePage(long index, /*P*/ byte[] buf, int offset) throws IOException {
     }
 
     /**

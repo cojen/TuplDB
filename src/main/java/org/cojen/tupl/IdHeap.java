@@ -123,7 +123,7 @@ final class IdHeap {
      *
      * @return new offset
      */
-    public int drain(long prevId, @Page byte[] buffer, int offset, int length) {
+    public int drain(long prevId, /*P*/ byte[] buffer, int offset, int length) {
         int end = offset + length;
         while (mSize > 0 && offset < end) {
             if (offset > (end - 9)) {

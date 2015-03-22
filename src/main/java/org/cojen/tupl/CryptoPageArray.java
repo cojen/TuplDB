@@ -58,7 +58,7 @@ final class CryptoPageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, byte[] buf, int offset) throws IOException {
+    public void readPage(long index, /*P*/ byte[] buf, int offset) throws IOException {
         try {
             mSource.readPage(index, buf, offset);
             mCrypto.decryptPage(index, pageSize(), buf, offset);
@@ -68,7 +68,7 @@ final class CryptoPageArray extends PageArray {
     }
 
     @Override
-    public void writePage(long index, byte[] buf, int offset) throws IOException {
+    public void writePage(long index, /*P*/ byte[] buf, int offset) throws IOException {
         try {
             int pageSize = pageSize();
             // Unknown if buf contents can be destroyed, so create a new one.

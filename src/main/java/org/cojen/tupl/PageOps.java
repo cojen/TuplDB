@@ -24,6 +24,10 @@ import static org.cojen.tupl.Utils.*;
  * @author Brian S O'Neill
  */
 final class PageOps {
+    static byte[] p_null() {
+        return null;
+    }
+
     static byte[] p_empty() {
         return EMPTY_BYTES;
     }

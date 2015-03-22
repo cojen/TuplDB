@@ -73,7 +73,7 @@ final class PageManager {
      * Create a new PageManager.
      */
     PageManager(PageArray array) throws IOException {
-        this(false, array, null, 0);
+        this(false, array, PageOps.p_null(), 0);
     }
 
     /**
@@ -82,11 +82,11 @@ final class PageManager {
      * @param header source for reading allocator root structure
      * @param offset offset into header
      */
-    PageManager(PageArray array, @Page byte[] header, int offset) throws IOException {
+    PageManager(PageArray array, /*P*/ byte[] header, int offset) throws IOException {
         this(true, array, header, offset);
     }
 
-    private PageManager(boolean restored, PageArray array, @Page byte[] header, int offset)
+    private PageManager(boolean restored, PageArray array, /*P*/ byte[] header, int offset)
         throws IOException
     {
         if (array == null) {

@@ -88,7 +88,7 @@ final class PageQueue implements IntegerRef {
     // These fields are guarded by remove lock provided by caller.
     private long mRemovePageCount;
     private long mRemoveNodeCount;
-    private final @Page byte[] mRemoveHead;
+    private final /*P*/ byte[] mRemoveHead;
     private long mRemoveHeadId;
     private int mRemoveHeadOffset;
     private long mRemoveHeadFirstPageId;
@@ -104,7 +104,7 @@ final class PageQueue implements IntegerRef {
     // These fields are guarded by mAppendLock.
     private final ReentrantLock mAppendLock;
     private final IdHeap mAppendHeap;
-    private final @Page byte[] mAppendTail;
+    private final /*P*/ byte[] mAppendTail;
     private volatile long mAppendTailId;
     private long mAppendPageCount;
     private long mAppendNodeCount;
@@ -113,7 +113,7 @@ final class PageQueue implements IntegerRef {
     /**
      * Returns true if a valid PageQueue instance is encoded in the header.
      */
-    static boolean exists(@Page byte[] header, int offset) {
+    static boolean exists(/*P*/ byte[] header, int offset) {
         return p_longGetLE(header, offset + I_REMOVE_HEAD_ID) != 0;
     }
 
@@ -193,7 +193,7 @@ final class PageQueue implements IntegerRef {
     /**
      * Initialize a restored queue. Caller must hold append and remove locks.
      */
-    void init(@Page byte[] header, int offset) throws IOException {
+    void init(/*P*/ byte[] header, int offset) throws IOException {
         mRemovePageCount = p_longGetLE(header, offset + I_REMOVE_PAGE_COUNT);
         mRemoveNodeCount = p_longGetLE(header, offset + I_REMOVE_NODE_COUNT);
 
@@ -286,7 +286,7 @@ final class PageQueue implements IntegerRef {
 
             mRemovePageCount--;
 
-            final @Page byte[] head = mRemoveHead;
+            final /*P*/ byte[] head = mRemoveHead;
             if (mRemoveHeadOffset < p_length(head)) {
                 // Pass this as an IntegerRef to mRemoveHeadOffset.
                 long delta = p_ulongGetVar(head, this);
@@ -339,7 +339,7 @@ final class PageQueue implements IntegerRef {
         if (mAllocMode != ALLOC_RESERVE && mManager.isPageOutOfBounds(id)) {
             throw new CorruptDatabaseException("Invalid node id in free list: " + id);
         }
-        @Page byte[] head = mRemoveHead;
+        /*P*/ byte[] head = mRemoveHead;
         mManager.pageArray().readPage(id, head);
         mRemoveHeadId = id;
         mRemoveHeadOffset = I_NODE_START;
@@ -409,7 +409,7 @@ final class PageQueue implements IntegerRef {
             long newTailId = mManager.allocPage(mAllocMode);
             long firstPageId = appendHeap.remove();
 
-            @Page byte[] tailBuf = mAppendTail;
+            /*P*/ byte[] tailBuf = mAppendTail;
             p_longPutBE(tailBuf, I_NEXT_NODE_ID, newTailId);
             p_longPutBE(tailBuf, I_FIRST_PAGE_ID, firstPageId);
 
@@ -448,7 +448,7 @@ final class PageQueue implements IntegerRef {
     /**
      * Caller must hold append and remove locks and have called preCommit.
      */
-    void commitStart(@Page byte[] header, int offset) {
+    void commitStart(/*P*/ byte[] header, int offset) {
         p_longPutLE(header, offset + I_REMOVE_PAGE_COUNT, mRemovePageCount + mAppendPageCount);
         p_longPutLE(header, offset + I_REMOVE_NODE_COUNT, mRemoveNodeCount + mAppendNodeCount);
 
@@ -494,7 +494,7 @@ final class PageQueue implements IntegerRef {
      *
      * @param header header with contents filled in by commitStart
      */
-    void commitEnd(@Page byte[] header, int offset) throws IOException {
+    void commitEnd(/*P*/ byte[] header, int offset) throws IOException {
         long newAppendHeadId = p_longGetLE(header, offset + I_APPEND_HEAD_ID);
 
         if (mRemoveHeadId == 0
@@ -536,7 +536,7 @@ final class PageQueue implements IntegerRef {
         long nodeId = mRemoveHeadId;
 
         if (nodeId != 0) {
-            @Page byte[] node = p_clone(mRemoveHead);
+            /*P*/ byte[] node = p_clone(mRemoveHead);
             long pageId = mRemoveHeadFirstPageId;
             IntegerRef.Value nodeOffsetRef = new IntegerRef.Value();
             nodeOffsetRef.value = mRemoveHeadOffset;
@@ -601,7 +601,7 @@ final class PageQueue implements IntegerRef {
             return count;
         }
 
-        @Page byte[] node = p_clone(mRemoveHead);
+        /*P*/ byte[] node = p_clone(mRemoveHead);
         long pageId = mRemoveHeadFirstPageId;
         IntegerRef.Value nodeOffsetRef = new IntegerRef.Value();
         nodeOffsetRef.value = mRemoveHeadOffset;
