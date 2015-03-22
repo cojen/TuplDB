@@ -81,7 +81,7 @@ public class FilePageArray extends PageArray {
             throw new IndexOutOfBoundsException(String.valueOf(index));
         }
         int pageSize = mPageSize;
-        mFio.read(index * pageSize, buf, offset, pageSize);
+        mFio.read(index * pageSize, buf, offset, Math.min(pageSize, buf.length));
     }
 
     @Override
