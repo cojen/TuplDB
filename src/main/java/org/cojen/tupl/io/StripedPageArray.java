@@ -108,16 +108,6 @@ public class StripedPageArray extends PageArray {
     }
 
     @Override
-    public int readPartial(long index, int start, /*P*/ byte[] buf, int offset, int length)
-        throws IOException
-    {
-        PageArray[] arrays = mArrays;
-        int stripes = arrays.length;
-        return arrays[(int) (index % stripes)]
-            .readPartial(index / stripes, start, buf, offset, length);
-    }
-
-    @Override
     public void writePage(long index, /*P*/ byte[] buf, int offset) throws IOException {
         PageArray[] arrays = mArrays;
         int stripes = arrays.length;

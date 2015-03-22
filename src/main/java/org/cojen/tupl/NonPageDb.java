@@ -103,16 +103,6 @@ final class NonPageDb extends PageDb {
     }
 
     @Override
-    public void readPartial(long id, int start, /*P*/ byte[] buf, int offset, int length)
-        throws IOException
-    {
-        PageCache cache = mCache;
-        if (cache == null || !cache.copy(id, start, buf, offset, length)) {
-            fail(false);
-        }
-    }
-
-    @Override
     public synchronized long allocPage() throws IOException {
         // Cached nodes and fragmented values always require unique identifiers.
         long id = mAllocId + 1;

@@ -79,34 +79,6 @@ public abstract class PageArray implements CauseCloseable {
     public abstract void readPage(long index, /*P*/ byte[] buf, int offset) throws IOException;
 
     /**
-     * Subclass should override to improve performance.
-     *
-     * @param index zero-based page index to read
-     * @param start start of page to read
-     * @param buf receives read data
-     * @param offset offset into data buffer
-     * @param length length to read
-     * @return actual length read
-     * @throws IndexOutOfBoundsException if index is negative
-     * @throws IOException if index is greater than or equal to page count
-     */
-    public int readPartial(long index, int start, /*P*/ byte[] buf, int offset, int length)
-        throws IOException
-    {
-        int pageSize = mPageSize;
-        if (start == 0 && length == pageSize) {
-            readPage(index, buf, offset);
-        } else {
-            /* FIXME: remove partial support
-            /*P* / byte[] page = new byte[pageSize];
-            readPage(index, page, 0);
-            System.arraycopy(page, start, buf, offset, length);
-            */
-        }
-        return length;
-    }
-
-    /**
      * Writes a page, which is lazily flushed. The array grows automatically if the index is
      * greater than or equal to the current page count. If array supports caching, page must be
      * immediately copied into it.

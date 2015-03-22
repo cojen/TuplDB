@@ -87,17 +87,6 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
-    public int readPartial(long index, int start, /*P*/ byte[] buf, int offset, int length)
-        throws IOException
-    {
-        PageCache cache = mCache;
-        if (cache != null && cache.copy(index, start, buf, offset, length)) {
-            return length;
-        }
-        return mSource.readPartial(index, start, buf, offset, length);
-    }
-
-    @Override
     public void writePage(long index, /*P*/ byte[] buf, int offset) throws IOException {
         if (index < 0) {
             throw new IndexOutOfBoundsException(String.valueOf(index));
