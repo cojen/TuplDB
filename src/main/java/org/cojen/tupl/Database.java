@@ -525,8 +525,7 @@ public final class Database implements CauseCloseable, Flushable {
                 mSharedCommitLock.unlock();
             }
 
-            // FIXME: make sure it gets deleted later
-            /*P*/ byte[] header = p_alloc(HEADER_SIZE);
+            byte[] header = new byte[HEADER_SIZE];
             mPageDb.readExtraCommitData(header);
 
             // Also verifies the database and replication encodings.
@@ -551,12 +550,12 @@ public final class Database implements CauseCloseable, Flushable {
             }
 
             synchronized (mTxnIdLock) {
-                mTxnId = p_longGetLE(header, I_TRANSACTION_ID);
+                mTxnId = decodeLongLE(header, I_TRANSACTION_ID);
             }
 
-            long redoNum = p_longGetLE(header, I_CHECKPOINT_NUMBER);
-            long redoPos = p_longGetLE(header, I_REDO_POSITION);
-            long redoTxnId = p_longGetLE(header, I_REDO_TXN_ID);
+            long redoNum = decodeLongLE(header, I_CHECKPOINT_NUMBER);
+            long redoPos = decodeLongLE(header, I_REDO_POSITION);
+            long redoTxnId = decodeLongLE(header, I_REDO_TXN_ID);
 
             if (openMode == OPEN_TEMP) {
                 mRegistryKeyMap = null;
@@ -619,7 +618,7 @@ public final class Database implements CauseCloseable, Flushable {
 
                 LHashTable.Obj<Transaction> txns = new LHashTable.Obj<>(16);
                 {
-                    long masterNodeId = p_longGetLE(header, I_MASTER_UNDO_LOG_PAGE_ID);
+                    long masterNodeId = decodeLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID);
                     if (masterNodeId != 0) {
                         if (mEventListener != null) {
                             mEventListener.notify
@@ -2509,8 +2508,8 @@ public final class Database implements CauseCloseable, Flushable {
      * Loads the root registry node, or creates one if store is new. Root node
      * is not eligible for eviction.
      */
-    private Node loadRegistryRoot(/*P*/ byte[] header, ReplicationManager rm) throws IOException {
-        int version = p_intGetLE(header, I_ENCODING_VERSION);
+    private Node loadRegistryRoot(byte[] header, ReplicationManager rm) throws IOException {
+        int version = decodeIntLE(header, I_ENCODING_VERSION);
 
         long rootId;
         if (version == 0) {
@@ -2522,7 +2521,7 @@ public final class Database implements CauseCloseable, Flushable {
                 throw new CorruptDatabaseException("Unknown encoding version: " + version);
             }
 
-            long replEncoding = p_longGetLE(header, I_REPL_ENCODING);
+            long replEncoding = decodeLongLE(header, I_REPL_ENCODING);
 
             if (rm == null) {
                 if (replEncoding != 0) {
@@ -2543,7 +2542,7 @@ public final class Database implements CauseCloseable, Flushable {
                 }
             }
 
-            rootId = p_longGetLE(header, I_ROOT_PAGE_ID);
+            rootId = decodeLongLE(header, I_ROOT_PAGE_ID);
         }
 
         return loadTreeRoot(rootId);
@@ -3396,16 +3395,16 @@ public final class Database implements CauseCloseable, Flushable {
         return levels;
     }
 
-    static long decodeFullFragmentedValueLength(int header, byte[] fragmented, int off) {
+    static long decodeFullFragmentedValueLength(int header, /*P*/ byte[] fragmented, int off) {
         switch ((header >> 2) & 0x03) {
         default:
-            return decodeUnsignedShortLE(fragmented, off);
+            return p_ushortGetLE(fragmented, off);
         case 1:
-            return decodeIntLE(fragmented, off) & 0xffffffffL;
+            return p_intGetLE(fragmented, off) & 0xffffffffL;
         case 2:
-            return decodeUnsignedInt48LE(fragmented, off);
+            return p_uint48GetLE(fragmented, off);
         case 3:
-            return decodeLongLE(fragmented, off);
+            return p_longGetLE(fragmented, off);
         }
     }
 

@@ -264,5 +264,5 @@ abstract class PageDb implements CauseCloseable {
      *
      * @param extra optional extra data which was committed, up to 256 bytes
      */
-    public abstract void readExtraCommitData(/*P*/ byte[] extra) throws IOException;
+    public abstract void readExtraCommitData(byte[] extra) throws IOException;
 }

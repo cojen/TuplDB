@@ -66,7 +66,7 @@ public abstract class PageArray implements CauseCloseable {
      * @throws IOException if index is greater than or equal to page count
      */
     public void readPage(long index, /*P*/ byte[] buf) throws IOException {
-        readPage(index, buf, 0);
+        readPage(index, buf, 0, mPageSize);
     }
 
     /**
@@ -76,7 +76,8 @@ public abstract class PageArray implements CauseCloseable {
      * @throws IndexOutOfBoundsException if index is negative
      * @throws IOException if index is greater than or equal to page count
      */
-    public abstract void readPage(long index, /*P*/ byte[] buf, int offset) throws IOException;
+    public abstract void readPage(long index, /*P*/ byte[] buf, int offset, int length)
+        throws IOException;
 
     /**
      * Writes a page, which is lazily flushed. The array grows automatically if the index is
