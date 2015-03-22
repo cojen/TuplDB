@@ -183,7 +183,7 @@ public final class Database implements CauseCloseable, Flushable {
 
     // Set during checkpoint after commit state has switched. If checkpoint aborts, next
     // checkpoint will resume with this commit header and master undo log.
-    private byte[] mCommitHeader;
+    private /*P*/ byte[] mCommitHeader = p_null();
     private UndoLog mCommitMasterUndoLog;
 
     // Is false for empty databases which have never checkpointed.
@@ -525,7 +525,8 @@ public final class Database implements CauseCloseable, Flushable {
                 mSharedCommitLock.unlock();
             }
 
-            byte[] header = new byte[HEADER_SIZE];
+            // FIXME: make sure it gets deleted later
+            /*P*/ byte[] header = p_alloc(HEADER_SIZE);
             mPageDb.readExtraCommitData(header);
 
             // Also verifies the database and replication encodings.
@@ -550,12 +551,12 @@ public final class Database implements CauseCloseable, Flushable {
             }
 
             synchronized (mTxnIdLock) {
-                mTxnId = decodeLongLE(header, I_TRANSACTION_ID);
+                mTxnId = p_longGetLE(header, I_TRANSACTION_ID);
             }
 
-            long redoNum = decodeLongLE(header, I_CHECKPOINT_NUMBER);
-            long redoPos = decodeLongLE(header, I_REDO_POSITION);
-            long redoTxnId = decodeLongLE(header, I_REDO_TXN_ID);
+            long redoNum = p_longGetLE(header, I_CHECKPOINT_NUMBER);
+            long redoPos = p_longGetLE(header, I_REDO_POSITION);
+            long redoTxnId = p_longGetLE(header, I_REDO_TXN_ID);
 
             if (openMode == OPEN_TEMP) {
                 mRegistryKeyMap = null;
@@ -618,7 +619,7 @@ public final class Database implements CauseCloseable, Flushable {
 
                 LHashTable.Obj<Transaction> txns = new LHashTable.Obj<>(16);
                 {
-                    long masterNodeId = decodeLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID);
+                    long masterNodeId = p_longGetLE(header, I_MASTER_UNDO_LOG_PAGE_ID);
                     if (masterNodeId != 0) {
                         if (mEventListener != null) {
                             mEventListener.notify
@@ -2508,8 +2509,8 @@ public final class Database implements CauseCloseable, Flushable {
      * Loads the root registry node, or creates one if store is new. Root node
      * is not eligible for eviction.
      */
-    private Node loadRegistryRoot(byte[] header, ReplicationManager rm) throws IOException {
-        int version = decodeIntLE(header, I_ENCODING_VERSION);
+    private Node loadRegistryRoot(/*P*/ byte[] header, ReplicationManager rm) throws IOException {
+        int version = p_intGetLE(header, I_ENCODING_VERSION);
 
         long rootId;
         if (version == 0) {
@@ -2521,7 +2522,7 @@ public final class Database implements CauseCloseable, Flushable {
                 throw new CorruptDatabaseException("Unknown encoding version: " + version);
             }
 
-            long replEncoding = decodeLongLE(header, I_REPL_ENCODING);
+            long replEncoding = p_longGetLE(header, I_REPL_ENCODING);
 
             if (rm == null) {
                 if (replEncoding != 0) {
@@ -2542,7 +2543,7 @@ public final class Database implements CauseCloseable, Flushable {
                 }
             }
 
-            rootId = decodeLongLE(header, I_ROOT_PAGE_ID);
+            rootId = p_longGetLE(header, I_ROOT_PAGE_ID);
         }
 
         return loadTreeRoot(rootId);
@@ -3470,24 +3471,24 @@ public final class Database implements CauseCloseable, Flushable {
      * Reconstruct a fragmented value.
      */
     byte[] reconstruct(/*P*/ byte[] fragmented, int off, int len) throws IOException {
-        int header = fragmented[off++];
+        int header = p_byteGet(fragmented, off++);
         len--;
 
         int vLen;
         switch ((header >> 2) & 0x03) {
         default:
-            vLen = decodeUnsignedShortLE(fragmented, off);
+            vLen = p_ushortGetLE(fragmented, off);
             break;
 
         case 1:
-            vLen = decodeIntLE(fragmented, off);
+            vLen = p_intGetLE(fragmented, off);
             if (vLen < 0) {
                 throw new LargeValueException(vLen & 0xffffffffL);
             }
             break;
 
         case 2:
-            long vLenL = decodeUnsignedInt48LE(fragmented, off);
+            long vLenL = p_uint48GetLE(fragmented, off);
             if (vLenL > Integer.MAX_VALUE) {
                 throw new LargeValueException(vLenL);
             }
@@ -3495,7 +3496,7 @@ public final class Database implements CauseCloseable, Flushable {
             break;
 
         case 3:
-            vLenL = decodeLongLE(fragmented, off);
+            vLenL = p_longGetLE(fragmented, off);
             if (vLenL < 0 || vLenL > Integer.MAX_VALUE) {
                 throw new LargeValueException(vLenL);
             }
@@ -3519,7 +3520,7 @@ public final class Database implements CauseCloseable, Flushable {
         int vOff = 0;
         if ((header & 0x02) != 0) {
             // Inline content.
-            int inLen = decodeUnsignedShortLE(fragmented, off);
+            int inLen = p_ushortGetLE(fragmented, off);
             off += 2;
             len -= 2;
             arraycopy(fragmented, off, value, vOff, inLen);
@@ -3532,7 +3533,7 @@ public final class Database implements CauseCloseable, Flushable {
         if ((header & 0x01) == 0) {
             // Direct pointers.
             while (len >= 6) {
-                long nodeId = decodeUnsignedInt48LE(fragmented, off);
+                long nodeId = p_uint48GetLE(fragmented, off);
                 off += 6;
                 len -= 6;
                 int pLen;
@@ -3554,7 +3555,7 @@ public final class Database implements CauseCloseable, Flushable {
             }
         } else {
             // Indirect pointers.
-            long inodeId = decodeUnsignedInt48LE(fragmented, off);
+            long inodeId = p_uint48GetLE(fragmented, off);
             if (inodeId != 0) {
                 Node inode = mFragmentCache.get(inodeId);
                 int levels = calculateInodeLevels(vLen);
@@ -3891,12 +3892,13 @@ public final class Database implements CauseCloseable, Flushable {
 
             boolean resume = true;
 
-            byte[] header = mCommitHeader;
+            /*P*/ byte[] header = mCommitHeader;
             UndoLog masterUndoLog = mCommitMasterUndoLog;
 
-            if (header == null) {
+            if (header == p_null()) {
                 // Not resumed. Allocate new header early, before acquiring locks.
-                header = new byte[mPageDb.pageSize()];
+                // FIXME: make sure it gets deleted later
+                header = p_alloc(mPageDb.pageSize());
                 resume = false;
                 if (masterUndoLog != null) {
                     throw new AssertionError();
@@ -3904,7 +3906,7 @@ public final class Database implements CauseCloseable, Flushable {
             }
 
             int hoff = mPageDb.extraCommitDataOffset();
-            encodeIntLE(header, hoff + I_ENCODING_VERSION, ENCODING_VERSION);
+            p_intPutLE(header, hoff + I_ENCODING_VERSION, ENCODING_VERSION);
 
             final RedoWriter redo = mRedoWriter;
             if (redo != null) {
@@ -3926,7 +3928,7 @@ public final class Database implements CauseCloseable, Flushable {
             }
 
             if (!resume) {
-                encodeLongLE(header, hoff + I_ROOT_PAGE_ID, root.mId);
+                p_longPutLE(header, hoff + I_ROOT_PAGE_ID, root.mId);
             }
 
             final long redoNum, redoPos, redoTxnId;
@@ -3947,12 +3949,12 @@ public final class Database implements CauseCloseable, Flushable {
                 }
             }
 
-            encodeLongLE(header, hoff + I_CHECKPOINT_NUMBER, redoNum);
-            encodeLongLE(header, hoff + I_REDO_TXN_ID, redoTxnId);
-            encodeLongLE(header, hoff + I_REDO_POSITION, redoPos);
+            p_longPutLE(header, hoff + I_CHECKPOINT_NUMBER, redoNum);
+            p_longPutLE(header, hoff + I_REDO_TXN_ID, redoTxnId);
+            p_longPutLE(header, hoff + I_REDO_POSITION, redoPos);
 
-            encodeLongLE(header, hoff + I_REPL_ENCODING,
-                         mRedoWriter == null ? 0 : mRedoWriter.encoding());
+            p_longPutLE(header, hoff + I_REPL_ENCODING,
+                        mRedoWriter == null ? 0 : mRedoWriter.encoding());
 
             mCheckpointFlushState = CHECKPOINT_FLUSH_PREPARE;
 
@@ -3992,18 +3994,18 @@ public final class Database implements CauseCloseable, Flushable {
                     }
                 }
 
-                encodeLongLE(header, hoff + I_TRANSACTION_ID, txnId);
-                encodeLongLE(header, hoff + I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
+                p_longPutLE(header, hoff + I_TRANSACTION_ID, txnId);
+                p_longPutLE(header, hoff + I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
 
                 mPageDb.commit(resume, header, new PageDb.CommitCallback() {
                     @Override
-                    public void prepare(boolean resume, byte[] header) throws IOException {
+                    public void prepare(boolean resume, /*P*/ byte[] header) throws IOException {
                         flush(resume, header);
                     }
                 });
 
                 // Reset for next checkpoint.
-                mCommitHeader = null;
+                mCommitHeader = p_null();
                 mCommitMasterUndoLog = null;
             } catch (IOException e) {
                 if (mCheckpointFlushState == CHECKPOINT_FLUSH_PREPARE) {
@@ -4046,7 +4048,7 @@ public final class Database implements CauseCloseable, Flushable {
      * Method is invoked with exclusive commit lock and shared root node latch
      * held. Both are released by this method.
      */
-    private void flush(final boolean resume, final byte[] header) throws IOException {
+    private void flush(final boolean resume, final /*P*/ byte[] header) throws IOException {
         int stateToFlush = mCommitState;
 
         if (resume) {
@@ -4084,7 +4086,7 @@ public final class Database implements CauseCloseable, Flushable {
     }
 
     // Called by DurablePageDb with header latch held.
-    static long readRedoPosition(byte[] header, int offset) {
-        return decodeLongLE(header, offset + I_REDO_POSITION);
+    static long readRedoPosition(/*P*/ byte[] header, int offset) {
+        return p_longGetLE(header, offset + I_REDO_POSITION);
     }
 }

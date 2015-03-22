@@ -258,7 +258,7 @@ abstract class PageDb implements CauseCloseable {
      * @param header must be page size
      * @param callback optional callback to run during commit
      */
-    public abstract void commit(boolean resume, byte[] header, CommitCallback callback)
+    public abstract void commit(boolean resume, /*P*/ byte[] header, CommitCallback callback)
         throws IOException;
 
     public static interface CommitCallback {
@@ -269,7 +269,7 @@ abstract class PageDb implements CauseCloseable {
          * @param resume true if resuming an aborted commit
          * @param header header to write extra data into, up to 256 bytes
          */
-        public void prepare(boolean resume, byte[] header) throws IOException;
+        public void prepare(boolean resume, /*P*/ byte[] header) throws IOException;
     }
 
     /**
@@ -277,5 +277,5 @@ abstract class PageDb implements CauseCloseable {
      *
      * @param extra optional extra data which was committed, up to 256 bytes
      */
-    public abstract void readExtraCommitData(byte[] extra) throws IOException;
+    public abstract void readExtraCommitData(/*P*/ byte[] extra) throws IOException;
 }

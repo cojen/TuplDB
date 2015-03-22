@@ -72,9 +72,13 @@ final class CryptoPageArray extends PageArray {
         try {
             int pageSize = pageSize();
             // Unknown if buf contents can be destroyed, so create a new one.
-            byte[] encrypted = new byte[pageSize];
-            mCrypto.encryptPage(index, pageSize, buf, offset, encrypted, 0);
-            mSource.writePage(index, encrypted, 0);
+            /*P*/ byte[] encrypted = PageOps.p_alloc(pageSize);
+            try {
+                mCrypto.encryptPage(index, pageSize, buf, offset, encrypted, 0);
+                mSource.writePage(index, encrypted, 0);
+            } finally {
+                PageOps.p_delete(encrypted);
+            }
         } catch (GeneralSecurityException e) {
             throw new DatabaseException(e);
         }
