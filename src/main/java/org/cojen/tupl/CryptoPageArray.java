@@ -58,12 +58,29 @@ final class CryptoPageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, /*P*/ byte[] buf, int offset) throws IOException {
+    public void readPage(long index, /*P*/ byte[] buf) throws IOException {
         try {
-            mSource.readPage(index, buf, offset);
-            mCrypto.decryptPage(index, pageSize(), buf, offset);
+            mSource.readPage(index, buf);
+            mCrypto.decryptPage(index, pageSize(), buf, 0);
         } catch (GeneralSecurityException e) {
             throw new DatabaseException(e);
+        }
+    }
+
+    @Override
+    public void readPage(long index, /*P*/ byte[] buf, int offset, int length) throws IOException {
+        int pageSize = pageSize();
+        if (offset == 0 && length == pageSize) {
+            readPage(index, buf);
+            return;
+        }
+
+        /*P*/ byte[] page = PageOps.p_alloc(pageSize);
+        try {
+            readPage(index, page);
+            PageOps.p_copy(page, 0, buf, offset, length);
+        } finally {
+            PageOps.p_delete(page);
         }
     }
 

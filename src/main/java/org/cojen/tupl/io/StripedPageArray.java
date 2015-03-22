@@ -101,10 +101,10 @@ public class StripedPageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, /*P*/ byte[] buf, int offset) throws IOException {
+    public void readPage(long index, /*P*/ byte[] buf, int offset, int length) throws IOException {
         PageArray[] arrays = mArrays;
         int stripes = arrays.length;
-        arrays[(int) (index % stripes)].readPage(index / stripes, buf, offset);
+        arrays[(int) (index % stripes)].readPage(index / stripes, buf, offset, length);
     }
 
     @Override

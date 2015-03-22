@@ -203,8 +203,8 @@ final class NonPageDb extends PageDb {
     }
 
     @Override
-    public void readExtraCommitData(/*P*/ byte[] extra) throws IOException {
-        p_clear(extra, 0, p_length(extra));
+    public void readExtraCommitData(byte[] extra) throws IOException {
+        Arrays.fill(extra, (byte) 0);
     }
 
     @Override

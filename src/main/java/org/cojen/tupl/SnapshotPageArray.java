@@ -79,10 +79,10 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, /*P*/ byte[] buf, int offset) throws IOException {
+    public void readPage(long index, /*P*/ byte[] buf, int offset, int length) throws IOException {
         PageCache cache = mCache;
-        if (cache == null || !cache.remove(index, buf, offset, p_length(buf))) {
-            mSource.readPage(index, buf, offset);
+        if (cache == null || !cache.remove(index, buf, offset, length)) {
+            mSource.readPage(index, buf, offset, length);
         }
     }
 

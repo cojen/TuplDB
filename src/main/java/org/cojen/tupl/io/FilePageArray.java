@@ -76,12 +76,11 @@ public class FilePageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, /*P*/ byte[] buf, int offset) throws IOException {
+    public void readPage(long index, /*P*/ byte[] buf, int offset, int length) throws IOException {
         if (index < 0) {
             throw new IndexOutOfBoundsException(String.valueOf(index));
         }
-        int pageSize = mPageSize;
-        mFio.read(index * pageSize, buf, offset, Math.min(pageSize, buf.length));
+        mFio.read(index * mPageSize, buf, offset, length);
     }
 
     @Override
