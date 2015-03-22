@@ -3333,7 +3333,7 @@ public final class Database implements CauseCloseable, Flushable {
                             Node node = allocDirtyFragmentNode();
                             try {
                                 encodeInt48LE(newValue, offset, node.mId);
-                                @Page byte[] page = node.mPage;
+                                /*P*/ byte[] page = node.mPage;
                                 if (pageCount > 1) {
                                     p_copyFromArray(value, voffset, page, 0, pageSize);
                                 } else {
@@ -3418,7 +3418,7 @@ public final class Database implements CauseCloseable, Flushable {
         throws IOException
     {
         try {
-            @Page byte[] page = inode.mPage;
+            /*P*/ byte[] page = inode.mPage;
             level--;
             long levelCap = levelCap(level);
 
@@ -3431,7 +3431,7 @@ public final class Database implements CauseCloseable, Flushable {
 
                 int len = (int) Math.min(levelCap, vlength);
                 if (level <= 0) {
-                    @Page byte[] childPage = childNode.mPage;
+                    /*P*/ byte[] childPage = childNode.mPage;
                     p_copyFromArray(value, voffset, childPage, 0, len);
                     // Zero fill the rest, making it easier to extend later.
                     p_clear(childPage, len, p_length(childPage));
@@ -3458,7 +3458,7 @@ public final class Database implements CauseCloseable, Flushable {
     /**
      * Reconstruct a fragmented key.
      */
-    byte[] reconstructKey(@Page byte[] fragmented, int off, int len) throws IOException {
+    byte[] reconstructKey(/*P*/ byte[] fragmented, int off, int len) throws IOException {
         try {
             return reconstruct(fragmented, off, len);
         } catch (LargeValueException e) {
@@ -3469,7 +3469,7 @@ public final class Database implements CauseCloseable, Flushable {
     /**
      * Reconstruct a fragmented value.
      */
-    byte[] reconstruct(@Page byte[] fragmented, int off, int len) throws IOException {
+    byte[] reconstruct(/*P*/ byte[] fragmented, int off, int len) throws IOException {
         int header = fragmented[off++];
         len--;
 
@@ -3542,7 +3542,7 @@ public final class Database implements CauseCloseable, Flushable {
                 } else {
                     Node node = mFragmentCache.get(nodeId);
                     try {
-                        @Page byte[] page = node.mPage;
+                        /*P*/ byte[] page = node.mPage;
                         pLen = Math.min(vLen, p_length(page));
                         p_copyToArray(page, 0, value, vOff, pLen);
                     } finally {
@@ -3575,7 +3575,7 @@ public final class Database implements CauseCloseable, Flushable {
         throws IOException
     {
         try {
-            @Page byte[] page = inode.mPage;
+            /*P*/ byte[] page = inode.mPage;
             level--;
             long levelCap = levelCap(level);
 
@@ -3672,7 +3672,7 @@ public final class Database implements CauseCloseable, Flushable {
     private void deleteMultilevelFragments(int level, Node inode, long vlength)
         throws IOException
     {
-        @Page byte[] page = inode.mPage;
+        /*P*/ byte[] page = inode.mPage;
         level--;
         long levelCap = levelCap(level);
 
@@ -3790,18 +3790,18 @@ public final class Database implements CauseCloseable, Flushable {
         }
     }
 
-    @Page byte[] removeSparePage() {
+    /*P*/ byte[] removeSparePage() {
         return mSparePagePool.remove();
     }
 
-    void addSparePage(@Page byte[] page) {
+    void addSparePage(/*P*/ byte[] page) {
         mSparePagePool.add(page);
     }
 
     /**
      * @return initial cached state for node
      */
-    byte readNodePage(long id, @Page byte[] page) throws IOException {
+    byte readNodePage(long id, /*P*/ byte[] page) throws IOException {
         mPageDb.readPage(id, page);
 
         if (!mHasCheckpointed) {

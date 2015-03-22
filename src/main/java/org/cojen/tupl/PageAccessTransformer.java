@@ -65,7 +65,7 @@ class PageAccessTransformer {
 
     private static String transform(String line) {
         while (true) {
-            int index = line.indexOf("@Page byte[]");
+            int index = line.indexOf("/*P*/ byte[]");
             if (index >= 0) {
                 line = line.substring(0, index + 6) + "long" + line.substring(index + 12);
                 continue;

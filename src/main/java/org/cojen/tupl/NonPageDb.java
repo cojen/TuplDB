@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.BitSet;
 
+import static org.cojen.tupl.PageOps.*;
+
 /**
  * PageDb implementation which doesn't actually work. Used for non-durable
  * databases.
@@ -88,20 +90,20 @@ final class NonPageDb extends PageDb {
     }
 
     @Override
-    public void readPage(long id, @Page byte[] buf) throws IOException {
+    public void readPage(long id, /*P*/ byte[] buf) throws IOException {
         readPage(id, buf, 0);
     }
 
     @Override
-    public void readPage(long id, @Page byte[] buf, int offset) throws IOException {
+    public void readPage(long id, /*P*/ byte[] buf, int offset) throws IOException {
         PageCache cache = mCache;
-        if (cache == null || !cache.remove(id, buf, offset, PageOps.p_length(buf))) {
+        if (cache == null || !cache.remove(id, buf, offset, p_length(buf))) {
             fail(false);
         }
     }
 
     @Override
-    public void readPartial(long id, int start, @Page byte[] buf, int offset, int length)
+    public void readPartial(long id, int start, /*P*/ byte[] buf, int offset, int length)
         throws IOException
     {
         PageCache cache = mCache;
@@ -123,27 +125,27 @@ final class NonPageDb extends PageDb {
     }
 
     @Override
-    public void writePage(long id, @Page byte[] buf) throws IOException {
+    public void writePage(long id, /*P*/ byte[] buf) throws IOException {
         writePage(id, buf, 0);
     }
 
     @Override
-    public void writePage(long id, @Page byte[] buf, int offset) throws IOException {
+    public void writePage(long id, /*P*/ byte[] buf, int offset) throws IOException {
         PageCache cache = mCache;
-        if (cache == null || !cache.add(id, buf, offset, PageOps.p_length(buf), false)) {
+        if (cache == null || !cache.add(id, buf, offset, p_length(buf), false)) {
             fail(true);
         }
     }
 
     @Override
-    public void cachePage(long id, @Page byte[] buf) throws IOException {
+    public void cachePage(long id, /*P*/ byte[] buf) throws IOException {
         cachePage(id, buf, 0);
     }
 
     @Override
-    public void cachePage(long id, @Page byte[] buf, int offset) throws IOException {
+    public void cachePage(long id, /*P*/ byte[] buf, int offset) throws IOException {
         PageCache cache = mCache;
-        if (cache != null && !cache.add(id, buf, offset, buf.length, false)) {
+        if (cache != null && !cache.add(id, buf, offset, p_length(buf), false)) {
             fail(false);
         }
     }
@@ -152,7 +154,7 @@ final class NonPageDb extends PageDb {
     public void uncachePage(long id) throws IOException {
         PageCache cache = mCache;
         if (cache != null) {
-            cache.remove(id, null, 0, 0);
+            cache.remove(id, p_null(), 0, 0);
         }
     }
 

@@ -91,7 +91,7 @@ abstract class PageDb implements CauseCloseable {
      * @param id page id to read
      * @param buf receives read data
      */
-    public abstract void readPage(long id, @Page byte[] buf) throws IOException;
+    public abstract void readPage(long id, /*P*/ byte[] buf) throws IOException;
 
     /**
      * Reads a page without locking. Caller must ensure that a deleted page
@@ -101,7 +101,7 @@ abstract class PageDb implements CauseCloseable {
      * @param buf receives read data
      * @param offset offset into data buffer
      */
-    public abstract void readPage(long id, @Page byte[] buf, int offset) throws IOException;
+    public abstract void readPage(long id, /*P*/ byte[] buf, int offset) throws IOException;
 
     /**
      * Reads a part of a page without locking. Caller must ensure that a
@@ -113,7 +113,7 @@ abstract class PageDb implements CauseCloseable {
      * @param offset offset into data buffer
      * @param length length to read
      */
-    public abstract void readPartial(long id, int start, @Page byte[] buf, int offset, int length)
+    public abstract void readPartial(long id, int start, /*P*/ byte[] buf, int offset, int length)
         throws IOException;
 
     /**
@@ -131,7 +131,7 @@ abstract class PageDb implements CauseCloseable {
      * @param id previously allocated page id
      * @param buf data to write
      */
-    public abstract void writePage(long id, @Page byte[] buf) throws IOException;
+    public abstract void writePage(long id, /*P*/ byte[] buf) throws IOException;
 
     /**
      * Writes to an allocated page, but doesn't commit it. A written page is
@@ -142,7 +142,7 @@ abstract class PageDb implements CauseCloseable {
      * @param buf data to write
      * @param offset offset into data buffer
      */
-    public abstract void writePage(long id, @Page byte[] buf, int offset) throws IOException;
+    public abstract void writePage(long id, /*P*/ byte[] buf, int offset) throws IOException;
 
     /**
      * If supported, copies a page into the cache, but does not write it. Cached copy is
@@ -150,7 +150,7 @@ abstract class PageDb implements CauseCloseable {
      *
      * @param id previously allocated page id
      */
-    public abstract void cachePage(long id, @Page byte[] buf) throws IOException;
+    public abstract void cachePage(long id, /*P*/ byte[] buf) throws IOException;
 
     /**
      * If supported, copies a page into the cache, but does not write it. Cached copy is
@@ -158,7 +158,7 @@ abstract class PageDb implements CauseCloseable {
      *
      * @param id previously allocated page id
      */
-    public abstract void cachePage(long id, @Page byte[] buf, int offset) throws IOException;
+    public abstract void cachePage(long id, /*P*/ byte[] buf, int offset) throws IOException;
 
     /**
      * If supported, removes a page from the cache.

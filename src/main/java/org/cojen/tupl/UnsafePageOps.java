@@ -23,6 +23,10 @@ package org.cojen.tupl;
  * @see PageOps
  */
 final class UnsafePageOps {
+    static long p_null() {
+        return 0;
+    }
+
     static long p_empty() {
         // FIXME
         throw null;

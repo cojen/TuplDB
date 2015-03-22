@@ -26,6 +26,7 @@ import static java.lang.System.arraycopy;
 import org.cojen.tupl.io.CauseCloseable;
 import org.cojen.tupl.io.PageArray;
 
+import static org.cojen.tupl.PageOps.*;
 import static org.cojen.tupl.Utils.*;
 
 /**
@@ -78,15 +79,15 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, @Page byte[] buf, int offset) throws IOException {
+    public void readPage(long index, /*P*/ byte[] buf, int offset) throws IOException {
         PageCache cache = mCache;
-        if (cache == null || !cache.remove(index, buf, offset, buf.length)) {
+        if (cache == null || !cache.remove(index, buf, offset, p_length(buf))) {
             mSource.readPage(index, buf, offset);
         }
     }
 
     @Override
-    public int readPartial(long index, int start, @Page byte[] buf, int offset, int length)
+    public int readPartial(long index, int start, /*P*/ byte[] buf, int offset, int length)
         throws IOException
     {
         PageCache cache = mCache;
@@ -97,7 +98,7 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
-    public void writePage(long index, @Page byte[] buf, int offset) throws IOException {
+    public void writePage(long index, /*P*/ byte[] buf, int offset) throws IOException {
         if (index < 0) {
             throw new IndexOutOfBoundsException(String.valueOf(index));
         }
@@ -117,10 +118,10 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
-    public void cachePage(long index, @Page byte[] buf, int offset) {
+    public void cachePage(long index, /*P*/ byte[] buf, int offset) {
         PageCache cache = mCache;
         if (cache != null) {
-            cache.add(index, buf, offset, buf.length, true);
+            cache.add(index, buf, offset, p_length(buf), true);
         }
     }
 
@@ -128,7 +129,7 @@ final class SnapshotPageArray extends PageArray {
     public void uncachePage(long index) {
         PageCache cache = mCache;
         if (cache != null) {
-            cache.remove(index, null, 0, 0);
+            cache.remove(index, p_null(), 0, 0);
         }
     }
 
@@ -305,7 +306,7 @@ final class SnapshotPageArray extends PageArray {
             Cursor c = null;
             try {
                 final NodeMap nodeCache = mNodeCache;
-                final byte[] buffer = new byte[pageSize()];
+                final /*P*/ byte[] buffer = p_alloc(pageSize());
                 final byte[] key = new byte[8];
                 final long count = mSnapshotPageCount;
 
@@ -347,7 +348,7 @@ final class SnapshotPageArray extends PageArray {
                             node.acquireShared();
                             try {
                                 if (node.mId == index && node.mCachedState == Node.CACHED_CLEAN) {
-                                    arraycopy(node.mPage, 0, buffer, 0, buffer.length);
+                                    p_copy(node.mPage, 0, buffer, 0, p_length(buffer));
                                     break read;
                                 }
                             } finally {
