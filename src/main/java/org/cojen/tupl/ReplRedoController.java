@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import org.cojen.tupl.ext.ReplicationManager;
+
 /**
  * Controller is used for checkpoints and as a non-functional writer when in replica mode.
  *

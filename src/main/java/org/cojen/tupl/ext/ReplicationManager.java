@@ -14,10 +14,16 @@
  *  limitations under the License.
  */
 
-package org.cojen.tupl;
+package org.cojen.tupl.ext;
 
 import java.io.Closeable;
 import java.io.IOException;
+
+import org.cojen.tupl.DatabaseConfig;
+import org.cojen.tupl.DurabilityMode;
+import org.cojen.tupl.EventListener;
+import org.cojen.tupl.Index;
+import org.cojen.tupl.LockMode;
 
 /**
  * Interface which replaces the redo log, for replicating transactional operations.

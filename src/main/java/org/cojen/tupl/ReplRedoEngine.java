@@ -25,6 +25,8 @@ import java.util.concurrent.ConcurrentMap;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.cojen.tupl.ext.ReplicationManager;
+
 import static org.cojen.tupl.Utils.*;
 
 /**

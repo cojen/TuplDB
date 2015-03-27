@@ -28,6 +28,8 @@ import java.util.Properties;
 
 import java.util.concurrent.TimeUnit;
 
+import org.cojen.tupl.ext.ReplicationManager;
+
 import org.cojen.tupl.io.FileFactory;
 import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
