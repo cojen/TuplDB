@@ -29,7 +29,7 @@ import static org.cojen.tupl.Utils.*;
  *
  * @author Brian S O'Neill
  */
-class Tree implements Index {
+class Tree extends AbstractView implements Index {
     // Reserved internal tree ids.
     static final int
         REGISTRY_ID = 0,
@@ -193,16 +193,6 @@ class Tree implements Index {
     }
 
     @Override
-    public final boolean delete(Transaction txn, byte[] key) throws IOException {
-        return replace(txn, key, null);
-    }
-
-    @Override
-    public final boolean remove(Transaction txn, byte[] key, byte[] value) throws IOException {
-        return update(txn, key, value, null);
-    }
-
-    @Override
     public final LockResult lockShared(Transaction txn, byte[] key) throws LockFailureException {
         return txn.lockShared(mId, key);
     }
@@ -231,46 +221,6 @@ class Tree implements Index {
         TreeCursor cursor = new TreeCursor(this);
         cursor.autoload(false);
         return new TreeValueStream(cursor);
-    }
-
-    @Override
-    public final View viewGe(byte[] key) {
-        return BoundedView.viewGe(this, key);
-    }
-
-    @Override
-    public final View viewGt(byte[] key) {
-        return BoundedView.viewGt(this, key);
-    }
-
-    @Override
-    public final View viewLe(byte[] key) {
-        return BoundedView.viewLe(this, key);
-    }
-
-    @Override
-    public final View viewLt(byte[] key) {
-        return BoundedView.viewLt(this, key);
-    }
-
-    @Override
-    public final View viewPrefix(byte[] prefix, int trim) {
-        return BoundedView.viewPrefix(this, prefix, trim);
-    }
-
-    @Override
-    public final View viewTransformed(Transformer transformer) {
-        return TransformedView.apply(this, transformer);
-    }
-
-    @Override
-    public final View viewReverse() {
-        return new ReverseView(this);
-    }
-
-    @Override
-    public final View viewUnmodifiable() {
-        return UnmodifiableView.apply(this);
     }
 
     @Override
