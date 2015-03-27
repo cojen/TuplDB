@@ -56,6 +56,8 @@ import static java.lang.System.arraycopy;
 
 import static java.util.Arrays.fill;
 
+import org.cojen.tupl.ext.ReplicationManager;
+
 import org.cojen.tupl.io.CauseCloseable;
 import org.cojen.tupl.io.FileFactory;
 import org.cojen.tupl.io.OpenOption;
