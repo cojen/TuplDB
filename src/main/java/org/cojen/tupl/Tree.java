@@ -469,7 +469,7 @@ class Tree extends AbstractView implements Index {
 
     /**
      * Non-transactionally deletes all entries in the tree. No other cursors or threads can be
-     * active in the tree.
+     * active in the tree. The root node is prepared for deletion as a side effect.
      */
     final void deleteAll() throws IOException {
         TreeCursor c = new TreeCursor(this, Transaction.BOGUS);
