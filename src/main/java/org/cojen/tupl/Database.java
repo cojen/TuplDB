@@ -1268,8 +1268,8 @@ public final class Database implements CauseCloseable, Flushable {
                 long start = System.nanoTime();
 
                 mTrashed.deleteAll();
-                mTrashed.close();
-                removeFromTrash(mTrashed);
+                Node root = mTrashed.close(true);
+                removeFromTrash(mTrashed, root);
 
                 if (listener != null) {
                     double duration = (System.nanoTime() - start) / 1_000_000_000.0;
@@ -2448,12 +2448,14 @@ public final class Database implements CauseCloseable, Flushable {
     /**
      * Must be called after all entries in the tree have been deleted and tree is closed.
      */
-    void removeFromTrash(Tree tree) throws IOException {
+    void removeFromTrash(Tree tree, Node root) throws IOException {
         byte[] trashIdKey = newKey(KEY_TYPE_TRASH_ID, tree.mIdBytes);
 
         final Lock commitLock = sharedCommitLock();
         commitLock.lock();
         try {
+            root.acquireExclusive();
+            deleteNode(root);
             mRegistryKeyMap.delete(Transaction.BOGUS, trashIdKey);
             mRegistry.delete(Transaction.BOGUS, tree.mIdBytes);
         } catch (Throwable e) {
