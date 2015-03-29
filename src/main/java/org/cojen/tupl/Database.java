@@ -2240,10 +2240,7 @@ public final class Database implements CauseCloseable, Flushable {
         }
     }
 
-    /**
-     * @param newRoot optional replacement node, to be stored in the node map; must be latched
-     */
-    void treeClosed(Tree tree, Node newRoot) {
+    void treeClosed(Tree tree) {
         mOpenTreesLatch.acquireExclusive();
         try {
             TreeRef ref = mOpenTreesById.getValue(tree.mId);
@@ -2251,10 +2248,6 @@ public final class Database implements CauseCloseable, Flushable {
                 ref.clear();
                 mOpenTrees.remove(tree.mName);
                 mOpenTreesById.remove(tree.mId);
-            }
-            if (newRoot != null) {
-                newRoot.makeEvictableNow();
-                mTreeNodeMap.put(newRoot);
             }
         } finally {
             mOpenTreesLatch.releaseExclusive();
