@@ -202,6 +202,36 @@ final class PageOps {
         }
     }
 
+    static int p_compareKeysPageToArray(byte[] apage, int aoff, int alen,
+                                        byte[] b, int boff, int blen)
+    {
+        return compareKeys(apage, aoff, alen, b, boff, blen);
+    }
+
+    static int p_compareKeysPageToPage(byte[] apage, int aoff, int alen,
+                                       byte[] bpage, int boff, int blen)
+    {
+        return compareKeys(apage, aoff, alen, bpage, boff, blen);
+    }
+
+    static byte[] p_midKeyLowPage(byte[] lowPage, int lowOff, int lowLen,
+                                  byte[] high, int highOff, int highLen)
+    {
+        return midKey(lowPage, lowOff, lowLen, high, highOff, highLen);
+    }
+
+    static byte[] p_midKeyHighPage(byte[] low, int lowOff, int lowLen,
+                                   byte[] highPage, int highOff, int highLen)
+    {
+        return midKey(low, lowOff, lowLen, highPage, highOff, highLen);
+    }
+
+    static byte[] p_midKeyLowHighPage(byte[] lowPage, int lowOff, int lowLen,
+                                      byte[] highPage, int highOff, int highLen)
+    {
+        return midKey(lowPage, lowOff, lowLen, highPage, highOff, highLen);
+    }
+
     static int p_crc32(/*P*/ byte[] srcPage, int srcStart, int len) {
         CRC32 crc = new CRC32();
         crc.update(srcPage, srcStart, len);
