@@ -57,6 +57,13 @@ final class UnsafePageOps {
         throw null;
     }
 
+    static long p_transfer(byte[] array) {
+        int length = array.length;
+        long page = p_alloc(length);
+        p_copyFromArray(array, 0, page, 0, length);
+        return page;
+    }
+
     static int p_length(long page) {
         // FIXME
         throw null;

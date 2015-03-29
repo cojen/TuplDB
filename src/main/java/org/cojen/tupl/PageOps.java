@@ -55,6 +55,13 @@ final class PageOps {
         return page.clone();
     }
 
+    /**
+     * Allocates a clone if the page type is not an array. Must be deleted.
+     */
+    static byte[] p_transfer(byte[] array) {
+        return array;
+    }
+
     static int p_length(byte[] page) {
         return page.length;
     }

@@ -534,7 +534,14 @@ final class UndoLog implements DatabaseAccess {
                 // Since transaction was committed, don't insert an entry
                 // to undo a delete, but instead delete the ghost.
                 while ((activeIndex = findIndex(activeIndex)) != null) {
-                    byte[] key = Node.retrieveKeyAtLoc(this, entry, 0);
+                    byte[] key;
+                    /*P*/ byte[] pentry = p_transfer(entry);
+                    try {
+                        key = Node.retrieveKeyAtLoc(this, pentry, 0);
+                    } finally {
+                        p_delete(pentry);
+                    }
+
                     TreeCursor cursor = new TreeCursor((Tree) activeIndex, null);
                     try {
                         cursor.deleteGhost(key);
@@ -587,7 +594,14 @@ final class UndoLog implements DatabaseAccess {
 
         case OP_UNUPDATE:
         case OP_UNDELETE: {
-            byte[][] pair = Node.retrieveKeyValueAtLoc(this, entry, 0);
+            byte[][] pair;
+            /*P*/ byte[] pentry = p_transfer(entry);
+            try {
+                pair = Node.retrieveKeyValueAtLoc(this, pentry, 0);
+            } finally {
+                p_delete(pentry);
+            }
+
             while ((activeIndex = findIndex(activeIndex)) != null) {
                 try {
                     activeIndex.store(Transaction.BOGUS, pair[0], pair[1]);
@@ -968,7 +982,15 @@ final class UndoLog implements DatabaseAccess {
             case OP_UNDELETE:
             case OP_UNDELETE_FRAGMENTED:
                 if (lockMode != LockMode.UNSAFE) {
-                    scope.addLock(mActiveIndexId, Node.retrieveKeyAtLoc(this, entry, 0));
+                    byte[] key;
+                    /*P*/ byte[] pentry = p_transfer(entry);
+                    try {
+                        key = Node.retrieveKeyAtLoc(this, pentry, 0);
+                    } finally {
+                        p_delete(pentry);
+                    }
+
+                    scope.addLock(mActiveIndexId, key);
                 }
                 break;
             }
