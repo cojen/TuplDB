@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import org.cojen.tupl.ext.ReplicationManager;
+
 /**
  * 
  *
@@ -69,13 +71,6 @@ class ReplRedoWriter extends RedoWriter {
         // the unsafe locking mode and also supports redo durability. The store cannot roll
         // back if leadership is lost, resulting in an inconsistency. Unsafe is what it is.
         return super.storeNoLock(indexId, key, value, DurabilityMode.SYNC);
-    }
-
-    @Override
-    public final long dropIndex(long txnId, long indexId, DurabilityMode mode)
-        throws IOException
-    {
-        return super.dropIndex(txnId, indexId, DurabilityMode.SYNC);
     }
 
     @Override

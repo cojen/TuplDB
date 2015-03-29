@@ -270,21 +270,16 @@ final class Node extends Latch implements DatabaseAccess {
         mSearchVecEnd = 0;
     }
 
-    /**
-     * @param full when false, only wrap the page instance
-     */
-    Node cloneNode(boolean full) {
+    Node cloneNode() {
         Node newNode = new Node(mUsageList, mPage);
-        if (full) {
-            newNode.mId = mId;
-            newNode.mCachedState = mCachedState;
-            newNode.mType = mType;
-            newNode.mGarbage = mGarbage;
-            newNode.mLeftSegTail = mLeftSegTail;
-            newNode.mRightSegTail = mRightSegTail;
-            newNode.mSearchVecStart = mSearchVecStart;
-            newNode.mSearchVecEnd = mSearchVecEnd;
-        }
+        newNode.mId = mId;
+        newNode.mCachedState = mCachedState;
+        newNode.mType = mType;
+        newNode.mGarbage = mGarbage;
+        newNode.mLeftSegTail = mLeftSegTail;
+        newNode.mRightSegTail = mRightSegTail;
+        newNode.mSearchVecStart = mSearchVecStart;
+        newNode.mSearchVecEnd = mSearchVecEnd;
         return newNode;
     }
 

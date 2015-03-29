@@ -56,7 +56,7 @@ class RedoOps {
         OP_DELETE_NO_LOCK = 19,
 
         /** txnId: delta, indexId: long */
-        OP_DROP_INDEX = 20,
+        //OP_DROP_INDEX = 20, deprecated
 
         /** txnId: delta, indexId: long, nameLength: varInt, name: bytes */
         OP_RENAME_INDEX = 21,

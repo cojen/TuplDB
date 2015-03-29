@@ -68,7 +68,7 @@ final class UnmodifiableView implements Index {
         if (mSource instanceof Index) {
             return ((Index) mSource).getNameString();
         }
-        return "null";
+        return null;
     }
 
     @Override

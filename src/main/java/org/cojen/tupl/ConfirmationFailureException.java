@@ -16,6 +16,8 @@
 
 package org.cojen.tupl;
 
+import org.cojen.tupl.ext.ReplicationManager;
+
 /**
  * Thrown by {@link ReplicationManager} when replication cannot be confirmed.
  *

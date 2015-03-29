@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.util.concurrent.TimeUnit;
 
+import org.cojen.tupl.ext.ReplicationManager;
+
 /**
  * Thrown by {@link ReplicationManager} when replication confirmation timed out.
  *

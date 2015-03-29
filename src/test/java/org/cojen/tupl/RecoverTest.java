@@ -523,7 +523,7 @@ public class RecoverTest {
 
         mDb.checkpoint();
 
-        // No redo delete.
+        // No-redo delete.
         Transaction txn = mDb.newTransaction(DurabilityMode.NO_REDO);
         try {
             ix.delete(txn, "hello".getBytes());
@@ -538,11 +538,10 @@ public class RecoverTest {
 
         mDb = reopenTempDatabase(mDb, mConfig);
 
-        // Index didn't drop because it wasn't actually empty during recovery.
+        // Even though the delete operation was no-redo, the drop always is. It will ensure
+        // everything is deleted first.
         ix = mDb.findIndex("drop2");
-        assertNotNull(ix);
-
-        assertArrayEquals("world".getBytes(), ix.load(null, "hello".getBytes()));
+        assertNull(ix);
     }
 
     @Test

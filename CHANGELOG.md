@@ -1,6 +1,10 @@
 Changelog
 =========
 
+v1.2.2
+------
+* Fix to delete root node after an deleting index.
+
 v1.2.1 (2015-03-21)
 ------
 * Prevent search deadlock caused by heavy eviction.
