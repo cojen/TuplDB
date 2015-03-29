@@ -22,6 +22,7 @@ import java.util.concurrent.locks.Lock;
 
 import static java.lang.System.arraycopy;
 
+import static org.cojen.tupl.PageOps.*;
 import static org.cojen.tupl.Utils.*;
 
 /**
@@ -44,20 +45,20 @@ final class FragmentedTrash {
      * Copies a fragmented value to the trash and pushes an entry to the undo
      * log. Caller must hold commit lock.
      *
-     * @param entry Node entry; starts with variable length key
+     * @param entry Node page; starts with variable length key
      * @param keyStart inclusive index into entry for key; includes key header
      * @param keyLen length of key
      * @param valueStart inclusive index into entry for fragmented value; excludes value header
      * @param valueLen length of value
      */
     void add(Transaction txn, long indexId,
-             byte[] entry, int keyStart, int keyLen, int valueStart, int valueLen)
+             /*P*/ byte[] entry, int keyStart, int keyLen, int valueStart, int valueLen)
         throws IOException
     {
         // It would be nice if cursor store supported array slices. Instead, a
         // temporary array needs to be created.
         byte[] payload = new byte[valueLen];
-        arraycopy(entry, valueStart, payload, 0, valueLen);
+        p_copyToArray(entry, valueStart, payload, 0, valueLen);
 
         TreeCursor cursor = prepareEntry(txn.txnId());
         byte[] key = cursor.key();
@@ -80,7 +81,7 @@ final class FragmentedTrash {
             // Cannot re-use existing temporary array.
             payload = new byte[payloadLen];
         }
-        arraycopy(entry, keyStart, payload, 0, keyLen);
+        p_copyToArray(entry, keyStart, payload, 0, keyLen);
         arraycopy(key, 8, payload, keyLen, tidLen);
 
         txn.pushUndeleteFragmented(indexId, payload, 0, payloadLen);

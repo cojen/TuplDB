@@ -3515,11 +3515,13 @@ public final class Database implements CauseCloseable, Flushable {
 
     /**
      * Delete the extra pages of a fragmented value. Caller must hold commit lock.
+     *
+     * @param fragmented page containing fragmented value 
      */
-    void deleteFragments(byte[] fragmented, int off, int len)
+    void deleteFragments(/*P*/ byte[] fragmented, int off, int len)
         throws IOException
     {
-        int header = fragmented[off++];
+        int header = p_byteGet(fragmented, off++);
         len--;
 
         long vLen;
@@ -3529,16 +3531,16 @@ public final class Database implements CauseCloseable, Flushable {
         } else {
             switch ((header >> 2) & 0x03) {
             default:
-                vLen = decodeUnsignedShortLE(fragmented, off);
+                vLen = p_ushortGetLE(fragmented, off);
                 break;
             case 1:
-                vLen = decodeIntLE(fragmented, off) & 0xffffffffL;
+                vLen = p_intGetLE(fragmented, off) & 0xffffffffL;
                 break;
             case 2:
-                vLen = decodeUnsignedInt48LE(fragmented, off);
+                vLen = p_uint48GetLE(fragmented, off);
                 break;
             case 3:
-                vLen = decodeLongLE(fragmented, off);
+                vLen = p_longGetLE(fragmented, off);
                 break;
             }
         }
@@ -3551,7 +3553,7 @@ public final class Database implements CauseCloseable, Flushable {
 
         if ((header & 0x02) != 0) {
             // Skip inline content.
-            int inLen = 2 + decodeUnsignedShortLE(fragmented, off);
+            int inLen = 2 + p_ushortGetLE(fragmented, off);
             off += inLen;
             len -= inLen;
         }
@@ -3559,14 +3561,14 @@ public final class Database implements CauseCloseable, Flushable {
         if ((header & 0x01) == 0) {
             // Direct pointers.
             while (len >= 6) {
-                long nodeId = decodeUnsignedInt48LE(fragmented, off);
+                long nodeId = p_uint48GetLE(fragmented, off);
                 off += 6;
                 len -= 6;
                 deleteFragment(nodeId);
             }
         } else {
             // Indirect pointers.
-            long inodeId = decodeUnsignedInt48LE(fragmented, off);
+            long inodeId = p_uint48GetLE(fragmented, off);
             if (inodeId != 0) {
                 Node inode = removeInode(inodeId);
                 int levels = calculateInodeLevels(vLen);
