@@ -364,17 +364,26 @@ class Tree extends AbstractView implements Index {
 
             Node newRoot = root.cloneNode(true);
             mDatabase.swapIfDirty(root, newRoot);
+
+            int hash = NodeMap.hash(root.mId);
+            NodeMap map = mDatabase.mTreeNodeMap;
+            if (map.get(root.mId, hash) == root) {
+                map.remove(root, hash);
+            }
+
             root.closeRoot();
 
             if (forDelete) {
-                mDatabase.treeClosed(this, null);
+                mDatabase.treeClosed(this);
                 return newRoot;
             }
 
             if (mDatabase.mPageDb.isDurable()) {
                 newRoot.acquireShared();
                 try {
-                    mDatabase.treeClosed(this, newRoot);
+                    mDatabase.treeClosed(this);
+                    newRoot.makeEvictableNow();
+                    map.put(newRoot, hash);
                 } finally {
                     newRoot.releaseShared();
                 }
