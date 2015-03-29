@@ -1377,7 +1377,7 @@ final class Node extends Latch implements DatabaseAccess {
             }
         }
 
-        int cmp = compareKeys(page, loc, keyLen, limitKey, 0, limitKey.length);
+        int cmp = p_compareKeysPageToArray(page, loc, keyLen, limitKey, 0, limitKey.length);
         if (cmp == 0) {
             return limitKey;
         } else if ((cmp ^ limitMode) < 0) {
@@ -1433,7 +1433,7 @@ final class Node extends Latch implements DatabaseAccess {
             // Note: An optimized version wouldn't need to copy the whole key.
             return Utils.midKey(retrieveKeyAtLoc(lowPage, lowLoc), highKey);
         } else {
-            return Utils.midKey(lowPage, lowLoc + 1, lowKeyLen + 1, highKey, 0, highKey.length);
+            return p_midKeyLowPage(lowPage, lowLoc + 1, lowKeyLen + 1, highKey, 0, highKey.length);
         }
     }
 
@@ -1450,7 +1450,8 @@ final class Node extends Latch implements DatabaseAccess {
             // Note: An optimized version wouldn't need to copy the whole key.
             return Utils.midKey(lowKey, retrieveKeyAtLoc(highPage, highLoc));
         } else {
-            return Utils.midKey(lowKey, 0, lowKey.length, highPage, highLoc + 1, highKeyLen + 1);
+            return p_midKeyHighPage(lowKey, 0, lowKey.length,
+                                    highPage, highLoc + 1, highKeyLen + 1);
         }
     }
 
@@ -1477,10 +1478,11 @@ final class Node extends Latch implements DatabaseAccess {
         if (highKeyLen < 0) {
             // Note: An optimized version wouldn't need to copy the whole key.
             byte[] highKey = retrieveKeyAtLoc(highPage, highLoc);
-            return Utils.midKey(lowPage, lowLoc, lowKeyLen, highKey, 0, highKey.length);
+            return p_midKeyLowPage(lowPage, lowLoc, lowKeyLen, highKey, 0, highKey.length);
         }
 
-        return Utils.midKey(lowPage, lowLoc, lowKeyLen, highPage, highLoc + 1, highKeyLen + 1);
+        return p_midKeyLowHighPage(lowPage, lowLoc, lowKeyLen,
+                                   highPage, highLoc + 1, highKeyLen + 1);
     }
 
     /**
@@ -4927,7 +4929,8 @@ final class Node extends Latch implements DatabaseAccess {
             }
 
             if (lastKeyLoc != 0) {
-                int result = compareKeys(page, lastKeyLoc, lastKeyLen, page, loc, keyLen);
+                int result = p_compareKeysPageToPage(page, lastKeyLoc, lastKeyLen,
+                                                     page, loc, keyLen);
                 if (result >= 0) {
                     return verifyFailed(level, observer, "Key order: " + result);
                 }

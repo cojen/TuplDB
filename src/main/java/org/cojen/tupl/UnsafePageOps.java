@@ -224,14 +224,49 @@ final class UnsafePageOps {
         }
     }
 
-    static int p_crc32(/*P*/ long srcPage, int srcStart, int len) {
+    static int p_compareKeysPageToArray(long apage, int aoff, int alen,
+                                        byte[] b, int boff, int blen)
+    {
+        // FIXME
+        throw null;
+    }
+
+    static int p_compareKeysPageToPage(long apage, int aoff, int alen,
+                                       long bpage, int boff, int blen)
+    {
+        // FIXME
+        throw null;
+    }
+
+    static byte[] p_midKeyLowPage(long lowPage, int lowOff, int lowLen,
+                                  byte[] high, int highOff, int highLen)
+    {
+        // FIXME
+        throw null;
+    }
+
+    static byte[] p_midKeyHighPage(byte[] low, int lowOff, int lowLen,
+                                   long highPage, int highOff, int highLen)
+    {
+        // FIXME
+        throw null;
+    }
+
+    static byte[] p_midKeyLowHighPage(long lowPage, int lowOff, int lowLen,
+                                      long highPage, int highOff, int highLen)
+    {
+        // FIXME
+        throw null;
+    }
+
+    static int p_crc32(long srcPage, int srcStart, int len) {
         // FIXME
         throw null;
     }
 
     static int p_cipherDoFinal(Cipher cipher,
-                               /*P*/ long srcPage, int srcStart, int srcLen,
-                               /*P*/ long dstPage, int dstStart)
+                               long srcPage, int srcStart, int srcLen,
+                               long dstPage, int dstStart)
         throws GeneralSecurityException
     {
         // FIXME
