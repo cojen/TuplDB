@@ -67,12 +67,6 @@ interface RedoVisitor {
 
     /**
      * @param indexId non-zero index id
-     * @return false to stop visiting
-     */
-    public boolean dropIndex(long tnxId, long indexId) throws IOException;
-
-    /**
-     * @param indexId non-zero index id
      * @param newName non-null new index name
      * @return false to stop visiting
      */

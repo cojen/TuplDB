@@ -78,25 +78,6 @@ final class RedoLogApplier implements RedoVisitor {
     }
 
     @Override
-    public boolean dropIndex(long txnId, long indexId) throws IOException {
-        Index ix = openIndex(indexId);
-        if (ix != null) {
-            try {
-                if (ix instanceof Tree) {
-                    ((Tree) ix).drop(txnId);
-                } else {
-                    ix.drop();
-                }
-            } catch (IllegalStateException e) {
-                // Assume not empty due to NO_REDO delete.
-                return true;
-            }
-            mIndexes.remove(indexId);
-        }
-        return true;
-    }
-
-    @Override
     public boolean renameIndex(long txnId, long indexId, byte[] newName) throws IOException {
         Index ix = openIndex(indexId);
         if (ix != null) {

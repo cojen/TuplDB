@@ -74,13 +74,6 @@ class ReplRedoWriter extends RedoWriter {
     }
 
     @Override
-    public final long dropIndex(long txnId, long indexId, DurabilityMode mode)
-        throws IOException
-    {
-        return super.dropIndex(txnId, indexId, DurabilityMode.SYNC);
-    }
-
-    @Override
     public final long renameIndex(long txnId, long indexId, byte[] newName, DurabilityMode mode)
         throws IOException
     {

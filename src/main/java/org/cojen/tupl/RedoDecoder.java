@@ -178,14 +178,6 @@ abstract class RedoDecoder {
                 }
                 break;
 
-            case OP_DROP_INDEX:
-                txnId = readTxnId(in);
-                indexId = in.readLongLE();
-                if (!verifyTerminator(in) || !visitor.dropIndex(txnId, indexId)) {
-                    return false;
-                }
-                break;
-
             case OP_RENAME_INDEX:
                 txnId = readTxnId(in);
                 indexId = in.readLongLE();
