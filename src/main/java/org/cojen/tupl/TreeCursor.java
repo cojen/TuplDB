@@ -2373,6 +2373,10 @@ class TreeCursor implements CauseCloseable, Cursor {
     private Node trimNode(final TreeCursorFrame frame, final Node node) throws IOException {
         node.mLastCursorFrame = null;
 
+        Database db = mTree.mDatabase;
+        // Always prepare to delete, even though caller will delete the root.
+        db.prepareToDelete(node);
+
         if (node == mTree.mRoot) {
             try {
                 node.asTrimmedRoot();
@@ -2381,9 +2385,6 @@ class TreeCursor implements CauseCloseable, Cursor {
             }
             return null;
         }
-
-        Database db = mTree.mDatabase;
-        db.prepareToDelete(node);
 
         TreeCursorFrame parentFrame = frame.mParentFrame;
         Node parentNode = parentFrame.acquireExclusive();

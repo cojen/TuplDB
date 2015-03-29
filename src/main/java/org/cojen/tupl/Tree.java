@@ -96,8 +96,11 @@ class Tree extends AbstractView implements Index {
         StringBuilder b = new StringBuilder(ix.getClass().getName());
         b.append('@').append(Integer.toHexString(ix.hashCode()));
         b.append(" {");
-        b.append("name").append(": ").append(ix.getNameString());
-        b.append(", ");
+        String nameStr = ix.getNameString();
+        if (nameStr != null) {
+            b.append("name").append(": ").append(nameStr);
+            b.append(", ");
+        }
         b.append("id").append(": ").append(ix.getId());
         return b.append('}').toString();
     }
@@ -120,8 +123,11 @@ class Tree extends AbstractView implements Index {
     @Override
     public final String getNameString() {
         byte[] name = mName;
+        if (name == null) {
+            return null;
+        }
         try {
-            return name == null ? "null" : new String(name, "UTF-8");
+            return new String(name, "UTF-8");
         } catch (IOException e) {
             return new String(name);
         }
@@ -322,15 +328,20 @@ class Tree extends AbstractView implements Index {
 
     @Override
     public final void close() throws IOException {
-        close(false);
+        close(false, false);
     }
 
     /**
+     * @param rootLatched true if root node is already latched by the current thread
      * @return root node if forDelete; null if already closed
      */
-    final Node close(boolean forDelete) throws IOException {
+    final Node close(boolean forDelete, final boolean rootLatched) throws IOException {
         Node root = mRoot;
-        root.acquireExclusive();
+
+        if (!rootLatched) {
+            root.acquireExclusive();
+        }
+
         try {
             if (root.mPage == p_empty()) {
                 // Already closed.
@@ -363,19 +374,26 @@ class Tree extends AbstractView implements Index {
             // Root node reference cannot be cleared, so instead make it non-functional. Move
             // the page reference into a new evictable Node object, allowing it to be recycled.
 
-            Node newRoot = root.cloneNode(true);
+            Node newRoot = root.cloneNode();
             mDatabase.swapIfDirty(root, newRoot);
+
+            int hash = NodeMap.hash(root.mId);
+            NodeMap map = mDatabase.mTreeNodeMap;
+            map.remove(root, hash);
+
             root.closeRoot();
 
             if (forDelete) {
-                mDatabase.treeClosed(this, null);
+                mDatabase.treeClosed(this);
                 return newRoot;
             }
 
             if (mDatabase.mPageDb.isDurable()) {
                 newRoot.acquireShared();
                 try {
-                    mDatabase.treeClosed(this, newRoot);
+                    mDatabase.treeClosed(this);
+                    newRoot.makeEvictableNow();
+                    map.put(newRoot, hash);
                 } finally {
                     newRoot.releaseShared();
                 }
@@ -389,7 +407,9 @@ class Tree extends AbstractView implements Index {
 
             return null;
         } finally {
-            root.releaseExclusive();
+            if (!rootLatched) {
+                root.releaseExclusive();
+            }
         }
     }
 
@@ -404,16 +424,13 @@ class Tree extends AbstractView implements Index {
 
     @Override
     public final void drop() throws IOException {
-        drop(0);
+        drop(true).run();
     }
 
     /**
-     * @param txnId non-zero if drop is performed by recovery
+     * @return delete task
      */
-    final void drop(long txnId) throws IOException {
-        long rootId;
-        int cachedState;
-
+    final Runnable drop(boolean mustBeEmpty) throws IOException {
         Node root = mRoot;
         root.acquireExclusive();
         try {
@@ -421,7 +438,7 @@ class Tree extends AbstractView implements Index {
                 throw new ClosedIndexException();
             }
 
-            if (!root.isLeaf() || root.hasKeys()) {
+            if (mustBeEmpty && (!root.isLeaf() || root.hasKeys())) {
                 // Note that this check also covers the transactional case, because deletes
                 // store ghosts. The message could be more accurate, but it would require
                 // scanning the whole index looking for ghosts. Using LockMode.UNSAFE deletes
@@ -436,33 +453,7 @@ class Tree extends AbstractView implements Index {
                 throw new IllegalStateException("Cannot close an internal index");
             }
 
-            // Root node reference cannot be cleared, so instead make it non-functional. Move
-            // the page reference into a new evictable Node object, allowing it to be recycled.
-
-            rootId = root.mId;
-            cachedState = root.mCachedState;
-
-            Node discard = root.cloneNode(false);
-            root.closeRoot();
-            discard.makeEvictable();
-        } finally {
-            root.releaseExclusive();
-        }
-
-        // Drop with root latch released, avoiding deadlock when commit lock is acquired.
-        mDatabase.dropClosedTree(this, rootId, cachedState, txnId);
-    }
-
-    final void deleteCheck() throws ClosedIndexException {
-        Node root = mRoot;
-        root.acquireExclusive();
-        try {
-            if (root.mPage == p_empty()) {
-                throw new ClosedIndexException();
-            }
-            if (isInternal(mId)) {
-                throw new IllegalStateException("Cannot close an internal index");
-            }
+            return mDatabase.deleteTree(this);
         } finally {
             root.releaseExclusive();
         }
@@ -470,7 +461,7 @@ class Tree extends AbstractView implements Index {
 
     /**
      * Non-transactionally deletes all entries in the tree. No other cursors or threads can be
-     * active in the tree.
+     * active in the tree. The root node is prepared for deletion as a side effect.
      */
     final void deleteAll() throws IOException {
         TreeCursor c = new TreeCursor(this, Transaction.BOGUS);

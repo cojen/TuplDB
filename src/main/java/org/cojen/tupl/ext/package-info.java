@@ -1,5 +1,5 @@
 /*
- *  Copyright 2013 Brian S O'Neill
+ *  Copyright 2015 Brian S O'Neill
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -14,19 +14,7 @@
  *  limitations under the License.
  */
 
-package org.cojen.tupl;
-
-import org.cojen.tupl.ext.ReplicationManager;
-
 /**
- * Thrown by {@link ReplicationManager} when confirmation was interrupted by another thread.
- *
- * @author Brian S O'Neill
+ * Support for database extensions.
  */
-public class ConfirmationInterruptedException extends ConfirmationFailureException {
-    private static final long serialVersionUID = 1L;
-
-    public ConfirmationInterruptedException() {
-        super();
-    }
-}
+package org.cojen.tupl.ext;
