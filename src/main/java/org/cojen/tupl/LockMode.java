@@ -79,10 +79,10 @@ public enum LockMode {
     UNSAFE(false, true);
 
     final boolean noReadLock;
-    private final boolean mRepeatable;
+    final boolean repeatable;
 
     private LockMode(boolean repeatable, boolean noReadLock) {
-        mRepeatable = repeatable;
+        this.repeatable = repeatable;
         this.noReadLock = noReadLock;
     }
 
@@ -91,6 +91,6 @@ public enum LockMode {
      * transaction. Applicable to {@link #UPGRADABLE_READ} and {@link #REPEATABLE_READ}.
      */
     public boolean isRepeatable() {
-        return mRepeatable;
+        return repeatable;
     }
 }
