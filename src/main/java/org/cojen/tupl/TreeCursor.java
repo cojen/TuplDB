@@ -1921,9 +1921,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                 result = LockResult.OWNED_EXCLUSIVE;
             } else {
                 result = txn.lockExclusive(mTree.mId, key, hash);
-                if (result == LockResult.ACQUIRED &&
-                    (mode == LockMode.REPEATABLE_READ || mode == LockMode.UPGRADABLE_READ))
-                {
+                if (result == LockResult.ACQUIRED && mode.repeatable) {
                     // Downgrade to upgradable when no modification is made, to
                     // preserve repeatable semantics and allow upgrade later.
                     result = LockResult.UPGRADED;
@@ -1932,18 +1930,24 @@ class TreeCursor implements CauseCloseable, Cursor {
 
             try {
                 if (doFindAndModify(txn, key, oldValue, newValue)) {
-                    // Indicate that no unlock should be performed.
-                    result = LockResult.OWNED_EXCLUSIVE;
                     return true;
                 }
-                return false;
-            } finally {
+            } catch (Throwable e) {
                 if (result == LockResult.ACQUIRED) {
                     txn.unlock();
                 } else if (result == LockResult.UPGRADED) {
                     txn.unlockToUpgradable();
                 }
+                throw e;
             }
+
+            if (result == LockResult.ACQUIRED) {
+                txn.unlock();
+            } else if (result == LockResult.UPGRADED) {
+                txn.unlockToUpgradable();
+            }
+
+            return false;
         } catch (Throwable e) {
             throw handleException(e, true);
         }
