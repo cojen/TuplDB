@@ -16,6 +16,9 @@
 
 package org.cojen.tupl;
 
+import java.io.InputStream;
+import java.io.IOException;
+
 import java.nio.ByteBuffer;
 
 import java.security.GeneralSecurityException;
@@ -251,5 +254,15 @@ final class PageOps {
         throws GeneralSecurityException
     {
         return cipher.doFinal(srcPage, srcStart, srcLen, dstPage, dstStart);
+    }
+
+    static void p_readFully(InputStream in, /*P*/ byte[] page) throws IOException {
+        Utils.readFully(in, page, 0, page.length);
+    }
+
+    static void p_readFully(InputStream in, /*P*/ byte[] page, int off, int len)
+        throws IOException
+    {
+        Utils.readFully(in, page, off, len);
     }
 }
