@@ -16,6 +16,9 @@
 
 package org.cojen.tupl;
 
+import java.io.InputStream;
+import java.io.IOException;
+
 import java.nio.ByteBuffer;
 
 import java.security.GeneralSecurityException;
@@ -276,6 +279,16 @@ final class UnsafePageOps {
                                long dstPage, int dstStart)
         throws GeneralSecurityException
     {
+        // FIXME
+        throw null;
+    }
+
+    static void p_readFully(InputStream in, long page) throws IOException {
+        // FIXME
+        throw null;
+    }
+
+    static void p_readFully(InputStream in, long page, int off, int len) throws IOException {
         // FIXME
         throw null;
     }
