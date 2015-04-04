@@ -2127,7 +2127,7 @@ final class Node extends Latch implements DatabaseAccess {
             encodeNormalKey(newKey, parentPage, parentKeyLoc);
             parent.mGarbage -= parentKeyGrowth;
         } else {
-            parent.updateInternalKey(childPos - 2, parentKeyGrowth, newKey, -1, newKeyLen);
+            parent.updateInternalKey(childPos - 2, parentKeyGrowth, newKey, newKeyLen);
         }
 
         int garbageAccum = 0;
@@ -2319,7 +2319,7 @@ final class Node extends Latch implements DatabaseAccess {
             encodeNormalKey(newKey, parentPage, parentKeyLoc);
             parent.mGarbage -= parentKeyGrowth;
         } else {
-            parent.updateInternalKey(childPos, parentKeyGrowth, newKey, -1, newKeyLen);
+            parent.updateInternalKey(childPos, parentKeyGrowth, newKey, newKeyLen);
         }
 
         int garbageAccum = 0;
@@ -2808,7 +2808,7 @@ final class Node extends Latch implements DatabaseAccess {
             arraycopy(rightPage, searchKeyLoc, parentPage, parentKeyLoc, searchKeyLen);
             parent.mGarbage -= parentKeyGrowth;
         } else {
-            parent.updateInternalKey
+            parent.updateInternalKeyEncoded
                 (childPos - 2, parentKeyGrowth, rightPage, searchKeyLoc, searchKeyLen);
         }
 
@@ -2994,7 +2994,7 @@ final class Node extends Latch implements DatabaseAccess {
             arraycopy(leftPage, searchKeyLoc, parentPage, parentKeyLoc, searchKeyLen);
             parent.mGarbage -= parentKeyGrowth;
         } else {
-            parent.updateInternalKey
+            parent.updateInternalKeyEncoded
                 (childPos, parentKeyGrowth, leftPage, searchKeyLoc, searchKeyLen);
         }
 
@@ -3256,14 +3256,38 @@ final class Node extends Latch implements DatabaseAccess {
     /**
      * Update an internal node key to be larger than what is currently allocated. Caller must
      * ensure that node has enough space available and that it's not split. New key must not
-     * force this node to split. If key is unencoded, it MUST be a normal key.
+     * force this node to split. Key MUST be a normal, non-fragmented key.
      *
      * @param pos must be positive
      * @param growth key size growth
-     * @param key unencoded or encoded key (encoded includes header)
-     * @param keyStart pass -1 if key is unencoded and starts at 0; >=0 for encoded key
+     * @param key normal unencoded key
      */
-    void updateInternalKey(int pos, int growth, byte[] key, int keyStart, int encodedLen) {
+    void updateInternalKey(int pos, int growth, byte[] key, int encodedLen) {
+        int entryLoc = doUpdateInternalKey(pos, growth, encodedLen);
+        encodeNormalKey(key, mPage, entryLoc);
+    }
+
+    /**
+     * Update an internal node key to be larger than what is currently allocated. Caller must
+     * ensure that node has enough space available and that it's not split. New key must not
+     * force this node to split.
+     *
+     * @param pos must be positive
+     * @param growth key size growth
+     * @param key page with encoded key
+     * @param keyStart encoded key start; includes header
+     */
+    void updateInternalKeyEncoded(int pos, int growth,
+                                  byte[] key, int keyStart, int encodedLen)
+    {
+        int entryLoc = doUpdateInternalKey(pos, growth, encodedLen);
+        arraycopy(key, keyStart, mPage, entryLoc, encodedLen);
+    }
+
+    /**
+     * @return entryLoc
+     */
+    int doUpdateInternalKey(int pos, final int growth, final int encodedLen) {
         int garbage = mGarbage + encodedLen - growth;
 
         // What follows is similar to createInternalEntry method, except the search
@@ -3275,8 +3299,6 @@ final class Node extends Latch implements DatabaseAccess {
         int leftSpace = searchVecStart - mLeftSegTail;
         int rightSpace = mRightSegTail - searchVecEnd
             - ((searchVecEnd - searchVecStart) << 2) - 17;
-
-        byte[] page = mPage;
 
         int entryLoc;
         alloc: {
@@ -3322,6 +3344,7 @@ final class Node extends Latch implements DatabaseAccess {
                     break makeRoom;
                 }
 
+                byte[] page = mPage;
                 arraycopy(page, searchVecStart, page, newSearchVecStart, vecLen + childIdsLen);
 
                 pos += newSearchVecStart;
@@ -3334,26 +3357,15 @@ final class Node extends Latch implements DatabaseAccess {
             // This point is reached for making room via node compaction.
 
             mGarbage = garbage;
-            entryLoc = compactInternal(encodedLen, pos, Integer.MIN_VALUE).mEntryLoc;
-
-            if (keyStart >= 0) {
-                arraycopy(key, keyStart, mPage, entryLoc, encodedLen);
-            } else {
-                encodeNormalKey(key, mPage, entryLoc);
-            }
-
-            return;
+            return compactInternal(encodedLen, pos, Integer.MIN_VALUE).mEntryLoc;
         }
 
-        // Copy new key and point to it.
-        if (keyStart >= 0) {
-            arraycopy(key, keyStart, page, entryLoc, encodedLen);
-        } else {
-            encodeNormalKey(key, page, entryLoc);
-        }
-        encodeShortLE(page, pos, entryLoc);
+        // Point to entry. Caller must copy the key to the location.
+        encodeShortLE(mPage, pos, entryLoc);
 
         mGarbage = garbage;
+
+        return entryLoc;
     }
 
     /**
