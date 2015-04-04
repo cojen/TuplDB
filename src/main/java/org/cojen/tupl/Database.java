@@ -173,7 +173,7 @@ public final class Database implements CauseCloseable, Flushable {
     final PageDb mPageDb;
     final int mPageSize;
 
-    private final BufferPool mSpareBufferPool;
+    private final PagePool mSparePagePool;
 
     private final NodeUsageList[] mUsageLists;
 
@@ -516,8 +516,8 @@ public final class Database implements CauseCloseable, Flushable {
                                       duration, TimeUnit.SECONDS);
             }
 
-            int spareBufferCount = Runtime.getRuntime().availableProcessors();
-            mSpareBufferPool = new BufferPool(mPageSize, spareBufferCount);
+            int sparePageCount = Runtime.getRuntime().availableProcessors();
+            mSparePagePool = new PagePool(mPageSize, sparePageCount);
 
             mSharedCommitLock.lock();
             try {
@@ -3699,12 +3699,12 @@ public final class Database implements CauseCloseable, Flushable {
         }
     }
 
-    byte[] removeSpareBuffer() {
-        return mSpareBufferPool.remove();
+    byte[] removeSparePage() {
+        return mSparePagePool.remove();
     }
 
-    void addSpareBuffer(byte[] buffer) {
-        mSpareBufferPool.add(buffer);
+    void addSparePage(byte[] page) {
+        mSparePagePool.add(page);
     }
 
     /**
