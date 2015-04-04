@@ -517,8 +517,8 @@ public final class Database implements CauseCloseable, Flushable {
                                       duration, TimeUnit.SECONDS);
             }
 
-            int spareBufferCount = Runtime.getRuntime().availableProcessors();
-            mSparePagePool = new PagePool(mPageSize, spareBufferCount);
+            int sparePageCount = Runtime.getRuntime().availableProcessors();
+            mSparePagePool = new PagePool(mPageSize, sparePageCount);
 
             mSharedCommitLock.lock();
             try {
