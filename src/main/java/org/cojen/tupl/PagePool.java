@@ -21,12 +21,12 @@ package org.cojen.tupl;
  *
  * @author Brian S O'Neill
  */
-final class BufferPool extends Latch {
+final class PagePool extends Latch {
     private final transient WaitQueue mQueue;
     private final byte[][] mPool;
     private int mPos;
 
-    BufferPool(int pageSize, int poolSize) {
+    PagePool(int pageSize, int poolSize) {
         mQueue = new WaitQueue();
         byte[][] pool = new byte[poolSize][];
         for (int i=0; i<poolSize; i++) {
@@ -37,7 +37,7 @@ final class BufferPool extends Latch {
     }
 
     /**
-     * Remove a buffer from the pool, waiting for one to become available if necessary.
+     * Remove a page from the pool, waiting for one to become available if necessary.
      */
     byte[] remove() {
         acquireExclusive();
@@ -53,13 +53,13 @@ final class BufferPool extends Latch {
     }
 
     /**
-     * Add a previously removed buffer back into the pool.
+     * Add a previously removed page back into the pool.
      */
-    void add(byte[] buffer) {
+    void add(byte[] page) {
         acquireExclusive();
         try {
             int pos = mPos;
-            mPool[pos] = buffer;
+            mPool[pos] = page;
             // Adjust pos after assignment to prevent harm if an array bounds exception was thrown.
             mPos = pos + 1;
             mQueue.signal();
