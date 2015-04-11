@@ -958,7 +958,9 @@ final class UndoLog implements DatabaseAccess {
             case OP_UNDELETE:
             case OP_UNDELETE_FRAGMENTED:
                 if (lockMode != LockMode.UNSAFE) {
-                    scope.addLock(mActiveIndexId, Node.retrieveKeyAtLoc(this, entry, 0));
+                    scope.addLock(mActiveIndexId, Node.retrieveKeyAtLoc(this, entry, 0))
+                        // Indicate that a ghost must be deleted if transaction is committed.
+                        .mSharedLockOwnersObj = mDatabase.anyIndexById(mActiveIndexId);
                 }
                 break;
             }
@@ -998,13 +1000,14 @@ final class UndoLog implements DatabaseAccess {
         Scope() {
         }
 
-        void addLock(long indexId, byte[] key) {
+        org.cojen.tupl.Lock addLock(long indexId, byte[] key) {
             org.cojen.tupl.Lock lock = new org.cojen.tupl.Lock();
             lock.mIndexId = indexId;
             lock.mKey = key;
             lock.mHashCode = LockManager.hash(indexId, key);
             lock.mLockManagerNext = mTopLock;
             mTopLock = lock;
+            return lock;
         }
 
         void acquireLocks(Transaction txn) throws LockFailureException {
