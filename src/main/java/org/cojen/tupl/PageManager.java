@@ -334,7 +334,11 @@ final class PageManager {
         throws IOException
     {
         Lock sharedCommitLock = commitLock.readLock();
-        long target = list.getRemoveScanTarget();
+
+        long target;
+        mRemoveLock.lock();
+        target = list.getRemoveScanTarget();
+        mRemoveLock.unlock();
 
         sharedCommitLock.lock();
         try {
