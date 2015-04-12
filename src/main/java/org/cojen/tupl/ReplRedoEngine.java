@@ -29,6 +29,8 @@ import org.cojen.tupl.ext.ReplicationManager;
 
 import static org.cojen.tupl.Utils.*;
 
+import org.cojen.tupl.ext.RedoHandler;
+
 /**
  * 
  *
@@ -193,7 +195,7 @@ final class ReplRedoEngine implements RedoVisitor {
         mDatabase.emptyAllFragmentedTrash(false);
 
         // Only release if no exception.
-        opFinished();
+        opFinishedShared();
 
         // Return true and allow RedoDecoder to loop back.
         return true;
@@ -291,7 +293,7 @@ final class ReplRedoEngine implements RedoVisitor {
         }
 
         // Only release if no exception.
-        opFinished();
+        opFinishedShared();
 
         if (ix != null) {
             try {
@@ -341,7 +343,7 @@ final class ReplRedoEngine implements RedoVisitor {
         }
 
         // Only release if no exception.
-        opFinished();
+        opFinishedShared();
 
         if (ix != null && task != null) {
             try {
@@ -385,7 +387,7 @@ final class ReplRedoEngine implements RedoVisitor {
             mTransactions.insert(scrambledTxnId).init(txn, selectLatch(scrambledTxnId));
 
             // Only release if no exception.
-            opFinished();
+            opFinishedShared();
 
             return true;
         }
@@ -399,7 +401,7 @@ final class ReplRedoEngine implements RedoVisitor {
         }
 
         // Only release if no exception.
-        opFinished();
+        opFinishedShared();
 
         // Return true and allow RedoDecoder to loop back.
         return true;
@@ -437,7 +439,7 @@ final class ReplRedoEngine implements RedoVisitor {
         TxnEntry te = removeTxnEntry(txnId);
 
         if (te == null) {
-            opFinished();
+            opFinishedShared();
             return true;
         }
 
@@ -481,7 +483,7 @@ final class ReplRedoEngine implements RedoVisitor {
         }
 
         // Only release if no exception.
-        opFinished();
+        opFinishedShared();
 
         // Return true and allow RedoDecoder to loop back.
         return true;
@@ -510,7 +512,7 @@ final class ReplRedoEngine implements RedoVisitor {
         }
 
         // Only release if no exception.
-        opFinished();
+        opFinishedShared();
 
         // Return true and allow RedoDecoder to loop back.
         return true;
@@ -604,12 +606,81 @@ final class ReplRedoEngine implements RedoVisitor {
         return false;
     }
 
+    @Override
+    public boolean txnCustom(long txnId, byte[] message) throws IOException {
+        RedoHandler handler = mDatabase.mCustomRedoHandler;
+
+        if (handler == null) {
+            throw new DatabaseException("Custom redo handler is not installed");
+        }
+
+        TxnEntry te = getTxnEntry(txnId);
+
+        // Allow side-effect free operations to be performed before acquiring latch. Without a
+        // custom lock, this operation must run in isolation to prevent race conditions.
+        mOpLatch.acquireExclusive();
+
+        Latch latch = te.latch();
+        try {
+            handler.redo(mDatabase, te.mTxn, message);
+        } finally {
+            latch.releaseExclusive();
+        }
+
+        // Only release if no exception.
+        opFinishedExclusive();
+
+        // Return true and allow RedoDecoder to loop back.
+        return true;
+    }
+
+    @Override
+    public boolean txnCustomLock(long txnId, byte[] message, long indexId, byte[] key)
+        throws IOException
+    {
+        RedoHandler handler = mDatabase.mCustomRedoHandler;
+
+        if (handler == null) {
+            throw new DatabaseException("Custom redo handler is not installed");
+        }
+
+        TxnEntry te = getTxnEntry(txnId);
+
+        // Allow side-effect free operations to be performed before acquiring latch.
+        mOpLatch.acquireShared();
+
+        Latch latch = te.latch();
+        try {
+            Transaction txn = te.mTxn;
+
+            // Locks must be acquired in their original order to avoid
+            // deadlock, so don't allow another task thread to run yet.
+            txn.lockUpgradable(indexId, key, INFINITE_TIMEOUT);
+
+            // Allow another task thread to run while operation completes.
+            nextTask();
+
+            // Wait to acquire exclusive now that another thread is running.
+            txn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
+
+            handler.redo(mDatabase, txn, message, indexId, key);
+        } finally {
+            latch.releaseExclusive();
+        }
+
+        // Only release if no exception.
+        mOpLatch.releaseShared();
+
+        // Return false to prevent RedoDecoder from looping back.
+        return false;
+    }
+
     /**
      * Called for an operation which is ignored.
      */
     private boolean nop() {
         mOpLatch.acquireShared();
-        opFinished();
+        opFinishedShared();
         return true;
     }
 
@@ -618,14 +689,27 @@ final class ReplRedoEngine implements RedoVisitor {
      * shared op latch, which is released by this method. Decode latch must also be held, which
      * caller must release.
      */
-    private void opFinished() {
+    private void opFinishedShared() {
+        doOpFinished();
+        mOpLatch.releaseShared();
+    }
+
+    /**
+     * Called after an operation is finished which didn't spawn a task thread. Caller must hold
+     * exclusive op latch, which is released by this method. Decode latch must also be held,
+     * which caller must release.
+     */
+    private void opFinishedExclusive() {
+        doOpFinished();
+        mOpLatch.releaseExclusive();
+    }
+
+    private void doOpFinished() {
         // Capture the position for the next operation. Also capture the last transaction id,
         // before a delta is applied.
         ReplRedoDecoder decoder = mDecoder;
         mDecodePosition = decoder.in().mPos;
         mDecodeTransactionId = decoder.mTxnId;
-
-        mOpLatch.releaseShared();
     }
 
     /**
