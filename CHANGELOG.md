@@ -1,6 +1,10 @@
 Changelog
 =========
 
+v1.2.3
+------
+* Add support for custom transaction operations.
+
 v1.2.2 (2015-04-12)
 ------
 * Fix root node deletion when deleting an index.
