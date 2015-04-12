@@ -2613,6 +2613,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     final void nextNode() throws IOException {
         // Move to next node by first setting current node position higher than possible.
         mLeaf.mNodePos = Integer.MAX_VALUE - 1;
+        // FIXME: skips nodes that are full of ghosts
         next();
     }
 
