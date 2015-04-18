@@ -585,6 +585,19 @@ public class Transaction extends Locker {
         RedoWriter redo = mRedoWriter;
         if (redo != null) {
             long txnId = txnId();
+
+            int hasState = mHasState | HAS_COMMIT;
+            if ((hasState & HAS_SCOPE) == 0) {
+                ParentScope parentScope = mParentScope;
+                if (parentScope != null) {
+                    setScopeState(redo, parentScope);
+                }
+                redo.txnEnter(txnId);
+                hasState |= HAS_SCOPE;
+            }
+
+            mHasState = hasState;
+
             if (indexId == 0) {
                 if (key != null) {
                     throw new IllegalArgumentException("Key cannot be used if indexId is zero");
