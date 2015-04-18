@@ -220,15 +220,6 @@ public class TransactionTest {
         c.previous();
         assertArrayEquals(c.key(), "key-1".getBytes());
 
-        /* FIXME
-        // Test timeout skip.
-        txn2.lockMode(LockMode.REPEATABLE_READ);
-        c.next(1, TimeUnit.SECONDS);
-        assertArrayEquals(c.key(), "key-3".getBytes());
-        c.previous(1, TimeUnit.SECONDS);
-        assertArrayEquals(c.key(), "key-1".getBytes());
-        */
-
         // Direct load is also locked out.
         Transaction txn3 = mDb.newTransaction();
         try {
