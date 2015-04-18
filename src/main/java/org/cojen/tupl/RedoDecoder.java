@@ -287,7 +287,7 @@ abstract class RedoDecoder {
                 }
                 break;
 
-            case OP_TXN_CUSTOM:
+            case (OP_TXN_CUSTOM & 0xff):
                 txnId = readTxnId(in);
                 byte[] message = in.readBytes();
                 if (!verifyTerminator(in) || !visitor.txnCustom(txnId, message)) {
@@ -295,7 +295,7 @@ abstract class RedoDecoder {
                 }
                 break;
 
-            case OP_TXN_CUSTOM_LOCK:
+            case (OP_TXN_CUSTOM_LOCK & 0xff):
                 txnId = readTxnId(in);
                 indexId = in.readLongLE();
                 key = in.readBytes();

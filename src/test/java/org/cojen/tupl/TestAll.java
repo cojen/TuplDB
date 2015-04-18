@@ -61,6 +61,7 @@ public class TestAll {
             CompactTest.class,
             NodeMapTest.class,
             PageCacheTest.class,
+            CustomLogTest.class,
         };
 
         String[] names = new String[classes.length];
