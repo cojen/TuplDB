@@ -57,8 +57,21 @@ class Hasher {
 
         if (len < 8) {
             long v = 0;
-            for (int i=len; --i >= 0; ) {
-                v = (v << 8) | (b[i] & 0xffL);
+            switch (len) {
+            case 7:
+                v = (v << 8) | (b[6] & 0xffL);
+            case 6:
+                v = (v << 8) | (b[5] & 0xffL);
+            case 5:
+                v = (v << 8) | (b[4] & 0xffL);
+            case 4:
+                v = (v << 8) | (b[3] & 0xffL);
+            case 3:
+                v = (v << 8) | (b[2] & 0xffL);
+            case 2:
+                v = (v << 8) | (b[1] & 0xffL);
+            case 1:
+                v = (v << 8) | (b[0] & 0xffL);
             }
             hash = (hash << 5) - hash + Utils.scramble(v);
             return hash;
@@ -105,8 +118,21 @@ class Hasher {
 
             if (len < 8) {
                 long v = 0;
-                for (int i=len; --i >= 0; ) {
-                    v = (v << 8) | (b[i] & 0xffL);
+                switch (len) {
+                case 7:
+                    v = (v << 8) | (b[6] & 0xffL);
+                case 6:
+                    v = (v << 8) | (b[5] & 0xffL);
+                case 5:
+                    v = (v << 8) | (b[4] & 0xffL);
+                case 4:
+                    v = (v << 8) | (b[3] & 0xffL);
+                case 3:
+                    v = (v << 8) | (b[2] & 0xffL);
+                case 2:
+                    v = (v << 8) | (b[1] & 0xffL);
+                case 1:
+                    v = (v << 8) | (b[0] & 0xffL);
                 }
                 hash = ((hash << 5) - hash) ^ Utils.scramble(v);
                 return hash;
