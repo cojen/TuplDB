@@ -28,6 +28,8 @@ import static java.lang.System.arraycopy;
 import static org.cojen.tupl.PageOps.*;
 import static org.cojen.tupl.Utils.*;
 
+import org.cojen.tupl.ext.UndoHandler;
+
 /**
  * Specialized stack used by UndoLog.
  *
@@ -111,6 +113,9 @@ final class UndoLog implements DatabaseAccess {
 
     // Payload is Node-encoded key and trash id, to undo a fragmented value delete.
     static final byte OP_UNDELETE_FRAGMENTED = (byte) 22;
+
+    // Payload is custom message.
+    static final byte OP_CUSTOM = (byte) 24;
 
     private final Database mDatabase;
     private final long mTxnId;
@@ -225,6 +230,11 @@ final class UndoLog implements DatabaseAccess {
      */
     void pushCommit() throws IOException {
         doPush(OP_COMMIT);
+    }
+
+    void pushCustom(byte[] message) throws IOException {
+        int len = message.length;
+        doPush(OP_CUSTOM, message, 0, len, calcUnsignedVarIntLength(len));
     }
 
     /**
@@ -521,6 +531,7 @@ final class UndoLog implements DatabaseAccess {
             case OP_COMMIT_TRUNCATE:
             case OP_UNINSERT:
             case OP_UNUPDATE:
+            case OP_CUSTOM:
                 // Ignore.
                 break;
 
@@ -624,6 +635,15 @@ final class UndoLog implements DatabaseAccess {
                     activeIndex = null;
                 }
             }
+            break;
+
+        case OP_CUSTOM:
+            Database db = mDatabase;
+            UndoHandler handler = db.mCustomUndoHandler;
+            if (handler == null) {
+                throw new DatabaseException("Custom undo handler is not installed");
+            }
+            handler.undo(db, entry);
             break;
         }
 
@@ -994,6 +1014,7 @@ final class UndoLog implements DatabaseAccess {
                         // Indicate that a ghost must be deleted if transaction is committed.
                         .mSharedLockOwnersObj = mDatabase.anyIndexById(mActiveIndexId);
                 }
+            case OP_CUSTOM:
                 break;
             }
         }

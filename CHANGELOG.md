@@ -1,9 +1,13 @@
 Changelog
 =========
 
+v1.2.3
+------
+* Add support for custom transaction operations.
+
 v1.2.2 (2015-04-12)
 ------
-* Fix root node deletion after an deleting index.
+* Fix root node deletion when deleting an index.
 * Fix memory leak when closing an index.
 * Fix to ensure that undo log recovery tracks ghosted values.
 * Index drop uses same code as index delete, eliminating complex duplicate code and

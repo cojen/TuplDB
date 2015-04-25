@@ -139,6 +139,19 @@ class RedoPrinter implements RedoVisitor {
         return txnCommit(txnId);
     }
 
+    @Override
+    public boolean txnCustom(long txnId, byte[] message) {
+        mOut.println("txnCustom: txnId=" + txnId + ", message=" + toHex(message));
+        return true;
+    }
+
+    @Override
+    public boolean txnCustomLock(long txnId, byte[] message, long indexId, byte[] key) {
+        mOut.println("txnCustomLock: txnId=" + txnId + ", message=" + toHex(message) +
+                     ", indexId=" + indexId + ", key=" + toHex(key));
+        return true;
+    }
+
     private String toHex(byte[] bytes) {
         if (bytes == null) {
             return "null";

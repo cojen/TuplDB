@@ -126,4 +126,17 @@ interface RedoVisitor {
      */
     public boolean txnStoreCommitFinal(long txnId, long indexId, byte[] key, byte[] value)
         throws IOException;
+
+    /**
+     * @param txnId non-zero transaction id
+     * @param message custom message
+     */
+    public boolean txnCustom(long txnId, byte[] message) throws IOException;
+
+    /**
+     * @param txnId non-zero transaction id
+     * @param message custom message
+     */
+    public boolean txnCustomLock(long txnId, byte[] message, long indexId, byte[] key)
+        throws IOException;
 }

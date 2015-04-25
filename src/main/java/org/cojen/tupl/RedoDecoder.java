@@ -286,6 +286,26 @@ abstract class RedoDecoder {
                     return false;
                 }
                 break;
+
+            case (OP_TXN_CUSTOM & 0xff):
+                txnId = readTxnId(in);
+                byte[] message = in.readBytes();
+                if (!verifyTerminator(in) || !visitor.txnCustom(txnId, message)) {
+                    return false;
+                }
+                break;
+
+            case (OP_TXN_CUSTOM_LOCK & 0xff):
+                txnId = readTxnId(in);
+                indexId = in.readLongLE();
+                key = in.readBytes();
+                message = in.readBytes();
+                if (!verifyTerminator(in)
+                    || !visitor.txnCustomLock(txnId, message, indexId, key))
+                {
+                    return false;
+                }
+                break;
             }
         }
     }
