@@ -566,6 +566,68 @@ public class Transaction extends Locker {
     }
 
     /**
+     * Supply a message for a custom redo handler. Redo operations must always be paired with
+     * undo operations.
+     *
+     * <p><i>Note: This method is intended for advanced use cases.</i>
+     *
+     * @param message message to pass to redo handler
+     * @param indexId index for lock acquisition; zero if not applicable
+     * @param key key which has been locked exclusively; null if not applicable
+     * @throws IllegalStateException if no redo handler is installed
+     * @see org.cojen.tupl.ext.RedoHandler
+     */
+    public final void customRedo(byte[] message, long indexId, byte[] key) throws IOException {
+        if (mDatabase.mCustomRedoHandler == null) {
+            throw new IllegalStateException("Custom redo handler is not installed");
+        }
+        check();
+        RedoWriter redo = mRedoWriter;
+        if (redo != null) {
+            long txnId = txnId();
+
+            int hasState = mHasState | HAS_COMMIT;
+            if ((hasState & HAS_SCOPE) == 0) {
+                ParentScope parentScope = mParentScope;
+                if (parentScope != null) {
+                    setScopeState(redo, parentScope);
+                }
+                redo.txnEnter(txnId);
+                hasState |= HAS_SCOPE;
+            }
+
+            mHasState = hasState;
+
+            if (indexId == 0) {
+                if (key != null) {
+                    throw new IllegalArgumentException("Key cannot be used if indexId is zero");
+                }
+                redo.txnCustom(txnId, message);
+            } else {
+                redo.txnCustomLock(txnId, message, indexId, key);
+            }
+        }
+    }
+
+    /**
+     * Supply a message for a custom undo handler. Undo operations must always be paired with
+     * redo operations.
+     *
+     * <p><i>Note: This method is intended for advanced use cases.</i>
+     *
+     * @param message message to pass to undo handler
+     * @throws IllegalStateException if no undo handler is installed
+     * @see org.cojen.tupl.ext.UndoHandler
+     */
+    public final void customUndo(byte[] message) throws IOException {
+        if (mDatabase.mCustomUndoHandler == null) {
+            throw new IllegalStateException("Custom undo handler is not installed");
+        }
+        check();
+        undoLog().pushCustom(message);
+    }
+
+    /**
      * @param resetAlways when false, only resets committed transactions
      * @return true if was reset
      */

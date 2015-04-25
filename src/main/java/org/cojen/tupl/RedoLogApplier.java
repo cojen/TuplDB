@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import org.cojen.tupl.ext.RedoHandler;
+
 /**
  * 
  *
@@ -79,6 +81,7 @@ final class RedoLogApplier implements RedoVisitor {
 
     @Override
     public boolean renameIndex(long txnId, long indexId, byte[] newName) throws IOException {
+        checkHighest(txnId);
         Index ix = openIndex(indexId);
         if (ix != null) {
             mDatabase.renameIndex(ix, newName, txnId);
@@ -88,6 +91,7 @@ final class RedoLogApplier implements RedoVisitor {
 
     @Override
     public boolean deleteIndex(long txnId, long indexId) throws IOException {
+        checkHighest(txnId);
         // Nothing to do yet. After recovery is complete, trashed indexes are deleted in a
         // separate thread.
         return true;
@@ -164,6 +168,37 @@ final class RedoLogApplier implements RedoVisitor {
     {
         txnStore(txnId, indexId, key, value);
         return txnCommitFinal(txnId);
+    }
+
+    @Override
+    public boolean txnCustom(long txnId, byte[] message) throws IOException {
+        Transaction txn = txn(txnId);
+        if (txn != null) {
+            Database db = mDatabase;
+            RedoHandler handler = db.mCustomRedoHandler;
+            if (handler == null) {
+                throw new DatabaseException("Custom redo handler is not installed");
+            }
+            handler.redo(db, txn, message);
+        }
+        return true;
+    }
+
+    @Override
+    public boolean txnCustomLock(long txnId, byte[] message, long indexId, byte[] key)
+        throws IOException
+    {
+        Transaction txn = txn(txnId);
+        if (txn != null) {
+            Database db = mDatabase;
+            RedoHandler handler = db.mCustomRedoHandler;
+            if (handler == null) {
+                throw new DatabaseException("Custom redo handler is not installed");
+            }
+            txn.lockExclusive(indexId, key);
+            handler.redo(db, txn, message, indexId, key);
+        }
+        return true;
     }
 
     private Transaction txn(long txnId) {

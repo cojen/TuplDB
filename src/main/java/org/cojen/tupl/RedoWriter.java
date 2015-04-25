@@ -229,6 +229,36 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
         writeTerminator();
     }
 
+    public synchronized void txnCustom(long txnId, byte[] message)
+        throws IOException
+    {
+        if (message == null) {
+            throw new NullPointerException("Message is null");
+        }
+        writeTxnOp(OP_TXN_CUSTOM, txnId);
+        writeUnsignedVarInt(message.length);
+        writeBytes(message);
+        writeTerminator();
+    }
+
+    public synchronized void txnCustomLock(long txnId, byte[] message, long indexId, byte[] key)
+        throws IOException
+    {
+        if (key == null) {
+            throw new NullPointerException("Key is null");
+        }
+        if (message == null) {
+            throw new NullPointerException("Message is null");
+        }
+        writeTxnOp(OP_TXN_CUSTOM_LOCK, txnId);
+        writeLongLE(indexId);
+        writeUnsignedVarInt(key.length);
+        writeBytes(key);
+        writeUnsignedVarInt(message.length);
+        writeBytes(message);
+        writeTerminator();
+    }
+
     public synchronized void timestamp() throws IOException {
         writeOp(OP_TIMESTAMP, System.currentTimeMillis());
         writeTerminator();

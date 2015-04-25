@@ -28,7 +28,9 @@ import java.util.Properties;
 
 import java.util.concurrent.TimeUnit;
 
+import org.cojen.tupl.ext.RedoHandler;
 import org.cojen.tupl.ext.ReplicationManager;
+import org.cojen.tupl.ext.UndoHandler;
 
 import org.cojen.tupl.io.FileFactory;
 import org.cojen.tupl.io.OpenOption;
@@ -67,6 +69,8 @@ public class DatabaseConfig implements Cloneable, Serializable {
     transient ReplicationManager mReplManager;
     int mMaxReplicaThreads;
     transient Crypto mCrypto;
+    transient RedoHandler mRedoHandler;
+    transient UndoHandler mUndoHandler;
 
     // Fields are set as a side-effect of constructing a replicated Database.
     transient long mReplRecoveryStartNanos;
@@ -366,6 +370,22 @@ public class DatabaseConfig implements Cloneable, Serializable {
      */
     public DatabaseConfig encrypt(Crypto crypto) {
         mCrypto = crypto;
+        return this;
+    }
+
+    /**
+     * Provide a handler for custom redo operations. An undo handler must also be provided.
+     */
+    public DatabaseConfig customRedoHandler(RedoHandler handler) {
+        mRedoHandler = handler;
+        return this;
+    }
+
+    /**
+     * Provide a handler for custom undo operations. A redo handler must also be provided.
+     */
+    public DatabaseConfig customUndoHandler(UndoHandler handler) {
+        mUndoHandler = handler;
         return this;
     }
 

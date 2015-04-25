@@ -105,11 +105,12 @@ class RedoOps {
         OP_TXN_DELETE_COMMIT = 38,
 
         /** txnId: delta, indexId: long, keyLength: varInt, key: bytes */
-        OP_TXN_DELETE_COMMIT_FINAL = 39;
+        OP_TXN_DELETE_COMMIT_FINAL = 39,
 
-        /** length: varInt, data: bytes */
-        //OP_CUSTOM = (byte) 128,
+        /** txnId: delta, dataLength: varInt, data: bytes */
+        OP_TXN_CUSTOM = (byte) 128,
 
-        /** txnId: long, length: varInt, data: bytes */
-        //OP_TXN_CUSTOM = (byte) 129;
+        /** txnId: delta, indexId: long, keyLength: varInt, key: bytes,
+            dataLength: varInt, data: bytes */
+        OP_TXN_CUSTOM_LOCK = (byte) 129;
 }

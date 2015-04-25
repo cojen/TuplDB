@@ -197,14 +197,7 @@ final class LockManager {
     }
 
     final static int hash(long indexId, byte[] key) {
-        int hash = ((int) indexId) ^ ((int) (indexId >>> 32));
-        for (int i=key.length; --i>=0; ) {
-            hash = hash * 31 + key[i];
-        }
-        // Scramble the hashcode a bit, just like HashMap does.
-        hash ^= (hash >>> 20) ^ (hash >>> 12);
-        hash ^= (hash >>> 7) ^ (hash >>> 4);
-        return hash;
+        return (int) Hasher.hash(indexId, key);
     }
 
     LockHT getLockHT(int hash) {
