@@ -55,7 +55,7 @@ Database db = ...
 Index userIx = db.openIndex("user");
 ```
 
-Indexes offer a low-level representation of data, and so applications which use it directly are
+Indexes offer a low-level representation of data, and so applications which use them directly are
 responsible for performing their own encoding.
 
 ```java
