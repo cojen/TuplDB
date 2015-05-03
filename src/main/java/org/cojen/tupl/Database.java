@@ -2783,7 +2783,9 @@ public final class Database implements CauseCloseable, Flushable {
                 mOpenTrees.remove(ref.mName);
                 mOpenTreesById.remove(ref.mId);
                 root.makeEvictableNow();
-                mTreeNodeMap.put(root);
+                if (root.mId != 0) {
+                    mTreeNodeMap.put(root);
+                }
             } finally {
                 mOpenTreesLatch.releaseExclusive();
             }
