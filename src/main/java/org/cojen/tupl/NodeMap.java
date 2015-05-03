@@ -117,6 +117,7 @@ final class NodeMap {
                 return;
             }
             if (e.mId == node.mId) {
+                latch.releaseExclusive();
                 throw new AssertionError();
             }
             e = e.mNodeChainNext;
