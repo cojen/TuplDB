@@ -110,6 +110,18 @@ final class NodeMap {
 
         final Node[] table = mTable;
         final int index = hash & (table.length - 1);
+        Node e = table[index];
+        while (e != null) {
+            if (e == node) {
+                latch.releaseExclusive();
+                return;
+            }
+            if (e.mId == node.mId) {
+                throw new AssertionError();
+            }
+            e = e.mNodeChainNext;
+        }
+
         node.mNodeChainNext = table[index];
         table[index] = node;
 
