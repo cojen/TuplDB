@@ -52,6 +52,14 @@ public abstract class AbstractView implements View {
      * {@inheritDoc}
      */
     @Override
+    public Stream newStream() {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public View viewGe(byte[] key) {
         return BoundedView.viewGe(this, key);
     }
