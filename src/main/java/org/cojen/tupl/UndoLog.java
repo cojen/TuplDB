@@ -806,6 +806,7 @@ final class UndoLog implements DatabaseAccess {
 
         Node lowerNode = parent.mNodeChainNext;
         if (lowerNode != null) {
+            parent.mNodeChainNext = null;
             lowerNode.acquireExclusive();
             if (lowerNodeId == lowerNode.mId) {
                 lowerNode.makeUnevictable();
