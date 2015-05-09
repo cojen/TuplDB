@@ -433,36 +433,90 @@ final class UnsafePageOps {
     static int p_compareKeysPageToArray(long apage, int aoff, int alen,
                                         byte[] b, int boff, int blen)
     {
-        // FIXME
-        throw null;
+        apage += aoff;
+        int minLen = Math.min(alen, blen);
+        for (int i=0; i<minLen; i++) {
+            byte ab = UNSAFE.getByte(apage++);
+            byte bb = b[boff + i];
+            if (ab != bb) {
+                return (ab & 0xff) - (bb & 0xff);
+            }
+        }
+        return alen - blen;
     }
 
     static int p_compareKeysPageToPage(long apage, int aoff, int alen,
                                        long bpage, int boff, int blen)
     {
-        // FIXME
-        throw null;
+        apage += aoff;
+        bpage += boff;
+        int minLen = Math.min(alen, blen);
+        for (int i=0; i<minLen; i++) {
+            byte ab = UNSAFE.getByte(apage++);
+            byte bb = UNSAFE.getByte(bpage++);
+            if (ab != bb) {
+                return (ab & 0xff) - (bb & 0xff);
+            }
+        }
+        return alen - blen;
     }
 
     static byte[] p_midKeyLowPage(long lowPage, int lowOff, int lowLen,
                                   byte[] high, int highOff, int highLen)
     {
-        // FIXME
-        throw null;
+        lowPage += lowOff;
+        for (int i=0; i<lowLen; i++) {
+            byte lo = UNSAFE.getByte(lowPage + i);
+            byte hi = high[highOff + i];
+            if (lo != hi) {
+                byte[] mid = new byte[i + 1];
+                p_copyToArray(lowPage, 0, mid, 0, i);
+                mid[i] = (byte) (((lo & 0xff) + (hi & 0xff) + 1) >> 1);
+                return mid;
+            }
+        }
+        byte[] mid = new byte[lowLen + 1];
+        System.arraycopy(high, highOff, mid, 0, mid.length);
+        return mid;
     }
 
     static byte[] p_midKeyHighPage(byte[] low, int lowOff, int lowLen,
                                    long highPage, int highOff, int highLen)
     {
-        // FIXME
-        throw null;
+        highPage += highOff;
+        for (int i=0; i<lowLen; i++) {
+            byte lo = low[lowOff + i];
+            byte hi = UNSAFE.getByte(highPage + i);
+            if (lo != hi) {
+                byte[] mid = new byte[i + 1];
+                System.arraycopy(low, lowOff, mid, 0, i);
+                mid[i] = (byte) (((lo & 0xff) + (hi & 0xff) + 1) >> 1);
+                return mid;
+            }
+        }
+        byte[] mid = new byte[lowLen + 1];
+        p_copyToArray(highPage, 0, mid, 0, mid.length);
+        return mid;
     }
 
     static byte[] p_midKeyLowHighPage(long lowPage, int lowOff, int lowLen,
                                       long highPage, int highOff, int highLen)
     {
-        // FIXME
-        throw null;
+        lowPage += lowOff;
+        highPage += highOff;
+        for (int i=0; i<lowLen; i++) {
+            byte lo = UNSAFE.getByte(lowPage + i);
+            byte hi = UNSAFE.getByte(highPage + i);
+            if (lo != hi) {
+                byte[] mid = new byte[i + 1];
+                p_copyToArray(lowPage, 0, mid, 0, i);
+                mid[i] = (byte) (((lo & 0xff) + (hi & 0xff) + 1) >> 1);
+                return mid;
+            }
+        }
+        byte[] mid = new byte[lowLen + 1];
+        p_copyToArray(highPage, 0, mid, 0, mid.length);
+        return mid;
     }
 
     static int p_crc32(long srcPage, int srcStart, int len) {
