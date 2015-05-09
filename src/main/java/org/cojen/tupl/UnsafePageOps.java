@@ -182,6 +182,11 @@ final class UnsafePageOps {
         throw null;
     }
 
+    static byte[] p_copyIfNotArray(long page, byte[] dstArray) {
+        p_copyToArray(page, 0, dstArray, 0, dstArray.length);
+        return dstArray;
+    }
+
     static void p_copyFromArray(byte[] src, int srcStart, long dstPage, int dstStart, int len) {
         // FIXME
         throw null;

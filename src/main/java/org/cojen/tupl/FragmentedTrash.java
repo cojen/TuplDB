@@ -130,19 +130,20 @@ final class FragmentedTrash {
     void remove(long txnId, Tree index, byte[] undoEntry) throws IOException {
         // Extract the index and trash keys.
 
-        byte[] indexKey;
-        {
-            DatabaseAccess dbAccess = mTrash.mRoot;
-            indexKey = Node.retrieveKeyAtLoc(dbAccess, undoEntry, 0);
-        }
+        /*P*/ byte[] undo = p_transfer(undoEntry);
 
-        byte[] trashKey;
-        {
-            int tidLoc = Node.keyLengthAtLoc(undoEntry, 0);
-            int tidLen = undoEntry.length - tidLoc;
+        byte[] indexKey, trashKey;
+        try {
+            DatabaseAccess dbAccess = mTrash.mRoot;
+            indexKey = Node.retrieveKeyAtLoc(dbAccess, undo, 0);
+
+            int tidLoc = Node.keyLengthAtLoc(undo, 0);
+            int tidLen = p_length(undo) - tidLoc;
             trashKey = new byte[8 + tidLen];
             encodeLongBE(trashKey, 0, txnId);
-            arraycopy(undoEntry, tidLoc, trashKey, 8, tidLen);
+            p_copyToArray(undo, tidLoc, trashKey, 8, tidLen);
+        } finally {
+            p_delete(undo);
         }
 
         byte[] fragmented;
@@ -191,13 +192,14 @@ final class FragmentedTrash {
                     break;
                 }
                 cursor.load();
-                byte[] fragmented = cursor.value();
+                /*P*/ byte[] fragmented = p_transfer(cursor.value());
                 sharedCommitLock.lock();
                 try {
-                    db.deleteFragments(fragmented, 0, fragmented.length);
+                    db.deleteFragments(fragmented, 0, p_length(fragmented));
                     cursor.store(null);
                 } finally {
                     sharedCommitLock.unlock();
+                    p_delete(fragmented);
                 }
                 cursor.next();
             }
@@ -227,13 +229,17 @@ final class FragmentedTrash {
                 }
                 found = true;
                 do {
-                    byte[] fragmented = cursor.value();
-                    sharedCommitLock.lock();
+                    /*P*/ byte[] fragmented = p_transfer(cursor.value());
                     try {
-                        db.deleteFragments(fragmented, 0, fragmented.length);
-                        cursor.store(null);
+                        sharedCommitLock.lock();
+                        try {
+                            db.deleteFragments(fragmented, 0, p_length(fragmented));
+                            cursor.store(null);
+                        } finally {
+                            sharedCommitLock.unlock();
+                        }
                     } finally {
-                        sharedCommitLock.unlock();
+                        p_delete(fragmented);
                     }
                     cursor.next();
                 } while (cursor.key() != null);
