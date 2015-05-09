@@ -25,6 +25,8 @@ import java.nio.ByteBuffer;
 
 import java.security.GeneralSecurityException;
 
+import java.util.zip.CRC32;
+
 import javax.crypto.Cipher;
 
 /**
@@ -520,8 +522,12 @@ final class UnsafePageOps {
     }
 
     static int p_crc32(long srcPage, int srcStart, int len) {
-        // FIXME
-        throw null;
+        // Not terribly efficient, but CRC is only computed for the database header page.
+        byte[] temp = new byte[len];
+        p_copyToArray(srcPage, srcStart, temp, 0, len);
+        CRC32 crc = new CRC32();
+        crc.update(temp);
+        return (int) crc.getValue();
     }
 
     static int p_cipherDoFinal(Cipher cipher,
