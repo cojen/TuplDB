@@ -47,6 +47,10 @@ final class PageOps {
         return new byte[size];
     }
 
+    static byte[] p_calloc(int size) {
+        return new byte[size];
+    }
+
     static byte[][] p_allocArray(int size) {
         return new byte[size][];
     }

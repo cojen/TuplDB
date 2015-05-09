@@ -3822,7 +3822,7 @@ public final class Database implements CauseCloseable, Flushable {
             if (header == p_null()) {
                 // Not resumed. Allocate new header early, before acquiring locks.
                 // FIXME: make sure it gets deleted later
-                header = p_alloc(mPageDb.pageSize());
+                header = p_calloc(mPageDb.pageSize());
                 resume = false;
                 if (masterUndoLog != null) {
                     throw new AssertionError();

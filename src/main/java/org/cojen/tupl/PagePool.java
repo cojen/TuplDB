@@ -30,7 +30,7 @@ final class PagePool extends Latch {
         mQueue = new WaitQueue();
         /*P*/ byte[][] pool = PageOps.p_allocArray(poolSize);
         for (int i=0; i<poolSize; i++) {
-            pool[i] = PageOps.p_alloc(pageSize);
+            pool[i] = PageOps.p_calloc(pageSize);
         }
         mPool = pool;
         mPos = poolSize;

@@ -49,8 +49,13 @@ final class UnsafePageOps {
     static long p_alloc(int size) {
         long ptr = UNSAFE.allocateMemory(4 + size);
         UNSAFE.putInt(ptr, size);
-        UNSAFE.setMemory(ptr + 4, size, (byte) 0);
         return ptr + 4;
+    }
+
+    static long p_calloc(int size) {
+        long ptr = p_alloc(size);
+        UNSAFE.setMemory(ptr, size, (byte) 0);
+        return ptr;
     }
 
     static long[] p_allocArray(int size) {

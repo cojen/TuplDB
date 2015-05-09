@@ -213,7 +213,7 @@ final class DurablePageDb extends PageDb {
                 mCommitNumber = -1;
 
                 // Commit twice to ensure both headers have valid data.
-                /*P*/ byte[] header = p_alloc(pageSize);
+                /*P*/ byte[] header = p_calloc(pageSize);
                 try {
                     commit(false, header, null);
                     commit(false, header, null);
