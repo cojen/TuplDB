@@ -226,7 +226,7 @@ final class Node extends Latch implements DatabaseAccess {
     transient Split mSplit;
 
     Node(NodeUsageList usageList, int pageSize) {
-        this(usageList, p_alloc(pageSize));
+        this(usageList, p_calloc(pageSize));
     }
 
     private Node(NodeUsageList usageList, /*P*/ byte[] page) {

@@ -144,7 +144,7 @@ final class PageQueue implements IntegerRef {
         mAggressive = aggressive;
         PageArray array = manager.pageArray();
 
-        mRemoveHead = p_alloc(array.pageSize());
+        mRemoveHead = p_calloc(array.pageSize());
 
         if (appendLock == null) {
             // This lock must be reentrant. The appendPage method can call into
@@ -159,7 +159,7 @@ final class PageQueue implements IntegerRef {
         }
 
         mAppendHeap = new IdHeap(array.pageSize() - I_NODE_START);
-        mAppendTail = p_alloc(array.pageSize());
+        mAppendTail = p_calloc(array.pageSize());
     }
 
     /**
