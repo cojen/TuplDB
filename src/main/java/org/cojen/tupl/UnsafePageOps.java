@@ -16,6 +16,8 @@
 
 package org.cojen.tupl;
 
+import sun.misc.Unsafe;
+
 import java.io.InputStream;
 import java.io.IOException;
 
@@ -32,18 +34,23 @@ import javax.crypto.Cipher;
  * @see PageOps
  */
 final class UnsafePageOps {
+    private static final Unsafe UNSAFE = Hasher.getUnsafe();
+    private static final long BYTE_ARRAY_OFFSET = UNSAFE.arrayBaseOffset(byte[].class);
+    private static final long EMPTY = p_alloc(0);
+
     static long p_null() {
         return 0;
     }
 
     static long p_empty() {
-        // FIXME
-        throw null;
+        return EMPTY;
     }
 
     static long p_alloc(int size) {
-        // FIXME
-        throw null;
+        long ptr = UNSAFE.allocateMemory(4 + size);
+        UNSAFE.putInt(ptr, size);
+        UNSAFE.setMemory(ptr + 4, size, (byte) 0);
+        return ptr + 4;
     }
 
     static long[] p_allocArray(int size) {
@@ -51,13 +58,14 @@ final class UnsafePageOps {
     }
 
     static void p_delete(long page) {
-        // FIXME
-        throw null;
+        UNSAFE.freeMemory(page - 4);
     }
 
     static long p_clone(long page) {
-        // FIXME
-        throw null;
+        int length = p_length(page);
+        long dst = p_alloc(length);
+        UNSAFE.copyMemory(page, dst, length);
+        return dst;
     }
 
     static long p_transfer(byte[] array) {
@@ -68,118 +76,299 @@ final class UnsafePageOps {
     }
 
     static int p_length(long page) {
-        // FIXME
-        throw null;
+        return UNSAFE.getInt(page - 4);
     }
 
     static byte p_byteGet(long page, int index) {
-        // FIXME
-        throw null;
+        return UNSAFE.getByte(page + index);
     }
 
     static int p_ubyteGet(long page, int index) {
-        // FIXME
-        throw null;
+        return UNSAFE.getByte(page + index) & 0xff;
     }
 
     static void p_bytePut(long page, int index, byte v) {
-        // FIXME
-        throw null;
+        UNSAFE.putInt(page + index, v);
     }
 
     static void p_bytePut(long page, int index, int v) {
-        // FIXME
-        throw null;
+        UNSAFE.putInt(page + index, (byte) v);
     }
 
     static int p_ushortGetLE(long page, int index) {
-        // FIXME
-        throw null;
+        return UNSAFE.getChar(page + index);
     }
 
     static void p_shortPutLE(long page, int index, int v) {
-        // FIXME
-        throw null;
+        UNSAFE.putShort(page + index, (short) v);
     }
 
     static int p_intGetLE(long page, int index) {
-        // FIXME
-        throw null;
+        return UNSAFE.getInt(page + index);
     }
 
     static void p_intPutLE(long page, int index, int v) {
-        // FIXME
-        throw null;
+        UNSAFE.putInt(page + index, v);
     }
 
     static int p_uintGetVar(long page, int index) {
-        // FIXME
-        throw null;
+        int v = p_byteGet(page, index);
+        if (v >= 0) {
+            return v;
+        }
+        switch ((v >> 4) & 0x07) {
+        case 0x00: case 0x01: case 0x02: case 0x03:
+            return (1 << 7)
+                + (((v & 0x3f) << 8)
+                   | p_ubyteGet(page, index + 1));
+        case 0x04: case 0x05:
+            return ((1 << 14) + (1 << 7))
+                + (((v & 0x1f) << 16)
+                   | (p_ubyteGet(page, ++index) << 8)
+                   | p_ubyteGet(page, index + 1));
+        case 0x06:
+            return ((1 << 21) + (1 << 14) + (1 << 7))
+                + (((v & 0x0f) << 24)
+                   | (p_ubyteGet(page, ++index) << 16)
+                   | (p_ubyteGet(page, ++index) << 8)
+                   | p_ubyteGet(page, index + 1));
+        default:
+            return ((1 << 28) + (1 << 21) + (1 << 14) + (1 << 7)) 
+                + ((p_byteGet(page, ++index) << 24)
+                   | (p_ubyteGet(page, ++index) << 16)
+                   | (p_ubyteGet(page, ++index) << 8)
+                   | p_ubyteGet(page, index + 1));
+        }
     }
 
     static int p_uintPutVar(long page, int index, int v) {
-        // FIXME
-        throw null;
+        if (v < (1 << 7)) {
+            if (v < 0) {
+                v -= (1 << 28) + (1 << 21) + (1 << 14) + (1 << 7);
+                p_bytePut(page, index++, 0xff);
+                p_bytePut(page, index++, v >> 24);
+                p_bytePut(page, index++, v >> 16);
+                p_bytePut(page, index++, v >> 8);
+            }
+        } else {
+            v -= (1 << 7);
+            if (v < (1 << 14)) {
+                p_bytePut(page, index++, 0x80 | (v >> 8));
+            } else {
+                v -= (1 << 14);
+                if (v < (1 << 21)) {
+                    p_bytePut(page, index++, 0xc0 | (v >> 16));
+                } else {
+                    v -= (1 << 21);
+                    if (v < (1 << 28)) {
+                        p_bytePut(page, index++, 0xe0 | (v >> 24));
+                    } else {
+                        v -= (1 << 28);
+                        p_bytePut(page, index++, 0xf0);
+                        p_bytePut(page, index++, v >> 24);
+                    }
+                    p_bytePut(page, index++, v >> 16);
+                }
+                p_bytePut(page, index++, v >> 8);
+            }
+        }
+        p_bytePut(page, index++, v);
+        return index;
     }
 
     static int p_uintVarSize(int v) {
-        // FIXME
-        throw null;
+        return Utils.calcUnsignedVarIntLength(v);
     }
 
     static long p_uint48GetLE(long page, int index) {
-        // FIXME
-        throw null;
+        return UNSAFE.getInt(page += index) & 0xffff_ffffL
+            | (((long) UNSAFE.getChar(page + 4)) << 32);
     }
 
     static void p_int48PutLE(long page, int index, long v) {
-        // FIXME
-        throw null;
+        UNSAFE.putInt(page += index, (int) v);
+        UNSAFE.putShort(page + 4, (short) (v >> 32));
     }
 
     static long p_longGetLE(long page, int index) {
-        // FIXME
-        throw null;
+        return UNSAFE.getLong(page + index);
     }
 
     static void p_longPutLE(long page, int index, long v) {
-        // FIXME
-        throw null;
+        UNSAFE.putLong(page + index, v);
     }
 
     static long p_longGetBE(long page, int index) {
-        // FIXME
-        throw null;
+        return Long.reverseBytes(UNSAFE.getLong(page + index));
     }
 
     static void p_longPutBE(long page, int index, long v) {
-        // FIXME
-        throw null;
+        UNSAFE.putLong(page + index, Long.reverseBytes(v));
     }
 
     static long p_ulongGetVar(long page, IntegerRef ref) {
-        // FIXME
-        throw null;
+        int offset = ref.get();
+        int val = p_ubyteGet(page, offset++);
+        if (val >= 0) {
+            ref.set(offset);
+            return val;
+        }
+        long decoded;
+        switch ((val >> 4) & 0x07) {
+        case 0x00: case 0x01: case 0x02: case 0x03:
+            decoded = (1L << 7) +
+                (((val & 0x3f) << 8)
+                 | p_ubyteGet(page, offset++));
+            break;
+        case 0x04: case 0x05:
+            decoded = ((1L << 14) + (1L << 7))
+                + (((val & 0x1f) << 16)
+                   | (p_ubyteGet(page, offset++) << 8)
+                   | p_ubyteGet(page, offset++));
+            break;
+        case 0x06:
+            decoded = ((1L << 21) + (1L << 14) + (1L << 7))
+                + (((val & 0x0f) << 24)
+                   | (p_ubyteGet(page, offset++) << 16)
+                   | (p_ubyteGet(page, offset++) << 8)
+                   | p_ubyteGet(page, offset++));
+            break;
+        default:
+            switch (val & 0x0f) {
+            default:
+                decoded = ((1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
+                    + (((val & 0x07L) << 32)
+                       | (((long) p_ubyteGet(page, offset++)) << 24)
+                       | (((long) p_ubyteGet(page, offset++)) << 16)
+                       | (((long) p_ubyteGet(page, offset++)) << 8)
+                       | ((long) p_ubyteGet(page, offset++)));
+                break;
+            case 0x08: case 0x09: case 0x0a: case 0x0b:
+                decoded = ((1L << 35)
+                           + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
+                    + (((val & 0x03L) << 40)
+                       | (((long) p_ubyteGet(page, offset++)) << 32)
+                       | (((long) p_ubyteGet(page, offset++)) << 24)
+                       | (((long) p_ubyteGet(page, offset++)) << 16)
+                       | (((long) p_ubyteGet(page, offset++)) << 8)
+                       | ((long) p_ubyteGet(page, offset++)));
+                break;
+            case 0x0c: case 0x0d:
+                decoded = ((1L << 42) + (1L << 35)
+                           + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
+                    + (((val & 0x01L) << 48)
+                       | (((long) p_ubyteGet(page, offset++)) << 40)
+                       | (((long) p_ubyteGet(page, offset++)) << 32)
+                       | (((long) p_ubyteGet(page, offset++)) << 24)
+                       | (((long) p_ubyteGet(page, offset++)) << 16)
+                       | (((long) p_ubyteGet(page, offset++)) << 8)
+                       | ((long) p_ubyteGet(page, offset++)));
+                break;
+            case 0x0e:
+                decoded = ((1L << 49) + (1L << 42) + (1L << 35)
+                           + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
+                    + ((((long) p_ubyteGet(page, offset++)) << 48)
+                       | (((long) p_ubyteGet(page, offset++)) << 40)
+                       | (((long) p_ubyteGet(page, offset++)) << 32)
+                       | (((long) p_ubyteGet(page, offset++)) << 24)
+                       | (((long) p_ubyteGet(page, offset++)) << 16)
+                       | (((long) p_ubyteGet(page, offset++)) << 8)
+                       | ((long) p_ubyteGet(page, offset++)));
+                break;
+            case 0x0f:
+                decoded = ((1L << 56) + (1L << 49) + (1L << 42) + (1L << 35)
+                           + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
+                    + ((((long) p_byteGet(page, offset++)) << 56)
+                       | (((long) p_ubyteGet(page, offset++)) << 48)
+                       | (((long) p_ubyteGet(page, offset++)) << 40)
+                       | (((long) p_ubyteGet(page, offset++)) << 32)
+                       | (((long) p_ubyteGet(page, offset++)) << 24)
+                       | (((long) p_ubyteGet(page, offset++)) << 16)
+                       | (((long) p_ubyteGet(page, offset++)) << 8L)
+                       | ((long) p_ubyteGet(page, offset++)));
+                break;
+            }
+            break;
+        }
+
+        ref.set(offset);
+        return decoded;
     }
 
     static int p_ulongPutVar(long page, int index, long v) {
-        // FIXME
-        throw null;
+        if (v < (1L << 7)) {
+            if (v < 0) {
+                v -= (1L << 56) + (1L << 49) + (1L << 42) + (1L << 35)
+                    + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7);
+                p_bytePut(page, index++, 0xff);
+                p_bytePut(page, index++, (byte) (v >> 56));
+                p_bytePut(page, index++, (byte) (v >> 48));
+                p_bytePut(page, index++, (byte) (v >> 40));
+                p_bytePut(page, index++, (byte) (v >> 32));
+                p_bytePut(page, index++, (byte) (v >> 24));
+                p_bytePut(page, index++, (byte) (v >> 16));
+                p_bytePut(page, index++, (byte) (v >> 8));
+            }
+        } else {
+            v -= (1L << 7);
+            if (v < (1L << 14)) {
+                p_bytePut(page, index++, 0x80 | (int) (v >> 8));
+            } else {
+                v -= (1L << 14);
+                if (v < (1L << 21)) {
+                    p_bytePut(page, index++, 0xc0 | (int) (v >> 16));
+                } else {
+                    v -= (1L << 21);
+                    if (v < (1L << 28)) {
+                        p_bytePut(page, index++, 0xe0 | (int) (v >> 24));
+                    } else {
+                        v -= (1L << 28);
+                        if (v < (1L << 35)) {
+                            p_bytePut(page, index++, 0xf0 | (int) (v >> 32));
+                        } else {
+                            v -= (1L << 35);
+                            if (v < (1L << 42)) {
+                                p_bytePut(page, index++, 0xf8 | (int) (v >> 40));
+                            } else {
+                                v -= (1L << 42);
+                                if (v < (1L << 49)) {
+                                    p_bytePut(page, index++, 0xfc | (int) (v >> 48));
+                                } else {
+                                    v -= (1L << 49);
+                                    if (v < (1L << 56)) {
+                                        p_bytePut(page, index++, 0xfe | (int) (v >> 56));
+                                    } else {
+                                        v -= (1L << 56);
+                                        p_bytePut(page, index++, 0xff);
+                                        p_bytePut(page, index++, (byte) (v >> 56));
+                                    }
+                                    p_bytePut(page, index++, (byte) (v >> 48));
+                                }
+                                p_bytePut(page, index++, (byte) (v >> 40));
+                            }
+                            p_bytePut(page, index++, (byte) (v >> 32));
+                        }
+                        p_bytePut(page, index++, (byte) (v >> 24));
+                    }
+                    p_bytePut(page, index++, (byte) (v >> 16));
+                }
+                p_bytePut(page, index++, (byte) (v >> 8));
+            }
+        }
+        p_bytePut(page, index++, (byte) v);
+        return index;
     }
 
     static int p_ulongVarSize(long v) {
-        // FIXME
-        throw null;
+        return Utils.calcUnsignedVarLongLength(v);
     }
 
     static void p_clear(long page) {
-        // FIXME
-        throw null;
+        UNSAFE.setMemory(page, p_length(page), (byte) 0);
     }
 
     static void p_clear(long page, int fromIndex, int toIndex) {
-        // FIXME
-        throw null;
+        UNSAFE.setMemory(page + fromIndex, toIndex - fromIndex, (byte) 0);
     }
 
     static byte[] p_copyIfNotArray(long page, byte[] dstArray) {
@@ -188,13 +377,11 @@ final class UnsafePageOps {
     }
 
     static void p_copyFromArray(byte[] src, int srcStart, long dstPage, int dstStart, int len) {
-        // FIXME
-        throw null;
+        UNSAFE.copyMemory(src, BYTE_ARRAY_OFFSET + srcStart, null, dstPage + dstStart, len);
     }
 
     static void p_copyToArray(long srcPage, int srcStart, byte[] dst, int dstStart, int len) {
-        // FIXME
-        throw null;
+        UNSAFE.copyMemory(null, srcPage + srcStart, dst, BYTE_ARRAY_OFFSET + dstStart, len);
     }
 
     static void p_copyFromBB(ByteBuffer src, long dstPage, int dstStart, int len) {
@@ -208,8 +395,7 @@ final class UnsafePageOps {
     }
 
     static void p_copy(long srcPage, int srcStart, long dstPage, int dstStart, int len) {
-        // FIXME
-        throw null;
+        UNSAFE.copyMemory(srcPage + srcStart, dstPage + dstStart, len);
     }
 
     static void p_copies(long page,

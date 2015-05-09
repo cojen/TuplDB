@@ -97,12 +97,19 @@ class Hasher {
         return hash;
     }
 
+    static Unsafe getUnsafe() {
+        if (INSTANCE instanceof UnsafeLE) {
+            return ((UnsafeLE) INSTANCE).UNSAFE;
+        }
+        return null;
+    }
+
     /**
      * Same as default implementation except longs are read directly using Unsafe to avoid the
      * shifting transformation.
      */
     private static class UnsafeLE extends Hasher {
-        private static final Unsafe UNSAFE;
+        static final Unsafe UNSAFE;
         private static final long BYTE_ARRAY_OFFSET;
 
         static {
