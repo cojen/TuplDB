@@ -157,6 +157,13 @@ final class PageOps {
         java.util.Arrays.fill(page, fromIndex, toIndex, (byte) 0);
     }
 
+    /**
+     * Returns page if it's an array, else copies to given array and returns that.
+     */
+    static byte[] p_copyIfNotArray(byte[] page, byte[] array) {
+        return page;
+    }
+
     static void p_copyFromArray(byte[] src, int srcStart, byte[] dstPage, int dstStart, int len) {
         System.arraycopy(src, srcStart, dstPage, dstStart, len);
     }

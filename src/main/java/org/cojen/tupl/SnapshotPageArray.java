@@ -227,7 +227,8 @@ final class SnapshotPageArray extends PageArray {
         private final Object mSnapshotLock;
 
         private final Latch mCaptureLatch;
-        private final byte[] mCaptureValue;
+        private final byte[] mCaptureBufferArray;
+        private final /*P*/ byte[] mCaptureBuffer;
 
         // The highest page written by the writeTo method.
         private volatile long mProgress;
@@ -261,7 +262,9 @@ final class SnapshotPageArray extends PageArray {
 
             mSnapshotLock = new Object();
             mCaptureLatch = new Latch();
-            mCaptureValue = new byte[pageSize];
+            mCaptureBufferArray = new byte[pageSize];
+            // Allocates if page is not an array. The copy is not actually required.
+            mCaptureBuffer = p_transfer(mCaptureBufferArray);
 
             // -2: Not yet started. -1: Started, but nothing written yet.
             mProgress = -2;
@@ -292,10 +295,13 @@ final class SnapshotPageArray extends PageArray {
                 mWriteInProgress = -1;
             }
 
+            final byte[] pageBufferArray = new byte[pageSize()];
+            // Allocates if page is not an array. The copy is not actually required.
+            final /*P*/ byte[] pageBuffer = p_transfer(pageBufferArray);
+
             Cursor c = null;
             try {
                 final NodeMap nodeCache = mNodeCache;
-                final /*P*/ byte[] buffer = p_alloc(pageSize());
                 final byte[] key = new byte[8];
                 final long count = mSnapshotPageCount;
 
@@ -329,23 +335,27 @@ final class SnapshotPageArray extends PageArray {
 
                     if (value != null) {
                         c.store(null);
-                    } else read: {
-                        value = buffer;
-
-                        Node node;
-                        if (nodeCache != null && (node = nodeCache.get(index)) != null) {
-                            node.acquireShared();
-                            try {
-                                if (node.mId == index && node.mCachedState == Node.CACHED_CLEAN) {
-                                    p_copy(node.mPage, 0, buffer, 0, p_length(buffer));
-                                    break read;
+                    } else {
+                        read: {
+                            Node node;
+                            if (nodeCache != null && (node = nodeCache.get(index)) != null) {
+                                node.acquireShared();
+                                try {
+                                    if (node.mId == index
+                                        && node.mCachedState == Node.CACHED_CLEAN)
+                                    {
+                                        p_copy(node.mPage, 0, pageBuffer, 0, p_length(pageBuffer));
+                                        break read;
+                                    }
+                                } finally {
+                                    node.releaseShared();
                                 }
-                            } finally {
-                                node.releaseShared();
                             }
+
+                            mRawPageArray.readPage(index, pageBuffer);
                         }
 
-                        mRawPageArray.readPage(index, buffer);
+                        value = p_copyIfNotArray(pageBuffer, pageBufferArray);
                     }
 
                     synchronized (mSnapshotLock) {
@@ -356,6 +366,7 @@ final class SnapshotPageArray extends PageArray {
                     out.write(value);
                 }
             } finally {
+                p_delete(pageBuffer);
                 if (c != null) {
                     c.reset();
                 }
@@ -399,8 +410,8 @@ final class SnapshotPageArray extends PageArray {
                 }
 
                 try {
-                    mRawPageArray.readPage(index, mCaptureValue);
-                    c.store(mCaptureValue);
+                    mRawPageArray.readPage(index, mCaptureBuffer);
+                    c.store(p_copyIfNotArray(mCaptureBuffer, mCaptureBufferArray));
                 } finally {
                     mCaptureLatch.releaseExclusive();
                 }
@@ -432,6 +443,7 @@ final class SnapshotPageArray extends PageArray {
                 if (mClosed) {
                     return;
                 }
+                p_delete(mCaptureBuffer);
                 mProgress = ~0L;
                 mWriteInProgress = ~0L;
                 mCaptureInProgress = -1;
