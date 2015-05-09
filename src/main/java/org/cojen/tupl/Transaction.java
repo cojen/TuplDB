@@ -745,7 +745,7 @@ public class Transaction extends Locker {
     {
         check();
         try {
-            undoLog().push(indexId, op, payload, off, len);
+            PageOps.p_undoPush(undoLog(), indexId, op, payload, off, len);
         } catch (Throwable e) {
             throw borked(e, false);
         }

@@ -276,4 +276,14 @@ final class PageOps {
     {
         Utils.readFully(in, page, off, len);
     }
+
+    /**
+     * Not very low-level, but this is much simpler.
+     */
+    static void p_undoPush(UndoLog undo, long indexId, byte op,
+                           /*P*/ byte[] payload, int off, int len)
+        throws IOException
+    {
+        undo.push(indexId, op, payload, off, len);
+    }
 }
