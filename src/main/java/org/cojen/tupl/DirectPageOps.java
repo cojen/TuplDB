@@ -36,7 +36,7 @@ import org.cojen.tupl.io.DirectAccess;
  * @author Brian S O'Neill
  * @see PageOps
  */
-final class UnsafePageOps {
+final class DirectPageOps {
     private static final Unsafe UNSAFE = Hasher.getUnsafe();
     private static final long BYTE_ARRAY_OFFSET = UNSAFE.arrayBaseOffset(byte[].class);
     private static final long EMPTY = p_alloc(0);
