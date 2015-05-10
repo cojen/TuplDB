@@ -95,11 +95,11 @@ final class UnsafePageOps {
     }
 
     static void p_bytePut(long page, int index, byte v) {
-        UNSAFE.putInt(page + index, v);
+        UNSAFE.putByte(page + index, v);
     }
 
     static void p_bytePut(long page, int index, int v) {
-        UNSAFE.putInt(page + index, (byte) v);
+        UNSAFE.putByte(page + index, (byte) v);
     }
 
     static int p_ushortGetLE(long page, int index) {
