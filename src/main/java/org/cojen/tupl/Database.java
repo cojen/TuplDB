@@ -3201,7 +3201,7 @@ public final class Database implements CauseCloseable, Flushable {
                         Node node = allocDirtyFragmentNode();
                         try {
                             encodeInt48LE(newValue, poffset, node.mId);
-                            arraycopy(value, voffset, node.mPage, 0, pageSize);
+                            p_copyFromArray(value, voffset, node.mPage, 0, pageSize);
                             if (pageCount == 1) {
                                 break;
                             }
@@ -3445,7 +3445,7 @@ public final class Database implements CauseCloseable, Flushable {
             int inLen = p_ushortGetLE(fragmented, off);
             off += 2;
             len -= 2;
-            arraycopy(fragmented, off, value, vOff, inLen);
+            p_copyToArray(fragmented, off, value, vOff, inLen);
             off += inLen;
             len -= inLen;
             vOff += inLen;
