@@ -215,7 +215,7 @@ final class UnsafePageOps {
 
     static long p_ulongGetVar(long page, IntegerRef ref) {
         int offset = ref.get();
-        int val = p_ubyteGet(page, offset++);
+        int val = p_byteGet(page, offset++);
         if (val >= 0) {
             ref.set(offset);
             return val;
