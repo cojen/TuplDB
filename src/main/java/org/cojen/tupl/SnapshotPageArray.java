@@ -465,11 +465,7 @@ final class SnapshotPageArray extends PageArray {
         }
 
         private IOException aborted(Throwable cause) {
-            String message = "Snapshot closed";
-            if (cause != null) {
-                message += ": " + cause;
-            }
-            return new IOException(message);
+            return new IOException("Snapshot closed", cause);
         }
     }
 }
