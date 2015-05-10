@@ -29,6 +29,8 @@ import java.util.zip.CRC32;
 
 import javax.crypto.Cipher;
 
+import org.cojen.tupl.io.DirectAccess;
+
 /**
  * 
  *
@@ -535,8 +537,17 @@ final class UnsafePageOps {
                                long dstPage, int dstStart)
         throws GeneralSecurityException
     {
-        // FIXME
-        throw null;
+        ByteBuffer src = DirectAccess.ref(srcPage + srcStart, srcLen);
+        try {
+            ByteBuffer dst = DirectAccess.ref2(dstPage + dstStart, srcLen);
+            try {
+                return cipher.doFinal(src, dst);
+            } finally {
+                DirectAccess.unref(dst);
+            }
+        } finally {
+            DirectAccess.unref(src);
+        }
     }
 
     static void p_readFully(InputStream in, long page, int off, int len) throws IOException {
