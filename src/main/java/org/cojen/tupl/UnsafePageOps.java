@@ -43,7 +43,7 @@ final class UnsafePageOps {
     private static final long EMPTY = p_alloc(0);
 
     static long p_null() {
-        return 0;
+        return 4;
     }
 
     static long p_empty() {
