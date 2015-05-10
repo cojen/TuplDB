@@ -539,11 +539,6 @@ final class UnsafePageOps {
         throw null;
     }
 
-    static void p_readFully(InputStream in, long page) throws IOException {
-        // FIXME
-        throw null;
-    }
-
     static void p_readFully(InputStream in, long page, int off, int len) throws IOException {
         // FIXME
         throw null;

@@ -50,10 +50,24 @@ final class NioMapping extends Mapping {
     }
 
     @Override
+    void read(int start, ByteBuffer b) {
+        ByteBuffer bb = mBuffer.slice();
+        bb.position(start);
+        b.put(bb);
+    }
+
+    @Override
     void write(int start, byte[] b, int off, int len) {
         ByteBuffer bb = mBuffer.slice();
         bb.position(start);
         bb.put(b, off, len);
+    }
+
+    @Override
+    void write(int start, ByteBuffer b) {
+        ByteBuffer bb = mBuffer.slice();
+        bb.position(start);
+        bb.put(b);
     }
 
     @Override

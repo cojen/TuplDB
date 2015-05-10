@@ -662,7 +662,7 @@ final class DurablePageDb extends PageDb {
             // Figure out what the actual page size is.
 
             buffer = p_alloc(MINIMUM_PAGE_SIZE);
-            p_readFully(in, buffer);
+            p_readFully(in, buffer, 0, MINIMUM_PAGE_SIZE);
 
             long magic = p_longGetLE(buffer, I_MAGIC_NUMBER);
             if (magic != MAGIC_NUMBER) {
@@ -714,7 +714,7 @@ final class DurablePageDb extends PageDb {
         try {
             while (true) {
                 try {
-                    p_readFully(in, buffer);
+                    p_readFully(in, buffer, 0, p_length(buffer));
                 } catch (EOFException e) {
                     break;
                 }

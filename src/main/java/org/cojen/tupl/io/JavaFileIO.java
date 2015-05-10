@@ -23,6 +23,10 @@ import java.io.InterruptedIOException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
+import java.nio.ByteBuffer;
+
+import java.nio.channels.FileChannel;
+
 import java.util.EnumSet;
 
 import java.util.concurrent.TimeUnit;
@@ -167,29 +171,24 @@ final class JavaFileIO extends FileIO {
     }
 
     @Override
+    public void read(long pos, long ptr, int offset, int length) throws IOException {
+        access(true, pos, ptr + offset, length);
+    }
+
+    @Override
     public void write(long pos, byte[] buf, int offset, int length) throws IOException {
         access(false, pos, buf, offset, length);
+    }
+
+    @Override
+    public void write(long pos, long ptr, int offset, int length) throws IOException {
+        access(false, pos, ptr + offset, length);
     }
 
     private void access(boolean read, long pos, byte[] buf, int offset, int length)
         throws IOException
     {
-        if (mSyncCount != 0) {
-            long syncTimeNanos = System.nanoTime() - mSyncStartNanos;
-            if (syncTimeNanos > SYNC_YIELD_THRESHOLD_NANOS) {
-                // Yield 1ms for each second that sync has been running. Use a RW lock instead
-                // of a sleep, preventing prolonged sleep after sync finishes.
-                long sleepMillis = syncTimeNanos / (1000L * 1000 * 1000);
-                try {
-                    Lock lock = mSyncLock.writeLock();
-                    if (lock.tryLock(sleepMillis, TimeUnit.MILLISECONDS)) {
-                        lock.unlock();
-                    }
-                } catch (InterruptedException e) {
-                    throw new InterruptedIOException();
-                }
-            }
-        }
+        syncWait();
 
         try {
             RandomAccessFile file;
@@ -261,6 +260,112 @@ final class JavaFileIO extends FileIO {
                 throw eof;
             }
             throw rethrow(e, mCause);
+        }
+    }
+
+    private void access(boolean read, long pos, long ptr, int length) throws IOException {
+        if (length <= 0) {
+            return;
+        }
+
+        syncWait();
+
+        ByteBuffer bb = DirectAccess.ref(ptr, length);
+        try {
+            RandomAccessFile file;
+
+            Lock lock = mMappingLock.readLock();
+            lock.lock();
+            try {
+                Mapping[] mappings = mMappings;
+                if (mappings != null) {
+                    while (true) {
+                        int mi = (int) (pos >> MAPPING_SHIFT);
+                        int mlen = mappings.length;
+                        if (mi >= mlen) {
+                            break;
+                        }
+
+                        Mapping mapping = mappings[mi];
+                        int mpos = (int) (pos & (MAPPING_SIZE - 1));
+                        int mavail;
+
+                        if (mi == (mlen - 1)) {
+                            mavail = mLastMappingSize - mpos;
+                            if (mavail <= 0) {
+                                break;
+                            }
+                        } else {
+                            mavail = MAPPING_SIZE - mpos;
+                        }
+
+                        if (mavail > length) {
+                            mavail = length;
+                        }
+
+                        if (read) {
+                            mapping.read(mpos, bb);
+                        } else {
+                            mapping.write(mpos, bb);
+                        }
+
+                        if (!bb.hasRemaining()) {
+                            return;
+                        }
+
+                        pos += mavail;
+                    }
+                }
+
+                file = accessFile();
+            } finally {
+                lock.unlock();
+            }
+
+            try {
+                FileChannel channel = file.getChannel();
+                while (true) {
+                    int amt;
+                    if (read) {
+                        amt = channel.read(bb, pos);
+                        if (amt < 0) {
+                            throw new EOFException("Attempt to read past end of file: " + pos);
+                        }
+                    } else {
+                        amt = channel.write(bb, pos);
+                    }
+                    length -= amt;
+                    if (length <= 0) {
+                        break;
+                    }
+                    pos += amt;
+                }
+            } finally {
+                yieldFile(file);
+            }
+        } catch (IOException e) {
+            throw rethrow(e, mCause);
+        } finally {
+            DirectAccess.unref(bb);
+        }
+    }
+
+    private void syncWait() throws InterruptedIOException {
+        if (mSyncCount != 0) {
+            long syncTimeNanos = System.nanoTime() - mSyncStartNanos;
+            if (syncTimeNanos > SYNC_YIELD_THRESHOLD_NANOS) {
+                // Yield 1ms for each second that sync has been running. Use a RW lock instead
+                // of a sleep, preventing prolonged sleep after sync finishes.
+                long sleepMillis = syncTimeNanos / (1000L * 1000 * 1000);
+                try {
+                    Lock lock = mSyncLock.writeLock();
+                    if (lock.tryLock(sleepMillis, TimeUnit.MILLISECONDS)) {
+                        lock.unlock();
+                    }
+                } catch (InterruptedException e) {
+                    throw new InterruptedIOException();
+                }
+            }
         }
     }
 

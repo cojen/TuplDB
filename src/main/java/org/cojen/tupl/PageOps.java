@@ -267,10 +267,6 @@ final class PageOps {
         return cipher.doFinal(srcPage, srcStart, srcLen, dstPage, dstStart);
     }
 
-    static void p_readFully(InputStream in, /*P*/ byte[] page) throws IOException {
-        Utils.readFully(in, page, 0, page.length);
-    }
-
     static void p_readFully(InputStream in, /*P*/ byte[] page, int off, int len)
         throws IOException
     {
