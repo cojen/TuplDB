@@ -524,12 +524,14 @@ final class UnsafePageOps {
     }
 
     static int p_crc32(long srcPage, int srcStart, int len) {
-        // Not terribly efficient, but CRC is only computed for the database header page.
-        byte[] temp = new byte[len];
-        p_copyToArray(srcPage, srcStart, temp, 0, len);
-        CRC32 crc = new CRC32();
-        crc.update(temp);
-        return (int) crc.getValue();
+        ByteBuffer bb = DirectAccess.ref(srcPage + srcStart, len);
+        try {
+            CRC32 crc = new CRC32();
+            crc.update(bb);
+            return (int) crc.getValue();
+        } finally {
+            DirectAccess.unref(bb);
+        }
     }
 
     static int p_cipherDoFinal(Cipher cipher,
