@@ -16,7 +16,6 @@
 
 package org.cojen.tupl;
 
-import java.io.InputStream;
 import java.io.IOException;
 
 import java.nio.ByteBuffer;
@@ -64,8 +63,19 @@ final class PageOps {
 
     /**
      * Allocates a clone if the page type is not an array. Must be deleted.
+     *
+     * @return original array or a newly allocated page
      */
     static /*P*/ byte[] p_transfer(byte[] array) {
+        return array;
+    }
+
+    /**
+     * Copies from an array to a page, but only if the page type is not an array.
+     *
+     * @return original array or page with copied data
+     */
+    static /*P*/ byte[] p_transferTo(byte[] array, /*P*/ byte[] page) {
         return array;
     }
 
@@ -271,12 +281,6 @@ final class PageOps {
         throws GeneralSecurityException
     {
         return cipher.doFinal(srcPage, srcStart, srcLen, dstPage, dstStart);
-    }
-
-    static void p_readFully(InputStream in, /*P*/ byte[] page, int off, int len)
-        throws IOException
-    {
-        Utils.readFully(in, page, off, len);
     }
 
     /**
