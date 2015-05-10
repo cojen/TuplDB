@@ -66,7 +66,9 @@ final class DirectPageOps {
     }
 
     static void p_delete(long page) {
-        UNSAFE.freeMemory(page - 4);
+        if (page != EMPTY) {
+            UNSAFE.freeMemory(page - 4);
+        }
     }
 
     static long p_clone(long page) {

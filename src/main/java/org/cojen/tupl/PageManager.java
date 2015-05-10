@@ -100,44 +100,75 @@ final class PageManager {
         mRegularFreeList = PageQueue.newRegularFreeList(this);
         mRecycleFreeList = PageQueue.newRecycleFreeList(this);
 
-        if (!restored) {
-            // Pages 0 and 1 are reserved.
-            mTotalPageCount = 4;
-            mRegularFreeList.init(2);
-            mRecycleFreeList.init(3);
-        } else {
-            mTotalPageCount = readTotalPageCount(header, offset + I_TOTAL_PAGE_COUNT);
+        try {
+            if (!restored) {
+                // Pages 0 and 1 are reserved.
+                mTotalPageCount = 4;
+                mRegularFreeList.init(2);
+                mRecycleFreeList.init(3);
+            } else {
+                mTotalPageCount = readTotalPageCount(header, offset + I_TOTAL_PAGE_COUNT);
 
-            long actualPageCount = array.getPageCount();
-            if (actualPageCount > mTotalPageCount) {
-                if (!array.isReadOnly()) {
-                    // Truncate extra uncommitted pages.
-                    array.setPageCount(mTotalPageCount);
+                long actualPageCount = array.getPageCount();
+                if (actualPageCount > mTotalPageCount) {
+                    if (!array.isReadOnly()) {
+                        // Truncate extra uncommitted pages.
+                        array.setPageCount(mTotalPageCount);
+                    }
+                } else if (actualPageCount < mTotalPageCount) {
+                    // Not harmful -- can be caused by pre-allocated append tail node.
                 }
-            } else if (actualPageCount < mTotalPageCount) {
-                // Not harmful -- can be caused by pre-allocated append tail node.
-            }
 
-            PageQueue reserve;
-            fullLock();
-            try {
-                mRegularFreeList.init(header, offset + I_REGULAR_QUEUE);
-                mRecycleFreeList.init(header, offset + I_RECYCLE_QUEUE);
+                PageQueue reserve;
+                fullLock();
+                try {
+                    mRegularFreeList.init(header, offset + I_REGULAR_QUEUE);
+                    mRecycleFreeList.init(header, offset + I_RECYCLE_QUEUE);
 
-                if (PageQueue.exists(header, offset + I_RESERVE_QUEUE)) {
-                    reserve = mRegularFreeList.newReserveFreeList();
-                    reserve.init(header, offset + I_RESERVE_QUEUE);
-                } else {
-                    reserve = null;
+                    if (PageQueue.exists(header, offset + I_RESERVE_QUEUE)) {
+                        reserve = mRegularFreeList.newReserveFreeList();
+                        try {
+                            reserve.init(header, offset + I_RESERVE_QUEUE);
+                        } catch (Throwable e) {
+                            reserve.delete();
+                            throw e;
+                        }
+                    } else {
+                        reserve = null;
+                    }
+                } finally {
+                    fullUnlock();
                 }
-            } finally {
-                fullUnlock();
-            }
 
-            if (reserve != null) {
-                // Reclaim reserved pages from an aborted compaction.
-                reserve.reclaim(mRemoveLock, mTotalPageCount - 1);
+                if (reserve != null) {
+                    try {
+                        // Reclaim reserved pages from an aborted compaction.
+                        reserve.reclaim(mRemoveLock, mTotalPageCount - 1);
+                    } finally {
+                        reserve.delete();
+                    }
+                }
             }
+        } catch (Throwable e) {
+            delete();
+            throw e;
+        }
+    }
+
+    /**
+     * Must be called when object is no longer referenced.
+     */
+    void delete() {
+        if (mRegularFreeList != null) {
+            mRegularFreeList.delete();
+        }
+        if (mRecycleFreeList != null) {
+            mRecycleFreeList.delete();
+        }
+        PageQueue reserve = mReserveList;
+        if (reserve != null) {
+            reserve.delete();
+            mReserveList = null;
         }
     }
 
@@ -312,6 +343,9 @@ final class PageManager {
         }
 
         mRemoveLock.lock();
+        if (mReserveList != null) {
+            mReserveList.delete();
+        }
         mReserveList = reserve;
         mCompactionTargetPageCount = targetPageCount;
         // Volatile write performed after all the states it depends on are set. Because remove
@@ -420,10 +454,14 @@ final class PageManager {
         commitLock.writeLock().unlock();
 
         if (reserve != null) {
-            // Need to unlock first because fullUnlock didn't see it.
-            reserve.appendLock().unlock();
+            try {
+                // Need to unlock first because fullUnlock didn't see it.
+                reserve.appendLock().unlock();
 
-            reserve.reclaim(mRemoveLock, upperBound);
+                reserve.reclaim(mRemoveLock, upperBound);
+            } finally {
+                reserve.delete();
+            }
         }
 
         return ready;

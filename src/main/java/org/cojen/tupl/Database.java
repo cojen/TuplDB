@@ -38,6 +38,7 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -248,7 +249,7 @@ public final class Database implements CauseCloseable, Flushable {
 
     private volatile Checkpointer mCheckpointer;
 
-    private final TempFileManager mTempFileManager;
+    final TempFileManager mTempFileManager;
 
     volatile boolean mClosed;
     volatile Throwable mClosedCause;
@@ -904,6 +905,7 @@ public final class Database implements CauseCloseable, Flushable {
             byte[] name = mRegistryKeyMap.load(null, idKey);
 
             if (name == null) {
+                checkClosed();
                 return null;
             }
 
@@ -1555,7 +1557,11 @@ public final class Database implements CauseCloseable, Flushable {
                 (pageSize, dataFiles, factory, options, null, config.mCrypto, in);
         }
 
-        restored.close();
+        try {
+            restored.close();
+        } finally {
+            restored.delete();
+        }
 
         return Database.open(config);
     }
@@ -2148,6 +2154,10 @@ public final class Database implements CauseCloseable, Flushable {
         close(null, mPageDb.isDurable());
     }
 
+    protected void finalize() throws IOException {
+        close();
+    }
+
     private void close(Throwable cause, boolean shutdown) throws IOException {
         if (cause != null && !mClosed) {
             if (cClosedCauseUpdater.compareAndSet(this, null, cause) && mEventListener != null) {
@@ -2162,6 +2172,9 @@ public final class Database implements CauseCloseable, Flushable {
         if (shutdown) {
             mCheckpointLock.lock();
             try {
+                if (mClosed) {
+                    return;
+                }
                 checkpoint(true, 0, 0);
                 mClosed = true;
                 if (c != null) {
@@ -2171,77 +2184,112 @@ public final class Database implements CauseCloseable, Flushable {
                 mCheckpointLock.unlock();
             }
         } else {
-            mClosed = true;
             if (c != null) {
                 c.close();
             }
             // Wait for any in-progress checkpoint to complete.
             mCheckpointLock.lock();
-            // Nothing really needs to be done with lock held, but do something just in
-            // case a "smart" compiler thinks the lock can be eliminated.
-            mClosed = true;
-            mCheckpointLock.unlock();
-        }
-
-        mCheckpointer = null;
-
-        if (mOpenTrees != null) {
-            mOpenTreesLatch.acquireExclusive();
             try {
-                mOpenTrees.clear();
-                mOpenTreesById.clear(0);
+                if (mClosed) {
+                    return;
+                }
+                mClosed = true;
             } finally {
-                mOpenTreesLatch.releaseExclusive();
+                mCheckpointLock.unlock();
             }
         }
 
-        Lock lock = mSharedCommitLock;
-        if (lock != null) {
-            lock.lock();
-        }
         try {
-            if (mUsageLists != null) {
-                for (NodeUsageList usageList : mUsageLists) {
-                    if (usageList != null) {
-                        usageList.close();
+            mCheckpointer = null;
+
+            if (mOpenTrees != null) {
+                ArrayList<TreeRef> trees;
+                mOpenTreesLatch.acquireExclusive();
+                try {
+                    trees = new ArrayList<>(mOpenTreesById.size());
+
+                    mOpenTreesById.traverse(new LHashTable.Visitor
+                                            <LHashTable.ObjEntry<TreeRef>, IOException>()
+                    {
+                        public boolean visit(LHashTable.ObjEntry<TreeRef> entry)
+                            throws IOException
+                        {
+                            trees.add(entry.value);
+                            return true;
+                        }
+                    });
+
+                    mOpenTrees.clear();
+                } finally {
+                    mOpenTreesLatch.releaseExclusive();
+                }
+
+                for (TreeRef ref : trees) {
+                    Tree tree = ref.get();
+                    if (tree != null) {
+                        tree.close();
                     }
                 }
             }
 
-            if (mTreeNodeMap != null) {
-                mTreeNodeMap.clear();
+            Lock lock = mSharedCommitLock;
+            if (lock != null) {
+                lock.lock();
             }
+            try {
+                if (mUsageLists != null) {
+                    for (NodeUsageList usageList : mUsageLists) {
+                        if (usageList != null) {
+                            usageList.delete();
+                        }
+                    }
+                }
 
-            if (mDirtyList != null) {
-                mDirtyList.clear();
-            }
+                if (mTreeNodeMap != null) {
+                    mTreeNodeMap.delete();
+                }
 
-            IOException ex = null;
+                if (mDirtyList != null) {
+                    mDirtyList.delete();
+                }
 
-            ex = closeQuietly(ex, mRedoWriter, cause);
-            ex = closeQuietly(ex, mPageDb, cause);
-            ex = closeQuietly(ex, mTempFileManager, cause);
+                // FIXME: Need to delete internal tree root nodes and undo log nodes.
 
-            if (shutdown && mBaseFile != null) {
-                deleteRedoLogFiles();
-                new File(mBaseFile.getPath() + INFO_FILE_SUFFIX).delete();
-                ex = closeQuietly(ex, mLockFile, cause);
-                new File(mBaseFile.getPath() + LOCK_FILE_SUFFIX).delete();
-            } else {
-                ex = closeQuietly(ex, mLockFile, cause);
-            }
+                IOException ex = null;
 
-            if (mLockManager != null) {
-                mLockManager.close();
-            }
+                ex = closeQuietly(ex, mRedoWriter, cause);
+                ex = closeQuietly(ex, mPageDb, cause);
+                ex = closeQuietly(ex, mTempFileManager, cause);
 
-            if (ex != null) {
-                throw ex;
+                if (shutdown && mBaseFile != null) {
+                    deleteRedoLogFiles();
+                    new File(mBaseFile.getPath() + INFO_FILE_SUFFIX).delete();
+                    ex = closeQuietly(ex, mLockFile, cause);
+                    new File(mBaseFile.getPath() + LOCK_FILE_SUFFIX).delete();
+                } else {
+                    ex = closeQuietly(ex, mLockFile, cause);
+                }
+
+                if (mLockManager != null) {
+                    mLockManager.close();
+                }
+
+                if (ex != null) {
+                    throw ex;
+                }
+            } finally {
+                if (lock != null) {
+                    lock.unlock();
+                }
             }
         } finally {
-            if (lock != null) {
-                lock.unlock();
+            if (mPageDb != null) {
+                mPageDb.delete();
             }
+            if (mSparePagePool != null) {
+                mSparePagePool.delete();
+            }
+            p_delete(mCommitHeader);
         }
     }
 
@@ -3821,7 +3869,6 @@ public final class Database implements CauseCloseable, Flushable {
 
             if (header == p_null()) {
                 // Not resumed. Allocate new header early, before acquiring locks.
-                // FIXME: make sure it gets deleted later
                 header = p_calloc(mPageDb.pageSize());
                 resume = false;
                 if (masterUndoLog != null) {
@@ -3829,60 +3876,61 @@ public final class Database implements CauseCloseable, Flushable {
                 }
             }
 
-            int hoff = mPageDb.extraCommitDataOffset();
-            p_intPutLE(header, hoff + I_ENCODING_VERSION, ENCODING_VERSION);
-
             final RedoWriter redo = mRedoWriter;
-            if (redo != null) {
-                // File-based redo log should create a new file, but not write to it yet.
-                redo.checkpointPrepare();
-            }
-
-            while (true) {
-                Lock commitLock = acquireExclusiveCommitLock();
-
-                // Registry root is infrequently modified, and so shared latch
-                // is usually available. If not, cause might be a deadlock. To
-                // be safe, always release commit lock and start over.
-                if (root.tryAcquireShared()) {
-                    break;
-                }
-
-                commitLock.unlock();
-            }
-
-            if (!resume) {
-                p_longPutLE(header, hoff + I_ROOT_PAGE_ID, root.mId);
-            }
-
-            final long redoNum, redoPos, redoTxnId;
-            if (redo == null) {
-                redoNum = 0;
-                redoPos = 0;
-                redoTxnId = 0;
-            } else {
-                // Switch and capture state while commit lock is held.
-                try {
-                    redo.checkpointSwitch();
-                    redoNum = redo.checkpointNumber();
-                    redoPos = redo.checkpointPosition();
-                    redoTxnId = redo.checkpointTransactionId();
-                } catch (Throwable e) {
-                    redo.checkpointAborted();
-                    throw e;
-                }
-            }
-
-            p_longPutLE(header, hoff + I_CHECKPOINT_NUMBER, redoNum);
-            p_longPutLE(header, hoff + I_REDO_TXN_ID, redoTxnId);
-            p_longPutLE(header, hoff + I_REDO_POSITION, redoPos);
-
-            p_longPutLE(header, hoff + I_REPL_ENCODING,
-                        mRedoWriter == null ? 0 : mRedoWriter.encoding());
-
-            mCheckpointFlushState = CHECKPOINT_FLUSH_PREPARE;
 
             try {
+                int hoff = mPageDb.extraCommitDataOffset();
+                p_intPutLE(header, hoff + I_ENCODING_VERSION, ENCODING_VERSION);
+
+                if (redo != null) {
+                    // File-based redo log should create a new file, but not write to it yet.
+                    redo.checkpointPrepare();
+                }
+
+                while (true) {
+                    Lock commitLock = acquireExclusiveCommitLock();
+
+                    // Registry root is infrequently modified, and so shared latch
+                    // is usually available. If not, cause might be a deadlock. To
+                    // be safe, always release commit lock and start over.
+                    if (root.tryAcquireShared()) {
+                        break;
+                    }
+
+                    commitLock.unlock();
+                }
+
+                if (!resume) {
+                    p_longPutLE(header, hoff + I_ROOT_PAGE_ID, root.mId);
+                }
+
+                final long redoNum, redoPos, redoTxnId;
+                if (redo == null) {
+                    redoNum = 0;
+                    redoPos = 0;
+                    redoTxnId = 0;
+                } else {
+                    // Switch and capture state while commit lock is held.
+                    try {
+                        redo.checkpointSwitch();
+                        redoNum = redo.checkpointNumber();
+                        redoPos = redo.checkpointPosition();
+                        redoTxnId = redo.checkpointTransactionId();
+                    } catch (Throwable e) {
+                        redo.checkpointAborted();
+                        throw e;
+                    }
+                }
+
+                p_longPutLE(header, hoff + I_CHECKPOINT_NUMBER, redoNum);
+                p_longPutLE(header, hoff + I_REDO_TXN_ID, redoTxnId);
+                p_longPutLE(header, hoff + I_REDO_POSITION, redoPos);
+
+                p_longPutLE(header, hoff + I_REPL_ENCODING,
+                            mRedoWriter == null ? 0 : mRedoWriter.encoding());
+
+                mCheckpointFlushState = CHECKPOINT_FLUSH_PREPARE;
+
                 // TODO: I don't like all this activity with exclusive commit
                 // lock held. UndoLog can be refactored to store into a special
                 // Tree, but this requires more features to be added to Tree
@@ -3927,11 +3975,11 @@ public final class Database implements CauseCloseable, Flushable {
                         flush(resume, header);
                     }
                 });
+            } catch (Throwable e) {
+                if (mCommitHeader != header) {
+                    p_delete(header);
+                }
 
-                // Reset for next checkpoint.
-                mCommitHeader = p_null();
-                mCommitMasterUndoLog = null;
-            } catch (IOException e) {
                 if (mCheckpointFlushState == CHECKPOINT_FLUSH_PREPARE) {
                     // Exception was thrown with locks still held.
                     mCheckpointFlushState = CHECKPOINT_NOT_FLUSHING;
@@ -3941,8 +3989,14 @@ public final class Database implements CauseCloseable, Flushable {
                         redo.checkpointAborted();
                     }
                 }
+
                 throw e;
             }
+
+            // Reset for next checkpoint.
+            p_delete(mCommitHeader);
+            mCommitHeader = p_null();
+            mCommitMasterUndoLog = null;
 
             if (masterUndoLog != null) {
                 // Delete the master undo log, which won't take effect until

@@ -377,9 +377,10 @@ class Tree extends AbstractView implements Index {
             Node newRoot = root.cloneNode();
             mDatabase.swapIfDirty(root, newRoot);
 
-            int hash = NodeMap.hash(root.mId);
-            NodeMap map = mDatabase.mTreeNodeMap;
-            map.remove(root, hash);
+            if (root.mId > Node.STUB_ID) {
+                NodeMap map = mDatabase.mTreeNodeMap;
+                map.remove(root, NodeMap.hash(root.mId));
+            }
 
             root.closeRoot();
 
@@ -393,7 +394,10 @@ class Tree extends AbstractView implements Index {
                 try {
                     mDatabase.treeClosed(this);
                     newRoot.makeEvictableNow();
-                    map.put(newRoot, hash);
+                    if (newRoot.mId > Node.STUB_ID) {
+                        NodeMap map = mDatabase.mTreeNodeMap;
+                        map.put(newRoot, NodeMap.hash(newRoot.mId));
+                    }
                 } finally {
                     newRoot.releaseShared();
                 }

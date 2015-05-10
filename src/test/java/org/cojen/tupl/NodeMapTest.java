@@ -54,6 +54,8 @@ public class NodeMapTest {
             map.remove(n, hash);
             assertNull(map.get(i, hash));
         }
+
+        map.delete();
     }
 
     @Test
@@ -71,7 +73,7 @@ public class NodeMapTest {
             nodes[i] = n;
         }
 
-        map.clear();
+        map.delete();
 
         for (int i=0; i<count; i++) {
             assertNull(map.get(i, NodeMap.hash(i)));

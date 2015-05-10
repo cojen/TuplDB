@@ -46,6 +46,10 @@ final class NonPageDb extends PageDb {
     }
 
     @Override
+    void delete() {
+    }
+
+    @Override
     public boolean isDurable() {
         return false;
     }

@@ -234,6 +234,19 @@ final class Node extends Latch implements DatabaseAccess {
         mPage = page;
     }
 
+    /**
+     * Must be called when object is no longer referenced.
+     */
+    void delete() {
+        acquireExclusive();
+        /*P*/ byte[] page = mPage;
+        if (page != p_empty()) {
+            p_delete(page);
+            closeRoot();
+        }
+        releaseExclusive();
+    }
+
     @Override
     public Database getDatabase() {
         return mUsageList.mDatabase;
@@ -500,102 +513,95 @@ final class Node extends Latch implements DatabaseAccess {
         // Same code as binarySearch, but instead of returning the position, it directly copies
         // the value if found. This avoids having to decode the found value location twice.
 
-        final /*P*/ byte[] page = node.mPage;
-        final int keyLen = key.length;
-        int lowPos = node.mSearchVecStart;
-        int highPos = node.mSearchVecEnd;
+        try {
+            final /*P*/ byte[] page = node.mPage;
+            final int keyLen = key.length;
+            int lowPos = node.mSearchVecStart;
+            int highPos = node.mSearchVecEnd;
 
-        int lowMatch = 0;
-        int highMatch = 0;
+            int lowMatch = 0;
+            int highMatch = 0;
 
-        outer: while (lowPos <= highPos) {
-            int midPos = ((lowPos + highPos) >> 1) & ~1;
+            outer: while (lowPos <= highPos) {
+                int midPos = ((lowPos + highPos) >> 1) & ~1;
 
-            int compareLoc, compareLen, i;
-            compare: {
-                compareLoc = p_ushortGetLE(page, midPos);
-                compareLen = p_byteGet(page, compareLoc++);
-                if (compareLen >= 0) {
-                    compareLen++;
-                } else {
-                    int header = compareLen;
-                    compareLen = ((compareLen & 0x3f) << 8) | p_ubyteGet(page, compareLoc++);
+                int compareLoc, compareLen, i;
+                compare: {
+                    compareLoc = p_ushortGetLE(page, midPos);
+                    compareLen = p_byteGet(page, compareLoc++);
+                    if (compareLen >= 0) {
+                        compareLen++;
+                    } else {
+                        int header = compareLen;
+                        compareLen = ((compareLen & 0x3f) << 8) | p_ubyteGet(page, compareLoc++);
 
-                    if ((header & ENTRY_FRAGMENTED) != 0) {
-                        // Note: An optimized version wouldn't need to copy the whole key.
-                        byte[] compareKey;
-                        try {
-                            compareKey = tree.mDatabase.reconstructKey
+                        if ((header & ENTRY_FRAGMENTED) != 0) {
+                            // Note: An optimized version wouldn't need to copy the whole key.
+                            byte[] compareKey = tree.mDatabase.reconstructKey
                                 (page, compareLoc, compareLen);
-                        } catch (Throwable e) {
-                            node.releaseShared();
-                            throw e;
-                        }
 
-                        int fullCompareLen = compareKey.length;
+                            int fullCompareLen = compareKey.length;
 
-                        int minLen = Math.min(fullCompareLen, keyLen);
-                        i = Math.min(lowMatch, highMatch);
-                        for (; i<minLen; i++) {
-                            byte cb = compareKey[i];
-                            byte kb = key[i];
-                            if (cb != kb) {
-                                if ((cb & 0xff) < (kb & 0xff)) {
-                                    lowPos = midPos + 2;
-                                    lowMatch = i;
-                                } else {
-                                    highPos = midPos - 2;
-                                    highMatch = i;
+                            int minLen = Math.min(fullCompareLen, keyLen);
+                            i = Math.min(lowMatch, highMatch);
+                            for (; i<minLen; i++) {
+                                byte cb = compareKey[i];
+                                byte kb = key[i];
+                                if (cb != kb) {
+                                    if ((cb & 0xff) < (kb & 0xff)) {
+                                        lowPos = midPos + 2;
+                                        lowMatch = i;
+                                    } else {
+                                        highPos = midPos - 2;
+                                        highMatch = i;
+                                    }
+                                    continue outer;
                                 }
-                                continue outer;
                             }
+
+                            // Update compareLen and compareLoc for use by the code after the
+                            // current scope. The compareLoc is completely bogus at this point,
+                            // but is corrected when the value is retrieved below.
+                            compareLoc += compareLen - fullCompareLen;
+                            compareLen = fullCompareLen;
+
+                            break compare;
                         }
+                    }
 
-                        // Update compareLen and compareLoc for use by the code after the
-                        // current scope. The compareLoc is completely bogus at this point,
-                        // but is corrected when the value is retrieved below.
-                        compareLoc += compareLen - fullCompareLen;
-                        compareLen = fullCompareLen;
-
-                        break compare;
+                    int minLen = Math.min(compareLen, keyLen);
+                    i = Math.min(lowMatch, highMatch);
+                    for (; i<minLen; i++) {
+                        byte cb = p_byteGet(page, compareLoc + i);
+                        byte kb = key[i];
+                        if (cb != kb) {
+                            if ((cb & 0xff) < (kb & 0xff)) {
+                                lowPos = midPos + 2;
+                                lowMatch = i;
+                            } else {
+                                highPos = midPos - 2;
+                                highMatch = i;
+                            }
+                            continue outer;
+                        }
                     }
                 }
 
-                int minLen = Math.min(compareLen, keyLen);
-                i = Math.min(lowMatch, highMatch);
-                for (; i<minLen; i++) {
-                    byte cb = p_byteGet(page, compareLoc + i);
-                    byte kb = key[i];
-                    if (cb != kb) {
-                        if ((cb & 0xff) < (kb & 0xff)) {
-                            lowPos = midPos + 2;
-                            lowMatch = i;
-                        } else {
-                            highPos = midPos - 2;
-                            highMatch = i;
-                        }
-                        continue outer;
-                    }
-                }
-            }
-
-            if (compareLen < keyLen) {
-                lowPos = midPos + 2;
-                lowMatch = i;
-            } else if (compareLen > keyLen) {
-                highPos = midPos - 2;
-                highMatch = i;
-            } else {
-                try {
+                if (compareLen < keyLen) {
+                    lowPos = midPos + 2;
+                    lowMatch = i;
+                } else if (compareLen > keyLen) {
+                    highPos = midPos - 2;
+                    highMatch = i;
+                } else {
                     return retrieveLeafValueAtLoc(node, page, compareLoc + compareLen);
-                } finally {
-                    node.releaseShared();
                 }
             }
-        }
 
-        node.releaseShared();
-        return null;
+            return null;
+        } finally {
+            node.releaseShared();
+        }
     }
 
     /**
