@@ -648,12 +648,14 @@ final class DurablePageDb extends PageDb {
             throw new DatabaseException("Cannot restore into a read-only file");
         }
 
-        /*P*/ byte[] buffer;
+        byte[] buffer;
+        /*P*/ byte[] bufferPage;
         PageArray pa;
         long index = 0;
 
         if (crypto != null) {
-            buffer = p_alloc(pageSize);
+            buffer = new byte[pageSize];
+            bufferPage = p_transfer(buffer);
             pa = openPageArray(pageSize, files, factory, options);
             if (!pa.isEmpty()) {
                 throw new DatabaseException("Cannot restore into a non-empty file");
@@ -661,35 +663,39 @@ final class DurablePageDb extends PageDb {
         } else {
             // Figure out what the actual page size is.
 
-            buffer = p_alloc(MINIMUM_PAGE_SIZE);
-            p_readFully(in, buffer, 0, MINIMUM_PAGE_SIZE);
+            buffer = new byte[MINIMUM_PAGE_SIZE];
+            readFully(in, buffer, 0, buffer.length);
 
-            long magic = p_longGetLE(buffer, I_MAGIC_NUMBER);
+            long magic = decodeLongLE(buffer, I_MAGIC_NUMBER);
             if (magic != MAGIC_NUMBER) {
                 throw new CorruptDatabaseException("Wrong magic number: " + magic);
             }
 
-            pageSize = p_intGetLE(buffer, I_PAGE_SIZE);
+            pageSize = decodeIntLE(buffer, I_PAGE_SIZE);
             pa = openPageArray(pageSize, files, factory, options);
 
             if (!pa.isEmpty()) {
                 throw new DatabaseException("Cannot restore into a non-empty file");
             }
 
-            if (pageSize != p_length(buffer)) {
-                /*P*/ byte[] newBuffer = p_alloc(pageSize);
-                p_copy(buffer, 0, newBuffer, 0, p_length(buffer));
-                p_readFully(in, newBuffer, p_length(buffer), pageSize - p_length(buffer));
-                /*P*/ byte[] oldBuffer = buffer;
+            if (pageSize != buffer.length) {
+                byte[] newBuffer = new byte[pageSize];
+                arraycopy(buffer, 0, newBuffer, 0, buffer.length);
+                readFully(in, newBuffer, buffer.length, pageSize - buffer.length);
                 buffer = newBuffer;
-                p_delete(oldBuffer);
             }
 
-            pa.writePage(index, buffer);
-            index++;
+            bufferPage = p_transfer(buffer);
+            try {
+                pa.writePage(index, bufferPage);
+                index++;
+            } catch (Throwable e) {
+                p_delete(bufferPage);
+                throw e;
+            }
         }
 
-        return restoreFromSnapshot(cache, crypto, in, buffer, pa, index);
+        return restoreFromSnapshot(cache, crypto, in, buffer, bufferPage, pa, index);
     }
 
     /**
@@ -704,25 +710,29 @@ final class DurablePageDb extends PageDb {
             throw new DatabaseException("Cannot restore into a non-empty file");
         }
 
-        return restoreFromSnapshot(cache, crypto, in, p_alloc(pa.pageSize()), pa, 0);
+        byte[] buffer = new byte[pa.pageSize()];
+        /*P*/ byte[] bufferPage = p_transfer(buffer);
+
+        return restoreFromSnapshot(cache, crypto, in, buffer, bufferPage, pa, 0);
     }
 
     private static PageDb restoreFromSnapshot(PageCache cache, Crypto crypto, InputStream in,
-                                              /*P*/ byte[] buffer, PageArray pa, long index)
+                                              byte[] buffer, /*P*/ byte[] bufferPage,
+                                              PageArray pa, long index)
         throws IOException
     {
         try {
             while (true) {
                 try {
-                    p_readFully(in, buffer, 0, p_length(buffer));
+                    readFully(in, buffer, 0, buffer.length);
                 } catch (EOFException e) {
                     break;
                 }
-                pa.writePage(index, buffer);
+                pa.writePage(index, p_transferTo(buffer, bufferPage));
                 index++;
             }
         } finally {
-            p_delete(buffer);
+            p_delete(bufferPage);
             closeQuietly(null, in);
         }
 

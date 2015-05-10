@@ -18,7 +18,6 @@ package org.cojen.tupl;
 
 import sun.misc.Unsafe;
 
-import java.io.InputStream;
 import java.io.IOException;
 
 import java.nio.ByteBuffer;
@@ -80,6 +79,12 @@ final class UnsafePageOps {
     static long p_transfer(byte[] array) {
         int length = array.length;
         long page = p_alloc(length);
+        p_copyFromArray(array, 0, page, 0, length);
+        return page;
+    }
+
+    static long p_transferTo(byte[] array, long page) {
+        int length = array.length;
         p_copyFromArray(array, 0, page, 0, length);
         return page;
     }
@@ -560,11 +565,6 @@ final class UnsafePageOps {
         } finally {
             DirectAccess.unref(src);
         }
-    }
-
-    static void p_readFully(InputStream in, long page, int off, int len) throws IOException {
-        // FIXME
-        throw null;
     }
 
     static void p_undoPush(UndoLog undo, long indexId, byte op,
