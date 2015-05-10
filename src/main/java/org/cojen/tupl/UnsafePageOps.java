@@ -394,13 +394,23 @@ final class UnsafePageOps {
     }
 
     static void p_copyFromBB(ByteBuffer src, long dstPage, int dstStart, int len) {
-        // FIXME
-        throw null;
+        ByteBuffer dst = DirectAccess.ref(dstPage + dstStart, len);
+        try {
+            src.limit(src.position() + len);
+            dst.put(src);
+            src.limit(src.capacity());
+        } finally {
+            DirectAccess.unref(dst);
+        }
     }
 
     static void p_copyToBB(long srcPage, int srcStart, ByteBuffer dst, int len) {
-        // FIXME
-        throw null;
+        ByteBuffer src = DirectAccess.ref(srcPage + srcStart, len);
+        try {
+            dst.put(src);
+        } finally {
+            DirectAccess.unref(src);
+        }
     }
 
     static void p_copy(long srcPage, int srcStart, long dstPage, int dstStart, int len) {
