@@ -73,7 +73,7 @@ class PageAccessTransformer {
 
             index = line.indexOf("PageOps");
             if (index >= 0) {
-                line = line.substring(0, index) + "Unsafe" + line.substring(index);
+                line = line.substring(0, index) + "Direct" + line.substring(index);
             }
 
             return line;
