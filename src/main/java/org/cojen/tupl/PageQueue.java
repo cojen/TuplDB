@@ -163,6 +163,14 @@ final class PageQueue implements IntegerRef {
     }
 
     /**
+     * Must be called when object is no longer referenced.
+     */
+    void delete() {
+        p_delete(mRemoveHead);
+        p_delete(mAppendTail);
+    }
+
+    /**
      * @throws IllegalStateException if this is not a regular free list
      */
     PageQueue newReserveFreeList() {

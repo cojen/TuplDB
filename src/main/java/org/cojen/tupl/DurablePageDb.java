@@ -305,10 +305,22 @@ final class DurablePageDb extends PageDb {
                 }
             }
         } catch (WrongPageSize e) {
+            delete();
             closeQuietly(null, this);
             throw e;
         } catch (Throwable e) {
+            delete();
             throw closeOnFailure(e);
+        }
+    }
+
+    /**
+     * Must be called when object is no longer referenced.
+     */
+    @Override
+    void delete() {
+        if (mPageManager != null) {
+            mPageManager.delete();
         }
     }
 

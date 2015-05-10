@@ -67,4 +67,20 @@ final class PagePool extends Latch {
             releaseExclusive();
         }
     }
+
+    /**
+     * Must be called when object is no longer referenced.
+     */
+    void delete() {
+        acquireExclusive();
+        try {
+            for (int i=0; i<mPos; i++) {
+                /*P*/ byte[] page = mPool[i];
+                mPool[i] = PageOps.p_null();
+                PageOps.p_delete(page);
+            }
+        } finally {
+            releaseExclusive();
+        }
+    }
 }

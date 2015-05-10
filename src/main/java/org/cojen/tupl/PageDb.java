@@ -45,6 +45,11 @@ abstract class PageDb implements CauseCloseable {
         mCommitLock = new ReentrantReadWriteLock(false);
     }
 
+    /**
+     * Must be called when object is no longer referenced.
+     */
+    abstract void delete();
+
     public abstract boolean isDurable();
 
     /**

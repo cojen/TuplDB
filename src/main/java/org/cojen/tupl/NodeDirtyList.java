@@ -173,9 +173,9 @@ final class NodeDirtyList extends Latch {
     }
 
     /**
-     * Remove all nodes from dirty list, as part of close sequence.
+     * Remove and delete nodes from dirty list, as part of close sequence.
      */
-    void clear() {
+    void delete() {
         acquireExclusive();
         try {
             Node node = mFirstDirty;
@@ -183,6 +183,7 @@ final class NodeDirtyList extends Latch {
             mFirstDirty = null;
             mLastDirty = null;
             while (node != null) {
+                node.delete();
                 Node next = node.mNextDirty;
                 node.mPrevDirty = null;
                 node.mNextDirty = null;

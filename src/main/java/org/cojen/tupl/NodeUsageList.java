@@ -359,7 +359,10 @@ final class NodeUsageList extends Latch {
         node.mLessUsed = null;
     }
 
-    void close() {
+    /**
+     * Must be called when object is no longer referenced.
+     */
+    void delete() {
         acquireExclusive();
         try {
             // Prevent new allocations.
@@ -374,8 +377,8 @@ final class NodeUsageList extends Latch {
                 node.mLessUsed = null;
                 node.mMoreUsed = null;
 
-                // Make node appear to be evicted.
-                node.mId = 0;
+                // Free memory and make node appear to be evicted.
+                node.delete();
 
                 node = next;
             }

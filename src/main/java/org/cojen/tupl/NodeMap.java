@@ -153,7 +153,10 @@ final class NodeMap {
         latch.releaseExclusive();
     }
 
-    void clear() {
+    /**
+     * Remove and delete nodes from map, as part of close sequence.
+     */
+    void delete() {
         for (Latch latch : mLatches) {
             latch.acquireExclusive();
         }
@@ -161,6 +164,7 @@ final class NodeMap {
         for (int i=mTable.length; --i>=0; ) {
             Node e = mTable[i];
             if (e != null) {
+                e.delete();
                 Node next;
                 while ((next = e.mNodeChainNext) != null) {
                     e.mNodeChainNext = null;

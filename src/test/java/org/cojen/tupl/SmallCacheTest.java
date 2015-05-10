@@ -192,8 +192,11 @@ public class SmallCacheTest {
 
         // Free up space and try again.
         c1.reset();
-        indexes = null;
-        forceGc();
+        for (Index i : indexes) {
+            if (i != ix) {
+                i.close();
+            }
+        }
 
         c2.last();
         c2.store(new byte[3000]); // big value forces a split
