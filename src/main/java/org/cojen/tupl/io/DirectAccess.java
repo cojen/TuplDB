@@ -27,17 +27,19 @@ import java.nio.ByteBuffer;
  *
  * @author Brian S O'Neill
  */
-class DirectAccess {
+public class DirectAccess {
     private static final Field cDirectAddress;
     private static final Field cDirectCapacity;
     private static final Constructor<?> cDirectCtor;
     private static final ThreadLocal<ByteBuffer> cLocalBuffer;
+    private static final ThreadLocal<ByteBuffer> cLocalBuffer2;
 
     static {
         Field addrField;
         Field capField;
         Constructor<?> ctor;
         ThreadLocal<ByteBuffer> local;
+        ThreadLocal<ByteBuffer> local2;
 
         try {
             addrField = Buffer.class.getDeclaredField("address");
@@ -51,17 +53,20 @@ class DirectAccess {
             ctor.setAccessible(true);
 
             local = new ThreadLocal<>();
+            local2 = new ThreadLocal<>();
         } catch (Exception e) {
             addrField = null;
             capField = null;
             ctor = null;
             local = null;
+            local2 = null;
         }
 
         cDirectAddress = addrField;
         cDirectCapacity = capField;
         cDirectCtor = ctor;
         cLocalBuffer = local;
+        cLocalBuffer2 = local2;
     }
 
     /**
@@ -71,8 +76,19 @@ class DirectAccess {
      * @throws UnsupportedOperationException if not supported
      */
     public static ByteBuffer ref(long ptr, int length) {
-        ThreadLocal<ByteBuffer> local = cLocalBuffer;
+        return ref(cLocalBuffer, ptr, length);
+    }
 
+    /**
+     * Returns a second independent thread-local ByteBuffer.
+     *
+     * @throws UnsupportedOperationException if not supported
+     */
+    public static ByteBuffer ref2(long ptr, int length) {
+        return ref(cLocalBuffer2, ptr, length);
+    }
+
+    private static ByteBuffer ref(ThreadLocal<ByteBuffer> local, long ptr, int length) {
         if (local == null) {
             throw new UnsupportedOperationException();
         }
