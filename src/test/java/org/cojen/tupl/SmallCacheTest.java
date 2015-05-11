@@ -66,17 +66,20 @@ public class SmallCacheTest {
     public void loadTreeRoot() throws Exception {
         // Tests Database.loadTreeRoot, which allocates a root node.
 
+        List<Index> indexes = new ArrayList<Index>();
+
         int i = 0;
         try {
             for (; i<100; i++) {
-                mDb.openIndex("ix_" + i);
+                indexes.add(mDb.openIndex("ix_" + i));
             }
             fail();
         } catch (CacheExhaustedException e) {
         }
 
-        // Wait for open indexes to auto-close.
-        forceGc();
+        for (Index ix : indexes) {
+            ix.close();
+        }
 
         // Verify that indexes can be opened and created.
         assertNotNull(mDb.findIndex("ix_0"));
