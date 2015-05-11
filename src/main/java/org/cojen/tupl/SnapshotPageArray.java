@@ -318,6 +318,8 @@ final class SnapshotPageArray extends PageArray {
                                     throw new InterruptedIOException();
                                 }
                             } else {
+                                // FIXME: Deadlock here... node might be latched exclusively,
+                                // and owner might be waiting for this to change.
                                 mWriteInProgress = index;
                                 break;
                             }
