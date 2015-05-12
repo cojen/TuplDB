@@ -29,17 +29,7 @@ final class UnmodifiableCursor extends WrappedCursor<Cursor> {
     }
 
     @Override
-    public void store(byte[] value) throws IOException {
-        throw new UnmodifiableViewException();
-    }
-
-    @Override
-    public Stream newStream() {
-        return new UnmodifiableStream(mSource.newStream());
-    }
-
-    @Override
     public Cursor copy() {
-        return new UnmodifiableCursor(mSource.copy());
+        return new UnmodifiableCursor(source.copy());
     }
 }

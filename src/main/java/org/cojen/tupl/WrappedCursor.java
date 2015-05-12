@@ -19,154 +19,248 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 /**
- * 
+ * Abstract wrapper around another cursor. Subclass must implement the {@link #copy copy}
+ * method, and it should also override the {@link #store store} and {@link #newStream
+ * newStream} methods.
  *
  * @author Brian S O'Neill
  */
-abstract class WrappedCursor<C extends Cursor> implements Cursor {
-    final C mSource;
+public abstract class WrappedCursor<C extends Cursor> implements Cursor {
+    protected final C source;
 
     WrappedCursor(C source) {
-        mSource = source;
+        this.source = source;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Ordering getOrdering() {
-        return mSource.getOrdering();
+        return source.getOrdering();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Transaction link(Transaction txn) {
-        return mSource.link(txn);
+        return source.link(txn);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Transaction link() {
-        return mSource.link();
+        return source.link();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public byte[] key() {
-        return mSource.key();
+        return source.key();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public byte[] value() {
-        return mSource.value();
+        return source.value();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean autoload(boolean mode) {
-        return mSource.autoload(mode);
+        return source.autoload(mode);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean autoload() {
-        return mSource.autoload();
+        return source.autoload();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public int compareKeyTo(byte[] rkey) {
-        return mSource.compareKeyTo(rkey);
+        return source.compareKeyTo(rkey);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public int compareKeyTo(byte[] rkey, int offset, int length) {
-        return mSource.compareKeyTo(rkey, offset, length);
+        return source.compareKeyTo(rkey, offset, length);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public LockResult first() throws IOException {
-        return mSource.first();
+        return source.first();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public LockResult last() throws IOException {
-        return mSource.last();
+        return source.last();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public LockResult skip(long amount) throws IOException {
-        return mSource.skip(amount);
+        return source.skip(amount);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public LockResult next() throws IOException {
-        return mSource.next();
+        return source.next();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public LockResult nextLe(byte[] limitKey) throws IOException {
-        return mSource.nextLe(limitKey);
+        return source.nextLe(limitKey);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public LockResult nextLt(byte[] limitKey) throws IOException {
-        return mSource.nextLt(limitKey);
+        return source.nextLt(limitKey);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public LockResult previous() throws IOException {
-        return mSource.previous();
+        return source.previous();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public LockResult previousGe(byte[] limitKey) throws IOException {
-        return mSource.previousGe(limitKey);
+        return source.previousGe(limitKey);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public LockResult previousGt(byte[] limitKey) throws IOException {
-        return mSource.previousGt(limitKey);
+        return source.previousGt(limitKey);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public LockResult find(byte[] key) throws IOException {
-        return mSource.find(key);
+        return source.find(key);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public LockResult findGe(byte[] key) throws IOException {
-        return mSource.findGe(key);
+        return source.findGe(key);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public LockResult findGt(byte[] key) throws IOException {
-        return mSource.findGt(key);
+        return source.findGt(key);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public LockResult findLe(byte[] key) throws IOException {
-        return mSource.findLe(key);
+        return source.findLe(key);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public LockResult findLt(byte[] key) throws IOException {
-        return mSource.findLt(key);
+        return source.findLt(key);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public LockResult findNearby(byte[] key) throws IOException {
-        return mSource.findNearby(key);
+        return source.findNearby(key);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public LockResult random(byte[] lowKey, byte[] highKey) throws IOException {
-        return mSource.random(lowKey, highKey);
+        return source.random(lowKey, highKey);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public LockResult load() throws IOException {
-        return mSource.load();
+        return source.load();
     }
 
+    /**
+     * Always throws UnmodifiableViewException by default.
+     */
     @Override
     public void store(byte[] value) throws IOException {
-        mSource.store(value);
+        throw new UnmodifiableViewException();
     }
 
+    /**
+     * Returns an unmodifiable stream by default.
+     */
+    @Override
+    public Stream newStream() {
+        return new UnmodifiableStream(source.newStream());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void reset() {
-        mSource.reset();
+        source.reset();
     }
 }
