@@ -28,7 +28,7 @@ import java.io.IOException;
 public abstract class WrappedCursor<C extends Cursor> implements Cursor {
     protected final C source;
 
-    WrappedCursor(C source) {
+    protected WrappedCursor(C source) {
         this.source = source;
     }
 
