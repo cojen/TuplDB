@@ -545,43 +545,47 @@ final class PageQueue implements IntegerRef {
 
         if (nodeId != 0) {
             /*P*/ byte[] node = p_clone(mRemoveHead);
-            long pageId = mRemoveHeadFirstPageId;
-            IntegerRef.Value nodeOffsetRef = new IntegerRef.Value();
-            nodeOffsetRef.value = mRemoveHeadOffset;
+            try {
+                long pageId = mRemoveHeadFirstPageId;
+                IntegerRef.Value nodeOffsetRef = new IntegerRef.Value();
+                nodeOffsetRef.value = mRemoveHeadOffset;
 
-            while (true) {
-                if (pageId < startId || pageId >= endId) {
-                    // Out of bounds.
-                    return false;
-                }
-
-                hash += scramble(pageId);
-                count++;
-
-                if (nodeOffsetRef.value < p_length(node)) {
-                    long delta = p_ulongGetVar(node, nodeOffsetRef);
-                    if (delta > 0) {
-                        pageId += delta;
-                        continue;
+                while (true) {
+                    if (pageId < startId || pageId >= endId) {
+                        // Out of bounds.
+                        return false;
                     }
-                }
 
-                if (nodeId >= startId && nodeId < endId) {
-                    // Count in-range queue nodes too.
-                    hash += scramble(nodeId);
+                    hash += scramble(pageId);
                     count++;
+
+                    if (nodeOffsetRef.value < p_length(node)) {
+                        long delta = p_ulongGetVar(node, nodeOffsetRef);
+                        if (delta > 0) {
+                            pageId += delta;
+                            continue;
+                        }
+                    }
+
+                    if (nodeId >= startId && nodeId < endId) {
+                        // Count in-range queue nodes too.
+                        hash += scramble(nodeId);
+                        count++;
+                    }
+
+                    // Move to the next queue node.
+
+                    nodeId = p_longGetBE(node, I_NEXT_NODE_ID);
+                    if (nodeId == mAppendTailId) {
+                        break;
+                    }
+
+                    mManager.pageArray().readPage(nodeId, node);
+                    pageId = p_longGetBE(node, I_FIRST_PAGE_ID);
+                    nodeOffsetRef.value = I_NODE_START;
                 }
-
-                // Move to the next queue node.
-
-                nodeId = p_longGetBE(node, I_NEXT_NODE_ID);
-                if (nodeId == mAppendTailId) {
-                    break;
-                }
-
-                mManager.pageArray().readPage(nodeId, node);
-                pageId = p_longGetBE(node, I_FIRST_PAGE_ID);
-                nodeOffsetRef.value = I_NODE_START;
+            } finally {
+                p_delete(node);
             }
         }
 
@@ -610,42 +614,46 @@ final class PageQueue implements IntegerRef {
         }
 
         /*P*/ byte[] node = p_clone(mRemoveHead);
-        long pageId = mRemoveHeadFirstPageId;
-        IntegerRef.Value nodeOffsetRef = new IntegerRef.Value();
-        nodeOffsetRef.value = mRemoveHeadOffset;
+        try {
+            long pageId = mRemoveHeadFirstPageId;
+            IntegerRef.Value nodeOffsetRef = new IntegerRef.Value();
+            nodeOffsetRef.value = mRemoveHeadOffset;
 
-        while (true) {
-            /*
-            if (mManager.isPageOutOfBounds(pageId)) {
-                throw new CorruptDatabaseException("Invalid page id in free list: " + pageId);
-            }
-            */
+            while (true) {
+                /*
+                  if (mManager.isPageOutOfBounds(pageId)) {
+                  throw new CorruptDatabaseException("Invalid page id in free list: " + pageId);
+                  }
+                */
 
-            count++;
-            clearPageBit(pages, pageId);
+                count++;
+                clearPageBit(pages, pageId);
 
-            if (nodeOffsetRef.value < p_length(node)) {
-                long delta = p_ulongGetVar(node, nodeOffsetRef);
-                if (delta > 0) {
-                    pageId += delta;
-                    continue;
+                if (nodeOffsetRef.value < p_length(node)) {
+                    long delta = p_ulongGetVar(node, nodeOffsetRef);
+                    if (delta > 0) {
+                        pageId += delta;
+                        continue;
+                    }
                 }
+
+                // Indicate free list node itself as free and move to the next node
+                // in the free list.
+
+                count++;
+                clearPageBit(pages, nodeId);
+
+                nodeId = p_longGetBE(node, I_NEXT_NODE_ID);
+                if (nodeId == mAppendHeadId || nodeId == mAppendTailId) {
+                    break;
+                }
+
+                mManager.pageArray().readPage(nodeId, node);
+                pageId = p_longGetBE(node, I_FIRST_PAGE_ID);
+                nodeOffsetRef.value = I_NODE_START;
             }
-
-            // Indicate free list node itself as free and move to the next node
-            // in the free list.
-
-            count++;
-            clearPageBit(pages, nodeId);
-
-            nodeId = p_longGetBE(node, I_NEXT_NODE_ID);
-            if (nodeId == mAppendHeadId || nodeId == mAppendTailId) {
-                break;
-            }
-
-            mManager.pageArray().readPage(nodeId, node);
-            pageId = p_longGetBE(node, I_FIRST_PAGE_ID);
-            nodeOffsetRef.value = I_NODE_START;
+        } finally {
+            p_delete(node);
         }
 
         return count;
