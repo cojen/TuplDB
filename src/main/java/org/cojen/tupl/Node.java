@@ -1400,7 +1400,6 @@ final class Node extends Latch implements DatabaseAccess {
      *
      * @param loc absolute location of entry
      */
-    // FIXME: Cannot operate against a page type.
     static byte[][] retrieveKeyValueAtLoc(DatabaseAccess dbAccess,
                                           final /*P*/ byte[] page, int loc)
         throws IOException
