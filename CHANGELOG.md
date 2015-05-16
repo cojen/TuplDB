@@ -3,7 +3,10 @@ Changelog
 
 v1.2.3
 ------
+* Fix snapshot deadlock when reading from the cache.
 * Add support for custom transaction operations.
+* Improved key hash function used by lock manager.
+* Expose the WrappedCursor class.
 
 v1.2.2 (2015-04-12)
 ------

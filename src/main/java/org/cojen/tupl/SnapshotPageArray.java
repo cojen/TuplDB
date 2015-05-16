@@ -318,8 +318,6 @@ final class SnapshotPageArray extends PageArray {
                                     throw new InterruptedIOException();
                                 }
                             } else {
-                                // FIXME: Deadlock here... node might be latched exclusively,
-                                // and owner might be waiting for this to change.
                                 mWriteInProgress = index;
                                 break;
                             }
@@ -341,8 +339,7 @@ final class SnapshotPageArray extends PageArray {
                         read: {
                             Node node;
                             if (nodeCache != null && (node = nodeCache.get(index)) != null) {
-                                node.acquireShared();
-                                try {
+                                if (node.tryAcquireShared()) try {
                                     if (node.mId == index
                                         && node.mCachedState == Node.CACHED_CLEAN)
                                     {
