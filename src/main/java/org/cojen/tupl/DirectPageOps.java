@@ -20,6 +20,8 @@ import sun.misc.Unsafe;
 
 import java.io.IOException;
 
+import java.lang.reflect.Method;
+
 import java.nio.ByteBuffer;
 
 import java.security.GeneralSecurityException;
@@ -40,6 +42,19 @@ final class DirectPageOps {
     private static final Unsafe UNSAFE = Hasher.getUnsafe();
     private static final long BYTE_ARRAY_OFFSET = UNSAFE.arrayBaseOffset(byte[].class);
     private static final long EMPTY = p_alloc(0);
+
+    private static final Method CRC_BUFFER_UPDATE_METHOD;
+
+    static {
+        Method m;
+        try {
+            // Java 8 feature.
+            m = CRC32.class.getMethod("update", ByteBuffer.class);
+        } catch (Exception e) {
+            m = null;
+        }
+        CRC_BUFFER_UPDATE_METHOD = m;
+    }
 
     static long p_null() {
         return 4;
@@ -541,14 +556,27 @@ final class DirectPageOps {
     }
 
     static int p_crc32(long srcPage, int srcStart, int len) {
-        ByteBuffer bb = DirectAccess.ref(srcPage + srcStart, len);
-        try {
-            CRC32 crc = new CRC32();
-            crc.update(bb);
-            return (int) crc.getValue();
-        } finally {
-            DirectAccess.unref(bb);
+        CRC32 crc = new CRC32();
+
+        if (CRC_BUFFER_UPDATE_METHOD != null) {
+            ByteBuffer bb = DirectAccess.ref(srcPage + srcStart, len);
+            try {
+                CRC_BUFFER_UPDATE_METHOD.invoke(crc, bb);
+            } catch (RuntimeException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            } finally {
+                DirectAccess.unref(bb);
+            }
+        } else {
+            // Not the most efficient approach, but CRCs are only used by header pages.
+            byte[] temp = new byte[len];
+            p_copyToArray(srcPage, srcStart, temp, 0, len);
+            crc.update(temp);
         }
+
+        return (int) crc.getValue();
     }
 
     static int p_cipherDoFinal(Cipher cipher,
