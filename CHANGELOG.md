@@ -1,12 +1,14 @@
 Changelog
 =========
 
-v1.2.3
+v1.2.3 (2015-05-16)
 ------
 * Fix snapshot deadlock when reading from the cache.
 * Add support for custom transaction operations.
 * Improved key hash function used by lock manager.
 * Expose the WrappedCursor class.
+* Added experimental direct page implementation which relies on Unsafe features. Modify
+  the source using PageAccessTransformer and then recompile.
 
 v1.2.2 (2015-04-12)
 ------
