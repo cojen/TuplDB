@@ -2203,7 +2203,7 @@ public final class Database implements CauseCloseable, Flushable {
             mCheckpointer = null;
 
             if (mOpenTrees != null) {
-                ArrayList<TreeRef> trees;
+                final ArrayList<TreeRef> trees;
                 mOpenTreesLatch.acquireExclusive();
                 try {
                     trees = new ArrayList<>(mOpenTreesById.size());
