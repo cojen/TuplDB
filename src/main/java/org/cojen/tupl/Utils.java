@@ -73,8 +73,8 @@ class Utils extends org.cojen.tupl.io.Utils {
     static int randomSeed() {
         long id = Thread.currentThread().getId();
         int seed = ((int) id) ^ ((int) (id >>> 32)) ^ cSeedMix;
-        if (seed == 0) {
-            while ((seed = cRnd.nextInt()) == 0);
+        while (seed == 0) {
+            seed = cRnd.nextInt();
         }
         cSeedMix = nextRandom(seed);
         return seed;
