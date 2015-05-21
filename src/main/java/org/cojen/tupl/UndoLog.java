@@ -28,7 +28,7 @@ import static java.lang.System.arraycopy;
 import static org.cojen.tupl.PageOps.*;
 import static org.cojen.tupl.Utils.*;
 
-import org.cojen.tupl.ext.UndoHandler;
+import org.cojen.tupl.ext.TransactionHandler;
 
 /**
  * Specialized stack used by UndoLog.
@@ -639,9 +639,9 @@ final class UndoLog implements DatabaseAccess {
 
         case OP_CUSTOM:
             Database db = mDatabase;
-            UndoHandler handler = db.mCustomUndoHandler;
+            TransactionHandler handler = db.mCustomTxnHandler;
             if (handler == null) {
-                throw new DatabaseException("Custom undo handler is not installed");
+                throw new DatabaseException("Custom transaction handler is not installed");
             }
             handler.undo(db, entry);
             break;
