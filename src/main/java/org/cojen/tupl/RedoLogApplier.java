@@ -18,7 +18,7 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import org.cojen.tupl.ext.RedoHandler;
+import org.cojen.tupl.ext.TransactionHandler;
 
 /**
  * 
@@ -175,9 +175,9 @@ final class RedoLogApplier implements RedoVisitor {
         Transaction txn = txn(txnId);
         if (txn != null) {
             Database db = mDatabase;
-            RedoHandler handler = db.mCustomRedoHandler;
+            TransactionHandler handler = db.mCustomTxnHandler;
             if (handler == null) {
-                throw new DatabaseException("Custom redo handler is not installed");
+                throw new DatabaseException("Custom transaction handler is not installed");
             }
             handler.redo(db, txn, message);
         }
@@ -191,9 +191,9 @@ final class RedoLogApplier implements RedoVisitor {
         Transaction txn = txn(txnId);
         if (txn != null) {
             Database db = mDatabase;
-            RedoHandler handler = db.mCustomRedoHandler;
+            TransactionHandler handler = db.mCustomTxnHandler;
             if (handler == null) {
-                throw new DatabaseException("Custom redo handler is not installed");
+                throw new DatabaseException("Custom transaction handler is not installed");
             }
             txn.lockExclusive(indexId, key);
             handler.redo(db, txn, message, indexId, key);

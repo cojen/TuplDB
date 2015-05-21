@@ -571,15 +571,15 @@ public class Transaction extends Locker {
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @param message message to pass to redo handler
+     * @param message message to pass to transaction handler
      * @param indexId index for lock acquisition; zero if not applicable
      * @param key key which has been locked exclusively; null if not applicable
-     * @throws IllegalStateException if no redo handler is installed
-     * @see org.cojen.tupl.ext.RedoHandler
+     * @throws IllegalStateException if no transaction handler is installed
+     * @see org.cojen.tupl.ext.TransactionHandler
      */
     public final void customRedo(byte[] message, long indexId, byte[] key) throws IOException {
-        if (mDatabase.mCustomRedoHandler == null) {
-            throw new IllegalStateException("Custom redo handler is not installed");
+        if (mDatabase.mCustomTxnHandler == null) {
+            throw new IllegalStateException("Custom transaction handler is not installed");
         }
         check();
         RedoWriter redo = mRedoWriter;
@@ -615,13 +615,13 @@ public class Transaction extends Locker {
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @param message message to pass to undo handler
-     * @throws IllegalStateException if no undo handler is installed
-     * @see org.cojen.tupl.ext.UndoHandler
+     * @param message message to pass to transaction handler
+     * @throws IllegalStateException if no transaction handler is installed
+     * @see org.cojen.tupl.ext.TransactionHandler
      */
     public final void customUndo(byte[] message) throws IOException {
-        if (mDatabase.mCustomUndoHandler == null) {
-            throw new IllegalStateException("Custom undo handler is not installed");
+        if (mDatabase.mCustomTxnHandler == null) {
+            throw new IllegalStateException("Custom transaction handler is not installed");
         }
         check();
         undoLog().pushCustom(message);

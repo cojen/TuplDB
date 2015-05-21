@@ -57,9 +57,8 @@ import static java.lang.System.arraycopy;
 
 import static java.util.Arrays.fill;
 
-import org.cojen.tupl.ext.RedoHandler;
 import org.cojen.tupl.ext.ReplicationManager;
-import org.cojen.tupl.ext.UndoHandler;
+import org.cojen.tupl.ext.TransactionHandler;
 
 import org.cojen.tupl.io.CauseCloseable;
 import org.cojen.tupl.io.FileFactory;
@@ -167,8 +166,7 @@ public final class Database implements CauseCloseable, Flushable {
 
     final EventListener mEventListener;
 
-    final RedoHandler mCustomRedoHandler;
-    final UndoHandler mCustomUndoHandler;
+    final TransactionHandler mCustomTxnHandler;
 
     private final File mBaseFile;
     private final LockedFile mLockFile;
@@ -304,11 +302,7 @@ public final class Database implements CauseCloseable, Flushable {
     private Database(DatabaseConfig config, int openMode) throws IOException {
         config.mEventListener = mEventListener = SafeEventListener.makeSafe(config.mEventListener);
 
-        mCustomRedoHandler = config.mRedoHandler;
-        mCustomUndoHandler = config.mUndoHandler;
-        if (mCustomRedoHandler != null ^ mCustomUndoHandler != null) {
-            throw new IllegalArgumentException("Must provide a redo handler and undo handler");
-        }
+        mCustomTxnHandler = config.mTxnHandler;
 
         mBaseFile = config.mBaseFile;
         final File[] dataFiles = config.dataFiles();

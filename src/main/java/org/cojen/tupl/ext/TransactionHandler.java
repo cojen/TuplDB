@@ -23,13 +23,15 @@ import org.cojen.tupl.DatabaseConfig;
 import org.cojen.tupl.Transaction;
 
 /**
- * Handler for custom transactional redo operations, which are applied by recovery and
- * replication.
+ * Handler for custom transactional operations. Undo operations are applied to roll back
+ * transactions, and redo operations are applied by recovery and replication.
  *
  * @author Brian S O'Neill
- * @see DatabaseConfig#customRedoHandler
+ * @see DatabaseConfig#customTransactionHandler
  */
-public interface RedoHandler {
+public interface TransactionHandler {
+    // FIXME: add checkpoint hooks
+
     /**
      * Non-transactionally apply an idempotent redo operation.
      *
@@ -50,4 +52,11 @@ public interface RedoHandler {
      */
     void redo(Database db, Transaction txn, byte[] message, long indexId, byte[] key)
         throws IOException;
+
+    /**
+     * Non-transactionally apply an idempotent undo operation.
+     *
+     * @param message message originally provided to {@link Transaction#customUndo}
+     */
+    void undo(Database db, byte[] message) throws IOException;
 }

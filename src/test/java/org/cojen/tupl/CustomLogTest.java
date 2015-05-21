@@ -22,7 +22,7 @@ import java.util.*;
 import org.junit.*;
 import static org.junit.Assert.*;
 
-import org.cojen.tupl.ext.*;
+import org.cojen.tupl.ext.TransactionHandler;
 
 import static org.cojen.tupl.TestUtils.*;
 
@@ -50,15 +50,13 @@ public class CustomLogTest {
     protected Database newTempDatabase() throws Exception {
         mConfig = new DatabaseConfig()
             .checkpointRate(-1, null)
-            .customRedoHandler(mRedo = new Redo())
-            .customUndoHandler(mUndo = new Undo());
+            .customTransactionHandler(mHandler = new Handler());
         return TestUtils.newTempDatabase(mConfig);
     }
 
     protected DatabaseConfig mConfig;
     protected Database mDb;
-    protected Redo mRedo;
-    protected Undo mUndo;
+    protected Handler mHandler;
 
     @Test
     public void rollback() throws Exception {
@@ -71,16 +69,16 @@ public class CustomLogTest {
         txn.customUndo(message2);
         txn.customRedo(message2, 0, null);
 
-        assertTrue(mRedo.mMessages.isEmpty());
-        assertTrue(mUndo.mMessages.isEmpty());
+        assertTrue(mHandler.mRedoMessages.isEmpty());
+        assertTrue(mHandler.mUndoMessages.isEmpty());
 
         txn.exit();
 
-        assertTrue(mRedo.mMessages.isEmpty());
-        assertEquals(2, mUndo.mMessages.size());
+        assertTrue(mHandler.mRedoMessages.isEmpty());
+        assertEquals(2, mHandler.mUndoMessages.size());
 
-        assertArrayEquals(message2, mUndo.mMessages.get(0));
-        assertArrayEquals(message1, mUndo.mMessages.get(1));
+        assertArrayEquals(message2, mHandler.mUndoMessages.get(0));
+        assertArrayEquals(message1, mHandler.mUndoMessages.get(1));
     }
 
     @Test
@@ -91,13 +89,13 @@ public class CustomLogTest {
         txn.customUndo(message);
         txn.customRedo(message, 0, null);
 
-        assertTrue(mRedo.mMessages.isEmpty());
-        assertTrue(mUndo.mMessages.isEmpty());
+        assertTrue(mHandler.mRedoMessages.isEmpty());
+        assertTrue(mHandler.mUndoMessages.isEmpty());
 
         txn.commit();
 
-        assertTrue(mRedo.mMessages.isEmpty());
-        assertTrue(mUndo.mMessages.isEmpty());
+        assertTrue(mHandler.mRedoMessages.isEmpty());
+        assertTrue(mHandler.mUndoMessages.isEmpty());
     }
 
     @Test
@@ -115,14 +113,14 @@ public class CustomLogTest {
 
         mDb = reopenTempDatabase(mDb, mConfig);
 
-        assertEquals(2, mRedo.mMessages.size());
-        assertTrue(mUndo.mMessages.isEmpty());
+        assertEquals(2, mHandler.mRedoMessages.size());
+        assertTrue(mHandler.mUndoMessages.isEmpty());
 
-        assertArrayEquals(message1, mRedo.mMessages.get(0));
-        assertArrayEquals(message2, mRedo.mMessages.get(1));
+        assertArrayEquals(message1, mHandler.mRedoMessages.get(0));
+        assertArrayEquals(message2, mHandler.mRedoMessages.get(1));
 
-        assertEquals(1234, mRedo.mIndexId);
-        assertArrayEquals(key, mRedo.mKey);
+        assertEquals(1234, mHandler.mRedoIndexId);
+        assertArrayEquals(key, mHandler.mRedoKey);
     }
 
     @Test
@@ -140,40 +138,38 @@ public class CustomLogTest {
 
         mDb = reopenTempDatabase(mDb, mConfig);
 
-        assertEquals(1, mRedo.mMessages.size());
+        assertEquals(1, mHandler.mRedoMessages.size());
 
-        assertArrayEquals(message, mRedo.mMessages.get(0));
+        assertArrayEquals(message, mHandler.mRedoMessages.get(0));
 
         ix = mDb.openIndex("test");
         assertArrayEquals("value".getBytes(), ix.load(null, "key".getBytes()));
     }
 
-    class Redo implements RedoHandler {
-        List<byte[]> mMessages = new ArrayList<>();
-        long mIndexId;
-        byte[] mKey;
+    class Handler implements TransactionHandler {
+        List<byte[]> mRedoMessages = new ArrayList<>();
+        long mRedoIndexId;
+        byte[] mRedoKey;
+
+        List<byte[]> mUndoMessages = new ArrayList<>();
 
         @Override
         public void redo(Database db, Transaction txn, byte[] message) throws IOException {
-            mMessages.add(message);
+            mRedoMessages.add(message);
         }
 
         @Override
         public void redo(Database db, Transaction txn, byte[] message, long indexId, byte[] key)
             throws IOException
         {
-            mMessages.add(message);
-            mIndexId = indexId;
-            mKey = key;
+            mRedoMessages.add(message);
+            mRedoIndexId = indexId;
+            mRedoKey = key;
         }
-    }
-
-    class Undo implements UndoHandler {
-        List<byte[]> mMessages = new ArrayList<>();
 
         @Override
         public void undo(Database db, byte[] message) throws IOException {
-            mMessages.add(message);
+            mUndoMessages.add(message);
         }
     }
 }

@@ -29,7 +29,7 @@ import org.cojen.tupl.ext.ReplicationManager;
 
 import static org.cojen.tupl.Utils.*;
 
-import org.cojen.tupl.ext.RedoHandler;
+import org.cojen.tupl.ext.TransactionHandler;
 
 /**
  * 
@@ -608,10 +608,10 @@ final class ReplRedoEngine implements RedoVisitor {
 
     @Override
     public boolean txnCustom(long txnId, byte[] message) throws IOException {
-        RedoHandler handler = mDatabase.mCustomRedoHandler;
+        TransactionHandler handler = mDatabase.mCustomTxnHandler;
 
         if (handler == null) {
-            throw new DatabaseException("Custom redo handler is not installed");
+            throw new DatabaseException("Custom transaction handler is not installed");
         }
 
         TxnEntry te = getTxnEntry(txnId);
@@ -638,10 +638,10 @@ final class ReplRedoEngine implements RedoVisitor {
     public boolean txnCustomLock(long txnId, byte[] message, long indexId, byte[] key)
         throws IOException
     {
-        RedoHandler handler = mDatabase.mCustomRedoHandler;
+        TransactionHandler handler = mDatabase.mCustomTxnHandler;
 
         if (handler == null) {
-            throw new DatabaseException("Custom redo handler is not installed");
+            throw new DatabaseException("Custom transaction handler is not installed");
         }
 
         TxnEntry te = getTxnEntry(txnId);
