@@ -18,6 +18,8 @@ package org.cojen.tupl.ext;
 
 import java.io.IOException;
 
+import java.util.concurrent.locks.Lock;
+
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseConfig;
 import org.cojen.tupl.Transaction;
@@ -30,8 +32,6 @@ import org.cojen.tupl.Transaction;
  * @see DatabaseConfig#customTransactionHandler
  */
 public interface TransactionHandler {
-    // FIXME: add checkpoint hooks
-
     /**
      * Non-transactionally apply an idempotent redo operation.
      *
@@ -59,4 +59,32 @@ public interface TransactionHandler {
      * @param message message originally provided to {@link Transaction#customUndo}
      */
     void undo(Database db, byte[] message) throws IOException;
+
+    /**
+     * Called once when the database is opened, providing a shared lock which is later acquired
+     * exclusively by checkpoints. Implementation is permitted (but not required) to use this
+     * lock for suspending transactional changes when {@link #checkpointStart checkpointStart}
+     * is called. Simply hold the lock when making transactional changes, and then no additional
+     * locking is required when {@code checkpointStart} is called.
+     */
+    void setCheckpointLock(Database db, Lock lock);
+
+    /**
+     * Called to durably write all changes. Implementation must suspend all transactional
+     * changes (although transactions can be left open), and then initiate a concurrent
+     * checkpoint. The checkpoint must capture a snapshot of all changes at the point it was
+     * initiated, and it does not need to contain any changes afterwards. A recovery sequence
+     * rolls back to the last checkpoint, and then it applies all redo operations to catch
+     * up. Undo operations are applied only for transactions which did not commit.
+     *
+     * @return optional object to be passed to {@link #checkpointFinish checkpointFinish}
+     */
+    Object checkpointStart(Database db) throws IOException;
+
+    /**
+     * Wait for a concurrent checkpoint to finish.
+     *
+     * @param obj optional object passed from {@link #checkpointStart checkpointStart}
+     */
+    void checkpointFinish(Database db, Object obj) throws IOException;
 }
