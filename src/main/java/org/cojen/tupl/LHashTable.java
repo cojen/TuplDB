@@ -17,7 +17,9 @@
 package org.cojen.tupl;
 
 /**
- * Simple hash table which maps long keys to customizable entries.
+ * Simple hash table which maps long keys to customizable entries. The hash function only
+ * examines the lowest bits of the keys, and so the keys might need to be scrambled to reduce
+ * collisions.
  *
  * @author Brian S O'Neill
  */
