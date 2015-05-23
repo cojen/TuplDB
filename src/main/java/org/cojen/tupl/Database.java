@@ -637,6 +637,13 @@ public final class Database implements CauseCloseable, Flushable {
                     }
                 }
 
+                if (mCustomTxnHandler != null) {
+                    // Although handler shouldn't access the database yet, be safe and call
+                    // this method at the point that the database is mostly functional. All
+                    // other custom methods will be called soon as well.
+                    mCustomTxnHandler.setCheckpointLock(this, mSharedCommitLock);
+                }
+
                 ReplicationManager rm = config.mReplManager;
                 if (rm != null) {
                     rm.start(redoPos);
@@ -706,7 +713,7 @@ public final class Database implements CauseCloseable, Flushable {
                     // New redo logs begin with identifiers one higher than last scanned.
                     mRedoWriter = new RedoLog(config, replayLog);
 
-                    // FIXME: If any exception is thrown before checkpoint is complete, delete
+                    // TODO: If any exception is thrown before checkpoint is complete, delete
                     // the newly created redo log file.
 
                     if (doCheckpoint) {
@@ -4021,6 +4028,11 @@ public final class Database implements CauseCloseable, Flushable {
      * held. Both are released by this method.
      */
     private void flush(final boolean resume, final /*P*/ byte[] header) throws IOException {
+        Object custom = mCustomTxnHandler;
+        if (custom != null) {
+            custom = mCustomTxnHandler.checkpointStart(this);
+        }
+
         int stateToFlush = mCommitState;
 
         if (resume) {
@@ -4052,6 +4064,10 @@ public final class Database implements CauseCloseable, Flushable {
 
         try {
             mDirtyList.flush(mPageDb, stateToFlush);
+
+            if (mCustomTxnHandler != null) {
+                mCustomTxnHandler.checkpointFinish(this, custom);
+            }
         } finally {
             mCheckpointFlushState = CHECKPOINT_NOT_FLUSHING;
         }

@@ -19,6 +19,8 @@ package org.cojen.tupl;
 import java.io.*;
 import java.util.*;
 
+import java.util.concurrent.locks.Lock;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -170,6 +172,19 @@ public class CustomLogTest {
         @Override
         public void undo(Database db, byte[] message) throws IOException {
             mUndoMessages.add(message);
+        }
+
+        @Override
+        public void setCheckpointLock(Database db, Lock lock) {
+        }
+
+        @Override
+        public Object checkpointStart(Database db) throws IOException {
+            return null;
+        }
+
+        @Override
+        public void checkpointFinish(Database db, Object obj) throws IOException {
         }
     }
 }
