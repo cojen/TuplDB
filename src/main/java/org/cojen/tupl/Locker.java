@@ -48,6 +48,26 @@ class Locker extends LockOwner {
     }
 
     /**
+     * Returns true if current transaction scope is nested.
+     */
+    public final boolean isNested() {
+        return mParentScope != null;
+    }
+
+    /**
+     * Counts the current transaction scope nesting level. Count is zero if non-nested.
+     */
+    public final int nestingLevel() {
+        int count = 0;
+        ParentScope parent = mParentScope;
+        while (parent != null) {
+            count++;
+            parent = parent.mParentScope;
+        }
+        return count;
+    }
+
+    /**
      * Attempts to acquire a shared lock for the given key, denying exclusive
      * locks. If return value is {@link LockResult#alreadyOwned owned}, transaction
      * already owns a strong enough lock, and no extra unlock should be
