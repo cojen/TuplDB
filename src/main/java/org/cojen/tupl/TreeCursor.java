@@ -2182,8 +2182,10 @@ class TreeCursor implements CauseCloseable, Cursor {
             } else {
                 resetLatched(node);
             }
-        } else if (node != null) {
-            node.releaseExclusive();
+        } else {
+            if (node != null) {
+                node.releaseExclusive();
+            }
             mValue = value;
         }
 
