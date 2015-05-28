@@ -143,11 +143,21 @@ public class TransactionTest {
         Index ix = mDb.openIndex("test");
         assertTrue(ix.insert(txn, key, value1));
 
+        assertFalse(txn.isNested());
+        assertEquals(0, txn.nestingLevel());
+
         txn.enter();
+
+        assertTrue(txn.isNested());
+        assertEquals(1, txn.nestingLevel());
 
         ix.store(txn, key, value2);
         txn.exit();
+        assertFalse(txn.isNested());
+        assertEquals(0, txn.nestingLevel());
         txn.enter();
+        assertTrue(txn.isNested());
+        assertEquals(1, txn.nestingLevel());
         assertArrayEquals(value1, ix.load(txn, key));
 
         ix.store(txn, key, value2);
@@ -172,6 +182,8 @@ public class TransactionTest {
         txn.enter();
 
         txn.enter();
+        assertTrue(txn.isNested());
+        assertEquals(2, txn.nestingLevel());
         ix.delete(txn, key);
         // Commit to second scope.
         txn.commit();
@@ -187,6 +199,9 @@ public class TransactionTest {
         assertNull(ix.load(txn, key));
 
         txn.exit();
+
+        assertFalse(txn.isNested());
+        assertEquals(0, txn.nestingLevel());
     }
 
     @Test
