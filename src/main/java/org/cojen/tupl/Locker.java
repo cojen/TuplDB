@@ -43,7 +43,7 @@ class Locker extends LockOwner {
     }
 
     /**
-     * Returns true if current transaction scope is nested.
+     * Returns true if the current transaction scope is nested.
      */
     public final boolean isNested() {
         return mParentScope != null;

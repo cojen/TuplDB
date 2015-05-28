@@ -410,8 +410,14 @@ public class Transaction extends Locker {
     }
 
     /**
-     * Exits all transaction scopes, rolling back all uncommitted
-     * modifications.
+     * Exits all transaction scopes, rolling back all uncommitted modifications. Equivalent to:
+     *
+     * <pre>
+     * while (txn.isNested()) {
+     *     txn.exit();
+     * }
+     * txn.exit();
+     * </pre>
      */
     public final void reset() throws IOException {
         if (mBorked != null) {
