@@ -35,16 +35,11 @@ class Locker extends LockOwner {
     // Is null if empty; Lock instance if one; Block if more.
     Object mTailBlock;
 
+    /**
+     * @param manager null for Transaction.BOGUS or when closing down LockManager
+     */
     Locker(LockManager manager) {
-        if (manager == null) {
-            throw new IllegalArgumentException("LockManager is null");
-        }
         mManager = manager;
-    }
-
-    // Constructor used by Transaction.BOGUS.
-    Locker() {
-        mManager = null;
     }
 
     /**

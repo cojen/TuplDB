@@ -190,7 +190,7 @@ final class LockManager {
      * locker. This prevents them from being acquired again.
      */
     final void close() {
-        Locker locker = new Locker();
+        Locker locker = new Locker(null);
         for (LockHT ht : mHashTables) {
             ht.close(locker);
         }
