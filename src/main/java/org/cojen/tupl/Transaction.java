@@ -128,7 +128,7 @@ public class Transaction extends Locker {
 
     // Constructor for BOGUS transaction.
     private Transaction() {
-        super();
+        super(null);
         mDatabase = null;
         mRedoWriter = null;
         mDurabilityMode = DurabilityMode.NO_REDO;

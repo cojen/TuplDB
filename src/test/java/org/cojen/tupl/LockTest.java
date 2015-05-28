@@ -95,12 +95,6 @@ public class LockTest {
 
     @Test
     public void basicShared() throws Exception {
-        try {
-            Locker locker = new Locker(null);
-            fail();
-        } catch (IllegalArgumentException e) {
-        }
-
         Locker locker = new Locker(mManager);
         assertEquals(ACQUIRED, locker.tryLockShared(0, k1, -1));
         assertEquals(1, mManager.numLocksHeld());
