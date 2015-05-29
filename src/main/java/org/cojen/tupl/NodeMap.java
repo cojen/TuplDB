@@ -118,7 +118,7 @@ final class NodeMap {
             }
             if (e.mId == node.mId) {
                 latch.releaseExclusive();
-                throw new AssertionError();
+                throw new AssertionError("Already in NodeMap: " + node + ", " + e + ", " + hash);
             }
             e = e.mNodeChainNext;
         }
