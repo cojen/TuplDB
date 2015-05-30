@@ -838,23 +838,6 @@ class Tree extends AbstractView implements Index {
         }
     }
 
-    /**
-     * @param txn optional transaction instance
-     * @param key non-null key instance
-     * @return non-null Locker instance if caller should unlock when write is done
-     */
-    final Locker lockExclusive(Transaction txn, byte[] key, int hash) throws LockFailureException {
-        if (txn == null) {
-            return lockExclusiveLocal(key, hash);
-        }
-
-        if (txn.lockMode() != LockMode.UNSAFE) {
-            txn.lockExclusive(mId, key, hash);
-        }
-
-        return null;
-    }
-
     final Locker lockSharedLocal(byte[] key, int hash) throws LockFailureException {
         return mLockManager.lockSharedLocal(mId, key, hash);
     }

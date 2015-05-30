@@ -1237,20 +1237,6 @@ class TreeCursor implements CauseCloseable, Cursor {
         return txn;
     }
 
-    /**
-     * Assigns key and hash code to cursor, and returns the hash code.
-     *
-     * @param key must not be null
-     * @return 0 if store operation does not acquire a lock
-     */
-    private int prepareFindForStore(Transaction txn, byte[] key) {
-        int hash = (txn != null && txn.lockMode() == LockMode.UNSAFE) ? 0
-            : LockManager.hash(mTree.mId, key);
-        mKey = key;
-        mKeyHash = hash;
-        return hash;
-    }
-
     private static final int
         VARIANT_REGULAR = 0,
         VARIANT_RETAIN  = 1, // retain node latch only if value is null
@@ -1845,13 +1831,18 @@ class TreeCursor implements CauseCloseable, Cursor {
 
         try {
             final Transaction txn = mTxn;
-            final Locker locker = mTree.lockExclusive(txn, key, keyHash());
-            try {
-                store(txn, leafExclusive(), value, false);
-            } finally {
-                if (locker != null) {
+            if (txn == null) {
+                final Locker locker = mTree.lockExclusiveLocal(key, keyHash());
+                try {
+                    store(txn, leafExclusive(), value, false);
+                } finally {
                     locker.unlock();
                 }
+            } else {
+                if (txn.lockMode() != LockMode.UNSAFE) {
+                    txn.lockExclusive(mTree.mId, key, keyHash());
+                }
+                store(txn, leafExclusive(), value, false);
             }
         } catch (Throwable e) {
             throw handleException(e, false);
@@ -1865,23 +1856,38 @@ class TreeCursor implements CauseCloseable, Cursor {
      */
     final byte[] findAndStore(byte[] key, byte[] value) throws IOException {
         try {
+            mKey = key;
             final Transaction txn = mTxn;
-            final int hash = prepareFindForStore(txn, key);
-            final Locker locker = mTree.lockExclusive(txn, key, hash);
-            try {
-                // Find with no lock because it has already been acquired.
-                find(null, key, VARIANT_NO_LOCK);
-                byte[] oldValue = mValue;
-                store(txn, mLeaf, value, true);
-                return oldValue;
-            } finally {
-                if (locker != null) {
+            if (txn == null) {
+                final int hash = LockManager.hash(mTree.mId, key);
+                mKeyHash = hash;
+                final Locker locker = mTree.lockExclusiveLocal(key, hash);
+                try {
+                    return doFindAndStore(txn, key, value);
+                } finally {
                     locker.unlock();
                 }
+            } else {
+                if (txn.lockMode() == LockMode.UNSAFE) {
+                    mKeyHash = 0;
+                } else {
+                    final int hash = LockManager.hash(mTree.mId, key);
+                    mKeyHash = hash;
+                    txn.lockExclusive(mTree.mId, key, hash);
+                }
+                return doFindAndStore(txn, key, value);
             }
         } catch (Throwable e) {
             throw handleException(e, true);
         }
+    }
+
+    private byte[] doFindAndStore(Transaction txn, byte[] key, byte[] value) throws IOException {
+        // Find with no lock because it has already been acquired. Leaf latch is retained too.
+        find(null, key, VARIANT_NO_LOCK);
+        byte[] oldValue = mValue;
+        store(txn, mLeaf, value, true);
+        return oldValue;
     }
 
     static final byte[] MODIFY_INSERT = new byte[0], MODIFY_REPLACE = new byte[0];
@@ -1900,11 +1906,12 @@ class TreeCursor implements CauseCloseable, Cursor {
             // sequence. The upgrade would need to be performed with the node
             // latch held, which is deadlock prone.
 
+            mKey = key;
+
             if (txn == null) {
-                int hash = LockManager.hash(mTree.mId, key);
-                mKey = key;
+                final int hash = LockManager.hash(mTree.mId, key);
                 mKeyHash = hash;
-                Locker locker = mTree.lockExclusiveLocal(key, hash);
+                final Locker locker = mTree.lockExclusiveLocal(key, hash);
                 try {
                     return doFindAndModify(null, key, oldValue, newValue);
                 } finally {
@@ -1912,14 +1919,16 @@ class TreeCursor implements CauseCloseable, Cursor {
                 }
             }
 
-            int hash = prepareFindForStore(txn, key);
             LockResult result;
 
             LockMode mode = txn.lockMode();
             if (mode == LockMode.UNSAFE) {
+                mKeyHash = 0;
                 // Indicate that no unlock should be performed.
                 result = LockResult.OWNED_EXCLUSIVE;
             } else {
+                final int hash = LockManager.hash(mTree.mId, key);
+                mKeyHash = hash;
                 result = txn.lockExclusive(mTree.mId, key, hash);
                 if (result == LockResult.ACQUIRED && mode.repeatable) {
                     // Downgrade to upgradable when no modification is made, to
