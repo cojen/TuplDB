@@ -605,17 +605,16 @@ public class Transaction extends Locker {
                 }
             }
 
-            int hasState = mHasState | HAS_COMMIT;
+            int hasState = mHasState;
             if ((hasState & HAS_SCOPE) == 0) {
                 ParentScope parentScope = mParentScope;
                 if (parentScope != null) {
                     setScopeState(redo, parentScope);
                 }
                 redo.txnEnter(txnId);
-                hasState |= HAS_SCOPE;
             }
 
-            mHasState = hasState;
+            mHasState = hasState | (HAS_SCOPE | HAS_COMMIT);
 
             if (indexId == 0) {
                 if (key != null) {
@@ -719,17 +718,15 @@ public class Transaction extends Locker {
                     } else {
                         redo.txnStore(RedoOps.OP_TXN_ENTER_STORE, txnId, indexId, key, value);
                     }
-                    hasState |= (HAS_SCOPE | HAS_COMMIT);
                 } else {
                     if (value == null) {
                         redo.txnDelete(RedoOps.OP_TXN_DELETE, txnId, indexId, key);
                     } else {
                         redo.txnStore(RedoOps.OP_TXN_STORE, txnId, indexId, key, value);
                     }
-                    hasState |= HAS_COMMIT;
                 }
 
-                mHasState = hasState;
+                mHasState = hasState | (HAS_SCOPE | HAS_COMMIT);
             }
         } catch (Throwable e) {
             throw borked(e, false);
