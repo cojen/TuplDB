@@ -590,7 +590,20 @@ public class Transaction extends Locker {
         check();
         RedoWriter redo = mRedoWriter;
         if (redo != null) {
-            long txnId = txnId();
+            long txnId = mTxnId;
+
+            if (txnId == 0) {
+                // Replicas cannot create loggable transactions.
+                redo.opWriteCheck();
+
+                final Lock sharedCommitLock = mDatabase.sharedCommitLock();
+                sharedCommitLock.lock();
+                try {
+                    mTxnId = txnId = mDatabase.nextTransactionId();
+                } finally {
+                    sharedCommitLock.unlock();
+                }
+            }
 
             int hasState = mHasState | HAS_COMMIT;
             if ((hasState & HAS_SCOPE) == 0) {
@@ -629,8 +642,16 @@ public class Transaction extends Locker {
         if (mDatabase.mCustomTxnHandler == null) {
             throw new IllegalStateException("Custom transaction handler is not installed");
         }
+
         check();
-        undoLog().pushCustom(message);
+
+        final Lock sharedCommitLock = mDatabase.sharedCommitLock();
+        sharedCommitLock.lock();
+        try {
+            undoLog().pushCustom(message);
+        } finally {
+            sharedCommitLock.unlock();
+        }
     }
 
     /**
@@ -678,7 +699,14 @@ public class Transaction extends Locker {
         try {
             RedoWriter redo = mRedoWriter;
             if (redo != null) {
-                long txnId = txnId();
+                long txnId = mTxnId;
+
+                if (txnId == 0) {
+                    // Replicas cannot create loggable transactions.
+                    redo.opWriteCheck();
+
+                    mTxnId = txnId = mDatabase.nextTransactionId();
+                }
 
                 int hasState = mHasState;
                 if ((hasState & HAS_SCOPE) == 0) {
@@ -700,6 +728,7 @@ public class Transaction extends Locker {
                     }
                     hasState |= HAS_COMMIT;
                 }
+
                 mHasState = hasState;
             }
         } catch (Throwable e) {
@@ -707,6 +736,9 @@ public class Transaction extends Locker {
         }
     }
 
+    /**
+     * Transaction id must be assigned.
+     */
     private void setScopeState(RedoWriter redo, ParentScope scope) throws IOException {
         int hasState = scope.mHasState;
         if ((hasState & HAS_SCOPE) == 0) {
@@ -715,7 +747,7 @@ public class Transaction extends Locker {
                 setScopeState(redo, parentScope);
             }
 
-            redo.txnEnter(txnId());
+            redo.txnEnter(mTxnId);
             scope.mHasState = hasState | HAS_SCOPE;
         }
     }
