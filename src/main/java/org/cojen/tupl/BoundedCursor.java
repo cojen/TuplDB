@@ -491,6 +491,11 @@ final class BoundedCursor implements Cursor {
     }
 
     @Override
+    public void commit(byte[] value) throws IOException {
+        mSource.commit(value);
+    }
+
+    @Override
     public Stream newStream() {
         return new SubStream(mView, mSource.newStream());
     }

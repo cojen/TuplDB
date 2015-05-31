@@ -72,7 +72,7 @@ public class Transaction extends Locker {
 
     final Database mDatabase;
     final RedoWriter mRedoWriter;
-    final DurabilityMode mDurabilityMode;
+    DurabilityMode mDurabilityMode;
 
     private LockMode mLockMode;
     long mLockTimeoutNanos;
@@ -318,6 +318,147 @@ public class Transaction extends Locker {
         }
         mTxnId = 0;
         mRedoWriter.txnCommitPending(pending);
+    }
+
+    /**
+     * Commit combined with a store operation.
+     */
+    final void storeCommit(TreeCursor cursor, byte[] value) throws IOException {
+        RedoWriter redo = mRedoWriter;
+        if (redo == null) {
+            cursor.store(this, cursor.leafExclusive(), value, false);
+            commit();
+            return;
+        }
+
+        check();
+
+        // Implementation consists of redoStore and commit logic, without extraneous checks.
+
+        long txnId = mTxnId;
+
+        final Lock sharedCommitLock = mDatabase.sharedCommitLock();
+        sharedCommitLock.lock();
+        try {
+            if (txnId == 0) {
+                // Replicas cannot create loggable transactions.
+                redo.opWriteCheck();
+
+                mTxnId = txnId = mDatabase.nextTransactionId();
+            }
+        } catch (Throwable e) {
+            sharedCommitLock.unlock();
+            throw e;
+        }
+
+        try {
+            int hasState = mHasState;
+            long indexId = cursor.mTree.mId;
+            byte[] key = cursor.mKey;
+
+            ParentScope parentScope = mParentScope;
+            if (parentScope == null) {
+                long commitPos;
+                try {
+                    if (value == null) {
+                        commitPos = redo.txnDeleteCommitFinal
+                            (txnId, indexId, key, mDurabilityMode);
+                    } else {
+                        commitPos = redo.txnStoreCommitFinal
+                            (txnId, indexId, key, value, mDurabilityMode);
+                    }
+
+                    cursor.store(Transaction.BOGUS, cursor.leafExclusive(), value, false);
+                } catch (Throwable e) {
+                    sharedCommitLock.unlock();
+                    throw e;
+                }
+
+                mHasState = hasState & ~(HAS_SCOPE | HAS_COMMIT);
+
+                UndoLog undo = mUndoLog;
+                if (undo == null) {
+                    sharedCommitLock.unlock();
+                    if (commitPos != 0) {
+                        if (mDurabilityMode == DurabilityMode.SYNC) {
+                            redo.txnCommitSync(this, commitPos);
+                        } else {
+                            commitPending(commitPos, null);
+                            return;
+                        }
+                    }
+                    super.scopeUnlockAll();
+                } else {
+                    try {
+                        undo.pushCommit();
+                    } finally {
+                        sharedCommitLock.unlock();
+                    }
+
+                    if (commitPos != 0) {
+                        if (mDurabilityMode == DurabilityMode.SYNC) {
+                            redo.txnCommitSync(this, commitPos);
+                        } else {
+                            commitPending(commitPos, undo);
+                            return;
+                        }
+                    }
+
+                    super.scopeUnlockAll();
+
+                    undo.truncate(true);
+
+                    mDatabase.unregister(undo);
+                    mUndoLog = null;
+
+                    if ((hasState & HAS_TRASH) != 0) {
+                        mDatabase.fragmentedTrash().emptyTrash(mTxnId);
+                        mHasState = hasState & ~HAS_TRASH;
+                    }
+                }
+
+                mTxnId = 0;
+            } else {
+                try {
+                    if ((hasState & HAS_SCOPE) == 0) {
+                        setScopeState(redo, parentScope);
+                        if (value == null) {
+                            redo.txnDelete(RedoOps.OP_TXN_DELETE, txnId, indexId, key);
+                        } else {
+                            redo.txnStore(RedoOps.OP_TXN_STORE, txnId, indexId, key, value);
+                        }
+                    } else {
+                        if (value == null) {
+                            redo.txnDelete(RedoOps.OP_TXN_DELETE_COMMIT, txnId, indexId, key);
+                        } else {
+                            redo.txnStore(RedoOps.OP_TXN_STORE_COMMIT, txnId, indexId, key, value);
+                        }
+                    }
+
+                    final DurabilityMode original = mDurabilityMode;
+                    mDurabilityMode = DurabilityMode.NO_REDO;
+                    try {
+                        cursor.store(this, cursor.leafExclusive(), value, false);
+                    } finally {
+                        mDurabilityMode = original;
+                    }
+                } finally {
+                    sharedCommitLock.unlock();
+                }
+
+                mHasState = hasState & ~(HAS_SCOPE | HAS_COMMIT);
+                parentScope.mHasState |= HAS_COMMIT;
+
+                super.promote();
+
+                UndoLog undo = mUndoLog;
+                if (undo != null) {
+                    mSavepoint = undo.scopeCommit();
+                }
+            }
+        } catch (Throwable e) {
+            throw borked(e, true);
+        }
     }
 
     /**

@@ -488,6 +488,20 @@ final class TransformedCursor implements Cursor {
     }
 
     @Override
+    public void commit(final byte[] tvalue) throws IOException {
+        final byte[] tkey = mKey;
+        if (tkey == null) {
+            throw new IllegalStateException("Cursor position is undefined");
+        }
+        final Cursor c = mSource;
+        final byte[] key = c.key();
+        if (key == null) {
+            throw new IllegalStateException("Cursor position is undefined");
+        }
+        c.commit(mTransformer.inverseTransformValue(tvalue, key, tkey));
+    }
+
+    @Override
     public Stream newStream() {
         Cursor c = mSource;
         if (mKey == null && c.key() != null) {
