@@ -593,12 +593,12 @@ public class Transaction extends Locker {
             long txnId = mTxnId;
 
             if (txnId == 0) {
-                // Replicas cannot create loggable transactions.
-                redo.opWriteCheck();
-
                 final Lock sharedCommitLock = mDatabase.sharedCommitLock();
                 sharedCommitLock.lock();
                 try {
+                    // Replicas cannot create loggable transactions.
+                    redo.opWriteCheck();
+
                     mTxnId = txnId = mDatabase.nextTransactionId();
                 } finally {
                     sharedCommitLock.unlock();
@@ -695,18 +695,18 @@ public class Transaction extends Locker {
     final void redoStore(long indexId, byte[] key, byte[] value) throws IOException {
         check();
 
-        try {
-            RedoWriter redo = mRedoWriter;
-            if (redo != null) {
-                long txnId = mTxnId;
+        RedoWriter redo = mRedoWriter;
+        if (redo != null) {
+            long txnId = mTxnId;
 
-                if (txnId == 0) {
-                    // Replicas cannot create loggable transactions.
-                    redo.opWriteCheck();
+            if (txnId == 0) {
+                // Replicas cannot create loggable transactions.
+                redo.opWriteCheck();
 
-                    mTxnId = txnId = mDatabase.nextTransactionId();
-                }
+                mTxnId = txnId = mDatabase.nextTransactionId();
+            }
 
+            try {
                 int hasState = mHasState;
                 if ((hasState & HAS_SCOPE) == 0) {
                     ParentScope parentScope = mParentScope;
@@ -727,9 +727,9 @@ public class Transaction extends Locker {
                 }
 
                 mHasState = hasState | (HAS_SCOPE | HAS_COMMIT);
+            } catch (Throwable e) {
+                throw borked(e, false);
             }
-        } catch (Throwable e) {
-            throw borked(e, false);
         }
     }
 
