@@ -207,6 +207,11 @@ final class TrimmedCursor implements Cursor {
     }
 
     @Override
+    public void commit(byte[] value) throws IOException {
+        mSource.commit(value);
+    }
+
+    @Override
     public Stream newStream() {
         return new TrimmedStream(mView, mSource.newStream());
     }

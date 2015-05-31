@@ -249,6 +249,14 @@ public abstract class WrappedCursor<C extends Cursor> implements Cursor {
     }
 
     /**
+     * Always throws UnmodifiableViewException by default.
+     */
+    @Override
+    public void commit(byte[] value) throws IOException {
+        throw new UnmodifiableViewException();
+    }
+
+    /**
      * Returns an unmodifiable stream by default.
      */
     @Override

@@ -216,6 +216,17 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
         writeTerminator();
     }
 
+    /**
+     * @return non-zero position if caller should call txnCommitSync
+     */
+    public synchronized long txnStoreCommitFinal(long txnId, long indexId,
+                                                 byte[] key, byte[] value, DurabilityMode mode)
+        throws IOException
+    {
+        txnStore(OP_TXN_STORE_COMMIT_FINAL, txnId, indexId, key, value);
+        return commitFlush(mode);
+    }
+
     public synchronized void txnDelete(byte op, long txnId, long indexId, byte[] key)
         throws IOException
     {
@@ -227,6 +238,17 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
         writeUnsignedVarInt(key.length);
         writeBytes(key);
         writeTerminator();
+    }
+
+    /**
+     * @return non-zero position if caller should call txnCommitSync
+     */
+    public synchronized long txnDeleteCommitFinal(long txnId, long indexId,
+                                                  byte[] key, DurabilityMode mode)
+        throws IOException
+    {
+        txnDelete(OP_TXN_DELETE_COMMIT_FINAL, txnId, indexId, key);
+        return commitFlush(mode);
     }
 
     public synchronized void txnCustom(long txnId, byte[] message)

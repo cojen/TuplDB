@@ -353,4 +353,174 @@ public class TransactionTest {
             }
         }
     }
+
+    @Test
+    public void storeCommit() throws Exception {
+        byte[] key = "hello".getBytes();
+        byte[] value1 = "world".getBytes();
+        byte[] value2 = "everyone".getBytes();
+        byte[] value3 = "everyone!!!".getBytes();
+
+        Index ix = mDb.openIndex("test");
+
+        {
+            Transaction txn = mDb.newTransaction();
+
+            Cursor c = ix.newCursor(txn);
+            c.find(key);
+            c.commit(value1);
+            c.reset();
+            txn.reset();
+
+            assertArrayEquals(value1, ix.load(null, key));
+        }
+
+        {
+            Transaction txn = mDb.newTransaction();
+
+            Cursor c = ix.newCursor(txn);
+            c.find(key);
+            c.store(value2);
+            c.commit(value3);
+            c.reset();
+            txn.reset();
+
+            assertArrayEquals(value3, ix.load(null, key));
+        }
+
+        // Delete...
+
+        {
+            Transaction txn = mDb.newTransaction();
+
+            Cursor c = ix.newCursor(txn);
+            c.find(key);
+            c.commit(null);
+            c.reset();
+            txn.reset();
+
+            assertNull(ix.load(null, key));
+        }
+    }
+
+    @Test
+    public void storeCommitNested() throws Exception {
+        byte[] key = "hello".getBytes();
+        byte[] value1 = "world".getBytes();
+        byte[] value2 = "everyone".getBytes();
+        byte[] value3 = "everyone!!!".getBytes();
+
+        Index ix = mDb.openIndex("test");
+
+        {
+            Transaction txn = mDb.newTransaction();
+
+            txn.enter();
+            Cursor c = ix.newCursor(txn);
+            c.find(key);
+            c.commit(value1);
+            c.reset();
+            assertEquals(1, txn.nestingLevel());
+            txn.reset(); // rollback
+
+            assertNull(ix.load(null, key));
+        }
+
+        {
+            Transaction txn = mDb.newTransaction();
+
+            txn.enter();
+            Cursor c = ix.newCursor(txn);
+            c.find(key);
+            c.commit(value1);
+            c.reset();
+            assertEquals(1, txn.nestingLevel());
+            txn.exit();
+            txn.commit();
+            assertEquals(0, txn.nestingLevel());
+            txn.reset();
+
+            assertArrayEquals(value1, ix.load(null, key));
+        }
+
+        {
+            Transaction txn = mDb.newTransaction();
+
+            txn.enter();
+            Cursor c = ix.newCursor(txn);
+            c.find(key);
+            c.commit(value2);
+            c.reset();
+            assertEquals(1, txn.nestingLevel());
+            txn.reset(); // rollback
+
+            assertArrayEquals(value1, ix.load(null, key));
+        }
+
+        {
+            Transaction txn = mDb.newTransaction();
+
+            txn.enter();
+            ix.store(txn, key, value2);
+            Cursor c = ix.newCursor(txn);
+            c.find(key);
+            c.commit(value3);
+            c.reset();
+            assertEquals(1, txn.nestingLevel());
+            txn.reset(); // rollback
+
+            assertArrayEquals(value1, ix.load(null, key));
+        }
+
+        {
+            Transaction txn = mDb.newTransaction();
+
+            txn.enter();
+            ix.store(txn, key, value2);
+            Cursor c = ix.newCursor(txn);
+            c.find(key);
+            c.commit(value3);
+            c.reset();
+            assertEquals(1, txn.nestingLevel());
+            txn.exit();
+            txn.commit();
+            assertEquals(0, txn.nestingLevel());
+            txn.reset();
+
+            assertArrayEquals(value3, ix.load(null, key));
+        }
+
+        // Delete...
+
+        {
+            Transaction txn = mDb.newTransaction();
+
+            txn.enter();
+            Cursor c = ix.newCursor(txn);
+            c.find(key);
+            c.commit(null);
+            c.reset();
+            assertEquals(1, txn.nestingLevel());
+            txn.reset(); // rollback
+
+            assertArrayEquals(value3, ix.load(null, key));
+        }
+
+        {
+            Transaction txn = mDb.newTransaction();
+
+            txn.enter();
+            Cursor c = ix.newCursor(txn);
+            c.find(key);
+            c.commit(null);
+            c.reset();
+            assertEquals(1, txn.nestingLevel());
+            txn.exit();
+            txn.commit();
+            assertEquals(0, txn.nestingLevel());
+            txn.reset();
+
+            assertNull(ix.load(null, key));
+        }
+    }
 }

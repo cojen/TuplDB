@@ -372,6 +372,18 @@ public interface Cursor {
      */
     public void store(byte[] value) throws IOException;
 
+    /**
+     * Combined store and commit to the linked transaction. Although similar to storing and
+     * committing explicitly, additional optimizations can be applied. In particular, no undo
+     * log entry is required when committing the outermost transaction scope. This is the same
+     * optimization used by null transactions (auto-commit).
+     *
+     * @param value value to store; pass null to delete
+     * @throws IllegalStateException if position is undefined at invocation time
+     * @throws ViewConstraintException if value is not permitted
+     */
+    public void commit(byte[] value) throws IOException;
+
     //public int read(LockResult[] result,int start,byte[] b, int off, int len) throws IOException;
 
     /**

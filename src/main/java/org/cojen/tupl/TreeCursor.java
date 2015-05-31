@@ -1849,6 +1849,35 @@ class TreeCursor implements CauseCloseable, Cursor {
         }
     }
 
+    @Override
+    public void commit(byte[] value) throws IOException {
+        byte[] key = mKey;
+        if (key == null) {
+            throw new IllegalStateException("Cursor position is undefined");
+        }
+
+        try {
+            final Transaction txn = mTxn;
+            if (txn == null) {
+                final Locker locker = mTree.lockExclusiveLocal(key, keyHash());
+                try {
+                    store(txn, leafExclusive(), value, false);
+                } finally {
+                    locker.unlock();
+                }
+            } else {
+                if (txn.lockMode() == LockMode.UNSAFE) {
+                    store(txn, leafExclusive(), value, false);
+                } else {
+                    txn.lockExclusive(mTree.mId, key, keyHash());
+                    txn.storeCommit(this, value);
+                }
+            }
+        } catch (Throwable e) {
+            throw handleException(e, false);
+        }
+    }
+
     /**
      * Atomic find and store operation. Cursor is reset as a side-effect.
      *

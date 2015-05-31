@@ -176,6 +176,11 @@ final class ReverseCursor implements Cursor {
     }
 
     @Override
+    public void commit(byte[] value) throws IOException {
+        mSource.commit(value);
+    }
+
+    @Override
     public Stream newStream() {
         return mSource.newStream();
     }

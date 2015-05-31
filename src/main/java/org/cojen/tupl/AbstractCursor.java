@@ -46,6 +46,18 @@ public abstract class AbstractCursor implements Cursor {
      * {@inheritDoc}
      */
     @Override
+    public void commit(byte[] value) throws IOException {
+        store(value);
+        Transaction txn = link();
+        if (txn != null && txn != Transaction.BOGUS) {
+            txn.commit();
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public Stream newStream() {
         throw new UnsupportedOperationException();
     }
