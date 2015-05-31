@@ -1417,7 +1417,7 @@ public final class Database implements CauseCloseable, Flushable {
      *
      * @return non-zero transaction id
      */
-    long nextTransactionId() throws IOException {
+    long nextTransactionId() {
         long txnId;
         do {
             synchronized (mTxnIdLock) {
