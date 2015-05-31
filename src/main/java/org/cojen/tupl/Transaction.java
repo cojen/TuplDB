@@ -219,10 +219,15 @@ public class Transaction extends Locker {
                     if ((hasState & HAS_COMMIT) != 0) {
                         RedoWriter redo = mRedoWriter;
                         long commitPos = redo.txnCommitFinal(mTxnId, mDurabilityMode);
-                        if (commitPos != 0) {
-                            redo.txnCommitSync(this, commitPos);
-                        }
                         mHasState = hasState & ~(HAS_SCOPE | HAS_COMMIT);
+                        if (commitPos != 0) {
+                            if (mDurabilityMode == DurabilityMode.SYNC) {
+                                redo.txnCommitSync(this, commitPos);
+                            } else {
+                                commitPending(commitPos, null);
+                                return;
+                            }
+                        }
                     }
                     super.scopeUnlockAll();
                 } else {
@@ -253,18 +258,7 @@ public class Transaction extends Locker {
                         if (mDurabilityMode == DurabilityMode.SYNC) {
                             mRedoWriter.txnCommitSync(this, commitPos);
                         } else {
-                            PendingTxn pending = transferExclusive();
-                            pending.mTxnId = mTxnId;
-                            pending.mCommitPos = commitPos;
-                            pending.mUndoLog = undo;
-                            mUndoLog = null;
-                            int hasState = mHasState;
-                            if ((hasState & HAS_TRASH) != 0) {
-                                pending.mHasFragmentedTrash = true;
-                                mHasState = hasState & ~HAS_TRASH;
-                            }
-                            mTxnId = 0;
-                            mRedoWriter.txnCommitPending(pending);
+                            commitPending(commitPos, undo);
                             return;
                         }
                     }
@@ -309,6 +303,21 @@ public class Transaction extends Locker {
         } catch (Throwable e) {
             throw borked(e, true);
         }
+    }
+
+    private void commitPending(long commitPos, UndoLog undo) throws IOException {
+        PendingTxn pending = transferExclusive();
+        pending.mTxnId = mTxnId;
+        pending.mCommitPos = commitPos;
+        pending.mUndoLog = undo;
+        mUndoLog = null;
+        int hasState = mHasState;
+        if ((hasState & HAS_TRASH) != 0) {
+            pending.mHasFragmentedTrash = true;
+            mHasState = hasState & ~HAS_TRASH;
+        }
+        mTxnId = 0;
+        mRedoWriter.txnCommitPending(pending);
     }
 
     /**
