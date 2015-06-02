@@ -3125,13 +3125,26 @@ public final class Database implements CauseCloseable, Flushable {
     void deleteNode(Node node, boolean canRecycle) throws IOException {
         try {
             long id = node.mId;
-            if (canRecycle) {
-                deletePage(id, node.mCachedState);
-            } else if (id != 0) {
-                mPageDb.deletePage(id);
-            }
 
+            // Must be removed from map before page is deleted. It could be recycled too soon,
+            // creating a NodeMap collision.
             mTreeNodeMap.remove(node, NodeMap.hash(id));
+
+            try {
+                if (canRecycle) {
+                    deletePage(id, node.mCachedState);
+                } else if (id != 0) {
+                    mPageDb.deletePage(id);
+                }
+            } catch (Throwable e) {
+                // Try to undo things.
+                try {
+                    mTreeNodeMap.put(node);
+                } catch (Throwable e2) {
+                    e.addSuppressed(e2);
+                }
+                throw e;
+            }
 
             // When id is <= 1, it won't be moved to a secondary cache. Preserve the original
             // id for non-durable database to recycle it. Durable database relies on free list.
