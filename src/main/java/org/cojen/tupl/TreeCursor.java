@@ -1868,6 +1868,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             } else {
                 if (txn.lockMode() == LockMode.UNSAFE) {
                     store(txn, leafExclusive(), value, false);
+                    txn.commit();
                 } else {
                     txn.lockExclusive(mTree.mId, key, keyHash());
                     txn.storeCommit(this, value);
