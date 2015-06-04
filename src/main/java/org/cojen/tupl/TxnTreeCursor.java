@@ -41,12 +41,11 @@ final class TxnTreeCursor extends TreeCursor {
 
         try {
             Transaction txn = mTxn;
-            final int hash = keyHash();
             if (txn == null) {
                 txn = mTree.mDatabase.newAlwaysRedoTransaction();
                 try {
                     if (txn.lockMode() != LockMode.UNSAFE) {
-                        txn.lockExclusive(mTree.mId, key, hash);
+                        txn.lockExclusive(mTree.mId, key, keyHash());
                     }
                     store(txn, leafExclusive(), value, false);
                     txn.commit();
@@ -56,12 +55,47 @@ final class TxnTreeCursor extends TreeCursor {
                 }
             } else {
                 if (txn.lockMode() != LockMode.UNSAFE) {
-                    txn.lockExclusive(mTree.mId, key, hash);
+                    txn.lockExclusive(mTree.mId, key, keyHash());
                 }
                 store(txn, leafExclusive(), value, false);
             }
         } catch (Throwable e) {
             throw handleException(e, false);
+        }
+    }
+
+    @Override
+    public final void commit(byte[] value) throws IOException {
+        byte[] key = mKey;
+        if (key == null) {
+            throw new IllegalStateException("Cursor position is undefined");
+        }
+
+        try {
+            Transaction txn = mTxn;
+            if (txn == null) {
+                txn = mTree.mDatabase.newAlwaysRedoTransaction();
+                try {
+                    doCommit(txn, key, value);
+                } catch (Throwable e) {
+                    txn.reset();
+                    throw e;
+                }
+            } else {
+                doCommit(txn, key, value);
+            }
+        } catch (Throwable e) {
+            throw handleException(e, false);
+        }
+    }
+
+    private void doCommit(Transaction txn, byte[] key, byte[] value) throws IOException {
+        if (txn.lockMode() == LockMode.UNSAFE) {
+            store(txn, leafExclusive(), value, false);
+            txn.commit();
+        } else {
+            txn.lockExclusive(mTree.mId, key, keyHash());
+            txn.storeCommit(this, value);
         }
     }
 }
