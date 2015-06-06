@@ -360,6 +360,11 @@ public class Transaction extends Locker {
             if (parentScope == null) {
                 long commitPos;
                 try {
+                    if ((hasState & HAS_SCOPE) == 0) {
+                        redo.txnEnter(txnId);
+                        mHasState = hasState | HAS_SCOPE;
+                    }
+
                     if (value == null) {
                         commitPos = redo.txnDeleteCommitFinal
                             (txnId, indexId, key, mDurabilityMode);
