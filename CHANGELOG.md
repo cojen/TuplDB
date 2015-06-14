@@ -1,6 +1,17 @@
 Changelog
 =========
 
+v1.2.4 (2015-06-14)
+------
+* Fix node delete race condition which triggered an assertion error.
+* Fix case in which a cursor value was not set if it caused a node merge.
+* Add basic AbstractCursor implementation.
+* Merge custom redo and undo handler interfaces into one.
+* Add checkpoint support to custom transaction handler.
+* Provide access to transaction nesting level.
+* Attempting to write into an unmodifiable transaction should not invalidate it.
+* Introduce combined store and commit operation.
+
 v1.2.3 (2015-05-16)
 ------
 * Fix snapshot deadlock when reading from the cache.
