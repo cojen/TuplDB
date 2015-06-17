@@ -381,7 +381,7 @@ final class RedoLog extends RedoWriter {
         FileChannel channel = mChannel;
         if (channel != null) {
             try {
-                channel.force(true);
+                channel.force(metadata);
             } catch (ClosedChannelException e) {
                 // Ignore.
             }
