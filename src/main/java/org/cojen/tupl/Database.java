@@ -19,6 +19,7 @@ package org.cojen.tupl;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
+import java.io.DataInput;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -1629,7 +1630,12 @@ public final class Database implements CauseCloseable, Flushable {
 
         in = ((DurablePageDb) mPageDb).decrypt(in);
 
-        DataInputStream din = new DataInputStream(in);
+        DataInput din;
+        if (in instanceof DataInput) {
+            din = (DataInput) in;
+        } else {
+            din = new DataInputStream(in);
+        }
 
         long magic = din.readLong();
         if (magic != PRIMER_MAGIC_NUMBER) {

@@ -18,6 +18,7 @@ package org.cojen.tupl;
 
 import java.io.DataInput;
 import java.io.DataOutput;
+import java.io.InterruptedIOException;
 import java.io.IOException;
 
 import java.util.concurrent.locks.Lock;
@@ -594,21 +595,7 @@ class Tree extends AbstractView implements Index {
     }
 
     final void applyCachePrimer(DataInput din) throws IOException {
-        Cursor c = newCursor(Transaction.BOGUS);
-        try {
-            c.autoload(false);
-            while (true) {
-                int len = din.readUnsignedShort();
-                if (len == 0xffff) {
-                    break;
-                }
-                byte[] key = new byte[len];
-                din.readFully(key);
-                c.findNearby(key);
-            }
-        } finally {
-            c.reset();
-        }
+        new Primer(din).run();
     }
 
     static final void skipCachePrimer(DataInput din) throws IOException {
@@ -893,6 +880,110 @@ class Tree extends AbstractView implements Index {
             mParent = parent;
             mNode = node;
             mDeletedId = deletedId;
+        }
+    }
+
+    private class Primer {
+        private final DataInput mDin;
+        private final int mTaskLimit;
+
+        private int mTaskCount;
+        private boolean mFinished;
+        private IOException mEx;
+
+        Primer(DataInput din) {
+            mDin = din;
+            // TODO: Limit should be based on the concurrency level of the I/O system.
+            // TODO: Cache primer order should be scrambled, to improve cuncurrent priming.
+            mTaskLimit = Runtime.getRuntime().availableProcessors() * 8;
+        }
+
+        void run() throws IOException {
+            synchronized (this) {
+                mTaskCount++;
+            }
+
+            prime();
+
+            // Wait for other task threads to finish.
+            synchronized (this) {
+                while (true) {
+                    if (mEx != null) {
+                        throw mEx;
+                    }
+                    if (mTaskCount <= 0) {
+                        break;
+                    }
+                    try {
+                        wait();
+                    } catch (InterruptedException e) {
+                        throw new InterruptedIOException();
+                    }
+                }
+            }
+        }
+
+        void prime() {
+            try {
+                Cursor c = newCursor(Transaction.BOGUS);
+
+                try {
+                    c.autoload(false);
+
+                    while (true) {
+                        byte[] key;
+
+                        synchronized (this) {
+                            if (mFinished) {
+                                return;
+                            }
+
+                            int len = mDin.readUnsignedShort();
+
+                            if (len == 0xffff) {
+                                mFinished = true;
+                                return;
+                            }
+
+                            key = new byte[len];
+                            mDin.readFully(key);
+
+                            if (mTaskCount < mTaskLimit) spawn: {
+                                Task task;
+                                try {
+                                    task = new Task();
+                                } catch (Throwable e) {
+                                    break spawn;
+                                }
+                                mTaskCount++;
+                                task.start();
+                            }
+                        }
+
+                        c.findNearby(key);
+                    }
+                } catch (IOException e) {
+                    synchronized (this) {
+                        if (mEx == null) {
+                            mEx = e;
+                        }
+                    }
+                } finally {
+                    c.reset();
+                }
+            } finally {
+                synchronized (this) {
+                    mTaskCount--;
+                    notifyAll();
+                }
+            }
+        }
+
+        class Task extends Thread {
+            @Override
+            public void run() {
+                prime();
+            }
         }
     }
 }
