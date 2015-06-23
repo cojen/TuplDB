@@ -168,6 +168,11 @@ final class ReplRedoController extends ReplRedoWriter {
         throw new UnmodifiableReplicaException();
     }
 
+    @Override
+    long adjustTransactionId(long txnId) {
+        return -txnId;
+    }
+
     /**
      * Called by ReplRedoEngine when local instance has become the leader.
      */
