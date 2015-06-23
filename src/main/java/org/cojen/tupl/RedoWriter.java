@@ -422,9 +422,22 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
      */
     abstract void checkpointFinished() throws IOException;
 
+    /**
+     * @throws UnmodifiableReplicaException if a replica
+     */
     // Caller must be synchronized.
     void opWriteCheck() throws IOException {
-        // Always writable by default.
+        // Non-replica by default.
+    }
+
+    /**
+     * Negate the identifier if a replica, but leave alone otherwise.
+     *
+     * @param id new transaction identifier; greater than zero
+     */
+    long adjustTransactionId(long txnId) {
+        // Non-replica by default.
+        return txnId;
     }
 
     /**

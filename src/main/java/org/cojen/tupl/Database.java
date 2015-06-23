@@ -1420,11 +1420,30 @@ public final class Database implements CauseCloseable, Flushable {
      */
     long nextTransactionId() {
         long txnId;
-        do {
+        {
             synchronized (mTxnIdLock) {
                 txnId = ++mTxnId;
             }
-        } while (txnId == 0);
+
+            if (txnId <= 0) {
+                // Improbably, the transaction identifier has wrapped around. Vend positive
+                // identifiers, except for non-replicated transactions.
+                synchronized (mTxnIdLock) {
+                    txnId = ++mTxnId;
+                    if (txnId <= 0) {
+                        mTxnId = txnId = 1;
+                    }
+                }
+            }
+        }
+
+        RedoWriter redo = mRedoWriter;
+
+        if (redo != null) {
+            // Replicas set the high bit to ensure no identifier conflict with the leader.
+            txnId = redo.adjustTransactionId(txnId);
+        }
+
         return txnId;
     }
 
