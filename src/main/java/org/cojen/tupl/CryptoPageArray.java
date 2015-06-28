@@ -102,6 +102,17 @@ final class CryptoPageArray extends PageArray {
     }
 
     @Override
+    public /*P*/ byte[] evictPage(long index, /*P*/ byte[] buf) throws IOException {
+        try {
+            // Page is being evicted, and so buf contents can be destroyed.
+            mCrypto.encryptPage(index, pageSize(), buf, 0);
+            return mSource.evictPage(index, buf);
+        } catch (GeneralSecurityException e) {
+            throw new DatabaseException(e);
+        }
+    }
+
+    @Override
     public void sync(boolean metadata) throws IOException {
         mSource.sync(metadata);
     }

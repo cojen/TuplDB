@@ -834,6 +834,10 @@ final class Node extends Latch implements DatabaseAccess {
      * Caller must hold any latch, which is not released, even if an exception is thrown.
      */
     void write(PageDb db) throws IOException {
+        db.writePage(mId, prepareWrite());
+    }
+
+    private /*P*/ byte[] prepareWrite() {
         if (mSplit != null) {
             throw new AssertionError("Cannot write partially split node");
         }
@@ -855,7 +859,7 @@ final class Node extends Latch implements DatabaseAccess {
             }
         }
 
-        db.writePage(mId, page);
+        return page;
     }
 
     /**
@@ -922,15 +926,22 @@ final class Node extends Latch implements DatabaseAccess {
      */
     void doEvict(Database db) throws IOException {
         try {
+            long id = mId;
+
+            PageDb pageDb = db.mPageDb;
             if (mCachedState == CACHED_CLEAN) {
                 // Try to move to a secondary cache.
-                db.mPageDb.cachePage(mId, mPage);
+                pageDb.cachePage(id, mPage);
             } else {
-                write(db.mPageDb);
+                /*P*/ byte[] page = prepareWrite();
+                /*P*/ byte[] newPage = pageDb.evictPage(id, page);
+                if (newPage != page) {
+                    mPage = newPage;
+                }
                 mCachedState = CACHED_CLEAN;
             }
 
-            db.mTreeNodeMap.remove(this, NodeMap.hash(mId));
+            db.mTreeNodeMap.remove(this, NodeMap.hash(id));
             mId = 0;
             mType = TYPE_NONE;
         } catch (Throwable e) {

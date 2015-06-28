@@ -105,6 +105,21 @@ public abstract class PageArray implements CauseCloseable {
     public abstract void writePage(long index, /*P*/ byte[] buf, int offset) throws IOException;
 
     /**
+     * Same as writePage, except that the given buffer might be altered and a replacement might
+     * be returned. Caller must not alter the original buffer if a replacement was provided,
+     * and the contents of the replacement are undefined.
+     *
+     * @param index zero-based page index to write
+     * @param buf data to write; implementation might alter the contents
+     * @throws IndexOutOfBoundsException if index is negative
+     * @return replacement buffer, or same instance if replacement was not performed
+     */
+    public /*P*/ byte[] evictPage(long index, /*P*/ byte[] buf) throws IOException {
+        writePage(index, buf);
+        return buf;
+    }
+
+    /**
      * If supported, copies a page into the cache, but does not write it. Cached copy can be
      * removed when read again or be evicted sooner. Default implementation does nothing.
      *
