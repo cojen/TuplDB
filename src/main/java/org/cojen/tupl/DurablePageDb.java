@@ -409,6 +409,16 @@ final class DurablePageDb extends PageDb {
     }
 
     @Override
+    public /*P*/ byte[] evictPage(long id, /*P*/ byte[] buf) throws IOException {
+        checkId(id);
+        try {
+            return mPageArray.evictPage(id, buf);
+        } catch (Throwable e) {
+            throw closeOnFailure(e);
+        }
+    }
+
+    @Override
     public void cachePage(long id, /*P*/ byte[] buf) throws IOException {
         mPageArray.cachePage(id, buf);
     }

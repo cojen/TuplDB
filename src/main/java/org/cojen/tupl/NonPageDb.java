@@ -132,6 +132,12 @@ final class NonPageDb extends PageDb {
     }
 
     @Override
+    public /*P*/ byte[] evictPage(long id, /*P*/ byte[] buf) throws IOException {
+        writePage(id, buf, 0);
+        return buf;
+    }
+
+    @Override
     public void cachePage(long id, /*P*/ byte[] buf) throws IOException {
         cachePage(id, buf, 0);
     }

@@ -115,6 +115,13 @@ public class StripedPageArray extends PageArray {
     }
 
     @Override
+    public /*P*/ byte[] evictPage(long index, /*P*/ byte[] buf) throws IOException {
+        PageArray[] arrays = mArrays;
+        int stripes = arrays.length;
+        return arrays[(int) (index % stripes)].evictPage(index / stripes, buf);
+    }
+
+    @Override
     public void sync(boolean metadata) throws IOException {
         Syncer[] syncers = mSyncers;
         int i;

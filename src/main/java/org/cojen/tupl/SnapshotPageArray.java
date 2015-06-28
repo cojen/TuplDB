@@ -88,6 +88,17 @@ final class SnapshotPageArray extends PageArray {
 
     @Override
     public void writePage(long index, /*P*/ byte[] buf, int offset) throws IOException {
+        preWritePage(index, buf, offset);
+        mSource.writePage(index, buf, offset);
+    }
+
+    @Override
+    public /*P*/ byte[] evictPage(long index, /*P*/ byte[] buf) throws IOException {
+        preWritePage(index, buf, 0);
+        return mSource.evictPage(index, buf);
+    }
+
+    private void preWritePage(long index, /*P*/ byte[] buf, int offset) throws IOException {
         if (index < 0) {
             throw new IndexOutOfBoundsException(String.valueOf(index));
         }
@@ -102,8 +113,6 @@ final class SnapshotPageArray extends PageArray {
         }
 
         cachePage(index, buf, offset);
-
-        mSource.writePage(index, buf, offset);
     }
 
     @Override

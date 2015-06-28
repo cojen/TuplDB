@@ -137,6 +137,17 @@ abstract class PageDb implements CauseCloseable {
     public abstract void writePage(long id, /*P*/ byte[] buf, int offset) throws IOException;
 
     /**
+     * Same as writePage, except that the given buffer might be altered and a replacement might
+     * be returned. Caller must not alter the original buffer if a replacement was provided,
+     * and the contents of the replacement are undefined.
+     *
+     * @param id previously allocated page id
+     * @param buf data to write; implementation might alter the contents
+     * @return replacement buffer, or same instance if replacement was not performed
+     */
+    public abstract /*P*/ byte[] evictPage(long id, /*P*/ byte[] buf) throws IOException;
+
+    /**
      * If supported, copies a page into the cache, but does not write it. Cached copy is
      * removed when read again, unless evicted sooner.
      *
