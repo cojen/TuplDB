@@ -38,6 +38,7 @@ final class Checkpointer implements Runnable {
     private final long mRateNanos;
     private final long mSizeThreshold;
     private final long mDelayThresholdNanos;
+    private volatile Thread mThread;
     private volatile boolean mClosed;
     private Hook mShutdownHook;
     private List<Shutdown> mToShutdown;
@@ -67,6 +68,7 @@ final class Checkpointer implements Runnable {
         t.setDaemon(true);
         t.setName("Checkpointer-" + (num & 0xffffffffL));
         t.start();
+        mThread = t;
     }
 
     @Override
@@ -182,7 +184,10 @@ final class Checkpointer implements Runnable {
         }
     }
 
-    void close() {
+    /**
+     * @return thread to interrupt, when no checkpoint is in progress
+     */
+    Thread close() {
         mClosed = true;
         mDatabaseRef.enqueue();
         mDatabaseRef.clear();
@@ -210,6 +215,8 @@ final class Checkpointer implements Runnable {
                 obj.shutdown();
             }
         }
+
+        return mThread;
     }
 
     public static interface Shutdown {
