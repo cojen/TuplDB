@@ -2193,35 +2193,53 @@ public final class Database implements CauseCloseable, Flushable {
             }
         }
 
-        Checkpointer c = mCheckpointer;
+        Thread ct = null;
+        try {
+            Checkpointer c = mCheckpointer;
 
-        if (shutdown) {
-            mCheckpointLock.lock();
-            try {
-                if (mClosed) {
-                    return;
+            if (shutdown) {
+                mCheckpointLock.lock();
+                try {
+                    if (mClosed) {
+                        return;
+                    }
+                    checkpoint(true, 0, 0);
+                    mClosed = true;
+                    if (c != null) {
+                        ct = c.close();
+                        if (ct != null) {
+                            ct.interrupt();
+                        }
+                    }
+                } finally {
+                    mCheckpointLock.unlock();
                 }
-                checkpoint(true, 0, 0);
-                mClosed = true;
+            } else {
                 if (c != null) {
-                    c.close();
+                    ct = c.close();
                 }
-            } finally {
-                mCheckpointLock.unlock();
-            }
-        } else {
-            if (c != null) {
-                c.close();
-            }
-            // Wait for any in-progress checkpoint to complete.
-            mCheckpointLock.lock();
-            try {
-                if (mClosed) {
-                    return;
+                // Wait for any in-progress checkpoint to complete.
+                mCheckpointLock.lock();
+                try {
+                    if (mClosed) {
+                        return;
+                    }
+                    mClosed = true;
+                } finally {
+                    if (ct != null) {
+                        ct.interrupt();
+                    }
+                    mCheckpointLock.unlock();
                 }
-                mClosed = true;
-            } finally {
-                mCheckpointLock.unlock();
+            }
+        } finally {
+            if (ct != null) {
+                // Wait for checkpointer thread to finish.
+                try {
+                    ct.join();
+                } catch (InterruptedException e) {
+                    // Ignore.
+                }
             }
         }
 
