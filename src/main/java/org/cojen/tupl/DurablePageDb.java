@@ -172,6 +172,8 @@ final class DurablePageDb extends PageDb {
     }
 
     static class WrongPageSize extends Exception {
+        private static final long serialVersionUID = 1L;
+
         private final int mExpected;
         private final int mActual;
 

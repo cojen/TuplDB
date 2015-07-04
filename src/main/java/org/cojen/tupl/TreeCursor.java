@@ -2891,6 +2891,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         return true;
     }
 
+    @SuppressWarnings("fallthrough")
     private boolean verifyFrames(int level, Node[] stack, TreeCursorFrame frame,
                                  VerificationObserver observer)
         throws IOException

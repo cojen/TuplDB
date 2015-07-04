@@ -42,6 +42,7 @@ abstract class RedoDecoder {
      *
      * @return true if end of stream reached; false if visitor returned false
      */
+    @SuppressWarnings("fallthrough")
     boolean run(RedoVisitor visitor) throws IOException {
         while (true) {
             // Must be called before each operation, for the benefit of subclasses.

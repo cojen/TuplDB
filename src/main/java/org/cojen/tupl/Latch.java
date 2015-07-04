@@ -25,6 +25,7 @@ import java.util.concurrent.locks.AbstractQueuedSynchronizer;
  *
  * @author Brian S O'Neill
  */
+@SuppressWarnings("serial")
 class Latch extends AbstractQueuedSynchronizer {
     // In the inherited state field, high bit is set if exclusive latch is
     // held, and low bits count shared latches. Limited to (2^31)-1 shared latches.

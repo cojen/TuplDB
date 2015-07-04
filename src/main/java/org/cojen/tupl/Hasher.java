@@ -56,6 +56,7 @@ class Hasher {
         return INSTANCE.doHash(hash, b);
     }
 
+    @SuppressWarnings("fallthrough")
     long doHash(long hash, byte[] b) {
         int len = b.length;
         hash ^= len;
@@ -99,7 +100,7 @@ class Hasher {
 
     static Unsafe getUnsafe() {
         if (INSTANCE instanceof UnsafeLE) {
-            return ((UnsafeLE) INSTANCE).UNSAFE;
+            return UnsafeLE.UNSAFE;
         }
         return null;
     }
@@ -124,6 +125,7 @@ class Hasher {
         }
 
         @Override
+        @SuppressWarnings("fallthrough")
         long doHash(long hash, byte[] b) {
             int len = b.length;
             hash ^= len;

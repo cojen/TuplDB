@@ -287,6 +287,7 @@ final class TreeValueStream extends AbstractStream {
      * @param b ignored by OP_LENGTH; OP_SET_LENGTH must pass EMPTY_BYTES
      * @return applicable only to OP_LENGTH and OP_READ
      */
+    @SuppressWarnings("fallthrough")
     private long action(final TreeCursorFrame frame,
                         final int op, long pos, final byte[] b, int bOff, int bLen)
         throws IOException
@@ -1104,7 +1105,7 @@ final class TreeValueStream extends AbstractStream {
 
         int retMask = 0;
 
-        int newValueLen = node.calculateFragmentedValueLength(value.length + igrowth);
+        int newValueLen = Node.calculateFragmentedValueLength(value.length + igrowth);
 
         if ((key.length + newValueLen) > tree.mDatabase.mMaxFragmentedEntrySize) {
             // Too big, and so value encoding must be modified.
@@ -1190,7 +1191,7 @@ final class TreeValueStream extends AbstractStream {
                 throw new Error("head");
             }
 
-            newValueLen = node.calculateFragmentedValueLength(value.length);
+            newValueLen = Node.calculateFragmentedValueLength(value.length);
             igrowth = 0;
         }
 
@@ -1210,7 +1211,7 @@ final class TreeValueStream extends AbstractStream {
             p_copyFromArray(key, 0, page, entryLoc, key.length);
             entryLoc += key.length;
 
-            entryLoc = node.encodeLeafValueHeader
+            entryLoc = Node.encodeLeafValueHeader
                 (page, Node.ENTRY_FRAGMENTED, value.length + igrowth, entryLoc);
 
             // Copy existing value.

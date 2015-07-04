@@ -25,6 +25,7 @@ import static org.cojen.tupl.Node.*;
  *
  * @author Brian S O'Neill
  */
+@SuppressWarnings("serial")
 final class NodeUsageList extends Latch {
     // Allocate an unevictable node.
     static final int MODE_UNEVICTABLE = 1;

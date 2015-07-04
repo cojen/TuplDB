@@ -23,6 +23,7 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
+@SuppressWarnings("serial")
 final class NodeDirtyList extends Latch {
     // Linked list of dirty nodes.
     private Node mFirstDirty;
