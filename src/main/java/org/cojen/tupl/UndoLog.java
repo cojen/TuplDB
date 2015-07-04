@@ -1015,6 +1015,8 @@ final class UndoLog implements DatabaseAccess {
                         // Indicate that a ghost must be deleted if transaction is committed.
                         .mSharedLockOwnersObj = mDatabase.anyIndexById(mActiveIndexId);
                 }
+                break;
+
             case OP_CUSTOM:
                 break;
             }

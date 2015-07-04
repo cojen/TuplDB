@@ -32,6 +32,7 @@ import static org.cojen.tupl.PageOps.*;
  *
  * @author Brian S O'Neill
  */
+@SuppressWarnings("serial")
 final class DirectPageCache extends Latch implements PageCache {
     /*
       Node format:

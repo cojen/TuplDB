@@ -21,6 +21,7 @@ package org.cojen.tupl;
  *
  * @author Brian S O'Neill
  */
+@SuppressWarnings("serial")
 final class PagePool extends Latch {
     private final transient WaitQueue mQueue;
     private final /*P*/ byte[][] mPool;
