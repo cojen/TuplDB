@@ -1636,10 +1636,11 @@ class TreeCursor implements CauseCloseable, Cursor {
                             node.releaseExclusive();
                             throw cleanup(e, frame);
                         }
-                        if (!node.isLeaf()) {
-                            pos = Node.internalPos(pos);
-                        } else if (pos < 0) {
+                        if (pos < 0) {
                             pos = ~pos;
+                        }
+                        if (!node.isLeaf()) {
+                            pos += 2;
                         }
                     }
 
