@@ -16,6 +16,7 @@
 
 package org.cojen.tupl;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 
@@ -34,7 +35,7 @@ final class TempFileManager implements CauseCloseable, Checkpointer.Shutdown {
     private File mBaseFile;
     private final FileFactory mFileFactory;
     private long mCount;
-    private Map<File, CauseCloseable> mFiles;
+    private Map<File, Closeable> mFiles;
 
     private Throwable mCause;
 
@@ -82,7 +83,10 @@ final class TempFileManager implements CauseCloseable, Checkpointer.Shutdown {
         }
     }
 
-    synchronized void register(File file, CauseCloseable c) throws IOException {
+    /**
+     * Register object to close when file is deleted. Can be CauseCloseable to receive cause.
+     */
+    synchronized void register(File file, Closeable c) throws IOException {
         if (mFiles == null || !mFiles.containsKey(file)) {
             if (mBaseFile == null) {
                 throw new IOException("Shutting down", mCause);
@@ -97,7 +101,7 @@ final class TempFileManager implements CauseCloseable, Checkpointer.Shutdown {
     }
 
     void deleteTempFile(File file) {
-        CauseCloseable c;
+        Closeable c;
         synchronized (this) {
             if (mFiles == null || !mFiles.containsKey(file)) {
                 return;
@@ -115,7 +119,7 @@ final class TempFileManager implements CauseCloseable, Checkpointer.Shutdown {
 
     @Override
     public void close(Throwable cause) {
-        Map<File, CauseCloseable> files;
+        Map<File, Closeable> files;
         synchronized (this) {
             mBaseFile = null;
             if (cause != null) {
@@ -130,7 +134,7 @@ final class TempFileManager implements CauseCloseable, Checkpointer.Shutdown {
         }
 
         if (files != null) {
-            for (CauseCloseable c : files.values()) {
+            for (Closeable c : files.values()) {
                 Utils.closeQuietly(null, c, cause);
             }
             for (File f : files.keySet()) {
