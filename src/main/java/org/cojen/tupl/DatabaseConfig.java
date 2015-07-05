@@ -18,13 +18,14 @@ package org.cojen.tupl;
 
 import java.lang.management.ManagementFactory;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.io.Writer;
 
 import java.util.EnumSet;
-import java.util.Properties;
+import java.util.Map;
+import java.util.TreeMap;
 
 import java.util.concurrent.TimeUnit;
 
@@ -469,7 +470,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
         return options;
     }
 
-    void writeInfo(Writer w) throws IOException {
+    void writeInfo(BufferedWriter w) throws IOException {
         String pid = ManagementFactory.getRuntimeMXBean().getName();
         String user;
         try {
@@ -478,7 +479,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
             user = null;
         }
 
-        Properties props = new Properties();
+        Map<String, String> props = new TreeMap<>();
 
         if (pid != null) {
             set(props, "lastOpenedByProcess", pid);
@@ -504,7 +505,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
                     b.append(mDataFiles[i]);
                 }
                 b.append(']');
-                props.setProperty("dataFiles", b.toString());
+                set(props, "dataFiles", b);
             }
         }
 
@@ -520,12 +521,25 @@ public class DatabaseConfig implements Cloneable, Serializable {
         set(props, "pageSize", mPageSize);
         set(props, "cachePriming", mCachePriming);
 
-        props.store(w, Database.class.getName());
+        w.write('#');
+        w.write(Database.class.getName());
+        w.newLine();
+
+        w.write('#');
+        w.write(new java.util.Date().toString());
+        w.newLine();
+
+        for (Map.Entry<String, String> line : props.entrySet()) {
+            w.write(line.getKey());
+            w.write('=');
+            w.write(line.getValue());
+            w.newLine();
+        }
     }
 
-    private static void set(Properties props, String name, Object value) {
+    private static void set(Map<String, String> props, String name, Object value) {
         if (value != null) {
-            props.setProperty(name, String.valueOf(value));
+            props.put(name, value.toString());
         }
     }
 
