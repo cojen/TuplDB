@@ -2363,28 +2363,6 @@ public final class Database implements CauseCloseable, Flushable {
     }
 
     /**
-     * @return new tree or null if given tree was not the currently open one
-     */
-    Tree replaceClosedTree(Tree tree, Node newRoot) {
-        mOpenTreesLatch.acquireExclusive();
-        try {
-            TreeRef ref = mOpenTreesById.getValue(tree.mId);
-            if (ref != null && ref.get() == tree) {
-                ref.clear();
-                tree = newTreeInstance(tree.mId, tree.mIdBytes, tree.mName, newRoot);
-                ref = new TreeRef(tree, mOpenTreesRefQueue);
-                mOpenTrees.put(tree.mName, ref);
-                mOpenTreesById.insert(tree.mId).value = ref;
-                return tree;
-            } else {
-                return null;
-            }
-        } finally {
-            mOpenTreesLatch.releaseExclusive();
-        }
-    }
-
-    /**
      * @param redoTxnId non-zero if move is performed by recovery
      * @return root node of deleted tree; null if closed or already in the trash
      */
@@ -2481,14 +2459,12 @@ public final class Database implements CauseCloseable, Flushable {
     private Node loadTreeRoot(final long rootId) throws IOException {
         if (rootId != 0) {
             // Check if root node is still around after tree was closed.
-            final int hash = NodeMap.hash(rootId);
-            final Node rootNode = mTreeNodeMap.get(rootId, hash);
+            final Node rootNode = mTreeNodeMap.get(rootId);
             if (rootNode != null) {
                 rootNode.acquireShared();
                 try {
                     if (rootId == rootNode.mId) {
                         rootNode.makeUnevictable();
-                        mTreeNodeMap.remove(rootNode, hash);
                         return rootNode;
                     }
                 } finally {
@@ -2509,6 +2485,7 @@ public final class Database implements CauseCloseable, Flushable {
                     rootNode.makeEvictableNow();
                     throw e;
                 }
+                mTreeNodeMap.put(rootNode);
             }
         } finally {
             rootNode.releaseExclusive();

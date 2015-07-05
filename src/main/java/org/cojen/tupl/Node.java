@@ -643,7 +643,7 @@ final class Node extends Latch implements DatabaseAccess {
         } catch (Throwable e) {
             // Another thread might access child and see that it is invalid because
             // id is zero. It will assume it got evicted and will load child again.
-            db.mTreeNodeMap.remove(childNode, NodeMap.hash(childId));
+            db.mTreeNodeMap.remove(childNode);
             childNode.mId = 0;
             childNode.mType = TYPE_NONE;
             childNode.releaseExclusive();
