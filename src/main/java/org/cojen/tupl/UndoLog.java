@@ -195,6 +195,15 @@ final class UndoLog implements DatabaseAccess {
     }
 
     /**
+     * Deletes just the top node, as part of database close sequence.
+     */
+    void delete() {
+        if (mNode != null) {
+            mNode.delete();
+        }
+    }
+
+    /**
      * Caller must hold db commit lock.
      */
     final void push(long indexId, byte op, byte[] payload) throws IOException {

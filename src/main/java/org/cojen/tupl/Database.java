@@ -2297,7 +2297,12 @@ public final class Database implements CauseCloseable, Flushable {
                     mDirtyList.delete();
                 }
 
-                // FIXME: Need to delete internal tree root nodes and undo log nodes.
+                synchronized (mTxnIdLock) {
+                    for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
+                        log.delete();
+                    }
+                    mTopUndoLog = null;
+                }
 
                 IOException ex = null;
 
