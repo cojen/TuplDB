@@ -379,8 +379,7 @@ class Tree extends AbstractView implements Index {
             mDatabase.swapIfDirty(root, newRoot);
 
             if (root.mId > Node.STUB_ID) {
-                NodeMap map = mDatabase.mTreeNodeMap;
-                map.remove(root, NodeMap.hash(root.mId));
+                mDatabase.mTreeNodeMap.remove(root);
             }
 
             root.closeRoot();
@@ -390,24 +389,15 @@ class Tree extends AbstractView implements Index {
                 return newRoot;
             }
 
-            if (mDatabase.mPageDb.isDurable()) {
-                newRoot.acquireShared();
-                try {
-                    mDatabase.treeClosed(this);
-                    newRoot.makeEvictableNow();
-                    if (newRoot.mId > Node.STUB_ID) {
-                        NodeMap map = mDatabase.mTreeNodeMap;
-                        map.put(newRoot, NodeMap.hash(newRoot.mId));
-                    }
-                } finally {
-                    newRoot.releaseShared();
+            newRoot.acquireShared();
+            try {
+                mDatabase.treeClosed(this);
+                newRoot.makeEvictableNow();
+                if (newRoot.mId > Node.STUB_ID) {
+                    mDatabase.mTreeNodeMap.put(newRoot);
                 }
-            } else {
-                // Non-durable tree cannot be truly closed because nothing would reference it
-                // anymore. As per the interface contract, make this reference unmodifiable,
-                // but also register a replacement tree instance. Closing a non-durable tree
-                // has little practical value.
-                mDatabase.replaceClosedTree(this, newRoot);
+            } finally {
+                newRoot.releaseShared();
             }
 
             return null;

@@ -129,6 +129,10 @@ final class NodeMap {
         latch.releaseExclusive();
     }
 
+    void remove(final Node node) {
+        remove(node, hash(node.mId));
+    }
+
     void remove(final Node node, final int hash) {
         final Latch[] latches = mLatches;
         final Latch latch = latches[hash & (latches.length - 1)];
