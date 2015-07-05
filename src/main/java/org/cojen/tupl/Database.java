@@ -450,7 +450,7 @@ public final class Database implements CauseCloseable, Flushable {
                     factory.createFile(infoFile);
                 }
 
-                Writer w = new BufferedWriter
+                BufferedWriter w = new BufferedWriter
                     (new OutputStreamWriter(new FileOutputStream(infoFile), "UTF-8"));
 
                 try {
