@@ -178,7 +178,25 @@ public class Transaction extends Locker {
     }
 
     /**
-     * Returns the fixed durability mode of this transaction.
+     * Sets the durability mode for the entire transaction, not just the current scope. The
+     * durability mode primarily affects commit behavior at the top-level scope, but it can also
+     * be used to switch redo logging behavior.
+     *
+     * <p><i>Note: This method is intended for advanced use cases.</i>
+     *
+     * @param mode new durability mode
+     * @throws IllegalArgumentException if mode is null
+     */
+    public final void durabilityMode(DurabilityMode mode) {
+        if (mode == null) {
+            throw new IllegalArgumentException("Durability mode is null");
+        } else {
+            mDurabilityMode = mode;
+        }
+    }
+
+    /**
+     * Returns the durability mode of this transaction.
      */
     public final DurabilityMode durabilityMode() {
         return mDurabilityMode;
