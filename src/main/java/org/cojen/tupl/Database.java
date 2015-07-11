@@ -2937,12 +2937,19 @@ public final class Database implements CauseCloseable, Flushable {
 
         NodeUsageList[] usageLists = mUsageLists;
         int listIx = ((int) anyNodeId) & (usageLists.length - 1);
+        IOException fail = null;
 
         for (int trial = 1; trial <= 3; trial++) {
             for (int i=0; i<usageLists.length; i++) {
-                Node node = usageLists[listIx].tryAllocLatchedNode(trial, mode);
-                if (node != null) {
-                    return node;
+                try {
+                    Node node = usageLists[listIx].tryAllocLatchedNode(trial, mode);
+                    if (node != null) {
+                        return node;
+                    }
+                } catch (IOException e) {
+                    if (fail == null) {
+                        fail = e;
+                    }
                 }
                 if (--listIx < 0) {
                     listIx = usageLists.length - 1;
@@ -2961,10 +2968,10 @@ public final class Database implements CauseCloseable, Flushable {
             }
         }
 
-        if (mPageDb.isDurable()) {
+        if (fail == null && mPageDb.isDurable()) {
             throw new CacheExhaustedException();
         } else {
-            throw new DatabaseFullException();
+            throw new DatabaseFullException(fail);
         }
     }
 
@@ -3033,16 +3040,32 @@ public final class Database implements CauseCloseable, Flushable {
         if (node.mCachedState == mCommitState) {
             return false;
         } else {
-            long newId = mPageDb.allocPage();
             mDirtyList.add(node);
-            long oldId = node.mId;
-            if (oldId != 0) {
-                mPageDb.deletePage(oldId);
-                mTreeNodeMap.remove(node, NodeMap.hash(oldId));
-            }
+
             if (node.mCachedState != CACHED_CLEAN) {
                 node.write(mPageDb);
             }
+
+            long newId = mPageDb.allocPage();
+            long oldId = node.mId;
+
+            if (oldId != 0) {
+                try {
+                    mPageDb.deletePage(oldId);
+                } catch (Throwable e) {
+                    try {
+                        mPageDb.recyclePage(newId);
+                    } catch (Throwable e2) {
+                        // Panic.
+                        e.addSuppressed(e2);
+                        close(e);
+                    }
+                    throw e;
+                }
+
+                mTreeNodeMap.remove(node, NodeMap.hash(oldId));
+            }
+
             dirty(node, newId);
             mTreeNodeMap.put(node);
             return true;
@@ -3056,11 +3079,26 @@ public final class Database implements CauseCloseable, Flushable {
      */
     void markUndoLogDirty(Node node) throws IOException {
         if (node.mCachedState != mCommitState) {
-            long newId = mPageDb.allocPage();
             mDirtyList.add(node);
-            long oldId = node.mId;
-            mPageDb.deletePage(oldId);
+
             node.write(mPageDb);
+
+            long newId = mPageDb.allocPage();
+            long oldId = node.mId;
+
+            try {
+                mPageDb.deletePage(oldId);
+            } catch (Throwable e) {
+                try {
+                    mPageDb.recyclePage(newId);
+                } catch (Throwable e2) {
+                    // Panic.
+                    e.addSuppressed(e2);
+                    close(e);
+                }
+                throw e;
+            }
+
             dirty(node, newId);
         }
     }
@@ -3071,23 +3109,47 @@ public final class Database implements CauseCloseable, Flushable {
      * method, even if an exception is thrown.
      */
     void doMarkDirty(Tree tree, Node node) throws IOException {
-        long newId = mPageDb.allocPage();
         mDirtyList.add(node);
-        long oldId = node.mId;
-        if (oldId != 0) {
-            mPageDb.deletePage(oldId);
-            mTreeNodeMap.remove(node, NodeMap.hash(oldId));
-        }
+
         if (node.mCachedState != CACHED_CLEAN) {
             node.write(mPageDb);
         }
-        if (node == tree.mRoot && tree.mIdBytes != null) {
-            byte[] newEncodedId = new byte[8];
-            encodeLongLE(newEncodedId, 0, newId);
-            mRegistry.store(Transaction.BOGUS, tree.mIdBytes, newEncodedId);
+
+        long newId = mPageDb.allocPage();
+        long oldId = node.mId;
+
+        try {
+            if (node == tree.mRoot) {
+                storeTreeRootId(tree, newId);
+            }
+            if (oldId != 0) {
+                mPageDb.deletePage(oldId);
+                mTreeNodeMap.remove(node, NodeMap.hash(oldId));
+            }
+        } catch (Throwable e) {
+            try {
+                if (node == tree.mRoot) {
+                    storeTreeRootId(tree, oldId);
+                }
+                mPageDb.recyclePage(newId);
+            } catch (Throwable e2) {
+                // Panic.
+                e.addSuppressed(e2);
+                close(e);
+            }
+            throw e;
         }
+
         dirty(node, newId);
         mTreeNodeMap.put(node);
+    }
+
+    private void storeTreeRootId(Tree tree, long id) throws IOException {
+        if (tree.mIdBytes != null) {
+            byte[] encodedId = new byte[8];
+            encodeLongLE(encodedId, 0, id);
+            mRegistry.store(Transaction.BOGUS, tree.mIdBytes, encodedId);
+        }
     }
 
     /**
@@ -3939,6 +4001,8 @@ public final class Database implements CauseCloseable, Flushable {
                     commitLock.unlock();
                 }
 
+                mCheckpointFlushState = CHECKPOINT_FLUSH_PREPARE;
+
                 if (!resume) {
                     p_longPutLE(header, hoff + I_ROOT_PAGE_ID, root.mId);
                 }
@@ -3950,15 +4014,10 @@ public final class Database implements CauseCloseable, Flushable {
                     redoTxnId = 0;
                 } else {
                     // Switch and capture state while commit lock is held.
-                    try {
-                        redo.checkpointSwitch();
-                        redoNum = redo.checkpointNumber();
-                        redoPos = redo.checkpointPosition();
-                        redoTxnId = redo.checkpointTransactionId();
-                    } catch (Throwable e) {
-                        redo.checkpointAborted();
-                        throw e;
-                    }
+                    redo.checkpointSwitch();
+                    redoNum = redo.checkpointNumber();
+                    redoPos = redo.checkpointPosition();
+                    redoTxnId = redo.checkpointTransactionId();
                 }
 
                 p_longPutLE(header, hoff + I_CHECKPOINT_NUMBER, redoNum);
@@ -3967,8 +4026,6 @@ public final class Database implements CauseCloseable, Flushable {
 
                 p_longPutLE(header, hoff + I_REPL_ENCODING,
                             mRedoWriter == null ? 0 : mRedoWriter.encoding());
-
-                mCheckpointFlushState = CHECKPOINT_FLUSH_PREPARE;
 
                 // TODO: I don't like all this activity with exclusive commit
                 // lock held. UndoLog can be refactored to store into a special

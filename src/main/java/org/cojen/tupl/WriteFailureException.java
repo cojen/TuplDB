@@ -1,5 +1,5 @@
 /*
- *  Copyright 2014 Brian S O'Neill
+ *  Copyright 2015 Brian S O'Neill
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -17,22 +17,17 @@
 package org.cojen.tupl;
 
 /**
- * Thrown when database is full and no more data can be stored into it.
+ * Thrown when writing to the underlying storage device failed.
  *
  * @author Brian S O'Neill
  */
-public class DatabaseFullException extends DatabaseException {
+public class WriteFailureException extends DatabaseFullException {
     private static final long serialVersionUID = 1L;
 
-    public DatabaseFullException() {
+    public WriteFailureException() {
     }
 
-    public DatabaseFullException(Throwable cause) {
+    public WriteFailureException(Throwable cause) {
         super(cause);
-    }
-
-    @Override
-    boolean isRecoverable() {
-        return true;
     }
 }

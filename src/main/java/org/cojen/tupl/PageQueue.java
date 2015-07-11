@@ -371,7 +371,14 @@ final class PageQueue implements IntegerRef {
             appendHeap.add(id);
             mAppendPageCount++;
             if (!mDrainInProgress && appendHeap.shouldDrain()) {
-                drainAppendHeap(appendHeap);
+                try {
+                    drainAppendHeap(appendHeap);
+                } catch (IOException e) {
+                    // Undo.
+                    appendHeap.remove(id);
+                    mAppendPageCount--;
+                    throw e;
+                }
             }
             // If a drain is in progress, then append is called by allocPage
             // which is called by drainAppendHeap itself. The IdHeap has
@@ -429,7 +436,13 @@ final class PageQueue implements IntegerRef {
             // Clean out any cruft from previous usage and ensure delta terminator.
             p_clear(tailBuf, end, p_length(tailBuf));
 
-            mManager.pageArray().writePage(mAppendTailId, tailBuf);
+            try {
+                mManager.pageArray().writePage(mAppendTailId, tailBuf);
+            } catch (IOException e) {
+                // Undo.
+                appendHeap.undrain(firstPageId, tailBuf, I_NODE_START, end);
+                throw e;
+            }
 
             mAppendNodeCount++;
             mAppendTailId = newTailId;

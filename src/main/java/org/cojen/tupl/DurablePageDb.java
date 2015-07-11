@@ -339,9 +339,18 @@ final class DurablePageDb extends PageDb {
     @Override
     public Node allocLatchedNode(Database db, int mode) throws IOException {
         long nodeId = allocPage();
-        Node node = db.allocLatchedNode(nodeId, mode);
-        node.mId = nodeId;
-        return node;
+        try {
+            Node node = db.allocLatchedNode(nodeId, mode);
+            node.mId = nodeId;
+            return node;
+        } catch (Throwable e) {
+            try {
+                recyclePage(nodeId);
+            } catch (Throwable e2) {
+                e.addSuppressed(e2);
+            }
+            throw e;
+        }
     }
 
     @Override
@@ -403,21 +412,13 @@ final class DurablePageDb extends PageDb {
     @Override
     public void writePage(long id, /*P*/ byte[] buf, int offset) throws IOException {
         checkId(id);
-        try {
-            mPageArray.writePage(id, buf, offset);
-        } catch (Throwable e) {
-            throw closeOnFailure(e);
-        }
+        mPageArray.writePage(id, buf, offset);
     }
 
     @Override
     public /*P*/ byte[] evictPage(long id, /*P*/ byte[] buf) throws IOException {
         checkId(id);
-        try {
-            return mPageArray.evictPage(id, buf);
-        } catch (Throwable e) {
-            throw closeOnFailure(e);
-        }
+        return mPageArray.evictPage(id, buf);
     }
 
     @Override
@@ -441,6 +442,8 @@ final class DurablePageDb extends PageDb {
         mCommitLock.readLock().lock();
         try {
             mPageManager.deletePage(id);
+        } catch (IOException e) {
+            throw e;
         } catch (Throwable e) {
             throw closeOnFailure(e);
         } finally {
@@ -454,7 +457,13 @@ final class DurablePageDb extends PageDb {
         checkId(id);
         mCommitLock.readLock().lock();
         try {
-            mPageManager.recyclePage(id);
+            try {
+                mPageManager.recyclePage(id);
+            } catch (IOException e) {
+                mPageManager.deletePage(id);
+            }
+        } catch (IOException e) {
+            throw e;
         } catch (Throwable e) {
             throw closeOnFailure(e);
         } finally {
