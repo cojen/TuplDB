@@ -834,8 +834,13 @@ final class Node extends Latch implements DatabaseAccess {
     /**
      * Caller must hold any latch, which is not released, even if an exception is thrown.
      */
-    void write(PageDb db) throws IOException {
-        db.writePage(mId, prepareWrite());
+    void write(PageDb db) throws WriteFailureException {
+        /*P*/ byte[] page = prepareWrite();
+        try {
+            db.writePage(mId, page);
+        } catch (IOException e) {
+            throw new WriteFailureException(e);
+        }
     }
 
     private /*P*/ byte[] prepareWrite() {
@@ -2464,9 +2469,16 @@ final class Node extends Latch implements DatabaseAccess {
                 childFrame = childFrame.mPrevCousin;
             }
 
-            // FIXME: IOException caused by call to splitInternal; frames are all wrong
-            InResult result = createInternalEntry
-                (tree, keyPos, split.splitKeyEncodedLength(), newChildPos << 3, true);
+            // FIXME: IOException caused by call to splitInternal; frames are all wrong.
+            InResult result;
+            try {
+                result = createInternalEntry
+                    (tree, keyPos, split.splitKeyEncodedLength(), newChildPos << 3, true);
+            } catch (IOException e) {
+                // Panic.
+                tree.mDatabase.close(e);
+                throw e;
+            }
 
             // Write new child id.
             p_longPutLE(result.mPage, result.mNewChildLoc, newChild.mId);
@@ -3666,10 +3678,11 @@ final class Node extends Latch implements DatabaseAccess {
      * are released by this method.
      */
     void rootDelete(Tree tree, Node child) throws IOException {
+        tree.mDatabase.prepareToDelete(child);
+
         /*P*/ byte[] page = mPage;
         TreeCursorFrame lastCursorFrame = mLastCursorFrame;
 
-        tree.mDatabase.prepareToDelete(child);
         long toDelete = child.mId;
         int toDeleteState = child.mCachedState;
 

@@ -498,10 +498,14 @@ final class PageManager {
         fullLock();
         try {
             // Pre-commit all first, draining the append heaps.
-            mRegularFreeList.preCommit();
-            mRecycleFreeList.preCommit();
-            if (mReserveList != null) {
-                mReserveList.preCommit();
+            try {
+                mRegularFreeList.preCommit();
+                mRecycleFreeList.preCommit();
+                if (mReserveList != null) {
+                    mReserveList.preCommit();
+                }
+            } catch (IOException e) {
+                throw new WriteFailureException(e);
             }
 
             // Total page count is written after append heaps have been

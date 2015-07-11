@@ -112,6 +112,26 @@ final class IdHeap {
         return result;
     }
 
+    /**
+     * Removes a specific id, intended for recovering from exceptions.
+     */
+    public void remove(long id) {
+        long[] copy = new long[mIds.length];
+        int pos = 0;
+        while (true) {
+            long removed = tryRemove();
+            if (removed == 0) {
+                break;
+            }
+            if (removed != id) {
+                copy[pos++] = removed;
+            }
+        }
+        while (--pos >= 0) {
+            add(copy[pos]);
+        }
+    }
+
     public boolean shouldDrain() {
         // Compare and ignore padding added by constructor.
         return mSize >= mIds.length - 1;
@@ -137,5 +157,19 @@ final class IdHeap {
             prevId = id;
         }
         return offset;
+    }
+
+    /**
+     * @param id first id; was prevId for drain method call
+     * @param endOffset must be return offset from drain
+     */
+    public void undrain(long id, /*P*/ byte[] buffer, int offset, int endOffset) {
+        add(id);
+        IntegerRef offsetRef = new IntegerRef.Value();
+        offsetRef.set(offset);
+        while (offsetRef.get() < endOffset) {
+            id += PageOps.p_ulongGetVar(buffer, offsetRef);
+            add(id);
+        }
     }
 }

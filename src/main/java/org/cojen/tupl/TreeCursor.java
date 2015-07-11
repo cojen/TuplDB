@@ -3526,7 +3526,12 @@ class TreeCursor implements CauseCloseable, Cursor {
                     if (releaseParent) {
                         parent.releaseExclusive();
                     }
-                    childNode.write(mTree.mDatabase.mPageDb);
+                    try {
+                        childNode.write(mTree.mDatabase.mPageDb);
+                    } catch (Throwable e) {
+                        childNode.releaseExclusive();
+                        throw e;
+                    }
                     childNode.mCachedState = Node.CACHED_CLEAN;
                 } else if (releaseParent) {
                     parent.releaseExclusive();

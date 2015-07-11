@@ -654,22 +654,24 @@ class Tree extends AbstractView implements Index {
 
         if (db.shouldMarkDirty(node)) {
             TreeCursorFrame parentFrame = frame.mParentFrame;
-            if (parentFrame == null) {
-                db.doMarkDirty(this, node);
-            } else {
-                // Latch coupling upwards is fine because nothing should be searching a tree
-                // which is filling up.
-                Node parentNode = latchDirty(parentFrame);
-                try {
-                    if (db.markDirty(this, node)) {
-                        parentNode.updateChildRefId(parentFrame.mNodePos, node.mId);
+            try {
+                if (parentFrame == null) {
+                    db.doMarkDirty(this, node);
+                } else {
+                    // Latch coupling upwards is fine because nothing should be searching a tree
+                    // which is filling up.
+                    Node parentNode = latchDirty(parentFrame);
+                    try {
+                        if (db.markDirty(this, node)) {
+                            parentNode.updateChildRefId(parentFrame.mNodePos, node.mId);
+                        }
+                    } finally {
+                        parentNode.releaseExclusive();
                     }
-                } catch (Throwable e) {
-                    node.releaseExclusive();
-                    throw e;
-                } finally {
-                    parentNode.releaseExclusive();
                 }
+            } catch (Throwable e) {
+                node.releaseExclusive();
+                throw e;
             }
         }
 

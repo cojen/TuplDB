@@ -581,11 +581,11 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
 
     // Caller must be synchronized.
     private void doFlush(byte[] buffer, int len) throws IOException {
-        // Discard buffer even if the write fails. Caller is expected to
-        // rollback the transaction, and so redo is not used.
         try {
-            mBufferPos = 0;
             write(buffer, len);
+            // Discard only if write succeeds. Although caller is expected to rollback, redo
+            // entries from other transactions might also exist.
+            mBufferPos = 0;
         } catch (IOException e) {
             throw rethrow(e, mCause);
         }
