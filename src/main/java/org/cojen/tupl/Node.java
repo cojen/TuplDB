@@ -1001,7 +1001,7 @@ final class Node extends Latch implements DatabaseAccess {
         Node empty = new Node(null, p_empty());
         empty.mId = STUB_ID;
         empty.mCachedState = CACHED_CLEAN;
-        empty.mType = type;
+        empty.mType = (byte) (type | (LOW_EXTREMITY | HIGH_EXTREMITY));
         empty.mSearchVecStart = 2;
         empty.mSearchVecEnd = 0;
         return empty;
@@ -4878,7 +4878,7 @@ final class Node extends Latch implements DatabaseAccess {
             ", cachedState=" + mCachedState +
             ", isSplit=" + (mSplit != null) +
             ", availableBytes=" + availableBytes() +
-            ", extremity=" + (mType & (LOW_EXTREMITY | HIGH_EXTREMITY)) +
+            ", extremity=0b" + Integer.toString((mType & (LOW_EXTREMITY | HIGH_EXTREMITY)), 2) +
             ", lockState=" + super.toString() +
             '}';
     }
