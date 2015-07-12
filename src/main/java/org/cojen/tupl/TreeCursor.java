@@ -2092,7 +2092,21 @@ class TreeCursor implements CauseCloseable, Cursor {
                 break doDelete;
             }
 
-            final Lock sharedCommitLock = sharedCommitLock(leaf);
+            final Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
+
+            if (!sharedCommitLock.tryLock()) {
+                leaf.mNode.releaseExclusive();
+                sharedCommitLock.lock();
+                leaf.acquireExclusive();
+
+                // Need to check if exists again.
+                if (leaf.mNodePos < 0) {
+                    node = leaf.mNode;
+                    sharedCommitLock.unlock();
+                    break doDelete;
+                }
+            }
+
             try {
                 // Releases latch if an exception is thrown.
                 node = notSplitDirty(leaf);
