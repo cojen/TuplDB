@@ -364,6 +364,21 @@ final class DurablePageDb extends PageDb {
     }
 
     @Override
+    public void pageLimit(long limit) {
+        mPageManager.pageLimit(limit);
+    }
+
+    @Override
+    public long pageLimit() {
+        return mPageManager.pageLimit();
+    }
+
+    @Override
+    public void pageLimitOverride(long bytes) {
+        mPageManager.pageLimitOverride(bytes);
+    }
+
+    @Override
     public Stats stats() {
         Stats stats = new Stats();
         mPageManager.addTo(stats);
@@ -397,6 +412,11 @@ final class DurablePageDb extends PageDb {
         mCommitLock.readLock().lock();
         try {
             return mPageManager.allocPage();
+        } catch (DatabaseException e) {
+            if (e.isRecoverable()) {
+                throw e;
+            }
+            throw closeOnFailure(e);
         } catch (Throwable e) {
             throw closeOnFailure(e);
         } finally {

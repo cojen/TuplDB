@@ -1497,6 +1497,39 @@ public final class Database implements CauseCloseable, Flushable {
     }
 
     /**
+     * Set a soft capacity limit for the database, to prevent filling up the storage
+     * device. When the limit is reached, writes might fail with a {@link
+     * DatabaseFullException}. No explicit limit is defined by default, and the option is
+     * ignored by non-durable databases. The limit is checked only when the database attempts
+     * to grow, and so it can be set smaller than the current database size.
+     *
+     * @param bytes maximum capacity, in bytes; pass -1 for no limit
+     */
+    public void capacityLimit(long bytes) {
+        mPageDb.pageLimit(bytes < 0 ? -1 : (bytes / mPageSize));
+    }
+
+    /**
+     * Returns the current capacity limit, rounded down by page size.
+     *
+     * @return maximum capacity, in bytes; is -1 if no limit
+     */
+    public long capacityLimit() {
+        long pageLimit = mPageDb.pageLimit();
+        return pageLimit < 0 ? -1 : (pageLimit * mPageSize);
+    }
+
+    /**
+     * Set capacity limits for the current thread, allowing it to perform tasks which can free
+     * up space. While doing so, it might require additional temporary storage.
+     *
+     * @param bytes maximum capacity, in bytes; pass -1 for no limit; pass 0 to remove override
+     */
+    public void capacityLimitOverride(long bytes) {
+        mPageDb.pageLimitOverride(bytes < 0 ? -1 : (bytes / mPageSize));
+    }
+
+    /**
      * Support for capturing a snapshot (hot backup) of the database, while
      * still allowing concurrent modifications. The snapshot contains all data
      * up to the last checkpoint. Call the {@link #checkpoint checkpoint}
@@ -2970,6 +3003,8 @@ public final class Database implements CauseCloseable, Flushable {
 
         if (fail == null && mPageDb.isDurable()) {
             throw new CacheExhaustedException();
+        } else if (fail instanceof DatabaseFullException) {
+            throw fail;
         } else {
             throw new DatabaseFullException(fail);
         }

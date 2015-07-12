@@ -56,6 +56,8 @@ final class PageManager {
     // One remove lock for all queues.
     private final ReentrantLock mRemoveLock;
     private long mTotalPageCount;
+    private long mPageLimit;
+    private ThreadLocal<Long> mPageLimitOverride;
 
     private final PageQueue mRegularFreeList;
     private final PageQueue mRecycleFreeList;
@@ -99,6 +101,8 @@ final class PageManager {
         mRemoveLock = new ReentrantLock(false);
         mRegularFreeList = PageQueue.newRegularFreeList(this);
         mRecycleFreeList = PageQueue.newRecycleFreeList(this);
+
+        mPageLimit = -1; // no limit
 
         try {
             if (!restored) {
@@ -238,7 +242,12 @@ final class PageManager {
                         }
                     }
 
-                    pageId = mTotalPageCount++;
+                    try {
+                        pageId = increasePageCount();
+                    } catch (Throwable e) {
+                        lock.unlock();
+                        throw e;
+                    }
                 }
 
                 lock.unlock();
@@ -288,11 +297,75 @@ final class PageManager {
         long pageId;
         mRemoveLock.lock();
         try {
-            pageId = mTotalPageCount++;
+            pageId = increasePageCount();
         } finally {
             mRemoveLock.unlock();
         }
         recyclePage(pageId);
+    }
+
+    /**
+     * Caller must hold mRemoveLock.
+     *
+     * @return newly allocated page id
+     */
+    private long increasePageCount() throws DatabaseFullException {
+        long total = mTotalPageCount;
+
+        long limit;
+        {
+            ThreadLocal<Long> override = mPageLimitOverride;
+            Long limitObj;
+            if (override == null || (limitObj = override.get()) == null) {
+                limit = mPageLimit;
+            } else {
+                limit = limitObj;
+            }
+        }
+
+        if (limit >= 0 && total >= limit) {
+            throw new DatabaseFullException
+                ("Capacity limit reached: " + (limit * mPageArray.pageSize()));
+        }
+
+        mTotalPageCount = total + 1;
+        return total;
+    }
+
+    public void pageLimit(long limit) {
+        mRemoveLock.lock();
+        try {
+            mPageLimit = limit;
+        } finally {
+            mRemoveLock.unlock();
+        }
+    }
+
+    public void pageLimitOverride(long limit) {
+        mRemoveLock.lock();
+        try {
+            if (limit == 0) {
+                if (mPageLimitOverride != null) {
+                    mPageLimitOverride.remove();
+                }
+            } else {
+                if (mPageLimitOverride == null) {
+                    mPageLimitOverride = new ThreadLocal<>();
+                }
+                mPageLimitOverride.set(limit);
+            }
+        } finally {
+            mRemoveLock.unlock();
+        }
+    }
+
+    public long pageLimit() {
+        mRemoveLock.lock();
+        try {
+            return mPageLimit;
+        } finally {
+            mRemoveLock.unlock();
+        }
     }
 
     /**
@@ -504,6 +577,8 @@ final class PageManager {
                 if (mReserveList != null) {
                     mReserveList.preCommit();
                 }
+            } catch (DatabaseFullException e) {
+               throw e;
             } catch (IOException e) {
                 throw new WriteFailureException(e);
             }
