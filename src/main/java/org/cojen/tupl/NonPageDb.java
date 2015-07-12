@@ -84,6 +84,22 @@ final class NonPageDb extends PageDb {
     }
 
     @Override
+    public void pageLimit(long limit) {
+        // Ignored.
+    }
+
+    @Override
+    public long pageLimit() {
+        // No explicit limit.
+        return -1;
+    }
+
+    @Override
+    public void pageLimitOverride(long limit) {
+        // Ignored.
+    }
+
+    @Override
     public Stats stats() {
         return new Stats();
     }
