@@ -1608,6 +1608,12 @@ class TreeCursor implements CauseCloseable, Cursor {
 
     @Override
     public final LockResult random(byte[] lowKey, byte[] highKey) throws IOException {
+        if (lowKey != null && highKey != null && compareKeys(lowKey, highKey) >= 0) {
+            // Cannot find anything if range is empty.
+            reset();
+            return LockResult.UNOWNED;
+        }
+
         Random rnd = Utils.random();
 
         start: while (true) {
@@ -1672,6 +1678,27 @@ class TreeCursor implements CauseCloseable, Cursor {
                     // Node is empty or out of bounds, so pop up the tree.
                     TreeCursorFrame parent = frame.mParentFrame;
                     node.releaseExclusive();
+
+                    // Before continuing, check if range has anything in it at all. This must
+                    // be performed each time, to account for concurrent updates.
+                    TreeCursor temp = new TreeCursor(mTree);
+                    try {
+                        temp.mTxn = Transaction.BOGUS;
+                        temp.mKeyOnly = true;
+                        if (lowKey == null) {
+                            temp.first();
+                        } else {
+                            temp.findGe(lowKey);
+                        }
+                        if (temp.mKey == null ||
+                            (highKey != null && compareKeys(temp.mKey, highKey) >= 0))
+                        {
+                            reset();
+                            return LockResult.UNOWNED;
+                        }
+                    } finally {
+                        temp.reset();
+                    }
 
                     if (parent == null) {
                         // Usually the root frame refers to the root node, but

@@ -916,6 +916,44 @@ public class CursorTest {
     }
 
     @Test
+    public void randomNonRange() throws Exception {
+        View ix = openIndex("test");
+
+        Cursor c = ix.newCursor(null);
+
+        byte[] low = {10};
+        byte[] high = {20};
+
+        c.random(low, low);
+        assertNull(c.key());
+
+        c.random(high, low);
+        assertNull(c.key());
+
+        ix.store(Transaction.BOGUS, low, low);
+        ix.store(Transaction.BOGUS, high, high);
+
+        c.random(low, low);
+        assertNull(c.key());
+
+        c.random(high, low);
+        assertNull(c.key());
+
+        for (int i=1; i<=20000; i+=2) {
+            ix.store(Transaction.BOGUS, key(i), value(i));
+        }
+
+        c.random(low, low);
+        assertNull(c.key());
+    
+        c.random(new byte[] {0, 0, 0, 2}, new byte[] {0, 0, 0, 3});
+        assertNull(c.key());
+
+        c.random(null, new byte[] {0, 0, 0, 0});
+        assertNull(c.key());
+    }
+
+    @Test
     public void stability() throws Exception {
         // Verifies that cursors are positioned properly after making structural modifications
         // to the tree.
