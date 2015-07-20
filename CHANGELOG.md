@@ -1,6 +1,18 @@
 Changelog
 =========
 
+v1.2.5 (2015-07-29)
+------
+* Fix non-transactional delete race condition.
+* Fixes for random cursor search, when encountering internal nodes with few entries or when
+  the search range is empty.
+* Bug fix for findNearby acting on a closed index.
+* Improvements for handling temporary write failures.
+* Allow replicas to create no-redo transactions.
+* Added option to change transaction durability mode.
+* Define an evict operation on the page array, for eliminating unnecessary copies.
+* Introduce concurrent cache priming.
+
 v1.2.4 (2015-06-14)
 ------
 * Fix node delete race condition which triggered an assertion error.
