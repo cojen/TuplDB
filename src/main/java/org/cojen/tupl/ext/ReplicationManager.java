@@ -102,16 +102,18 @@ public interface ReplicationManager extends Closeable {
         long position();
 
         /**
-         * Fully writes the given data, returning a confirmation position. When the local
-         * instance loses leadership, all data rolls back to the highest confirmed position.
+         * Fully writes the given data, returning a potential confirmation position. When the
+         * local instance loses leadership, all data rolls back to the highest confirmed
+         * position.
          *
-         * @return confirmation position, or -1 if not leader
+         * @return potential confirmation position, or -1 if not leader
          */
         long write(byte[] b, int off, int len) throws IOException;
 
         /**
          * Blocks until all data up to the given log position is confirmed.
          *
+         * @param position confirmation position as provided by the write method
          * @return false if not leader
          * @throws ConfirmationFailureException
          */
@@ -120,6 +122,7 @@ public interface ReplicationManager extends Closeable {
         /**
          * Blocks until all data up to the given log position is confirmed.
          *
+         * @param position confirmation position as provided by the write method
          * @param timeoutNanos pass -1 for infinite
          * @return false if not leader
          * @throws ConfirmationFailureException
