@@ -1,7 +1,7 @@
 Changelog
 =========
 
-v1.2.5 (2015-07-29)
+v1.2.5 (2015-07-19)
 ------
 * Fix non-transactional delete race condition.
 * Fixes for random cursor search, when encountering internal nodes with few entries or when
