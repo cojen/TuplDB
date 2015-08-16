@@ -2470,10 +2470,10 @@ final class Node extends Latch implements DatabaseAccess {
             }
 
             // FIXME: IOException caused by call to splitInternal; frames are all wrong.
-            InResult result;
+            InResult result = new InResult();
             try {
-                result = createInternalEntry
-                    (tree, keyPos, split.splitKeyEncodedLength(), newChildPos << 3, true);
+                createInternalEntry
+                    (result, tree, keyPos, split.splitKeyEncodedLength(), newChildPos << 3, true);
             } catch (IOException e) {
                 // Panic.
                 tree.mDatabase.close(e);
@@ -2516,14 +2516,16 @@ final class Node extends Latch implements DatabaseAccess {
      * node and child node must have an exclusive latch held. Child latch is
      * released, unless an exception is thrown.
      *
+     * @param result return result stored here; if node was split, key and entry loc is -1 if
+     * new key was promoted to parent
      * @param keyPos 2-based position
      * @param newChildPos 8-based position
      * @param allowSplit true if this internal node can be split as a side-effect
-     * @return result; if node was split, key and entry loc is -1 if new key was promoted to parent
      * @throws AssertionError if entry must be split to make room but split is not allowed
      */
-    private InResult createInternalEntry(Tree tree, int keyPos, int encodedLen,
-                                         int newChildPos, boolean allowSplit)
+    private void createInternalEntry(InResult result,
+                                     Tree tree, int keyPos, int encodedLen,
+                                     int newChildPos, boolean allowSplit)
         throws IOException
     {
         int searchVecStart = mSearchVecStart;
@@ -2625,7 +2627,8 @@ final class Node extends Latch implements DatabaseAccess {
                         }
                     }
 
-                    return compactInternal(encodedLen, keyPos, newChildPos);
+                    compactInternal(result, encodedLen, keyPos, newChildPos);
+                    return;
                 }
 
                 // Node is full, so split it.
@@ -2635,7 +2638,8 @@ final class Node extends Latch implements DatabaseAccess {
                 }
 
                 // No side-effects if an IOException is thrown here.
-                return splitInternal(tree, encodedLen, keyPos, newChildPos);
+                splitInternal(result, tree, encodedLen, keyPos, newChildPos);
+                return;
             }
 
             int vecLen = searchVecEnd - searchVecStart + 2;
@@ -2659,7 +2663,8 @@ final class Node extends Latch implements DatabaseAccess {
                 mRightSegTail = entryLoc - 1;
             } else {
                 // Search vector is misaligned, so do full compaction.
-                return compactInternal(encodedLen, keyPos, newChildPos);
+                compactInternal(result, encodedLen, keyPos, newChildPos);
+                return;
             }
 
             int newSearchVecEnd = newSearchVecStart + vecLen;
@@ -2687,12 +2692,9 @@ final class Node extends Latch implements DatabaseAccess {
         // Write pointer to key entry.
         p_shortPutLE(page, keyPos, entryLoc);
 
-        InResult result = new InResult();
         result.mPage = page;
         result.mNewChildLoc = newChildPos;
         result.mEntryLoc = entryLoc;
-
-        return result;
     }
 
     /**
@@ -2819,8 +2821,8 @@ final class Node extends Latch implements DatabaseAccess {
         try {
             // Leftmost key to move comes from the parent.
             int pos = left.highestInternalPos();
-            InResult result = left.createInternalEntry
-                (tree, pos, parentKeyLen, (pos + 2) << 2, false);
+            InResult result = new InResult();
+            left.createInternalEntry(result, tree, pos, parentKeyLen, (pos + 2) << 2, false);
             // Note: Must access left page each time, since compaction can replace it.
             p_copy(parentPage, parentKeyLoc, left.mPage, result.mEntryLoc, parentKeyLen);
 
@@ -2829,7 +2831,7 @@ final class Node extends Latch implements DatabaseAccess {
                 int keyLoc = p_ushortGetLE(rightPage, searchVecLoc);
                 int encodedLen = keyLengthAtLoc(rightPage, keyLoc);
                 pos = left.highestInternalPos();
-                result = left.createInternalEntry(tree, pos, encodedLen, (pos + 2) << 2, false);
+                left.createInternalEntry(result, tree, pos, encodedLen, (pos + 2) << 2, false);
                 // Note: Must access left page each time, since compaction can replace it.
                 p_copy(rightPage, keyLoc, left.mPage, result.mEntryLoc, encodedLen);
                 garbageAccum += encodedLen;
@@ -3006,7 +3008,8 @@ final class Node extends Latch implements DatabaseAccess {
 
         try {
             // Rightmost key to move comes from the parent.
-            InResult result = right.createInternalEntry(tree, 0, parentKeyLen, 0, false);
+            InResult result = new InResult();
+            right.createInternalEntry(result, tree, 0, parentKeyLen, 0, false);
             // Note: Must access right page each time, since compaction can replace it.
             p_copy(parentPage, parentKeyLoc, right.mPage, result.mEntryLoc, parentKeyLen);
 
@@ -3014,7 +3017,7 @@ final class Node extends Latch implements DatabaseAccess {
             for (; searchVecLoc > firstSearchVecLoc; searchVecLoc -= 2) {
                 int keyLoc = p_ushortGetLE(leftPage, searchVecLoc);
                 int encodedLen = keyLengthAtLoc(leftPage, keyLoc);
-                result = right.createInternalEntry(tree, 0, encodedLen, 0, false);
+                right.createInternalEntry(result, tree, 0, encodedLen, 0, false);
                 // Note: Must access right page each time, since compaction can replace it.
                 p_copy(leftPage, keyLoc, right.mPage, result.mEntryLoc, encodedLen);
                 garbageAccum += encodedLen;
@@ -3392,7 +3395,11 @@ final class Node extends Latch implements DatabaseAccess {
             // This point is reached for making room via node compaction.
 
             mGarbage = garbage;
-            return compactInternal(encodedLen, pos, Integer.MIN_VALUE).mEntryLoc;
+
+            InResult result = new InResult();
+            compactInternal(result, encodedLen, pos, Integer.MIN_VALUE);
+
+            return result.mEntryLoc;
         }
 
         // Point to entry. Caller must copy the key to the location.
@@ -3542,8 +3549,9 @@ final class Node extends Latch implements DatabaseAccess {
 
         // Create space to absorb parent key.
         int leftEndPos = leftNode.highestInternalPos();
-        InResult result = leftNode.createInternalEntry
-            (tree, leftEndPos, parentLen, (leftEndPos += 2) << 2, false);
+        InResult result = new InResult();
+        leftNode.createInternalEntry
+            (result, tree, leftEndPos, parentLen, (leftEndPos += 2) << 2, false);
 
         // Copy child id associated with parent key.
         final /*P*/ byte[] rightPage = rightNode.mPage;
@@ -3563,7 +3571,7 @@ final class Node extends Latch implements DatabaseAccess {
 
             // Allocate entry for left node.
             int pos = leftNode.highestInternalPos();
-            result = leftNode.createInternalEntry(tree, pos, encodedLen, (pos + 2) << 2, false);
+            leftNode.createInternalEntry(result, tree, pos, encodedLen, (pos + 2) << 2, false);
 
             // Copy child id.
             p_copy(rightPage, rightChildIdsLoc, result.mPage, result.mNewChildLoc, 8);
@@ -4303,11 +4311,13 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     /**
+     * @param result split result stored here; key and entry loc is -1 if new key was promoted
+     * to parent
      * @throws IOException if new node could not be allocated; no side-effects
-     * @return split result; key and entry loc is -1 if new key was promoted to parent
      */
-    private InResult splitInternal(final Tree tree, final int encodedLen,
-                                   final int keyPos, final int newChildPos)
+    private void splitInternal(final InResult result,
+                               final Tree tree, final int encodedLen,
+                               final int keyPos, final int newChildPos)
         throws IOException
     {
         if (mSplit != null) {
@@ -4327,8 +4337,6 @@ final class Node extends Latch implements DatabaseAccess {
         newNode.mGarbage = 0;
 
         final /*P*/ byte[] newPage = newNode.mPage;
-
-        final InResult result = new InResult();
 
         final int searchVecStart = mSearchVecStart;
         final int searchVecEnd = mSearchVecEnd;
@@ -4395,7 +4403,7 @@ final class Node extends Latch implements DatabaseAccess {
             // Caller must set the split key.
             mSplit = split;
 
-            return result;
+            return;
         }
 
         result.mPage = newPage;
@@ -4673,8 +4681,6 @@ final class Node extends Latch implements DatabaseAccess {
 
         // Write pointer to key entry.
         p_shortPutLE(newPage, newKeyLoc, result.mEntryLoc);
-
-        return result;
     }
 
     private void setSplitKey(Tree tree, Split split, byte[] fullKey) throws IOException {
@@ -4694,12 +4700,13 @@ final class Node extends Latch implements DatabaseAccess {
      * after compaction. Space is allocated for new entry, and the search
      * vector points to it.
      *
+     * @param result return result stored here
      * @param encodedLen length of new entry to allocate
      * @param keyPos normalized search vector position of key to insert/update
      * @param childPos normalized search vector position of child node id to insert; pass
      * MIN_VALUE if updating
      */
-    private InResult compactInternal(int encodedLen, int keyPos, int childPos) {
+    private void compactInternal(InResult result, int encodedLen, int keyPos, int childPos) {
         /*P*/ byte[] page = mPage;
 
         int searchVecLoc = mSearchVecStart;
@@ -4773,12 +4780,9 @@ final class Node extends Latch implements DatabaseAccess {
         mSearchVecStart = newSearchVecStart;
         mSearchVecEnd = newSearchVecLoc - 2;
 
-        InResult result = new InResult();
         result.mPage = dest;
         result.mNewChildLoc = newSearchVecLoc + childPos;
         result.mEntryLoc = destLoc;
-
-        return result;
     }
 
     /**
