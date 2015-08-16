@@ -449,8 +449,8 @@ class TreeCursor implements CauseCloseable, Cursor {
                 node.releaseExclusive();
             }
 
-            // When this point is reached, only the parent latch is held. Child
-            // frame is no longer valid.
+            // When this point is reached, only the exclusive parent latch is held. Child frame
+            // is no longer valid.
 
             if (parentPos < parentNode.highestInternalPos()) {
                 parentFrame.mNodePos = (parentPos += 2);
@@ -598,14 +598,57 @@ class TreeCursor implements CauseCloseable, Cursor {
                     node.releaseExclusive();
                 }
 
-                // When this point is reached, only the parent latch is held. Child
+                // When this point is reached, only the exclusive parent latch is held. Child
                 // frame is no longer valid.
 
-                if (parentPos < parentNode.highestInternalPos()) {
+                while (parentPos < parentNode.highestInternalPos()) {
                     parentFrame.mNodePos = (parentPos += 2);
+
+                    Node childNode;
+
+                    // Note: Same code as in skipPreviousGap.
+                    loadChild: {
+                        if (parentNode.isBottomInternal()) {
+                            int childCount = parentNode.retrieveChildEntryCount(parentPos);
+
+                            if (childCount >= 0) {
+                                if (childCount < amount) {
+                                    amount -= childCount;
+                                    continue;
+                                }
+                            } else if (mTree.allowStoredCounts()) {
+                                childNode = latchChild(parentNode, parentPos, false);
+                                try {
+                                    if (childNode.mCachedState == Node.CACHED_CLEAN) {
+                                        Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
+                                        if (sharedCommitLock.tryLock()) try {
+                                            parentNode = notSplitDirty(parentFrame);
+                                            childCount = childNode.countNonGhostKeys();
+                                            parentNode.storeChildEntryCount(parentPos, childCount);
+                                            if (childCount < amount) {
+                                                amount -= childCount;
+                                                childNode.releaseExclusive();
+                                                continue;
+                                            }
+                                        } finally {
+                                            sharedCommitLock.unlock();
+                                        }
+                                    }
+                                } finally {
+                                    parentNode.releaseExclusive();
+                                }
+
+                                break loadChild;
+                            }
+                        }
+
+                        childNode = latchChild(parentNode, parentPos, true);
+                    }
+
                     // Recycle old frame.
                     frame.mParentFrame = parentFrame;
-                    if (!toFirst(latchChild(parentNode, parentPos, true), frame)) {
+
+                    if (!toFirst(childNode, frame)) {
                         return null;
                     }
                     frame = mLeaf;
@@ -794,8 +837,8 @@ class TreeCursor implements CauseCloseable, Cursor {
                 node.releaseExclusive();
             }
 
-            // When this point is reached, only the parent latch is held. Child
-            // frame is no longer valid.
+            // When this point is reached, only the exclusive parent latch is held. Child frame
+            // is no longer valid.
 
             if (parentPos > 0) {
                 parentFrame.mNodePos = (parentPos -= 2);
@@ -943,14 +986,57 @@ class TreeCursor implements CauseCloseable, Cursor {
                     node.releaseExclusive();
                 }
 
-                // When this point is reached, only the parent latch is held. Child
+                // When this point is reached, only the exclusive parent latch is held. Child
                 // frame is no longer valid.
 
-                if (parentPos > 0) {
+                while (parentPos > 0) {
                     parentFrame.mNodePos = (parentPos -= 2);
+
+                    Node childNode;
+
+                    // Note: Same code as in skipNextGap.
+                    loadChild: {
+                        if (parentNode.isBottomInternal()) {
+                            int childCount = parentNode.retrieveChildEntryCount(parentPos);
+
+                            if (childCount >= 0) {
+                                if (childCount < amount) {
+                                    amount -= childCount;
+                                    continue;
+                                }
+                            } else if (mTree.allowStoredCounts()) {
+                                childNode = latchChild(parentNode, parentPos, false);
+                                try {
+                                    if (childNode.mCachedState == Node.CACHED_CLEAN) {
+                                        Lock sharedCommitLock = mTree.mDatabase.sharedCommitLock();
+                                        if (sharedCommitLock.tryLock()) try {
+                                            parentNode = notSplitDirty(parentFrame);
+                                            childCount = childNode.countNonGhostKeys();
+                                            parentNode.storeChildEntryCount(parentPos, childCount);
+                                            if (childCount < amount) {
+                                                amount -= childCount;
+                                                childNode.releaseExclusive();
+                                                continue;
+                                            }
+                                        } finally {
+                                            sharedCommitLock.unlock();
+                                        }
+                                    }
+                                } finally {
+                                    parentNode.releaseExclusive();
+                                }
+
+                                break loadChild;
+                            }
+                        }
+
+                        childNode = latchChild(parentNode, parentPos, true);
+                    }
+
                     // Recycle old frame.
                     frame.mParentFrame = parentFrame;
-                    if (!toLast(latchChild(parentNode, parentPos, true), frame)) {
+
+                    if (!toLast(childNode, frame)) {
                         return null;
                     }
                     frame = mLeaf;

@@ -1024,6 +1024,15 @@ final class Node extends Latch implements DatabaseAccess {
     /**
      * Caller must hold any latch.
      */
+    boolean isBottomInternal() {
+        return (mType & 0x70) == 0x70;
+    }
+
+    /**
+     * Caller must hold any latch.
+     *
+     * @see #countNonGhostKeys
+     */
     int numKeys() {
         return (mSearchVecEnd - mSearchVecStart + 2) >> 1;
     }
@@ -1094,6 +1103,23 @@ final class Node extends Latch implements DatabaseAccess {
     int availableInternalBytes() {
         return mGarbage + 5 * (mSearchVecStart - mSearchVecEnd)
             - mLeftSegTail + mRightSegTail + (1 - (5 * 2 + 8));
+    }
+
+    /**
+     * Applicable only to leaf nodes. Caller must hold any latch.
+     */
+    int countNonGhostKeys() {
+        final /*P*/ byte[] page = mPage;
+
+        int count = 0;
+        for (int i = mSearchVecStart; i <= mSearchVecEnd; i += 2) {
+            int loc = p_ushortGetLE(page, i);
+            if (p_byteGet(page, loc + keyLengthAtLoc(page, loc)) != -1) {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     /**
@@ -1744,6 +1770,31 @@ final class Node extends Latch implements DatabaseAccess {
      */
     long retrieveChildRefId(int pos) {
         return p_uint48GetLE(mPage, mSearchVecEnd + 2 + (pos << 2));
+    }
+
+    /**
+     * Retrieves the count of entries for the child node at the given position, or negative if
+     * unknown. Counts are only applicable to bottom internal nodes, and are invalidated when
+     * the node is dirty.
+     *
+     * @param pos position as provided by binarySearch; must be positive
+     */
+    int retrieveChildEntryCount(int pos) {
+        return p_ushortGetLE(mPage, mSearchVecEnd + (2 + 6) + (pos << 2)) - 1;
+    }
+
+    /**
+     * Stores the count of entries for the child node at the given position. Counts are only
+     * applicable to bottom internal nodes, and are invalidated when the node is dirty.
+     *
+     * @param pos position as provided by binarySearch; must be positive
+     * @param count 0..65534
+     * @see #countNonGhostKeys
+     */
+    void storeChildEntryCount(int pos, int count) {
+        if (count < 65535) { // safety check
+            p_shortPutLE(mPage, mSearchVecEnd + (2 + 6) + (pos << 2), count + 1);
+        }
     }
 
     /**
