@@ -604,6 +604,11 @@ class Tree extends AbstractView implements Index {
         }
     }
 
+    final boolean allowStoredCounts() {
+        // TODO: make configurable
+        return true;
+    }
+
     /**
      * Non-transactionally insert an entry as the highest overall. Intended for filling up a
      * new tree with ordered entries.
