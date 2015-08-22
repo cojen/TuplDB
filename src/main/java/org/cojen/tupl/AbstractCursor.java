@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import static org.cojen.tupl.Utils.compareKeys;
+
 /**
  * Implements a few {@link Cursor} methods.
  *
@@ -30,7 +32,7 @@ public abstract class AbstractCursor implements Cursor {
     @Override
     public int compareKeyTo(byte[] rkey) {
         byte[] lkey = key();
-        return Utils.compareKeys(lkey, 0, lkey.length, rkey, 0, rkey.length);
+        return compareKeys(lkey, 0, lkey.length, rkey, 0, rkey.length);
     }
 
     /**
@@ -39,7 +41,56 @@ public abstract class AbstractCursor implements Cursor {
     @Override
     public int compareKeyTo(byte[] rkey, int offset, int length) {
         byte[] lkey = key();
-        return Utils.compareKeys(lkey, 0, lkey.length, rkey, offset, length);
+        return compareKeys(lkey, 0, lkey.length, rkey, offset, length);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public LockResult skip(long amount, byte[] limitKey, boolean inclusive) throws IOException {
+        if (amount == 0 || limitKey == null) {
+            return skip(amount);
+        }
+
+        final Transaction txn = link(Transaction.BOGUS);
+        final boolean autoload = autoload(false);
+
+        try {
+            if (amount > 0) {
+                final int cmp = inclusive ? 0 : -1;
+                do {
+                    next();
+                    byte[] key = key();
+                    if (key == null) {
+                        return LockResult.UNOWNED;
+                    }
+                    if (compareKeys(key, 0, key.length, limitKey, 0, limitKey.length) > cmp) {
+                        reset();
+                        return LockResult.UNOWNED;
+                    }
+                } while (--amount > 0);
+            } else {
+                final int cmp = inclusive ? 0 : 1;
+                do {
+                    previous();
+                    byte[] key = key();
+                    if (key == null) {
+                        return LockResult.UNOWNED;
+                    }
+                    if (compareKeys(key, 0, key.length, limitKey, 0, limitKey.length) < cmp) {
+                        reset();
+                        return LockResult.UNOWNED;
+                    }
+                } while (++amount < 0);
+            }
+        } finally {
+            autoload(autoload);
+            link(txn);
+        }
+
+        // This performs any required lock acquisition.
+        return load();
     }
 
     /**

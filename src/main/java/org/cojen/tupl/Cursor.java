@@ -143,8 +143,7 @@ public interface Cursor {
     /**
      * Moves the Cursor by a relative amount of entries. Pass a positive amount
      * to skip forward, and pass a negative amount to skip backwards. If less
-     * than the given amount of entries are available, the Cursor key and value
-     * are set to null, and position will be undefined.
+     * than the given amount of entries are available, the Cursor is reset.
      *
      * <p>Skipping by 1 is equivalent to calling {@link #next next}, and
      * skipping by -1 is equivalent to calling {@link #previous previous}. A
@@ -159,6 +158,29 @@ public interface Cursor {
      * @throws IllegalStateException if position is undefined at invocation time
      */
     public LockResult skip(long amount) throws IOException;
+
+    /**
+     * Moves the Cursor by a relative amount of entries, stopping sooner if the limit key is
+     * reached. Pass a positive amount to skip forward, and pass a negative amount to skip
+     * backwards. If the limit key is reached, or if less than the given amount of entries are
+     * available, the Cursor is reset.
+     *
+     * <p>Skipping by 1 is equivalent to calling {@link #nextLe nextLe}, {@link #nextLt nextLt}
+     * or {@link #next next}, depending on which type of limit was provided. Likewise, skipping
+     * by -1 is equivalent to calling {@link #previousGe previousGe}, {@link #previousGt
+     * previousGt} or {@link #previous previous}. A skip of 0 merely checks and returns the
+     * lock state for the current key. Lock acquisition only applies to the target entry
+     * &mdash; no locks are acquired for entries in between.
+     *
+     * @param limitKey limit key; pass null for no limit
+     * @param inclusive true if limit is inclusive, false for exclusive
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
+     * @throws IllegalStateException if position is undefined at invocation time
+     */
+    public LockResult skip(long amount, byte[] limitKey, boolean inclusive) throws IOException;
 
     /**
      * Moves to the Cursor to the next available entry. Cursor key and value

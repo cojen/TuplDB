@@ -113,6 +113,12 @@ final class TrimmedCursor implements Cursor {
     }
 
     @Override
+    public LockResult skip(long amount, byte[] limitKey, boolean inclusive) throws IOException {
+        mKey = null;
+        return mSource.skip(amount, limitKey, inclusive);
+    }
+
+    @Override
     public LockResult next() throws IOException {
         mKey = null;
         return mSource.next();
