@@ -1338,6 +1338,27 @@ final class Node extends Latch implements DatabaseAccess {
     /**
      * @param pos position as provided by binarySearch; must be positive
      */
+    int compareKey(int pos, byte[] rightKey) throws IOException {
+        final /*P*/ byte[] page = mPage;
+        int loc = p_ushortGetLE(page, mSearchVecStart + pos);
+        int keyLen = p_byteGet(page, loc++);
+        if (keyLen >= 0) {
+            keyLen++;
+        } else {
+            int header = keyLen;
+            keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++);
+            if ((header & ENTRY_FRAGMENTED) != 0) {
+                // Note: An optimized version wouldn't need to copy the whole key.
+                byte[] leftKey = getDatabase().reconstructKey(page, loc, keyLen);
+                return compareKeys(leftKey, 0, leftKey.length, rightKey, 0, rightKey.length);
+            }
+        }
+        return compareKeys(page, loc, keyLen, rightKey, 0, rightKey.length);
+    }
+
+    /**
+     * @param pos position as provided by binarySearch; must be positive
+     */
     byte[] retrieveKey(int pos) throws IOException {
         final /*P*/ byte[] page = mPage;
         return retrieveKeyAtLoc(this, page, p_ushortGetLE(page, mSearchVecStart + pos));

@@ -173,69 +173,40 @@ final class BoundedCursor implements Cursor {
 
     @Override
     public LockResult skip(long amount) throws IOException {
-        if (amount == 0) {
+        BoundedView view = mView;
+        byte[] limitKey;
+        boolean inclusive;
+        if (amount >= 0) {
+            limitKey = view.mEnd;
+            inclusive = (view.mMode & END_EXCLUSIVE) == 0;
+        } else {
+            limitKey = view.mStart;
+            inclusive = (view.mMode & START_EXCLUSIVE) == 0;
+        }
+        return mSource.skip(amount, limitKey, inclusive);
+    }
+
+    @Override
+    public LockResult skip(long amount, byte[] limitKey, boolean inclusive) throws IOException {
+        if (amount == 0 || limitKey == null) {
             return mSource.skip(0);
         }
 
         BoundedView view = mView;
 
-        final Cursor source;
         if (amount > 0) {
-            byte[] end = view.mEnd;
-            if (end == null) {
-                return mSource.skip(amount);
-            }
-
-            source = mSource;
-            final Transaction txn = source.link(Transaction.BOGUS);
-            final boolean autoload = source.autoload(false);
-            try {
-                do {
-                    source.next();
-
-                    byte[] key = source.key();
-                    if (key == null) {
-                        return LockResult.UNOWNED;
-                    }
-                    if (view.endRangeCompare(end, key) > 0) {
-                        source.reset();
-                        return LockResult.UNOWNED;
-                    }
-                } while (--amount > 0);
-            } finally {
-                autoload(autoload);
-                link(txn);
+            if (view.endRangeCompare(limitKey) > 0) {
+                limitKey = view.mEnd;
+                inclusive = (view.mMode & END_EXCLUSIVE) == 0;
             }
         } else {
-            byte[] start = view.mStart;
-            if (start == null) {
-                return mSource.skip(amount);
-            }
-
-            source = mSource;
-            final Transaction txn = source.link(Transaction.BOGUS);
-            final boolean autoload = source.autoload(false);
-            try {
-                do {
-                    source.previous();
-
-                    byte[] key = source.key();
-                    if (key == null) {
-                        return LockResult.UNOWNED;
-                    }
-                    if (view.startRangeCompare(start, key) < 0) {
-                        source.reset();
-                        return LockResult.UNOWNED;
-                    }
-                } while (++amount < 0);
-            } finally {
-                autoload(autoload);
-                link(txn);
+            if (view.startRangeCompare(limitKey) < 0) {
+                limitKey = view.mStart;
+                inclusive = (view.mMode & START_EXCLUSIVE) == 0;
             }
         }
 
-        // This performs any required lock acquisition.
-        return source.load();
+        return mSource.skip(amount, limitKey, inclusive);
     }
 
     @Override

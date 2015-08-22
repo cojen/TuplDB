@@ -1,6 +1,11 @@
 Changelog
 =========
 
+v1.2.6
+------
+* Counts stored in bottom internal nodes, for speeding up cursor skip operations.
+* Added skip method which accepts a limit key.
+
 v1.2.5 (2015-07-19)
 ------
 * Fix non-transactional delete race condition.
