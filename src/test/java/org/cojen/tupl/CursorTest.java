@@ -654,6 +654,133 @@ public class CursorTest {
     }
 
     @Test
+    public void bigSkip() throws Exception {
+        View ix = openIndex("skippy");
+
+        for (int i=0; i<1_000_000; i++) {
+            ix.store(Transaction.BOGUS, key(i), value(1));
+        }
+
+        // Force leaf pages to be clean for accumulating counts.
+        mDb.checkpoint();
+
+        Cursor c = ix.newCursor(null);
+
+        // Force counts to be generated.
+        c.first();
+        c.skip(10_000);
+        fastAssertArrayEquals(key(10_000), c.key());
+
+        // Force counts to be persisted.
+        mDb.checkpoint();
+
+        c.first();
+        c.skip(10_000);
+        fastAssertArrayEquals(key(10_000), c.key());
+
+        c.skip(900_000);
+        fastAssertArrayEquals(key(910_000), c.key());
+
+        // Force counts to be persisted.
+        mDb.checkpoint();
+
+        c.last();
+        c.skip(-9_999);
+        fastAssertArrayEquals(key(990_000), c.key());
+
+        c.skip(-980_000);
+        fastAssertArrayEquals(key(10_000), c.key());
+
+        c.skip(Long.MIN_VALUE);
+        assertNull(c.key());
+
+        try {
+            c.skip(Long.MAX_VALUE);
+            fail();
+        } catch (IllegalStateException e) {
+        }
+    }
+
+    @Test
+    public void bigSkipBounded() throws Exception {
+        View ix = openIndex("skippy");
+
+        for (int i=0; i<1_000_000; i++) {
+            ix.store(Transaction.BOGUS, key(i), value(1));
+        }
+
+        Cursor c = ix.newCursor(null);
+
+        c.first();
+        c.skip(100_000, key(50_000), false);
+        assertNull(c.key());
+
+        c.first();
+        c.skip(100_000, key(50_000), true);
+        assertNull(c.key());
+
+        c.first();
+        c.skip(100_000, key(99_999), false);
+        assertNull(c.key());
+
+        c.first();
+        c.skip(100_000, key(99_999), true);
+        assertNull(c.key());
+
+        c.first();
+        c.skip(100_000, key(100_000), false);
+        assertNull(c.key());
+
+        c.first();
+        c.skip(100_000, key(100_000), true);
+        fastAssertArrayEquals(key(100_000), c.key());
+
+        c.first();
+        c.skip(100_000, key(100_001), false);
+        fastAssertArrayEquals(key(100_000), c.key());
+
+        c.first();
+        c.skip(100_000, key(100_001), true);
+        fastAssertArrayEquals(key(100_000), c.key());
+
+        // In reverse.
+
+        c.last();
+        c.skip(-100_000, key(999_999 - 50_000), false);
+        assertNull(c.key());
+
+        c.last();
+        c.skip(-100_000, key(999_999 - 50_000), true);
+        assertNull(c.key());
+        
+        c.last();
+        c.skip(-100_000, key(999_999 - 99_999), false);
+        assertNull(c.key());
+
+        c.last();
+        c.skip(-100_000, key(999_999 - 99_999), true);
+        assertNull(c.key());
+
+        c.last();
+        c.skip(-100_000, key(999_999 - 100_000), false);
+        assertNull(c.key());
+
+        c.last();
+        c.skip(-100_000, key(999_999 - 100_000), true);
+        fastAssertArrayEquals(key(999_999 - 100_000), c.key());
+
+        c.last();
+        c.skip(-100_000, key(999_999 - 100_001), false);
+        fastAssertArrayEquals(key(999_999 - 100_000), c.key());
+
+        c.last();
+        c.skip(-100_000, key(999_999 - 100_001), true);
+        fastAssertArrayEquals(key(999_999 - 100_000), c.key());
+
+        c.reset();
+    }
+
+    @Test
     public void randomLock() throws Exception {
         View ix = openIndex("test");
         ix.store(Transaction.BOGUS, key(0), value(0));

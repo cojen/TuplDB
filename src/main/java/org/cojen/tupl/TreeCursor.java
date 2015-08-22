@@ -261,15 +261,43 @@ class TreeCursor implements CauseCloseable, Cursor {
         try {
             TreeCursorFrame frame = leafExclusiveNotSplit();
             if (amount > 0) {
-                if (amount > 1 && (frame = skipNextGap(frame, amount - 1)) == null) {
+                if (amount > 1 && (frame = skipNextGap(frame, amount - 1, null)) == null) {
                     return LockResult.UNOWNED;
                 }
                 return next(mTxn, frame);
             } else {
-                if (amount < -1 && (frame = skipPreviousGap(frame, -1 - amount)) == null) {
+                if (amount < -1 && (frame = skipPreviousGap(frame, -1 - amount, null)) == null) {
                     return LockResult.UNOWNED;
                 }
                 return previous(mTxn, frame);
+            }
+        } catch (Throwable e) {
+            throw handleException(e, false);
+        }
+    }
+
+    @Override
+    public final LockResult skip(long amount, byte[] limitKey, boolean inclusive)
+        throws IOException
+    {
+        if (amount == 0 || limitKey == null) {
+            return skip(amount);
+        }
+
+        try {
+            TreeCursorFrame frame = leafExclusiveNotSplit();
+            if (amount > 0) {
+                if (amount > 1 && (frame = skipNextGap(frame, amount - 1, limitKey)) == null) {
+                    return LockResult.UNOWNED;
+                }
+                return nextCmp(limitKey, inclusive ? LIMIT_LE : LIMIT_LT, frame);
+            } else {
+                if (amount < -1
+                    && (frame = skipPreviousGap(frame, -1 - amount, limitKey)) == null)
+                {
+                    return LockResult.UNOWNED;
+                }
+                return previousCmp(limitKey, inclusive ? LIMIT_GE : LIMIT_GT, frame);
             }
         } catch (Throwable e) {
             throw handleException(e, false);
@@ -295,9 +323,13 @@ class TreeCursor implements CauseCloseable, Cursor {
         if (limitKey == null) {
             throw new NullPointerException("Key is null");
         }
+        return nextCmp(limitKey, limitMode, leafExclusiveNotSplit());
+    }
 
+    private LockResult nextCmp(byte[] limitKey, int limitMode, TreeCursorFrame frame)
+        throws IOException
+    {
         Transaction txn = mTxn;
-        TreeCursorFrame frame = leafExclusiveNotSplit();
 
         while (true) {
             if (!toNext(frame)) {
@@ -466,9 +498,12 @@ class TreeCursor implements CauseCloseable, Cursor {
 
     /**
      * @param frame leaf frame, not split, with exclusive latch
+     * @param inLimit inclusive highest allowed internal key; null for no limit
      * @return latched leaf frame or null if reached end
      */
-    private TreeCursorFrame skipNextGap(TreeCursorFrame frame, long amount) throws IOException {
+    private TreeCursorFrame skipNextGap(TreeCursorFrame frame, long amount, byte[] inLimit)
+        throws IOException
+    {
         outer: while (true) {
             Node node = frame.mNode;
 
@@ -581,6 +616,20 @@ class TreeCursor implements CauseCloseable, Cursor {
                             }
                         }
 
+                        if (inLimit != null) {
+                            try {
+                                if (node.compareKey(pos, inLimit) > 0) {
+                                    mLeaf = frame;
+                                    resetLatched(node);
+                                    return null;
+                                }
+                            } catch (Throwable e) {
+                                mLeaf = frame;
+                                resetLatched(node);
+                                throw e;
+                            }
+                        }
+
                         // Increment position of internal node.
                         frame.mNodePos = (pos += 2);
 
@@ -602,6 +651,20 @@ class TreeCursor implements CauseCloseable, Cursor {
                 // frame is no longer valid.
 
                 while (parentPos < parentNode.highestInternalPos()) {
+                    if (inLimit != null) {
+                        try {
+                            if (parentNode.compareKey(parentPos, inLimit) > 0) {
+                                mLeaf = parentFrame;
+                                resetLatched(parentNode);
+                                return null;
+                            }
+                        } catch (Throwable e) {
+                            mLeaf = parentFrame;
+                            resetLatched(parentNode);
+                            throw e;
+                        }
+                    }
+
                     parentFrame.mNodePos = (parentPos += 2);
 
                     Node childNode;
@@ -683,9 +746,13 @@ class TreeCursor implements CauseCloseable, Cursor {
         if (limitKey == null) {
             throw new NullPointerException("Key is null");
         }
+        return previousCmp(limitKey, limitMode, leafExclusiveNotSplit());
+    }
 
+    private LockResult previousCmp(byte[] limitKey, int limitMode, TreeCursorFrame frame)
+        throws IOException
+    {
         Transaction txn = mTxn;
-        TreeCursorFrame frame = leafExclusiveNotSplit();
 
         while (true) {
             if (!toPrevious(frame)) {
@@ -854,9 +921,10 @@ class TreeCursor implements CauseCloseable, Cursor {
 
     /**
      * @param frame leaf frame, not split, with exclusive latch
+     * @param inLimit inclusive lowest allowed internal key; null for no limit
      * @return latched leaf frame or null if reached end
      */
-    private TreeCursorFrame skipPreviousGap(TreeCursorFrame frame, long amount)
+    private TreeCursorFrame skipPreviousGap(TreeCursorFrame frame, long amount, byte[] inLimit)
         throws IOException
     {
         outer: while (true) {
@@ -972,6 +1040,20 @@ class TreeCursor implements CauseCloseable, Cursor {
                         // Decrement position of internal node.
                         frame.mNodePos = (pos -= 2);
 
+                        if (inLimit != null) {
+                            try {
+                                if (node.compareKey(pos, inLimit) < 0) {
+                                    mLeaf = frame;
+                                    resetLatched(node);
+                                    return null;
+                                }
+                            } catch (Throwable e) {
+                                mLeaf = frame;
+                                resetLatched(node);
+                                throw e;
+                            }
+                        }
+
                         if (!toLast(latchChild(node, pos, true), new TreeCursorFrame(frame))) {
                             return null;
                         }
@@ -991,6 +1073,20 @@ class TreeCursor implements CauseCloseable, Cursor {
 
                 while (parentPos > 0) {
                     parentFrame.mNodePos = (parentPos -= 2);
+
+                    if (inLimit != null) {
+                        try {
+                            if (parentNode.compareKey(parentPos, inLimit) < 0) {
+                                mLeaf = parentFrame;
+                                resetLatched(parentNode);
+                                return null;
+                            }
+                        } catch (Throwable e) {
+                            mLeaf = parentFrame;
+                            resetLatched(parentNode);
+                            throw e;
+                        }
+                    }
 
                     Node childNode;
 
