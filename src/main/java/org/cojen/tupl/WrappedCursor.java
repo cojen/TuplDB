@@ -132,6 +132,14 @@ public abstract class WrappedCursor<C extends Cursor> implements Cursor {
      * {@inheritDoc}
      */
     @Override
+    public LockResult skip(long amount, byte[] limitKey, boolean inclusive) throws IOException {
+        return source.skip(amount, limitKey, inclusive);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public LockResult next() throws IOException {
         return source.next();
     }

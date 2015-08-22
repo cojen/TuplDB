@@ -101,6 +101,21 @@ final class ReverseCursor implements Cursor {
     }
 
     @Override
+    public LockResult skip(long amount, byte[] limitKey, boolean inclusive) throws IOException {
+        if (amount == Long.MIN_VALUE) {
+            LockResult result = mSource.skip(Long.MAX_VALUE, limitKey, inclusive);
+            if (mSource.key() == null) {
+                return result;
+            }
+            // Should release the lock if just acquired, although it's unlikely
+            // that an index will actually have 2^63 entries.
+            return next();
+        } else {
+            return mSource.skip(-amount, limitKey, inclusive);
+        }
+    }
+
+    @Override
     public LockResult next() throws IOException {
         return mSource.previous();
     }
