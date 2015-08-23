@@ -2190,7 +2190,6 @@ public final class Database implements CauseCloseable, Flushable {
         }
 
         if (cause != null) {
-            cause.printStackTrace(System.out);
             if (cClosedCauseUpdater.compareAndSet(this, null, cause) && mEventListener != null) {
                 mEventListener.notify(EventType.PANIC_UNHANDLED_EXCEPTION,
                                       "Closing database due to unhandled exception: %1$s",
