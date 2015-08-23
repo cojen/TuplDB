@@ -2218,7 +2218,11 @@ public final class Database implements CauseCloseable, Flushable {
     }
 
     private void close(Throwable cause, boolean shutdown) throws IOException {
-        if (cause != null && !mClosed) {
+        if (mClosed) {
+            return;
+        }
+
+        if (cause != null) {
             if (cClosedCauseUpdater.compareAndSet(this, null, cause) && mEventListener != null) {
                 mEventListener.notify(EventType.PANIC_UNHANDLED_EXCEPTION,
                                       "Closing database due to unhandled exception: %1$s",
@@ -2251,18 +2255,36 @@ public final class Database implements CauseCloseable, Flushable {
                 if (c != null) {
                     ct = c.close();
                 }
-                // Wait for any in-progress checkpoint to complete.
-                mCheckpointLock.lock();
+
                 try {
-                    if (mClosed) {
-                        return;
+                    // Wait for any in-progress checkpoint to complete.
+                    boolean locked;
+                    if (cause == null) {
+                        mCheckpointLock.lock();
+                        locked = true;
+                    } else if (mCheckpointLock.tryLock()) {
+                        locked = true;
+                    } else {
+                        // If panicked, other locks might be held and so acquiring checkpoint
+                        // lock might deadlock. Checkpointer will eventually exit.
+                        ct = null;
+                        locked = false;
                     }
-                    mClosed = true;
+
+                    try {
+                        if (mClosed) {
+                            return;
+                        }
+                        mClosed = true;
+                    } finally {
+                        if (locked) {
+                            mCheckpointLock.unlock();
+                        }
+                    }
                 } finally {
                     if (ct != null) {
                         ct.interrupt();
                     }
-                    mCheckpointLock.unlock();
                 }
             }
         } finally {
@@ -3157,6 +3179,18 @@ public final class Database implements CauseCloseable, Flushable {
             if (node == tree.mRoot) {
                 storeTreeRootId(tree, newId);
             }
+        } catch (Throwable e) {
+            try {
+                mPageDb.recyclePage(newId);
+            } catch (Throwable e2) {
+                // Panic.
+                e.addSuppressed(e2);
+                close(e);
+            }
+            throw e;
+        }
+
+        try {
             if (oldId != 0) {
                 mPageDb.deletePage(oldId);
                 mTreeNodeMap.remove(node, NodeMap.hash(oldId));

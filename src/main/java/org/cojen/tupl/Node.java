@@ -703,12 +703,11 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     /**
-     * Caller must hold exclusive root latch and it must verify that root has split.
-     *
-     * @param stub Old root node stub, latched exclusively, whose cursors must
-     * transfer into the new root. Stub latch is released by this method.
+     * Caller must hold exclusive root latch and it must verify that root has split. Caller
+     * must also exclusively hold stub latch, if applicable. This required for safely unbinding
+     * parent cursor frames which refer to the old root node.
      */
-    void finishSplitRoot(Tree tree, Node stub) throws IOException {
+    void finishSplitRoot(Tree tree) throws IOException {
         // Create a child node and copy this root node state into it. Then update this
         // root node to point to new and split child nodes. New root is always an internal node.
 
@@ -766,30 +765,22 @@ final class Node extends Latch implements DatabaseAccess {
         mLastCursorFrame = null;
 
         // Add a parent cursor frame for all left and right node cursors.
-        addParentFrames(stub, left, 0);
-        addParentFrames(stub, right, 2);
+        addParentFrames(left, 0);
+        addParentFrames(right, 2);
 
         child.releaseExclusive();
         sibling.releaseExclusive();
 
         // Split complete, so allow new node to be evictable.
         sibling.makeEvictable();
-
-        if (stub != null) {
-            stub.releaseExclusive();
-        }
     }
 
-    private void addParentFrames(Node stub, Node child, int pos) {
+    private void addParentFrames(Node child, int pos) {
         for (TreeCursorFrame frame = child.mLastCursorFrame; frame != null; ) {
             TreeCursorFrame parentFrame = frame.mParentFrame;
             if (parentFrame == null) {
                 parentFrame = new TreeCursorFrame();
             } else {
-                if (parentFrame.mNode != stub) {
-                    throw new AssertionError
-                        ("Stub mismatch: " + parentFrame.mNode + " != " + stub);
-                }
                 parentFrame.unbind();
             }
             parentFrame.bind(this, pos);
