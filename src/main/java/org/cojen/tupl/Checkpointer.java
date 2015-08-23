@@ -104,6 +104,10 @@ final class Checkpointer implements Runnable {
 
                     lastDurationNanos = endNanos - startNanos;
                 } catch (DatabaseException e) {
+                    EventListener listener = db.mEventListener;
+                    if (listener != null) {
+                        listener.notify(EventType.CHECKPOINT_FAILED, "Checkpoint failed: %1$s", e);
+                    }
                     if (!e.isRecoverable()) {
                         throw e;
                     }
