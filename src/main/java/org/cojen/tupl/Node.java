@@ -2532,12 +2532,17 @@ final class Node extends Latch implements DatabaseAccess {
                 childFrame = childFrame.mPrevCousin;
             }
 
-            // FIXME: IOException caused by call to splitInternal; frames are all wrong.
+            // Note: Invocation of createInternalEntry may cause splitInternal to be called,
+            // which in turn might throw a recoverable exception. State changes can be undone
+            // by decrementing the incremented frame positions, and then by undoing the
+            // rebindSplitFrames call. However, this would create an orphaned child node.
+            // Panicking the database is the safest option.
+
             InResult result = new InResult();
             try {
                 createInternalEntry
                     (result, tree, keyPos, split.splitKeyEncodedLength(), newChildPos << 3, true);
-            } catch (IOException e) {
+            } catch (Throwable e) {
                 // Panic.
                 tree.mDatabase.close(e);
                 throw e;
@@ -4391,14 +4396,13 @@ final class Node extends Latch implements DatabaseAccess {
         // new entry is more likely to go into the new node. This distributes the cost of
         // the split by postponing compaction of this node.
 
-        final /*P*/ byte[] page = mPage;
-
         // Alloc early in case an exception is thrown.
         final Database db = getDatabase();
         final Node newNode = db.allocDirtyNode(NodeUsageList.MODE_UNEVICTABLE);
         db.mTreeNodeMap.put(newNode);
         newNode.mGarbage = 0;
 
+        final /*P*/ byte[] page = mPage;
         final /*P*/ byte[] newPage = newNode.mPage;
 
         final int searchVecStart = mSearchVecStart;
