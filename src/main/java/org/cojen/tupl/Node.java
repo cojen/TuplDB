@@ -4397,8 +4397,24 @@ final class Node extends Latch implements DatabaseAccess {
         // the split by postponing compaction of this node.
 
         // Alloc early in case an exception is thrown.
+
         final Database db = getDatabase();
-        final Node newNode = db.allocDirtyNode(NodeUsageList.MODE_UNEVICTABLE);
+
+        Node newNode;
+        try {
+            newNode = db.allocDirtyNode(NodeUsageList.MODE_UNEVICTABLE);
+        } catch (DatabaseFullException e) {
+            // Internal node splits are critical. If a child node reference cannot be inserted,
+            // then it would be orphaned. Try allocating again without any capacity limit, or
+            // else the caller must panic the database.
+            db.capacityLimitOverride(-1);
+            try {
+                newNode = db.allocDirtyNode(NodeUsageList.MODE_UNEVICTABLE);
+            } finally {
+                db.capacityLimitOverride(0);
+            }
+        }
+
         db.mTreeNodeMap.put(newNode);
         newNode.mGarbage = 0;
 
