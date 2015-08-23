@@ -628,7 +628,7 @@ class Tree extends AbstractView implements Index {
 
                 while (node.mSplit != null) {
                     if (node == mRoot) {
-                        node.finishSplitRoot(this, null);
+                        node.finishSplitRoot(this);
                         break;
                     }
                     Node childNode = node;
@@ -731,20 +731,21 @@ class Tree extends AbstractView implements Index {
                     }
 
                     // Check if popped stub is still valid. It must not have been evicted and
-                    // it actually has cursors bound to it.
+                    // it actually has cursors bound to it. If not valid, pass it along anyhow
+                    // because the latch is still required for unbinding frames.
 
                     if (stubNode.mId == Node.STUB_ID && stubNode.mLastCursorFrame != null) {
                         // Allow non-durable database to recycle the old id.
                         stubNode.mId = -stub.mDeletedId;
-                    } else {
-                        stubNode.releaseExclusive();
-                        stubNode = null;
                     }
                 }
 
                 try {
-                    node.finishSplitRoot(this, stubNode);
+                    node.finishSplitRoot(this);
                 } finally {
+                    if (stubNode != null) {
+                        stubNode.releaseExclusive();
+                    }
                     node.releaseExclusive();
                 }
 
