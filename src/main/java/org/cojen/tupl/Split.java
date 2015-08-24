@@ -51,6 +51,13 @@ final class Split {
     }
 
     /**
+     * @return null if key is not fragmented
+     */
+    final byte[] fragmentedKey() {
+        return mFullKey == mActualKey ? null : mActualKey;
+    }
+
+    /**
      * Compares to the split key, returning <0 if given key is lower, 0 if
      * equal, >0 if greater.
      */

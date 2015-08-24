@@ -1851,27 +1851,42 @@ final class Node extends Latch implements DatabaseAccess {
             encodedKeyLen = 2 + akey.length;
         }
 
-        int encodedLen = encodedKeyLen + calculateLeafValueLength(value);
+        try {
+            int encodedLen = encodedKeyLen + calculateLeafValueLength(value);
 
-        int vfrag;
-        if (encodedLen <= tree.mMaxEntrySize) {
-            vfrag = 0;
-        } else {
-            Database db = tree.mDatabase;
-            value = db.fragment(value, value.length, db.mMaxFragmentedEntrySize - encodedKeyLen);
-            if (value == null) {
-                throw new AssertionError();
+            int vfrag;
+            if (encodedLen <= tree.mMaxEntrySize) {
+                vfrag = 0;
+            } else {
+                Database db = tree.mDatabase;
+                value = db.fragment(value, value.length,
+                                    db.mMaxFragmentedEntrySize - encodedKeyLen);
+                if (value == null) {
+                    throw new AssertionError();
+                }
+                encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
+                vfrag = ENTRY_FRAGMENTED;
             }
-            encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
-            vfrag = ENTRY_FRAGMENTED;
-        }
 
-        int entryLoc = createLeafEntry(tree, pos, encodedLen);
+            try {
+                int entryLoc = createLeafEntry(tree, pos, encodedLen);
 
-        if (entryLoc < 0) {
-            splitLeafAndCreateEntry(tree, okey, akey, vfrag, value, encodedLen, pos, true);
-        } else {
-            copyToLeafEntry(okey, akey, vfrag, value, entryLoc);
+                if (entryLoc < 0) {
+                    splitLeafAndCreateEntry(tree, okey, akey, vfrag, value, encodedLen, pos, true);
+                } else {
+                    copyToLeafEntry(okey, akey, vfrag, value, entryLoc);
+                }
+            } catch (Throwable e) {
+                if (vfrag == ENTRY_FRAGMENTED) {
+                    cleanupFragments(e, value);
+                }
+                throw e;
+            }
+        } catch (Throwable e) {
+            if (okey != akey) {
+                cleanupFragments(e, akey);
+            }
+            throw e;
         }
     }
 
@@ -1889,31 +1904,45 @@ final class Node extends Latch implements DatabaseAccess {
             encodedKeyLen = 2 + akey.length;
         }
 
-        long longEncodedLen = encodedKeyLen + calculateLeafValueLength(vlength);
-        int encodedLen;
+        try {
+            long longEncodedLen = encodedKeyLen + calculateLeafValueLength(vlength);
+            int encodedLen;
 
-        int vfrag;
-        byte[] value;
-        if (longEncodedLen <= tree.mMaxEntrySize) {
-            vfrag = 0;
-            value = new byte[(int) vlength];
-            encodedLen = (int) longEncodedLen;
-        } else {
-            Database db = tree.mDatabase;
-            value = db.fragment(null, vlength, db.mMaxFragmentedEntrySize - encodedKeyLen);
-            if (value == null) {
-                throw new AssertionError();
+            int vfrag;
+            byte[] value;
+            if (longEncodedLen <= tree.mMaxEntrySize) {
+                vfrag = 0;
+                value = new byte[(int) vlength];
+                encodedLen = (int) longEncodedLen;
+            } else {
+                Database db = tree.mDatabase;
+                value = db.fragment(null, vlength, db.mMaxFragmentedEntrySize - encodedKeyLen);
+                if (value == null) {
+                    throw new AssertionError();
+                }
+                encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
+                vfrag = ENTRY_FRAGMENTED;
             }
-            encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
-            vfrag = ENTRY_FRAGMENTED;
-        }
 
-        int entryLoc = createLeafEntry(tree, pos, encodedLen);
+            try {
+                int entryLoc = createLeafEntry(tree, pos, encodedLen);
 
-        if (entryLoc < 0) {
-            splitLeafAndCreateEntry(tree, okey, akey, vfrag, value, encodedLen, pos, true);
-        } else {
-            copyToLeafEntry(okey, akey, vfrag, value, entryLoc);
+                if (entryLoc < 0) {
+                    splitLeafAndCreateEntry(tree, okey, akey, vfrag, value, encodedLen, pos, true);
+                } else {
+                    copyToLeafEntry(okey, akey, vfrag, value, entryLoc);
+                }
+            } catch (Throwable e) {
+                if (vfrag == ENTRY_FRAGMENTED) {
+                    cleanupFragments(e, value);
+                }
+                throw e;
+            }
+        } catch (Throwable e) {
+            if (okey != akey) {
+                cleanupFragments(e, akey);
+            }
+            throw e;
         }
     }
 
@@ -1933,15 +1962,41 @@ final class Node extends Latch implements DatabaseAccess {
             encodedKeyLen = 2 + akey.length;
         }
 
-        int encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
+        try {
+            int encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
 
-        int entryLoc = createLeafEntry(tree, pos, encodedLen);
+            int entryLoc = createLeafEntry(tree, pos, encodedLen);
 
-        if (entryLoc < 0) {
-            splitLeafAndCreateEntry
-                (tree, okey, akey, ENTRY_FRAGMENTED, value, encodedLen, pos, true);
-        } else {
-            copyToLeafEntry(okey, akey, ENTRY_FRAGMENTED, value, entryLoc);
+            if (entryLoc < 0) {
+                splitLeafAndCreateEntry
+                    (tree, okey, akey, ENTRY_FRAGMENTED, value, encodedLen, pos, true);
+            } else {
+                copyToLeafEntry(okey, akey, ENTRY_FRAGMENTED, value, entryLoc);
+            }
+        } catch (Throwable e) {
+            if (okey != akey) {
+                cleanupFragments(e, akey);
+            }
+            throw e;
+        }
+    }
+
+    private void panic(Throwable cause) {
+        try {
+            getDatabase().close(cause);
+        } catch (Throwable e) {
+            // Ignore.
+        }
+    }
+
+    private void cleanupFragments(Throwable cause, byte[] fragmented) {
+        if (fragmented != null) {
+            try {
+                getDatabase().deleteFragments(fragmented, 0, fragmented.length);
+            } catch (Throwable e) {
+                cause.addSuppressed(e);
+                panic(cause);
+            }
         }
     }
 
@@ -2543,8 +2598,7 @@ final class Node extends Latch implements DatabaseAccess {
                 createInternalEntry
                     (result, tree, keyPos, split.splitKeyEncodedLength(), newChildPos << 3, true);
             } catch (Throwable e) {
-                // Panic.
-                tree.mDatabase.close(e);
+                panic(e);
                 throw e;
             }
 
@@ -3243,6 +3297,8 @@ final class Node extends Latch implements DatabaseAccess {
         int leftSpace = searchVecStart - mLeftSegTail;
         int rightSpace = mRightSegTail - searchVecEnd - 1;
 
+        final int vfragOriginal = vfrag;
+
         int encodedLen;
         if (vfrag != 0) {
             encodedLen = keyLen + calculateFragmentedValueLength(value);
@@ -3260,7 +3316,7 @@ final class Node extends Latch implements DatabaseAccess {
         }
 
         int entryLoc;
-        alloc: {
+        alloc: try {
             if ((entryLoc = allocPageEntry(encodedLen, leftSpace, rightSpace)) >= 0) {
                 pos += searchVecStart;
                 break alloc;
@@ -3349,6 +3405,11 @@ final class Node extends Latch implements DatabaseAccess {
             pos += newSearchVecStart;
             mSearchVecStart = newSearchVecStart;
             mSearchVecEnd = newSearchVecStart + vecLen - 2;
+        } catch (Throwable e) {
+            if (vfrag == ENTRY_FRAGMENTED && vfragOriginal != ENTRY_FRAGMENTED) {
+                cleanupFragments(e, value);
+            }
+            throw e;
         }
 
         // Copy existing key, and then copy value.
@@ -4025,6 +4086,19 @@ final class Node extends Latch implements DatabaseAccess {
         return destLoc;
     }
 
+    private void cleanupSplit(Throwable cause, Node newNode, Split split) {
+        if (split != null) {
+            cleanupFragments(cause, split.fragmentedKey());
+        }
+
+        try {
+            getDatabase().deleteNode(newNode, true);
+        } catch (Throwable e) {
+            cause.addSuppressed(e);
+            panic(cause);
+        }
+    }
+
     /**
      * @param okey original key
      * @param akey key to actually store
@@ -4067,17 +4141,13 @@ final class Node extends Latch implements DatabaseAccess {
             // descending. Split into new left node, but only the new entry
             // goes into the new node.
 
-            Split split;
+            Split split = null;
             try {
                 split = newSplitLeft(newNode);
                 // Choose an appropriate middle key for suffix compression.
                 setSplitKey(tree, split, midKey(okey, 0));
             } catch (Throwable e) {
-                try {
-                    tree.mDatabase.deleteNode(newNode, true);
-                } catch (Throwable e2) {
-                    e.addSuppressed(e2);
-                }
+                cleanupSplit(e, newNode, split);
                 throw e;
             }
 
@@ -4109,17 +4179,13 @@ final class Node extends Latch implements DatabaseAccess {
             // ascending. Split into new right node, but only the new entry
             // goes into the new node.
 
-            Split split;
+            Split split = null;
             try {
                 split = newSplitRight(newNode);
                 // Choose an appropriate middle key for suffix compression.
                 setSplitKey(tree, split, midKey(pos - searchVecStart - 2, okey));
             } catch (Throwable e) {
-                try {
-                    tree.mDatabase.deleteNode(newNode, true);
-                } catch (Throwable e2) {
-                    e.addSuppressed(e2);
-                }
+                cleanupSplit(e, newNode, split);
                 throw e;
             }
 
@@ -4206,14 +4272,15 @@ final class Node extends Latch implements DatabaseAccess {
             mSearchVecStart = searchVecLoc;
             mGarbage += garbageAccum;
 
-            Split split;
+            Split split = null;
+            byte[] fv = null;
             try {
                 split = newSplitLeft(newNode);
 
                 if (newLoc == 0) {
                     // Unable to insert new entry into left node. Insert it
                     // into the right node, which should have space now.
-                    storeIntoSplitLeaf(tree, okey, akey, vfrag, value, encodedLen, forInsert);
+                    fv = storeIntoSplitLeaf(tree, okey, akey, vfrag, value, encodedLen, forInsert);
                 } else {
                     // Create new entry and point to it.
                     destLoc -= encodedLen;
@@ -4229,11 +4296,8 @@ final class Node extends Latch implements DatabaseAccess {
             } catch (Throwable e) {
                 mSearchVecStart = originalStart;
                 mGarbage = originalGarbage;
-                try {
-                    tree.mDatabase.deleteNode(newNode, true);
-                } catch (Throwable e2) {
-                    e.addSuppressed(e2);
-                }
+                cleanupFragments(e, fv);
+                cleanupSplit(e, newNode, split);
                 throw e;
             }
 
@@ -4301,14 +4365,15 @@ final class Node extends Latch implements DatabaseAccess {
             mSearchVecEnd = searchVecLoc;
             mGarbage += garbageAccum;
 
-            Split split;
+            Split split = null;
+            byte[] fv = null;
             try {
                 split = newSplitRight(newNode);
 
                 if (newLoc == 0) {
                     // Unable to insert new entry into new right node. Insert
                     // it into the left node, which should have space now.
-                    storeIntoSplitLeaf(tree, okey, akey, vfrag, value, encodedLen, forInsert);
+                    fv = storeIntoSplitLeaf(tree, okey, akey, vfrag, value, encodedLen, forInsert);
                 } else {
                     // Create new entry and point to it.
                     newNode.copyToLeafEntry(okey, akey, vfrag, value, destLoc);
@@ -4324,11 +4389,8 @@ final class Node extends Latch implements DatabaseAccess {
             } catch (Throwable e) {
                 mSearchVecEnd = originalEnd;
                 mGarbage = originalGarbage;
-                try {
-                    tree.mDatabase.deleteNode(newNode, true);
-                } catch (Throwable e2) {
-                    e.addSuppressed(e2);
-                }
+                cleanupFragments(e, fv);
+                cleanupSplit(e, newNode, split);
                 throw e;
             }
 
@@ -4342,9 +4404,11 @@ final class Node extends Latch implements DatabaseAccess {
      * @param okey original key
      * @param akey key to actually store
      * @param vfrag 0 or ENTRY_FRAGMENTED
+     * @return non-null if value got fragmented
      */
-    private void storeIntoSplitLeaf(Tree tree, byte[] okey, byte[] akey, int vfrag, byte[] value,
-                                    int encodedLen, boolean forInsert)
+    private byte[] storeIntoSplitLeaf(Tree tree, byte[] okey, byte[] akey,
+                                      int vfrag, byte[] value,
+                                      int encodedLen, boolean forInsert)
         throws IOException
     {
         int pos = binarySearch(okey);
@@ -4353,6 +4417,7 @@ final class Node extends Latch implements DatabaseAccess {
                 throw new AssertionError("Key exists");
             }
             int entryLoc = createLeafEntry(tree, ~pos, encodedLen);
+            byte[] result = null;
             while (entryLoc < 0) {
                 if (vfrag != 0) {
                     // FIXME: Can this happen?
@@ -4365,16 +4430,19 @@ final class Node extends Latch implements DatabaseAccess {
                 if (value == null) {
                     throw new AssertionError();
                 }
+                result = value;
                 vfrag = ENTRY_FRAGMENTED;
                 encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
                 entryLoc = createLeafEntry(tree, ~pos, encodedLen);
             }
             copyToLeafEntry(okey, akey, vfrag, value, entryLoc);
+            return result;
         } else {
             if (pos < 0) {
                 throw new AssertionError("Key not found");
             }
             updateLeafValue(tree, pos, vfrag, value);
+            return null;
         }
     }
 
@@ -4435,11 +4503,7 @@ final class Node extends Latch implements DatabaseAccess {
             try {
                 split = newSplitLeft(newNode);
             } catch (Throwable e) {
-                try {
-                    db.deleteNode(newNode, true);
-                } catch (Throwable e2) {
-                    e.addSuppressed(e2);
-                }
+                cleanupSplit(e, newNode, null);
                 throw e;
             }
 
@@ -4508,7 +4572,7 @@ final class Node extends Latch implements DatabaseAccess {
         // +2: right
         int splitSide = (keyPos < (searchVecEnd - searchVecStart - keyPos)) ? -1 : 1;
 
-        Split split;
+        Split split = null;
         doSplit: while (true) {
             garbageAccum = 0;
             newKeyLoc = 0;
@@ -4577,11 +4641,7 @@ final class Node extends Latch implements DatabaseAccess {
                                 split = newSplitLeft(newNode);
                                 setSplitKey(tree, split, retrieveKeyAtLoc(page, entryLoc));
                             } catch (Throwable e) {
-                                try {
-                                    db.deleteNode(newNode, true);
-                                } catch (Throwable e2) {
-                                    e.addSuppressed(e2);
-                                }
+                                cleanupSplit(e, newNode, split);
                                 throw e;
                             }
                             break;
@@ -4684,11 +4744,7 @@ final class Node extends Latch implements DatabaseAccess {
                                 split = newSplitRight(newNode);
                                 setSplitKey(tree, split, retrieveKeyAtLoc(page, entryLoc));
                             } catch (Throwable e) {
-                                try {
-                                    db.deleteNode(newNode, true);
-                                } catch (Throwable e2) {
-                                    e.addSuppressed(e2);
-                                }
+                                cleanupSplit(e, newNode, split);
                                 throw e;
                             }
                             break moveEntries;
