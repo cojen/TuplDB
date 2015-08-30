@@ -1,10 +1,11 @@
 Changelog
 =========
 
-v1.2.6
+v1.2.6 (2015-08-30)
 ------
 * Counts stored in bottom internal nodes, for speeding up cursor skip operations.
 * Added skip method which accepts a limit key.
+* More failure handling improvements.
 
 v1.2.5 (2015-07-19)
 ------
