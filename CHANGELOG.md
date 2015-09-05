@@ -1,6 +1,11 @@
 Changelog
 =========
 
+v1.2.6.1 (2015-09-05)
+--------
+* Fix when using mapped files on Linux. Shrinking the database file would cause the process to
+  crash when the file is accessed again.
+
 v1.2.6 (2015-08-30)
 ------
 * Counts stored in bottom internal nodes, for speeding up cursor skip operations.
