@@ -18,7 +18,6 @@ package org.cojen.tupl;
 
 import java.io.EOFException;
 import java.io.File;
-import java.io.InputStream;
 import java.io.IOException;
 
 import java.util.Arrays;
@@ -252,21 +251,6 @@ class Utils extends org.cojen.tupl.io.Utils {
         byte[] mid = new byte[lowLen + 1];
         System.arraycopy(high, highOff, mid, 0, mid.length);
         return mid;
-    }
-
-    static void readFully(InputStream in, byte[] b, int off, int len) throws IOException {
-        if (len > 0) {
-            while (true) {
-                int amt = in.read(b, off, len);
-                if (amt <= 0) {
-                    throw new EOFException();
-                }
-                if ((len -= amt) <= 0) {
-                    break;
-                }
-                off += amt;
-            }
-        }
     }
 
     /**
@@ -688,46 +672,6 @@ class Utils extends org.cojen.tupl.io.Utils {
         }
         b[offset++] = (byte) v;
         return offset;
-    }
-
-    /**
-     * Adds one to an unsigned integer, represented as a byte array. If
-     * overflowed, value in byte array is 0x00, 0x00, 0x00...
-     *
-     * @param value unsigned integer to increment
-     * @param start inclusive index
-     * @param end exclusive index
-     * @return false if overflowed
-     */
-    public static boolean increment(byte[] value, final int start, int end) {
-        while (--end >= start) {
-            if (++value[end] != 0) {
-                // No carry bit, so done adding.
-                return true;
-            }
-        }
-        // This point is reached upon overflow.
-        return false;
-    }
-
-    /**
-     * Subtracts one from an unsigned integer, represented as a byte array. If
-     * overflowed, value in byte array is 0xff, 0xff, 0xff...
-     *
-     * @param value unsigned integer to decrement
-     * @param start inclusive index
-     * @param end exclusive index
-     * @return false if overflowed
-     */
-    public static boolean decrement(byte[] value, final int start, int end) {
-        while (--end >= start) {
-            if (--value[end] != -1) {
-                // No borrow bit, so done subtracting.
-                return true;
-            }
-        }
-        // This point is reached upon overflow.
-        return false;
     }
 
     /**
