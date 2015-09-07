@@ -38,6 +38,38 @@ public class Utils {
     }
 
     /**
+     * Performs a lexicographical comparison between two unsigned byte arrays.
+     *
+     * @return negative if 'a' is less, zero if equal, greater than zero if greater
+     */
+    public static int compareUnsigned(byte[] a, byte[] b) {
+        return compareUnsigned(a, 0, a.length, b, 0, b.length);
+    }
+
+    /**
+     * Performs a lexicographical comparison between two unsigned byte arrays.
+     *
+     * @param a array 'a'
+     * @param aoff array 'a' offset
+     * @param alen array 'a' length
+     * @param b array 'b'
+     * @param boff array 'b' offset
+     * @param blen array 'b' length
+     * @return negative if 'a' is less, zero if equal, greater than zero if greater
+     */
+    public static int compareUnsigned(byte[] a, int aoff, int alen, byte[] b, int boff, int blen) {
+        int minLen = Math.min(alen, blen);
+        for (int i=0; i<minLen; i++) {
+            byte ab = a[aoff + i];
+            byte bb = b[boff + i];
+            if (ab != bb) {
+                return (ab & 0xff) - (bb & 0xff);
+            }
+        }
+        return alen - blen;
+    }
+
+    /**
      * Encodes a 16-bit integer, in big-endian format.
      *
      * @param b encode destination

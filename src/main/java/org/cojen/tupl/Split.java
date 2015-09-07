@@ -62,7 +62,7 @@ final class Split {
      * equal, >0 if greater.
      */
     final int compare(byte[] key) {
-        return Utils.compareKeys(key, 0, key.length, mFullKey, 0, mFullKey.length);
+        return Utils.compareUnsigned(key, 0, key.length, mFullKey, 0, mFullKey.length);
     }
 
     /**

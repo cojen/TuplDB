@@ -105,13 +105,13 @@ class TreeCursor implements CauseCloseable, Cursor {
     @Override
     public final int compareKeyTo(byte[] rkey) {
         byte[] lkey = mKey;
-        return compareKeys(lkey, 0, lkey.length, rkey, 0, rkey.length);
+        return compareUnsigned(lkey, 0, lkey.length, rkey, 0, rkey.length);
     }
 
     @Override
     public final int compareKeyTo(byte[] rkey, int offset, int length) {
         byte[] lkey = mKey;
-        return compareKeys(lkey, 0, lkey.length, rkey, offset, length);
+        return compareUnsigned(lkey, 0, lkey.length, rkey, offset, length);
     }
 
     protected final int keyHash() {
@@ -1790,7 +1790,7 @@ class TreeCursor implements CauseCloseable, Cursor {
 
     @Override
     public final LockResult random(byte[] lowKey, byte[] highKey) throws IOException {
-        if (lowKey != null && highKey != null && compareKeys(lowKey, highKey) >= 0) {
+        if (lowKey != null && highKey != null && compareUnsigned(lowKey, highKey) >= 0) {
             // Cannot find anything if range is empty.
             reset();
             return LockResult.UNOWNED;
@@ -1873,7 +1873,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                             temp.findGe(lowKey);
                         }
                         if (temp.mKey == null ||
-                            (highKey != null && compareKeys(temp.mKey, highKey) >= 0))
+                            (highKey != null && compareUnsigned(temp.mKey, highKey) >= 0))
                         {
                             reset();
                             return LockResult.UNOWNED;
@@ -2487,7 +2487,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                 // greater, then position needs to be updated.
 
                 byte[] frameKey = frame.mNotFoundKey;
-                int compare = compareKeys(frameKey, 0, frameKey.length, key, 0, key.length);
+                int compare = compareUnsigned(frameKey, 0, frameKey.length, key, 0, key.length);
                 if (compare > 0) {
                     // Position is a complement, so subtract instead of add.
                     frame.mNodePos = framePos - 2;
@@ -3168,7 +3168,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                 childNode.releaseShared();
                 parentNode.releaseShared();
 
-                int compare = compareKeys(childKey, parentKey);
+                int compare = compareUnsigned(childKey, parentKey);
 
                 if (left) {
                     if (compare >= 0) {

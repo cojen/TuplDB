@@ -204,7 +204,7 @@ public class StreamTest {
                     int amt = s.read(start, buf, 1, end - start);
                     int expected = Math.min(end - start, length - start);
                     assertEquals(expected, amt);
-                    int cmp = Utils.compareKeys(value, start, amt, buf, 1, amt);
+                    int cmp = Utils.compareUnsigned(value, start, amt, buf, 1, amt);
                     assertEquals(0, cmp);
                 }
             }
@@ -246,7 +246,7 @@ public class StreamTest {
                     int amt = s.read(start, buf, 1, end - start);
                     int expected = Math.min(end - start, length - start);
                     assertEquals(expected, amt);
-                    int cmp = Utils.compareKeys(value, start, amt, buf, 1, amt);
+                    int cmp = Utils.compareUnsigned(value, start, amt, buf, 1, amt);
                     assertEquals(0, cmp);
                 }
             }
