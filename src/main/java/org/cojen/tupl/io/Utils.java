@@ -19,6 +19,8 @@ package org.cojen.tupl.io;
 import org.cojen.tupl.CorruptDatabaseException;
 
 import java.io.Closeable;
+import java.io.EOFException;
+import java.io.InputStream;
 import java.io.IOException;
 
 import java.lang.reflect.Method;
@@ -67,6 +69,46 @@ public class Utils {
             }
         }
         return alen - blen;
+    }
+
+    /**
+     * Adds one to an unsigned integer, represented as a byte array. If
+     * overflowed, value in byte array is 0x00, 0x00, 0x00...
+     *
+     * @param value unsigned integer to increment
+     * @param start inclusive index
+     * @param end exclusive index
+     * @return false if overflowed
+     */
+    public static boolean increment(byte[] value, final int start, int end) {
+        while (--end >= start) {
+            if (++value[end] != 0) {
+                // No carry bit, so done adding.
+                return true;
+            }
+        }
+        // This point is reached upon overflow.
+        return false;
+    }
+
+    /**
+     * Subtracts one from an unsigned integer, represented as a byte array. If
+     * overflowed, value in byte array is 0xff, 0xff, 0xff...
+     *
+     * @param value unsigned integer to decrement
+     * @param start inclusive index
+     * @param end exclusive index
+     * @return false if overflowed
+     */
+    public static boolean decrement(byte[] value, final int start, int end) {
+        while (--end >= start) {
+            if (--value[end] != -1) {
+                // No borrow bit, so done subtracting.
+                return true;
+            }
+        }
+        // This point is reached upon overflow.
+        return false;
     }
 
     /**
@@ -313,6 +355,25 @@ public class Utils {
                      ((b[offset + 5] & 0xff) << 8 ) |
                      ((b[offset + 6] & 0xff) << 16) |
                      ((b[offset + 7]       ) << 24))              ) << 32);
+    }
+
+    /**
+     * Fully reads the required length of bytes, throwing an EOFException if the end of stream
+     * is reached too soon.
+     */
+    public static void readFully(InputStream in, byte[] b, int off, int len) throws IOException {
+        if (len > 0) {
+            while (true) {
+                int amt = in.read(b, off, len);
+                if (amt <= 0) {
+                    throw new EOFException();
+                }
+                if ((len -= amt) <= 0) {
+                    break;
+                }
+                off += amt;
+            }
+        }
     }
 
     private static volatile boolean cDeleteUnsupported;
