@@ -146,22 +146,31 @@ final class JavaFileIO extends FileIO {
 
     @Override
     public void setLength(long length) throws IOException {
-        RandomAccessFile file;
+        synchronized (mRemapLock) {
+            RandomAccessFile file;
 
-        Lock lock = mMappingLock.readLock();
-        lock.lock();
-        try {
-            file = accessFile();
-        } finally {
-            lock.unlock();
-        }
+            Lock lock = mMappingLock.readLock();
+            lock.lock();
+            try {
+                file = accessFile();
+            } finally {
+                lock.unlock();
+            }
 
-        try {
-            file.setLength(length);
-        } catch (IOException e) {
-            // Ignore.
-        } finally {
-            yieldFile(file);
+            // Length reduction screws up the mapping on Linux, causing a hard
+            // process crash when accessing anything beyond the file length.
+            boolean remap = mMappings != null && length < length();
+
+            try {
+                file.setLength(length);
+            } catch (IOException e) {
+                // Ignore.
+            } finally {
+                yieldFile(file);
+                if (remap) {
+                    remap();
+                }
+            }
         }
     }
 
