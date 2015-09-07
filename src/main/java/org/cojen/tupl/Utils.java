@@ -214,34 +214,6 @@ class Utils extends org.cojen.tupl.io.Utils {
     }
 
     /**
-     * @return negative if 'a' is less, zero if equal, greater than zero if greater
-     */
-    static int compareKeys(byte[] a, byte[] b) {
-        return compareKeys(a, 0, a.length, b, 0, b.length);
-    }
-
-    /**
-     * @param a key 'a'
-     * @param aoff key 'a' offset
-     * @param alen key 'a' length
-     * @param b key 'b'
-     * @param boff key 'b' offset
-     * @param blen key 'b' length
-     * @return negative if 'a' is less, zero if equal, greater than zero if greater
-     */
-    static int compareKeys(byte[] a, int aoff, int alen, byte[] b, int boff, int blen) {
-        int minLen = Math.min(alen, blen);
-        for (int i=0; i<minLen; i++) {
-            byte ab = a[aoff + i];
-            byte bb = b[boff + i];
-            if (ab != bb) {
-                return (ab & 0xff) - (bb & 0xff);
-            }
-        }
-        return alen - blen;
-    }
-
-    /**
      * Returns a new key, midway between the given low and high keys. Returned key is never
      * equal to the low key, but it might be equal to the high key. If high key is not actually
      * higher than the given low key, an ArrayIndexOfBoundException might be thrown.

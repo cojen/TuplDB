@@ -22,7 +22,7 @@ import static org.cojen.tupl.PageOps.*;
 
 import static org.cojen.tupl.Utils.EMPTY_BYTES;
 import static org.cojen.tupl.Utils.closeOnFailure;
-import static org.cojen.tupl.Utils.compareKeys;
+import static org.cojen.tupl.Utils.compareUnsigned;
 import static org.cojen.tupl.Utils.rethrow;
 
 /**
@@ -1341,10 +1341,10 @@ final class Node extends Latch implements DatabaseAccess {
             if ((header & ENTRY_FRAGMENTED) != 0) {
                 // Note: An optimized version wouldn't need to copy the whole key.
                 byte[] leftKey = getDatabase().reconstructKey(page, loc, keyLen);
-                return compareKeys(leftKey, 0, leftKey.length, rightKey, 0, rightKey.length);
+                return compareUnsigned(leftKey, 0, leftKey.length, rightKey, 0, rightKey.length);
             }
         }
-        return compareKeys(page, loc, keyLen, rightKey, 0, rightKey.length);
+        return compareUnsigned(page, loc, keyLen, rightKey, 0, rightKey.length);
     }
 
     /**
@@ -1429,7 +1429,7 @@ final class Node extends Latch implements DatabaseAccess {
 
             if ((header & ENTRY_FRAGMENTED) != 0) {
                 byte[] key = getDatabase().reconstructKey(page, loc, keyLen);
-                int cmp = compareKeys(key, limitKey);
+                int cmp = compareUnsigned(key, limitKey);
                 if (cmp == 0) {
                     return limitKey;
                 } else {
@@ -2311,7 +2311,7 @@ final class Node extends Latch implements DatabaseAccess {
             // applying De Morgan's law. Because the chosen parent node is not strictly the
             // lowest from the right, a comparison must be made to the actual new parent node.
             if (newPos < 0 |
-                ((newPos == 0 & mask != 0) && compareKeys(frame.mNotFoundKey, newKey) < 0))
+                ((newPos == 0 & mask != 0) && compareUnsigned(frame.mNotFoundKey, newKey) < 0))
             {
                 frame.unbind();
                 frame.bind(left, (leftEndPos + newPos) ^ mask);
@@ -2512,7 +2512,7 @@ final class Node extends Latch implements DatabaseAccess {
             // Because the chosen parent node is not strictly the lowest from the right, a
             // comparison must be made to the actual new parent node.
             if (newPos >= 0 &
-                ((newPos != 0 | mask == 0) || compareKeys(frame.mNotFoundKey, newKey) >= 0))
+                ((newPos != 0 | mask == 0) || compareUnsigned(frame.mNotFoundKey, newKey) >= 0))
             {
                 frame.unbind();
                 frame.bind(right, newPos ^ mask);
