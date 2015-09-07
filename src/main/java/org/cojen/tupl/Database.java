@@ -1038,7 +1038,7 @@ public final class Database implements CauseCloseable, Flushable {
                 txn.lockExclusive(mRegistryKeyMap.mId, idKey);
                 txn.lockExclusive(mRegistryKeyMap.mId, trashIdKey);
                 // Lock in a consistent order, avoiding deadlocks.
-                if (compareKeys(oldNameKey, newNameKey) <= 0) {
+                if (compareUnsigned(oldNameKey, newNameKey) <= 0) {
                     txn.lockExclusive(mRegistryKeyMap.mId, oldNameKey);
                     txn.lockExclusive(mRegistryKeyMap.mId, newNameKey);
                 } else {
