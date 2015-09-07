@@ -31,6 +31,6 @@ final class KeyComparator implements Comparator<byte[]> {
 
     @Override
     public int compare(byte[] a, byte[] b) {
-        return Utils.compareKeys(a, 0, a.length, b, 0, b.length);
+        return Utils.compareUnsigned(a, 0, a.length, b, 0, b.length);
     }
 }

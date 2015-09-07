@@ -18,7 +18,7 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import static org.cojen.tupl.Utils.compareKeys;
+import static org.cojen.tupl.Utils.compareUnsigned;
 
 /**
  * Implements a few {@link Cursor} methods.
@@ -32,7 +32,7 @@ public abstract class AbstractCursor implements Cursor {
     @Override
     public int compareKeyTo(byte[] rkey) {
         byte[] lkey = key();
-        return compareKeys(lkey, 0, lkey.length, rkey, 0, rkey.length);
+        return compareUnsigned(lkey, 0, lkey.length, rkey, 0, rkey.length);
     }
 
     /**
@@ -41,7 +41,7 @@ public abstract class AbstractCursor implements Cursor {
     @Override
     public int compareKeyTo(byte[] rkey, int offset, int length) {
         byte[] lkey = key();
-        return compareKeys(lkey, 0, lkey.length, rkey, offset, length);
+        return compareUnsigned(lkey, 0, lkey.length, rkey, offset, length);
     }
 
     /**
@@ -65,7 +65,7 @@ public abstract class AbstractCursor implements Cursor {
                     if (key == null) {
                         return LockResult.UNOWNED;
                     }
-                    if (compareKeys(key, 0, key.length, limitKey, 0, limitKey.length) > cmp) {
+                    if (compareUnsigned(key, 0, key.length, limitKey, 0, limitKey.length) > cmp) {
                         reset();
                         return LockResult.UNOWNED;
                     }
@@ -78,7 +78,7 @@ public abstract class AbstractCursor implements Cursor {
                     if (key == null) {
                         return LockResult.UNOWNED;
                     }
-                    if (compareKeys(key, 0, key.length, limitKey, 0, limitKey.length) < cmp) {
+                    if (compareUnsigned(key, 0, key.length, limitKey, 0, limitKey.length) < cmp) {
                         reset();
                         return LockResult.UNOWNED;
                     }

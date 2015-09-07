@@ -242,13 +242,13 @@ final class PageOps {
     static int p_compareKeysPageToArray(/*P*/ byte[] apage, int aoff, int alen,
                                         byte[] b, int boff, int blen)
     {
-        return compareKeys(apage, aoff, alen, b, boff, blen);
+        return compareUnsigned(apage, aoff, alen, b, boff, blen);
     }
 
     static int p_compareKeysPageToPage(/*P*/ byte[] apage, int aoff, int alen,
                                        /*P*/ byte[] bpage, int boff, int blen)
     {
-        return compareKeys(apage, aoff, alen, bpage, boff, blen);
+        return compareUnsigned(apage, aoff, alen, bpage, boff, blen);
     }
 
     static byte[] p_midKeyLowPage(/*P*/ byte[] lowPage, int lowOff, int lowLen,

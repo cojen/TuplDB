@@ -104,7 +104,7 @@ final class FragmentedTrash {
             cursor.autoload(false);
             cursor.findGt(prefix);
             byte[] key = cursor.key();
-            if (key == null || compareKeys(key, 0, 8, prefix, 0, 8) != 0) {
+            if (key == null || compareUnsigned(key, 0, 8, prefix, 0, 8) != 0) {
                 // Create first entry for this transaction.
                 key = new byte[8 + 1];
                 arraycopy(prefix, 0, key, 0, 8);
@@ -188,7 +188,7 @@ final class FragmentedTrash {
             cursor.findGt(prefix);
             while (true) {
                 byte[] key = cursor.key();
-                if (key == null || compareKeys(key, 0, 8, prefix, 0, 8) != 0) {
+                if (key == null || compareUnsigned(key, 0, 8, prefix, 0, 8) != 0) {
                     break;
                 }
                 cursor.load();
