@@ -21,8 +21,6 @@ import java.io.File;
 import java.io.InputStream;
 import java.io.IOException;
 
-import java.math.BigInteger;
-
 import java.util.Arrays;
 import java.util.Random;
 
@@ -53,10 +51,15 @@ class Utils extends org.cojen.tupl.io.Utils {
         return (i | (i >> 16)) + 1;
     }
 
-    static BigInteger valueOfUnsigned(long v) {
-        byte[] temp = new byte[9];
-        encodeLongBE(temp, 1, v);
-        return new BigInteger(temp);
+    static String toUnsignedString(long i) {
+        if (i >= 0) {
+            return Long.toString(i);
+        } else {
+            // Same trick as Long.toUnsignedString method.
+            long quot = (i >>> 1) / 5;
+            long rem = i - quot * 10;
+            return Long.toString(quot) + rem;
+        }
     }
 
     private static final Random cRnd = new Random();
