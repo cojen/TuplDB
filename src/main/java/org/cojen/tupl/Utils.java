@@ -61,6 +61,10 @@ class Utils extends org.cojen.tupl.io.Utils {
         }
     }
 
+    static int hash(long v) {
+        return (int) (v ^ (v >>> 32));
+    }
+
     private static final Random cRnd = new Random();
     
     static Random random() {
@@ -706,11 +710,11 @@ class Utils extends org.cojen.tupl.io.Utils {
         return h - g;
     }
 
-    static String toHex(byte[] key) {
+    public static String toHex(byte[] key) {
         return key == null ? "null" : toHex(key, 0, key.length);
     }
 
-    static String toHex(byte[] key, int offset, int length) {
+    public static String toHex(byte[] key, int offset, int length) {
         if (key == null) {
             return "null";
         }
@@ -728,11 +732,11 @@ class Utils extends org.cojen.tupl.io.Utils {
         return (char) ((b < 10) ? ('0' + b) : ('a' + b - 10));
     }
 
-    static String toHexDump(byte[] b) {
+    public static String toHexDump(byte[] b) {
         return toHexDump(b, 0, b.length);
     }
 
-    static String toHexDump(byte[] b, int offset, int length) {
+    public static String toHexDump(byte[] b, int offset, int length) {
         StringBuilder bob = new StringBuilder();
 
         for (int i=0; i<length; i+=16) {

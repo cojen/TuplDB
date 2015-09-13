@@ -27,11 +27,9 @@ import static org.cojen.tupl.Node.*;
  */
 final class FragmentCache {
     private final Database mDatabase;
-    private final NodeMap mNodeMap;
 
-    FragmentCache(Database db, NodeMap nodeMap) {
+    FragmentCache(Database db) {
         mDatabase = db;
-        mNodeMap = nodeMap;
     }
 
     /**
@@ -40,7 +38,7 @@ final class FragmentCache {
      * @return node with shared latch held
      */
     Node get(long nodeId) throws IOException {
-        Node node = mNodeMap.get(nodeId);
+        Node node = mDatabase.nodeMapGet(nodeId);
 
         if (node != null) {
             node.acquireShared();
@@ -58,7 +56,7 @@ final class FragmentCache {
         node.mCachedState = mDatabase.readNodePage(nodeId, node.mPage);
         node.downgrade();
 
-        mNodeMap.put(node);
+        mDatabase.nodeMapPut(node);
 
         return node;
     }
@@ -71,7 +69,7 @@ final class FragmentCache {
      * @return node with exclusive latch held
      */
     Node getw(long nodeId, boolean load) throws IOException {
-        Node node = mNodeMap.get(nodeId);
+        Node node = mDatabase.nodeMapGet(nodeId);
 
         if (node != null) {
             node.acquireExclusive();
@@ -90,7 +88,7 @@ final class FragmentCache {
             node.mCachedState = mDatabase.readNodePage(nodeId, node.mPage);
         }
 
-        mNodeMap.put(node);
+        mDatabase.nodeMapPut(node);
 
         return node;
     }
@@ -102,7 +100,7 @@ final class FragmentCache {
      * @param node exclusively latched node
      */
     void put(Node node) {
-        mNodeMap.put(node);
+        mDatabase.nodeMapPut(node);
         node.mType = TYPE_FRAGMENT;
     }
 
@@ -110,15 +108,15 @@ final class FragmentCache {
      * @return exclusively latched node if found; null if not found
      */
     Node remove(long nodeId) {
-        int hash = NodeMap.hash(nodeId);
-        Node node = mNodeMap.get(nodeId, hash);
+        int hash = Utils.hash(nodeId);
+        Node node = mDatabase.nodeMapGet(nodeId, hash);
         if (node != null) {
             node.acquireExclusive();
             if (nodeId != node.mId) {
                 node.releaseExclusive();
                 node = null;
             } else {
-                mNodeMap.remove(node, hash);
+                mDatabase.nodeMapRemove(node, hash);
             }
         }
         return node;
