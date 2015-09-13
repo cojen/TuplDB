@@ -46,6 +46,6 @@ public class LargeKeyException extends DatabaseException {
     }
 
     private static String createMessage(long length) {
-        return "Key is too large: " + Utils.valueOfUnsigned(length);
+        return "Key is too large: " + Utils.toUnsignedString(length);
     }
 }

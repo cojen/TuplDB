@@ -381,7 +381,7 @@ final class Node extends Latch implements DatabaseAccess {
                 }
 
                 long childId = node.retrieveChildRefId(childPos);
-                Node childNode = tree.mDatabase.mTreeNodeMap.get(childId);
+                Node childNode = tree.mDatabase.nodeMapGet(childId);
 
                 childCheck: if (childNode != null) {
                     latchChild: if (!childNode.tryAcquireShared()) {
@@ -623,7 +623,7 @@ final class Node extends Latch implements DatabaseAccess {
             throw e;
         }
 
-        db.mTreeNodeMap.put(childNode);
+        db.nodeMapPut(childNode);
 
         // Release parent latch before child has been loaded. Any threads
         // which wish to access the same child will block until this thread
@@ -643,7 +643,7 @@ final class Node extends Latch implements DatabaseAccess {
         } catch (Throwable e) {
             // Another thread might access child and see that it is invalid because
             // id is zero. It will assume it got evicted and will load child again.
-            db.mTreeNodeMap.remove(childNode);
+            db.nodeMapRemove(childNode);
             childNode.mId = 0;
             childNode.mType = TYPE_NONE;
             childNode.releaseExclusive();
@@ -681,7 +681,7 @@ final class Node extends Latch implements DatabaseAccess {
     private Node tryLatchChildNotSplit(int childPos) throws IOException {
         final long childId = retrieveChildRefId(childPos);
         final Database db = getDatabase();
-        Node childNode = db.mTreeNodeMap.get(childId);
+        Node childNode = db.nodeMapGet(childId);
 
         if (childNode != null) {
             if (!childNode.tryAcquireExclusive()) {
@@ -707,13 +707,13 @@ final class Node extends Latch implements DatabaseAccess {
      * must also exclusively hold stub latch, if applicable. This required for safely unbinding
      * parent cursor frames which refer to the old root node.
      */
-    void finishSplitRoot(Tree tree) throws IOException {
+    void finishSplitRoot() throws IOException {
         // Create a child node and copy this root node state into it. Then update this
         // root node to point to new and split child nodes. New root is always an internal node.
 
-        Database db = tree.mDatabase;
+        Database db = mUsageList.mDatabase;
         Node child = db.allocDirtyNode();
-        db.mTreeNodeMap.put(child);
+        db.nodeMapPut(child);
 
         /*P*/ byte[] newPage = child.mPage;
         child.mPage = mPage;
@@ -938,7 +938,7 @@ final class Node extends Latch implements DatabaseAccess {
                 mCachedState = CACHED_CLEAN;
             }
 
-            db.mTreeNodeMap.remove(this, NodeMap.hash(id));
+            db.nodeMapRemove(this, Utils.hash(id));
             mId = 0;
             mType = TYPE_NONE;
         } catch (Throwable e) {
@@ -951,11 +951,11 @@ final class Node extends Latch implements DatabaseAccess {
      * Invalidate all cursors, starting from the root. Used when closing an index which still
      * has active cursors. Caller must hold exclusive latch on node.
      */
-    void invalidateCursors(NodeMap map) {
-        invalidateCursors(map, createEmptyNode(mType));
+    void invalidateCursors() {
+        invalidateCursors(createEmptyNode(mType));
     }
 
-    private void invalidateCursors(NodeMap map, Node empty) {
+    private void invalidateCursors(Node empty) {
         int pos = isLeaf() ? -1 : 0;
 
         for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
@@ -968,20 +968,22 @@ final class Node extends Latch implements DatabaseAccess {
             return;
         }
 
+        Database db = mUsageList.mDatabase;
+
         empty = null;
 
         int childPtr = mSearchVecEnd + 2;
         final int highestPtr = childPtr + (highestInternalPos() << 2);
         for (; childPtr <= highestPtr; childPtr += 8) {
             long childId = p_uint48GetLE(mPage, childPtr);
-            Node child = map.get(childId);
+            Node child = db.nodeMapGet(childId);
             if (child != null) {
                 child.acquireExclusive();
                 if (childId == child.mId) {
                     if (empty == null) {
                         empty = createEmptyNode(child.mType);
                     }
-                    child.invalidateCursors(map, empty);
+                    child.invalidateCursors(empty);
                 }
                 child.releaseExclusive();
             }
@@ -3836,7 +3838,7 @@ final class Node extends Latch implements DatabaseAccess {
         // Repurpose the child node into a stub root node. Stub is assigned a
         // reserved id (1) and a clean cached state. It cannot be marked dirty,
         // but it can be evicted when all cursors have unbound from it.
-        tree.mDatabase.mTreeNodeMap.remove(child, NodeMap.hash(toDelete));
+        tree.mDatabase.nodeMapRemove(child, Utils.hash(toDelete));
         child.mPage = page;
         child.mId = STUB_ID;
         child.mCachedState = CACHED_CLEAN;
@@ -4131,7 +4133,7 @@ final class Node extends Latch implements DatabaseAccess {
         }
 
         Node newNode = tree.mDatabase.allocDirtyNode(NodeUsageList.MODE_UNEVICTABLE);
-        tree.mDatabase.mTreeNodeMap.put(newNode);
+        tree.mDatabase.nodeMapPut(newNode);
         newNode.mGarbage = 0;
 
         /*P*/ byte[] newPage = newNode.mPage;
@@ -4483,7 +4485,7 @@ final class Node extends Latch implements DatabaseAccess {
             }
         }
 
-        db.mTreeNodeMap.put(newNode);
+        db.nodeMapPut(newNode);
         newNode.mGarbage = 0;
 
         final /*P*/ byte[] page = mPage;

@@ -18,10 +18,7 @@ package org.cojen.tupl;
 
 import java.io.EOFException;
 import java.io.File;
-import java.io.InputStream;
 import java.io.IOException;
-
-import java.math.BigInteger;
 
 import java.util.Arrays;
 import java.util.Random;
@@ -53,10 +50,19 @@ class Utils extends org.cojen.tupl.io.Utils {
         return (i | (i >> 16)) + 1;
     }
 
-    static BigInteger valueOfUnsigned(long v) {
-        byte[] temp = new byte[9];
-        encodeLongBE(temp, 1, v);
-        return new BigInteger(temp);
+    static String toUnsignedString(long i) {
+        if (i >= 0) {
+            return Long.toString(i);
+        } else {
+            // Same trick as Long.toUnsignedString method.
+            long quot = (i >>> 1) / 5;
+            long rem = i - quot * 10;
+            return Long.toString(quot) + rem;
+        }
+    }
+
+    static int hash(long v) {
+        return (int) (v ^ (v >>> 32));
     }
 
     private static final Random cRnd = new Random();
@@ -249,21 +255,6 @@ class Utils extends org.cojen.tupl.io.Utils {
         byte[] mid = new byte[lowLen + 1];
         System.arraycopy(high, highOff, mid, 0, mid.length);
         return mid;
-    }
-
-    static void readFully(InputStream in, byte[] b, int off, int len) throws IOException {
-        if (len > 0) {
-            while (true) {
-                int amt = in.read(b, off, len);
-                if (amt <= 0) {
-                    throw new EOFException();
-                }
-                if ((len -= amt) <= 0) {
-                    break;
-                }
-                off += amt;
-            }
-        }
     }
 
     /**
@@ -688,46 +679,6 @@ class Utils extends org.cojen.tupl.io.Utils {
     }
 
     /**
-     * Adds one to an unsigned integer, represented as a byte array. If
-     * overflowed, value in byte array is 0x00, 0x00, 0x00...
-     *
-     * @param value unsigned integer to increment
-     * @param start inclusive index
-     * @param end exclusive index
-     * @return false if overflowed
-     */
-    public static boolean increment(byte[] value, final int start, int end) {
-        while (--end >= start) {
-            if (++value[end] != 0) {
-                // No carry bit, so done adding.
-                return true;
-            }
-        }
-        // This point is reached upon overflow.
-        return false;
-    }
-
-    /**
-     * Subtracts one from an unsigned integer, represented as a byte array. If
-     * overflowed, value in byte array is 0xff, 0xff, 0xff...
-     *
-     * @param value unsigned integer to decrement
-     * @param start inclusive index
-     * @param end exclusive index
-     * @return false if overflowed
-     */
-    public static boolean decrement(byte[] value, final int start, int end) {
-        while (--end >= start) {
-            if (--value[end] != -1) {
-                // No borrow bit, so done subtracting.
-                return true;
-            }
-        }
-        // This point is reached upon overflow.
-        return false;
-    }
-
-    /**
      * Subtracts one from the given reverse unsigned variable integer, of any
      * size. A reverse unsigned variable integer is encoded such that all the
      * bits are complemented. When lexicographically sorted, the order is
@@ -759,11 +710,11 @@ class Utils extends org.cojen.tupl.io.Utils {
         return h - g;
     }
 
-    static String toHex(byte[] key) {
+    public static String toHex(byte[] key) {
         return key == null ? "null" : toHex(key, 0, key.length);
     }
 
-    static String toHex(byte[] key, int offset, int length) {
+    public static String toHex(byte[] key, int offset, int length) {
         if (key == null) {
             return "null";
         }
@@ -781,11 +732,11 @@ class Utils extends org.cojen.tupl.io.Utils {
         return (char) ((b < 10) ? ('0' + b) : ('a' + b - 10));
     }
 
-    static String toHexDump(byte[] b) {
+    public static String toHexDump(byte[] b) {
         return toHexDump(b, 0, b.length);
     }
 
-    static String toHexDump(byte[] b, int offset, int length) {
+    public static String toHexDump(byte[] b, int offset, int length) {
         StringBuilder bob = new StringBuilder();
 
         for (int i=0; i<length; i+=16) {
