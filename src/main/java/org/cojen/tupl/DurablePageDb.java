@@ -668,7 +668,7 @@ final class DurablePageDb extends PageDb {
     /**
      * @see SnapshotPageArray#beginSnapshot
      */
-    Snapshot beginSnapshot(TempFileManager tfm, NodeMap nodeCache) throws IOException {
+    Snapshot beginSnapshot(Database db) throws IOException {
         mHeaderLatch.acquireShared();
         try {
             long pageCount, redoPos;
@@ -680,7 +680,7 @@ final class DurablePageDb extends PageDb {
             } finally {
                 p_delete(header);
             }
-            return mPageArray.beginSnapshot(tfm, pageCount, redoPos, nodeCache);
+            return mPageArray.beginSnapshot(db, pageCount, redoPos);
         } finally {
             mHeaderLatch.releaseShared();
         }

@@ -223,9 +223,9 @@ public final class Database implements CauseCloseable, Flushable {
     private final NodeDirtyList mDirtyList;
 
     // Map of all loaded non-root nodes.
-    final NodeMap mTreeNodeMap;
+    private final Node[] mNodeMapTable;
+    private final Latch[] mNodeMapLatches;
 
-    final FragmentCache mFragmentCache;
     final int mMaxFragmentedEntrySize;
 
     // Fragmented values which are transactionally deleted go here.
@@ -358,7 +358,19 @@ public final class Database implements CauseCloseable, Flushable {
         mDefaultLockTimeoutNanos = config.mLockTimeoutNanos;
         mLockManager = new LockManager(config.mLockUpgradeRule, mDefaultLockTimeoutNanos);
 
-        mTreeNodeMap = new NodeMap(maxCache);
+        // Initialize NodeMap, the primary cache of Nodes.
+        {
+            int latches = Utils.roundUpPower2(Runtime.getRuntime().availableProcessors() * 16);
+            int capacity = Utils.roundUpPower2(maxCache);
+            if (capacity < 0) {
+                capacity = 0x40000000;
+            }
+            mNodeMapTable = new Node[capacity];
+            mNodeMapLatches = new Latch[latches];
+            for (int i=0; i<latches; i++) {
+                mNodeMapLatches[i] = new Latch();
+            }
+        }
 
         if (mBaseFile != null && !config.mReadOnly && config.mMkdirs) {
             FileFactory factory = config.mFileFactory;
@@ -573,8 +585,6 @@ public final class Database implements CauseCloseable, Flushable {
             }
 
             mDirtyList = new NodeDirtyList();
-
-            mFragmentCache = new FragmentCache(this, mTreeNodeMap);
 
             if (openMode != OPEN_TEMP) {
                 Tree tree = openInternalTree(Tree.FRAGMENTED_TRASH_ID, false, config);
@@ -1556,7 +1566,7 @@ public final class Database implements CauseCloseable, Flushable {
         }
         checkClosed();
         DurablePageDb pageDb = (DurablePageDb) mPageDb;
-        return pageDb.beginSnapshot(mTempFileManager, mTreeNodeMap);
+        return pageDb.beginSnapshot(this);
     }
 
     /**
@@ -2344,9 +2354,7 @@ public final class Database implements CauseCloseable, Flushable {
                     }
                 }
 
-                if (mTreeNodeMap != null) {
-                    mTreeNodeMap.delete();
-                }
+                nodeMapDeleteAll();
 
                 if (mDirtyList != null) {
                     mDirtyList.delete();
@@ -2519,7 +2527,7 @@ public final class Database implements CauseCloseable, Flushable {
     private Node loadTreeRoot(final long rootId) throws IOException {
         if (rootId != 0) {
             // Check if root node is still around after tree was closed.
-            final Node rootNode = mTreeNodeMap.get(rootId);
+            final Node rootNode = nodeMapGet(rootId);
             if (rootNode != null) {
                 rootNode.acquireShared();
                 try {
@@ -2545,7 +2553,7 @@ public final class Database implements CauseCloseable, Flushable {
                     rootNode.makeEvictableNow();
                     throw e;
                 }
-                mTreeNodeMap.put(rootNode);
+                nodeMapPut(rootNode);
             }
         } finally {
             rootNode.releaseExclusive();
@@ -2913,7 +2921,7 @@ public final class Database implements CauseCloseable, Flushable {
                 mOpenTreesById.remove(ref.mId);
                 root.makeEvictableNow();
                 if (root.mId != 0) {
-                    mTreeNodeMap.put(root);
+                    nodeMapPut(root);
                 }
             } finally {
                 mOpenTreesLatch.releaseExclusive();
@@ -2967,6 +2975,221 @@ public final class Database implements CauseCloseable, Flushable {
             return commitLock;
         } catch (InterruptedException e) {
             throw new InterruptedIOException();
+        }
+    }
+
+    /**
+     * Returns unconfirmed node if found. Caller must latch and confirm that node identifier
+     * matches, in case an eviction snuck in.
+     */
+    Node nodeMapGet(final long nodeId) {
+        return nodeMapGet(nodeId, Utils.hash(nodeId));
+    }
+
+    /**
+     * Returns unconfirmed node if found. Caller must latch and confirm that node identifier
+     * matches, in case an eviction snuck in.
+     */
+    Node nodeMapGet(final long nodeId, final int hash) {
+        // Quick check without acquiring a partition latch.
+
+        final Node[] table = mNodeMapTable;
+        Node node = table[hash & (table.length - 1)];
+        if (node != null) {
+            // Limit scan of collision chain in case a temporary infinite loop is observed.
+            int limit = 100;
+            do {
+                if (node.mId == nodeId) {
+                    return node;
+                }
+            } while ((node = node.mNodeChainNext) != null && --limit != 0);
+        }
+
+        // Again with shared partition latch held.
+
+        final Latch[] latches = mNodeMapLatches;
+        final Latch latch = latches[hash & (latches.length - 1)];
+        latch.acquireShared();
+
+        node = table[hash & (table.length - 1)];
+        while (node != null) {
+            if (node.mId == nodeId) {
+                latch.releaseShared();
+                return node;
+            }
+            node = node.mNodeChainNext;
+        }
+
+        latch.releaseShared();
+        return null;
+    }
+
+    /**
+     * Put a node into the map, but caller must confirm that node is not already present.
+     */
+    void nodeMapPut(final Node node) {
+        nodeMapPut(node, Utils.hash(node.mId));
+    }
+
+    /**
+     * Put a node into the map, but caller must confirm that node is not already present.
+     */
+    void nodeMapPut(final Node node, final int hash) {
+        final Latch[] latches = mNodeMapLatches;
+        final Latch latch = latches[hash & (latches.length - 1)];
+        latch.acquireExclusive();
+
+        final Node[] table = mNodeMapTable;
+        final int index = hash & (table.length - 1);
+        Node e = table[index];
+        while (e != null) {
+            if (e == node) {
+                latch.releaseExclusive();
+                return;
+            }
+            if (e.mId == node.mId) {
+                latch.releaseExclusive();
+                throw new AssertionError("Already in NodeMap: " + node + ", " + e + ", " + hash);
+            }
+            e = e.mNodeChainNext;
+        }
+
+        node.mNodeChainNext = table[index];
+        table[index] = node;
+
+        latch.releaseExclusive();
+    }
+
+    void nodeMapRemove(final Node node) {
+        nodeMapRemove(node, Utils.hash(node.mId));
+    }
+
+    void nodeMapRemove(final Node node, final int hash) {
+        final Latch[] latches = mNodeMapLatches;
+        final Latch latch = latches[hash & (latches.length - 1)];
+        latch.acquireExclusive();
+
+        final Node[] table = mNodeMapTable;
+        final int index = hash & (table.length - 1);
+        Node e = table[index];
+        if (e == node) {
+            table[index] = e.mNodeChainNext;
+        } else while (e != null) {
+            Node next = e.mNodeChainNext;
+            if (next == node) {
+                e.mNodeChainNext = next.mNodeChainNext;
+                break;
+            }
+            e = next;
+        }
+
+        node.mNodeChainNext = null;
+
+        latch.releaseExclusive();
+    }
+
+    /**
+     * Returns or loads the fragment node with the given id. If loaded, node is put in the cache.
+     *
+     * @return node with shared latch held
+     */
+    Node nodeMapLoadFragment(long nodeId) throws IOException {
+        Node node = nodeMapGet(nodeId);
+
+        if (node != null) {
+            node.acquireShared();
+            if (nodeId == node.mId) {
+                node.used();
+                return node;
+            }
+            node.releaseShared();
+        }
+
+        node = allocLatchedNode(nodeId);
+        node.mId = nodeId;
+        node.mType = TYPE_FRAGMENT;
+
+        node.mCachedState = readNodePage(nodeId, node.mPage);
+        node.downgrade();
+
+        nodeMapPut(node);
+
+        return node;
+    }
+
+    /**
+     * Returns or loads the fragment node with the given id. If loaded, node is put in the
+     * cache. Method is intended for obtaining nodes to write into.
+     *
+     * @param read true if node should be fully read if it needed to be loaded
+     * @return node with exclusive latch held
+     */
+    Node nodeMapLoadFragmentExclusive(long nodeId, boolean read) throws IOException {
+        Node node = nodeMapGet(nodeId);
+
+        if (node != null) {
+            node.acquireExclusive();
+            if (nodeId == node.mId) {
+                node.used();
+                return node;
+            }
+            node.releaseExclusive();
+        }
+
+        node = allocLatchedNode(nodeId);
+        node.mId = nodeId;
+        node.mType = TYPE_FRAGMENT;
+
+        if (read) {
+            node.mCachedState = readNodePage(nodeId, node.mPage);
+        }
+
+        nodeMapPut(node);
+
+        return node;
+    }
+
+    /**
+     * @return exclusively latched node if found; null if not found
+     */
+    Node nodeMapGetAndRemove(long nodeId) {
+        int hash = Utils.hash(nodeId);
+        Node node = nodeMapGet(nodeId, hash);
+        if (node != null) {
+            node.acquireExclusive();
+            if (nodeId != node.mId) {
+                node.releaseExclusive();
+                node = null;
+            } else {
+                nodeMapRemove(node, hash);
+            }
+        }
+        return node;
+    }
+
+    /**
+     * Remove and delete nodes from map, as part of close sequence.
+     */
+    void nodeMapDeleteAll() {
+        for (Latch latch : mNodeMapLatches) {
+            latch.acquireExclusive();
+        }
+
+        for (int i=mNodeMapTable.length; --i>=0; ) {
+            Node e = mNodeMapTable[i];
+            if (e != null) {
+                e.delete();
+                Node next;
+                while ((next = e.mNodeChainNext) != null) {
+                    e.mNodeChainNext = null;
+                    e = next;
+                }
+                mNodeMapTable[i] = null;
+            }
+        }
+
+        for (Latch latch : mNodeMapLatches) {
+            latch.releaseExclusive();
         }
     }
 
@@ -3059,7 +3282,8 @@ public final class Database implements CauseCloseable, Flushable {
      */
     Node allocDirtyFragmentNode() throws IOException {
         Node node = allocDirtyNode();
-        mFragmentCache.put(node);
+        nodeMapPut(node);
+        node.mType = TYPE_FRAGMENT;
         return node;
     }
 
@@ -3120,11 +3344,11 @@ public final class Database implements CauseCloseable, Flushable {
                     throw e;
                 }
 
-                mTreeNodeMap.remove(node, NodeMap.hash(oldId));
+                nodeMapRemove(node, Utils.hash(oldId));
             }
 
             dirty(node, newId);
-            mTreeNodeMap.put(node);
+            nodeMapPut(node);
             return true;
         }
     }
@@ -3193,7 +3417,7 @@ public final class Database implements CauseCloseable, Flushable {
         try {
             if (oldId != 0) {
                 mPageDb.deletePage(oldId);
-                mTreeNodeMap.remove(node, NodeMap.hash(oldId));
+                nodeMapRemove(node, Utils.hash(oldId));
             }
         } catch (Throwable e) {
             try {
@@ -3210,7 +3434,7 @@ public final class Database implements CauseCloseable, Flushable {
         }
 
         dirty(node, newId);
-        mTreeNodeMap.put(node);
+        nodeMapPut(node);
     }
 
     private void storeTreeRootId(Tree tree, long id) throws IOException {
@@ -3284,7 +3508,7 @@ public final class Database implements CauseCloseable, Flushable {
 
             // Must be removed from map before page is deleted. It could be recycled too soon,
             // creating a NodeMap collision.
-            mTreeNodeMap.remove(node, NodeMap.hash(id));
+            nodeMapRemove(node, Utils.hash(id));
 
             try {
                 if (canRecycle) {
@@ -3295,7 +3519,7 @@ public final class Database implements CauseCloseable, Flushable {
             } catch (Throwable e) {
                 // Try to undo things.
                 try {
-                    mTreeNodeMap.put(node);
+                    nodeMapPut(node);
                 } catch (Throwable e2) {
                     e.addSuppressed(e2);
                 }
@@ -3681,7 +3905,7 @@ public final class Database implements CauseCloseable, Flushable {
                     // Reconstructing a sparse value. Array is already zero-filled.
                     pLen = Math.min(vLen, mPageSize);
                 } else {
-                    Node node = mFragmentCache.get(nodeId);
+                    Node node = nodeMapLoadFragment(nodeId);
                     try {
                         /*P*/ byte[] page = node.mPage;
                         pLen = Math.min(vLen, p_length(page));
@@ -3697,7 +3921,7 @@ public final class Database implements CauseCloseable, Flushable {
             // Indirect pointers.
             long inodeId = p_uint48GetLE(fragmented, off);
             if (inodeId != 0) {
-                Node inode = mFragmentCache.get(inodeId);
+                Node inode = nodeMapLoadFragment(inodeId);
                 int levels = calculateInodeLevels(vLen);
                 readMultilevelFragments(levels, inode, value, 0, vLen);
             }
@@ -3727,7 +3951,7 @@ public final class Database implements CauseCloseable, Flushable {
                 int len = (int) Math.min(levelCap, vlength);
 
                 if (childNodeId != 0) {
-                    Node childNode = mFragmentCache.get(childNodeId);
+                    Node childNode = nodeMapLoadFragment(childNodeId);
                     if (level <= 0) {
                         p_copyToArray(childNode.mPage, 0, value, voffset, len);
                         childNode.releaseShared();
@@ -3844,7 +4068,7 @@ public final class Database implements CauseCloseable, Flushable {
      * @return non-null Node with exclusive latch held
      */
     private Node removeInode(long nodeId) throws IOException {
-        Node node = mFragmentCache.remove(nodeId);
+        Node node = nodeMapGetAndRemove(nodeId);
         if (node == null) {
             node = allocLatchedNode(nodeId, NodeUsageList.MODE_UNEVICTABLE);
             node.mId = nodeId;
@@ -3859,7 +4083,7 @@ public final class Database implements CauseCloseable, Flushable {
      */
     private void deleteFragment(long nodeId) throws IOException {
         if (nodeId != 0) {
-            Node node = mFragmentCache.remove(nodeId);
+            Node node = nodeMapGetAndRemove(nodeId);
             if (node != null) {
                 deleteNode(node);
             } else if (!mHasCheckpointed) {
