@@ -31,52 +31,61 @@ public class NodeMapTest {
 
     @Test
     public void fill() throws Exception {
+        final int page  = 512;
         final int size  = 10000;
         final int count = 100000;
 
-        NodeMap map = new NodeMap(size);
+        final int idOffset = 1000;
+
+        Database db = Database.open(new DatabaseConfig().pageSize(page).maxCacheSize(size * page));
 
         for (int i=0; i<count; i++) {
-            Node n = new Node(null, 10);
-            n.mId = i;
-            map.put(n, NodeMap.hash(i));
+            Node n = new Node(null, page);
+            long id = idOffset + i;
+            n.mId = id;
+            db.nodeMapPut(n, Utils.hash(id));
         }
 
         for (int i=0; i<count; i++) {
-            Node n = map.get(i, NodeMap.hash(i));
-            assertEquals(i, n.mId);
+            long id = idOffset + i;
+            Node n = db.nodeMapGet(id, Utils.hash(id));
+            assertEquals(id, n.mId);
         }
 
         for (int i=0; i<count; i++) {
-            int hash = NodeMap.hash(i);
-            Node n = map.get(i, hash);
-            assertEquals(i, n.mId);
-            map.remove(n, hash);
-            assertNull(map.get(i, hash));
+            long id = idOffset + i;
+            int hash = Utils.hash(id);
+            Node n = db.nodeMapGet(id, hash);
+            assertEquals(id, n.mId);
+            db.nodeMapRemove(n, hash);
+            assertNull(db.nodeMapGet(id, hash));
         }
-
-        map.delete();
     }
 
     @Test
     public void clear() throws Exception {
+        final int page  = 512;
         final int size  = 10000;
         final int count = 100000;
 
-        NodeMap map = new NodeMap(size);
+        final int idOffset = 1000;
+
+        Database db = Database.open(new DatabaseConfig().pageSize(page).maxCacheSize(size * page));
 
         Node[] nodes = new Node[count];
         for (int i=0; i<count; i++) {
-            Node n = new Node(null, 10);
-            n.mId = i;
-            map.put(n, NodeMap.hash(i));
+            Node n = new Node(null, page);
+            long id = idOffset + i;
+            n.mId = id;
+            db.nodeMapPut(n, Utils.hash(id));
             nodes[i] = n;
         }
 
-        map.delete();
+        db.nodeMapDeleteAll();
 
         for (int i=0; i<count; i++) {
-            assertNull(map.get(i, NodeMap.hash(i)));
+            long id = idOffset + i;
+            assertNull(db.nodeMapGet(id, Utils.hash(id)));
         }
 
         for (Node n : nodes) {

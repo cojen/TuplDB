@@ -151,12 +151,11 @@ final class SnapshotPageArray extends PageArray {
      *
      * @param pageCount total number of pages to include in snapshot
      * @param redoPos redo log position for the snapshot
-     * @param nodeCache optional
      */
-    Snapshot beginSnapshot(TempFileManager tfm, long pageCount, long redoPos, NodeMap nodeCache)
-        throws IOException
-    {
+    Snapshot beginSnapshot(Database db, long pageCount, long redoPos) throws IOException {
         pageCount = Math.min(pageCount, getPageCount());
+
+        Database nodeCache = db;
 
         // Snapshot does not decrypt pages.
         PageArray rawSource = mRawSource;
@@ -164,6 +163,8 @@ final class SnapshotPageArray extends PageArray {
             // Cache contents are not encrypted, and so it cannot be used.
             nodeCache = null;
         }
+
+        TempFileManager tfm = db.mTempFileManager;
 
         SnapshotImpl snapshot = new SnapshotImpl(tfm, pageCount, redoPos, nodeCache, rawSource);
 
@@ -223,7 +224,7 @@ final class SnapshotPageArray extends PageArray {
     }
 
     class SnapshotImpl implements CauseCloseable, Snapshot {
-        private final NodeMap mNodeCache;
+        private final Database mNodeCache;
         private final PageArray mRawPageArray;
 
         private final TempFileManager mTempFileManager;
@@ -252,7 +253,7 @@ final class SnapshotPageArray extends PageArray {
          * @param nodeCache optional
          */
         SnapshotImpl(TempFileManager tfm, long pageCount, long redoPos,
-                     NodeMap nodeCache, PageArray rawPageArray)
+                     Database nodeCache, PageArray rawPageArray)
             throws IOException
         {
             mNodeCache = nodeCache;
@@ -310,7 +311,7 @@ final class SnapshotPageArray extends PageArray {
 
             Cursor c = null;
             try {
-                final NodeMap nodeCache = mNodeCache;
+                final Database cache = mNodeCache;
                 final byte[] key = new byte[8];
                 final long count = mSnapshotPageCount;
 
@@ -347,7 +348,7 @@ final class SnapshotPageArray extends PageArray {
                     } else {
                         read: {
                             Node node;
-                            if (nodeCache != null && (node = nodeCache.get(index)) != null) {
+                            if (cache != null && (node = cache.nodeMapGet(index)) != null) {
                                 if (node.tryAcquireShared()) try {
                                     if (node.mId == index
                                         && node.mCachedState == Node.CACHED_CLEAN)

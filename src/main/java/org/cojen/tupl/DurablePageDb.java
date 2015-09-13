@@ -397,6 +397,11 @@ final class DurablePageDb extends PageDb {
         mCommitLock.readLock().lock();
         try {
             return mPageManager.allocPage();
+        } catch (DatabaseException e) {
+            if (e.isRecoverable()) {
+                throw e;
+            }
+            throw closeOnFailure(e);
         } catch (Throwable e) {
             throw closeOnFailure(e);
         } finally {
@@ -648,7 +653,7 @@ final class DurablePageDb extends PageDb {
     /**
      * @see SnapshotPageArray#beginSnapshot
      */
-    Snapshot beginSnapshot(TempFileManager tfm, NodeMap nodeCache) throws IOException {
+    Snapshot beginSnapshot(Database db) throws IOException {
         mHeaderLatch.acquireShared();
         try {
             long pageCount, redoPos;
@@ -660,7 +665,7 @@ final class DurablePageDb extends PageDb {
             } finally {
                 p_delete(header);
             }
-            return mPageArray.beginSnapshot(tfm, pageCount, redoPos, nodeCache);
+            return mPageArray.beginSnapshot(db, pageCount, redoPos);
         } finally {
             mHeaderLatch.releaseShared();
         }

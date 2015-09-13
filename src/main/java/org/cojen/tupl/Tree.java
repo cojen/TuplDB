@@ -365,7 +365,7 @@ class Tree extends AbstractView implements Index {
                         return null;
                     }
                     if (root.mLastCursorFrame != null) {
-                        root.invalidateCursors(mDatabase.mTreeNodeMap);
+                        root.invalidateCursors();
                     }
                 } finally {
                     commitLock.unlock();
@@ -379,7 +379,7 @@ class Tree extends AbstractView implements Index {
             mDatabase.swapIfDirty(root, newRoot);
 
             if (root.mId > Node.STUB_ID) {
-                mDatabase.mTreeNodeMap.remove(root);
+                mDatabase.nodeMapRemove(root);
             }
 
             root.closeRoot();
@@ -394,7 +394,7 @@ class Tree extends AbstractView implements Index {
                 mDatabase.treeClosed(this);
                 newRoot.makeEvictableNow();
                 if (newRoot.mId > Node.STUB_ID) {
-                    mDatabase.mTreeNodeMap.put(newRoot);
+                    mDatabase.nodeMapPut(newRoot);
                 }
             } finally {
                 newRoot.releaseShared();
@@ -503,7 +503,7 @@ class Tree extends AbstractView implements Index {
                         break toLower;
                     }
                     long childId = node.retrieveChildRefId(pos);
-                    Node child = mDatabase.mTreeNodeMap.get(childId);
+                    Node child = mDatabase.nodeMapGet(childId);
                     if (child != null) {
                         child.acquireExclusive();
                         // Need to check again in case evict snuck in.
@@ -628,7 +628,7 @@ class Tree extends AbstractView implements Index {
 
                 while (node.mSplit != null) {
                     if (node == mRoot) {
-                        node.finishSplitRoot(this);
+                        node.finishSplitRoot();
                         break;
                     }
                     Node childNode = node;
@@ -741,7 +741,7 @@ class Tree extends AbstractView implements Index {
                 }
 
                 try {
-                    node.finishSplitRoot(this);
+                    node.finishSplitRoot();
                 } finally {
                     if (stubNode != null) {
                         stubNode.releaseExclusive();

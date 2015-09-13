@@ -3727,7 +3727,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         throws IOException
     {
         long childId = parent.retrieveChildRefId(childPos);
-        Node childNode = mTree.mDatabase.mTreeNodeMap.get(childId);
+        Node childNode = mTree.mDatabase.nodeMapGet(childId);
 
         if (childNode != null) {
             childNode.acquireExclusive();
