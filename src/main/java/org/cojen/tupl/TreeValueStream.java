@@ -259,8 +259,7 @@ final class TreeValueStream extends AbstractStream {
             return 0;
         }
 
-        final FragmentCache fc = mDatabase.mFragmentCache;
-        Node inode = fc.get(inodeId);
+        Node inode = mDatabase.nodeMapLoadFragment(inodeId);
         int level = mDatabase.calculateInodeLevels(vLen);
 
         while (true) {
@@ -274,7 +273,7 @@ final class TreeValueStream extends AbstractStream {
             if (level <= 0 || childNodeId == 0) {
                 return 0;
             }
-            inode = fc.get(childNodeId);
+            inode = mDatabase.nodeMapLoadFragment(childNodeId);
             pos %= levelCap;
         }
     }
@@ -553,7 +552,6 @@ final class TreeValueStream extends AbstractStream {
                 final int ipos = (int) pos;
                 loc += (ipos / p_length(page)) * 6;
                 int fNodeOff = ipos % p_length(page);
-                final FragmentCache fc = mDatabase.mFragmentCache;
                 while (true) {
                     final int amt = Math.min(bLen, p_length(page) - fNodeOff);
                     final long fNodeId = p_uint48GetLE(page, loc);
@@ -561,7 +559,7 @@ final class TreeValueStream extends AbstractStream {
                         // Reading a sparse value.
                         Arrays.fill(b, bOff, bOff + amt, (byte) 0);
                     } else {
-                        final Node fNode = fc.get(fNodeId);
+                        final Node fNode = mDatabase.nodeMapLoadFragment(fNodeId);
                         p_copyToArray(fNode.mPage, fNodeOff, b, bOff, amt);
                         fNode.releaseShared();
                     }
@@ -583,7 +581,7 @@ final class TreeValueStream extends AbstractStream {
                 Arrays.fill(b, bOff, bOff + bLen, (byte) 0);
             } else {
                 Database db = mDatabase;
-                final Node inode = db.mFragmentCache.get(inodeId);
+                final Node inode = db.nodeMapLoadFragment(inodeId);
                 final int levels = db.calculateInodeLevels(vLen);
                 readMultilevelFragments(pos, levels, inode, b, bOff, bLen);
             }
@@ -775,9 +773,10 @@ final class TreeValueStream extends AbstractStream {
                             fNode.releaseExclusive();
                         }
                     } else {
-                        // Obtain node from cache, or load it only for partial write.
+                        // Obtain node from cache, or read it only for partial write.
                         Database db = mDatabase;
-                        final Node fNode = db.mFragmentCache.getw(fNodeId, amt < p_length(page));
+                        final Node fNode =
+                            db.nodeMapLoadFragmentExclusive(fNodeId, amt < p_length(page));
                         try {
                             if (db.markFragmentDirty(fNode)) {
                                 p_int48PutLE(page, loc, fNode.mId);
@@ -903,8 +902,6 @@ final class TreeValueStream extends AbstractStream {
 
             int childNodeCount = lastChild - firstChild + 1;
 
-            final FragmentCache fc = mDatabase.mFragmentCache;
-
             // Handle a possible partial read from the first page.
             long ppos = pos % levelCap;
 
@@ -916,7 +913,7 @@ final class TreeValueStream extends AbstractStream {
                     // Reading a sparse value.
                     Arrays.fill(b, bOff, bOff + len, (byte) 0);
                 } else {
-                    Node childNode = fc.get(childNodeId);
+                    Node childNode = mDatabase.nodeMapLoadFragment(childNodeId);
                     if (level <= 0) {
                         p_copyToArray(childNode.mPage, (int) ppos, b, bOff, len);
                         childNode.releaseShared();
@@ -953,7 +950,7 @@ final class TreeValueStream extends AbstractStream {
                 p_clear(inode.mPage);
             } else {
                 Database db = mDatabase;
-                inode = db.mFragmentCache.getw(inodeId, true);
+                inode = db.nodeMapLoadFragmentExclusive(inodeId, true);
                 try {
                     if (!db.markFragmentDirty(inode)) {
                         // Already dirty, so no need to update the pointer.
@@ -1013,8 +1010,8 @@ final class TreeValueStream extends AbstractStream {
                             p_clear(childNode.mPage);
                         }
                     } else {
-                        // Obtain node from cache, or load it only for partial write.
-                        childNode = db.mFragmentCache.getw(childNodeId, partial);
+                        // Obtain node from cache, or read it only for partial write.
+                        childNode = db.nodeMapLoadFragmentExclusive(childNodeId, partial);
                         try {
                             if (!db.markFragmentDirty(childNode)) {
                                 // Already dirty, so no need to update the pointer.
