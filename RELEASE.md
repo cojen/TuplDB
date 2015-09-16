@@ -1,4 +1,4 @@
-This file intended to be used byi Tupl developers.
+This file intended to be used by Tupl developers.
 
 # How to release
 
