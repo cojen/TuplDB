@@ -195,7 +195,7 @@ final class TreeValueStream extends AbstractStream {
         }
 
         final /*P*/ byte[] page = node.mPage;
-        int loc = p_ushortGetLE(page, node.mSearchVecStart + nodePos);
+        int loc = p_ushortGetLE(page, node.searchVecStart() + nodePos);
         // Skip the key.
         loc += Node.keyLengthAtLoc(page, loc);
 
@@ -321,7 +321,7 @@ final class TreeValueStream extends AbstractStream {
         }
 
         /*P*/ byte[] page = node.mPage;
-        int loc = p_ushortGetLE(page, node.mSearchVecStart + nodePos);
+        int loc = p_ushortGetLE(page, node.searchVecStart() + nodePos);
         // Skip the key.
         loc += Node.keyLengthAtLoc(page, loc);
 
@@ -421,7 +421,7 @@ final class TreeValueStream extends AbstractStream {
                         p_copy(page, vLoc, page, vLoc - vShift, newLen);
                     }
 
-                    node.mGarbage += garbageAccum;
+                    node.garbage(node.garbage() + garbageAccum);
                     return 0;
                 }
 
@@ -1070,7 +1070,7 @@ final class TreeValueStream extends AbstractStream {
         }
 
         int igrowth = (int) growth;
-        int searchVecStart = node.mSearchVecStart;
+        int searchVecStart = node.searchVecStart();
 
         /*P*/ byte[] page = node.mPage;
         int entryLoc = p_ushortGetLE(page, searchVecStart + pos);
