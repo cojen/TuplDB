@@ -1025,7 +1025,7 @@ public final class Database implements CauseCloseable, Flushable {
         final Node root = tree.mRoot;
         root.acquireExclusive();
         try {
-            if (root.mPage == p_empty()) {
+            if (root.mPage == p_emptyTreePage()) {
                 throw new ClosedIndexException();
             }
 

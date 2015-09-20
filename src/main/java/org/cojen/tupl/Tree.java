@@ -344,7 +344,7 @@ class Tree extends AbstractView implements Index {
         }
 
         try {
-            if (root.mPage == p_empty()) {
+            if (root.mPage == p_emptyTreePage()) {
                 // Already closed.
                 return null;
             }
@@ -361,7 +361,7 @@ class Tree extends AbstractView implements Index {
                 Lock commitLock = mDatabase.acquireExclusiveCommitLock();
                 try {
                     root.acquireExclusive();
-                    if (root.mPage == p_empty()) {
+                    if (root.mPage == p_emptyTreePage()) {
                         return null;
                     }
                     if (root.mLastCursorFrame != null) {
@@ -412,7 +412,7 @@ class Tree extends AbstractView implements Index {
     public final boolean isClosed() {
         Node root = mRoot;
         root.acquireShared();
-        boolean closed = root.mPage == p_empty();
+        boolean closed = root.mPage == p_emptyTreePage();
         root.releaseShared();
         return closed;
     }
@@ -429,7 +429,7 @@ class Tree extends AbstractView implements Index {
         Node root = mRoot;
         root.acquireExclusive();
         try {
-            if (root.mPage == p_empty()) {
+            if (root.mPage == p_emptyTreePage()) {
                 throw new ClosedIndexException();
             }
 
@@ -731,8 +731,9 @@ class Tree extends AbstractView implements Index {
                     }
 
                     // Check if popped stub is still valid. It must not have been evicted and
-                    // it actually has cursors bound to it. If not valid, pass it along anyhow
-                    // because the latch is still required for unbinding frames.
+                    // it actually has cursors bound to it. The stub node doesn't need to be
+                    // passed along, because it's linked as a parent frame by any active
+                    // cursors. The latch must remain held for unbinding the frames.
 
                     if (stubNode.mId == Node.STUB_ID && stubNode.mLastCursorFrame != null) {
                         // Allow non-durable database to recycle the old id.

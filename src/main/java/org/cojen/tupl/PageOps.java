@@ -34,12 +34,32 @@ import static org.cojen.tupl.Utils.*;
  * @author Brian S O'Neill
  */
 final class PageOps {
+    private static final byte[] EMPTY_TREE_PAGE;
+
+    static {
+        byte[] empty = new byte[Node.TN_HEADER_SIZE];
+
+        empty[0] = Node.TYPE_TN_LEAF | Node.LOW_EXTREMITY | Node.HIGH_EXTREMITY;
+
+        // Set fields such that binary search returns ~0 and availableBytes returns 0.
+
+        p_shortPutLE(empty, 4, 2); // leftSegTail
+        p_shortPutLE(empty, 6, 1); // rightSegTail
+        p_shortPutLE(empty, 8, 2); // searchVecStart
+
+        EMPTY_TREE_PAGE = empty;
+    }
+
     static /*P*/ byte[] p_null() {
         return null;
     }
 
-    static /*P*/ byte[] p_empty() {
-        return EMPTY_BYTES;
+    /**
+     * Returned page is 12 bytes, defining and empty tree leaf node. Contents must not be
+     * modified.
+     */
+    static /*P*/ byte[] p_emptyTreePage() {
+        return EMPTY_TREE_PAGE;
     }
 
     static /*P*/ byte[] p_alloc(int size) {
