@@ -1516,7 +1516,7 @@ final class Node extends Latch implements DatabaseAccess {
                 return compareUnsigned(leftKey, 0, leftKey.length, rightKey, 0, rightKey.length);
             }
         }
-        return compareUnsigned(page, loc, keyLen, rightKey, 0, rightKey.length);
+        return p_compareKeysPageToArray(page, loc, keyLen, rightKey, 0, rightKey.length);
     }
 
     /**
@@ -4660,8 +4660,24 @@ final class Node extends Latch implements DatabaseAccess {
         // the split by postponing compaction of this node.
 
         // Alloc early in case an exception is thrown.
+
         final Database db = getDatabase();
-        final Node newNode = db.allocDirtyNode(NodeUsageList.MODE_UNEVICTABLE);
+
+        Node newNode;
+        try {
+            newNode = db.allocDirtyNode(NodeUsageList.MODE_UNEVICTABLE);
+        } catch (DatabaseFullException e) {
+            // Internal node splits are critical. If a child node reference cannot be inserted,
+            // then it would be orphaned. Try allocating again without any capacity limit, or
+            // else the caller must panic the database.
+            db.capacityLimitOverride(-1);
+            try {
+                newNode = db.allocDirtyNode(NodeUsageList.MODE_UNEVICTABLE);
+            } finally {
+                db.capacityLimitOverride(0);
+            }
+        }
+
         db.nodeMapPut(newNode);
 
         final /*P*/ byte[] newPage = newNode.mPage;
