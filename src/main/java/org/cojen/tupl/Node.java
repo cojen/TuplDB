@@ -241,7 +241,7 @@ final class Node extends Latch implements DatabaseAccess {
     void delete() {
         acquireExclusive();
         /*P*/ byte[] page = mPage;
-        if (page != p_empty()) {
+        if (page != p_emptyTreePage()) {
             p_delete(page);
             closeRoot();
         }
@@ -272,16 +272,8 @@ final class Node extends Latch implements DatabaseAccess {
         // Prevent node from being marked dirty.
         mId = STUB_ID;
         mCachedState = CACHED_CLEAN;
-        type((byte) (TYPE_TN_LEAF | LOW_EXTREMITY | HIGH_EXTREMITY));
-        mPage = p_empty();
-        garbage(0);
-
-        // Clear entries with the lowest positive values for an empty node.
-        // Binary search must return ~0 and availableBytes must return 0.
-        leftSegTail(2);
-        rightSegTail(1);
-        searchVecStart(2);
-        searchVecEnd(0);
+        mPage = p_emptyTreePage();
+        readFields();
     }
 
     Node cloneNode() {
@@ -794,10 +786,17 @@ final class Node extends Latch implements DatabaseAccess {
      * an exception is thrown.
      */
     void read(Database db, long id) throws IOException {
-        /*P*/ byte[] page = mPage;
-
-        mCachedState = db.readNodePage(id, page);
+        mCachedState = db.readNodePage(id, mPage);
         mId = id;
+        try {
+            readFields();
+        } catch (IllegalStateException e) {
+            throw new CorruptDatabaseException(e.getMessage());
+        }
+    }
+
+    private void readFields() throws IllegalStateException {
+        /*P*/ byte[] page = mPage;
 
         byte type = p_byteGet(page, 0);
         type(type);
@@ -812,12 +811,12 @@ final class Node extends Latch implements DatabaseAccess {
             searchVecEnd(p_ushortGetLE(page, 10));
             type &= ~(LOW_EXTREMITY | HIGH_EXTREMITY);
             if (type >= 0 && type != TYPE_TN_IN && type != TYPE_TN_BIN) {
-                throw new CorruptDatabaseException("Unknown node type: " + type + ", id: " + id);
+                throw new IllegalStateException("Unknown node type: " + type + ", id: " + mId);
             }
         }
 
         if (p_byteGet(page, 1) != 0) {
-            throw new CorruptDatabaseException
+            throw new IllegalStateException
                 ("Illegal reserved byte in node: " + p_byteGet(page, 1));
         }
     }
@@ -952,7 +951,7 @@ final class Node extends Latch implements DatabaseAccess {
      * has active cursors. Caller must hold exclusive latch on node.
      */
     void invalidateCursors() {
-        invalidateCursors(createEmptyNode(type()));
+        invalidateCursors(createEmptyNode());
     }
 
     private void invalidateCursors(Node empty) {
@@ -981,7 +980,7 @@ final class Node extends Latch implements DatabaseAccess {
                 child.acquireExclusive();
                 if (childId == child.mId) {
                     if (empty == null) {
-                        empty = createEmptyNode(child.type());
+                        empty = createEmptyNode();
                     }
                     child.invalidateCursors(empty);
                 }
@@ -990,13 +989,11 @@ final class Node extends Latch implements DatabaseAccess {
         }
     }
 
-    private static Node createEmptyNode(byte type) {
-        Node empty = new Node(null, p_empty());
+    private static Node createEmptyNode() {
+        Node empty = new Node(null, p_emptyTreePage());
         empty.mId = STUB_ID;
         empty.mCachedState = CACHED_CLEAN;
-        empty.type((byte) (type | (LOW_EXTREMITY | HIGH_EXTREMITY)));
-        empty.searchVecStart(2);
-        empty.searchVecEnd(0);
+        empty.readFields();
         return empty;
     }
 
@@ -4229,7 +4226,7 @@ final class Node extends Latch implements DatabaseAccess {
 
         /*P*/ byte[] page = mPage;
 
-        if (page == p_empty()) {
+        if (page == p_emptyTreePage()) {
             // Node is a closed tree root.
             throw new ClosedIndexException();
         }
