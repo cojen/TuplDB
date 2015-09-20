@@ -209,6 +209,7 @@ final class Node extends Latch implements DatabaseAccess {
 
     byte mCachedState;
 
+    /*P*/ // {
     // Entries from header, available as fields for quick access.
     private byte mType;
     private int mGarbage;
@@ -216,6 +217,7 @@ final class Node extends Latch implements DatabaseAccess {
     private int mRightSegTail;
     private int mSearchVecStart;
     private int mSearchVecEnd;
+    /*P*/ // }
 
     // Next in NodeMap collision chain or lower node in UndoLog.
     Node mNodeChainNext;
@@ -280,12 +282,14 @@ final class Node extends Latch implements DatabaseAccess {
         Node newNode = new Node(mUsageList, mPage);
         newNode.mId = mId;
         newNode.mCachedState = mCachedState;
+        /*P*/ // {
         newNode.type(type());
         newNode.garbage(garbage());
         newNode.leftSegTail(leftSegTail());
         newNode.rightSegTail(rightSegTail());
         newNode.searchVecStart(searchVecStart());
         newNode.searchVecEnd(searchVecEnd());
+        /*P*/ // }
         return newNode;
     }
 
@@ -709,12 +713,14 @@ final class Node extends Latch implements DatabaseAccess {
 
         /*P*/ byte[] newPage = child.mPage;
         child.mPage = mPage;
+        /*P*/ // {
         child.type(type());
         child.garbage(garbage());
         child.leftSegTail(leftSegTail());
         child.rightSegTail(rightSegTail());
         child.searchVecStart(searchVecStart());
         child.searchVecEnd(searchVecEnd());
+        /*P*/ // }
         child.mLastCursorFrame = mLastCursorFrame;
 
         // Fix child node cursor frame bindings.
@@ -746,10 +752,16 @@ final class Node extends Latch implements DatabaseAccess {
         p_longPutLE(newPage, searchVecStart + 2, left.mId);
         p_longPutLE(newPage, searchVecStart + 2 + 8, right.mId);
 
+        byte newType = isLeaf() ? (byte) (TYPE_TN_BIN | LOW_EXTREMITY | HIGH_EXTREMITY)
+            : (byte) (TYPE_TN_IN | LOW_EXTREMITY | HIGH_EXTREMITY);
+
         mPage = newPage;
-        type(isLeaf() ? (byte) (TYPE_TN_BIN | LOW_EXTREMITY | HIGH_EXTREMITY)
-             : (byte) (TYPE_TN_IN | LOW_EXTREMITY | HIGH_EXTREMITY));
+        /*P*/ // {
+        type(newType);
         garbage(0);
+        /*P*/ // |
+        /*P*/ // p_intPutLE(newPage, 0, newType & 0xff); // set type, reserved byte, and garbage
+        /*P*/ // }
         leftSegTail(leftSegTail);
         rightSegTail(p_length(newPage) - 1);
         searchVecStart(searchVecStart);
@@ -799,16 +811,21 @@ final class Node extends Latch implements DatabaseAccess {
         /*P*/ byte[] page = mPage;
 
         byte type = p_byteGet(page, 0);
+
+        /*P*/ // {
         type(type);
 
         // For undo log node, this is top entry pointer.
         garbage(p_ushortGetLE(page, 2));
+        /*P*/ // }
 
         if (type != TYPE_UNDO_LOG) {
+            /*P*/ // {
             leftSegTail(p_ushortGetLE(page, 4));
             rightSegTail(p_ushortGetLE(page, 6));
             searchVecStart(p_ushortGetLE(page, 8));
             searchVecEnd(p_ushortGetLE(page, 10));
+            /*P*/ // }
             type &= ~(LOW_EXTREMITY | HIGH_EXTREMITY);
             if (type >= 0 && type != TYPE_TN_IN && type != TYPE_TN_BIN) {
                 throw new IllegalStateException("Unknown node type: " + type + ", id: " + mId);
@@ -840,6 +857,7 @@ final class Node extends Latch implements DatabaseAccess {
 
         /*P*/ byte[] page = mPage;
 
+        /*P*/ // {
         if (type() != TYPE_FRAGMENT) {
             p_bytePut(page, 0, type());
             p_bytePut(page, 1, 0); // reserved
@@ -854,6 +872,7 @@ final class Node extends Latch implements DatabaseAccess {
                 p_shortPutLE(page, 10, searchVecEnd());
             }
         }
+        /*P*/ // }
 
         return page;
     }
@@ -1001,98 +1020,154 @@ final class Node extends Latch implements DatabaseAccess {
      * Get the node type.
      */
     byte type() {
+        /*P*/ // {
         return mType;
+        /*P*/ // |
+        /*P*/ // return p_byteGet(mPage, 0);
+        /*P*/ // }
     }
 
     /**
      * Set the node type.
      */
     void type(byte type) {
+        /*P*/ // {
         mType = type;
+        /*P*/ // |
+        /*P*/ // p_bytePut(mPage, 0, type);
+        /*P*/ // }
     }
 
     /**
      * Get the node garbage size.
      */
     int garbage() {
+        /*P*/ // {
         return mGarbage;
+        /*P*/ // |
+        /*P*/ // return p_ushortGetLE(mPage, 2);
+        /*P*/ // }
     }
 
     /**
      * Set the node garbage size.
      */
     void garbage(int garbage) {
+        /*P*/ // {
         mGarbage = garbage;
+        /*P*/ // |
+        /*P*/ // p_shortPutLE(mPage, 2, garbage);
+        /*P*/ // }
     }
 
     /**
      * Get the undo log node top entry pointer. (same field as garbage)
      */
     int undoTop() {
+        /*P*/ // {
         return mGarbage;
+        /*P*/ // |
+        /*P*/ // return p_ushortGetLE(mPage, 2);
+        /*P*/ // }
     }
 
     /**
      * Set the undo log node top entry pointer. (same field as garbage)
      */
     void undoTop(int top) {
+        /*P*/ // {
         mGarbage = top;
+        /*P*/ // |
+        /*P*/ // p_shortPutLE(mPage, 2, top);
+        /*P*/ // }
     }
 
     /**
      * Get the left segment tail pointer.
      */
     private int leftSegTail() {
+        /*P*/ // {
         return mLeftSegTail;
+        /*P*/ // |
+        /*P*/ // return p_ushortGetLE(mPage, 4);
+        /*P*/ // }
     }
 
     /**
      * Set the left segment tail pointer.
      */
     private void leftSegTail(int tail) {
+        /*P*/ // {
         mLeftSegTail = tail;
+        /*P*/ // |
+        /*P*/ // p_shortPutLE(mPage, 4, tail);
+        /*P*/ // }
     }
 
     /**
      * Get the right segment tail pointer.
      */
     private int rightSegTail() {
+        /*P*/ // {
         return mRightSegTail;
+        /*P*/ // |
+        /*P*/ // return p_ushortGetLE(mPage, 6);
+        /*P*/ // }
     }
 
     /**
      * Set the right segment tail pointer.
      */
     private void rightSegTail(int tail) {
+        /*P*/ // {
         mRightSegTail = tail;
+        /*P*/ // |
+        /*P*/ // p_shortPutLE(mPage, 6, tail);
+        /*P*/ // }
     }
 
     /**
      * Get the search vector start pointer.
      */
     int searchVecStart() {
+        /*P*/ // {
         return mSearchVecStart;
+        /*P*/ // |
+        /*P*/ // return p_ushortGetLE(mPage, 8);
+        /*P*/ // }
     }
 
     /**
      * Set the search vector start pointer.
      */
     private void searchVecStart(int start) {
+        /*P*/ // {
         mSearchVecStart = start;
+        /*P*/ // |
+        /*P*/ // p_shortPutLE(mPage, 8, start);
+        /*P*/ // }
     }
 
     /**
      * Get the search vector end pointer.
      */
     private int searchVecEnd() {
+        /*P*/ // {
         return mSearchVecEnd;
+        /*P*/ // |
+        /*P*/ // return p_ushortGetLE(mPage, 10);
+        /*P*/ // }
     }
 
     /**
      * Set the search vector end pointer.
      */
     private void searchVecEnd(int end) {
+        /*P*/ // {
         mSearchVecEnd = end;
+        /*P*/ // |
+        /*P*/ // p_shortPutLE(mPage, 10, end);
+        /*P*/ // }
     }
 
     /**
@@ -3924,14 +3999,16 @@ final class Node extends Latch implements DatabaseAccess {
         long toDelete = child.mId;
         int toDeleteState = child.mCachedState;
 
-        mPage = child.mPage;
         byte stubType = type();
+        mPage = child.mPage;
+        /*P*/ // {
         type(child.type());
         garbage(child.garbage());
         leftSegTail(child.leftSegTail());
         rightSegTail(child.rightSegTail());
         searchVecStart(child.searchVecStart());
         searchVecEnd(child.searchVecEnd());
+        /*P*/ // }
         mLastCursorFrame = child.mLastCursorFrame;
 
         // Repurpose the child node into a stub root node. Stub is assigned a
@@ -4155,6 +4232,11 @@ final class Node extends Latch implements DatabaseAccess {
         Database db = getDatabase();
         /*P*/ byte[] dest = db.removeSparePage();
 
+        /*P*/ // {
+        /*P*/ // |
+        /*P*/ // p_intPutLE(dest, 0, type() & 0xff); // set type, reserved byte, and garbage
+        /*P*/ // }
+
         for (; searchVecLoc <= searchVecEnd; searchVecLoc += 2, newSearchVecLoc += 2) {
             if (searchVecLoc == pos) {
                 newLoc = newSearchVecLoc;
@@ -4178,7 +4260,9 @@ final class Node extends Latch implements DatabaseAccess {
         p_shortPutLE(dest, newLoc == 0 ? newSearchVecLoc : newLoc, destLoc);
 
         mPage = dest;
+        /*P*/ // {
         garbage(0);
+        /*P*/ // }
         leftSegTail(destLoc + encodedLen);
         rightSegTail(p_length(dest) - 1);
         searchVecStart(newSearchVecStart);
@@ -4233,9 +4317,14 @@ final class Node extends Latch implements DatabaseAccess {
 
         Node newNode = tree.mDatabase.allocDirtyNode(NodeUsageList.MODE_UNEVICTABLE);
         tree.mDatabase.nodeMapPut(newNode);
-        newNode.garbage(0);
 
         /*P*/ byte[] newPage = newNode.mPage;
+
+        /*P*/ // {
+        newNode.garbage(0);
+        /*P*/ // |
+        /*P*/ // p_intPutLE(newPage, 0, 0); // set type (fixed later), reserved byte, and garbage
+        /*P*/ // }
 
         if (forInsert && pos == 0) {
             // Inserting into left edge of node, possibly because inserts are
@@ -4571,10 +4660,16 @@ final class Node extends Latch implements DatabaseAccess {
         final Database db = getDatabase();
         final Node newNode = db.allocDirtyNode(NodeUsageList.MODE_UNEVICTABLE);
         db.nodeMapPut(newNode);
+
+        final /*P*/ byte[] newPage = newNode.mPage;
+
+        /*P*/ // {
         newNode.garbage(0);
+        /*P*/ // |
+        /*P*/ // p_intPutLE(newPage, 0, 0); // set type (fixed later), reserved byte, and garbage
+        /*P*/ // }
 
         final /*P*/ byte[] page = mPage;
-        final /*P*/ byte[] newPage = newNode.mPage;
 
         final int searchVecStart = searchVecStart();
         final int searchVecEnd = searchVecEnd();
@@ -4963,6 +5058,11 @@ final class Node extends Latch implements DatabaseAccess {
         Database db = getDatabase();
         /*P*/ byte[] dest = db.removeSparePage();
 
+        /*P*/ // {
+        /*P*/ // |
+        /*P*/ // p_intPutLE(dest, 0, type() & 0xff); // set type, reserved byte, and garbage
+        /*P*/ // }
+
         for (; searchVecLoc <= searchVecEnd; searchVecLoc += 2, newSearchVecLoc += 2) {
             if (searchVecLoc == keyPos) {
                 newLoc = newSearchVecLoc;
@@ -5006,7 +5106,9 @@ final class Node extends Latch implements DatabaseAccess {
         p_shortPutLE(dest, newLoc, destLoc);
 
         mPage = dest;
+        /*P*/ // {
         garbage(0);
+        /*P*/ // }
         leftSegTail(destLoc + encodedLen);
         rightSegTail(p_length(dest) - 1);
         searchVecStart(newSearchVecStart);

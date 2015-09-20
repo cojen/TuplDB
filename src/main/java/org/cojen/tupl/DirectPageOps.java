@@ -39,6 +39,8 @@ import org.cojen.tupl.io.DirectAccess;
  * @see PageOps
  */
 final class DirectPageOps {
+    static final int NODE_OVERHEAD = 100 - 24; // 6 fewer fields
+
     private static final Unsafe UNSAFE = Hasher.getUnsafe();
     private static final long BYTE_ARRAY_OFFSET = UNSAFE.arrayBaseOffset(byte[].class);
     private static final long EMPTY_TREE_PAGE;
