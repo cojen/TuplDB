@@ -5,7 +5,7 @@
   <artifactId>tupl</artifactId>
   <packaging>jar</packaging>
   <name>Tupl</name>
-  <version>1.2.7-SNAPSHOT</version>
+  <version>1.2.7</version>
   <description>
     The Unnamed Persistence Library.
   </description>
@@ -31,7 +31,7 @@
     <developer>
       <id>broneill</id>
       <name>Brian S. O'Neill</name>
-      <email></email>
+      <email />
     </developer>
   </developers>
 
@@ -39,7 +39,7 @@
     <connection>scm:git:git@github.com:cojen/Tupl.git</connection>
     <developerConnection>scm:git:git@github.com:cojen/Tupl.git</developerConnection>
     <url>git@github.com:cojen/Tupl.git</url>
-    <tag>HEAD</tag>
+    <tag>tupl-1.2.7</tag>
   </scm>
 
   <distributionManagement>
