@@ -117,21 +117,6 @@ public final class Database implements CauseCloseable, Flushable {
     // usage list to function correctly.
     private static final int MIN_CACHED_NODES = 5;
 
-    /*
-     * Approximate byte overhead per node, assuming 32-bit pointers. Overhead is determined by
-     * examining all the fields in the Node class, including inherited ones. In addition, each
-     * Node is referenced by mNodeMapTable.
-     *
-     * References: 1 field per Node instance
-     * Node class: 18 fields (mId is counted twice)
-     * Latch class: 0 fields
-     * AbstractQueuedSynchronizer class: 3 fields
-     * AbstractOwnableSynchronizer class: 1 field
-     * Object class: Minimum 8 byte overhead
-     * Total: (23 * 4 + 8) = 100
-     */
-    private static final int NODE_OVERHEAD = 100;
-
     private static final long PRIMER_MAGIC_NUMBER = 4943712973215968399L;
 
     private static final String INFO_FILE_SUFFIX = ".info";

@@ -34,6 +34,21 @@ import static org.cojen.tupl.Utils.*;
  * @author Brian S O'Neill
  */
 final class PageOps {
+    /*
+     * Approximate byte overhead per Node, assuming 32-bit pointers. Overhead is determined by
+     * examining all the fields in the Node class, including inherited ones. In addition, each
+     * Node is referenced by mNodeMapTable.
+     *
+     * References: 1 field per Node instance
+     * Node class: 18 fields (mId is counted twice)
+     * Latch class: 0 fields
+     * AbstractQueuedSynchronizer class: 3 fields
+     * AbstractOwnableSynchronizer class: 1 field
+     * Object class: Minimum 8 byte overhead
+     * Total: (23 * 4 + 8) = 100
+     */
+    static final int NODE_OVERHEAD = 100;
+
     private static final byte[] EMPTY_TREE_PAGE;
 
     static {

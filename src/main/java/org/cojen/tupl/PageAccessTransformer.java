@@ -27,10 +27,14 @@ class PageAccessTransformer {
     public static void main(String[] args) throws Exception {
         File src = new File(args[0]);
         File dst = new File(args[1]);
-        transform(src, dst);
+        new PageAccessTransformer().transform(src, dst);
     }
 
-    private static void transform(File src, File dst) throws IOException {
+    private static final int STATE_NORMAL = 0, STATE_DISCARD = 1, STATE_SUBSTITUTE = 2;
+
+    private int mState;
+
+    private void transform(File src, File dst) throws IOException {
         if (src.isDirectory()) {
             String[] files = src.list();
             if (files != null) {
@@ -51,29 +55,72 @@ class PageAccessTransformer {
         try (BufferedReader in = new BufferedReader(new FileReader(src))) {
             dst.getParentFile().mkdirs();
             try (BufferedWriter out = new BufferedWriter(new FileWriter(dst))) {
+                mState = STATE_NORMAL;
                 String line;
                 while ((line = in.readLine()) != null) {
                     if (!skip) {
                         line = transform(line);
                     }
-                    out.write(line);
-                    out.newLine();
+                    if (line != null) {
+                        out.write(line);
+                        out.newLine();
+                    }
                 }
             }
         }
     }
 
-    private static String transform(String line) {
+    private String transform(String line) {
         while (true) {
-            int index = line.indexOf("/*P*/ byte[]");
-            if (index >= 0) {
-                line = line.substring(0, index + 6) + "long" + line.substring(index + 12);
+            int index = line.indexOf("/*P*/ ");
+
+            if (index < 0) {
+                if (mState == STATE_DISCARD) {
+                    return null;
+                }
+                index = line.indexOf("PageOps");
+                if (index >= 0) {
+                    line = line.substring(0, index) + "Direct" + line.substring(index);
+                }
+                return line;
+            }
+
+            int typeIndex = index + 6;
+
+            if (line.indexOf("byte[]", typeIndex) == typeIndex) {
+                line = line.substring(0, index) + "long" + line.substring(typeIndex + 6);
                 continue;
             }
 
-            index = line.indexOf("PageOps");
-            if (index >= 0) {
-                line = line.substring(0, index) + "Direct" + line.substring(index);
+            if (line.indexOf("// ", typeIndex) == typeIndex) {
+                int tagIndex = typeIndex + 3;
+                if (tagIndex < line.length()) {
+                    switch (line.charAt(tagIndex)) {
+                    case '{':
+                        if (mState != STATE_NORMAL) {
+                            throw new IllegalStateException();
+                        }
+                        mState = STATE_DISCARD;
+                        return null;
+                    case '|':
+                        if (mState != STATE_DISCARD) {
+                            throw new IllegalStateException();
+                        }
+                        mState = STATE_SUBSTITUTE;
+                        return null;
+                    case '}':
+                        if (mState == STATE_NORMAL) {
+                            throw new IllegalStateException();
+                        }
+                        mState = STATE_NORMAL;
+                        return null;
+                    }
+                }
+
+                if (mState == STATE_SUBSTITUTE) {
+                    line = line.substring(0, index) + line.substring(tagIndex);
+                    continue;
+                }
             }
 
             return line;
