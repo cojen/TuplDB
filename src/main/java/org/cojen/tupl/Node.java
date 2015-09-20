@@ -2163,11 +2163,14 @@ final class Node extends Latch implements DatabaseAccess {
 
     private void cleanupFragments(Throwable cause, byte[] fragmented) {
         if (fragmented != null) {
+            /*P*/ byte[] copy = p_transfer(fragmented);
             try {
-                getDatabase().deleteFragments(fragmented, 0, fragmented.length);
+                getDatabase().deleteFragments(copy, 0, p_length(copy));
             } catch (Throwable e) {
                 cause.addSuppressed(e);
                 panic(cause);
+            } finally {
+                p_delete(copy);
             }
         }
     }
