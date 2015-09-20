@@ -2476,8 +2476,10 @@ public final class Database implements CauseCloseable, Flushable {
         final Lock commitLock = sharedCommitLock();
         commitLock.lock();
         try {
-            root.acquireExclusive();
-            deleteNode(root);
+            if (root != null) {
+                root.acquireExclusive();
+                deleteNode(root);
+            }
             mRegistryKeyMap.delete(Transaction.BOGUS, trashIdKey);
             mRegistry.delete(Transaction.BOGUS, tree.mIdBytes);
         } catch (Throwable e) {
