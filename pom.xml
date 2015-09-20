@@ -5,7 +5,7 @@
   <artifactId>tupl</artifactId>
   <packaging>jar</packaging>
   <name>Tupl</name>
-  <version>1.2.7</version>
+  <version>1.2.7-SNAPSHOT</version>
   <description>
     The Unnamed Persistence Library.
   </description>
@@ -39,7 +39,7 @@
     <connection>scm:git:git@github.com:cojen/Tupl.git</connection>
     <developerConnection>scm:git:git@github.com:cojen/Tupl.git</developerConnection>
     <url>git@github.com:cojen/Tupl.git</url>
-    <tag>tupl-1.2.7</tag>
+    <tag>HEAD</tag>
   </scm>
 
   <distributionManagement>
