@@ -570,6 +570,15 @@ final class PageManager {
     public void commitStart(/*P*/ byte[] header, int offset) throws IOException {
         fullLock();
         try {
+            // Allow commit to exceed the page limit. Without this, database cannot complete a
+            // checkpoint when the limit is reached.
+            if (mPageLimit > 0) {
+                if (mPageLimitOverride == null) {
+                    mPageLimitOverride = new ThreadLocal<>();
+                }
+                mPageLimitOverride.set(-1L);
+            }
+
             // Pre-commit all first, draining the append heaps.
             try {
                 mRegularFreeList.preCommit();
@@ -578,9 +587,14 @@ final class PageManager {
                     mReserveList.preCommit();
                 }
             } catch (DatabaseFullException e) {
-               throw e;
+                // Should not happen with page limit override.
+                throw e;
             } catch (IOException e) {
                 throw new WriteFailureException(e);
+            } finally {
+                if (mPageLimitOverride != null) {
+                    mPageLimitOverride.set(0L);
+                }
             }
 
             // Total page count is written after append heaps have been
