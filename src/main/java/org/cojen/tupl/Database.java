@@ -117,11 +117,6 @@ public final class Database implements CauseCloseable, Flushable {
     // usage list to function correctly.
     private static final int MIN_CACHED_NODES = 5;
 
-    // Approximate byte overhead per node. Influenced by many factors,
-    // including pointer size and child node references. This estimate assumes
-    // 32-bit pointers.
-    private static final int NODE_OVERHEAD = 100;
-
     private static final long PRIMER_MAGIC_NUMBER = 4943712973215968399L;
 
     private static final String INFO_FILE_SUFFIX = ".info";
@@ -1025,7 +1020,7 @@ public final class Database implements CauseCloseable, Flushable {
         final Node root = tree.mRoot;
         root.acquireExclusive();
         try {
-            if (root.mPage == p_empty()) {
+            if (root.mPage == p_emptyTreePage()) {
                 throw new ClosedIndexException();
             }
 
@@ -2509,8 +2504,10 @@ public final class Database implements CauseCloseable, Flushable {
         final Lock commitLock = sharedCommitLock();
         commitLock.lock();
         try {
-            root.acquireExclusive();
-            deleteNode(root);
+            if (root != null) {
+                root.acquireExclusive();
+                deleteNode(root);
+            }
             mRegistryKeyMap.delete(Transaction.BOGUS, trashIdKey);
             mRegistry.delete(Transaction.BOGUS, tree.mIdBytes);
         } catch (Throwable e) {
@@ -3107,7 +3104,7 @@ public final class Database implements CauseCloseable, Flushable {
 
         node = allocLatchedNode(nodeId);
         node.mId = nodeId;
-        node.mType = TYPE_FRAGMENT;
+        node.type(TYPE_FRAGMENT);
 
         node.mCachedState = readNodePage(nodeId, node.mPage);
         node.downgrade();
@@ -3138,7 +3135,7 @@ public final class Database implements CauseCloseable, Flushable {
 
         node = allocLatchedNode(nodeId);
         node.mId = nodeId;
-        node.mType = TYPE_FRAGMENT;
+        node.type(TYPE_FRAGMENT);
 
         if (read) {
             node.mCachedState = readNodePage(nodeId, node.mPage);
@@ -3283,7 +3280,7 @@ public final class Database implements CauseCloseable, Flushable {
     Node allocDirtyFragmentNode() throws IOException {
         Node node = allocDirtyNode();
         nodeMapPut(node);
-        node.mType = TYPE_FRAGMENT;
+        node.type(TYPE_FRAGMENT);
         return node;
     }
 
@@ -4072,7 +4069,7 @@ public final class Database implements CauseCloseable, Flushable {
         if (node == null) {
             node = allocLatchedNode(nodeId, NodeUsageList.MODE_UNEVICTABLE);
             node.mId = nodeId;
-            node.mType = TYPE_FRAGMENT;
+            node.type(TYPE_FRAGMENT);
             node.mCachedState = readNodePage(nodeId, node.mPage);
         }
         return node;

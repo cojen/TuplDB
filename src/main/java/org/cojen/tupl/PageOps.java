@@ -34,12 +34,47 @@ import static org.cojen.tupl.Utils.*;
  * @author Brian S O'Neill
  */
 final class PageOps {
+    /*
+     * Approximate byte overhead per Node, assuming 32-bit pointers. Overhead is determined by
+     * examining all the fields in the Node class, including inherited ones. In addition, each
+     * Node is referenced by mNodeMapTable.
+     *
+     * References: 1 field per Node instance
+     * Node class: 18 fields (mId is counted twice)
+     * Latch class: 0 fields
+     * AbstractQueuedSynchronizer class: 3 fields
+     * AbstractOwnableSynchronizer class: 1 field
+     * Object class: Minimum 8 byte overhead
+     * Total: (23 * 4 + 8) = 100
+     */
+    static final int NODE_OVERHEAD = 100;
+
+    private static final byte[] EMPTY_TREE_PAGE;
+
+    static {
+        byte[] empty = new byte[Node.TN_HEADER_SIZE];
+
+        empty[0] = Node.TYPE_TN_LEAF | Node.LOW_EXTREMITY | Node.HIGH_EXTREMITY;
+
+        // Set fields such that binary search returns ~0 and availableBytes returns 0.
+
+        p_shortPutLE(empty, 4, 2); // leftSegTail
+        p_shortPutLE(empty, 6, 1); // rightSegTail
+        p_shortPutLE(empty, 8, 2); // searchVecStart
+
+        EMPTY_TREE_PAGE = empty;
+    }
+
     static /*P*/ byte[] p_null() {
         return null;
     }
 
-    static /*P*/ byte[] p_empty() {
-        return EMPTY_BYTES;
+    /**
+     * Returned page is 12 bytes, defining and empty tree leaf node. Contents must not be
+     * modified.
+     */
+    static /*P*/ byte[] p_emptyTreePage() {
+        return EMPTY_TREE_PAGE;
     }
 
     static /*P*/ byte[] p_alloc(int size) {

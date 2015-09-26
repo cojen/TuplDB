@@ -498,6 +498,7 @@ public class CompactTest {
 
         mDb = newTempDatabase(new DatabaseConfig()
                               .minCacheSize(1000000)
+                              .checkpointRate(-1, null)
                               .durabilityMode(DurabilityMode.NO_FLUSH));
         
         Index ix = mDb.openIndex("test");
@@ -511,16 +512,16 @@ public class CompactTest {
         for (int i=0; i<count; i++) {
             byte[] key = randomStr(rnd, 10, 20);
             ix.store(null, key, value);
+            if (i % 100000 == 0) {
+                mDb.checkpoint();
+            }
         }
+
+        mDb.checkpoint();
 
         Database.Stats stats1 = mDb.stats();
 
-        boolean result = mDb.compactFile(null, 0.95);
-        if (!result) {
-            result = mDb.compactFile(null, 0.95);
-        }
-
-        assertTrue(result);
+        assertTrue(mDb.compactFile(null, 0.95));
 
         Database.Stats stats2 = mDb.stats();
 
