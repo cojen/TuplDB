@@ -5,11 +5,13 @@
   <artifactId>tupl</artifactId>
   <packaging>jar</packaging>
   <name>Tupl</name>
-  <version>1.2</version>
+  <version>1.2.7-SNAPSHOT</version>
   <description>
     The Unnamed Persistence Library.
   </description>
+
   <url>https://github.com/cojen/Tupl</url>
+
   <inceptionYear>2011</inceptionYear>
 
   <organization>
@@ -21,8 +23,50 @@
     <license>
       <name>Apache License Version 2.0</name>
       <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
     </license>
   </licenses>
+
+  <developers>
+    <developer>
+      <id>broneill</id>
+      <name>Brian S. O'Neill</name>
+      <email />
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:git@github.com:cojen/Tupl.git</connection>
+    <developerConnection>scm:git:git@github.com:cojen/Tupl.git</developerConnection>
+    <url>git@github.com:cojen/Tupl.git</url>
+    <tag>HEAD</tag>
+  </scm>
+
+  <distributionManagement>
+    <snapshotRepository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    </snapshotRepository>
+    <repository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
+  </distributionManagement>
+
+  <issueManagement>
+    <url>https://github.com/cojen/Tupl/issues</url>
+    <system>GitHub Issues</system>
+  </issueManagement>
+
+  <properties>
+    <!--  compiler settings -->
+    <maven.compiler.source>1.7</maven.compiler.source>
+    <maven.compiler.target>1.7</maven.compiler.target>
+
+    <!-- encoding -->
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+  </properties>
 
   <dependencies>
     <dependency>
@@ -33,23 +77,14 @@
     </dependency>
   </dependencies>
 
+
   <build>
     <plugins>
 
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.0</version>
-        <configuration>
-          <source>1.7</source>
-          <target>1.7</target>
-        </configuration>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
-        <version>2.9</version>
+        <version>2.9.1</version>
           <configuration>
             <javadocVersion>1.7</javadocVersion>
             <detectJavaApiLink>true</detectJavaApiLink>
@@ -62,4 +97,94 @@
 
     </plugins>
   </build>
+
+  <profiles>
+
+    <!-- This profile SHOULD be activated when making release -->
+    <profile>
+      <id>release</id>
+
+      <build>
+        <plugins>
+          <!-- Staging plugin - http://central.sonatype.org/pages/apache-maven.html -->
+          <plugin>
+            <groupId>org.sonatype.plugins</groupId>
+            <artifactId>nexus-staging-maven-plugin</artifactId>
+            <version>1.6.2</version>
+            <extensions>true</extensions>
+            <configuration>
+              <serverId>ossrh</serverId>
+              <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+              <autoReleaseAfterClose>true</autoReleaseAfterClose>
+            </configuration>
+          </plugin>
+
+          <!-- Release plugin -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-release-plugin</artifactId>
+            <version>2.5.2</version>
+            <configuration>
+              <autoVersionSubmodules>true</autoVersionSubmodules>
+              <useReleaseProfile>false</useReleaseProfile>
+              <releaseProfiles>release</releaseProfiles>
+              <goals>deploy</goals>
+            </configuration>
+          </plugin>
+
+          <!-- Encryption plugin for deploying release artifacts -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>1.5</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+
+          <!-- Generate sources and javadoc -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <version>2.2.1</version>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals>
+                  <goal>jar-no-fork</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <version>2.9.1</version>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+            <configuration>
+              <javadocVersion>1.7</javadocVersion>
+              <detectJavaApiLink>true</detectJavaApiLink>
+              <links>
+                <link>http://docs.oracle.com/javase/7/docs/api</link>
+              </links>
+              <notimestamp>true</notimestamp>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

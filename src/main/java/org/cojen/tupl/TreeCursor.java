@@ -1521,8 +1521,8 @@ class TreeCursor implements CauseCloseable, Cursor {
                     node.releaseExclusive();
                 }
                 return doLoad(txn);
-            } else if ((pos != ~0 || (node.mType & Node.LOW_EXTREMITY) != 0) &&
-                       (~pos <= node.highestLeafPos() || (node.mType & Node.HIGH_EXTREMITY) != 0))
+            } else if ((pos != ~0 || (node.type() & Node.LOW_EXTREMITY) != 0) &&
+                       (~pos <= node.highestLeafPos() || (node.type() & Node.HIGH_EXTREMITY) != 0))
             {
                 // Not found, but insertion pos is in bounds.
                 frame.mNotFoundKey = key;
@@ -1573,8 +1573,8 @@ class TreeCursor implements CauseCloseable, Cursor {
                     throw cleanup(e, frame);
                 }
 
-                if ((pos == 0 && (node.mType & Node.LOW_EXTREMITY) == 0) ||
-                    (pos >= node.highestInternalPos() && (node.mType & Node.HIGH_EXTREMITY) == 0))
+                if ((pos == 0 && (node.type() & Node.LOW_EXTREMITY) == 0) ||
+                    (pos >= node.highestInternalPos() && (node.type() & Node.HIGH_EXTREMITY) == 0))
                 {
                     // Cannot be certain if position is in this node, so pop up.
                     continue;
@@ -2258,7 +2258,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             find(null, key, VARIANT_NO_LOCK);
 
             TreeCursorFrame leaf = mLeaf;
-            if (leaf.mNode.mPage == p_empty()) {
+            if (leaf.mNode.mPage == p_emptyTreePage()) {
                 resetLatched(leaf.mNode);
                 return false;
             }
@@ -2681,7 +2681,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         frame.mNode = next;
         frame.mNodePos = 0;
         next.mLastCursorFrame = frame;
-        next.mType |= Node.LOW_EXTREMITY;
+        next.type((byte) (next.type() | Node.LOW_EXTREMITY));
 
         db.deleteNode(node);
 
@@ -3080,7 +3080,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         node.acquireExclusive();
         try {
             while (true) {
-                if ((node.mType & extremity) == 0) {
+                if ((node.type() & extremity) == 0) {
                     return false;
                 }
                 if (node.isLeaf()) {
@@ -3174,7 +3174,8 @@ class TreeCursor implements CauseCloseable, Cursor {
                     if (compare >= 0) {
                         observer.failed = true;
                         if (!observer.indexNodeFailed
-                            (childId, level, "Child keys are not less than parent key"))
+                            (childId, level,
+                             "Child keys are not less than parent key: " + parentNode))
                         {
                             return false;
                         }
@@ -3182,7 +3183,8 @@ class TreeCursor implements CauseCloseable, Cursor {
                 } else if (compare < 0) {
                     observer.failed = true;
                     if (!observer.indexNodeFailed
-                        (childId, level, "Child keys are not greater than or equal to parent key"))
+                        (childId, level,
+                         "Child keys are not greater than or equal to parent key: " + parentNode))
                     {
                         return false;
                     }
@@ -3191,13 +3193,13 @@ class TreeCursor implements CauseCloseable, Cursor {
 
             // Verify node level types.
 
-            switch (parentNode.mType) {
+            switch (parentNode.type()) {
             case Node.TYPE_TN_IN:
                 if (childNode.isLeaf()) {
                     observer.failed = true;
                     if (!observer.indexNodeFailed
                         (childId, level,
-                         "Child is a leaf, but parent is a regular internal node"))
+                         "Child is a leaf, but parent is a regular internal node: " + parentNode))
                     {
                         return false;
                     }
@@ -3208,7 +3210,8 @@ class TreeCursor implements CauseCloseable, Cursor {
                     observer.failed = true;
                     if (!observer.indexNodeFailed
                         (childId, level,
-                         "Child is not a leaf, but parent is a bottom internal node"))
+                         "Child is not a leaf, but parent is a bottom internal node: "
+                         + parentNode))
                     {
                         return false;
                     }
@@ -3221,7 +3224,9 @@ class TreeCursor implements CauseCloseable, Cursor {
                 // Fallthrough...
             case Node.TYPE_TN_LEAF:
                 observer.failed = true;
-                if (!observer.indexNodeFailed(childId, level, "Child parent is a leaf node")) {
+                if (!observer.indexNodeFailed(childId, level,
+                                              "Child parent is a leaf node: " + parentNode))
+                {
                     return false;
                 }
                 break;
@@ -3229,23 +3234,23 @@ class TreeCursor implements CauseCloseable, Cursor {
 
             // Verify extremities.
 
-            if ((childNode.mType & Node.LOW_EXTREMITY) != 0
-                && (parentNode.mType & Node.LOW_EXTREMITY) == 0)
+            if ((childNode.type() & Node.LOW_EXTREMITY) != 0
+                && (parentNode.type() & Node.LOW_EXTREMITY) == 0)
             {
                 observer.failed = true;
                 if (!observer.indexNodeFailed
-                    (childId, level, "Child is low extremity but parent is not"))
+                    (childId, level, "Child is low extremity but parent is not: " + parentNode))
                 {
                     return false;
                 }
             }
 
-            if ((childNode.mType & Node.HIGH_EXTREMITY) != 0
-                && (parentNode.mType & Node.HIGH_EXTREMITY) == 0)
+            if ((childNode.type() & Node.HIGH_EXTREMITY) != 0
+                && (parentNode.type() & Node.HIGH_EXTREMITY) == 0)
             {
                 observer.failed = true;
                 if (!observer.indexNodeFailed
-                    (childId, level, "Child is high extremity but parent is not"))
+                    (childId, level, "Child is high extremity but parent is not: " + parentNode))
                 {
                     return false;
                 }
@@ -3680,7 +3685,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         }
 
         /*P*/ byte[] parentPage = parentNode.mPage;
-        int parentEntryLoc = p_ushortGetLE(parentPage, parentNode.mSearchVecStart + leftPos);
+        int parentEntryLoc = p_ushortGetLE(parentPage, parentNode.searchVecStart() + leftPos);
         int parentEntryLen = Node.keyLengthAtLoc(parentPage, parentEntryLoc);
         int remaining = leftAvail - parentEntryLen
             + rightAvail - p_length(parentPage) + (Node.TN_HEADER_SIZE - 2);
