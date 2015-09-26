@@ -1,6 +1,13 @@
 Changelog
 =========
 
+v1.2.7
+------
+* Add a capacity limiting feature.
+* Exposed a few more utility methods.
+* When using direct page access mode, page fields are no longer copied to Node instance
+  fields. This reduces overall Java heap memory footprint.
+
 v1.2.6.1 (2015-09-05)
 --------
 * Fix when using mapped files on Linux. Shrinking the database file would cause the process to
