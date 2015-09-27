@@ -261,6 +261,7 @@ public interface View {
      * <p>The returned view will throw a {@link ViewConstraintException} on an attempt to
      * insert a key outside its range.
      *
+     * @throws UnsupportedOperationException if view is unordered
      * @throws NullPointerException if key is null
      */
     public View viewGe(byte[] key);
@@ -273,6 +274,7 @@ public interface View {
      * <p>The returned view will throw a {@link ViewConstraintException} on an attempt to
      * insert a key outside its range.
      *
+     * @throws UnsupportedOperationException if view is unordered
      * @throws NullPointerException if key is null
      */
     public View viewGt(byte[] key);
@@ -285,6 +287,7 @@ public interface View {
      * <p>The returned view will throw a {@link ViewConstraintException} on an attempt to
      * insert a key outside its range.
      *
+     * @throws UnsupportedOperationException if view is unordered
      * @throws NullPointerException if key is null
      */
     public View viewLe(byte[] key);
@@ -297,6 +300,7 @@ public interface View {
      * <p>The returned view will throw a {@link ViewConstraintException} on an attempt to
      * insert a key outside its range.
      *
+     * @throws UnsupportedOperationException if view is unordered
      * @throws NullPointerException if key is null
      */
     public View viewLt(byte[] key);
@@ -310,6 +314,7 @@ public interface View {
      * insert a key outside its range.
      *
      * @param trim amount of prefix length to trim from all keys in the view
+     * @throws UnsupportedOperationException if view is unordered
      * @throws NullPointerException if prefix is null
      * @throws IllegalArgumentException if trim is longer than prefix
      */

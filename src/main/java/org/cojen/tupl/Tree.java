@@ -240,6 +240,31 @@ class Tree extends AbstractView implements Index {
     }
 
     @Override
+    public View viewGe(byte[] key) {
+        return BoundedView.viewGe(this, key);
+    }
+
+    @Override
+    public View viewGt(byte[] key) {
+        return BoundedView.viewGt(this, key);
+    }
+
+    @Override
+    public View viewLe(byte[] key) {
+        return BoundedView.viewLe(this, key);
+    }
+
+    @Override
+    public View viewLt(byte[] key) {
+        return BoundedView.viewLt(this, key);
+    }
+
+    @Override
+    public View viewPrefix(byte[] prefix, int trim) {
+        return BoundedView.viewPrefix(this, prefix, trim);
+    }
+
+    @Override
     public final boolean isUnmodifiable() {
         return isClosed();
     }
