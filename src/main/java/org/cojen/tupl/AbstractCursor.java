@@ -18,7 +18,7 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import static org.cojen.tupl.Utils.compareUnsigned;
+import org.cojen.tupl.Utils;
 
 /**
  * Implements a few {@link Cursor} methods.
@@ -32,7 +32,7 @@ public abstract class AbstractCursor implements Cursor {
     @Override
     public int compareKeyTo(byte[] rkey) {
         byte[] lkey = key();
-        return compareUnsigned(lkey, 0, lkey.length, rkey, 0, rkey.length);
+        return Utils.compareUnsigned(lkey, 0, lkey.length, rkey, 0, rkey.length);
     }
 
     /**
@@ -41,7 +41,7 @@ public abstract class AbstractCursor implements Cursor {
     @Override
     public int compareKeyTo(byte[] rkey, int offset, int length) {
         byte[] lkey = key();
-        return compareUnsigned(lkey, 0, lkey.length, rkey, offset, length);
+        return Utils.compareUnsigned(lkey, 0, lkey.length, rkey, offset, length);
     }
 
     /**
@@ -49,48 +49,53 @@ public abstract class AbstractCursor implements Cursor {
      */
     @Override
     public LockResult skip(long amount, byte[] limitKey, boolean inclusive) throws IOException {
+        return skip(this, amount, limitKey, inclusive);
+    }
+
+    static LockResult skip(Cursor c, long amount, byte[] limitKey, boolean inclusive)
+        throws IOException
+    {
         if (amount == 0 || limitKey == null) {
-            return skip(amount);
+            return c.skip(amount);
         }
 
-        final Transaction txn = link(Transaction.BOGUS);
-        final boolean autoload = autoload(false);
-
-        try {
-            if (amount > 0) {
-                final int cmp = inclusive ? 0 : -1;
-                do {
-                    next();
-                    byte[] key = key();
-                    if (key == null) {
-                        return LockResult.UNOWNED;
-                    }
-                    if (compareUnsigned(key, 0, key.length, limitKey, 0, limitKey.length) > cmp) {
-                        reset();
-                        return LockResult.UNOWNED;
-                    }
-                } while (--amount > 0);
-            } else {
-                final int cmp = inclusive ? 0 : 1;
-                do {
-                    previous();
-                    byte[] key = key();
-                    if (key == null) {
-                        return LockResult.UNOWNED;
-                    }
-                    if (compareUnsigned(key, 0, key.length, limitKey, 0, limitKey.length) < cmp) {
-                        reset();
-                        return LockResult.UNOWNED;
-                    }
-                } while (++amount < 0);
+        if (amount > 0) {
+            if (inclusive) while (true) {
+                LockResult result = c.nextLe(limitKey);
+                if (c.key() == null || --amount <= 0) {
+                    return result;
+                }
+                if (result == LockResult.ACQUIRED) {
+                    c.link().unlock();
+                }
+            } else while (true) {
+                LockResult result = c.nextLt(limitKey);
+                if (c.key() == null || --amount <= 0) {
+                    return result;
+                }
+                if (result == LockResult.ACQUIRED) {
+                    c.link().unlock();
+                }
             }
-        } finally {
-            autoload(autoload);
-            link(txn);
+        } else {
+            if (inclusive) while (true) {
+                LockResult result = c.previousGe(limitKey);
+                if (c.key() == null || ++amount >= 0) {
+                    return result;
+                }
+                if (result == LockResult.ACQUIRED) {
+                    c.link().unlock();
+                }
+            } else while (true) {
+                LockResult result = c.previousGt(limitKey);
+                if (c.key() == null || ++amount >= 0) {
+                    return result;
+                }
+                if (result == LockResult.ACQUIRED) {
+                    c.link().unlock();
+                }
+            }
         }
-
-        // This performs any required lock acquisition.
-        return load();
     }
 
     /**
@@ -111,5 +116,38 @@ public abstract class AbstractCursor implements Cursor {
     @Override
     public Stream newStream() {
         throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Simple skip implementation which doesn't support skip by zero.
+     *
+     * @throws IllegalArgumentException when skip amount is zero
+     */
+    protected LockResult doSkip(long amount) throws IOException {
+        return doSkip(this, amount);
+    }
+
+    static LockResult doSkip(Cursor c, long amount) throws IOException {
+        if (amount == 0) {
+            throw new IllegalArgumentException("Skip is zero");
+        }
+
+        if (amount > 0) while (true) {
+            LockResult result = c.next();
+            if (c.key() == null || --amount <= 0) {
+                return result;
+            }
+            if (result == LockResult.ACQUIRED) {
+                c.link().unlock();
+            }
+        } else while (true) {
+            LockResult result = c.previous();
+            if (c.key() == null || ++amount >= 0) {
+                return result;
+            }
+            if (result == LockResult.ACQUIRED) {
+                c.link().unlock();
+            }
+        }
     }
 }

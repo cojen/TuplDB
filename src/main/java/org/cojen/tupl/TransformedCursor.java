@@ -108,76 +108,12 @@ final class TransformedCursor implements Cursor {
 
     @Override
     public LockResult skip(long amount) throws IOException {
-        final Cursor c = mSource;
-
-        if (amount == 0) {
-            return c.skip(0);
-        }
-
-        if (amount > 0) while (true) {
-            LockResult result = next();
-            if (mKey == null || --amount <= 0) {
-                return result;
-            }
-            if (result == LockResult.ACQUIRED) {
-                c.link().unlock();
-            }
-        } else while (true) {
-            LockResult result = previous();
-            if (mKey == null || ++amount >= 0) {
-                return result;
-            }
-            if (result == LockResult.ACQUIRED) {
-                c.link().unlock();
-            }
-        }
+        return amount == 0 ? mSource.skip(0) : AbstractCursor.doSkip(this, amount);
     }
 
     @Override
     public LockResult skip(long amount, byte[] limitKey, boolean inclusive) throws IOException {
-        final Cursor c = mSource;
-
-        if (amount == 0 || limitKey == null) {
-            return c.skip(amount);
-        }
-
-        if (amount > 0) {
-            if (inclusive) while (true) {
-                LockResult result = nextLe(limitKey);
-                if (mKey == null || --amount <= 0) {
-                    return result;
-                }
-                if (result == LockResult.ACQUIRED) {
-                    c.link().unlock();
-                }
-            } else while (true) {
-                LockResult result = nextLt(limitKey);
-                if (mKey == null || --amount <= 0) {
-                    return result;
-                }
-                if (result == LockResult.ACQUIRED) {
-                    c.link().unlock();
-                }
-            }
-        } else {
-            if (inclusive) while (true) {
-                LockResult result = previousGe(limitKey);
-                if (mKey == null || ++amount >= 0) {
-                    return result;
-                }
-                if (result == LockResult.ACQUIRED) {
-                    c.link().unlock();
-                }
-            } else while (true) {
-                LockResult result = previousGt(limitKey);
-                if (mKey == null || ++amount >= 0) {
-                    return result;
-                }
-                if (result == LockResult.ACQUIRED) {
-                    c.link().unlock();
-                }
-            }
-        }
+        return AbstractCursor.skip(this, amount, limitKey, inclusive);
     }
 
     @Override
