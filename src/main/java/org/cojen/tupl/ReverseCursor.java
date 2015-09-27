@@ -67,12 +67,12 @@ final class ReverseCursor implements Cursor {
 
     @Override
     public int compareKeyTo(byte[] rkey) {
-        return mSource.compareKeyTo(rkey);
+        return -mSource.compareKeyTo(rkey);
     }
 
     @Override
     public int compareKeyTo(byte[] rkey, int offset, int length) {
-        return mSource.compareKeyTo(rkey, offset, length);
+        return -mSource.compareKeyTo(rkey, offset, length);
     }
 
     @Override
@@ -177,7 +177,7 @@ final class ReverseCursor implements Cursor {
 
     @Override
     public LockResult random(byte[] lowKey, byte[] highKey) throws IOException {
-        return mSource.random(lowKey, highKey);
+        return mSource.random(ReverseView.appendZero(highKey), ReverseView.appendZero((lowKey)));
     }
 
     @Override

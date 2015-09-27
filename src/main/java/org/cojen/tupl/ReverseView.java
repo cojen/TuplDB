@@ -41,6 +41,11 @@ final class ReverseView implements View {
     }
 
     @Override
+    public long count(byte[] lowKey, byte[] highKey) throws IOException {
+        return mSource.count(appendZero(highKey), appendZero((lowKey)));
+    }
+
+    @Override
     public byte[] load(Transaction txn, byte[] key) throws IOException {
         return mSource.load(txn, key);
     }
@@ -156,5 +161,9 @@ final class ReverseView implements View {
     @Override
     public boolean isUnmodifiable() {
         return mSource.isUnmodifiable();
+    }
+
+    static byte[] appendZero(byte[] key) {
+        return key == null ? null : AbstractView.appendZero(key);
     }
 }

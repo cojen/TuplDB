@@ -139,6 +139,14 @@ class Tree extends AbstractView implements Index {
         return new TreeCursor(this, txn);
     }
 
+    /*
+    @Override
+    public long count(byte[] lowKey, byte[] highKey) throws IOException {
+        // FIXME: use bottom internal node counts if allowStoredCounts is true
+        throw null;
+    }
+    */
+
     @Override
     public final byte[] load(Transaction txn, byte[] key) throws IOException {
         check(txn);

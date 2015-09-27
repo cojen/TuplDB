@@ -77,6 +77,11 @@ final class UnmodifiableView implements Index {
     }
 
     @Override
+    public long count(byte[] lowKey, byte[] highKey) throws IOException {
+        return mSource.count(lowKey, highKey);
+    }
+
+    @Override
     public byte[] load(Transaction txn, byte[] key) throws IOException {
         return mSource.load(txn, key);
     }

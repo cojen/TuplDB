@@ -339,8 +339,8 @@ public class RecoverTest {
             mDb.checkpoint();
         }
 
-        int count1 = CrudTest.count(ix1);
-        int count2 = CrudTest.count(ix2);
+        long count1 = CrudTest.count(ix1);
+        long count2 = CrudTest.count(ix2);
 
         txn.enter();
         for (int i=0; i<count; i++) {

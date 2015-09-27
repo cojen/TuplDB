@@ -39,62 +39,14 @@ public interface View {
     public Cursor newCursor(Transaction txn);
 
     /**
-     * Counts the number of non-null values.
+     * Non-transactionally counts the number of entries within the given range. Implementations
+     * of this method typically scan over the entries, and so it shouldn't be expected to run
+     * in constant time.
      *
-     * @param txn optional transaction; pass null for {@link
-     * LockMode#READ_COMMITTED READ_COMMITTED} locking behavior
-     * @throws IllegalArgumentException if transaction belongs to another database instance
-     * /
-    public long count(Transaction txn) throws IOException;
-    */
-
-    /**
-     * Counts the number of non-null values within a given range.
-     *
-     * @param txn optional transaction; pass null for {@link
-     * LockMode#READ_COMMITTED READ_COMMITTED} locking behavior
-     * @param start key range start; pass null for open range
-     * @param end key range end; pass null for open range
-     * @throws IllegalArgumentException if transaction belongs to another database instance
-     * /
-    public long count(Transaction txn,
-                      byte[] start, boolean startInclusive,
-                      byte[] end, boolean endInclusive)
-        throws IOException;
-    */
-
-    /**
-     * Returns true if an entry exists for the given key.
-     *
-     * <p>If the entry must be locked, ownership of the key instance is
-     * transferred. The key must not be modified after calling this method.
-     *
-     * @param txn optional transaction; pass null for {@link
-     * LockMode#READ_COMMITTED READ_COMMITTED} locking behavior
-     * @param key non-null key
-     * @return true if non-null value exists for the given key
-     * @throws NullPointerException if key is null
-     * @throws IllegalArgumentException if transaction belongs to another database instance
-     * /
-    public boolean exists(Transaction txn, byte[] key) throws IOException;
-    */
-
-    /**
-     * Returns true if a matching key-value entry exists.
-     *
-     * <p>If the entry must be locked, ownership of the key instance is
-     * transferred. The key must not be modified after calling this method.
-     *
-     * @param txn optional transaction; pass null for {@link
-     * LockMode#READ_COMMITTED READ_COMMITTED} locking behavior
-     * @param key non-null key
-     * @param value value to compare to, which can be null
-     * @return true if entry matches the given key and value
-     * @throws NullPointerException if key is null
-     * @throws IllegalArgumentException if transaction belongs to another database instance
-     * /
-    public boolean exists(Transaction txn, byte[] key, byte[] value) throws IOException;
-    */
+     * @param lowKey inclusive lowest key in the counted range; pass null for open range
+     * @param highKey exclusive highest key in the counted range; pass null for open range
+     */
+    public long count(byte[] lowKey, byte[] highKey) throws IOException;
 
     /**
      * Returns a copy of the value for the given key, or null if no matching
