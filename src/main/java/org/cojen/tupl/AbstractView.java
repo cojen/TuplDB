@@ -28,6 +28,51 @@ public abstract class AbstractView implements View {
      * {@inheritDoc}
      */
     @Override
+    public long count(byte[] lowKey, byte[] highKey) throws IOException {
+        return count(this, false, lowKey, highKey);
+    }
+
+    static long count(View view, boolean autoload, byte[] lowKey, byte[] highKey)
+        throws IOException
+    {
+        long count = 0;
+            
+        Cursor c = view.newCursor(Transaction.BOGUS);
+        try {
+            c.autoload(autoload);
+
+            if (lowKey == null) {
+                c.first();
+            } else {
+                c.findGe(lowKey);
+            }
+
+            if (highKey == null) {
+                for (; c.key() != null; c.next()) {
+                    count++;
+                }
+            } else {
+                for (; c.key() != null && c.compareKeyTo(highKey) < 0; c.next()) {
+                    count++;
+                }
+            }
+        } finally {
+            c.reset();
+        }
+
+        return count;
+    }
+
+    static byte[] appendZero(byte[] key) {
+        byte[] newKey = new byte[key.length + 1];
+        System.arraycopy(key, 0, newKey, 0, key.length);
+        return newKey;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException {
         return update(txn, key, null, value);
     }
