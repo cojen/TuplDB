@@ -4,6 +4,7 @@ Changelog
 v1.2.7
 ------
 * Add a capacity limiting feature.
+* Added method to count entries in a View.
 * Exposed a few more utility methods.
 * When using direct page access mode, page fields are no longer copied to Node instance
   fields. This reduces overall Java heap memory footprint.
