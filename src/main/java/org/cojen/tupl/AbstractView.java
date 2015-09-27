@@ -106,7 +106,7 @@ public abstract class AbstractView implements View {
      */
     @Override
     public View viewGe(byte[] key) {
-        return BoundedView.viewGe(this, key);
+        return BoundedView.viewGe(checkOrdering(this), key);
     }
 
     /**
@@ -114,7 +114,7 @@ public abstract class AbstractView implements View {
      */
     @Override
     public View viewGt(byte[] key) {
-        return BoundedView.viewGt(this, key);
+        return BoundedView.viewGt(checkOrdering(this), key);
     }
 
     /**
@@ -122,7 +122,7 @@ public abstract class AbstractView implements View {
      */
     @Override
     public View viewLe(byte[] key) {
-        return BoundedView.viewLe(this, key);
+        return BoundedView.viewLe(checkOrdering(this), key);
     }
 
     /**
@@ -130,7 +130,7 @@ public abstract class AbstractView implements View {
      */
     @Override
     public View viewLt(byte[] key) {
-        return BoundedView.viewLt(this, key);
+        return BoundedView.viewLt(checkOrdering(this), key);
     }
 
     /**
@@ -138,7 +138,7 @@ public abstract class AbstractView implements View {
      */
     @Override
     public View viewPrefix(byte[] prefix, int trim) {
-        return BoundedView.viewPrefix(this, prefix, trim);
+        return BoundedView.viewPrefix(checkOrdering(this), prefix, trim);
     }
 
     /**
@@ -163,5 +163,17 @@ public abstract class AbstractView implements View {
     @Override
     public View viewUnmodifiable() {
         return UnmodifiableView.apply(this);
+    }
+
+    private static View checkOrdering(View view) {
+        Ordering ordering = view.getOrdering();
+        if (ordering == Ordering.DESCENDING) {
+            view = view.viewReverse();
+            ordering = view.getOrdering();
+        }
+        if (ordering != Ordering.ASCENDING) {
+            throw new UnsupportedOperationException("Unsupported ordering: " + ordering);
+        }
+        return view;
     }
 }
