@@ -593,7 +593,7 @@ final class PageManager {
                 throw new WriteFailureException(e);
             } finally {
                 if (mPageLimitOverride != null) {
-                    mPageLimitOverride.set(0L);
+                    mPageLimitOverride.remove();
                 }
             }
 
