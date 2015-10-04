@@ -711,6 +711,67 @@ public class ViewTest {
     }
 
     @Test
+    public void prefixCompare() throws Exception {
+        Index ix = fill();
+
+        View view = ix.viewPrefix("key-".getBytes(), 4);
+
+        {
+            byte[] lastKey = null;
+
+            Cursor c = view.newCursor(null);
+            for (c.first(); c.key() != null; c.next()) {
+                if (lastKey != null) {
+                    int result = c.compareKeyTo(lastKey);
+                    assertTrue(result > 0);
+                }
+                lastKey = c.key();
+            }
+        }
+
+        {
+            byte[] lastKey = null;
+
+            Cursor c = view.newCursor(null);
+            for (c.last(); c.key() != null; c.previous()) {
+                if (lastKey != null) {
+                    int result = c.compareKeyTo(lastKey);
+                    assertTrue(result < 0);
+                }
+                lastKey = c.key();
+            }
+        }
+
+        view = view.viewReverse();
+
+        {
+            byte[] lastKey = null;
+
+            Cursor c = view.newCursor(null);
+            for (c.first(); c.key() != null; c.next()) {
+                if (lastKey != null) {
+                    int result = c.compareKeyTo(lastKey);
+                    assertTrue(result > 0);
+                }
+                lastKey = c.key();
+            }
+        }
+
+        {
+            byte[] lastKey = null;
+
+            Cursor c = view.newCursor(null);
+            for (c.last(); c.key() != null; c.previous()) {
+                if (lastKey != null) {
+                    int result = c.compareKeyTo(lastKey);
+                    assertTrue(result < 0);
+                }
+                lastKey = c.key();
+            }
+        }
+    }
+
+    @Test
     public void counts() throws Exception {
         Index ix = mDb.openIndex("test");
 
