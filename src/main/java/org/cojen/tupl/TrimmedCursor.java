@@ -84,14 +84,12 @@ final class TrimmedCursor implements Cursor {
 
     @Override
     public int compareKeyTo(byte[] rkey) {
-        byte[] lkey = mKey;
-        return Utils.compareUnsigned(lkey, 0, lkey.length, rkey, 0, rkey.length);
+        return mSource.compareKeyTo(mView.applyPrefix(rkey));
     }
 
     @Override
     public int compareKeyTo(byte[] rkey, int offset, int length) {
-        byte[] lkey = mKey;
-        return Utils.compareUnsigned(lkey, 0, lkey.length, rkey, offset, length);
+        return mSource.compareKeyTo(mView.applyPrefix(rkey, offset, length));
     }
 
     @Override

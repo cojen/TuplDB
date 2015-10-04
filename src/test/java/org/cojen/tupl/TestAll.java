@@ -63,6 +63,7 @@ public class TestAll {
             PageCacheTest.class,
             CustomLogTest.class,
             LimitCapacityTest.class,
+            TransformerTest.class,
         };
 
         String[] names = new String[classes.length];
