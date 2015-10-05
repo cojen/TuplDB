@@ -44,8 +44,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
-import java.util.TreeMap;
+import java.util.Random;
 import java.util.Set;
+import java.util.TreeMap;
 
 import java.util.concurrent.TimeUnit;
 
@@ -2821,7 +2822,7 @@ public final class Database implements CauseCloseable, Flushable {
 
                 if (treeIdMaskBytes == null) {
                     treeIdMaskBytes = new byte[8];
-                    random().nextBytes(treeIdMaskBytes);
+                    new Random().nextBytes(treeIdMaskBytes);
                     mRegistryKeyMap.store(txn, key, treeIdMaskBytes);
                 }
 
