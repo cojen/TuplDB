@@ -3,7 +3,9 @@ Changelog
 
 v1.2.7
 ------
-* Add a capacity limiting feature.
+* Fixed reverse view range handling.
+* Fixed compareKeyTo methods for transformed and trimmed views.
+* Require that bounded views only operate on ordered views.
 * Added method to count entries in a View.
 * Exposed a few more utility methods.
 * When using direct page access mode, page fields are no longer copied to Node instance

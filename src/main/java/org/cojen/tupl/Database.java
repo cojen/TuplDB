@@ -1510,7 +1510,7 @@ public final class Database implements CauseCloseable, Flushable {
      *
      * @param bytes maximum capacity, in bytes; pass -1 for no limit
      */
-    public void capacityLimit(long bytes) {
+    void capacityLimit(long bytes) {
         mPageDb.pageLimit(bytes < 0 ? -1 : (bytes / mPageSize));
     }
 
@@ -1519,7 +1519,7 @@ public final class Database implements CauseCloseable, Flushable {
      *
      * @return maximum capacity, in bytes; is -1 if no limit
      */
-    public long capacityLimit() {
+    long capacityLimit() {
         long pageLimit = mPageDb.pageLimit();
         return pageLimit < 0 ? -1 : (pageLimit * mPageSize);
     }
@@ -1530,7 +1530,7 @@ public final class Database implements CauseCloseable, Flushable {
      *
      * @param bytes maximum capacity, in bytes; pass -1 for no limit; pass 0 to remove override
      */
-    public void capacityLimitOverride(long bytes) {
+    void capacityLimitOverride(long bytes) {
         mPageDb.pageLimitOverride(bytes < 0 ? -1 : (bytes / mPageSize));
     }
 
