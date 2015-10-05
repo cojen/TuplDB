@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 /**
  * 
  *
@@ -429,7 +431,7 @@ final class TransformedCursor implements Cursor {
         result = transformCurrent(result);
 
         if (result == null) {
-            if (Utils.random().nextBoolean()) {
+            if (ThreadLocalRandom.current().nextBoolean()) {
                 result = next();
                 if (mKey == null) {
                     // Reached the end, so wrap around.

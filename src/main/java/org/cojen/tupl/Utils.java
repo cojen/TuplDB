@@ -65,13 +65,7 @@ class Utils extends org.cojen.tupl.io.Utils {
         return (int) (v ^ (v >>> 32));
     }
 
-    private static final Random cRnd = new Random();
-    
-    static Random random() {
-        return cRnd;
-    }
-
-    private static int cSeedMix = cRnd.nextInt();
+    private static int cSeedMix = new Random().nextInt();
 
     /**
      * @return non-zero random number, suitable for Xorshift RNG or object hashcode
@@ -80,7 +74,7 @@ class Utils extends org.cojen.tupl.io.Utils {
         long id = Thread.currentThread().getId();
         int seed = ((int) id) ^ ((int) (id >>> 32)) ^ cSeedMix;
         while (seed == 0) {
-            seed = cRnd.nextInt();
+            seed = new Random().nextInt();
         }
         cSeedMix = nextRandom(seed);
         return seed;

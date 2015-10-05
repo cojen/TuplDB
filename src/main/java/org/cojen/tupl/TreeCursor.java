@@ -19,7 +19,8 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 import java.util.Arrays;
-import java.util.Random;
+
+import java.util.concurrent.ThreadLocalRandom;
 
 import java.util.concurrent.locks.Lock;
 
@@ -1796,7 +1797,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             return LockResult.UNOWNED;
         }
 
-        Random rnd = Utils.random();
+        ThreadLocalRandom rnd = ThreadLocalRandom.current();
 
         start: while (true) {
             mKey = null;
