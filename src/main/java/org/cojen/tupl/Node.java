@@ -1178,17 +1178,17 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     /**
-     * Caller must hold any latch.
+     * Caller must hold any latch. Returns true if node is any kind of internal node.
      */
     boolean isInternal() {
-        return (type() & 0x60) == 0x60;
+        return (type() & 0xe0) == 0x60;
     }
 
     /**
      * Caller must hold any latch.
      */
     boolean isBottomInternal() {
-        return (type() & 0x70) == 0x70;
+        return (type() & 0xf0) == 0x70;
     }
 
     /**
