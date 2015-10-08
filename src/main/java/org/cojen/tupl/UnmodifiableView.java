@@ -200,6 +200,14 @@ final class UnmodifiableView implements Index {
     }
 
     @Override
+    public Stats analyze(byte[] lowKey, byte[] highKey) throws IOException {
+        if (mSource instanceof Index) {
+            return ((Index) mSource).analyze(lowKey, highKey);
+        }
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public boolean verify(VerificationObserver observer) throws IOException {
         if (mSource instanceof Index) {
             return ((Index) mSource).verify(observer);

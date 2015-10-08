@@ -18,6 +18,7 @@ package org.cojen.tupl;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.Serializable;
 
 /**
  * Mapping of keys to values, ordered by key, in lexicographical
@@ -244,6 +245,167 @@ public interface Index extends View, Closeable {
      */
     @Override
     public boolean isUnmodifiable();
+
+    /**
+     * Estimates the size of this index with a single random probe. To improve the estimate,
+     * average several analysis results together.
+     *
+     * @param lowKey inclusive lowest key in the analysis range; pass null for open range
+     * @param highKey exclusive highest key in the analysis range; pass null for open range
+     */
+    public abstract Stats analyze(byte[] lowKey, byte[] highKey) throws IOException;
+
+    /**
+     * Immutable copy of stats from the {@link Index#analyze analyze} method.
+     */
+    public static class Stats implements Serializable {
+        private static final long serialVersionUID = 2L;
+
+        private final double mEntryCount;
+        private final double mKeyBytes;
+        private final double mValueBytes;
+        private final double mFreeBytes;
+        private final double mTotalBytes;
+
+        public Stats(double entryCount,
+                     double keyBytes,
+                     double valueBytes,
+                     double freeBytes,
+                     double totalBytes)
+        {
+            mEntryCount = entryCount;
+            mKeyBytes = keyBytes;
+            mValueBytes = valueBytes;
+            mFreeBytes = freeBytes;
+            mTotalBytes = totalBytes;
+        } 
+
+        /**
+         * Returns the estimated number of index entries.
+         */
+        public double entryCount() {
+            return mEntryCount;
+        }
+
+        /**
+         * Returns the estimated amount of bytes occupied by keys in the index.
+         */
+        public double keyBytes() {
+            return mKeyBytes;
+        }
+
+        /**
+         * Returns the estimated amount of bytes occupied by values in the index.
+         */
+        public double valueBytes() {
+            return mValueBytes;
+        }
+
+        /**
+         * Returns the estimated amount of free bytes in the index.
+         */
+        public double freeBytes() {
+            return mFreeBytes;
+        }
+
+        /**
+         * Returns the estimated total amount of bytes in the index.
+         */
+        public double totalBytes() {
+            return mTotalBytes;
+        }
+
+        /**
+         * Adds stats into a new object.
+         */
+        public Stats add(Stats augend) {
+            return new Stats(entryCount() + augend.entryCount(),
+                             keyBytes() + augend.keyBytes(),
+                             valueBytes() + augend.valueBytes(),
+                             freeBytes() + augend.freeBytes(),
+                             totalBytes() + augend.totalBytes());
+        }
+
+        /**
+         * Subtract stats into a new object.
+         */
+        public Stats subtract(Stats subtrahend) {
+            return new Stats(entryCount() - subtrahend.entryCount(),
+                             keyBytes() - subtrahend.keyBytes(),
+                             valueBytes() - subtrahend.valueBytes(),
+                             freeBytes() - subtrahend.freeBytes(),
+                             totalBytes() - subtrahend.totalBytes());
+        }
+
+        /**
+         * Divide the stats by a scalar into a new object.
+         */
+        public Stats divide(double scalar) {
+            return new Stats(entryCount() / scalar,
+                             keyBytes() / scalar,
+                             valueBytes() / scalar,
+                             freeBytes() / scalar,
+                             totalBytes() / scalar);
+        }
+
+        /**
+         * Round the stats to whole numbers into a new object.
+         */
+        public Stats round() {
+            return new Stats(Math.round(entryCount()),
+                             Math.round(keyBytes()),
+                             Math.round(valueBytes()),
+                             Math.round(freeBytes()),
+                             Math.round(totalBytes()));
+        }
+
+        /**
+         * Divide the stats by a scalar and round to whole numbers into a new object.
+         */
+        public Stats divideAndRound(double scalar) {
+            return new Stats(Math.round(entryCount() / scalar),
+                             Math.round(keyBytes() / scalar),
+                             Math.round(valueBytes() / scalar),
+                             Math.round(freeBytes() / scalar),
+                             Math.round(totalBytes() / scalar));
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder b = new StringBuilder("Index.Stats {");
+
+            boolean any = false;
+            any = append(b, any, "entryCount", entryCount());
+            any = append(b, any, "keyBytes", keyBytes());
+            any = append(b, any, "valueBytes", valueBytes());
+            any = append(b, any, "freeBytes", freeBytes());
+            any = append(b, any, "totalBytes", totalBytes());
+
+            b.append('}');
+            return b.toString();
+        }
+
+        private static boolean append(StringBuilder b, boolean any, String name, double value) {
+            if (!Double.isNaN(value)) {
+                if (any) {
+                    b.append(", ");
+                }
+
+                b.append(name).append('=');
+
+                long v = (long) value;
+                if (v == value) {
+                    b.append(v);
+                } else {
+                    b.append(value);
+                }
+                
+                any = true;
+            }
+
+            return any;
+        }
+    }
 
     /**
      * Verifies the integrity of the index.

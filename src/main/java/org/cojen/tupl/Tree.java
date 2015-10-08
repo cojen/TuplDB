@@ -269,6 +269,18 @@ class Tree extends AbstractView implements Index {
         return isClosed();
     }
 
+    @Override
+    public Stats analyze(byte[] lowKey, byte[] highKey) throws IOException {
+        TreeCursor cursor = new TreeCursor(this, Transaction.BOGUS);
+        try {
+            cursor.autoload(false);
+            cursor.random(lowKey, highKey);
+            return cursor.key() == null ? new Stats(0, 0, 0, 0, 0) : cursor.analyze();
+        } finally {
+            cursor.reset();
+        }
+    }
+
     /**
      * Returns a view which can be passed to an observer. Internal trees are returned as
      * unmodifiable.

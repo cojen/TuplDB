@@ -1193,6 +1193,13 @@ final class Node extends Latch implements DatabaseAccess {
 
     /**
      * Caller must hold any latch.
+     */
+    boolean isNonBottomInternal() {
+        return (type() & 0xf0) == 0x60;
+    }
+
+    /**
+     * Caller must hold any latch.
      *
      * @see #countNonGhostKeys
      */
@@ -1522,6 +1529,28 @@ final class Node extends Latch implements DatabaseAccess {
     /**
      * @param pos position as provided by binarySearch; must be positive
      */
+    long retrieveKeyLength(int pos) throws IOException {
+        final /*P*/ byte[] page = mPage;
+        int loc = p_ushortGetLE(page, searchVecStart() + pos);
+
+        int keyLen = p_byteGet(page, loc++);
+        if (keyLen >= 0) {
+            keyLen++;
+        } else {
+            int header = keyLen;
+            keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++);
+            if ((header & ENTRY_FRAGMENTED) != 0) {
+                // FIXME return dbAccess.getDatabase().reconstructKey(page, loc, keyLen);
+                return 0;
+            }
+        }
+
+        return keyLen;
+    }
+
+    /**
+     * @param pos position as provided by binarySearch; must be positive
+     */
     byte[] retrieveKey(int pos) throws IOException {
         final /*P*/ byte[] page = mPage;
         return retrieveKeyAtLoc(this, page, p_ushortGetLE(page, searchVecStart() + pos));
@@ -1726,6 +1755,38 @@ final class Node extends Latch implements DatabaseAccess {
         int loc = p_ushortGetLE(page, searchVecStart() + pos);
         loc += keyLengthAtLoc(page, loc);
         return p_byteGet(page, loc) == -1 ? null : Cursor.NOT_LOADED;
+    }
+
+    /**
+     * @param pos position as provided by binarySearch; must be positive
+     */
+    long retrieveLeafValueLength(int pos) throws IOException {
+        final /*P*/ byte[] page = mPage;
+        int loc = p_ushortGetLE(page, searchVecStart() + pos);
+        loc += keyLengthAtLoc(page, loc);
+
+        final int header = p_byteGet(page, loc++);
+
+        int len;
+        if (header >= 0) {
+            len = header;
+        } else {
+            if ((header & 0x20) == 0) {
+                len = 1 + (((header & 0x1f) << 8) | p_ubyteGet(page, loc++));
+            } else if (header != -1) {
+                len = 1 + (((header & 0x0f) << 16)
+                           | (p_ubyteGet(page, loc++) << 8) | p_ubyteGet(page, loc++));
+            } else {
+                // ghost
+                return 0;
+            }
+            if ((header & ENTRY_FRAGMENTED) != 0) {
+                // FIXME return dbAccess.getDatabase().reconstruct(page, loc, len);
+                return 0;
+            }
+        }
+
+        return len;
     }
 
     /**

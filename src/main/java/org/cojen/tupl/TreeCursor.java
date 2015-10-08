@@ -1960,6 +1960,62 @@ class TreeCursor implements CauseCloseable, Cursor {
         }
     }
 
+    Index.Stats analyze() throws IOException {
+        double entryCount, keyBytes, valueBytes, freeBytes, totalBytes;
+
+        TreeCursorFrame parent;
+
+        TreeCursorFrame frame = leafSharedNotSplit();
+        Node node = frame.mNode;
+        try {
+            entryCount = node.numKeys();
+
+            int pos = frame.mNodePos;
+            int numKeys;
+            if (pos < 0 || (numKeys = node.numKeys()) <= 0) {
+                keyBytes = 0;
+                valueBytes = 0;
+            } else {
+                keyBytes = node.retrieveKeyLength(pos) * numKeys;
+                valueBytes = node.retrieveLeafValueLength(pos) * numKeys;
+            }
+
+            freeBytes = node.availableBytes();
+            totalBytes = p_length(node.mPage);
+
+            frame = frame.mParentFrame;
+        } finally {
+            node.releaseShared();
+        }
+
+        while (frame != null) {
+            double scalar;
+            int availBytes;
+            int pageSize;
+
+            node = frame.acquireShared();
+            try {
+                scalar = node.numKeys() + 1; // internal nodes have +1 children
+                availBytes = node.availableInternalBytes();
+                pageSize = p_length(node.mPage);
+                frame = frame.mParentFrame;
+            } finally {
+                node.releaseShared();
+            }
+
+            entryCount *= scalar;
+            keyBytes *= scalar;
+            valueBytes *= scalar;
+            freeBytes *= scalar;
+            totalBytes *= scalar;
+
+            freeBytes += availBytes;
+            totalBytes += pageSize;
+        }
+
+        return new Index.Stats(entryCount, keyBytes, valueBytes, freeBytes, totalBytes);
+    }
+
     @Override
     public final LockResult load() throws IOException {
         // This will always acquire a lock if required to. A try-lock pattern
