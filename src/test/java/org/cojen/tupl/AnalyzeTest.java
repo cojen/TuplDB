@@ -56,6 +56,15 @@ public class AnalyzeTest {
 
         Index ix = openIndex("stuff");
 
+        {
+            Index.Stats stats = ix.analyze(null, null);
+            assertEquals(0, stats.entryCount(), 0);
+            assertEquals(0, stats.keyBytes(), 0);
+            assertEquals(0, stats.valueBytes(), 0);
+            assertEquals(0, stats.freeBytes(), 0);
+            assertEquals(0, stats.totalBytes(), 0);
+        }
+
         Random rnd = new Random(98765);
 
         final int count = 100_000;
