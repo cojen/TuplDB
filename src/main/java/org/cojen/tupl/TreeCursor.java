@@ -42,7 +42,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     final Tree mTree;
     Transaction mTxn;
 
-    // Top stack frame for cursor, always a leaf.
+    // Top stack frame for cursor, always a leaf except during cleanup.
     private TreeCursorFrame mLeaf;
 
     byte[] mKey;
@@ -1960,6 +1960,9 @@ class TreeCursor implements CauseCloseable, Cursor {
         }
     }
 
+    /**
+     * Analyze at the current position. Cursor is reset as a side-effect.
+     */
     Index.Stats analyze() throws IOException {
         double entryCount, keyBytes, valueBytes, freeBytes, totalBytes;
 
@@ -1983,10 +1986,13 @@ class TreeCursor implements CauseCloseable, Cursor {
             freeBytes = node.availableBytes();
             totalBytes = p_length(node.mPage);
 
-            frame = frame.mParentFrame;
-        } finally {
-            node.releaseShared();
+            frame = frame.pop();
+        } catch (Throwable e) {
+            resetLatched(node);
+            throw e;
         }
+
+        node.releaseShared();
 
         while (frame != null) {
             double scalar;
@@ -1998,7 +2004,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                 scalar = node.numKeys() + 1; // internal nodes have +1 children
                 availBytes = node.availableInternalBytes();
                 pageSize = p_length(node.mPage);
-                frame = frame.mParentFrame;
+                frame = frame.pop();
             } finally {
                 node.releaseShared();
             }

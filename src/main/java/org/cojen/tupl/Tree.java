@@ -276,8 +276,9 @@ class Tree extends AbstractView implements Index {
             cursor.autoload(false);
             cursor.random(lowKey, highKey);
             return cursor.key() == null ? new Stats(0, 0, 0, 0, 0) : cursor.analyze();
-        } finally {
+        } catch (Throwable e) {
             cursor.reset();
+            throw e;
         }
     }
 
