@@ -64,6 +64,7 @@ public class TestAll {
             CustomLogTest.class,
             LimitCapacityTest.class,
             TransformerTest.class,
+            AnalyzeTest.class,
         };
 
         String[] names = new String[classes.length];
