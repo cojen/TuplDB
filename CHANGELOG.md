@@ -1,7 +1,11 @@
 Changelog
 =========
 
-v1.2.7
+v1.2.8
+------
+* Added method to analyze index size.
+
+v1.2.7 (2015-10-04)
 ------
 * Fixed reverse view range handling.
 * Fixed compareKeyTo methods for transformed and trimmed views.
