@@ -1975,16 +1975,24 @@ class TreeCursor implements CauseCloseable, Cursor {
 
             int pos = frame.mNodePos;
             int numKeys;
+
+            freeBytes = node.availableBytes();
+            totalBytes = p_length(node.mPage);
+
             if (pos < 0 || (numKeys = node.numKeys()) <= 0) {
                 keyBytes = 0;
                 valueBytes = 0;
             } else {
-                keyBytes = node.retrieveKeyLength(pos) * numKeys;
-                valueBytes = node.retrieveLeafValueLength(pos) * numKeys;
-            }
+                long[] stats = new long[2];
 
-            freeBytes = node.availableBytes();
-            totalBytes = p_length(node.mPage);
+                node.retrieveKeyStats(pos, stats);
+                keyBytes = ((double) stats[0]) * numKeys;
+                totalBytes += ((double) stats[1]) * p_length(node.mPage);
+
+                node.retrieveLeafValueStats(pos, stats);
+                valueBytes = ((double) stats[0]) * numKeys;
+                totalBytes += ((double) stats[1]) * p_length(node.mPage);
+            }
 
             frame = frame.pop();
         } catch (Throwable e) {

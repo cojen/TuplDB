@@ -3833,10 +3833,22 @@ public final class Database implements CauseCloseable, Flushable {
      * Reconstruct a fragmented value.
      */
     byte[] reconstruct(/*P*/ byte[] fragmented, int off, int len) throws IOException {
+        return reconstruct(fragmented, off, len, null);
+    }
+
+    /**
+     * Reconstruct a fragmented value.
+     *
+     * @param stats non-null for stats: [0]: full length, [1]: number of pages (>0 if fragmented)
+     * @return null if stats requested
+     */
+    byte[] reconstruct(/*P*/ byte[] fragmented, int off, int len, long[] stats)
+        throws IOException
+    {
         int header = p_byteGet(fragmented, off++);
         len--;
 
-        int vLen;
+        long vLen;
         switch ((header >> 2) & 0x03) {
         default:
             vLen = p_ushortGetLE(fragmented, off);
@@ -3845,24 +3857,25 @@ public final class Database implements CauseCloseable, Flushable {
         case 1:
             vLen = p_intGetLE(fragmented, off);
             if (vLen < 0) {
-                throw new LargeValueException(vLen & 0xffffffffL);
+                vLen &= 0xffffffffL;
+                if (stats == null) {
+                    throw new LargeValueException(vLen);
+                }
             }
             break;
 
         case 2:
-            long vLenL = p_uint48GetLE(fragmented, off);
-            if (vLenL > Integer.MAX_VALUE) {
-                throw new LargeValueException(vLenL);
+            vLen = p_uint48GetLE(fragmented, off);
+            if (vLen > Integer.MAX_VALUE && stats == null) {
+                throw new LargeValueException(vLen);
             }
-            vLen = (int) vLenL;
             break;
 
         case 3:
-            vLenL = p_longGetLE(fragmented, off);
-            if (vLenL < 0 || vLenL > Integer.MAX_VALUE) {
-                throw new LargeValueException(vLenL);
+            vLen = p_longGetLE(fragmented, off);
+            if (vLen < 0 || (vLen > Integer.MAX_VALUE && stats == null)) {
+                throw new LargeValueException(vLen);
             }
-            vLen = (int) vLenL;
             break;
         }
 
@@ -3873,10 +3886,15 @@ public final class Database implements CauseCloseable, Flushable {
         }
 
         byte[] value;
-        try {
-            value = new byte[vLen];
-        } catch (OutOfMemoryError e) {
-            throw new LargeValueException(vLen, e);
+        if (stats != null) {
+            stats[0] = vLen;
+            value = null;
+        } else {
+            try {
+                value = new byte[(int) vLen];
+            } catch (OutOfMemoryError e) {
+                throw new LargeValueException(vLen, e);
+            }
         }
 
         int vOff = 0;
@@ -3885,12 +3903,16 @@ public final class Database implements CauseCloseable, Flushable {
             int inLen = p_ushortGetLE(fragmented, off);
             off += 2;
             len -= 2;
-            p_copyToArray(fragmented, off, value, vOff, inLen);
+            if (value != null) {
+                p_copyToArray(fragmented, off, value, vOff, inLen);
+            }
             off += inLen;
             len -= inLen;
             vOff += inLen;
             vLen -= inLen;
         }
+
+        long pagesRead = 0;
 
         if ((header & 0x01) == 0) {
             // Direct pointers.
@@ -3901,13 +3923,16 @@ public final class Database implements CauseCloseable, Flushable {
                 int pLen;
                 if (nodeId == 0) {
                     // Reconstructing a sparse value. Array is already zero-filled.
-                    pLen = Math.min(vLen, mPageSize);
+                    pLen = Math.min((int) vLen, mPageSize);
                 } else {
                     Node node = nodeMapLoadFragment(nodeId);
+                    pagesRead++;
                     try {
                         /*P*/ byte[] page = node.mPage;
-                        pLen = Math.min(vLen, p_length(page));
-                        p_copyToArray(page, 0, value, vOff, pLen);
+                        pLen = Math.min((int) vLen, p_length(page));
+                        if (value != null) {
+                            p_copyToArray(page, 0, value, vOff, pLen);
+                        }
                     } finally {
                         node.releaseShared();
                     }
@@ -3920,9 +3945,14 @@ public final class Database implements CauseCloseable, Flushable {
             long inodeId = p_uint48GetLE(fragmented, off);
             if (inodeId != 0) {
                 Node inode = nodeMapLoadFragment(inodeId);
+                pagesRead++;
                 int levels = calculateInodeLevels(vLen);
-                readMultilevelFragments(levels, inode, value, 0, vLen);
+                pagesRead += readMultilevelFragments(levels, inode, value, 0, vLen);
             }
+        }
+
+        if (stats != null) {
+            stats[1] = pagesRead;
         }
 
         return value;
@@ -3931,13 +3961,17 @@ public final class Database implements CauseCloseable, Flushable {
     /**
      * @param level inode level; at least 1
      * @param inode shared latched parent inode; always released by this method
-     * @param value slice of complete value being reconstructed; initially filled with zeros
+     * @param value slice of complete value being reconstructed; initially filled with zeros;
+     * pass null for stats only
+     * @return number of pages read
      */
-    private void readMultilevelFragments(int level, Node inode,
-                                         byte[] value, int voffset, int vlength)
+    private long readMultilevelFragments(int level, Node inode,
+                                         byte[] value, int voffset, long vlength)
         throws IOException
     {
         try {
+            long pagesRead = 0;
+
             /*P*/ byte[] page = inode.mPage;
             level--;
             long levelCap = levelCap(level);
@@ -3950,17 +3984,23 @@ public final class Database implements CauseCloseable, Flushable {
 
                 if (childNodeId != 0) {
                     Node childNode = nodeMapLoadFragment(childNodeId);
+                    pagesRead++;
                     if (level <= 0) {
-                        p_copyToArray(childNode.mPage, 0, value, voffset, len);
+                        if (value != null) {
+                            p_copyToArray(childNode.mPage, 0, value, voffset, len);
+                        }
                         childNode.releaseShared();
                     } else {
-                        readMultilevelFragments(level, childNode, value, voffset, len);
+                        pagesRead += readMultilevelFragments
+                            (level, childNode, value, voffset, len);
                     }
                 }
 
                 vlength -= len;
                 voffset += len;
             }
+
+            return pagesRead;
         } finally {
             inode.releaseShared();
         }
