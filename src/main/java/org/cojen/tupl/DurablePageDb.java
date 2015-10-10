@@ -831,7 +831,7 @@ final class DurablePageDb extends PageDb {
         }
 
         // Ensure all writes are flushed before flushing the header. There's
-        // otherwise no ordering guarantees. Metadata should also be be flushed
+        // otherwise no ordering guarantees. Metadata should also be flushed
         // first, because the header won't affect it.
         array.sync(true);
 
