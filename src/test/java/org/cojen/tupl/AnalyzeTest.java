@@ -98,12 +98,33 @@ public class AnalyzeTest {
 
         Index.Stats average = total.divideAndRound(probeCount);
 
-        assertEquals(average.entryCount(), count, count * 0.05);
-        assertEquals(average.keyBytes(), keyBytes, keyBytes * 0.05);
-        assertEquals(average.valueBytes(), valueBytes, valueBytes * 0.05);
+        assertEquals(count, average.entryCount(), count * 0.05);
+        assertEquals(keyBytes, average.keyBytes(), keyBytes * 0.05);
+        assertEquals(valueBytes, average.valueBytes(), valueBytes * 0.05);
 
         // Compare to emperical data.
-        assertEquals(average.freeBytes(), 2200000, 2200000 * 0.05);
-        assertEquals(average.totalBytes(), 9080000, 9080000 * 0.05);
+        assertEquals(2200000, average.freeBytes(), 2200000 * 0.05);
+        assertEquals(9080000, average.totalBytes(), 9080000 * 0.05);
+    }
+
+    @Test
+    public void analyzeLargeKeyAndValue() throws Exception {
+        Index ix = openIndex("stuff");
+
+        byte[] key = new byte[10000];
+        byte[] value = new byte[999999];
+
+        ix.store(Transaction.BOGUS, key, value);
+
+        Index.Stats stats = ix.analyze(null, null);
+        assertEquals(1, stats.entryCount(), 0);
+        assertEquals(key.length, stats.keyBytes(), 0);
+        assertEquals(value.length, stats.valueBytes(), 0);
+
+        // Compare to emperical data.
+        assertEquals(2242, stats.freeBytes(), 0);
+
+        // Compare to expected data.
+        assertEquals(1019904, stats.totalBytes(), 0);
     }
 }

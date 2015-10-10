@@ -1528,8 +1528,9 @@ final class Node extends Latch implements DatabaseAccess {
 
     /**
      * @param pos position as provided by binarySearch; must be positive
+     * @param stats [0]: full length, [1]: number of pages (>0 if fragmented)
      */
-    long retrieveKeyLength(int pos) throws IOException {
+    void retrieveKeyStats(int pos, long[] stats) throws IOException {
         final /*P*/ byte[] page = mPage;
         int loc = p_ushortGetLE(page, searchVecStart() + pos);
 
@@ -1540,12 +1541,13 @@ final class Node extends Latch implements DatabaseAccess {
             int header = keyLen;
             keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++);
             if ((header & ENTRY_FRAGMENTED) != 0) {
-                // FIXME return dbAccess.getDatabase().reconstructKey(page, loc, keyLen);
-                return 0;
+                getDatabase().reconstruct(page, loc, keyLen, stats);
+                return;
             }
         }
 
-        return keyLen;
+        stats[0] = keyLen;
+        stats[1] = 0;
     }
 
     /**
@@ -1759,8 +1761,9 @@ final class Node extends Latch implements DatabaseAccess {
 
     /**
      * @param pos position as provided by binarySearch; must be positive
+     * @param stats [0]: full length, [1]: number of pages (>0 if fragmented)
      */
-    long retrieveLeafValueLength(int pos) throws IOException {
+    void retrieveLeafValueStats(int pos, long[] stats) throws IOException {
         final /*P*/ byte[] page = mPage;
         int loc = p_ushortGetLE(page, searchVecStart() + pos);
         loc += keyLengthAtLoc(page, loc);
@@ -1778,15 +1781,18 @@ final class Node extends Latch implements DatabaseAccess {
                            | (p_ubyteGet(page, loc++) << 8) | p_ubyteGet(page, loc++));
             } else {
                 // ghost
-                return 0;
+                stats[0] = 0;
+                stats[1] = 0;
+                return;
             }
             if ((header & ENTRY_FRAGMENTED) != 0) {
-                // FIXME return dbAccess.getDatabase().reconstruct(page, loc, len);
-                return 0;
+                getDatabase().reconstruct(page, loc, len, stats);
+                return;
             }
         }
 
-        return len;
+        stats[0] = len;
+        stats[1] = 0;
     }
 
     /**
