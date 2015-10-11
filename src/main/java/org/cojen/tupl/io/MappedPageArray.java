@@ -29,6 +29,8 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import com.sun.jna.Platform;
+
 import org.cojen.tupl.DatabaseFullException;
 
 /**
@@ -56,8 +58,11 @@ public abstract class MappedPageArray extends PageArray {
             options = EnumSet.noneOf(OpenOption.class);
         }
 
-        // FIXME: select proper OS variant
-        return new WindowsMappedPageArray(pageSize, pageCount, file, options);
+        if (Platform.isWindows()) {
+            return new WindowsMappedPageArray(pageSize, pageCount, file, options);
+        } else {
+            return new PosixMappedPageArray(pageSize, pageCount, file, options);
+        }
     }
 
     MappedPageArray(int pageSize, long pageCount, EnumSet<OpenOption> options) {
