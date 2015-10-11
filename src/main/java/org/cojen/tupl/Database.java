@@ -3104,10 +3104,8 @@ public final class Database implements CauseCloseable, Flushable {
         }
 
         node = allocLatchedNode(nodeId);
-        node.mId = nodeId;
         node.type(TYPE_FRAGMENT);
-
-        node.mCachedState = readNodePage(nodeId, node.mPage);
+        readNode(node, nodeId);
         node.downgrade();
 
         nodeMapPut(node);
@@ -3135,11 +3133,11 @@ public final class Database implements CauseCloseable, Flushable {
         }
 
         node = allocLatchedNode(nodeId);
-        node.mId = nodeId;
         node.type(TYPE_FRAGMENT);
-
         if (read) {
-            node.mCachedState = readNodePage(nodeId, node.mPage);
+            readNode(node, nodeId);
+        } else {
+            node.mId = nodeId;
         }
 
         nodeMapPut(node);
@@ -4109,9 +4107,8 @@ public final class Database implements CauseCloseable, Flushable {
         Node node = nodeMapGetAndRemove(nodeId);
         if (node == null) {
             node = allocLatchedNode(nodeId, NodeUsageList.MODE_UNEVICTABLE);
-            node.mId = nodeId;
             node.type(TYPE_FRAGMENT);
-            node.mCachedState = readNodePage(nodeId, node.mPage);
+            readNode(node, nodeId);
         }
         return node;
     }
@@ -4204,35 +4201,35 @@ public final class Database implements CauseCloseable, Flushable {
     }
 
     /**
-     * @return initial cached state for node
+     * Reads the node page, sets the id and cached state. Node must be latched exclusively.
      */
-    byte readNodePage(long id, /*P*/ byte[] page) throws IOException {
-        mPageDb.readPage(id, page);
+    void readNode(Node node, long id) throws IOException {
+        mPageDb.readPage(id, node.mPage);
+        node.mId = id;
 
         if (!mHasCheckpointed) {
             // Read is reloading an evicted node which is known to be dirty.
             mSharedCommitLock.lock();
             // Need to check again once full lock has been acquired.
-            byte state = mHasCheckpointed ? CACHED_CLEAN : mCommitState;
+            node.mCachedState = mHasCheckpointed ? CACHED_CLEAN : mCommitState;
             mSharedCommitLock.unlock();
-            return state;
+        } else {
+            // NOTE: An optimization is possible here, but it's a bit tricky. Too many pages
+            // are allocated when evictions are high, write rate is high, and commits are
+            // bogged down.  Keep some sort of cache of ids known to be dirty. If reloaded
+            // before commit, then they're still dirty.
+            //
+            // A Bloom filter is not appropriate, because of false positives. A random evicting
+            // cache works well -- it has no collision chains. Evict whatever else was there in
+            // the slot. An array of longs should suffice.
+            //
+            // When a child node is loaded with a dirty state, the parent nodes must be updated
+            // as well. This might force them to be evicted, and then the optimization is
+            // lost. A better approach would avoid the optimization if the parent node is clean
+            // or doesn't match the current commit state.
+
+            node.mCachedState = CACHED_CLEAN;
         }
-
-        // NOTE: An optimization is possible here, but it's a bit tricky. Too many pages are
-        // allocated when evictions are high, write rate is high, and commits are bogged down.
-        // Keep some sort of cache of ids known to be dirty. If reloaded before commit, then
-        // they're still dirty.
-        //
-        // A Bloom filter is not appropriate, because of false positives. A random evicting
-        // cache works well -- it has no collision chains. Evict whatever else was there in the
-        // slot. An array of longs should suffice.
-        //
-        // When a child node is loaded with a dirty state, the parent nodes must be updated as
-        // well. This might force them to be evicted, and then the optimization is lost. A
-        // better approach would avoid the optimization if the parent node is clean or doesn't
-        // match the current commit state.
-
-        return CACHED_CLEAN;
     }
 
     void checkpoint(boolean force, long sizeThreshold, long delayThresholdNanos)
