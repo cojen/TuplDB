@@ -798,8 +798,7 @@ final class Node extends Latch implements DatabaseAccess {
      * an exception is thrown.
      */
     void read(Database db, long id) throws IOException {
-        mCachedState = db.readNodePage(id, mPage);
-        mId = id;
+        db.readNode(this, id);
         try {
             readFields();
         } catch (IllegalStateException e) {
