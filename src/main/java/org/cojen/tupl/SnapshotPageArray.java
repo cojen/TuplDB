@@ -132,6 +132,45 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
+    public long directReadPointer(long index) throws IOException {
+        if (mCache == null) {
+            throw new IllegalStateException();
+        }
+        return mSource.directReadPointer(index);
+    }
+
+    @Override
+    public long copyPage(long srcIndex, long dstIndex) throws IOException {
+        preCopyPage(dstIndex);
+        return mSource.copyPage(srcIndex, dstIndex);
+    }
+
+    @Override
+    public long copyPageFromPointer(long srcPointer, long dstIndex) throws IOException {
+        preCopyPage(dstIndex);
+        return mSource.copyPageFromPointer(srcPointer, dstIndex);
+    }
+
+    private void preCopyPage(long dstIndex) throws IOException {
+        if (mCache == null) {
+            throw new IllegalStateException();
+        }
+
+        if (dstIndex < 0) {
+            throw new IndexOutOfBoundsException(String.valueOf(dstIndex));
+        }
+
+        Object obj = mSnapshots;
+        if (obj != null) {
+            if (obj instanceof SnapshotImpl) {
+                ((SnapshotImpl) obj).capture(dstIndex);
+            } else for (SnapshotImpl snapshot : (SnapshotImpl[]) obj) {
+                snapshot.capture(dstIndex);
+            }
+        }
+    }
+
+    @Override
     public void sync(boolean metadata) throws IOException {
         mSource.sync(metadata);
     }

@@ -122,6 +122,39 @@ public class StripedPageArray extends PageArray {
     }
 
     @Override
+    public long directReadPointer(long index) throws IOException {
+        PageArray[] arrays = mArrays;
+        int stripes = arrays.length;
+        return arrays[(int) (index % stripes)].directReadPointer(index / stripes);
+    }
+
+    @Override
+    public long copyPage(long srcIndex, long dstIndex) throws IOException {
+        PageArray[] arrays = mArrays;
+        int stripes = arrays.length;
+
+        PageArray src = arrays[(int) (srcIndex % stripes)];
+        srcIndex /= stripes;
+
+        PageArray dst = arrays[(int) (dstIndex % stripes)];
+        dstIndex /= stripes;
+
+        if (src == dst) {
+            return dst.copyPage(srcIndex, dstIndex);
+        } else {
+            return dst.copyPageFromPointer(src.directReadPointer(srcIndex), dstIndex);
+        }
+    }
+
+    @Override
+    public long copyPageFromPointer(long srcPointer, long dstIndex) throws IOException {
+        PageArray[] arrays = mArrays;
+        int stripes = arrays.length;
+        return arrays[(int) (dstIndex % stripes)]
+            .copyPageFromPointer(srcPointer, dstIndex / stripes);
+    }
+
+    @Override
     public void sync(boolean metadata) throws IOException {
         Syncer[] syncers = mSyncers;
         int i;

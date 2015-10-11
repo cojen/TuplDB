@@ -195,6 +195,14 @@ abstract class PageDb implements CauseCloseable {
      */
     public abstract long allocatePages(long pageCount) throws IOException;
 
+    public long directReadPointer(long id) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    public long copyPage(long srcId, long dstId) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
     /**
      * Access the shared commit lock, which prevents commits while held.
      */
