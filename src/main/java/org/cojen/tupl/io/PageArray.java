@@ -149,6 +149,18 @@ public abstract class PageArray implements CauseCloseable {
     public void uncachePage(long index) throws IOException {
     }
 
+    public long directReadPointer(long index) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    public long copyPage(long srcIndex, long dstIndex) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    public long copyPageFromPointer(long srcPointer, long dstIndex) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
     /**
      * Durably flushes all writes to the underlying device.
      *

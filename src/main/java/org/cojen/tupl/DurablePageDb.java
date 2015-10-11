@@ -522,6 +522,16 @@ final class DurablePageDb extends PageDb {
     }
 
     @Override
+    public long directReadPointer(long id) throws IOException {
+        return mPageArray.directReadPointer(id);
+    }
+
+    @Override
+    public long copyPage(long srcId, long dstId) throws IOException {
+        return mPageArray.copyPage(srcId, dstId);
+    }
+
+    @Override
     public boolean compactionStart(long targetPageCount) throws IOException {
         mCommitLock.writeLock().lock();
         try {
