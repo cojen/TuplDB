@@ -165,7 +165,10 @@ public abstract class MappedPageArray extends PageArray {
         }
     }
 
-    public void copyPage(long srcIndex, long dstIndex) throws IOException {
+    /**
+     * @return direct pointer to destination
+     */
+    public long copyPage(long srcIndex, long dstIndex) throws IOException {
         readCheck(srcIndex);
         writeCheck(dstIndex);
 
@@ -174,9 +177,11 @@ public abstract class MappedPageArray extends PageArray {
         try {
             int pageSize = mPageSize;
             long ptr = mappingPtr();
-            ByteBuffer dst = DirectAccess.ref(ptr + dstIndex * pageSize, pageSize);
+            long dstPtr = ptr + dstIndex * pageSize;
+            ByteBuffer dst = DirectAccess.ref(dstPtr, pageSize);
             ByteBuffer src = DirectAccess.ref2(ptr + srcIndex * pageSize, pageSize);
             dst.put(src);
+            return dstPtr;
         } finally {
             lock.unlock();
         }
