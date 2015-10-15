@@ -784,10 +784,10 @@ final class Node extends Latch implements DatabaseAccess {
             TreeCursorFrame parentFrame = frame.mParentFrame;
             if (parentFrame == null) {
                 parentFrame = new TreeCursorFrame();
+                parentFrame.bind(this, pos);
             } else {
-                parentFrame.unbind();
+                parentFrame.rebind(this, pos);
             }
-            parentFrame.bind(this, pos);
             frame.mParentFrame = parentFrame;
             frame = frame.mPrevCousin;
         }
@@ -2554,8 +2554,7 @@ final class Node extends Latch implements DatabaseAccess {
             if (newPos < 0 |
                 ((newPos == 0 & mask != 0) && compareUnsigned(frame.mNotFoundKey, newKey) < 0))
             {
-                frame.unbind();
-                frame.bind(left, (leftEndPos + newPos) ^ mask);
+                frame.rebind(left, (leftEndPos + newPos) ^ mask);
                 frame.mParentFrame.mNodePos -= 2;
             } else {
                 frame.mNodePos = newPos ^ mask;
@@ -2757,8 +2756,7 @@ final class Node extends Latch implements DatabaseAccess {
             if (newPos >= 0 &
                 ((newPos != 0 | mask == 0) || compareUnsigned(frame.mNotFoundKey, newKey) >= 0))
             {
-                frame.unbind();
-                frame.bind(right, newPos ^ mask);
+                frame.rebind(right, newPos ^ mask);
                 frame.mParentFrame.mNodePos += 2;
             }
             frame = prev;
@@ -3238,8 +3236,7 @@ final class Node extends Latch implements DatabaseAccess {
             int framePos = frame.mNodePos;
             int newPos = framePos - moved;
             if (newPos < 0) {
-                frame.unbind();
-                frame.bind(left, leftEndPos + newPos);
+                frame.rebind(left, leftEndPos + newPos);
                 frame.mParentFrame.mNodePos -= 2;
             } else {
                 frame.mNodePos = newPos;
@@ -3427,8 +3424,7 @@ final class Node extends Latch implements DatabaseAccess {
             TreeCursorFrame prev = frame.mPrevCousin;
             int newPos = frame.mNodePos - adjust;
             if (newPos >= 0) {
-                frame.unbind();
-                frame.bind(right, newPos);
+                frame.rebind(right, newPos);
                 frame.mParentFrame.mNodePos += 2;
             }
             frame = prev;
@@ -3893,8 +3889,7 @@ final class Node extends Latch implements DatabaseAccess {
             // Capture previous frame from linked list before changing the links.
             TreeCursorFrame prev = frame.mPrevCousin;
             int framePos = frame.mNodePos;
-            frame.unbind();
-            frame.bind(leftNode, framePos + (framePos < 0 ? (-leftEndPos) : leftEndPos));
+            frame.rebind(leftNode, framePos + (framePos < 0 ? (-leftEndPos) : leftEndPos));
             frame = prev;
         }
 
@@ -3962,8 +3957,7 @@ final class Node extends Latch implements DatabaseAccess {
             // Capture previous frame from linked list before changing the links.
             TreeCursorFrame prev = frame.mPrevCousin;
             int framePos = frame.mNodePos;
-            frame.unbind();
-            frame.bind(leftNode, leftEndPos + framePos);
+            frame.rebind(leftNode, leftEndPos + framePos);
             frame = prev;
         }
 

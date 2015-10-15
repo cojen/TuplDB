@@ -1858,49 +1858,40 @@ class TreeCursor implements CauseCloseable, Cursor {
                         }
                     }
 
-                    // Node is empty or out of bounds, so pop up the tree.
-                    TreeCursorFrame parent = frame.mParentFrame;
-                    node.releaseExclusive();
+                    // Node is empty or out of bounds, so start over.
+
+                    mLeaf = frame;
+                    resetLatched(node);
 
                     // Before continuing, check if range has anything in it at all. This must
                     // be performed each time, to account for concurrent updates.
-                    TreeCursor temp = new TreeCursor(mTree);
+
+                    final Transaction oTxn = mTxn;
+                    final boolean oKeyOnly = mKeyOnly;
                     try {
-                        temp.mTxn = Transaction.BOGUS;
-                        temp.mKeyOnly = true;
+                        mTxn = Transaction.BOGUS;
+                        mKeyOnly = true;
                         if (lowKey == null) {
-                            temp.first();
+                            first();
                         } else {
-                            temp.findGe(lowKey);
+                            findGe(lowKey);
                         }
-                        if (temp.mKey == null ||
-                            (highKey != null && compareUnsigned(temp.mKey, highKey) >= 0))
+                        if (mKey == null ||
+                            (highKey != null && compareUnsigned(mKey, highKey) >= 0))
                         {
-                            reset();
                             return LockResult.UNOWNED;
                         }
                     } finally {
-                        temp.reset();
+                        reset();
+                        mTxn = oTxn;
+                        mKeyOnly = oKeyOnly;
                     }
 
-                    if (parent == null) {
-                        // Usually the root frame refers to the root node, but
-                        // it can be wrong if the tree height is changing.
-                        Node root = mTree.mRoot;
-                        if (node == root) {
-                            return LockResult.UNOWNED;
-                        }
-                        root.acquireExclusive();
-                        node = root;
-                    } else {
-                        frame = parent;
-                        node = frame.acquireExclusive();
-                    }
-
-                    continue search;
+                    continue start;
                 }
 
-                frame.bind(node, pos);
+                // Need to call rebind in case split handling above already bound the frame.
+                frame.rebind(node, pos);
 
                 if (node.isLeaf()) {
                     mLeaf = frame;
@@ -1938,8 +1929,17 @@ class TreeCursor implements CauseCloseable, Cursor {
                         if (result == LockResult.ACQUIRED) {
                             txn.unlock();
                         }
+
                         frame = leafExclusiveNotSplit();
-                        result = rnd.nextBoolean() ? next(txn, frame) : previous(txn, frame);
+
+                        if (rnd.nextBoolean()) {
+                            result = highKey == null ? next(txn, frame)
+                                : nextCmp(highKey, LIMIT_LT, frame);
+                        } else {
+                            result = lowKey == null ? previous(txn, frame)
+                                : previousCmp(lowKey, LIMIT_GE, frame);
+                        }
+
                         if (mValue == null) {
                             // Nothing but ghosts in selected direction, so start over.
                             continue start;
@@ -1947,12 +1947,12 @@ class TreeCursor implements CauseCloseable, Cursor {
                     }
 
                     return result;
-                } else {
-                    try {
-                        node = latchChild(node, pos, true);
-                    } catch (Throwable e) {
-                        throw cleanup(e, frame);
-                    }
+                }
+
+                try {
+                    node = latchChild(node, pos, true);
+                } catch (Throwable e) {
+                    throw cleanup(e, frame);
                 }
 
                 frame = new TreeCursorFrame(frame);
