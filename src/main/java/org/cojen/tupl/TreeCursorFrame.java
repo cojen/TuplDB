@@ -99,7 +99,7 @@ final class TreeCursorFrame {
     }
 
     /** 
-     * Bind this frame to a tree node. Called with exclusive latch held.
+     * Bind this unbound frame to a tree node. Called with exclusive latch held.
      */
     void bind(Node node, int nodePos) {
         mNode = node;
@@ -113,9 +113,17 @@ final class TreeCursorFrame {
     }
 
     /** 
+     * Bind or rebind this frame to a tree node. Called with exclusive latch held.
+     */
+    void rebind(Node node, int nodePos) {
+        unbind();
+        bind(node, nodePos);
+    }
+
+    /** 
      * Unbind this frame from a tree node. Called with exclusive latch held.
      */
-    void unbind() {
+    private void unbind() {
         TreeCursorFrame prev = mPrevCousin;
         TreeCursorFrame next = mNextCousin;
         if (prev != null) {
@@ -126,7 +134,10 @@ final class TreeCursorFrame {
             next.mPrevCousin = prev;
             mNextCousin = null;
         } else {
-            mNode.mLastCursorFrame = prev;
+            Node node = mNode;
+            if (node != null) {
+                node.mLastCursorFrame = prev;
+            }
         }
     }
 
