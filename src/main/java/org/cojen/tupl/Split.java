@@ -206,8 +206,7 @@ final class Split {
                 if (pos <= highestPos) {
                     // Nothing to do.
                 } else {
-                    frame.unbind();
-                    frame.bind(sibling, pos - highestPos - 2);
+                    frame.rebind(sibling, pos - highestPos - 2);
                 }
                 return;
             }
@@ -227,15 +226,13 @@ final class Split {
                 }
             }
 
-            frame.unbind();
-            frame.bind(sibling, ~(pos - highestPos - 2));
+            frame.rebind(sibling, ~(pos - highestPos - 2));
         } else {
             int highestPos = sibling.highestPos();
 
             if (pos >= 0) {
                 if (pos <= highestPos) {
-                    frame.unbind();
-                    frame.bind(sibling, pos);
+                    frame.rebind(sibling, pos);
                 } else {
                     frame.mNodePos = pos - highestPos - 2;
                 }
@@ -245,16 +242,14 @@ final class Split {
             pos = ~pos;
 
             if (pos <= highestPos) {
-                frame.unbind();
-                frame.bind(sibling, ~pos);
+                frame.rebind(sibling, ~pos);
                 return;
             }
 
             if (pos == highestPos + 2) {
                 byte[] key = frame.mNotFoundKey;
                 if (compare(key) < 0) {
-                    frame.unbind();
-                    frame.bind(sibling, ~pos);
+                    frame.rebind(sibling, ~pos);
                     return;
                 }
             }
