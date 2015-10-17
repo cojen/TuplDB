@@ -130,7 +130,7 @@ final class NodeUsageList extends Latch {
 
                     releaseExclusive();
 
-                    if ((node = Node.evict(node, mDatabase)) != null) {
+                    if (node.evict(mDatabase)) {
                         if ((mode & MODE_UNEVICTABLE) != 0) {
                             node.mUsageList.makeUnevictable(node);
                         }
@@ -152,7 +152,7 @@ final class NodeUsageList extends Latch {
                     }
                 } else {
                     try {
-                        if ((node = Node.evict(node, mDatabase)) != null) {
+                        if (node.evict(mDatabase)) {
                             if ((mode & MODE_UNEVICTABLE) != 0) {
                                 NodeUsageList usageList = node.mUsageList;
                                 if (usageList == this) {

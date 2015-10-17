@@ -218,7 +218,7 @@ public final class Database implements CauseCloseable, Flushable {
 
     private final NodeDirtyList mDirtyList;
 
-    // Map of all loaded non-root nodes.
+    // Map of all loaded nodes.
     private final Node[] mNodeMapTable;
     private final Latch[] mNodeMapLatches;
 
@@ -3000,7 +3000,7 @@ public final class Database implements CauseCloseable, Flushable {
                 if (node.mId == nodeId) {
                     return node;
                 }
-            } while ((node = node.mNodeChainNext) != null && --limit != 0);
+            } while ((node = node.mNodeMapNext) != null && --limit != 0);
         }
 
         // Again with shared partition latch held.
@@ -3015,7 +3015,7 @@ public final class Database implements CauseCloseable, Flushable {
                 latch.releaseShared();
                 return node;
             }
-            node = node.mNodeChainNext;
+            node = node.mNodeMapNext;
         }
 
         latch.releaseShared();
@@ -3049,10 +3049,10 @@ public final class Database implements CauseCloseable, Flushable {
                 latch.releaseExclusive();
                 throw new AssertionError("Already in NodeMap: " + node + ", " + e + ", " + hash);
             }
-            e = e.mNodeChainNext;
+            e = e.mNodeMapNext;
         }
 
-        node.mNodeChainNext = table[index];
+        node.mNodeMapNext = table[index];
         table[index] = node;
 
         latch.releaseExclusive();
@@ -3071,17 +3071,17 @@ public final class Database implements CauseCloseable, Flushable {
         final int index = hash & (table.length - 1);
         Node e = table[index];
         if (e == node) {
-            table[index] = e.mNodeChainNext;
+            table[index] = e.mNodeMapNext;
         } else while (e != null) {
-            Node next = e.mNodeChainNext;
+            Node next = e.mNodeMapNext;
             if (next == node) {
-                e.mNodeChainNext = next.mNodeChainNext;
+                e.mNodeMapNext = next.mNodeMapNext;
                 break;
             }
             e = next;
         }
 
-        node.mNodeChainNext = null;
+        node.mNodeMapNext = null;
 
         latch.releaseExclusive();
     }
@@ -3180,8 +3180,8 @@ public final class Database implements CauseCloseable, Flushable {
             if (e != null) {
                 e.delete();
                 Node next;
-                while ((next = e.mNodeChainNext) != null) {
-                    e.mNodeChainNext = null;
+                while ((next = e.mNodeMapNext) != null) {
+                    e.mNodeMapNext = null;
                     e = next;
                 }
                 mNodeMapTable[i] = null;
