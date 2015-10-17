@@ -82,7 +82,7 @@ final class Node extends Latch implements DatabaseAccess {
     Node mMoreUsed; // points to more recently used node
     Node mLessUsed; // points to less recently used node
 
-    // Links within dirty list, guarded by PageAllocator.
+    // Links within dirty list, guarded by NodeDirtyList.
     Node mNextDirty;
     Node mPrevDirty;
 
@@ -221,8 +221,8 @@ final class Node extends Latch implements DatabaseAccess {
     private int mSearchVecEnd;
     /*P*/ // ]
 
-    // Next in NodeMap collision chain or lower node in UndoLog.
-    Node mNodeChainNext;
+    // Next in NodeMap collision chain.
+    Node mNodeMapNext;
 
     // Linked stack of TreeCursorFrames bound to this Node.
     transient TreeCursorFrame mLastCursorFrame;
@@ -880,86 +880,43 @@ final class Node extends Latch implements DatabaseAccess {
 
     /**
      * Caller must hold exclusive latch on node. Latch is released by this
-     * method when null is returned or if an exception is thrown. If another
-     * node is returned, it is latched exclusively and original is released.
+     * method when false is returned or if an exception is thrown.
      *
-     * @return original or another node to be evicted; null if cannot evict
+     * @return false if cannot evict
      */
-    static Node evict(Node node, Database db) throws IOException {
-        if (node.type() != TYPE_UNDO_LOG) {
-            return node.evictTreeNode(db);
-        }
-
-        while (true) {
-            Node child = node.mNodeChainNext;
-            if (child != null) {
-                long childId = p_longGetLE(node.mPage, UndoLog.I_LOWER_NODE_ID);
-                // Check id match before lock attempt, as a quick short
-                // circuit if child has already been evicted.
-                if (childId == child.mId) {
-                    if (child.tryAcquireExclusive()) {
-                        // Check again in case another evict snuck in.
-                        if (childId == child.mId && child.mCachedState != CACHED_CLEAN) {
-                            // Try evicting the child instead.
-                            node.releaseExclusive();
-                            node = child;
-                            continue;
-                        }
-                        child.releaseExclusive();
-                    } else {
-                        // If latch cannot be acquired, assume child is still
-                        // in use, and so the parent node should be kept.
-                        node.releaseExclusive();
-                        return null;
-                    }
-                }
-            }
-            node.doEvict(db);
-            return node;
-        }
-    }
-
-    private Node evictTreeNode(Database db) throws IOException {
+    boolean evict(Database db) throws IOException {
         if (mLastCursorFrame != null || mSplit != null) {
             // Cannot evict if in use by a cursor or if splitting. The split
             // check is redundant, since a node cannot be in a split state
             // without a cursor registered against it.
             releaseExclusive();
-            return null;
+            return false;
         }
 
-        // Check if <= 0 (already evicted) or stub.
-        if (mId > STUB_ID) {
-            doEvict(db);
-        }
-
-        return this;
-    }
-
-    /**
-     * Caller must hold exclusive latch on node. Latch is released by this
-     * method when an exception is thrown.
-     */
-    void doEvict(Database db) throws IOException {
         try {
-            long id = mId;
+            // Check if <= 0 (already evicted) or stub.
+            if (mId > STUB_ID) {
+                long id = mId;
 
-            PageDb pageDb = db.mPageDb;
-            if (mCachedState == CACHED_CLEAN) {
-                // Try to move to a secondary cache.
-                pageDb.cachePage(id, mPage);
-            } else {
-                /*P*/ byte[] page = prepareWrite();
-                /*P*/ byte[] newPage = pageDb.evictPage(id, page);
-                if (newPage != page) {
-                    mPage = newPage;
+                PageDb pageDb = db.mPageDb;
+                if (mCachedState == CACHED_CLEAN) {
+                    // Try to move to a secondary cache.
+                    pageDb.cachePage(id, mPage);
+                } else {
+                    /*P*/ byte[] page = prepareWrite();
+                    /*P*/ byte[] newPage = pageDb.evictPage(id, page);
+                    if (newPage != page) {
+                        mPage = newPage;
+                    }
+                    mCachedState = CACHED_CLEAN;
                 }
-                mCachedState = CACHED_CLEAN;
+
+                db.nodeMapRemove(this, Utils.hash(id));
+                mId = 0;
+                type(TYPE_NONE);
             }
 
-            db.nodeMapRemove(this, Utils.hash(id));
-            mId = 0;
-            type(TYPE_NONE);
+            return true;
         } catch (Throwable e) {
             releaseExclusive();
             throw e;
