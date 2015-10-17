@@ -91,7 +91,6 @@ public abstract class MappedPageArray extends PageArray {
     public void setPageCount(long count) {
     }
 
-    @Override
     public void readPage(long index, byte[] buf, int offset, int length)
         throws IOException
     {
@@ -123,7 +122,6 @@ public abstract class MappedPageArray extends PageArray {
         }
     }
 
-    @Override
     public void writePage(long index, byte[] buf, int offset) throws IOException {
         writeCheck(index);
 
