@@ -96,11 +96,15 @@ class PageAccessTransformer {
                 int tagIndex = typeIndex + 3;
                 if (tagIndex < line.length()) {
                     switch (line.charAt(tagIndex)) {
-                    case '{':
+                    case '[':
                         if (mState != STATE_NORMAL) {
                             throw new IllegalStateException();
                         }
-                        mState = STATE_DISCARD;
+                        if (++tagIndex < line.length() && line.charAt(tagIndex) == '|') {
+                            mState = STATE_SUBSTITUTE;
+                        } else {
+                            mState = STATE_DISCARD;
+                        }
                         return null;
                     case '|':
                         if (mState != STATE_DISCARD) {
@@ -108,7 +112,7 @@ class PageAccessTransformer {
                         }
                         mState = STATE_SUBSTITUTE;
                         return null;
-                    case '}':
+                    case ']':
                         if (mState == STATE_NORMAL) {
                             throw new IllegalStateException();
                         }

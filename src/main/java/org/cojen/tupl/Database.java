@@ -3104,7 +3104,9 @@ public final class Database implements CauseCloseable, Flushable {
         }
 
         node = allocLatchedNode(nodeId);
+        /*P*/ // [
         node.type(TYPE_FRAGMENT);
+        /*P*/ // ]
         readNode(node, nodeId);
         node.downgrade();
 
@@ -3133,7 +3135,9 @@ public final class Database implements CauseCloseable, Flushable {
         }
 
         node = allocLatchedNode(nodeId);
+        /*P*/ // [
         node.type(TYPE_FRAGMENT);
+        /*P*/ // ]
         if (read) {
             readNode(node, nodeId);
         } else {
@@ -3279,7 +3283,9 @@ public final class Database implements CauseCloseable, Flushable {
     Node allocDirtyFragmentNode() throws IOException {
         Node node = allocDirtyNode();
         nodeMapPut(node);
+        /*P*/ // [
         node.type(TYPE_FRAGMENT);
+        /*P*/ // ]
         return node;
     }
 
@@ -4107,7 +4113,9 @@ public final class Database implements CauseCloseable, Flushable {
         Node node = nodeMapGetAndRemove(nodeId);
         if (node == null) {
             node = allocLatchedNode(nodeId, NodeUsageList.MODE_UNEVICTABLE);
+            /*P*/ // [
             node.type(TYPE_FRAGMENT);
+            /*P*/ // ]
             readNode(node, nodeId);
         }
         return node;
