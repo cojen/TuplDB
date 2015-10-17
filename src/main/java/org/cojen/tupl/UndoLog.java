@@ -351,26 +351,25 @@ final class UndoLog implements DatabaseAccess {
             }
 
             Node newNode;
-            {
-                try {
-                    newNode = allocUnevictableNode(node.mId);
-                } catch (Throwable e) {
-                    // Undo the damage.
-                    while (node != mNode) {
-                        node = popNode(node, true);
-                    }
-                    node.undoTop(originalPos);
-                    node.releaseExclusive();
-                    throw e;
+            try {
+                newNode = allocUnevictableNode(node.mId);
+            } catch (Throwable e) {
+                // Undo the damage.
+                while (node != mNode) {
+                    node = popNode(node, true);
                 }
-
-                newNode.mNodeChainNext = node;
-                newNode.undoTop(pos = p_length(page));
-                available = pos - HEADER_SIZE;
+                node.undoTop(originalPos);
+                node.releaseExclusive();
+                throw e;
             }
 
+            newNode.undoTop(pos = p_length(page));
+            available = pos - HEADER_SIZE;
+
+            mDatabase.nodeMapPut(node);
             node.releaseExclusive();
             node.makeEvictable();
+
             node = newNode;
         }
 
@@ -803,8 +802,20 @@ final class UndoLog implements DatabaseAccess {
      * @return current (latched) mNode; null if none left
      */
     private Node popNode(Node parent, boolean delete) throws IOException {
-        Node lowerNode = latchLowerNode(parent);
+        Node lowerNode = null;
+        long lowerNodeId = p_longGetLE(parent.mPage, I_LOWER_NODE_ID);
+        if (lowerNodeId != 0) {
+            lowerNode = mDatabase.nodeMapGetAndRemove(lowerNodeId);
+            if (lowerNode != null) {
+                lowerNode.makeUnevictable();
+            } else {
+                // Node was evicted, so reload it.
+                lowerNode = readUndoLogNode(mDatabase, lowerNodeId);
+            }
+        }
+
         parent.makeEvictable();
+
         if (delete) {
             Database db = mDatabase;
             db.prepareToDelete(parent);
@@ -814,32 +825,8 @@ final class UndoLog implements DatabaseAccess {
         } else {
             parent.releaseExclusive();
         }
+
         return mNode = lowerNode;
-    }
-
-    /**
-     * @param parent latched parent node
-     * @return null if none
-     */
-    private Node latchLowerNode(Node parent) throws IOException {
-        long lowerNodeId = p_longGetLE(parent.mPage, I_LOWER_NODE_ID);
-        if (lowerNodeId == 0) {
-            return null;
-        }
-
-        Node lowerNode = parent.mNodeChainNext;
-        if (lowerNode != null) {
-            parent.mNodeChainNext = null;
-            lowerNode.acquireExclusive();
-            if (lowerNodeId == lowerNode.mId) {
-                lowerNode.makeUnevictable();
-                return lowerNode;
-            }
-            lowerNode.releaseExclusive();
-        }
-
-        // Node was evicted, so reload it.
-        return readUndoLogNode(mDatabase, lowerNodeId);
     }
 
     private static void writeBufferEntry(byte[] dest, int destPos,
