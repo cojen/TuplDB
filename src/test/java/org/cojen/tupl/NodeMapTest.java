@@ -89,7 +89,7 @@ public class NodeMapTest {
         }
 
         for (Node n : nodes) {
-            assertNull(n.mNodeChainNext);
+            assertNull(n.mNodeMapNext);
         }
     }
 }
