@@ -2329,7 +2329,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             find(null, key, VARIANT_NO_LOCK);
 
             TreeCursorFrame leaf = mLeaf;
-            if (leaf.mNode.mPage == p_emptyTreePage()) {
+            if (leaf.mNode.mPage == p_closedTreePage()) {
                 resetLatched(leaf.mNode);
                 return false;
             }
