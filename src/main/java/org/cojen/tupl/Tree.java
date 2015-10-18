@@ -390,7 +390,7 @@ class Tree extends AbstractView implements Index {
         }
 
         try {
-            if (root.mPage == p_emptyTreePage()) {
+            if (root.mPage == p_closedTreePage()) {
                 // Already closed.
                 return null;
             }
@@ -407,7 +407,7 @@ class Tree extends AbstractView implements Index {
                 Lock commitLock = mDatabase.acquireExclusiveCommitLock();
                 try {
                     root.acquireExclusive();
-                    if (root.mPage == p_emptyTreePage()) {
+                    if (root.mPage == p_closedTreePage()) {
                         return null;
                     }
                     if (root.mLastCursorFrame != null) {
@@ -458,7 +458,7 @@ class Tree extends AbstractView implements Index {
     public final boolean isClosed() {
         Node root = mRoot;
         root.acquireShared();
-        boolean closed = root.mPage == p_emptyTreePage();
+        boolean closed = root.mPage == p_closedTreePage();
         root.releaseShared();
         return closed;
     }
@@ -475,7 +475,7 @@ class Tree extends AbstractView implements Index {
         Node root = mRoot;
         root.acquireExclusive();
         try {
-            if (root.mPage == p_emptyTreePage()) {
+            if (root.mPage == p_closedTreePage()) {
                 throw new ClosedIndexException();
             }
 

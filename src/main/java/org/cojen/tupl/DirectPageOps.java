@@ -43,22 +43,24 @@ final class DirectPageOps {
 
     private static final Unsafe UNSAFE = Hasher.getUnsafe();
     private static final long BYTE_ARRAY_OFFSET = UNSAFE.arrayBaseOffset(byte[].class);
-    private static final long EMPTY_TREE_PAGE;
+    private static final long CLOSED_TREE_PAGE;
 
     private static final Method CRC_BUFFER_UPDATE_METHOD;
 
     static {
-        long empty = p_calloc(Node.TN_HEADER_SIZE);
+        long closed = p_calloc(Node.TN_HEADER_SIZE);
 
-        p_bytePut(empty, 0, Node.TYPE_TN_LEAF | Node.LOW_EXTREMITY | Node.HIGH_EXTREMITY);
+        p_bytePut(closed, 0, Node.TYPE_TN_LEAF | Node.LOW_EXTREMITY | Node.HIGH_EXTREMITY);
 
         // Set fields such that binary search returns ~0 and availableBytes returns 0.
 
-        p_shortPutLE(empty, 4, 2); // leftSegTail
-        p_shortPutLE(empty, 6, 1); // rightSegTail
-        p_shortPutLE(empty, 8, 2); // searchVecStart
+        // Note: Same as Node.clearEntries.
+        p_shortPutLE(closed, 4,  Node.TN_HEADER_SIZE);     // leftSegTail
+        p_shortPutLE(closed, 6,  Node.TN_HEADER_SIZE - 1); // rightSegTail
+        p_shortPutLE(closed, 8,  Node.TN_HEADER_SIZE);     // searchVecStart
+        p_shortPutLE(closed, 10, Node.TN_HEADER_SIZE - 2); // searchVecEnd
 
-        EMPTY_TREE_PAGE = empty;
+        CLOSED_TREE_PAGE = closed;
     }
 
     static {
@@ -76,8 +78,8 @@ final class DirectPageOps {
         return 4;
     }
 
-    static long p_emptyTreePage() {
-        return EMPTY_TREE_PAGE;
+    static long p_closedTreePage() {
+        return CLOSED_TREE_PAGE;
     }
 
     static long p_alloc(int size) {
@@ -97,7 +99,7 @@ final class DirectPageOps {
     }
 
     static void p_delete(long page) {
-        if (page != EMPTY_TREE_PAGE) {
+        if (page != CLOSED_TREE_PAGE) {
             UNSAFE.freeMemory(page - 4);
         }
     }
