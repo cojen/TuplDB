@@ -895,9 +895,8 @@ final class Node extends Latch implements DatabaseAccess {
 
         try {
             // Check if <= 0 (already evicted) or stub.
-            if (mId > STUB_ID) {
-                long id = mId;
-
+            long id = mId;
+            if (id > STUB_ID) {
                 PageDb pageDb = db.mPageDb;
                 if (mCachedState == CACHED_CLEAN) {
                     // Try to move to a secondary cache.
@@ -913,7 +912,11 @@ final class Node extends Latch implements DatabaseAccess {
 
                 db.nodeMapRemove(this, Utils.hash(id));
                 mId = 0;
-                type(TYPE_NONE);
+
+                // Note: Don't do this. In the fully mapped mode (using MappedPageArray),
+                // setting the type will corrupt the evicted node. The caller swaps in a
+                // different page, which is where the type should be written to.
+                //type(TYPE_NONE);
             }
 
             return true;
