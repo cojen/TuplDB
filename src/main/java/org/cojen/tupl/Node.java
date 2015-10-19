@@ -245,7 +245,7 @@ final class Node extends Latch implements DatabaseAccess {
     void delete() {
         acquireExclusive();
         /*P*/ byte[] page = mPage;
-        if (page != p_emptyTreePage()) {
+        if (page != p_closedTreePage()) {
             p_delete(page);
             closeRoot();
         }
@@ -276,7 +276,7 @@ final class Node extends Latch implements DatabaseAccess {
         // Prevent node from being marked dirty.
         mId = STUB_ID;
         mCachedState = CACHED_CLEAN;
-        mPage = p_emptyTreePage();
+        mPage = p_closedTreePage();
         readFields();
     }
 
@@ -928,14 +928,14 @@ final class Node extends Latch implements DatabaseAccess {
      * has active cursors. Caller must hold exclusive latch on node.
      */
     void invalidateCursors() {
-        invalidateCursors(createEmptyNode());
+        invalidateCursors(createClosedNode());
     }
 
-    private void invalidateCursors(Node empty) {
+    private void invalidateCursors(Node closed) {
         int pos = isLeaf() ? -1 : 0;
 
         for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
-            frame.mNode = empty;
+            frame.mNode = closed;
             frame.mNodePos = pos;
             frame = frame.mPrevCousin;
         }
@@ -946,7 +946,7 @@ final class Node extends Latch implements DatabaseAccess {
 
         Database db = mUsageList.mDatabase;
 
-        empty = null;
+        closed = null;
 
         int childPtr = searchVecEnd() + 2;
         final int highestPtr = childPtr + (highestInternalPos() << 2);
@@ -956,22 +956,22 @@ final class Node extends Latch implements DatabaseAccess {
             if (child != null) {
                 child.acquireExclusive();
                 if (childId == child.mId) {
-                    if (empty == null) {
-                        empty = createEmptyNode();
+                    if (closed == null) {
+                        closed = createClosedNode();
                     }
-                    child.invalidateCursors(empty);
+                    child.invalidateCursors(closed);
                 }
                 child.releaseExclusive();
             }
         }
     }
 
-    private static Node createEmptyNode() {
-        Node empty = new Node(null, p_emptyTreePage());
-        empty.mId = STUB_ID;
-        empty.mCachedState = CACHED_CLEAN;
-        empty.readFields();
-        return empty;
+    private static Node createClosedNode() {
+        Node closed = new Node(null, p_closedTreePage());
+        closed.mId = STUB_ID;
+        closed.mCachedState = CACHED_CLEAN;
+        closed.readFields();
+        return closed;
     }
 
     /**
@@ -4331,7 +4331,7 @@ final class Node extends Latch implements DatabaseAccess {
 
         /*P*/ byte[] page = mPage;
 
-        if (page == p_emptyTreePage()) {
+        if (page == p_closedTreePage()) {
             // Node is a closed tree root.
             throw new ClosedIndexException();
         }
