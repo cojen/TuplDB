@@ -18,6 +18,9 @@ package org.cojen.tupl;
 
 import java.io.*;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 /**
  * 
  *
@@ -30,9 +33,11 @@ class PageAccessTransformer {
         new PageAccessTransformer().transform(src, dst);
     }
 
-    private static final int STATE_NORMAL = 0, STATE_DISCARD = 1, STATE_SUBSTITUTE = 2;
+    private static final int STATE_NORMAL = 0, STATE_DISABLE = 1, STATE_ENABLE = 2;
 
     private int mState;
+
+    private final Pattern mDisablePattern = Pattern.compile("\\s+");
 
     private void transform(File src, File dst) throws IOException {
         if (src.isDirectory()) {
@@ -75,12 +80,16 @@ class PageAccessTransformer {
             int index = line.indexOf("/*P*/ ");
 
             if (index < 0) {
-                if (mState == STATE_DISCARD) {
-                    return null;
-                }
-                index = line.indexOf("PageOps");
-                if (index >= 0) {
-                    line = line.substring(0, index) + "Direct" + line.substring(index);
+                if (mState == STATE_DISABLE) {
+                    Matcher m = mDisablePattern.matcher(line);
+                    if (m.find()) {
+                        line = m.group() + m.replaceFirst("// ");
+                    }
+                } else {
+                    index = line.indexOf("PageOps");
+                    if (index >= 0) {
+                        line = line.substring(0, index) + "Direct" + line.substring(index);
+                    }
                 }
                 return line;
             }
@@ -101,27 +110,27 @@ class PageAccessTransformer {
                             throw new IllegalStateException();
                         }
                         if (++tagIndex < line.length() && line.charAt(tagIndex) == '|') {
-                            mState = STATE_SUBSTITUTE;
+                            mState = STATE_ENABLE;
                         } else {
-                            mState = STATE_DISCARD;
+                            mState = STATE_DISABLE;
                         }
-                        return null;
+                        return line;
                     case '|':
-                        if (mState != STATE_DISCARD) {
+                        if (mState != STATE_DISABLE) {
                             throw new IllegalStateException();
                         }
-                        mState = STATE_SUBSTITUTE;
-                        return null;
+                        mState = STATE_ENABLE;
+                        return line;
                     case ']':
                         if (mState == STATE_NORMAL) {
                             throw new IllegalStateException();
                         }
                         mState = STATE_NORMAL;
-                        return null;
+                        return line;
                     }
                 }
 
-                if (mState == STATE_SUBSTITUTE) {
+                if (mState == STATE_ENABLE) {
                     line = line.substring(0, index) + line.substring(tagIndex);
                     continue;
                 }

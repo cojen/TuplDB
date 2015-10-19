@@ -49,20 +49,22 @@ final class PageOps {
      */
     static final int NODE_OVERHEAD = 100;
 
-    private static final byte[] EMPTY_TREE_PAGE;
+    private static final byte[] CLOSED_TREE_PAGE;
 
     static {
-        byte[] empty = new byte[Node.TN_HEADER_SIZE];
+        byte[] closed = new byte[Node.TN_HEADER_SIZE];
 
-        empty[0] = Node.TYPE_TN_LEAF | Node.LOW_EXTREMITY | Node.HIGH_EXTREMITY;
+        closed[0] = Node.TYPE_TN_LEAF | Node.LOW_EXTREMITY | Node.HIGH_EXTREMITY;
 
         // Set fields such that binary search returns ~0 and availableBytes returns 0.
 
-        p_shortPutLE(empty, 4, 2); // leftSegTail
-        p_shortPutLE(empty, 6, 1); // rightSegTail
-        p_shortPutLE(empty, 8, 2); // searchVecStart
+        // Note: Same as Node.clearEntries.
+        p_shortPutLE(closed, 4,  Node.TN_HEADER_SIZE);     // leftSegTail
+        p_shortPutLE(closed, 6,  Node.TN_HEADER_SIZE - 1); // rightSegTail
+        p_shortPutLE(closed, 8,  Node.TN_HEADER_SIZE);     // searchVecStart
+        p_shortPutLE(closed, 10, Node.TN_HEADER_SIZE - 2); // searchVecEnd
 
-        EMPTY_TREE_PAGE = empty;
+        CLOSED_TREE_PAGE = closed;
     }
 
     static /*P*/ byte[] p_null() {
@@ -70,11 +72,11 @@ final class PageOps {
     }
 
     /**
-     * Returned page is 12 bytes, defining and empty tree leaf node. Contents must not be
+     * Returned page is 12 bytes, defining a closed tree leaf node. Contents must not be
      * modified.
      */
-    static /*P*/ byte[] p_emptyTreePage() {
-        return EMPTY_TREE_PAGE;
+    static /*P*/ byte[] p_closedTreePage() {
+        return CLOSED_TREE_PAGE;
     }
 
     static /*P*/ byte[] p_alloc(int size) {
