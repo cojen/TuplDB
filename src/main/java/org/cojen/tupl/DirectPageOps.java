@@ -75,7 +75,7 @@ final class DirectPageOps {
     }
 
     static long p_null() {
-        return 4;
+        return 0;
     }
 
     static long p_closedTreePage() {
@@ -83,9 +83,7 @@ final class DirectPageOps {
     }
 
     static long p_alloc(int size) {
-        long ptr = UNSAFE.allocateMemory(4 + size);
-        UNSAFE.putInt(ptr, size);
-        return ptr + 4;
+        return UNSAFE.allocateMemory(size);
     }
 
     static long p_calloc(int size) {
@@ -100,12 +98,11 @@ final class DirectPageOps {
 
     static void p_delete(long page) {
         if (page != CLOSED_TREE_PAGE) {
-            UNSAFE.freeMemory(page - 4);
+            UNSAFE.freeMemory(page);
         }
     }
 
-    static long p_clone(long page) {
-        int length = p_length(page);
+    static long p_clone(long page, int length) {
         long dst = p_alloc(length);
         UNSAFE.copyMemory(page, dst, length);
         return dst;
@@ -122,10 +119,6 @@ final class DirectPageOps {
         int length = array.length;
         p_copyFromArray(array, 0, page, 0, length);
         return page;
-    }
-
-    static int p_length(long page) {
-        return UNSAFE.getInt(page - 4);
     }
 
     static byte p_byteGet(long page, int index) {
@@ -410,10 +403,6 @@ final class DirectPageOps {
 
     static int p_ulongVarSize(long v) {
         return Utils.calcUnsignedVarLongLength(v);
-    }
-
-    static void p_clear(long page) {
-        UNSAFE.setMemory(page, p_length(page), (byte) 0);
     }
 
     static void p_clear(long page, int fromIndex, int toIndex) {
