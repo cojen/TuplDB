@@ -1977,7 +1977,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             int numKeys;
 
             freeBytes = node.availableBytes();
-            totalBytes = p_length(node.mPage);
+            totalBytes = pageSize(node.mPage);
 
             if (pos < 0 || (numKeys = node.numKeys()) <= 0) {
                 keyBytes = 0;
@@ -1987,11 +1987,11 @@ class TreeCursor implements CauseCloseable, Cursor {
 
                 node.retrieveKeyStats(pos, stats);
                 keyBytes = ((double) stats[0]) * numKeys;
-                totalBytes += ((double) stats[1]) * p_length(node.mPage);
+                totalBytes += ((double) stats[1]) * pageSize(node.mPage);
 
                 node.retrieveLeafValueStats(pos, stats);
                 valueBytes = ((double) stats[0]) * numKeys;
-                totalBytes += ((double) stats[1]) * p_length(node.mPage);
+                totalBytes += ((double) stats[1]) * pageSize(node.mPage);
             }
 
             frame = frame.pop();
@@ -2011,7 +2011,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             try {
                 scalar = node.numKeys() + 1; // internal nodes have +1 children
                 availBytes = node.availableInternalBytes();
-                pageSize = p_length(node.mPage);
+                pageSize = pageSize(node.mPage);
                 frame = frame.pop();
             } finally {
                 node.releaseShared();
@@ -3032,7 +3032,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                 try {
                     int nodePos = frame.mNodePos;
                     if (nodePos >= 0 && node.isFragmentedLeafValue(nodePos)) {
-                        int pLen = p_length(node.mPage);
+                        int pLen = pageSize(node.mPage);
                         TreeValueStream stream = new TreeValueStream(this);
                         long pos = 0;
                         while (true) {
@@ -3567,7 +3567,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             rightAvail = nodeAvail;
         }
 
-        int remaining = leftAvail + rightAvail - p_length(node.mPage) + Node.TN_HEADER_SIZE;
+        int remaining = leftAvail + rightAvail - pageSize(node.mPage) + Node.TN_HEADER_SIZE;
 
         if (remaining >= 0) {
             // Migrate the entire contents of the right node into the left node, and then
@@ -3759,7 +3759,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         int parentEntryLoc = p_ushortGetLE(parentPage, parentNode.searchVecStart() + leftPos);
         int parentEntryLen = Node.keyLengthAtLoc(parentPage, parentEntryLoc);
         int remaining = leftAvail - parentEntryLen
-            + rightAvail - p_length(parentPage) + (Node.TN_HEADER_SIZE - 2);
+            + rightAvail - pageSize(parentPage) + (Node.TN_HEADER_SIZE - 2);
 
         if (remaining >= 0) {
             // Migrate the entire contents of the right node into the left node, and then
@@ -3791,6 +3791,14 @@ class TreeCursor implements CauseCloseable, Cursor {
 
         // Tail call. I could just loop here, but this is simpler.
         mergeInternal(parentFrame, parentNode, leftNode, rightNode);
+    }
+
+    private int pageSize(/*P*/ byte[] page) {
+        /*P*/ // [
+        return page.length;
+        /*P*/ // |
+        /*P*/ // return mTree.pageSize();
+        /*P*/ // ]
     }
 
     /**

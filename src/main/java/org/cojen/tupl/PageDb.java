@@ -100,19 +100,9 @@ abstract class PageDb implements CauseCloseable {
      * is not read during or after a commit.
      *
      * @param id page id to read
-     * @param buf receives read data
+     * @param page receives read data
      */
-    public abstract void readPage(long id, /*P*/ byte[] buf) throws IOException;
-
-    /**
-     * Reads a page without locking. Caller must ensure that a deleted page
-     * is not read during or after a commit.
-     *
-     * @param id page id to read
-     * @param buf receives read data
-     * @param offset offset into data buffer
-     */
-    public abstract void readPage(long id, /*P*/ byte[] buf, int offset) throws IOException;
+    public abstract void readPage(long id, /*P*/ byte[] page) throws IOException;
 
     /**
      * Allocates a page to be written to.
@@ -127,20 +117,9 @@ abstract class PageDb implements CauseCloseable {
      * deleted, but it remains readable until after a commit.
      *
      * @param id previously allocated page id
-     * @param buf data to write
+     * @param page data to write
      */
-    public abstract void writePage(long id, /*P*/ byte[] buf) throws IOException;
-
-    /**
-     * Writes to an allocated page, but doesn't commit it. A written page is
-     * immediately readable even if not committed. An uncommitted page can be
-     * deleted, but it remains readable until after a commit.
-     *
-     * @param id previously allocated page id
-     * @param buf data to write
-     * @param offset offset into data buffer
-     */
-    public abstract void writePage(long id, /*P*/ byte[] buf, int offset) throws IOException;
+    public abstract void writePage(long id, /*P*/ byte[] page) throws IOException;
 
     /**
      * Same as writePage, except that the given buffer might be altered and a replacement might
@@ -148,10 +127,10 @@ abstract class PageDb implements CauseCloseable {
      * and the contents of the replacement are undefined.
      *
      * @param id previously allocated page id
-     * @param buf data to write; implementation might alter the contents
+     * @param page data to write; implementation might alter the contents
      * @return replacement buffer, or same instance if replacement was not performed
      */
-    public abstract /*P*/ byte[] evictPage(long id, /*P*/ byte[] buf) throws IOException;
+    public abstract /*P*/ byte[] evictPage(long id, /*P*/ byte[] page) throws IOException;
 
     /**
      * If supported, copies a page into the cache, but does not write it. Cached copy is
@@ -159,15 +138,7 @@ abstract class PageDb implements CauseCloseable {
      *
      * @param id previously allocated page id
      */
-    public abstract void cachePage(long id, /*P*/ byte[] buf) throws IOException;
-
-    /**
-     * If supported, copies a page into the cache, but does not write it. Cached copy is
-     * removed when read again, unless evicted sooner.
-     *
-     * @param id previously allocated page id
-     */
-    public abstract void cachePage(long id, /*P*/ byte[] buf, int offset) throws IOException;
+    public abstract void cachePage(long id, /*P*/ byte[] page) throws IOException;
 
     /**
      * If supported, removes a page from the cache.

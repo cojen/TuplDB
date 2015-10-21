@@ -134,17 +134,17 @@ final class PartitionedPageCache implements PageCache {
     }
 
     @Override
-    public boolean add(long pageId, /*P*/ byte[] page, int offset, int length, boolean canEvict) {
+    public boolean add(long pageId, /*P*/ byte[] page, int offset, boolean canEvict) {
         pageId = Utils.scramble(pageId);
         return mPartitions[(int) (pageId >>> mPartitionShift)]
-            .add(pageId, page, offset, length, canEvict);
+            .add(pageId, page, offset, canEvict);
     }
 
     @Override
-    public boolean copy(long pageId, int start, /*P*/ byte[] page, int offset, int length) {
+    public boolean copy(long pageId, int start, /*P*/ byte[] page, int offset) {
         pageId = Utils.scramble(pageId);
         return mPartitions[(int) (pageId >>> mPartitionShift)]
-            .copy(pageId, start, page, offset, length);
+            .copy(pageId, start, page, offset);
     }
 
     @Override
