@@ -82,6 +82,7 @@ final class PageQueue implements IntegerRef {
     private static final int I_NODE_START    = I_FIRST_PAGE_ID + 8;
 
     private final PageManager mManager;
+    private final int mPageSize;
     private final int mAllocMode;
     private final boolean mAggressive;
 
@@ -139,12 +140,14 @@ final class PageQueue implements IntegerRef {
     private PageQueue(PageManager manager, int allocMode, boolean aggressive,
                       ReentrantLock appendLock)
     {
-        mManager = manager;
-        mAllocMode = allocMode;
-        mAggressive = aggressive;
         PageArray array = manager.pageArray();
 
-        mRemoveHead = p_calloc(array.pageSize());
+        mManager = manager;
+        mPageSize = array.pageSize();
+        mAllocMode = allocMode;
+        mAggressive = aggressive;
+
+        mRemoveHead = p_calloc(mPageSize);
 
         if (appendLock == null) {
             // This lock must be reentrant. The appendPage method can call into
@@ -158,8 +161,8 @@ final class PageQueue implements IntegerRef {
             mAppendLock = appendLock;
         }
 
-        mAppendHeap = new IdHeap(array.pageSize() - I_NODE_START);
-        mAppendTail = p_calloc(array.pageSize());
+        mAppendHeap = new IdHeap(mPageSize - I_NODE_START);
+        mAppendTail = p_calloc(mPageSize);
     }
 
     /**
@@ -295,7 +298,7 @@ final class PageQueue implements IntegerRef {
             mRemovePageCount--;
 
             final /*P*/ byte[] head = mRemoveHead;
-            if (mRemoveHeadOffset < p_length(head)) {
+            if (mRemoveHeadOffset < pageSize(head)) {
                 // Pass this as an IntegerRef to mRemoveHeadOffset.
                 long delta = p_ulongGetVar(head, this);
                 if (delta > 0) {
@@ -431,10 +434,10 @@ final class PageQueue implements IntegerRef {
             int end = appendHeap.drain(firstPageId,
                                        tailBuf,
                                        I_NODE_START,
-                                       p_length(tailBuf) - I_NODE_START);
+                                       pageSize(tailBuf) - I_NODE_START);
 
             // Clean out any cruft from previous usage and ensure delta terminator.
-            p_clear(tailBuf, end, p_length(tailBuf));
+            p_clear(tailBuf, end, pageSize(tailBuf));
 
             try {
                 mManager.pageArray().writePage(mAppendTailId, tailBuf);
@@ -557,7 +560,7 @@ final class PageQueue implements IntegerRef {
         long nodeId = mRemoveHeadId;
 
         if (nodeId != 0) {
-            /*P*/ byte[] node = p_clone(mRemoveHead);
+            /*P*/ byte[] node = p_clone(mRemoveHead, pageSize(mRemoveHead));
             try {
                 long pageId = mRemoveHeadFirstPageId;
                 IntegerRef.Value nodeOffsetRef = new IntegerRef.Value();
@@ -572,7 +575,7 @@ final class PageQueue implements IntegerRef {
                     hash += scramble(pageId);
                     count++;
 
-                    if (nodeOffsetRef.value < p_length(node)) {
+                    if (nodeOffsetRef.value < pageSize(node)) {
                         long delta = p_ulongGetVar(node, nodeOffsetRef);
                         if (delta > 0) {
                             pageId += delta;
@@ -626,7 +629,7 @@ final class PageQueue implements IntegerRef {
             return count;
         }
 
-        /*P*/ byte[] node = p_clone(mRemoveHead);
+        /*P*/ byte[] node = p_clone(mRemoveHead, pageSize(mRemoveHead));
         try {
             long pageId = mRemoveHeadFirstPageId;
             IntegerRef.Value nodeOffsetRef = new IntegerRef.Value();
@@ -642,7 +645,7 @@ final class PageQueue implements IntegerRef {
                 count++;
                 clearPageBit(pages, pageId);
 
-                if (nodeOffsetRef.value < p_length(node)) {
+                if (nodeOffsetRef.value < pageSize(node)) {
                     long delta = p_ulongGetVar(node, nodeOffsetRef);
                     if (delta > 0) {
                         pageId += delta;
@@ -679,6 +682,14 @@ final class PageQueue implements IntegerRef {
         } else if (index < pages.size()) {
             throw new CorruptDatabaseException("Doubly freed page: " + pageId);
         }
+    }
+
+    private int pageSize(/*P*/ byte[] page) {
+        /*P*/ // [
+        return page.length;
+        /*P*/ // |
+        /*P*/ // return mPageSize;
+        /*P*/ // ]
     }
 
     // Required by IntegerRef.

@@ -298,7 +298,7 @@ final class Node extends Latch implements DatabaseAccess {
     private void clearEntries() {
         garbage(0);
         leftSegTail(TN_HEADER_SIZE);
-        int pageSize = p_length(mPage);
+        int pageSize = pageSize(mPage);
         rightSegTail(pageSize - 1);
         // Search vector location must be even.
         searchVecStart((TN_HEADER_SIZE + ((pageSize - TN_HEADER_SIZE) >> 1)) & ~1);
@@ -748,8 +748,8 @@ final class Node extends Latch implements DatabaseAccess {
 
         // Create new single-element search vector. Center it using the same formula as the
         // compactInternal method.
-        final int searchVecStart = p_length(newPage) -
-            (((p_length(newPage) - leftSegTail + (2 + 8 + 8)) >> 1) & ~1);
+        final int searchVecStart = pageSize(newPage) -
+            (((pageSize(newPage) - leftSegTail + (2 + 8 + 8)) >> 1) & ~1);
         p_shortPutLE(newPage, searchVecStart, TN_HEADER_SIZE);
         p_longPutLE(newPage, searchVecStart + 2, left.mId);
         p_longPutLE(newPage, searchVecStart + 2 + 8, right.mId);
@@ -765,7 +765,7 @@ final class Node extends Latch implements DatabaseAccess {
         /*P*/ // p_intPutLE(newPage, 0, newType & 0xff); // set type, reserved byte, and garbage
         /*P*/ // ]
         leftSegTail(leftSegTail);
-        rightSegTail(p_length(newPage) - 1);
+        rightSegTail(pageSize(newPage) - 1);
         searchVecStart(searchVecStart);
         searchVecEnd(searchVecStart);
         mLastCursorFrame = null;
@@ -972,6 +972,14 @@ final class Node extends Latch implements DatabaseAccess {
         closed.mCachedState = CACHED_CLEAN;
         closed.readFields();
         return closed;
+    }
+
+    private int pageSize(/*P*/ byte[] page) {
+        /*P*/ // [
+        return page.length;
+        /*P*/ // |
+        /*P*/ // return mUsageList.pageSize();
+        /*P*/ // ]
     }
 
     /**
@@ -1269,7 +1277,7 @@ final class Node extends Latch implements DatabaseAccess {
     boolean shouldMerge(int availBytes) {
         return mSplit == null
             & (((type() & (LOW_EXTREMITY | HIGH_EXTREMITY)) == 0
-                 & availBytes >= ((p_length(mPage) - TN_HEADER_SIZE) >> 1))
+                 & availBytes >= ((pageSize(mPage) - TN_HEADER_SIZE) >> 1))
                 | !hasKeys());
     }
 
@@ -2190,7 +2198,7 @@ final class Node extends Latch implements DatabaseAccess {
         if (fragmented != null) {
             /*P*/ byte[] copy = p_transfer(fragmented);
             try {
-                getDatabase().deleteFragments(copy, 0, p_length(copy));
+                getDatabase().deleteFragments(copy, 0, pageSize(copy));
             } catch (Throwable e) {
                 cause.addSuppressed(e);
                 panic(cause);
@@ -4242,7 +4250,7 @@ final class Node extends Latch implements DatabaseAccess {
         int newSearchVecStart;
         // Capacity available to search vector after compaction.
         int searchVecCap = garbage() + rightSegTail() + 1 - leftSegTail() - encodedLen;
-        newSearchVecStart = p_length(page) - (((searchVecCap + newSearchVecSize) >> 1) & ~1);
+        newSearchVecStart = pageSize(page) - (((searchVecCap + newSearchVecSize) >> 1) & ~1);
 
         // Copy into a fresh buffer.
 
@@ -4285,7 +4293,7 @@ final class Node extends Latch implements DatabaseAccess {
         garbage(0);
         /*P*/ // ]
         leftSegTail(destLoc + encodedLen);
-        rightSegTail(p_length(dest) - 1);
+        rightSegTail(pageSize(dest) - 1);
         searchVecStart(newSearchVecStart);
         searchVecEnd(newSearchVecStart + newSearchVecSize - 2);
 
@@ -4370,7 +4378,7 @@ final class Node extends Latch implements DatabaseAccess {
             newNode.searchVecStart(TN_HEADER_SIZE);
             newNode.searchVecEnd(TN_HEADER_SIZE);
 
-            int destLoc = p_length(newPage) - encodedLen;
+            int destLoc = pageSize(newPage) - encodedLen;
             newNode.copyToLeafEntry(okey, akey, vfrag, value, destLoc);
             p_shortPutLE(newPage, TN_HEADER_SIZE, destLoc);
 
@@ -4404,13 +4412,13 @@ final class Node extends Latch implements DatabaseAccess {
 
             // Position search vector at extreme right, allowing new entries to
             // be placed in a natural ascending order.
-            newNode.rightSegTail(p_length(newPage) - 1);
-            int newSearchVecStart = p_length(newPage) - 2;
+            newNode.rightSegTail(pageSize(newPage) - 1);
+            int newSearchVecStart = pageSize(newPage) - 2;
             newNode.searchVecStart(newSearchVecStart);
             newNode.searchVecEnd(newSearchVecStart);
 
             newNode.copyToLeafEntry(okey, akey, vfrag, value, TN_HEADER_SIZE);
-            p_shortPutLE(newPage, p_length(newPage) - 2, TN_HEADER_SIZE);
+            p_shortPutLE(newPage, pageSize(newPage) - 2, TN_HEADER_SIZE);
 
             newNode.leftSegTail(TN_HEADER_SIZE + encodedLen);
             newNode.releaseExclusive();
@@ -4423,7 +4431,7 @@ final class Node extends Latch implements DatabaseAccess {
 
         int garbageAccum = 0;
         int newLoc = 0;
-        int newAvail = p_length(newPage) - TN_HEADER_SIZE;
+        int newAvail = pageSize(newPage) - TN_HEADER_SIZE;
 
         // Guess which way to split by examining search position. This doesn't take into
         // consideration the variable size of the entries. If the guess is wrong, the new
@@ -4432,7 +4440,7 @@ final class Node extends Latch implements DatabaseAccess {
         if ((pos - searchVecStart) < (searchVecEnd - pos)) {
             // Split into new left node.
 
-            int destLoc = p_length(newPage);
+            int destLoc = pageSize(newPage);
             int newSearchVecLoc = TN_HEADER_SIZE;
 
             int searchVecLoc = searchVecStart;
@@ -4519,7 +4527,7 @@ final class Node extends Latch implements DatabaseAccess {
             // Split into new right node.
 
             int destLoc = TN_HEADER_SIZE;
-            int newSearchVecLoc = p_length(newPage) - 2;
+            int newSearchVecLoc = pageSize(newPage) - 2;
 
             int searchVecLoc = searchVecEnd;
             for (; newAvail > avail; searchVecLoc -= 2, newSearchVecLoc -= 2) {
@@ -4568,9 +4576,9 @@ final class Node extends Latch implements DatabaseAccess {
                 avail += entryLen + 2;
             }
 
-            newNode.rightSegTail(p_length(newPage) - 1);
+            newNode.rightSegTail(pageSize(newPage) - 1);
             newNode.searchVecStart(newSearchVecLoc + 2);
-            newNode.searchVecEnd(p_length(newPage) - 2);
+            newNode.searchVecEnd(pageSize(newPage) - 2);
 
             // Prune off the right end of this node.
             final int originalEnd = searchVecEnd();
@@ -4735,7 +4743,7 @@ final class Node extends Latch implements DatabaseAccess {
             // Assume a large key will be inserted later, so arrange it with room: entry at far
             // left and search vector at far right.
             p_copy(page, leftKeyLoc, newPage, TN_HEADER_SIZE, leftKeyLen);
-            int leftSearchVecStart = p_length(newPage) - (2 + 8 + 8);
+            int leftSearchVecStart = pageSize(newPage) - (2 + 8 + 8);
             p_shortPutLE(newPage, leftSearchVecStart, TN_HEADER_SIZE);
 
             if (newChildPos == 8) {
@@ -4800,7 +4808,7 @@ final class Node extends Latch implements DatabaseAccess {
 
             // Amount of bytes used in unsplit node, including the page header.
             int size = 5 * (searchVecEnd - searchVecStart) + (1 + 8 + 8)
-                + leftSegTail() + p_length(page) - rightSegTail() - garbage();
+                + leftSegTail() + pageSize(page) - rightSegTail() - garbage();
 
             int newSize = TN_HEADER_SIZE;
 
@@ -4815,7 +4823,7 @@ final class Node extends Latch implements DatabaseAccess {
                 // don't attempt to properly center the new search vector. Instead,
                 // minimize fragmentation to ensure that split is successful.
 
-                int destLoc = p_length(newPage);
+                int destLoc = pageSize(newPage);
                 int newSearchVecLoc = TN_HEADER_SIZE;
 
                 int searchVecLoc = searchVecStart;
@@ -4825,7 +4833,7 @@ final class Node extends Latch implements DatabaseAccess {
                         newSearchVecLoc += 2;
                         // Reserve slot in vector for new entry and account for size increase.
                         newSize += encodedLen + (2 + 8);
-                        if (newSize > p_length(newPage)) {
+                        if (newSize > pageSize(newPage)) {
                             // New entry doesn't fit.
                             if (splitSide == -1) {
                                 // Guessed wrong; do over on left side.
@@ -4851,7 +4859,7 @@ final class Node extends Latch implements DatabaseAccess {
                     // account for this.
                     garbageAccum += entryLen;
 
-                    boolean full = size < TN_HEADER_SIZE | newSize > p_length(newPage);
+                    boolean full = size < TN_HEADER_SIZE | newSize > pageSize(newPage);
 
                     if (full || newSize >= size) {
                         // New node has accumlated enough entries...
@@ -4921,7 +4929,7 @@ final class Node extends Latch implements DatabaseAccess {
                 // make room for child ids and copy them in place.
 
                 int destLoc = TN_HEADER_SIZE;
-                int newSearchVecLoc = p_length(newPage);
+                int newSearchVecLoc = pageSize(newPage);
 
                 int searchVecLoc = searchVecEnd + 2;
                 moveEntries: while (true) {
@@ -4930,7 +4938,7 @@ final class Node extends Latch implements DatabaseAccess {
                         newKeyLoc = newSearchVecLoc;
                         // Reserve slot in vector for new entry and account for size increase.
                         newSize += encodedLen + (2 + 8);
-                        if (newSize > p_length(newPage)) {
+                        if (newSize > pageSize(newPage)) {
                             // New entry doesn't fit.
                             if (splitSide == 1) {
                                 // Guessed wrong; do over on left side.
@@ -4956,7 +4964,7 @@ final class Node extends Latch implements DatabaseAccess {
                     // account for this.
                     garbageAccum += entryLen;
 
-                    boolean full = size < TN_HEADER_SIZE | newSize > p_length(newPage);
+                    boolean full = size < TN_HEADER_SIZE | newSize > pageSize(newPage);
 
                     if (full || newSize >= size) {
                         // New node has accumlated enough entries...
@@ -4996,9 +5004,9 @@ final class Node extends Latch implements DatabaseAccess {
 
                 // Move new search vector to make room for child ids and be centered between
                 // the segments.
-                int newVecLen = p_length(page) - newSearchVecLoc;
+                int newVecLen = pageSize(page) - newSearchVecLoc;
                 {
-                    int highestLoc = p_length(newPage) - (5 * newVecLen) - 8;
+                    int highestLoc = pageSize(newPage) - (5 * newVecLen) - 8;
                     int midLoc = ((destLoc + encodedLen + highestLoc + 1) >> 1) & ~1;
                     p_copy(newPage, newSearchVecLoc, newPage, midLoc, newVecLen);
                     newKeyLoc -= newSearchVecLoc - midLoc;
@@ -5025,7 +5033,7 @@ final class Node extends Latch implements DatabaseAccess {
                 }
 
                 newNode.leftSegTail(destLoc + encodedLen);
-                newNode.rightSegTail(p_length(newPage) - 1);
+                newNode.rightSegTail(pageSize(newPage) - 1);
                 newNode.searchVecStart(newSearchVecLoc);
                 newNode.searchVecEnd(newSearchVecEnd);
                 newNode.releaseExclusive();
@@ -5082,7 +5090,7 @@ final class Node extends Latch implements DatabaseAccess {
         int newSearchVecStart;
         // Capacity available to search vector after compaction.
         int searchVecCap = garbage() + rightSegTail() + 1 - leftSegTail() - encodedLen;
-        newSearchVecStart = p_length(page) -
+        newSearchVecStart = pageSize(page) -
             (((searchVecCap + newSearchVecSize + ((newSearchVecSize + 2) << 2)) >> 1) & ~1);
 
         // Copy into a fresh buffer.
@@ -5146,7 +5154,7 @@ final class Node extends Latch implements DatabaseAccess {
         garbage(0);
         /*P*/ // ]
         leftSegTail(destLoc + encodedLen);
-        rightSegTail(p_length(dest) - 1);
+        rightSegTail(pageSize(dest) - 1);
         searchVecStart(newSearchVecStart);
         searchVecEnd(newSearchVecLoc - 2);
 
@@ -5286,7 +5294,7 @@ final class Node extends Latch implements DatabaseAccess {
             return verifyFailed(level, observer, "Search vector end: " + searchVecEnd());
         }
 
-        if (rightSegTail() < searchVecEnd() || rightSegTail() > (p_length(page) - 1)) {
+        if (rightSegTail() < searchVecEnd() || rightSegTail() > (pageSize(page) - 1)) {
             return verifyFailed(level, observer, "Right segment tail: " + rightSegTail());
         }
 
@@ -5322,7 +5330,7 @@ final class Node extends Latch implements DatabaseAccess {
         for (int i = searchVecStart(); i <= searchVecEnd(); i += 2) {
             int loc = p_ushortGetLE(page, i);
 
-            if (loc < TN_HEADER_SIZE || loc >= p_length(page) ||
+            if (loc < TN_HEADER_SIZE || loc >= pageSize(page) ||
                 (loc >= leftSegTail() && loc <= rightSegTail()))
             {
                 return verifyFailed(level, observer, "Entry location: " + loc);
@@ -5343,7 +5351,7 @@ final class Node extends Latch implements DatabaseAccess {
                 return verifyFailed(level, observer, "Key location out of bounds");
             }
 
-            if (loc + keyLen > p_length(page)) {
+            if (loc + keyLen > pageSize(page)) {
                 return verifyFailed(level, observer, "Key end location: " + (loc + keyLen));
             }
 
@@ -5382,13 +5390,13 @@ final class Node extends Latch implements DatabaseAccess {
                 } catch (IndexOutOfBoundsException e) {
                     return verifyFailed(level, observer, "Value location out of bounds");
                 }
-                if (loc + len > p_length(page)) {
+                if (loc + len > pageSize(page)) {
                     return verifyFailed(level, observer, "Value end location: " + (loc + len));
                 }
             }
         }
 
-        int garbage = p_length(page) - used;
+        int garbage = pageSize(page) - used;
 
         if (garbage() != garbage) {
             return verifyFailed(level, observer, "Garbage: " + garbage() + " != " + garbage);

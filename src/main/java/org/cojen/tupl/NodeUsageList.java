@@ -34,6 +34,7 @@ final class NodeUsageList extends Latch {
     static final int MODE_NO_EVICT = 2;
 
     final transient Database mDatabase;
+    private final int mPageSize;
     private int mMaxSize;
     private int mSize;
     private Node mMostRecentlyUsed;
@@ -41,9 +42,14 @@ final class NodeUsageList extends Latch {
 
     NodeUsageList(Database db, int maxSize) {
         mDatabase = db;
+        mPageSize = db.pageSize();
         acquireExclusive();
         mMaxSize = maxSize;
         releaseExclusive();
+    }
+
+    int pageSize() {
+        return mPageSize;
     }
 
     /**
@@ -189,7 +195,7 @@ final class NodeUsageList extends Latch {
     private Node doAllocLatchedNode(int mode) throws DatabaseException {
         try {
             mDatabase.checkClosed();
-            Node node = new Node(this, mDatabase.mPageSize);
+            Node node = new Node(this, mPageSize);
             node.acquireExclusive();
             mSize++;
             if ((mode & MODE_UNEVICTABLE) == 0) {

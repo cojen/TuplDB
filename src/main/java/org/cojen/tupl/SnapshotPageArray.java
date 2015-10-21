@@ -119,7 +119,7 @@ final class SnapshotPageArray extends PageArray {
     public void cachePage(long index, /*P*/ byte[] buf, int offset) {
         PageCache cache = mCache;
         if (cache != null) {
-            cache.add(index, buf, offset, p_length(buf), true);
+            cache.add(index, buf, offset, true);
         }
     }
 
@@ -353,7 +353,7 @@ final class SnapshotPageArray extends PageArray {
                                     if (node.mId == index
                                         && node.mCachedState == Node.CACHED_CLEAN)
                                     {
-                                        p_copy(node.mPage, 0, pageBuffer, 0, p_length(pageBuffer));
+                                        p_copy(node.mPage, 0, pageBuffer, 0, pageSize());
                                         break read;
                                     }
                                 } finally {

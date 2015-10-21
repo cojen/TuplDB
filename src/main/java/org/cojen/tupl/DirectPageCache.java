@@ -108,7 +108,7 @@ final class DirectPageCache extends Latch implements PageCache {
 
     @Override
     public boolean add(final long pageId,
-                       final /*P*/ byte[] page, final int offset, final int length,
+                       final /*P*/ byte[] page, final int offset,
                        final boolean canEvict)
     {
         acquireExclusive();
@@ -131,7 +131,7 @@ final class DirectPageCache extends Latch implements PageCache {
                     if (getPageId(nodes, ptr) == pageId) {
                         // Found it.
                         mData.position((ptr / NODE_SIZE_IN_INTS) * mPageSize);
-                        p_copyToBB(page, offset, mData, length);
+                        p_copyToBB(page, offset, mData, mPageSize);
 
                         if (ptr != mMostRecentPtr) {
                             // Move to most recent.
@@ -200,7 +200,7 @@ final class DirectPageCache extends Latch implements PageCache {
 
             // Copy page into the data buffer.
             mData.position((ptr / NODE_SIZE_IN_INTS) * mPageSize);
-            p_copyToBB(page, offset, mData, length);
+            p_copyToBB(page, offset, mData, mPageSize);
 
             // Add new entry into the hashtable.
             nodes.put(ptr + CHAIN_NEXT_PTR_FIELD, hashTable[index]);
@@ -215,7 +215,7 @@ final class DirectPageCache extends Latch implements PageCache {
 
     @Override
     public boolean copy(final long pageId, final int start,
-                        final /*P*/ byte[] page, final int offset, final int length)
+                        final /*P*/ byte[] page, final int offset)
     {
         acquireShared();
         try {
@@ -236,7 +236,7 @@ final class DirectPageCache extends Latch implements PageCache {
                     if (getPageId(nodes, ptr) == pageId) {
                         // Found it.
                         mData.position(((ptr / NODE_SIZE_IN_INTS) * mPageSize) + start);
-                        p_copyFromBB(mData, page, offset, length);
+                        p_copyFromBB(mData, page, offset, mPageSize);
                         return true;
                     }
                     if (chainNextPtr < 0) {
