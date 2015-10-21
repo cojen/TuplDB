@@ -94,7 +94,7 @@ final class PageOps {
     static void p_delete(/*P*/ byte[] page) {
     }
 
-    static /*P*/ byte[] p_clone(/*P*/ byte[] page) {
+    static /*P*/ byte[] p_clone(/*P*/ byte[] page, int length) {
         return page.clone();
     }
 
@@ -114,10 +114,6 @@ final class PageOps {
      */
     static /*P*/ byte[] p_transferTo(byte[] array, /*P*/ byte[] page) {
         return array;
-    }
-
-    static int p_length(/*P*/ byte[] page) {
-        return page.length;
     }
 
     static byte p_byteGet(/*P*/ byte[] page, int index) {
@@ -198,10 +194,6 @@ final class PageOps {
 
     static int p_ulongVarSize(long v) {
         return calcUnsignedVarLongLength(v);
-    }
-
-    static void p_clear(/*P*/ byte[] page) {
-        java.util.Arrays.fill(page, (byte) 0);
     }
 
     static void p_clear(/*P*/ byte[] page, int fromIndex, int toIndex) {

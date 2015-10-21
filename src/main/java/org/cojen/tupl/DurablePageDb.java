@@ -394,14 +394,9 @@ final class DurablePageDb extends PageDb {
     }
 
     @Override
-    public void readPage(long id, /*P*/ byte[] buf) throws IOException {
-        readPage(id, buf, 0);
-    }
-
-    @Override
-    public void readPage(long id, /*P*/ byte[] buf, int offset) throws IOException {
+    public void readPage(long id, /*P*/ byte[] page) throws IOException {
         try {
-            mPageArray.readPage(id, buf, offset, pageSize());
+            mPageArray.readPage(id, page, 0, pageSize());
         } catch (Throwable e) {
             throw closeOnFailure(e);
         }
@@ -425,30 +420,20 @@ final class DurablePageDb extends PageDb {
     }
 
     @Override
-    public void writePage(long id, /*P*/ byte[] buf) throws IOException {
-        writePage(id, buf, 0);
-    }
-
-    @Override
-    public void writePage(long id, /*P*/ byte[] buf, int offset) throws IOException {
+    public void writePage(long id, /*P*/ byte[] page) throws IOException {
         checkId(id);
-        mPageArray.writePage(id, buf, offset);
+        mPageArray.writePage(id, page, 0);
     }
 
     @Override
-    public /*P*/ byte[] evictPage(long id, /*P*/ byte[] buf) throws IOException {
+    public /*P*/ byte[] evictPage(long id, /*P*/ byte[] page) throws IOException {
         checkId(id);
-        return mPageArray.evictPage(id, buf);
+        return mPageArray.evictPage(id, page);
     }
 
     @Override
-    public void cachePage(long id, /*P*/ byte[] buf) throws IOException {
-        mPageArray.cachePage(id, buf);
-    }
-
-    @Override
-    public void cachePage(long id, /*P*/ byte[] buf, int offset) throws IOException {
-        mPageArray.cachePage(id, buf, offset);
+    public void cachePage(long id, /*P*/ byte[] page) throws IOException {
+        mPageArray.cachePage(id, page);
     }
 
     @Override
@@ -835,7 +820,7 @@ final class DurablePageDb extends PageDb {
         setHeaderChecksum(header);
 
         // Write multiple header copies in the page, in case special recovery is required.
-        int dupCount = p_length(header) / MINIMUM_PAGE_SIZE;
+        int dupCount = pageSize() / MINIMUM_PAGE_SIZE;
         for (int i=1; i<dupCount; i++) {
             p_copy(header, 0, header, i * MINIMUM_PAGE_SIZE, MINIMUM_PAGE_SIZE);
         }

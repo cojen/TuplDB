@@ -88,6 +88,10 @@ class Tree extends AbstractView implements Index {
         mMaxEntrySize = ((pageSize - Node.TN_HEADER_SIZE) * 3) >> 2;
     }
 
+    int pageSize() {
+        return mDatabase.pageSize();
+    }
+
     @Override
     public final String toString() {
         return toString(this);

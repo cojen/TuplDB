@@ -32,7 +32,7 @@ interface PageCache extends Closeable {
      * @param canEvict true if another page can be evicted to make room
      * @return false if close or if cannot evict and cache is full
      */
-    public boolean add(long pageId, /*P*/ byte[] page, int offset, int length, boolean canEvict);
+    public boolean add(long pageId, /*P*/ byte[] page, int offset, boolean canEvict);
 
     /**
      * Copy all or part of an entry if it exists, without affecting eviction priority.
@@ -42,7 +42,7 @@ interface PageCache extends Closeable {
      * @param page copy destination
      * @return false if not found
      */
-    public boolean copy(long pageId, int start, /*P*/ byte[] page, int offset, int length);
+    public boolean copy(long pageId, int start, /*P*/ byte[] page, int offset);
 
     /**
      * Get and remove an entry if it exists.

@@ -2943,6 +2943,14 @@ public final class Database implements CauseCloseable, Flushable {
         return mPageSize;
     }
 
+    private int pageSize(/*P*/ byte[] page) {
+        /*P*/ // [
+        return page.length;
+        /*P*/ // |
+        /*P*/ // return mPageSize;
+        /*P*/ // ]
+    }
+
     /**
      * Access the shared commit lock, which prevents commits while held. In general, it should
      * be acquired before any node latches, but postponing acquisition reduces the total time
@@ -3706,7 +3714,7 @@ public final class Database implements CauseCloseable, Flushable {
                                 } else {
                                     p_copyFromArray(value, voffset, page, 0, remainder);
                                     // Zero fill the rest, making it easier to extend later.
-                                    p_clear(page, remainder, p_length(page));
+                                    p_clear(page, remainder, pageSize(page));
                                     break;
                                 }
                             } finally {
@@ -3801,7 +3809,7 @@ public final class Database implements CauseCloseable, Flushable {
                     /*P*/ byte[] childPage = childNode.mPage;
                     p_copyFromArray(value, voffset, childPage, 0, len);
                     // Zero fill the rest, making it easier to extend later.
-                    p_clear(childPage, len, p_length(childPage));
+                    p_clear(childPage, len, pageSize(childPage));
                     childNode.releaseExclusive();
                 } else {
                     writeMultilevelFragments(level, childNode, value, voffset, len);
@@ -3812,7 +3820,7 @@ public final class Database implements CauseCloseable, Flushable {
             }
 
             // Zero fill the rest, making it easier to extend later.
-            p_clear(page, poffset, p_length(page));
+            p_clear(page, poffset, pageSize(page));
         } catch (Throwable e) {
             // Panic.
             close(e);
@@ -3933,7 +3941,7 @@ public final class Database implements CauseCloseable, Flushable {
                     pagesRead++;
                     try {
                         /*P*/ byte[] page = node.mPage;
-                        pLen = Math.min((int) vLen, p_length(page));
+                        pLen = Math.min((int) vLen, pageSize(page));
                         if (value != null) {
                             p_copyToArray(page, 0, value, vOff, pLen);
                         }

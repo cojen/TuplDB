@@ -158,14 +158,14 @@ final class UndoLog implements DatabaseAccess {
         if (buffer == null) {
             mNode = node = allocUnevictableNode(0);
             // Set pointer to top entry (none at the moment).
-            node.undoTop(p_length(node.mPage));
+            node.undoTop(pageSize(node.mPage));
             node.releaseExclusive();
         } else {
             mNode = node = allocUnevictableNode(0);
             int pos = mBufferPos;
             int size = buffer.length - pos;
             /*P*/ byte[] page = node.mPage;
-            int newPos = p_length(page) - size;
+            int newPos = pageSize(page) - size;
             p_copyFromArray(buffer, pos, page, newPos, size);
             // Set pointer to top entry.
             node.undoTop(newPos);
@@ -173,6 +173,14 @@ final class UndoLog implements DatabaseAccess {
             mBufferPos = 0;
             node.releaseExclusive();
         }
+    }
+
+    private int pageSize(/*P*/ byte[] page) {
+        /*P*/ // [
+        return page.length;
+        /*P*/ // |
+        /*P*/ // return mDatabase.pageSize();
+        /*P*/ // ]
     }
 
     long txnId() {
@@ -299,7 +307,7 @@ final class UndoLog implements DatabaseAccess {
                         // Required capacity is large, so just use a node.
                         mNode = node = allocUnevictableNode(0);
                         /*P*/ byte[] page = node.mPage;
-                        int newPos = p_length(page) - size;
+                        int newPos = pageSize(page) - size;
                         p_copyFromArray(buffer, pos, page, newPos, size);
                         // Set pointer to top entry.
                         node.undoTop(newPos);
@@ -363,7 +371,7 @@ final class UndoLog implements DatabaseAccess {
                 throw e;
             }
 
-            newNode.undoTop(pos = p_length(page));
+            newNode.undoTop(pos = pageSize(page));
             available = pos - HEADER_SIZE;
 
             mDatabase.nodeMapPut(node);
@@ -455,7 +463,7 @@ final class UndoLog implements DatabaseAccess {
                             mDatabase.prepareToDelete(node);
                             mDatabase.redirty(node);
                             /*P*/ byte[] page = node.mPage;
-                            int end = p_length(page) - 1;
+                            int end = pageSize(page) - 1;
                             node.undoTop(end);
                             p_bytePut(page, end, OP_COMMIT_TRUNCATE);
                         }
@@ -682,7 +690,7 @@ final class UndoLog implements DatabaseAccess {
         while (true) {
             /*P*/ byte[] page = node.mPage;
             int pos = node.undoTop();
-            if (pos < p_length(page)) {
+            if (pos < pageSize(page)) {
                 byte op = p_byteGet(page, pos);
                 node.releaseExclusive();
                 return op;
@@ -736,7 +744,7 @@ final class UndoLog implements DatabaseAccess {
         while (true) {
             page = node.mPage;
             pos = node.undoTop();
-            if (pos < p_length(page)) {
+            if (pos < pageSize(page)) {
                 break;
             }
             if ((node = popNode(node, delete)) == null) {
@@ -748,7 +756,7 @@ final class UndoLog implements DatabaseAccess {
         if ((opRef[0] = p_byteGet(page, pos++)) < PAYLOAD_OP) {
             mLength -= 1;
             node.undoTop(pos);
-            if (pos >= p_length(page)) {
+            if (pos >= pageSize(page)) {
                 node = popNode(node, delete);
             }
             if (node != null) {
@@ -769,13 +777,13 @@ final class UndoLog implements DatabaseAccess {
         int entryPos = 0;
 
         while (true) {
-            int avail = Math.min(payloadLen, p_length(page) - pos);
+            int avail = Math.min(payloadLen, pageSize(page) - pos);
             p_copyToArray(page, pos, entry, entryPos, avail);
             payloadLen -= avail;
             pos += avail;
             node.undoTop(pos);
 
-            if (pos >= p_length(page)) {
+            if (pos >= pageSize(page)) {
                 node = popNode(node, delete);
             }
 

@@ -110,14 +110,9 @@ final class NonPageDb extends PageDb {
     }
 
     @Override
-    public void readPage(long id, /*P*/ byte[] buf) throws IOException {
-        readPage(id, buf, 0);
-    }
-
-    @Override
-    public void readPage(long id, /*P*/ byte[] buf, int offset) throws IOException {
+    public void readPage(long id, /*P*/ byte[] page) throws IOException {
         PageCache cache = mCache;
-        if (cache == null || !cache.remove(id, buf, offset, p_length(buf))) {
+        if (cache == null || !cache.remove(id, page, 0, pageSize())) {
             fail(false);
         }
     }
@@ -135,33 +130,23 @@ final class NonPageDb extends PageDb {
     }
 
     @Override
-    public void writePage(long id, /*P*/ byte[] buf) throws IOException {
-        writePage(id, buf, 0);
-    }
-
-    @Override
-    public void writePage(long id, /*P*/ byte[] buf, int offset) throws IOException {
+    public void writePage(long id, /*P*/ byte[] page) throws IOException {
         PageCache cache = mCache;
-        if (cache == null || !cache.add(id, buf, offset, p_length(buf), false)) {
+        if (cache == null || !cache.add(id, page, 0, false)) {
             fail(true);
         }
     }
 
     @Override
-    public /*P*/ byte[] evictPage(long id, /*P*/ byte[] buf) throws IOException {
-        writePage(id, buf, 0);
-        return buf;
+    public /*P*/ byte[] evictPage(long id, /*P*/ byte[] page) throws IOException {
+        writePage(id, page);
+        return page;
     }
 
     @Override
-    public void cachePage(long id, /*P*/ byte[] buf) throws IOException {
-        cachePage(id, buf, 0);
-    }
-
-    @Override
-    public void cachePage(long id, /*P*/ byte[] buf, int offset) throws IOException {
+    public void cachePage(long id, /*P*/ byte[] page) throws IOException {
         PageCache cache = mCache;
-        if (cache != null && !cache.add(id, buf, offset, p_length(buf), false)) {
+        if (cache != null && !cache.add(id, page, 0, false)) {
             fail(false);
         }
     }
