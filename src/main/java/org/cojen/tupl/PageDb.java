@@ -166,7 +166,7 @@ abstract class PageDb implements CauseCloseable {
      */
     public abstract long allocatePages(long pageCount) throws IOException;
 
-    public long directReadPointer(long id) throws IOException {
+    public long directPagePointer(long id) throws IOException {
         throw new UnsupportedOperationException();
     }
 

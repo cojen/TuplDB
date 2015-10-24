@@ -207,7 +207,7 @@ final class UndoLog implements DatabaseAccess {
      */
     void delete() {
         if (mNode != null) {
-            mNode.delete();
+            mNode.delete(mDatabase);
         }
     }
 

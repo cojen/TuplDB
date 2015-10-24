@@ -309,7 +309,7 @@ final class PageManager {
      *
      * @return newly allocated page id
      */
-    private long increasePageCount() throws DatabaseFullException {
+    private long increasePageCount() throws IOException, DatabaseFullException {
         long total = mTotalPageCount;
 
         long limit;
@@ -320,6 +320,11 @@ final class PageManager {
                 limit = mPageLimit;
             } else {
                 limit = limitObj;
+            }
+
+            long max = mPageArray.getPageCountLimit();
+            if (max > 0 && (limit < 0 || limit > max)) {
+                limit = max;
             }
         }
 

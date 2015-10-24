@@ -44,23 +44,29 @@ final class DirectPageOps {
     private static final Unsafe UNSAFE = Hasher.getUnsafe();
     private static final long BYTE_ARRAY_OFFSET = UNSAFE.arrayBaseOffset(byte[].class);
     private static final long CLOSED_TREE_PAGE;
+    private static final long NON_TREE_PAGE;
 
     private static final Method CRC_BUFFER_UPDATE_METHOD;
 
     static {
-        long closed = p_calloc(Node.TN_HEADER_SIZE);
+        CLOSED_TREE_PAGE = newEmptyPage();
+        NON_TREE_PAGE = newEmptyPage();
+    }
 
-        p_bytePut(closed, 0, Node.TYPE_TN_LEAF | Node.LOW_EXTREMITY | Node.HIGH_EXTREMITY);
+    private static long newEmptyPage() {
+        long empty = p_calloc(Node.TN_HEADER_SIZE);
+
+        p_bytePut(empty, 0, Node.TYPE_TN_LEAF | Node.LOW_EXTREMITY | Node.HIGH_EXTREMITY);
 
         // Set fields such that binary search returns ~0 and availableBytes returns 0.
 
         // Note: Same as Node.clearEntries.
-        p_shortPutLE(closed, 4,  Node.TN_HEADER_SIZE);     // leftSegTail
-        p_shortPutLE(closed, 6,  Node.TN_HEADER_SIZE - 1); // rightSegTail
-        p_shortPutLE(closed, 8,  Node.TN_HEADER_SIZE);     // searchVecStart
-        p_shortPutLE(closed, 10, Node.TN_HEADER_SIZE - 2); // searchVecEnd
+        p_shortPutLE(empty, 4,  Node.TN_HEADER_SIZE);     // leftSegTail
+        p_shortPutLE(empty, 6,  Node.TN_HEADER_SIZE - 1); // rightSegTail
+        p_shortPutLE(empty, 8,  Node.TN_HEADER_SIZE);     // searchVecStart
+        p_shortPutLE(empty, 10, Node.TN_HEADER_SIZE - 2); // searchVecEnd
 
-        CLOSED_TREE_PAGE = closed;
+        return empty;
     }
 
     static {
@@ -82,6 +88,10 @@ final class DirectPageOps {
         return CLOSED_TREE_PAGE;
     }
 
+    static long p_nonTreePage() {
+        return NON_TREE_PAGE;
+    }
+
     static long p_alloc(int size) {
         return UNSAFE.allocateMemory(size);
     }
@@ -97,7 +107,7 @@ final class DirectPageOps {
     }
 
     static void p_delete(long page) {
-        if (page != CLOSED_TREE_PAGE) {
+        if (page != CLOSED_TREE_PAGE && page != NON_TREE_PAGE) {
             UNSAFE.freeMemory(page);
         }
     }

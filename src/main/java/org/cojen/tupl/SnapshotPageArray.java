@@ -79,6 +79,11 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
+    public long getPageCountLimit() throws IOException {
+        return mSource.getPageCountLimit();
+    }
+
+    @Override
     public void readPage(long index, /*P*/ byte[] buf, int offset, int length) throws IOException {
         PageCache cache = mCache;
         if (cache == null || !cache.remove(index, buf, offset, length)) {
@@ -132,11 +137,11 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
-    public long directReadPointer(long index) throws IOException {
-        if (mCache == null) {
+    public long directPagePointer(long index) throws IOException {
+        if (mCache != null) {
             throw new IllegalStateException();
         }
-        return mSource.directReadPointer(index);
+        return mSource.directPagePointer(index);
     }
 
     @Override
@@ -152,7 +157,7 @@ final class SnapshotPageArray extends PageArray {
     }
 
     private void preCopyPage(long dstIndex) throws IOException {
-        if (mCache == null) {
+        if (mCache != null) {
             throw new IllegalStateException();
         }
 

@@ -58,6 +58,11 @@ final class CryptoPageArray extends PageArray {
     }
 
     @Override
+    public long getPageCountLimit() throws IOException {
+        return mSource.getPageCountLimit();
+    }
+
+    @Override
     public void readPage(long index, /*P*/ byte[] buf) throws IOException {
         try {
             mSource.readPage(index, buf);

@@ -16,6 +16,8 @@
 
 package org.cojen.tupl;
 
+import static org.cojen.tupl.PageOps.p_calloc;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -40,7 +42,7 @@ public class NodeMapTest {
         Database db = Database.open(new DatabaseConfig().pageSize(page).maxCacheSize(size * page));
 
         for (int i=0; i<count; i++) {
-            Node n = new Node(null, page);
+            Node n = new Node(null, p_calloc(page));
             long id = idOffset + i;
             n.mId = id;
             db.nodeMapPut(n, Utils.hash(id));
@@ -58,6 +60,7 @@ public class NodeMapTest {
             Node n = db.nodeMapGet(id, hash);
             assertEquals(id, n.mId);
             db.nodeMapRemove(n, hash);
+            n.delete(db);
             assertNull(db.nodeMapGet(id, hash));
         }
     }
@@ -74,7 +77,7 @@ public class NodeMapTest {
 
         Node[] nodes = new Node[count];
         for (int i=0; i<count; i++) {
-            Node n = new Node(null, page);
+            Node n = new Node(null, p_calloc(page));
             long id = idOffset + i;
             n.mId = id;
             db.nodeMapPut(n, Utils.hash(id));

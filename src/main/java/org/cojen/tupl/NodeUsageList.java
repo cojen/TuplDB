@@ -19,6 +19,7 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 import static org.cojen.tupl.Node.*;
+import static org.cojen.tupl.PageOps.*;
 
 /**
  * List of Nodes, ordered from least to most recently used.
@@ -195,9 +196,18 @@ final class NodeUsageList extends Latch {
     private Node doAllocLatchedNode(int mode) throws DatabaseException {
         try {
             mDatabase.checkClosed();
-            Node node = new Node(this, mPageSize);
+
+            /*P*/ byte[] page;
+            /*P*/ // [
+            page = p_calloc(mPageSize);
+            /*P*/ // |
+            /*P*/ // page = mDatabase.mFullyMapped ? p_nonTreePage() : p_calloc(mPageSize);
+            /*P*/ // ]
+
+            Node node = new Node(this, page);
             node.acquireExclusive();
             mSize++;
+
             if ((mode & MODE_UNEVICTABLE) == 0) {
                 if ((node.mLessUsed = mMostRecentlyUsed) == null) {
                     mLeastRecentlyUsed = node;
@@ -206,6 +216,7 @@ final class NodeUsageList extends Latch {
                 }
                 mMostRecentlyUsed = node;
             }
+
             // Return with node latch still held.
             return node;
         } finally {
@@ -385,7 +396,7 @@ final class NodeUsageList extends Latch {
                 node.mMoreUsed = null;
 
                 // Free memory and make node appear to be evicted.
-                node.delete();
+                node.delete(mDatabase);
 
                 node = next;
             }

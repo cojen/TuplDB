@@ -64,6 +64,7 @@ import org.cojen.tupl.ext.TransactionHandler;
 
 import org.cojen.tupl.io.CauseCloseable;
 import org.cojen.tupl.io.FileFactory;
+import org.cojen.tupl.io.MappedPageArray;
 import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
 
@@ -245,6 +246,10 @@ public final class Database implements CauseCloseable, Flushable {
     private volatile Checkpointer mCheckpointer;
 
     final TempFileManager mTempFileManager;
+
+    /*P*/ // [|
+    /*P*/ // final boolean mFullyMapped;
+    /*P*/ // ]
 
     volatile boolean mClosed;
     volatile Throwable mClosedCause;
@@ -429,13 +434,22 @@ public final class Database implements CauseCloseable, Flushable {
                 config.mSecondaryCacheSize = cache.capacity();
             }
 
+            /*P*/ // [|
+            /*P*/ // boolean fullyMapped = false;
+            /*P*/ // ]
+
             if (dataFiles == null) {
                 PageArray dataPageArray = config.mDataPageArray;
                 if (dataPageArray == null) {
                     mPageDb = new NonPageDb(pageSize, cache);
                 } else {
+                    Crypto crypto = config.mCrypto;
                     mPageDb = DurablePageDb.open
-                        (dataPageArray, cache, config.mCrypto, openMode == OPEN_DESTROY);
+                        (dataPageArray, cache, crypto, openMode == OPEN_DESTROY);
+                    /*P*/ // [|
+                    /*P*/ // fullyMapped = crypto == null
+                    /*P*/ //               && dataPageArray instanceof MappedPageArray;
+                    /*P*/ // ]
                 }
             } else {
                 EnumSet<OpenOption> options = config.createOpenOptions();
@@ -444,6 +458,10 @@ public final class Database implements CauseCloseable, Flushable {
                      dataFiles, config.mFileFactory, options,
                      cache, config.mCrypto, openMode == OPEN_DESTROY);
             }
+
+            /*P*/ // [|
+            /*P*/ // mFullyMapped = fullyMapped;
+            /*P*/ // ]
 
             // Actual page size might differ from configured size.
             config.pageSize(mPageSize = mPageDb.pageSize());
@@ -2353,7 +2371,7 @@ public final class Database implements CauseCloseable, Flushable {
                 nodeMapDeleteAll();
 
                 if (mDirtyList != null) {
-                    mDirtyList.delete();
+                    mDirtyList.delete(this);
                 }
 
                 synchronized (mTxnIdLock) {
@@ -3186,7 +3204,7 @@ public final class Database implements CauseCloseable, Flushable {
         for (int i=mNodeMapTable.length; --i>=0; ) {
             Node e = mNodeMapTable[i];
             if (e != null) {
-                e.delete();
+                e.delete(this);
                 Node next;
                 while ((next = e.mNodeMapNext) != null) {
                     e.mNodeMapNext = null;
@@ -3279,6 +3297,13 @@ public final class Database implements CauseCloseable, Flushable {
      */
     Node allocDirtyNode(int mode) throws IOException {
         Node node = mPageDb.allocLatchedNode(this, mode);
+
+        /*P*/ // [|
+        /*P*/ // if (mFullyMapped) {
+        /*P*/ //     node.mPage = mPageDb.directPagePointer(node.mId);
+        /*P*/ // }
+        /*P*/ // ]
+
         node.mCachedState = mCommitState;
         mDirtyList.add(node);
         return node;
@@ -3458,7 +3483,18 @@ public final class Database implements CauseCloseable, Flushable {
     /**
      * Caller must hold commit lock and exclusive latch on node.
      */
-    private void dirty(Node node, long newId) {
+    private void dirty(Node node, long newId) throws IOException {
+        /*P*/ // [|
+        /*P*/ // if (mFullyMapped) {
+        /*P*/ //     if (node.mPage == p_nonTreePage()) {
+        /*P*/ //         node.mPage = mPageDb.directPagePointer(newId);
+        /*P*/ //         node.asEmptyRoot();
+        /*P*/ //     } else if (node.mPage != p_closedTreePage()) {
+        /*P*/ //         node.mPage = mPageDb.copyPage(node.mId, newId); // copy on write
+        /*P*/ //     }
+        /*P*/ // }
+        /*P*/ // ]
+
         node.mId = newId;
         node.mCachedState = mCommitState;
     }
@@ -4220,7 +4256,16 @@ public final class Database implements CauseCloseable, Flushable {
      * Reads the node page, sets the id and cached state. Node must be latched exclusively.
      */
     void readNode(Node node, long id) throws IOException {
+        /*P*/ // [
         mPageDb.readPage(id, node.mPage);
+        /*P*/ // |
+        /*P*/ // if (mFullyMapped) {
+        /*P*/ //     node.mPage = mPageDb.directPagePointer(id);
+        /*P*/ // } else {
+        /*P*/ //     mPageDb.readPage(id, node.mPage);
+        /*P*/ // }
+        /*P*/ // ]
+
         node.mId = id;
 
         if (!mHasCheckpointed) {
