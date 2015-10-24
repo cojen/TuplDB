@@ -91,6 +91,11 @@ public abstract class MappedPageArray extends PageArray {
     public void setPageCount(long count) {
     }
 
+    @Override
+    public long getPageCountLimit() {
+        return mPageCount;
+    }
+
     public void readPage(long index, byte[] buf, int offset, int length)
         throws IOException
     {
@@ -100,7 +105,11 @@ public abstract class MappedPageArray extends PageArray {
         lock.lock();
         try {
             ByteBuffer src = DirectAccess.ref(mappingPtr() + index * mPageSize, length);
-            src.get(buf, 0, length);
+            try {
+                src.get(buf, 0, length);
+            } finally {
+                DirectAccess.unref(src);
+            }
         } finally {
             lock.unlock();
         }
@@ -120,8 +129,16 @@ public abstract class MappedPageArray extends PageArray {
             long srcPtr = mappingPtr() + index * pageSize;
             if (srcPtr != ptr) {
                 ByteBuffer src = DirectAccess.ref(srcPtr, length);
-                ByteBuffer dst = DirectAccess.ref2(ptr, length);
-                dst.put(src);
+                try {
+                    ByteBuffer dst = DirectAccess.ref2(ptr, length);
+                    try {
+                        dst.put(src);
+                    } finally {
+                        DirectAccess.unref(dst);
+                    }
+                } finally {
+                    DirectAccess.unref(src);
+                }
             }
         } finally {
             lock.unlock();
@@ -136,7 +153,11 @@ public abstract class MappedPageArray extends PageArray {
         try {
             int pageSize = mPageSize;
             ByteBuffer dst = DirectAccess.ref(mappingPtr() + index * pageSize, pageSize);
-            dst.put(buf, 0, pageSize);
+            try {
+                dst.put(buf, 0, pageSize);
+            } finally {
+                DirectAccess.unref(dst);
+            }
         } finally {
             lock.unlock();
         }
@@ -154,8 +175,16 @@ public abstract class MappedPageArray extends PageArray {
             long dstPtr = mappingPtr() + index * pageSize;
             if (dstPtr != ptr) {
                 ByteBuffer dst = DirectAccess.ref(dstPtr, pageSize);
-                ByteBuffer src = DirectAccess.ref2(ptr, pageSize);
-                dst.put(src);
+                try {
+                    ByteBuffer src = DirectAccess.ref2(ptr, pageSize);
+                    try {
+                        dst.put(src);
+                    } finally {
+                        DirectAccess.unref(src);
+                    }
+                } finally {
+                    DirectAccess.unref(dst);
+                }
             }
         } finally {
             lock.unlock();
@@ -163,7 +192,7 @@ public abstract class MappedPageArray extends PageArray {
     }
 
     @Override
-    public long directReadPointer(long index) throws IOException {
+    public long directPagePointer(long index) throws IOException {
         readCheck(index);
 
         Lock lock = mLock.readLock();
@@ -190,9 +219,17 @@ public abstract class MappedPageArray extends PageArray {
             long ptr = mappingPtr();
             long dstPtr = ptr + dstIndex * pageSize;
             ByteBuffer dst = DirectAccess.ref(dstPtr, pageSize);
-            ByteBuffer src = DirectAccess.ref2(ptr + srcIndex * pageSize, pageSize);
-            dst.put(src);
-            return dstPtr;
+            try {
+                ByteBuffer src = DirectAccess.ref2(ptr + srcIndex * pageSize, pageSize);
+                try {
+                    dst.put(src);
+                } finally {
+                    DirectAccess.unref(src);
+                }
+                return dstPtr;
+            } finally {
+                DirectAccess.unref(dst);
+            }
         } finally {
             lock.unlock();
         }
@@ -211,9 +248,17 @@ public abstract class MappedPageArray extends PageArray {
             int pageSize = mPageSize;
             long dstPtr = mappingPtr() + dstIndex * pageSize;
             ByteBuffer dst = DirectAccess.ref(dstPtr, pageSize);
-            ByteBuffer src = DirectAccess.ref2(srcPointer, pageSize);
-            dst.put(src);
-            return dstPtr;
+            try {
+                ByteBuffer src = DirectAccess.ref2(srcPointer, pageSize);
+                try {
+                    dst.put(src);
+                } finally {
+                    DirectAccess.unref(src);
+                }
+                return dstPtr;
+            } finally {
+                DirectAccess.unref(dst);
+            }
         } finally {
             lock.unlock();
         }

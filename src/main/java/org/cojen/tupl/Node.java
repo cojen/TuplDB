@@ -230,11 +230,7 @@ final class Node extends Latch implements DatabaseAccess {
     // Set by a partially completed split.
     transient Split mSplit;
 
-    Node(NodeUsageList usageList, int pageSize) {
-        this(usageList, p_calloc(pageSize));
-    }
-
-    private Node(NodeUsageList usageList, /*P*/ byte[] page) {
+    Node(NodeUsageList usageList, /*P*/ byte[] page) {
         mUsageList = usageList;
         mPage = page;
     }
@@ -242,14 +238,25 @@ final class Node extends Latch implements DatabaseAccess {
     /**
      * Must be called when object is no longer referenced.
      */
-    void delete() {
+    void delete(Database db) {
         acquireExclusive();
-        /*P*/ byte[] page = mPage;
-        if (page != p_closedTreePage()) {
-            p_delete(page);
-            closeRoot();
+        try {
+            /*P*/ // [|
+            /*P*/ // if (db.mFullyMapped) {
+            /*P*/ //     // Cannot delete mapped pages.
+            /*P*/ //     closeRoot();
+            /*P*/ //     return;
+            /*P*/ // }
+            /*P*/ // ]
+
+            /*P*/ byte[] page = mPage;
+            if (page != p_closedTreePage()) {
+                p_delete(page);
+                closeRoot();
+            }
+        } finally {
+            releaseExclusive();
         }
-        releaseExclusive();
     }
 
     @Override
@@ -713,16 +720,28 @@ final class Node extends Latch implements DatabaseAccess {
         Node child = db.allocDirtyNode();
         db.nodeMapPut(child);
 
-        /*P*/ byte[] newPage = child.mPage;
-        child.mPage = mPage;
+        /*P*/ byte[] newRootPage;
+
         /*P*/ // [
+        newRootPage = child.mPage;
+        child.mPage = mPage;
         child.type(type());
         child.garbage(garbage());
         child.leftSegTail(leftSegTail());
         child.rightSegTail(rightSegTail());
         child.searchVecStart(searchVecStart());
         child.searchVecEnd(searchVecEnd());
+        /*P*/ // |
+        /*P*/ // if (db.mFullyMapped) {
+        /*P*/ //     // Page cannot change, so copy it instead.
+        /*P*/ //     newRootPage = mPage;
+        /*P*/ //     p_copy(newRootPage, 0, child.mPage, 0, db.pageSize());
+        /*P*/ // } else {
+        /*P*/ //     newRootPage = child.mPage;
+        /*P*/ //     child.mPage = mPage;
+        /*P*/ // }
         /*P*/ // ]
+
         child.mLastCursorFrame = mLastCursorFrame;
 
         // Fix child node cursor frame bindings.
@@ -744,28 +763,28 @@ final class Node extends Latch implements DatabaseAccess {
             right = child;
         }
 
-        int leftSegTail = split.copySplitKeyToParent(newPage, TN_HEADER_SIZE);
+        int leftSegTail = split.copySplitKeyToParent(newRootPage, TN_HEADER_SIZE);
 
         // Create new single-element search vector. Center it using the same formula as the
         // compactInternal method.
-        final int searchVecStart = pageSize(newPage) -
-            (((pageSize(newPage) - leftSegTail + (2 + 8 + 8)) >> 1) & ~1);
-        p_shortPutLE(newPage, searchVecStart, TN_HEADER_SIZE);
-        p_longPutLE(newPage, searchVecStart + 2, left.mId);
-        p_longPutLE(newPage, searchVecStart + 2 + 8, right.mId);
+        final int searchVecStart = pageSize(newRootPage) -
+            (((pageSize(newRootPage) - leftSegTail + (2 + 8 + 8)) >> 1) & ~1);
+        p_shortPutLE(newRootPage, searchVecStart, TN_HEADER_SIZE);
+        p_longPutLE(newRootPage, searchVecStart + 2, left.mId);
+        p_longPutLE(newRootPage, searchVecStart + 2 + 8, right.mId);
 
         byte newType = isLeaf() ? (byte) (TYPE_TN_BIN | LOW_EXTREMITY | HIGH_EXTREMITY)
             : (byte) (TYPE_TN_IN | LOW_EXTREMITY | HIGH_EXTREMITY);
 
-        mPage = newPage;
+        mPage = newRootPage;
         /*P*/ // [
         type(newType);
         garbage(0);
         /*P*/ // |
-        /*P*/ // p_intPutLE(newPage, 0, newType & 0xff); // set type, reserved byte, and garbage
+        /*P*/ // p_intPutLE(newRootPage, 0, newType & 0xff); // type, reserved byte, and garbage
         /*P*/ // ]
         leftSegTail(leftSegTail);
-        rightSegTail(pageSize(newPage) - 1);
+        rightSegTail(pageSize(newRootPage) - 1);
         searchVecStart(searchVecStart);
         searchVecEnd(searchVecStart);
         mLastCursorFrame = null;
@@ -4026,36 +4045,46 @@ final class Node extends Latch implements DatabaseAccess {
     void rootDelete(Tree tree, Node child) throws IOException {
         tree.mDatabase.prepareToDelete(child);
 
-        /*P*/ byte[] page = mPage;
+        /*P*/ byte[] rootPage = mPage;
         TreeCursorFrame lastCursorFrame = mLastCursorFrame;
 
         long toDelete = child.mId;
         int toDeleteState = child.mCachedState;
 
         byte stubType = type();
-        mPage = child.mPage;
+
         /*P*/ // [
+        mPage = child.mPage;
         type(child.type());
         garbage(child.garbage());
         leftSegTail(child.leftSegTail());
         rightSegTail(child.rightSegTail());
         searchVecStart(child.searchVecStart());
         searchVecEnd(child.searchVecEnd());
+        /*P*/ // |
+        /*P*/ // if (tree.mDatabase.mFullyMapped) {
+        /*P*/ //     // Page cannot change, so copy it instead.
+        /*P*/ //     p_copy(child.mPage, 0, rootPage, 0, tree.mDatabase.pageSize());
+        /*P*/ //     rootPage = child.mPage;
+        /*P*/ // } else {
+        /*P*/ //     mPage = child.mPage;
+        /*P*/ // }
         /*P*/ // ]
+
         mLastCursorFrame = child.mLastCursorFrame;
 
         // Repurpose the child node into a stub root node. Stub is assigned a
         // reserved id (1) and a clean cached state. It cannot be marked dirty,
         // but it can be evicted when all cursors have unbound from it.
         tree.mDatabase.nodeMapRemove(child, Utils.hash(toDelete));
-        child.mPage = page;
+        child.mPage = rootPage;
         child.mId = STUB_ID;
         child.mCachedState = CACHED_CLEAN;
         child.type(stubType);
         child.clearEntries();
         child.mLastCursorFrame = lastCursorFrame;
         // Search vector also needs to point to root.
-        p_longPutLE(page, child.searchVecEnd() + 2, this.mId);
+        p_longPutLE(rootPage, child.searchVecEnd() + 2, this.mId);
 
         // Fix cursor bindings for this, the real root node.
         for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
@@ -4285,16 +4314,27 @@ final class Node extends Latch implements DatabaseAccess {
             destLoc += len;
         }
 
-        // Recycle old page buffer.
+        /*P*/ // [
+        // Recycle old page buffer and swap in compacted page.
         db.addSparePage(page);
+        mPage = dest;
+        garbage(0);
+        /*P*/ // |
+        /*P*/ // if (db.mFullyMapped) {
+        /*P*/ //     // Copy compacted entries to original page and recycle spare page buffer.
+        /*P*/ //     p_copy(dest, 0, page, 0, pageSize(page));
+        /*P*/ //     db.addSparePage(dest);
+        /*P*/ //     dest = page;
+        /*P*/ // } else {
+        /*P*/ //     // Recycle old page buffer and swap in compacted page.
+        /*P*/ //     db.addSparePage(page);
+        /*P*/ //     mPage = dest;
+        /*P*/ // }
+        /*P*/ // ]
 
         // Write pointer to new allocation.
         p_shortPutLE(dest, newLoc == 0 ? newSearchVecLoc : newLoc, destLoc);
 
-        mPage = dest;
-        /*P*/ // [
-        garbage(0);
-        /*P*/ // ]
         leftSegTail(destLoc + encodedLen);
         rightSegTail(pageSize(dest) - 1);
         searchVecStart(newSearchVecStart);
@@ -5146,16 +5186,27 @@ final class Node extends Latch implements DatabaseAccess {
             p_copy(page, searchVecEnd() + 2, dest, newSearchVecLoc, (newSearchVecSize << 2) + 8);
         }
 
-        // Recycle old page buffer.
+        /*P*/ // [
+        // Recycle old page buffer and swap in compacted page.
         db.addSparePage(page);
+        mPage = dest;
+        garbage(0);
+        /*P*/ // |
+        /*P*/ // if (db.mFullyMapped) {
+        /*P*/ //     // Copy compacted entries to original page and recycle spare page buffer.
+        /*P*/ //     p_copy(dest, 0, page, 0, pageSize(page));
+        /*P*/ //     db.addSparePage(dest);
+        /*P*/ //     dest = page;
+        /*P*/ // } else {
+        /*P*/ //     // Recycle old page buffer and swap in compacted page.
+        /*P*/ //     db.addSparePage(page);
+        /*P*/ //     mPage = dest;
+        /*P*/ // }
+        /*P*/ // ]
 
         // Write pointer to key entry.
         p_shortPutLE(dest, newLoc, destLoc);
 
-        mPage = dest;
-        /*P*/ // [
-        garbage(0);
-        /*P*/ // ]
         leftSegTail(destLoc + encodedLen);
         rightSegTail(pageSize(dest) - 1);
         searchVecStart(newSearchVecStart);

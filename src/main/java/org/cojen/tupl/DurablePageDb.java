@@ -507,8 +507,8 @@ final class DurablePageDb extends PageDb {
     }
 
     @Override
-    public long directReadPointer(long id) throws IOException {
-        return mPageArray.directReadPointer(id);
+    public long directPagePointer(long id) throws IOException {
+        return mPageArray.directPagePointer(id);
     }
 
     @Override

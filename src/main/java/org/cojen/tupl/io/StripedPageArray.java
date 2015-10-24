@@ -101,6 +101,20 @@ public class StripedPageArray extends PageArray {
     }
 
     @Override
+    public long getPageCountLimit() throws IOException {
+        long limit = -1;
+
+        for (PageArray pa : mArrays) {
+            long subLimit = pa.getPageCountLimit();
+            if (subLimit >= 0) {
+                limit = limit < 0 ? subLimit : Math.min(limit, subLimit);
+            }
+        }
+
+        return limit < 0 ? limit : limit * mArrays.length; 
+    }
+
+    @Override
     public void readPage(long index, /*P*/ byte[] buf, int offset, int length) throws IOException {
         PageArray[] arrays = mArrays;
         int stripes = arrays.length;
@@ -122,10 +136,10 @@ public class StripedPageArray extends PageArray {
     }
 
     @Override
-    public long directReadPointer(long index) throws IOException {
+    public long directPagePointer(long index) throws IOException {
         PageArray[] arrays = mArrays;
         int stripes = arrays.length;
-        return arrays[(int) (index % stripes)].directReadPointer(index / stripes);
+        return arrays[(int) (index % stripes)].directPagePointer(index / stripes);
     }
 
     @Override
@@ -142,7 +156,7 @@ public class StripedPageArray extends PageArray {
         if (src == dst) {
             return dst.copyPage(srcIndex, dstIndex);
         } else {
-            return dst.copyPageFromPointer(src.directReadPointer(srcIndex), dstIndex);
+            return dst.copyPageFromPointer(src.directPagePointer(srcIndex), dstIndex);
         }
     }
 

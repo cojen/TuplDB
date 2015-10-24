@@ -71,7 +71,8 @@ public class DirectAccess {
 
     /**
      * Returns a thread-local ByteBuffer which references any memory address. The position is
-     * set to zero, the limit and capacity are set to the given length.
+     * set to zero, the limit and capacity are set to the given length. Be sure to call unref
+     * when done, to prevent double free when ByteBuffer is GC'd.
      *
      * @throws UnsupportedOperationException if not supported
      */
@@ -80,7 +81,8 @@ public class DirectAccess {
     }
 
     /**
-     * Returns a second independent thread-local ByteBuffer.
+     * Returns a second independent thread-local ByteBuffer. Be sure to call unref when done,
+     * to prevent double free when ByteBuffer is GC'd.
      *
      * @throws UnsupportedOperationException if not supported
      */

@@ -46,7 +46,7 @@ public abstract class PageArray implements CauseCloseable {
     public abstract boolean isEmpty() throws IOException;
 
     /**
-     * Returns the total count of pages in the array or Long.MAX_VALUE if not applicable.
+     * Returns the total count of pages in the array, or Long.MAX_VALUE if not applicable.
      */
     public abstract long getPageCount() throws IOException;
 
@@ -58,6 +58,13 @@ public abstract class PageArray implements CauseCloseable {
      * @throws IllegalArgumentException if count is negative
      */
     public abstract void setPageCount(long count) throws IOException;
+
+    /**
+     * Return maximum allowed page count, or -1 if not applicable.
+     */
+    public long getPageCountLimit() throws IOException {
+        return -1;
+    }
 
     /**
      * @param index zero-based page index to read
@@ -149,14 +156,16 @@ public abstract class PageArray implements CauseCloseable {
     public void uncachePage(long index) throws IOException {
     }
 
-    public long directReadPointer(long index) throws IOException {
+    public long directPagePointer(long index) throws IOException {
         throw new UnsupportedOperationException();
     }
 
+    // FIXME: remove?
     public long copyPage(long srcIndex, long dstIndex) throws IOException {
         throw new UnsupportedOperationException();
     }
 
+    // FIXME: remove?
     public long copyPageFromPointer(long srcPointer, long dstIndex) throws IOException {
         throw new UnsupportedOperationException();
     }
