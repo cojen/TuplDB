@@ -138,7 +138,7 @@ final class FragmentedTrash {
             indexKey = Node.retrieveKeyAtLoc(dbAccess, undo, 0);
 
             int tidLoc = Node.keyLengthAtLoc(undo, 0);
-            int tidLen = pageSize(undo) - tidLoc;
+            int tidLen = undoEntry.length - tidLoc;
             trashKey = new byte[8 + tidLen];
             encodeLongBE(trashKey, 0, txnId);
             p_copyToArray(undo, tidLoc, trashKey, 8, tidLen);
@@ -192,10 +192,11 @@ final class FragmentedTrash {
                     break;
                 }
                 cursor.load();
-                /*P*/ byte[] fragmented = p_transfer(cursor.value());
+                byte[] value = cursor.value();
+                /*P*/ byte[] fragmented = p_transfer(value);
                 sharedCommitLock.lock();
                 try {
-                    db.deleteFragments(fragmented, 0, pageSize(fragmented));
+                    db.deleteFragments(fragmented, 0, value.length);
                     cursor.store(null);
                 } finally {
                     sharedCommitLock.unlock();
@@ -229,11 +230,12 @@ final class FragmentedTrash {
                 }
                 found = true;
                 do {
-                    /*P*/ byte[] fragmented = p_transfer(cursor.value());
+                    byte[] value = cursor.value();
+                    /*P*/ byte[] fragmented = p_transfer(value);
                     try {
                         sharedCommitLock.lock();
                         try {
-                            db.deleteFragments(fragmented, 0, pageSize(fragmented));
+                            db.deleteFragments(fragmented, 0, value.length);
                             cursor.store(null);
                         } finally {
                             sharedCommitLock.unlock();
@@ -249,13 +251,5 @@ final class FragmentedTrash {
             throw closeOnFailure(cursor, e);
         }
         return found;
-    }
-
-    private int pageSize(/*P*/ byte[] page) {
-        /*P*/ // [
-        return page.length;
-        /*P*/ // |
-        /*P*/ // return mTrash.pageSize();
-        /*P*/ // ]
     }
 }

@@ -2198,7 +2198,7 @@ final class Node extends Latch implements DatabaseAccess {
         if (fragmented != null) {
             /*P*/ byte[] copy = p_transfer(fragmented);
             try {
-                getDatabase().deleteFragments(copy, 0, pageSize(copy));
+                getDatabase().deleteFragments(copy, 0, fragmented.length);
             } catch (Throwable e) {
                 cause.addSuppressed(e);
                 panic(cause);
