@@ -447,7 +447,7 @@ public final class Database implements CauseCloseable, Flushable {
                     mPageDb = DurablePageDb.open
                         (dataPageArray, cache, crypto, openMode == OPEN_DESTROY);
                     /*P*/ // [|
-                    /*P*/ // fullyMapped = crypto == null
+                    /*P*/ // fullyMapped = crypto == null && cache == null
                     /*P*/ //               && dataPageArray instanceof MappedPageArray;
                     /*P*/ // ]
                 }
