@@ -71,8 +71,7 @@ public class DirectAccess {
 
     /**
      * Returns a thread-local ByteBuffer which references any memory address. The position is
-     * set to zero, the limit and capacity are set to the given length. Be sure to call unref
-     * when done, to prevent double free when ByteBuffer is GC'd.
+     * set to zero, the limit and capacity are set to the given length.
      *
      * @throws UnsupportedOperationException if not supported
      */
@@ -81,8 +80,7 @@ public class DirectAccess {
     }
 
     /**
-     * Returns a second independent thread-local ByteBuffer. Be sure to call unref when done,
-     * to prevent double free when ByteBuffer is GC'd.
+     * Returns a second independent thread-local ByteBuffer.
      *
      * @throws UnsupportedOperationException if not supported
      */
@@ -114,6 +112,10 @@ public class DirectAccess {
         return bb;
     }
 
+    /**
+     * Optionally unreference a buffer. The garbage collector does not attempt to free memory
+     * referenced by a ByteBuffer created by this class.
+     */
     public static void unref(ByteBuffer bb) {
         bb.position(0).limit(0);
         try {
