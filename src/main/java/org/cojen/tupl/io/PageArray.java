@@ -160,12 +160,10 @@ public abstract class PageArray implements CauseCloseable {
         throw new UnsupportedOperationException();
     }
 
-    // FIXME: remove?
     public long copyPage(long srcIndex, long dstIndex) throws IOException {
         throw new UnsupportedOperationException();
     }
 
-    // FIXME: remove?
     public long copyPageFromPointer(long srcPointer, long dstIndex) throws IOException {
         throw new UnsupportedOperationException();
     }
