@@ -4,6 +4,8 @@ Changelog
 v1.2.8
 ------
 * Added method to analyze index size.
+* Added experimental direct mapped mode when using MappedPageArray and JNA.
+* More fixes for random search and add improve safety of frame binding.
 
 v1.2.7 (2015-10-04)
 ------
