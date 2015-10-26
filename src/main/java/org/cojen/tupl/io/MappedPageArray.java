@@ -25,9 +25,8 @@ import java.nio.channels.ClosedChannelException;
 
 import java.util.EnumSet;
 
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.sun.jna.Platform;
 
@@ -39,12 +38,17 @@ import org.cojen.tupl.DatabaseFullException;
  * @author Brian S O'Neill
  */
 public abstract class MappedPageArray extends PageArray {
+    private static AtomicLongFieldUpdater<MappedPageArray> cMappingPtrUpdater =
+        AtomicLongFieldUpdater.newUpdater(MappedPageArray.class, "mMappingPtr");
+
+    private static AtomicReferenceFieldUpdater<MappedPageArray, Throwable> cCauseUpdater =
+        AtomicReferenceFieldUpdater.newUpdater(MappedPageArray.class, Throwable.class, "mCause");
+
     private final long mPageCount;
     private final boolean mReadOnly;
-    private final ReentrantReadWriteLock mLock;
 
-    private long mMappingPtr;
-    private Throwable mCause;
+    private volatile long mMappingPtr;
+    private volatile Throwable mCause;
 
     public static MappedPageArray open(int pageSize, long pageCount,
                                        File file, EnumSet<OpenOption> options)
@@ -69,7 +73,6 @@ public abstract class MappedPageArray extends PageArray {
         super(pageSize);
         mPageCount = pageCount;
         mReadOnly = options.contains(OpenOption.READ_ONLY);
-        mLock = new ReentrantReadWriteLock();
     }
 
     @Override
@@ -100,19 +103,7 @@ public abstract class MappedPageArray extends PageArray {
         throws IOException
     {
         readCheck(index);
-
-        Lock lock = mLock.readLock();
-        lock.lock();
-        try {
-            ByteBuffer src = DirectAccess.ref(mappingPtr() + index * mPageSize, length);
-            try {
-                src.get(buf, 0, length);
-            } finally {
-                DirectAccess.unref(src);
-            }
-        } finally {
-            lock.unlock();
-        }
+        DirectAccess.ref(mappingPtr() + index * mPageSize, length).get(buf, 0, length);
     }
 
     public void readPage(long index, long ptr, int offset, int length)
@@ -123,44 +114,18 @@ public abstract class MappedPageArray extends PageArray {
         ptr += offset;
         int pageSize = mPageSize;
 
-        Lock lock = mLock.readLock();
-        lock.lock();
-        try {
-            long srcPtr = mappingPtr() + index * pageSize;
-            if (srcPtr != ptr) {
-                ByteBuffer src = DirectAccess.ref(srcPtr, length);
-                try {
-                    ByteBuffer dst = DirectAccess.ref2(ptr, length);
-                    try {
-                        dst.put(src);
-                    } finally {
-                        DirectAccess.unref(dst);
-                    }
-                } finally {
-                    DirectAccess.unref(src);
-                }
-            }
-        } finally {
-            lock.unlock();
+        long srcPtr = mappingPtr() + index * pageSize;
+        if (srcPtr != ptr) {
+            ByteBuffer src = DirectAccess.ref(srcPtr, length);
+            ByteBuffer dst = DirectAccess.ref2(ptr, length);
+            dst.put(src);
         }
     }
 
     public void writePage(long index, byte[] buf, int offset) throws IOException {
         writeCheck(index);
-
-        Lock lock = mLock.readLock();
-        lock.lock();
-        try {
-            int pageSize = mPageSize;
-            ByteBuffer dst = DirectAccess.ref(mappingPtr() + index * pageSize, pageSize);
-            try {
-                dst.put(buf, 0, pageSize);
-            } finally {
-                DirectAccess.unref(dst);
-            }
-        } finally {
-            lock.unlock();
-        }
+        int pageSize = mPageSize;
+        DirectAccess.ref(mappingPtr() + index * pageSize, pageSize).put(buf, 0, pageSize);
     }
 
     public void writePage(long index, long ptr, int offset) throws IOException {
@@ -169,39 +134,18 @@ public abstract class MappedPageArray extends PageArray {
         ptr += offset;
         int pageSize = mPageSize;
 
-        Lock lock = mLock.readLock();
-        lock.lock();
-        try {
-            long dstPtr = mappingPtr() + index * pageSize;
-            if (dstPtr != ptr) {
-                ByteBuffer dst = DirectAccess.ref(dstPtr, pageSize);
-                try {
-                    ByteBuffer src = DirectAccess.ref2(ptr, pageSize);
-                    try {
-                        dst.put(src);
-                    } finally {
-                        DirectAccess.unref(src);
-                    }
-                } finally {
-                    DirectAccess.unref(dst);
-                }
-            }
-        } finally {
-            lock.unlock();
+        long dstPtr = mappingPtr() + index * pageSize;
+        if (dstPtr != ptr) {
+            ByteBuffer dst = DirectAccess.ref(dstPtr, pageSize);
+            ByteBuffer src = DirectAccess.ref2(ptr, pageSize);
+            dst.put(src);
         }
     }
 
     @Override
     public long directPagePointer(long index) throws IOException {
         readCheck(index);
-
-        Lock lock = mLock.readLock();
-        lock.lock();
-        try {
-            return mappingPtr() + index * mPageSize;
-        } finally {
-            lock.unlock();
-        }
+        return mappingPtr() + index * mPageSize;
     }
 
     /**
@@ -212,27 +156,14 @@ public abstract class MappedPageArray extends PageArray {
         readCheck(srcIndex);
         writeCheck(dstIndex);
 
-        Lock lock = mLock.readLock();
-        lock.lock();
-        try {
-            int pageSize = mPageSize;
-            long ptr = mappingPtr();
-            long dstPtr = ptr + dstIndex * pageSize;
-            ByteBuffer dst = DirectAccess.ref(dstPtr, pageSize);
-            try {
-                ByteBuffer src = DirectAccess.ref2(ptr + srcIndex * pageSize, pageSize);
-                try {
-                    dst.put(src);
-                } finally {
-                    DirectAccess.unref(src);
-                }
-                return dstPtr;
-            } finally {
-                DirectAccess.unref(dst);
-            }
-        } finally {
-            lock.unlock();
-        }
+        int pageSize = mPageSize;
+        long ptr = mappingPtr();
+        long dstPtr = ptr + dstIndex * pageSize;
+        ByteBuffer dst = DirectAccess.ref(dstPtr, pageSize);
+        ByteBuffer src = DirectAccess.ref2(ptr + srcIndex * pageSize, pageSize);
+        dst.put(src);
+
+        return dstPtr;
     }
 
     /**
@@ -242,81 +173,47 @@ public abstract class MappedPageArray extends PageArray {
     public long copyPageFromPointer(long srcPointer, long dstIndex) throws IOException {
         writeCheck(dstIndex);
 
-        Lock lock = mLock.readLock();
-        lock.lock();
-        try {
-            int pageSize = mPageSize;
-            long dstPtr = mappingPtr() + dstIndex * pageSize;
-            ByteBuffer dst = DirectAccess.ref(dstPtr, pageSize);
-            try {
-                ByteBuffer src = DirectAccess.ref2(srcPointer, pageSize);
-                try {
-                    dst.put(src);
-                } finally {
-                    DirectAccess.unref(src);
-                }
-                return dstPtr;
-            } finally {
-                DirectAccess.unref(dst);
-            }
-        } finally {
-            lock.unlock();
-        }
+        int pageSize = mPageSize;
+        long dstPtr = mappingPtr() + dstIndex * pageSize;
+        ByteBuffer dst = DirectAccess.ref(dstPtr, pageSize);
+        ByteBuffer src = DirectAccess.ref2(srcPointer, pageSize);
+        dst.put(src);
+
+        return dstPtr;
     }
 
     @Override
     public void sync(boolean metadata) throws IOException {
-        Lock lock = mLock.readLock();
-        lock.lock();
-        try {
-            doSync(mappingPtr(), metadata);
-        } finally {
-            lock.unlock();
-        }
+        doSync(mappingPtr(), metadata);
     }
 
     @Override
     public void syncPage(long index) throws IOException {
         writeCheck(index);
-
-        Lock lock = mLock.readLock();
-        lock.lock();
-        try {
-            doSyncPage(mappingPtr(), index);
-        } finally {
-            lock.unlock();
-        }
+        doSyncPage(mappingPtr(), index);
     }
 
     @Override
     public final void close(Throwable cause) throws IOException {
-        long ptr;
-
-        mLock.writeLock().lock();
-        try {
-            ptr = mMappingPtr;
+        while (true) {
+            long ptr = mMappingPtr;
             if (ptr == 0) {
                 return;
             }
-            mMappingPtr = 0;
-            mCause = cause;
-        } finally {
-            mLock.writeLock().unlock();
+            cCauseUpdater.compareAndSet(this, null, cause);
+            if (cMappingPtrUpdater.compareAndSet(this, ptr, 0)) {
+                mCause = cause;
+                doClose(ptr);
+                return;
+            }
         }
-
-        doClose(ptr);
     }
 
     void setMappingPtr(long ptr) throws IOException {
-        mLock.writeLock().lock();
-        try {
+        while (!cMappingPtrUpdater.compareAndSet(this, 0, ptr)) {
             if (mMappingPtr != 0) {
                 throw new IllegalStateException();
             }
-            mMappingPtr = ptr;
-            mCause = null;
-        } finally {
-            mLock.writeLock().unlock();
         }
     }
 
@@ -326,11 +223,6 @@ public abstract class MappedPageArray extends PageArray {
 
     abstract void doClose(long mappingPtr) throws IOException;
 
-    Lock sharedLock() {
-        return mLock.readLock();
-    }
-
-    // Must be called with lock held.
     long mappingPtr() throws IOException {
         long mappingPtr = mMappingPtr;
         if (mappingPtr == 0) {
