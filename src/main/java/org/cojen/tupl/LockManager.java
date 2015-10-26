@@ -16,7 +16,7 @@
 
 package org.cojen.tupl;
 
-import java.lang.ref.WeakReference;
+import java.lang.ref.SoftReference;
 
 import static org.cojen.tupl.LockResult.*;
 
@@ -36,7 +36,7 @@ final class LockManager {
     private final LockHT[] mHashTables;
     private final int mHashTableShift;
 
-    private final ThreadLocal<WeakReference<Locker>> mLocalLockerRef;
+    private final ThreadLocal<SoftReference<Locker>> mLocalLockerRef;
 
     LockManager(LockUpgradeRule lockUpgradeRule, long timeoutNanos) {
         this(lockUpgradeRule, timeoutNanos, Runtime.getRuntime().availableProcessors() * 16);
@@ -177,10 +177,10 @@ final class LockManager {
     }
 
     final Locker localLocker() {
-        WeakReference<Locker> lockerRef = mLocalLockerRef.get();
+        SoftReference<Locker> lockerRef = mLocalLockerRef.get();
         Locker locker;
         if (lockerRef == null || (locker = lockerRef.get()) == null) {
-            mLocalLockerRef.set(new WeakReference<>(locker = new Locker(this)));
+            mLocalLockerRef.set(new SoftReference<>(locker = new Locker(this)));
         }
         return locker;
     }
