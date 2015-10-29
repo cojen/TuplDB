@@ -366,6 +366,11 @@ final class RedoLog extends RedoWriter {
     }
 
     @Override
+    void checkpointFlushed() throws IOException {
+        // Nothing to do.
+    }
+
+    @Override
     void checkpointFinished() throws IOException {
         mOldChannel = null;
         Utils.closeQuietly(null, mOldOut);
