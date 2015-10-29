@@ -2255,69 +2255,56 @@ public final class Database implements CauseCloseable, Flushable {
         }
 
         Thread ct = null;
+        boolean lockedCheckpointer = false;
+
         try {
             Checkpointer c = mCheckpointer;
 
             if (shutdown) {
                 mCheckpointLock.lock();
-                try {
-                    if (mClosed) {
-                        return;
-                    }
+                lockedCheckpointer = true;
+
+                if (!mClosed) {
                     checkpoint(true, 0, 0);
-                    mClosed = true;
                     if (c != null) {
                         ct = c.close();
-                        if (ct != null) {
-                            ct.interrupt();
-                        }
                     }
-                } finally {
-                    mCheckpointLock.unlock();
                 }
             } else {
                 if (c != null) {
                     ct = c.close();
                 }
 
-                try {
-                    // Wait for any in-progress checkpoint to complete.
-                    boolean locked;
-                    if (cause == null) {
-                        mCheckpointLock.lock();
-                        locked = true;
-                    } else if (mCheckpointLock.tryLock()) {
-                        locked = true;
-                    } else {
-                        // If panicked, other locks might be held and so acquiring checkpoint
-                        // lock might deadlock. Checkpointer will eventually exit.
-                        ct = null;
-                        locked = false;
-                    }
+                // Wait for any in-progress checkpoint to complete.
 
-                    try {
-                        if (mClosed) {
-                            return;
-                        }
-                        mClosed = true;
-                    } finally {
-                        if (locked) {
-                            mCheckpointLock.unlock();
-                        }
-                    }
-                } finally {
-                    if (ct != null) {
-                        ct.interrupt();
-                    }
+                if (mCheckpointLock.tryLock()) {
+                    lockedCheckpointer = true;
+                } else if (cause == null && !(mRedoWriter instanceof ReplRedoController)) {
+                    // Only attempt lock if not panicked and not replicated. If panicked, other
+                    // locks might be held and so acquiring checkpoint lock might deadlock.
+                    // Replicated databases might stall indefinitely when checkpointing.
+                    // Checkpointer should eventually exit after other resources are closed.
+                    mCheckpointLock.lock();
+                    lockedCheckpointer = true;
                 }
             }
+
+            mClosed = true;
         } finally {
             if (ct != null) {
-                // Wait for checkpointer thread to finish.
-                try {
-                    ct.join();
-                } catch (InterruptedException e) {
-                    // Ignore.
+                ct.interrupt();
+            }
+
+            if (lockedCheckpointer) {
+                mCheckpointLock.unlock();
+
+                if (ct != null) {
+                    // Wait for checkpointer thread to finish.
+                    try {
+                        ct.join();
+                    } catch (InterruptedException e) {
+                        // Ignore.
+                    }
                 }
             }
         }
@@ -4548,6 +4535,10 @@ public final class Database implements CauseCloseable, Flushable {
 
         try {
             mDirtyList.flush(mPageDb, stateToFlush);
+
+            if (mRedoWriter != null) {
+                mRedoWriter.checkpointFlushed();
+            }
 
             if (mCustomTxnHandler != null) {
                 mCustomTxnHandler.checkpointFinish(this, custom);

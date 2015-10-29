@@ -419,6 +419,11 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
     abstract void checkpointStarted() throws IOException;
 
     /**
+     * Called after all dirty pages have flushed.
+     */
+    abstract void checkpointFlushed() throws IOException;
+
+    /**
      * Writer can discard all redo data lower than the checkpointed position, which was
      * captured earlier.
      */

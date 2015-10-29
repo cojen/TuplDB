@@ -115,7 +115,10 @@ final class ReplRedoController extends ReplRedoWriter {
     @Override
     void checkpointStarted() throws IOException {
         mEngine.resume();
+    }
 
+    @Override
+    void checkpointFlushed() throws IOException {
         // Attempt to confirm the log position which was captured by the checkpoint switch.
 
         ReplRedoWriter redo = mCheckpointRedoWriter;

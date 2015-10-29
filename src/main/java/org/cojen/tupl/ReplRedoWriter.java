@@ -264,6 +264,11 @@ class ReplRedoWriter extends RedoWriter {
     }
 
     @Override
+    void checkpointFlushed() throws IOException {
+        throw fail();
+    }
+
+    @Override
     void checkpointFinished() throws IOException {
         throw fail();
     }
@@ -335,7 +340,7 @@ class ReplRedoWriter extends RedoWriter {
     }
 
     private UnsupportedOperationException fail() {
-        // ReplRedoEngineWriter subclass supports checkpoint operations.
+        // ReplRedoController subclass supports checkpoint operations.
         return new UnsupportedOperationException();
     }
 
