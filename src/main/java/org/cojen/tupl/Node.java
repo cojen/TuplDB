@@ -195,6 +195,44 @@ final class Node extends Latch implements DatabaseAccess {
       Child node identifiers are encoded immediately following the search vector. Free space
       management must account for this, treating it as an extension to the search vector.
 
+      Each entry in the child node id segment contains 6 byte child node id, followed by
+      2 byte count of keys in the child node. The child node ids are in the same order as
+      keys in the search vector.
+
+      +----------------------------------------+
+      | byte:   node type                      |  header
+      | byte:   reserved (must be 0)           |
+      | ushort: garbage in segments            |
+      | ushort: pointer to left segment tail   |
+      | ushort: pointer to right segment tail  |
+      | ushort: pointer to search vector start |
+      | ushort: pointer to search vector end   |
+      +----------------------------------------+
+      | left key segment                       |
+      -                                        -
+      |                                        |
+      +----------------------------------------+
+      | free space                             | <-- left segment tail (exclusive)
+      -                                        -
+      |                                        |
+      +----------------------------------------+
+      | search vector                          | <-- search vector start (inclusive)
+      -                                        -
+      |                                        | <-- search vector end (inclusive)
+      +----------------------------------------+
+      | child node id segment                  |
+      -                                        -
+      |                                        |
+      +----------------------------------------+
+      | free space                             |
+      -                                        -
+      |                                        | <-- right segment tail (exclusive)
+      +----------------------------------------+
+      | right key segment                      |
+      -                                        -
+      |                                        |
+      +----------------------------------------+
+
      */
 
     // Raw contents of node.

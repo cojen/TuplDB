@@ -124,6 +124,11 @@ final class UnmodifiableView implements Index {
     }
 
     @Override
+    public long evict(Transaction txn, byte[] lowKey, byte[] highKey, byte[][] keyRef, byte[][] valueRef, int maxEntriesToEvict) throws IOException {
+        throw new UnmodifiableViewException();
+    }
+
+    @Override
     public LockResult lockShared(Transaction txn, byte[] key)
         throws LockFailureException, ViewConstraintException
     {
