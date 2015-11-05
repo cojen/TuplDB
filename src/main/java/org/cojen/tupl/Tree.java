@@ -274,6 +274,11 @@ class Tree extends AbstractView implements Index {
     }
 
     @Override
+    public long evict(Transaction txn, byte[] lowKey, byte[] highKey, byte[][] keyRef, byte[][] valueRef, int maxEntriesToEvict) throws IOException {
+        return new TreeCursor(this, txn).evict(lowKey, highKey, keyRef, valueRef);
+    }
+
+    @Override
     public Stats analyze(byte[] lowKey, byte[] highKey) throws IOException {
         TreeCursor cursor = new TreeCursor(this, Transaction.BOGUS);
         try {

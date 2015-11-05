@@ -19,9 +19,8 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 import java.util.Arrays;
-
+import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
-
 import java.util.concurrent.locks.Lock;
 
 import org.cojen.tupl.io.CauseCloseable;
@@ -1815,78 +1814,20 @@ class TreeCursor implements CauseCloseable, Cursor {
                 }
 
                 int pos;
-                select: {
-                    if (highKey == null) {
-                        pos = node.highestPos() + 2;
-                    } else {
-                        try {
-                            pos = node.binarySearch(highKey);
-                        } catch (Throwable e) {
-                            node.releaseExclusive();
-                            throw cleanup(e, frame);
-                        }
-                        if (pos < 0) {
-                            pos = ~pos;
-                        }
-                        if (!node.isLeaf()) {
-                            pos += 2;
-                        }
-                    }
-
-                    if (lowKey == null) {
-                        if (pos > 0) {
-                            pos = (pos == 2) ? 0 : (rnd.nextInt(pos >> 1) << 1);
-                            break select;
-                        }
-                    } else {
-                        int lowPos;
-                        try {
-                            lowPos = node.binarySearch(lowKey);
-                        } catch (Throwable e) {
-                            node.releaseExclusive();
-                            throw cleanup(e, frame);
-                        }
-                        if (!node.isLeaf()) {
-                            lowPos = Node.internalPos(lowPos);
-                        } else if (lowPos < 0) {
-                            lowPos = ~lowPos;
-                        }
-                        int range = pos - lowPos;
-                        if (range > 0) {
-                            pos = (range == 2) ? lowPos : lowPos + (rnd.nextInt(range >> 1) << 1);
-                            break select;
-                        }
-                    }
-
-                    // Node is empty or out of bounds, so start over.
-
+                try {
+                    pos = randomPosition(rnd, node, lowKey, highKey);
+                } catch (Throwable e) {
+                    node.releaseExclusive();
+                    throw cleanup(e, frame);
+                }
+                if (pos < 0) {   // Node is empty or out of bounds, so start over.
                     mLeaf = frame;
                     resetLatched(node);
-
                     // Before continuing, check if range has anything in it at all. This must
                     // be performed each time, to account for concurrent updates.
-
-                    final Transaction oTxn = mTxn;
-                    final boolean oKeyOnly = mKeyOnly;
-                    try {
-                        mTxn = Transaction.BOGUS;
-                        mKeyOnly = true;
-                        if (lowKey == null) {
-                            first();
-                        } else {
-                            findGe(lowKey);
-                        }
-                        if (mKey == null ||
-                            (highKey != null && compareUnsigned(mKey, highKey) >= 0))
-                        {
-                            return LockResult.UNOWNED;
-                        }
-                    } finally {
-                        reset();
-                        mTxn = oTxn;
-                        mKeyOnly = oKeyOnly;
+                    if (isRangeEmpty(lowKey, highKey)) {
+                        return LockResult.UNOWNED;
                     }
-
                     continue start;
                 }
 
@@ -2703,6 +2644,263 @@ class TreeCursor implements CauseCloseable, Cursor {
         }
 
         next(Transaction.BOGUS, leaf);
+    }
+
+    /**
+     * Select an entry to delete from the index, at random. All frames are unbound and cursor is reset.
+     * @param lowKey inclusive lowest key in the evictable range; pass null for open range
+     * @param highKey exclusive highest key in the evictable range; pass null for open range
+     * @param keyRef optional, pass non-null to receive a copy of the evicted key
+     * @param valueRef optional, pass non-null to receive a copy of the evicted value
+     * @return sum of the key and value lengths which were evicted, 0 if no records are evicted
+     * @throws IOException
+     */
+    final long evict(byte[] lowKey, byte[] highKey, byte[][] keyRef, byte[][] valueRef) throws IOException {
+        if ((keyRef != null && keyRef.length == 0) || (valueRef != null && valueRef.length == 0)) {
+            throw new IllegalArgumentException("Key/value reference param cannot be empty");
+        }
+        if (lowKey != null && highKey != null && compareUnsigned(lowKey, highKey) >= 0) {
+            reset();
+            return 0;
+        }
+
+        ThreadLocalRandom rnd = ThreadLocalRandom.current();
+
+        start: while (true) {
+            mKey = null;
+            mKeyHash = 0;
+            mValue = null;
+
+            // The only scenario in which the following is executed more than once is when the
+            // inner "search" infinite loop is broken. For all executions after the first,
+            // resetLatched() is invoked before reaching this point of execution.
+            Node node = mTree.mRoot;
+            TreeCursorFrame frame = reset(node);
+            int remainingAttempsLN = 2;
+            int remainingAttemptsBIN = 2;
+
+            search: while (true) {
+                if (node.mSplit != null) {
+                    frame.bind(node, 0);
+                    node = mTree.finishSplit(frame, node);
+                }
+
+                int pos;
+                try {
+                    pos = randomPosition(rnd, node, lowKey, highKey);
+                } catch (Throwable t) {
+                    node.releaseExclusive();
+                    throw cleanup(t, frame);
+                }
+
+                if (pos < 0) {
+                    // node is empty or out of bounds
+                    mLeaf = frame;
+                    resetLatched(node);
+
+                    // Before continuing, check if range has anything in it at all. This must
+                    // be performed each time, to account for concurrent updates.
+                    if (isRangeEmpty(lowKey, highKey)) {
+                        return 0;
+                    }
+                    continue start;
+                }
+
+                frame.rebind(node, pos);
+
+                if (node.isLeaf()) {
+                    mLeaf = frame;
+                    try {
+                        Transaction txn = prepareFind(node.retrieveKey(pos));
+                        LockResult result;
+                        if ((result = tryLockKey(txn)) == null) {
+                            // Some other transaction is operating on the key. Unlikely to happen
+                            // as seek is steered towards nodes which are not in cache
+                            if (keyRef != null) {
+                                keyRef[0] = null;
+                            }
+                            if (valueRef != null) {
+                                 valueRef[0] = null;
+                            }
+                            return 0;
+                        }
+
+                        byte[] value = valueRef != null ? node.retrieveLeafValue(pos) : node.hasLeafValue(pos);
+                        if (value == null) { // ghost record
+                            // unlikely to happen as seek is steered towards nodes which are not in cache
+                            // hence not making extra effort to find another record to evict.
+                            if (result == LockResult.ACQUIRED) {
+                                txn.unlock();
+                            }
+                            if (keyRef != null) {
+                                keyRef[0] = null;
+                            }
+                            if (valueRef != null) {
+                                valueRef[0] = null;
+                            }
+                            return 0;
+                        }
+
+                        long length = mKey.length;
+                        if (keyRef != null) {
+                            keyRef[0] = mKey;
+                        }
+                        if (valueRef != null) {
+                            valueRef[0] = value;
+                            length += value.length;
+                        } else {
+                            long[] valLen = new long[2];
+                            node.retrieveLeafValueStats(pos, valLen);
+                            length += valLen[0];
+                        }
+
+                        // Should try to use the "reset" option when calling store(). Otherwise,
+                        // if the txn requires a durability sync, the node will be latched too long.
+                        store(txn, frame, null, true);
+
+                        // Make an attempt to mark node as LRU
+                        if (remainingAttempsLN >= 0 && node.tryAcquireExclusive()) {
+                            node.unused();
+                        }
+                        return length;
+                    } finally {
+                        // resetLatched() is invoked by store(), in which case mLeaf will
+                        // be set to null. mLeaf is guaranteed to be non-null otherwise.
+                        if (mLeaf != null) {
+                            resetLatched(node);
+                        }
+                    }
+                } else if (node.isBottomInternal()) {
+                    long childId = node.retrieveChildRefId(pos);
+                    Node child = mTree.mDatabase.nodeMapGet(childId);
+                    if (child != null) { // node is cached
+                        if (remainingAttempsLN-->0) {
+                            continue search;
+                        }
+
+                        // used up max random selection attempts for non-cached leaf node.
+                        // scan sequentially for a non-cached leaf node.
+                        try {
+                            int spos = (lowKey == null) ? 0 : Node.internalPos(node.binarySearch(lowKey));
+                            int highestInternalPos = node.highestInternalPos();
+                            int highestKeyPos = node.highestKeyPos();
+                            for (; spos <= highestInternalPos; spos+=2) {
+                                childId = node.retrieveChildRefId(spos);
+                                child = mTree.mDatabase.nodeMapGet(childId);
+                                if (child == null) { // node is not cached
+                                    pos = spos;
+                                    frame.rebind(node, pos);
+                                    break;
+                                }
+                                if (highKey != null && spos <= highestKeyPos && node.compareKey(spos, highKey) >= 0) {
+                                    break;
+                                }
+                            }
+                        } catch (Throwable t) {
+                            // continue with the randomly selected node
+                        }
+                    }
+                    try {
+                        node = latchChild(node, pos, true);
+                    } catch (Throwable t) {
+                        throw cleanup(t, frame);
+                    }
+                } else {    // non-bottom internal node
+                    long childId = node.retrieveChildRefId(pos);
+                    Node child = mTree.mDatabase.nodeMapGet(childId);
+                    if (child != null) {
+                        /* Node.evict() calls db.nodeMapRemove(), followed by mId = 0. Child can get evicted anytime
+                         * case 1: Before id check: No change in result
+                         * case 2: After id check, !BIN: No change in result
+                         * case 3a: After id check, BIN, remainingBottomInternalNodeAttempts>0: Skipped a node un-necessarily
+                         * case 3b: After id check, BIN, remainingBottomInternalNodeAttempts=0: no change in result
+                         */
+                        if (child.isBottomInternal() && child.mId == childId && remainingAttemptsBIN-->0) {
+                            continue search;
+                        }
+                    }
+                    try {
+                        node = latchChild(node, pos, true);
+                    } catch (Throwable t) {
+                        throw cleanup(t, frame);
+                    }
+                }
+                frame = new TreeCursorFrame(frame);
+            }   // search
+        }   // start
+        // unreachable code
+    }
+
+    /**
+     * Find and return a random position in the node. The node should be latched.
+     * @param rnd random number generator
+     * @param node non-null latched node
+     * @param lowKey start of range, inclusive. pass null for open range
+     * @param highKey end of range, exclusive. pass null for open range
+     * @return <0 if node is empty or out of bounds
+     */
+    private int randomPosition(Random rnd, Node node, byte[] lowKey, byte[] highKey) throws IOException {
+       int pos = 0;
+       if (highKey == null) {
+           pos = node.highestPos() + 2;
+       } else {
+           pos = node.binarySearch(highKey);
+           if (pos < 0) {    // highKey is not found
+               pos = ~pos;
+           }
+           if (!node.isLeaf()) {
+               pos += 2;
+           }
+       }
+
+       if (lowKey == null) {
+           if (pos > 0) {
+               pos = (pos == 2) ? 0 : (rnd.nextInt(pos >> 1) << 1); // search vector has 2 byte long entries
+               return pos;
+           }
+       } else {
+           int lowPos = node.binarySearch(lowKey);
+           if (!node.isLeaf()) {
+               lowPos = Node.internalPos(lowPos);
+           } else if (lowPos < 0) {  // lowKey not found
+               lowPos = ~lowPos;
+           }
+           int range = pos - lowPos;
+           if (range > 0) {
+               pos = (range == 2) ? lowPos : lowPos + (rnd.nextInt(range >> 1) << 1); // search vector has 2 byte long entries
+               return pos;
+           }
+       }
+       // node is empty or out of bounds
+       return -1;
+    }
+
+    /**
+     * Check if there are any keys in the range. Cursor is reset as a side effect.
+     * @param lowKey start of range, inclusive
+     * @param highKey end of range, exclusive
+     * @return
+     */
+    private boolean isRangeEmpty(byte[] lowKey, byte[] highKey) throws IOException {
+        boolean oldKeyOnly = mKeyOnly;
+        Transaction oldTxn = mTxn;
+        try {
+            mTxn = Transaction.BOGUS;
+            mKeyOnly = true;
+            if (lowKey == null) {
+                first();
+            } else {
+                findGe(lowKey);
+            }
+            if (mKey == null || (highKey != null && Utils.compareUnsigned(mKey, highKey) >= 0)) {
+                return true;
+            }
+            return false;
+        } finally {
+            reset();
+            mKeyOnly = oldKeyOnly;
+            mTxn = oldTxn;
+        }
     }
 
     /**

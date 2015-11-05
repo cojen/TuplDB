@@ -247,6 +247,21 @@ public interface Index extends View, Closeable {
     public boolean isUnmodifiable();
 
     /**
+     * Select an entry to delete from the index, possibly at random. Implementation should
+     * attempt to evict an entry which hasn't been recently used. It might fail to evict any
+     * record, in which case it returns 0.
+     * @param txn optional
+     * @param lowKey inclusive lowest key in the evictable range; pass null for open range
+     * @param highKey exclusive highest key in the evictable range; pass null for open range
+     * @param keyRef optional, pass non-null to receive a copy of the evicted key
+     * @param valueRef optional, pass non-null to receive a copy of the evicted value
+     * @param maxEntriesToEvict, maximum number of records to evict
+     * @return sum of the key and value lengths which were evicted, 0 if no records are evicted
+     * @throws IllegalArgumentException if either ref param is non-null and empty
+     */
+    public long evict(Transaction txn, byte[] lowKey, byte[] highKey, byte[][] keyRef, byte[][] valueRef, int maxEntriesToEvict) throws IOException;
+
+    /**
      * Estimates the size of this index with a single random probe. To improve the estimate,
      * average several analysis results together.
      *
