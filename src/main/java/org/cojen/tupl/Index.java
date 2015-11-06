@@ -255,7 +255,7 @@ public interface Index extends View, Closeable {
      * @param highKey exclusive highest key in the evictable range; pass null for open range
      * @param keyRef optional, pass non-null to receive a copy of the evicted key
      * @param valueRef optional, pass non-null to receive a copy of the evicted value
-     * @param maxEntriesToEvict, maximum number of records to evict
+     * @param maxEntriesToEvict maximum number of records to evict
      * @return sum of the key and value lengths which were evicted, 0 if no records are evicted
      * @throws IllegalArgumentException if either ref param is non-null and empty
      */
