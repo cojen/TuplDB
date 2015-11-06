@@ -65,6 +65,8 @@ public class TestAll {
             LimitCapacityTest.class,
             TransformerTest.class,
             AnalyzeTest.class,
+            EvictionTest.class,
+            EnduranceTest.class,
         };
 
         String[] names = new String[classes.length];
