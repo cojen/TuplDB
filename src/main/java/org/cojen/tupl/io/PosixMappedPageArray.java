@@ -48,30 +48,38 @@ class PosixMappedPageArray extends MappedPageArray {
     {
         super(pageSize, pageCount, options);
 
-        mEmpty = file.length() == 0;
+        // Create file (if necessary) and get proper length.
 
-        // Select O_RDONLY or O_RDWR.
-        int flags = 0;
-        if (!options.contains(OpenOption.READ_ONLY)) {
-            flags |= 2;
-            if (options.contains(OpenOption.CREATE)) {
-                file.createNewFile();
+        long fileLen;
+        int fd;
+
+        JavaFileIO fio = new JavaFileIO(file, options, 1);
+        try {
+            fileLen = fio.length();
+
+            mEmpty = fileLen == 0;
+
+            // Select O_RDONLY or O_RDWR.
+            int flags = 0;
+            if (!options.contains(OpenOption.READ_ONLY)) {
+                flags |= 2;
             }
-        }
 
-        int fd = cPosix.open(file.getPath(), flags);
+            fd = cPosix.open(file.getPath(), flags);
 
-        if (fd == -1) {
-            int error = Native.getLastError();
-            throw toException(error);
+            if (fd == -1) {
+                int error = Native.getLastError();
+                throw toException(error);
+            }
+        } finally {
+            fio.close();
         }
 
         long mappingSize = pageSize * pageCount;
 
-        long fileLen = file.length();
         if (fileLen < mappingSize) {
             if (options.contains(OpenOption.READ_ONLY)) {
-                throw new IOException("File is too shart: " + fileLen + " < " + mappingSize);
+                throw new IOException("File is too short: " + fileLen + " < " + mappingSize);
             }
             // Grow the file or else accessing the mapping will seg fault.
             if (cPosix.ftruncate(fd, mappingSize) == -1) {
@@ -82,7 +90,7 @@ class PosixMappedPageArray extends MappedPageArray {
         }
 
         int prot = 1 | 2; // PROT_READ | PROT_WRITE
-        flags = 1; // MAP_SHARED
+        int flags = 1; // MAP_SHARED
 
         long ptr = cPosix.mmap(0, mappingSize, prot, flags, fd, 0);
 
