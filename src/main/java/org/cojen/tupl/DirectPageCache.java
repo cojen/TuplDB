@@ -22,6 +22,8 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 
+import org.cojen.tupl.util.Latch;
+
 import static org.cojen.tupl.PageOps.*;
 
 /**

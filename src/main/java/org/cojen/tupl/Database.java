@@ -68,6 +68,8 @@ import org.cojen.tupl.io.MappedPageArray;
 import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
 
+import org.cojen.tupl.util.Latch;
+
 import static org.cojen.tupl.Node.*;
 import static org.cojen.tupl.PageOps.*;
 import static org.cojen.tupl.Utils.*;

@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import org.cojen.tupl.util.Latch;
+
 /**
  * List of dirty nodes.
  *

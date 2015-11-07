@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.lang.ref.SoftReference;
 
+import org.cojen.tupl.util.Latch;
+
 import static org.cojen.tupl.LockResult.*;
 
 /**
