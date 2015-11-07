@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.util.Arrays;
 
+import org.cojen.tupl.util.Latch;
+
 import static org.cojen.tupl.LockResult.*;
 
 /**

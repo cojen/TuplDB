@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import org.cojen.tupl.util.Latch;
+
 import static org.cojen.tupl.PageOps.*;
 
 import static org.cojen.tupl.Utils.EMPTY_BYTES;

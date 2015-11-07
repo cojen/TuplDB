@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.util.concurrent.locks.LockSupport;
 
+import org.cojen.tupl.util.Latch;
+
 /**
  * FIFO queue of waiters, which behaves like a condition variable.
  *

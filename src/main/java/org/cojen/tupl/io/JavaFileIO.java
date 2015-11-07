@@ -33,9 +33,7 @@ import java.util.concurrent.TimeUnit;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.concurrent.locks.ReadWriteLock;
+import org.cojen.tupl.util.Latch;
 
 import static org.cojen.tupl.io.Utils.*;
 
@@ -63,14 +61,14 @@ final class JavaFileIO extends FileIO {
     private int mFilePoolTop;
     private final boolean mReadOnly;
 
-    private final Object mRemapLock;
-    private final ReadWriteLock mMappingLock;
+    private final Latch mRemapLatch;
+    private final Latch mMappingLatch;
     private Mapping[] mMappings;
     private int mLastMappingSize;
 
     private volatile Throwable mCause;
 
-    private final ReadWriteLock mSyncLock;
+    private final Latch mSyncLatch;
     private volatile int mSyncCount;
     private volatile long mSyncStartNanos;
 
@@ -99,9 +97,9 @@ final class JavaFileIO extends FileIO {
 
         mFilePool = new FileAccess[openFileCount];
 
-        mRemapLock = new Object();
-        mMappingLock = new ReentrantReadWriteLock(false);
-        mSyncLock = new ReentrantReadWriteLock(false);
+        mRemapLatch = new Latch();
+        mMappingLatch = new Latch();
+        mSyncLatch = new Latch();
 
         try {
             synchronized (mFilePool) {
@@ -127,12 +125,11 @@ final class JavaFileIO extends FileIO {
     public long length() throws IOException {
         RandomAccessFile file;
 
-        Lock lock = mMappingLock.readLock();
-        lock.lock();
+        mMappingLatch.acquireShared();
         try {
             file = accessFile();
         } finally {
-            lock.unlock();
+            mMappingLatch.releaseShared();
         }
 
         try {
@@ -146,15 +143,15 @@ final class JavaFileIO extends FileIO {
 
     @Override
     public void setLength(long length) throws IOException {
-        synchronized (mRemapLock) {
+        mRemapLatch.acquireExclusive();
+        try {
             RandomAccessFile file;
 
-            Lock lock = mMappingLock.readLock();
-            lock.lock();
+            mMappingLatch.acquireShared();
             try {
                 file = accessFile();
             } finally {
-                lock.unlock();
+                mMappingLatch.releaseShared();
             }
 
             // Length reduction screws up the mapping on Linux, causing a hard
@@ -168,9 +165,11 @@ final class JavaFileIO extends FileIO {
             } finally {
                 yieldFile(file);
                 if (remap) {
-                    remap();
+                    doMap(true);
                 }
             }
+        } finally {
+            mRemapLatch.releaseExclusive();
         }
     }
 
@@ -202,8 +201,7 @@ final class JavaFileIO extends FileIO {
         try {
             RandomAccessFile file;
 
-            Lock lock = mMappingLock.readLock();
-            lock.lock();
+            mMappingLatch.acquireShared();
             try {
                 Mapping[] mappings = mMappings;
                 if (mappings != null) {
@@ -249,7 +247,7 @@ final class JavaFileIO extends FileIO {
 
                 file = accessFile();
             } finally {
-                lock.unlock();
+                mMappingLatch.releaseShared();
             }
 
             try {
@@ -283,8 +281,7 @@ final class JavaFileIO extends FileIO {
         try {
             RandomAccessFile file;
 
-            Lock lock = mMappingLock.readLock();
-            lock.lock();
+            mMappingLatch.acquireShared();
             try {
                 Mapping[] mappings = mMappings;
                 if (mappings != null) {
@@ -328,7 +325,7 @@ final class JavaFileIO extends FileIO {
 
                 file = accessFile();
             } finally {
-                lock.unlock();
+                mMappingLatch.releaseShared();
             }
 
             try {
@@ -363,13 +360,12 @@ final class JavaFileIO extends FileIO {
         if (mSyncCount != 0) {
             long syncTimeNanos = System.nanoTime() - mSyncStartNanos;
             if (syncTimeNanos > SYNC_YIELD_THRESHOLD_NANOS) {
-                // Yield 1ms for each second that sync has been running. Use a RW lock instead
+                // Yield 1ms for each second that sync has been running. Use a latch instead
                 // of a sleep, preventing prolonged sleep after sync finishes.
-                long sleepMillis = syncTimeNanos / (1000L * 1000 * 1000);
+                long sleepNanos = syncTimeNanos / 1000L;
                 try {
-                    Lock lock = mSyncLock.writeLock();
-                    if (lock.tryLock(sleepMillis, TimeUnit.MILLISECONDS)) {
-                        lock.unlock();
+                    if (mSyncLatch.tryAcquireExclusiveNanos(sleepNanos)) {
+                        mSyncLatch.releaseExclusive();
                     }
                 } catch (InterruptedException e) {
                     throw new InterruptedIOException();
@@ -380,106 +376,113 @@ final class JavaFileIO extends FileIO {
 
     @Override
     public void map() throws IOException {
-        map(false);
+        mRemapLatch.acquireExclusive();
+        try {
+            doMap(false);
+        } finally {
+            mRemapLatch.releaseExclusive();
+        }
     }
 
     @Override
     public void remap() throws IOException {
-        map(true);
+        mRemapLatch.acquireExclusive();
+        try {
+            doMap(true);
+        } finally {
+            mRemapLatch.releaseExclusive();
+        }
     }
 
-    private void map(boolean remap) throws IOException {
-        synchronized (mRemapLock) {
-            Mapping[] oldMappings;
-            int oldMappingDiscardPos;
-            Mapping[] newMappings;
-            int newLastSize;
+    // Caller must hold mRemapLatch exclusively.
+    private void doMap(boolean remap) throws IOException {
+        Mapping[] oldMappings;
+        int oldMappingDiscardPos;
+        Mapping[] newMappings;
+        int newLastSize;
 
-            Lock lock = mMappingLock.readLock();
-            lock.lock();
-            try {
-                oldMappings = mMappings;
-                if (oldMappings == null && remap) {
-                    // Don't map unless already mapped.
-                    return;
-                }
-
-                long length = length();
-
-                if (oldMappings != null) {
-                    long oldMappedLength = oldMappings.length == 0 ? 0 :
-                        (oldMappings.length - 1) * (long) MAPPING_SIZE + mLastMappingSize;
-                    if (length == oldMappedLength) {
-                        return;
-                    }
-                }
-
-                long count = (length + (MAPPING_SIZE - 1)) / MAPPING_SIZE;
-
-                if (count > Integer.MAX_VALUE) {
-                    throw new IOException("Mapping is too large");
-                }
-
-                try {
-                    newMappings = new Mapping[(int) count];
-                } catch (OutOfMemoryError e) {
-                    throw new IOException("Mapping is too large");
-                }
-
-                oldMappings = mMappings;
-                oldMappingDiscardPos = 0;
-
-                int i = 0;
-                long pos = 0;
-
-                if (oldMappings != null && oldMappings.length > 0) {
-                    i = oldMappings.length;
-                    if (mLastMappingSize != MAPPING_SIZE) {
-                        i--;
-                        oldMappingDiscardPos = i;
-                    }
-                    System.arraycopy(oldMappings, 0, newMappings, 0, i);
-                    pos = i * (long) MAPPING_SIZE;
-                }
-
-                while (i < count - 1) {
-                    newMappings[i++] = Mapping.open(mFile, mReadOnly, pos, MAPPING_SIZE);
-                    pos += MAPPING_SIZE;
-                }
-
-                if (count == 0) {
-                    newLastSize = 0;
-                } else {
-                    newLastSize = (int) (MAPPING_SIZE - (count * MAPPING_SIZE - length));
-                    newMappings[i] = Mapping.open(mFile, mReadOnly, pos, newLastSize);
-                }
-            } finally {
-                lock.unlock();
+        mMappingLatch.acquireShared();
+        try {
+            oldMappings = mMappings;
+            if (oldMappings == null && remap) {
+                // Don't map unless already mapped.
+                return;
             }
 
-            lock = mMappingLock.writeLock();
-            lock.lock();
-            mMappings = newMappings;
-            mLastMappingSize = newLastSize;
-            lock.unlock();
+            long length = length();
 
             if (oldMappings != null) {
-                IOException ex = null;
-                while (oldMappingDiscardPos < oldMappings.length) {
-                    ex = Utils.closeQuietly(ex, oldMappings[oldMappingDiscardPos++]);
+                long oldMappedLength = oldMappings.length == 0 ? 0 :
+                    (oldMappings.length - 1) * (long) MAPPING_SIZE + mLastMappingSize;
+                if (length == oldMappedLength) {
+                    return;
                 }
-                if (ex != null) {
-                    throw ex;
+            }
+
+            long count = (length + (MAPPING_SIZE - 1)) / MAPPING_SIZE;
+
+            if (count > Integer.MAX_VALUE) {
+                throw new IOException("Mapping is too large");
+            }
+
+            try {
+                newMappings = new Mapping[(int) count];
+            } catch (OutOfMemoryError e) {
+                throw new IOException("Mapping is too large");
+            }
+
+            oldMappings = mMappings;
+            oldMappingDiscardPos = 0;
+
+            int i = 0;
+            long pos = 0;
+
+            if (oldMappings != null && oldMappings.length > 0) {
+                i = oldMappings.length;
+                if (mLastMappingSize != MAPPING_SIZE) {
+                    i--;
+                    oldMappingDiscardPos = i;
                 }
+                System.arraycopy(oldMappings, 0, newMappings, 0, i);
+                pos = i * (long) MAPPING_SIZE;
+            }
+
+            while (i < count - 1) {
+                newMappings[i++] = Mapping.open(mFile, mReadOnly, pos, MAPPING_SIZE);
+                pos += MAPPING_SIZE;
+            }
+
+            if (count == 0) {
+                newLastSize = 0;
+            } else {
+                newLastSize = (int) (MAPPING_SIZE - (count * MAPPING_SIZE - length));
+                newMappings[i] = Mapping.open(mFile, mReadOnly, pos, newLastSize);
+            }
+        } finally {
+            mMappingLatch.releaseShared();
+        }
+
+        mMappingLatch.acquireExclusive();
+        mMappings = newMappings;
+        mLastMappingSize = newLastSize;
+        mMappingLatch.releaseExclusive();
+
+        if (oldMappings != null) {
+            IOException ex = null;
+            while (oldMappingDiscardPos < oldMappings.length) {
+                ex = Utils.closeQuietly(ex, oldMappings[oldMappingDiscardPos++]);
+            }
+            if (ex != null) {
+                throw ex;
             }
         }
     }
 
     @Override
     public void unmap() throws IOException {
-        synchronized (mRemapLock) {
-            Lock lock = mMappingLock.writeLock();
-            lock.lock();
+        mRemapLatch.acquireExclusive();
+        try {
+            mMappingLatch.acquireExclusive();
             try {
                 Mapping[] mappings = mMappings;
                 if (mappings == null) {
@@ -521,8 +524,10 @@ final class JavaFileIO extends FileIO {
                     throw ex;
                 }
             } finally {
-                lock.unlock();
+                mMappingLatch.releaseExclusive();
             }
+        } finally {
+            mRemapLatch.releaseExclusive();
         }
     }
 
@@ -538,12 +543,11 @@ final class JavaFileIO extends FileIO {
                 mSyncStartNanos = System.nanoTime();
             }
 
-            mSyncLock.readLock().lock();
+            mSyncLatch.acquireShared();
             try {
                 RandomAccessFile file;
 
-                Lock lock = mMappingLock.readLock();
-                lock.lock();
+                mMappingLatch.acquireShared();
                 try {
                     Mapping[] mappings = mMappings;
                     if (mappings != null) {
@@ -555,7 +559,7 @@ final class JavaFileIO extends FileIO {
 
                     file = accessFile();
                 } finally {
-                    lock.unlock();
+                    mMappingLatch.releaseShared();
                 }
 
                 try {
@@ -566,7 +570,7 @@ final class JavaFileIO extends FileIO {
                     yieldFile(file);
                 }
             } finally {
-                mSyncLock.readLock().unlock();
+                mSyncLatch.releaseShared();
             }
         } finally {
             cSyncCountUpdater.decrementAndGet(this);

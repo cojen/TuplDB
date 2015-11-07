@@ -26,6 +26,8 @@ import static java.lang.System.arraycopy;
 import org.cojen.tupl.io.CauseCloseable;
 import org.cojen.tupl.io.PageArray;
 
+import org.cojen.tupl.util.Latch;
+
 import static org.cojen.tupl.PageOps.*;
 import static org.cojen.tupl.Utils.*;
 

@@ -35,6 +35,8 @@ import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
 import org.cojen.tupl.io.StripedPageArray;
 
+import org.cojen.tupl.util.Latch;
+
 import static java.lang.System.arraycopy;
 
 import static org.cojen.tupl.PageOps.*;

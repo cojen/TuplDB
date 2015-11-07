@@ -16,6 +16,8 @@
 
 package org.cojen.tupl;
 
+import org.cojen.tupl.util.Latch;
+
 /**
  * Pool of spare page buffers not currently in use by nodes.
  *
