@@ -3186,25 +3186,39 @@ public final class Database implements CauseCloseable, Flushable {
      * Remove and delete nodes from map, as part of close sequence.
      */
     void nodeMapDeleteAll() {
-        for (Latch latch : mNodeMapLatches) {
-            latch.acquireExclusive();
-        }
-
-        for (int i=mNodeMapTable.length; --i>=0; ) {
-            Node e = mNodeMapTable[i];
-            if (e != null) {
-                e.delete(this);
-                Node next;
-                while ((next = e.mNodeMapNext) != null) {
-                    e.mNodeMapNext = null;
-                    e = next;
-                }
-                mNodeMapTable[i] = null;
+        start: while (true) {
+            for (Latch latch : mNodeMapLatches) {
+                latch.acquireExclusive();
             }
-        }
 
-        for (Latch latch : mNodeMapLatches) {
-            latch.releaseExclusive();
+            try {
+                for (int i=mNodeMapTable.length; --i>=0; ) {
+                    Node e = mNodeMapTable[i];
+                    if (e != null) {
+                        if (!e.tryAcquireExclusive()) {
+                            // Deadlock prevention.
+                            continue start;
+                        }
+                        try {
+                            e.doDelete(this);
+                        } finally {
+                            e.releaseExclusive();
+                        }
+                        Node next;
+                        while ((next = e.mNodeMapNext) != null) {
+                            e.mNodeMapNext = null;
+                            e = next;
+                        }
+                        mNodeMapTable[i] = null;
+                    }
+                }
+            } finally {
+                for (Latch latch : mNodeMapLatches) {
+                    latch.releaseExclusive();
+                }
+            }
+
+            return;
         }
     }
 

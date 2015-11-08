@@ -281,21 +281,28 @@ final class Node extends Latch implements DatabaseAccess {
     void delete(Database db) {
         acquireExclusive();
         try {
-            /*P*/ // [|
-            /*P*/ // if (db.mFullyMapped) {
-            /*P*/ //     // Cannot delete mapped pages.
-            /*P*/ //     closeRoot();
-            /*P*/ //     return;
-            /*P*/ // }
-            /*P*/ // ]
-
-            /*P*/ byte[] page = mPage;
-            if (page != p_closedTreePage()) {
-                p_delete(page);
-                closeRoot();
-            }
+            doDelete(db);
         } finally {
             releaseExclusive();
+        }
+    }
+
+    /**
+     * Must be called when object is no longer referenced. Caller must acquire exclusive latch.
+     */
+    void doDelete(Database db) {
+        /*P*/ // [|
+        /*P*/ // if (db.mFullyMapped) {
+        /*P*/ //     // Cannot delete mapped pages.
+        /*P*/ //     closeRoot();
+        /*P*/ //     return;
+        /*P*/ // }
+        /*P*/ // ]
+
+        /*P*/ byte[] page = mPage;
+        if (page != p_closedTreePage()) {
+            p_delete(page);
+            closeRoot();
         }
     }
 
