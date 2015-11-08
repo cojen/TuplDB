@@ -21,12 +21,37 @@ import java.io.IOException;
 
 import java.util.EnumSet;
 
+import com.sun.jna.Native;
+import com.sun.jna.Platform;
+
 /**
  * Lowest I/O interface to a file or device.
  *
  * @author Brian S O'Neill
  */
 public abstract class FileIO implements CauseCloseable {
+    private static final String USE_JNA = FileIO.class.getName() + ".useJNA";
+    private static final int IO_TYPE;
+
+    static {
+        int type = 0;
+
+        String jnaProp = System.getProperty(USE_JNA, null);
+        if (jnaProp == null || Boolean.parseBoolean(jnaProp)) {
+            try {
+                if (Native.SIZE_T_SIZE >= 8 && !Platform.isWindows()) {
+                    type = 1;
+                }
+            } catch (Throwable e) {
+                if (jnaProp != null) {
+                    throw e;
+                }
+            }
+        }
+
+        IO_TYPE = type;
+    }
+
     public static FileIO open(File file, EnumSet<OpenOption> options)
         throws IOException
     {
@@ -36,6 +61,12 @@ public abstract class FileIO implements CauseCloseable {
     public static FileIO open(File file, EnumSet<OpenOption> options, int openFileCount)
         throws IOException
     {
+        if (options == null) {
+            options = EnumSet.noneOf(OpenOption.class);
+        }
+        if (IO_TYPE == 1 && (!options.contains(OpenOption.MAPPED) || DirectAccess.isSupported())) {
+            return new PosixFileIO(file, options);
+        }
         return new JavaFileIO(file, options, openFileCount);
     }
 

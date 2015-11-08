@@ -69,6 +69,10 @@ public class DirectAccess {
         cLocalBuffer2 = local2;
     }
 
+    public static boolean isSupported() {
+        return cDirectCtor != null;
+    }
+
     /**
      * Returns a thread-local ByteBuffer which references any memory address. The position is
      * set to zero, the limit and capacity are set to the given length.
