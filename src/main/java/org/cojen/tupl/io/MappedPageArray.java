@@ -103,7 +103,7 @@ public abstract class MappedPageArray extends PageArray {
         throws IOException
     {
         readCheck(index);
-        DirectAccess.ref(mappingPtr() + index * mPageSize, length).get(buf, 0, length);
+        DirectAccess.ref(mappingPtr() + index * mPageSize, length).get(buf, offset, length);
     }
 
     public void readPage(long index, long ptr, int offset, int length)
@@ -125,7 +125,7 @@ public abstract class MappedPageArray extends PageArray {
     public void writePage(long index, byte[] buf, int offset) throws IOException {
         writeCheck(index);
         int pageSize = mPageSize;
-        DirectAccess.ref(mappingPtr() + index * pageSize, pageSize).put(buf, 0, pageSize);
+        DirectAccess.ref(mappingPtr() + index * pageSize, pageSize).put(buf, offset, pageSize);
     }
 
     public void writePage(long index, long ptr, int offset) throws IOException {

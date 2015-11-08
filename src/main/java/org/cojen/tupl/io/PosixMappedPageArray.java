@@ -32,12 +32,6 @@ import com.sun.jna.Platform;
  * @author Brian S O'Neill
  */
 class PosixMappedPageArray extends MappedPageArray {
-    private static Posix cPosix;
-
-    static {
-        cPosix = (Posix) Native.loadLibrary(Platform.C_LIBRARY_NAME, Posix.class);
-    }
-
     private final int mFileDescriptor;
 
     private volatile boolean mEmpty;
@@ -53,24 +47,11 @@ class PosixMappedPageArray extends MappedPageArray {
         long fileLen;
         int fd;
 
-        JavaFileIO fio = new JavaFileIO(file, options, 1);
+        JavaFileIO fio = new JavaFileIO(file, options, 1, false);
         try {
             fileLen = fio.length();
-
             mEmpty = fileLen == 0;
-
-            // Select O_RDONLY or O_RDWR.
-            int flags = 0;
-            if (!options.contains(OpenOption.READ_ONLY)) {
-                flags |= 2;
-            }
-
-            fd = cPosix.open(file.getPath(), flags);
-
-            if (fd == -1) {
-                int error = Native.getLastError();
-                throw toException(error);
-            }
+            fd = PosixFileIO.openFd(file, options);
         } finally {
             fio.close();
         }
@@ -82,22 +63,31 @@ class PosixMappedPageArray extends MappedPageArray {
                 throw new IOException("File is too short: " + fileLen + " < " + mappingSize);
             }
             // Grow the file or else accessing the mapping will seg fault.
-            if (cPosix.ftruncate(fd, mappingSize) == -1) {
-                int error = Native.getLastError();
-                cPosix.close(fd);
-                throw toException(error);
+            try {
+                PosixFileIO.ftruncateFd(fd, mappingSize);
+            } catch (IOException e) {
+                try {
+                    PosixFileIO.closeFd(fd);
+                } catch (IOException e2) {
+                    e.addSuppressed(e2);
+                }
+                throw e;
             }
         }
 
         int prot = 1 | 2; // PROT_READ | PROT_WRITE
         int flags = 1; // MAP_SHARED
 
-        long ptr = cPosix.mmap(0, mappingSize, prot, flags, fd, 0);
-
-        if (ptr == -1) {
-            int error = Native.getLastError();
-            cPosix.close(fd);
-            throw toException(error);
+        long ptr;
+        try {
+            ptr = PosixFileIO.mmap(mappingSize, prot, flags, fd, 0);
+        } catch (IOException e) {
+            try {
+                PosixFileIO.closeFd(fd);
+            } catch (IOException e2) {
+                e.addSuppressed(e2);
+            }
+            throw e;
         }
 
         mFileDescriptor = fd;
@@ -116,51 +106,19 @@ class PosixMappedPageArray extends MappedPageArray {
     }
 
     void doSync(long mappingPtr, boolean metadata) throws IOException {
-        int flags = 4; // MS_SYNC
-        if (cPosix.msync(mappingPtr, super.getPageCount() * pageSize(), flags) == -1) {
-            int error = Native.getLastError();
-            throw toException(error);
-        }
-
-        if (metadata && cPosix.fsync(mFileDescriptor) == -1) {
-            int error = Native.getLastError();
-            throw toException(error);
+        PosixFileIO.msync(mappingPtr, super.getPageCount() * pageSize());
+        if (metadata) {
+            PosixFileIO.fsyncFd(mFileDescriptor);
         }
     }
 
     void doSyncPage(long mappingPtr, long index) throws IOException {
         int pageSize = pageSize();
-        int flags = 4; // MS_SYNC
-        if (cPosix.msync(mappingPtr + index * pageSize, pageSize, flags) == -1) {
-            int error = Native.getLastError();
-            throw toException(error);
-        }
+        PosixFileIO.msync(mappingPtr + index * pageSize, pageSize);
     }
 
     void doClose(long mappingPtr) throws IOException {
-        cPosix.munmap(mappingPtr, super.getPageCount() * pageSize());
-        cPosix.close(mFileDescriptor);
-    }
-
-    private static IOException toException(int error) {
-        return new IOException(cPosix.strerror_r(error, null, 0));
-    }
-
-    public static interface Posix extends Library {
-        String strerror_r(int errnum, char[] buf, int buflen);
-
-        int open(String path, int oflag);
-
-        int ftruncate(int fd, long length);
-
-        int fsync(int fd);
-
-        int close(int fd);
-
-        long mmap(long addr, long length, int prot, int flags, int fd, long offset);
-
-        int msync(long addr, long length, int flags);
-
-        int munmap(long addr, long length);
+        PosixFileIO.munmap(mappingPtr, super.getPageCount() * pageSize());
+        PosixFileIO.closeFd(mFileDescriptor);
     }
 }
