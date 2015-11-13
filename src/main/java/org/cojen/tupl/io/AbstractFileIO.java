@@ -89,6 +89,12 @@ abstract class AbstractFileIO extends FileIO {
             // process crash when accessing anything beyond the file length.
             boolean remap = mMappings != null && length < length();
 
+            // Windows will ignore the length reduction entirely to prevent the crash. Need to
+            // explicitly unmap first.
+            if (remap) {
+                doUnmap(true);
+            }
+
             try {
                 doSetLength(length);
             } catch (IOException e) {
@@ -326,42 +332,47 @@ abstract class AbstractFileIO extends FileIO {
     protected void unmap(boolean reopen) throws IOException {
         mRemapLatch.acquireExclusive();
         try {
-            mMappingLatch.acquireExclusive();
-            try {
-                Mapping[] mappings = mMappings;
-                if (mappings == null) {
-                    return;
-                }
-
-                mMappings = null;
-                mLastMappingSize = 0;
-
-                IOException ex = null;
-                for (Mapping m : mappings) {
-                    ex = Utils.closeQuietly(ex, m);
-                }
-
-                // Need to replace all the open files. There's otherwise no guarantee that any
-                // changes to the mapped files will be visible.
-
-                if (reopen) {
-                    try {
-                        reopen();
-                    } catch (IOException e) {
-                        if (ex == null) {
-                            ex = e;
-                        }
-                    }
-                }
-
-                if (ex != null) {
-                    throw ex;
-                }
-            } finally {
-                mMappingLatch.releaseExclusive();
-            }
+            doUnmap(reopen);
         } finally {
             mRemapLatch.releaseExclusive();
+        }
+    }
+
+    // Caller must hold mRemapLatch exclusively.
+    private void doUnmap(boolean reopen) throws IOException {
+        mMappingLatch.acquireExclusive();
+        try {
+            Mapping[] mappings = mMappings;
+            if (mappings == null) {
+                return;
+            }
+
+            mMappings = null;
+            mLastMappingSize = 0;
+
+            IOException ex = null;
+            for (Mapping m : mappings) {
+                ex = Utils.closeQuietly(ex, m);
+            }
+
+            // Need to replace all the open files. There's otherwise no guarantee that any
+            // changes to the mapped files will be visible.
+
+            if (reopen) {
+                try {
+                    reopen();
+                } catch (IOException e) {
+                    if (ex == null) {
+                        ex = e;
+                    }
+                }
+            }
+
+            if (ex != null) {
+                throw ex;
+            }
+        } finally {
+            mMappingLatch.releaseExclusive();
         }
     }
 
