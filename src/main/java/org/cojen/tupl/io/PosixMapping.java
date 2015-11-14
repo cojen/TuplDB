@@ -32,7 +32,7 @@ final class PosixMapping extends Mapping {
     PosixMapping(int fd, boolean readOnly, long position, int size) throws IOException {
         int prot = readOnly ? 1 : (1 | 2); // PROT_READ | PROT_WRITE
         int flags = 1; // MAP_SHARED
-        mAddr = PosixFileIO.mmap(size, prot, flags, fd, position);
+        mAddr = PosixFileIO.mmapFd(size, prot, flags, fd, position);
         mSize = size;
     }
 
@@ -58,11 +58,11 @@ final class PosixMapping extends Mapping {
 
     @Override
     void sync(boolean metadata) throws IOException {
-        PosixFileIO.msync(mAddr, mSize);
+        PosixFileIO.msyncAddr(mAddr, mSize);
     }
 
     @Override
     public void close() throws IOException {
-        PosixFileIO.munmap(mAddr, mSize);
+        PosixFileIO.munmapAddr(mAddr, mSize);
     }
 }
