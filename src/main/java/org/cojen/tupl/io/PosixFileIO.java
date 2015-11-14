@@ -329,7 +329,13 @@ final class PosixFileIO extends AbstractFileIO {
     }
 
     static void fdatasyncFd(int fd) throws IOException {
-        if (fdatasync(fd) == -1) {
+        int result;
+        if (Platform.isMac()) {
+            result = fcntl(fd, 51); // F_FULLFSYNC
+        } else {
+            result = fdatasync(fd);
+        }
+        if (result == -1) {
             throw lastErrorToException();
         }
     }
