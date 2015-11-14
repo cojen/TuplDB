@@ -48,6 +48,7 @@ final class PosixFileIO extends AbstractFileIO {
           interface mapping, except for arrays of Pointer/Structure/String/WString/NativeMapped
           as function arguments. In addition, direct mapping does not support NIO Buffers or
           primitive arrays as types returned by type mappers or NativeMapped.
+          Also: varargs isn't supported
          */
         Native.register(Platform.C_LIBRARY_NAME);
     }
@@ -259,8 +260,7 @@ final class PosixFileIO extends AbstractFileIO {
         int fd = open(file.getPath(), flags);
 
         if (fd == -1) {
-            int error = Native.getLastError();
-            throw toException(error);
+            throw lastErrorToException();
         }
 
         return fd;
@@ -269,7 +269,7 @@ final class PosixFileIO extends AbstractFileIO {
     static long lseekFd(int fd, long fileOffset, int whence) throws IOException {
         long result = lseek(fd, fileOffset, whence);
         if (result == -1) {
-            throw toException(Native.getLastError());
+            throw lastErrorToException();
         }
         return result;
     }
@@ -279,7 +279,7 @@ final class PosixFileIO extends AbstractFileIO {
             int amt = pread(fd, bufPtr, length, fileOffset);
             if (amt <= 0) {
                 if (amt < 0) {
-                    throw toException(Native.getLastError());
+                    throw lastErrorToException();
                 }
                 if (length > 0) {
                     throw new EOFException("Attempt to read past end of file: " + fileOffset);
@@ -299,7 +299,7 @@ final class PosixFileIO extends AbstractFileIO {
         while (true) {
             int amt = pwrite(fd, bufPtr, length, fileOffset);
             if (amt < 0) {
-                throw toException(Native.getLastError());
+                throw lastErrorToException();
             }
             length -= amt;
             if (length <= 0) {
@@ -312,50 +312,56 @@ final class PosixFileIO extends AbstractFileIO {
 
     static void ftruncateFd(int fd, long length) throws IOException {
         if (ftruncate(fd, length) == -1) {
-            throw toException(Native.getLastError());
+            throw lastErrorToException();
         }
     }
 
     static void fsyncFd(int fd) throws IOException {
-        if (fsync(fd) == -1) {
-            throw toException(Native.getLastError());
+        int result;
+        if (Platform.isMac()) {
+            result = fcntl(fd, 51); // F_FULLFSYNC
+        } else {
+            result = fsync(fd);
+        }
+        if (result == -1) {
+            throw lastErrorToException();
         }
     }
 
     static void fdatasyncFd(int fd) throws IOException {
         if (fdatasync(fd) == -1) {
-            throw toException(Native.getLastError());
+            throw lastErrorToException();
         }
     }
 
     static void closeFd(int fd) throws IOException {
         if (close(fd) == -1) {
-            throw toException(Native.getLastError());
+            throw lastErrorToException();
         }
     }
 
     static long mmapFd(long length, int prot, int flags, int fd, long offset) throws IOException {
         long ptr = mmap(0, length, prot, flags, fd, 0);
         if (ptr == -1) {
-            throw toException(Native.getLastError());
+            throw lastErrorToException();
         }
         return ptr;
     }
 
     static void msyncAddr(long addr, long length) throws IOException {
         if (msync(addr, length, 4) == -1) { // flags = MS_SYNC
-            throw toException(Native.getLastError());
+            throw lastErrorToException();
         }
     }
 
     static void munmapAddr(long addr, long length) throws IOException {
         if (munmap(addr, length) == -1) {
-            throw toException(Native.getLastError());
+            throw lastErrorToException();
         }
     }
 
-    static IOException toException(int error) {
-        return new IOException(strerror_r(error, null, 0));
+    static IOException lastErrorToException() {
+        return new IOException(strerror_r(Native.getLastError(), null, 0));
     }
 
     static class BufRef {
@@ -379,6 +385,8 @@ final class PosixFileIO extends AbstractFileIO {
     static native int pwrite(int fd, long bufPtr, int length, long fileOffset);
 
     static native int ftruncate(int fd, long length);
+
+    static native int fcntl(int fd, int cmd);
 
     static native int fsync(int fd);
 
