@@ -42,10 +42,14 @@ import org.cojen.tupl.util.Latch;
  * @author Brian S O'Neill
  */
 final class PosixFileIO extends AbstractFileIO {
-    private static Posix cPosix;
-
     static {
-        cPosix = (Posix) Native.loadLibrary(Platform.C_LIBRARY_NAME, Posix.class);
+        /*
+          From the JNA documentation: Direct mapping supports the same type mappings as
+          interface mapping, except for arrays of Pointer/Structure/String/WString/NativeMapped
+          as function arguments. In addition, direct mapping does not support NIO Buffers or
+          primitive arrays as types returned by type mappers or NativeMapped.
+         */
+        Native.register(Platform.C_LIBRARY_NAME);
     }
 
     private final File mFile;
@@ -252,7 +256,7 @@ final class PosixFileIO extends AbstractFileIO {
             flags |= 0x80;
         }
 
-        int fd = cPosix.open(file.getPath(), flags);
+        int fd = open(file.getPath(), flags);
 
         if (fd == -1) {
             int error = Native.getLastError();
@@ -263,7 +267,7 @@ final class PosixFileIO extends AbstractFileIO {
     }
 
     static long lseekFd(int fd, long fileOffset, int whence) throws IOException {
-        long result = cPosix.lseek(fd, fileOffset, whence);
+        long result = lseek(fd, fileOffset, whence);
         if (result == -1) {
             throw toException(Native.getLastError());
         }
@@ -272,7 +276,7 @@ final class PosixFileIO extends AbstractFileIO {
 
     static void preadFd(int fd, long bufPtr, int length, long fileOffset) throws IOException {
         while (true) {
-            int amt = cPosix.pread(fd, bufPtr, length, fileOffset);
+            int amt = pread(fd, bufPtr, length, fileOffset);
             if (amt <= 0) {
                 if (amt < 0) {
                     throw toException(Native.getLastError());
@@ -293,7 +297,7 @@ final class PosixFileIO extends AbstractFileIO {
 
     static void pwriteFd(int fd, long bufPtr, int length, long fileOffset) throws IOException {
         while (true) {
-            int amt = cPosix.pwrite(fd, bufPtr, length, fileOffset);
+            int amt = pwrite(fd, bufPtr, length, fileOffset);
             if (amt < 0) {
                 throw toException(Native.getLastError());
             }
@@ -307,51 +311,51 @@ final class PosixFileIO extends AbstractFileIO {
     }
 
     static void ftruncateFd(int fd, long length) throws IOException {
-        if (cPosix.ftruncate(fd, length) == -1) {
+        if (ftruncate(fd, length) == -1) {
             throw toException(Native.getLastError());
         }
     }
 
     static void fsyncFd(int fd) throws IOException {
-        if (cPosix.fsync(fd) == -1) {
+        if (fsync(fd) == -1) {
             throw toException(Native.getLastError());
         }
     }
 
     static void fdatasyncFd(int fd) throws IOException {
-        if (cPosix.fdatasync(fd) == -1) {
+        if (fdatasync(fd) == -1) {
             throw toException(Native.getLastError());
         }
     }
 
     static void closeFd(int fd) throws IOException {
-        if (cPosix.close(fd) == -1) {
+        if (close(fd) == -1) {
             throw toException(Native.getLastError());
         }
     }
 
-    static long mmap(long length, int prot, int flags, int fd, long offset) throws IOException {
-        long ptr = cPosix.mmap(0, length, prot, flags, fd, 0);
+    static long mmapFd(long length, int prot, int flags, int fd, long offset) throws IOException {
+        long ptr = mmap(0, length, prot, flags, fd, 0);
         if (ptr == -1) {
             throw toException(Native.getLastError());
         }
         return ptr;
     }
 
-    static void msync(long addr, long length) throws IOException {
-        if (cPosix.msync(addr, length, 4) == -1) { // flags = MS_SYNC
+    static void msyncAddr(long addr, long length) throws IOException {
+        if (msync(addr, length, 4) == -1) { // flags = MS_SYNC
             throw toException(Native.getLastError());
         }
     }
 
-    static void munmap(long addr, long length) throws IOException {
-        if (cPosix.munmap(addr, length) == -1) {
+    static void munmapAddr(long addr, long length) throws IOException {
+        if (munmap(addr, length) == -1) {
             throw toException(Native.getLastError());
         }
     }
 
     static IOException toException(int error) {
-        return new IOException(cPosix.strerror_r(error, null, 0));
+        return new IOException(strerror_r(error, null, 0));
     }
 
     static class BufRef {
@@ -364,29 +368,27 @@ final class PosixFileIO extends AbstractFileIO {
         }
     }
 
-    public static interface Posix extends Library {
-        String strerror_r(int errnum, char[] buf, int buflen);
+    static native String strerror_r(int errnum, char[] buf, int buflen);
 
-        int open(String path, int oflag);
+    static native int open(String path, int oflag);
 
-        long lseek(int fd, long fileOffset, int whence);
+    static native long lseek(int fd, long fileOffset, int whence);
 
-        int pread(int fd, long bufPtr, int length, long fileOffset);
+    static native int pread(int fd, long bufPtr, int length, long fileOffset);
 
-        int pwrite(int fd, long bufPtr, int length, long fileOffset);
+    static native int pwrite(int fd, long bufPtr, int length, long fileOffset);
 
-        int ftruncate(int fd, long length);
+    static native int ftruncate(int fd, long length);
 
-        int fsync(int fd);
+    static native int fsync(int fd);
 
-        int fdatasync(int fd);
+    static native int fdatasync(int fd);
 
-        int close(int fd);
+    static native int close(int fd);
 
-        long mmap(long addr, long length, int prot, int flags, int fd, long offset);
+    static native long mmap(long addr, long length, int prot, int flags, int fd, long offset);
 
-        int msync(long addr, long length, int flags);
+    static native int msync(long addr, long length, int flags);
 
-        int munmap(long addr, long length);
-    }
+    static native int munmap(long addr, long length);
 }

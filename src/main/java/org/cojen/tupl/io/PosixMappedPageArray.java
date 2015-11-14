@@ -80,7 +80,7 @@ class PosixMappedPageArray extends MappedPageArray {
 
         long ptr;
         try {
-            ptr = PosixFileIO.mmap(mappingSize, prot, flags, fd, 0);
+            ptr = PosixFileIO.mmapFd(mappingSize, prot, flags, fd, 0);
         } catch (IOException e) {
             try {
                 PosixFileIO.closeFd(fd);
@@ -106,7 +106,7 @@ class PosixMappedPageArray extends MappedPageArray {
     }
 
     void doSync(long mappingPtr, boolean metadata) throws IOException {
-        PosixFileIO.msync(mappingPtr, super.getPageCount() * pageSize());
+        PosixFileIO.msyncAddr(mappingPtr, super.getPageCount() * pageSize());
         if (metadata) {
             PosixFileIO.fsyncFd(mFileDescriptor);
         }
@@ -114,7 +114,7 @@ class PosixMappedPageArray extends MappedPageArray {
 
     void doSyncPage(long mappingPtr, long index) throws IOException {
         int pageSize = pageSize();
-        PosixFileIO.msync(mappingPtr + index * pageSize, pageSize);
+        PosixFileIO.msyncAddr(mappingPtr + index * pageSize, pageSize);
     }
 
     void doClose(long mappingPtr) throws IOException {
