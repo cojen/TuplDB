@@ -37,7 +37,7 @@ import com.sun.jna.win32.W32APIOptions;
  * @author Brian S O'Neill
  */
 class WindowsMappedPageArray extends MappedPageArray {
-    private static Kernel32Ex cKernel;
+    private static final Kernel32Ex cKernel;
 
     static {
         cKernel = (Kernel32Ex) Native.loadLibrary
