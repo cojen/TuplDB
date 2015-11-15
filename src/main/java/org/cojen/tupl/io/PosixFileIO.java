@@ -347,7 +347,7 @@ final class PosixFileIO extends AbstractFileIO {
     }
 
     static long mmapFd(long length, int prot, int flags, int fd, long offset) throws IOException {
-        long ptr = mmap(0, length, prot, flags, fd, 0);
+        long ptr = mmap(0, length, prot, flags, fd, offset);
         if (ptr == -1) {
             throw lastErrorToException();
         }
