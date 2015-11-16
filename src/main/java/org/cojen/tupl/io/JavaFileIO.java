@@ -54,6 +54,10 @@ final class JavaFileIO extends AbstractFileIO {
     {
         super(options);
 
+        if (options.contains(OpenOption.NON_DURABLE)) {
+            throw new UnsupportedOperationException("Unsupported options: " + options);
+        }
+
         mFile = file;
 
         String mode;

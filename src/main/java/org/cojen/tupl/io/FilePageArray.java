@@ -40,7 +40,9 @@ public class FilePageArray extends PageArray {
         super(pageSize);
 
         if (factory != null
-            && options.contains(OpenOption.CREATE) && !options.contains(OpenOption.READ_ONLY))
+            && options.contains(OpenOption.CREATE)
+            && !options.contains(OpenOption.NON_DURABLE)
+            && !options.contains(OpenOption.READ_ONLY))
         {
             factory.createFile(file);
         }

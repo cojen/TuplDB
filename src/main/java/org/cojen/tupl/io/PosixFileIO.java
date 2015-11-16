@@ -53,8 +53,10 @@ final class PosixFileIO extends AbstractFileIO {
         Native.register(Platform.C_LIBRARY_NAME);
     }
 
+    private static final int REOPEN_NON_DURABLE = 1, REOPEN_SYNC_IO = 2;
+
     private final File mFile;
-    private final boolean mSyncMode;
+    private final int mReopenOptions;
 
     private final Latch mAccessLatch;
     private final ThreadLocal<BufRef> mBufRef;
@@ -65,10 +67,14 @@ final class PosixFileIO extends AbstractFileIO {
         super(options);
 
         mFile = file;
-        mSyncMode = options.contains(OpenOption.SYNC_IO);
 
-        if (options.contains(OpenOption.CREATE)) {
-            new JavaFileIO(file, options, 1, false).close();
+        if (options.contains(OpenOption.NON_DURABLE)) {
+            mReopenOptions = REOPEN_NON_DURABLE;
+        } else {
+            mReopenOptions = options.contains(OpenOption.SYNC_IO) ? REOPEN_SYNC_IO : 0;
+            if (options.contains(OpenOption.CREATE)) {
+                new JavaFileIO(file, options, 1, false).close();
+            }
         }
 
         mAccessLatch = new Latch();
@@ -91,7 +97,7 @@ final class PosixFileIO extends AbstractFileIO {
     protected long doLength() throws IOException {
         mAccessLatch.acquireShared();
         try {
-            return lseekFd(fd(), 0, 2); // whence = SEEK_END
+            return lseekEndFd(fd(), 0);
         } finally {
             mAccessLatch.releaseShared();
         }
@@ -160,8 +166,11 @@ final class PosixFileIO extends AbstractFileIO {
             if (isReadOnly()) {
                 options.add(OpenOption.READ_ONLY);
             }
-            if (mSyncMode) {
+            if ((mReopenOptions & REOPEN_SYNC_IO) != 0) {
                 options.add(OpenOption.SYNC_IO);
+            }
+            if ((mReopenOptions & REOPEN_NON_DURABLE) != 0) {
+                options.add(OpenOption.NON_DURABLE);
             }
 
             mFileDescriptor = openFd(mFile, options);
@@ -253,17 +262,38 @@ final class PosixFileIO extends AbstractFileIO {
             flags |= 2;
         }
 
-        if (options.contains(OpenOption.SYNC_IO)) {
-            flags |= 010000;
-        }
+        int fd;
 
-        int fd = open(file.getPath(), flags);
+        if (options.contains(OpenOption.NON_DURABLE)) {
+            if (options.contains(OpenOption.CREATE)) {
+                flags |= 0100; // O_CREAT
+            }
+            int mode = 0600;
+            fd = RT.shm_open(file.getPath(), flags, mode);
+        } else {
+            if (options.contains(OpenOption.SYNC_IO)) {
+                flags |= 010000;
+            }
+            fd = open(file.getPath(), flags);
+        }
 
         if (fd == -1) {
             throw lastErrorToException();
         }
 
         return fd;
+    }
+
+    static long lseekSetFd(int fd, long fileOffset) throws IOException {
+        return lseekFd(fd, fileOffset, 0); // SEEK_SET
+    }
+
+    static long lseekCurFd(int fd, long fileOffset) throws IOException {
+        return lseekFd(fd, fileOffset, 1); // SEEK_CUR
+    }
+
+    static long lseekEndFd(int fd, long fileOffset) throws IOException {
+        return lseekFd(fd, fileOffset, 2); // SEEK_END
     }
 
     static long lseekFd(int fd, long fileOffset, int whence) throws IOException {
@@ -405,4 +435,12 @@ final class PosixFileIO extends AbstractFileIO {
     static native int msync(long addr, long length, int flags);
 
     static native int munmap(long addr, long length);
+
+    static class RT {
+        static {
+            Native.register("rt");
+        }
+
+        static native int shm_open(String path, int oflag, int mode);
+    }
 }

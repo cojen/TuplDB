@@ -47,14 +47,30 @@ class PosixMappedPageArray extends MappedPageArray {
         long fileLen;
         int fd;
 
-        JavaFileIO fio = new JavaFileIO(file, options, 1, false);
-        try {
-            fileLen = fio.length();
-            mEmpty = fileLen == 0;
+        if (options.contains(OpenOption.NON_DURABLE)) {
             fd = PosixFileIO.openFd(file, options);
-        } finally {
-            fio.close();
+            try {
+                fileLen = PosixFileIO.lseekEndFd(fd, 0);
+                PosixFileIO.lseekSetFd(fd, 0);
+            } catch (IOException e) {
+                try {
+                    PosixFileIO.closeFd(fd);
+                } catch (IOException e2) {
+                    e.addSuppressed(e2);
+                }
+                throw e;
+            }
+        } else {
+            JavaFileIO fio = new JavaFileIO(file, options, 1, false);
+            try {
+                fileLen = fio.length();
+                fd = PosixFileIO.openFd(file, options);
+            } finally {
+                fio.close();
+            }
         }
+
+        mEmpty = fileLen == 0;
 
         long mappingSize = pageSize * pageCount;
 
