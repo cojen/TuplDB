@@ -36,4 +36,7 @@ public enum OpenOption {
 
     /** All file I/O should be durable and bypass the file system cache, if possible. */
     DIRECT_IO,
+
+    /** File contents don't persist after an OS crash or power failure. */
+    NON_DURABLE,
 }
