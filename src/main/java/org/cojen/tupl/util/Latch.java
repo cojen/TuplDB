@@ -24,6 +24,7 @@ import java.util.concurrent.locks.AbstractQueuedSynchronizer;
  * result, it typically outperforms ReentrantLock and Java synchronization.
  *
  * @author Brian S O'Neill
+ * @see LatchCondition
  */
 @SuppressWarnings("serial")
 public class Latch extends AbstractQueuedSynchronizer {
