@@ -113,6 +113,31 @@ public final class LatchCondition {
     }
 
     /**
+     * Signals the first waiter, of any type. Caller must hold shared or exclusive latch.
+     *
+     * @return false if no waiters of any type exist
+     */
+    public boolean signalNext() {
+        Node head = mHead;
+        if (head == null) {
+            return false;
+        }
+        head.signal();
+        return true;
+    }
+
+    /**
+     * Signals all waiters, of any type. Caller must hold shared or exclusive latch.
+     */
+    public void signalAll() {
+        Node node = mHead;
+        while (node != null) {
+            node.signal();
+            node = node.mNext;
+        }
+    }
+
+    /**
      * Signals the first waiter, but only if it's a shared waiter. Caller must hold shared or
      * exclusive latch.
      */
