@@ -1,5 +1,5 @@
 /*
- *  Copyright 2011-2013 Brian S O'Neill
+ *  Copyright 2011-2015 Cojen.org
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -14,36 +14,56 @@
  *  limitations under the License.
  */
 
-package org.cojen.tupl;
+package org.cojen.tupl.util;
 
 import java.util.concurrent.locks.LockSupport;
 
-import org.cojen.tupl.util.Latch;
-
 /**
- * FIFO queue of waiters, which behaves like a condition variable.
+ * Manages a queue of waiting threads, associated with a {@link Latch} instance. Unlike the
+ * built-in Java Condition class, spurious wakeup does not occur when waiting.
  *
  * @author Brian S O'Neill
- * @see Lock
  */
-final class WaitQueue {
+public final class LatchCondition {
     Node mHead;
     Node mTail;
 
-    boolean isEmpty() {
+    /**
+     * Returns true if no waiters are enqueued. Caller must hold shared or exclusive latch.
+     */
+    public boolean isEmpty() {
         return mHead == null;
     }
 
     /**
-     * Wait for signal with no spurious wakeup. Exclusive latch must be held,
-     * which is still held when method returns.
+     * Blocks the current thread until a signal is received. Exclusive latch must be acquired
+     * by caller, which is released and then re-acquired by this method.
      *
-     * @param node newly allocated node
+     * @param latch latch being used by this condition
      * @param nanosTimeout relative nanosecond time to wait; infinite if <0
      * @param nanosEnd absolute nanosecond time to wait until; used only with >0 timeout
      * @return -1 if interrupted, 0 if timed out, 1 if signaled
      */
-    int await(Latch latch, Node node, long nanosTimeout, long nanosEnd) {
+    public int await(Latch latch, long nanosTimeout, long nanosEnd) {
+        return await(latch, new Node(), nanosTimeout, nanosEnd);
+    }
+
+    /**
+     * Blocks the current thread until a signal is received. Exclusive latch must be acquired
+     * by caller, which is released and then re-acquired by this method. A shared waiter
+     * intends to access a resource with shared access, and it can be signaled specially. After
+     * waiting, caller is responsible for signaling the next shared waiter.
+     *
+     * @param latch latch being used by this condition
+     * @param nanosTimeout relative nanosecond time to wait; infinite if <0
+     * @param nanosEnd absolute nanosecond time to wait until; used only with >0 timeout
+     * @return -1 if interrupted, 0 if timed out, 1 if signaled
+     */
+    public int awaitShared(Latch latch, long nanosTimeout, long nanosEnd) {
+        return await(latch, new Shared(), nanosTimeout, nanosEnd);
+    }
+
+    private int await(Latch latch, Node node, long nanosTimeout, long nanosEnd) {
         node.mWaiter = Thread.currentThread();
 
         Node tail = mTail;
@@ -83,10 +103,9 @@ final class WaitQueue {
     }
 
     /**
-     * Signals the first waiter, unless queue is empty. Exclusive latch must be
-     * held, which is still held when method returns.
+     * Signals the first waiter, of any type. Caller must hold shared or exclusive latch.
      */
-    void signal() {
+    public void signal() {
         Node head = mHead;
         if (head != null) {
             head.signal();
@@ -94,10 +113,10 @@ final class WaitQueue {
     }
 
     /**
-     * Signals the first waiter if it is a shared waiter. Exclusive latch must
-     * be held, which is still held when method returns.
+     * Signals the first waiter, but only if it's a shared waiter. Caller must hold shared or
+     * exclusive latch.
      */
-    void signalShared() {
+    public void signalShared() {
         Node head = mHead;
         if (head instanceof Shared) {
             head.signal();
@@ -105,9 +124,12 @@ final class WaitQueue {
     }
 
     /**
-     * Same as signalShared, except returns false if queue is empty.
+     * Signals the first waiter, but only if it's a shared waiter. Caller must hold shared or
+     * exclusive latch.
+     *
+     * @return false if no waiters of any type exist
      */
-    boolean signalNextShared() {
+    public boolean signalNextShared() {
         Node head = mHead;
         if (head == null) {
             return false;
@@ -119,9 +141,9 @@ final class WaitQueue {
     }
 
     /**
-     * Clears out all waiters and interrupts them.
+     * Clears out all waiting threads and interrupts them. Caller must hold exclusive latch.
      */
-    void clear() {
+    public void clear() {
         Node node = mHead;
         while (node != null) {
             Thread waiter = node.mWaiter;
@@ -148,7 +170,7 @@ final class WaitQueue {
          *
          * @return -1 if interrupted, 0 if not signaled, 1 if signaled
          */
-        final int resumed(WaitQueue queue) {
+        final int resumed(LatchCondition queue) {
             Thread thread = mWaiter;
             if (thread == null) {
                 remove(queue);
@@ -167,7 +189,7 @@ final class WaitQueue {
             mWaiter = null;
         }
 
-        final void remove(WaitQueue queue) {
+        final void remove(LatchCondition queue) {
             Node prev = mPrev;
             Node next = mNext;
             if (prev == null) {

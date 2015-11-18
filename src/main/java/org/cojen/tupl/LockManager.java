@@ -19,6 +19,7 @@ package org.cojen.tupl;
 import java.lang.ref.SoftReference;
 
 import org.cojen.tupl.util.Latch;
+import org.cojen.tupl.util.LatchCondition;
 
 import static org.cojen.tupl.LockResult.*;
 
@@ -459,7 +460,7 @@ final class LockManager {
 
                             // Interrupt all waiters.
 
-                            WaitQueue q = e.mQueueU;
+                            LatchCondition q = e.mQueueU;
                             if (q != null) {
                                 q.clear();
                                 e.mQueueU = null;
