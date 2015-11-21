@@ -91,6 +91,10 @@ final class PosixFileIO extends AbstractFileIO {
         if (options.contains(OpenOption.MAPPED)) {
             map();
         }
+
+        if (options.contains(OpenOption.CREATE)) {
+            dirSync(file);
+        }
     }
 
     @Override
