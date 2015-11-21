@@ -95,6 +95,10 @@ final class JavaFileIO extends AbstractFileIO {
         if (allowMap && options.contains(OpenOption.MAPPED)) {
             map();
         }
+
+        if (options.contains(OpenOption.CREATE)) {
+            dirSync(file);
+        }
     }
 
     @Override

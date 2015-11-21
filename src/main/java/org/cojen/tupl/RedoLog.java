@@ -35,6 +35,7 @@ import java.nio.channels.FileChannel;
 import java.security.GeneralSecurityException;
 
 import org.cojen.tupl.io.FileFactory;
+import org.cojen.tupl.io.FileIO;
 
 /**
  * 
@@ -225,6 +226,9 @@ final class RedoLog extends RedoWriter {
             }
 
             nextOut.write(header);
+
+            // Make sure that parent directory durably records the new log file.
+            FileIO.dirSync(file);
         } catch (IOException e) {
             Utils.closeQuietly(null, fout);
             file.delete();
