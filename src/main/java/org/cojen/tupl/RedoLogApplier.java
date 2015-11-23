@@ -28,12 +28,12 @@ import org.cojen.tupl.ext.TransactionHandler;
  */
 final class RedoLogApplier implements RedoVisitor {
     private final Database mDatabase;
-    private final LHashTable.Obj<Transaction> mTransactions;
+    private final LHashTable.Obj<LocalTransaction> mTransactions;
     private final LHashTable.Obj<Index> mIndexes;
 
     long mHighestTxnId;
 
-    RedoLogApplier(Database db, LHashTable.Obj<Transaction> txns) {
+    RedoLogApplier(Database db, LHashTable.Obj<LocalTransaction> txns) {
         mDatabase = db;
         mTransactions = txns;
         mIndexes = new LHashTable.Obj<>(16);
@@ -99,9 +99,9 @@ final class RedoLogApplier implements RedoVisitor {
 
     @Override
     public boolean txnEnter(long txnId) throws IOException {
-        Transaction txn = txn(txnId);
+        LocalTransaction txn = txn(txnId);
         if (txn == null) {
-            txn = new Transaction(mDatabase, txnId, LockMode.UPGRADABLE_READ, 0L);
+            txn = new LocalTransaction(mDatabase, txnId, LockMode.UPGRADABLE_READ, 0L);
             mTransactions.insert(txnId).value = txn;
         } else {
             txn.enter();
@@ -141,7 +141,7 @@ final class RedoLogApplier implements RedoVisitor {
     @Override
     public boolean txnCommitFinal(long txnId) throws IOException {
         checkHighest(txnId);
-        Transaction txn = mTransactions.removeValue(txnId);
+        LocalTransaction txn = mTransactions.removeValue(txnId);
         if (txn != null) {
             txn.commitAll();
         }
@@ -201,7 +201,7 @@ final class RedoLogApplier implements RedoVisitor {
         return true;
     }
 
-    private Transaction txn(long txnId) {
+    private LocalTransaction txn(long txnId) {
         checkHighest(txnId);
         return mTransactions.getValue(txnId);
     }

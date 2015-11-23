@@ -51,7 +51,7 @@ final class FragmentedTrash {
      * @param valueStart inclusive index into entry for fragmented value; excludes value header
      * @param valueLen length of value
      */
-    void add(Transaction txn, long indexId,
+    void add(LocalTransaction txn, long indexId,
              /*P*/ byte[] entry, int keyStart, int keyLen, int valueStart, int valueLen)
         throws IOException
     {
