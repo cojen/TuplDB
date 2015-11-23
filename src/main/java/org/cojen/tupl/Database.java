@@ -651,7 +651,7 @@ public final class Database implements CauseCloseable, Flushable {
                     }
                 }
 
-                LHashTable.Obj<Transaction> txns = new LHashTable.Obj<>(16);
+                LHashTable.Obj<LocalTransaction> txns = new LHashTable.Obj<>(16);
                 {
                     long masterNodeId = decodeLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID);
                     if (masterNodeId != 0) {
@@ -724,9 +724,9 @@ public final class Database implements CauseCloseable, Flushable {
                         }
 
                         txns.traverse(new LHashTable.Visitor
-                                      <LHashTable.ObjEntry<Transaction>, IOException>()
+                                      <LHashTable.ObjEntry<LocalTransaction>, IOException>()
                         {
-                            public boolean visit(LHashTable.ObjEntry<Transaction> entry)
+                            public boolean visit(LHashTable.ObjEntry<LocalTransaction> entry)
                                 throws IOException
                             {
                                 entry.value.recoveryCleanup(true);
@@ -1036,7 +1036,7 @@ public final class Database implements CauseCloseable, Flushable {
         final byte[] oldName, oldNameKey;
         final byte[] newNameKey;
 
-        final Transaction txn;
+        final LocalTransaction txn;
 
         final Node root = tree.mRoot;
         root.acquireExclusive();
@@ -1386,16 +1386,16 @@ public final class Database implements CauseCloseable, Flushable {
         return doNewTransaction(durabilityMode == null ? mDurabilityMode : durabilityMode);
     }
 
-    private Transaction doNewTransaction(DurabilityMode durabilityMode) {
+    private LocalTransaction doNewTransaction(DurabilityMode durabilityMode) {
         RedoWriter redo = mRedoWriter;
         if (redo != null) {
             redo = redo.txnRedoWriter();
         }
-        return new Transaction
+        return new LocalTransaction
             (this, redo, durabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
     }
 
-    Transaction newAlwaysRedoTransaction() {
+    LocalTransaction newAlwaysRedoTransaction() {
         return doNewTransaction(mDurabilityMode.alwaysRedo());
     }
 
@@ -1403,12 +1403,13 @@ public final class Database implements CauseCloseable, Flushable {
      * Convenience method which returns a transaction intended for locking and undo. Caller can
      * make modifications, but they won't go to the redo log.
      */
-    Transaction newNoRedoTransaction() {
+    LocalTransaction newNoRedoTransaction() {
         RedoWriter redo = mRedoWriter;
         if (redo != null) {
             redo = redo.txnRedoWriter();
         }
-        return new Transaction(this, redo, DurabilityMode.NO_REDO, LockMode.UPGRADABLE_READ, -1);
+        return new LocalTransaction
+            (this, redo, DurabilityMode.NO_REDO, LockMode.UPGRADABLE_READ, -1);
     }
 
     /**
@@ -1417,9 +1418,9 @@ public final class Database implements CauseCloseable, Flushable {
      *
      * @param redoTxnId non-zero if operation is performed by recovery
      */
-    Transaction newNoRedoTransaction(long redoTxnId) {
+    LocalTransaction newNoRedoTransaction(long redoTxnId) {
         return redoTxnId == 0 ? newNoRedoTransaction() :
-            new Transaction(this, redoTxnId, LockMode.UPGRADABLE_READ, -1);
+            new LocalTransaction(this, redoTxnId, LockMode.UPGRADABLE_READ, -1);
     }
 
     /**
@@ -2443,7 +2444,7 @@ public final class Database implements CauseCloseable, Flushable {
         final byte[] idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
         final byte[] trashIdKey = newKey(KEY_TYPE_TRASH_ID, tree.mIdBytes);
 
-        final Transaction txn;
+        final LocalTransaction txn;
 
         if (redoTxnId != 0) {
             txn = newNoRedoTransaction(redoTxnId);

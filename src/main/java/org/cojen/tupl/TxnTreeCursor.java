@@ -40,7 +40,7 @@ final class TxnTreeCursor extends TreeCursor {
         }
 
         try {
-            Transaction txn = mTxn;
+            LocalTransaction txn = mTxn;
             if (txn == null) {
                 txn = mTree.mDatabase.newAlwaysRedoTransaction();
                 try {
@@ -72,7 +72,7 @@ final class TxnTreeCursor extends TreeCursor {
         }
 
         try {
-            Transaction txn = mTxn;
+            LocalTransaction txn = mTxn;
             if (txn == null) {
                 txn = mTree.mDatabase.newAlwaysRedoTransaction();
                 try {
@@ -89,7 +89,7 @@ final class TxnTreeCursor extends TreeCursor {
         }
     }
 
-    private void doCommit(Transaction txn, byte[] key, byte[] value) throws IOException {
+    private void doCommit(LocalTransaction txn, byte[] key, byte[] value) throws IOException {
         if (txn.lockMode() == LockMode.UNSAFE) {
             store(txn, leafExclusive(), value, false);
             txn.commit();

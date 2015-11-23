@@ -190,7 +190,7 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
      * @param txn transaction committed
      * @param commitPos highest position to sync (exclusive)
      */
-    public void txnCommitSync(Transaction txn, long commitPos) throws IOException {
+    public void txnCommitSync(LocalTransaction txn, long commitPos) throws IOException {
         sync(false);
     }
 

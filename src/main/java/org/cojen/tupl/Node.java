@@ -1936,7 +1936,7 @@ final class Node extends Latch implements DatabaseAccess {
      *
      * @param pos position as provided by binarySearch; must be positive
      */
-    void txnDeleteLeafEntry(Transaction txn, Tree tree, byte[] key, int keyHash, int pos)
+    void txnDeleteLeafEntry(LocalTransaction txn, Tree tree, byte[] key, int keyHash, int pos)
         throws IOException
     {
         final /*P*/ byte[] page = mPage;
@@ -2000,7 +2000,7 @@ final class Node extends Latch implements DatabaseAccess {
      *
      * @param pos position as provided by binarySearch; must be positive
      */
-    void txnPreUpdateLeafEntry(Transaction txn, Tree tree, byte[] key, int pos)
+    void txnPreUpdateLeafEntry(LocalTransaction txn, Tree tree, byte[] key, int pos)
         throws IOException
     {
         final /*P*/ byte[] page = mPage;
