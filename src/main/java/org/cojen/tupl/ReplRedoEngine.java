@@ -42,7 +42,7 @@ final class ReplRedoEngine implements RedoVisitor {
     private final static long INFINITE_TIMEOUT = -1L;
 
     final ReplicationManager mManager;
-    final Database mDatabase;
+    final LocalDatabase mDatabase;
 
     final ReplRedoController mController;
 
@@ -81,7 +81,7 @@ final class ReplRedoEngine implements RedoVisitor {
      * @param txns recovered transactions; can be null; cleared as a side-effect
      */
     ReplRedoEngine(ReplicationManager manager, int maxThreads,
-                   Database db, LHashTable.Obj<LocalTransaction> txns)
+                   LocalDatabase db, LHashTable.Obj<LocalTransaction> txns)
         throws IOException
     {
         if (maxThreads <= 0) {

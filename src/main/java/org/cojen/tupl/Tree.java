@@ -44,7 +44,7 @@ class Tree extends AbstractView implements Index {
         return (id & ~0xff) == 0;
     }
 
-    final Database mDatabase;
+    final LocalDatabase mDatabase;
     final LockManager mLockManager;
 
     // Id range is [0, 255] for all internal trees.
@@ -70,7 +70,7 @@ class Tree extends AbstractView implements Index {
     // by the root node latch.
     private Stub mStubTail;
 
-    Tree(Database db, long id, byte[] idBytes, byte[] name, Node root) {
+    Tree(LocalDatabase db, long id, byte[] idBytes, byte[] name, Node root) {
         mDatabase = db;
         mLockManager = db.mLockManager;
         mId = id;
@@ -708,7 +708,7 @@ class Tree extends AbstractView implements Index {
      * Returns the frame node latched exclusively and marked dirty.
      */
     private Node latchDirty(TreeCursorFrame frame) throws IOException {
-        final Database db = mDatabase;
+        final LocalDatabase db = mDatabase;
         Node node = frame.mNode;
         node.acquireExclusive();
 
@@ -836,7 +836,7 @@ class Tree extends AbstractView implements Index {
     final LocalTransaction check(Transaction txn) throws IllegalArgumentException {
         if (txn instanceof LocalTransaction) {
             LocalTransaction local = (LocalTransaction) txn;
-            Database txnDb = local.mDatabase;
+            LocalDatabase txnDb = local.mDatabase;
             if (txnDb == mDatabase || txnDb == null) {
                 return local;
             }

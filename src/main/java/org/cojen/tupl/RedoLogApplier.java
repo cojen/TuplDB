@@ -27,13 +27,13 @@ import org.cojen.tupl.ext.TransactionHandler;
  * @see RedoLogRecovery
  */
 final class RedoLogApplier implements RedoVisitor {
-    private final Database mDatabase;
+    private final LocalDatabase mDatabase;
     private final LHashTable.Obj<LocalTransaction> mTransactions;
     private final LHashTable.Obj<Index> mIndexes;
 
     long mHighestTxnId;
 
-    RedoLogApplier(Database db, LHashTable.Obj<LocalTransaction> txns) {
+    RedoLogApplier(LocalDatabase db, LHashTable.Obj<LocalTransaction> txns) {
         mDatabase = db;
         mTransactions = txns;
         mIndexes = new LHashTable.Obj<>(16);
@@ -174,7 +174,7 @@ final class RedoLogApplier implements RedoVisitor {
     public boolean txnCustom(long txnId, byte[] message) throws IOException {
         Transaction txn = txn(txnId);
         if (txn != null) {
-            Database db = mDatabase;
+            LocalDatabase db = mDatabase;
             TransactionHandler handler = db.mCustomTxnHandler;
             if (handler == null) {
                 throw new DatabaseException("Custom transaction handler is not installed");
@@ -190,7 +190,7 @@ final class RedoLogApplier implements RedoVisitor {
     {
         Transaction txn = txn(txnId);
         if (txn != null) {
-            Database db = mDatabase;
+            LocalDatabase db = mDatabase;
             TransactionHandler handler = db.mCustomTxnHandler;
             if (handler == null) {
                 throw new DatabaseException("Custom transaction handler is not installed");

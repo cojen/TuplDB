@@ -278,7 +278,7 @@ final class Node extends Latch implements DatabaseAccess {
     /**
      * Must be called when object is no longer referenced.
      */
-    void delete(Database db) {
+    void delete(LocalDatabase db) {
         acquireExclusive();
         try {
             doDelete(db);
@@ -290,7 +290,7 @@ final class Node extends Latch implements DatabaseAccess {
     /**
      * Must be called when object is no longer referenced. Caller must acquire exclusive latch.
      */
-    void doDelete(Database db) {
+    void doDelete(LocalDatabase db) {
         /*P*/ // [|
         /*P*/ // if (db.mFullyMapped) {
         /*P*/ //     // Cannot delete mapped pages.
@@ -307,7 +307,7 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     @Override
-    public Database getDatabase() {
+    public LocalDatabase getDatabase() {
         return mUsageList.mDatabase;
     }
 
@@ -665,7 +665,7 @@ final class Node extends Latch implements DatabaseAccess {
      * @param releaseParent when true, release this node latch always; when false, release only
      * if an exception is thrown
      */
-    Node loadChild(Database db, long childId, boolean releaseParent) throws IOException {
+    Node loadChild(LocalDatabase db, long childId, boolean releaseParent) throws IOException {
         Node childNode;
         try {
             childNode = db.allocLatchedNode(childId);
@@ -732,7 +732,7 @@ final class Node extends Latch implements DatabaseAccess {
      */
     private Node tryLatchChildNotSplit(int childPos) throws IOException {
         final long childId = retrieveChildRefId(childPos);
-        final Database db = getDatabase();
+        final LocalDatabase db = getDatabase();
         Node childNode = db.nodeMapGet(childId);
 
         if (childNode != null) {
@@ -763,7 +763,7 @@ final class Node extends Latch implements DatabaseAccess {
         // Create a child node and copy this root node state into it. Then update this
         // root node to point to new and split child nodes. New root is always an internal node.
 
-        Database db = mUsageList.mDatabase;
+        LocalDatabase db = mUsageList.mDatabase;
         Node child = db.allocDirtyNode();
         db.nodeMapPut(child);
 
@@ -865,7 +865,7 @@ final class Node extends Latch implements DatabaseAccess {
      * Caller must hold exclusive latch. Latch is never released by this method, even if
      * an exception is thrown.
      */
-    void read(Database db, long id) throws IOException {
+    void read(LocalDatabase db, long id) throws IOException {
         db.readNode(this, id);
         try {
             readFields();
@@ -950,7 +950,7 @@ final class Node extends Latch implements DatabaseAccess {
      *
      * @return false if cannot evict
      */
-    boolean evict(Database db) throws IOException {
+    boolean evict(LocalDatabase db) throws IOException {
         if (mLastCursorFrame != null || mSplit != null) {
             // Cannot evict if in use by a cursor or if splitting. The split
             // check is redundant, since a node cannot be in a split state
@@ -1013,7 +1013,7 @@ final class Node extends Latch implements DatabaseAccess {
             return;
         }
 
-        Database db = mUsageList.mDatabase;
+        LocalDatabase db = mUsageList.mDatabase;
 
         closed = null;
 
@@ -2132,7 +2132,7 @@ final class Node extends Latch implements DatabaseAccess {
             if (encodedLen <= tree.mMaxEntrySize) {
                 vfrag = 0;
             } else {
-                Database db = tree.mDatabase;
+                LocalDatabase db = tree.mDatabase;
                 value = db.fragment(value, value.length,
                                     db.mMaxFragmentedEntrySize - encodedKeyLen);
                 if (value == null) {
@@ -2189,7 +2189,7 @@ final class Node extends Latch implements DatabaseAccess {
                 value = new byte[(int) vlength];
                 encodedLen = (int) longEncodedLen;
             } else {
-                Database db = tree.mDatabase;
+                LocalDatabase db = tree.mDatabase;
                 value = db.fragment(null, vlength, db.mMaxFragmentedEntrySize - encodedKeyLen);
                 if (value == null) {
                     throw new AssertionError();
@@ -3582,7 +3582,7 @@ final class Node extends Latch implements DatabaseAccess {
         } else {
             encodedLen = keyLen + calculateLeafValueLength(value);
             if (encodedLen > tree.mMaxEntrySize) {
-                Database db = tree.mDatabase;
+                LocalDatabase db = tree.mDatabase;
                 value = db.fragment(value, value.length, db.mMaxFragmentedEntrySize - keyLen);
                 if (value == null) {
                     throw new AssertionError();
@@ -3624,7 +3624,7 @@ final class Node extends Latch implements DatabaseAccess {
                         // FIXME: Can this happen?
                         throw new DatabaseException("Fragmented entry doesn't fit");
                     }
-                    Database db = tree.mDatabase;
+                    LocalDatabase db = tree.mDatabase;
                     int max = Math.min(db.mMaxFragmentedEntrySize,
                                        garbage + leftSpace + rightSpace);
                     value = db.fragment(value, value.length, max);
@@ -4338,7 +4338,7 @@ final class Node extends Latch implements DatabaseAccess {
         int newLoc = 0;
         final int searchVecEnd = searchVecEnd();
 
-        Database db = getDatabase();
+        LocalDatabase db = getDatabase();
         /*P*/ byte[] dest = db.removeSparePage();
 
         /*P*/ // [|
@@ -4734,7 +4734,7 @@ final class Node extends Latch implements DatabaseAccess {
                     // FIXME: Can this happen?
                     throw new DatabaseException("Fragmented entry doesn't fit");
                 }
-                Database db = tree.mDatabase;
+                LocalDatabase db = tree.mDatabase;
                 int max = Math.min(~entryLoc, db.mMaxFragmentedEntrySize);
                 int encodedKeyLen = calculateKeyLength(akey);
                 value = db.fragment(value, value.length, max - encodedKeyLen);
@@ -4777,7 +4777,7 @@ final class Node extends Latch implements DatabaseAccess {
 
         // Alloc early in case an exception is thrown.
 
-        final Database db = getDatabase();
+        final LocalDatabase db = getDatabase();
 
         Node newNode;
         try {
@@ -5190,7 +5190,7 @@ final class Node extends Latch implements DatabaseAccess {
         int newLoc = 0;
         final int searchVecEnd = searchVecEnd();
 
-        Database db = getDatabase();
+        LocalDatabase db = getDatabase();
         /*P*/ byte[] dest = db.removeSparePage();
 
         /*P*/ // [|

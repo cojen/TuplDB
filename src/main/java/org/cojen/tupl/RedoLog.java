@@ -170,7 +170,7 @@ final class RedoLog extends RedoWriter {
 
                 if (!finished) {
                     // Last log file was truncated, so chuck the rest.
-                    Utils.deleteNumberedFiles(mBaseFile, Database.REDO_FILE_SUFFIX, mLogId);
+                    Utils.deleteNumberedFiles(mBaseFile, LocalDatabase.REDO_FILE_SUFFIX, mLogId);
                     break;
                 }
             }

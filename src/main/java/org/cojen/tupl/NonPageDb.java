@@ -60,7 +60,7 @@ final class NonPageDb extends PageDb {
     }
 
     @Override
-    public Node allocLatchedNode(Database db, int mode) throws IOException {
+    public Node allocLatchedNode(LocalDatabase db, int mode) throws IOException {
         Node node = db.allocLatchedNode(Utils.randomSeed(), mode);
         long nodeId = node.mId;
         if (nodeId < 0) {

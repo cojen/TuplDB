@@ -61,7 +61,7 @@ abstract class PageDb implements CauseCloseable {
      * @param mode NodeUsageList.MODE_UNEVICTABLE | MODE_NO_EVICT
      * @return node with id assigned
      */
-    public abstract Node allocLatchedNode(Database db, int mode) throws IOException;
+    public abstract Node allocLatchedNode(LocalDatabase db, int mode) throws IOException;
 
     /**
      * Returns the fixed size of all pages in the store, in bytes.

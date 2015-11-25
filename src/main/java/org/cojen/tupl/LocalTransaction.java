@@ -36,7 +36,7 @@ final class LocalTransaction extends Locker implements Transaction {
         HAS_TRASH  = 4; /* When set, fragmented values are in the trash and must be
                            fully deleted after committing the top-level scope. */
 
-    final Database mDatabase;
+    final LocalDatabase mDatabase;
     final RedoWriter mRedoWriter;
     DurabilityMode mDurabilityMode;
 
@@ -51,7 +51,7 @@ final class LocalTransaction extends Locker implements Transaction {
     // Is an exception if transaction is borked, BOGUS if bogus.
     private Object mBorked;
 
-    LocalTransaction(Database db, RedoWriter redo, DurabilityMode durabilityMode,
+    LocalTransaction(LocalDatabase db, RedoWriter redo, DurabilityMode durabilityMode,
                      LockMode lockMode, long timeoutNanos)
     {
         super(db.mLockManager);
@@ -63,13 +63,15 @@ final class LocalTransaction extends Locker implements Transaction {
     }
 
     // Constructor for redo recovery.
-    LocalTransaction(Database db, long txnId, LockMode lockMode, long timeoutNanos) {
+    LocalTransaction(LocalDatabase db, long txnId, LockMode lockMode, long timeoutNanos) {
         this(db, null, DurabilityMode.NO_REDO, lockMode, timeoutNanos);
         mTxnId = txnId;
     }
 
     // Constructor for undo recovery.
-    LocalTransaction(Database db, long txnId, LockMode lockMode, long timeoutNanos, int hasState) {
+    LocalTransaction(LocalDatabase db, long txnId, LockMode lockMode, long timeoutNanos,
+                     int hasState)
+    {
         this(db, null, DurabilityMode.NO_REDO, lockMode, timeoutNanos);
         mTxnId = txnId;
         mHasState = hasState;

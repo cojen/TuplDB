@@ -198,10 +198,10 @@ final class SnapshotPageArray extends PageArray {
      * @param pageCount total number of pages to include in snapshot
      * @param redoPos redo log position for the snapshot
      */
-    Snapshot beginSnapshot(Database db, long pageCount, long redoPos) throws IOException {
+    Snapshot beginSnapshot(LocalDatabase db, long pageCount, long redoPos) throws IOException {
         pageCount = Math.min(pageCount, getPageCount());
 
-        Database nodeCache = db;
+        LocalDatabase nodeCache = db;
 
         // Snapshot does not decrypt pages.
         PageArray rawSource = mRawSource;
@@ -270,7 +270,7 @@ final class SnapshotPageArray extends PageArray {
     }
 
     class SnapshotImpl implements CauseCloseable, Snapshot {
-        private final Database mNodeCache;
+        private final LocalDatabase mNodeCache;
         private final PageArray mRawPageArray;
 
         private final TempFileManager mTempFileManager;
@@ -299,7 +299,7 @@ final class SnapshotPageArray extends PageArray {
          * @param nodeCache optional
          */
         SnapshotImpl(TempFileManager tfm, long pageCount, long redoPos,
-                     Database nodeCache, PageArray rawPageArray)
+                     LocalDatabase nodeCache, PageArray rawPageArray)
             throws IOException
         {
             mNodeCache = nodeCache;
@@ -313,7 +313,7 @@ final class SnapshotPageArray extends PageArray {
 
             DatabaseConfig config = new DatabaseConfig()
                 .pageSize(pageSize).minCacheSize(pageSize * 100);
-            mPageCopyIndex = Database.openTemp(tfm, config);
+            mPageCopyIndex = LocalDatabase.openTemp(tfm, config);
             mTempFile = config.mBaseFile;
 
             mSnapshotLock = new Object();
@@ -357,7 +357,7 @@ final class SnapshotPageArray extends PageArray {
 
             Cursor c = null;
             try {
-                final Database cache = mNodeCache;
+                final LocalDatabase cache = mNodeCache;
                 final byte[] key = new byte[8];
                 final long count = mSnapshotPageCount;
 
