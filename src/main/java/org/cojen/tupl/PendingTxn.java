@@ -65,7 +65,7 @@ final class PendingTxn extends LockOwner {
      * Releases all the locks and then discards the undo log. This object must be discarded
      * afterwards.
      */
-    void commit(Database db) throws IOException {
+    void commit(LocalDatabase db) throws IOException {
         // See Transaction.commit for more info.
 
         unlockAll(db);
@@ -85,7 +85,7 @@ final class PendingTxn extends LockOwner {
      * Applies the undo log, releases all the locks, and then discards the undo log. This
      * object must be discarded afterwards.
      */
-    void rollback(Database db) throws IOException {
+    void rollback(LocalDatabase db) throws IOException {
         // See Transaction.exit for more info.
 
         UndoLog undo = mUndoLog;
@@ -100,7 +100,7 @@ final class PendingTxn extends LockOwner {
         }
     }
 
-    private void unlockAll(Database db) {
+    private void unlockAll(LocalDatabase db) {
         LockManager manager = db.mLockManager;
         manager.unlock(this, mFirst);
         Lock[] rest = mRest;

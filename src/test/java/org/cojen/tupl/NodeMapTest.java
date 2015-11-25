@@ -39,7 +39,8 @@ public class NodeMapTest {
 
         final int idOffset = 1000;
 
-        Database db = Database.open(new DatabaseConfig().pageSize(page).maxCacheSize(size * page));
+        LocalDatabase db = LocalDatabase.open
+            (new DatabaseConfig().pageSize(page).maxCacheSize(size * page));
 
         for (int i=0; i<count; i++) {
             Node n = new Node(null, p_calloc(page));
@@ -73,7 +74,8 @@ public class NodeMapTest {
 
         final int idOffset = 1000;
 
-        Database db = Database.open(new DatabaseConfig().pageSize(page).maxCacheSize(size * page));
+        LocalDatabase db = LocalDatabase.open
+            (new DatabaseConfig().pageSize(page).maxCacheSize(size * page));
 
         Node[] nodes = new Node[count];
         for (int i=0; i<count; i++) {

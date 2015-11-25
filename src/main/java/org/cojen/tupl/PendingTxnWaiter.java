@@ -111,7 +111,7 @@ final class PendingTxnWaiter extends Thread {
             mAhead = null;
             notify();
         }
-        Database db = mWriter.mEngine.mDatabase;
+        LocalDatabase db = mWriter.mEngine.mDatabase;
         finishAll(behind, db, commitPos);
         finishAll(ahead, db, commitPos);
     }
@@ -161,7 +161,7 @@ final class PendingTxnWaiter extends Thread {
 
             // Commit all the confirmed transactions.
 
-            Database db =  mWriter.mEngine.mDatabase;
+            LocalDatabase db =  mWriter.mEngine.mDatabase;
             do {
                 try {
                     behind.commit(db);
@@ -172,7 +172,7 @@ final class PendingTxnWaiter extends Thread {
         }
     }
 
-    private static void finishAll(PendingTxn pending, Database db, long commitPos) {
+    private static void finishAll(PendingTxn pending, LocalDatabase db, long commitPos) {
         while (pending != null) {
             try {
                 if (pending.mCommitPos <= commitPos) {
@@ -187,7 +187,7 @@ final class PendingTxnWaiter extends Thread {
         }
     }
 
-    private static void uncaught(Database db, Throwable e) {
+    private static void uncaught(LocalDatabase db, Throwable e) {
         EventListener listener = db.mEventListener;
         if (listener != null) {
             listener.notify(EventType.REPLICATION_PANIC,

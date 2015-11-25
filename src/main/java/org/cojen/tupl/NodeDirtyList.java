@@ -178,7 +178,7 @@ final class NodeDirtyList extends Latch {
     /**
      * Remove and delete nodes from dirty list, as part of close sequence.
      */
-    void delete(Database db) {
+    void delete(LocalDatabase db) {
         acquireExclusive();
         try {
             Node node = mFirstDirty;

@@ -2916,7 +2916,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     private Node trimNode(final TreeCursorFrame frame, final Node node) throws IOException {
         node.mLastCursorFrame = null;
 
-        Database db = mTree.mDatabase;
+        LocalDatabase db = mTree.mDatabase;
         // Always prepare to delete, even though caller will delete the root.
         db.prepareToDelete(node);
 
@@ -3294,7 +3294,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         node.releaseShared();
 
         if (id > highestNodeId) {
-            Database db = mTree.mDatabase;
+            LocalDatabase db = mTree.mDatabase;
             Lock sharedCommitLock = db.sharedCommitLock();
             sharedCommitLock.lock();
             try {
@@ -3608,7 +3608,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             return mTree.finishSplit(frame, node);
         }
 
-        Database db = mTree.mDatabase;
+        LocalDatabase db = mTree.mDatabase;
         if (!db.shouldMarkDirty(node)) {
             return node;
         }

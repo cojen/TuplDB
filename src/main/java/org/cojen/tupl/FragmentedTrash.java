@@ -180,7 +180,7 @@ final class FragmentedTrash {
         byte[] prefix = new byte[8];
         encodeLongBE(prefix, 0, txnId);
 
-        Database db = mTrash.mDatabase;
+        LocalDatabase db = mTrash.mDatabase;
         final Lock sharedCommitLock = db.sharedCommitLock();
         TreeCursor cursor = new TreeCursor(mTrash, Transaction.BOGUS);
         try {
@@ -218,7 +218,7 @@ final class FragmentedTrash {
      */
     boolean emptyAllTrash(EventListener listener) throws IOException {
         boolean found = false;
-        Database db = mTrash.mDatabase;
+        LocalDatabase db = mTrash.mDatabase;
         final Lock sharedCommitLock = db.sharedCommitLock();
         TreeCursor cursor = new TreeCursor(mTrash, Transaction.BOGUS);
         try {
