@@ -19,6 +19,7 @@ package org.cojen.tupl.ext;
 import java.io.Closeable;
 import java.io.IOException;
 
+import org.cojen.tupl.ConfirmationFailureException;
 import org.cojen.tupl.DatabaseConfig;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.EventListener;

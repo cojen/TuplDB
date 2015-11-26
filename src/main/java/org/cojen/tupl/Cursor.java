@@ -104,7 +104,10 @@ public interface Cursor {
      * is less than, equal to, or greater than the rkey.
      * @throws NullPointerException if current key or rkey is null
      */
-    public int compareKeyTo(byte[] rkey);
+    public default int compareKeyTo(byte[] rkey) {
+        byte[] lkey = key();
+        return Utils.compareUnsigned(lkey, 0, lkey.length, rkey, 0, rkey.length);
+    }
 
     /**
      * Compare the current key to the one given.
@@ -116,7 +119,10 @@ public interface Cursor {
      * is less than, equal to, or greater than the rkey.
      * @throws NullPointerException if current key or rkey is null
      */
-    public int compareKeyTo(byte[] rkey, int offset, int length);
+    public default int compareKeyTo(byte[] rkey, int offset, int length) {
+        byte[] lkey = key();
+        return Utils.compareUnsigned(lkey, 0, lkey.length, rkey, offset, length);
+    }
 
     /**
      * Moves the Cursor to find the first available entry. Cursor key and value
@@ -180,7 +186,11 @@ public interface Cursor {
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws IllegalStateException if position is undefined at invocation time
      */
-    public LockResult skip(long amount, byte[] limitKey, boolean inclusive) throws IOException;
+    public default LockResult skip(long amount, byte[] limitKey, boolean inclusive)
+        throws IOException
+    {
+        return ViewUtils.skip(this, amount, limitKey, inclusive);
+    }
 
     /**
      * Moves to the Cursor to the next available entry. Cursor key and value
@@ -404,7 +414,13 @@ public interface Cursor {
      * @throws IllegalStateException if position is undefined at invocation time
      * @throws ViewConstraintException if value is not permitted
      */
-    public void commit(byte[] value) throws IOException;
+    public default void commit(byte[] value) throws IOException {
+        store(value);
+        Transaction txn = link();
+        if (txn != null && txn != Transaction.BOGUS) {
+            txn.commit();
+        }
+    }
 
     //public int read(LockResult[] result,int start,byte[] b, int off, int len) throws IOException;
 
@@ -422,7 +438,9 @@ public interface Cursor {
      * cursor is unpositioned. When using a cursor for opening streams, {@link #autoload
      * autoload} should be disabled.
      */
-    public Stream newStream();
+    public default Stream newStream() {
+        throw new UnsupportedOperationException();
+    }
 
     /**
      * Returns a new independent Cursor, positioned where this one is, and

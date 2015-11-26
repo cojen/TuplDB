@@ -164,6 +164,6 @@ final class ReverseView implements View {
     }
 
     static byte[] appendZero(byte[] key) {
-        return key == null ? null : AbstractView.appendZero(key);
+        return key == null ? null : ViewUtils.appendZero(key);
     }
 }

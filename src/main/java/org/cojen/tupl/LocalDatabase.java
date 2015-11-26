@@ -79,7 +79,7 @@ import static org.cojen.tupl.Utils.*;
  *
  * @author Brian S O'Neill
  */
-final class LocalDatabase extends Database {
+final class LocalDatabase implements Database {
     private static final int DEFAULT_CACHED_NODES = 1000;
     // +2 for registry and key map root nodes, +1 for one user index, and +2 for at least one
     // usage list to function correctly.

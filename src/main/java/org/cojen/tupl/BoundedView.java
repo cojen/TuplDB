@@ -218,7 +218,7 @@ final class BoundedView extends SubView {
             lowKey = start;
             if ((mMode & START_EXCLUSIVE) != 0) {
                 // Switch to exclusive start behavior.
-                lowKey = AbstractView.appendZero(lowKey);
+                lowKey = ViewUtils.appendZero(lowKey);
             }
         }
         return lowKey;
@@ -230,7 +230,7 @@ final class BoundedView extends SubView {
             highKey = end;
             if ((mMode & END_EXCLUSIVE) == 0) {
                 // Switch to inclusive end behavior.
-                highKey = AbstractView.appendZero(highKey);
+                highKey = ViewUtils.appendZero(highKey);
             }
         }
         return highKey;

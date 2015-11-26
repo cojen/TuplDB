@@ -27,8 +27,8 @@ import org.cojen.tupl.io.CauseCloseable;
 import static org.cojen.tupl.Utils.*;
 
 /**
- * Main database class, containing a collection of transactional indexes. Call
- * {@link #open open} to obtain a Database instance. Examples:
+ * Primary database interface, containing a collection of transactional indexes. Call {@link
+ * #open open} to obtain a Database instance. Examples:
  *
  * <p>Open a non-durable database, limited to a max size of 100MB:
  *
@@ -67,7 +67,7 @@ import static org.cojen.tupl.Utils.*;
  * @author Brian S O'Neill
  * @see DatabaseConfig
  */
-public abstract class Database implements CauseCloseable, Flushable {
+public interface Database extends CauseCloseable, Flushable {
     /**
      * Open a database, creating it if necessary.
      */
@@ -97,7 +97,7 @@ public abstract class Database implements CauseCloseable, Flushable {
      *
      * @return shared Index instance; null if not found
      */
-    public Index findIndex(String name) throws IOException {
+    public default Index findIndex(String name) throws IOException {
         return findIndex(name.getBytes("UTF-8"));
     }
 
@@ -114,7 +114,7 @@ public abstract class Database implements CauseCloseable, Flushable {
      *
      * @return shared Index instance
      */
-    public Index openIndex(String name) throws IOException {
+    public default Index openIndex(String name) throws IOException {
         return openIndex(name.getBytes("UTF-8"));
     }
 
@@ -131,7 +131,7 @@ public abstract class Database implements CauseCloseable, Flushable {
      * @param id big-endian encoded long integer
      * @throws IllegalArgumentException if id is malformed or reserved
      */
-    public Index indexById(byte[] id) throws IOException {
+    public default Index indexById(byte[] id) throws IOException {
         if (id.length != 8) {
             throw new IllegalArgumentException("Expected an 8 byte identifier: " + id.length);
         }
@@ -158,7 +158,7 @@ public abstract class Database implements CauseCloseable, Flushable {
      * @throws IllegalStateException if name is already in use by another index
      * @throws IllegalArgumentException if index belongs to another database instance
      */
-    public void renameIndex(Index index, String newName) throws IOException {
+    public default void renameIndex(Index index, String newName) throws IOException {
         renameIndex(index, newName.getBytes("UTF-8"));
     }
 
@@ -492,7 +492,7 @@ public abstract class Database implements CauseCloseable, Flushable {
      * @see #shutdown
      */
     @Override
-    public void close() throws IOException {
+    public default void close() throws IOException {
         close(null);
     }
 

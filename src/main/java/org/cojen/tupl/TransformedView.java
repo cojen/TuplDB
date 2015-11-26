@@ -53,7 +53,7 @@ final class TransformedView implements View {
 
     @Override
     public long count(byte[] lowKey, byte[] highKey) throws IOException {
-        return AbstractView.count(this, mTransformer.requireValue(), lowKey, highKey);
+        return ViewUtils.count(this, mTransformer.requireValue(), lowKey, highKey);
     }
 
     @Override
