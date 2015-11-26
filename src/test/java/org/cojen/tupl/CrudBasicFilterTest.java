@@ -70,7 +70,7 @@ public class CrudBasicFilterTest extends CrudNonDurableTest {
         }
     }
 
-    static class BasicFilter extends Filter {
+    static class BasicFilter implements Filter {
         @Override
         public boolean isAllowed(byte[] key, byte[] value) {
             if (value == null || value.length < 4) {

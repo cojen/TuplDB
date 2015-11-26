@@ -31,7 +31,7 @@ import static org.cojen.tupl.Utils.*;
  *
  * @author Brian S O'Neill
  */
-class Tree extends AbstractView implements Index {
+class Tree implements View, Index {
     // Reserved internal tree ids.
     static final int
         REGISTRY_ID = 0,

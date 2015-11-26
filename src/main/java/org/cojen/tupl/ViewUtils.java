@@ -1,5 +1,5 @@
 /*
- *  Copyright 2015 Brian S O'Neill
+ *  Copyright 2015 Cojen.org
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -18,38 +18,60 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import org.cojen.tupl.Utils;
-
 /**
- * Implements a few {@link Cursor} methods.
+ * 
  *
  * @author Brian S O'Neill
  */
-public abstract class AbstractCursor implements Cursor {
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int compareKeyTo(byte[] rkey) {
-        byte[] lkey = key();
-        return Utils.compareUnsigned(lkey, 0, lkey.length, rkey, 0, rkey.length);
+class ViewUtils {
+    static long count(View view, boolean autoload, byte[] lowKey, byte[] highKey)
+        throws IOException
+    {
+        long count = 0;
+            
+        Cursor c = view.newCursor(Transaction.BOGUS);
+        try {
+            c.autoload(autoload);
+
+            if (lowKey == null) {
+                c.first();
+            } else {
+                c.findGe(lowKey);
+            }
+
+            if (highKey == null) {
+                for (; c.key() != null; c.next()) {
+                    count++;
+                }
+            } else {
+                for (; c.key() != null && c.compareKeyTo(highKey) < 0; c.next()) {
+                    count++;
+                }
+            }
+        } finally {
+            c.reset();
+        }
+
+        return count;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int compareKeyTo(byte[] rkey, int offset, int length) {
-        byte[] lkey = key();
-        return Utils.compareUnsigned(lkey, 0, lkey.length, rkey, offset, length);
+    static byte[] appendZero(byte[] key) {
+        byte[] newKey = new byte[key.length + 1];
+        System.arraycopy(key, 0, newKey, 0, key.length);
+        return newKey;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public LockResult skip(long amount, byte[] limitKey, boolean inclusive) throws IOException {
-        return skip(this, amount, limitKey, inclusive);
+
+    static View checkOrdering(View view) {
+        Ordering ordering = view.getOrdering();
+        if (ordering == Ordering.DESCENDING) {
+            view = view.viewReverse();
+            ordering = view.getOrdering();
+        }
+        if (ordering != Ordering.ASCENDING) {
+            throw new UnsupportedOperationException("Unsupported ordering: " + ordering);
+        }
+        return view;
     }
 
     static LockResult skip(Cursor c, long amount, byte[] limitKey, boolean inclusive)
@@ -99,34 +121,10 @@ public abstract class AbstractCursor implements Cursor {
     }
 
     /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void commit(byte[] value) throws IOException {
-        store(value);
-        Transaction txn = link();
-        if (txn != null && txn != Transaction.BOGUS) {
-            txn.commit();
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Stream newStream() {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
      * Simple skip implementation which doesn't support skip by zero.
      *
      * @throws IllegalArgumentException when skip amount is zero
      */
-    protected LockResult doSkip(long amount) throws IOException {
-        return doSkip(this, amount);
-    }
-
     static LockResult doSkip(Cursor c, long amount) throws IOException {
         if (amount == 0) {
             throw new IllegalArgumentException("Skip is zero");

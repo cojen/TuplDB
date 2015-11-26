@@ -19,13 +19,13 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 /**
- * View transformer which filters out entries which don't belong. Subclasses only need to
+ * View transformer which filters out entries which don't belong. Implementations only need to
  * implement the {@link #isAllowed isAllowed} method.
  *
  * @author Brian S O'Neill
  * @see View#viewTransformed View.viewTransformed
  */
-public abstract class Filter extends Transformer {
+public interface Filter extends Transformer {
     /**
      * Return true if the given key and value are not to be filtered out.
      */
@@ -35,7 +35,7 @@ public abstract class Filter extends Transformer {
      * Calls the {@link #isAllowed isAllowed} method.
      */
     @Override
-    public final byte[] transformValue(byte[] value, byte[] key, byte[] tkey)
+    public default byte[] transformValue(byte[] value, byte[] key, byte[] tkey)
         throws IOException
     {
         return isAllowed(key, value) ? value : null;
@@ -45,7 +45,7 @@ public abstract class Filter extends Transformer {
      * Calls the {@link #isAllowed isAllowed} method.
      */
     @Override
-    public final byte[] inverseTransformValue(byte[] tvalue, byte[] key, byte[] tkey)
+    public default byte[] inverseTransformValue(byte[] tvalue, byte[] key, byte[] tkey)
         throws IOException, ViewConstraintException
     {
         if (!isAllowed(key, tvalue)) {
