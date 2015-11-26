@@ -147,7 +147,7 @@ public interface Transaction {
      * Exits all transaction scopes, rolling back all uncommitted modifications. Equivalent to:
      *
      * <pre>
-     * while (txn.isNested());
+     * while (txn.isNested()) {
      *     txn.exit();
      * }
      * txn.exit();
