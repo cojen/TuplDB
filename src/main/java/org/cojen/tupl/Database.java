@@ -211,6 +211,24 @@ public interface Database extends CauseCloseable, Flushable {
     public abstract Transaction newTransaction(DurabilityMode durabilityMode);
 
     /**
+     * Creates a new Transaction with the {@link DatabaseConfig#durabilityMode default}
+     * durability mode, calls the given runner, and then fully commits the transaction. If any
+     * exception is thrown, the transaction is fully rolled back.
+     */
+    public default <E extends Throwable> void runTransaction(TransactionRunner<E> runner)
+        throws IOException, E
+    {
+        Transaction txn = newTransaction();
+        try {
+            runner.run(txn);
+            txn.commitAll();
+        } catch (Throwable e) {
+            txn.reset();
+            throw e;
+        }
+    }
+
+    /**
      * Preallocates pages for immediate use. The actual amount allocated
      * varies, depending on the amount of free pages already available.
      *
