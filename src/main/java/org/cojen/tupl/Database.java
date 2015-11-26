@@ -202,7 +202,9 @@ public interface Database extends CauseCloseable, Flushable {
      * Returns a new Transaction with the {@link DatabaseConfig#durabilityMode default}
      * durability mode.
      */
-    public abstract Transaction newTransaction();
+    public default Transaction newTransaction() {
+        return newTransaction(null);
+    }
 
     /**
      * Returns a new Transaction with the given durability mode. If null, the
@@ -213,12 +215,24 @@ public interface Database extends CauseCloseable, Flushable {
     /**
      * Creates a new Transaction with the {@link DatabaseConfig#durabilityMode default}
      * durability mode, calls the given runner, and then fully commits the transaction. If any
-     * exception is thrown, the transaction is fully rolled back.
+     * exception is thrown, the transaction is rolled back.
      */
     public default <E extends Throwable> void runTransaction(TransactionRunner<E> runner)
         throws IOException, E
     {
-        Transaction txn = newTransaction();
+        runTransaction(null, runner);
+    }
+
+    /**
+     * Creates a new Transaction with the given durability mode, calls the given runner, and
+     * then fully commits the transaction. If any exception is thrown, the transaction is
+     * rolled back.
+     */
+    public default <E extends Throwable> void runTransaction(DurabilityMode durabilityMode,
+                                                             TransactionRunner<E> runner)
+        throws IOException, E
+    {
+        Transaction txn = newTransaction(durabilityMode);
         try {
             runner.run(txn);
             txn.commitAll();
