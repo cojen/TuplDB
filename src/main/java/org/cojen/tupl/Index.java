@@ -69,16 +69,16 @@ public interface Index extends View, Closeable {
     public abstract Stats analyze(byte[] lowKey, byte[] highKey) throws IOException;
 
     /**
-     * Immutable copy of stats from the {@link Index#analyze analyze} method.
+     * Collection of stats from the {@link Index#analyze analyze} method.
      */
-    public static class Stats implements Serializable {
-        private static final long serialVersionUID = 2L;
+    public static class Stats implements Cloneable, Serializable {
+        private static final long serialVersionUID = 3L;
 
-        private final double mEntryCount;
-        private final double mKeyBytes;
-        private final double mValueBytes;
-        private final double mFreeBytes;
-        private final double mTotalBytes;
+        public double entryCount;
+        public double keyBytes;
+        public double valueBytes;
+        public double freeBytes;
+        public double totalBytes;
 
         public Stats(double entryCount,
                      double keyBytes,
@@ -86,101 +86,136 @@ public interface Index extends View, Closeable {
                      double freeBytes,
                      double totalBytes)
         {
-            mEntryCount = entryCount;
-            mKeyBytes = keyBytes;
-            mValueBytes = valueBytes;
-            mFreeBytes = freeBytes;
-            mTotalBytes = totalBytes;
+            this.entryCount = entryCount;
+            this.keyBytes = keyBytes;
+            this.valueBytes = valueBytes;
+            this.freeBytes = freeBytes;
+            this.totalBytes = totalBytes;
         } 
 
         /**
          * Returns the estimated number of index entries.
          */
         public double entryCount() {
-            return mEntryCount;
+            return entryCount;
         }
 
         /**
          * Returns the estimated amount of bytes occupied by keys in the index.
          */
         public double keyBytes() {
-            return mKeyBytes;
+            return keyBytes;
         }
 
         /**
          * Returns the estimated amount of bytes occupied by values in the index.
          */
         public double valueBytes() {
-            return mValueBytes;
+            return valueBytes;
         }
 
         /**
          * Returns the estimated amount of free bytes in the index.
          */
         public double freeBytes() {
-            return mFreeBytes;
+            return freeBytes;
         }
 
         /**
          * Returns the estimated total amount of bytes in the index.
          */
         public double totalBytes() {
-            return mTotalBytes;
+            return totalBytes;
         }
 
         /**
          * Adds stats into a new object.
          */
         public Stats add(Stats augend) {
-            return new Stats(entryCount() + augend.entryCount(),
-                             keyBytes() + augend.keyBytes(),
-                             valueBytes() + augend.valueBytes(),
-                             freeBytes() + augend.freeBytes(),
-                             totalBytes() + augend.totalBytes());
+            return new Stats(entryCount + augend.entryCount,
+                             keyBytes + augend.keyBytes,
+                             valueBytes + augend.valueBytes,
+                             freeBytes + augend.freeBytes,
+                             totalBytes + augend.totalBytes);
         }
 
         /**
          * Subtract stats into a new object.
          */
         public Stats subtract(Stats subtrahend) {
-            return new Stats(entryCount() - subtrahend.entryCount(),
-                             keyBytes() - subtrahend.keyBytes(),
-                             valueBytes() - subtrahend.valueBytes(),
-                             freeBytes() - subtrahend.freeBytes(),
-                             totalBytes() - subtrahend.totalBytes());
+            return new Stats(entryCount - subtrahend.entryCount,
+                             keyBytes - subtrahend.keyBytes,
+                             valueBytes - subtrahend.valueBytes,
+                             freeBytes - subtrahend.freeBytes,
+                             totalBytes - subtrahend.totalBytes);
         }
 
         /**
          * Divide the stats by a scalar into a new object.
          */
         public Stats divide(double scalar) {
-            return new Stats(entryCount() / scalar,
-                             keyBytes() / scalar,
-                             valueBytes() / scalar,
-                             freeBytes() / scalar,
-                             totalBytes() / scalar);
+            return new Stats(entryCount / scalar,
+                             keyBytes / scalar,
+                             valueBytes / scalar,
+                             freeBytes / scalar,
+                             totalBytes / scalar);
         }
 
         /**
          * Round the stats to whole numbers into a new object.
          */
         public Stats round() {
-            return new Stats(Math.round(entryCount()),
-                             Math.round(keyBytes()),
-                             Math.round(valueBytes()),
-                             Math.round(freeBytes()),
-                             Math.round(totalBytes()));
+            return new Stats(Math.round(entryCount),
+                             Math.round(keyBytes),
+                             Math.round(valueBytes),
+                             Math.round(freeBytes),
+                             Math.round(totalBytes));
         }
 
         /**
          * Divide the stats by a scalar and round to whole numbers into a new object.
          */
         public Stats divideAndRound(double scalar) {
-            return new Stats(Math.round(entryCount() / scalar),
-                             Math.round(keyBytes() / scalar),
-                             Math.round(valueBytes() / scalar),
-                             Math.round(freeBytes() / scalar),
-                             Math.round(totalBytes() / scalar));
+            return new Stats(Math.round(entryCount / scalar),
+                             Math.round(keyBytes / scalar),
+                             Math.round(valueBytes / scalar),
+                             Math.round(freeBytes / scalar),
+                             Math.round(totalBytes / scalar));
+        }
+
+        @Override
+        public Stats clone() {
+            try {
+                return (Stats) super.clone();
+            } catch (CloneNotSupportedException e) {
+                throw Utils.rethrow(e);
+            }
+        }
+
+        @Override
+        public int hashCode() {
+            long hash = Double.doubleToLongBits(entryCount);
+            hash = hash * 31 + Double.doubleToLongBits(keyBytes);
+            hash = hash * 31 + Double.doubleToLongBits(valueBytes);
+            hash = hash * 31 + Double.doubleToLongBits(freeBytes);
+            hash = hash * 31 + Double.doubleToLongBits(totalBytes);
+            return (int) Utils.scramble(hash);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj != null && obj.getClass() == Stats.class) {
+                Stats other = (Stats) obj;
+                return entryCount == other.entryCount
+                    && keyBytes == other.keyBytes
+                    && valueBytes == other.valueBytes
+                    && freeBytes == other.freeBytes
+                    && totalBytes == other.totalBytes;
+            }
+            return false;
         }
 
         @Override
@@ -188,11 +223,11 @@ public interface Index extends View, Closeable {
             StringBuilder b = new StringBuilder("Index.Stats {");
 
             boolean any = false;
-            any = append(b, any, "entryCount", entryCount());
-            any = append(b, any, "keyBytes", keyBytes());
-            any = append(b, any, "valueBytes", valueBytes());
-            any = append(b, any, "freeBytes", freeBytes());
-            any = append(b, any, "totalBytes", totalBytes());
+            any = append(b, any, "entryCount", entryCount);
+            any = append(b, any, "keyBytes", keyBytes);
+            any = append(b, any, "valueBytes", valueBytes);
+            any = append(b, any, "freeBytes", freeBytes);
+            any = append(b, any, "totalBytes", totalBytes);
 
             b.append('}');
             return b.toString();

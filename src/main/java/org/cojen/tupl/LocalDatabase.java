@@ -1676,14 +1676,14 @@ final class LocalDatabase implements Database {
     public Stats stats() {
         Stats stats = new Stats();
 
-        stats.mPageSize = mPageSize;
+        stats.pageSize = mPageSize;
 
         mSharedCommitLock.lock();
         try {
             long cursorCount = 0;
             mOpenTreesLatch.acquireShared();
             try {
-                stats.mOpenIndexes = mOpenTrees.size();
+                stats.openIndexes = mOpenTrees.size();
                 for (TreeRef treeRef : mOpenTrees.values()) {
                     Tree tree = treeRef.get();
                     if (tree != null) {
@@ -1694,28 +1694,28 @@ final class LocalDatabase implements Database {
                 mOpenTreesLatch.releaseShared();
             }
 
-            stats.mCursorCount = cursorCount;
+            stats.cursorCount = cursorCount;
 
             PageDb.Stats pstats = mPageDb.stats();
-            stats.mFreePages = pstats.freePages;
-            stats.mTotalPages = pstats.totalPages;
+            stats.freePages = pstats.freePages;
+            stats.totalPages = pstats.totalPages;
 
-            stats.mLockCount = mLockManager.numLocksHeld();
+            stats.lockCount = mLockManager.numLocksHeld();
 
             synchronized (mTxnIdLock) {
-                stats.mTxnCount = mUndoLogCount;
-                stats.mTxnsCreated = mTxnId;
+                stats.txnCount = mUndoLogCount;
+                stats.txnsCreated = mTxnId;
             }
         } finally {
             mSharedCommitLock.unlock();
         }
 
         for (NodeUsageList usageList : mUsageLists) {
-            stats.mCachedPages += usageList.size();
+            stats.cachedPages += usageList.size();
         }
 
-        if (!mPageDb.isDurable() && stats.mTotalPages == 0) {
-            stats.mTotalPages = stats.mCachedPages;
+        if (!mPageDb.isDurable() && stats.totalPages == 0) {
+            stats.totalPages = stats.cachedPages;
         }
 
         return stats;
