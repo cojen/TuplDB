@@ -309,57 +309,54 @@ public interface Database extends CauseCloseable, Flushable {
     public abstract Stats stats();
 
     /**
-     * Immutable copy of database {@link Database#stats statistics}.
+     * Collection of database {@link Database#stats statistics}.
      */
-    public static class Stats implements Serializable {
-        private static final long serialVersionUID = 2L;
+    public static class Stats implements Cloneable, Serializable {
+        private static final long serialVersionUID = 3L;
 
-        int mPageSize;
-        long mFreePages;
-        long mTotalPages;
-        long mCachedPages;
-        int mOpenIndexes;
-        long mLockCount;
-        long mCursorCount;
-        long mTxnCount;
-        long mTxnsCreated;
-
-        Stats() {
-        }
+        public int pageSize;
+        public long freePages;
+        public long totalPages;
+        public long cachedPages;
+        public int openIndexes;
+        public long lockCount;
+        public long cursorCount;
+        public long txnCount;
+        public long txnsCreated;
 
         /**
          * Returns the allocation page size.
          */
         public int pageSize() {
-            return mPageSize;
+            return pageSize;
         }
 
         /**
          * Returns the amount of unused pages in the database.
          */
         public long freePages() {
-            return mFreePages;
+            return freePages;
         }
 
         /**
          * Returns the total amount of pages in the database.
          */
         public long totalPages() {
-            return mTotalPages;
+            return totalPages;
         }
 
         /**
          * Returns the current size of the cache, in pages.
          */
         public long cachedPages() {
-            return mCachedPages;
+            return cachedPages;
         }
 
         /**
          * Returns the amount of indexes currently open.
          */
         public int openIndexes() {
-            return mOpenIndexes;
+            return openIndexes;
         }
 
         /**
@@ -368,7 +365,7 @@ public interface Database extends CauseCloseable, Flushable {
          * accumulation of locks can indicate that transactions are not being reset properly.
          */
         public long lockCount() {
-            return mLockCount;
+            return lockCount;
         }
 
         /**
@@ -376,7 +373,7 @@ public interface Database extends CauseCloseable, Flushable {
          * cursors can indicate that they are not being reset properly.
          */
         public long cursorCount() {
-            return mCursorCount;
+            return cursorCount;
         }
 
         /**
@@ -386,7 +383,7 @@ public interface Database extends CauseCloseable, Flushable {
          * indicate that they are not being reset properly.
          */
         public long transactionCount() {
-            return mTxnCount;
+            return txnCount;
         }
 
         /**
@@ -396,14 +393,23 @@ public interface Database extends CauseCloseable, Flushable {
          * fully-established again, further increasing the total created value.
          */
         public long transactionsCreated() {
-            return mTxnsCreated;
+            return txnsCreated;
+        }
+
+        @Override
+        public Stats clone() {
+            try {
+                return (Stats) super.clone();
+            } catch (CloneNotSupportedException e) {
+                throw Utils.rethrow(e);
+            }
         }
 
         @Override
         public int hashCode() {
-            long hash = mFreePages;
-            hash = hash * 31 + mTotalPages;
-            hash = hash * 31 + mTxnsCreated;
+            long hash = freePages;
+            hash = hash * 31 + totalPages;
+            hash = hash * 31 + txnsCreated;
             return (int) scramble(hash);
         }
 
@@ -412,31 +418,31 @@ public interface Database extends CauseCloseable, Flushable {
             if (this == obj) {
                 return true;
             }
-            if (obj instanceof Stats) {
+            if (obj != null && obj.getClass() == Stats.class) {
                 Stats other = (Stats) obj;
-                return mPageSize == other.mPageSize
-                    && mFreePages == other.mFreePages
-                    && mTotalPages == other.mTotalPages
-                    && mOpenIndexes == other.mOpenIndexes
-                    && mLockCount == other.mLockCount
-                    && mCursorCount == other.mCursorCount
-                    && mTxnCount == other.mTxnCount
-                    && mTxnsCreated == other.mTxnsCreated;
+                return pageSize == other.pageSize
+                    && freePages == other.freePages
+                    && totalPages == other.totalPages
+                    && openIndexes == other.openIndexes
+                    && lockCount == other.lockCount
+                    && cursorCount == other.cursorCount
+                    && txnCount == other.txnCount
+                    && txnsCreated == other.txnsCreated;
             }
             return false;
         }
 
         @Override
         public String toString() {
-            return "Database.Stats {pageSize=" + mPageSize
-                + ", freePages=" + mFreePages
-                + ", totalPages=" + mTotalPages
-                + ", cachedPages=" + mCachedPages
-                + ", openIndexes=" + mOpenIndexes
-                + ", lockCount=" + mLockCount
-                + ", cursorCount=" + mCursorCount
-                + ", transactionCount=" + mTxnCount
-                + ", transactionsCreated=" + mTxnsCreated
+            return "Database.Stats {pageSize=" + pageSize
+                + ", freePages=" + freePages
+                + ", totalPages=" + totalPages
+                + ", cachedPages=" + cachedPages
+                + ", openIndexes=" + openIndexes
+                + ", lockCount=" + lockCount
+                + ", cursorCount=" + cursorCount
+                + ", transactionCount=" + txnCount
+                + ", transactionsCreated=" + txnsCreated
                 + '}';
         }
     }
