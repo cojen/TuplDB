@@ -1,7 +1,7 @@
 Changelog
 =========
 
-v1.2.8
+v1.3.0
 ------
 * Added method to analyze index size.
 * Added experimental direct mapped mode when using MappedPageArray and JNA.
