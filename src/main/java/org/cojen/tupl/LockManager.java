@@ -74,20 +74,18 @@ final class LockManager {
     }
 
     /**
-     * Returns true if a shared lock can be immediately granted. Caller must
-     * hold a coarse latch to prevent this state from changing.
+     * Returns true if a shared lock can be granted for the given key. Caller must hold the
+     * node latch which contains the key.
      *
      * @param locker optional locker
      */
     final boolean isAvailable(LockOwner locker, long indexId, byte[] key, int hash) {
-        LockHT ht = getLockHT(hash);
-        ht.acquireShared();
-        try {
-            Lock lock = ht.lockFor(indexId, key, hash);
-            return lock == null ? true : lock.isAvailable(locker);
-        } finally {
-            ht.releaseShared();
-        }
+        // Note that no LockHT latch is acquired. The current thread is not required to
+        // immediately observe the activity of other threads acting upon the same lock. If
+        // another thread has just acquired an exclusive lock, it must still acquire the node
+        // latch before any changes can be made.
+        Lock lock = getLockHT(hash).lockFor(indexId, key, hash);
+        return lock == null ? true : lock.isAvailable(locker);
     }
 
     final LockResult check(LockOwner locker, long indexId, byte[] key, int hash) {

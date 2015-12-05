@@ -847,8 +847,8 @@ class Tree implements View, Index {
     }
 
     /**
-     * Returns true if a shared lock can be immediately granted. Caller must
-     * hold a coarse latch to prevent this state from changing.
+     * Returns true if a shared lock can be granted for the given key. Caller must hold the
+     * node latch which contains the key.
      *
      * @param locker optional locker
      */
