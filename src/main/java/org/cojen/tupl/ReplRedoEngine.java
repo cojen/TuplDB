@@ -124,22 +124,16 @@ final class ReplRedoEngine implements RedoVisitor {
         } else {
             txnTable = new TxnTable(txns.size());
 
-            txns.traverse(new LHashTable.Visitor
-                          <LHashTable.ObjEntry<LocalTransaction>, IOException>()
-            {
-                public boolean visit(LHashTable.ObjEntry<LocalTransaction> entry)
-                    throws IOException
-                {
-                    // Reduce hash collisions.
-                    long scrambledTxnId = scramble(entry.key);
-                    Latch latch = selectLatch(scrambledTxnId);
-                    LocalTransaction txn = entry.value;
-                    if (!txn.recoveryCleanup(false)) {
-                        txnTable.insert(scrambledTxnId).init(txn, latch);
-                    }
-                    // Delete entry.
-                    return true;
+            txns.traverse((entry) -> {
+                // Reduce hash collisions.
+                long scrambledTxnId = scramble(entry.key);
+                Latch latch = selectLatch(scrambledTxnId);
+                LocalTransaction txn = entry.value;
+                if (!txn.recoveryCleanup(false)) {
+                    txnTable.insert(scrambledTxnId).init(txn, latch);
                 }
+                // Delete entry.
+                return true;
             });
         }
 
@@ -183,16 +177,14 @@ final class ReplRedoEngine implements RedoVisitor {
         mOpLatch.acquireShared();
 
         // Reset and discard all transactions.
-        mTransactions.traverse(new LHashTable.Visitor<TxnEntry, IOException>() {
-            public boolean visit(TxnEntry entry) throws IOException {
-                Latch latch = entry.latch();
-                try {
-                    entry.mTxn.recoveryCleanup(true);
-                } finally {
-                    latch.releaseExclusive();
-                }
-                return true;
+        mTransactions.traverse((entry) -> {
+            Latch latch = entry.latch();
+            try {
+                entry.mTxn.recoveryCleanup(true);
+            } finally {
+                latch.releaseExclusive();
             }
+            return true;
         });
 
         // Now's a good time to clean out any lingering trash.
@@ -829,13 +821,7 @@ final class ReplRedoEngine implements RedoVisitor {
 
         if (entry != null) {
             // Remove entries for all other cleared references, freeing up memory.
-            mIndexes.traverse(new LHashTable.Visitor<
-                              LHashTable.ObjEntry<SoftReference<Index>>, RuntimeException>()
-            {
-                public boolean visit(LHashTable.ObjEntry<SoftReference<Index>> entry) {
-                    return entry.value.get() == null;
-                }
-            });
+            mIndexes.traverse((e) -> e.value.get() == null);
         }
 
         return ix;

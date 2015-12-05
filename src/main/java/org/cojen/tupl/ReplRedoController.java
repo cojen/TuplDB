@@ -240,23 +240,21 @@ final class ReplRedoController extends ReplRedoWriter {
         } else {
             // Invoke from a separate thread, avoiding deadlock. This method is invoked by
             // ReplRedoWriter while synchronized, which is an inconsistent order.
-            new Thread() {
-                public void run() {
-                    synchronized (ReplRedoController.this) {
-                        if (!switchToReplica(expect, true)) {
-                            return;
-                        }
+            new Thread(() -> {
+                synchronized (ReplRedoController.this) {
+                    if (!switchToReplica(expect, true)) {
+                        return;
                     }
-
-                    long pos = mManager.readPosition();
-
-                    redo.flipped(pos);
-
-                    // Start receiving if not, but does nothing if already receiving. A reset
-                    // op is expected, and so the initial transaction id can be zero.
-                    mEngine.startReceiving(pos, 0);
                 }
-            }.start();
+
+                long pos = mManager.readPosition();
+
+                redo.flipped(pos);
+
+                // Start receiving if not, but does nothing if already receiving. A reset
+                // op is expected, and so the initial transaction id can be zero.
+                mEngine.startReceiving(pos, 0);
+            }).start();
         }
 
         return true;

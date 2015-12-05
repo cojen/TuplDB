@@ -249,6 +249,7 @@ abstract class PageDb implements CauseCloseable {
     public abstract void commit(boolean resume, /*P*/ byte[] header, CommitCallback callback)
         throws IOException;
 
+    @FunctionalInterface
     public static interface CommitCallback {
         /**
          * Write all allocated pages which should be committed. Extra header data provided is

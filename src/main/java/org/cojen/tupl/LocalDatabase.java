@@ -688,15 +688,9 @@ final class LocalDatabase implements Database {
                                  "Processing remaining transactions");
                         }
 
-                        txns.traverse(new LHashTable.Visitor
-                                      <LHashTable.ObjEntry<LocalTransaction>, IOException>()
-                        {
-                            public boolean visit(LHashTable.ObjEntry<LocalTransaction> entry)
-                                throws IOException
-                            {
-                                entry.value.recoveryCleanup(true);
-                                return false;
-                            }
+                        txns.traverse((entry) -> {
+                            entry.value.recoveryCleanup(true);
+                            return false;
                         });
 
                         doCheckpoint = true;
@@ -1890,10 +1884,8 @@ final class LocalDatabase implements Database {
         final long highestNodeId = targetPageCount - 1;
         final CompactionObserver fobserver = observer;
 
-        boolean completed = scanAllIndexes(new ScanVisitor() {
-            public boolean apply(Tree tree) throws IOException {
-                return tree.compactTree(tree.observableView(), highestNodeId, fobserver);
-            }
+        boolean completed = scanAllIndexes((tree) -> {
+            return tree.compactTree(tree.observableView(), highestNodeId, fobserver);
         });
 
         checkpoint(true, 0, 0);
@@ -1940,22 +1932,21 @@ final class LocalDatabase implements Database {
         final boolean[] passedRef = {true};
         final VerificationObserver fobserver = observer;
 
-        scanAllIndexes(new ScanVisitor() {
-            public boolean apply(Tree tree) throws IOException {
-                Index view = tree.observableView();
-                fobserver.failed = false;
-                boolean keepGoing = tree.verifyTree(view, fobserver);
-                passedRef[0] &= !fobserver.failed;
-                if (keepGoing) {
-                    keepGoing = fobserver.indexComplete(view, !fobserver.failed, null);
-                }
-                return keepGoing;
+        scanAllIndexes((tree) -> {
+            Index view = tree.observableView();
+            fobserver.failed = false;
+            boolean keepGoing = tree.verifyTree(view, fobserver);
+            passedRef[0] &= !fobserver.failed;
+            if (keepGoing) {
+                keepGoing = fobserver.indexComplete(view, !fobserver.failed, null);
             }
+            return keepGoing;
         });
 
         return passedRef[0];
     }
 
+    @FunctionalInterface
     static interface ScanVisitor {
         /**
          * @return false if should stop
@@ -2117,15 +2108,9 @@ final class LocalDatabase implements Database {
                 try {
                     trees = new ArrayList<>(mOpenTreesById.size());
 
-                    mOpenTreesById.traverse(new LHashTable.Visitor
-                                            <LHashTable.ObjEntry<TreeRef>, IOException>()
-                    {
-                        public boolean visit(LHashTable.ObjEntry<TreeRef> entry)
-                            throws IOException
-                        {
-                            trees.add(entry.value);
-                            return true;
-                        }
+                    mOpenTreesById.traverse((entry) -> {
+                        trees.add(entry.value);
+                        return true;
                     });
 
                     mOpenTrees.clear();
@@ -4256,11 +4241,8 @@ final class LocalDatabase implements Database {
                 p_longPutLE(header, hoff + I_TRANSACTION_ID, txnId);
                 p_longPutLE(header, hoff + I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
 
-                mPageDb.commit(resume, header, new PageDb.CommitCallback() {
-                    @Override
-                    public void prepare(boolean resume, /*P*/ byte[] header) throws IOException {
-                        flush(resume, header);
-                    }
+                mPageDb.commit(resume, header, (boolean resume_, /*P*/ byte[] header_) -> {
+                    flush(resume_, header_);
                 });
             } catch (Throwable e) {
                 if (mCommitHeader != header) {

@@ -240,6 +240,7 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
         E next;
     }
 
+    @FunctionalInterface
     public static interface Visitor<E extends Entry<E>, X extends Exception> {
         /**
          * @return true if entry should be deleted
