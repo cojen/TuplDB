@@ -180,7 +180,7 @@
               </execution>
             </executions>
             <configuration>
-              <javadocVersion>1.7</javadocVersion>
+              <javadocVersion>1.8</javadocVersion>
               <detectJavaApiLink>true</detectJavaApiLink>
               <links>
                 <link>http://docs.oracle.com/javase/8/docs/api</link>
