@@ -1,5 +1,5 @@
 /*
- *  Copyright 2013 Brian S O'Neill
+ *  Copyright 2013-2015 Cojen.org
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ final class TreeValueStream extends AbstractStream {
     static final byte[] TOUCH_VALUE = new byte[0];
 
     private final TreeCursor mCursor;
-    private final Database mDatabase;
+    private final LocalDatabase mDatabase;
 
     /**
      * @param cursor positioned or unpositioned cursor, not autoloading
@@ -224,7 +224,7 @@ final class TreeValueStream extends AbstractStream {
         // Read the fragment header, as described by the Database.fragment method.
         header = p_byteGet(page, loc++);
 
-        final long vLen = Database.decodeFullFragmentedValueLength(header, page, loc);
+        final long vLen = LocalDatabase.decodeFullFragmentedValueLength(header, page, loc);
 
         if (pos >= vLen) {
             return -1;
@@ -580,7 +580,7 @@ final class TreeValueStream extends AbstractStream {
                 // Reading a sparse value.
                 Arrays.fill(b, bOff, bOff + bLen, (byte) 0);
             } else {
-                Database db = mDatabase;
+                LocalDatabase db = mDatabase;
                 final Node inode = db.nodeMapLoadFragment(inodeId);
                 final int levels = db.calculateInodeLevels(vLen);
                 readMultilevelFragments(pos, levels, inode, b, bOff, bLen);
@@ -774,7 +774,7 @@ final class TreeValueStream extends AbstractStream {
                         }
                     } else {
                         // Obtain node from cache, or read it only for partial write.
-                        Database db = mDatabase;
+                        LocalDatabase db = mDatabase;
                         final Node fNode =
                             db.nodeMapLoadFragmentExclusive(fNodeId, amt < pageSize(page));
                         try {
@@ -949,7 +949,7 @@ final class TreeValueStream extends AbstractStream {
                 inode = mDatabase.allocDirtyFragmentNode();
                 p_clear(inode.mPage, 0, pageSize(inode.mPage));
             } else {
-                Database db = mDatabase;
+                LocalDatabase db = mDatabase;
                 inode = db.nodeMapLoadFragmentExclusive(inodeId, true);
                 try {
                     if (!db.markFragmentDirty(inode)) {
@@ -978,7 +978,7 @@ final class TreeValueStream extends AbstractStream {
                                           byte[] b, int bOff, int bLen)
         throws IOException
     {
-        final Database db = mDatabase;
+        final LocalDatabase db = mDatabase;
 
         try {
             /*P*/ byte[] page = inode.mPage;

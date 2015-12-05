@@ -126,7 +126,7 @@ public class TransformerTest {
         return String.valueOf(n).getBytes();
     }
 
-    static class KeyFlipper extends Transformer {
+    static class KeyFlipper implements Transformer {
         @Override
         public boolean requireValue() {
             return false;

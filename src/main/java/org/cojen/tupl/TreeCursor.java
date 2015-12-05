@@ -1,5 +1,5 @@
 /*
- *  Copyright 2011-2013 Brian S O'Neill
+ *  Copyright 2011-2015 Cojen.org
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     private static final int LIMIT_LE = 1, LIMIT_LT = 2, LIMIT_GE = -1, LIMIT_GT = -2;
 
     final Tree mTree;
-    Transaction mTxn;
+    LocalTransaction mTxn;
 
     // Top stack frame for cursor, always a leaf except during cleanup.
     private TreeCursorFrame mLeaf;
@@ -53,9 +53,8 @@ class TreeCursor implements CauseCloseable, Cursor {
     private int mKeyHash;
 
     TreeCursor(Tree tree, Transaction txn) {
-        tree.check(txn);
+        mTxn = tree.check(txn);
         mTree = tree;
-        mTxn = txn;
     }
 
     TreeCursor(Tree tree) {
@@ -69,9 +68,8 @@ class TreeCursor implements CauseCloseable, Cursor {
 
     @Override
     public final Transaction link(Transaction txn) {
-        mTree.check(txn);
-        Transaction old = mTxn;
-        mTxn = txn;
+        LocalTransaction old = mTxn;
+        mTxn = mTree.check(txn);
         return old;
     }
 
@@ -131,7 +129,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             return LockResult.UNOWNED;
         }
 
-        Transaction txn = mTxn;
+        LocalTransaction txn = mTxn;
         LockResult result = tryCopyCurrent(txn);
 
         if (result != null) {
@@ -186,7 +184,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             return LockResult.UNOWNED;
         }
 
-        Transaction txn = mTxn;
+        LocalTransaction txn = mTxn;
         LockResult result = tryCopyCurrent(txn);
 
         if (result != null) {
@@ -248,7 +246,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     @Override
     public final LockResult skip(long amount) throws IOException {
         if (amount == 0) {
-            Transaction txn = mTxn;
+            LocalTransaction txn = mTxn;
             if (txn != null && txn != Transaction.BOGUS) {
                 byte[] key = mKey;
                 if (key != null) {
@@ -329,7 +327,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     private LockResult nextCmp(byte[] limitKey, int limitMode, TreeCursorFrame frame)
         throws IOException
     {
-        Transaction txn = mTxn;
+        LocalTransaction txn = mTxn;
 
         while (true) {
             if (!toNext(frame)) {
@@ -353,7 +351,7 @@ class TreeCursor implements CauseCloseable, Cursor {
      *
      * @param frame leaf frame, not split, with exclusive latch
      */
-    private LockResult next(Transaction txn, TreeCursorFrame frame) throws IOException {
+    private LockResult next(LocalTransaction txn, TreeCursorFrame frame) throws IOException {
         while (true) {
             if (!toNext(frame)) {
                 return LockResult.UNOWNED;
@@ -752,7 +750,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     private LockResult previousCmp(byte[] limitKey, int limitMode, TreeCursorFrame frame)
         throws IOException
     {
-        Transaction txn = mTxn;
+        LocalTransaction txn = mTxn;
 
         while (true) {
             if (!toPrevious(frame)) {
@@ -776,7 +774,7 @@ class TreeCursor implements CauseCloseable, Cursor {
      *
      * @param frame leaf frame, not split, with exclusive latch
      */
-    private LockResult previous(Transaction txn, TreeCursorFrame frame) throws IOException {
+    private LockResult previous(LocalTransaction txn, TreeCursorFrame frame) throws IOException {
         while (true) {
             if (!toPrevious(frame)) {
                 return LockResult.UNOWNED;
@@ -1157,7 +1155,7 @@ class TreeCursor implements CauseCloseable, Cursor {
      * OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      * @param txn optional
      */
-    private LockResult tryCopyCurrent(Transaction txn) throws IOException {
+    private LockResult tryCopyCurrent(LocalTransaction txn) throws IOException {
         final Node node;
         final int pos;
         {
@@ -1225,7 +1223,7 @@ class TreeCursor implements CauseCloseable, Cursor {
      * Variant of tryCopyCurrent used by iteration methods which have a
      * limit. If limit is reached, cursor is reset and UNOWNED is returned.
      */
-    private LockResult tryCopyCurrentCmp(Transaction txn, byte[] limitKey, int limitMode)
+    private LockResult tryCopyCurrentCmp(LocalTransaction txn, byte[] limitKey, int limitMode)
         throws IOException
     {
         try {
@@ -1240,7 +1238,7 @@ class TreeCursor implements CauseCloseable, Cursor {
      * Variant of tryCopyCurrent used by iteration methods which have a
      * limit. If limit is reached, cursor is reset and UNOWNED is returned.
      */
-    private LockResult doTryCopyCurrentCmp(Transaction txn, byte[] limitKey, int limitMode)
+    private LockResult doTryCopyCurrentCmp(LocalTransaction txn, byte[] limitKey, int limitMode)
         throws IOException
     {
         final Node node;
@@ -1327,7 +1325,7 @@ class TreeCursor implements CauseCloseable, Cursor {
      * @param txn optional
      * @return null if current entry has been deleted
      */
-    private LockResult lockAndCopyIfExists(Transaction txn) throws IOException {
+    private LockResult lockAndCopyIfExists(LocalTransaction txn) throws IOException {
         if (txn == null) {
             Locker locker = mTree.lockSharedLocal(mKey, keyHash());
             try {
@@ -1398,11 +1396,11 @@ class TreeCursor implements CauseCloseable, Cursor {
      * Checks validity of key, assigns key and hash code to cursor, and returns the linked
      * transaction.
      */
-    private Transaction prepareFind(byte[] key) {
+    private LocalTransaction prepareFind(byte[] key) {
         if (key == null) {
             throw new NullPointerException("Key is null");
         }
-        Transaction txn = mTxn;
+        LocalTransaction txn = mTxn;
         int hash;
         selectHash: {
             if (txn != null) {
@@ -1434,7 +1432,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     public final LockResult findGe(byte[] key) throws IOException {
         // If isolation level is read committed, then key must be
         // locked. Otherwise, an uncommitted delete could be observed.
-        Transaction txn = prepareFind(key);
+        LocalTransaction txn = prepareFind(key);
         LockResult result = find(txn, key, VARIANT_RETAIN);
         if (mValue != null) {
             return result;
@@ -1457,7 +1455,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     public final LockResult findLe(byte[] key) throws IOException {
         // If isolation level is read committed, then key must be
         // locked. Otherwise, an uncommitted delete could be observed.
-        Transaction txn = prepareFind(key);
+        LocalTransaction txn = prepareFind(key);
         LockResult result = find(txn, key, VARIANT_RETAIN);
         if (mValue != null) {
             return result;
@@ -1478,7 +1476,7 @@ class TreeCursor implements CauseCloseable, Cursor {
 
     @Override
     public final LockResult findNearby(byte[] key) throws IOException {
-        Transaction txn = prepareFind(key);
+        LocalTransaction txn = prepareFind(key);
 
         Node node;
         TreeCursorFrame frame = mLeaf;
@@ -1603,7 +1601,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         find(null, key, variant);
     }
     
-    private LockResult find(Transaction txn, byte[] key, int variant) throws IOException {
+    private LockResult find(LocalTransaction txn, byte[] key, int variant) throws IOException {
         Node node = mTree.mRoot;
         return find(txn, key, variant, node, reset(node));
     }
@@ -1612,7 +1610,7 @@ class TreeCursor implements CauseCloseable, Cursor {
      * @param node search node to start from
      * @param frame fresh frame for node
      */
-    private LockResult find(Transaction txn, byte[] key, int variant,
+    private LockResult find(LocalTransaction txn, byte[] key, int variant,
                             Node node, TreeCursorFrame frame)
         throws IOException
     {
@@ -1756,7 +1754,7 @@ class TreeCursor implements CauseCloseable, Cursor {
      *
      * @param txn can be null
      */
-    private LockResult tryLockKey(Transaction txn) {
+    private LockResult tryLockKey(LocalTransaction txn) {
         LockMode mode;
 
         if (txn == null || (mode = txn.lockMode()) == LockMode.READ_COMMITTED) {
@@ -1836,7 +1834,7 @@ class TreeCursor implements CauseCloseable, Cursor {
 
                 if (node.isLeaf()) {
                     mLeaf = frame;
-                    Transaction txn;
+                    LocalTransaction txn;
                     try {
                         txn = prepareFind(node.retrieveKey(pos));
                     } catch (Throwable e) {
@@ -1987,7 +1985,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     /**
      * Must be called with node latch not held.
      */
-    private LockResult doLoad(Transaction txn) throws IOException {
+    private LockResult doLoad(LocalTransaction txn) throws IOException {
         byte[] key = mKey;
         if (key == null) {
             throw new IllegalStateException("Cursor position is undefined");
@@ -2052,7 +2050,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         }
 
         try {
-            final Transaction txn = mTxn;
+            final LocalTransaction txn = mTxn;
             if (txn == null) {
                 final Locker locker = mTree.lockExclusiveLocal(key, keyHash());
                 try {
@@ -2079,7 +2077,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         }
 
         try {
-            final Transaction txn = mTxn;
+            final LocalTransaction txn = mTxn;
             if (txn == null) {
                 final Locker locker = mTree.lockExclusiveLocal(key, keyHash());
                 try {
@@ -2109,7 +2107,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     final byte[] findAndStore(byte[] key, byte[] value) throws IOException {
         try {
             mKey = key;
-            final Transaction txn = mTxn;
+            final LocalTransaction txn = mTxn;
             if (txn == null) {
                 final int hash = LockManager.hash(mTree.mId, key);
                 mKeyHash = hash;
@@ -2134,7 +2132,9 @@ class TreeCursor implements CauseCloseable, Cursor {
         }
     }
 
-    private byte[] doFindAndStore(Transaction txn, byte[] key, byte[] value) throws IOException {
+    private byte[] doFindAndStore(LocalTransaction txn, byte[] key, byte[] value)
+        throws IOException
+    {
         // Find with no lock because it has already been acquired. Leaf latch is retained too.
         find(null, key, VARIANT_NO_LOCK);
         byte[] oldValue = mValue;
@@ -2151,7 +2151,7 @@ class TreeCursor implements CauseCloseable, Cursor {
      * @param oldValue MODIFY_INSERT, MODIFY_REPLACE, else update mode
      */
     final boolean findAndModify(byte[] key, byte[] oldValue, byte[] newValue) throws IOException {
-        final Transaction txn = mTxn;
+        final LocalTransaction txn = mTxn;
 
         try {
             // Note: Acquire exclusive lock instead of performing upgrade
@@ -2214,7 +2214,8 @@ class TreeCursor implements CauseCloseable, Cursor {
         }
     }
 
-    private boolean doFindAndModify(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
+    private boolean doFindAndModify(LocalTransaction txn,
+                                    byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException
     {
         // Find with no lock because caller must already acquire exclusive lock.
@@ -2278,7 +2279,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             if (mValue == null) {
                 mKey = key;
                 mKeyHash = 0;
-                store(Transaction.BOGUS, leaf, null, true);
+                store(LocalTransaction.BOGUS, leaf, null, true);
             } else {
                 resetLatched(leaf.mNode);
             }
@@ -2296,7 +2297,7 @@ class TreeCursor implements CauseCloseable, Cursor {
      * @param leaf leaf frame, latched exclusively, which is always released by this method
      * @param reset true to reset cursor when finished
      */
-    protected final void store(final Transaction txn, final TreeCursorFrame leaf,
+    protected final void store(final LocalTransaction txn, final TreeCursorFrame leaf,
                                final byte[] value, final boolean reset)
         throws IOException
     {
@@ -2643,11 +2644,13 @@ class TreeCursor implements CauseCloseable, Cursor {
             sharedCommitLock.unlock();
         }
 
-        next(Transaction.BOGUS, leaf);
+        next(LocalTransaction.BOGUS, leaf);
     }
 
     /**
-     * Select an entry to delete from the index, at random. All frames are unbound and cursor is reset.
+     * Select an entry to delete from the index, at random. All frames are unbound and cursor
+     * is reset.
+     *
      * @param lowKey inclusive lowest key in the evictable range; pass null for open range
      * @param highKey exclusive highest key in the evictable range; pass null for open range
      * @param keyRef optional, pass non-null to receive a copy of the evicted key
@@ -2655,7 +2658,9 @@ class TreeCursor implements CauseCloseable, Cursor {
      * @return sum of the key and value lengths which were evicted, 0 if no records are evicted
      * @throws IOException
      */
-    final long evict(byte[] lowKey, byte[] highKey, byte[][] keyRef, byte[][] valueRef) throws IOException {
+    final long evict(byte[] lowKey, byte[] highKey, byte[][] keyRef, byte[][] valueRef)
+        throws IOException
+    {
         if ((keyRef != null && keyRef.length == 0) || (valueRef != null && valueRef.length == 0)) {
             throw new IllegalArgumentException("Key/value reference param cannot be empty");
         }
@@ -2711,7 +2716,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                 if (node.isLeaf()) {
                     mLeaf = frame;
                     try {
-                        Transaction txn = prepareFind(node.retrieveKey(pos));
+                        LocalTransaction txn = prepareFind(node.retrieveKey(pos));
                         LockResult result;
                         if ((result = tryLockKey(txn)) == null) {
                             // Some other transaction is operating on the key. Unlikely to happen
@@ -2883,9 +2888,9 @@ class TreeCursor implements CauseCloseable, Cursor {
      */
     private boolean isRangeEmpty(byte[] lowKey, byte[] highKey) throws IOException {
         boolean oldKeyOnly = mKeyOnly;
-        Transaction oldTxn = mTxn;
+        LocalTransaction oldTxn = mTxn;
         try {
-            mTxn = Transaction.BOGUS;
+            mTxn = LocalTransaction.BOGUS;
             mKeyOnly = true;
             if (lowKey == null) {
                 first();
@@ -2911,7 +2916,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     private Node trimNode(final TreeCursorFrame frame, final Node node) throws IOException {
         node.mLastCursorFrame = null;
 
-        Database db = mTree.mDatabase;
+        LocalDatabase db = mTree.mDatabase;
         // Always prepare to delete, even though caller will delete the root.
         db.prepareToDelete(node);
 
@@ -3289,7 +3294,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         node.releaseShared();
 
         if (id > highestNodeId) {
-            Database db = mTree.mDatabase;
+            LocalDatabase db = mTree.mDatabase;
             Lock sharedCommitLock = db.sharedCommitLock();
             sharedCommitLock.lock();
             try {
@@ -3603,7 +3608,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             return mTree.finishSplit(frame, node);
         }
 
-        Database db = mTree.mDatabase;
+        LocalDatabase db = mTree.mDatabase;
         if (!db.shouldMarkDirty(node)) {
             return node;
         }

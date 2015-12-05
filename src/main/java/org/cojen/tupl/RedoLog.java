@@ -1,5 +1,5 @@
 /*
- *  Copyright 2011-2013 Brian S O'Neill
+ *  Copyright 2011-2015 Cojen.org
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -170,7 +170,7 @@ final class RedoLog extends RedoWriter {
 
                 if (!finished) {
                     // Last log file was truncated, so chuck the rest.
-                    Utils.deleteNumberedFiles(mBaseFile, Database.REDO_FILE_SUFFIX, mLogId);
+                    Utils.deleteNumberedFiles(mBaseFile, LocalDatabase.REDO_FILE_SUFFIX, mLogId);
                     break;
                 }
             }

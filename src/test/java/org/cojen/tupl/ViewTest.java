@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2013 Brian S O'Neill
+ *  Copyright 2012-2015 Cojen.org
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -934,10 +934,10 @@ public class ViewTest {
 
         View view = ix.viewReverse();
 
-        assertEquals(50, AbstractView.count(view, false, null, null));
-        assertEquals(50, AbstractView.count(view, false, key(150), null));
-        assertEquals(50, AbstractView.count(view, false, null, key(100)));
-        assertEquals(50, AbstractView.count(view, false, key(150), key(100)));
+        assertEquals(50, ViewUtils.count(view, false, null, null));
+        assertEquals(50, ViewUtils.count(view, false, key(150), null));
+        assertEquals(50, ViewUtils.count(view, false, null, key(100)));
+        assertEquals(50, ViewUtils.count(view, false, key(150), key(100)));
 
         assertEquals(50, view.count(null, null));
         assertEquals(50, view.count(key(150), null));
@@ -946,7 +946,7 @@ public class ViewTest {
 
         view = ix.viewReverse().viewGe(key(120)).viewLt(key(110));
 
-        assertEquals(10, AbstractView.count(view, false, null, null));
+        assertEquals(10, ViewUtils.count(view, false, null, null));
         assertEquals(10, view.count(null, null));
     }
 

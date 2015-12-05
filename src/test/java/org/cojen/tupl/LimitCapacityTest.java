@@ -34,7 +34,7 @@ public class LimitCapacityTest {
     @Before
     public void createTempDb() throws Exception {
         DatabaseConfig config = new DatabaseConfig().checkpointSizeThreshold(0);
-        mDb = newTempDatabase(config);
+        mDb = (LocalDatabase) newTempDatabase(config);
     }
 
     @After
@@ -43,7 +43,7 @@ public class LimitCapacityTest {
         mDb = null;
     }
 
-    protected Database mDb;
+    protected LocalDatabase mDb;
 
     @Test
     public void basic() throws Exception {
@@ -75,7 +75,7 @@ public class LimitCapacityTest {
         assertTrue(size < mDb.capacityLimit());
     }
 
-    private static void trim(Database db, Index ix) throws Exception {
+    private static void trim(LocalDatabase db, Index ix) throws Exception {
         db.capacityLimitOverride(-1);
         try {
             Cursor c = ix.newCursor(Transaction.BOGUS);

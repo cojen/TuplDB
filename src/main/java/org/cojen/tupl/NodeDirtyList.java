@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2013 Brian S O'Neill
+ *  Copyright 2012-2015 Cojen.org
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -178,7 +178,7 @@ final class NodeDirtyList extends Latch {
     /**
      * Remove and delete nodes from dirty list, as part of close sequence.
      */
-    void delete(Database db) {
+    void delete(LocalDatabase db) {
         acquireExclusive();
         try {
             Node node = mFirstDirty;

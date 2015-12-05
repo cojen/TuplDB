@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2013 Brian S O'Neill
+ *  Copyright 2012-2015 Cojen.org
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -46,7 +46,9 @@ public interface View {
      * @param lowKey inclusive lowest key in the counted range; pass null for open range
      * @param highKey exclusive highest key in the counted range; pass null for open range
      */
-    public long count(byte[] lowKey, byte[] highKey) throws IOException;
+    public default long count(byte[] lowKey, byte[] highKey) throws IOException {
+        return ViewUtils.count(this, false, lowKey, highKey);
+    }
 
     /**
      * Returns a copy of the value for the given key, or null if no matching
@@ -111,7 +113,9 @@ public interface View {
      * @throws IllegalArgumentException if transaction belongs to another database instance
      * @throws ViewConstraintException if entry is not permitted
      */
-    public boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException;
+    public default boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException {
+        return update(txn, key, null, value);
+    }
 
     /**
      * Associates a value with the given key, but only if a corresponding value
@@ -163,7 +167,9 @@ public interface View {
      * @throws IllegalArgumentException if transaction belongs to another database instance
      * @throws ViewConstraintException if remove is not permitted
      */
-    public boolean delete(Transaction txn, byte[] key) throws IOException;
+    public default boolean delete(Transaction txn, byte[] key) throws IOException {
+        return replace(txn, key, null);
+    }
 
     /**
      * Removes the entry associated with the given key, but only if the given
@@ -180,7 +186,9 @@ public interface View {
      * @throws IllegalArgumentException if transaction belongs to another database instance
      * @throws ViewConstraintException if remove is not permitted
      */
-    public boolean remove(Transaction txn, byte[] key, byte[] value) throws IOException;
+    public default boolean remove(Transaction txn, byte[] key, byte[] value) throws IOException {
+        return update(txn, key, value, null);
+    }
 
     /**
      * Explicitly acquire a shared lock for the given key, denying exclusive locks. Lock is
@@ -251,7 +259,9 @@ public interface View {
     /**
      * Returns an unopened stream for accessing values in this view.
      */
-    public Stream newStream();
+    public default Stream newStream() {
+        throw new UnsupportedOperationException();
+    }
 
     /**
      * Returns a sub-view, backed by this one, whose keys are greater than or
@@ -264,7 +274,9 @@ public interface View {
      * @throws UnsupportedOperationException if view is unordered
      * @throws NullPointerException if key is null
      */
-    public View viewGe(byte[] key);
+    public default View viewGe(byte[] key) {
+        return BoundedView.viewGe(ViewUtils.checkOrdering(this), key);
+    }
 
     /**
      * Returns a sub-view, backed by this one, whose keys are greater than the
@@ -277,7 +289,9 @@ public interface View {
      * @throws UnsupportedOperationException if view is unordered
      * @throws NullPointerException if key is null
      */
-    public View viewGt(byte[] key);
+    public default View viewGt(byte[] key) {
+        return BoundedView.viewGt(ViewUtils.checkOrdering(this), key);
+    }
 
     /**
      * Returns a sub-view, backed by this one, whose keys are less than or
@@ -290,7 +304,9 @@ public interface View {
      * @throws UnsupportedOperationException if view is unordered
      * @throws NullPointerException if key is null
      */
-    public View viewLe(byte[] key);
+    public default View viewLe(byte[] key) {
+        return BoundedView.viewLe(ViewUtils.checkOrdering(this), key);
+    }
 
     /**
      * Returns a sub-view, backed by this one, whose keys are less than the
@@ -303,7 +319,9 @@ public interface View {
      * @throws UnsupportedOperationException if view is unordered
      * @throws NullPointerException if key is null
      */
-    public View viewLt(byte[] key);
+    public default View viewLt(byte[] key) {
+        return BoundedView.viewLt(ViewUtils.checkOrdering(this), key);
+    }
 
     /**
      * Returns a sub-view, backed by this one, whose keys start with the given prefix.
@@ -318,7 +336,9 @@ public interface View {
      * @throws NullPointerException if prefix is null
      * @throws IllegalArgumentException if trim is longer than prefix
      */
-    public View viewPrefix(byte[] prefix, int trim);
+    public default View viewPrefix(byte[] prefix, int trim) {
+        return BoundedView.viewPrefix(ViewUtils.checkOrdering(this), prefix, trim);
+    }
 
     /**
      * Returns a sub-view, backed by this one, whose entries have been filtered out and
@@ -329,18 +349,24 @@ public interface View {
      *
      * @throws NullPointerException if transformer is null
      */
-    public View viewTransformed(Transformer transformer);
+    public default View viewTransformed(Transformer transformer) {
+        return TransformedView.apply(this, transformer);
+    }
 
     /**
      * Returns a view, backed by this one, whose natural order is reversed.
      */
-    public View viewReverse();
+    public default View viewReverse() {
+        return new ReverseView(this);
+    }
 
     /**
      * Returns a view, backed by this one, whose entries cannot be modified. Any attempt to do
      * so causes an {@link UnmodifiableViewException} to be thrown.
      */
-    public View viewUnmodifiable();
+    public default View viewUnmodifiable() {
+        return UnmodifiableView.apply(this);
+    }
 
     /**
      * Returns true if any attempt to modify this view causes an {@link

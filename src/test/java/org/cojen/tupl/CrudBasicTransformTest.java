@@ -44,7 +44,7 @@ public class CrudBasicTransformTest extends CrudNonDurableTest {
         return mViews.get(view).verify(null);
     }
 
-    static class BasicTransform extends Transformer {
+    static class BasicTransform implements Transformer {
         @Override
         public byte[] transformValue(byte[] value, byte[] key, byte[] tkey) {
             if (value == null || value == Cursor.NOT_LOADED) {

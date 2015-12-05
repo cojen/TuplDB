@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2013 Brian S O'Neill
+ *  Copyright 2012-2015 Cojen.org
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -218,7 +218,7 @@ final class BoundedView extends SubView {
             lowKey = start;
             if ((mMode & START_EXCLUSIVE) != 0) {
                 // Switch to exclusive start behavior.
-                lowKey = AbstractView.appendZero(lowKey);
+                lowKey = ViewUtils.appendZero(lowKey);
             }
         }
         return lowKey;
@@ -230,7 +230,7 @@ final class BoundedView extends SubView {
             highKey = end;
             if ((mMode & END_EXCLUSIVE) == 0) {
                 // Switch to inclusive end behavior.
-                highKey = AbstractView.appendZero(highKey);
+                highKey = ViewUtils.appendZero(highKey);
             }
         }
         return highKey;
