@@ -3,15 +3,17 @@ Changelog
 
 v1.3.0
 ------
+* Depends on Java 8.
+* Several top-level classes are now interfaces.
 * Added method to analyze index size.
 * Added experimental direct mapped mode when using MappedPageArray and JNA.
-* More fixes for random search and add improve safety of frame binding.
 * Added method to evict records from an Index.
-* Make Latch class a public utility.
+* More fixes for random search and add improve safety of frame binding.
 * Fix deadlock when closing database.
-* Use JNA to access native I/O functions, eliminating extra system calls.
 * Fix handling of mapped file shrinkage on Windows.
 * File sync improvements for Linux and MacOS. Performs directory sync'ng and F_FULLSYNC.
+* Use JNA to access native I/O functions, eliminating extra system calls.
+* Make Latch class a public utility.
 
 v1.2.7 (2015-10-04)
 ------
