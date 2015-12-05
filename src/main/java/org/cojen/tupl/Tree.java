@@ -521,6 +521,7 @@ class Tree implements View, Index {
         }
     }
 
+    @FunctionalInterface
     static interface NodeVisitor {
         void visit(Node node) throws IOException;
     }
@@ -606,32 +607,30 @@ class Tree implements View, Index {
     }
 
     final void writeCachePrimer(final DataOutput dout) throws IOException {
-        traverseLoaded(new NodeVisitor() {
-            public void visit(Node node) throws IOException {
-                byte[] midKey;
-                try {
-                    if (!node.isLeaf()) {
-                        return;
-                    }
-                    int numKeys = node.numKeys();
-                    if (numKeys > 1) {
-                        int highPos = numKeys & ~1;
-                        midKey = node.midKey(highPos - 2, node, highPos);
-                    } else if (numKeys == 1) {
-                        midKey = node.retrieveKey(0);
-                    } else {
-                        return;
-                    }
-                } finally {
-                    node.releaseExclusive();
+        traverseLoaded((node) -> {
+            byte[] midKey;
+            try {
+                if (!node.isLeaf()) {
+                    return;
                 }
+                int numKeys = node.numKeys();
+                if (numKeys > 1) {
+                    int highPos = numKeys & ~1;
+                    midKey = node.midKey(highPos - 2, node, highPos);
+                } else if (numKeys == 1) {
+                    midKey = node.retrieveKey(0);
+                } else {
+                    return;
+                }
+            } finally {
+                node.releaseExclusive();
+            }
 
-                // Omit entries with very large keys. Primer encoding format needs to change
-                // for supporting larger keys.
-                if (midKey.length < 0xffff) {
-                    dout.writeShort(midKey.length);
-                    dout.write(midKey);
-                }
+            // Omit entries with very large keys. Primer encoding format needs to change
+            // for supporting larger keys.
+            if (midKey.length < 0xffff) {
+                dout.writeShort(midKey.length);
+                dout.write(midKey);
             }
         });
 

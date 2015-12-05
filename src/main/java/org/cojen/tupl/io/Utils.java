@@ -441,17 +441,15 @@ public class Utils {
                     }
                 }
 
-                closer = new Thread() {
-                    public void run() {
-                        try {
-                            close(resource, cause);
-                        } catch (IOException e2) {
-                            // Ignore.
-                        } finally {
-                            unregister(resource);
-                        }
+                closer = new Thread(() -> {
+                    try {
+                        close(resource, cause);
+                    } catch (IOException e2) {
+                        // Ignore.
+                    } finally {
+                        unregister(resource);
                     }
-                };
+                });
 
                 cCloseThreads.put(resource, closer);
             }
