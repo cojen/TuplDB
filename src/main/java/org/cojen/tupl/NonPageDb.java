@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2013 Brian S O'Neill
+ *  Copyright 2012-2015 Cojen.org
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -60,7 +60,7 @@ final class NonPageDb extends PageDb {
     }
 
     @Override
-    public Node allocLatchedNode(Database db, int mode) throws IOException {
+    public Node allocLatchedNode(LocalDatabase db, int mode) throws IOException {
         Node node = db.allocLatchedNode(Utils.randomSeed(), mode);
         long nodeId = node.mId;
         if (nodeId < 0) {

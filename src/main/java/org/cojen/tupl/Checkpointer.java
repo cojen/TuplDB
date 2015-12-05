@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2013 Brian S O'Neill
+ *  Copyright 2012-2015 Cojen.org
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -33,8 +33,8 @@ final class Checkpointer implements Runnable {
     private static int cThreadCounter;
 
     private final AtomicInteger mSuspendCount;
-    private final ReferenceQueue<Database> mRefQueue;
-    private final WeakReference<Database> mDatabaseRef;
+    private final ReferenceQueue<LocalDatabase> mRefQueue;
+    private final WeakReference<LocalDatabase> mDatabaseRef;
     private final long mRateNanos;
     private final long mSizeThreshold;
     private final long mDelayThresholdNanos;
@@ -43,7 +43,7 @@ final class Checkpointer implements Runnable {
     private Hook mShutdownHook;
     private List<Shutdown> mToShutdown;
 
-    Checkpointer(Database db, DatabaseConfig config) {
+    Checkpointer(LocalDatabase db, DatabaseConfig config) {
         mSuspendCount = new AtomicInteger();
 
         mRateNanos = config.mCheckpointRateNanos;
@@ -88,7 +88,7 @@ final class Checkpointer implements Runnable {
                     Thread.sleep(delayMillis); 
                 }
 
-                Database db = mDatabaseRef.get();
+                LocalDatabase db = mDatabaseRef.get();
                 if (db == null) {
                     close();
                     return;
@@ -116,7 +116,7 @@ final class Checkpointer implements Runnable {
             }
         } catch (Throwable e) {
             if (!mClosed) {
-                Database db = mDatabaseRef.get();
+                LocalDatabase db = mDatabaseRef.get();
                 if (db != null && !db.mClosed) {
                     Utils.closeQuietly(null, db, e);
                 }

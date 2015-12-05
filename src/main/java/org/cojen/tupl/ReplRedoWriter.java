@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2015 Brian S O'Neill
+ *  Copyright 2012-2015 Cojen.org
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -93,7 +93,7 @@ class ReplRedoWriter extends RedoWriter {
     }
 
     @Override
-    public final void txnCommitSync(Transaction txn, long commitPos) throws IOException {
+    public final void txnCommitSync(LocalTransaction txn, long commitPos) throws IOException {
         ReplicationManager.Writer writer = mReplWriter;
         if (writer == null) {
             throw new UnmodifiableReplicaException();
@@ -140,7 +140,7 @@ class ReplRedoWriter extends RedoWriter {
         }
 
         if (action != PendingTxnWaiter.PENDING) {
-            Database db = mEngine.mDatabase;
+            LocalDatabase db = mEngine.mDatabase;
             if (action == PendingTxnWaiter.DO_COMMIT) {
                 pending.commit(db);
             } else if (action == PendingTxnWaiter.DO_ROLLBACK) {

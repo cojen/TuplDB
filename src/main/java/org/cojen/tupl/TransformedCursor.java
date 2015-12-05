@@ -1,5 +1,5 @@
 /*
- *  Copyright 2015 Brian S O'Neill
+ *  Copyright 2015 Cojen.org
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -113,12 +113,12 @@ final class TransformedCursor implements Cursor {
 
     @Override
     public LockResult skip(long amount) throws IOException {
-        return amount == 0 ? mSource.skip(0) : AbstractCursor.doSkip(this, amount);
+        return amount == 0 ? mSource.skip(0) : ViewUtils.doSkip(this, amount);
     }
 
     @Override
     public LockResult skip(long amount, byte[] limitKey, boolean inclusive) throws IOException {
-        return AbstractCursor.skip(this, amount, limitKey, inclusive);
+        return ViewUtils.skip(this, amount, limitKey, inclusive);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2011-2013 Brian S O'Neill
+ *  Copyright 2011-2015 Cojen.org
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ import static org.cojen.tupl.Utils.*;
  *
  * @author Brian S O'Neill
  */
-class Tree extends AbstractView implements Index {
+class Tree implements View, Index {
     // Reserved internal tree ids.
     static final int
         REGISTRY_ID = 0,
@@ -44,7 +44,7 @@ class Tree extends AbstractView implements Index {
         return (id & ~0xff) == 0;
     }
 
-    final Database mDatabase;
+    final LocalDatabase mDatabase;
     final LockManager mLockManager;
 
     // Id range is [0, 255] for all internal trees.
@@ -70,7 +70,7 @@ class Tree extends AbstractView implements Index {
     // by the root node latch.
     private Stub mStubTail;
 
-    Tree(Database db, long id, byte[] idBytes, byte[] name, Node root) {
+    Tree(LocalDatabase db, long id, byte[] idBytes, byte[] name, Node root) {
         mDatabase = db;
         mLockManager = db.mLockManager;
         mId = id;
@@ -153,8 +153,8 @@ class Tree extends AbstractView implements Index {
 
     @Override
     public final byte[] load(Transaction txn, byte[] key) throws IOException {
-        check(txn);
-        Locker locker = lockForLoad(txn, key);
+        LocalTransaction local = check(txn);
+        Locker locker = lockForLoad(local, key);
         try {
             return Node.search(mRoot, this, key);
         } finally {
@@ -214,26 +214,26 @@ class Tree extends AbstractView implements Index {
 
     @Override
     public final LockResult lockShared(Transaction txn, byte[] key) throws LockFailureException {
-        return txn.lockShared(mId, key);
+        return check(txn).lockShared(mId, key);
     }
 
     @Override
     public final LockResult lockUpgradable(Transaction txn, byte[] key)
         throws LockFailureException
     {
-        return txn.lockUpgradable(mId, key);
+        return check(txn).lockUpgradable(mId, key);
     }
 
     @Override
     public final LockResult lockExclusive(Transaction txn, byte[] key)
         throws LockFailureException
     {
-        return txn.lockExclusive(mId, key);
+        return check(txn).lockExclusive(mId, key);
     }
 
     @Override
     public final LockResult lockCheck(Transaction txn, byte[] key) {
-        return txn.lockCheck(mId, key);
+        return check(txn).lockCheck(mId, key);
     }
 
     @Override
@@ -708,7 +708,7 @@ class Tree extends AbstractView implements Index {
      * Returns the frame node latched exclusively and marked dirty.
      */
     private Node latchDirty(TreeCursorFrame frame) throws IOException {
-        final Database db = mDatabase;
+        final LocalDatabase db = mDatabase;
         Node node = frame.mNode;
         node.acquireExclusive();
 
@@ -833,13 +833,18 @@ class Tree extends AbstractView implements Index {
         }
     }
 
-    final void check(Transaction txn) throws IllegalArgumentException {
-        if (txn != null) {
-            Database txnDb = txn.mDatabase;
-            if (txnDb != null & txnDb != mDatabase) {
-                throw new IllegalArgumentException("Transaction belongs to a different database");
+    final LocalTransaction check(Transaction txn) throws IllegalArgumentException {
+        if (txn instanceof LocalTransaction) {
+            LocalTransaction local = (LocalTransaction) txn;
+            LocalDatabase txnDb = local.mDatabase;
+            if (txnDb == mDatabase || txnDb == null) {
+                return local;
             }
         }
+        if (txn != null) {
+            throw new IllegalArgumentException("Transaction belongs to a different database");
+        }
+        return null;
     }
 
     /**
@@ -857,7 +862,7 @@ class Tree extends AbstractView implements Index {
      * @param key non-null key instance
      * @return non-null Locker instance if caller should unlock when read is done
      */
-    private Locker lockForLoad(Transaction txn, byte[] key) throws LockFailureException {
+    private Locker lockForLoad(LocalTransaction txn, byte[] key) throws LockFailureException {
         if (txn == null) {
             return mLockManager.lockSharedLocal(mId, key, LockManager.hash(mId, key));
         }
@@ -903,7 +908,7 @@ class Tree extends AbstractView implements Index {
         return redo == null ? 0 : redo.storeNoLock(mId, key, value, mDatabase.mDurabilityMode);
     }
 
-    final void txnCommitSync(Transaction txn, long commitPos) throws IOException {
+    final void txnCommitSync(LocalTransaction txn, long commitPos) throws IOException {
         mDatabase.mRedoWriter.txnCommitSync(txn, commitPos);
     }
 

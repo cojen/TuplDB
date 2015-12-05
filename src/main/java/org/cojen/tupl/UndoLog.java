@@ -1,5 +1,5 @@
 /*
- *  Copyright 2011-2013 Brian S O'Neill
+ *  Copyright 2011-2015 Cojen.org
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -117,7 +117,7 @@ final class UndoLog implements DatabaseAccess {
     // Payload is custom message.
     static final byte OP_CUSTOM = (byte) 24;
 
-    private final Database mDatabase;
+    private final LocalDatabase mDatabase;
     private final long mTxnId;
 
     // Number of bytes currently pushed into log.
@@ -134,13 +134,13 @@ final class UndoLog implements DatabaseAccess {
 
     private long mActiveIndexId;
 
-    UndoLog(Database db, long txnId) {
+    UndoLog(LocalDatabase db, long txnId) {
         mDatabase = db;
         mTxnId = txnId;
     }
 
     @Override
-    public Database getDatabase() {
+    public LocalDatabase getDatabase() {
         return mDatabase;
     }
 
@@ -654,7 +654,7 @@ final class UndoLog implements DatabaseAccess {
             break;
 
         case OP_CUSTOM:
-            Database db = mDatabase;
+            LocalDatabase db = mDatabase;
             TransactionHandler handler = db.mCustomTxnHandler;
             if (handler == null) {
                 throw new DatabaseException("Custom transaction handler is not installed");
@@ -825,7 +825,7 @@ final class UndoLog implements DatabaseAccess {
         parent.makeEvictable();
 
         if (delete) {
-            Database db = mDatabase;
+            LocalDatabase db = mDatabase;
             db.prepareToDelete(parent);
             // Safer to never recycle undo log nodes. Keep them until the next checkpoint, when
             // there's a guarantee that the master undo log will not reference them anymore.
@@ -913,7 +913,7 @@ final class UndoLog implements DatabaseAccess {
         encodeLongLE(workspace, 8, mActiveIndexId);
     }
 
-    static UndoLog recoverMasterUndoLog(Database db, long nodeId) throws IOException {
+    static UndoLog recoverMasterUndoLog(LocalDatabase db, long nodeId) throws IOException {
         UndoLog log = new UndoLog(db, 0);
         // Length is not recoverable.
         log.mLength = Long.MAX_VALUE;
@@ -928,7 +928,7 @@ final class UndoLog implements DatabaseAccess {
      * recovery is complete. Master log is truncated as a side effect of
      * calling this method.
      */
-    void recoverTransactions(LHashTable.Obj<Transaction> txns,
+    void recoverTransactions(LHashTable.Obj<LocalTransaction> txns,
                              LockMode lockMode, long timeoutNanos)
         throws IOException
     {
@@ -936,7 +936,7 @@ final class UndoLog implements DatabaseAccess {
         byte[] entry;
         while ((entry = pop(opRef, true)) != null) {
             UndoLog log = recoverUndoLog(opRef[0], entry);
-            Transaction txn = log.recoverTransaction(lockMode, timeoutNanos);
+            LocalTransaction txn = log.recoverTransaction(lockMode, timeoutNanos);
 
             // Reload the UndoLog, since recoverTransaction consumes it all.
             txn.recoveredUndoLog(recoverUndoLog(opRef[0], entry));
@@ -948,7 +948,7 @@ final class UndoLog implements DatabaseAccess {
     /**
      * Method consumes entire log as a side-effect.
      */
-    private final Transaction recoverTransaction(LockMode lockMode, long timeoutNanos)
+    private final LocalTransaction recoverTransaction(LockMode lockMode, long timeoutNanos)
         throws IOException
     {
         byte[] opRef = new byte[1];
@@ -1026,10 +1026,10 @@ final class UndoLog implements DatabaseAccess {
             }
         }
 
-        Transaction txn = new Transaction
+        LocalTransaction txn = new LocalTransaction
             (mDatabase, mTxnId, lockMode, timeoutNanos,
              // Blindly assume trash must be deleted. No harm if none exists.
-             Transaction.HAS_TRASH);
+             LocalTransaction.HAS_TRASH);
 
         scope = scopes.pollFirst();
         if (acquireLocks) {
@@ -1037,7 +1037,7 @@ final class UndoLog implements DatabaseAccess {
         }
 
         while ((scope = scopes.pollFirst()) != null) {
-            txn.recoveredScope(scope.mSavepoint, Transaction.HAS_TRASH);
+            txn.recoveredScope(scope.mSavepoint, LocalTransaction.HAS_TRASH);
             if (acquireLocks) {
                 scope.acquireLocks(txn);
             }
@@ -1070,7 +1070,7 @@ final class UndoLog implements DatabaseAccess {
             return lock;
         }
 
-        void acquireLocks(Transaction txn) throws LockFailureException {
+        void acquireLocks(LocalTransaction txn) throws LockFailureException {
             org.cojen.tupl.Lock lock = mTopLock;
             if (lock != null) while (true) {
                 // Copy next before the field is overwritten.
@@ -1120,7 +1120,7 @@ final class UndoLog implements DatabaseAccess {
     /**
      * @return latched, unevictable node
      */
-    private static Node readUndoLogNode(Database db, long nodeId) throws IOException {
+    private static Node readUndoLogNode(LocalDatabase db, long nodeId) throws IOException {
         Node node = db.allocLatchedNode(nodeId, NodeUsageList.MODE_UNEVICTABLE);
         node.read(db, nodeId);
         if (node.type() != Node.TYPE_UNDO_LOG) {

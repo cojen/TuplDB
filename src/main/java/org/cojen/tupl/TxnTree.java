@@ -1,5 +1,5 @@
 /*
- *  Copyright 2014 Brian S O'Neill
+ *  Copyright 2014-2015 Cojen.org
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import java.io.IOException;
  * @author Brian S O'Neill
  */
 final class TxnTree extends Tree {
-    TxnTree(Database db, long id, byte[] idBytes, byte[] name, Node root) {
+    TxnTree(LocalDatabase db, long id, byte[] idBytes, byte[] name, Node root) {
         super(db, id, idBytes, name, root);
     }
 

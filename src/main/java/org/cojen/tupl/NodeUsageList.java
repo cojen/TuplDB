@@ -1,5 +1,5 @@
 /*
- *  Copyright 2014 Brian S O'Neill
+ *  Copyright 2014-2015 Cojen.org
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -36,14 +36,14 @@ final class NodeUsageList extends Latch {
     // Don't evict a node when trying to allocate another.
     static final int MODE_NO_EVICT = 2;
 
-    final transient Database mDatabase;
+    final transient LocalDatabase mDatabase;
     private final int mPageSize;
     private int mMaxSize;
     private int mSize;
     private Node mMostRecentlyUsed;
     private Node mLeastRecentlyUsed;
 
-    NodeUsageList(Database db, int maxSize) {
+    NodeUsageList(LocalDatabase db, int maxSize) {
         mDatabase = db;
         mPageSize = db.pageSize();
         acquireExclusive();

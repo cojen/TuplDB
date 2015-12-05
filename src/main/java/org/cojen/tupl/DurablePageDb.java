@@ -1,5 +1,5 @@
 /*
- *  Copyright 2011-2013 Brian S O'Neill
+ *  Copyright 2011-2015 Cojen.org
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -339,7 +339,7 @@ final class DurablePageDb extends PageDb {
     }
 
     @Override
-    public Node allocLatchedNode(Database db, int mode) throws IOException {
+    public Node allocLatchedNode(LocalDatabase db, int mode) throws IOException {
         long nodeId = allocPage();
         try {
             Node node = db.allocLatchedNode(nodeId, mode);
@@ -665,7 +665,7 @@ final class DurablePageDb extends PageDb {
     /**
      * @see SnapshotPageArray#beginSnapshot
      */
-    Snapshot beginSnapshot(Database db) throws IOException {
+    Snapshot beginSnapshot(LocalDatabase db) throws IOException {
         mHeaderLatch.acquireShared();
         try {
             long pageCount, redoPos;
@@ -673,7 +673,7 @@ final class DurablePageDb extends PageDb {
             try {
                 mPageArray.readPage(mCommitNumber & 1, header, 0, MINIMUM_PAGE_SIZE);
                 pageCount = PageManager.readTotalPageCount(header, I_MANAGER_HEADER);
-                redoPos = Database.readRedoPosition(header, I_EXTRA_DATA); 
+                redoPos = LocalDatabase.readRedoPosition(header, I_EXTRA_DATA); 
             } finally {
                 p_delete(header);
             }

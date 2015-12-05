@@ -1,5 +1,5 @@
 /*
- *  Copyright 2014 Brian S O'Neill
+ *  Copyright 2014-2015 Cojen.org
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -19,20 +19,20 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 /**
- * Abstract class which supports filtering and transforming the entries within a {@link
- * View}. For pure filtering, consider subclassing {@link Filter} instead.
+ * Interface which supports filtering and transforming the entries within a {@link
+ * View}. For pure filtering, consider implementing a {@link Filter} instead.
  *
  * @author Brian S O'Neill
  * @see View#viewTransformed View.viewTransformed
  */
-public abstract class Transformer {
+public interface Transformer {
     /**
      * Returns true by default, indicating that the transform methods always require a value
      * instance to be provided.
      *
      * @return true if a value must always be passed into the transform methods
      */
-    public boolean requireValue() {
+    public default boolean requireValue() {
         return true;
     }
 
@@ -69,7 +69,7 @@ public abstract class Transformer {
      * @param value nullable value associated with the key
      * @return transformed key or null to discard entry
      */
-    public byte[] transformKey(byte[] key, byte[] value) throws IOException {
+    public default byte[] transformKey(byte[] key, byte[] value) throws IOException {
         return key;
     }
 
@@ -81,7 +81,7 @@ public abstract class Transformer {
      * @return inverse transformed key or null if inverse transformation of given key is not
      * supported
      */
-    public byte[] inverseTransformKey(byte[] tkey) {
+    public default byte[] inverseTransformKey(byte[] tkey) {
         return tkey;
     }
 
@@ -95,7 +95,7 @@ public abstract class Transformer {
      * @return inverse transformed key or null if inverse transformation of given key is not
      * supported
      */
-    public byte[] inverseTransformKeyGt(byte[] tkey) {
+    public default byte[] inverseTransformKeyGt(byte[] tkey) {
         tkey = tkey.clone();
         return Utils.increment(tkey, 0, tkey.length) ? inverseTransformKey(tkey) : null;
     }
@@ -110,7 +110,7 @@ public abstract class Transformer {
      * @return inverse transformed key or null if inverse transformation of given key is not
      * supported
      */
-    public byte[] inverseTransformKeyLt(byte[] tkey) {
+    public default byte[] inverseTransformKeyLt(byte[] tkey) {
         tkey = tkey.clone();
         return Utils.decrement(tkey, 0, tkey.length) ? inverseTransformKey(tkey) : null;
     }
@@ -121,7 +121,7 @@ public abstract class Transformer {
      *
      * @param original natural ordering of view before transformation
      */
-    public Ordering transformedOrdering(Ordering original) {
+    public default Ordering transformedOrdering(Ordering original) {
         return original;
     }
 }

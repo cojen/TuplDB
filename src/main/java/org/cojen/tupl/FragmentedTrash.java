@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2013 Brian S O'Neill
+ *  Copyright 2012-2015 Cojen.org
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -51,7 +51,7 @@ final class FragmentedTrash {
      * @param valueStart inclusive index into entry for fragmented value; excludes value header
      * @param valueLen length of value
      */
-    void add(Transaction txn, long indexId,
+    void add(LocalTransaction txn, long indexId,
              /*P*/ byte[] entry, int keyStart, int keyLen, int valueStart, int valueLen)
         throws IOException
     {
@@ -180,7 +180,7 @@ final class FragmentedTrash {
         byte[] prefix = new byte[8];
         encodeLongBE(prefix, 0, txnId);
 
-        Database db = mTrash.mDatabase;
+        LocalDatabase db = mTrash.mDatabase;
         final Lock sharedCommitLock = db.sharedCommitLock();
         TreeCursor cursor = new TreeCursor(mTrash, Transaction.BOGUS);
         try {
@@ -218,7 +218,7 @@ final class FragmentedTrash {
      */
     boolean emptyAllTrash(EventListener listener) throws IOException {
         boolean found = false;
-        Database db = mTrash.mDatabase;
+        LocalDatabase db = mTrash.mDatabase;
         final Lock sharedCommitLock = db.sharedCommitLock();
         TreeCursor cursor = new TreeCursor(mTrash, Transaction.BOGUS);
         try {

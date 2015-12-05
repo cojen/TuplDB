@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2013 Brian S O'Neill
+ *  Copyright 2012-2015 Cojen.org
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@ final class ReplRedoEngine implements RedoVisitor {
     private final static long INFINITE_TIMEOUT = -1L;
 
     final ReplicationManager mManager;
-    final Database mDatabase;
+    final LocalDatabase mDatabase;
 
     final ReplRedoController mController;
 
@@ -81,7 +81,7 @@ final class ReplRedoEngine implements RedoVisitor {
      * @param txns recovered transactions; can be null; cleared as a side-effect
      */
     ReplRedoEngine(ReplicationManager manager, int maxThreads,
-                   Database db, LHashTable.Obj<Transaction> txns)
+                   LocalDatabase db, LHashTable.Obj<LocalTransaction> txns)
         throws IOException
     {
         if (maxThreads <= 0) {
@@ -125,13 +125,15 @@ final class ReplRedoEngine implements RedoVisitor {
             txnTable = new TxnTable(txns.size());
 
             txns.traverse(new LHashTable.Visitor
-                          <LHashTable.ObjEntry<Transaction>, IOException>()
+                          <LHashTable.ObjEntry<LocalTransaction>, IOException>()
             {
-                public boolean visit(LHashTable.ObjEntry<Transaction> entry) throws IOException {
+                public boolean visit(LHashTable.ObjEntry<LocalTransaction> entry)
+                    throws IOException
+                {
                     // Reduce hash collisions.
                     long scrambledTxnId = scramble(entry.key);
                     Latch latch = selectLatch(scrambledTxnId);
-                    Transaction txn = entry.value;
+                    LocalTransaction txn = entry.value;
                     if (!txn.recoveryCleanup(false)) {
                         txnTable.insert(scrambledTxnId).init(txn, latch);
                     }
@@ -384,7 +386,7 @@ final class ReplRedoEngine implements RedoVisitor {
         mOpLatch.acquireShared();
 
         if (e == null) {
-            Transaction txn = new Transaction
+            LocalTransaction txn = new LocalTransaction
                 (mDatabase, txnId, LockMode.UPGRADABLE_READ, INFINITE_TIMEOUT);
             mTransactions.insert(scrambledTxnId).init(txn, selectLatch(scrambledTxnId));
 
@@ -532,7 +534,7 @@ final class ReplRedoEngine implements RedoVisitor {
 
         Latch latch = te.latch();
         try {
-            Transaction txn = te.mTxn;
+            LocalTransaction txn = te.mTxn;
 
             // Locks must be acquired in their original order to avoid
             // deadlock, so don't allow another task thread to run yet.
@@ -575,7 +577,7 @@ final class ReplRedoEngine implements RedoVisitor {
 
         Latch latch = te.latch();
         try {
-            Transaction txn = te.mTxn;
+            LocalTransaction txn = te.mTxn;
 
             // Locks must be acquired in their original order to avoid
             // deadlock, so don't allow another task thread to run yet.
@@ -653,7 +655,7 @@ final class ReplRedoEngine implements RedoVisitor {
 
         Latch latch = te.latch();
         try {
-            Transaction txn = te.mTxn;
+            LocalTransaction txn = te.mTxn;
 
             // Locks must be acquired in their original order to avoid
             // deadlock, so don't allow another task thread to run yet.
@@ -772,7 +774,7 @@ final class ReplRedoEngine implements RedoVisitor {
         if (e == null) {
             // Create transaction on demand if necessary. Startup transaction recovery only
             // applies to those which generated undo log entries.
-            Transaction txn = new Transaction
+            LocalTransaction txn = new LocalTransaction
                 (mDatabase, txnId, LockMode.UPGRADABLE_READ, INFINITE_TIMEOUT);
             e = mTransactions.insert(scrambledTxnId);
             e.init(txn, selectLatch(scrambledTxnId));
@@ -945,10 +947,10 @@ final class ReplRedoEngine implements RedoVisitor {
     }
 
     static final class TxnEntry extends LHashTable.Entry<TxnEntry> {
-        Transaction mTxn;
+        LocalTransaction mTxn;
         Latch mLatch;
 
-        void init(Transaction txn, Latch latch) {
+        void init(LocalTransaction txn, Latch latch) {
             mTxn = txn;
             mLatch = latch;
         }
