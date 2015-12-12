@@ -274,7 +274,7 @@ public interface Database extends CauseCloseable, Flushable {
     public abstract void applyCachePrimer(InputStream in) throws IOException;
 
     /**
-     * Returns an immutable copy of database statistics.
+     * Returns a collection of database statistics.
      */
     public abstract Stats stats();
 

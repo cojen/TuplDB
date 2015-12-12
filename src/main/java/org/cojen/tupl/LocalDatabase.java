@@ -828,31 +828,16 @@ final class LocalDatabase implements Database {
         }
     }
 
-    /**
-     * Returns the given named index, returning null if not found.
-     *
-     * @return shared Index instance; null if not found
-     */
     @Override
     public Index findIndex(byte[] name) throws IOException {
         return openIndex(name.clone(), false);
     }
 
-    /**
-     * Returns the given named index, creating it if necessary.
-     *
-     * @return shared Index instance
-     */
     @Override
     public Index openIndex(byte[] name) throws IOException {
         return openIndex(name.clone(), true);
     }
 
-    /**
-     * Returns an index by its identifier, returning null if not found.
-     *
-     * @throws IllegalArgumentException if id is reserved
-     */
     @Override
     public Index indexById(long id) throws IOException {
         if (Tree.isInternal(id)) {
@@ -920,15 +905,6 @@ final class LocalDatabase implements Database {
         return indexById(id);
     }
 
-    /**
-     * Renames the given index to the one given.
-     *
-     * @param index non-null open index
-     * @param newName new non-null name
-     * @throws ClosedIndexException if index reference is closed
-     * @throws IllegalStateException if name is already in use by another index
-     * @throws IllegalArgumentException if index belongs to another database instance
-     */
     @Override
     public void renameIndex(Index index, byte[] newName) throws IOException {
         renameIndex(index, newName.clone(), 0);
@@ -1074,26 +1050,6 @@ final class LocalDatabase implements Database {
         throw new IllegalArgumentException("Index belongs to a different database");
     }
 
-    /**
-     * Fully closes and deletes the given index, but does not immediately reclaim the pages it
-     * occupied. Run the returned task in any thread to reclaim the pages.
-     *
-     * <p>Once deleted, the index reference appears empty and {@link ClosedIndexException
-     * unmodifiable}. A new index by the original name can be created, which will be assigned a
-     * different unique identifier. Any transactions still referring to the old index will not
-     * affect the new index.
-     *
-     * <p>If the deletion task is never started or it doesn't finish normally, it will resume
-     * when the database is re-opened. All resumed deletions are completed in serial order by a
-     * background thread.
-     *
-     * @param index non-null open index
-     * @return non-null task to call for reclaiming the pages used by the deleted index
-     * @throws ClosedIndexException if index reference is closed
-     * @throws IllegalArgumentException if index belongs to another database instance
-     * @see EventListener
-     * @see Index#drop Index.drop
-     */
     @Override
     public Runnable deleteIndex(Index index) throws IOException {
         return deleteIndex(index, 0);
@@ -1270,39 +1226,21 @@ final class LocalDatabase implements Database {
         }
     }
 
-    /**
-     * Returns an {@link UnmodifiableViewException unmodifiable} View which maps all available
-     * index names to identifiers. Identifiers are long integers, {@link
-     * org.cojen.tupl.io.Utils#decodeLongBE big-endian} encoded.
-     */
     @Override
     public View indexRegistryByName() throws IOException {
         return mRegistryKeyMap.viewPrefix(new byte[] {KEY_TYPE_INDEX_NAME}, 1).viewUnmodifiable();
     }
 
-    /**
-     * Returns an {@link UnmodifiableViewException unmodifiable} View which maps all available
-     * index identifiers to names. Identifiers are long integers, {@link
-     * org.cojen.tupl.io.Utils#decodeLongBE big-endian} encoded.
-     */
     @Override
     public View indexRegistryById() throws IOException {
         return mRegistryKeyMap.viewPrefix(new byte[] {KEY_TYPE_INDEX_ID}, 1).viewUnmodifiable();
     }
 
-    /**
-     * Returns a new Transaction with the {@link DatabaseConfig#durabilityMode default}
-     * durability mode.
-     */
     @Override
     public Transaction newTransaction() {
         return doNewTransaction(mDurabilityMode);
     }
 
-    /**
-     * Returns a new Transaction with the given durability mode. If null, the
-     * {@link DatabaseConfig#durabilityMode default} is used.
-     */
     @Override
     public Transaction newTransaction(DurabilityMode durabilityMode) {
         return doNewTransaction(durabilityMode == null ? mDurabilityMode : durabilityMode);
@@ -1418,12 +1356,6 @@ final class LocalDatabase implements Database {
         }
     }
 
-    /**
-     * Preallocates pages for immediate use. The actual amount allocated
-     * varies, depending on the amount of free pages already available.
-     *
-     * @return actual amount allocated
-     */
     @Override
     public long preallocate(long bytes) throws IOException {
         if (!mClosed && mPageDb.isDurable()) {
@@ -1479,27 +1411,6 @@ final class LocalDatabase implements Database {
         mPageDb.pageLimitOverride(bytes < 0 ? -1 : (bytes / mPageSize));
     }
 
-    /**
-     * Support for capturing a snapshot (hot backup) of the database, while
-     * still allowing concurrent modifications. The snapshot contains all data
-     * up to the last checkpoint. Call the {@link #checkpoint checkpoint}
-     * method immediately before to ensure that an up-to-date snapshot is
-     * captured.
-     *
-     * <p>To restore from a snapshot, store it in the primary data file, which
-     * is the base file with a ".db" extension. Make sure no redo log files
-     * exist and then open the database. Alternatively, call {@link
-     * #restoreFromSnapshot restoreFromSnapshot}, which also supports restoring
-     * into separate data files.
-     *
-     * <p>During the snapshot, temporary files are created to hold pre-modified
-     * copies of pages. If the snapshot destination stream blocks for too long,
-     * these files keep growing. File growth rate increases too if the database
-     * is being heavily modified. In the worst case, the temporary files can
-     * become larger than the primary database files.
-     *
-     * @return a snapshot control object, which must be closed when no longer needed
-     */
     @Override
     public Snapshot beginSnapshot() throws IOException {
         if (!(mPageDb.isDurable())) {
@@ -1571,13 +1482,6 @@ final class LocalDatabase implements Database {
         return Database.open(config);
     }
 
-    /**
-     * Writes a cache priming set into the given stream, which can then be used later to {@link
-     * #applyCachePrimer prime} the cache.
-     *
-     * @param out cache priming destination; buffering is recommended; not auto-closed
-     * @see DatabaseConfig#cachePriming
-     */
     @Override
     public void createCachePrimer(OutputStream out) throws IOException {
         if (!(mPageDb.isDurable())) {
@@ -1620,12 +1524,6 @@ final class LocalDatabase implements Database {
         dout.writeInt(-1);
     }
 
-    /**
-     * Prime the cache, from a set encoded {@link #createCachePrimer earlier}.
-     *
-     * @param in caching priming source; buffering is recommended; not auto-closed
-     * @see DatabaseConfig#cachePriming
-     */
     @Override
     public void applyCachePrimer(InputStream in) throws IOException {
         if (!(mPageDb.isDurable())) {
@@ -1663,9 +1561,6 @@ final class LocalDatabase implements Database {
         }
     }
 
-    /**
-     * Returns an immutable copy of database statistics.
-     */
     @Override
     public Stats stats() {
         Stats stats = new Stats();
@@ -1715,11 +1610,6 @@ final class LocalDatabase implements Database {
         return stats;
     }
 
-    /**
-     * Flushes, but does not sync, all non-flushed transactions. Transactions
-     * committed with {@link DurabilityMode#NO_FLUSH no-flush} effectively
-     * become {@link DurabilityMode#NO_SYNC no-sync} durable.
-     */
     @Override
     public void flush() throws IOException {
         if (!mClosed && mRedoWriter != null) {
@@ -1727,12 +1617,6 @@ final class LocalDatabase implements Database {
         }
     }
 
-    /**
-     * Persists all non-flushed and non-sync'd transactions. Transactions
-     * committed with {@link DurabilityMode#NO_FLUSH no-flush} and {@link
-     * DurabilityMode#NO_SYNC no-sync} effectively become {@link
-     * DurabilityMode#SYNC sync} durable.
-     */
     @Override
     public void sync() throws IOException {
         if (!mClosed && mRedoWriter != null) {
@@ -1740,12 +1624,6 @@ final class LocalDatabase implements Database {
         }
     }
 
-    /**
-     * Durably sync and checkpoint all changes to the database. In addition to ensuring that
-     * all committed transactions are durable, checkpointing ensures that non-transactional
-     * modifications are durable. Checkpoints are performed automatically by a background
-     * thread, at a {@link DatabaseConfig#checkpointRate configurable} rate.
-     */
     @Override
     public void checkpoint() throws IOException {
         if (!mClosed && mPageDb.isDurable()) {
@@ -1759,13 +1637,6 @@ final class LocalDatabase implements Database {
         }
     }
 
-    /**
-     * Temporarily suspend automatic checkpoints without waiting for any in-progress checkpoint
-     * to complete. Suspend may be invoked multiple times, but each must be paired with a
-     * {@link #resumeCheckpoints resume} call to enable automatic checkpoints again.
-     *
-     * @throws IllegalStateException if suspended more than 2<sup>31</sup> times
-     */
     @Override
     public void suspendCheckpoints() {
         Checkpointer c = mCheckpointer;
@@ -1774,12 +1645,6 @@ final class LocalDatabase implements Database {
         }
     }
 
-    /**
-     * Resume automatic checkpoints after having been temporarily {@link #suspendCheckpoints
-     * suspended}.
-     *
-     * @throws IllegalStateException if resumed more than suspended
-     */
     @Override
     public void resumeCheckpoints() {
         Checkpointer c = mCheckpointer;
@@ -1788,29 +1653,6 @@ final class LocalDatabase implements Database {
         }
     }
 
-    /**
-     * Compacts the database by shrinking the database file. The compaction target is the
-     * desired file utilization, and it controls how much compaction should be performed. A
-     * target of 0.0 performs no compaction, and a value of 1.0 attempts to compact as much as
-     * possible.
-     *
-     * <p>If the compaction target cannot be met, the entire operation aborts. If the database
-     * is being concurrently modified, large compaction targets will likely never succeed.
-     * Although compacting by smaller amounts is more likely to succeed, the entire database
-     * must still be scanned. A minimum target of 0.5 is recommended for the compaction to be
-     * worth the effort.
-     *
-     * <p>Compaction requires some amount of free space for page movement, and so some free
-     * space might still linger following a massive compaction. More iterations are required to
-     * fully complete such a compaction. The first iteration might actually cause the file to
-     * grow slightly. This can be prevented by doing a less massive compaction first.
-     *
-     * @param observer optional observer; pass null for default
-     * @param target database file compaction target [0.0, 1.0]
-     * @return false if file compaction aborted
-     * @throws IllegalArgumentException if compaction target is out of bounds
-     * @throws IllegalStateException if compaction is already in progress
-     */
     @Override
     public boolean compactFile(CompactionObserver observer, double target) throws IOException {
         if (target < 0 || target > 1) {
@@ -1915,12 +1757,6 @@ final class LocalDatabase implements Database {
         return false;
     }
 
-    /**
-     * Verifies the integrity of the database and all indexes.
-     *
-     * @param observer optional observer; pass null for default
-     * @return true if verification passed
-     */
     @Override
     public boolean verify(VerificationObserver observer) throws IOException {
         // TODO: Verify free lists.
@@ -2003,24 +1839,11 @@ final class LocalDatabase implements Database {
         return true;
     }
 
-    /**
-     * Closes the database after an unexpected failure. No checkpoint is performed by this
-     * method, and so non-transactional modifications can be lost.
-     *
-     * @param cause if non-null, delivers a {@link EventType#PANIC_UNHANDLED_EXCEPTION panic}
-     * event and future database accesses will rethrow the cause
-     * @see #shutdown
-     */
     @Override
     public void close(Throwable cause) throws IOException {
         close(cause, false);
     }
 
-    /**
-     * Cleanly closes the database, ensuring durability of all modifications. A checkpoint is
-     * issued first, and so a quick recovery is performed when the database is re-opened. As a
-     * side effect of shutting down, all extraneous files are deleted.
-     */
     @Override
     public void shutdown() throws IOException {
         close(null, mPageDb.isDurable());

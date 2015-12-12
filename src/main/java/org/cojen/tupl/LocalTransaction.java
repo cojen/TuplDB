@@ -104,15 +104,7 @@ final class LocalTransaction extends Locker implements Transaction {
         mBorked = this;
     }
 
-    /**
-     * Sets the lock mode for the current scope. Transactions begin in {@link
-     * LockMode#UPGRADABLE_READ UPGRADABLE_READ} mode, and newly entered scopes
-     * begin at the outer scope's current mode. Exiting a scope reverts the
-     * lock mode.
-     *
-     * @param mode new lock mode
-     * @throws IllegalArgumentException if mode is null
-     */
+    @Override
     public final void lockMode(LockMode mode) {
         if (mode == null) {
             throw new IllegalArgumentException("Lock mode is null");
@@ -121,40 +113,22 @@ final class LocalTransaction extends Locker implements Transaction {
         }
     }
 
-    /**
-     * Returns the current lock mode.
-     */
+    @Override
     public final LockMode lockMode() {
         return mLockMode;
     }
 
-    /**
-     * Sets the lock timeout for the current scope. A negative timeout is
-     * infinite.
-     *
-     * @param unit required unit if timeout is more than zero
-     */
+    @Override
     public final void lockTimeout(long timeout, TimeUnit unit) {
         mLockTimeoutNanos = Utils.toNanos(timeout, unit);
     }
 
-    /**
-     * Returns the current lock timeout, in the given unit.
-     */
+    @Override
     public final long lockTimeout(TimeUnit unit) {
         return unit.convert(mLockTimeoutNanos, TimeUnit.NANOSECONDS);
     }
 
-    /**
-     * Sets the durability mode for the entire transaction, not just the current scope. The
-     * durability mode primarily affects commit behavior at the top-level scope, but it can also
-     * be used to switch redo logging behavior.
-     *
-     * <p><i>Note: This method is intended for advanced use cases.</i>
-     *
-     * @param mode new durability mode
-     * @throws IllegalArgumentException if mode is null
-     */
+    @Override
     public final void durabilityMode(DurabilityMode mode) {
         if (mode == null) {
             throw new IllegalArgumentException("Durability mode is null");
@@ -163,19 +137,12 @@ final class LocalTransaction extends Locker implements Transaction {
         }
     }
 
-    /**
-     * Returns the durability mode of this transaction.
-     */
+    @Override
     public final DurabilityMode durabilityMode() {
         return mDurabilityMode;
     }
 
-    /**
-     * Checks the validity of the transaction.
-     *
-     * @throws DatabaseException if transaction is bogus or was invalidated by
-     * an earlier exception
-     */
+    @Override
     public final void check() throws DatabaseException {
         Object borked = mBorked;
         if (borked != null) {
@@ -187,12 +154,7 @@ final class LocalTransaction extends Locker implements Transaction {
         }
     }
 
-    /**
-     * Commits all modifications made within the current transaction scope. The
-     * current scope is still valid after this method is called, unless an
-     * exception is thrown. Call exit or reset to fully release transaction
-     * resources.
-     */
+    @Override
     public final void commit() throws IOException {
         check();
 
@@ -449,9 +411,7 @@ final class LocalTransaction extends Locker implements Transaction {
         }
     }
 
-    /**
-     * Commits and exits all transaction scopes.
-     */
+    @Override
     public final void commitAll() throws IOException {
         while (true) {
             commit();
@@ -462,9 +422,7 @@ final class LocalTransaction extends Locker implements Transaction {
         }
     }
 
-    /**
-     * Enters a nested transaction scope.
-     */
+    @Override
     public final void enter() throws IOException {
         check();
 
@@ -487,11 +445,7 @@ final class LocalTransaction extends Locker implements Transaction {
         }
     }
 
-    /**
-     * Exits the current transaction scope, rolling back all uncommitted
-     * modifications made within. The transaction is still valid after this
-     * method is called, unless an exception is thrown.
-     */
+    @Override
     public final void exit() throws IOException {
         if (mBorked != null) {
             return;
@@ -547,16 +501,7 @@ final class LocalTransaction extends Locker implements Transaction {
         }
     }
 
-    /**
-     * Exits all transaction scopes, rolling back all uncommitted modifications. Equivalent to:
-     *
-     * <pre>
-     * while (txn.isNested()) {
-     *     txn.exit();
-     * }
-     * txn.exit();
-     * </pre>
-     */
+    @Override
     public final void reset() throws IOException {
         if (mBorked != null) {
             return;
@@ -627,23 +572,7 @@ final class LocalTransaction extends Locker implements Transaction {
         return b.append('}').toString();
     }
 
-    /**
-     * Attempts to acquire a shared lock for the given key, denying exclusive
-     * locks. If return value is {@link LockResult#alreadyOwned owned}, transaction
-     * already owns a strong enough lock, and no extra unlock should be
-     * performed.
-     *
-     * <p><i>Note: This method is intended for advanced use cases.</i>
-     *
-     * @param key non-null key to lock; instance is not cloned
-     * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link
-     * LockResult#OWNED_SHARED OWNED_SHARED}, {@link
-     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
-     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     * @throws IllegalStateException if too many shared locks
-     * @throws LockFailureException if interrupted or timed out
-     * @throws DeadlockException if deadlock was detected after waiting full timeout
-     */
+    @Override
     public final LockResult lockShared(long indexId, byte[] key) throws LockFailureException {
         return super.lockShared(indexId, key, mLockTimeoutNanos);
     }
@@ -652,21 +581,7 @@ final class LocalTransaction extends Locker implements Transaction {
         return super.lockShared(indexId, key, hash, mLockTimeoutNanos);
     }
 
-    /**
-     * Attempts to acquire an upgradable lock for the given key, denying
-     * exclusive and additional upgradable locks. If return value is {@link
-     * LockResult#alreadyOwned owned}, transaction already owns a strong enough
-     * lock, and no extra unlock should be performed.
-     *
-     * <p><i>Note: This method is intended for advanced use cases.</i>
-     *
-     * @param key non-null key to lock; instance is not cloned
-     * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link
-     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
-     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     * @throws LockFailureException if interrupted, timed out, or illegal upgrade
-     * @throws DeadlockException if deadlock was detected after waiting full timeout
-     */
+    @Override
     public final LockResult lockUpgradable(long indexId, byte[] key) throws LockFailureException {
         return super.lockUpgradable(indexId, key, mLockTimeoutNanos);
     }
@@ -677,20 +592,7 @@ final class LocalTransaction extends Locker implements Transaction {
         return super.lockUpgradable(indexId, key, hash, mLockTimeoutNanos);
     }
 
-    /**
-     * Attempts to acquire an exclusive lock for the given key, denying any
-     * additional locks. If return value is {@link LockResult#alreadyOwned owned},
-     * transaction already owns exclusive lock, and no extra unlock should be
-     * performed.
-     *
-     * <p><i>Note: This method is intended for advanced use cases.</i>
-     *
-     * @param key non-null key to lock; instance is not cloned
-     * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link LockResult#UPGRADED
-     * UPGRADED}, or {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     * @throws LockFailureException if interrupted, timed out, or illegal upgrade
-     * @throws DeadlockException if deadlock was detected after waiting full timeout
-     */
+    @Override
     public final LockResult lockExclusive(long indexId, byte[] key) throws LockFailureException {
         return super.lockExclusive(indexId, key, mLockTimeoutNanos);
     }
@@ -709,18 +611,7 @@ final class LocalTransaction extends Locker implements Transaction {
         return super.lockExclusive(lock, mLockTimeoutNanos);
     }
 
-    /**
-     * Supply a message for a custom redo handler. Redo operations must always be paired with
-     * undo operations.
-     *
-     * <p><i>Note: This method is intended for advanced use cases.</i>
-     *
-     * @param message message to pass to transaction handler
-     * @param indexId index for lock acquisition; zero if not applicable
-     * @param key key which has been locked exclusively; null if not applicable
-     * @throws IllegalStateException if no transaction handler is installed
-     * @see org.cojen.tupl.ext.TransactionHandler
-     */
+    @Override
     public final void customRedo(byte[] message, long indexId, byte[] key) throws IOException {
         if (mDatabase.mCustomTxnHandler == null) {
             throw new IllegalStateException("Custom transaction handler is not installed");
@@ -762,16 +653,7 @@ final class LocalTransaction extends Locker implements Transaction {
         }
     }
 
-    /**
-     * Supply a message for a custom undo handler. Undo operations must always be paired with
-     * redo operations.
-     *
-     * <p><i>Note: This method is intended for advanced use cases.</i>
-     *
-     * @param message message to pass to transaction handler
-     * @throws IllegalStateException if no transaction handler is installed
-     * @see org.cojen.tupl.ext.TransactionHandler
-     */
+    @Override
     public final void customUndo(byte[] message) throws IOException {
         if (mDatabase.mCustomTxnHandler == null) {
             throw new IllegalStateException("Custom transaction handler is not installed");
