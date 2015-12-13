@@ -113,6 +113,7 @@ public class CLL {
         // Next is set to self to indicate that the node is the last.
         node.lazySet(node);
 
+        int trials = 0;
         while (true) {
             Node last = mLast;
             cPrevUpdater.lazySet(node, last);
@@ -127,6 +128,14 @@ public class CLL {
                     mLast = node;
                     return;
                 }
+            }
+
+            trials++;
+
+            if (trials >= SPIN_LIMIT) {
+                // Spinning too much due to high contention. Back off a tad.
+                Thread.yield();
+                trials = 0;
             }
         }
     }
