@@ -16,12 +16,29 @@
 
 package org.cojen.tupl;
 
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+
 /**
- * 
+ *
  *
  * @author Brian S O'Neill
  */
-final class TreeCursorFrame {
+// Note: Atomic reference is to the next frame bound to a Node.
+final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
+    private static final int SPIN_LIMIT = Runtime.getRuntime().availableProcessors();
+
+    private static final AtomicReferenceFieldUpdater<Node, TreeCursorFrame>
+        cLastUpdater = AtomicReferenceFieldUpdater.newUpdater
+        (Node.class, TreeCursorFrame.class, "mLastCursorFrame");
+
+    private static final AtomicReferenceFieldUpdater<TreeCursorFrame, TreeCursorFrame>
+        cPrevUpdater = AtomicReferenceFieldUpdater.newUpdater
+        (TreeCursorFrame.class, TreeCursorFrame.class, "mPrevCousin");
+
+    // Linked list of TreeCursorFrames bound to a Node. Atomic reference is the next frame.
+    volatile TreeCursorFrame mPrevCousin;
+
     // Node and position this TreeCursorFrame is bound to.
     Node mNode;
     int mNodePos;
@@ -29,10 +46,6 @@ final class TreeCursorFrame {
     // Parent stack frame. A TreeCursorFrame which is bound to the root
     // Node has no parent frame.
     TreeCursorFrame mParentFrame;
-
-    // Linked list of TreeCursorFrames bound to a Node.
-    TreeCursorFrame mPrevCousin;
-    TreeCursorFrame mNextCousin;
 
     // Reference to key which wasn't found. Only used by leaf frames.
     byte[] mNotFoundKey;
@@ -99,21 +112,44 @@ final class TreeCursorFrame {
     }
 
     /** 
-     * Bind this unbound frame to a tree node. Called with exclusive latch held.
+     * Bind this unbound frame to a tree node. Node should be held with a shared latch.
      */
     void bind(Node node, int nodePos) {
         mNode = node;
         mNodePos = nodePos;
-        TreeCursorFrame last = node.mLastCursorFrame;
-        if (last != null) {
-            mPrevCousin = last;
-            last.mNextCousin = this;
+
+        // Next is set to self to indicate that this frame is the last.
+        this.lazySet(this);
+
+        int trials = 0;
+        while (true) {
+            TreeCursorFrame last = node.mLastCursorFrame;
+            cPrevUpdater.lazySet(this, last);
+            if (last == null) {
+                if (cLastUpdater.compareAndSet(node, null, this)) {
+                    return;
+                }
+            } else if (last.get() == last) {
+                if (last.compareAndSet(last, this)) {
+                    // Catch up before replacing last frame reference.
+                    while (node.mLastCursorFrame != last);
+                    node.mLastCursorFrame = this;
+                    return;
+                }
+            }
+
+            trials++;
+
+            if (trials >= SPIN_LIMIT) {
+                // Spinning too much due to high contention. Back off a tad.
+                Thread.yield();
+                trials = 0;
+            }
         }
-        node.mLastCursorFrame = this;
     }
 
     /** 
-     * Bind or rebind this frame to a tree node. Called with exclusive latch held.
+     * Bind or rebind this frame to a tree node. Node should be held with a shared latch.
      */
     void rebind(Node node, int nodePos) {
         unbind();
@@ -121,37 +157,78 @@ final class TreeCursorFrame {
     }
 
     /** 
-     * Unbind this frame from a tree node. Called with exclusive latch held.
+     * Unbind this frame from a tree node. No latch is required.
      */
     private void unbind() {
-        TreeCursorFrame prev = mPrevCousin;
-        TreeCursorFrame next = mNextCousin;
-        if (prev != null) {
-            prev.mNextCousin = next;
-            mPrevCousin = null;
-        }
-        if (next != null) {
-            next.mPrevCousin = prev;
-            mNextCousin = null;
-        } else {
-            Node node = mNode;
-            if (node != null) {
-                node.mLastCursorFrame = prev;
+        int trials = 0;
+        while (true) {
+            TreeCursorFrame n = this.get(); // get next frame
+
+            if (n == null) {
+                // Not in the list.
+                return;
+            }
+
+            if (n == this) {
+                // Unbinding the last frame.
+                if (this.compareAndSet(n, null)) {
+                    // Update previous frame to be the new last frame.
+                    TreeCursorFrame p;
+                    do {
+                        p = this.mPrevCousin;
+                    } while  (p != null && (p.get() != this || !p.compareAndSet(this, p)));
+                    // Catch up before replacing last frame reference.
+                    Node node = mNode;
+                    while (node.mLastCursorFrame != this);
+                    node.mLastCursorFrame = p;
+                    return;
+                }
+            } else {
+                // Unbinding an interior or first frame.
+                if (n.mPrevCousin == this && this.compareAndSet(n, null)) {
+                    // Update next reference chain to skip over the unbound frame.
+                    TreeCursorFrame p;
+                    do {
+                        p = this.mPrevCousin;
+                    } while (p != null && (p.get() != this || !p.compareAndSet(this, n)));
+                    // Update previous reference chain to skip over the unbound frame.
+                    cPrevUpdater.lazySet(n, p);
+                    return;
+                }
+            }
+
+            trials++;
+
+            if (trials >= SPIN_LIMIT) {
+                // Spinning too much due to high contention. Back off a tad.
+                Thread.yield();
+                trials = 0;
             }
         }
     }
 
     /**
-     * Returns the parent frame. Called with exclusive latch held, which is
-     * retained.
+     * Uncleanly unlink this frame, for performing cursor invalidation. Node must be
+     * exclusively held.
+     *
+     * @return previous frame, possibly null
+     */
+    TreeCursorFrame unlink() {
+        lazySet(null);
+        TreeCursorFrame prev = mPrevCousin;
+        cPrevUpdater.lazySet(this, null);
+        return prev;
+    }
+
+    /**
+     * Returns the parent frame. No latch is required.
      */
     TreeCursorFrame peek() {
         return mParentFrame;
     }
 
     /**
-     * Pop this, the leaf frame, returning the parent frame. Called with
-     * exclusive latch held, which is retained.
+     * Pop this, the leaf frame, returning the parent frame. No latch is required.
      */
     TreeCursorFrame pop() {
         unbind();
@@ -163,8 +240,7 @@ final class TreeCursorFrame {
     }
 
     /**
-     * Pop this, the leaf frame, returning void. Called with exclusive latch
-     * held, which is retained.
+     * Pop this, the leaf frame, returning void. No latch is required.
      */
     void popv() {
         unbind();
@@ -174,29 +250,11 @@ final class TreeCursorFrame {
     }
 
     /**
-     * Pop given non-null frame and all parent frames.
+     * Pop the given non-null frame and all parent frames. No latch is required.
      */
     static void popAll(TreeCursorFrame frame) {
-        outer: do {
-            Node node = frame.mNode;
-            while (true) {
-                if (node == null) {
-                    // Frame was not bound properly, suggesting that cursor is
-                    // being cleaned up in response to an exception. Frame
-                    // cannot be latched, so just go to the parent.
-                    frame = frame.mParentFrame;
-                    continue outer;
-                }
-                node.acquireExclusive();
-                Node actualNode = frame.mNode;
-                if (actualNode == node) {
-                    frame = frame.pop();
-                    node.releaseExclusive();
-                    continue outer;
-                }
-                node.releaseExclusive();
-                node = actualNode;
-            }
+        do {
+            frame = frame.mNode == null ? frame.mParentFrame : frame.pop();
         } while (frame != null);
     }
 
@@ -206,11 +264,11 @@ final class TreeCursorFrame {
      * @param dest new frame instance to receive copy
      */
     void copyInto(TreeCursorFrame dest) {
-        Node node = acquireExclusive();
+        Node node = acquireShared();
         TreeCursorFrame parent = mParentFrame;
 
         if (parent != null) {
-            node.releaseExclusive();
+            node.releaseShared();
             TreeCursorFrame parentCopy = new TreeCursorFrame();
 
             while (true) {
@@ -220,7 +278,7 @@ final class TreeCursorFrame {
                 }
 
                 // Parent can change when tree height is concurrently changing.
-                node = acquireExclusive();
+                node = acquireShared();
                 final TreeCursorFrame actualParent = mParentFrame;
 
                 if (actualParent == parent) {
@@ -232,7 +290,7 @@ final class TreeCursorFrame {
                 }
 
                 // Get rid of the stale copy and do over, which should be rare.
-                node.releaseExclusive();
+                node.releaseShared();
                 popAll(parentCopy);
                 parent = actualParent;
             }
@@ -240,6 +298,11 @@ final class TreeCursorFrame {
 
         dest.mNotFoundKey = mNotFoundKey;
         dest.bind(node, mNodePos);
-        node.releaseExclusive();
+        node.releaseShared();
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getName() + '@' + Integer.toHexString(hashCode());
     }
 }

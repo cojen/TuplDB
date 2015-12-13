@@ -265,7 +265,7 @@ final class Node extends Latch implements DatabaseAccess {
     Node mNodeMapNext;
 
     // Linked stack of TreeCursorFrames bound to this Node.
-    transient TreeCursorFrame mLastCursorFrame;
+    transient volatile TreeCursorFrame mLastCursorFrame;
 
     // Set by a partially completed split.
     transient Split mSplit;
@@ -1006,7 +1006,7 @@ final class Node extends Latch implements DatabaseAccess {
         for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
             frame.mNode = closed;
             frame.mNodePos = pos;
-            frame = frame.mPrevCousin;
+            frame = frame.unlink();
         }
 
         if (!isInternal()) {
@@ -5296,7 +5296,11 @@ final class Node extends Latch implements DatabaseAccess {
     long countCursors() {
         long count = 0;
 
-        acquireShared();
+        // Exclusive latch is required to prevent frames from being visted multiple times do to
+        // recycling.
+        // FIXME: If cannot acquire exclusive latch, iterate over frames using a lock-coupling
+        // strategy.
+        acquireExclusive();
         try {
             TreeCursorFrame frame = mLastCursorFrame;
             while (frame != null) {
@@ -5304,7 +5308,7 @@ final class Node extends Latch implements DatabaseAccess {
                 frame = frame.mPrevCousin;
             }
         } finally {
-            releaseShared();
+            releaseExclusive();
         }
 
         return count;

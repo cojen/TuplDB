@@ -122,8 +122,8 @@ class TreeCursor implements CauseCloseable, Cursor {
 
     @Override
     public final LockResult first() throws IOException {
-        Node root = mTree.mRoot;
-        TreeCursorFrame frame = reset(root);
+        TreeCursorFrame frame = resetForSearch();
+        Node root = latchRootNode();
 
         if (!toFirst(root, frame)) {
             return LockResult.UNOWNED;
@@ -177,8 +177,8 @@ class TreeCursor implements CauseCloseable, Cursor {
 
     @Override
     public final LockResult last() throws IOException {
-        Node root = mTree.mRoot;
-        TreeCursorFrame frame = reset(root);
+        TreeCursorFrame frame = resetForSearch();
+        Node root = latchRootNode();
 
         if (!toLast(root, frame)) {
             return LockResult.UNOWNED;
@@ -1425,15 +1425,17 @@ class TreeCursor implements CauseCloseable, Cursor {
 
     @Override
     public final LockResult find(byte[] key) throws IOException {
-        return find(prepareFind(key), key, VARIANT_REGULAR);
+        TreeCursorFrame frame = resetForSearch();
+        return find(prepareFind(key), key, VARIANT_REGULAR, latchRootNode(), frame);
     }
 
     @Override
     public final LockResult findGe(byte[] key) throws IOException {
         // If isolation level is read committed, then key must be
         // locked. Otherwise, an uncommitted delete could be observed.
+        TreeCursorFrame frame = resetForSearch();
         LocalTransaction txn = prepareFind(key);
-        LockResult result = find(txn, key, VARIANT_RETAIN);
+        LockResult result = find(txn, key, VARIANT_RETAIN, latchRootNode(), frame);
         if (mValue != null) {
             return result;
         } else {
@@ -1445,18 +1447,12 @@ class TreeCursor implements CauseCloseable, Cursor {
     }
 
     @Override
-    public final LockResult findGt(byte[] key) throws IOException {
-        // Never lock the requested key.
-        findNoLock(key, VARIANT_CHECK);
-        return next(mTxn, mLeaf);
-    }
-
-    @Override
     public final LockResult findLe(byte[] key) throws IOException {
         // If isolation level is read committed, then key must be
         // locked. Otherwise, an uncommitted delete could be observed.
+        TreeCursorFrame frame = resetForSearch();
         LocalTransaction txn = prepareFind(key);
-        LockResult result = find(txn, key, VARIANT_RETAIN);
+        LockResult result = find(txn, key, VARIANT_RETAIN, latchRootNode(), frame);
         if (mValue != null) {
             return result;
         } else {
@@ -1468,12 +1464,26 @@ class TreeCursor implements CauseCloseable, Cursor {
     }
 
     @Override
+    public final LockResult findGt(byte[] key) throws IOException {
+        findExclusive(key);
+        return next(mTxn, mLeaf);
+    }
+
+    @Override
     public final LockResult findLt(byte[] key) throws IOException {
-        // Never lock the requested key.
-        findNoLock(key, VARIANT_CHECK);
+        findExclusive(key);
         return previous(mTxn, mLeaf);
     }
 
+    private void findExclusive(byte[] key) throws IOException {
+        TreeCursorFrame frame = resetForSearch();
+        if (key == null) {
+            throw new NullPointerException("Key is null");
+        }
+        // Never lock the requested key.
+        find(null, key, VARIANT_CHECK, latchRootNode(), frame);
+    }
+    
     @Override
     public final LockResult findNearby(byte[] key) throws IOException {
         LocalTransaction txn = prepareFind(key);
@@ -1483,8 +1493,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         if (frame == null) {
             // Allocate new frame before latching root -- allocation can block.
             frame = new TreeCursorFrame();
-            node = mTree.mRoot;
-            node.acquireExclusive();
+            node = latchRootNode();
         } else {
             node = frame.acquireExclusive();
             if (node.mSplit != null) {
@@ -1592,23 +1601,9 @@ class TreeCursor implements CauseCloseable, Cursor {
         return find(txn, key, VARIANT_REGULAR, node, frame);
     }
 
-    private void findNoLock(byte[] key, int variant) throws IOException {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
-        mKey = key;
-        mKeyHash = 0;
-        find(null, key, variant);
-    }
-    
-    private LockResult find(LocalTransaction txn, byte[] key, int variant) throws IOException {
-        Node node = mTree.mRoot;
-        return find(txn, key, variant, node, reset(node));
-    }
-
     /**
      * @param node search node to start from
-     * @param frame fresh frame for node
+     * @param frame new or recycled frame for node
      */
     private LockResult find(LocalTransaction txn, byte[] key, int variant,
                             Node node, TreeCursorFrame frame)
@@ -1797,12 +1792,8 @@ class TreeCursor implements CauseCloseable, Cursor {
         ThreadLocalRandom rnd = ThreadLocalRandom.current();
 
         start: while (true) {
-            mKey = null;
-            mKeyHash = 0;
-            mValue = null;
-
-            Node node = mTree.mRoot;
-            TreeCursorFrame frame = reset(node);
+            TreeCursorFrame frame = resetForSearch();
+            Node node = latchRootNode();
 
             search: while (true) {
                 if (node.mSplit != null) {
@@ -2100,7 +2091,8 @@ class TreeCursor implements CauseCloseable, Cursor {
     }
 
     /**
-     * Atomic find and store operation. Cursor is reset as a side-effect.
+     * Atomic find and store operation. Cursor must be in a reset state when called, and cursor
+     * is also reset as a side-effect.
      *
      * @param key must not be null
      */
@@ -2136,7 +2128,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         throws IOException
     {
         // Find with no lock because it has already been acquired. Leaf latch is retained too.
-        find(null, key, VARIANT_NO_LOCK);
+        find(null, key, VARIANT_NO_LOCK, latchRootNode(), new TreeCursorFrame());
         byte[] oldValue = mValue;
         store(txn, mLeaf, value, true);
         return oldValue;
@@ -2145,7 +2137,8 @@ class TreeCursor implements CauseCloseable, Cursor {
     static final byte[] MODIFY_INSERT = new byte[0], MODIFY_REPLACE = new byte[0];
 
     /**
-     * Atomic find and modify operation. Cursor is reset as a side-effect.
+     * Atomic find and modify operation. Cursor must be in a reset state when called, and
+     * cursor is also reset as a side-effect.
      *
      * @param key must not be null
      * @param oldValue MODIFY_INSERT, MODIFY_REPLACE, else update mode
@@ -2219,7 +2212,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         throws IOException
     {
         // Find with no lock because caller must already acquire exclusive lock.
-        find(null, key, VARIANT_NO_LOCK);
+        find(null, key, VARIANT_NO_LOCK, latchRootNode(), new TreeCursorFrame());
 
         check: {
             if (oldValue == MODIFY_INSERT) {
@@ -2260,7 +2253,8 @@ class TreeCursor implements CauseCloseable, Cursor {
 
     /**
      * Non-transactional ghost delete. Caller is expected to hold exclusive key lock. Method
-     * does nothing if a value exists. Cursor is always reset as a side-effect.
+     * does nothing if a value exists. Cursor must be in a reset state when called, and cursor
+     * is also reset as a side-effect.
      *
      * @return false if Tree is closed
      */
@@ -2268,7 +2262,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         try {
             // Find with no lock because it has already been acquired.
             // TODO: Use nearby optimization when used with transactional Index.clear.
-            find(null, key, VARIANT_NO_LOCK);
+            find(null, key, VARIANT_NO_LOCK, latchRootNode(), new TreeCursorFrame());
 
             TreeCursorFrame leaf = mLeaf;
             if (leaf.mNode.mPage == p_closedTreePage()) {
@@ -2672,15 +2666,11 @@ class TreeCursor implements CauseCloseable, Cursor {
         ThreadLocalRandom rnd = ThreadLocalRandom.current();
 
         start: while (true) {
-            mKey = null;
-            mKeyHash = 0;
-            mValue = null;
-
             // The only scenario in which the following is executed more than once is when the
             // inner "search" infinite loop is broken. For all executions after the first,
             // resetLatched() is invoked before reaching this point of execution.
-            Node node = mTree.mRoot;
-            TreeCursorFrame frame = reset(node);
+            TreeCursorFrame frame = resetForSearch();
+            Node node = latchRootNode();
             int remainingAttempsLN = 2;
             int remainingAttemptsBIN = 2;
 
@@ -3039,15 +3029,50 @@ class TreeCursor implements CauseCloseable, Cursor {
         return copy;
     }
 
+    /**
+     * Return root node latched exclusively.
+     */
+    private Node latchRootNode() {
+        Node root = mTree.mRoot;
+        root.acquireExclusive();
+        return root;
+    }
+
     @Override
     public final void reset() {
-        TreeCursorFrame frame = mLeaf;
-        mLeaf = null;
         mKey = null;
         mKeyHash = 0;
         mValue = null;
+
+        TreeCursorFrame frame = mLeaf;
+        mLeaf = null;
+
         if (frame != null) {
             TreeCursorFrame.popAll(frame);
+        }
+    }
+
+    /**
+     * @return new or recycled frame
+     */
+    private TreeCursorFrame resetForSearch() {
+        mKey = null;
+        mKeyHash = 0;
+        mValue = null;
+
+        TreeCursorFrame frame = mLeaf;
+        mLeaf = null;
+
+        if (frame == null) {
+            return new TreeCursorFrame();
+        }
+
+        while (true) {
+            TreeCursorFrame parent = frame.mNode == null ? frame.mParentFrame : frame.pop();
+            if (parent == null) {
+                return frame;
+            }
+            frame = parent;
         }
     }
 
@@ -3055,16 +3080,8 @@ class TreeCursor implements CauseCloseable, Cursor {
      * Reset with leaf already latched exclusively.
      */
     private void resetLatched(Node node) {
-        TreeCursorFrame frame = mLeaf;
-        mLeaf = null;
-        mKey = null;
-        mKeyHash = 0;
-        mValue = null;
-        frame = frame.pop();
         node.releaseExclusive();
-        if (frame != null) {
-            TreeCursorFrame.popAll(frame);
-        }
+        reset();
     }
 
     /**
@@ -3096,43 +3113,6 @@ class TreeCursor implements CauseCloseable, Cursor {
             // Ignore.
         } finally {
             reset();
-        }
-    }
-
-    /**
-     * Resets all frames and latches root node, exclusively. Although the
-     * normal reset could be called directly, this variant avoids unlatching
-     * the root node, since a find operation would immediately relatch it.
-     *
-     * @return new or recycled frame
-     */
-    private TreeCursorFrame reset(Node root) {
-        TreeCursorFrame frame = mLeaf;
-        if (frame == null) {
-            // Allocate new frame before latching root -- allocation can block.
-            frame = new TreeCursorFrame();
-            root.acquireExclusive();
-            return frame;
-        }
-
-        mLeaf = null;
-
-        while (true) {
-            Node node = frame.acquireExclusive();
-            TreeCursorFrame parent = frame.pop();
-
-            if (parent == null) {
-                // Usually the root frame refers to the root node, but it
-                // can be wrong if the tree height is changing.
-                if (node != root) {
-                    node.releaseExclusive();
-                    root.acquireExclusive();
-                }
-                return frame;
-            }
-
-            node.releaseExclusive();
-            frame = parent;
         }
     }
 
@@ -3350,8 +3330,7 @@ class TreeCursor implements CauseCloseable, Cursor {
      * @param extremity LOW_EXTREMITY or HIGH_EXTREMITY
      */
     public final boolean verifyExtremities(byte extremity) throws IOException {
-        Node node = mTree.mRoot;
-        node.acquireExclusive();
+        Node node = latchRootNode();
         try {
             while (true) {
                 if ((node.type() & extremity) == 0) {
