@@ -133,7 +133,7 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
                 if (last.compareAndSet(last, this)) {
                     // Catch up before replacing last frame reference.
                     while (node.mLastCursorFrame != last);
-                    node.mLastCursorFrame = this;
+                    cLastUpdater.lazySet(node, this);
                     return;
                 }
             }
@@ -180,7 +180,7 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
                     // Catch up before replacing last frame reference.
                     Node node = mNode;
                     while (node.mLastCursorFrame != this);
-                    node.mLastCursorFrame = p;
+                    cLastUpdater.lazySet(node, p);
                     return;
                 }
             } else {

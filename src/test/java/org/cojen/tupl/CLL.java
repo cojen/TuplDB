@@ -125,7 +125,7 @@ public class CLL {
                 if (last.compareAndSet(last, node)) {
                     // Catch up before replacing last node reference.
                     while (mLast != last);
-                    mLast = node;
+                    cLastUpdater.lazySet(this, node);
                     return;
                 }
             }
@@ -171,7 +171,7 @@ public class CLL {
                     } while  (p != null && (p.get() != node || !p.compareAndSet(node, p)));
                     // Catch up before replacing last node reference.
                     while (mLast != node);
-                    mLast = p;
+                    cLastUpdater.lazySet(this, p);
                     return;
                 }
             } else {
