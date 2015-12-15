@@ -2601,7 +2601,7 @@ final class LocalDatabase implements Database {
      * matches, in case an eviction snuck in.
      */
     Node nodeMapGet(final long nodeId) {
-        return nodeMapGet(nodeId, Utils.hash(nodeId));
+        return nodeMapGet(nodeId, Long.hashCode(nodeId));
     }
 
     /**
@@ -2646,7 +2646,7 @@ final class LocalDatabase implements Database {
      * Put a node into the map, but caller must confirm that node is not already present.
      */
     void nodeMapPut(final Node node) {
-        nodeMapPut(node, Utils.hash(node.mId));
+        nodeMapPut(node, Long.hashCode(node.mId));
     }
 
     /**
@@ -2679,7 +2679,7 @@ final class LocalDatabase implements Database {
     }
 
     void nodeMapRemove(final Node node) {
-        nodeMapRemove(node, Utils.hash(node.mId));
+        nodeMapRemove(node, Long.hashCode(node.mId));
     }
 
     void nodeMapRemove(final Node node, final int hash) {
@@ -2773,7 +2773,7 @@ final class LocalDatabase implements Database {
      * @return exclusively latched node if found; null if not found
      */
     Node nodeMapGetAndRemove(long nodeId) {
-        int hash = Utils.hash(nodeId);
+        int hash = Long.hashCode(nodeId);
         Node node = nodeMapGet(nodeId, hash);
         if (node != null) {
             node.acquireExclusive();
@@ -2987,7 +2987,7 @@ final class LocalDatabase implements Database {
                     throw e;
                 }
 
-                nodeMapRemove(node, Utils.hash(oldId));
+                nodeMapRemove(node, Long.hashCode(oldId));
             }
 
             dirty(node, newId);
@@ -3062,7 +3062,7 @@ final class LocalDatabase implements Database {
                 // FIXME: This can hang on I/O; release frame latch if deletePage would block?
                 // Then allow thread to block without node latch held.
                 mPageDb.deletePage(oldId);
-                nodeMapRemove(node, Utils.hash(oldId));
+                nodeMapRemove(node, Long.hashCode(oldId));
             }
         } catch (Throwable e) {
             try {
@@ -3164,7 +3164,7 @@ final class LocalDatabase implements Database {
 
             // Must be removed from map before page is deleted. It could be recycled too soon,
             // creating a NodeMap collision.
-            nodeMapRemove(node, Utils.hash(id));
+            nodeMapRemove(node, Long.hashCode(id));
 
             try {
                 if (canRecycle) {
