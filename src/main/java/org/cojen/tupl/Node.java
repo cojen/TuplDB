@@ -976,7 +976,7 @@ final class Node extends Latch implements DatabaseAccess {
                     mCachedState = CACHED_CLEAN;
                 }
 
-                db.nodeMapRemove(this, Utils.hash(id));
+                db.nodeMapRemove(this, Long.hashCode(id));
                 mId = 0;
 
                 // Note: Don't do this. In the fully mapped mode (using MappedPageArray),
@@ -4123,7 +4123,7 @@ final class Node extends Latch implements DatabaseAccess {
         // Repurpose the child node into a stub root node. Stub is assigned a
         // reserved id (1) and a clean cached state. It cannot be marked dirty,
         // but it can be evicted when all cursors have unbound from it.
-        tree.mDatabase.nodeMapRemove(child, Utils.hash(toDelete));
+        tree.mDatabase.nodeMapRemove(child, Long.hashCode(toDelete));
         child.mPage = rootPage;
         child.mId = STUB_ID;
         child.mCachedState = CACHED_CLEAN;

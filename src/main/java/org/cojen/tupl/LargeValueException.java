@@ -46,6 +46,6 @@ public class LargeValueException extends DatabaseException {
     }
 
     private static String createMessage(long length) {
-        return "Value is too large: " + Utils.toUnsignedString(length);
+        return "Value is too large: " + Long.toUnsignedString(length);
     }
 }
