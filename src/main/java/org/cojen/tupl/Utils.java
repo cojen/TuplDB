@@ -50,21 +50,6 @@ class Utils extends org.cojen.tupl.io.Utils {
         return (i | (i >> 16)) + 1;
     }
 
-    static String toUnsignedString(long i) {
-        if (i >= 0) {
-            return Long.toString(i);
-        } else {
-            // Same trick as Long.toUnsignedString method.
-            long quot = (i >>> 1) / 5;
-            long rem = i - quot * 10;
-            return Long.toString(quot) + rem;
-        }
-    }
-
-    static int hash(long v) {
-        return (int) (v ^ (v >>> 32));
-    }
-
     private static int cSeedMix = new Random().nextInt();
 
     /**
