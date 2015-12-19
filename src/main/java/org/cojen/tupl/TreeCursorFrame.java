@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
     private static final int SPIN_LIMIT = Runtime.getRuntime().availableProcessors();
 
-    private static final AtomicReferenceFieldUpdater<Node, TreeCursorFrame>
+    static final AtomicReferenceFieldUpdater<Node, TreeCursorFrame>
         cLastUpdater = AtomicReferenceFieldUpdater.newUpdater
         (Node.class, TreeCursorFrame.class, "mLastCursorFrame");
 
@@ -111,8 +111,19 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
         return null;
     }
 
+    /**
+     * @param amount +/- 2
+     */
+    void adjustParentPosition(int amount) {
+        TreeCursorFrame parent = mParentFrame;
+        if (parent != null) {
+            parent.mNodePos += amount;
+        }
+    }
+
     /** 
-     * Bind this unbound frame to a tree node. Node should be held with a shared latch.
+     * Bind this unbound frame to a tree node. Node should be held with a shared or exclusive
+     * latch.
      */
     void bind(Node node, int nodePos) {
         mNode = node;
@@ -149,24 +160,35 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
     }
 
     /** 
-     * Bind or rebind this frame to a tree node. Node should be held with a shared latch.
+     * Unbind and then bind this frame to a tree node. Node should be held with a shared or
+     * exclusive latch.
      */
-    void rebind(Node node, int nodePos) {
+    void unbindAndBind(Node node, int nodePos) {
         unbind();
         bind(node, nodePos);
     }
 
     /** 
+     * Rebind this already bound frame to another tree node, unless this frame is no longer
+     * valid. Both Nodes should be held with an exclusive latch.
+     */
+    void rebind(Node node, int nodePos) {
+        if (unbind()) {
+            bind(node, nodePos);
+        }
+    }
+
+    /** 
      * Unbind this frame from a tree node. No latch is required.
      */
-    private void unbind() {
+    private boolean unbind() {
         int trials = 0;
         while (true) {
             TreeCursorFrame n = this.get(); // get next frame
 
             if (n == null) {
                 // Not in the list.
-                return;
+                return false;
             }
 
             if (n == this) {
@@ -176,12 +198,12 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
                     TreeCursorFrame p;
                     do {
                         p = this.mPrevCousin;
-                    } while  (p != null && (p.get() != this || !p.compareAndSet(this, p)));
+                    } while (p != null && (p.get() != this || !p.compareAndSet(this, p)));
                     // Catch up before replacing last frame reference.
                     Node node = mNode;
                     while (node.mLastCursorFrame != this);
                     cLastUpdater.lazySet(node, p);
-                    return;
+                    return true;
                 }
             } else {
                 // Unbinding an interior or first frame.
@@ -193,7 +215,7 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
                     } while (p != null && (p.get() != this || !p.compareAndSet(this, n)));
                     // Update previous reference chain to skip over the unbound frame.
                     cPrevUpdater.lazySet(n, p);
-                    return;
+                    return true;
                 }
             }
 
@@ -208,13 +230,62 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
     }
 
     /**
+     * Lock this frame to prevent it from being concurrently unbound. No latch is required.
+     *
+     * @param lock non-null temporary frame to represent locked state
+     * @return null if frame is not bound
+     */
+    TreeCursorFrame tryLock(TreeCursorFrame lock) {
+        // Note: Implementation is a modified version of the unbind method.
+
+        int trials = 0;
+        while (true) {
+            TreeCursorFrame n = this.get(); // get next frame
+
+            if (n == null) {
+                // Not in the list.
+                return null;
+            }
+
+            if (n == this) {
+                // Unbinding the last frame.
+                if (this.compareAndSet(n, lock)) {
+                    return n;
+                }
+            } else {
+                // Unbinding an interior or first frame.
+                if (n.mPrevCousin == this && this.compareAndSet(n, lock)) {
+                    return n;
+                }
+            }
+
+            trials++;
+
+            if (trials >= SPIN_LIMIT) {
+                // Spinning too much due to high contention. Back off a tad.
+                Thread.yield();
+                trials = 0;
+            }
+        }
+    }
+
+    /**
+     * Unlock a locked frame.
+     *
+     * @param n non-null next frame, as provided by the tryLock method
+     */
+    void unlock(TreeCursorFrame n) {
+        this.lazySet(n);
+    }
+
+    /**
      * Uncleanly unlink this frame, for performing cursor invalidation. Node must be
      * exclusively held.
      *
      * @return previous frame, possibly null
      */
     TreeCursorFrame unlink() {
-        lazySet(null);
+        this.lazySet(null);
         TreeCursorFrame prev = mPrevCousin;
         cPrevUpdater.lazySet(this, null);
         return prev;

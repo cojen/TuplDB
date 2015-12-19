@@ -442,7 +442,8 @@ final class TreeValueStream extends AbstractStream {
                     } else if (pos == 0 && bOff == 0 && bLen == b.length) {
                         // Writing over the entire value.
                         try {
-                            node.updateLeafValue(mCursor.mTree, nodePos, 0, b);
+                            // TODO: need frame for rebalancing to work
+                            node.updateLeafValue(null, mCursor.mTree, nodePos, 0, b);
                         } catch (IOException e) {
                             node.releaseExclusive();
                             throw e;
@@ -1196,7 +1197,8 @@ final class TreeValueStream extends AbstractStream {
         // is simpler and re-uses existing code.
         node.doDeleteLeafEntry(pos, loc - entryLoc);
 
-        entryLoc = node.createLeafEntry(tree, pos, key.length + newValueLen);
+        // TODO: need frame for rebalancing to work
+        entryLoc = node.createLeafEntry(null, tree, pos, key.length + newValueLen);
 
         if (entryLoc < 0) {
             // FIXME: allow split or convert to indirect

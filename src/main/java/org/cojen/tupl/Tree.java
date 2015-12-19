@@ -677,7 +677,7 @@ class Tree implements View, Index {
             Node node = latchDirty(frame);
             try {
                 // TODO: inline and specialize
-                node.insertLeafEntry(this, frame.mNodePos, key, value);
+                node.insertLeafEntry(frame, this, frame.mNodePos, key, value);
                 frame.mNodePos += 2;
 
                 while (node.mSplit != null) {
@@ -692,7 +692,7 @@ class Tree implements View, Index {
                     // tree which is filling up.
                     node.acquireExclusive();
                     // TODO: inline and specialize
-                    node.insertSplitChildRef(this, frame.mNodePos, childNode);
+                    node.insertSplitChildRef(frame, this, frame.mNodePos, childNode);
                 }
             } finally {
                 node.releaseExclusive();
@@ -827,7 +827,7 @@ class Tree implements View, Index {
                     parentNode.releaseExclusive();
                     break;
                 }
-                parentNode.insertSplitChildRef(this, parentFrame.mNodePos, node);
+                parentNode.insertSplitChildRef(parentFrame, this, parentFrame.mNodePos, node);
             }
         }
     }
