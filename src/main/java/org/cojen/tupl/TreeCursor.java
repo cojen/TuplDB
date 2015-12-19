@@ -1820,8 +1820,8 @@ class TreeCursor implements CauseCloseable, Cursor {
                     continue start;
                 }
 
-                // Need to call rebind in case split handling above already bound the frame.
-                frame.rebind(node, pos);
+                // Need to unbind first in case split handling above already bound the frame.
+                frame.unbindAndBind(node, pos);
 
                 if (node.isLeaf()) {
                     mLeaf = frame;
@@ -2401,7 +2401,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                             commitPos = mTree.redoStoreNoLock(key, value);
                         }
 
-                        node.updateLeafValue(mTree, pos, 0, value);
+                        node.updateLeafValue(leaf, mTree, pos, 0, value);
                     } catch (Throwable e) {
                         node.releaseExclusive();
                         throw e;
@@ -2432,7 +2432,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                             commitPos = mTree.redoStoreNoLock(key, value);
                         }
 
-                        node.insertLeafEntry(mTree, ~pos, key, value);
+                        node.insertLeafEntry(leaf, mTree, ~pos, key, value);
                     } catch (Throwable e) {
                         node.releaseExclusive();
                         throw e;
@@ -2538,7 +2538,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             final int pos = leaf.mNodePos;
             if (pos >= 0) {
                 try {
-                    node.updateLeafValue(mTree, pos, Node.ENTRY_FRAGMENTED, value);
+                    node.updateLeafValue(leaf, mTree, pos, Node.ENTRY_FRAGMENTED, value);
                 } catch (Throwable e) {
                     node.releaseExclusive();
                     throw e;
@@ -2551,7 +2551,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                 // This case is possible when entry was deleted concurrently without a lock.
                 byte[] key = mKey;
                 try {
-                    node.insertFragmentedLeafEntry(mTree, ~pos, key, value);
+                    node.insertFragmentedLeafEntry(leaf, mTree, ~pos, key, value);
                 } catch (Throwable e) {
                     node.releaseExclusive();
                     throw e;
@@ -2583,7 +2583,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     final Node insertBlank(TreeCursorFrame leaf, Node node, long vlength) throws IOException {
         byte[] key = mKey;
         try {
-            node.insertBlankLeafEntry(mTree, ~leaf.mNodePos, key, vlength);
+            node.insertBlankLeafEntry(leaf, mTree, ~leaf.mNodePos, key, vlength);
         } catch (Throwable e) {
             node.releaseExclusive();
             throw e;
@@ -2701,7 +2701,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                     continue start;
                 }
 
-                frame.rebind(node, pos);
+                frame.unbindAndBind(node, pos);
 
                 if (node.isLeaf()) {
                     mLeaf = frame;
@@ -2784,7 +2784,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                                 child = mTree.mDatabase.nodeMapGet(childId);
                                 if (child == null) { // node is not cached
                                     pos = spos;
-                                    frame.rebind(node, pos);
+                                    frame.unbindAndBind(node, pos);
                                     break;
                                 }
                                 if (highKey != null && spos <= highestKeyPos && node.compareKey(spos, highKey) >= 0) {
@@ -3623,7 +3623,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             // Already dirty now, but finish the split. Since parent latch is
             // already held, no need to call into the regular finishSplit
             // method. It would release latches and recheck everything.
-            parentNode.insertSplitChildRef(mTree, parentFrame.mNodePos, node);
+            parentNode.insertSplitChildRef(parentFrame, mTree, parentFrame.mNodePos, node);
             if (parentNode.mSplit != null) {
                 parentNode = mTree.finishSplit(parentFrame, parentNode);
             }
@@ -3677,7 +3677,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                 leftNode = latchChild(parentNode, pos - 2, false);
                 if (leftNode.mSplit != null) {
                     // Finish sibling split.
-                    parentNode.insertSplitChildRef(mTree, pos - 2, leftNode);
+                    parentNode.insertSplitChildRef(parentFrame, mTree, pos - 2, leftNode);
                     continue;
                 }
             }
@@ -3713,7 +3713,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                         leftNode.releaseExclusive();
                     }
                     node.releaseExclusive();
-                    parentNode.insertSplitChildRef(mTree, pos + 2, rightNode);
+                    parentNode.insertSplitChildRef(parentFrame, mTree, pos + 2, rightNode);
                     continue;
                 }
             }
@@ -3865,7 +3865,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                 leftNode = latchChild(parentNode, pos - 2, false);
                 if (leftNode.mSplit != null) {
                     // Finish sibling split.
-                    parentNode.insertSplitChildRef(mTree, pos - 2, leftNode);
+                    parentNode.insertSplitChildRef(parentFrame, mTree, pos - 2, leftNode);
                     continue;
                 }
             }
@@ -3901,7 +3901,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                         leftNode.releaseExclusive();
                     }
                     node.releaseExclusive();
-                    parentNode.insertSplitChildRef(mTree, pos + 2, rightNode);
+                    parentNode.insertSplitChildRef(parentFrame, mTree, pos + 2, rightNode);
                     continue;
                 }
             }
