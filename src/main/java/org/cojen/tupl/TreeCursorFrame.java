@@ -233,7 +233,7 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
      * Lock this frame to prevent it from being concurrently unbound. No latch is required.
      *
      * @param lock non-null temporary frame to represent locked state
-     * @return null if frame is not bound
+     * @return frame to pass to unlock method, or null if frame is not bound
      */
     TreeCursorFrame tryLock(TreeCursorFrame lock) {
         // Note: Implementation is a modified version of the unbind method.
@@ -267,6 +267,20 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
                 trials = 0;
             }
         }
+    }
+
+    /**
+     * With this frame locked, lock the previous frame. Unlock it using this frame.
+     *
+     * @param lock non-null temporary frame to represent locked state
+     * @return previous frame, or null if no previous frame exists
+     */
+    TreeCursorFrame tryLockPrevious(TreeCursorFrame lock) {
+        TreeCursorFrame p;
+        do {
+            p = this.mPrevCousin;
+        } while (p != null && (p.get() != this || !p.compareAndSet(this, lock)));
+        return p;
     }
 
     /**

@@ -1110,6 +1110,8 @@ public class CursorTest {
 
         assertTrue(verify(ix));
 
+        assertEquals(foundCursors.length + notFoundCursors.length, mDb.stats().cursorCount());
+
         verifyPositions(ix, foundCursors);
         verifyPositions(ix, notFoundCursors);
     }
