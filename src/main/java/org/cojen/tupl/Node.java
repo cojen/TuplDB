@@ -2276,8 +2276,6 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     private void panic(Throwable cause) {
-        System.out.println("PANIC!");
-        cause.printStackTrace(System.out);
         try {
             getDatabase().close(cause);
         } catch (Throwable e) {
@@ -5358,24 +5356,57 @@ final class Node extends Latch implements DatabaseAccess {
      * Count the number of cursors bound to this node.
      */
     long countCursors() {
-        long count = 0;
-
-        // Exclusive latch is required to prevent frames from being visited multiple times do
+        // Attempt an exclusive latch to prevent frames from being visited multiple times due
         // to recycling.
-        // FIXME: If cannot acquire exclusive latch, iterate over frames using a lock-coupling
-        // strategy.
-        acquireExclusive();
-        try {
-            TreeCursorFrame frame = mLastCursorFrame;
-            while (frame != null) {
-                count++;
-                frame = frame.mPrevCousin;
+        if (tryAcquireExclusive()) {
+            long count = 0;
+            try {
+                TreeCursorFrame frame = mLastCursorFrame;
+                while (frame != null) {
+                    count++;
+                    frame = frame.mPrevCousin;
+                }
+            } finally {
+                releaseExclusive();
             }
-        } finally {
-            releaseExclusive();
+            return count;
         }
 
-        return count;
+        // Iterate over the frames using a lock coupling strategy. Frames which are being
+        // concurrently removed are skipped over.
+
+        TreeCursorFrame frame = mLastCursorFrame;
+
+        if (frame == null) {
+            return 0;
+        }
+
+        TreeCursorFrame lock = new TreeCursorFrame();
+        TreeCursorFrame lockResult;
+
+        while (true) {
+            lockResult = frame.tryLock(lock);
+            if (lockResult != null) {
+                break;
+            }
+            frame = frame.mPrevCousin;
+            if (frame == null) {
+                return 0;
+            }
+        }
+
+        long count = 1;
+
+        while (true) {
+            TreeCursorFrame prev = frame.tryLockPrevious(lock);
+            frame.unlock(lockResult);
+            if (prev == null) {
+                return count;
+            }
+            count++;
+            lockResult = frame;
+            frame = prev;
+        }
     }
 
     /**
