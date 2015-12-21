@@ -193,4 +193,18 @@ public class Latch extends AbstractQueuedSynchronizer {
         setState(newState);
         return true;
     }
+
+    /**
+     * Set the latch state to be held exclusive, to be called only by the constructor.
+     */
+    protected final void initExclusive() {
+        setState(0x80000001);
+    }
+
+    /**
+     * Set the latch state to be held shared, to be called only by the constructor.
+     */
+    protected final void initShared() {
+        setState(1);
+    }
 }

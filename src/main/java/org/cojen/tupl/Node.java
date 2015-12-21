@@ -275,6 +275,13 @@ final class Node extends Latch implements DatabaseAccess {
         mPage = page;
     }
 
+    // Construct a "lock" object for use when loading a node. See loadChildShared.
+    private Node(long id) {
+        mUsageList = null;
+        initExclusive();
+        mId = id;
+    }
+
     /**
      * Must be called when object is no longer referenced.
      */
@@ -411,154 +418,39 @@ final class Node extends Latch implements DatabaseAccess {
         node.acquireShared();
 
         // Note: No need to check if root has split, since root splits are always completed
-        // before releasing the root latch. Also, Database.used is not invoked for the root
-        // node. Root node is not managed in usage list, because it cannot be evicted.
+        // before releasing the root latch. Also, Node.used is not invoked for the root node,
+        // because it cannot be evicted.
 
-        if (!node.isLeaf()) {
-            // Shared latch held on parent. Is null for root or if exclusive latch is held on
-            // active node.
-            Latch parentLatch = null;
-            boolean exclusiveHeld = false;
+        while (!node.isLeaf()) {
+            int childPos;
+            try {
+                childPos = internalPos(node.binarySearch(key));
+            } catch (Throwable e) {
+                node.releaseShared();
+                throw e;
+            }
 
-            loop: while (true) {
-                int childPos;
-                try {
-                    childPos = internalPos(node.binarySearch(key));
-                } catch (Throwable e) {
-                    node.release(exclusiveHeld);
-                    if (parentLatch != null) {
-                        parentLatch.releaseShared();
+            long childId = node.retrieveChildRefId(childPos);
+            Node childNode = tree.mDatabase.nodeMapGet(childId);
+
+            if (childNode != null) {
+                childNode.acquireShared();
+
+                // Need to check again in case evict snuck in.
+                if (childId == childNode.mId) {
+                    node.releaseShared();
+                    node = childNode;
+                    if (node.mSplit != null) {
+                        node = node.mSplit.selectNodeShared(node, key);
                     }
-                    throw e;
-                }
-
-                long childId = node.retrieveChildRefId(childPos);
-                Node childNode = tree.mDatabase.nodeMapGet(childId);
-
-                childCheck: if (childNode != null) {
-                    latchChild: if (!childNode.tryAcquireShared()) {
-                        if (!exclusiveHeld) {
-                            childNode.acquireShared();
-                            break latchChild;
-                        }
-                        // If exclusive latch is held, then this node was just loaded. If child
-                        // node cannot be immediately latched, it might have been evicted out
-                        // of order. This can create a deadlock with a thread that may hold the
-                        // exclusive latch and is now trying to latch this node.
-                        if (childId != childNode.mId) {
-                            break childCheck;
-                        }
-                        if (!childNode.tryAcquireShared()) {
-                            // Be safe and start over with a Cursor. It doesn't have the same
-                            // deadlock potential, because it prevents visited nodes from being
-                            // evicted.
-                            node.releaseExclusive();
-                            return searchWithCursor(tree, key);
-                        }
-                    }
-
-                    // Need to check again in case evict snuck in.
-                    if (childId != childNode.mId) {
-                        childNode.releaseShared();
-                        break childCheck;
-                    }
-
-                    if (!exclusiveHeld && parentLatch != null) {
-                        parentLatch.releaseShared();
-                    }
-
-                    if (childNode.mSplit != null) {
-                        childNode = childNode.mSplit.selectNodeShared(childNode, key);
-                    }
-
-                    if (childNode.isLeaf()) {
-                        node.release(exclusiveHeld);
-                        childNode.used();
-                        node = childNode;
-                        break loop;
-                    } else {
-                        // Keep shared latch on this parent node, in case sub search
-                        // needs to upgrade its shared latch.
-                        if (exclusiveHeld) {
-                            node.downgrade();
-                            exclusiveHeld = false;
-                        }
-                        childNode.used();
-                        parentLatch = node;
-                        node = childNode;
-                        continue;
-                    }
-                } // end childCheck
-
-                // Child needs to be loaded.
-
-                tryLoadChild: {
-                    if (!exclusiveHeld) {
-                        if (!node.tryUpgrade()) {
-                            break tryLoadChild;
-                        }
-                        exclusiveHeld = true;
-                        if (parentLatch != null) {
-                            parentLatch.releaseShared();
-                            parentLatch = null;
-                        }
-                    }
-
-                    // Succeeded in obtaining an exclusive latch, so now load the child.
-
-                    node = node.loadChild(tree.mDatabase, childId, true);
-
-                    if (node.isLeaf()) {
-                        node.downgrade();
-                        break loop;
-                    }
-
-                    // Keep exclusive latch on internal child, because it will most likely need
-                    // to load its own child nodes to continue the search. This eliminates the
-                    // latch upgrade step.
-
+                    node.used();
                     continue;
                 }
 
-                // Release shared latch, re-acquire exclusive latch, and start over.
+                childNode.releaseShared();
+            }
 
-                long id = node.mId;
-                node.releaseShared();
-                node.acquireExclusive();
-
-                if (node.mId != id && node != tree.mRoot) {
-                    // Node got evicted or dirtied when latch was released. To be
-                    // safe, the search must be retried from the root.
-                    node.releaseExclusive();
-                    if (parentLatch != null) {
-                        parentLatch.releaseShared();
-                    }
-                    // Retry with a cursor, which is reliable, but slower.
-                    return searchWithCursor(tree, key);
-                }
-
-                exclusiveHeld = true;
-
-                if (parentLatch != null) {
-                    parentLatch.releaseShared();
-                    parentLatch = null;
-                }
-
-                if (node.mSplit != null) {
-                    // Node might have split while shared latch was not held.
-                    node = node.mSplit.selectNodeExclusive(node, key);
-                }
-
-                if (node == tree.mRoot) {
-                    // This is the root node, and so no parent latch exists. It's possible that
-                    // a delete slipped in when the latch was released, and that the root is
-                    // now a leaf.
-                    if (node.isLeaf()) {
-                        node.downgrade();
-                        break loop;
-                    }
-                }
-            } // end loop
+            node = node.loadChildShared(tree.mDatabase, childId);
         }
 
         // Sub search into leaf with shared latch held.
@@ -711,16 +603,67 @@ final class Node extends Latch implements DatabaseAccess {
         return childNode;
     }
 
-    private static byte[] searchWithCursor(Tree tree, byte[] key) throws IOException {
-        TreeCursor cursor = new TreeCursor(tree, Transaction.BOGUS);
+    /**
+     * With this parent node held shared, loads child with a shared latch held, and also
+     * releases this parent node. Caller should check that child is not already loaded. If an
+     * exception is thrown, parent and child latches are always released.
+     */
+    Node loadChildShared(LocalDatabase db, long childId) throws IOException {
+        // Insert a "lock", which is a temporary node latched exclusively. All other threads
+        // attempting to load the child node will block trying to acquire the exclusive latch.
+        Node lock = new Node(childId);
+
         try {
-            cursor.find(key);
-            byte[] value = cursor.value();
-            cursor.reset();
-            return value;
-        } catch (Throwable e) {
-            throw closeOnFailure(cursor, e);
+            while (true) {
+                Node childNode = db.nodeMapPutIfAbsent(lock);
+                if (childNode == null) {
+                    break;
+                }
+                // Was already loaded, or is currently being loaded.
+                childNode.acquireShared();
+                if (childId == childNode.mId) {
+                    return childNode;
+                }
+                childNode.releaseShared();
+            }
+        } finally {
+            // Release parent latch before child has been loaded. Any threads which wish to
+            // access the same child will block until this thread has finished loading the
+            // child and released its exclusive latch.
+            releaseShared();
         }
+
+        Node childNode;
+        try {
+            childNode = db.allocLatchedNode(childId);
+            childNode.mId = childId;
+
+            // Replace the lock with the real child node, but don't notify any threads waiting
+            // on the lock just yet. They'd go back to sleep waiting for the read to finish.
+            db.nodeMapReplace(lock, childNode);
+
+            try {
+                childNode.read(db, childId);
+            } catch (Throwable e) {
+                // Another thread might access child and see that it's invalid because the id
+                // is zero. It will assume it got evicted and will attempt to reload it
+                db.nodeMapRemove(childNode);
+                childNode.mId = 0;
+                childNode.type(TYPE_NONE);
+                childNode.releaseExclusive();
+                throw e;
+            }
+
+            childNode.downgrade();
+        } finally {
+            // Wake any threads waiting on the lock now that the real child node is ready, or
+            // if the load failed. Lock id must be set to zero to ensure that it's not accepted
+            // as the child node.
+            lock.mId = 0;
+            lock.releaseExclusive();
+        }
+
+        return childNode;
     }
 
     /**

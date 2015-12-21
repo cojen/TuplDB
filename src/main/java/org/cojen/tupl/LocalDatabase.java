@@ -2678,6 +2678,66 @@ final class LocalDatabase implements Database {
         latch.releaseExclusive();
     }
 
+    /**
+     * Returns unconfirmed node if and existing node is found. Caller must latch and confirm
+     * that node identifier matches, in case an eviction snuck in.
+     *
+     * @return null if node was inserted, existing node otherwise
+     */
+    Node nodeMapPutIfAbsent(final Node node) {
+        final int hash = Long.hashCode(node.mId);
+        final Latch[] latches = mNodeMapLatches;
+        final Latch latch = latches[hash & (latches.length - 1)];
+        latch.acquireExclusive();
+
+        final Node[] table = mNodeMapTable;
+        final int index = hash & (table.length - 1);
+        Node e = table[index];
+        while (e != null) {
+            if (e.mId == node.mId) {
+                latch.releaseExclusive();
+                return e;
+            }
+            e = e.mNodeMapNext;
+        }
+
+        node.mNodeMapNext = table[index];
+        table[index] = node;
+
+        latch.releaseExclusive();
+        return null;
+    }
+
+    /**
+     * Replace a node which must be in the map already. Old and new node MUST have the same id.
+     */
+    void nodeMapReplace(final Node oldNode, final Node newNode) {
+        final int hash = Long.hashCode(oldNode.mId);
+        final Latch[] latches = mNodeMapLatches;
+        final Latch latch = latches[hash & (latches.length - 1)];
+        latch.acquireExclusive();
+
+        newNode.mNodeMapNext = oldNode.mNodeMapNext;
+
+        final Node[] table = mNodeMapTable;
+        final int index = hash & (table.length - 1);
+        Node e = table[index];
+        if (e == oldNode) {
+            table[index] = newNode;
+        } else while (e != null) {
+            Node next = e.mNodeMapNext;
+            if (next == oldNode) {
+                e.mNodeMapNext = newNode;
+                break;
+            }
+            e = next;
+        }
+
+        oldNode.mNodeMapNext = null;
+
+        latch.releaseExclusive();
+    }
+
     void nodeMapRemove(final Node node) {
         nodeMapRemove(node, Long.hashCode(node.mId));
     }
