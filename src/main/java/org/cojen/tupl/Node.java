@@ -276,11 +276,11 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     // Construct a "lock" object for use when loading a node. See loadChildShared.
-    private Node(long id) {
+    private Node() {
         mUsageList = null;
-        initExclusive();
-        mId = id;
     }
+
+    private static final ThreadLocal<Node> cLoadLock = ThreadLocal.withInitial(Node::new);
 
     /**
      * Must be called when object is no longer referenced.
@@ -609,9 +609,11 @@ final class Node extends Latch implements DatabaseAccess {
      * exception is thrown, parent and child latches are always released.
      */
     Node loadChildShared(LocalDatabase db, long childId) throws IOException {
-        // Insert a "lock", which is a temporary node latched exclusively. All other threads
+        // Insert a "lock", which is a special node latched exclusively. All other threads
         // attempting to load the child node will block trying to acquire the exclusive latch.
-        Node lock = new Node(childId);
+        Node lock = cLoadLock.get();
+        lock.mId = childId;
+        lock.acquireExclusive();
 
         try {
             while (true) {
@@ -622,6 +624,7 @@ final class Node extends Latch implements DatabaseAccess {
                 // Was already loaded, or is currently being loaded.
                 childNode.acquireShared();
                 if (childId == childNode.mId) {
+                    lock.releaseExclusive();
                     return childNode;
                 }
                 childNode.releaseShared();
@@ -633,10 +636,15 @@ final class Node extends Latch implements DatabaseAccess {
             releaseShared();
         }
 
-        Node childNode;
         try {
-            childNode = db.allocLatchedNode(childId);
-            childNode.mId = childId;
+            Node childNode;
+            try {
+                childNode = db.allocLatchedNode(childId);
+                childNode.mId = childId;
+            } catch (Throwable e) {
+                db.nodeMapRemove(lock);
+                throw e;
+            }
 
             // Replace the lock with the real child node, but don't notify any threads waiting
             // on the lock just yet. They'd go back to sleep waiting for the read to finish.
@@ -655,6 +663,7 @@ final class Node extends Latch implements DatabaseAccess {
             }
 
             childNode.downgrade();
+            return childNode;
         } finally {
             // Wake any threads waiting on the lock now that the real child node is ready, or
             // if the load failed. Lock id must be set to zero to ensure that it's not accepted
@@ -662,8 +671,6 @@ final class Node extends Latch implements DatabaseAccess {
             lock.mId = 0;
             lock.releaseExclusive();
         }
-
-        return childNode;
     }
 
     /**
