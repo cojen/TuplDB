@@ -11,6 +11,7 @@ v1.3.0
 * Added experimental direct mapped mode when using MappedPageArray and JNA.
 * Added method to evict records from an Index.
 * More fixes for random search and add improve safety of frame binding.
+* Fix defect in cursor skip which might operate against an unlatched node.
 * Fix deadlock when closing database.
 * Fix handling of mapped file shrinkage on Windows.
 * File sync improvements for Linux and MacOS. Performs directory sync'ng and F_FULLSYNC.
