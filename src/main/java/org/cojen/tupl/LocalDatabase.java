@@ -591,31 +591,6 @@ final class LocalDatabase implements Database {
                     recoveryStart = System.nanoTime();
                 }
 
-                if (mPageDb.isDurable()) {
-                    File primer = primerFile();
-                    try {
-                        if (config.mCachePriming && primer.exists()) {
-                            if (mEventListener != null) {
-                                mEventListener.notify(EventType.RECOVERY_CACHE_PRIMING,
-                                                      "Cache priming");
-                            }
-                            FileInputStream fin;
-                            try {
-                                fin = new FileInputStream(primer);
-                                try (InputStream bin = new BufferedInputStream(fin)) {
-                                    applyCachePrimer(bin);
-                                } catch (IOException e) {
-                                    fin.close();
-                                    primer.delete();
-                                }
-                            } catch (IOException e) {
-                            }
-                        }
-                    } finally {
-                        primer.delete();
-                    }
-                }
-
                 LHashTable.Obj<LocalTransaction> txns = new LHashTable.Obj<>(16);
                 {
                     long masterNodeId = decodeLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID);
@@ -649,6 +624,9 @@ final class LocalDatabase implements Database {
                     config.mReplRecoveryStartNanos = recoveryStart;
                     config.mReplInitialTxnId = redoTxnId;
                 } else {
+                    // Apply cache primer before applying redo logs.
+                    applyCachePrimer(config);
+
                     long logId = redoNum;
 
                     // Make sure old redo logs are deleted. Process might have exited
@@ -745,6 +723,12 @@ final class LocalDatabase implements Database {
         c.register(mRedoWriter);
         c.register(mTempFileManager);
 
+        if (mRedoWriter instanceof ReplRedoWriter) {
+            // Need to do this after mRedoWriter is assigned, ensuring that trees are opened as
+            // TxnTree instances.
+            applyCachePrimer(config);
+        }
+
         if (config.mCachePriming && mPageDb.isDurable()) {
             c.register(new ShutdownPrimer(this));
         }
@@ -775,6 +759,33 @@ final class LocalDatabase implements Database {
         }
 
         c.start();
+    }
+
+    private void applyCachePrimer(DatabaseConfig config) {
+        if (mPageDb.isDurable()) {
+            File primer = primerFile();
+            try {
+                if (config.mCachePriming && primer.exists()) {
+                    if (mEventListener != null) {
+                        mEventListener.notify(EventType.RECOVERY_CACHE_PRIMING,
+                                              "Cache priming");
+                    }
+                    FileInputStream fin;
+                    try {
+                        fin = new FileInputStream(primer);
+                        try (InputStream bin = new BufferedInputStream(fin)) {
+                            applyCachePrimer(bin);
+                        } catch (IOException e) {
+                            fin.close();
+                            primer.delete();
+                        }
+                    } catch (IOException e) {
+                    }
+                }
+            } finally {
+                primer.delete();
+            }
+        }
     }
 
     static class ShutdownPrimer implements Checkpointer.Shutdown {
