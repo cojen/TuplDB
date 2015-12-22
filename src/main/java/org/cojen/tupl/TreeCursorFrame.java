@@ -76,6 +76,24 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
     }
 
     /**
+     * Acquire a shared latch on this frame's bound node.
+     *
+     * @return frame node, or null if not acquired
+     */
+    Node tryAcquireShared() {
+        Node node = mNode;
+        while (node.tryAcquireShared()) {
+            Node actualNode = mNode;
+            if (actualNode == node) {
+                return actualNode;
+            }
+            node.releaseShared();
+            node = actualNode;
+        }
+        return null;
+    }
+
+    /**
      * Acquire an exclusive latch on this frame's bound node.
      *
      * @return frame node
@@ -121,7 +139,7 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
         }
     }
 
-    /** 
+    /**
      * Bind this unbound frame to a tree node. Node should be held with a shared or exclusive
      * latch.
      */
@@ -142,6 +160,10 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
                 }
             } else if (last.get() == last) {
                 if (last.compareAndSet(last, this)) {
+                    // Note: The above check gets confused if the frame was recycled.
+                    // Converting a last frame to an interior frame doesn't imply that the
+                    // frame is owned by the same linked list.
+
                     // Catch up before replacing last frame reference.
                     while (node.mLastCursorFrame != last);
                     cLastUpdater.lazySet(node, this);
@@ -179,7 +201,10 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
     }
 
     /** 
-     * Unbind this frame from a tree node. No latch is required.
+     * Unbind this frame from a tree node. No latch is required. Unbound frames must not be
+     * recycled, unless all nodes involved are latched exclusively. Concurrent recycling can
+     * cause the bind method to believe that an observed last frame belongs to its linked
+     * list. See comment in the bind method.
      */
     private boolean unbind() {
         int trials = 0;

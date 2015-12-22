@@ -276,11 +276,11 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     // Construct a "lock" object for use when loading a node. See loadChildShared.
-    private Node() {
+    private Node(long id) {
         mUsageList = null;
+        initExclusive();
+        mId = id;
     }
-
-    private static final ThreadLocal<Node> cLoadLock = ThreadLocal.withInitial(Node::new);
 
     /**
      * Must be called when object is no longer referenced.
@@ -441,7 +441,7 @@ final class Node extends Latch implements DatabaseAccess {
                     node.releaseShared();
                     node = childNode;
                     if (node.mSplit != null) {
-                        node = node.mSplit.selectNodeShared(node, key);
+                        node = node.mSplit.selectNode(node, key);
                     }
                     node.used();
                     continue;
@@ -450,7 +450,7 @@ final class Node extends Latch implements DatabaseAccess {
                 childNode.releaseShared();
             }
 
-            node = node.loadChildShared(tree.mDatabase, childId);
+            node = node.loadChild(tree.mDatabase, childId, true);
         }
 
         // Sub search into leaf with shared latch held.
@@ -557,7 +557,8 @@ final class Node extends Latch implements DatabaseAccess {
      * @param releaseParent when true, release this node latch always; when false, release only
      * if an exception is thrown
      */
-    Node loadChild(LocalDatabase db, long childId, boolean releaseParent) throws IOException {
+    // FIXME: remove this method or use common code of loadChild
+    Node loadChildx(LocalDatabase db, long childId, boolean releaseParent) throws IOException {
         Node childNode;
         try {
             childNode = db.allocLatchedNode(childId);
@@ -604,16 +605,19 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     /**
-     * With this parent node held shared, loads child with a shared latch held, and also
-     * releases this parent node. Caller should check that child is not already loaded. If an
-     * exception is thrown, parent and child latches are always released.
+     * With this parent node held shared, loads child with shared latch held. Caller must
+     * ensure that child is not already loaded. If an exception is thrown, parent and child
+     * latches are always released.
+     *
+     * @param releaseParent when true, release this node latch always; when false, release only
+     * if an exception is thrown
      */
-    Node loadChildShared(LocalDatabase db, long childId) throws IOException {
-        // Insert a "lock", which is a special node latched exclusively. All other threads
+    Node loadChild(LocalDatabase db, long childId, boolean releaseParent)
+        throws IOException
+    {
+        // Insert a "lock", which is a temporary node latched exclusively. All other threads
         // attempting to load the child node will block trying to acquire the exclusive latch.
-        Node lock = cLoadLock.get();
-        lock.mId = childId;
-        lock.acquireExclusive();
+        Node lock = new Node(childId);
 
         try {
             while (true) {
@@ -624,7 +628,6 @@ final class Node extends Latch implements DatabaseAccess {
                 // Was already loaded, or is currently being loaded.
                 childNode.acquireShared();
                 if (childId == childNode.mId) {
-                    lock.releaseExclusive();
                     return childNode;
                 }
                 childNode.releaseShared();
@@ -633,7 +636,9 @@ final class Node extends Latch implements DatabaseAccess {
             // Release parent latch before child has been loaded. Any threads which wish to
             // access the same child will block until this thread has finished loading the
             // child and released its exclusive latch.
-            releaseShared();
+            if (releaseParent) {
+                releaseShared();
+            }
         }
 
         try {
@@ -664,6 +669,12 @@ final class Node extends Latch implements DatabaseAccess {
 
             childNode.downgrade();
             return childNode;
+        } catch (Throwable e) {
+            if (!releaseParent) {
+                // Obey the method contract and release latch due to exception.
+                releaseShared();
+            }
+            throw e;
         } finally {
             // Wake any threads waiting on the lock now that the real child node is ready, or
             // if the load failed. Lock id must be set to zero to ensure that it's not accepted
@@ -701,7 +712,7 @@ final class Node extends Latch implements DatabaseAccess {
             }
         }
 
-        return loadChild(db, childId, false);
+        return loadChildx(db, childId, false);
     }
 
     /**
@@ -3455,7 +3466,8 @@ final class Node extends Latch implements DatabaseAccess {
      * @return latched sibling
      */
     private Node rebindSplitFrames(Split split) {
-        final Node sibling = split.latchSibling();
+        // FIXME: is latch required?
+        final Node sibling = split.latchSiblingx();
         try {
             for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
                 // Capture previous frame from linked list before changing the links.
