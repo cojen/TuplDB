@@ -1,6 +1,10 @@
 Changelog
 =========
 
+v1.2.7.1 (2015-12-22)
+--------
+* Fix defect in cursor skip which might operate against an unlatched node.
+
 v1.2.7
 ------
 * Fixed reverse view range handling.

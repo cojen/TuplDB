@@ -697,8 +697,10 @@ class TreeCursor implements CauseCloseable, Cursor {
                                             sharedCommitLock.unlock();
                                         }
                                     }
-                                } finally {
                                     parentNode.releaseExclusive();
+                                } catch (Throwable e) {
+                                    parentNode.releaseExclusive();
+                                    throw e;
                                 }
 
                                 break loadChild;
@@ -1118,8 +1120,10 @@ class TreeCursor implements CauseCloseable, Cursor {
                                             sharedCommitLock.unlock();
                                         }
                                     }
-                                } finally {
                                     parentNode.releaseExclusive();
+                                } catch (Throwable e) {
+                                    parentNode.releaseExclusive();
+                                    throw e;
                                 }
 
                                 break loadChild;
