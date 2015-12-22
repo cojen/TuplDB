@@ -11,12 +11,15 @@ v1.3.0
 * Added experimental direct mapped mode when using MappedPageArray and JNA.
 * Added method to evict records from an Index.
 * More fixes for random search and add improve safety of frame binding.
-* Fix defect in cursor skip which might operate against an unlatched node.
 * Fix deadlock when closing database.
 * Fix handling of mapped file shrinkage on Windows.
 * File sync improvements for Linux and MacOS. Performs directory sync'ng and F_FULLSYNC.
 * Use JNA to access native I/O functions, eliminating extra system calls.
 * Make Latch class a public utility.
+
+v1.2.7.1 (2015-12-22)
+--------
+* Fix defect in cursor skip which might operate against an unlatched node.
 
 v1.2.7 (2015-10-04)
 ------
