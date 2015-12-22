@@ -274,7 +274,7 @@ final class LocalTransaction extends Locker implements Transaction {
     final void storeCommit(TreeCursor cursor, byte[] value) throws IOException {
         RedoWriter redo = mRedoWriter;
         if (redo == null) {
-            cursor.store(this, cursor.leafExclusive(), value, false);
+            cursor.store(this, cursor.leafExclusive(), value);
             commit();
             return;
         }
@@ -318,7 +318,7 @@ final class LocalTransaction extends Locker implements Transaction {
                             (txnId, indexId, key, value, mDurabilityMode);
                     }
 
-                    cursor.store(LocalTransaction.BOGUS, cursor.leafExclusive(), value, false);
+                    cursor.store(LocalTransaction.BOGUS, cursor.leafExclusive(), value);
                 } catch (Throwable e) {
                     sharedCommitLock.unlock();
                     throw e;
@@ -388,7 +388,7 @@ final class LocalTransaction extends Locker implements Transaction {
                     final DurabilityMode original = mDurabilityMode;
                     mDurabilityMode = DurabilityMode.NO_REDO;
                     try {
-                        cursor.store(this, cursor.leafExclusive(), value, false);
+                        cursor.store(this, cursor.leafExclusive(), value);
                     } finally {
                         mDurabilityMode = original;
                     }

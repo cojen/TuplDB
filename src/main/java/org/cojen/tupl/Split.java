@@ -74,7 +74,7 @@ final class Split {
      * @param node node which was split; shared latch must be held
      * @return original node or sibling
      */
-    final Node selectNodeShared(Node node, byte[] key) {
+    final Node selectNode(Node node, byte[] key) {
         Node sibling = mSibling;
         sibling.acquireShared();
 
@@ -92,36 +92,6 @@ final class Split {
             return left;
         } else {
             left.releaseShared();
-            return right;
-        }
-    }
-
-    /**
-     * Allows a search/insert/update to continue into a split node by selecting the
-     * original node or the sibling. If the original node is returned, its exclusive lock
-     * is still held. If the sibling is returned, it will have an exclusive latch held and
-     * the original node's latch is released.
-     *
-     * @param node node which was split; exclusive latch must be held
-     * @return original node or sibling
-     */
-    final Node selectNodeExclusive(Node node, byte[] key) {
-        Node sibling = latchSibling();
-
-        Node left, right;
-        if (mSplitRight) {
-            left = node;
-            right = sibling;
-        } else {
-            left = sibling;
-            right = node;
-        }
-
-        if (compare(key) < 0) {
-            right.releaseExclusive();
-            return left;
-        } else {
-            left.releaseExclusive();
             return right;
         }
     }
@@ -155,30 +125,30 @@ final class Split {
             }
         }
 
-        sibling.releaseExclusive();
+        sibling.releaseShared();
 
         return searchPos;
     }
 
     /**
-     * Return the left split node, latched exclusively. Other node is unlatched.
+     * Return the left split node, latched shared. Other node is unlatched.
      */
     final Node latchLeft(Node node) {
         if (mSplitRight) {
             return node;
         }
         Node sibling = latchSibling();
-        node.releaseExclusive();
+        node.releaseShared();
         return sibling;
     }
 
     /**
-     * Return the right split node, latched exclusively. Other node is unlatched.
+     * Return the right split node, latched shared. Other node is unlatched.
      */
     final Node latchRight(Node node) {
         if (mSplitRight) {
             Node sibling = latchSibling();
-            node.releaseExclusive();
+            node.releaseShared();
             return sibling;
         }
         return node;
@@ -187,9 +157,19 @@ final class Split {
     /**
      * @return sibling with exclusive latch held
      */
-    final Node latchSibling() {
+    // FIXME: remove
+    final Node latchSiblingx() {
         Node sibling = mSibling;
         sibling.acquireExclusive();
+        return sibling;
+    }
+
+    /**
+     * @return sibling with shared latch held
+     */
+    final Node latchSibling() {
+        Node sibling = mSibling;
+        sibling.acquireShared();
         return sibling;
     }
 

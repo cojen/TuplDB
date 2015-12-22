@@ -47,7 +47,7 @@ final class TxnTreeCursor extends TreeCursor {
                     if (txn.lockMode() != LockMode.UNSAFE) {
                         txn.lockExclusive(mTree.mId, key, keyHash());
                     }
-                    store(txn, leafExclusive(), value, false);
+                    store(txn, leafExclusive(), value);
                     txn.commit();
                 } catch (Throwable e) {
                     txn.reset();
@@ -57,7 +57,7 @@ final class TxnTreeCursor extends TreeCursor {
                 if (txn.lockMode() != LockMode.UNSAFE) {
                     txn.lockExclusive(mTree.mId, key, keyHash());
                 }
-                store(txn, leafExclusive(), value, false);
+                store(txn, leafExclusive(), value);
             }
         } catch (Throwable e) {
             throw handleException(e, false);
@@ -91,7 +91,7 @@ final class TxnTreeCursor extends TreeCursor {
 
     private void doCommit(LocalTransaction txn, byte[] key, byte[] value) throws IOException {
         if (txn.lockMode() == LockMode.UNSAFE) {
-            store(txn, leafExclusive(), value, false);
+            store(txn, leafExclusive(), value);
             txn.commit();
         } else {
             txn.lockExclusive(mTree.mId, key, keyHash());
