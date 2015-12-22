@@ -5,6 +5,8 @@ v1.3.0
 ------
 * Depends on Java 8.
 * Several top-level classes are now interfaces.
+* Tree search operations rely extensively on shared latches instead of exclusive latches,
+  improving concurrency.
 * Added method to analyze index size.
 * Added experimental direct mapped mode when using MappedPageArray and JNA.
 * Added method to evict records from an Index.
