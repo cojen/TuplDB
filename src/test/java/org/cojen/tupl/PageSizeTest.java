@@ -55,7 +55,9 @@ public class PageSizeTest {
         db.shutdown();
 
         config = new DatabaseConfig()
-            .pageSize(4096).durabilityMode(DurabilityMode.NO_FLUSH);
+            .eventListener((type, message, args) -> {}) // hide uncaught exception
+            .pageSize(4096)
+            .durabilityMode(DurabilityMode.NO_FLUSH);
 
         try {
             db = reopenTempDatabase(db, config);

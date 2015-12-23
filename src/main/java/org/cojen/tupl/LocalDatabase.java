@@ -1871,10 +1871,15 @@ final class LocalDatabase implements Database {
         }
 
         if (cause != null) {
-            if (cClosedCauseUpdater.compareAndSet(this, null, cause) && mEventListener != null) {
-                mEventListener.notify(EventType.PANIC_UNHANDLED_EXCEPTION,
-                                      "Closing database due to unhandled exception: %1$s",
-                                      rootCause(cause));
+            if (cClosedCauseUpdater.compareAndSet(this, null, cause)) {
+                Throwable rootCause = rootCause(cause);
+                if (mEventListener == null) {
+                    uncaught(rootCause);
+                } else {
+                    mEventListener.notify(EventType.PANIC_UNHANDLED_EXCEPTION,
+                                          "Closing database due to unhandled exception: %1$s",
+                                          rootCause);
+                }
             }
         }
 

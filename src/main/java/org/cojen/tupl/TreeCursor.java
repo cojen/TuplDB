@@ -1820,8 +1820,8 @@ class TreeCursor implements CauseCloseable, Cursor {
                     continue start;
                 }
 
-                // Need to unbind first in case split handling above already bound the frame.
-                frame.unbindAndBind(node, pos);
+                // Need to bind specially in case split handling above already bound the frame.
+                frame.bindOrReposition(node, pos);
 
                 if (node.isLeaf()) {
                     mLeaf = frame;
@@ -2770,7 +2770,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                     continue start;
                 }
 
-                frame.unbindAndBind(node, pos);
+                frame.bindOrReposition(node, pos);
 
                 if (node.isLeaf()) {
                     mLeaf = frame;
@@ -2852,7 +2852,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                                 child = mTree.mDatabase.nodeMapGet(childId);
                                 if (child == null) { // node is not cached
                                     pos = spos;
-                                    frame.unbindAndBind(node, pos);
+                                    frame.bindOrReposition(node, pos);
                                     break;
                                 }
                                 if (highKey != null && spos <= highestKeyPos && node.compareKey(spos, highKey) >= 0) {

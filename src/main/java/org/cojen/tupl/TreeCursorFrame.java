@@ -182,12 +182,19 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
     }
 
     /** 
-     * Unbind and then bind this frame to a tree node. Node should be held with a shared or
-     * exclusive latch.
+     * Bind this frame to a tree node, or moves the position if already bound. Node should be
+     * held with a shared or exclusive latch.
+     *
+     * @throws IllegalStateException if bound to another node
      */
-    void unbindAndBind(Node node, int nodePos) {
-        unbind();
-        bind(node, nodePos);
+    void bindOrReposition(Node node, int nodePos) {
+        if (mNode == null) {
+            bind(node, nodePos);
+        } else if (mNode == node) {
+            mNodePos = nodePos;
+        } else {
+            throw new IllegalStateException();
+        }
     }
 
     /** 
