@@ -28,6 +28,8 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
     private static final int SPIN_LIMIT = Runtime.getRuntime().availableProcessors();
 
+    private static final TreeCursorFrame REBIND_FRAME = new TreeCursorFrame();
+
     static final AtomicReferenceFieldUpdater<Node, TreeCursorFrame>
         cLastUpdater = AtomicReferenceFieldUpdater.newUpdater
         (Node.class, TreeCursorFrame.class, "mLastCursorFrame");
@@ -202,18 +204,23 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
      * valid. Both Nodes should be held with an exclusive latch.
      */
     void rebind(Node node, int nodePos) {
-        if (unbind()) {
+        // Unbind with a special marker, to prevent a concurrent full unbind operation from
+        // thinking that the node is already unbound. The marker will force the other thread to
+        // wait until the rebind is complete before unbinding.
+        if (unbind(REBIND_FRAME)) {
             bind(node, nodePos);
         }
     }
 
-    /** 
+    /**
      * Unbind this frame from a tree node. No latch is required. Unbound frames must not be
      * recycled, unless all nodes involved are latched exclusively. Concurrent recycling can
      * cause the bind method to believe that an observed last frame belongs to its linked
      * list. See comment in the bind method.
+     *
+     * @param to null to fully unbind and never use frame again, or REBIND_FRAME if rebinding
      */
-    private boolean unbind() {
+    private boolean unbind(TreeCursorFrame to) {
         int trials = 0;
         while (true) {
             TreeCursorFrame n = this.get(); // get next frame
@@ -225,7 +232,7 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
 
             if (n == this) {
                 // Unbinding the last frame.
-                if (this.compareAndSet(n, null)) {
+                if (this.compareAndSet(n, to)) {
                     // Update previous frame to be the new last frame.
                     TreeCursorFrame p;
                     do {
@@ -239,7 +246,7 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
                 }
             } else {
                 // Unbinding an interior or first frame.
-                if (n.mPrevCousin == this && this.compareAndSet(n, null)) {
+                if (n.mPrevCousin == this && this.compareAndSet(n, to)) {
                     // Update next reference chain to skip over the unbound frame.
                     TreeCursorFrame p;
                     do {
@@ -348,7 +355,7 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
      * Pop this, the leaf frame, returning the parent frame. No latch is required.
      */
     TreeCursorFrame pop() {
-        unbind();
+        unbind(null);
         TreeCursorFrame parent = mParentFrame;
         mNode = null;
         mParentFrame = null;
@@ -360,7 +367,7 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
      * Pop this, the leaf frame, returning void. No latch is required.
      */
     void popv() {
-        unbind();
+        unbind(null);
         mNode = null;
         mParentFrame = null;
         mNotFoundKey = null;

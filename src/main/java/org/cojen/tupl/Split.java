@@ -180,7 +180,13 @@ final class Split {
         int pos = frame.mNodePos;
 
         if (mSplitRight) {
-            int highestPos = frame.mNode.highestPos();
+            Node frameNode = frame.mNode;
+            if (frameNode == null) {
+                // Frame is being concurrently unbound.
+                return;
+            }
+
+            int highestPos = frameNode.highestPos();
 
             if (pos >= 0) {
                 if (pos <= highestPos) {
