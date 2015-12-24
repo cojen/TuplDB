@@ -5299,39 +5299,45 @@ final class Node extends Latch implements DatabaseAccess {
         }
 
         // Iterate over the frames using a lock coupling strategy. Frames which are being
-        // concurrently removed are skipped over.
+        // concurrently removed are skipped over. A shared latch is required to prevent
+        // observing an in-flight split, which breaks iteration due to rebinding.
 
-        TreeCursorFrame frame = mLastCursorFrame;
+        acquireShared();
+        try {
+            TreeCursorFrame frame = mLastCursorFrame;
 
-        if (frame == null) {
-            return 0;
-        }
-
-        TreeCursorFrame lock = new TreeCursorFrame();
-        TreeCursorFrame lockResult;
-
-        while (true) {
-            lockResult = frame.tryLock(lock);
-            if (lockResult != null) {
-                break;
-            }
-            frame = frame.mPrevCousin;
             if (frame == null) {
                 return 0;
             }
-        }
 
-        long count = 1;
+            TreeCursorFrame lock = new TreeCursorFrame();
+            TreeCursorFrame lockResult;
 
-        while (true) {
-            TreeCursorFrame prev = frame.tryLockPrevious(lock);
-            frame.unlock(lockResult);
-            if (prev == null) {
-                return count;
+            while (true) {
+                lockResult = frame.tryLock(lock);
+                if (lockResult != null) {
+                    break;
+                }
+                frame = frame.mPrevCousin;
+                if (frame == null) {
+                    return 0;
+                }
             }
-            count++;
-            lockResult = frame;
-            frame = prev;
+
+            long count = 1;
+
+            while (true) {
+                TreeCursorFrame prev = frame.tryLockPrevious(lock);
+                frame.unlock(lockResult);
+                if (prev == null) {
+                    return count;
+                }
+                count++;
+                lockResult = frame;
+                frame = prev;
+            }
+        } finally {
+            releaseShared();
         }
     }
 
