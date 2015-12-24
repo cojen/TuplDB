@@ -273,27 +273,12 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
      * @return frame to pass to unlock method, or null if frame is not bound
      */
     TreeCursorFrame tryLock(TreeCursorFrame lock) {
-        // Note: Implementation is a modified version of the unbind method.
-
         int trials = 0;
         while (true) {
             TreeCursorFrame n = this.get(); // get next frame
 
-            if (n == null) {
-                // Not in the list.
-                return null;
-            }
-
-            if (n == this) {
-                // Unbinding the last frame.
-                if (this.compareAndSet(n, lock)) {
-                    return n;
-                }
-            } else {
-                // Unbinding an interior or first frame.
-                if (n.mPrevCousin == this && this.compareAndSet(n, lock)) {
-                    return n;
-                }
+            if (n == null || this.compareAndSet(n, lock)) {
+                return n;
             }
 
             trials++;
