@@ -155,21 +155,20 @@ final class Split {
     }
 
     /**
-     * @return sibling with exclusive latch held
-     */
-    // FIXME: remove
-    final Node latchSiblingx() {
-        Node sibling = mSibling;
-        sibling.acquireExclusive();
-        return sibling;
-    }
-
-    /**
      * @return sibling with shared latch held
      */
     final Node latchSibling() {
         Node sibling = mSibling;
         sibling.acquireShared();
+        return sibling;
+    }
+
+    /**
+     * @return sibling with exclusive latch held
+     */
+    final Node latchSiblingEx() {
+        Node sibling = mSibling;
+        sibling.acquireExclusive();
         return sibling;
     }
 
