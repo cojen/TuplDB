@@ -157,13 +157,10 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
                     return;
                 }
             } else if (last.get() == last) {
-                if (last.compareAndSet(last, this)) {
+                if (node.mLastCursorFrame == last && last.compareAndSet(last, this)) {
                     // Note: The above check gets confused if the frame was recycled.
                     // Converting a last frame to an interior frame doesn't imply that the
                     // frame is owned by the same linked list.
-
-                    // Catch up before replacing last frame reference.
-                    while (node.mLastCursorFrame != last);
                     node.mLastCursorFrame = this;
                     return;
                 }
@@ -179,7 +176,7 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
         }
     }
 
-    /** 
+    /**
      * Bind this frame to a tree node, or moves the position if already bound. Node should be
      * held with a shared or exclusive latch.
      *
@@ -195,7 +192,7 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
         }
     }
 
-    /** 
+    /**
      * Rebind this already bound frame to another tree node, unless this frame is no longer
      * valid. Both Nodes should be held with an exclusive latch.
      */
@@ -228,17 +225,22 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
 
             if (n == this) {
                 // Unbinding the last frame.
-                if (this.compareAndSet(n, to)) {
-                    // Update previous frame to be the new last frame.
-                    TreeCursorFrame p;
-                    do {
-                        p = this.mPrevCousin;
-                    } while (p != null && (p.get() != this || !p.compareAndSet(this, p)));
-                    // Catch up before replacing last frame reference.
-                    Node node = mNode;
-                    while (node.mLastCursorFrame != this);
-                    node.mLastCursorFrame = p;
-                    return true;
+                Node node = mNode;
+                if (node != null && node.mLastCursorFrame == this && this.compareAndSet(n, to)) {
+                    if (node.mLastCursorFrame != this) {
+                        // Frame is now locked, but node has changed due to a concurrent
+                        // rebinding of this frame. Unlock and try again.
+                        this.set(n);
+                    } else {
+                        // Update previous frame to be the new last frame.
+                        TreeCursorFrame p;
+                        do {
+                            p = this.mPrevCousin;
+                        } while (p != null && (p.get() != this || !p.compareAndSet(this, p)));
+                        // Update the last frame reference.
+                        node.mLastCursorFrame = p;
+                        return true;
+                    }
                 }
             } else {
                 // Unbinding an interior or first frame.
