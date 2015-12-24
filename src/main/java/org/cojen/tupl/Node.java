@@ -275,7 +275,7 @@ final class Node extends Latch implements DatabaseAccess {
         mPage = page;
     }
 
-    // Construct a "lock" object for use when loading a node. See loadChildShared.
+    // Construct a "lock" object for use when loading a node. See loadChild method.
     private Node(long id) {
         mUsageList = null;
         initExclusive();
@@ -450,7 +450,7 @@ final class Node extends Latch implements DatabaseAccess {
                 childNode.releaseShared();
             }
 
-            node = node.loadChild(tree.mDatabase, childId, true);
+            node = node.loadChild(tree.mDatabase, childId, OPTION_PARENT_RELEASE_SHARED);
         }
 
         // Sub search into leaf with shared latch held.
@@ -550,71 +550,22 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     /**
-     * With this parent node held exclusively, loads child with exclusive latch
-     * held. Caller must ensure that child is not already loaded. If an
-     * exception is thrown, parent and child latches are always released.
-     *
-     * @param releaseParent when true, release this node latch always; when false, release only
-     * if an exception is thrown
+     * Options for loadChild. Caller must latch parentas shared or exclusive, which can be
+     * retained (default) or released. Child node is latched shared (default) or exclusive.
      */
-    // FIXME: remove this method or use common code of loadChild
-    Node loadChildx(LocalDatabase db, long childId, boolean releaseParent) throws IOException {
-        Node childNode;
-        try {
-            childNode = db.allocLatchedNode(childId);
-            childNode.mId = childId;
-        } catch (Throwable e) {
-            releaseExclusive();
-            throw e;
-        }
-
-        db.nodeMapPut(childNode);
-
-        // Release parent latch before child has been loaded. Any threads
-        // which wish to access the same child will block until this thread
-        // has finished loading the child and released its exclusive latch.
-        if (releaseParent) {
-            releaseExclusive();
-        }
-
-        // FIXME: Don't hold latch during load. Instead, use an object for
-        // holding state, and include a "loading" state. As other threads see
-        // this state, they replace the state object with a linked stack of
-        // parked threads. When the load is finished, all waiting threads are
-        // unparked. Without this change, latch blockage can reach the root.
-
-        try {
-            childNode.read(db, childId);
-        } catch (Throwable e) {
-            // Another thread might access child and see that it is invalid because
-            // id is zero. It will assume it got evicted and will load child again.
-            db.nodeMapRemove(childNode);
-            childNode.mId = 0;
-            childNode.type(TYPE_NONE);
-            childNode.releaseExclusive();
-
-            if (!releaseParent) {
-                // Obey the method contract and release latch due to exception.
-                releaseExclusive();
-            }
-
-            throw e;
-        }
-
-        return childNode;
-    }
+    static final int
+        OPTION_PARENT_RELEASE_SHARED    = 0b001,
+        OPTION_PARENT_RELEASE_EXCLUSIVE = 0b010,
+        OPTION_CHILD_ACQUIRE_EXCLUSIVE  = 0b100;
 
     /**
-     * With this parent node held shared, loads child with shared latch held. Caller must
-     * ensure that child is not already loaded. If an exception is thrown, parent and child
-     * latches are always released.
+     * With this parent node latched shared or exclusive, loads child with shared or exclusive
+     * latch. Caller must ensure that child is not already loaded. If an exception is thrown,
+     * parent and child latches are always released.
      *
-     * @param releaseParent when true, release this node latch always; when false, release only
-     * if an exception is thrown
+     * @param options descibed described by OPTION_* fields
      */
-    Node loadChild(LocalDatabase db, long childId, boolean releaseParent)
-        throws IOException
-    {
+    Node loadChild(LocalDatabase db, long childId, int options) throws IOException {
         // Insert a "lock", which is a temporary node latched exclusively. All other threads
         // attempting to load the child node will block trying to acquire the exclusive latch.
         Node lock = new Node(childId);
@@ -625,19 +576,30 @@ final class Node extends Latch implements DatabaseAccess {
                 if (childNode == null) {
                     break;
                 }
+
                 // Was already loaded, or is currently being loaded.
-                childNode.acquireShared();
-                if (childId == childNode.mId) {
-                    return childNode;
+                if ((options & OPTION_CHILD_ACQUIRE_EXCLUSIVE) == 0) {
+                    childNode.acquireShared();
+                    if (childId == childNode.mId) {
+                        return childNode;
+                    }
+                    childNode.releaseShared();
+                } else {
+                    childNode.acquireExclusive();
+                    if (childId == childNode.mId) {
+                        return childNode;
+                    }
+                    childNode.releaseExclusive();
                 }
-                childNode.releaseShared();
             }
         } finally {
             // Release parent latch before child has been loaded. Any threads which wish to
             // access the same child will block until this thread has finished loading the
             // child and released its exclusive latch.
-            if (releaseParent) {
+            if ((options & OPTION_PARENT_RELEASE_SHARED) != 0) {
                 releaseShared();
+            } else if ((options & OPTION_PARENT_RELEASE_EXCLUSIVE) != 0) {
+                releaseExclusive();
             }
         }
 
@@ -667,12 +629,15 @@ final class Node extends Latch implements DatabaseAccess {
                 throw e;
             }
 
-            childNode.downgrade();
+            if ((options & OPTION_CHILD_ACQUIRE_EXCLUSIVE) == 0){
+                childNode.downgrade();
+            }
+
             return childNode;
         } catch (Throwable e) {
-            if (!releaseParent) {
-                // Obey the method contract and release latch due to exception.
-                releaseShared();
+            if ((options & (OPTION_PARENT_RELEASE_SHARED | OPTION_PARENT_RELEASE_EXCLUSIVE)) == 0){
+                // Obey the method contract and release parent latch due to exception.
+                releaseEither();
             }
             throw e;
         } finally {
@@ -712,7 +677,7 @@ final class Node extends Latch implements DatabaseAccess {
             }
         }
 
-        return loadChildx(db, childId, false);
+        return loadChild(db, childId, OPTION_CHILD_ACQUIRE_EXCLUSIVE);
     }
 
     /**
@@ -3466,8 +3431,7 @@ final class Node extends Latch implements DatabaseAccess {
      * @return latched sibling
      */
     private Node rebindSplitFrames(Split split) {
-        // FIXME: is latch required?
-        final Node sibling = split.latchSiblingx();
+        final Node sibling = split.latchSiblingEx();
         try {
             for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
                 // Capture previous frame from linked list before changing the links.
