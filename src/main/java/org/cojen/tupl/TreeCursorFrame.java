@@ -34,10 +34,6 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
         cLastUpdater = AtomicReferenceFieldUpdater.newUpdater
         (Node.class, TreeCursorFrame.class, "mLastCursorFrame");
 
-    private static final AtomicReferenceFieldUpdater<TreeCursorFrame, TreeCursorFrame>
-        cPrevUpdater = AtomicReferenceFieldUpdater.newUpdater
-        (TreeCursorFrame.class, TreeCursorFrame.class, "mPrevCousin");
-
     // Linked list of TreeCursorFrames bound to a Node. Atomic reference is the next frame.
     volatile TreeCursorFrame mPrevCousin;
 
@@ -150,12 +146,12 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
         mNodePos = nodePos;
 
         // Next is set to self to indicate that this frame is the last.
-        this.lazySet(this);
+        this.set(this);
 
         int trials = 0;
         while (true) {
             TreeCursorFrame last = node.mLastCursorFrame;
-            cPrevUpdater.lazySet(this, last);
+            mPrevCousin = last;
             if (last == null) {
                 if (cLastUpdater.compareAndSet(node, null, this)) {
                     return;
@@ -168,7 +164,7 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
 
                     // Catch up before replacing last frame reference.
                     while (node.mLastCursorFrame != last);
-                    cLastUpdater.lazySet(node, this);
+                    node.mLastCursorFrame = this;
                     return;
                 }
             }
@@ -241,7 +237,7 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
                     // Catch up before replacing last frame reference.
                     Node node = mNode;
                     while (node.mLastCursorFrame != this);
-                    cLastUpdater.lazySet(node, p);
+                    node.mLastCursorFrame = p;
                     return true;
                 }
             } else {
@@ -253,7 +249,7 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
                         p = this.mPrevCousin;
                     } while (p != null && (p.get() != this || !p.compareAndSet(this, n)));
                     // Update previous reference chain to skip over the unbound frame.
-                    cPrevUpdater.lazySet(n, p);
+                    n.mPrevCousin = p;
                     return true;
                 }
             }
@@ -328,7 +324,7 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
      * @param n non-null next frame, as provided by the tryLock method
      */
     void unlock(TreeCursorFrame n) {
-        this.lazySet(n);
+        this.set(n);
     }
 
     /**
@@ -338,9 +334,9 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
      * @return previous frame, possibly null
      */
     TreeCursorFrame unlink() {
-        this.lazySet(null);
+        this.set(null);
         TreeCursorFrame prev = mPrevCousin;
-        cPrevUpdater.lazySet(this, null);
+        mPrevCousin = null;
         return prev;
     }
 
