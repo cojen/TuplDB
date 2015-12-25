@@ -727,10 +727,6 @@ final class Node extends Latch implements DatabaseAccess {
             frame = prev;
         }
 
-        if (mLastCursorFrame != null) {
-            throw new AssertionError();
-        }
-
         Node left, right;
         if (split.mSplitRight) {
             left = child;
