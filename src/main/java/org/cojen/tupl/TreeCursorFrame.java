@@ -156,14 +156,37 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
                 if (cLastUpdater.compareAndSet(node, null, this)) {
                     return;
                 }
-            } else if (last.get() == last) {
-                if (node.mLastCursorFrame == last && last.compareAndSet(last, this)) {
-                    // Note: The above check gets confused if the frame was recycled.
-                    // Converting a last frame to an interior frame doesn't imply that the
-                    // frame is owned by the same linked list.
-                    node.mLastCursorFrame = this;
-                    return;
-                }
+            } else if (last.get() == last && last.compareAndSet(last, this)) {
+                // Note: The above check gets confused if the frame was recycled. Converting a
+                // last frame to an interior frame doesn't imply that the frame is owned by the
+                // same linked list.
+
+                /*
+                  Catch up before replacing the last frame reference. Here's why:
+
+                  (T1 == thread 1 and T2 == thread 2)
+
+                  1. T1 observes last frame A.
+                  2.                                    T2 observes last frame A.
+                  3.                                    T2 appends B to the end. (CAS)
+                  4.                                    T2 sets the last frame to B.
+                  5.                                    T2 unbinds B as the last frame.
+                  6. T1 appends C to the end. (CAS)
+                  7. T1 sets the last frame to C.
+                  8.                                    T2 sets the last frame to A!
+
+                  Step 8 should ideally occur before step 6, but it absolutely must be
+                  performed before step 7. Step 8 could be performed with a CAS, simply giving
+                  up if the CAS fails. CAS is expensive, but volatile reads are cheap. Note
+                  that after the last frame reference has been confirmed to be correct, there's
+                  no chance that it can change again. Another thread cannot sneak in because
+                  step 6 atomically claims the new last frame within the list.
+
+                */
+                while (node.mLastCursorFrame != last);
+
+                node.mLastCursorFrame = this;
+                return;
             }
 
             trials++;
@@ -227,7 +250,7 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
                 // Unbinding the last frame.
                 Node node = mNode;
                 if (node != null && node.mLastCursorFrame == this && this.compareAndSet(n, to)) {
-                    if (node.mLastCursorFrame != this) {
+                    if (node != mNode || node.mLastCursorFrame != this) {
                         // Frame is now locked, but node has changed due to a concurrent
                         // rebinding of this frame. Unlock and try again.
                         this.set(n);
