@@ -25,33 +25,33 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  * @author Brian S O'Neill
  */
 // Note: Atomic reference is to the next frame bound to a Node.
-final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
+final class CursorFrame extends AtomicReference<CursorFrame> {
     private static final int SPIN_LIMIT = Runtime.getRuntime().availableProcessors();
 
-    private static final TreeCursorFrame REBIND_FRAME = new TreeCursorFrame();
+    private static final CursorFrame REBIND_FRAME = new CursorFrame();
 
-    static final AtomicReferenceFieldUpdater<Node, TreeCursorFrame>
+    static final AtomicReferenceFieldUpdater<Node, CursorFrame>
         cLastUpdater = AtomicReferenceFieldUpdater.newUpdater
-        (Node.class, TreeCursorFrame.class, "mLastCursorFrame");
+        (Node.class, CursorFrame.class, "mLastCursorFrame");
 
-    // Linked list of TreeCursorFrames bound to a Node. Atomic reference is the next frame.
-    volatile TreeCursorFrame mPrevCousin;
+    // Linked list of CursorFrames bound to a Node. Atomic reference is the next frame.
+    volatile CursorFrame mPrevCousin;
 
-    // Node and position this TreeCursorFrame is bound to.
+    // Node and position this CursorFrame is bound to.
     Node mNode;
     int mNodePos;
 
-    // Parent stack frame. A TreeCursorFrame which is bound to the root
+    // Parent stack frame. A CursorFrame which is bound to the root
     // Node has no parent frame.
-    TreeCursorFrame mParentFrame;
+    CursorFrame mParentFrame;
 
     // Reference to key which wasn't found. Only used by leaf frames.
     byte[] mNotFoundKey;
 
-    TreeCursorFrame() {
+    CursorFrame() {
     }
 
-    TreeCursorFrame(TreeCursorFrame parentFrame) {
+    CursorFrame(CursorFrame parentFrame) {
         mParentFrame = parentFrame;
     }
 
@@ -131,7 +131,7 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
      * @param amount +/- 2
      */
     void adjustParentPosition(int amount) {
-        TreeCursorFrame parent = mParentFrame;
+        CursorFrame parent = mParentFrame;
         if (parent != null) {
             parent.mNodePos += amount;
         }
@@ -150,7 +150,7 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
 
         int trials = 0;
         while (true) {
-            TreeCursorFrame last = node.mLastCursorFrame;
+            CursorFrame last = node.mLastCursorFrame;
             mPrevCousin = last;
             if (last == null) {
                 if (cLastUpdater.compareAndSet(node, null, this)) {
@@ -236,10 +236,10 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
      *
      * @param to null to fully unbind and never use frame again, or REBIND_FRAME if rebinding
      */
-    private boolean unbind(TreeCursorFrame to) {
+    private boolean unbind(CursorFrame to) {
         int trials = 0;
         while (true) {
-            TreeCursorFrame n = this.get(); // get next frame
+            CursorFrame n = this.get(); // get next frame
 
             if (n == null) {
                 // Not in the list.
@@ -256,7 +256,7 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
                         this.set(n);
                     } else {
                         // Update previous frame to be the new last frame.
-                        TreeCursorFrame p;
+                        CursorFrame p;
                         do {
                             p = this.mPrevCousin;
                         } while (p != null && (p.get() != this || !p.compareAndSet(this, p)));
@@ -269,7 +269,7 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
                 // Unbinding an interior or first frame.
                 if (n.mPrevCousin == this && this.compareAndSet(n, to)) {
                     // Update next reference chain to skip over the unbound frame.
-                    TreeCursorFrame p;
+                    CursorFrame p;
                     do {
                         p = this.mPrevCousin;
                     } while (p != null && (p.get() != this || !p.compareAndSet(this, n)));
@@ -295,10 +295,10 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
      * @param lock non-null temporary frame to represent locked state
      * @return frame to pass to unlock method, or null if frame is not bound
      */
-    TreeCursorFrame tryLock(TreeCursorFrame lock) {
+    CursorFrame tryLock(CursorFrame lock) {
         int trials = 0;
         while (true) {
-            TreeCursorFrame n = this.get(); // get next frame
+            CursorFrame n = this.get(); // get next frame
 
             if (n == null || this.compareAndSet(n, lock)) {
                 return n;
@@ -320,8 +320,8 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
      * @param lock non-null temporary frame to represent locked state
      * @return previous frame, or null if no previous frame exists
      */
-    TreeCursorFrame tryLockPrevious(TreeCursorFrame lock) {
-        TreeCursorFrame p;
+    CursorFrame tryLockPrevious(CursorFrame lock) {
+        CursorFrame p;
         do {
             p = this.mPrevCousin;
         } while (p != null && (p.get() != this || !p.compareAndSet(this, lock)));
@@ -333,7 +333,7 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
      *
      * @param n non-null next frame, as provided by the tryLock method
      */
-    void unlock(TreeCursorFrame n) {
+    void unlock(CursorFrame n) {
         this.set(n);
     }
 
@@ -343,9 +343,9 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
      *
      * @return previous frame, possibly null
      */
-    TreeCursorFrame unlink() {
+    CursorFrame unlink() {
         this.set(null);
-        TreeCursorFrame prev = mPrevCousin;
+        CursorFrame prev = mPrevCousin;
         mPrevCousin = null;
         return prev;
     }
@@ -353,16 +353,16 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
     /**
      * Returns the parent frame. No latch is required.
      */
-    TreeCursorFrame peek() {
+    CursorFrame peek() {
         return mParentFrame;
     }
 
     /**
      * Pop this, the leaf frame, returning the parent frame. No latch is required.
      */
-    TreeCursorFrame pop() {
+    CursorFrame pop() {
         unbind(null);
-        TreeCursorFrame parent = mParentFrame;
+        CursorFrame parent = mParentFrame;
         mNode = null;
         mParentFrame = null;
         mNotFoundKey = null;
@@ -382,7 +382,7 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
     /**
      * Pop the given non-null frame and all parent frames. No latch is required.
      */
-    static void popAll(TreeCursorFrame frame) {
+    static void popAll(CursorFrame frame) {
         do {
             frame = frame.mNode == null ? frame.mParentFrame : frame.pop();
         } while (frame != null);
@@ -393,13 +393,13 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
      *
      * @param dest new frame instance to receive copy
      */
-    void copyInto(TreeCursorFrame dest) {
+    void copyInto(CursorFrame dest) {
         Node node = acquireShared();
-        TreeCursorFrame parent = mParentFrame;
+        CursorFrame parent = mParentFrame;
 
         if (parent != null) {
             node.releaseShared();
-            TreeCursorFrame parentCopy = new TreeCursorFrame();
+            CursorFrame parentCopy = new CursorFrame();
 
             while (true) {
                 // Need to check if parent is null, when looping back.
@@ -409,7 +409,7 @@ final class TreeCursorFrame extends AtomicReference<TreeCursorFrame> {
 
                 // Parent can change when tree height is concurrently changing.
                 node = acquireShared();
-                final TreeCursorFrame actualParent = mParentFrame;
+                final CursorFrame actualParent = mParentFrame;
 
                 if (actualParent == parent) {
                     // Parent frame hasn't changed, so use the copy.

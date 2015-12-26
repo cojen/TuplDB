@@ -264,8 +264,8 @@ final class Node extends Latch implements DatabaseAccess {
     // Next in NodeMap collision chain.
     Node mNodeMapNext;
 
-    // Linked stack of TreeCursorFrames bound to this Node.
-    transient volatile TreeCursorFrame mLastCursorFrame;
+    // Linked stack of CursorFrames bound to this Node.
+    transient volatile CursorFrame mLastCursorFrame;
 
     // Set by a partially completed split.
     transient Split mSplit;
@@ -720,9 +720,9 @@ final class Node extends Latch implements DatabaseAccess {
         mSplit = null;
 
         // Fix child node cursor frame bindings.
-        for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
+        for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
             // Capture previous frame from linked list before changing the links.
-            TreeCursorFrame prev = frame.mPrevCousin;
+            CursorFrame prev = frame.mPrevCousin;
             frame.rebind(child, frame.mNodePos);
             frame = prev;
         }
@@ -762,7 +762,7 @@ final class Node extends Latch implements DatabaseAccess {
         searchVecEnd(searchVecStart);
 
         // Add a parent cursor frame for all left and right node cursors.
-        TreeCursorFrame lock = new TreeCursorFrame();
+        CursorFrame lock = new CursorFrame();
         addParentFrames(lock, left, 0);
         addParentFrames(lock, right, 2);
 
@@ -773,14 +773,14 @@ final class Node extends Latch implements DatabaseAccess {
         sibling.makeEvictable();
     }
 
-    private void addParentFrames(TreeCursorFrame lock, Node child, int pos) {
-        for (TreeCursorFrame frame = child.mLastCursorFrame; frame != null; ) {
-            TreeCursorFrame lockResult = frame.tryLock(lock);
+    private void addParentFrames(CursorFrame lock, Node child, int pos) {
+        for (CursorFrame frame = child.mLastCursorFrame; frame != null; ) {
+            CursorFrame lockResult = frame.tryLock(lock);
             if (lockResult != null) {
                 try {
-                    TreeCursorFrame parentFrame = frame.mParentFrame;
+                    CursorFrame parentFrame = frame.mParentFrame;
                     if (parentFrame == null) {
-                        parentFrame = new TreeCursorFrame();
+                        parentFrame = new CursorFrame();
                         parentFrame.bind(this, pos);
                         frame.mParentFrame = parentFrame;
                     } else {
@@ -937,7 +937,7 @@ final class Node extends Latch implements DatabaseAccess {
     private void invalidateCursors(Node closed) {
         int pos = isLeaf() ? -1 : 0;
 
-        for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
+        for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
             frame.mNode = closed;
             frame.mNodePos = pos;
             frame = frame.unlink();
@@ -2050,7 +2050,7 @@ final class Node extends Latch implements DatabaseAccess {
      * @param pos complement of position as provided by binarySearch; must be positive
      * @param okey original key
      */
-    void insertLeafEntry(TreeCursorFrame frame, Tree tree, int pos, byte[] okey, byte[] value)
+    void insertLeafEntry(CursorFrame frame, Tree tree, int pos, byte[] okey, byte[] value)
         throws IOException
     {
         byte[] akey = okey;
@@ -2106,7 +2106,7 @@ final class Node extends Latch implements DatabaseAccess {
      * @param pos complement of position as provided by binarySearch; must be positive
      * @param okey original key
      */
-    void insertBlankLeafEntry(TreeCursorFrame frame, Tree tree, int pos, byte[] okey, long vlength)
+    void insertBlankLeafEntry(CursorFrame frame, Tree tree, int pos, byte[] okey, long vlength)
         throws IOException
     {
         byte[] akey = okey;
@@ -2165,7 +2165,7 @@ final class Node extends Latch implements DatabaseAccess {
      * @param pos complement of position as provided by binarySearch; must be positive
      * @param okey original key
      */
-    void insertFragmentedLeafEntry(TreeCursorFrame frame,
+    void insertFragmentedLeafEntry(CursorFrame frame,
                                    Tree tree, int pos, byte[] okey, byte[] value)
         throws IOException
     {
@@ -2226,7 +2226,7 @@ final class Node extends Latch implements DatabaseAccess {
      * vector, or negative if leaf must be split. Complement of negative value
      * is maximum space available.
      */
-    int createLeafEntry(final TreeCursorFrame frame, Tree tree, int pos, final int encodedLen) {
+    int createLeafEntry(final CursorFrame frame, Tree tree, int pos, final int encodedLen) {
         int searchVecStart = searchVecStart();
         int searchVecEnd = searchVecEnd();
 
@@ -2274,7 +2274,7 @@ final class Node extends Latch implements DatabaseAccess {
                         // Node compaction won't make enough room, but attempt to rebalance
                         // before splitting.
 
-                        TreeCursorFrame parentFrame;
+                        CursorFrame parentFrame;
                         if (frame == null || (parentFrame = frame.mParentFrame) == null) {
                             // No sibling nodes, so cannot rebalance.
                             break compact;
@@ -2379,7 +2379,7 @@ final class Node extends Latch implements DatabaseAccess {
      * @return 0 if try failed, or entry location of re-used slot, or negative 2-based position
      * decrement if no slot was found
      */
-    private int tryRebalanceLeafLeft(Tree tree, TreeCursorFrame parentFrame,
+    private int tryRebalanceLeafLeft(Tree tree, CursorFrame parentFrame,
                                      int pos, int insertLen, int minAmount)
     {
         final /*P*/ byte[] rightPage = mPage;
@@ -2519,9 +2519,9 @@ final class Node extends Latch implements DatabaseAccess {
 
         // Fix cursor positions or move them to the left node.
         final int leftEndPos = left.highestLeafPos() + 2;
-        for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
+        for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
             // Capture previous frame from linked list before changing the links.
-            TreeCursorFrame prev = frame.mPrevCousin;
+            CursorFrame prev = frame.mPrevCousin;
             int framePos = frame.mNodePos;
             int mask = framePos >> 31;
             int newPos = (framePos ^ mask) - lastPos;
@@ -2573,7 +2573,7 @@ final class Node extends Latch implements DatabaseAccess {
      * @param minAmount minimum amount of bytes to move to make room
      * @return 0 if try failed, or entry location of re-used slot, or negative if no slot was found
      */
-    private int tryRebalanceLeafRight(Tree tree, TreeCursorFrame parentFrame,
+    private int tryRebalanceLeafRight(Tree tree, CursorFrame parentFrame,
                                       int pos, int insertLen, int minAmount)
     {
         final /*P*/ byte[] leftPage = mPage;
@@ -2711,7 +2711,7 @@ final class Node extends Latch implements DatabaseAccess {
         searchVecEnd(firstSearchVecLoc - 2);
 
         // Fix cursor positions in the right node.
-        for (TreeCursorFrame frame = right.mLastCursorFrame; frame != null; ) {
+        for (CursorFrame frame = right.mLastCursorFrame; frame != null; ) {
             int framePos = frame.mNodePos;
             int mask = framePos >> 31;
             frame.mNodePos = ((framePos ^ mask) + moved) ^ mask;
@@ -2720,9 +2720,9 @@ final class Node extends Latch implements DatabaseAccess {
 
         // Move affected cursor frames to the right node.
         final int leftEndPos = firstSearchVecLoc - searchVecStart();
-        for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
+        for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
             // Capture previous frame from linked list before changing the links.
-            TreeCursorFrame prev = frame.mPrevCousin;
+            CursorFrame prev = frame.mPrevCousin;
             int framePos = frame.mNodePos;
             int mask = framePos >> 31;
             int newPos = (framePos ^ mask) - leftEndPos;
@@ -2770,7 +2770,7 @@ final class Node extends Latch implements DatabaseAccess {
      * @param keyPos position to insert split key
      * @param splitChild child node which split
      */
-    void insertSplitChildRef(final TreeCursorFrame frame, Tree tree, int keyPos, Node splitChild)
+    void insertSplitChildRef(final CursorFrame frame, Tree tree, int keyPos, Node splitChild)
         throws IOException
     {
         final Split split = splitChild.mSplit;
@@ -2791,7 +2791,7 @@ final class Node extends Latch implements DatabaseAccess {
             }
 
             // Positions of frames higher than split key need to be incremented.
-            for (TreeCursorFrame f = mLastCursorFrame; f != null; ) {
+            for (CursorFrame f = mLastCursorFrame; f != null; ) {
                 int fPos = f.mNodePos;
                 if (fPos > keyPos) {
                     f.mNodePos = fPos + 2;
@@ -2801,7 +2801,7 @@ final class Node extends Latch implements DatabaseAccess {
 
             // Positions of frames equal to split key are in the split itself. Only
             // frames for the right split need to be incremented.
-            for (TreeCursorFrame childFrame = rightChild.mLastCursorFrame; childFrame != null; ) {
+            for (CursorFrame childFrame = rightChild.mLastCursorFrame; childFrame != null; ) {
                 childFrame.adjustParentPosition(+2);
                 childFrame = childFrame.mPrevCousin;
             }
@@ -2865,7 +2865,7 @@ final class Node extends Latch implements DatabaseAccess {
      * @param allowSplit true if this internal node can be split as a side-effect
      * @throws AssertionError if entry must be split to make room but split is not allowed
      */
-    private void createInternalEntry(final TreeCursorFrame frame, InResult result,
+    private void createInternalEntry(final CursorFrame frame, InResult result,
                                      Tree tree, int keyPos, int encodedLen,
                                      int newChildPos, boolean allowSplit)
         throws IOException
@@ -2937,7 +2937,7 @@ final class Node extends Latch implements DatabaseAccess {
                         // Node compaction won't make enough room, but attempt to rebalance
                         // before splitting.
 
-                        TreeCursorFrame parentFrame;
+                        CursorFrame parentFrame;
                         if (frame == null || (parentFrame = frame.mParentFrame) == null) {
                             // No sibling nodes, so cannot rebalance.
                             break compact;
@@ -3056,7 +3056,7 @@ final class Node extends Latch implements DatabaseAccess {
      * @param minAmount minimum amount of bytes to move to make room
      * @return 2-based position increment; 0 if try failed
      */
-    private int tryRebalanceInternalLeft(Tree tree, TreeCursorFrame parentFrame,
+    private int tryRebalanceInternalLeft(Tree tree, CursorFrame parentFrame,
                                          int keyPos, int minAmount)
     {
         final Node parent = parentFrame.tryAcquireExclusive();
@@ -3214,9 +3214,9 @@ final class Node extends Latch implements DatabaseAccess {
 
         // Fix cursor positions or move them to the left node.
         final int leftEndPos = left.highestInternalPos() + 2;
-        for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
+        for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
             // Capture previous frame from linked list before changing the links.
-            TreeCursorFrame prev = frame.mPrevCousin;
+            CursorFrame prev = frame.mPrevCousin;
             int framePos = frame.mNodePos;
             int newPos = framePos - moved;
             if (newPos < 0) {
@@ -3244,7 +3244,7 @@ final class Node extends Latch implements DatabaseAccess {
      * @param keyPos position to insert into; this position cannot move right
      * @param minAmount minimum amount of bytes to move to make room
      */
-    private boolean tryRebalanceInternalRight(Tree tree, TreeCursorFrame parentFrame,
+    private boolean tryRebalanceInternalRight(Tree tree, CursorFrame parentFrame,
                                               int keyPos, int minAmount)
     {
         final Node parent = parentFrame.tryAcquireExclusive();
@@ -3396,16 +3396,16 @@ final class Node extends Latch implements DatabaseAccess {
         searchVecEnd(firstSearchVecLoc - 2);
 
         // Fix cursor positions in the right node.
-        for (TreeCursorFrame frame = right.mLastCursorFrame; frame != null; ) {
+        for (CursorFrame frame = right.mLastCursorFrame; frame != null; ) {
             frame.mNodePos += moved;
             frame = frame.mPrevCousin;
         }
 
         // Move affected cursor frames to the right node.
         final int adjust = firstSearchVecLoc - searchVecStart() + 4;
-        for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
+        for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
             // Capture previous frame from linked list before changing the links.
-            TreeCursorFrame prev = frame.mPrevCousin;
+            CursorFrame prev = frame.mPrevCousin;
             int newPos = frame.mNodePos - adjust;
             if (newPos >= 0) {
                 frame.rebind(right, newPos);
@@ -3429,9 +3429,9 @@ final class Node extends Latch implements DatabaseAccess {
     private Node rebindSplitFrames(Split split) {
         final Node sibling = split.latchSiblingEx();
         try {
-            for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
+            for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
                 // Capture previous frame from linked list before changing the links.
-                TreeCursorFrame prev = frame.mPrevCousin;
+                CursorFrame prev = frame.mPrevCousin;
                 split.rebindFrame(frame, sibling);
                 frame = prev;
             }
@@ -3447,7 +3447,7 @@ final class Node extends Latch implements DatabaseAccess {
      * @param pos position as provided by binarySearch; must be positive
      * @param vfrag 0 or ENTRY_FRAGMENTED
      */
-    void updateLeafValue(TreeCursorFrame frame, Tree tree, int pos, int vfrag, byte[] value)
+    void updateLeafValue(CursorFrame frame, Tree tree, int pos, int vfrag, byte[] value)
         throws IOException
     {
         /*P*/ byte[] page = mPage;
@@ -3873,9 +3873,9 @@ final class Node extends Latch implements DatabaseAccess {
         }
 
         // All cursors in the right node must be moved to the left node.
-        for (TreeCursorFrame frame = rightNode.mLastCursorFrame; frame != null; ) {
+        for (CursorFrame frame = rightNode.mLastCursorFrame; frame != null; ) {
             // Capture previous frame from linked list before changing the links.
-            TreeCursorFrame prev = frame.mPrevCousin;
+            CursorFrame prev = frame.mPrevCousin;
             int framePos = frame.mNodePos;
             frame.rebind(leftNode, framePos + (framePos < 0 ? (-leftEndPos) : leftEndPos));
             frame = prev;
@@ -3942,9 +3942,9 @@ final class Node extends Latch implements DatabaseAccess {
         }
 
         // All cursors in the right node must be moved to the left node.
-        for (TreeCursorFrame frame = rightNode.mLastCursorFrame; frame != null; ) {
+        for (CursorFrame frame = rightNode.mLastCursorFrame; frame != null; ) {
             // Capture previous frame from linked list before changing the links.
-            TreeCursorFrame prev = frame.mPrevCousin;
+            CursorFrame prev = frame.mPrevCousin;
             int framePos = frame.mNodePos;
             frame.rebind(leftNode, leftEndPos + framePos);
             frame = prev;
@@ -3963,7 +3963,7 @@ final class Node extends Latch implements DatabaseAccess {
      */
     void deleteRightChildRef(int childPos) {
         // Fix affected cursors.
-        for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
+        for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
             int framePos = frame.mNodePos;
             if (framePos >= childPos) {
                 frame.mNodePos = framePos - 2;
@@ -3981,7 +3981,7 @@ final class Node extends Latch implements DatabaseAccess {
      */
     void deleteLeftChildRef(int childPos) {
         // Fix affected cursors.
-        for (TreeCursorFrame frame = mLastCursorFrame; frame != null; ) {
+        for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
             int framePos = frame.mNodePos;
             if (framePos > childPos) {
                 frame.mNodePos = framePos - 2;
@@ -4084,15 +4084,15 @@ final class Node extends Latch implements DatabaseAccess {
         p_longPutLE(rootPage, child.searchVecEnd() + 2, this.mId);
 
         // Lock the last frames, preventing concurrent unbinding of those frames...
-        TreeCursorFrame lock = new TreeCursorFrame();
-        TreeCursorFrame childLastFrame = child.lockLastFrame(lock);
-        TreeCursorFrame thisLastFrame = this.lockLastFrame(lock);
+        CursorFrame lock = new CursorFrame();
+        CursorFrame childLastFrame = child.lockLastFrame(lock);
+        CursorFrame thisLastFrame = this.lockLastFrame(lock);
 
         // ...now they can be swapped...
-        if (!TreeCursorFrame.cLastUpdater.compareAndSet(this, thisLastFrame, childLastFrame)) {
+        if (!CursorFrame.cLastUpdater.compareAndSet(this, thisLastFrame, childLastFrame)) {
             throw new AssertionError();
         }
-        if (!TreeCursorFrame.cLastUpdater.compareAndSet(child, childLastFrame, thisLastFrame)) {
+        if (!CursorFrame.cLastUpdater.compareAndSet(child, childLastFrame, thisLastFrame)) {
             throw new AssertionError();
         }
 
@@ -4113,8 +4113,8 @@ final class Node extends Latch implements DatabaseAccess {
     /**
      * Lock the last frame, for use by the rootDelete method.
      */
-    private TreeCursorFrame lockLastFrame(TreeCursorFrame lock) {
-        for (TreeCursorFrame f = mLastCursorFrame; f != null; f = f.mPrevCousin) {
+    private CursorFrame lockLastFrame(CursorFrame lock) {
+        for (CursorFrame f = mLastCursorFrame; f != null; f = f.mPrevCousin) {
             if (f.tryLock(lock) != null) {
                 return f;
             }
@@ -4125,9 +4125,9 @@ final class Node extends Latch implements DatabaseAccess {
     /**
      * Bind all the frames of this node, to this node, for use by the rootDelete method.
      */
-    private void fixFrameBindings(TreeCursorFrame lock) {
-        for (TreeCursorFrame f = mLastCursorFrame; f != null; f = f.mPrevCousin) {
-            TreeCursorFrame lockResult = f.tryLock(lock);
+    private void fixFrameBindings(CursorFrame lock) {
+        for (CursorFrame f = mLastCursorFrame; f != null; f = f.mPrevCousin) {
+            CursorFrame lockResult = f.tryLock(lock);
             if (lockResult != null) {
                 f.mNode = this;
                 f.unlock(lockResult);
@@ -5283,7 +5283,7 @@ final class Node extends Latch implements DatabaseAccess {
         if (tryAcquireExclusive()) {
             long count = 0;
             try {
-                TreeCursorFrame frame = mLastCursorFrame;
+                CursorFrame frame = mLastCursorFrame;
                 while (frame != null) {
                     count++;
                     frame = frame.mPrevCousin;
@@ -5300,14 +5300,14 @@ final class Node extends Latch implements DatabaseAccess {
 
         acquireShared();
         try {
-            TreeCursorFrame frame = mLastCursorFrame;
+            CursorFrame frame = mLastCursorFrame;
 
             if (frame == null) {
                 return 0;
             }
 
-            TreeCursorFrame lock = new TreeCursorFrame();
-            TreeCursorFrame lockResult;
+            CursorFrame lock = new CursorFrame();
+            CursorFrame lockResult;
 
             while (true) {
                 lockResult = frame.tryLock(lock);
@@ -5323,7 +5323,7 @@ final class Node extends Latch implements DatabaseAccess {
             long count = 1;
 
             while (true) {
-                TreeCursorFrame prev = frame.tryLockPrevious(lock);
+                CursorFrame prev = frame.tryLockPrevious(lock);
                 frame.unlock(lockResult);
                 if (prev == null) {
                     return count;

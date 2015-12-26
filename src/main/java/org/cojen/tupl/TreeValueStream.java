@@ -75,7 +75,7 @@ final class TreeValueStream extends AbstractStream {
 
     @Override
     public long length() throws IOException {
-        TreeCursorFrame frame;
+        CursorFrame frame;
         try {
             frame = mCursor.leafSharedNotSplit();
         } catch (IllegalStateException e) {
@@ -97,7 +97,7 @@ final class TreeValueStream extends AbstractStream {
                 return;
             }
 
-            final TreeCursorFrame leaf = mCursor.leafExclusiveNotSplit();
+            final CursorFrame leaf = mCursor.leafExclusiveNotSplit();
 
             final Lock sharedCommitLock = mCursor.sharedCommitLock(leaf);
             try {
@@ -115,7 +115,7 @@ final class TreeValueStream extends AbstractStream {
 
     @Override
     int doRead(long pos, byte[] buf, int off, int len) throws IOException {
-        TreeCursorFrame frame;
+        CursorFrame frame;
         try {
             frame = mCursor.leafSharedNotSplit();
         } catch (IllegalStateException e) {
@@ -132,7 +132,7 @@ final class TreeValueStream extends AbstractStream {
     void doWrite(long pos, byte[] buf, int off, int len) throws IOException {
         // FIXME: txn undo/redo
         try {
-            final TreeCursorFrame leaf = mCursor.leafExclusiveNotSplit();
+            final CursorFrame leaf = mCursor.leafExclusiveNotSplit();
 
             final Lock sharedCommitLock = mCursor.sharedCommitLock(leaf);
             try {
@@ -183,7 +183,7 @@ final class TreeValueStream extends AbstractStream {
      * @return -1 if position is too high, 0 if no compaction required, or 1 if any nodes are
      * in the compaction zone
      */
-    int compactCheck(final TreeCursorFrame frame, long pos, final long highestNodeId)
+    int compactCheck(final CursorFrame frame, long pos, final long highestNodeId)
         throws IOException
     {
         final Node node = frame.mNode;
@@ -287,7 +287,7 @@ final class TreeValueStream extends AbstractStream {
      * @return applicable only to OP_LENGTH and OP_READ
      */
     @SuppressWarnings("fallthrough")
-    private long action(final TreeCursorFrame frame,
+    private long action(final CursorFrame frame,
                         final int op, long pos, final byte[] b, int bOff, int bLen)
         throws IOException
     {
@@ -816,7 +816,7 @@ final class TreeValueStream extends AbstractStream {
      * @param loc fragmented value header location
      * @return new value location (after header), negated if converted to indirect format
      */
-    private int updateLengthField(TreeCursorFrame frame, /*P*/ byte[] page, int loc, long len)
+    private int updateLengthField(CursorFrame frame, /*P*/ byte[] page, int loc, long len)
         throws IOException
     {
         int growth;

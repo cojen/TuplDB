@@ -536,19 +536,19 @@ class Tree implements View, Index {
 
         if (node.mSplit != null) {
             // Create a temporary frame for the root split.
-            TreeCursorFrame frame = new TreeCursorFrame();
+            CursorFrame frame = new CursorFrame();
             frame.bind(node, 0);
             try {
                 node = finishSplit(frame, node);
             } catch (Throwable e) {
-                TreeCursorFrame.popAll(frame);
+                CursorFrame.popAll(frame);
                 throw e;
             }
         }
 
         // Frames are only used for backtracking up the tree. Frame creation and binding is
         // performed late, and none are created for leaf nodes.
-        TreeCursorFrame frame = null;
+        CursorFrame frame = null;
         int pos = 0;
 
         while (true) {
@@ -566,7 +566,7 @@ class Tree implements View, Index {
                         if (childId != child.mId) {
                             child.releaseExclusive();
                         } else {
-                            frame = new TreeCursorFrame(frame);
+                            frame = new CursorFrame(frame);
                             frame.bind(node, pos);
                             node.releaseExclusive();
                             node = child;
@@ -581,7 +581,7 @@ class Tree implements View, Index {
             try {
                 visitor.visit(node);
             } catch (Throwable e) {
-                TreeCursorFrame.popAll(frame);
+                CursorFrame.popAll(frame);
                 throw e;
             }
 
@@ -595,7 +595,7 @@ class Tree implements View, Index {
                 try {
                     node = finishSplit(frame, node);
                 } catch (Throwable e) {
-                    TreeCursorFrame.popAll(frame);
+                    CursorFrame.popAll(frame);
                     throw e;
                 }
             }
@@ -670,7 +670,7 @@ class Tree implements View, Index {
      * @param key new highest key; no existing key can be greater than or equal to it
      * @param frame frame bound to the tree leaf node
      */
-    final void append(byte[] key, byte[] value, TreeCursorFrame frame) throws IOException {
+    final void append(byte[] key, byte[] value, CursorFrame frame) throws IOException {
         try {
             final Lock sharedCommitLock = mDatabase.sharedCommitLock();
             sharedCommitLock.lock();
@@ -706,13 +706,13 @@ class Tree implements View, Index {
     /**
      * Returns the frame node latched exclusively and marked dirty.
      */
-    private Node latchDirty(TreeCursorFrame frame) throws IOException {
+    private Node latchDirty(CursorFrame frame) throws IOException {
         final LocalDatabase db = mDatabase;
         Node node = frame.mNode;
         node.acquireExclusive();
 
         if (db.shouldMarkDirty(node)) {
-            TreeCursorFrame parentFrame = frame.mParentFrame;
+            CursorFrame parentFrame = frame.mParentFrame;
             try {
                 if (parentFrame == null) {
                     db.doMarkDirty(this, node);
@@ -745,7 +745,7 @@ class Tree implements View, Index {
      * @param node node which is bound to the frame, latched exclusively
      * @return replacement node, still latched
      */
-    final Node finishSplit(final TreeCursorFrame frame, Node node) throws IOException {
+    final Node finishSplit(final CursorFrame frame, Node node) throws IOException {
         while (true) {
             if (node == mRoot) {
                 Node stubNode = null;
@@ -808,7 +808,7 @@ class Tree implements View, Index {
                 return frame.acquireExclusive();
             }
 
-            final TreeCursorFrame parentFrame = frame.mParentFrame;
+            final CursorFrame parentFrame = frame.mParentFrame;
             node.releaseExclusive();
 
             Node parentNode = parentFrame.acquireExclusive();
