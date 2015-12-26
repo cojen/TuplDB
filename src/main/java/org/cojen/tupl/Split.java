@@ -175,7 +175,7 @@ final class Split {
     /**
      * @param frame frame affected by split; exclusive latch for sibling must also be held
      */
-    final void rebindFrame(TreeCursorFrame frame, Node sibling) {
+    final void rebindFrame(CursorFrame frame, Node sibling) {
         int pos = frame.mNodePos;
 
         if (mSplitRight) {
