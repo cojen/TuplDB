@@ -3010,7 +3010,7 @@ final class LocalDatabase implements Database {
      * Caller must hold commit lock and any latch on node.
      */
     boolean shouldMarkDirty(Node node) {
-        return node.mCachedState != mCommitState && node.mId != Node.STUB_ID;
+        return node.mCachedState != mCommitState && node.mId >= 0;
     }
 
     /**
@@ -3021,7 +3021,7 @@ final class LocalDatabase implements Database {
      * @return true if just made dirty and id changed
      */
     boolean markDirty(Tree tree, Node node) throws IOException {
-        if (node.mCachedState == mCommitState || node.mId == Node.STUB_ID) {
+        if (node.mCachedState == mCommitState || node.mId < 0) {
             return false;
         } else {
             doMarkDirty(tree, node);

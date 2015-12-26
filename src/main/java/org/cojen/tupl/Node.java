@@ -73,7 +73,8 @@ final class Node extends Latch implements DatabaseAccess {
     // Tree node header size.
     static final int TN_HEADER_SIZE = 12;
 
-    static final int STUB_ID = 1;
+    // Negative id indicates that node is not in use, and 1 is a reserved page id.
+    private static final int CLOSED_ID = -1;
 
     static final int ENTRY_FRAGMENTED = 0x40;
 
@@ -335,7 +336,7 @@ final class Node extends Latch implements DatabaseAccess {
      */
     void closeRoot() {
         // Prevent node from being marked dirty.
-        mId = STUB_ID;
+        mId = CLOSED_ID;
         mCachedState = CACHED_CLEAN;
         mPage = p_closedTreePage();
         readFields();
@@ -681,9 +682,7 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     /**
-     * Caller must hold exclusive root latch and it must verify that root has split. Caller
-     * must also exclusively hold stub latch, if applicable. This required for safely unbinding
-     * parent cursor frames which refer to the old root node.
+     * Caller must hold exclusive root latch and it must verify that root has split.
      */
     void finishSplitRoot() throws IOException {
         // Create a child node and copy this root node state into it. Then update this
@@ -894,9 +893,9 @@ final class Node extends Latch implements DatabaseAccess {
         }
 
         try {
-            // Check if <= 0 (already evicted) or stub.
+            // Check if <= 0 (already evicted).
             long id = mId;
-            if (id > STUB_ID) {
+            if (id > 0) {
                 PageDb pageDb = db.mPageDb;
                 if (mCachedState == CACHED_CLEAN) {
                     // Try to move to a secondary cache.
@@ -971,7 +970,7 @@ final class Node extends Latch implements DatabaseAccess {
 
     private static Node createClosedNode() {
         Node closed = new Node(null, p_closedTreePage());
-        closed.mId = STUB_ID;
+        closed.mId = CLOSED_ID;
         closed.mCachedState = CACHED_CLEAN;
         closed.readFields();
         return closed;
@@ -4032,25 +4031,19 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     /**
-     * Delete this non-leaf root node, after all keys have been deleted. The
-     * state of the lone child is swapped with this root node, and the child
-     * node is repurposed into a stub root node. The old page used by the child
-     * node is deleted. This design allows active cursors to still function
-     * normally until they can unbind.
+     * Delete this non-leaf root node, after all keys have been deleted. The state of the lone
+     * child is swapped with this root node, and the child node is repurposed into a stub root
+     * node. The old page used by the child node is deleted. This design allows active cursors
+     * to still function normally until they can unbind.
      *
-     * <p>Caller must hold exclusive latches for root node and lone child.
-     * Caller must also ensure that both nodes are not splitting. No latches
-     * are released by this method.
+     * <p>Caller must hold exclusive latches for root node and lone child. Caller must also
+     * ensure that both nodes are not splitting. No latches are released by this method.
      */
     void rootDelete(Tree tree, Node child) throws IOException {
         tree.mDatabase.prepareToDelete(child);
 
-        /*P*/ byte[] rootPage = mPage;
-
-        long toDelete = child.mId;
-        int toDeleteState = child.mCachedState;
-
-        byte stubType = type();
+        final /*P*/ byte[] oldRootPage = mPage;
+        final byte oldRootType = type();
 
         /*P*/ // [
         mPage = child.mPage;
@@ -4069,19 +4062,6 @@ final class Node extends Latch implements DatabaseAccess {
         /*P*/ //     mPage = child.mPage;
         /*P*/ // }
         /*P*/ // ]
-
-        // Repurpose the child node into a stub root node. Stub is assigned a
-        // reserved id (1) and a clean cached state. It cannot be marked dirty,
-        // but it can be evicted when all cursors have unbound from it.
-        tree.mDatabase.nodeMapRemove(child, Long.hashCode(toDelete));
-        child.mPage = rootPage;
-        child.mId = STUB_ID;
-        child.mCachedState = CACHED_CLEAN;
-        child.type(stubType);
-        child.clearEntries();
-
-        // Search vector also needs to point to root.
-        p_longPutLE(rootPage, child.searchVecEnd() + 2, this.mId);
 
         // Lock the last frames, preventing concurrent unbinding of those frames...
         CursorFrame lock = new CursorFrame();
@@ -4103,11 +4083,16 @@ final class Node extends Latch implements DatabaseAccess {
         this.fixFrameBindings(lock);
         child.fixFrameBindings(lock);
 
-        tree.addStub(child, toDelete);
+        child.mPage = oldRootPage;
+        child.type(oldRootType);
+        child.clearEntries();
 
-        // The page can be deleted earlier in the method, but doing it here
-        // might prevent corruption if an unexpected exception occurs.
-        tree.mDatabase.deletePage(toDelete, toDeleteState);
+        // Search vector of stub needs a child pointer to the new root.
+        p_longPutLE(oldRootPage, child.searchVecEnd() + 2, this.mId);
+
+        // The node can be deleted earlier in the method, but doing it here might prevent
+        // corruption if an unexpected exception occurs.
+        tree.mDatabase.deleteNode(child);
     }
 
     /**
@@ -4380,7 +4365,7 @@ final class Node extends Latch implements DatabaseAccess {
         }
 
         try {
-            getDatabase().deleteNode(newNode, true);
+            getDatabase().deleteNode(newNode);
         } catch (Throwable e) {
             cause.addSuppressed(e);
             panic(cause);
