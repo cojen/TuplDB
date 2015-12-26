@@ -64,12 +64,6 @@ class Tree implements View, Index {
     final int mMaxKeySize;
     final int mMaxEntrySize;
 
-    // Maintain a stack of stubs, which are created when root nodes are
-    // deleted. When a new root is created, a stub is popped, and cursors bound
-    // to it are transferred into the new root. Access to this stack is guarded
-    // by the root node latch.
-    private Stub mStubTail;
-
     Tree(LocalDatabase db, long id, byte[] idBytes, byte[] name, Node root) {
         mDatabase = db;
         mLockManager = db.mLockManager;
@@ -433,7 +427,7 @@ class Tree implements View, Index {
             Node newRoot = root.cloneNode();
             mDatabase.swapIfDirty(root, newRoot);
 
-            if (root.mId > Node.STUB_ID) {
+            if (root.mId > 0) {
                 mDatabase.nodeMapRemove(root);
             }
 
@@ -448,7 +442,7 @@ class Tree implements View, Index {
             try {
                 mDatabase.treeClosed(this);
                 newRoot.makeEvictableNow();
-                if (newRoot.mId > Node.STUB_ID) {
+                if (newRoot.mId > 0) {
                     mDatabase.nodeMapPut(newRoot);
                 }
             } finally {
@@ -748,59 +742,9 @@ class Tree implements View, Index {
     final Node finishSplit(final CursorFrame frame, Node node) throws IOException {
         while (true) {
             if (node == mRoot) {
-                Node stubNode = null;
-
-                popStub: {
-                    Stub stub = mStubTail;
-                    hasStub: {
-                        while (stub != null) {
-                            if (stub.mNode.mId == Node.STUB_ID) {
-                                break hasStub;
-                            }
-                            // Node was evicted, so pop it off and try next one.
-                            mStubTail = stub = stub.mParent;
-                        }
-                        break popStub;
-                    }
-
-                    // Don't wait for stub latch, to avoid deadlock. The stub stack
-                    // is latched up upwards here, but downwards by cursors.
-                    stubNode = stub.mNode;
-                    if (stubNode.tryAcquireExclusive()) {
-                        mStubTail = stub.mParent;
-                    } else {
-                        // Latch not immediately available, so release root latch
-                        // and try again. This implementation spins, but root
-                        // splits are expected to be infrequent.
-                        Thread waiter = node.getFirstQueuedThread();
-                        node.releaseExclusive();
-                        do {
-                            Thread.yield();
-                        } while (waiter != null && node.getFirstQueuedThread() == waiter);
-                        node = frame.acquireExclusive();
-                        if (node.mSplit == null) {
-                            return node;
-                        }
-                        continue;
-                    }
-
-                    // Check if popped stub is still valid. It must not have been evicted and
-                    // it actually has cursors bound to it. The stub node doesn't need to be
-                    // passed along, because it's linked as a parent frame by any active
-                    // cursors. The latch must remain held for unbinding the frames.
-
-                    if (stubNode.mId == Node.STUB_ID && stubNode.mLastCursorFrame != null) {
-                        // Allow non-durable database to recycle the old id.
-                        stubNode.mId = -stub.mDeletedId;
-                    }
-                }
-
                 try {
                     node.finishSplitRoot();
                 } finally {
-                    if (stubNode != null) {
-                        stubNode.releaseExclusive();
-                    }
                     node.releaseExclusive();
                 }
 
@@ -920,25 +864,6 @@ class Tree implements View, Index {
 
     final byte[] fragmentKey(byte[] key) throws IOException {
         return mDatabase.fragment(key, key.length, mMaxKeySize);
-    }
-
-    /**
-     * Caller must exclusively hold root latch.
-     */
-    final void addStub(Node node, long deletedId) {
-        mStubTail = new Stub(mStubTail, node, deletedId);
-    }
-
-    private static final class Stub {
-        final Stub mParent;
-        final Node mNode;
-        final long mDeletedId;
-
-        Stub(Stub parent, Node node, long deletedId) {
-            mParent = parent;
-            mNode = node;
-            mDeletedId = deletedId;
-        }
     }
 
     private class Primer {
