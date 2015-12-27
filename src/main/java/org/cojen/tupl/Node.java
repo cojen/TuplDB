@@ -4042,8 +4042,8 @@ final class Node extends Latch implements DatabaseAccess {
     void rootDelete(Tree tree, Node child) throws IOException {
         tree.mDatabase.prepareToDelete(child);
 
-        final /*P*/ byte[] oldRootPage = mPage;
-        final byte oldRootType = type();
+        /*P*/ byte[] oldRootPage = mPage;
+        byte oldRootType = type();
 
         /*P*/ // [
         mPage = child.mPage;
@@ -4056,8 +4056,8 @@ final class Node extends Latch implements DatabaseAccess {
         /*P*/ // |
         /*P*/ // if (tree.mDatabase.mFullyMapped) {
         /*P*/ //     // Page cannot change, so copy it instead.
-        /*P*/ //     p_copy(child.mPage, 0, rootPage, 0, tree.mDatabase.pageSize());
-        /*P*/ //     rootPage = child.mPage;
+        /*P*/ //     p_copy(child.mPage, 0, oldRootPage, 0, tree.mDatabase.pageSize());
+        /*P*/ //     oldRootPage = child.mPage;
         /*P*/ // } else {
         /*P*/ //     mPage = child.mPage;
         /*P*/ // }
