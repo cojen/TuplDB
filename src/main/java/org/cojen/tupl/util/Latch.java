@@ -174,6 +174,9 @@ public class Latch extends AbstractQueuedSynchronizer {
             if (compareAndSetState(state, state + 1)) {
                 return 1;
             }
+            if (hasQueuedPredecessors()) {
+                return -1;
+            }
         }
         return -1;
     }
