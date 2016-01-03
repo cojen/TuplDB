@@ -3798,7 +3798,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     /**
      * Caller must hold exclusive latch, which is released by this method.
      *
-     * @param leftChildNode never null, latched exclusively
+     * @param leftChildNode never null, latched exclusively, always released by this method
      * @param rightChildNode null if contents merged into left node, otherwise latched
      * exclusively and should simply be unlatched
      */
@@ -3812,22 +3812,12 @@ class TreeCursor implements CauseCloseable, Cursor {
                     // Continue merging up the tree.
                     break up;
                 }
-
                 // Delete the empty root node, eliminating a tree level.
-
                 if (rightChildNode != null) {
                     throw new AssertionError();
                 }
-
-                // By retaining child latch, another thread is prevented from splitting it. The
-                // lone child will become the new root.
-                try {
-                    node.rootDelete(mTree, leftChildNode);
-                } catch (Throwable e) {
-                    leftChildNode.releaseExclusive();
-                    node.releaseExclusive();
-                    throw e;
-                }
+                node.rootDelete(mTree, leftChildNode);
+                return;
             }
 
             if (rightChildNode != null) {

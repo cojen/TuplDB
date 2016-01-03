@@ -4037,11 +4037,29 @@ final class Node extends Latch implements DatabaseAccess {
      * to still function normally until they can unbind.
      *
      * <p>Caller must hold exclusive latches for root node and lone child. Caller must also
-     * ensure that both nodes are not splitting. No latches are released by this method.
+     * ensure that both nodes are not splitting. Both latches are always released, even if an
+     * exception is thrown.
      */
     void rootDelete(Tree tree, Node child) throws IOException {
-        tree.mDatabase.prepareToDelete(child);
+        try {
+            tree.mDatabase.prepareToDelete(child);
 
+            try {
+                doRootDelete(tree, child);
+            } catch (Throwable e) {
+                child.releaseExclusive();
+                throw e;
+            }
+
+            // The node can be deleted earlier in the method, but doing it here might prevent
+            // corruption if an unexpected exception occurs.
+            tree.mDatabase.deleteNode(child);
+        } finally {
+            releaseExclusive();
+        }
+    }
+
+    private void doRootDelete(Tree tree, Node child) throws IOException {
         /*P*/ byte[] oldRootPage = mPage;
         byte oldRootType = type();
 
@@ -4089,10 +4107,6 @@ final class Node extends Latch implements DatabaseAccess {
 
         // Search vector of stub needs a child pointer to the new root.
         p_longPutLE(oldRootPage, child.searchVecEnd() + 2, this.mId);
-
-        // The node can be deleted earlier in the method, but doing it here might prevent
-        // corruption if an unexpected exception occurs.
-        tree.mDatabase.deleteNode(child);
     }
 
     /**
