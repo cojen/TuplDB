@@ -305,49 +305,25 @@ final class ReplRedoEngine implements RedoVisitor {
 
     @Override
     public boolean deleteIndex(long txnId, long indexId) throws IOException {
-        // Acquire latch before performing operations with side-effects.
-        mOpLatch.acquireShared();
+        Index ix = getIndex(indexId);
+        mIndexes.remove(indexId);
 
-        Index ix;
-        {
-            LHashTable.ObjEntry<SoftReference<Index>> entry = mIndexes.remove(indexId);
-            if (entry == null || (ix = entry.value.get()) == null) {
-                ix = mDatabase.anyIndexById(indexId);
-            }
-        }
+        // Commit the transaction now and delete the index. See LocalDatabase.moveToTrash for
+        // more info.
+        txnCommit(txnId);
 
-        Runnable task = null;
-
-        try {
-            while (ix != null) {
-                try {
-                    task = mDatabase.deleteIndex(ix, txnId);
-                    break;
-                } catch (ClosedIndexException e) {
-                    // User closed the shared index reference, so re-open it.
-                    ix = openIndex(indexId, null);
-                }
-            }
-        } catch (RuntimeException e) {
-            EventListener listener = mDatabase.mEventListener;
-            if (listener != null) {
-                listener.notify(EventType.REPLICATION_WARNING,
-                                "Unable to delete index: %1$s", rootCause(e));
-                // Disable notification.
-                ix = null;
-            }
-        }
-
-        // Only release if no exception.
-        opFinishedShared();
-
-        if (ix != null && task != null) {
+        if (ix != null) {
+            ix.close();
             try {
                 mManager.notifyDrop(ix);
             } catch (Throwable e) {
                 uncaught(e);
             }
+        }
 
+        Runnable task = mDatabase.replicaDeleteTree(indexId);
+
+        if (task != null) {
             try {
                 // Allow index deletion to run concurrently. If multiple deletes are received
                 // concurrently, then the application is likely doing concurrent deletes.
