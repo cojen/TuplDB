@@ -1006,7 +1006,7 @@ final class LocalDatabase implements Database {
             }
 
             RedoWriter redo;
-            if (redoTxnId == 0 && (redo = mRedoWriter) != null) {
+            if (redoTxnId == 0 && (redo = txnRedoWriter()) != null) {
                 long commitPos;
 
                 final Lock commitLock = sharedCommitLock();
@@ -1063,23 +1063,28 @@ final class LocalDatabase implements Database {
 
     @Override
     public Runnable deleteIndex(Index index) throws IOException {
-        return deleteIndex(index, 0);
-    }
-
-    /**
-     * @param redoTxnId non-zero if delete is performed by recovery
-     */
-    Runnable deleteIndex(Index index, long redoTxnId) throws IOException {
         // Design note: This is a Database method instead of an Index method because it offers
         // an extra degree of safety. See notes in renameIndex.
         return accessTree(index).drop(false);
     }
 
     /**
+     * Returns a deletion task for a tree which just moved to the trash.
+     */
+    Runnable replicaDeleteTree(long treeId) throws IOException {
+        byte[] treeIdBytes = new byte[8];
+        encodeLongBE(treeIdBytes, 0, treeId);
+
+        Tree trashed = openTrashedTree(treeIdBytes, false);
+
+        return new Deletion(trashed, false, null);
+    }
+
+    /**
      * Called by Tree.drop with root node latch held exclusively.
      */
     Runnable deleteTree(Tree tree) throws IOException {
-        Node root = moveToTrash(tree, 0, true);
+        Node root = moveToTrash(tree, true);
 
         if (root == null) {
             // Handle concurrent delete attempt.
@@ -1092,13 +1097,22 @@ final class LocalDatabase implements Database {
     }
 
     /**
-     * @param last null to start with first
+     * @param lastIdBytes null to start with first
      * @return null if none available
      */
     private Tree openNextTrashedTree(byte[] lastIdBytes) throws IOException {
+        return openTrashedTree(lastIdBytes, true);
+    }
+
+    /**
+     * @param idBytes null to start with first
+     * @param next true to find tree with next higher id
+     * @return null if not found
+     */
+    private Tree openTrashedTree(byte[] idBytes, boolean next) throws IOException {
         View view = mRegistryKeyMap.viewPrefix(new byte[] {KEY_TYPE_TRASH_ID}, 1);
 
-        if (lastIdBytes == null) {
+        if (idBytes == null) {
             // Tag all the entries that should be deleted automatically. Entries created later
             // will have a different prefix, and so they'll be ignored.
             Cursor c = view.newCursor(Transaction.BOGUS);
@@ -1119,10 +1133,12 @@ final class LocalDatabase implements Database {
 
         Cursor c = view.newCursor(Transaction.BOGUS);
         try {
-            if (lastIdBytes == null) {
+            if (idBytes == null) {
                 c.first();
+            } else if (next) {
+                c.findGt(idBytes);
             } else {
-                c.findGt(lastIdBytes);
+                c.find(idBytes);
             }
 
             while (true) {
@@ -1145,7 +1161,11 @@ final class LocalDatabase implements Database {
                     }
                 }
 
-                c.next();
+                if (next) {
+                    c.next();
+                } else {
+                    return null;
+                }
             }
         } finally {
             c.reset();
@@ -1258,10 +1278,7 @@ final class LocalDatabase implements Database {
     }
 
     private LocalTransaction doNewTransaction(DurabilityMode durabilityMode) {
-        RedoWriter redo = mRedoWriter;
-        if (redo != null) {
-            redo = redo.txnRedoWriter();
-        }
+        RedoWriter redo = txnRedoWriter();
         return new LocalTransaction
             (this, redo, durabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
     }
@@ -1275,10 +1292,7 @@ final class LocalDatabase implements Database {
      * make modifications, but they won't go to the redo log.
      */
     LocalTransaction newNoRedoTransaction() {
-        RedoWriter redo = mRedoWriter;
-        if (redo != null) {
-            redo = redo.txnRedoWriter();
-        }
+        RedoWriter redo = txnRedoWriter();
         return new LocalTransaction
             (this, redo, DurabilityMode.NO_REDO, LockMode.UPGRADABLE_READ, -1);
     }
@@ -1292,6 +1306,17 @@ final class LocalDatabase implements Database {
     LocalTransaction newNoRedoTransaction(long redoTxnId) {
         return redoTxnId == 0 ? newNoRedoTransaction() :
             new LocalTransaction(this, redoTxnId, LockMode.UPGRADABLE_READ, -1);
+    }
+
+    /**
+     * Returns a RedoWriter suitable for transactions to write into.
+     */
+    private RedoWriter txnRedoWriter() {
+        RedoWriter redo = mRedoWriter;
+        if (redo != null) {
+            redo = redo.txnRedoWriter();
+        }
+        return redo;
     }
 
     /**
@@ -2055,22 +2080,13 @@ final class LocalDatabase implements Database {
     }
 
     /**
-     * @param redoTxnId non-zero if move is performed by recovery
      * @return root node of deleted tree; null if closed or already in the trash
      */
-    private Node moveToTrash(final Tree tree, final long redoTxnId, final boolean rootLatched)
-        throws IOException
-    {
+    private Node moveToTrash(final Tree tree, final boolean rootLatched) throws IOException {
         final byte[] idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
         final byte[] trashIdKey = newKey(KEY_TYPE_TRASH_ID, tree.mIdBytes);
 
-        final LocalTransaction txn;
-
-        if (redoTxnId != 0) {
-            txn = newNoRedoTransaction(redoTxnId);
-        } else {
-            txn = newAlwaysRedoTransaction();
-        }
+        final LocalTransaction txn = newAlwaysRedoTransaction();
 
         try {
             if (mRegistryKeyMap.load(txn, trashIdKey) != null) {
@@ -2092,9 +2108,14 @@ final class LocalDatabase implements Database {
                 mRegistryKeyMap.store(txn, trashIdKey, nameKey);
             }
 
-            RedoWriter redo;
-            if (redoTxnId == 0 && (redo = mRedoWriter) != null) {
+            RedoWriter redo = txnRedoWriter();
+            if (redo != null) {
                 long commitPos;
+
+                // Note: No additional operations can appear after OP_DELETE_INDEX. When a
+                // replica reads this operation it immediately commits the transaction in order
+                // for the deletion task to be started immediately. The redo log still contains
+                // a commit operation, which is redundant and harmless.
 
                 final Lock commitLock = sharedCommitLock();
                 commitLock.lock();
