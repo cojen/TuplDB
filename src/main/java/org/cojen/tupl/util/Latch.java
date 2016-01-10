@@ -31,6 +31,18 @@ public class Latch extends AbstractQueuedSynchronizer {
     // In the inherited state field, high bit is set if exclusive latch is
     // held, and low bits count shared latches. Limited to (2^31)-1 shared latches.
 
+    public static final int UNLATCHED = 0, EXCLUSIVE = 0x80000000, SHARED = 1;
+
+    public Latch() {
+    }
+
+    /**
+     * @param initialState UNLATCHED, EXCLUSIVE or SHARED
+     */
+    public Latch(int initialState) {
+        setState(initialState);
+    }
+
     // Note: When acquiring the exclusive latch, a check is made first before
     // calling compareAndSetState. Considering that compareAndSetState will
     // check again, this is not strictly required. However, under high
@@ -43,7 +55,7 @@ public class Latch extends AbstractQueuedSynchronizer {
      * threads if possible.
      */
     public final boolean tryAcquireExclusive() {
-        return getState() == 0 ? compareAndSetState(0, 0x80000001) : false;
+        return getState() == 0 ? compareAndSetState(0, EXCLUSIVE) : false;
     }
 
     /**
@@ -58,7 +70,7 @@ public class Latch extends AbstractQueuedSynchronizer {
      * possible.
      */
     public final void acquireExclusive() {
-        if (getState() != 0 || !compareAndSetState(0, 0x80000001)) {
+        if (getState() != 0 || !compareAndSetState(0, EXCLUSIVE)) {
             acquire(0);
         }
     }
@@ -152,7 +164,7 @@ public class Latch extends AbstractQueuedSynchronizer {
      * caller must later call releaseExclusive instead of releaseShared.
      */
     public final boolean tryUpgrade() {
-        return getState() == 1 ? compareAndSetState(1, 0x80000001) : false;
+        return getState() == 1 ? compareAndSetState(1, EXCLUSIVE) : false;
     }
 
     /**
@@ -164,7 +176,7 @@ public class Latch extends AbstractQueuedSynchronizer {
 
     @Override
     protected final boolean tryAcquire(int x) {
-        return getState() == 0 ? compareAndSetState(0, 0x80000001) : false;
+        return getState() == 0 ? compareAndSetState(0, EXCLUSIVE) : false;
     }
 
     @Override
@@ -195,19 +207,5 @@ public class Latch extends AbstractQueuedSynchronizer {
     protected final boolean tryRelease(int newState) {
         setState(newState);
         return true;
-    }
-
-    /**
-     * Set the latch state to be held exclusive, to be called only by the constructor.
-     */
-    protected final void initExclusive() {
-        setState(0x80000001);
-    }
-
-    /**
-     * Set the latch state to be held shared, to be called only by the constructor.
-     */
-    protected final void initShared() {
-        setState(1);
     }
 }
