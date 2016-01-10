@@ -278,8 +278,8 @@ final class Node extends Latch implements DatabaseAccess {
 
     // Construct a "lock" object for use when loading a node. See loadChild method.
     private Node(long id) {
+        super(EXCLUSIVE);
         mUsageList = null;
-        initExclusive();
         mId = id;
     }
 
@@ -5350,13 +5350,13 @@ final class Node extends Latch implements DatabaseAccess {
                 ", cachedState=" + mCachedState +
                 ", topEntry=" + garbage() +
                 ", lowerNodeId=" + + p_longGetLE(mPage, 4) +
-                ", lockState=" + super.toString() +
+                ", latchState=" + super.toString() +
                 '}';
             /*P*/ // [
         case TYPE_FRAGMENT:
             return "FragmentNode: {id=" + mId +
                 ", cachedState=" + mCachedState +
-                ", lockState=" + super.toString() +
+                ", latchState=" + super.toString() +
                 '}';
             /*P*/ // ]
         case TYPE_TN_IN:
@@ -5376,7 +5376,7 @@ final class Node extends Latch implements DatabaseAccess {
             if (!isLeaf()) {
                 return "Node: {id=" + mId +
                     ", cachedState=" + mCachedState +
-                    ", lockState=" + super.toString() +
+                    ", latchState=" + super.toString() +
                     '}';
             }
             // Fallthrough...
@@ -5390,7 +5390,7 @@ final class Node extends Latch implements DatabaseAccess {
             ", isSplit=" + (mSplit != null) +
             ", availableBytes=" + availableBytes() +
             ", extremity=0b" + Integer.toString((type() & (LOW_EXTREMITY | HIGH_EXTREMITY)), 2) +
-            ", lockState=" + super.toString() +
+            ", latchState=" + super.toString() +
             '}';
     }
 
