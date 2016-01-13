@@ -77,7 +77,7 @@ class WindowsMappedPageArray extends MappedPageArray {
              null // template file
              );
 
-        if (hFile == WinNT.INVALID_HANDLE_VALUE) {
+        if (hFile == null || hFile == WinNT.INVALID_HANDLE_VALUE) {
             int error = cKernel.GetLastError();
             throw new FileNotFoundException(Kernel32Util.formatMessage(error));
         }
@@ -93,7 +93,7 @@ class WindowsMappedPageArray extends MappedPageArray {
              null // no name
              );
 
-        if (hMapping == WinNT.INVALID_HANDLE_VALUE) {
+        if (hMapping == null || hMapping == WinNT.INVALID_HANDLE_VALUE) {
             int error = cKernel.GetLastError();
             closeHandle(hFile);
             throw toException(error);
