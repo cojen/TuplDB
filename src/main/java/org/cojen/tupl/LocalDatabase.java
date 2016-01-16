@@ -3009,8 +3009,7 @@ final class LocalDatabase implements Database {
         /*P*/ // }
         /*P*/ // ]
 
-        node.mCachedState = mCommitState;
-        mDirtyList.add(node);
+        mDirtyList.add(node, mCommitState);
         return node;
     }
 
@@ -3061,8 +3060,6 @@ final class LocalDatabase implements Database {
         if (node.mCachedState == mCommitState) {
             return false;
         } else {
-            mDirtyList.add(node);
-
             if (node.mCachedState != CACHED_CLEAN) {
                 node.write(mPageDb);
             }
@@ -3100,8 +3097,6 @@ final class LocalDatabase implements Database {
      */
     void markUndoLogDirty(Node node) throws IOException {
         if (node.mCachedState != mCommitState) {
-            mDirtyList.add(node);
-
             node.write(mPageDb);
 
             long newId = mPageDb.allocPage();
@@ -3130,8 +3125,6 @@ final class LocalDatabase implements Database {
      * method, even if an exception is thrown.
      */
     void doMarkDirty(Tree tree, Node node) throws IOException {
-        mDirtyList.add(node);
-
         if (node.mCachedState != CACHED_CLEAN) {
             node.write(mPageDb);
         }
@@ -3203,7 +3196,7 @@ final class LocalDatabase implements Database {
         /*P*/ // ]
 
         node.mId = newId;
-        node.mCachedState = mCommitState;
+        mDirtyList.add(node, mCommitState);
     }
 
     /**
@@ -3219,8 +3212,7 @@ final class LocalDatabase implements Database {
      * should only be called for nodes whose existing data is not needed.
      */
     void redirty(Node node) {
-        node.mCachedState = mCommitState;
-        mDirtyList.add(node);
+        mDirtyList.add(node, mCommitState);
     }
 
     /**
