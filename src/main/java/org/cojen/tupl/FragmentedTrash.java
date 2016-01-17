@@ -18,8 +18,6 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import java.util.concurrent.locks.Lock;
-
 import static java.lang.System.arraycopy;
 
 import static org.cojen.tupl.PageOps.*;
@@ -181,7 +179,7 @@ final class FragmentedTrash {
         encodeLongBE(prefix, 0, txnId);
 
         LocalDatabase db = mTrash.mDatabase;
-        final Lock sharedCommitLock = db.sharedCommitLock();
+        final CommitLock commitLock = db.commitLock();
         TreeCursor cursor = new TreeCursor(mTrash, Transaction.BOGUS);
         try {
             cursor.autoload(false);
@@ -194,12 +192,12 @@ final class FragmentedTrash {
                 cursor.load();
                 byte[] value = cursor.value();
                 /*P*/ byte[] fragmented = p_transfer(value);
-                sharedCommitLock.lock();
+                commitLock.acquireShared();
                 try {
                     db.deleteFragments(fragmented, 0, value.length);
                     cursor.store(null);
                 } finally {
-                    sharedCommitLock.unlock();
+                    commitLock.releaseShared();
                     p_delete(fragmented);
                 }
                 cursor.next();
@@ -219,7 +217,7 @@ final class FragmentedTrash {
     boolean emptyAllTrash(EventListener listener) throws IOException {
         boolean found = false;
         LocalDatabase db = mTrash.mDatabase;
-        final Lock sharedCommitLock = db.sharedCommitLock();
+        final CommitLock commitLock = db.commitLock();
         TreeCursor cursor = new TreeCursor(mTrash, Transaction.BOGUS);
         try {
             cursor.first();
@@ -233,12 +231,12 @@ final class FragmentedTrash {
                     byte[] value = cursor.value();
                     /*P*/ byte[] fragmented = p_transfer(value);
                     try {
-                        sharedCommitLock.lock();
+                        commitLock.acquireShared();
                         try {
                             db.deleteFragments(fragmented, 0, value.length);
                             cursor.store(null);
                         } finally {
-                            sharedCommitLock.unlock();
+                            commitLock.releaseShared();
                         }
                     } finally {
                         p_delete(fragmented);

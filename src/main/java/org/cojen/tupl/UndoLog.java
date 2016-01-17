@@ -21,8 +21,6 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
-import java.util.concurrent.locks.Lock;
-
 import static java.lang.System.arraycopy;
 
 import static org.cojen.tupl.PageOps.*;
@@ -391,14 +389,14 @@ final class UndoLog implements DatabaseAccess {
      * @return savepoint
      */
     final long scopeEnter() throws IOException {
-        final Lock sharedCommitLock = mDatabase.sharedCommitLock();
-        sharedCommitLock.lock();
+        final CommitLock commitLock = mDatabase.commitLock();
+        commitLock.acquireShared();
         try {
             long savepoint = mLength;
             doPush(OP_SCOPE_ENTER);
             return savepoint;
         } finally {
-            sharedCommitLock.unlock();
+            commitLock.releaseShared();
         }
     }
 
@@ -408,13 +406,13 @@ final class UndoLog implements DatabaseAccess {
      * @return savepoint
      */
     final long scopeCommit() throws IOException {
-        final Lock sharedCommitLock = mDatabase.sharedCommitLock();
-        sharedCommitLock.lock();
+        final CommitLock commitLock = mDatabase.commitLock();
+        commitLock.acquireShared();
         try {
             doPush(OP_SCOPE_COMMIT);
             return mLength;
         } finally {
-            sharedCommitLock.unlock();
+            commitLock.releaseShared();
         }
     }
 
@@ -423,15 +421,15 @@ final class UndoLog implements DatabaseAccess {
      * everything. Caller does not need to hold db commit lock.
      */
     final void scopeRollback(long savepoint) throws IOException {
-        final Lock sharedCommitLock = mDatabase.sharedCommitLock();
-        sharedCommitLock.lock();
+        final CommitLock commitLock = mDatabase.commitLock();
+        commitLock.acquireShared();
         try {
             if (savepoint < mLength) {
                 // Rollback the entire scope, including the enter op.
                 doRollback(savepoint);
             }
         } finally {
-            sharedCommitLock.unlock();
+            commitLock.releaseShared();
         }
     }
 
@@ -441,8 +439,8 @@ final class UndoLog implements DatabaseAccess {
      * @param commit pass true to indicate that top of stack is a commit op
      */
     final void truncate(boolean commit) throws IOException {
-        final Lock sharedCommitLock = mDatabase.sharedCommitLock();
-        sharedCommitLock.lock();
+        final CommitLock commitLock = mDatabase.commitLock();
+        commitLock.acquireShared();
         try {
             if (mLength > 0) {
                 Node node = mNode;
@@ -469,15 +467,15 @@ final class UndoLog implements DatabaseAccess {
                         }
                         // Release and re-acquire, to unblock any threads waiting for
                         // checkpoint to begin.
-                        sharedCommitLock.unlock();
-                        sharedCommitLock.lock();
+                        commitLock.releaseShared();
+                        commitLock.acquireShared();
                     }
                 }
                 mLength = 0;
                 mActiveIndexId = 0;
             }
         } finally {
-            sharedCommitLock.unlock();
+            commitLock.releaseShared();
         }
     }
 
@@ -490,12 +488,12 @@ final class UndoLog implements DatabaseAccess {
             return;
         }
 
-        final Lock sharedCommitLock = mDatabase.sharedCommitLock();
-        sharedCommitLock.lock();
+        final CommitLock commitLock = mDatabase.commitLock();
+        commitLock.acquireShared();
         try {
             doRollback(0);
         } finally {
-            sharedCommitLock.unlock();
+            commitLock.releaseShared();
         }
     }
 

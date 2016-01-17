@@ -20,9 +20,6 @@ import java.io.IOException;
 
 import java.util.BitSet;
 
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 import org.cojen.tupl.io.CauseCloseable;
 
 /**
@@ -31,18 +28,10 @@ import org.cojen.tupl.io.CauseCloseable;
  * @see NonPageDb
  */
 abstract class PageDb implements CauseCloseable {
-    final ReentrantReadWriteLock mCommitLock;
+    final CommitLock mCommitLock;
 
     PageDb() {
-        // Need to use a reentrant lock instead of a latch to simplify the
-        // logic for persisting in-flight undo logs during a checkpoint. Pages
-        // might need to be allocated during this time, and so reentrancy is
-        // required to avoid deadlock. Ideally, lock should be fair in order
-        // for exclusive lock request to de-prioritize itself by timing out and
-        // retrying. See Database.checkpoint. Being fair slows down overall
-        // performance, because it increases the cost of acquiring the shared
-        // lock. For this reason, it isn't fair.
-        mCommitLock = new ReentrantReadWriteLock(false);
+        mCommitLock = new CommitLock();
     }
 
     /**
@@ -175,17 +164,10 @@ abstract class PageDb implements CauseCloseable {
     }
 
     /**
-     * Access the shared commit lock, which prevents commits while held.
+     * Access the commit lock, which prevents commits while held shared.
      */
-    public Lock sharedCommitLock() {
-        return mCommitLock.readLock();
-    }
-
-    /**
-     * Access the exclusive commit lock, which is acquired by the commit method.
-     */
-    public Lock exclusiveCommitLock() {
-        return mCommitLock.writeLock();
+    public CommitLock commitLock() {
+        return mCommitLock;
     }
 
     /**

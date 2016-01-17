@@ -406,7 +406,7 @@ final class DurablePageDb extends PageDb {
 
     @Override
     public long allocPage() throws IOException {
-        mCommitLock.readLock().lock();
+        mCommitLock.acquireShared();
         try {
             return mPageManager.allocPage();
         } catch (DatabaseException e) {
@@ -417,7 +417,7 @@ final class DurablePageDb extends PageDb {
         } catch (Throwable e) {
             throw closeOnFailure(e);
         } finally {
-            mCommitLock.readLock().unlock();
+            mCommitLock.releaseShared();
         }
     }
 
@@ -446,7 +446,7 @@ final class DurablePageDb extends PageDb {
     @Override
     public void deletePage(long id) throws IOException {
         checkId(id);
-        mCommitLock.readLock().lock();
+        mCommitLock.acquireShared();
         try {
             mPageManager.deletePage(id);
         } catch (IOException e) {
@@ -454,7 +454,7 @@ final class DurablePageDb extends PageDb {
         } catch (Throwable e) {
             throw closeOnFailure(e);
         } finally {
-            mCommitLock.readLock().unlock();
+            mCommitLock.releaseShared();
         }
         mPageArray.uncachePage(id);
     }
@@ -462,7 +462,7 @@ final class DurablePageDb extends PageDb {
     @Override
     public void recyclePage(long id) throws IOException {
         checkId(id);
-        mCommitLock.readLock().lock();
+        mCommitLock.acquireShared();
         try {
             try {
                 mPageManager.recyclePage(id);
@@ -474,7 +474,7 @@ final class DurablePageDb extends PageDb {
         } catch (Throwable e) {
             throw closeOnFailure(e);
         } finally {
-            mCommitLock.readLock().unlock();
+            mCommitLock.releaseShared();
         }
     }
 
@@ -520,13 +520,13 @@ final class DurablePageDb extends PageDb {
 
     @Override
     public boolean compactionStart(long targetPageCount) throws IOException {
-        mCommitLock.writeLock().lock();
+        mCommitLock.acquireExclusive();
         try {
             return mPageManager.compactionStart(targetPageCount);
         } catch (Throwable e) {
             throw closeOnFailure(e);
         } finally {
-            mCommitLock.writeLock().unlock();
+            mCommitLock.releaseExclusive();
         }
     }
 
@@ -569,8 +569,8 @@ final class DurablePageDb extends PageDb {
     public void commit(boolean resume, /*P*/ byte[] header, final CommitCallback callback)
         throws IOException
     {
-        mCommitLock.writeLock().lock();
-        mCommitLock.readLock().lock();
+        mCommitLock.acquireExclusive();
+        mCommitLock.acquireShared();
 
         mHeaderLatch.acquireShared();
         final int commitNumber = mCommitNumber + 1;
@@ -578,7 +578,7 @@ final class DurablePageDb extends PageDb {
 
         // Downgrade and keep read lock. This prevents another commit from
         // starting concurrently.
-        mCommitLock.writeLock().unlock();
+        mCommitLock.releaseExclusive();
 
         try {
             try {
@@ -604,7 +604,7 @@ final class DurablePageDb extends PageDb {
                 throw closeOnFailure(e);
             }
         } finally {
-            mCommitLock.readLock().unlock();
+            mCommitLock.releaseShared();
         }
     }
 

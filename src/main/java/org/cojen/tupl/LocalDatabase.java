@@ -146,7 +146,7 @@ final class LocalDatabase implements Database {
 
     private final NodeUsageList[] mUsageLists;
 
-    private final Lock mSharedCommitLock;
+    private final CommitLock mCommitLock;
 
     // Is either CACHED_DIRTY_0 or CACHED_DIRTY_1. Access is guarded by commit lock.
     private byte mCommitState;
@@ -453,7 +453,7 @@ final class LocalDatabase implements Database {
                 }
             }
 
-            mSharedCommitLock = mPageDb.sharedCommitLock();
+            mCommitLock = mPageDb.commitLock();
 
             // Pre-allocate nodes. They are automatically added to the usage lists, and so
             // nothing special needs to be done to allow them to get used. Since the initial
@@ -520,11 +520,11 @@ final class LocalDatabase implements Database {
             int sparePageCount = Runtime.getRuntime().availableProcessors();
             mSparePagePool = new PagePool(mPageSize, sparePageCount);
 
-            mSharedCommitLock.lock();
+            mCommitLock.acquireExclusive();
             try {
                 mCommitState = CACHED_DIRTY_0;
             } finally {
-                mSharedCommitLock.unlock();
+                mCommitLock.releaseExclusive();
             }
 
             byte[] header = new byte[HEADER_SIZE];
@@ -608,7 +608,7 @@ final class LocalDatabase implements Database {
                     // Although handler shouldn't access the database yet, be safe and call
                     // this method at the point that the database is mostly functional. All
                     // other custom methods will be called soon as well.
-                    mCustomTxnHandler.setCheckpointLock(this, mSharedCommitLock);
+                    mCustomTxnHandler.setCheckpointLock(this, mCommitLock.readLock());
                 }
 
                 ReplicationManager rm = config.mReplManager;
@@ -857,8 +857,7 @@ final class LocalDatabase implements Database {
 
         Index index;
 
-        final Lock commitLock = sharedCommitLock();
-        commitLock.lock();
+        mCommitLock.acquireShared();
         try {
             if ((index = lookupIndexById(id)) != null) {
                 return index;
@@ -880,7 +879,7 @@ final class LocalDatabase implements Database {
             DatabaseException.rethrowIfRecoverable(e);
             throw closeOnFailure(this, e);
         } finally {
-            commitLock.unlock();
+            mCommitLock.releaseShared();
         }
 
         if (index == null) {
@@ -1009,13 +1008,12 @@ final class LocalDatabase implements Database {
             if (redoTxnId == 0 && (redo = txnRedoWriter()) != null) {
                 long commitPos;
 
-                final Lock commitLock = sharedCommitLock();
-                commitLock.lock();
+                mCommitLock.acquireShared();
                 try {
                     commitPos = redo.renameIndex
                         (txn.txnId(), tree.mId, newName, mDurabilityMode.alwaysRedo());
                 } finally {
-                    commitLock.unlock();
+                    mCommitLock.releaseShared();
                 }
 
                 if (commitPos != 0) {
@@ -1603,7 +1601,7 @@ final class LocalDatabase implements Database {
 
         stats.pageSize = mPageSize;
 
-        mSharedCommitLock.lock();
+        mCommitLock.acquireShared();
         try {
             long cursorCount = 0;
             mOpenTreesLatch.acquireShared();
@@ -1632,7 +1630,7 @@ final class LocalDatabase implements Database {
                 stats.txnsCreated = mTxnId;
             }
         } finally {
-            mSharedCommitLock.unlock();
+            mCommitLock.releaseShared();
         }
 
         for (NodeUsageList usageList : mUsageLists) {
@@ -1990,9 +1988,9 @@ final class LocalDatabase implements Database {
                 }
             }
 
-            Lock lock = mSharedCommitLock;
+            CommitLock lock = mCommitLock;
             if (lock != null) {
-                lock.lock();
+                lock.acquireShared();
             }
             try {
                 if (mUsageLists != null) {
@@ -2040,7 +2038,7 @@ final class LocalDatabase implements Database {
                 }
             } finally {
                 if (lock != null) {
-                    lock.unlock();
+                    lock.releaseShared();
                 }
             }
         } finally {
@@ -2117,13 +2115,12 @@ final class LocalDatabase implements Database {
                 // for the deletion task to be started immediately. The redo log still contains
                 // a commit operation, which is redundant and harmless.
 
-                final Lock commitLock = sharedCommitLock();
-                commitLock.lock();
+                mCommitLock.acquireShared();
                 try {
                     commitPos = redo.deleteIndex
                         (txn.txnId(), tree.mId, mDurabilityMode.alwaysRedo());
                 } finally {
-                    commitLock.unlock();
+                    mCommitLock.releaseShared();
                 }
 
                 if (commitPos != 0) {
@@ -2151,8 +2148,7 @@ final class LocalDatabase implements Database {
     void removeFromTrash(Tree tree, Node root) throws IOException {
         byte[] trashIdKey = newKey(KEY_TYPE_TRASH_ID, tree.mIdBytes);
 
-        final Lock commitLock = sharedCommitLock();
-        commitLock.lock();
+        mCommitLock.acquireShared();
         try {
             if (root != null) {
                 root.acquireExclusive();
@@ -2163,7 +2159,7 @@ final class LocalDatabase implements Database {
         } catch (Throwable e) {
             throw closeOnFailure(this, e);
         } finally {
-            commitLock.unlock();
+            mCommitLock.releaseShared();
         }
     }
 
@@ -2260,8 +2256,7 @@ final class LocalDatabase implements Database {
     private Tree openInternalTree(long treeId, boolean create, DatabaseConfig config)
         throws IOException
     {
-        final Lock commitLock = sharedCommitLock();
-        commitLock.lock();
+        mCommitLock.acquireShared();
         try {
             byte[] treeIdBytes = new byte[8];
             encodeLongBE(treeIdBytes, 0, treeId);
@@ -2285,7 +2280,7 @@ final class LocalDatabase implements Database {
 
             return newTreeInstance(treeId, treeIdBytes, null, root);
         } finally {
-            commitLock.unlock();
+            mCommitLock.releaseShared();
         }
     }
 
@@ -2297,8 +2292,7 @@ final class LocalDatabase implements Database {
             return tree;
         }
 
-        final Lock commitLock = sharedCommitLock();
-        commitLock.lock();
+        mCommitLock.acquireShared();
         try {
             // Cleaup before opening more indexes.
             cleanupUnreferencedTrees();
@@ -2442,7 +2436,7 @@ final class LocalDatabase implements Database {
                 txn.reset();
             }
         } finally {
-            commitLock.unlock();
+            mCommitLock.releaseShared();
         }
     }
 
@@ -2601,36 +2595,15 @@ final class LocalDatabase implements Database {
     }
 
     /**
-     * Access the shared commit lock, which prevents commits while held. In general, it should
+     * Access the commit lock, which prevents commits while held shared. In general, it should
      * be acquired before any node latches, but postponing acquisition reduces the total time
      * held. Checkpoints don't have to wait as long for the exclusive commit lock. Because node
      * latching first isn't the canonical ordering, acquiring the shared commit lock later must
      * be prepared to abort. Try to acquire first, and if it fails, release the node latch and
      * do over.
      */
-    Lock sharedCommitLock() {
-        return mSharedCommitLock;
-    }
-
-    /**
-     * Acquires the excluisve commit lock, which prevents any database modifications.
-     */
-    Lock acquireExclusiveCommitLock() throws InterruptedIOException {
-        // If the commit lock cannot be immediately obtained, it's due to a shared lock being
-        // held for a long time. While waiting for the exclusive lock, all other shared
-        // requests are queued. By waiting a timed amount and giving up, the exclusive lock
-        // request is effectively de-prioritized. For each retry, the timeout is doubled, to
-        // ensure that the checkpoint request is not starved.
-        Lock commitLock = mPageDb.exclusiveCommitLock();
-        try {
-            long timeoutMillis = 1;
-            while (!commitLock.tryLock(timeoutMillis, TimeUnit.MILLISECONDS)) {
-                timeoutMillis <<= 1;
-            }
-            return commitLock;
-        } catch (InterruptedException e) {
-            throw new InterruptedIOException();
-        }
+    CommitLock commitLock() {
+        return mCommitLock;
     }
 
     /**
@@ -2967,13 +2940,12 @@ final class LocalDatabase implements Database {
 
             checkClosed();
 
-            final Lock commitLock = sharedCommitLock();
-            commitLock.lock();
+            mCommitLock.acquireShared();
             try {
                 // Try to free up nodes from unreferenced trees.
                 cleanupUnreferencedTrees();
             } finally {
-                commitLock.unlock();
+                mCommitLock.releaseShared();
             }
         }
 
@@ -3969,10 +3941,10 @@ final class LocalDatabase implements Database {
 
         if (!mHasCheckpointed) {
             // Read is reloading an evicted node which is known to be dirty.
-            mSharedCommitLock.lock();
+            mCommitLock.acquireShared();
             // Need to check again once full lock has been acquired.
             node.mCachedState = mHasCheckpointed ? CACHED_CLEAN : mCommitState;
-            mSharedCommitLock.unlock();
+            mCommitLock.releaseShared();
         } else {
             // NOTE: An optimization is possible here, but it's a bit tricky. Too many pages
             // are allocated when evictions are high, write rate is high, and commits are
@@ -4077,7 +4049,7 @@ final class LocalDatabase implements Database {
                 }
 
                 while (true) {
-                    Lock commitLock = acquireExclusiveCommitLock();
+                    mCommitLock.acquireExclusive();
 
                     // Registry root is infrequently modified, and so shared latch
                     // is usually available. If not, cause might be a deadlock. To
@@ -4086,7 +4058,7 @@ final class LocalDatabase implements Database {
                         break;
                     }
 
-                    commitLock.unlock();
+                    mCommitLock.releaseExclusive();
                 }
 
                 mCheckpointFlushState = CHECKPOINT_FLUSH_PREPARE;
@@ -4165,7 +4137,7 @@ final class LocalDatabase implements Database {
                     // Exception was thrown with locks still held.
                     mCheckpointFlushState = CHECKPOINT_NOT_FLUSHING;
                     root.releaseShared();
-                    mPageDb.exclusiveCommitLock().unlock();
+                    mCommitLock.releaseExclusive();
                     if (redo != null) {
                         redo.checkpointAborted();
                     }
@@ -4232,7 +4204,7 @@ final class LocalDatabase implements Database {
         mCheckpointFlushState = stateToFlush;
 
         mRegistry.mRoot.releaseShared();
-        mPageDb.exclusiveCommitLock().unlock();
+        mCommitLock.releaseExclusive();
 
         if (mRedoWriter != null) {
             mRedoWriter.checkpointStarted();
