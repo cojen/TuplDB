@@ -18,8 +18,6 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import java.util.concurrent.locks.Lock;
-
 import java.util.Arrays;
 
 import static org.cojen.tupl.PageOps.*;
@@ -99,13 +97,13 @@ final class TreeValueStream extends AbstractStream {
 
             final CursorFrame leaf = mCursor.leafExclusiveNotSplit();
 
-            final Lock sharedCommitLock = mCursor.sharedCommitLock(leaf);
+            final CommitLock commitLock = mCursor.commitLock(leaf);
             try {
                 mCursor.notSplitDirty(leaf);
                 action(leaf, OP_SET_LENGTH, length, EMPTY_BYTES, 0, 0);
                 leaf.mNode.releaseExclusive();
             } finally {
-                sharedCommitLock.unlock();
+                commitLock.releaseShared();
             }
         } catch (IllegalStateException e) {
             checkOpen();
@@ -134,13 +132,13 @@ final class TreeValueStream extends AbstractStream {
         try {
             final CursorFrame leaf = mCursor.leafExclusiveNotSplit();
 
-            final Lock sharedCommitLock = mCursor.sharedCommitLock(leaf);
+            final CommitLock commitLock = mCursor.commitLock(leaf);
             try {
                 mCursor.notSplitDirty(leaf);
                 action(leaf, OP_WRITE, pos, buf, off, len);
                 leaf.mNode.releaseExclusive();
             } finally {
-                sharedCommitLock.unlock();
+                commitLock.releaseShared();
             }
         } catch (IllegalStateException e) {
             checkOpen();

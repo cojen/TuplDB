@@ -21,8 +21,6 @@ import java.io.DataOutput;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
-import java.util.concurrent.locks.Lock;
-
 import static org.cojen.tupl.PageOps.*;
 import static org.cojen.tupl.Utils.*;
 
@@ -407,7 +405,7 @@ class Tree implements View, Index {
                 // and merges. With the exclusive commit lock held, this is no longer the case.
                 // Once acquired, update the cursors such that they refer to empty nodes.
                 root.releaseExclusive();
-                Lock commitLock = mDatabase.acquireExclusiveCommitLock();
+                mDatabase.commitLock().acquireExclusive();
                 try {
                     root.acquireExclusive();
                     if (root.mPage == p_closedTreePage()) {
@@ -417,7 +415,7 @@ class Tree implements View, Index {
                         root.invalidateCursors();
                     }
                 } finally {
-                    commitLock.unlock();
+                    mDatabase.commitLock().releaseExclusive();
                 }
             }
 
@@ -666,8 +664,8 @@ class Tree implements View, Index {
      */
     final void append(byte[] key, byte[] value, CursorFrame frame) throws IOException {
         try {
-            final Lock sharedCommitLock = mDatabase.sharedCommitLock();
-            sharedCommitLock.lock();
+            final CommitLock commitLock = mDatabase.commitLock();
+            commitLock.acquireShared();
             Node node = latchDirty(frame);
             try {
                 // TODO: inline and specialize
@@ -690,7 +688,7 @@ class Tree implements View, Index {
                 }
             } finally {
                 node.releaseExclusive();
-                sharedCommitLock.unlock();
+                commitLock.releaseShared();
             }
         } catch (Throwable e) {
             throw closeOnFailure(mDatabase, e);

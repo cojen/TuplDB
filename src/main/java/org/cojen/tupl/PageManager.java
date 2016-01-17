@@ -22,7 +22,6 @@ import java.util.BitSet;
 
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.cojen.tupl.io.PageArray;
 
@@ -437,12 +436,12 @@ final class PageManager {
     /**
      * @return false if aborted
      */
-    public boolean compactionScanFreeList(ReentrantReadWriteLock commitLock) throws IOException {
+    public boolean compactionScanFreeList(CommitLock commitLock) throws IOException {
         return compactionScanFreeList(commitLock, mRecycleFreeList)
             && compactionScanFreeList(commitLock, mRegularFreeList);
     }
 
-    private boolean compactionScanFreeList(ReentrantReadWriteLock commitLock, PageQueue list)
+    private boolean compactionScanFreeList(CommitLock commitLock, PageQueue list)
         throws IOException
     {
         Lock sharedCommitLock = commitLock.readLock();
@@ -498,7 +497,7 @@ final class PageManager {
     /**
      * @return false if aborted
      */
-    public boolean compactionEnd(ReentrantReadWriteLock commitLock) throws IOException {
+    public boolean compactionEnd(CommitLock commitLock) throws IOException {
         // Default will reclaim everything.
         long upperBound = Long.MAX_VALUE;
 
@@ -507,7 +506,7 @@ final class PageManager {
         // Need exclusive commit lock to prevent delete and recycle from attempting to operate
         // against a null reserve list. A race condition exists otherwise. Acquire full lock
         // too out of paranoia.
-        commitLock.writeLock().lock();
+        commitLock.acquireExclusive();
         fullLock();
 
         if (ready && (ready = mCompacting && (mTotalPageCount > mCompactionTargetPageCount
@@ -529,7 +528,7 @@ final class PageManager {
         mReserveList = null;
 
         fullUnlock();
-        commitLock.writeLock().unlock();
+        commitLock.releaseExclusive();
 
         if (reserve != null) {
             try {
