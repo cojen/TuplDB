@@ -83,7 +83,7 @@ try {
 }
 ```
 
-Entries can retrieved by [loading](http://cojen.github.io/Tupl/javadoc/org/cojen/tupl/Index.html#load%28org.cojen.tupl.Transaction,%20byte[]%29) them directly, or via a [cursor](http://cojen.github.io/Tupl/javadoc/org/cojen/tupl/Cursor.html):
+Entries can retrieved by [loading](http://cojen.github.io/Tupl/javadoc/org/cojen/tupl/View.html#load-org.cojen.tupl.Transaction-byte:A-) them directly, or via a [cursor](http://cojen.github.io/Tupl/javadoc/org/cojen/tupl/Cursor.html):
 
 ```java
 // Find all users whose last name starts with 'J'.
