@@ -146,7 +146,33 @@ class Tree implements View, Index {
     @Override
     public final byte[] load(Transaction txn, byte[] key) throws IOException {
         LocalTransaction local = check(txn);
-        Locker locker = lockForLoad(local, key);
+
+        Locker locker;
+        if (local == null) {
+            locker = mLockManager.lockSharedLocal(mId, key, LockManager.hash(mId, key));
+        } else {
+            locker = null;
+
+            switch (local.lockMode()) {
+            case READ_COMMITTED:
+                if (local.lockShared(mId, key) == LockResult.ACQUIRED) {
+                    locker = local;
+                }
+                break;
+
+            case REPEATABLE_READ:
+                local.lockShared(mId, key);
+                break;
+
+            case UPGRADABLE_READ:
+                local.lockUpgradable(mId, key);
+                break;
+
+            default: // No read lock requested by READ_UNCOMMITTED or UNSAFE.
+                break;
+            }
+        }
+
         try {
             return Node.search(mRoot, this, key);
         } finally {
@@ -796,33 +822,6 @@ class Tree implements View, Index {
      */
     final boolean isLockAvailable(Locker locker, byte[] key, int hash) {
         return mLockManager.isAvailable(locker, mId, key, hash);
-    }
-
-    /**
-     * @param txn optional transaction instance
-     * @param key non-null key instance
-     * @return non-null Locker instance if caller should unlock when read is done
-     */
-    private Locker lockForLoad(LocalTransaction txn, byte[] key) throws LockFailureException {
-        if (txn == null) {
-            return mLockManager.lockSharedLocal(mId, key, LockManager.hash(mId, key));
-        }
-
-        switch (txn.lockMode()) {
-        default: // No read lock requested by READ_UNCOMMITTED or UNSAFE.
-            return null;
-
-        case READ_COMMITTED:
-            return txn.lockShared(mId, key) == LockResult.ACQUIRED ? txn : null;
-
-        case REPEATABLE_READ:
-            txn.lockShared(mId, key);
-            return null;
-
-        case UPGRADABLE_READ:
-            txn.lockUpgradable(mId, key);
-            return null;
-        }
     }
 
     final Locker lockSharedLocal(byte[] key, int hash) throws LockFailureException {
