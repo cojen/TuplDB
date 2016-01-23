@@ -310,7 +310,7 @@ class ReplRedoWriter extends RedoWriter {
     }
 
     @Override
-    final void force(boolean metadata) throws IOException {
+    void force(boolean metadata) throws IOException {
         mEngine.mManager.sync();
     }
 

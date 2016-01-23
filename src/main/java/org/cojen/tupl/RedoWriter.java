@@ -305,9 +305,9 @@ abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flus
         doFlush();
     }
 
-    public void sync() throws IOException {
+    public void flushSync(boolean metadata) throws IOException {
         flush();
-        sync(false);
+        sync(metadata);
     }
 
     @Override

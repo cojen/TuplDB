@@ -1654,7 +1654,7 @@ final class LocalDatabase implements Database {
     @Override
     public void sync() throws IOException {
         if (!mClosed && mRedoWriter != null) {
-            mRedoWriter.sync();
+            mRedoWriter.flushSync(false);
         }
     }
 
@@ -3997,9 +3997,9 @@ final class LocalDatabase implements Database {
                         break check;
                     }
 
-                    // Thresholds not met for a full checkpoint, but sync the
-                    // redo log for durability.
-                    mRedoWriter.sync();
+                    // Thresholds not met for a full checkpoint, but fully sync the redo log
+                    // for durability.
+                    mRedoWriter.flushSync(true);
 
                     return;
                 }
