@@ -176,6 +176,32 @@ final class ReplRedoController extends ReplRedoWriter {
         return -txnId;
     }
 
+    @Override
+    void force(boolean metadata) throws IOException {
+        // Interpret metadata option as a durability confirmation request.
+
+        if (metadata) {
+            long pos;
+            {
+                ReplRedoWriter redo = mTxnRedoWriter;
+                if (redo.mReplWriter == null) {
+                    pos = mEngine.mDecodePosition;
+                } else synchronized (redo) {
+                    pos = redo.mLastCommitPos;
+                }
+            }
+
+            try {
+                mEngine.mManager.syncConfirm(pos);
+                return;
+            } catch (IOException e) {
+                // Try regular sync instead, in case leadership just changed.
+            }
+        }
+
+        mEngine.mManager.sync();
+    }
+
     /**
      * Called by ReplRedoEngine when local instance has become the leader.
      */
