@@ -1166,12 +1166,17 @@ class TreeCursor implements CauseCloseable, Cursor {
         try {
             mKeyHash = 0;
 
-            final LockMode mode;
+            final int lockType;
             if (txn == null) {
-                mode = LockMode.READ_COMMITTED;
-            } else if ((mode = txn.lockMode()).noReadLock) {
-                node.retrieveLeafEntry(pos, this);
-                return LockResult.UNOWNED;
+                lockType = 0;
+            } else {
+                LockMode mode = txn.lockMode();
+                if (mode.noReadLock) {
+                    node.retrieveLeafEntry(pos, this);
+                    return LockResult.UNOWNED;
+                } else {
+                    lockType = mode.repeatable;
+                }
             }
 
             // Copy key for now, because lock might not be available. Value
@@ -1182,26 +1187,19 @@ class TreeCursor implements CauseCloseable, Cursor {
             mValue = NOT_LOADED;
 
             try {
-                LockResult result;
+                int keyHash = keyHash();
 
-                switch (mode) {
-                default:
-                    if (mTree.isLockAvailable(txn, mKey, keyHash())) {
+                if (lockType == 0) {
+                    if (mTree.isLockAvailable(txn, mKey, keyHash)) {
                         // No need to acquire full lock.
                         mValue = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
                         return LockResult.UNOWNED;
                     } else {
                         return null;
                     }
-
-                case REPEATABLE_READ:
-                    result = txn.tryLockShared(mTree.mId, mKey, keyHash(), 0L);
-                    break;
-
-                case UPGRADABLE_READ:
-                    result = txn.tryLockUpgradable(mTree.mId, mKey, keyHash(), 0L);
-                    break;
                 }
+
+                LockResult result = txn.tryLock(lockType, mTree.mId, mKey, keyHash, 0L);
 
                 if (result.isHeld()) {
                     mValue = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
@@ -1272,20 +1270,25 @@ class TreeCursor implements CauseCloseable, Cursor {
 
         LockResult result;
         obtainResult: {
-            final LockMode mode;
+            final int lockType;
             if (txn == null) {
-                mode = LockMode.READ_COMMITTED;
-            } else if ((mode = txn.lockMode()).noReadLock) {
-                mValue = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
-                result = LockResult.UNOWNED;
-                break obtainResult;
+                lockType = 0;
+            } else {
+                LockMode mode = txn.lockMode();
+                if (mode.noReadLock) {
+                    mValue = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
+                    result = LockResult.UNOWNED;
+                    break obtainResult;
+                } else {
+                    lockType = mode.repeatable;
+                }
             }
 
             mValue = NOT_LOADED;
-        
-            switch (mode) {
-            default:
-                if (mTree.isLockAvailable(txn, mKey, keyHash())) {
+            int keyHash = keyHash();
+
+            if (lockType == 0) {
+                if (mTree.isLockAvailable(txn, mKey, keyHash)) {
                     // No need to acquire full lock.
                     mValue = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
                     result = LockResult.UNOWNED;
@@ -1293,14 +1296,8 @@ class TreeCursor implements CauseCloseable, Cursor {
                     result = null;
                 }
                 break obtainResult;
-
-            case REPEATABLE_READ:
-                result = txn.tryLockShared(mTree.mId, mKey, keyHash(), 0L);
-                break;
-
-            case UPGRADABLE_READ:
-                result = txn.tryLockUpgradable(mTree.mId, mKey, keyHash(), 0L);
-                break;
+            } else {
+                result = txn.tryLock(lockType, mTree.mId, mKey, keyHash, 0L);
             }
 
             if (result.isHeld()) {
@@ -1324,8 +1321,10 @@ class TreeCursor implements CauseCloseable, Cursor {
      * @return null if current entry has been deleted
      */
     private LockResult lockAndCopyIfExists(LocalTransaction txn) throws IOException {
+        int keyHash = keyHash();
+
         if (txn == null) {
-            Locker locker = mTree.lockSharedLocal(mKey, keyHash());
+            Locker locker = mTree.lockSharedLocal(mKey, keyHash);
             try {
                 if (copyIfExists() != null) {
                     return LockResult.UNOWNED;
@@ -1336,22 +1335,14 @@ class TreeCursor implements CauseCloseable, Cursor {
         } else {
             LockResult result;
 
-            switch (txn.lockMode()) {
-                // Default case should only capture READ_COMMITTED, since the
-                // no-lock modes were already handled.
-            default:
-                if ((result = txn.lockShared(mTree.mId, mKey, keyHash())) == LockResult.ACQUIRED) {
+            int lockType = txn.lockMode().repeatable;
+
+            if (lockType == 0) {
+                if ((result = txn.lockShared(mTree.mId, mKey, keyHash)) == LockResult.ACQUIRED) {
                     result = LockResult.UNOWNED;
                 }
-                break;
-
-            case REPEATABLE_READ:
-                result = txn.lockShared(mTree.mId, mKey, keyHash());
-                break;
-
-            case UPGRADABLE_READ:
-                result = txn.lockUpgradable(mTree.mId, mKey, keyHash());
-                break;
+            } else {
+                result = txn.lock(lockType, mTree.mId, mKey, keyHash, txn.mLockTimeoutNanos);
             }
 
             if (copyIfExists() != null) {
@@ -1757,20 +1748,11 @@ class TreeCursor implements CauseCloseable, Cursor {
         }
 
         try {
-            LockResult result;
-
-            switch (mode) {
-            default: // no read lock requested by READ_UNCOMMITTED or UNSAFE
+            if (mode.noReadLock) {
                 return LockResult.UNOWNED;
-
-            case REPEATABLE_READ:
-                result = txn.tryLockShared(mTree.mId, mKey, mKeyHash, 0L);
-                break;
-
-            case UPGRADABLE_READ:
-                result = txn.tryLockUpgradable(mTree.mId, mKey, mKeyHash, 0L);
-                break;
             }
+
+            LockResult result = txn.tryLock(mode.repeatable, mTree.mId, mKey, mKeyHash, 0L);
 
             return result.isHeld() ? result : null;
         } catch (DeadlockException e) {
@@ -1988,30 +1970,25 @@ class TreeCursor implements CauseCloseable, Cursor {
             result = LockResult.UNOWNED;
             locker = mTree.lockSharedLocal(key, keyHash());
         } else {
-            switch (txn.lockMode()) {
-            default: // no read lock requested by READ_UNCOMMITTED or UNSAFE
+            LockMode mode = txn.lockMode();
+            if (mode.noReadLock) {
                 result = LockResult.UNOWNED;
                 locker = null;
-                break;
-
-            case READ_COMMITTED:
-                if ((result = txn.lockShared(mTree.mId, key, keyHash())) == LockResult.ACQUIRED) {
-                    result = LockResult.UNOWNED;
-                    locker = txn;
+            } else {
+                int keyHash = keyHash();
+                if (mode == LockMode.READ_COMMITTED) {
+                    result = txn.lockShared(mTree.mId, key, keyHash);
+                    if (result == LockResult.ACQUIRED) {
+                        result = LockResult.UNOWNED;
+                        locker = txn;
+                    } else {
+                        locker = null;
+                    }
                 } else {
+                    result = txn.lock
+                        (mode.repeatable, mTree.mId, key, keyHash, txn.mLockTimeoutNanos);
                     locker = null;
                 }
-                break;
-
-            case REPEATABLE_READ:
-                result = txn.lockShared(mTree.mId, key, keyHash());
-                locker = null;
-                break;
-
-            case UPGRADABLE_READ:
-                result = txn.lockUpgradable(mTree.mId, key, keyHash());
-                locker = null;
-                break;
             }
         }
 
@@ -2182,7 +2159,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                 final int hash = LockManager.hash(mTree.mId, key);
                 mKeyHash = hash;
                 result = txn.lockExclusive(mTree.mId, key, hash);
-                if (result == LockResult.ACQUIRED && mode.repeatable) {
+                if (result == LockResult.ACQUIRED && mode.repeatable != 0) {
                     // Downgrade to upgradable when no modification is made, to
                     // preserve repeatable semantics and allow upgrade later.
                     result = LockResult.UPGRADED;
