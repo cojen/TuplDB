@@ -341,7 +341,7 @@ class Tree implements View, Index {
                 }
             }
         } finally {
-            frame.popv();
+            CursorFrame.popAll(frame);
         }
     }
 
