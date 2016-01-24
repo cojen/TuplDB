@@ -147,38 +147,201 @@ class Tree implements View, Index {
     public final byte[] load(Transaction txn, byte[] key) throws IOException {
         LocalTransaction local = check(txn);
 
-        Locker locker;
-        if (local == null) {
-            locker = mLockManager.lockSharedLocal(mId, key, LockManager.hash(mId, key));
-        } else {
-            locker = null;
-
-            switch (local.lockMode()) {
-            case READ_COMMITTED:
-                if (local.lockShared(mId, key) == LockResult.ACQUIRED) {
-                    locker = local;
-                }
-                break;
-
-            case REPEATABLE_READ:
-                local.lockShared(mId, key);
-                break;
-
-            case UPGRADABLE_READ:
-                local.lockUpgradable(mId, key);
-                break;
-
-            default: // No read lock requested by READ_UNCOMMITTED or UNSAFE.
-                break;
+        // If lock must be acquired and retained, acquire now and skip the quick check later.
+        if (local != null) {
+            int lockType = local.lockMode().repeatable;
+            if (lockType != 0) {
+                int hash = LockManager.hash(mId, key);
+                local.lock(lockType, mId, key, hash, local.mLockTimeoutNanos);
             }
         }
 
-        try {
-            return Node.search(mRoot, this, key);
-        } finally {
-            if (locker != null) {
-                locker.unlock();
+        Node node = mRoot;
+        node.acquireShared();
+
+        // Note: No need to check if root has split, since root splits are always completed
+        // before releasing the root latch. Also, Node.used is not invoked for the root node,
+        // because it cannot be evicted.
+
+        while (!node.isLeaf()) {
+            int childPos;
+            try {
+                childPos = Node.internalPos(node.binarySearch(key));
+            } catch (Throwable e) {
+                node.releaseShared();
+                throw e;
             }
+
+            long childId = node.retrieveChildRefId(childPos);
+            Node childNode = mDatabase.nodeMapGet(childId);
+
+            if (childNode != null) {
+                childNode.acquireShared();
+
+                // Need to check again in case evict snuck in.
+                if (childId == childNode.mId) {
+                    node.releaseShared();
+                    node = childNode;
+                    if (node.mSplit != null) {
+                        node = node.mSplit.selectNode(node, key);
+                    }
+                    node.used();
+                    continue;
+                }
+
+                childNode.releaseShared();
+            }
+
+            node = node.loadChild(mDatabase, childId, Node.OPTION_PARENT_RELEASE_SHARED);
+        }
+
+        // Sub search into leaf with shared latch held.
+
+        // Same code as binarySearch, but instead of returning the position, it directly copies
+        // the value if found. This avoids having to decode the found value location twice.
+
+        CursorFrame frame;
+        int keyHash;
+
+        search: try {
+            final /*P*/ byte[] page = node.mPage;
+            final int keyLen = key.length;
+            int lowPos = node.searchVecStart();
+            int highPos = node.searchVecEnd();
+
+            int lowMatch = 0;
+            int highMatch = 0;
+
+            outer: while (lowPos <= highPos) {
+                int midPos = ((lowPos + highPos) >> 1) & ~1;
+
+                int compareLoc, compareLen, i;
+                compare: {
+                    compareLoc = p_ushortGetLE(page, midPos);
+                    compareLen = p_byteGet(page, compareLoc++);
+                    if (compareLen >= 0) {
+                        compareLen++;
+                    } else {
+                        int header = compareLen;
+                        compareLen = ((compareLen & 0x3f) << 8) | p_ubyteGet(page, compareLoc++);
+
+                        if ((header & Node.ENTRY_FRAGMENTED) != 0) {
+                            // Note: An optimized version wouldn't need to copy the whole key.
+                            byte[] compareKey = mDatabase.reconstructKey
+                                (page, compareLoc, compareLen);
+
+                            int fullCompareLen = compareKey.length;
+
+                            int minLen = Math.min(fullCompareLen, keyLen);
+                            i = Math.min(lowMatch, highMatch);
+                            for (; i<minLen; i++) {
+                                byte cb = compareKey[i];
+                                byte kb = key[i];
+                                if (cb != kb) {
+                                    if ((cb & 0xff) < (kb & 0xff)) {
+                                        lowPos = midPos + 2;
+                                        lowMatch = i;
+                                    } else {
+                                        highPos = midPos - 2;
+                                        highMatch = i;
+                                    }
+                                    continue outer;
+                                }
+                            }
+
+                            // Update compareLen and compareLoc for use by the code after the
+                            // current scope. The compareLoc is completely bogus at this point,
+                            // but is corrected when the value is retrieved below.
+                            compareLoc += compareLen - fullCompareLen;
+                            compareLen = fullCompareLen;
+
+                            break compare;
+                        }
+                    }
+
+                    int minLen = Math.min(compareLen, keyLen);
+                    i = Math.min(lowMatch, highMatch);
+                    for (; i<minLen; i++) {
+                        byte cb = p_byteGet(page, compareLoc + i);
+                        byte kb = key[i];
+                        if (cb != kb) {
+                            if ((cb & 0xff) < (kb & 0xff)) {
+                                lowPos = midPos + 2;
+                                lowMatch = i;
+                            } else {
+                                highPos = midPos - 2;
+                                highMatch = i;
+                            }
+                            continue outer;
+                        }
+                    }
+                }
+
+                if (compareLen < keyLen) {
+                    lowPos = midPos + 2;
+                    lowMatch = i;
+                } else if (compareLen > keyLen) {
+                    highPos = midPos - 2;
+                    highMatch = i;
+                } else {
+                    if ((txn != null && txn.lockMode() != LockMode.READ_COMMITTED) ||
+                        mLockManager.isAvailable
+                        (local, mId, key, keyHash = LockManager.hash(mId, key)))
+                    {
+                        return Node.retrieveLeafValueAtLoc(node, page, compareLoc + compareLen);
+                    }
+                    // Need to acquire the lock before loading. To prevent deadlock, a cursor
+                    // frame must be bound and then the node latch can be released.
+                    frame = new CursorFrame();
+                    frame.bind(node, midPos - node.searchVecStart());
+                    break search;
+                }
+            }
+
+            if ((txn != null && txn.lockMode() != LockMode.READ_COMMITTED) ||
+                mLockManager.isAvailable(local, mId, key, keyHash = LockManager.hash(mId, key)))
+            {
+                return null;
+            }
+
+            // Need to lock even if no value was found.
+            frame = new CursorFrame();
+            frame.mNotFoundKey = key;
+            frame.bind(node, ~(lowPos - node.searchVecStart()));
+            break search;
+        } finally {
+            node.releaseShared();
+        }
+
+        try {
+            Locker locker;
+            if (local == null) {
+                locker = lockSharedLocal(key, keyHash);
+            } else if (local.lockShared(mId, key, keyHash) == LockResult.ACQUIRED) {
+                locker = local;
+            } else {
+                // Transaction already had the lock for some reason, so don't release it.
+                locker = null;
+            }
+
+            try {
+                node = frame.acquireShared();
+                try {
+                    if (node.mSplit != null) {
+                        node = node.mSplit.selectNode(node, key);
+                    }
+                    int pos = frame.mNodePos;
+                    return pos >= 0 ? node.retrieveLeafValue(pos) : null;
+                } finally {
+                    node.releaseShared();
+                }
+            } finally {
+                if (locker != null) {
+                    locker.unlock();
+                }
+            }
+        } finally {
+            frame.popv();
         }
     }
 
