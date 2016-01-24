@@ -68,6 +68,7 @@ public class TestAll {
             EvictionTest.class,
             EnduranceTest.class,
             ContentionTest.class,
+            ContendedLockTest.class,
         };
 
         String[] names = new String[classes.length];

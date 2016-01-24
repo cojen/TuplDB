@@ -409,148 +409,6 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     /**
-     * Search for a value, starting from the root node.
-     *
-     * @param node root node
-     * @param key search key
-     * @return copy of value or null if not found
-     */
-    static byte[] search(Node node, Tree tree, byte[] key) throws IOException {
-        node.acquireShared();
-
-        // Note: No need to check if root has split, since root splits are always completed
-        // before releasing the root latch. Also, Node.used is not invoked for the root node,
-        // because it cannot be evicted.
-
-        while (!node.isLeaf()) {
-            int childPos;
-            try {
-                childPos = internalPos(node.binarySearch(key));
-            } catch (Throwable e) {
-                node.releaseShared();
-                throw e;
-            }
-
-            long childId = node.retrieveChildRefId(childPos);
-            Node childNode = tree.mDatabase.nodeMapGet(childId);
-
-            if (childNode != null) {
-                childNode.acquireShared();
-
-                // Need to check again in case evict snuck in.
-                if (childId == childNode.mId) {
-                    node.releaseShared();
-                    node = childNode;
-                    if (node.mSplit != null) {
-                        node = node.mSplit.selectNode(node, key);
-                    }
-                    node.used();
-                    continue;
-                }
-
-                childNode.releaseShared();
-            }
-
-            node = node.loadChild(tree.mDatabase, childId, OPTION_PARENT_RELEASE_SHARED);
-        }
-
-        // Sub search into leaf with shared latch held.
-
-        // Same code as binarySearch, but instead of returning the position, it directly copies
-        // the value if found. This avoids having to decode the found value location twice.
-
-        try {
-            final /*P*/ byte[] page = node.mPage;
-            final int keyLen = key.length;
-            int lowPos = node.searchVecStart();
-            int highPos = node.searchVecEnd();
-
-            int lowMatch = 0;
-            int highMatch = 0;
-
-            outer: while (lowPos <= highPos) {
-                int midPos = ((lowPos + highPos) >> 1) & ~1;
-
-                int compareLoc, compareLen, i;
-                compare: {
-                    compareLoc = p_ushortGetLE(page, midPos);
-                    compareLen = p_byteGet(page, compareLoc++);
-                    if (compareLen >= 0) {
-                        compareLen++;
-                    } else {
-                        int header = compareLen;
-                        compareLen = ((compareLen & 0x3f) << 8) | p_ubyteGet(page, compareLoc++);
-
-                        if ((header & ENTRY_FRAGMENTED) != 0) {
-                            // Note: An optimized version wouldn't need to copy the whole key.
-                            byte[] compareKey = tree.mDatabase.reconstructKey
-                                (page, compareLoc, compareLen);
-
-                            int fullCompareLen = compareKey.length;
-
-                            int minLen = Math.min(fullCompareLen, keyLen);
-                            i = Math.min(lowMatch, highMatch);
-                            for (; i<minLen; i++) {
-                                byte cb = compareKey[i];
-                                byte kb = key[i];
-                                if (cb != kb) {
-                                    if ((cb & 0xff) < (kb & 0xff)) {
-                                        lowPos = midPos + 2;
-                                        lowMatch = i;
-                                    } else {
-                                        highPos = midPos - 2;
-                                        highMatch = i;
-                                    }
-                                    continue outer;
-                                }
-                            }
-
-                            // Update compareLen and compareLoc for use by the code after the
-                            // current scope. The compareLoc is completely bogus at this point,
-                            // but is corrected when the value is retrieved below.
-                            compareLoc += compareLen - fullCompareLen;
-                            compareLen = fullCompareLen;
-
-                            break compare;
-                        }
-                    }
-
-                    int minLen = Math.min(compareLen, keyLen);
-                    i = Math.min(lowMatch, highMatch);
-                    for (; i<minLen; i++) {
-                        byte cb = p_byteGet(page, compareLoc + i);
-                        byte kb = key[i];
-                        if (cb != kb) {
-                            if ((cb & 0xff) < (kb & 0xff)) {
-                                lowPos = midPos + 2;
-                                lowMatch = i;
-                            } else {
-                                highPos = midPos - 2;
-                                highMatch = i;
-                            }
-                            continue outer;
-                        }
-                    }
-                }
-
-                if (compareLen < keyLen) {
-                    lowPos = midPos + 2;
-                    lowMatch = i;
-                } else if (compareLen > keyLen) {
-                    highPos = midPos - 2;
-                    highMatch = i;
-                } else {
-                    return retrieveLeafValueAtLoc(node, page, compareLoc + compareLen);
-                }
-            }
-
-            return null;
-        } finally {
-            node.releaseShared();
-        }
-    }
-
-    /**
      * Options for loadChild. Caller must latch parentas shared or exclusive, which can be
      * retained (default) or released. Child node is latched shared (default) or exclusive.
      */
@@ -1119,7 +977,7 @@ final class Node extends Latch implements DatabaseAccess {
     /**
      * Get the search vector end pointer.
      */
-    private int searchVecEnd() {
+    int searchVecEnd() {
         /*P*/ // [
         return mSearchVecEnd;
         /*P*/ // |
@@ -1774,8 +1632,7 @@ final class Node extends Latch implements DatabaseAccess {
         return retrieveLeafValueAtLoc(this, page, loc);
     }
 
-    private static byte[] retrieveLeafValueAtLoc(DatabaseAccess dbAccess,
-                                                 /*P*/ byte[] page, int loc)
+    static byte[] retrieveLeafValueAtLoc(DatabaseAccess dbAccess, /*P*/ byte[] page, int loc)
         throws IOException
     {
         final int header = p_byteGet(page, loc++);
