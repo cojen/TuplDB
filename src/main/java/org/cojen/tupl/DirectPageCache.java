@@ -366,6 +366,6 @@ final class DirectPageCache extends Latch implements PageCache {
     }
 
     private static int hash(long pageId) {
-        return (((int) pageId) ^ ((int) (pageId >>> 32))) & 0x7fffffff;
+        return Long.hashCode(pageId) & 0x7fffffff;
     }
 }
