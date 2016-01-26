@@ -56,8 +56,7 @@ class Utils extends org.cojen.tupl.io.Utils {
      * @return non-zero random number, suitable for Xorshift RNG or object hashcode
      */
     static int randomSeed() {
-        long id = Thread.currentThread().getId();
-        int seed = ((int) id) ^ ((int) (id >>> 32)) ^ cSeedMix;
+        int seed = Long.hashCode(Thread.currentThread().getId()) ^ cSeedMix;
         while (seed == 0) {
             seed = new Random().nextInt();
         }
