@@ -134,7 +134,7 @@ final class DirectPageOps {
 
         @Override
         public int compareTo(Arena other) {
-            return Long.compare(mStartPtr, other.mStartPtr);
+            return Long.compareUnsigned(mStartPtr, other.mStartPtr);
         }
 
         synchronized long p_calloc(int size) {
@@ -169,7 +169,7 @@ final class DirectPageOps {
 
             while (low <= high) {
                 int mid = (low + high) >>> 1;
-                int cmp = Long.compare(arenas[mid].mStartPtr, page);
+                int cmp = Long.compareUnsigned(arenas[mid].mStartPtr, page);
                 if (cmp < 0) {
                     low = mid + 1;
                 } else if (cmp > 0) {
@@ -179,7 +179,7 @@ final class DirectPageOps {
                 }
             }
 
-            if (low > 0 && page < arenas[low - 1].mEndPtr) {
+            if (low > 0 && Long.compareUnsigned(page, arenas[low - 1].mEndPtr) < 0) {
                 return true;
             }
         }

@@ -2058,14 +2058,6 @@ final class LocalDatabase implements Database {
                     mLockManager.close();
                 }
 
-                try {
-                    p_arenaDelete(mArena);
-                } catch (IOException e) {
-                    if (ex == null) {
-                        ex = e;
-                    }
-                }
-
                 if (ex != null) {
                     throw ex;
                 }
@@ -2082,6 +2074,7 @@ final class LocalDatabase implements Database {
                 mSparePagePool.delete();
             }
             p_delete(mCommitHeader);
+            p_arenaDelete(mArena);
         }
     }
 
