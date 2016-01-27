@@ -69,6 +69,7 @@ public class TestAll {
             EnduranceTest.class,
             ContentionTest.class,
             ContendedLockTest.class,
+            DirectPageOpsTest.class,
         };
 
         String[] names = new String[classes.length];

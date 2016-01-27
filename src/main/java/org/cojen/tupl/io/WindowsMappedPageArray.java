@@ -57,6 +57,28 @@ class WindowsMappedPageArray extends MappedPageArray {
     {
         super(pageSize, pageCount, options);
 
+        if (file == null) {
+            long mappingPtr = cKernel.VirtualAlloc
+                (0, // lpAddress
+                 pageSize * pageCount,
+                 0x1000 | 0x2000, // MEM_COMMIT | MEM_RESERVE
+                 0x04); // PAGE_READWRITE
+ 
+            if (mappingPtr == 0) {
+                int error = cKernel.GetLastError();
+                throw new IOException(Kernel32Util.formatMessage(error));
+            }
+
+            setMappingPtr(mappingPtr);
+
+            mFileHandle = null;
+            mMappingHandle = null;
+            mNonDurable = true;
+            mEmpty = true;
+
+            return;
+        }
+
         mEmpty = file.length() == 0;
         mNonDurable = options.contains(OpenOption.NON_DURABLE);
 
@@ -161,9 +183,16 @@ class WindowsMappedPageArray extends MappedPageArray {
     }
 
     void doClose(long mappingPtr) throws IOException {
-        cKernel.UnmapViewOfFile(new Pointer(mappingPtr));
-        closeHandle(mMappingHandle);
-        closeHandle(mFileHandle);
+        if (mFileHandle == null) {
+            if (!cKernel.VirtualFree(mappingPtr, 0, 0x8000)) { // MEM_RELEASE
+                int error = cKernel.GetLastError();
+                throw new IOException(Kernel32Util.formatMessage(error)); 
+            }
+        } else {
+            cKernel.UnmapViewOfFile(new Pointer(mappingPtr));
+            closeHandle(mMappingHandle);
+            closeHandle(mFileHandle);
+        }
     }
 
     private static IOException toException(int error) {
@@ -175,9 +204,11 @@ class WindowsMappedPageArray extends MappedPageArray {
     }
 
     private void fsync() throws IOException {
-        // Note: Win32 doesn't have a flush metadata flag.
-        if (!cKernel.FlushFileBuffers(mFileHandle)) {
-            throw toException(cKernel.GetLastError());
+        if (mFileHandle != null) {
+            // Note: Win32 doesn't have a flush metadata flag.
+            if (!cKernel.FlushFileBuffers(mFileHandle)) {
+                throw toException(cKernel.GetLastError());
+            }
         }
         mEmpty = false;
     }
@@ -191,5 +222,9 @@ class WindowsMappedPageArray extends MappedPageArray {
                               long dwNumberOfBytesToMap);
 
         boolean FlushViewOfFile(long baseAddress, long numberOfBytesToFlush);
+
+        long VirtualAlloc(long lpAddress, long dwSize, int flAllocationType, int flProtect);
+
+        boolean VirtualFree(long lpAddress, long dwSize, int dwFreeType);
     }
 }

@@ -42,6 +42,18 @@ class PosixMappedPageArray extends MappedPageArray {
     {
         super(pageSize, pageCount, options);
 
+        if (file == null) {
+            int prot = 1 | 2; // PROT_READ | PROT_WRITE
+            int flags = 1 | 0x20; // MAP_SHARED | MAP_ANONYMOUS
+
+            setMappingPtr(PosixFileIO.mmapFd(pageSize * pageCount, prot, flags, -1, 0));
+
+            mFileDescriptor = -1;
+            mEmpty = true;
+
+            return;
+        }
+
         // Create file (if necessary) and get proper length.
 
         long fileLen;
@@ -122,9 +134,11 @@ class PosixMappedPageArray extends MappedPageArray {
     }
 
     void doSync(long mappingPtr, boolean metadata) throws IOException {
-        PosixFileIO.msyncAddr(mappingPtr, super.getPageCount() * pageSize());
-        if (metadata) {
-            PosixFileIO.fsyncFd(mFileDescriptor);
+        if (mFileDescriptor != -1) {
+            PosixFileIO.msyncAddr(mappingPtr, super.getPageCount() * pageSize());
+            if (metadata) {
+                PosixFileIO.fsyncFd(mFileDescriptor);
+            }
         }
     }
 
@@ -134,7 +148,9 @@ class PosixMappedPageArray extends MappedPageArray {
     }
 
     void doClose(long mappingPtr) throws IOException {
-        PosixFileIO.munmap(mappingPtr, super.getPageCount() * pageSize());
-        PosixFileIO.closeFd(mFileDescriptor);
+        if (mFileDescriptor != -1) {
+            PosixFileIO.munmap(mappingPtr, super.getPageCount() * pageSize());
+            PosixFileIO.closeFd(mFileDescriptor);
+        }
     }
 }

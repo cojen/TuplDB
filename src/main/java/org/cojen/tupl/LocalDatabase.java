@@ -144,6 +144,7 @@ final class LocalDatabase implements Database {
 
     private final PagePool mSparePagePool;
 
+    private final Object mArena;
     private final NodeUsageList[] mUsageLists;
 
     private final CommitLock mCommitLock;
@@ -466,6 +467,27 @@ final class LocalDatabase implements Database {
 
             NodeUsageList[] usageLists;
             try {
+                // Try to allocate the minimum cache size into an arena, which has lower memory
+                // overhead, is page aligned, and takes less time to zero-fill.
+                arenaAlloc: {
+                    // If database is fully mapped, then no cached pages are allocated at all.
+                    // Nodes point directly to a mapped region of memory.
+                    /*P*/ // [|
+                    /*P*/ // if (mFullyMapped) {
+                    /*P*/ //     mArena = null;
+                    /*P*/ //     break arenaAlloc;
+                    /*P*/ // }
+                    /*P*/ // ]
+
+                    try {
+                        mArena = p_arenaAlloc(pageSize, minCache); 
+                    } catch (IOException e) {
+                        OutOfMemoryError oom = new OutOfMemoryError();
+                        oom.initCause(e);
+                        throw oom;
+                    }
+                }
+
                 int stripes = roundUpPower2(Runtime.getRuntime().availableProcessors() * 4);
 
                 int stripeSize;
@@ -499,13 +521,15 @@ final class LocalDatabase implements Database {
                         size++;
                         rem--;
                     }
-                    usageList.initialize(size);
+                    usageList.initialize(mArena, size);
                 }
             } catch (OutOfMemoryError e) {
                 usageLists = null;
-                throw new OutOfMemoryError
+                OutOfMemoryError oom = new OutOfMemoryError
                     ("Unable to allocate the minimum required number of cached nodes: " +
                      minCache + " (" + (minCache * (long) (pageSize + NODE_OVERHEAD)) + " bytes)");
+                oom.initCause(e.getCause());
+                throw oom;
             }
 
             mUsageLists = usageLists;
@@ -702,7 +726,8 @@ final class LocalDatabase implements Database {
                 mTempFileManager = new TempFileManager(mBaseFile, config.mFileFactory);
             }
         } catch (Throwable e) {
-            closeQuietly(null, this, e);
+            // Close, but don't double report the exception since construction never finished.
+            closeQuietly(null, this);
             throw e;
         }
     }
@@ -2031,6 +2056,14 @@ final class LocalDatabase implements Database {
 
                 if (mLockManager != null) {
                     mLockManager.close();
+                }
+
+                try {
+                    p_arenaDelete(mArena);
+                } catch (IOException e) {
+                    if (ex == null) {
+                        ex = e;
+                    }
                 }
 
                 if (ex != null) {

@@ -57,8 +57,10 @@ final class NodeUsageList extends Latch {
 
     /**
      * Initialize and preallocate a minimum amount of nodes.
+     *
+     * @param arena optional
      */
-    void initialize(int min) throws DatabaseException, OutOfMemoryError {
+    void initialize(Object arena, int min) throws DatabaseException, OutOfMemoryError {
         // Least recently used node must always point to a valid, more recently used node.
         min = Math.max(min, 2);
 
@@ -68,7 +70,7 @@ final class NodeUsageList extends Latch {
                 releaseExclusive();
                 break;
             }
-            doAllocLatchedNode(0).releaseExclusive();
+            doAllocLatchedNode(arena, 0).releaseExclusive();
         }
     }
 
@@ -100,7 +102,8 @@ final class NodeUsageList extends Latch {
                 (trial > 1
                  || mLeastRecentlyUsed == null || mLeastRecentlyUsed.mMoreUsed == null))
             {
-                return doAllocLatchedNode(mode);
+                // Don't allocate from an arena; it's only used for the initial cache sizing.
+                return doAllocLatchedNode(null, mode);
             }
 
             if ((mode & MODE_UNEVICTABLE) != 0
@@ -126,7 +129,7 @@ final class NodeUsageList extends Latch {
                         if (mSize < mMaxSize) {
                             // Grow the cache instead of evicting.
                             node.releaseExclusive();
-                            return doAllocLatchedNode(mode);
+                            return doAllocLatchedNode(null, mode);
                         } else if ((mode & MODE_NO_EVICT) != 0) {
                             node.releaseExclusive();
                             break alloc;
@@ -193,17 +196,18 @@ final class NodeUsageList extends Latch {
     /**
      * Caller must acquire latch, which is released by this method.
      *
+     * @param arena optional
      * @param mode MODE_UNEVICTABLE
      */
-    private Node doAllocLatchedNode(int mode) throws DatabaseException {
+    private Node doAllocLatchedNode(Object arena, int mode) throws DatabaseException {
         try {
             mDatabase.checkClosed();
 
             /*P*/ byte[] page;
             /*P*/ // [
-            page = p_calloc(mPageSize);
+            page = p_calloc(arena, mPageSize);
             /*P*/ // |
-            /*P*/ // page = mDatabase.mFullyMapped ? p_nonTreePage() : p_calloc(mPageSize);
+            /*P*/ // page = mDatabase.mFullyMapped ? p_nonTreePage() : p_calloc(arena, mPageSize);
             /*P*/ // ]
 
             Node node = new Node(this, page);
