@@ -148,8 +148,8 @@ class PosixMappedPageArray extends MappedPageArray {
     }
 
     void doClose(long mappingPtr) throws IOException {
+        PosixFileIO.munmap(mappingPtr, super.getPageCount() * pageSize());
         if (mFileDescriptor != -1) {
-            PosixFileIO.munmap(mappingPtr, super.getPageCount() * pageSize());
             PosixFileIO.closeFd(mFileDescriptor);
         }
     }
