@@ -94,6 +94,36 @@ final class PageOps {
     static void p_delete(/*P*/ byte[] page) {
     }
 
+    /**
+     * Allocates an "arena", which contains a fixed number of pages. Pages in an arena cannot
+     * be deleted, and calling p_delete on arena pages does nothing. Call p_arenaDelete to
+     * fully delete the entire arena when not used anymore.
+     *
+     * @return null if not supported
+     */
+    static Object p_arenaAlloc(int pageSize, long pageCount) throws IOException {
+        return null;
+    }
+
+    /**
+     * @throws IllegalArgumentException if unknown arena
+     */
+    static void p_arenaDelete(Object arena) throws IOException {
+        if (arena != null) {
+            throw new IllegalArgumentException();
+        }
+    }
+
+    /**
+     * Allocate a zero-filled page from an arena. If arena is null or depleted, then a regular
+     * page is allocated.
+     *
+     * @throws IllegalArgumentException if unknown arena or if page size doesn't match
+     */
+    static /*P*/ byte[] p_calloc(Object arena, int size) {
+        return p_calloc(size);
+    }
+
     static /*P*/ byte[] p_clone(/*P*/ byte[] page, int length) {
         return page.clone();
     }

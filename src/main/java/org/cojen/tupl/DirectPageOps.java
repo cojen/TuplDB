@@ -26,11 +26,14 @@ import java.nio.ByteBuffer;
 
 import java.security.GeneralSecurityException;
 
+import java.util.Arrays;
+
 import java.util.zip.CRC32;
 
 import javax.crypto.Cipher;
 
 import org.cojen.tupl.io.DirectAccess;
+import org.cojen.tupl.io.MappedPageArray;
 
 /**
  * 
@@ -107,9 +110,156 @@ final class DirectPageOps {
     }
 
     static void p_delete(long page) {
-        if (page != CLOSED_TREE_PAGE && page != NON_TREE_PAGE) {
+        // Only delete pages that were allocated from the Unsafe class and aren't globals.
+        if (page != CLOSED_TREE_PAGE && page != NON_TREE_PAGE && !inArena(page)) {
             UNSAFE.freeMemory(page);
         }
+    }
+
+    static class Arena implements Comparable<Arena> {
+        private final MappedPageArray mPageArray;
+        private final long mStartPtr;
+        private final long mEndPtr; // exclusive
+
+        private long mNextPtr;
+
+        Arena(int pageSize, long pageCount) throws IOException {
+            mPageArray = MappedPageArray.open(pageSize, pageCount, null, null);
+            mStartPtr = mPageArray.directPagePointer(0);
+            mEndPtr = mStartPtr + (pageSize * pageCount);
+            synchronized (this) {
+                mNextPtr = mStartPtr;
+            }
+        }
+
+        @Override
+        public int compareTo(Arena other) {
+            return Long.compare(mStartPtr, other.mStartPtr);
+        }
+
+        synchronized long p_calloc(int size) {
+            int pageSize = mPageArray.pageSize();
+            if (size != pageSize) {
+                throw new IllegalArgumentException();
+            }
+            long ptr = mNextPtr;
+            if (ptr >= mEndPtr) {
+                return p_null();
+            }
+            mNextPtr = ptr + pageSize;
+            return ptr;
+        }
+
+        synchronized void close() throws IOException {
+            mNextPtr = mEndPtr;
+            mPageArray.close();
+        }
+    }
+
+    private static volatile Arena[] cArenas;
+
+    static boolean inArena(long page) {
+        Arena[] arenas = cArenas;
+
+        if (arenas != null) {
+            // Binary search.
+
+            int low = 0;
+            int high = arenas.length - 1;
+
+            while (low <= high) {
+                int mid = (low + high) >>> 1;
+                int cmp = Long.compare(arenas[mid].mStartPtr, page);
+                if (cmp < 0) {
+                    low = mid + 1;
+                } else if (cmp > 0) {
+                    high = mid - 1;
+                } else {
+                    return true;
+                }
+            }
+
+            if (low > 0 && page < arenas[low - 1].mEndPtr) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static synchronized void registerArena(Arena arena) {
+        Arena[] existing = cArenas;
+        if (existing == null) {
+            cArenas = new Arena[] {arena};
+        } else {
+            // Arenas are searchable in a sorted array, and nothing special needs to be done to
+            // handle overlapping ranges. We trust that the operating system doesn't do this.
+            Arena[] arenas = new Arena[existing.length + 1];
+            System.arraycopy(existing, 0, arenas, 0, existing.length);
+            arenas[arenas.length - 1] = arena;
+            Arrays.sort(arenas);
+            cArenas = arenas;
+        }
+    }
+
+    private static synchronized void unregisterArena(Arena arena) {
+        Arena[] existing = cArenas;
+
+        if (existing == null) {
+            return;
+        }
+
+        if (existing.length == 1) {
+            if (existing[0] == arena) {
+                cArenas = null;
+            }
+            return;
+        }
+
+        try {
+            Arena[] arenas = new Arena[existing.length - 1];
+            for (int i=0,j=0; i<existing.length; i++) {
+                Arena a = existing[i];
+                if (a != arena) {
+                    arenas[j++] = a;
+                }
+            }
+            cArenas = arenas;
+        } catch (IndexOutOfBoundsException e) {
+            // Not found.
+        }
+    }
+
+    static Object p_arenaAlloc(int pageSize, long pageCount) throws IOException {
+        Arena arena = new Arena(pageSize, pageCount);
+        registerArena(arena);
+        return arena;
+    }
+
+    static void p_arenaDelete(Object arena) throws IOException {
+        if (arena instanceof Arena) {
+            Arena a = (Arena) arena;
+            // Unregister before closing, in case new allocations are allowed in the recycled
+            // memory range and then deleted. The delete method would erroneously think the page
+            // is still in an arena and do nothing.
+            unregisterArena(a);
+            a.close();
+        } else if (arena != null) {
+            throw new IllegalArgumentException();
+        }
+    }
+
+    static long p_calloc(Object arena, int size) {
+        if (arena instanceof Arena) {
+            long page = ((Arena) arena).p_calloc(size);
+            if (page != p_null()) {
+                return page;
+            }
+        } else if (arena != null) {
+            throw new IllegalArgumentException();
+        }
+
+        return p_calloc(size);
     }
 
     static long p_clone(long page, int length) {

@@ -50,6 +50,9 @@ public abstract class MappedPageArray extends PageArray {
     private volatile long mMappingPtr;
     private volatile Throwable mCause;
 
+    /**
+     * @param file file to store pages, or null if anonymous
+     */
     public static MappedPageArray open(int pageSize, long pageCount,
                                        File file, EnumSet<OpenOption> options)
         throws IOException
