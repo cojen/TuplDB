@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author Brian S O'Neill
  */
 final class PartitionedPageCache implements PageCache {
-    private final DirectPageCache[] mPartitions;
+    private final BasicPageCache[] mPartitions;
     private final long mPartitionShift;
     private final long mCapacity;
     private final long mMaxEntryCount;
@@ -53,13 +53,13 @@ final class PartitionedPageCache implements PageCache {
 
         for (int i=0; i<pcount; i++) {
             int pcapacity = (int) (((long) ((i + 1) * psize)) - capacity);
-            int pentryCount = DirectPageCache.entryCountFor(pcapacity, pageSize);
-            pcapacities[i] = DirectPageCache.capacityFor(pentryCount, pageSize);
+            int pentryCount = BasicPageCache.entryCountFor(pcapacity, pageSize);
+            pcapacities[i] = BasicPageCache.capacityFor(pentryCount, pageSize);
             capacity += pcapacities[i];
             maxEntryCount += pentryCount;
         }
 
-        mPartitions = new DirectPageCache[pcount];
+        mPartitions = new BasicPageCache[pcount];
         mPartitionShift = Long.numberOfLeadingZeros(pcount - 1);
         mCapacity = capacity;
         mMaxEntryCount = maxEntryCount;
@@ -69,7 +69,7 @@ final class PartitionedPageCache implements PageCache {
         try {
             if (capacity <= 0x1_000_000L || procCount <= 1) {
                 for (int i=pcount; --i>=0; ) {
-                    mPartitions[i] = new DirectPageCache(pcapacities[i], pageSize);
+                    mPartitions[i] = new BasicPageCache(pcapacities[i], pageSize);
                 }
             } else {
                 // Initializing the buffers takes a long time, so do in parallel.
@@ -89,7 +89,7 @@ final class PartitionedPageCache implements PageCache {
                                 if (!slot.compareAndSet(i, --i)) {
                                     continue;
                                 }
-                                mPartitions[i] = new DirectPageCache(pcapacities[i], pageSize);
+                                mPartitions[i] = new BasicPageCache(pcapacities[i], pageSize);
                             }
                         } catch (Throwable e) {
                             mEx = e;
@@ -166,7 +166,7 @@ final class PartitionedPageCache implements PageCache {
 
     @Override
     public void close() {
-        for (DirectPageCache cache : mPartitions) {
+        for (BasicPageCache cache : mPartitions) {
             if (cache != null) {
                 cache.close();
             }
