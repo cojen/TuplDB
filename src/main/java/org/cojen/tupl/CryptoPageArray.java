@@ -63,43 +63,81 @@ final class CryptoPageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, /*P*/ byte[] buf) throws IOException {
+    public void readPage(long index, byte[] dst) throws IOException {
         try {
-            mSource.readPage(index, buf);
-            mCrypto.decryptPage(index, pageSize(), buf, 0);
+            mSource.readPage(index, dst);
+            mCrypto.decryptPage(index, pageSize(), dst, 0);
         } catch (GeneralSecurityException e) {
             throw new DatabaseException(e);
         }
     }
 
     @Override
-    public void readPage(long index, /*P*/ byte[] buf, int offset, int length) throws IOException {
+    public void readPage(long index, byte[] dst, int offset, int length) throws IOException {
         int pageSize = pageSize();
         if (offset == 0 && length == pageSize) {
-            readPage(index, buf);
+            readPage(index, dst);
             return;
         }
 
-        /*P*/ byte[] page = PageOps.p_alloc(pageSize);
+        byte[] page = new byte[pageSize];
+
+        readPage(index, page);
+        System.arraycopy(page, 0, dst, offset, length);
+    }
+
+    @Override
+    public void readPage(long index, long dstPtr) throws IOException {
         try {
-            readPage(index, page);
-            PageOps.p_copy(page, 0, buf, offset, length);
-        } finally {
-            PageOps.p_delete(page);
+            mSource.readPage(index, dstPtr);
+            mCrypto.decryptPage(index, pageSize(), dstPtr, 0);
+        } catch (GeneralSecurityException e) {
+            throw new DatabaseException(e);
         }
     }
 
     @Override
-    public void writePage(long index, /*P*/ byte[] buf, int offset) throws IOException {
+    public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
+        int pageSize = pageSize();
+        if (offset == 0 && length == pageSize) {
+            readPage(index, dstPtr);
+            return;
+        }
+
+        long page = DirectPageOps.p_alloc(pageSize);
+        try {
+            readPage(index, page);
+            DirectPageOps.p_copy(page, 0, dstPtr, offset, length);
+        } finally {
+            DirectPageOps.p_delete(page);
+        }
+    }
+
+    @Override
+    public void writePage(long index, byte[] src, int offset) throws IOException {
         try {
             int pageSize = pageSize();
-            // Unknown if buf contents can be destroyed, so create a new one.
-            /*P*/ byte[] encrypted = PageOps.p_alloc(pageSize);
+            // Unknown if source contents can be destroyed, so create a new one.
+            byte[] encrypted = new byte[pageSize];
+
+            mCrypto.encryptPage(index, pageSize, src, offset, encrypted, 0);
+            mSource.writePage(index, encrypted, 0);
+        } catch (GeneralSecurityException e) {
+            throw new DatabaseException(e);
+        }
+    }
+
+    @Override
+    public void writePage(long index, long srcPtr, int offset) throws IOException {
+        try {
+            int pageSize = pageSize();
+            // Unknown if source contents can be destroyed, so create a new one.
+            long encrypted = DirectPageOps.p_alloc(pageSize);
             try {
-                mCrypto.encryptPage(index, pageSize, buf, offset, encrypted, 0);
+                mCrypto.encryptPage(index, pageSize, srcPtr, offset, encrypted, 0);
                 mSource.writePage(index, encrypted, 0);
             } finally {
-                PageOps.p_delete(encrypted);
+                DirectPageOps.p_delete(encrypted);
             }
         } catch (GeneralSecurityException e) {
             throw new DatabaseException(e);
@@ -107,11 +145,22 @@ final class CryptoPageArray extends PageArray {
     }
 
     @Override
-    public /*P*/ byte[] evictPage(long index, /*P*/ byte[] buf) throws IOException {
+    public byte[] evictPage(long index, byte[] buf) throws IOException {
         try {
             // Page is being evicted, and so buf contents can be destroyed.
             mCrypto.encryptPage(index, pageSize(), buf, 0);
             return mSource.evictPage(index, buf);
+        } catch (GeneralSecurityException e) {
+            throw new DatabaseException(e);
+        }
+    }
+
+    @Override
+    public long evictPage(long index, long bufPtr) throws IOException {
+        try {
+            // Page is being evicted, and so buf contents can be destroyed.
+            mCrypto.encryptPage(index, pageSize(), bufPtr, 0);
+            return mSource.evictPage(index, bufPtr);
         } catch (GeneralSecurityException e) {
             throw new DatabaseException(e);
         }

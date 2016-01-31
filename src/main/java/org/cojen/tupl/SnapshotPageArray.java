@@ -86,26 +86,50 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, /*P*/ byte[] buf, int offset, int length) throws IOException {
+    public void readPage(long index, byte[] dst, int offset, int length) throws IOException {
         PageCache cache = mCache;
-        if (cache == null || !cache.remove(index, buf, offset, length)) {
-            mSource.readPage(index, buf, offset, length);
+        if (cache == null || !cache.remove(index, dst, offset, length)) {
+            mSource.readPage(index, dst, offset, length);
         }
     }
 
     @Override
-    public void writePage(long index, /*P*/ byte[] buf, int offset) throws IOException {
-        preWritePage(index, buf, offset);
-        mSource.writePage(index, buf, offset);
+    public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
+        PageCache cache = mCache;
+        if (cache == null || !cache.remove(index, dstPtr, offset, length)) {
+            mSource.readPage(index, dstPtr, offset, length);
+        }
     }
 
     @Override
-    public /*P*/ byte[] evictPage(long index, /*P*/ byte[] buf) throws IOException {
-        preWritePage(index, buf, 0);
+    public void writePage(long index, byte[] src, int offset) throws IOException {
+        preWritePage(index);
+        cachePage(index, src, offset);
+        mSource.writePage(index, src, offset);
+    }
+
+    @Override
+    public void writePage(long index, long srcPtr, int offset) throws IOException {
+        preWritePage(index);
+        cachePage(index, srcPtr, offset);
+        mSource.writePage(index, srcPtr, offset);
+    }
+
+    @Override
+    public byte[] evictPage(long index, byte[] buf) throws IOException {
+        preWritePage(index);
+        cachePage(index, buf, 0);
         return mSource.evictPage(index, buf);
     }
 
-    private void preWritePage(long index, /*P*/ byte[] buf, int offset) throws IOException {
+    @Override
+    public long evictPage(long index, long bufPtr) throws IOException {
+        preWritePage(index);
+        cachePage(index, bufPtr, 0);
+        return mSource.evictPage(index, bufPtr);
+    }
+
+    private void preWritePage(long index) throws IOException {
         if (index < 0) {
             throw new IndexOutOfBoundsException(String.valueOf(index));
         }
@@ -118,15 +142,21 @@ final class SnapshotPageArray extends PageArray {
                 snapshot.capture(index);
             }
         }
-
-        cachePage(index, buf, offset);
     }
 
     @Override
-    public void cachePage(long index, /*P*/ byte[] buf, int offset) {
+    public void cachePage(long index, byte[] src, int offset) {
         PageCache cache = mCache;
         if (cache != null) {
-            cache.add(index, buf, offset, true);
+            cache.add(index, src, offset, true);
+        }
+    }
+
+    @Override
+    public void cachePage(long index, long srcPtr, int offset) {
+        PageCache cache = mCache;
+        if (cache != null) {
+            cache.add(index, srcPtr, offset, true);
         }
     }
 

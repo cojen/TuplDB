@@ -24,8 +24,6 @@ import java.nio.IntBuffer;
 
 import org.cojen.tupl.util.Latch;
 
-import static org.cojen.tupl.PageOps.*;
-
 /**
  * Page cache which uses direct buffers and very few Java objects, eliminating garbage
  * collection overhead. Caller should scramble page ids to reduce hash collisions.
@@ -110,9 +108,22 @@ final class BasicPageCache extends Latch implements PageCache {
 
     @Override
     public boolean add(final long pageId,
-                       final /*P*/ byte[] page, final int offset,
+                       final byte[] page, final int offset,
                        final boolean canEvict)
     {
+        return add(pageId, canEvict, (dst, pageSize) -> {
+            dst.put(page, offset, pageSize);
+        });
+    }
+
+    @Override
+    public boolean add(long pageId, long pagePtr, int offset, boolean canEvict) {
+        return add(pageId, canEvict, (dst, pageSize) -> {
+            DirectPageOps.p_copyToBB(pagePtr, offset, dst, pageSize);
+        });
+    }
+
+    private boolean add(final long pageId, final boolean canEvict, final CopyToBB copier) {
         acquireExclusive();
         try {
             final IntBuffer nodes = mNodes;
@@ -133,7 +144,7 @@ final class BasicPageCache extends Latch implements PageCache {
                     if (getPageId(nodes, ptr) == pageId) {
                         // Found it.
                         mData.position((ptr / NODE_SIZE_IN_INTS) * mPageSize);
-                        p_copyToBB(page, offset, mData, mPageSize);
+                        copier.copyToBB(mData, mPageSize);
 
                         if (ptr != mMostRecentPtr) {
                             // Move to most recent.
@@ -202,7 +213,7 @@ final class BasicPageCache extends Latch implements PageCache {
 
             // Copy page into the data buffer.
             mData.position((ptr / NODE_SIZE_IN_INTS) * mPageSize);
-            p_copyToBB(page, offset, mData, mPageSize);
+            copier.copyToBB(mData, mPageSize);
 
             // Add new entry into the hashtable.
             nodes.put(ptr + CHAIN_NEXT_PTR_FIELD, hashTable[index]);
@@ -217,8 +228,23 @@ final class BasicPageCache extends Latch implements PageCache {
 
     @Override
     public boolean copy(final long pageId, final int start,
-                        final /*P*/ byte[] page, final int offset)
+                        final byte[] page, final int offset)
     {
+        return copy(pageId, start, (src, pageSize) -> {
+            src.get(page, offset, pageSize);
+        });
+    }
+
+    @Override
+    public boolean copy(final long pageId, final int start,
+                        final long pagePtr, final int offset)
+    {
+        return copy(pageId, start, (src, pageSize) -> {
+            DirectPageOps.p_copyFromBB(src, pagePtr, offset, pageSize);
+        });
+    }
+
+    private boolean copy(final long pageId, final int start, final CopyFromBB copier) {
         acquireShared();
         try {
             final IntBuffer nodes = mNodes;
@@ -238,7 +264,7 @@ final class BasicPageCache extends Latch implements PageCache {
                     if (getPageId(nodes, ptr) == pageId) {
                         // Found it.
                         mData.position(((ptr / NODE_SIZE_IN_INTS) * mPageSize) + start);
-                        p_copyFromBB(mData, page, offset, mPageSize);
+                        copier.copyFromBB(mData, mPageSize);
                         return true;
                     }
                     if (chainNextPtr < 0) {
@@ -255,10 +281,22 @@ final class BasicPageCache extends Latch implements PageCache {
         }
     }
 
-    @Override
     public boolean remove(final long pageId,
-                          final /*P*/ byte[] page, final int offset, final int length)
+                          final byte[] page, final int offset, final int length)
     {
+        return remove(pageId, page == null ? null : (src, pageSize) -> {
+            src.get(page, offset, length);
+        });
+    }
+
+    @Override
+    public boolean remove(long pageId, long pagePtr, int offset, int length) {
+        return remove(pageId, pagePtr == DirectPageOps.p_null() ? null : (src, pageSize) -> {
+            DirectPageOps.p_copyFromBB(src, pagePtr, offset, length);
+        });
+    }
+
+    private boolean remove(final long pageId, final CopyFromBB copier) {
         acquireExclusive();
         try {
             final IntBuffer nodes = mNodes;
@@ -278,10 +316,10 @@ final class BasicPageCache extends Latch implements PageCache {
                     if (getPageId(nodes, ptr) == pageId) {
                         // Found it.
 
-                        if (page != PageOps.p_null()) {
+                        if (copier != null) {
                             // Copy data buffer into the page.
                             mData.position((ptr / NODE_SIZE_IN_INTS) * mPageSize);
-                            p_copyFromBB(mData, page, offset, length);
+                            copier.copyFromBB(mData, mPageSize);
                         }
 
                         if (ptr != mLeastRecentPtr) {
@@ -353,6 +391,16 @@ final class BasicPageCache extends Latch implements PageCache {
         } finally {
             releaseExclusive();
         }
+    }
+
+    @FunctionalInterface
+    static interface CopyToBB {
+        void copyToBB(ByteBuffer dst, int pageSize);
+    }
+
+    @FunctionalInterface
+    static interface CopyFromBB {
+        void copyFromBB(ByteBuffer src, int pageSize);
     }
 
     private static long getPageId(IntBuffer nodes, int ptr) {
