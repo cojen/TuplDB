@@ -411,7 +411,7 @@ final class PosixFileIO extends AbstractFileIO {
         if (bufPtr != 0) {
             try {
                 long result = strerror_r(errnum, bufPtr, bufLen);
-                if (result >= 0 && result != 22 && result != 34) { // !EINVAL && !ERANGE
+                if (result != -1 && result != 22 && result != 34) { // !EINVAL && !ERANGE
                     return new Pointer(result == 0 ? bufPtr : result).getString(0);
                 }
             } finally {
