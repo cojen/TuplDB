@@ -24,13 +24,9 @@ import java.lang.reflect.Method;
 
 import java.nio.ByteBuffer;
 
-import java.security.GeneralSecurityException;
-
 import java.util.Arrays;
 
 import java.util.zip.CRC32;
-
-import javax.crypto.Cipher;
 
 import org.cojen.tupl.io.DirectAccess;
 import org.cojen.tupl.io.MappedPageArray;
@@ -744,24 +740,6 @@ final class DirectPageOps {
         }
 
         return (int) crc.getValue();
-    }
-
-    static int p_cipherDoFinal(Cipher cipher,
-                               long srcPage, int srcStart, int srcLen,
-                               long dstPage, int dstStart)
-        throws GeneralSecurityException
-    {
-        ByteBuffer src = DirectAccess.ref(srcPage + srcStart, srcLen);
-        try {
-            ByteBuffer dst = DirectAccess.ref2(dstPage + dstStart, srcLen);
-            try {
-                return cipher.doFinal(src, dst);
-            } finally {
-                DirectAccess.unref(dst);
-            }
-        } finally {
-            DirectAccess.unref(src);
-        }
     }
 
     static void p_undoPush(UndoLog undo, long indexId, byte op,
