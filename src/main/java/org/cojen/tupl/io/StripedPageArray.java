@@ -115,24 +115,45 @@ public class StripedPageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, /*P*/ byte[] buf, int offset, int length) throws IOException {
+    public void readPage(long index, byte[] dst, int offset, int length) throws IOException {
         PageArray[] arrays = mArrays;
         int stripes = arrays.length;
-        arrays[(int) (index % stripes)].readPage(index / stripes, buf, offset, length);
+        arrays[(int) (index % stripes)].readPage(index / stripes, dst, offset, length);
     }
 
     @Override
-    public void writePage(long index, /*P*/ byte[] buf, int offset) throws IOException {
+    public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
         PageArray[] arrays = mArrays;
         int stripes = arrays.length;
-        arrays[(int) (index % stripes)].writePage(index / stripes, buf, offset);
+        arrays[(int) (index % stripes)].readPage(index / stripes, dstPtr, offset, length);
     }
 
     @Override
-    public /*P*/ byte[] evictPage(long index, /*P*/ byte[] buf) throws IOException {
+    public void writePage(long index, byte[] src, int offset) throws IOException {
+        PageArray[] arrays = mArrays;
+        int stripes = arrays.length;
+        arrays[(int) (index % stripes)].writePage(index / stripes, src, offset);
+    }
+
+    @Override
+    public void writePage(long index, long srcPtr, int offset) throws IOException {
+        PageArray[] arrays = mArrays;
+        int stripes = arrays.length;
+        arrays[(int) (index % stripes)].writePage(index / stripes, srcPtr, offset);
+    }
+
+    @Override
+    public byte[] evictPage(long index, byte[] buf) throws IOException {
         PageArray[] arrays = mArrays;
         int stripes = arrays.length;
         return arrays[(int) (index % stripes)].evictPage(index / stripes, buf);
+    }
+
+    @Override
+    public long evictPage(long index, long bufPtr) throws IOException {
+        PageArray[] arrays = mArrays;
+        int stripes = arrays.length;
+        return arrays[(int) (index % stripes)].evictPage(index / stripes, bufPtr);
     }
 
     @Override
