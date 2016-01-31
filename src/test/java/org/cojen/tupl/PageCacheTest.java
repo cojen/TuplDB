@@ -45,7 +45,7 @@ public class PageCacheTest {
     }
 
     private void fill(boolean scramble) {
-        PageCache cache = new DirectPageCache(1_000_000, 4096);
+        PageCache cache = new BasicPageCache(1_000_000, 4096);
         assertTrue(cache.capacity() > 0);
         assertTrue(cache.capacity() <= 1_000_000);
         assertTrue(cache.maxEntryCount() > 0);
@@ -113,7 +113,7 @@ public class PageCacheTest {
     }
 
     private void evict(boolean scramble) {
-        PageCache cache = new DirectPageCache(100_000, 100);
+        PageCache cache = new BasicPageCache(100_000, 100);
 
         final long seed = System.nanoTime();
         final /*P*/ byte[] page = p_alloc(100);
@@ -160,7 +160,7 @@ public class PageCacheTest {
 
     @Test
     public void closed() {
-        PageCache cache = new DirectPageCache(256, 4);
+        PageCache cache = new BasicPageCache(256, 4);
         cache.close();
 
         final /*P*/ byte[] p1 = p_alloc(4);

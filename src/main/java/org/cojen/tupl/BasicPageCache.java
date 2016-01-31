@@ -35,7 +35,7 @@ import static org.cojen.tupl.PageOps.*;
  * @author Brian S O'Neill
  */
 @SuppressWarnings("serial")
-final class DirectPageCache extends Latch implements PageCache {
+final class BasicPageCache extends Latch implements PageCache {
     /*
       Node format:
 
@@ -68,7 +68,7 @@ final class DirectPageCache extends Latch implements PageCache {
     /**
      * @param capacity capacity in bytes
      */
-    DirectPageCache(int capacity, int pageSize) {
+    BasicPageCache(int capacity, int pageSize) {
         int entryCount = entryCountFor(capacity, pageSize);
 
         mPageSize = pageSize;
