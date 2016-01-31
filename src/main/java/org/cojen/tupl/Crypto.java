@@ -37,8 +37,11 @@ public interface Crypto {
      * @param page initially the original unencrypted page; replaced with encrypted page
      * @param pageOffset offset into page
      */
-    public void encryptPage(long pageIndex, int pageSize, /*P*/ byte[] page, int pageOffset)
-        throws GeneralSecurityException;
+    public default void encryptPage(long pageIndex, int pageSize, byte[] page, int pageOffset)
+        throws GeneralSecurityException
+    {
+        encryptPage(pageIndex, pageSize, page, pageOffset, page, pageOffset);
+    }
 
     /**
      * Called by multiple threads to encrypt a fixed-size database
@@ -51,8 +54,39 @@ public interface Crypto {
      * @param dstOffset offset into encrypted page
      */
     public void encryptPage(long pageIndex, int pageSize,
-                            /*P*/ byte[] src, int srcOffset, /*P*/ byte[] dst, int dstOffset)
+                            byte[] src, int srcOffset, byte[] dst, int dstOffset)
         throws GeneralSecurityException;
+
+    /**
+     * Called by multiple threads to encrypt a fixed-size database
+     * page. Encrypted length must exactly match original length.
+     *
+     * @param pageIndex page index within database
+     * @param pagePtr initially the original unencrypted page; replaced with encrypted page
+     * @param pageOffset offset into page
+     */
+    public default void encryptPage(long pageIndex, int pageSize, long pagePtr, int pageOffset)
+        throws GeneralSecurityException
+    {
+        encryptPage(pageIndex, pageSize, pagePtr, pageOffset, pagePtr, pageOffset);
+    }
+
+    /**
+     * Called by multiple threads to encrypt a fixed-size database
+     * page. Encrypted length must exactly match original length.
+     *
+     * @param pageIndex page index within database
+     * @param srcPtr original unencrypted page
+     * @param srcOffset offset into unencrypted page
+     * @param dstPtr destination for encrypted page
+     * @param dstOffset offset into encrypted page
+     */
+    public default void encryptPage(long pageIndex, int pageSize,
+                                    long srcPtr, int srcOffset, long dstPtr, int dstOffset)
+        throws GeneralSecurityException
+    {
+        throw new UnsupportedOperationException();
+    }
 
     /**
      * Called by multiple threads to decrypt a fixed-size database
@@ -62,8 +96,11 @@ public interface Crypto {
      * @param page initially the encrypted page; replaced with decrypted page
      * @param pageOffset offset into page
      */
-    public void decryptPage(long pageIndex, int pageSize, /*P*/ byte[] page, int pageOffset)
-        throws GeneralSecurityException;
+    public default void decryptPage(long pageIndex, int pageSize, byte[] page, int pageOffset)
+        throws GeneralSecurityException
+    {
+        decryptPage(pageIndex, pageSize, page, pageOffset, page, pageOffset);
+    }
 
     /**
      * Called by multiple threads to decrypt a fixed-size database
@@ -76,8 +113,39 @@ public interface Crypto {
      * @param dstOffset offset into decrypted page
      */
     public void decryptPage(long pageIndex, int pageSize,
-                            /*P*/ byte[] src, int srcOffset, /*P*/ byte[] dst, int dstOffset)
+                            byte[] src, int srcOffset, byte[] dst, int dstOffset)
         throws GeneralSecurityException;
+
+    /**
+     * Called by multiple threads to decrypt a fixed-size database
+     * page. Decrypted length must exactly match encrypted length.
+     *
+     * @param pageIndex page index within database
+     * @param pagePtr initially the encrypted page; replaced with decrypted page
+     * @param pageOffset offset into page
+     */
+    public default void decryptPage(long pageIndex, int pageSize, long pagePtr, int pageOffset)
+        throws GeneralSecurityException
+    {
+        decryptPage(pageIndex, pageSize, pagePtr, pageOffset, pagePtr, pageOffset);
+    }
+
+    /**
+     * Called by multiple threads to decrypt a fixed-size database
+     * page. Decrypted length must exactly match encrypted length.
+     *
+     * @param pageIndex page index within database
+     * @param srcPtr encrypted page
+     * @param srcOffset offset into encrypted page
+     * @param dstPtr destination for decrypted page
+     * @param dstOffset offset into decrypted page
+     */
+    public default void decryptPage(long pageIndex, int pageSize,
+                                    long srcPtr, int srcOffset, long dstPtr, int dstOffset)
+        throws GeneralSecurityException
+    {
+        throw new UnsupportedOperationException();
+    }
 
     /**
      * Called to wrap an OutputStream for supporting encryption. Implementation

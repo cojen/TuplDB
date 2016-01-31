@@ -87,7 +87,9 @@ class PageAccessTransformer {
                     }
                 } else {
                     index = line.indexOf("PageOps");
-                    if (index >= 0) {
+                    if (index >= 0
+                        && (index < 6 || !line.regionMatches(index - 6, "Direct", 0, 6)))
+                    {
                         line = line.substring(0, index) + "Direct" + line.substring(index);
                     }
                 }

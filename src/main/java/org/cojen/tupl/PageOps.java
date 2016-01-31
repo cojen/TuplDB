@@ -20,11 +20,7 @@ import java.io.IOException;
 
 import java.nio.ByteBuffer;
 
-import java.security.GeneralSecurityException;
-
 import java.util.zip.CRC32;
-
-import javax.crypto.Cipher;
 
 import static org.cojen.tupl.Utils.*;
 
@@ -332,14 +328,6 @@ final class PageOps {
         CRC32 crc = new CRC32();
         crc.update(srcPage, srcStart, len);
         return (int) crc.getValue();
-    }
-
-    static int p_cipherDoFinal(Cipher cipher,
-                               /*P*/ byte[] srcPage, int srcStart, int srcLen,
-                               /*P*/ byte[] dstPage, int dstStart)
-        throws GeneralSecurityException
-    {
-        return cipher.doFinal(srcPage, srcStart, srcLen, dstPage, dstStart);
     }
 
     /**
