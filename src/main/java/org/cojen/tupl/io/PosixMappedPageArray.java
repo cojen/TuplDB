@@ -44,7 +44,7 @@ class PosixMappedPageArray extends MappedPageArray {
 
         if (file == null) {
             int prot = 1 | 2; // PROT_READ | PROT_WRITE
-            int flags = 1 | 0x20; // MAP_SHARED | MAP_ANONYMOUS
+            int flags = 1 | (Platform.isMac() ? 0x1000 : 0x20); // MAP_SHARED | MAP_ANONYMOUS
 
             setMappingPtr(PosixFileIO.mmapFd(pageSize * pageCount, prot, flags, -1, 0));
 
