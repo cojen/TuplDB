@@ -205,7 +205,7 @@ final class Split {
 
             if (pos == highestPos + 2) {
                 byte[] key = frame.mNotFoundKey;
-                if (compare(key) < 0) {
+                if (key == null || compare(key) < 0) {
                     // Nothing to do.
                     return;
                 }
@@ -233,6 +233,9 @@ final class Split {
 
             if (pos == highestPos + 2) {
                 byte[] key = frame.mNotFoundKey;
+                if (key == null) {
+                    return;
+                }
                 if (compare(key) < 0) {
                     frame.rebind(sibling, ~pos);
                     return;
