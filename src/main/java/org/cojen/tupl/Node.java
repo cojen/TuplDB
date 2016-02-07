@@ -2387,8 +2387,11 @@ final class Node extends Latch implements DatabaseAccess {
             // search there. Note that tryRebalanceLeafRight has an identical check, after
             // applying De Morgan's law. Because the chosen parent node is not strictly the
             // lowest from the right, a comparison must be made to the actual new parent node.
+            byte[] frameKey;
             if (newPos < 0 |
-                ((newPos == 0 & mask != 0) && compareUnsigned(frame.mNotFoundKey, newKey) < 0))
+                ((newPos == 0 & mask != 0) &&
+                 ((frameKey = frame.mNotFoundKey) != null &&
+                  compareUnsigned(frameKey, newKey) < 0)))
             {
                 frame.rebind(left, (leftEndPos + newPos) ^ mask);
                 frame.adjustParentPosition(-2);
@@ -2589,8 +2592,11 @@ final class Node extends Latch implements DatabaseAccess {
             // tryRebalanceLeafLeft has an identical check, after applying De Morgan's law.
             // Because the chosen parent node is not strictly the lowest from the right, a
             // comparison must be made to the actual new parent node.
+            byte[] frameKey;
             if (newPos >= 0 &
-                ((newPos != 0 | mask == 0) || compareUnsigned(frame.mNotFoundKey, newKey) >= 0))
+                ((newPos != 0 | mask == 0) ||
+                 ((frameKey = frame.mNotFoundKey) != null &&
+                  compareUnsigned(frameKey, newKey) >= 0)))
             {
                 frame.rebind(right, newPos ^ mask);
                 frame.adjustParentPosition(+2);

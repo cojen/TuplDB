@@ -2482,13 +2482,15 @@ class TreeCursor implements CauseCloseable, Cursor {
                 // greater, then position needs to be updated.
 
                 byte[] frameKey = frame.mNotFoundKey;
-                int compare = compareUnsigned(frameKey, 0, frameKey.length, key, 0, key.length);
-                if (compare > 0) {
-                    // Position is a complement, so subtract instead of add.
-                    frame.mNodePos = framePos - 2;
-                } else if (compare == 0) {
-                    frame.mNodePos = newPos;
-                    frame.mNotFoundKey = null;
+                if (frameKey != null) {
+                    int compare = compareUnsigned(frameKey, key);
+                    if (compare > 0) {
+                        // Position is a complement, so subtract instead of add.
+                        frame.mNodePos = framePos - 2;
+                    } else if (compare == 0) {
+                        frame.mNodePos = newPos;
+                        frame.mNotFoundKey = null;
+                    }
                 }
             } else if (framePos >= newPos) {
                 frame.mNodePos = framePos + 2;
