@@ -800,6 +800,8 @@ final class Node extends Latch implements DatabaseAccess {
             frame = frame.unlink();
         }
 
+        mLastCursorFrame = null;
+
         if (!isInternal()) {
             return;
         }
