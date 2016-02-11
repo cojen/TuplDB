@@ -2327,8 +2327,6 @@ class TreeCursor implements CauseCloseable, Cursor {
                 // The notSplitDirty method might have released and re-acquired the node latch,
                 // so double check the position.
                 if (pos < 0) {
-                    node = leaf.mNode;
-                    commitLock.releaseShared();
                     break doDelete;
                 }
 
@@ -4073,6 +4071,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     /**
      * Variant of latchToChild which uses exclusive latches.
      */
+    // FIXME: remove
     private Node latchToChildEx(Node parent, int childPos) throws IOException {
         return latchChildEx
             (parent, childPos,
@@ -4082,6 +4081,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     /**
      * Variant of latchChildRetainParent which uses exclusive latches.
      */
+    // FIXME: remove latchChildEx and move simplied version into this method
     private Node latchChildRetainParentEx(Node parent, int childPos) throws IOException {
         return latchChildEx(parent, childPos, Node.OPTION_CHILD_ACQUIRE_EXCLUSIVE);
     }
