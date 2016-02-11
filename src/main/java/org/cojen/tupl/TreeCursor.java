@@ -4008,9 +4008,9 @@ class TreeCursor implements CauseCloseable, Cursor {
             }
 
             checkChild: {
-                evictChild: if (childNode.mLastCursorFrame == null // no bound cursors
-                                && childNode.mCachedState != Node.CACHED_CLEAN
-                                && parent.mCachedState == Node.CACHED_CLEAN)
+                evictChild: if (childNode.mCachedState != Node.CACHED_CLEAN
+                                && parent.mCachedState == Node.CACHED_CLEAN
+                                && childNode.mLastCursorFrame == null) // no bound cursors
                 {
                     // Parent was evicted before child. Evict child now and mark as clean. If
                     // this isn't done, the notSplitDirty method will short-circuit and not
@@ -4032,8 +4032,11 @@ class TreeCursor implements CauseCloseable, Cursor {
                             childNode.releaseExclusive();
                             break tryFind;
                         }
-                        if (childNode.mCachedState == Node.CACHED_CLEAN) {
-                            // Child node was just evicted, so don't write it again.
+                        if (childNode.mCachedState == Node.CACHED_CLEAN
+                            || childNode.mLastCursorFrame != null)
+                        {
+                            // Child state which was checked earlier changed when its latch was
+                            // released, and now it shoudn't be evicted.
                             childNode.downgrade();
                             break evictChild;
                         }
@@ -4100,7 +4103,8 @@ class TreeCursor implements CauseCloseable, Cursor {
                 childNode.releaseExclusive();
             } else {
                 if (childNode.mCachedState != Node.CACHED_CLEAN
-                    && parent.mCachedState == Node.CACHED_CLEAN)
+                    && parent.mCachedState == Node.CACHED_CLEAN
+                    && childNode.mLastCursorFrame == null) // no bound cursors
                 {
                     // Parent was evicted before child. Evict child now and mark as clean. If
                     // this isn't done, the notSplitDirty method will short-circuit and not
