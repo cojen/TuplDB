@@ -2324,6 +2324,14 @@ class TreeCursor implements CauseCloseable, Cursor {
                 node = notSplitDirty(leaf);
                 final int pos = leaf.mNodePos;
 
+                // The notSplitDirty method might have released and re-acquired the node latch,
+                // so double check the position.
+                if (pos < 0) {
+                    node = leaf.mNode;
+                    commitLock.releaseShared();
+                    break doDelete;
+                }
+
                 try {
                     if (txn == null) {
                         commitPos = mTree.redoStore(key, null);
@@ -3574,64 +3582,59 @@ class TreeCursor implements CauseCloseable, Cursor {
     final Node notSplitDirty(final CursorFrame frame) throws IOException {
         Node node = frame.mNode;
 
-        if (node.mSplit != null) {
-            // Already dirty, but finish the split.
-            return mTree.finishSplit(frame, node);
-        }
-
-        LocalDatabase db = mTree.mDatabase;
-        if (!db.shouldMarkDirty(node)) {
-            return node;
-        }
-
-        CursorFrame parentFrame = frame.mParentFrame;
-        if (parentFrame == null) {
-            try {
-                db.doMarkDirty(mTree, node);
-                return node;
-            } catch (Throwable e) {
-                node.releaseExclusive();
-                throw e;
+        while (true) {
+            if (node.mSplit != null) {
+                // Already dirty, but finish the split.
+                return mTree.finishSplit(frame, node);
             }
-        }
 
-        // Make sure the parent is not split and dirty too.
-        Node parentNode;
-        doParent: {
-            parentNode = parentFrame.tryAcquireExclusive();
-            if (parentNode == null) {
-                node.releaseExclusive();
-                parentFrame.acquireExclusive();
-            } else if (parentNode.mSplit != null || db.shouldMarkDirty(parentNode)) {
+            LocalDatabase db = mTree.mDatabase;
+            if (!db.shouldMarkDirty(node)) {
+                return node;
+            }
+
+            CursorFrame parentFrame = frame.mParentFrame;
+            if (parentFrame == null) {
+                try {
+                    db.doMarkDirty(mTree, node);
+                    return node;
+                } catch (Throwable e) {
+                    node.releaseExclusive();
+                    throw e;
+                }
+            }
+
+            // Make sure the parent is not split and dirty too.
+            Node parentNode = parentFrame.tryAcquireExclusive();
+
+            if (parentNode != null) {
+                // Parent latch was acquired without releasing the current node latch.
+
+                if (parentNode.mSplit == null && !db.shouldMarkDirty(parentNode)) {
+                    // Parent is ready to be updated.
+                    try {
+                        db.doMarkDirty(mTree, node);
+                        parentNode.updateChildRefId(parentFrame.mNodePos, node.mId);
+                        return node;
+                    } catch (Throwable e) {
+                        node.releaseExclusive();
+                        throw e;
+                    } finally {
+                        parentNode.releaseExclusive();
+                    }
+                }
+
                 node.releaseExclusive();
             } else {
-                break doParent;
+                node.releaseExclusive();
+                parentFrame.acquireExclusive();
             }
-            parentNode = notSplitDirty(parentFrame);
-            node = frame.acquireExclusive();
-        }
 
-        while (node.mSplit != null) {
-            // Already dirty now, but finish the split. Since parent latch is
-            // already held, no need to call into the regular finishSplit
-            // method. It would release latches and recheck everything.
-            parentNode.insertSplitChildRef(parentFrame, mTree, parentFrame.mNodePos, node);
-            if (parentNode.mSplit != null) {
-                parentNode = mTree.finishSplit(parentFrame, parentNode);
-            }
+            // Parent must be dirtied.
+            notSplitDirty(parentFrame).releaseExclusive();
+
+            // Since node latch was released, start over and check everything again properly.
             node = frame.acquireExclusive();
-        }
-        
-        try {
-            if (db.markDirty(mTree, node)) {
-                parentNode.updateChildRefId(parentFrame.mNodePos, node.mId);
-            }
-            return node;
-        } catch (Throwable e) {
-            node.releaseExclusive();
-            throw e;
-        } finally {
-            parentNode.releaseExclusive();
         }
     }
 
@@ -4004,46 +4007,57 @@ class TreeCursor implements CauseCloseable, Cursor {
                 break tryFind;
             }
 
-            if (childNode.mCachedState != Node.CACHED_CLEAN
-                && parent.mCachedState == Node.CACHED_CLEAN)
-            {
-                // Parent was evicted before child. Evict child now and mark as clean. If
-                // this isn't done, the notSplitDirty method will short-circuit and not
-                // ensure that all the parent nodes are dirty. The splitting and merging
-                // code assumes that all nodes referenced by the cursor are dirty. The
-                // short-circuit check could be skipped, but then every change would
-                // require a full latch up the tree. Another option is to remark the parent
-                // as dirty, but this is dodgy and also requires a full latch up the tree.
-                // Parent-before-child eviction is infrequent, and so simple is better.
+            checkChild: {
+                evictChild: if (childNode.mLastCursorFrame == null // no bound cursors
+                                && childNode.mCachedState != Node.CACHED_CLEAN
+                                && parent.mCachedState == Node.CACHED_CLEAN)
+                {
+                    // Parent was evicted before child. Evict child now and mark as clean. If
+                    // this isn't done, the notSplitDirty method will short-circuit and not
+                    // ensure that all the parent nodes are dirty. The splitting and merging
+                    // code assumes that all nodes referenced by the cursor are dirty. The
+                    // short-circuit check could be skipped, but then every change would
+                    // require a full latch up the tree. Another option is to remark the parent
+                    // as dirty, but this is dodgy and also requires a full latch up the tree.
+                    // Parent-before-child eviction is infrequent, and so simple is better.
 
-                if (!childNode.tryUpgrade()) {
-                    childNode.releaseShared();
-                    childNode = mTree.mDatabase.nodeMapGet(childId);                        
-                    if (childNode == null) {
-                        break tryFind;
+                    if (!childNode.tryUpgrade()) {
+                        childNode.releaseShared();
+                        childNode = mTree.mDatabase.nodeMapGet(childId);                        
+                        if (childNode == null) {
+                            break tryFind;
+                        }
+                        childNode.acquireExclusive();
+                        if (childId != childNode.mId) {
+                            childNode.releaseExclusive();
+                            break tryFind;
+                        }
+                        if (childNode.mCachedState == Node.CACHED_CLEAN) {
+                            // Child node was just evicted, so don't write it again.
+                            childNode.downgrade();
+                            break evictChild;
+                        }
                     }
-                    childNode.acquireExclusive();
-                    if (childId != childNode.mId) {
+
+                    if ((options & Node.OPTION_PARENT_RELEASE_SHARED) != 0) {
+                        parent.releaseShared();
+                    }
+
+                    try {
+                        childNode.write(mTree.mDatabase.mPageDb);
+                    } catch (Throwable e) {
                         childNode.releaseExclusive();
-                        break tryFind;
+                        throw e;
                     }
+
+                    childNode.mCachedState = Node.CACHED_CLEAN;
+                    childNode.downgrade();
+                    break checkChild;
                 }
 
                 if ((options & Node.OPTION_PARENT_RELEASE_SHARED) != 0) {
                     parent.releaseShared();
                 }
-
-                try {
-                    childNode.write(mTree.mDatabase.mPageDb);
-                } catch (Throwable e) {
-                    childNode.releaseExclusive();
-                    throw e;
-                }
-
-                childNode.mCachedState = Node.CACHED_CLEAN;
-                childNode.downgrade();
-            } else if ((options & Node.OPTION_PARENT_RELEASE_SHARED) != 0) {
-                parent.releaseShared();
             }
 
             childNode.used();
@@ -4054,7 +4068,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     }
 
     /**
-     * Variant of latchTooChild which uses exclusive latches.
+     * Variant of latchToChild which uses exclusive latches.
      */
     private Node latchToChildEx(Node parent, int childPos) throws IOException {
         return latchChildEx
