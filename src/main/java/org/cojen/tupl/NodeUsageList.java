@@ -314,15 +314,13 @@ final class NodeUsageList extends Latch {
     void makeEvictable(final Node node) {
         acquireExclusive();
         try {
-            if (mMaxSize == 0) {
-                // Closed.
-                return;
+            // Only insert if not closed and if not already in the list. The node latch doesn't
+            // need to be held, and so a concurrent call to the unused method might insert the
+            // node sooner.
+            if (mMaxSize != 0 && node.mMoreUsed == null && node.mLessUsed == null) {
+                (node.mLessUsed = mMostRecentlyUsed).mMoreUsed = node;
+                mMostRecentlyUsed = node;
             }
-            if (node.mMoreUsed != null || node.mLessUsed != null) {
-                throw new IllegalStateException();
-            }
-            (node.mLessUsed = mMostRecentlyUsed).mMoreUsed = node;
-            mMostRecentlyUsed = node;
         } finally {
             releaseExclusive();
         }
@@ -335,15 +333,11 @@ final class NodeUsageList extends Latch {
     void makeEvictableNow(final Node node) {
         acquireExclusive();
         try {
-            if (mMaxSize == 0) {
-                // Closed.
-                return;
+            // See comment in the makeEvictable method.
+            if (mMaxSize != 0 && node.mMoreUsed == null && node.mLessUsed == null) {
+                (node.mMoreUsed = mLeastRecentlyUsed).mLessUsed = node;
+                mLeastRecentlyUsed = node;
             }
-            if (node.mMoreUsed != null || node.mLessUsed != null) {
-                throw new IllegalStateException();
-            }
-            (node.mMoreUsed = mLeastRecentlyUsed).mLessUsed = node;
-            mLeastRecentlyUsed = node;
         } finally {
             releaseExclusive();
         }
@@ -355,11 +349,9 @@ final class NodeUsageList extends Latch {
     void makeUnevictable(final Node node) {
         acquireExclusive();
         try {
-            if (mMaxSize == 0) {
-                // Closed.
-                return;
+            if (mMaxSize != 0) {
+                doMakeUnevictable(node);
             }
-            doMakeUnevictable(node);
         } finally {
             releaseExclusive();
         }
