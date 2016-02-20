@@ -3419,6 +3419,16 @@ class TreeCursor implements CauseCloseable, Cursor {
                             return false;
                         }
                     }
+                } else if (childNode.isInternal()) {
+                    if (compare <= 0) {
+                        observer.failed = true;
+                        if (!observer.indexNodeFailed
+                            (childId, level,
+                             "Internal child keys are not greater than parent key: " + parentNode))
+                        {
+                            return false;
+                        }
+                    }
                 } else if (compare < 0) {
                     observer.failed = true;
                     if (!observer.indexNodeFailed
