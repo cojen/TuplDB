@@ -100,7 +100,7 @@ final class Split {
      * Performs a binary search against the split, returning the position
      * within the original node as if it had not split.
      */
-    final int binarySearch(Node node, byte[] key) throws IOException {
+    final int binarySearchLeaf(Node node, byte[] key) throws IOException {
         Node sibling = latchSibling();
 
         Node left, right;
@@ -128,6 +128,21 @@ final class Split {
         sibling.releaseShared();
 
         return searchPos;
+    }
+
+    /**
+     * Returns the highest position within the original node as if it had not split.
+     */
+    final int highestPos(Node node) {
+        int pos;
+        Node sibling = latchSibling();
+        if (node.isLeaf()) {
+            pos = node.highestLeafPos() + 2 + sibling.highestLeafPos();
+        } else {
+            pos = node.highestInternalPos() + 2 + sibling.highestInternalPos();
+        }
+        sibling.releaseShared();
+        return pos;
     }
 
     /**
