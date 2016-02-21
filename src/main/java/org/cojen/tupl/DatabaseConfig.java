@@ -526,7 +526,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
         w.newLine();
 
         w.write('#');
-        w.write(new java.util.Date().toString());
+        w.write(java.time.ZonedDateTime.now().toString());
         w.newLine();
 
         for (Map.Entry<String, String> line : props.entrySet()) {
