@@ -209,9 +209,10 @@ class TreeCursor implements CauseCloseable, Cursor {
     private boolean toLast(Node node, CursorFrame frame) throws IOException {
         try {
             while (true) {
-                if (node.mSplit != null) {
-                    // Bind to anything to finish the split.
-                    frame.bind(node, 0);
+                Split split = node.mSplit;
+                if (split != null) {
+                    // Bind to the highest position and finish the split.
+                    frame.bind(node, split.highestPos(node));
                     node = finishSplitShared(frame, node);
                 }
 
@@ -1612,7 +1613,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                     frame.bind(node, pos);
                 } else {
                     try {
-                        pos = node.mSplit.binarySearch(node, key);
+                        pos = node.mSplit.binarySearchLeaf(node, key);
                     } catch (Throwable e) {
                         node.releaseShared();
                         throw cleanup(e, frame);
