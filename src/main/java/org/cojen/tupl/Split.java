@@ -131,30 +131,6 @@ final class Split {
     }
 
     /**
-     * Return the left split node, latched shared. Other node is unlatched.
-     */
-    final Node latchLeft(Node node) {
-        if (mSplitRight) {
-            return node;
-        }
-        Node sibling = latchSibling();
-        node.releaseShared();
-        return sibling;
-    }
-
-    /**
-     * Return the right split node, latched shared. Other node is unlatched.
-     */
-    final Node latchRight(Node node) {
-        if (mSplitRight) {
-            Node sibling = latchSibling();
-            node.releaseShared();
-            return sibling;
-        }
-        return node;
-    }
-
-    /**
      * @return sibling with shared latch held
      */
     final Node latchSibling() {
