@@ -7,12 +7,14 @@ v1.3.0
 * Several top-level classes are now interfaces.
 * Tree search operations rely extensively on shared latches instead of exclusive latches,
   improving concurrency.
+* Fix cursor race condition which allowed split nodes to be modified too soon, leading to
+  database corruption.
+* Fix deadlock when closing database.
+* Fix handling of mapped file shrinkage on Windows.
+* More fixes for random search and add improve safety of frame binding.
 * Added method to analyze index size.
 * Added experimental direct mapped mode when using MappedPageArray and JNA.
 * Added method to evict records from an Index.
-* More fixes for random search and add improve safety of frame binding.
-* Fix deadlock when closing database.
-* Fix handling of mapped file shrinkage on Windows.
 * File sync improvements for Linux and MacOS. Performs directory sync'ng and F_FULLSYNC.
 * Use JNA to access native I/O functions, eliminating extra system calls.
 * Make Latch class a public utility.

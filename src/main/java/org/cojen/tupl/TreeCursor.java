@@ -156,11 +156,10 @@ class TreeCursor implements CauseCloseable, Cursor {
     private boolean toFirst(Node node, CursorFrame frame) throws IOException {
         try {
             while (true) {
-                Split split = node.mSplit;
-                if (split != null) {
-                    node = split.latchLeft(node);
-                }
                 frame.bind(node, 0);
+                if (node.mSplit != null) {
+                    node = finishSplitShared(frame, node);
+                }
                 if (node.isLeaf()) {
                     mLeaf = frame;
                     return node.hasKeys() ? true : toNext(frame);
@@ -210,9 +209,10 @@ class TreeCursor implements CauseCloseable, Cursor {
     private boolean toLast(Node node, CursorFrame frame) throws IOException {
         try {
             while (true) {
-                Split split = node.mSplit;
-                if (split != null) {
-                    node = split.latchRight(node);
+                if (node.mSplit != null) {
+                    // Bind to anything to finish the split.
+                    frame.bind(node, 0);
+                    node = finishSplitShared(frame, node);
                 }
 
                 if (node.isLeaf()) {
@@ -220,17 +220,17 @@ class TreeCursor implements CauseCloseable, Cursor {
                     int pos = node.highestLeafPos();
                     mLeaf = frame;
                     if (pos < 0) {
-                        frame.bind(node, 0);
+                        frame.bindOrReposition(node, 0);
                         return toPrevious(frame);
                     } else {
-                        frame.bind(node, pos);
+                        frame.bindOrReposition(node, pos);
                         return true;
                     }
                 }
 
                 // Note: Highest pos is 0 if internal node has no keys.
                 int childPos = node.highestInternalPos();
-                frame.bind(node, childPos);
+                frame.bindOrReposition(node, childPos);
                 node = latchToChild(node, childPos);
 
                 frame = new CursorFrame(frame);
