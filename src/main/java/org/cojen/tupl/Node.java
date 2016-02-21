@@ -2627,8 +2627,8 @@ final class Node extends Latch implements DatabaseAccess {
 
     /**
      * Insert into an internal node following a child node split. This parent node and child
-     * node must have an exclusive latch held. Parent and child latch are always released, even
-     * if an exception is thrown.
+     * node must have an exclusive latch held. Child latch is always released, and an exception
+     * releases the parent latch too.
      *
      * @param frame optional frame which is bound to this node; only used for rebalancing
      * @param keyPos position to insert split key
