@@ -26,10 +26,12 @@ import java.nio.ByteBuffer;
  * @author Brian S O'Neill
  */
 final class PosixMapping extends Mapping {
+    private final DirectAccess mDirectAccess;
     private final long mAddr;
     private final int mSize;
 
     PosixMapping(int fd, boolean readOnly, long position, int size) throws IOException {
+        mDirectAccess = new DirectAccess();
         int prot = readOnly ? 1 : (1 | 2); // PROT_READ | PROT_WRITE
         int flags = 1; // MAP_SHARED
         mAddr = PosixFileIO.mmapFd(size, prot, flags, fd, position);
@@ -38,22 +40,22 @@ final class PosixMapping extends Mapping {
 
     @Override
     void read(int start, byte[] b, int off, int len) {
-        DirectAccess.ref(mAddr + start, len).get(b, off, len);
+        mDirectAccess.prepare(mAddr + start, len).get(b, off, len);
     }
 
     @Override
     void read(int start, ByteBuffer dst) {
-        dst.put(DirectAccess.ref(mAddr + start, dst.remaining()));
+        dst.put(mDirectAccess.prepare(mAddr + start, dst.remaining()));
     }
 
     @Override
     void write(int start, byte[] b, int off, int len) {
-        DirectAccess.ref(mAddr + start, len).put(b, off, len);
+        mDirectAccess.prepare(mAddr + start, len).put(b, off, len);
     }
 
     @Override
     void write(int start, ByteBuffer src) {
-        DirectAccess.ref(mAddr + start, src.remaining()).put(src);
+        mDirectAccess.prepare(mAddr + start, src.remaining()).put(src);
     }
 
     @Override
