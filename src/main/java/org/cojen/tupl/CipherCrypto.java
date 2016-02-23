@@ -195,6 +195,12 @@ public class CipherCrypto implements Crypto {
 
                 offset = encodeBlock(srcPtr, offset, dataIvSalt);
                 offset = encodeBlock(srcPtr, offset, dataKey.getEncoded());
+
+                if (cipherDoFinal(cipher, srcPtr, srcOffset, pageSize, dstPtr, dstOffset)
+                    != pageSize)
+                {
+                    throw new GeneralSecurityException("Encrypted length does not match");
+                }
             } finally {
                 DirectPageOps.p_delete(srcCopy);
             }
@@ -202,10 +208,11 @@ public class CipherCrypto implements Crypto {
             cipher = dataPageCipher();
             IvParameterSpec ivSpec = generateDataPageIv(cipher, pageIndex, dataIvSalt, dataKey);
             initCipher(cipher, Cipher.ENCRYPT_MODE, dataKey, ivSpec);
-        }
 
-        if (cipherDoFinal(cipher, srcPtr, srcOffset, pageSize, dstPtr, dstOffset) != pageSize) {
-            throw new GeneralSecurityException("Encrypted length does not match");
+            if (cipherDoFinal(cipher, srcPtr, srcOffset, pageSize, dstPtr, dstOffset) != pageSize)
+            {
+                throw new GeneralSecurityException("Encrypted length does not match");
+            }
         }
     }
 
