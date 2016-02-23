@@ -88,14 +88,4 @@ final class TxnTreeCursor extends TreeCursor {
             throw handleException(e, false);
         }
     }
-
-    private void doCommit(LocalTransaction txn, byte[] key, byte[] value) throws IOException {
-        if (txn.lockMode() == LockMode.UNSAFE) {
-            store(txn, leafExclusive(), value);
-            txn.commit();
-        } else {
-            txn.lockExclusive(mTree.mId, key, keyHash());
-            txn.storeCommit(this, value);
-        }
-    }
 }
