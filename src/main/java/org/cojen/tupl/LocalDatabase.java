@@ -432,7 +432,7 @@ final class LocalDatabase implements Database {
             /*P*/ // ]
 
             // Actual page size might differ from configured size.
-            config.pageSize(mPageSize = mPageDb.pageSize());
+            config.pageSize(pageSize = mPageSize = mPageDb.pageSize());
 
             // Write info file of properties, after database has been opened and after page
             // size is truly known.
