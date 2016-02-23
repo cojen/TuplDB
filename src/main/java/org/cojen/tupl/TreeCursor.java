@@ -2054,17 +2054,26 @@ class TreeCursor implements CauseCloseable, Cursor {
                     locker.unlock();
                 }
             } else {
-                if (txn.lockMode() == LockMode.UNSAFE) {
-                    store(txn, leafExclusive(), value);
-                    txn.commit();
-                } else {
-                    txn.lockExclusive(mTree.mId, key, keyHash());
-                    txn.storeCommit(this, value);
-                }
+                doCommit(txn, key, value);
             }
         } catch (Throwable e) {
             throw handleException(e, false);
         }
+    }
+
+    /**
+     * @param txn non-null
+     */
+    final void doCommit(LocalTransaction txn, byte[] key, byte[] value) throws IOException {
+        if (txn.lockMode() != LockMode.UNSAFE) {
+            txn.lockExclusive(mTree.mId, key, keyHash());
+            if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
+                txn.storeCommit(this, value);
+                return;
+            }
+        }
+        store(txn, leafExclusive(), value);
+        txn.commit();
     }
 
     /**
