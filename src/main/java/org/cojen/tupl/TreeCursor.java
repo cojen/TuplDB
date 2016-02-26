@@ -396,8 +396,8 @@ class TreeCursor implements CauseCloseable, Cursor {
             CursorFrame parentFrame = frame.peek();
 
             if (parentFrame == null) {
-                frame.popv();
                 node.releaseShared();
+                frame.popv();
                 mLeaf = null;
                 mKey = null;
                 mKeyHash = 0;
@@ -413,24 +413,20 @@ class TreeCursor implements CauseCloseable, Cursor {
                     // Latch coupling up the tree usually works, so give it a try. If it works,
                     // then there's no need to worry about a node merge.
                     parentNode = parentFrame.tryAcquireShared();
+                    node.releaseShared();
 
                     if (parentNode == null) {
                         // Latch coupling failed, and so acquire parent latch
                         // without holding child latch. The child might have
                         // changed, and so it must be checked again.
-                        node.releaseShared();
                         parentNode = parentFrame.acquireShared();
                         if (parentNode.mSplit == null) {
                             break splitCheck;
                         }
-                    } else {
-                        if (parentNode.mSplit == null) {
-                            frame.popv();
-                            node.releaseShared();
-                            parentPos = parentFrame.mNodePos;
-                            break latchParent;
-                        }
-                        node.releaseShared();
+                    } else if (parentNode.mSplit == null) {
+                        frame.popv();
+                        parentPos = parentFrame.mNodePos;
+                        break latchParent;
                     }
 
                     // When this point is reached, parent node must be split. Parent latch is
@@ -470,8 +466,8 @@ class TreeCursor implements CauseCloseable, Cursor {
                     return true;
                 }
 
-                frame.popv();
                 node.releaseShared();
+                frame.popv();
             }
 
             // When this point is reached, only the shared parent latch is held. Child frame is
@@ -528,8 +524,8 @@ class TreeCursor implements CauseCloseable, Cursor {
                 CursorFrame parentFrame = frame.peek();
 
                 if (parentFrame == null) {
-                    frame.popv();
                     node.releaseShared();
+                    frame.popv();
                     mLeaf = null;
                     mKey = null;
                     mKeyHash = 0;
@@ -545,24 +541,20 @@ class TreeCursor implements CauseCloseable, Cursor {
                         // Latch coupling up the tree usually works, so give it a try. If it
                         // works, then there's no need to worry about a node merge.
                         parentNode = parentFrame.tryAcquireShared();
+                        node.releaseShared();
 
                         if (parentNode == null) {
                             // Latch coupling failed, and so acquire parent latch without
                             // holding child latch. The child might have changed, and so it
                             // must be checked again.
-                            node.releaseShared();
                             parentNode = parentFrame.acquireShared();
                             if (parentNode.mSplit == null) {
                                 break splitCheck;
                             }
-                        } else {
-                            if (parentNode.mSplit == null) {
-                                frame.popv();
-                                node.releaseShared();
-                                parentPos = parentFrame.mNodePos;
-                                break latchParent;
-                            }
-                            node.releaseShared();
+                        } else if (parentNode.mSplit == null) {
+                            frame.popv();
+                            parentPos = parentFrame.mNodePos;
+                            break latchParent;
                         }
 
                         // When this point is reached, parent node must be split. Parent latch
@@ -633,8 +625,8 @@ class TreeCursor implements CauseCloseable, Cursor {
                         continue outer;
                     }
 
-                    frame.popv();
                     node.releaseShared();
+                    frame.popv();
                 }
 
                 // When this point is reached, only the shared parent latch is held. Child
@@ -821,8 +813,8 @@ class TreeCursor implements CauseCloseable, Cursor {
             CursorFrame parentFrame = frame.peek();
 
             if (parentFrame == null) {
-                frame.popv();
                 node.releaseShared();
+                frame.popv();
                 mLeaf = null;
                 mKey = null;
                 mKeyHash = 0;
@@ -838,24 +830,20 @@ class TreeCursor implements CauseCloseable, Cursor {
                     // Latch coupling up the tree usually works, so give it a try. If it works,
                     // then there's no need to worry about a node merge.
                     parentNode = parentFrame.tryAcquireShared();
+                    node.releaseShared();
 
                     if (parentNode == null) {
                         // Latch coupling failed, and so acquire parent latch
                         // without holding child latch. The child might have
                         // changed, and so it must be checked again.
-                        node.releaseShared();
                         parentNode = parentFrame.acquireShared();
                         if (parentNode.mSplit == null) {
                             break splitCheck;
                         }
-                    } else {
-                        if (parentNode.mSplit == null) {
-                            frame.popv();
-                            node.releaseShared();
-                            parentPos = parentFrame.mNodePos;
-                            break latchParent;
-                        }
-                        node.releaseShared();
+                    } else if (parentNode.mSplit == null) {
+                        frame.popv();
+                        parentPos = parentFrame.mNodePos;
+                        break latchParent;
                     }
 
                     // When this point is reached, parent node must be split. Parent latch is
@@ -895,8 +883,8 @@ class TreeCursor implements CauseCloseable, Cursor {
                     return true;
                 }
 
-                frame.popv();
                 node.releaseShared();
+                frame.popv();
             }
 
             // When this point is reached, only the shared parent latch is held. Child frame is
@@ -952,8 +940,8 @@ class TreeCursor implements CauseCloseable, Cursor {
                 CursorFrame parentFrame = frame.peek();
 
                 if (parentFrame == null) {
-                    frame.popv();
                     node.releaseShared();
+                    frame.popv();
                     mLeaf = null;
                     mKey = null;
                     mKeyHash = 0;
@@ -969,24 +957,20 @@ class TreeCursor implements CauseCloseable, Cursor {
                         // Latch coupling up the tree usually works, so give it a try. If it
                         // works, then there's no need to worry about a node merge.
                         parentNode = parentFrame.tryAcquireShared();
+                        node.releaseShared();
 
                         if (parentNode == null) {
                             // Latch coupling failed, and so acquire parent latch without
                             // holding child latch. The child might have changed, and so it
                             // must be checked again.
-                            node.releaseShared();
                             parentNode = parentFrame.acquireShared();
                             if (parentNode.mSplit == null) {
                                 break splitCheck;
                             }
-                        } else {
-                            if (parentNode.mSplit == null) {
-                                frame.popv();
-                                node.releaseShared();
-                                parentPos = parentFrame.mNodePos;
-                                break latchParent;
-                            }
-                            node.releaseShared();
+                        } else if (parentNode.mSplit == null) {
+                            frame.popv();
+                            parentPos = parentFrame.mNodePos;
+                            break latchParent;
                         }
 
                         // When this point is reached, parent node must be split. Parent latch
@@ -1056,8 +1040,8 @@ class TreeCursor implements CauseCloseable, Cursor {
                         continue outer;
                     }
 
-                    frame.popv();
                     node.releaseShared();
+                    frame.popv();
                 }
 
                 // When this point is reached, only the shared parent latch is held. Child
