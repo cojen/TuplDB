@@ -16,21 +16,70 @@
 
 package org.cojen.tupl;
 
-import static org.junit.Assert.*;
-
 import static org.cojen.tupl.TestUtils.deleteTempDatabases;
 import static org.cojen.tupl.TestUtils.newTempDatabase;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
+@RunWith(Parameterized.class)
 public class EvictionTest {
     public static void main(String[] args) throws Exception {
         org.junit.runner.JUnitCore.main(EvictionTest.class.getName());
+    }
+    
+    @Parameters(name="{index}: size[{0}], autoLoad[{1}]")
+    public static Collection<Object[]> data() {
+        return Arrays.asList(new Object[][] {
+            { 1024, false }, // single item fits on a page, autoLoad is false
+            { 1024, true }, // single item fits on a page, autoLoad is true
+            { 256, false }, // at least two items on a page, autoLoad is false
+            { 256, true }, // at least two items on a page, autoLoad is true
+            { 128, false }, // more than two items on a page, autoLoad is false
+            { 128, true },  // more than two items on a page, autoLoad is true
+        });
+    }
+    
+
+    public EvictionTest(int size, boolean autoLoad) {
+        mSize = size;
+        mAutoLoad = autoLoad;
+    }
+
+    private int mSize;
+    private boolean mAutoLoad;
+    protected Database mDb;
+    
+    static class TestEvictionPredicate implements EvictionPredicate {
+        
+        public final ArrayList<byte[]> mKeys;
+        public final ArrayList<byte[]> mValues;
+        
+        public TestEvictionPredicate() {
+            mKeys = new ArrayList<>();
+            mValues = new ArrayList<>();
+        }
+        
+        @Override
+        public boolean shouldEvict(Transaction txn, byte[] key, byte[] value)
+                throws IOException {
+            mKeys.add(key);
+            mValues.add(value);
+            return true;
+        }
     }
 
     @Before
@@ -46,68 +95,80 @@ public class EvictionTest {
         deleteTempDatabases();
         mDb = null;
     }
-
-    protected Database mDb;
-
+    
     @Test
-    public void testEvictBasic() throws IOException {
+    public void testEvictBase() throws IOException {
+        int size = mSize;
+        boolean autoLoad = mAutoLoad;
         Index ix = mDb.openIndex("test");
-        int initialRecordCount = 100_000;
-        for (int i=0; i<initialRecordCount; i++) { // tree of depth 4
-            String key = textOfLength(i, 'k', 1024);
-            String val = textOfLength(i, 'v', 1024);
+        int initialRecordCount = 100_000 * (1024/size);
+        for (int i=0; i<initialRecordCount; i++) { 
+            String key = textOfLength(i, 'k', size);
+            String val = textOfLength(i, 'v', size);
             ix.store(null, key.getBytes(), val.getBytes());
         }
-        byte[][] keyRef = new byte[1][];
-        byte[][] valueRef = new byte[1][];
-        int recordCount = initialRecordCount;
-        {   // basic eviction
-            assertEquals(2048, ix.evict(null, null, null, keyRef, valueRef, 1));
-            assertEquals(--recordCount, ix.count(null, null));
-            assertNull(ix.load(null, keyRef[0]));
+        
+        // basic eviction
+        TestEvictionPredicate evictionPredicate = new TestEvictionPredicate();
+        long evicted = ix.evict(null, null, null, evictionPredicate, autoLoad);
+        int recordCount = initialRecordCount - evictionPredicate.mKeys.size();
+        long keyValueSize = 0; 
+        for (int i = 0; i < evictionPredicate.mKeys.size(); ++i) {
+            keyValueSize += evictionPredicate.mKeys.get(i).length + evictionPredicate.mValues.get(i).length; 
         }
-        {   // basic eviction, do not return key/value
-            assertEquals(2048, ix.evict(null, null, null, null, null, 1));
-            assertEquals(--recordCount, ix.count(null, null));
+        assertEquals(evicted, autoLoad ? keyValueSize : keyValueSize * 2); //if autoload is not enabled, only keys are load 
+        assertEquals(recordCount, ix.count(null, null));
+        for (byte[] key: evictionPredicate.mKeys) {
+            assertNull(ix.load(null, key));
         }
-        {   // basic eviction, return key only
-            assertEquals(2048, ix.evict(null, null, null, keyRef, null, 1));
-            assertEquals(--recordCount, ix.count(null, null));
-            assertNull(ix.load(null, keyRef[0]));
+        assertTrue(evictionPredicate.mKeys.size() >= 1);
+        assertTrue(evictionPredicate.mKeys.size() <= 1024/size);
+        
+        // empty range
+        evictionPredicate = new TestEvictionPredicate();
+        assertEquals(0, ix.evict(null, "a".getBytes(), "b".getBytes(), evictionPredicate, autoLoad));
+        assertEquals(recordCount, ix.count(null, null));
+        assertEquals(0, evictionPredicate.mKeys.size());
+        assertEquals(0, evictionPredicate.mValues.size());
+        
+        // evict nodes in a particular range
+        evictionPredicate = new TestEvictionPredicate();
+        ix.newCursor(null).find("a".getBytes());    // loads rightmost nodes at all levels into cache
+        assertEquals(size * 2, ix.evict(null, "009998".getBytes(), "009999".getBytes(), evictionPredicate, autoLoad));
+        assertEquals(1, evictionPredicate.mKeys.size());
+        assertEquals(1, evictionPredicate.mValues.size());
+        assertTrue(new String(evictionPredicate.mKeys.get(0)).startsWith("009998"));
+        if (autoLoad) {
+            assertTrue(new String(evictionPredicate.mValues.get(0)).startsWith("009998"));
+        } else {
+            assertTrue(evictionPredicate.mValues.get(0) == Cursor.NOT_LOADED);
         }
-        {   // empty range
-            assertEquals(0, ix.evict(null, "a".getBytes(), "b".getBytes(), keyRef, valueRef, 1));
-            assertEquals(recordCount, ix.count(null, null));
+        assertEquals(--recordCount, ix.count(null, null));
+        
+        // ghost records
+        evictionPredicate = new TestEvictionPredicate();
+        Transaction txn = mDb.newTransaction();
+        int lowKey = initialRecordCount-11;
+        int highKey = initialRecordCount-20;
+        for (int i=lowKey; i<=highKey; i++) {
+            String key = textOfLength(i, 'k', size);
+            ix.delete(txn, key.getBytes());
         }
-        {   // evict on nodes which are in cache
-            ix.newCursor(null).find("a".getBytes());    // loads rightmost nodes at all levels into cache
-            int highKey = initialRecordCount-1;
-            int lowKey = initialRecordCount-2;
-            assertEquals(2048, ix.evict(null, String.valueOf(lowKey).getBytes(), String.valueOf(highKey).getBytes(), keyRef, valueRef, 1));
-            assertTrue(new String(keyRef[0]).startsWith("9999"));
-            assertTrue(new String(valueRef[0]).startsWith("9999"));
-            assertEquals(--recordCount, ix.count(null, null));
-        }
-        {   // ghost records
-            Transaction txn = mDb.newTransaction();
-            int lowKey = initialRecordCount-11;
-            int highKey = initialRecordCount-20;
-            for (int i=lowKey; i<=highKey; i++) {
-                String key = textOfLength(i, 'k', 1019);
-                ix.delete(txn, key.getBytes());
-            }
-            assertEquals(0, ix.evict(null, String.valueOf(lowKey).getBytes(), String.valueOf(highKey).getBytes(), keyRef, valueRef, 1));
-            txn.reset();
-        }
+        assertEquals(0, ix.evict(null, String.valueOf(lowKey).getBytes(), String.valueOf(highKey).getBytes(), evictionPredicate, autoLoad));
+        assertEquals(0, evictionPredicate.mKeys.size());
+        assertEquals(0, evictionPredicate.mValues.size());
+        txn.reset();
+        
         VerificationObserver observer = new VerificationObserver();
         ix.verify(observer);
         assertFalse(observer.failed);
     }
 
+
     private String textOfLength(int prefix, char c, int len) {
-        len-=5;
+        len-=6;
         char[] chars = new char[len];
         Arrays.fill(chars, c);
-        return String.format("%05d%s", prefix, new String(chars));
+        return String.format("%06d%s", prefix, new String(chars));
     }
 }
