@@ -605,7 +605,7 @@ final class LocalTransaction extends Locker implements Transaction {
      * @param newLock Lock instance to insert, unless another already exists. The mIndexId,
      * mKey, and mHashCode fields must be set.
      */
-    final LockResult lockExclusive(org.cojen.tupl.Lock lock) throws LockFailureException {
+    final LockResult lockExclusive(Lock lock) throws LockFailureException {
         return super.lockExclusive(lock, mLockTimeoutNanos);
     }
 
