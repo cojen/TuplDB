@@ -124,7 +124,7 @@ final class UnmodifiableView implements Index {
     }
 
     @Override
-    public long evict(Transaction txn, byte[] lowKey, byte[] highKey, byte[][] keyRef, byte[][] valueRef, int maxEntriesToEvict) throws IOException {
+    public long evict(Transaction txn, byte[] lowKey, byte[] highKey, EvictionPredicate evictionPredicate, boolean autoLoad) throws IOException {
         throw new UnmodifiableViewException();
     }
 

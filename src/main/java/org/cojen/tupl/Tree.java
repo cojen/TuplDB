@@ -454,9 +454,85 @@ class Tree implements View, Index {
         return isClosed();
     }
 
+    /**
+     * Current approach for evicting data is as follows:
+     * - Search for a random Node, steered towards un-cached nodes. 
+     * - Once a node is picked, iterate through the keys in the node 
+     *   and delete all the entries from it (provided they are within 
+     *   the highkey and lowKey boundaries).
+     * - This simple algorithm ensures is an approximate LRU algorithm as 
+     *   that we evict entries that are least recently accessed.
+     * 
+     * An alternative approach that we considered:
+     * - Search for a random Node, steered towards un-cached nodes.
+     * - Delete the node directly. 
+     * - This works when all the keys and values fit within a page.  
+     *   If they don't, then we would need to interpret the values. 
+     *   As of today, we don't have a way of knowing if any of the 
+     *   entries in a page overflow.  
+     * 
+     * Note: It could be that the node has three keys A,B, D on it. As 
+     * we are working on it, a key C could be inserted.  In this case, we will
+     * also delete C.  This means that we deleted a key that was just inserted.
+     * We believe that this is very rare and we are ok with this behavior. 
+     */
     @Override
-    public long evict(Transaction txn, byte[] lowKey, byte[] highKey, byte[][] keyRef, byte[][] valueRef, int maxEntriesToEvict) throws IOException {
-        return new TreeCursor(this, txn).evict(lowKey, highKey, keyRef, valueRef);
+    public long evict(Transaction txn, byte[] lowKey, byte[] highKey, EvictionPredicate evictionPredicate, boolean autoLoad) throws IOException {
+        long length = 0;
+        TreeCursor cursor = new TreeCursor(this, txn);
+        cursor.autoload(autoLoad);
+        evictionPredicate = evictionPredicate == null? EvictionPredicate.ALWAYS_EVICT : evictionPredicate;
+        try {
+            byte[] endKey = cursor.randomNode(lowKey, highKey);
+            if (endKey == null) {
+                // We did not find anything to evict.  Move on.
+                return length;
+            }
+            
+            if (lowKey != null) { 
+                if (Utils.compareUnsigned(lowKey, endKey) > 0) {
+                    // lowKey is past the end key.  Move on.
+                    return length;
+                }
+                if (cursor.compareKeyTo(lowKey) < 0) {
+                    // lowKey is past the current cursor position: move cursor position to lowKey
+                    // findNearby will position the cursor to lowKey even if it does not exist.
+                    // So we will need to skip values that don't exist before processing the keys.
+                    // findNearby returns a lockResult. We can safely ignore it.
+                    cursor.findNearby(lowKey);
+                }
+            }
+            
+            if (highKey != null) {
+                if (Utils.compareUnsigned(highKey, endKey) > 0) {
+                    // highkey is greater than the endKey.  No need to check for it in the loop.
+                    highKey = null;
+                } else {
+                    // highKey is less or equal to endKey.  So set endKey to highKey
+                    endKey = highKey; 
+                }
+            }
+            
+            long[] stats = new long[2];
+            while (cursor.key() != null) {
+                byte[] key = cursor.key();
+                byte[] value = cursor.value();
+                if (value != null) {
+                    cursor.valueStats(stats);
+                    if (stats[0] > 0 && evictionPredicate.shouldEvict(txn, key, value)) {
+                        length += key.length + stats[0]; 
+                        cursor.store(null);
+                    }
+                } else {
+                    // This is either a ghost or findNearby got us to a 
+                    // key that does not exist.  Move on to next key.
+                }
+                cursor.nextLe(endKey);
+            }
+        } finally {
+            cursor.reset();
+        }
+        return length;
     }
 
     @Override

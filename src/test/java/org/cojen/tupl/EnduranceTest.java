@@ -39,7 +39,10 @@ public class EnduranceTest {
 
     @Before
     public void createTempDb() throws Exception {
-        mDb = newTempDatabase();
+        mDb = newTempDatabase(new DatabaseConfig().pageSize(2048)
+                .minCacheSize(1_000_000)
+                .maxCacheSize(1_000_000)    // cacheSize ~ 500 nodes
+                .durabilityMode(DurabilityMode.NO_FLUSH));
         mIx = mDb.openIndex("test");
     }
 
@@ -55,6 +58,14 @@ public class EnduranceTest {
     @Test
     public void testBasic() throws Exception {
         int numWorkers = 5;
+        // First populate Tupl so we have data exceeding the cache size
+        Random random = ThreadLocalRandom.current();
+        for (int i=0; i<150_000; i++) {
+            byte[] key = randomStr(random, 10, 100);
+            byte[] val = randomStr(random, 100, 500);
+            mIx.store(null, key, val);
+        }
+        
         List<Worker> workers = new ArrayList<>(numWorkers);
         ExecutorService executor = Executors.newFixedThreadPool(numWorkers);
         workers.add(new StoreOpWorker(mDb, mIx));
@@ -238,13 +249,14 @@ public class EnduranceTest {
     }
 
     class EvictOpWorker extends AbstractWorker {
+        
         EvictOpWorker(Database db, Index ix) {
             super(db, ix, 25);
         }
 
         void executeOperation() throws IOException {
             Transaction txn = newTransaction();
-            if (getIndex().evict(txn, null, null, null, null, 1) == 0) {
+            if (getIndex().evict(txn, null, null, EvictionPredicate.ALWAYS_EVICT, false) == 0) {
                 failed(1);
             }
             txn.commit();
