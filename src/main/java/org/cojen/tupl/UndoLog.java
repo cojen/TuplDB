@@ -1053,13 +1053,13 @@ final class UndoLog implements DatabaseAccess {
         // Locks are recovered in the opposite order in which they were acquired. Gather them
         // in a stack to reverse the order. Re-use the LockManager collision chain field and
         // form a linked list.
-        org.cojen.tupl.Lock mTopLock;
+        Lock mTopLock;
 
         Scope() {
         }
 
-        org.cojen.tupl.Lock addLock(long indexId, byte[] key) {
-            org.cojen.tupl.Lock lock = new org.cojen.tupl.Lock();
+        Lock addLock(long indexId, byte[] key) {
+            Lock lock = new Lock();
             lock.mIndexId = indexId;
             lock.mKey = key;
             lock.mHashCode = LockManager.hash(indexId, key);
@@ -1069,10 +1069,10 @@ final class UndoLog implements DatabaseAccess {
         }
 
         void acquireLocks(LocalTransaction txn) throws LockFailureException {
-            org.cojen.tupl.Lock lock = mTopLock;
+            Lock lock = mTopLock;
             if (lock != null) while (true) {
                 // Copy next before the field is overwritten.
-                org.cojen.tupl.Lock next = lock.mLockManagerNext;
+                Lock next = lock.mLockManagerNext;
                 txn.lockExclusive(lock);
                 if (next == null) {
                     break;
