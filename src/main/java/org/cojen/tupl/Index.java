@@ -51,13 +51,12 @@ public interface Index extends View, Closeable {
      * @param txn optional
      * @param lowKey inclusive lowest key in the evictable range; pass null for open range
      * @param highKey exclusive highest key in the evictable range; pass null for open range
-     * @param keyRef optional, pass non-null to receive a copy of the evicted key
-     * @param valueRef optional, pass non-null to receive a copy of the evicted value
-     * @param maxEntriesToEvict maximum number of records to evict
+     * @param evictionPredicate callback to customize eviction decisions; pass null to evict all
+     * @param autoLoad, pass true to also load values
      * @return sum of the key and value lengths which were evicted, 0 if no records are evicted
      * @throws IllegalArgumentException if either ref param is non-null and empty
      */
-    public long evict(Transaction txn, byte[] lowKey, byte[] highKey, byte[][] keyRef, byte[][] valueRef, int maxEntriesToEvict) throws IOException;
+    public long evict(Transaction txn, byte[] lowKey, byte[] highKey, EvictionPredicate evictionPredicate, boolean autoLoad) throws IOException;
 
     /**
      * Estimates the size of this index with a single random probe. To improve the estimate,

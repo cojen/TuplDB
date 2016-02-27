@@ -47,7 +47,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     byte[] mValue;
 
     boolean mKeyOnly;
-
+    
     // Hashcode is defined by LockManager.
     private int mKeyHash;
 
@@ -86,7 +86,31 @@ class TreeCursor implements CauseCloseable, Cursor {
     public final byte[] value() {
         return mValue;
     }
+    
+    /**
+     * Retrieves stats for the value at current cursor position.
+     */
+    void valueStats(long[] stats) throws IOException {
+        stats[0] = -1;
+        stats[1] = 0;
+        if (mValue != null && mValue != Cursor.NOT_LOADED) {
+            stats[0] = mValue.length;
+            stats[1] = 0;
+            return;
+        }
+        CursorFrame frame = leafSharedNotSplit();
+        Node node = frame.mNode;
+        try {
+            int pos = frame.mNodePos;
+            if (pos >= 0) {
+                node.retrieveLeafValueStats(pos, stats);
+            }
+        } finally {
+            node.releaseShared();
+        }
+    }
 
+    
     @Override
     public final boolean autoload(boolean mode) {
         boolean old = mKeyOnly;
@@ -1855,7 +1879,176 @@ class TreeCursor implements CauseCloseable, Cursor {
             }
         }
     }
+    
+    /**
+    * Select a random node, steering towards a node that is not cached.  
+    *
+    * @param lowKey inclusive lowest key from which to pick the random node; pass null for open range
+    * @param highKey exclusive highest key from which to pick the random node; pass null for open range
+    * @return returns the value of the highest key on the node on success; returns null on failure
+    * @throws IOException
+    */
+    byte[] randomNode(byte[] lowKey, byte[] highKey) throws IOException {
+        byte[] endKey = null;
+        if (lowKey != null && highKey != null && compareUnsigned(lowKey, highKey) >= 0) {
+            // Cannot find anything if range is empty.
+            reset();
+            return endKey;
+        }
 
+        ThreadLocalRandom rnd = ThreadLocalRandom.current();
+        start: while (true) {
+            reset();
+            CursorFrame frame = new CursorFrame();
+            Node node = latchRootNode();
+            // Until the cursor hits a node that is 3 deep (parent of a bottom internal node), the 
+            // algorithm proceeds by picking random nodes. At that point, the algorithm tries to 
+            // pick a 2 deep (bottom internal node) node that is not in cache.  It tries to do this
+            // twice. On the third attempt, it picks a random bottom internal node. 
+            int remainingAttemptsBIN = 2; 
+            // Once the cursor is at a bottom internal node, the algorithm tries twice to pick 
+            // a leaf node that is not in the cache.  On the third attempt, it picks a random 
+            // leaf node. 
+            int remainingAttempsLN = 2;
+
+            search: while (true) {
+                
+                if (node.mSplit != null) {
+                    // Bind to anything to finish the split.
+                    frame.bindOrReposition(node, 0);
+                    node = finishSplitShared(frame, node);
+                }
+
+                int pos = 0;
+                if (!node.isLeaf()) {
+                    try {
+                        pos = randomPosition(rnd, node, lowKey, highKey);
+                    } catch (Throwable e) {
+                        node.releaseShared();
+                        throw cleanup(e, frame);
+                    }
+                    if (pos < 0) {   // Node is empty or out of bounds, so start over.
+                        mLeaf = frame;
+                        resetLatched(node);
+                        // Before continuing, check if range has anything in it at all. This must
+                        // be performed each time, to account for concurrent updates.
+                        if (isRangeEmpty(lowKey, highKey)) {
+                            return endKey;
+                        }
+                        // go to start.  This will reset all counts. 
+                        // If we went back to search, this would be an infinite loop
+                        continue start;  
+                    }
+                }
+
+                // Need to bind specially in case split handling above already bound the frame.
+                frame.bindOrReposition(node, pos);
+                if (node.isLeaf()) {
+                    mLeaf = frame;
+                    try {
+                        // no need to latch keys as we have a latch on the node
+                        mKey = node.retrieveKey(pos);
+                        if (mKey == null) {
+                            // some other transaction is working on this key.
+                            // This is not a candidate for our search.
+                            return endKey;
+                        }
+                    
+                        mValue = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
+                        if (mValue == null) {
+                            // some other transaction is working on this key.
+                            // This is not a candidate for our search.
+                            reset();
+                            return endKey;
+                        }
+                        pos = node.highestKeyPos();
+                        if ((endKey = node.retrieveKey(pos)) == null) {
+                            // endKey was a ghost, someone else is working 
+                            // on this node.  stop searching.
+                            reset();
+                            return endKey;
+                        }
+                    } finally {
+                        node.releaseShared();
+                    }
+                    return endKey;
+                } else if (node.isBottomInternal()) {
+                    // Node is not a leaf, but its kids are all leaves
+                    long childId = node.retrieveChildRefId(pos);
+                    Node child = mTree.mDatabase.nodeMapGet(childId);
+                    if (child != null) { // node is cached.  Otherwise, we go down to latchchild block.
+                        if (remainingAttempsLN-->0) {
+                            continue search; // retry with same node
+                        }
+                        // used up max random selection attempts for non-cached leaf node.
+                        // scan sequentially for a non-cached leaf node.
+                        try {
+                            int spos = (lowKey == null) ? 0 : Node.internalPos(node.binarySearch(lowKey));
+                            int highestInternalPos = node.highestInternalPos();
+                            int highestKeyPos = node.highestKeyPos();
+                            for (; spos <= highestInternalPos; spos+=2) {
+                                childId = node.retrieveChildRefId(spos);
+                                child = mTree.mDatabase.nodeMapGet(childId);
+                                if (child == null) { // node is not cached
+                                    pos = spos;
+                                    frame.bindOrReposition(node, pos);
+                                    break; // go down to latching the node and then on to search
+                                }
+                                if (highKey != null && spos <= highestKeyPos && node.compareKey(spos, highKey) >= 0) {
+                                    break;
+                                }
+                            }
+                        } catch (Throwable t) {
+                            // continue with the randomly selected node
+                        }
+                    }
+                    try {
+                        node = latchToChild(node, pos);
+                    } catch (Throwable t) {
+                        throw cleanup(t, frame);
+                    }
+                    // go on to search
+                } else {    // non-bottom internal node
+                    long childId = node.retrieveChildRefId(pos);
+                    Node child = mTree.mDatabase.nodeMapGet(childId);
+                    if (child != null) { 
+                        // node is in cache.  If its not cache, we found a good path and we go down
+                        // directly to to latchChild code below.
+                        child.acquireShared();
+                        try {
+                            // - Always check the Id first.  By checking the id first (with the latch held), 
+                            //   then the isBottomInternal check won't see a "lock" Node instance, which never
+                            //   refers to a valid page. The lock instance is held exclusive for the
+                            //   duration of a child load operation, and the id is set to zero (and
+                            //   latch released) when the load completes. The id check in the changed
+                            //   code will fail first because it sees the zero id.
+                            // - If loaded child is not in cache (i.e., childId != child.mId), this is a 
+                            //   good path.  Go on down to latchChild. 
+                            // - If loaded child is in cache and is not a bottom internal node, continue 
+                            //   using the node.
+                            // - If loaded child is in cache, is a bottom internal node, and there are more than
+                            //   0 attemptsRemaining on BIN, then retry with another child of the node
+                            // - If loaded child is in cache, is a bottom internal node, and there are no more
+                            //   remaining on BIN, then use the node.
+                            if (childId == child.mId && child.isBottomInternal() && remainingAttemptsBIN-->0) {
+                                continue search; // retry another child of the same node
+                            }
+                        } finally {
+                            child.releaseShared();
+                        }
+                    }
+                    try {
+                        node = latchToChild(node, pos);
+                    } catch (Throwable t) {
+                        throw cleanup(t, frame);
+                    }
+                }
+                frame = new CursorFrame(frame);
+            }   // search
+        }   // start
+    }
+    
+    
     /**
      * Analyze at the current position. Cursor is reset as a side-effect.
      */
@@ -2020,7 +2213,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             throw handleException(e, false);
         }
     }
-
+    
     @Override
     public void commit(byte[] value) throws IOException {
         byte[] key = mKey;
@@ -2685,193 +2878,7 @@ class TreeCursor implements CauseCloseable, Cursor {
 
         return next;
     }
-
-    /**
-     * Select an entry to delete from the index, at random. All frames are unbound and cursor
-     * is reset.
-     *
-     * @param lowKey inclusive lowest key in the evictable range; pass null for open range
-     * @param highKey exclusive highest key in the evictable range; pass null for open range
-     * @param keyRef optional, pass non-null to receive a copy of the evicted key
-     * @param valueRef optional, pass non-null to receive a copy of the evicted value
-     * @return sum of the key and value lengths which were evicted, 0 if no records are evicted
-     * @throws IOException
-     */
-    final long evict(byte[] lowKey, byte[] highKey, byte[][] keyRef, byte[][] valueRef)
-        throws IOException
-    {
-        if ((keyRef != null && keyRef.length == 0) || (valueRef != null && valueRef.length == 0)) {
-            throw new IllegalArgumentException("Key/value reference param cannot be empty");
-        }
-        if (lowKey != null && highKey != null && compareUnsigned(lowKey, highKey) >= 0) {
-            reset();
-            return 0;
-        }
-
-        ThreadLocalRandom rnd = ThreadLocalRandom.current();
-
-        start: while (true) {
-            // The only scenario in which the following is executed more than once is when the
-            // inner "search" infinite loop is broken. For all executions after the first,
-            // reset() is invoked before reaching this point of execution.
-            reset();
-            CursorFrame frame = new CursorFrame();
-            Node node = mTree.mRoot;
-            node.acquireExclusive();
-            int remainingAttempsLN = 2;
-            int remainingAttemptsBIN = 2;
-
-            search: while (true) {
-                if (node.mSplit != null) {
-                    frame.bind(node, 0);
-                    node = mTree.finishSplit(frame, node);
-                }
-
-                int pos;
-                try {
-                    pos = randomPosition(rnd, node, lowKey, highKey);
-                } catch (Throwable t) {
-                    node.releaseExclusive();
-                    throw cleanup(t, frame);
-                }
-
-                if (pos < 0) {
-                    // node is empty or out of bounds
-                    mLeaf = frame;
-                    resetLatchedEx(node);
-
-                    // Before continuing, check if range has anything in it at all. This must
-                    // be performed each time, to account for concurrent updates.
-                    if (isRangeEmpty(lowKey, highKey)) {
-                        return 0;
-                    }
-                    continue start;
-                }
-
-                frame.bindOrReposition(node, pos);
-
-                if (node.isLeaf()) {
-                    mLeaf = frame;
-                    try {
-                        LocalTransaction txn = prepareFind(node.retrieveKey(pos));
-                        LockResult result;
-                        if ((result = tryLockKey(txn)) == null) {
-                            // Some other transaction is operating on the key. Unlikely to happen
-                            // as seek is steered towards nodes which are not in cache
-                            if (keyRef != null) {
-                                keyRef[0] = null;
-                            }
-                            if (valueRef != null) {
-                                 valueRef[0] = null;
-                            }
-                            return 0;
-                        }
-
-                        byte[] value = valueRef != null ? node.retrieveLeafValue(pos) : node.hasLeafValue(pos);
-                        if (value == null) { // ghost record
-                            // unlikely to happen as seek is steered towards nodes which are not in cache
-                            // hence not making extra effort to find another record to evict.
-                            if (result == LockResult.ACQUIRED) {
-                                txn.unlock();
-                            }
-                            if (keyRef != null) {
-                                keyRef[0] = null;
-                            }
-                            if (valueRef != null) {
-                                valueRef[0] = null;
-                            }
-                            return 0;
-                        }
-
-                        long length = mKey.length;
-                        if (keyRef != null) {
-                            keyRef[0] = mKey;
-                        }
-                        if (valueRef != null) {
-                            valueRef[0] = value;
-                            length += value.length;
-                        } else {
-                            long[] valLen = new long[2];
-                            node.retrieveLeafValueStats(pos, valLen);
-                            length += valLen[0];
-                        }
-
-                        store(txn, frame, null);
-                        reset();
-
-                        // Make an attempt to mark node as LRU
-                        if (remainingAttempsLN >= 0 && node.tryAcquireExclusive()) {
-                            node.unused();
-                        }
-                        return length;
-                    } finally {
-                        // reset() is invoked after store(), in which case mLeaf will
-                        // be set to null. mLeaf is guaranteed to be non-null otherwise.
-                        if (mLeaf != null) {
-                            resetLatchedEx(node);
-                        }
-                    }
-                } else if (node.isBottomInternal()) {
-                    long childId = node.retrieveChildRefId(pos);
-                    Node child = mTree.mDatabase.nodeMapGet(childId);
-                    if (child != null) { // node is cached
-                        if (remainingAttempsLN-->0) {
-                            continue search;
-                        }
-
-                        // used up max random selection attempts for non-cached leaf node.
-                        // scan sequentially for a non-cached leaf node.
-                        try {
-                            int spos = (lowKey == null) ? 0 : Node.internalPos(node.binarySearch(lowKey));
-                            int highestInternalPos = node.highestInternalPos();
-                            int highestKeyPos = node.highestKeyPos();
-                            for (; spos <= highestInternalPos; spos+=2) {
-                                childId = node.retrieveChildRefId(spos);
-                                child = mTree.mDatabase.nodeMapGet(childId);
-                                if (child == null) { // node is not cached
-                                    pos = spos;
-                                    frame.bindOrReposition(node, pos);
-                                    break;
-                                }
-                                if (highKey != null && spos <= highestKeyPos && node.compareKey(spos, highKey) >= 0) {
-                                    break;
-                                }
-                            }
-                        } catch (Throwable t) {
-                            // continue with the randomly selected node
-                        }
-                    }
-                    try {
-                        node = latchToChildEx(node, pos);
-                    } catch (Throwable t) {
-                        throw cleanup(t, frame);
-                    }
-                } else {    // non-bottom internal node
-                    long childId = node.retrieveChildRefId(pos);
-                    Node child = mTree.mDatabase.nodeMapGet(childId);
-                    if (child != null) {
-                        /* Node.evict() calls db.nodeMapRemove(), followed by mId = 0. Child can get evicted anytime
-                         * case 1: Before id check: No change in result
-                         * case 2: After id check, !BIN: No change in result
-                         * case 3a: After id check, BIN, remainingBottomInternalNodeAttempts>0: Skipped a node un-necessarily
-                         * case 3b: After id check, BIN, remainingBottomInternalNodeAttempts=0: no change in result
-                         */
-                        if (child.isBottomInternal() && child.mId == childId && remainingAttemptsBIN-->0) {
-                            continue search;
-                        }
-                    }
-                    try {
-                        node = latchToChildEx(node, pos);
-                    } catch (Throwable t) {
-                        throw cleanup(t, frame);
-                    }
-                }
-                frame = new CursorFrame(frame);
-            }   // search
-        }   // start
-        // unreachable code
-    }
-
+ 
     /**
      * Find and return a random position in the node. The node should be latched.
      * @param rnd random number generator
@@ -3053,14 +3060,6 @@ class TreeCursor implements CauseCloseable, Cursor {
      */
     private void resetLatched(Node node) {
         node.releaseShared();
-        reset();
-    }
-
-    /**
-     * Reset with leaf already latched exclusively.
-     */
-    private void resetLatchedEx(Node node) {
-        node.releaseExclusive();
         reset();
     }
 
