@@ -38,6 +38,7 @@ import org.cojen.tupl.ext.TransactionHandler;
  *
  * @author Brian S O'Neill
  */
+/*P*/
 final class ReplRedoEngine implements RedoVisitor {
     private final static long INFINITE_TIMEOUT = -1L;
 

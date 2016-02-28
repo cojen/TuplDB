@@ -28,6 +28,7 @@ import static org.cojen.tupl.LockResult.*;
  *
  * @author Brian S O'Neill
  */
+/*P*/
 final class LockManager {
     // Parameter passed to LockHT.tryLock. For new Lock instances, value will be stored as-is
     // into Lock.mLockCount field, which is why the numbers seem a bit weird.

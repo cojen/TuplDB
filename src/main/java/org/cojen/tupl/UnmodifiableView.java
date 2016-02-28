@@ -37,7 +37,7 @@ final class UnmodifiableView implements Index {
     @Override
     public String toString() {
         if (mSource instanceof Index) {
-            return Tree.toString(this);
+            return ViewUtils.toString(this);
         }
         return super.toString();
     }

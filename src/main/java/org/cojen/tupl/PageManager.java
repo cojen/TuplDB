@@ -20,8 +20,8 @@ import java.io.IOException;
 
 import java.util.BitSet;
 
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
 
 import org.cojen.tupl.io.PageArray;
 
@@ -211,7 +211,7 @@ final class PageManager {
                     break alloc;
                 }
 
-                final Lock lock = mRemoveLock;
+                final ReentrantLock lock = mRemoveLock;
                 lock.lock();
                 pageId = mRecycleFreeList.tryRemove(lock);
                 if (pageId != 0) {
@@ -444,7 +444,7 @@ final class PageManager {
     private boolean compactionScanFreeList(CommitLock commitLock, PageQueue list)
         throws IOException
     {
-        Lock sharedCommitLock = commitLock.readLock();
+        ReadLock sharedCommitLock = commitLock.readLock();
 
         long target;
         mRemoveLock.lock();

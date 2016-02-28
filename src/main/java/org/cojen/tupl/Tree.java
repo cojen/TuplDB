@@ -80,26 +80,13 @@ class Tree implements View, Index {
         mMaxEntrySize = ((pageSize - Node.TN_HEADER_SIZE) * 3) >> 2;
     }
 
-    int pageSize() {
+    final int pageSize() {
         return mDatabase.pageSize();
     }
 
     @Override
     public final String toString() {
-        return toString(this);
-    }
-
-    static final String toString(Index ix) {
-        StringBuilder b = new StringBuilder(ix.getClass().getName());
-        b.append('@').append(Integer.toHexString(ix.hashCode()));
-        b.append(" {");
-        String nameStr = ix.getNameString();
-        if (nameStr != null) {
-            b.append("name").append(": ").append(nameStr);
-            b.append(", ");
-        }
-        b.append("id").append(": ").append(ix.getId());
-        return b.append('}').toString();
+        return ViewUtils.toString(this);
     }
 
     @Override
@@ -1048,6 +1035,9 @@ class Tree implements View, Index {
             }
         }
         if (txn != null) {
+            /*P*/ // [|
+            /*P*/ // if (txn == Transaction.BOGUS) return LocalTransaction.BOGUS;
+            /*P*/ // ]
             throw new IllegalArgumentException("Transaction belongs to a different database");
         }
         return null;

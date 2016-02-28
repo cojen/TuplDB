@@ -23,6 +23,7 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
+/*P*/
 final class PendingTxn extends LockOwner {
     private final Lock mFirst;
     private Lock[] mRest;

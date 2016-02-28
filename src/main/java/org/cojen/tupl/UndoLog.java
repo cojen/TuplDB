@@ -234,6 +234,15 @@ final class UndoLog implements DatabaseAccess {
         doPush(op, payload, off, len, calcUnsignedVarIntLength(len));
     }
 
+    final void push(final long indexId,
+                    final byte op, final long payloadPtr, final int off, final int len)
+        throws IOException
+    {
+        byte[] temp = new byte[len];
+        DirectPageOps.p_copyToArray(payloadPtr, off, temp, 0, len);
+        push(indexId, op, temp, 0, len);
+    }
+
     private void pushIndexId(long indexId) throws IOException {
         byte[] payload = new byte[8];
         encodeLongLE(payload, 0, indexId);

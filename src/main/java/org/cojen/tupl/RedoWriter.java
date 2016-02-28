@@ -32,6 +32,7 @@ import static org.cojen.tupl.Utils.*;
  * @author Brian S O'Neill
  * @see RedoDecoder
  */
+/*P*/
 abstract class RedoWriter implements CauseCloseable, Checkpointer.Shutdown, Flushable {
     private final byte[] mBuffer;
     private int mBufferPos;

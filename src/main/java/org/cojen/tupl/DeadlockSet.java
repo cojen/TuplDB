@@ -32,22 +32,7 @@ public final class DeadlockSet implements Serializable {
     private final long[] mIndexIds;
     private final byte[][] mKeys;
 
-    DeadlockSet(Set<Lock> locks) {
-        int size = locks.size();
-        long[] indexIds = new long[size];
-        byte[][] keys = new byte[size][];
-
-        int i = 0;
-        for (Lock lock : locks) {
-            indexIds[i] = lock.mIndexId;
-            byte[] key = lock.mKey;
-            if (key != null) {
-                key = key.clone();
-            }
-            keys[i] = key;
-            i++;
-        }
-
+    DeadlockSet(long[] indexIds, byte[][] keys) {
         mIndexIds = indexIds;
         mKeys = keys;
     }

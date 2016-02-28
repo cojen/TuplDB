@@ -52,7 +52,6 @@ import java.util.concurrent.TimeUnit;
 
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static java.lang.System.arraycopy;
@@ -206,7 +205,7 @@ final class LocalDatabase implements Database {
 
     // Checkpoint lock is fair, to ensure that user checkpoint requests are not stalled for too
     // long by checkpoint thread.
-    private final Lock mCheckpointLock = new ReentrantLock(true);
+    private final ReentrantLock mCheckpointLock = new ReentrantLock(true);
 
     private long mLastCheckpointNanos;
 

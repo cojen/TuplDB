@@ -27,7 +27,7 @@ import java.security.GeneralSecurityException;
 import java.util.BitSet;
 import java.util.EnumSet;
 
-import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
 
 import org.cojen.tupl.io.FileFactory;
 import org.cojen.tupl.io.FilePageArray;
@@ -492,7 +492,7 @@ final class DurablePageDb extends PageDb {
             return 0;
         }
 
-        final Lock lock = mCommitLock.readLock();
+        final ReadLock lock = mCommitLock.readLock();
 
         for (int i=0; i<pageCount; i++) {
             lock.lock();

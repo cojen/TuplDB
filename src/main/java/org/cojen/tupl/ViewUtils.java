@@ -148,4 +148,17 @@ class ViewUtils {
             }
         }
     }
+
+    static final String toString(Index ix) {
+        StringBuilder b = new StringBuilder(ix.getClass().getName());
+        b.append('@').append(Integer.toHexString(ix.hashCode()));
+        b.append(" {");
+        String nameStr = ix.getNameString();
+        if (nameStr != null) {
+            b.append("name").append(": ").append(nameStr);
+            b.append(", ");
+        }
+        b.append("id").append(": ").append(ix.getId());
+        return b.append('}').toString();
+    }
 }

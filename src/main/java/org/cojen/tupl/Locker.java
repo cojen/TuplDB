@@ -27,6 +27,7 @@ import static org.cojen.tupl.LockManager.*;
  *
  * @author Brian S O'Neill
  */
+/*P*/
 class Locker extends LockOwner {
     final LockManager mManager;
 
@@ -386,7 +387,7 @@ class Locker extends LockOwner {
                 if (detector.scan()) {
                     throw new DeadlockException(nanosTimeout,
                                                 detector.mGuilty,
-                                                new DeadlockSet(detector.mLocks));
+                                                detector.newDeadlockSet());
                 }
             } finally {
                 mWaitingFor = null;

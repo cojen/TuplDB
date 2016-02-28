@@ -20,8 +20,11 @@ import java.lang.management.ManagementFactory;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.InputStream;
 import java.io.IOException;
 import java.io.Serializable;
+
+import java.lang.reflect.Method;
 
 import java.util.EnumSet;
 import java.util.Map;
@@ -46,6 +49,10 @@ import static org.cojen.tupl.Utils.*;
 public class DatabaseConfig implements Cloneable, Serializable {
     private static final long serialVersionUID = 1L;
 
+    private static volatile Method cDirectOpen;
+    private static volatile Method cDirectDestroy;
+    private static volatile Method cDirectRestore;
+
     File mBaseFile;
     boolean mMkdirs;
     File[] mDataFiles;
@@ -65,6 +72,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
     boolean mFileSync;
     boolean mReadOnly;
     int mPageSize;
+    boolean mDirectPageAccess;
     boolean mCachePriming;
     transient ReplicationManager mReplManager;
     int mMaxReplicaThreads;
@@ -328,6 +336,15 @@ public class DatabaseConfig implements Cloneable, Serializable {
     }
 
     /**
+     * Set true to allocate all pages off the Java heap, offering increased performance and
+     * reduced garbage collection activity.
+     */
+    public DatabaseConfig directPageAccess(boolean direct) {
+        mDirectPageAccess = direct;
+        return this;
+    }
+
+    /**
      * Enable automatic cache priming, which writes a priming set into a special file when the
      * database is cleanly shutdown. When opened again, the priming set is applied and the file
      * is deleted. Option has no effect if database is non-durable.
@@ -519,6 +536,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
         set(props, "checkpointDelayThresholdNanos", mCheckpointDelayThresholdNanos);
         set(props, "syncWrites", mFileSync);
         set(props, "pageSize", mPageSize);
+        set(props, "directPageAccess", mDirectPageAccess);
         set(props, "cachePriming", mCachePriming);
 
         w.write('#');
@@ -545,5 +563,76 @@ public class DatabaseConfig implements Cloneable, Serializable {
 
     private static File abs(File file) {
         return file.getAbsoluteFile();
+    }
+
+    Class<?> directOpenClass() throws IOException {
+        if (!mDirectPageAccess) {
+            return null;
+        }
+        try {
+            return Class.forName("org.cojen.tupl._LocalDatabase");
+        } catch (Exception e) {
+            throw handleDirectException(e);
+        }
+    }
+
+    Method directOpenMethod() throws IOException {
+        if (!mDirectPageAccess) {
+            return null;
+        }
+        Method m = cDirectOpen;
+        if (m == null) {
+            cDirectOpen = m = findMethod("open", DatabaseConfig.class);
+        }
+        return m;
+    }
+
+    Method directDestroyMethod() throws IOException {
+        if (!mDirectPageAccess) {
+            return null;
+        }
+        Method m = cDirectDestroy;
+        if (m == null) {
+            cDirectDestroy = m = findMethod("destroy", DatabaseConfig.class);
+        }
+        return m;
+    }
+
+    Method directRestoreMethod() throws IOException {
+        if (!mDirectPageAccess) {
+            return null;
+        }
+        Method m = cDirectRestore;
+        if (m == null) {
+            cDirectRestore = m = findMethod
+                ("restoreFromSnapshot", DatabaseConfig.class, InputStream.class);
+        }
+        return m;
+    }
+
+    static RuntimeException handleDirectException(Exception e) throws IOException {
+        if (e instanceof RuntimeException || e instanceof IOException) {
+            throw rethrow(e);
+        }
+        Throwable cause = e.getCause();
+        if (cause == null) {
+            cause = e;
+        }
+        if (cause instanceof RuntimeException || e instanceof IOException) {
+            throw rethrow(cause);
+        }
+        throw new DatabaseException("Unable open with direct page access", cause);
+    }
+
+    private Method findMethod(String name, Class<?>... paramTypes) throws IOException {
+        Class<?> directClass = directOpenClass();
+        if (directClass == null) {
+            return null;
+        }
+        try {
+            return directClass.getDeclaredMethod(name, paramTypes);
+        } catch (Exception e) {
+            throw handleDirectException(e);
+        }
     }
 }

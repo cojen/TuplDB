@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @author Brian S O'Neill
  */
+/*P*/
 final class Checkpointer implements Runnable {
     private static int cThreadCounter;
 
