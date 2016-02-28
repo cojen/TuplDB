@@ -169,6 +169,21 @@ class TestUtils {
         }
     }
 
+    static void deleteRecursively(File file) {
+        if (file.isDirectory()) {
+            File[] dirs = file.listFiles();
+            if (dirs != null) {
+                for (File dir : dirs) {
+                    deleteRecursively(dir);
+                }
+            }
+        }
+
+        if (file.exists()) {
+            file.delete();
+        }
+    }
+
     private static void deleteDbFiles(File baseFile) {
         deleteDbFile(baseFile, ".db");
         deleteDbFile(baseFile, ".info");
@@ -247,5 +262,86 @@ class TestUtils {
             System.gc();
         }
         cForceGcRef = null;
+    }
+
+    private static File cSourceDir;
+
+    static synchronized File findSourceDirectory() throws IOException {
+        if (cSourceDir != null) {
+            return cSourceDir;
+        }
+
+        Set<File> visited = new HashSet<>();
+        File dir = new File(System.getProperty("user.dir")).getAbsoluteFile();
+        if (!dir.isDirectory()) {
+            throw new IllegalStateException("Not a directory: " + dir);
+        }
+
+        do {
+            File found = findSourceDirectory(visited, dir, 0);
+            if (found != null) {
+                cSourceDir = found;
+                return found;
+            }
+        } while ((dir = dir.getParentFile()) != null);
+
+        return null;
+    }
+
+    static File findSourceDirectory(Set<File> visited, File dir, int matchDepth) {
+        if (!visited.add(dir)) {
+            return null;
+        }
+
+        String match;
+        boolean tail = false;
+
+        switch (matchDepth) {
+        case 0:
+            match = "org";
+            break;
+        case 1:
+            match = "cojen";
+            break;
+        case 2:
+            match = "tupl";
+            break;
+        case 3:
+            match = "LocalDatabase.java";
+            tail = true;
+            break;
+        default:
+            throw new IllegalStateException();
+        }
+
+        File file = new File(dir, match);
+
+        if (file.exists()) {
+            if (!file.isDirectory()) {
+                if (tail) {
+                    return dir;
+                }
+            } else if (!tail) {
+                // Search down.
+                File found = findSourceDirectory(visited, file, matchDepth + 1);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+
+        // Search peers.
+
+        File[] peerDirs = dir.listFiles(f -> f.isDirectory() && !f.isHidden());
+        if (peerDirs != null) {
+            for (File peer : peerDirs) {
+                File found = findSourceDirectory(visited, peer, 0);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+
+        return null;
     }
 }

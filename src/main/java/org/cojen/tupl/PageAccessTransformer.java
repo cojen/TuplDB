@@ -55,7 +55,7 @@ class PageAccessTransformer {
     }
 
     private static void dirCheck(File dir) {
-        if (!dir.isDirectory()) {
+        if (dir.exists() && !dir.isDirectory()) {
             throw new IllegalArgumentException("Not a directory: " + dir);
         }
     }
@@ -77,10 +77,19 @@ class PageAccessTransformer {
         mNames = names;
     }
 
-    void transform() throws IOException {
+    /**
+     * @return set of generated file names
+     */
+    Collection<String> transform() throws IOException {
+        List<String> all = new ArrayList<>(mNames.size());
+
         for (String name : mNames.keySet()) {
-            transform(new File(mSrc, name + ".java"), new File(mDst, "_" + name + ".java"));
+            String newName = "_" + name + ".java";
+            transform(new File(mSrc, name + ".java"), new File(mDst, newName));
+            all.add(newName);
         }
+
+        return all;
     }
 
     private void transform(File src, File dst) throws IOException {
