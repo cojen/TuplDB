@@ -4072,30 +4072,11 @@ class TreeCursor implements CauseCloseable, Cursor {
     }
 
     /**
-     * Variant of latchToChild which uses exclusive latches.
+     * Variant of latchChildRetainParent which uses exclusive latches. With parent held
+     * exclusively, returns child with exclusive latch held, retaining the parent latch. If an
+     * exception is thrown, parent and child latches are always released.
      */
-    // FIXME: remove
-    private Node latchToChildEx(Node parent, int childPos) throws IOException {
-        return latchChildEx
-            (parent, childPos,
-             Node.OPTION_CHILD_ACQUIRE_EXCLUSIVE | Node.OPTION_PARENT_RELEASE_EXCLUSIVE);
-    }
-
-    /**
-     * Variant of latchChildRetainParent which uses exclusive latches.
-     */
-    // FIXME: remove latchChildEx and move simplied version into this method
     private Node latchChildRetainParentEx(Node parent, int childPos) throws IOException {
-        return latchChildEx(parent, childPos, Node.OPTION_CHILD_ACQUIRE_EXCLUSIVE);
-    }
-
-    /**
-     * Variant of latchChild which uses exclusive latches.
-     *
-     * @param options Node.OPTION_CHILD_ACQUIRE_EXCLUSIVE optionally combined with
-     * Node.OPTION_PARENT_RELEASE_EXCLUSIVE
-     */
-    private Node latchChildEx(Node parent, int childPos, int options) throws IOException {
         long childId = parent.retrieveChildRefId(childPos);
         Node childNode = mTree.mDatabase.nodeMapGet(childId);
 
@@ -4117,9 +4098,6 @@ class TreeCursor implements CauseCloseable, Cursor {
                     // require a full latch up the tree. Another option is to remark the parent
                     // as dirty, but this is dodgy and also requires a full latch up the tree.
                     // Parent-before-child eviction is infrequent, and so simple is better.
-                    if ((options & Node.OPTION_PARENT_RELEASE_EXCLUSIVE) != 0) {
-                        parent.releaseExclusive();
-                    }
                     try {
                         childNode.write(mTree.mDatabase.mPageDb);
                     } catch (Throwable e) {
@@ -4127,14 +4105,12 @@ class TreeCursor implements CauseCloseable, Cursor {
                         throw e;
                     }
                     childNode.mCachedState = Node.CACHED_CLEAN;
-                } else if ((options & Node.OPTION_PARENT_RELEASE_EXCLUSIVE) != 0) {
-                    parent.releaseExclusive();
                 }
                 childNode.used();
                 return childNode;
             }
         }
 
-        return parent.loadChild(mTree.mDatabase, childId, options);
+        return parent.loadChild(mTree.mDatabase, childId, Node.OPTION_CHILD_ACQUIRE_EXCLUSIVE);
     }
 }
