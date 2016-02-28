@@ -25,6 +25,7 @@ package org.cojen.tupl;
 public class TestAll {
     public static void main(String[] args) throws Exception {
         Class[] classes = {
+            PageAccessTransformerTest.class,
             ConfigTest.class,
             CrudTest.class,
             CrudNonDurableTest.class,
