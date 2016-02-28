@@ -787,7 +787,7 @@ final class LocalTransaction extends Locker implements Transaction {
     {
         check();
         try {
-            PageOps.p_undoPush(undoLog(), indexId, op, payload, off, len);
+            undoLog().push(indexId, op, payload, off, len);
         } catch (Throwable e) {
             throw borked(e, false);
         }

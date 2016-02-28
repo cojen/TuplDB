@@ -23,6 +23,7 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
+/*P*/
 final class PendingTxnWaiter extends Thread {
     private static final int TIMEOUT_MILLIS = 60000;
 

@@ -23,6 +23,7 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
+/*P*/
 final class TxnTree extends Tree {
     TxnTree(LocalDatabase db, long id, byte[] idBytes, byte[] name, Node root) {
         super(db, id, idBytes, name, root);

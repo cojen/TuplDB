@@ -22,6 +22,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
 
+import java.lang.reflect.Method;
+
 import org.cojen.tupl.io.CauseCloseable;
 
 import static org.cojen.tupl.Utils.*;
@@ -72,7 +74,15 @@ public interface Database extends CauseCloseable, Flushable {
      * Open a database, creating it if necessary.
      */
     public static Database open(DatabaseConfig config) throws IOException {
-        return LocalDatabase.open(config);
+        Method m = config.directOpenMethod();
+        if (m == null) {
+            return LocalDatabase.open(config);
+        }
+        try {
+            return (Database) m.invoke(null, config);
+        } catch (Exception e) {
+            throw DatabaseConfig.handleDirectException(e);
+        }
     }
 
     /**
@@ -81,7 +91,15 @@ public interface Database extends CauseCloseable, Flushable {
      * must be used to format it.
      */
     public static Database destroy(DatabaseConfig config) throws IOException {
-        return LocalDatabase.destroy(config);
+        Method m = config.directDestroyMethod();
+        if (m == null) {
+            return LocalDatabase.destroy(config);
+        }
+        try {
+            return (Database) m.invoke(null, config);
+        } catch (Exception e) {
+            throw DatabaseConfig.handleDirectException(e);
+        }
     }
 
     /**
@@ -253,7 +271,15 @@ public interface Database extends CauseCloseable, Flushable {
     public static Database restoreFromSnapshot(DatabaseConfig config, InputStream in)
         throws IOException
     {
-        return LocalDatabase.restoreFromSnapshot(config, in);
+        Method m = config.directRestoreMethod();
+        if (m == null) {
+            return LocalDatabase.restoreFromSnapshot(config, in);
+        }
+        try {
+            return (Database) m.invoke(null, config, in);
+        } catch (Exception e) {
+            throw DatabaseConfig.handleDirectException(e);
+        }
     }
 
     /**

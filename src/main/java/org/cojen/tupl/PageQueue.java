@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.BitSet;
 
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.cojen.tupl.io.PageArray;
@@ -230,7 +229,7 @@ final class PageQueue implements IntegerRef {
      *
      * @param upperBound inclusive; pages greater than the upper bound are discarded
      */
-    void reclaim(Lock removeLock, long upperBound) throws IOException {
+    void reclaim(ReentrantLock removeLock, long upperBound) throws IOException {
         if (mAllocMode != ALLOC_RESERVE) {
             throw new IllegalStateException();
         }
@@ -274,7 +273,7 @@ final class PageQueue implements IntegerRef {
      * @param lock lock to be released by this method, unless return value is 0
      * @return 0 if queue is empty or if remaining pages are off limits
      */
-    long tryRemove(Lock lock) throws IOException {
+    long tryRemove(ReentrantLock lock) throws IOException {
         if (mRemoveHeadId == 0) {
             if (!mAggressive || mRemoveStoppedId == mAppendTailId) {
                 return 0;
@@ -454,7 +453,7 @@ final class PageQueue implements IntegerRef {
         }
     }
 
-    Lock appendLock() {
+    ReentrantLock appendLock() {
         return mAppendLock;
     }
 

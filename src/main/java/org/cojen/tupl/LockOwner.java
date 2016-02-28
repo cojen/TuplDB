@@ -21,6 +21,7 @@ package org.cojen.tupl;
  *
  * @author Brian S O'Neill
  */
+/*P*/
 class LockOwner {
     // LockOwner is currently waiting to acquire this lock. Used for deadlock detection.
     Lock mWaitingFor;

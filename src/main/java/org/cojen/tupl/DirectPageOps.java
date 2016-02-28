@@ -741,13 +741,4 @@ final class DirectPageOps {
 
         return (int) crc.getValue();
     }
-
-    static void p_undoPush(UndoLog undo, long indexId, byte op,
-                           long payload, int off, int len)
-        throws IOException
-    {
-        byte[] temp = new byte[len];
-        p_copyToArray(payload, off, temp, 0, len);
-        undo.push(indexId, op, temp, 0, len);
-    }
 }

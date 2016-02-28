@@ -26,6 +26,7 @@ import org.cojen.tupl.ext.TransactionHandler;
  * @author Brian S O'Neill
  * @see RedoLogRecovery
  */
+/*P*/
 final class RedoLogApplier implements RedoVisitor {
     private final LocalDatabase mDatabase;
     private final LHashTable.Obj<LocalTransaction> mTransactions;

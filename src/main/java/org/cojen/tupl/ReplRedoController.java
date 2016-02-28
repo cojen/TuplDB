@@ -26,6 +26,7 @@ import org.cojen.tupl.ext.ReplicationManager;
  * @author Brian S O'Neill
  * @see ReplRedoEngine
  */
+/*P*/
 final class ReplRedoController extends ReplRedoWriter {
     private final ReplicationManager mManager;
 

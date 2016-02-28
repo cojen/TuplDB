@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  *
  * @author Brian S O'Neill
  */
+/*P*/
 // Note: Atomic reference is to the next frame bound to a Node.
 final class CursorFrame extends AtomicReference<CursorFrame> {
     private static final int SPIN_LIMIT = Runtime.getRuntime().availableProcessors();

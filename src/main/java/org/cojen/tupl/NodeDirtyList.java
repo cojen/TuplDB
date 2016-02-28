@@ -25,6 +25,7 @@ import org.cojen.tupl.util.Latch;
  *
  * @author Brian S O'Neill
  */
+/*P*/
 @SuppressWarnings("serial")
 final class NodeDirtyList extends Latch {
     // Linked list of dirty nodes.

@@ -30,6 +30,7 @@ import java.util.Set;
  *
  * @author Brian S O'Neill
  */
+/*P*/
 final class DeadlockDetector {
     // Note: This code does not consider proper thread-safety and directly
     // examines the contents of locks and lockers. It never modifies anything,
@@ -47,6 +48,25 @@ final class DeadlockDetector {
         mOrigin = locker;
         mLockers = new LinkedHashSet<>();
         mLocks = new LinkedHashSet<>();
+    }
+
+    DeadlockSet newDeadlockSet() {
+        int size = mLocks.size();
+        long[] indexIds = new long[size];
+        byte[][] keys = new byte[size][];
+
+        int i = 0;
+        for (Lock lock : mLocks) {
+            indexIds[i] = lock.mIndexId;
+            byte[] key = lock.mKey;
+            if (key != null) {
+                key = key.clone();
+            }
+            keys[i] = key;
+            i++;
+        }
+
+        return new DeadlockSet(indexIds, keys);
     }
 
     /**

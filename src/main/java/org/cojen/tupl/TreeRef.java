@@ -24,6 +24,7 @@ import java.lang.ref.WeakReference;
  *
  * @author Brian S O'Neill
  */
+/*P*/
 final class TreeRef extends WeakReference<Tree> {
     final long mId;
     final byte[] mName;
