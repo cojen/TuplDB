@@ -1561,6 +1561,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                         root.acquireShared();
                         node = root;
                     }
+                    frame = null;
                     break;
                 }
 
@@ -1592,9 +1593,11 @@ class TreeCursor implements CauseCloseable, Cursor {
                 } catch (Throwable e) {
                     throw cleanup(e, frame);
                 }
-                frame = new CursorFrame(frame);
                 break;
             }
+
+            // Always create a new cursor frame. See CursorFrame.unbind.
+            frame = new CursorFrame(frame);
         }
 
         return find(txn, key, VARIANT_REGULAR, node, frame);
