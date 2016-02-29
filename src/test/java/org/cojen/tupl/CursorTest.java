@@ -927,7 +927,7 @@ public class CursorTest {
         assertTrue(verify(ix));
     }
 
-    private void verifyExtremities(View ix) throws Exception {
+    protected void verifyExtremities(View ix) throws Exception {
         TreeCursor extremity = treeCursor(ix.newCursor(Transaction.BOGUS));
         assertTrue(extremity.verifyExtremities(Node.LOW_EXTREMITY));
         assertTrue(extremity.verifyExtremities(Node.HIGH_EXTREMITY));
@@ -1168,7 +1168,7 @@ public class CursorTest {
         verifyPositions(ix, cursors);
     }
 
-    private void verifyPositions(View ix, Cursor[] cursors) throws Exception {
+    protected void verifyPositions(View ix, Cursor[] cursors) throws Exception {
         for (Cursor existing : cursors) {
             Cursor c = ix.newCursor(Transaction.BOGUS);
             byte[] key = existing.key();
