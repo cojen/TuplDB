@@ -59,15 +59,24 @@ class TestUtils {
     }
 
     static Database newTempDatabase() throws IOException {
-        return newTempDatabase(-1);
+        return newTempDatabase(-1, false);
+    }
+
+    static Database newTempDatabase(boolean direct) throws IOException {
+        return newTempDatabase(-1, direct);
     }
 
     static Database newTempDatabase(long cacheSize) throws IOException {
+        return newTempDatabase(cacheSize, false);
+    }
+
+    static Database newTempDatabase(long cacheSize, boolean direct) throws IOException {
         DatabaseConfig config = new DatabaseConfig();
         if (cacheSize >= 0) {
             config.minCacheSize(cacheSize);
         }
         config.durabilityMode(DurabilityMode.NO_FLUSH);
+        config.directPageAccess(direct);
         return newTempDatabase(config);
     }
 
