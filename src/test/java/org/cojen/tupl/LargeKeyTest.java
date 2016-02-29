@@ -33,6 +33,10 @@ public class LargeKeyTest {
         org.junit.runner.JUnitCore.main(LargeKeyTest.class.getName());
     }
 
+    protected DatabaseConfig decorate(DatabaseConfig config) throws Exception {
+        return config;
+    }
+
     @After
     public void teardown() throws Exception {
         deleteTempDatabases();
@@ -40,7 +44,7 @@ public class LargeKeyTest {
 
     @Test
     public void largeBlanks() throws Exception {
-        Database db = Database.open(new DatabaseConfig().pageSize(4096));
+        Database db = Database.open(decorate(new DatabaseConfig().pageSize(4096)));
         Index ix = db.openIndex("test");
 
         byte[] value = new byte[0];
@@ -73,7 +77,7 @@ public class LargeKeyTest {
     }
 
     private void storeMaxSize(final int pageSize) throws Exception {
-        Database db = Database.open(new DatabaseConfig().pageSize(pageSize));
+        Database db = Database.open(decorate(new DatabaseConfig().pageSize(pageSize)));
         Index ix = db.openIndex("test");
 
         byte[] value = new byte[0];
@@ -114,7 +118,7 @@ public class LargeKeyTest {
         // Keys are constructed such that little or no suffix compression is applied. This
         // reduces the number of keys stored by internal nodes to be at the minimum of 2.
 
-        Database db = Database.open(new DatabaseConfig().pageSize(pageSize));
+        Database db = Database.open(decorate(new DatabaseConfig().pageSize(pageSize)));
         Index ix = db.openIndex("test");
 
         byte[] value = new byte[0];
@@ -145,7 +149,7 @@ public class LargeKeyTest {
 
     @Test
     public void veryLargeKeys() throws Exception {
-        Database db = newTempDatabase(new DatabaseConfig().checkpointRate(-1, null));
+        Database db = newTempDatabase(decorate(new DatabaseConfig().checkpointRate(-1, null)));
         Index ix = db.openIndex("test");
 
         final int seed = 23423;
@@ -193,7 +197,7 @@ public class LargeKeyTest {
 
     @Test
     public void updateAgainstLargeKeys() throws Exception {
-        Database db = newTempDatabase(new DatabaseConfig());
+        Database db = newTempDatabase(decorate(new DatabaseConfig()));
         Index ix = db.openIndex("test");
 
         final int seed = 1234567;

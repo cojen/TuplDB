@@ -29,6 +29,10 @@ public class ContentionTest {
         org.junit.runner.JUnitCore.main(ContentionTest.class.getName());
     }
 
+    protected DatabaseConfig decorate(DatabaseConfig config) throws Exception {
+        return config;
+    }
+
     @Test
     public void noContention() throws Throwable {
         contention(1_000_000, 1);
@@ -45,7 +49,7 @@ public class ContentionTest {
     }
 
     private void contention(int insertCount, int threadCount) throws Throwable {
-        Database db = Database.open(new DatabaseConfig().minCacheSize(100_000_000));
+        Database db = Database.open(decorate(new DatabaseConfig().minCacheSize(100_000_000)));
         Index ix = db.openIndex("test");
 
         class Runner extends Thread {

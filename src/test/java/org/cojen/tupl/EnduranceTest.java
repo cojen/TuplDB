@@ -78,7 +78,7 @@ public class EnduranceTest {
             executor.execute(w);
         }
         Thread.sleep(10_000);
-        executor.shutdownNow();
+        executor.shutdown();
 
         int numOperations = 0;
         int numFailures = 0;
@@ -105,7 +105,7 @@ public class EnduranceTest {
     abstract class AbstractWorker implements Worker {
         private long mStartTimeMillis;
         private long mEndTimeMillis;
-        private transient boolean mRunning;
+        private volatile boolean mRunning;
         private int mNumOperations;
         private int mNumFailures;
         private int mSleepBetweenOpInMillis;
