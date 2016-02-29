@@ -27,9 +27,9 @@ import static org.junit.Assert.*;
  *
  * @author Brian S O'Neill
  */
-public class PageAccessTransformerTest {
+public class AAA_PageAccessTransformerTest {
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(PageAccessTransformerTest.class.getName());
+        org.junit.runner.JUnitCore.main(AAA_PageAccessTransformerTest.class.getName());
     }
 
     @Test
