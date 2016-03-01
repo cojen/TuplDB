@@ -490,14 +490,8 @@ class Tree implements View, Index {
                 }
             }
             
-            if (highKey != null) {
-                if (Utils.compareUnsigned(highKey, endKey) > 0) {
-                    // highkey is greater than the endKey.  No need to check for it in the loop.
-                    highKey = null;
-                } else {
-                    // highKey is less or equal to endKey.  So set endKey to highKey
-                    endKey = highKey; 
-                }
+            if (highKey != null && Utils.compareUnsigned(highKey, endKey) <= 0) {
+                endKey = highKey; 
             }
             
             long[] stats = new long[2];
