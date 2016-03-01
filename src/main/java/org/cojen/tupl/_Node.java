@@ -3959,12 +3959,8 @@ final class _Node extends Latch implements _DatabaseAccess {
             throw new AssertionError();
         }
 
-        // ...and now unlock them. Next reference of last frame is always itself.
-        childLastFrame.unlock(childLastFrame);
-        thisLastFrame.unlock(thisLastFrame);
-
-        this.fixFrameBindings(lock);
-        child.fixFrameBindings(lock);
+        this.fixFrameBindings(lock, childLastFrame); // Note: frames were swapped
+        child.fixFrameBindings(lock, thisLastFrame);
 
         child.mPage = oldRootPage;
         child.type(oldRootType);
@@ -3987,15 +3983,30 @@ final class _Node extends Latch implements _DatabaseAccess {
     }
 
     /**
-     * Bind all the frames of this node, to this node, for use by the rootDelete method.
+     * Bind all the frames of this node, to this node, for use by the rootDelete method. Frame
+     * locks are released as a side-effect.
+     *
+     * @param frame last frame, locked; is unlocked with itself
      */
-    private void fixFrameBindings(_CursorFrame lock) {
-        for (_CursorFrame f = mLastCursorFrame; f != null; f = f.mPrevCousin) {
-            _CursorFrame lockResult = f.tryLock(lock);
-            if (lockResult != null) {
-                f.mNode = this;
-                f.unlock(lockResult);
+    private void fixFrameBindings(final _CursorFrame lock, _CursorFrame frame) {
+        _CursorFrame lockResult = frame;
+        while (true) {
+            _Node existing = frame.mNode;
+            if (existing != null) {
+                if (existing == this) {
+                    throw new AssertionError();
+                }
+                frame.mNode = this;
             }
+
+            _CursorFrame prev = frame.tryLockPrevious(lock);
+            frame.unlock(lockResult);
+            if (prev == null) {
+                return;
+            }
+
+            lockResult = frame;
+            frame = prev;
         }
     }
 
