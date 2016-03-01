@@ -138,7 +138,6 @@ final class BasicPageCache extends Latch implements PageCache {
             // Try to replace existing entry.
             int ptr = hashTable[index];
             if (ptr >= 0) {
-                int prevPtr = NO_NEXT_ENTRY;
                 while (true) {
                     final int chainNextPtr = nodes.get(ptr + CHAIN_NEXT_PTR_FIELD);
                     if (getPageId(nodes, ptr) == pageId) {
@@ -166,7 +165,6 @@ final class BasicPageCache extends Latch implements PageCache {
                     if (chainNextPtr < 0) {
                         break;
                     }
-                    prevPtr = ptr;
                     ptr = chainNextPtr;
                 }
             }
@@ -258,7 +256,6 @@ final class BasicPageCache extends Latch implements PageCache {
 
             int ptr = hashTable[index];
             if (ptr >= 0) {
-                int prevPtr = NO_NEXT_ENTRY;
                 while (true) {
                     final int chainNextPtr = nodes.get(ptr + CHAIN_NEXT_PTR_FIELD);
                     if (getPageId(nodes, ptr) == pageId) {
@@ -270,7 +267,6 @@ final class BasicPageCache extends Latch implements PageCache {
                     if (chainNextPtr < 0) {
                         break;
                     }
-                    prevPtr = ptr;
                     ptr = chainNextPtr;
                 }
             }
