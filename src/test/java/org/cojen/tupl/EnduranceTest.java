@@ -259,7 +259,7 @@ public class EnduranceTest {
 
         void executeOperation() throws IOException {
             Transaction txn = newTransaction();
-            if (getIndex().evict(txn, null, null, EvictionPredicate.ALWAYS_EVICT, false) == 0) {
+            if (getIndex().evict(txn, null, null, null, false) == 0) {
                 failed(1);
             }
             txn.commit();

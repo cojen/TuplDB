@@ -447,28 +447,30 @@ class Tree implements View, Index {
      * - Once a node is picked, iterate through the keys in the node 
      *   and delete all the entries from it (provided they are within 
      *   the highkey and lowKey boundaries).
-     * - This simple algorithm ensures is an approximate LRU algorithm as 
-     *   that we evict entries that are least recently accessed.
+     * - This simple algorithm is an approximate LRU algorithm, which
+     *   is expected to evict entries that are least recently accessed.
      * 
-     * An alternative approach that we considered:
+     * An alternative approach that was considered:
      * - Search for a random Node, steered towards un-cached nodes.
      * - Delete the node directly. 
      * - This works when all the keys and values fit within a page.  
-     *   If they don't, then we would need to interpret the values. 
-     *   As of today, we don't have a way of knowing if any of the 
-     *   entries in a page overflow.  
+     *   If they don't, then the entries must be fully decoded. This is
+     *   necessary because there's no quick way of determining if any of
+     *   the entries in a page overflow.  
      * 
-     * Note: It could be that the node has three keys A,B, D on it. As 
-     * we are working on it, a key C could be inserted.  In this case, we will
-     * also delete C.  This means that we deleted a key that was just inserted.
-     * We believe that this is very rare and we are ok with this behavior. 
+     * Note: It could be that the node initially has three keys: A, B, D. As eviction is
+     * progressing along, a key C could be inserted concurrently, which could then be
+     * immediately deleted. This case is expected to be rare and harmless.
      */
     @Override
-    public long evict(Transaction txn, byte[] lowKey, byte[] highKey, EvictionPredicate evictionPredicate, boolean autoLoad) throws IOException {
+    public long evict(Transaction txn, byte[] lowKey, byte[] highKey,
+                      Filter evictionFilter, boolean autoload)
+        throws IOException
+    {
         long length = 0;
         TreeCursor cursor = new TreeCursor(this, txn);
-        cursor.autoload(autoLoad);
-        evictionPredicate = evictionPredicate == null? EvictionPredicate.ALWAYS_EVICT : evictionPredicate;
+        cursor.autoload(autoload);
+
         try {
             byte[] endKey = cursor.randomNode(lowKey, highKey);
             if (endKey == null) {
@@ -500,7 +502,9 @@ class Tree implements View, Index {
                 byte[] value = cursor.value();
                 if (value != null) {
                     cursor.valueStats(stats);
-                    if (stats[0] > 0 && evictionPredicate.shouldEvict(txn, key, value)) {
+                    if (stats[0] > 0 &&
+                        (evictionFilter == null || evictionFilter.isAllowed(key, value)))
+                    {
                         length += key.length + stats[0]; 
                         cursor.store(null);
                     }
