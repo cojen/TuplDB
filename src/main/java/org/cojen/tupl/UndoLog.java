@@ -201,11 +201,14 @@ final class UndoLog implements DatabaseAccess {
     }
 
     /**
-     * Deletes just the top node, as part of database close sequence.
+     * Deletes just the top node, as part of database close sequence. Caller must hold
+     * exclusive db commit lock.
      */
     void delete() {
-        if (mNode != null) {
-            mNode.delete(mDatabase);
+        Node node = mNode;
+        if (node != null) {
+            mNode = null;
+            node.delete(mDatabase);
         }
     }
 
