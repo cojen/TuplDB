@@ -45,18 +45,20 @@ public interface Index extends View, Closeable {
     public String getNameString();
 
     /**
-     * Select an entry to delete from the index, possibly at random. Implementation should
-     * attempt to evict an entry which hasn't been recently used. It might fail to evict any
-     * record, in which case it returns 0.
+     * Select a few entries, and delete them from the index. Implementation should attempt to
+     * evict entries which haven't been recently used, but it might select them at random.
+     *
      * @param txn optional
      * @param lowKey inclusive lowest key in the evictable range; pass null for open range
      * @param highKey exclusive highest key in the evictable range; pass null for open range
-     * @param evictionPredicate callback to customize eviction decisions; pass null to evict all
-     * @param autoLoad, pass true to also load values
-     * @return sum of the key and value lengths which were evicted, 0 if no records are evicted
-     * @throws IllegalArgumentException if either ref param is non-null and empty
+     * @param evictionFilter callback which determines which entries are allowed to be evicted;
+     * pass null to evict all selected entries
+     * @param autoload pass true to also load values and pass them to the filter
+     * @return sum of the key and value lengths which were evicted, or 0 if none were evicted
      */
-    public long evict(Transaction txn, byte[] lowKey, byte[] highKey, EvictionPredicate evictionPredicate, boolean autoLoad) throws IOException;
+    public long evict(Transaction txn, byte[] lowKey, byte[] highKey,
+                      Filter evictionFilter, boolean autoload)
+        throws IOException;
 
     /**
      * Estimates the size of this index with a single random probe. To improve the estimate,

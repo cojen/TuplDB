@@ -25,6 +25,7 @@ import java.io.IOException;
  * @author Brian S O'Neill
  * @see View#viewTransformed View.viewTransformed
  */
+@FunctionalInterface
 public interface Filter extends Transformer {
     /**
      * Return true if the given key and value are not to be filtered out.

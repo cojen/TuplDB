@@ -63,19 +63,18 @@ public class EvictionTest {
     private boolean mAutoLoad;
     protected Database mDb;
     
-    static class TestEvictionPredicate implements EvictionPredicate {
+    static class TestEvictionFilter implements Filter {
         
         public final ArrayList<byte[]> mKeys;
         public final ArrayList<byte[]> mValues;
         
-        public TestEvictionPredicate() {
+        public TestEvictionFilter() {
             mKeys = new ArrayList<>();
             mValues = new ArrayList<>();
         }
         
         @Override
-        public boolean shouldEvict(Transaction txn, byte[] key, byte[] value)
-                throws IOException {
+        public boolean isAllowed(byte[] key, byte[] value) throws IOException {
             mKeys.add(key);
             mValues.add(value);
             return true;
@@ -109,44 +108,44 @@ public class EvictionTest {
         }
         
         // basic eviction
-        TestEvictionPredicate evictionPredicate = new TestEvictionPredicate();
-        long evicted = ix.evict(null, null, null, evictionPredicate, autoLoad);
-        int recordCount = initialRecordCount - evictionPredicate.mKeys.size();
+        TestEvictionFilter evictionFilter = new TestEvictionFilter();
+        long evicted = ix.evict(null, null, null, evictionFilter, autoLoad);
+        int recordCount = initialRecordCount - evictionFilter.mKeys.size();
         long keyValueSize = 0; 
-        for (int i = 0; i < evictionPredicate.mKeys.size(); ++i) {
-            keyValueSize += evictionPredicate.mKeys.get(i).length + evictionPredicate.mValues.get(i).length; 
+        for (int i = 0; i < evictionFilter.mKeys.size(); ++i) {
+            keyValueSize += evictionFilter.mKeys.get(i).length + evictionFilter.mValues.get(i).length; 
         }
         assertEquals(evicted, autoLoad ? keyValueSize : keyValueSize * 2); //if autoload is not enabled, only keys are load 
         assertEquals(recordCount, ix.count(null, null));
-        for (byte[] key: evictionPredicate.mKeys) {
+        for (byte[] key: evictionFilter.mKeys) {
             assertNull(ix.load(null, key));
         }
-        assertTrue(evictionPredicate.mKeys.size() >= 1);
-        assertTrue(evictionPredicate.mKeys.size() <= 1024/size);
+        assertTrue(evictionFilter.mKeys.size() >= 1);
+        assertTrue(evictionFilter.mKeys.size() <= 1024/size);
         
         // empty range
-        evictionPredicate = new TestEvictionPredicate();
-        assertEquals(0, ix.evict(null, "a".getBytes(), "b".getBytes(), evictionPredicate, autoLoad));
+        evictionFilter = new TestEvictionFilter();
+        assertEquals(0, ix.evict(null, "a".getBytes(), "b".getBytes(), evictionFilter, autoLoad));
         assertEquals(recordCount, ix.count(null, null));
-        assertEquals(0, evictionPredicate.mKeys.size());
-        assertEquals(0, evictionPredicate.mValues.size());
+        assertEquals(0, evictionFilter.mKeys.size());
+        assertEquals(0, evictionFilter.mValues.size());
         
         // evict nodes in a particular range
-        evictionPredicate = new TestEvictionPredicate();
+        evictionFilter = new TestEvictionFilter();
         ix.newCursor(null).find("a".getBytes());    // loads rightmost nodes at all levels into cache
-        assertEquals(size * 2, ix.evict(null, "009998".getBytes(), "009999".getBytes(), evictionPredicate, autoLoad));
-        assertEquals(1, evictionPredicate.mKeys.size());
-        assertEquals(1, evictionPredicate.mValues.size());
-        assertTrue(new String(evictionPredicate.mKeys.get(0)).startsWith("009998"));
+        assertEquals(size * 2, ix.evict(null, "009998".getBytes(), "009999".getBytes(), evictionFilter, autoLoad));
+        assertEquals(1, evictionFilter.mKeys.size());
+        assertEquals(1, evictionFilter.mValues.size());
+        assertTrue(new String(evictionFilter.mKeys.get(0)).startsWith("009998"));
         if (autoLoad) {
-            assertTrue(new String(evictionPredicate.mValues.get(0)).startsWith("009998"));
+            assertTrue(new String(evictionFilter.mValues.get(0)).startsWith("009998"));
         } else {
-            assertTrue(evictionPredicate.mValues.get(0) == Cursor.NOT_LOADED);
+            assertTrue(evictionFilter.mValues.get(0) == Cursor.NOT_LOADED);
         }
         assertEquals(--recordCount, ix.count(null, null));
         
         // ghost records
-        evictionPredicate = new TestEvictionPredicate();
+        evictionFilter = new TestEvictionFilter();
         Transaction txn = mDb.newTransaction();
         int lowKey = initialRecordCount-11;
         int highKey = initialRecordCount-20;
@@ -154,9 +153,9 @@ public class EvictionTest {
             String key = textOfLength(i, 'k', size);
             ix.delete(txn, key.getBytes());
         }
-        assertEquals(0, ix.evict(null, String.valueOf(lowKey).getBytes(), String.valueOf(highKey).getBytes(), evictionPredicate, autoLoad));
-        assertEquals(0, evictionPredicate.mKeys.size());
-        assertEquals(0, evictionPredicate.mValues.size());
+        assertEquals(0, ix.evict(null, String.valueOf(lowKey).getBytes(), String.valueOf(highKey).getBytes(), evictionFilter, autoLoad));
+        assertEquals(0, evictionFilter.mKeys.size());
+        assertEquals(0, evictionFilter.mValues.size());
         txn.reset();
         
         VerificationObserver observer = new VerificationObserver();
