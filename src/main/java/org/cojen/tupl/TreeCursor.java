@@ -196,6 +196,32 @@ class TreeCursor implements CauseCloseable, Cursor {
         }
     }
 
+    /**
+     * Moves the cursor to the first subtree node, which might be empty or full of ghosts. Leaf
+     * frame remains latched when method returns normally.
+     *
+     * @param node latched node; can have no keys
+     * @param frame frame to bind node to
+     */
+    private final void toFirstNode(Node node, CursorFrame frame) throws IOException {
+        try {
+            while (true) {
+                frame.bind(node, 0);
+                if (node.mSplit != null) {
+                    node = finishSplitShared(frame, node);
+                }
+                if (node.isLeaf()) {
+                    mLeaf = frame;
+                    return;
+                }
+                node = latchToChild(node, 0);
+                frame = new CursorFrame(frame);
+            }
+        } catch (Throwable e) {
+            throw cleanup(e, frame);
+        }
+    }
+
     @Override
     public final LockResult last() throws IOException {
         reset();
@@ -2779,61 +2805,56 @@ class TreeCursor implements CauseCloseable, Cursor {
     }
 
     /**
-     * Non-transactionally deletes the lowest entry and moves to the next entry. This cursor
-     * must be positioned at the lowest entry, and no other cursors or threads can be active in
-     * the tree.
+     * Non-transactionally deletes all entries in the tree. No other cursors or threads can be
+     * active in the tree. The root node is prepared for deletion as a side effect.
      */
-    final void trim() throws IOException {
-        final CursorFrame leaf = leafExclusive();
+    final void deleteAll() throws IOException {
+        reset();
+        autoload(false);
+        toFirstNode(latchRootNode(), new CursorFrame());
+        mLeaf.mNode.releaseShared();
 
-        final CommitLock commitLock = commitLock(leaf);
-        try {
-            // Releases latch if an exception is thrown.
-            Node node = notSplitDirty(leaf);
+        final CommitLock commitLock = mTree.mDatabase.commitLock();
 
+        while (true) {
+            commitLock.acquireShared();
             try {
-                node.deleteLeafEntry(0);
-            } catch (Throwable e) {
-                node.releaseExclusive();
-                throw e;
-            }
+                mLeaf.acquireExclusive();
 
-            if (node.hasKeys()) {
-                leaf.mNodePos = ~0;
-            } else {
-                node = trimNode(leaf, node);
+                // Releases latch if an exception is thrown.
+                Node node = notSplitDirty(mLeaf);
 
-                if (node == null) {
+                if (node.hasKeys()) {
+                    try {
+                        node.deleteLeafEntry(0);
+                    } catch (Throwable e) {
+                        node.releaseExclusive();
+                        throw e;
+                    }
+                }
+
+                if (node.hasKeys()) {
+                    node.releaseExclusive();
+                } else if (!deleteNode(mLeaf, node)) {
                     mLeaf = null;
                     reset();
                     return;
                 }
-
-                try {
-                    mKeyHash = 0;
-                    node.retrieveLeafEntry(0, this);
-                    // Extra check for filtering ghosts.
-                    if (mValue != null) {
-                        return;
-                    }
-                } finally {
-                    node.releaseExclusive();
-                }
+            } finally {
+                commitLock.releaseShared();
             }
-        } finally {
-            commitLock.releaseShared();
         }
-
-        leaf.mNode.downgrade();
-        next(LocalTransaction.BOGUS, leaf);
     }
 
     /**
+     * Deletes the latched node and assigns the next node to the frame. All latches are
+     * released by this method.
+     *
      * @param frame node frame
-     * @param node latched node, with no keys, and dirty; released by this method
-     * @return replacement node, latched exclusively; null if tree is empty
+     * @param node latched node, with no keys, and dirty
+     * @return false if tree is empty
      */
-    private Node trimNode(final CursorFrame frame, final Node node) throws IOException {
+    private boolean deleteNode(final CursorFrame frame, final Node node) throws IOException {
         node.mLastCursorFrame = null;
 
         LocalDatabase db = mTree.mDatabase;
@@ -2846,7 +2867,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             } finally {
                 node.releaseExclusive();
             }
-            return null;
+            return false;
         }
 
         CursorFrame parentFrame = frame.mParentFrame;
@@ -2855,11 +2876,11 @@ class TreeCursor implements CauseCloseable, Cursor {
         if (parentNode.hasKeys()) {
             parentNode.deleteLeftChildRef(0);
         } else {
-            parentNode = trimNode(parentFrame, parentNode);
-            if (parentNode == null) {
+            if (!deleteNode(parentFrame, parentNode)) {
                 db.deleteNode(node);
-                return null;
+                return false;
             }
+            parentNode = parentFrame.acquireExclusive();
         }
 
         Node next = latchChildRetainParentEx(parentNode, 0);
@@ -2876,10 +2897,11 @@ class TreeCursor implements CauseCloseable, Cursor {
         frame.mNodePos = 0;
         next.mLastCursorFrame = frame;
         next.type((byte) (next.type() | Node.LOW_EXTREMITY));
+        next.releaseExclusive();
 
         db.deleteNode(node);
 
-        return next;
+        return true;
     }
  
     /**

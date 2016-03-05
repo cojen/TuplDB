@@ -646,10 +646,11 @@ class _Tree implements View, Index {
                 throw new IllegalStateException("Cannot close an internal index");
             }
 
-            if (root.mLastCursorFrame != null) {
+            // Invalidate all cursors such that they refer to empty nodes.
+
+            if (root.hasKeys()) {
                 // If any active cursors, they might be in the middle of performing node splits
                 // and merges. With the exclusive commit lock held, this is no longer the case.
-                // Once acquired, update the cursors such that they refer to empty nodes.
                 root.releaseExclusive();
                 mDatabase.commitLock().acquireExclusive();
                 try {
@@ -657,12 +658,16 @@ class _Tree implements View, Index {
                     if (root.mPage == p_closedTreePage()) {
                         return null;
                     }
-                    if (root.mLastCursorFrame != null) {
-                        root.invalidateCursors();
-                    }
+                    root.invalidateCursors();
                 } finally {
                     mDatabase.commitLock().releaseExclusive();
                 }
+            } else {
+                // No keys in the root means that no splits or merges are in progress. No need
+                // to release the latch, preventing a race condition when Index.drop is called.
+                // Releasing the root latch would allow another thread to sneak in and insert
+                // entries, which would then get silently deleted.
+                root.invalidateCursors();
             }
 
             // Root node reference cannot be cleared, so instead make it non-functional. Move
@@ -752,11 +757,7 @@ class _Tree implements View, Index {
      * active in the tree. The root node is prepared for deletion as a side effect.
      */
     final void deleteAll() throws IOException {
-        _TreeCursor c = new _TreeCursor(this, Transaction.BOGUS);
-        c.autoload(false);
-        for (c.first(); c.key() != null; ) {
-            c.trim();
-        }
+        new _TreeCursor(this, Transaction.BOGUS).deleteAll();
     }
 
     @FunctionalInterface
