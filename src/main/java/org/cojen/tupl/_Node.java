@@ -794,13 +794,17 @@ final class _Node extends Latch implements _DatabaseAccess {
     private void invalidateCursors(_Node closed) {
         int pos = isLeaf() ? -1 : 0;
 
-        for (_CursorFrame frame = mLastCursorFrame; frame != null; ) {
-            frame.mNode = closed;
-            frame.mNodePos = pos;
-            frame = frame.unlink();
+        closed.acquireExclusive();
+        try {
+            for (_CursorFrame frame = mLastCursorFrame; frame != null; ) {
+                // Capture previous frame from linked list before changing the links.
+                _CursorFrame prev = frame.mPrevCousin;
+                frame.rebind(closed, pos);
+                frame = prev;
+            }
+        } finally {
+            closed.releaseExclusive();
         }
-
-        mLastCursorFrame = null;
 
         if (!isInternal()) {
             return;

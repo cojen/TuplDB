@@ -359,19 +359,6 @@ final class _CursorFrame extends AtomicReference<_CursorFrame> {
     }
 
     /**
-     * Uncleanly unlink this frame, for performing cursor invalidation. _Node must be
-     * exclusively held.
-     *
-     * @return previous frame, possibly null
-     */
-    _CursorFrame unlink() {
-        this.set(null);
-        _CursorFrame prev = mPrevCousin;
-        mPrevCousin = null;
-        return prev;
-    }
-
-    /**
      * Returns the parent frame. No latch is required.
      */
     _CursorFrame peek() {
