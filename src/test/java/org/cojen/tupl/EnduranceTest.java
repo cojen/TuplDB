@@ -78,6 +78,9 @@ public class EnduranceTest {
             executor.execute(w);
         }
         Thread.sleep(10_000);
+        for (Worker w : workers) {
+            w.stop();
+        }
         executor.shutdown();
 
         int numOperations = 0;
