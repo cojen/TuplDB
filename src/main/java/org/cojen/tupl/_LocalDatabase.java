@@ -2014,7 +2014,7 @@ final class _LocalDatabase implements Database {
 
             CommitLock lock = mCommitLock;
             if (lock != null) {
-                lock.acquireShared();
+                lock.acquireExclusive();
             }
             try {
                 if (mUsageLists != null) {
@@ -2024,8 +2024,6 @@ final class _LocalDatabase implements Database {
                         }
                     }
                 }
-
-                nodeMapDeleteAll();
 
                 if (mDirtyList != null) {
                     mDirtyList.delete(this);
@@ -2037,6 +2035,8 @@ final class _LocalDatabase implements Database {
                     }
                     mTopUndoLog = null;
                 }
+
+                nodeMapDeleteAll();
 
                 IOException ex = null;
 
@@ -2062,7 +2062,7 @@ final class _LocalDatabase implements Database {
                 }
             } finally {
                 if (lock != null) {
-                    lock.releaseShared();
+                    lock.releaseExclusive();
                 }
             }
         } finally {
