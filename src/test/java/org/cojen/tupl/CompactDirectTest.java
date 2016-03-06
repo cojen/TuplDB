@@ -34,6 +34,6 @@ public class CompactDirectTest extends CompactTest {
 
     @Override
     protected Database newTempDb() throws Exception {
-        return TestUtils.newTempDatabase(true);
+        return TestUtils.newTempDatabase(TestUtils.OpenMode.DIRECT);
     }
 }

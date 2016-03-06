@@ -17,20 +17,23 @@
 package org.cojen.tupl;
 
 import org.junit.*;
+import static org.junit.Assert.*;
+
+import static org.cojen.tupl.TestUtils.*;
 
 /**
  * 
  *
  * @author Brian S O'Neill
  */
-public class LargeValueDirectTest extends LargeValueTest {
+public class CrudDirectMappedTest extends CrudDirectTest {
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(LargeValueDirectTest.class.getName());
+        org.junit.runner.JUnitCore.main(CrudDirectMappedTest.class.getName());
     }
 
     @Before
     @Override
     public void createTempDb() throws Exception {
-        mDb = TestUtils.newTempDatabase(TestUtils.OpenMode.DIRECT);
+        mDb = newTempDatabase(100_000_000, OpenMode.DIRECT_MAPPED);
     }
 }

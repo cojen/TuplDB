@@ -34,6 +34,6 @@ public class CrudDirectTest extends CrudTest {
     @Before
     @Override
     public void createTempDb() throws Exception {
-        mDb = newTempDatabase(true);
+        mDb = newTempDatabase(OpenMode.DIRECT);
     }
 }
