@@ -19,6 +19,8 @@ package org.cojen.tupl;
 import java.io.*;
 import java.util.*;
 
+import org.cojen.tupl.io.*;
+
 /**
  * 
  *
@@ -58,25 +60,57 @@ class TestUtils {
         }
     }
 
+    static enum OpenMode {NORMAL, DIRECT, DIRECT_MAPPED};
+
     static Database newTempDatabase() throws IOException {
-        return newTempDatabase(-1, false);
+        return newTempDatabase(-1, OpenMode.NORMAL);
     }
 
-    static Database newTempDatabase(boolean direct) throws IOException {
-        return newTempDatabase(-1, direct);
+    static Database newTempDatabase(OpenMode mode) throws IOException {
+        return newTempDatabase(-1, mode);
     }
 
     static Database newTempDatabase(long cacheSize) throws IOException {
-        return newTempDatabase(cacheSize, false);
+        return newTempDatabase(cacheSize, OpenMode.NORMAL);
     }
 
-    static Database newTempDatabase(long cacheSize, boolean direct) throws IOException {
+    static Database newTempDatabase(long cacheSize, OpenMode mode) throws IOException {
         DatabaseConfig config = new DatabaseConfig();
         if (cacheSize >= 0) {
             config.minCacheSize(cacheSize);
         }
         config.durabilityMode(DurabilityMode.NO_FLUSH);
-        config.directPageAccess(direct);
+
+        switch (mode) {
+        default:
+            throw new IllegalArgumentException();
+        case NORMAL:
+            config.directPageAccess(false);
+            break;
+        case DIRECT:
+            config.directPageAccess(true);
+            break;
+        case DIRECT_MAPPED:
+            int pageSize = config.mPageSize;
+            if (pageSize == 0) {
+                pageSize = 4096;
+            }
+            if (cacheSize < 0) {
+                cacheSize = pageSize * 1000;
+            }
+            File baseFile = newTempBaseFile();
+            File dbFile = new File(baseFile.getParentFile(), baseFile.getName() + ".db");
+            MappedPageArray pa = MappedPageArray.open
+                (pageSize, (cacheSize + pageSize - 1) / pageSize, dbFile,
+                 EnumSet.of(OpenOption.CREATE, OpenOption.MAPPED));
+            config.dataPageArray(pa);
+            Database db = Database.open(config);
+            synchronized (cTempDatabases) {
+                cTempDatabases.put(db, baseFile);
+            }
+            return db;
+        }
+
         return newTempDatabase(config);
     }
 

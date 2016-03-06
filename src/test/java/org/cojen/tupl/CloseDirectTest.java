@@ -31,6 +31,6 @@ public class CloseDirectTest extends CloseTest {
     @Before
     @Override
     public void createTempDb() throws Exception {
-        mDb = TestUtils.newTempDatabase(true);
+        mDb = TestUtils.newTempDatabase(TestUtils.OpenMode.DIRECT);
     }
 }

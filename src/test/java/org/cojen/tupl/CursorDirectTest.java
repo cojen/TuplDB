@@ -36,7 +36,7 @@ public class CursorDirectTest extends CursorTest {
     @Before
     @Override
     public void createTempDb() throws Exception {
-        mDb = newTempDatabase(true);
+        mDb = newTempDatabase(OpenMode.DIRECT);
     }
 
     protected _TreeCursor directTreeCursor(Cursor c) {

@@ -29,6 +29,7 @@ public class TestAll {
             ConfigTest.class,
             CrudTest.class,
             CrudDirectTest.class,
+            CrudDirectMappedTest.class,
             CrudNonDurableTest.class,
             CrudNonTransformTest.class,
             CrudBasicTransformTest.class,
