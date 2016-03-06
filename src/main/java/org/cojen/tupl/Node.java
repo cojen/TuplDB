@@ -1142,9 +1142,9 @@ final class Node extends Latch implements DatabaseAccess {
 
     boolean shouldMerge(int availBytes) {
         return mSplit == null
-            & (((type() & (LOW_EXTREMITY | HIGH_EXTREMITY)) == 0
-                 & availBytes >= ((pageSize(mPage) - TN_HEADER_SIZE) >> 1))
-                | !hasKeys());
+            && (((type() & (LOW_EXTREMITY | HIGH_EXTREMITY)) == 0
+                 && availBytes >= ((pageSize(mPage) - TN_HEADER_SIZE) >> 1))
+                || !hasKeys());
     }
 
     /**
