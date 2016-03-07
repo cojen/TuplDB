@@ -104,6 +104,7 @@ class TestUtils {
                 (pageSize, (cacheSize + pageSize - 1) / pageSize, dbFile,
                  EnumSet.of(OpenOption.CREATE, OpenOption.MAPPED));
             config.dataPageArray(pa);
+            config.directPageAccess(true);
             Database db = Database.open(config);
             synchronized (cTempDatabases) {
                 cTempDatabases.put(db, baseFile);
