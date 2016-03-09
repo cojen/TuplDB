@@ -271,7 +271,7 @@ class Tree implements View, Index {
                     highPos = midPos - 2;
                     highMatch = i;
                 } else {
-                    if ((txn != null && txn.lockMode() != LockMode.READ_COMMITTED) ||
+                    if ((local != null && local.lockMode() != LockMode.READ_COMMITTED) ||
                         mLockManager.isAvailable
                         (local, mId, key, keyHash = LockManager.hash(mId, key)))
                     {
@@ -285,7 +285,7 @@ class Tree implements View, Index {
                 }
             }
 
-            if ((txn != null && txn.lockMode() != LockMode.READ_COMMITTED) ||
+            if ((local != null && local.lockMode() != LockMode.READ_COMMITTED) ||
                 mLockManager.isAvailable(local, mId, key, keyHash = LockManager.hash(mId, key)))
             {
                 return null;
