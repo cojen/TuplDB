@@ -173,29 +173,6 @@ final class _DurablePageDb extends _PageDb {
         }
     }
 
-    static class WrongPageSize extends Exception {
-        private static final long serialVersionUID = 1L;
-
-        private final int mExpected;
-        private final int mActual;
-
-        WrongPageSize(int expected, int actual) {
-            mExpected = expected;
-            mActual = actual;
-        }
-
-        @Override
-        public Throwable fillInStackTrace() {
-            return this;
-        }
-
-        DatabaseException rethrow() throws DatabaseException {
-            throw new DatabaseException
-                ("Actual page size does not match configured page size: "
-                 + mActual + " != " + mExpected);
-        }
-    }
-
     private _DurablePageDb(final PageArray rawArray, final PageCache cache,
                           final Crypto crypto, final boolean destroy)
         throws IOException, WrongPageSize
