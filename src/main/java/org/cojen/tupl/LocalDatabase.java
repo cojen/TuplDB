@@ -812,7 +812,7 @@ final class LocalDatabase implements Database {
         }
     }
 
-    static class ShutdownPrimer implements Checkpointer.Shutdown {
+    static class ShutdownPrimer implements ShutdownHook {
         private final WeakReference<LocalDatabase> mDatabaseRef;
 
         ShutdownPrimer(LocalDatabase db) {
