@@ -211,7 +211,7 @@ final class _LocalDatabase implements Database {
 
     private volatile _Checkpointer mCheckpointer;
 
-    final _TempFileManager mTempFileManager;
+    final TempFileManager mTempFileManager;
 
     /*P*/ // [|
     final boolean mFullyMapped;
@@ -252,7 +252,7 @@ final class _LocalDatabase implements Database {
     /**
      * @param config base file is set as a side-effect
      */
-    static _Tree openTemp(_TempFileManager tfm, DatabaseConfig config) throws IOException {
+    static _Tree openTemp(TempFileManager tfm, DatabaseConfig config) throws IOException {
         File file = tfm.createTempFile();
         config.baseFile(file);
         config.dataFile(file);
@@ -722,7 +722,7 @@ final class _LocalDatabase implements Database {
             if (mBaseFile == null || openMode == OPEN_TEMP) {
                 mTempFileManager = null;
             } else {
-                mTempFileManager = new _TempFileManager(mBaseFile, config.mFileFactory);
+                mTempFileManager = new TempFileManager(mBaseFile, config.mFileFactory);
             }
         } catch (Throwable e) {
             // Close, but don't double report the exception since construction never finished.
@@ -812,7 +812,7 @@ final class _LocalDatabase implements Database {
         }
     }
 
-    static class ShutdownPrimer implements _Checkpointer.Shutdown {
+    static class ShutdownPrimer implements ShutdownHook {
         private final WeakReference<_LocalDatabase> mDatabaseRef;
 
         ShutdownPrimer(_LocalDatabase db) {

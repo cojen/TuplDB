@@ -41,8 +41,8 @@ final class Checkpointer implements Runnable {
     private final long mDelayThresholdNanos;
     private volatile Thread mThread;
     private volatile boolean mClosed;
-    private Hook mShutdownHook;
-    private List<Shutdown> mToShutdown;
+    private Thread mShutdownHook;
+    private List<ShutdownHook> mToShutdown;
 
     Checkpointer(LocalDatabase db, DatabaseConfig config) {
         mSuspendCount = new AtomicInteger();
@@ -134,7 +134,7 @@ final class Checkpointer implements Runnable {
      * @param obj ignored if null
      * @return false if immediately shutdown
      */
-    boolean register(Shutdown obj) {
+    boolean register(ShutdownHook obj) {
         if (obj == null) {
             return false;
         }
@@ -146,7 +146,7 @@ final class Checkpointer implements Runnable {
                 }
 
                 if (mShutdownHook == null) {
-                    Hook hook = new Hook(this);
+                    Thread hook = new Thread(() -> Checkpointer.this.close());
                     try {
                         Runtime.getRuntime().addShutdownHook(hook);
                         mShutdownHook = hook;
@@ -197,7 +197,7 @@ final class Checkpointer implements Runnable {
         mDatabaseRef.enqueue();
         mDatabaseRef.clear();
 
-        List<Shutdown> toShutdown;
+        List<ShutdownHook> toShutdown;
         synchronized (this) {
             if (mShutdownHook != null) {
                 try {
@@ -216,28 +216,11 @@ final class Checkpointer implements Runnable {
         }
 
         if (toShutdown != null) {
-            for (Shutdown obj : toShutdown) {
+            for (ShutdownHook obj : toShutdown) {
                 obj.shutdown();
             }
         }
 
         return mThread;
-    }
-
-    public static interface Shutdown {
-        void shutdown();
-    }
-
-    static class Hook extends Thread {
-        private final Checkpointer mCheckpointer;
-
-        Hook(Checkpointer c) {
-            mCheckpointer = c;
-        }
-
-        @Override
-        public void run() {
-            mCheckpointer.close();
-        }
     }
 }

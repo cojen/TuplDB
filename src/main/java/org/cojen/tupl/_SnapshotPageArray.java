@@ -240,7 +240,7 @@ final class _SnapshotPageArray extends PageArray {
             nodeCache = null;
         }
 
-        _TempFileManager tfm = db.mTempFileManager;
+        TempFileManager tfm = db.mTempFileManager;
 
         SnapshotImpl snapshot = new SnapshotImpl(tfm, pageCount, redoPos, nodeCache, rawSource);
 
@@ -303,7 +303,7 @@ final class _SnapshotPageArray extends PageArray {
         private final _LocalDatabase mNodeCache;
         private final PageArray mRawPageArray;
 
-        private final _TempFileManager mTempFileManager;
+        private final TempFileManager mTempFileManager;
         private final long mSnapshotPageCount;
         private final long mSnapshotRedoPosition;
 
@@ -328,7 +328,7 @@ final class _SnapshotPageArray extends PageArray {
         /**
          * @param nodeCache optional
          */
-        SnapshotImpl(_TempFileManager tfm, long pageCount, long redoPos,
+        SnapshotImpl(TempFileManager tfm, long pageCount, long redoPos,
                      _LocalDatabase nodeCache, PageArray rawPageArray)
             throws IOException
         {
