@@ -1450,6 +1450,10 @@ class TreeCursor implements CauseCloseable, Cursor {
     @Override
     public final LockResult find(byte[] key) throws IOException {
         reset();
+        return doFind(key);
+    }
+
+    final LockResult doFind(byte[] key) throws IOException {
         return find(prepareFind(key), key, VARIANT_REGULAR,
                     latchRootNode(), new CursorFrame());
     }
