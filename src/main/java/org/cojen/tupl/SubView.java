@@ -133,10 +133,12 @@ abstract class SubView implements View {
         throw fail();
     }
 
+    /*
     @Override
     public Stream newStream() {
         return new SubStream(this, mSource.newStream());
     }
+    */
 
     @Override
     public View viewTransformed(Transformer transformer) {

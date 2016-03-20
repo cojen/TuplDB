@@ -32,6 +32,7 @@ import static org.cojen.tupl.TestUtils.*;
  *
  * @author Brian S O'Neill
  */
+@Ignore
 public class StreamTest {
     public static void main(String[] args) throws Exception {
         org.junit.runner.JUnitCore.main(StreamTest.class.getName());
@@ -51,11 +52,16 @@ public class StreamTest {
 
     protected Database mDb;
 
+    static Stream newStream(Index ix) throws Exception {
+        //return ix.newStream();
+        return null;
+    }
+
     @Test
     public void readMissing() throws Exception {
         Index ix = mDb.openIndex("test");
 
-        Stream s = ix.newStream();
+        Stream s = newStream(ix);
 
         assertEquals(LockResult.UNOWNED, s.open(null, "key".getBytes()));
         assertEquals(-1, s.length());
@@ -101,7 +107,7 @@ public class StreamTest {
     public void readEmpty() throws Exception {
         Index ix = mDb.openIndex("test");
         ix.store(null, "key".getBytes(), new byte[0]);
-        Stream s = ix.newStream();
+        Stream s = newStream(ix);
         s.open(null, "key".getBytes());
         assertEquals(0, s.length());
 
@@ -118,7 +124,7 @@ public class StreamTest {
     public void readSmall() throws Exception {
         Index ix = mDb.openIndex("test");
         ix.store(null, "key".getBytes(), "value".getBytes());
-        Stream s = ix.newStream();
+        Stream s = newStream(ix);
         s.open(null, "key".getBytes());
         assertEquals(5, s.length());
 
@@ -165,7 +171,7 @@ public class StreamTest {
             byte[] value = randomStr(rnd, length);
 
             if (useWrite) {
-                Stream s = ix.newStream();
+                Stream s = newStream(ix);
                 s.open(null, key);
                 if (setLength) {
                     s.setLength(length);
@@ -176,7 +182,7 @@ public class StreamTest {
                 s.close();
             } else {
                 if (setLength) {
-                    Stream s = ix.newStream();
+                    Stream s = newStream(ix);
                     s.open(null, key);
                     s.setLength(length);
                     s.close();
@@ -184,7 +190,7 @@ public class StreamTest {
                 ix.store(null, key, value);
             }
 
-            Stream s = ix.newStream();
+            Stream s = newStream(ix);
             s.open(null, key);
 
             assertEquals(length, s.length());
@@ -228,7 +234,7 @@ public class StreamTest {
             byte[] value = randomStr(rnd, length);
             ix.store(null, key, value);
 
-            Stream s = ix.newStream();
+            Stream s = newStream(ix);
             s.open(null, key);
 
             byte[] buf = new byte[length + 10];
@@ -273,7 +279,7 @@ public class StreamTest {
         byte[] buf = new byte[102];
 
         for (int i=0; i<100000; i+=100) {
-            Stream s = ix.newStream();
+            Stream s = newStream(ix);
 
             byte[] key = "key".getBytes();
             s.open(null, key);
@@ -346,7 +352,7 @@ public class StreamTest {
 
         ix.store(null, key, value);
 
-        Stream s = ix.newStream();
+        Stream s = newStream(ix);
         s.open(null, key);
         s.setLength(to);
         s.close();
@@ -399,7 +405,7 @@ public class StreamTest {
             byte[] sub = new byte[size - left + right];
             rnd.nextBytes(sub);
 
-            Stream s = ix.newStream();
+            Stream s = newStream(ix);
             s.open(null, key);
             s.write(left, sub, 0, sub.length);
             s.close();
@@ -430,7 +436,7 @@ public class StreamTest {
         byte[] key = "input".getBytes();
         byte[] value = randomStr(rnd, 100000);
 
-        Stream s = ix.newStream();
+        Stream s = newStream(ix);
         s.open(null, key);
         InputStream in = s.newInputStream(0, 101);
 
@@ -450,7 +456,7 @@ public class StreamTest {
 
         ix.store(null, key, value);
 
-        s = ix.newStream();
+        s = newStream(ix);
         s.open(null, key);
         in = s.newInputStream(0, 101);
 
@@ -505,7 +511,7 @@ public class StreamTest {
         byte[] key = "output".getBytes();
         byte[] value = randomStr(rnd, 100000);
 
-        Stream s = ix.newStream();
+        Stream s = newStream(ix);
         s.open(null, key);
         OutputStream out = s.newOutputStream(0, 101);
 
