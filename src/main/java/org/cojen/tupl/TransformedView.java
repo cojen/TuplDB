@@ -291,10 +291,12 @@ final class TransformedView implements View {
         throw fail();
     }
 
+    /*
     @Override
     public Stream newStream() {
         return new TransformedStream(mSource.newStream(), mTransformer);
     }
+    */
 
     @Override
     public View viewGe(byte[] tkey) {

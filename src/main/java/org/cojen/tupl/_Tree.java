@@ -404,12 +404,14 @@ class _Tree implements View, Index {
         return check(txn).lockCheck(mId, key);
     }
 
+    /*
     @Override
     public Stream newStream() {
         _TreeCursor cursor = new _TreeCursor(this);
         cursor.autoload(false);
         return new _TreeValueStream(cursor);
     }
+    */
 
     @Override
     public View viewGe(byte[] key) {

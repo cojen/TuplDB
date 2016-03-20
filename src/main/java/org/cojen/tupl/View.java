@@ -259,9 +259,11 @@ public interface View {
     /**
      * Returns an unopened stream for accessing values in this view.
      */
+    /*
     public default Stream newStream() {
         throw new UnsupportedOperationException();
     }
+    */
 
     /**
      * Returns a sub-view, backed by this one, whose keys are greater than or

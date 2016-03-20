@@ -157,10 +157,12 @@ final class UnmodifiableView implements Index {
         return mSource.lockCheck(txn, key);
     }
 
+    /*
     @Override
     public Stream newStream() {
         return new UnmodifiableStream(mSource.newStream());
     }
+    */
 
     @Override
     public View viewGe(byte[] key) {

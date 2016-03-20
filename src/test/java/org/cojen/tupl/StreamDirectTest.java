@@ -23,6 +23,7 @@ import org.junit.*;
  *
  * @author Brian S O'Neill
  */
+@Ignore
 public class StreamDirectTest extends StreamTest {
     public static void main(String[] args) throws Exception {
         org.junit.runner.JUnitCore.main(StreamDirectTest.class.getName());

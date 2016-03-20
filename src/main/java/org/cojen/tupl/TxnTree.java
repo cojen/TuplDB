@@ -166,10 +166,12 @@ final class TxnTree extends Tree {
         }
     }
 
+    /*
     @Override
     public Stream newStream() {
         TreeCursor cursor = new TxnTreeCursor(this);
         cursor.autoload(false);
         return new TreeValueStream(cursor);
     }
+    */
 }
