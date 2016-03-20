@@ -239,6 +239,42 @@ public interface Database extends CauseCloseable, Flushable {
     public abstract long preallocate(long bytes) throws IOException;
 
     /**
+     * Set a soft capacity limit for the database, to prevent filling up the storage
+     * device. When the limit is reached, writes might fail with a {@link
+     * DatabaseFullException}. No explicit limit is defined by default, and the option is
+     * ignored by non-durable databases. The limit is checked only when the database attempts
+     * to grow, and so it can be set smaller than the current database size.
+     *
+     * <p>Even with a capacity limit, the database file can still slowly grow in size.
+     * Explicit overrides and critical operations can allocate space which can only be
+     * reclaimed by {@link #compactFile compaction}.
+     *
+     * @param bytes maximum capacity, in bytes; pass -1 for no limit
+     */
+    public default void capacityLimit(long bytes) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Returns the current capacity limit, rounded down by page size.
+     *
+     * @return maximum capacity, in bytes; is -1 if no limit
+     */
+    public default long capacityLimit() {
+        return -1;
+    }
+
+    /**
+     * Set capacity limits for the current thread, allowing it to perform tasks which can free
+     * up space. While doing so, it might require additional temporary storage.
+     *
+     * @param bytes maximum capacity, in bytes; pass -1 for no limit; pass 0 to remove override
+     */
+    public default void capacityLimitOverride(long bytes) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * Support for capturing a snapshot (hot backup) of the database, while
      * still allowing concurrent modifications. The snapshot contains all data
      * up to the last checkpoint. Call the {@link #checkpoint checkpoint}
