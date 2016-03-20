@@ -1436,36 +1436,19 @@ final class LocalDatabase implements Database {
         return 0;
     }
 
-    /**
-     * Set a soft capacity limit for the database, to prevent filling up the storage
-     * device. When the limit is reached, writes might fail with a {@link
-     * DatabaseFullException}. No explicit limit is defined by default, and the option is
-     * ignored by non-durable databases. The limit is checked only when the database attempts
-     * to grow, and so it can be set smaller than the current database size.
-     *
-     * @param bytes maximum capacity, in bytes; pass -1 for no limit
-     */
-    void capacityLimit(long bytes) {
+    @Override
+    public void capacityLimit(long bytes) {
         mPageDb.pageLimit(bytes < 0 ? -1 : (bytes / mPageSize));
     }
 
-    /**
-     * Returns the current capacity limit, rounded down by page size.
-     *
-     * @return maximum capacity, in bytes; is -1 if no limit
-     */
-    long capacityLimit() {
+    @Override
+    public long capacityLimit() {
         long pageLimit = mPageDb.pageLimit();
         return pageLimit < 0 ? -1 : (pageLimit * mPageSize);
     }
 
-    /**
-     * Set capacity limits for the current thread, allowing it to perform tasks which can free
-     * up space. While doing so, it might require additional temporary storage.
-     *
-     * @param bytes maximum capacity, in bytes; pass -1 for no limit; pass 0 to remove override
-     */
-    void capacityLimitOverride(long bytes) {
+    @Override
+    public void capacityLimitOverride(long bytes) {
         mPageDb.pageLimitOverride(bytes < 0 ? -1 : (bytes / mPageSize));
     }
 
