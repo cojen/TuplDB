@@ -13,7 +13,8 @@ v1.3.0
 * Fix handling of mapped file shrinkage on Windows.
 * More fixes for random search and add improve safety of frame binding.
 * Added method to analyze index size.
-* Added experimental direct mapped mode when using MappedPageArray and JNA.
+* Added capacity limit feature.
+* Added fully mapped mode when using direct page access and MappedPageArray.
 * Added method to evict records from an Index.
 * File sync improvements for Linux and MacOS. Performs directory sync'ng and F_FULLSYNC.
 * Use JNA to access native I/O functions, eliminating extra system calls.
