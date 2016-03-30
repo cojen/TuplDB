@@ -112,13 +112,26 @@ public interface ReplicationManager extends Closeable {
         long write(byte[] b, int off, int len) throws IOException;
 
         /**
+         * Same as the regular write method, except that the message contains a transaction
+         * commit operation. This variant exists to allow an implementation to capture the
+         * confirmation position of a transaction, in a thread-local variable.
+         *
+         * @return potential confirmation position, or -1 if not leader
+         */
+        default long writeCommit(byte[] b, int off, int len) throws IOException {
+            return write(b, off, len);
+        }
+
+        /**
          * Blocks until all data up to the given log position is confirmed.
          *
          * @param position confirmation position as provided by the write method
          * @return false if not leader
          * @throws ConfirmationFailureException
          */
-        boolean confirm(long position) throws IOException;
+        default boolean confirm(long position) throws IOException {
+            return confirm(position, -1);
+        }
 
         /**
          * Blocks until all data up to the given log position is confirmed.
@@ -142,7 +155,9 @@ public interface ReplicationManager extends Closeable {
      *
      * @throws ConfirmationFailureException
      */
-    void syncConfirm(long position) throws IOException;
+    default void syncConfirm(long position) throws IOException {
+        syncConfirm(position, -1);
+    }
 
     /**
      * Durably flushes all local data to non-volatile storage, up to the given confirmed
@@ -173,7 +188,7 @@ public interface ReplicationManager extends Closeable {
      * @param key non-null key; contents must not be modified
      * @param value null if entry is deleted; contents can be modified
      */
-    void notifyStore(Index index, byte[] key, byte[] value);
+    default void notifyStore(Index index, byte[] key, byte[] value) {}
 
     /**
      * Notification to replica after an index is renamed. The current thread is free to perform
@@ -184,7 +199,7 @@ public interface ReplicationManager extends Closeable {
      * @param oldName non-null old index name
      * @param newName non-null new index name
      */
-    void notifyRename(Index index, byte[] oldName, byte[] newName);
+    default void notifyRename(Index index, byte[] oldName, byte[] newName) {}
 
     /**
      * Notification to replica after an index is dropped. The current thread is free to perform
@@ -193,7 +208,7 @@ public interface ReplicationManager extends Closeable {
      *
      * @param index non-null closed and dropped index reference
      */
-    void notifyDrop(Index index);
+    default void notifyDrop(Index index) {}
 
     /**
      * Forward a change from a replica to the leader. Change must arrive back through the input
