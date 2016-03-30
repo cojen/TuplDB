@@ -298,7 +298,7 @@ class ReplRedoWriter extends RedoWriter {
             if (writer == null) {
                 throw new UnmodifiableReplicaException();
             }
-            long pos = writer.write(buffer, 0, len);
+            long pos = writer.writeCommit(buffer, 0, len);
             if (pos >= 0) {
                 mLastCommitPos = pos;
                 mLastCommitTxnId = lastTransactionId();
