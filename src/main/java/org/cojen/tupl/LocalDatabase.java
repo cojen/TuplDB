@@ -875,6 +875,10 @@ final class LocalDatabase implements Database {
 
     @Override
     public Index indexById(long id) throws IOException {
+        return indexById(null, id);
+    }
+
+    Index indexById(Transaction txn, long id) throws IOException {
         if (Tree.isInternal(id)) {
             throw new IllegalArgumentException("Invalid id: " + id);
         }
@@ -891,14 +895,14 @@ final class LocalDatabase implements Database {
             idKey[0] = KEY_TYPE_INDEX_ID;
             encodeLongBE(idKey, 1, id);
 
-            byte[] name = mRegistryKeyMap.load(null, idKey);
+            byte[] name = mRegistryKeyMap.load(txn, idKey);
 
             if (name == null) {
                 checkClosed();
                 return null;
             }
 
-            index = openIndex(name, false);
+            index = openIndex(txn, name, false);
         } catch (Throwable e) {
             DatabaseException.rethrowIfRecoverable(e);
             throw closeOnFailure(this, e);
@@ -931,12 +935,19 @@ final class LocalDatabase implements Database {
      * Allows access to internal indexes which can use the redo log.
      */
     Index anyIndexById(long id) throws IOException {
+        return anyIndexById(null, id);
+    }
+
+    /**
+     * Allows access to internal indexes which can use the redo log.
+     */
+    Index anyIndexById(Transaction txn, long id) throws IOException {
         if (id == Tree.REGISTRY_KEY_MAP_ID) {
             return mRegistryKeyMap;
         } else if (id == Tree.FRAGMENTED_TRASH_ID) {
             return fragmentedTrash().mTrash;
         }
-        return indexById(id);
+        return indexById(txn, id);
     }
 
     @Override
@@ -2293,6 +2304,10 @@ final class LocalDatabase implements Database {
     }
 
     private Index openIndex(byte[] name, boolean create) throws IOException {
+        return openIndex(null, name, create);
+    }
+
+    private Index openIndex(Transaction lookupTxn, byte[] name, boolean create) throws IOException {
         checkClosed();
 
         Tree tree = quickFindIndex(name);
@@ -2306,7 +2321,7 @@ final class LocalDatabase implements Database {
             cleanupUnreferencedTrees();
 
             byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, name);
-            byte[] treeIdBytes = mRegistryKeyMap.load(null, nameKey);
+            byte[] treeIdBytes = mRegistryKeyMap.load(lookupTxn, nameKey);
             long treeId;
             // Is non-null if index was created.
             byte[] idKey;
@@ -2317,6 +2332,11 @@ final class LocalDatabase implements Database {
             } else if (!create) {
                 return null;
             } else {
+                // transactional lookup supported only for opens that do not create.
+                if (lookupTxn != null) {
+                    throw new AssertionError();
+                }
+
                 Transaction createTxn = null;
 
                 mOpenTreesLatch.acquireExclusive();
