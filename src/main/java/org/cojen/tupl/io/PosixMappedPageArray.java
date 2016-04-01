@@ -32,6 +32,9 @@ import com.sun.jna.Platform;
  * @author Brian S O'Neill
  */
 class PosixMappedPageArray extends MappedPageArray {
+    private final File mFile;
+    private final EnumSet<OpenOption> mOptions;
+
     private final int mFileDescriptor;
 
     private volatile boolean mEmpty;
@@ -41,6 +44,9 @@ class PosixMappedPageArray extends MappedPageArray {
         throws IOException
     {
         super(pageSize, pageCount, options);
+
+        mFile = file;
+        mOptions = options;
 
         if (file == null) {
             int prot = 1 | 2; // PROT_READ | PROT_WRITE
@@ -133,6 +139,15 @@ class PosixMappedPageArray extends MappedPageArray {
         mEmpty = count == 0;
     }
 
+    @Override
+    MappedPageArray doOpen() throws IOException {
+        boolean empty = mEmpty;
+        PosixMappedPageArray pa = new PosixMappedPageArray
+            (pageSize(), super.getPageCount(), mFile, mOptions);
+        pa.mEmpty = empty;
+        return pa;
+    }
+
     void doSync(long mappingPtr, boolean metadata) throws IOException {
         if (mFileDescriptor != -1) {
             PosixFileIO.msyncAddr(mappingPtr, super.getPageCount() * pageSize());
@@ -140,11 +155,13 @@ class PosixMappedPageArray extends MappedPageArray {
                 PosixFileIO.fsyncFd(mFileDescriptor);
             }
         }
+        mEmpty = false;
     }
 
     void doSyncPage(long mappingPtr, long index) throws IOException {
         int pageSize = pageSize();
         PosixFileIO.msyncAddr(mappingPtr + index * pageSize, pageSize);
+        mEmpty = false;
     }
 
     void doClose(long mappingPtr) throws IOException {

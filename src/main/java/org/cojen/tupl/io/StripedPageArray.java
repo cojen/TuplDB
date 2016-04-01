@@ -232,6 +232,17 @@ public class StripedPageArray extends PageArray {
         }
     }
 
+    @Override
+    public StripedPageArray open() throws IOException {
+        if (!mSyncService.isShutdown()) {
+            return this;
+        }
+        for (int i=0; i<mArrays.length; i++) {
+            mArrays[i] = mArrays[i].open();
+        }
+        return new StripedPageArray(mArrays);
+    }
+
     private static class Syncer implements Runnable {
         private final PageArray mArray;
 
