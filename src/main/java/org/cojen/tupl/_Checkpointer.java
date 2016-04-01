@@ -31,6 +31,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 /*P*/
 final class _Checkpointer implements Runnable {
+    private static final int STATE_INIT = 0, STATE_RUNNING = 1, STATE_CLOSED = 2;
+
     private static int cThreadCounter;
 
     private final AtomicInteger mSuspendCount;
@@ -40,7 +42,7 @@ final class _Checkpointer implements Runnable {
     private final long mSizeThreshold;
     private final long mDelayThresholdNanos;
     private volatile Thread mThread;
-    private volatile boolean mClosed;
+    private volatile int mState;
     private Thread mShutdownHook;
     private List<ShutdownHook> mToShutdown;
 
@@ -60,21 +62,39 @@ final class _Checkpointer implements Runnable {
         }
     }
 
-    void start() {
+    /**
+     * @param initialCheckpoint true to perform an initial checkpoint in the new thread
+     */
+    void start(boolean initialCheckpoint) {
         int num;
         synchronized (_Checkpointer.class) {
             num = ++cThreadCounter;
         }
+
+        if (!initialCheckpoint) {
+            mState = STATE_RUNNING;
+        }
+
         Thread t = new Thread(this);
         t.setDaemon(true);
         t.setName("_Checkpointer-" + (num & 0xffffffffL));
         t.start();
+
         mThread = t;
     }
 
     @Override
     public void run() {
         try {
+            if (mState == STATE_INIT) {
+                // Start with an initial forced checkpoint.
+                _LocalDatabase db = mDatabaseRef.get();
+                if (db != null) {
+                    db.checkpoint();
+                }
+                mState = STATE_RUNNING;
+            }
+
             if (mRefQueue != null) {
                 mRefQueue.remove();
                 close();
@@ -116,7 +136,7 @@ final class _Checkpointer implements Runnable {
                 }
             }
         } catch (Throwable e) {
-            if (!mClosed) {
+            if (mState != STATE_CLOSED) {
                 _LocalDatabase db = mDatabaseRef.get();
                 if (db != null && !db.mClosed) {
                     Utils.closeQuietly(null, db, e);
@@ -139,9 +159,9 @@ final class _Checkpointer implements Runnable {
             return false;
         }
 
-        doRegister: if (!mClosed) {
+        doRegister: if (mState != STATE_CLOSED) {
             synchronized (this) {
-                if (mClosed) {
+                if (mState == STATE_CLOSED) {
                     break doRegister;
                 }
 
@@ -193,7 +213,7 @@ final class _Checkpointer implements Runnable {
      * @return thread to interrupt, when no checkpoint is in progress
      */
     Thread close() {
-        mClosed = true;
+        mState = STATE_CLOSED;
         mDatabaseRef.enqueue();
         mDatabaseRef.clear();
 

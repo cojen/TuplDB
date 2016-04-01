@@ -261,7 +261,7 @@ final class LocalDatabase implements Database {
         LocalDatabase db = new LocalDatabase(config, OPEN_TEMP);
         tfm.register(file, db);
         db.mCheckpointer = new Checkpointer(db, config);
-        db.mCheckpointer.start();
+        db.mCheckpointer.start(false);
         return db.mRegistry;
     }
 
@@ -705,7 +705,7 @@ final class LocalDatabase implements Database {
                     // the newly created redo log file.
 
                     if (doCheckpoint) {
-                        checkpoint(true, 0, 0, true);
+                        checkpoint(true, 0, 0);
                         // Only cleanup after successful checkpoint.
                         for (File file : redoFiles) {
                             file.delete();
@@ -769,6 +769,8 @@ final class LocalDatabase implements Database {
             deletion.start();
         }
 
+        boolean initialCheckpoint = false;
+
         if (mRedoWriter instanceof ReplRedoController) {
             // Start replication and recovery.
             ReplRedoController controller = (ReplRedoController) mRedoWriter;
@@ -779,11 +781,11 @@ final class LocalDatabase implements Database {
                 closeQuietly(null, this, e);
                 throw e;
             }
-            checkpoint(true);
             recoveryComplete(config.mReplRecoveryStartNanos);
+            initialCheckpoint = true;
         }
 
-        c.start();
+        c.start(initialCheckpoint);
     }
 
     private void applyCachePrimer(DatabaseConfig config) {
@@ -1680,8 +1682,17 @@ final class LocalDatabase implements Database {
         }
     }
 
+    @Override
     public void checkpoint() throws IOException {
-        checkpoint(false);
+        if (!mClosed && mPageDb.isDurable()) {
+            try {
+                checkpoint(false, 0, 0);
+            } catch (Throwable e) {
+                DatabaseException.rethrowIfRecoverable(e);
+                closeQuietly(null, this, e);
+                throw e;
+            }
+        }
     }
 
     @Override
@@ -3987,24 +3998,7 @@ final class LocalDatabase implements Database {
         }
     }
 
-    void checkpoint(boolean skipRedoLogSync) throws IOException {
-        if (!mClosed && mPageDb.isDurable()) {
-            try {
-                checkpoint(false, 0, 0,skipRedoLogSync);
-            } catch (Throwable e) {
-                DatabaseException.rethrowIfRecoverable(e);
-                closeQuietly(null, this, e);
-                throw e;
-            }
-        }
-    }
-
     void checkpoint(boolean force, long sizeThreshold, long delayThresholdNanos)
-        throws IOException {
-        checkpoint(force, sizeThreshold, delayThresholdNanos, false);
-    }
-
-    void checkpoint(boolean force, long sizeThreshold, long delayThresholdNanos, boolean skipRedoLogSync)
         throws IOException
     {
         // Checkpoint lock ensures consistent state between page store and logs.
@@ -4039,9 +4033,7 @@ final class LocalDatabase implements Database {
 
                     // Thresholds not met for a full checkpoint, but fully sync the redo log
                     // for durability.
-                    if (!skipRedoLogSync) {
-                        mRedoWriter.flushSync(true);
-                    }
+                    mRedoWriter.flushSync(true);
 
                     return;
                 }
@@ -4060,7 +4052,7 @@ final class LocalDatabase implements Database {
 
                     // Root is clean, so no need for full checkpoint,
                     // but fully sync the redo log for durability.
-                    if (mRedoWriter != null && !skipRedoLogSync) {
+                    if (mRedoWriter != null) {
                         mRedoWriter.flushSync(true);
                     }
                     return;
