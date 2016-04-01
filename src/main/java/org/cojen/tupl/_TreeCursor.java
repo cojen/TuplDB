@@ -3032,12 +3032,14 @@ class _TreeCursor implements CauseCloseable, Cursor {
         }
     }
 
+    /*
     @Override
     public final Stream newStream() {
         _TreeCursor copy = copyNoValue();
         copy.mKeyOnly = true;
         return new _TreeValueStream(copy);
     }
+    */
 
     @Override
     public final _TreeCursor copy() {

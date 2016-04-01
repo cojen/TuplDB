@@ -195,10 +195,12 @@ final class ReverseCursor implements Cursor {
         mSource.commit(value);
     }
 
+    /*
     @Override
     public Stream newStream() {
         return mSource.newStream();
     }
+    */
 
     @Override
     public Cursor copy() {

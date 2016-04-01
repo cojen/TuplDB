@@ -447,10 +447,12 @@ final class BoundedCursor implements Cursor {
         mSource.commit(value);
     }
 
+    /*
     @Override
     public Stream newStream() {
         return new SubStream(mView, mSource.newStream());
     }
+    */
 
     @Override
     public Cursor copy() {

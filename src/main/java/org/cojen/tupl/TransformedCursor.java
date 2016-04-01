@@ -489,6 +489,7 @@ final class TransformedCursor implements Cursor {
         c.commit(mTransformer.inverseTransformValue(tvalue, key, tkey));
     }
 
+    /*
     @Override
     public Stream newStream() {
         Cursor c = mSource;
@@ -498,6 +499,7 @@ final class TransformedCursor implements Cursor {
         }
         return new TransformedStream(c.newStream(), mTransformer);
     }
+    */
 
     @Override
     public Cursor copy() {

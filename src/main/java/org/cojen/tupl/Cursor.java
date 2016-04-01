@@ -438,9 +438,11 @@ public interface Cursor {
      * cursor is unpositioned. When using a cursor for opening streams, {@link #autoload
      * autoload} should be disabled.
      */
+    /*
     public default Stream newStream() {
         throw new UnsupportedOperationException();
     }
+    */
 
     /**
      * Returns a new independent Cursor, positioned where this one is, and
