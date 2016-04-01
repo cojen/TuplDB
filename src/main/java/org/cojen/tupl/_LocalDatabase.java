@@ -410,6 +410,7 @@ final class _LocalDatabase implements Database {
                 if (dataPageArray == null) {
                     mPageDb = new _NonPageDb(pageSize, cache);
                 } else {
+                    dataPageArray = dataPageArray.open();
                     Crypto crypto = config.mCrypto;
                     mPageDb = _DurablePageDb.open
                         (dataPageArray, cache, crypto, openMode == OPEN_DESTROY);
@@ -1494,6 +1495,9 @@ final class _LocalDatabase implements Database {
                 throw new UnsupportedOperationException
                     ("Restore only allowed for durable databases");
             }
+
+            dataPageArray = dataPageArray.open();
+            dataPageArray.setPageCount(0);
 
             // Delete old redo log files.
             deleteNumberedFiles(config.mBaseFile, REDO_FILE_SUFFIX);

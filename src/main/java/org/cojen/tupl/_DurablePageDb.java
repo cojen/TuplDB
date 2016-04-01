@@ -758,6 +758,10 @@ final class _DurablePageDb extends _PageDb {
                 pa.writePage(index, p_transferTo(buffer, bufferPage));
                 index++;
             }
+
+            // Ensure newly restored snapshot is durable and also ensure that PageArray (if a
+            // MappedPageArray) no longer considers itself to be empty.
+            pa.sync(true);
         } finally {
             p_delete(bufferPage);
             closeQuietly(null, in);

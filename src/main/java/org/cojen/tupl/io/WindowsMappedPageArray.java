@@ -44,6 +44,9 @@ class WindowsMappedPageArray extends MappedPageArray {
             ("kernel32", Kernel32Ex.class, W32APIOptions.UNICODE_OPTIONS);
     }
 
+    private final File mFile;
+    private final EnumSet<OpenOption> mOptions;
+
     private final WinNT.HANDLE mFileHandle;
     private final WinNT.HANDLE mMappingHandle;
 
@@ -56,6 +59,9 @@ class WindowsMappedPageArray extends MappedPageArray {
         throws IOException
     {
         super(pageSize, pageCount, options);
+
+        mFile = file;
+        mOptions = options;
 
         if (file == null) {
             long mappingPtr = cKernel.VirtualAlloc
@@ -163,6 +169,15 @@ class WindowsMappedPageArray extends MappedPageArray {
         mEmpty = count == 0;
     }
 
+    @Override
+    MappedPageArray doOpen() throws IOException {
+        boolean empty = mEmpty;
+        WindowsMappedPageArray pa = new WindowsMappedPageArray
+            (pageSize(), super.getPageCount(), mFile, mOptions);
+        pa.mEmpty = empty;
+        return pa;
+    }
+
     void doSync(long mappingPtr, boolean metadata) throws IOException {
         if (!mNonDurable) {
             if (!cKernel.FlushViewOfFile(mappingPtr, super.getPageCount() * pageSize())) {
@@ -170,6 +185,7 @@ class WindowsMappedPageArray extends MappedPageArray {
             }
             fsync();
         }
+        mEmpty = false;
     }
 
     void doSyncPage(long mappingPtr, long index) throws IOException {
@@ -180,6 +196,7 @@ class WindowsMappedPageArray extends MappedPageArray {
             }
             fsync();
         }
+        mEmpty = false;
     }
 
     void doClose(long mappingPtr) throws IOException {
@@ -210,7 +227,6 @@ class WindowsMappedPageArray extends MappedPageArray {
                 throw toException(cKernel.GetLastError());
             }
         }
-        mEmpty = false;
     }
 
     public static interface Kernel32Ex extends Kernel32 {
