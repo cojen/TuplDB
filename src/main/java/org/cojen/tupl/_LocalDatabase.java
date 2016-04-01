@@ -151,13 +151,14 @@ final class _LocalDatabase implements Database {
     // Is either CACHED_DIRTY_0 or CACHED_DIRTY_1. Access is guarded by commit lock.
     private byte mCommitState;
 
+    // State to apply to nodes which have just been read. Is CACHED_DIRTY_0 for empty databases
+    // which have never checkpointed, but is CACHED_CLEAN otherwise.
+    private volatile byte mInitialReadState = CACHED_CLEAN;
+
     // Set during checkpoint after commit state has switched. If checkpoint aborts, next
     // checkpoint will resume with this commit header and master undo log.
     private long mCommitHeader = p_null();
     private _UndoLog mCommitMasterUndoLog;
-
-    // Is false for empty databases which have never checkpointed.
-    private volatile boolean mHasCheckpointed = true;
 
     // Typically opposite of mCommitState, or negative if checkpoint is not in
     // progress. Indicates which nodes are being flushed by the checkpoint.
@@ -2241,7 +2242,7 @@ final class _LocalDatabase implements Database {
         if (version == 0) {
             rootId = 0;
             // No registry; clearly nothing has been checkpointed.
-            mHasCheckpointed = false;
+            mInitialReadState = CACHED_DIRTY_0;
         } else {
             if (version != ENCODING_VERSION) {
                 throw new CorruptDatabaseException("Unknown encoding version: " + version);
@@ -3878,7 +3879,7 @@ final class _LocalDatabase implements Database {
             _Node node = nodeMapGetAndRemove(nodeId);
             if (node != null) {
                 deleteNode(node);
-            } else if (!mHasCheckpointed) {
+            } else if (mInitialReadState != CACHED_CLEAN) {
                 // Page was never used if nothing has ever been checkpointed.
                 mPageDb.recyclePage(nodeId);
             } else {
@@ -3973,29 +3974,21 @@ final class _LocalDatabase implements Database {
 
         node.mId = id;
 
-        if (!mHasCheckpointed) {
-            // Read is reloading an evicted node which is known to be dirty.
-            mCommitLock.acquireShared();
-            // Need to check again once full lock has been acquired.
-            node.mCachedState = mHasCheckpointed ? CACHED_CLEAN : mCommitState;
-            mCommitLock.releaseShared();
-        } else {
-            // NOTE: An optimization is possible here, but it's a bit tricky. Too many pages
-            // are allocated when evictions are high, write rate is high, and commits are
-            // bogged down.  Keep some sort of cache of ids known to be dirty. If reloaded
-            // before commit, then they're still dirty.
-            //
-            // A Bloom filter is not appropriate, because of false positives. A random evicting
-            // cache works well -- it has no collision chains. Evict whatever else was there in
-            // the slot. An array of longs should suffice.
-            //
-            // When a child node is loaded with a dirty state, the parent nodes must be updated
-            // as well. This might force them to be evicted, and then the optimization is
-            // lost. A better approach would avoid the optimization if the parent node is clean
-            // or doesn't match the current commit state.
+        // NOTE: If initial state is clean, an optimization is possible, but it's a bit
+        // tricky. Too many pages are allocated when evictions are high, write rate is high,
+        // and commits are bogged down.  Keep some sort of cache of ids known to be dirty. If
+        // reloaded before commit, then they're still dirty.
+        //
+        // A Bloom filter is not appropriate, because of false positives. A random evicting
+        // cache works well -- it has no collision chains. Evict whatever else was there in
+        // the slot. An array of longs should suffice.
+        //
+        // When a child node is loaded with a dirty state, the parent nodes must be updated
+        // as well. This might force them to be evicted, and then the optimization is
+        // lost. A better approach would avoid the optimization if the parent node is clean
+        // or doesn't match the current commit state.
 
-            node.mCachedState = CACHED_CLEAN;
-        }
+        node.mCachedState = mInitialReadState;
     }
 
     void checkpoint(boolean force, long sizeThreshold, long delayThresholdNanos)
@@ -4238,8 +4231,8 @@ final class _LocalDatabase implements Database {
             }
             stateToFlush ^= 1;
         } else {
-            if (!mHasCheckpointed) {
-                mHasCheckpointed = true; // Must be set before switching commit state.
+            if (mInitialReadState != CACHED_CLEAN) {
+                mInitialReadState = CACHED_CLEAN; // Must be set before switching commit state.
             }
             mCommitState = (byte) (stateToFlush ^ 1);
             mCommitHeader = header;
