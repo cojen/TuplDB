@@ -397,6 +397,10 @@ public class DatabaseConfig implements Cloneable, Serializable {
         return this;
     }
 
+    public TransactionHandler getCustomTransactionHandler() {
+        return mTxnHandler;
+    }
+
     @Override
     public DatabaseConfig clone() {
         try {

@@ -705,7 +705,7 @@ final class _LocalDatabase implements Database {
                     // the newly created redo log file.
 
                     if (doCheckpoint) {
-                        checkpoint(true, 0, 0);
+                        checkpoint(true, 0, 0, true);
                         // Only cleanup after successful checkpoint.
                         for (File file : redoFiles) {
                             file.delete();
@@ -779,7 +779,7 @@ final class _LocalDatabase implements Database {
                 closeQuietly(null, this, e);
                 throw e;
             }
-            checkpoint();
+            checkpoint(true);
             recoveryComplete(config.mReplRecoveryStartNanos);
         }
 
@@ -1680,17 +1680,8 @@ final class _LocalDatabase implements Database {
         }
     }
 
-    @Override
     public void checkpoint() throws IOException {
-        if (!mClosed && mPageDb.isDurable()) {
-            try {
-                checkpoint(false, 0, 0);
-            } catch (Throwable e) {
-                DatabaseException.rethrowIfRecoverable(e);
-                closeQuietly(null, this, e);
-                throw e;
-            }
-        }
+        checkpoint(false);
     }
 
     @Override
@@ -3996,7 +3987,24 @@ final class _LocalDatabase implements Database {
         }
     }
 
+    void checkpoint(boolean skipRedoLogSync) throws IOException {
+        if (!mClosed && mPageDb.isDurable()) {
+            try {
+                checkpoint(false, 0, 0,skipRedoLogSync);
+            } catch (Throwable e) {
+                DatabaseException.rethrowIfRecoverable(e);
+                closeQuietly(null, this, e);
+                throw e;
+            }
+        }
+    }
+
     void checkpoint(boolean force, long sizeThreshold, long delayThresholdNanos)
+        throws IOException {
+        checkpoint(force, sizeThreshold, delayThresholdNanos, false);
+    }
+
+    void checkpoint(boolean force, long sizeThreshold, long delayThresholdNanos, boolean skipRedoLogSync)
         throws IOException
     {
         // Checkpoint lock ensures consistent state between page store and logs.
@@ -4014,36 +4022,48 @@ final class _LocalDatabase implements Database {
             long nowNanos = System.nanoTime();
 
             if (!force) {
-                check: {
+                thresholdCheck : {
                     if (delayThresholdNanos == 0) {
-                        break check;
+                        break thresholdCheck;
                     }
 
                     if (delayThresholdNanos > 0 &&
                         ((nowNanos - mLastCheckpointNanos) >= delayThresholdNanos))
                     {
-                        break check;
+                        break thresholdCheck;
                     }
 
                     if (mRedoWriter == null || mRedoWriter.shouldCheckpoint(sizeThreshold)) {
-                        break check;
+                        break thresholdCheck;
                     }
 
                     // Thresholds not met for a full checkpoint, but fully sync the redo log
                     // for durability.
-                    mRedoWriter.flushSync(true);
+                    if (!skipRedoLogSync) {
+                        mRedoWriter.flushSync(true);
+                    }
 
                     return;
                 }
 
-                root.acquireShared();
-                try {
-                    if (root.mCachedState == CACHED_CLEAN) {
-                        // Root is clean, so nothing to do.
-                        return;
+                // Thresholds for a full checkpoint are met.
+                treeCheck: {
+                    root.acquireShared();
+                    try {
+                        if (root.mCachedState != CACHED_CLEAN) {
+                            // Root is dirty, do a full checkpoint.
+                            break treeCheck;
+                        }
+                    } finally {
+                        root.releaseShared();
                     }
-                } finally {
-                    root.releaseShared();
+
+                    // Root is clean, so no need for full checkpoint,
+                    // but fully sync the redo log for durability.
+                    if (mRedoWriter != null && !skipRedoLogSync) {
+                        mRedoWriter.flushSync(true);
+                    }
+                    return;
                 }
             }
 
