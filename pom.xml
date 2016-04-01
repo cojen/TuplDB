@@ -96,6 +96,8 @@
             <links>
               <link>http://docs.oracle.com/javase/8/docs/api</link>
             </links>
+            <author>false</author>
+            <nodeprecatedlist>true</nodeprecatedlist>
             <notimestamp>true</notimestamp>
           </configuration>
       </plugin>
@@ -185,6 +187,8 @@
               <links>
                 <link>http://docs.oracle.com/javase/8/docs/api</link>
               </links>
+              <author>false</author>
+              <nodeprecatedlist>true</nodeprecatedlist>
               <notimestamp>true</notimestamp>
             </configuration>
           </plugin>
