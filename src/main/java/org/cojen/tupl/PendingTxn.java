@@ -44,6 +44,10 @@ final class PendingTxn extends LockOwner {
      * Add an exclusive lock into the set, retaining FIFO (queue) order.
      */
     void add(Lock lock) {
+        Lock first = mFirst;
+        if (first == null) {
+            throw new IllegalStateException("cannot add lock");
+        }
         Lock[] rest = mRest;
         if (rest == null) {
             rest = new Lock[8];
@@ -102,15 +106,18 @@ final class PendingTxn extends LockOwner {
     }
 
     private void unlockAll(LocalDatabase db) {
-        LockManager manager = db.mLockManager;
-        manager.unlock(this, mFirst);
-        Lock[] rest = mRest;
-        if (rest != null) {
-            for (Lock lock : rest) {
-                if (lock == null) {
-                    return;
+        Lock first = mFirst;
+        if (first != null) {
+            LockManager manager = db.mLockManager;
+            manager.unlock(this, first);
+            Lock[] rest = mRest;
+            if (rest != null) {
+                for (Lock lock : rest) {
+                    if (lock == null) {
+                        return;
+                    }
+                    manager.unlock(this, lock);
                 }
-                manager.unlock(this, lock);
             }
         }
     }

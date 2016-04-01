@@ -595,21 +595,22 @@ class Locker extends LockOwner {
     /**
      * Transfers all exclusive locks held by this Locker, for the top scope only. All other
      * locks are released.
-     *
-     * @return null if no exclusive locks were held
      */
     final PendingTxn transferExclusive() {
-        PendingTxn pending = null;
+        PendingTxn pending;
 
         Object tailObj = mTailBlock;
         if (tailObj instanceof Lock) {
-            pending = mManager.transferExclusive(this, (Lock) tailObj, pending);
+            pending = mManager.transferExclusive(this, (Lock) tailObj, null);
+        } else if (tailObj == null) {
+            pending = new PendingTxn(null);
         } else {
+            pending = null;
             Block tail = (Block) tailObj;
-            while (tail != null) {
+            do {
                 pending = tail.transferExclusive(this, pending);
                 tail = tail.pop();
-            }
+            } while (tail != null);
         }
 
         mTailBlock = null;
