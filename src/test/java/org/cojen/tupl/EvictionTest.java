@@ -84,9 +84,10 @@ public class EvictionTest {
     @Before
     public void createTempDb() throws Exception {
         mDb = newTempDatabase(new DatabaseConfig().pageSize(2048)
-                                            .minCacheSize(1_000_000)
-                                            .maxCacheSize(1_000_000)    // cacheSize ~ 500 nodes
-                                            .durabilityMode(DurabilityMode.NO_FLUSH));
+                              .minCacheSize(1_000_000)
+                              .maxCacheSize(1_000_000)    // cacheSize ~ 500 nodes
+                              .durabilityMode(DurabilityMode.NO_FLUSH)
+                              .directPageAccess(false));
     }
 
     @After

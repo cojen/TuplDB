@@ -34,6 +34,7 @@ public class LimitCapacityTest {
     @Before
     public void createTempDb() throws Exception {
         DatabaseConfig config = new DatabaseConfig().checkpointSizeThreshold(0);
+        config.directPageAccess(false);
         mDb = (LocalDatabase) newTempDatabase(config);
     }
 

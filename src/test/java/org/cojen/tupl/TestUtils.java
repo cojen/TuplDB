@@ -80,6 +80,7 @@ class TestUtils {
             config.minCacheSize(cacheSize);
         }
         config.durabilityMode(DurabilityMode.NO_FLUSH);
+        config.directPageAccess(false);
 
         switch (mode) {
         default:

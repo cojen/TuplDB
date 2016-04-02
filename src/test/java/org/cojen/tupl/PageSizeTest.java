@@ -34,6 +34,7 @@ public class PageSizeTest {
     }
 
     protected DatabaseConfig decorate(DatabaseConfig config) throws Exception {
+        config.directPageAccess(false);
         return config;
     }
 

@@ -75,14 +75,14 @@ public interface Database extends CauseCloseable, Flushable {
      */
     public static Database open(DatabaseConfig config) throws IOException {
         Method m = config.directOpenMethod();
-        if (m == null) {
-            return LocalDatabase.open(config);
+        if (m != null) {
+            try {
+                return (Database) m.invoke(null, config);
+            } catch (Exception e) {
+                config.handleDirectException(e);
+            }
         }
-        try {
-            return (Database) m.invoke(null, config);
-        } catch (Exception e) {
-            throw DatabaseConfig.handleDirectException(e);
-        }
+        return LocalDatabase.open(config);
     }
 
     /**
@@ -92,14 +92,14 @@ public interface Database extends CauseCloseable, Flushable {
      */
     public static Database destroy(DatabaseConfig config) throws IOException {
         Method m = config.directDestroyMethod();
-        if (m == null) {
-            return LocalDatabase.destroy(config);
+        if (m != null) {
+            try {
+                return (Database) m.invoke(null, config);
+            } catch (Exception e) {
+                config.handleDirectException(e);
+            }
         }
-        try {
-            return (Database) m.invoke(null, config);
-        } catch (Exception e) {
-            throw DatabaseConfig.handleDirectException(e);
-        }
+        return LocalDatabase.destroy(config);
     }
 
     /**
@@ -308,14 +308,14 @@ public interface Database extends CauseCloseable, Flushable {
         throws IOException
     {
         Method m = config.directRestoreMethod();
-        if (m == null) {
-            return LocalDatabase.restoreFromSnapshot(config, in);
+        if (m != null) {
+            try {
+                return (Database) m.invoke(null, config, in);
+            } catch (Exception e) {
+                config.handleDirectException(e);
+            }
         }
-        try {
-            return (Database) m.invoke(null, config, in);
-        } catch (Exception e) {
-            throw DatabaseConfig.handleDirectException(e);
-        }
+        return LocalDatabase.restoreFromSnapshot(config, in);
     }
 
     /**
