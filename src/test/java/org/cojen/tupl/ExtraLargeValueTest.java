@@ -36,6 +36,7 @@ public class ExtraLargeValueTest {
     @Before
     public void createTempDb() throws Exception {
         DatabaseConfig config = new DatabaseConfig();
+        config.directPageAccess(false);
         config.durabilityMode(DurabilityMode.NO_FLUSH);
         // Use smaller page size so that more inode levels are required without
         // requiring super large arrays.

@@ -51,6 +51,7 @@ public class CustomLogTest {
 
     protected Database newTempDatabase() throws Exception {
         mConfig = new DatabaseConfig()
+            .directPageAccess(false)
             .checkpointRate(-1, null)
             .customTransactionHandler(mHandler = new Handler());
         return TestUtils.newTempDatabase(mConfig);

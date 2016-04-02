@@ -72,7 +72,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
     boolean mFileSync;
     boolean mReadOnly;
     int mPageSize;
-    boolean mDirectPageAccess;
+    Boolean mDirectPageAccess;
     boolean mCachePriming;
     transient ReplicationManager mReplManager;
     int mMaxReplicaThreads;
@@ -337,7 +337,8 @@ public class DatabaseConfig implements Cloneable, Serializable {
 
     /**
      * Set true to allocate all pages off the Java heap, offering increased performance and
-     * reduced garbage collection activity.
+     * reduced garbage collection activity. By default, direct page access is enabled if
+     * supported.
      */
     public DatabaseConfig directPageAccess(boolean direct) {
         mDirectPageAccess = direct;
@@ -570,18 +571,19 @@ public class DatabaseConfig implements Cloneable, Serializable {
     }
 
     Class<?> directOpenClass() throws IOException {
-        if (!mDirectPageAccess) {
+        if (mDirectPageAccess == Boolean.FALSE) {
             return null;
         }
         try {
             return Class.forName("org.cojen.tupl._LocalDatabase");
         } catch (Exception e) {
-            throw handleDirectException(e);
+            handleDirectException(e);
+            return null;
         }
     }
 
     Method directOpenMethod() throws IOException {
-        if (!mDirectPageAccess) {
+        if (mDirectPageAccess == Boolean.FALSE) {
             return null;
         }
         Method m = cDirectOpen;
@@ -592,7 +594,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
     }
 
     Method directDestroyMethod() throws IOException {
-        if (!mDirectPageAccess) {
+        if (mDirectPageAccess == Boolean.FALSE) {
             return null;
         }
         Method m = cDirectDestroy;
@@ -603,7 +605,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
     }
 
     Method directRestoreMethod() throws IOException {
-        if (!mDirectPageAccess) {
+        if (mDirectPageAccess == Boolean.FALSE) {
             return null;
         }
         Method m = cDirectRestore;
@@ -614,7 +616,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
         return m;
     }
 
-    static RuntimeException handleDirectException(Exception e) throws IOException {
+    void handleDirectException(Exception e) throws IOException {
         if (e instanceof RuntimeException || e instanceof IOException) {
             throw rethrow(e);
         }
@@ -625,18 +627,20 @@ public class DatabaseConfig implements Cloneable, Serializable {
         if (cause instanceof RuntimeException || e instanceof IOException) {
             throw rethrow(cause);
         }
-        throw new DatabaseException("Unable open with direct page access", cause);
+        if (mDirectPageAccess == Boolean.TRUE) {
+            throw new DatabaseException("Unable open with direct page access", cause);
+        }
     }
 
     private Method findMethod(String name, Class<?>... paramTypes) throws IOException {
         Class<?> directClass = directOpenClass();
-        if (directClass == null) {
-            return null;
+        if (directClass != null) {
+            try {
+                return directClass.getDeclaredMethod(name, paramTypes);
+            } catch (Exception e) {
+                handleDirectException(e);
+            }
         }
-        try {
-            return directClass.getDeclaredMethod(name, paramTypes);
-        } catch (Exception e) {
-            throw handleDirectException(e);
-        }
+        return null;
     }
 }

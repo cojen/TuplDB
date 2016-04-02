@@ -43,6 +43,7 @@ public class SnapshotTest {
         final int rateMillis = 500;
 
         DatabaseConfig config = new DatabaseConfig()
+            .directPageAccess(false)
             .checkpointRate(rateMillis, TimeUnit.MILLISECONDS)
             .checkpointSizeThreshold(0)
             .checkpointDelayThreshold(0, null)
@@ -121,6 +122,7 @@ public class SnapshotTest {
         File snapshot = new File(snapshotBase.getParentFile(), snapshotBase.getName() + ".db");
 
         DatabaseConfig config = new DatabaseConfig()
+            .directPageAccess(false)
             .baseFile(base)
             .minCacheSize(100000000)
             .durabilityMode(DurabilityMode.NO_FLUSH);
@@ -194,6 +196,7 @@ public class SnapshotTest {
         assertEquals(expectedLength, snapshot.length());
 
         DatabaseConfig restoredConfig = new DatabaseConfig()
+            .directPageAccess(false)
             .baseFile(snapshotBase)
             .minCacheSize(100000000)
             .durabilityMode(DurabilityMode.NO_FLUSH);

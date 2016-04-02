@@ -30,7 +30,7 @@ public class CloseNonDurableTest extends CloseTest {
 
     @Before
     public void createTempDb() throws Exception {
-        mDb = Database.open(new DatabaseConfig());
+        mDb = Database.open(new DatabaseConfig().directPageAccess(false));
     }
 
     @After

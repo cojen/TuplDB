@@ -228,7 +228,7 @@ final class LocalDatabase implements Database {
     /**
      * Open a database, creating it if necessary.
      */
-    public static LocalDatabase open(DatabaseConfig config) throws IOException {
+    static LocalDatabase open(DatabaseConfig config) throws IOException {
         config = config.clone();
         LocalDatabase db = new LocalDatabase(config, OPEN_REGULAR);
         db.finishInit(config);
@@ -240,7 +240,7 @@ final class LocalDatabase implements Database {
      * empty one. When using a raw block device for the data file, this method
      * must be used to format it.
      */
-    public static LocalDatabase destroy(DatabaseConfig config) throws IOException {
+    static LocalDatabase destroy(DatabaseConfig config) throws IOException {
         config = config.clone();
         if (config.mReadOnly) {
             throw new IllegalArgumentException("Cannot destroy read-only database");
@@ -434,6 +434,12 @@ final class LocalDatabase implements Database {
 
             // Actual page size might differ from configured size.
             config.pageSize(pageSize = mPageSize = mPageDb.pageSize());
+
+            /*P*/ // [
+            config.mDirectPageAccess = false;
+            /*P*/ // |
+            /*P*/ // config.mDirectPageAccess = true;
+            /*P*/ // ]
 
             // Write info file of properties, after database has been opened and after page
             // size is truly known.
@@ -1484,9 +1490,7 @@ final class LocalDatabase implements Database {
      *
      * @param in snapshot source; does not require extra buffering; auto-closed
      */
-    public static Database restoreFromSnapshot(DatabaseConfig config, InputStream in)
-        throws IOException
-    {
+    static Database restoreFromSnapshot(DatabaseConfig config, InputStream in) throws IOException {
         config = config.clone();
         PageDb restored;
 

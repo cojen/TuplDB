@@ -31,6 +31,7 @@ public class CursorNonDurableTest extends CursorTest {
     @Before
     public void createTempDb() throws Exception {
         DatabaseConfig config = new DatabaseConfig();
+        config.directPageAccess(false);
         config.maxCacheSize(100000000);
         mDb = Database.open(config);
     }

@@ -32,6 +32,7 @@ public class RecoverMappedTest extends RecoverTest {
     @Override
     public void createTempDb() throws Exception {
         mConfig = new DatabaseConfig()
+            .directPageAccess(false)
             .checkpointRate(-1, null)
             .durabilityMode(DurabilityMode.NO_FLUSH)
             .mapDataFiles(true);
