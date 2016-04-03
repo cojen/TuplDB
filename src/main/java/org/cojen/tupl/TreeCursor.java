@@ -156,7 +156,7 @@ class TreeCursor implements CauseCloseable, Cursor {
 
         if (result != null) {
             // Extra check for filtering ghosts.
-            if (mKey == null || mValue != null) {
+            if (mValue != null) {
                 return result;
             }
         } else if ((result = lockAndCopyIfExists(txn)) != null) {
@@ -235,7 +235,7 @@ class TreeCursor implements CauseCloseable, Cursor {
 
         if (result != null) {
             // Extra check for filtering ghosts.
-            if (mKey == null || mValue != null) {
+            if (mValue != null) {
                 return result;
             }
         } else if ((result = lockAndCopyIfExists(txn)) != null) {
@@ -383,7 +383,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             }
             LockResult result = tryCopyCurrentCmp(txn, limitKey, limitMode);
             if (result != null) {
-                // Extra check for filtering ghosts.
+                // Extra check if limit reached, and for filtering ghosts.
                 if (mKey == null || mValue != null) {
                     return result;
                 }
@@ -407,7 +407,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             LockResult result = tryCopyCurrent(txn);
             if (result != null) {
                 // Extra check for filtering ghosts.
-                if (mKey == null || mValue != null) {
+                if (mValue != null) {
                     return result;
                 }
             } else if ((result = lockAndCopyIfExists(txn)) != null) {
@@ -798,7 +798,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             }
             LockResult result = tryCopyCurrentCmp(txn, limitKey, limitMode);
             if (result != null) {
-                // Extra check for filtering ghosts.
+                // Extra check if limit reached, and for filtering ghosts.
                 if (mKey == null || mValue != null) {
                     return result;
                 }
@@ -824,7 +824,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             LockResult result = tryCopyCurrent(txn);
             if (result != null) {
                 // Extra check for filtering ghosts.
-                if (mKey == null || mValue != null) {
+                if (mValue != null) {
                     return result;
                 }
             } else if ((result = lockAndCopyIfExists(txn)) != null) {
