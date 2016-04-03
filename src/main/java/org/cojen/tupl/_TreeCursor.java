@@ -178,32 +178,32 @@ class _TreeCursor implements CauseCloseable, Cursor {
      * @return false if nothing left
      */
     private boolean toFirst(_Node node, _CursorFrame frame) throws IOException {
-        try {
-            while (true) {
-                frame.bind(node, 0);
-                if (node.mSplit != null) {
-                    node = finishSplitShared(frame, node);
-                }
-                if (node.isLeaf()) {
-                    mLeaf = frame;
-                    return node.hasKeys() ? true : toNext(frame);
-                }
-                node = latchToChild(node, 0);
-                frame = new _CursorFrame(frame);
-            }
-        } catch (Throwable e) {
-            throw cleanup(e, frame);
-        }
+        return toFirstLeaf(node, frame).hasKeys() ? true : toNext(mLeaf);
     }
 
     /**
-     * Moves the cursor to the first subtree node, which might be empty or full of ghosts. Leaf
-     * frame remains latched when method returns normally.
+     * Non-transactionally moves the cursor to the first leaf node, which might be empty or
+     * full of ghosts. Leaf frame remains latched when method returns normally. Key and value
+     * are not loaded.
      *
      * @param node latched node; can have no keys
      * @param frame frame to bind node to
      */
-    private final void toFirstNode(_Node node, _CursorFrame frame) throws IOException {
+    final void firstAny() throws IOException {
+        reset();
+        toFirstLeaf(latchRootNode(), new _CursorFrame());
+        mLeaf.mNode.releaseShared();
+    }
+
+    /**
+     * Moves the cursor to the first subtree leaf node, which might be empty or full of
+     * ghosts. Leaf frame remains latched when method returns normally.
+     *
+     * @param node latched node; can have no keys
+     * @param frame frame to bind node to
+     * @return latched first node, possibly empty, bound by mLeaf frame
+     */
+    private _Node toFirstLeaf(_Node node, _CursorFrame frame) throws IOException {
         try {
             while (true) {
                 frame.bind(node, 0);
@@ -212,7 +212,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
                 }
                 if (node.isLeaf()) {
                     mLeaf = frame;
-                    return;
+                    return node;
                 }
                 node = latchToChild(node, 0);
                 frame = new _CursorFrame(frame);
@@ -425,6 +425,47 @@ class _TreeCursor implements CauseCloseable, Cursor {
      * @return false if nothing left
      */
     private boolean toNext(_CursorFrame frame) throws IOException {
+        while (true) {
+            _Node node = toNextAny(frame);
+            if (node == null) {
+                return false;
+            }
+            if (node.hasKeys()) {
+                return true;
+            }
+            frame = mLeaf;
+        }
+    }
+
+    /**
+     * Non-transactionally moves the cursor to the next entry, which might refer to a node
+     * which is empty or full of ghosts. Key and value are not loaded.
+     */
+    private void nextAny() throws IOException {
+        _Node node = toNextAny(leafSharedNotSplit());
+        if (node != null) {
+            node.releaseShared();
+        }
+    }
+
+    /**
+     * Non-transactionally move to the next tree leaf node, loading it if necessary. _Node might
+     * be empty or full of ghosts. Key and value are not loaded.
+     */
+    private void nextLeaf() throws IOException {
+        // Move to next node by first setting current node position higher than possible.
+        mLeaf.mNodePos = Integer.MAX_VALUE - 1;
+        nextAny();
+    }
+
+    /**
+     * Note: When method returns, frame is unlatched and may no longer be
+     * valid. Leaf frame remains latched when method returns true.
+     *
+     * @param frame leaf frame, not split, with shared latch
+     * @return latched first node, possibly empty, bound by mLeaf frame, null if nothing left
+     */
+    private _Node toNextAny(_CursorFrame frame) throws IOException {
         _Node node = frame.mNode;
 
         quick: {
@@ -439,7 +480,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
                 break quick;
             }
             frame.mNodePos = pos + 2;
-            return true;
+            return node;
         }
 
         while (true) {
@@ -452,7 +493,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
                 mKey = null;
                 mKeyHash = 0;
                 mValue = null;
-                return false;
+                return null;
             }
 
             _Node parentNode;
@@ -510,10 +551,10 @@ class _TreeCursor implements CauseCloseable, Cursor {
                     frame.mNodePos = (pos += 2);
 
                     if (frame != mLeaf) {
-                        return toFirst(latchToChild(node, pos), new _CursorFrame(frame));
+                        return toFirstLeaf(latchToChild(node, pos), new _CursorFrame(frame));
                     }
 
-                    return true;
+                    return node;
                 }
 
                 node.releaseShared();
@@ -527,7 +568,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
                 parentFrame.mNodePos = (parentPos += 2);
                 // Always create a new cursor frame. See _CursorFrame.unbind.
                 frame = new _CursorFrame(parentFrame);
-                return toFirst(latchToChild(parentNode, parentPos), frame);
+                return toFirstLeaf(latchToChild(parentNode, parentPos), frame);
             }
 
             frame = parentFrame;
@@ -2813,10 +2854,8 @@ class _TreeCursor implements CauseCloseable, Cursor {
      * active in the tree. The root node is prepared for deletion as a side effect.
      */
     final void deleteAll() throws IOException {
-        reset();
         autoload(false);
-        toFirstNode(latchRootNode(), new _CursorFrame());
-        mLeaf.mNode.releaseShared();
+        firstAny();
 
         final CommitLock commitLock = mTree.mDatabase.commitLock();
 
@@ -3137,16 +3176,6 @@ class _TreeCursor implements CauseCloseable, Cursor {
     }
 
     /**
-     * Move to the next tree node, loading it if necessary.
-     */
-    final void nextNode() throws IOException {
-        // Move to next node by first setting current node position higher than possible.
-        mLeaf.mNodePos = Integer.MAX_VALUE - 1;
-        // FIXME: skips nodes that are full of ghosts
-        next();
-    }
-
-    /**
      * Used by file compaction mode. Compacts from the current node to the last, unless stopped
      * by observer or aborted. Caller must issue a checkpoint after entering compaction mode
      * and before calling this method. This ensures completion of any splits in progress before
@@ -3213,7 +3242,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
                 }
                 // No fragmented values found.
                 node.releaseShared();
-                nextNode();
+                nextLeaf();
                 if ((frame = mLeaf) == null) {
                     // No more entries to examine.
                     return true;
@@ -3253,7 +3282,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
                     }
                 }
 
-                next();
+                nextAny();
 
                 if (mLeaf == null) {
                     // No more entries to examine.
@@ -3372,7 +3401,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
                 if (!verifyFrames(height, stack, mLeaf, observer)) {
                     return false;
                 }
-                nextNode();
+                nextLeaf();
             }
         }
         return true;
