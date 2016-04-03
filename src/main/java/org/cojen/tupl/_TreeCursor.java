@@ -3720,11 +3720,6 @@ class _TreeCursor implements CauseCloseable, Cursor {
                 parentNode = mTree.finishSplit(parentFrame, parentNode);
             }
 
-            if (!parentNode.hasKeys()) {
-                parentNode.releaseExclusive();
-                return;
-            }
-
             // Latch leaf and siblings in a strict left-to-right order to avoid deadlock.
             int pos = parentFrame.mNodePos;
             if (pos == 0) {
@@ -3789,7 +3784,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
         // unbalanced otherwise.
 
         int leftPos;
-        if (leftAvail < rightAvail) {
+        if (leftAvail <= rightAvail) {
             if (leftNode != null) {
                 leftNode.releaseExclusive();
             }
@@ -3898,11 +3893,6 @@ class _TreeCursor implements CauseCloseable, Cursor {
                 parentNode = mTree.finishSplit(parentFrame, parentNode);
             }
 
-            if (!parentNode.hasKeys()) {
-                parentNode.releaseExclusive();
-                return;
-            }
-
             // Latch node and siblings in a strict left-to-right order to avoid deadlock.
             int pos = parentFrame.mNodePos;
             if (pos == 0) {
@@ -3959,7 +3949,18 @@ class _TreeCursor implements CauseCloseable, Cursor {
         // original node and frame parameters afterwards. The original node
         // ends up being referenced as a left or right member of the pair.
 
-        int leftAvail = leftNode == null ? -1 : leftNode.availableInternalBytes();
+        int leftAvail;
+        if (leftNode == null) {
+            if (rightNode == null) {
+                // Tail call. I could just loop here, but this is simpler.
+                mergeInternal(parentFrame, parentNode, node, null);
+                return;
+            }
+            leftAvail = -1;
+        } else {
+            leftAvail = leftNode.availableInternalBytes();
+        }
+
         int rightAvail = rightNode == null ? -1 : rightNode.availableInternalBytes();
 
         // Choose adjacent node pair which has the most available space, and then determine if
@@ -3967,7 +3968,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
         // unbalanced otherwise.
 
         int leftPos;
-        if (leftAvail < rightAvail) {
+        if (leftAvail <= rightAvail) {
             if (leftNode != null) {
                 leftNode.releaseExclusive();
             }
