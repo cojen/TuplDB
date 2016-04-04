@@ -562,7 +562,10 @@ final class DirectPageOps {
     }
 
     static void p_clear(long page, int fromIndex, int toIndex) {
-        UNSAFE.setMemory(page + fromIndex, toIndex - fromIndex, (byte) 0);
+        int len = toIndex - fromIndex;
+        if (len > 0) {
+            UNSAFE.setMemory(page + fromIndex, len, (byte) 0);
+        }
     }
 
     static byte[] p_copyIfNotArray(long page, byte[] dstArray) {
