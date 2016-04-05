@@ -20,8 +20,7 @@ import java.io.IOException;
 
 /**
  * Abstract wrapper around another cursor. Subclass must implement the {@link #copy copy}
- * method, and it should also override the {@link #store store} and {@link #newStream
- * newStream} methods.
+ * method, and it should also override the {@link #store store} and method.
  *
  * @author Brian S O'Neill
  */
