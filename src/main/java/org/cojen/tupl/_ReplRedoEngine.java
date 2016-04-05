@@ -892,12 +892,14 @@ final class _ReplRedoEngine implements RedoVisitor {
             // End of stream reached, and so local instance is now leader.
             reset();
         } catch (Throwable e) {
-            EventListener listener = mDatabase.mEventListener;
-            if (listener != null) {
-                listener.notify(EventType.REPLICATION_PANIC,
-                                "Unexpected replication exception: %1$s", rootCause(e));
-            } else {
-                uncaught(e);
+            if (!mDatabase.mClosed) {
+                EventListener listener = mDatabase.mEventListener;
+                if (listener != null) {
+                    listener.notify(EventType.REPLICATION_PANIC,
+                                    "Unexpected replication exception: %1$s", rootCause(e));
+                } else {
+                    uncaught(e);
+                }
             }
             mTotalThreads.decrementAndGet();
             mDecodeLatch.releaseExclusive();
