@@ -423,6 +423,7 @@ final class Node extends Latch implements DatabaseAccess {
      * parent and child latches are always released.
      *
      * @param options descibed described by OPTION_* fields
+     * @return child node, possibly split
      */
     Node loadChild(LocalDatabase db, long childId, int options) throws IOException {
         // Insert a "lock", which is a temporary node latched exclusively. All other threads
@@ -520,23 +521,27 @@ final class Node extends Latch implements DatabaseAccess {
         final LocalDatabase db = getDatabase();
         Node childNode = db.nodeMapGet(childId);
 
-        if (childNode != null) {
-            if (!childNode.tryAcquireExclusive()) {
-                return null;
-            }
-            // Need to check again in case evict snuck in.
-            if (childId != childNode.mId) {
+        latchChild: {
+            if (childNode != null) {
+                if (!childNode.tryAcquireExclusive()) {
+                    return null;
+                }
+                // Need to check again in case evict snuck in.
+                if (childId == childNode.mId) {
+                    break latchChild;
+                }
                 childNode.releaseExclusive();
-            } else if (childNode.mSplit == null) {
-                // Return without updating LRU position. Node contents were not user requested.
-                return childNode;
-            } else {
-                childNode.releaseExclusive();
-                return null;
             }
+            childNode = loadChild(db, childId, OPTION_CHILD_ACQUIRE_EXCLUSIVE);
         }
 
-        return loadChild(db, childId, OPTION_CHILD_ACQUIRE_EXCLUSIVE);
+        if (childNode.mSplit == null) {
+            // Return without updating LRU position. Node contents were not user requested.
+            return childNode;
+        } else {
+            childNode.releaseExclusive();
+            return null;
+        }
     }
 
     /**

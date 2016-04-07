@@ -180,6 +180,10 @@ class _Tree implements View, Index {
             }
 
             node = node.loadChild(mDatabase, childId, _Node.OPTION_PARENT_RELEASE_SHARED);
+
+            if (node.mSplit != null) {
+                node = node.mSplit.selectNode(node, key);
+            }
         }
 
         // Sub search into leaf with shared latch held.
