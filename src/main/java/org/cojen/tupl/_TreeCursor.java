@@ -2891,7 +2891,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
 
     /**
      * Deletes the latched node and assigns the next node to the frame. All latches are
-     * released by this method.
+     * released by this method. No other cursors or threads can be active in the tree.
      *
      * @param frame node frame
      * @param node latched node, with no keys, and dirty
@@ -4136,6 +4136,8 @@ class _TreeCursor implements CauseCloseable, Cursor {
      * Variant of latchChildRetainParent which uses exclusive latches. With parent held
      * exclusively, returns child with exclusive latch held, retaining the parent latch. If an
      * exception is thrown, parent and child latches are always released.
+     *
+     * @return child node, possibly split
      */
     private _Node latchChildRetainParentEx(_Node parent, int childPos) throws IOException {
         long childId = parent.retrieveChildRefId(childPos);

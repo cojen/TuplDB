@@ -2728,7 +2728,7 @@ final class LocalDatabase implements Database {
     }
 
     /**
-     * Returns unconfirmed node if and existing node is found. Caller must latch and confirm
+     * Returns unconfirmed node if an existing node is found. Caller must latch and confirm
      * that node identifier matches, in case an eviction snuck in.
      *
      * @return null if node was inserted, existing node otherwise
