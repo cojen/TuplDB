@@ -668,4 +668,32 @@ public class RecoverTest {
         mDb = reopenTempDatabase(mDb, mConfig);
         assertFalse(primer.exists());
     }
+
+    @Test
+    public void trashDelete() throws Exception {
+        Index ix = mDb.openIndex("trash");
+        ix.store(null, "hello".getBytes(), "world".getBytes());
+        mDb.checkpoint();
+
+        // Write after the checkpoint.
+        ix.store(null, "goodbye".getBytes(), "world".getBytes());
+
+        // Moves ix into the trash
+        mDb.deleteIndex(ix);
+
+        mDb = reopenTempDatabase(mDb, mConfig);
+        assertNull(mDb.findIndex("trash"));
+    }
+
+    @Test
+    public void trashDeleteEmpty() throws Exception {
+        final String ixname = "empty";
+        Index ix = mDb.openIndex(ixname);
+        mDb.deleteIndex(ix);
+        mDb.checkpoint();
+
+        // Re-opening will start background job to delete trashed index.
+        mDb = reopenTempDatabase(mDb, mConfig);
+        assertNull(mDb.findIndex(ixname));
+    }
 }
