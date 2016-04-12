@@ -92,9 +92,25 @@ final class RedoLogApplier implements RedoVisitor {
 
     @Override
     public boolean deleteIndex(long txnId, long indexId) throws IOException {
-        checkHighest(txnId);
-        // Nothing to do yet. After recovery is complete, trashed indexes are deleted in a
-        // separate thread.
+        LocalTransaction txn = txn(txnId);
+
+        // Close the index for now. After recovery is complete, trashed indexes are deleted in
+        // a separate thread.
+
+        Index ix;
+        {
+            LHashTable.ObjEntry<Index> entry = mIndexes.remove(indexId);
+            if (entry == null) {
+                ix = mDatabase.anyIndexById(txn, indexId);
+            } else {
+                ix = entry.value;
+            }
+        }
+
+        if (ix != null) {
+            ix.close();
+        }
+
         return true;
     }
 

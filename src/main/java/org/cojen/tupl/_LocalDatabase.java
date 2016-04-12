@@ -1214,7 +1214,7 @@ final class _LocalDatabase implements Database {
             c.reset();
         }
 
-        long rootId = decodeLongLE(rootIdBytes, 0);
+        long rootId = rootIdBytes.length == 0 ? 0 : decodeLongLE(rootIdBytes, 0);
 
         if ((name[0] & ~0x80) == 0) {
             name = null;
