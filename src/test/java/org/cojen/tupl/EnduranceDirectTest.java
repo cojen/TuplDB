@@ -28,14 +28,8 @@ public class EnduranceDirectTest extends EnduranceTest {
         org.junit.runner.JUnitCore.main(EnduranceDirectTest.class.getName());
     }
 
-    @Before
     @Override
-    public void createTempDb() throws Exception {
-        mDb = TestUtils.newTempDatabase(new DatabaseConfig().pageSize(2048)
-                                        .minCacheSize(1_000_000)
-                                        .maxCacheSize(1_000_000)    // cacheSize ~ 500 nodes
-                                        .durabilityMode(DurabilityMode.NO_FLUSH)
-                                        .directPageAccess(true));
-        mIx = mDb.openIndex("test");
+    protected void decorate(DatabaseConfig config) throws Exception {
+        config.directPageAccess(true);
     }
 }

@@ -67,4 +67,11 @@ public class CursorBasicFilterTest extends CursorNonDurableTest {
     public void randomRange() throws Exception {
         // Filtering throws off the random distribution too much.
     }
+
+    @Test
+    @Ignore
+    @Override
+    public void lockNoLoad() throws Exception {
+        // Transformer requires value to be loaded.
+    }
 }
