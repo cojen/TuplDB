@@ -24,8 +24,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.junit.After;
@@ -37,14 +41,7 @@ public class EnduranceTest {
         org.junit.runner.JUnitCore.main(EnduranceTest.class.getName());
     }
 
-    @Before
-    public void createTempDb() throws Exception {
-        mDb = newTempDatabase(new DatabaseConfig().pageSize(2048)
-                              .minCacheSize(1_000_000)
-                              .maxCacheSize(1_000_000)    // cacheSize ~ 500 nodes
-                              .durabilityMode(DurabilityMode.NO_FLUSH)
-                              .directPageAccess(false));
-        mIx = mDb.openIndex("test");
+    protected void decorate(DatabaseConfig config) throws Exception {
     }
 
     @After
@@ -57,7 +54,88 @@ public class EnduranceTest {
     protected Index mIx;
 
     @Test
+    public void writeAndEvict() throws Exception {
+        // Tests interaction between eviction and writing. This test exposed a bug which caused
+        // an ArrayIndexOutOfBounds exception to be thrown from the evict method. It was unable
+        // to cope with empty leaf nodes.
+
+        DatabaseConfig config = new DatabaseConfig()
+            .checkpointRate(-1, null)
+            .directPageAccess(false)
+            .durabilityMode(DurabilityMode.NO_FLUSH);
+
+        decorate(config);
+
+        mDb = newTempDatabase(config);
+
+        for (int trial = 1; trial <= 5; trial++) {
+            final Index ix = mDb.openIndex("write_evict");
+
+            Callable<Void> writeSome = () -> {
+                final Random rnd = ThreadLocalRandom.current();
+                for (int i = 0; i < 100_000; i++) {
+                    byte[] key = TestUtils.randomStr(rnd, 10, 1000);
+                    byte[] value = TestUtils.randomStr(rnd, 10, 1000);
+                    ix.store(null, key, value);
+                }
+                return null;
+            };
+
+            boolean autocommit = true;
+            Callable<Long> evictSome = () -> {
+                long tot = 0;
+                for (int i = 0; i < 100_000; i++) {
+                    Transaction txn = null;
+                    if (!autocommit) {
+                        txn = mDb.newTransaction(DurabilityMode.NO_REDO);
+                    }
+                    try {
+                        tot += ix.evict(txn, null, null, null, true);
+                        if (txn != null) {
+                            txn.commit();
+                        }
+                    } finally {
+                        if (txn != null) {
+                            txn.reset();
+                        }
+                    }
+                }
+                return Long.valueOf(tot);
+            };
+
+            // Write some initial data.
+            writeSome.call();
+            ix.analyze(null, null);
+
+            // Write some more data while evicting.
+            Future<?> writeJob = ForkJoinPool.commonPool().submit(writeSome);
+            evictSome.call();
+
+            try {
+                writeJob.get();
+            } catch (ExecutionException ee) {
+                Utils.rethrow(Utils.rootCause(ee));
+            }
+
+            mDb.deleteIndex(ix).run();
+            mDb.checkpoint();
+        }
+    }
+
+    @Test
     public void testBasic() throws Exception {
+        DatabaseConfig config = new DatabaseConfig()
+            .pageSize(2048)
+            .minCacheSize(1_000_000)
+            .maxCacheSize(1_000_000)    // cacheSize ~ 500 nodes
+            .durabilityMode(DurabilityMode.NO_FLUSH)
+            .directPageAccess(false);
+
+        decorate(config);
+
+        mDb = newTempDatabase(config);
+        mIx = mDb.openIndex("test");
+
         int numWorkers = 5;
         // First populate Tupl so we have data exceeding the cache size
         Random random = ThreadLocalRandom.current();
