@@ -697,7 +697,7 @@ final class _Node extends Latch implements _DatabaseAccess {
 
         if (p_byteGet(page, 1) != 0) {
             throw new IllegalStateException
-                ("Illegal reserved byte in node: " + p_byteGet(page, 1));
+                ("Illegal reserved byte in node: " + p_byteGet(page, 1) + ", id: " + mId);
         }
     }
 
