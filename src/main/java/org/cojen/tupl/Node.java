@@ -871,7 +871,7 @@ final class Node extends Latch implements DatabaseAccess {
         /*P*/ // [
         mType = type;
         /*P*/ // |
-        /*P*/ // p_bytePut(mPage, 0, type);
+        /*P*/ // p_shortPutLE(mPage, 0, type & 0xff); // clear reserved byte too
         /*P*/ // ]
     }
 

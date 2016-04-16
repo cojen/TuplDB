@@ -828,7 +828,12 @@ final class _UndoLog implements _DatabaseAccess {
                 lowerNode.makeUnevictable();
             } else {
                 // _Node was evicted, so reload it.
-                lowerNode = readUndoLogNode(mDatabase, lowerNodeId);
+                try {
+                    lowerNode = readUndoLogNode(mDatabase, lowerNodeId);
+                } catch (Throwable e) {
+                    parent.releaseExclusive();
+                    throw e;
+                }
             }
         }
 
@@ -1132,11 +1137,17 @@ final class _UndoLog implements _DatabaseAccess {
      */
     private static _Node readUndoLogNode(_LocalDatabase db, long nodeId) throws IOException {
         _Node node = db.allocLatchedNode(nodeId, _NodeUsageList.MODE_UNEVICTABLE);
-        node.read(db, nodeId);
-        if (node.type() != _Node.TYPE_UNDO_LOG) {
-            throw new CorruptDatabaseException
-                ("Not an undo log node type: " + node.type() + ", id: " + nodeId);
+        try {
+            node.read(db, nodeId);
+            if (node.type() != _Node.TYPE_UNDO_LOG) {
+                throw new CorruptDatabaseException
+                    ("Not an undo log node type: " + node.type() + ", id: " + nodeId);
+            }
+            return node;
+        } catch (Throwable e) {
+            node.makeEvictableNow();
+            node.releaseExclusive();
+            throw e;
         }
-        return node;
     }
 }
