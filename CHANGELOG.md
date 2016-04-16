@@ -1,7 +1,23 @@
 Changelog
 =========
 
-v1.3.0
+v1.3.0.1 (2016-04-16)
+--------
+* Fix for Index.load during concurrent node splits. It caused the load to falsely return null.
+* Fix undo log node creation when using direct page access mode. The reserved byte was not
+  explicitly cleared, allowing fragmented values to corrupt the nodes as pages get recycled.
+* Fix shared latch double release when using VARIANT_RETAIN, which would result in a
+  deadlock. This affected the Cursor.findGe and Cursor.findLe methods.
+* Fix handling of Index.evict when encountering empty nodes and lock keys as required by the
+  transaction.
+* Fix handling of index delete and recovery. Deleted index must be closed just like they were
+  before recovery, to allow recovery to complete.
+* Fix for deleting empty indexes which caused an exception.
+* Eliminate overhead of zero-length memory copy when using direct page access mode.
+* Allow node merge to propagate upwards for empty nodes.
+* Ensure that compaction and verification visit all nodes, even empty ones.
+
+v1.3.0 (2016-04-02)
 ------
 * Depends on Java 8.
 * Several top-level classes are now interfaces.
