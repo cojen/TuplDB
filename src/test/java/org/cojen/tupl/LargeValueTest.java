@@ -136,10 +136,53 @@ public class LargeValueTest {
         assertTrue(ix.verify(null));
     }
 
-    private byte[] key(int i) {
+    private static byte[] key(int i) {
         byte[] key = new byte[4];
         Utils.encodeIntBE(key, 0, i);
         return key;
     }
-        
+
+    @Test
+    public void largePageRecycle() throws Exception {
+        // Tests that as large pages with user content are recycled, that the header fields of
+        // new tree nodes are defined properly.
+
+        Index ix = mDb.openIndex("test");
+
+        {
+            byte[] value = new byte[4_000_000];
+            Arrays.fill(value, (byte) 0x55);
+            ix.store(Transaction.BOGUS, "hello".getBytes(), value);
+        }
+
+        for (int i=0; i<1_000_000; i++) {
+            ix.store(Transaction.BOGUS, ("key-" + i).getBytes(), (("value-" + i).getBytes()));
+        }
+
+        for (int i=0; i<1_000_000; i++) {
+            byte[] value = ix.load(Transaction.BOGUS, ("key-" + i).getBytes());
+            fastAssertArrayEquals(("value-" + i).getBytes(), value);
+        }
+
+        // Now test undo log nodes.
+
+        {
+            byte[] value = new byte[4_000_000];
+            Arrays.fill(value, (byte) 0x55);
+            ix.store(Transaction.BOGUS, "world".getBytes(), value);
+        }
+
+        Transaction txn = mDb.newTransaction();
+
+        for (int i=0; i<1_000_000; i++) {
+            ix.store(txn, ("akey-" + i).getBytes(), (("avalue-" + i).getBytes()));
+        }
+
+        txn.exit();
+
+        for (int i=0; i<1_000_000; i++) {
+            byte[] value = ix.load(Transaction.BOGUS, ("akey-" + i).getBytes());
+            assertNull(value);
+        }
+    }
 }
