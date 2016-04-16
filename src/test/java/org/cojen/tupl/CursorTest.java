@@ -1148,6 +1148,8 @@ public class CursorTest {
 
         Transaction txn = mDb.newTransaction();
         try {
+            txn.lockTimeout(10, TimeUnit.SECONDS);
+
             Cursor c = ix.newCursor(txn);
             try {
                 c.autoload(false);
