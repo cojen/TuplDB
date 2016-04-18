@@ -8,12 +8,13 @@ v1.3.0.1 (2016-04-16)
   explicitly cleared, allowing fragmented values to corrupt the nodes as pages get recycled.
 * Fix shared latch double release when using VARIANT_RETAIN, which would result in a
   deadlock. This affected the Cursor.findGe and Cursor.findLe methods.
-* Fix handling of Index.evict when encountering empty nodes and lock keys as required by the
+* Fix handling of Index.evict when encountering empty nodes, and lock keys as required by the
   transaction.
 * Fix handling of index delete and recovery. Deleted index must be closed just like they were
   before recovery, to allow recovery to complete.
 * Fix for deleting empty indexes which caused an exception.
-* Eliminate overhead of zero-length memory copy when using direct page access mode.
+* Eliminate overhead of zero-length memory copy when using direct page access mode. This
+  primarily affected the performance of values larger than the page size.
 * Allow node merge to propagate upwards for empty nodes.
 * Ensure that compaction and verification visit all nodes, even empty ones.
 
