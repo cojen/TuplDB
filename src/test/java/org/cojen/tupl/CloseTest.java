@@ -186,10 +186,14 @@ public class CloseTest {
                 fastAssertArrayEquals(("world-" + i).getBytes(),
                                       ix.load(null, "hello".getBytes()));
             }
-            // Cache size is too large for the test.
-            fail();
+            if (expectCacheExhausted()) {
+                // Cache size is too large for the test.
+                fail();
+            }
         } catch (CacheExhaustedException e) {
-            // expected
+            if (expectCacheExhausted()) {
+                // expected
+            }
         }
 
         for (int i=0; i<10000; i++) {
@@ -199,6 +203,10 @@ public class CloseTest {
                                   ix.load(null, "hello".getBytes()));
             ix.close();
         }
+    }
+
+    protected boolean expectCacheExhausted() {
+        return true;
     }
 
     @Test

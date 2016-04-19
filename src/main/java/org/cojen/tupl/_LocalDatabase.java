@@ -2218,7 +2218,17 @@ final class _LocalDatabase implements Database {
 
         try {
             if (rootId == 0) {
-                rootNode.asEmptyRoot();
+                /*P*/ // [
+                // rootNode.asEmptyRoot();
+                /*P*/ // |
+                if (mFullyMapped) {
+                    rootNode.mPage = p_nonTreePage(); // always an empty leaf node
+                    rootNode.mId = 0;
+                    rootNode.mCachedState = CACHED_CLEAN;
+                } else {
+                    rootNode.asEmptyRoot();
+                }
+                /*P*/ // ]
             } else {
                 try {
                     rootNode.read(this, rootId);
