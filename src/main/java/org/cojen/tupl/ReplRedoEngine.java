@@ -489,19 +489,16 @@ final class ReplRedoEngine implements RedoVisitor {
 
         TxnEntry te = removeTxnEntry(txnId);
 
-        if (te == null) {
-            // TODO: Throw a better exception.
-            throw new CorruptDatabaseException("Transaction not found: " + txnId);
-        }
+        if (te != null) {
+            Latch latch = te.latch();
+            try {
+                // Commit is expected to complete quickly, so don't let another
+                // task thread run.
 
-        Latch latch = te.latch();
-        try {
-            // Commit is expected to complete quickly, so don't let another
-            // task thread run.
-
-            te.mTxn.commitAll();
-        } finally {
-            latch.releaseExclusive();
+                te.mTxn.commitAll();
+            } finally {
+                latch.releaseExclusive();
+            }
         }
 
         // Only release if no exception.
