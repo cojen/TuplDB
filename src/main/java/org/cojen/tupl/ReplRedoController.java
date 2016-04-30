@@ -207,16 +207,15 @@ final class ReplRedoController extends ReplRedoWriter {
      * Called by ReplRedoEngine when local instance has become the leader.
      */
     synchronized void leaderNotify() throws UnmodifiableReplicaException, IOException {
-        ReplicationManager.Writer writer = mTxnRedoWriter.mReplWriter;
-
-        if (writer != null) {
+        if (mTxnRedoWriter.mReplWriter != null) {
             // Must be in replica mode.
             return;
         }
 
         mManager.flip();
+        ReplicationManager.Writer writer = mManager.writer();
 
-        if ((writer = mManager.writer()) == null) {
+        if (writer == null) {
             // False alarm?
             return;
         }
@@ -230,6 +229,10 @@ final class ReplRedoController extends ReplRedoWriter {
 
             redo.mConfirmedPos = redo.mLastCommitPos = writer.position();
             redo.mConfirmedTxnId = redo.mLastCommitTxnId = 0;
+
+            if (!writer.leaderNotify(() -> switchToReplica(writer, false))) {
+                throw unmodifiable(writer);
+            }
 
             // Clear the log state and write a reset op to signal leader transition.
             redo.clearAndReset();

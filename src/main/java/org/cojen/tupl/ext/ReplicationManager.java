@@ -103,6 +103,14 @@ public interface ReplicationManager extends Closeable {
         long position();
 
         /**
+         * Invokes the given callback upon a leadership change. Callback should be invoked at
+         * most once, but extra invocations are ignored.
+         *
+         * @return false if not leader
+         */
+        boolean leaderNotify(Runnable callback);
+
+        /**
          * Fully writes the given data, returning a potential confirmation position. When the
          * local instance loses leadership, all data rolls back to the highest confirmed
          * position.
