@@ -96,6 +96,7 @@ public class TestAll {
             ContentionDirectTest.class,
             ContendedLockTest.class,
             DirectPageOpsTest.class,
+            UnreplicatedTest.class,
         };
 
         String[] names = new String[classes.length];

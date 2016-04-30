@@ -61,13 +61,22 @@ final class _FragmentedTrash {
         _TreeCursor cursor = prepareEntry(txn.txnId());
         byte[] key = cursor.key();
         try {
-            // Write trash entry first, ensuring that the undo log entry will
-            // refer to something valid.
+            // Write trash entry first, ensuring that the undo log entry will refer to
+            // something valid. Cursor is bound to a bogus transaction, and so it won't acquire
+            // locks or attempt to write to the redo log. A failure here is pretty severe,
+            // since it implies that the main database file cannot be written to. One possible
+            // "recoverable" cause is a disk full, but this can still cause a database panic if
+            // it occurs during critical operations like internal node splits.
             txn.setHasTrash();
             cursor.store(payload);
             cursor.reset();
         } catch (Throwable e) {
-            txn.borked(e, false);
+            try {
+                // Always expected to rethrow an exception, not necessarily the original.
+                txn.borked(e, false);
+            } catch (Throwable e2) {
+                e = e2;
+            }
             throw closeOnFailure(cursor, e);
         }
 
