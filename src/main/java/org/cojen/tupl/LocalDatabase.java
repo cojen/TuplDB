@@ -1986,20 +1986,34 @@ final class LocalDatabase implements Database {
         try {
             mCheckpointer = null;
 
+            CommitLock lock = mCommitLock;
+
             if (mOpenTrees != null) {
+                // Clear out open trees with commit lock held, to prevent any trees from being
+                // opened again. Any attempt to open a tree must acquire the commit lock and
+                // then check if the database is closed.
                 final ArrayList<TreeRef> trees;
-                mOpenTreesLatch.acquireExclusive();
+                if (lock != null) {
+                    lock.acquireExclusive();
+                }
                 try {
-                    trees = new ArrayList<>(mOpenTreesById.size());
+                    mOpenTreesLatch.acquireExclusive();
+                    try {
+                        trees = new ArrayList<>(mOpenTreesById.size());
 
-                    mOpenTreesById.traverse((entry) -> {
-                        trees.add(entry.value);
-                        return true;
-                    });
+                        mOpenTreesById.traverse((entry) -> {
+                            trees.add(entry.value);
+                            return true;
+                        });
 
-                    mOpenTrees.clear();
+                        mOpenTrees.clear();
+                    } finally {
+                        mOpenTreesLatch.releaseExclusive();
+                    }
                 } finally {
-                    mOpenTreesLatch.releaseExclusive();
+                    if (lock != null) {
+                        lock.releaseExclusive();
+                    }
                 }
 
                 for (TreeRef ref : trees) {
@@ -2010,7 +2024,6 @@ final class LocalDatabase implements Database {
                 }
             }
 
-            CommitLock lock = mCommitLock;
             if (lock != null) {
                 lock.acquireExclusive();
             }
@@ -2322,8 +2335,6 @@ final class LocalDatabase implements Database {
     }
 
     private Index openIndex(Transaction lookupTxn, byte[] name, boolean create) throws IOException {
-        checkClosed();
-
         Tree tree = quickFindIndex(name);
         if (tree != null) {
             return tree;
@@ -2331,6 +2342,8 @@ final class LocalDatabase implements Database {
 
         mCommitLock.acquireShared();
         try {
+            checkClosed();
+
             // Cleaup before opening more indexes.
             cleanupUnreferencedTrees();
 
@@ -4198,7 +4211,14 @@ final class LocalDatabase implements Database {
             if (masterUndoLog != null) {
                 // Delete the master undo log, which won't take effect until
                 // the next checkpoint.
-                masterUndoLog.truncate(false);
+                mCommitLock.acquireShared();
+                try {
+                    if (!mClosed) {
+                        masterUndoLog.doTruncate(mCommitLock, false);
+                    }
+                } finally {
+                    mCommitLock.releaseShared();
+                }
             }
 
             // Note: This step is intended to discard old redo data, but it can
