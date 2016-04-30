@@ -1379,10 +1379,10 @@ final class LocalDatabase implements Database {
     }
 
     /**
-     * Caller must hold commit lock. This ensures that highest transaction id
-     * is persisted correctly by checkpoint.
+     * To be called only by transaction instances, and caller must hold commit lock. The commit
+     * lock ensures that highest transaction id is persisted correctly by checkpoint.
      *
-     * @return non-zero transaction id
+     * @return positive non-zero transaction id
      */
     long nextTransactionId() {
         long txnId;
@@ -1401,13 +1401,6 @@ final class LocalDatabase implements Database {
                     }
                 }
             }
-        }
-
-        RedoWriter redo = mRedoWriter;
-
-        if (redo != null) {
-            // Replicas set the high bit to ensure no identifier conflict with the leader.
-            txnId = redo.adjustTransactionId(txnId);
         }
 
         return txnId;

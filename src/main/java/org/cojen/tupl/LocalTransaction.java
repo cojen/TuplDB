@@ -287,7 +287,7 @@ final class LocalTransaction extends Locker implements Transaction {
         commitLock.acquireShared();
         try {
             if (txnId == 0) {
-                mTxnId = txnId = mDatabase.nextTransactionId();
+                txnId = assignTransactionId(redo);
             }
         } catch (Throwable e) {
             commitLock.releaseShared();
@@ -623,7 +623,7 @@ final class LocalTransaction extends Locker implements Transaction {
                 final CommitLock commitLock = mDatabase.commitLock();
                 commitLock.acquireShared();
                 try {
-                    mTxnId = txnId = mDatabase.nextTransactionId();
+                    txnId = assignTransactionId(redo);
                 } finally {
                     commitLock.releaseShared();
                 }
@@ -715,7 +715,7 @@ final class LocalTransaction extends Locker implements Transaction {
             long txnId = mTxnId;
 
             if (txnId == 0) {
-                mTxnId = txnId = mDatabase.nextTransactionId();
+                txnId = assignTransactionId(redo);
             }
 
             try {
@@ -767,8 +767,27 @@ final class LocalTransaction extends Locker implements Transaction {
     final long txnId() throws IOException {
         long txnId = mTxnId;
         if (txnId == 0) {
-            mTxnId = txnId = mDatabase.nextTransactionId();
+            txnId = mDatabase.nextTransactionId();
+            RedoWriter redo = mRedoWriter;
+            if (redo != null) {
+                // Replicas set the high bit to ensure no identifier conflict with the leader.
+                txnId = redo.adjustTransactionId(txnId);
+            }
+            mTxnId = txnId;
         }
+        return txnId;
+    }
+
+    /**
+     * Caller must hold commit lock and have verified that current transaction id is 0.
+     *
+     * @param redo not null
+     */
+    private long assignTransactionId(RedoWriter redo) {
+        long txnId = mDatabase.nextTransactionId();
+        // Replicas set the high bit to ensure no identifier conflict with the leader.
+        txnId = redo.adjustTransactionId(txnId);
+        mTxnId = txnId;
         return txnId;
     }
 
