@@ -1,6 +1,13 @@
 Changelog
 =========
 
+v1.3.1
+------
+* Fix handling of invalidated transactions, and defined a new exception type for it.
+* Fix root node initialization for new trees when using fully mapped mode.
+* Fix various replication issues.
+* Fix race conditions when closing database.
+
 v1.3.0.1 (2016-04-16)
 --------
 * Fix for Index.load during concurrent node splits. It caused the load to falsely return null.
