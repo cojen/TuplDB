@@ -454,40 +454,49 @@ final class _UndoLog implements _DatabaseAccess {
         final CommitLock commitLock = mDatabase.commitLock();
         commitLock.acquireShared();
         try {
-            if (mLength > 0) {
-                _Node node = mNode;
-                if (node == null) {
-                    mBufferPos = mBuffer.length;
-                } else {
-                    node.acquireExclusive();
-                    while ((node = popNode(node, true)) != null) {
-                        if (commit) {
-                            // When shared lock is released, log can be checkpointed in an
-                            // incomplete state. Although caller must have already pushed the
-                            // commit op, any of the remaining nodes might be referenced by an
-                            // older master undo log entry. Must call prepareToDelete before
-                            // calling redirty, in case node contains data which has been
-                            // marked to be written out with the active checkpoint. The state
-                            // assigned by redirty is such that the node might be written
-                            // by the next checkpoint.
-                            mDatabase.prepareToDelete(node);
-                            mDatabase.redirty(node);
-                            long page = node.mPage;
-                            int end = pageSize(page) - 1;
-                            node.undoTop(end);
-                            p_bytePut(page, end, OP_COMMIT_TRUNCATE);
-                        }
-                        // Release and re-acquire, to unblock any threads waiting for
-                        // checkpoint to begin.
-                        commitLock.releaseShared();
-                        commitLock.acquireShared();
-                    }
-                }
-                mLength = 0;
-                mActiveIndexId = 0;
-            }
+            doTruncate(commitLock, commit);
         } finally {
             commitLock.releaseShared();
+        }
+    }
+
+    /**
+     * Truncate all log entries. Caller must hold db commit lock.
+     *
+     * @param commit pass true to indicate that top of stack is a commit op
+     */
+    final void doTruncate(CommitLock commitLock, boolean commit) throws IOException {
+        if (mLength > 0) {
+            _Node node = mNode;
+            if (node == null) {
+                mBufferPos = mBuffer.length;
+            } else {
+                node.acquireExclusive();
+                while ((node = popNode(node, true)) != null) {
+                    if (commit) {
+                        // When shared lock is released, log can be checkpointed in an
+                        // incomplete state. Although caller must have already pushed the
+                        // commit op, any of the remaining nodes might be referenced by an
+                        // older master undo log entry. Must call prepareToDelete before
+                        // calling redirty, in case node contains data which has been
+                        // marked to be written out with the active checkpoint. The state
+                        // assigned by redirty is such that the node might be written
+                        // by the next checkpoint.
+                        mDatabase.prepareToDelete(node);
+                        mDatabase.redirty(node);
+                        long page = node.mPage;
+                        int end = pageSize(page) - 1;
+                        node.undoTop(end);
+                        p_bytePut(page, end, OP_COMMIT_TRUNCATE);
+                    }
+                    // Release and re-acquire, to unblock any threads waiting for
+                    // checkpoint to begin.
+                    commitLock.releaseShared();
+                    commitLock.acquireShared();
+                }
+            }
+            mLength = 0;
+            mActiveIndexId = 0;
         }
     }
 
