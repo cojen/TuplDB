@@ -198,6 +198,8 @@ class _ReplRedoWriter extends _RedoWriter {
             }
         }
 
+        mEngine.mController.switchToReplica(mReplWriter, false);
+
         return false;
     }
 
