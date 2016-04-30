@@ -638,6 +638,16 @@ class Locker extends LockOwner {
     }
 
     /**
+     * Discards all the locks held by this Locker, and exits all scopes. Calling this prevents
+     * the locks from ever being released -- they leak. Should only be called in response to
+     * some fatal error.
+     */
+    final void discardAllLocks() {
+        mParentScope = null;
+        mTailBlock = null;
+    }
+
+    /**
      * @param upgrade only 0 or 1 allowed
      */
     final void push(Lock lock, int upgrade) {
