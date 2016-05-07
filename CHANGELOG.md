@@ -1,12 +1,13 @@
 Changelog
 =========
 
-v1.3.1
+v1.3.1 (2016-05-07)
 ------
 * Fix handling of invalidated transactions, and defined a new exception type for it.
 * Fix root node initialization for new trees when using fully mapped mode.
 * Fix various replication issues.
 * Fix race conditions when closing database.
+* Prevent improper use of bogus transaction.
 
 v1.3.0.1 (2016-04-16)
 --------
