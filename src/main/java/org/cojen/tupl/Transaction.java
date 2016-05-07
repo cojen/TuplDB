@@ -113,8 +113,9 @@ public interface Transaction {
     /**
      * Checks the validity of the transaction.
      *
-     * @throws DatabaseException if transaction is bogus or was invalidated by
+     * @throws InvalidTransactionException if transaction is broken or was invalidated by
      * an earlier exception
+     * @throws IllegalStateException if transaction is bogus
      */
     void check() throws DatabaseException;
 

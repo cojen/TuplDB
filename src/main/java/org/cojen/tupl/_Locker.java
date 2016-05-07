@@ -43,6 +43,14 @@ class _Locker extends _LockOwner {
         mManager = manager;
     }
 
+    private _LockManager manager() {
+        _LockManager manager = mManager;
+        if (manager == null) {
+            throw new IllegalStateException("Transaction is bogus");
+        }
+        return manager;
+    }
+
     /**
      * Returns true if the current transaction scope is nested.
      */
@@ -69,7 +77,7 @@ class _Locker extends _LockOwner {
     final LockResult tryLock(int lockType, long indexId, byte[] key, int hash, long nanosTimeout)
         throws DeadlockException
     {
-        LockResult result = mManager.getLockHT(hash)
+        LockResult result = manager().getLockHT(hash)
             .tryLock(lockType, this, indexId, key, hash, nanosTimeout);
         if (result == LockResult.TIMED_OUT_LOCK) {
             detectDeadlock(nanosTimeout);
@@ -83,7 +91,7 @@ class _Locker extends _LockOwner {
     final LockResult lock(int lockType, long indexId, byte[] key, int hash, long nanosTimeout)
         throws LockFailureException
     {
-        LockResult result = mManager.getLockHT(hash)
+        LockResult result = manager().getLockHT(hash)
             .tryLock(lockType, this, indexId, key, hash, nanosTimeout);
         if (result.isHeld()) {
             return result;
@@ -104,7 +112,7 @@ class _Locker extends _LockOwner {
     final LockResult lockNT(int lockType, long indexId, byte[] key, int hash, long nanosTimeout)
         throws LockFailureException
     {
-        LockResult result = mManager.getLockHT(hash)
+        LockResult result = manager().getLockHT(hash)
             .tryLock(lockType, this, indexId, key, hash, nanosTimeout);
         if (!result.isHeld()) {
             switch (result) {
@@ -322,7 +330,9 @@ class _Locker extends _LockOwner {
     }
 
     /**
-     * @param newLock _Lock instance to insert, unless another already exists. The mIndexId,
+     * _Lock acquisition used by recovery.
+     *
+     * @param lock _Lock instance to insert, unless another already exists. The mIndexId,
      * mKey, and mHashCode fields must be set.
      */
     final LockResult lockExclusive(_Lock lock, long nanosTimeout) throws LockFailureException {
@@ -354,11 +364,7 @@ class _Locker extends _LockOwner {
      * @param count current lock count, not zero
      */
     final boolean canAttemptUpgrade(int count) {
-        _LockManager manager = mManager;
-        if (manager == null) {
-            return false;
-        }
-        LockUpgradeRule lockUpgradeRule = manager.mDefaultLockUpgradeRule;
+        LockUpgradeRule lockUpgradeRule = mManager.mDefaultLockUpgradeRule;
         return lockUpgradeRule == LockUpgradeRule.UNCHECKED
             | (lockUpgradeRule == LockUpgradeRule.LENIENT & count == 1);
     }
@@ -406,7 +412,7 @@ class _Locker extends _LockOwner {
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      */
     public final LockResult lockCheck(long indexId, byte[] key) {
-        return mManager.check(this, indexId, key, hash(indexId, key));
+        return manager().check(this, indexId, key, hash(indexId, key));
     }
 
     /**
