@@ -107,6 +107,7 @@ final class LocalTransaction extends Locker implements Transaction {
         if (mode == null) {
             throw new IllegalArgumentException("Lock mode is null");
         } else {
+            bogusCheck();
             mLockMode = mode;
         }
     }
@@ -118,6 +119,7 @@ final class LocalTransaction extends Locker implements Transaction {
 
     @Override
     public final void lockTimeout(long timeout, TimeUnit unit) {
+        bogusCheck();
         mLockTimeoutNanos = Utils.toNanos(timeout, unit);
     }
 
@@ -131,6 +133,7 @@ final class LocalTransaction extends Locker implements Transaction {
         if (mode == null) {
             throw new IllegalArgumentException("Durability mode is null");
         } else {
+            bogusCheck();
             mDurabilityMode = mode;
         }
     }
@@ -144,19 +147,35 @@ final class LocalTransaction extends Locker implements Transaction {
     public final void check() throws DatabaseException {
         Object borked = mBorked;
         if (borked != null) {
-            if (borked == BOGUS) {
-                throw new InvalidTransactionException("Transaction is bogus");
-            } else if (borked instanceof Throwable) {
-                throw new InvalidTransactionException((Throwable) borked);
-            } else {
-                throw new InvalidTransactionException(String.valueOf(borked));
-            }
+            check(borked);
+        }
+    }
+
+    private void check(Object borked) throws DatabaseException {
+        if (borked == BOGUS) {
+            throw new IllegalStateException("Transaction is bogus");
+        } else if (borked instanceof Throwable) {
+            throw new InvalidTransactionException((Throwable) borked);
+        } else {
+            throw new InvalidTransactionException(String.valueOf(borked));
+        }
+    }
+
+    private void bogusCheck() {
+        if (mBorked == BOGUS) {
+            throw new IllegalStateException("Transaction is bogus");
         }
     }
 
     @Override
     public final void commit() throws IOException {
-        check();
+        Object borked = mBorked;
+        if (borked != null) {
+            if (borked == BOGUS) {
+                return;
+            }
+            check(borked);
+        }
 
         try {
             ParentScope parentScope = mParentScope;
@@ -618,7 +637,9 @@ final class LocalTransaction extends Locker implements Transaction {
     }
 
     /**
-     * @param newLock Lock instance to insert, unless another already exists. The mIndexId,
+     * Lock acquisition used by recovery.
+     *
+     * @param lock Lock instance to insert, unless another already exists. The mIndexId,
      * mKey, and mHashCode fields must be set.
      */
     final LockResult lockExclusive(Lock lock) throws LockFailureException {

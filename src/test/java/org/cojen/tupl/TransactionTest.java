@@ -523,4 +523,45 @@ public class TransactionTest {
             assertNull(ix.load(null, key));
         }
     }
+
+    @Test
+    public void bogusSettings() throws Exception {
+        final Transaction txn = Transaction.BOGUS;
+
+        // Nothing to commit, so safe.
+        txn.commit();
+
+        try {
+            txn.lockMode(LockMode.UPGRADABLE_READ);
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        try {
+            txn.lockTimeout(0, null);
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        try {
+            txn.durabilityMode(DurabilityMode.SYNC);
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        Index ix = mDb.openIndex("test");
+
+        Cursor c = ix.newCursor(txn);
+        c.find("test".getBytes());
+        // Nothing to commit, so safe.
+        c.commit("value".getBytes());
+
+        try {
+            txn.lockExclusive(ix.getId(), "test".getBytes());
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        txn.exit();
+    }
 }

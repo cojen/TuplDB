@@ -17,7 +17,7 @@
 package org.cojen.tupl;
 
 /**
- * Thrown when acting upon a broken or bogus transaction instance.
+ * Thrown when acting upon a broken transaction instance.
  *
  * @author Brian S O'Neill
  */
