@@ -46,8 +46,8 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.TreeMap;
 
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.TimeUnit;
 
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -180,6 +180,7 @@ final class LocalDatabase implements Database {
 
     private final Latch mOpenTreesLatch;
     // Maps tree names to open trees.
+    // Must be a concurrent map because we rely on concurrent iteration.
     private final Map<byte[], TreeRef> mOpenTrees;
     private final LHashTable.Obj<TreeRef> mOpenTreesById;
     private final ReferenceQueue<Tree> mOpenTreesRefQueue;
@@ -577,7 +578,7 @@ final class LocalDatabase implements Database {
                 mOpenTreesById = new LHashTable.Obj<>(0);
                 mOpenTreesRefQueue = null;
             } else {
-                mOpenTrees = new TreeMap<>(KeyComparator.THE);
+                mOpenTrees = new ConcurrentSkipListMap<>(KeyComparator.THE);
                 mOpenTreesById = new LHashTable.Obj<>(16);
                 mOpenTreesRefQueue = new ReferenceQueue<>();
             }
@@ -1547,24 +1548,11 @@ final class LocalDatabase implements Database {
 
         out = ((DurablePageDb) mPageDb).encrypt(out);
 
-        // Create a clone of the open trees, because concurrent iteration is not supported.
-        TreeRef[] openTrees;
-        mOpenTreesLatch.acquireShared();
-        try {
-            openTrees = new TreeRef[mOpenTrees.size()];
-            int i = 0;
-            for (TreeRef treeRef : mOpenTrees.values()) {
-                openTrees[i++] = treeRef;
-            }
-        } finally {
-            mOpenTreesLatch.releaseShared();
-        }
-
         DataOutputStream dout = new DataOutputStream(out);
 
         dout.writeLong(PRIMER_MAGIC_NUMBER);
 
-        for (TreeRef treeRef : openTrees) {
+        for (TreeRef treeRef : mOpenTrees.values()) {
             Tree tree = treeRef.get();
             if (tree != null && !Tree.isInternal(tree.mId)) {
                 // Encode name instead of identifier, to support priming set portability
@@ -1626,19 +1614,15 @@ final class LocalDatabase implements Database {
         mCommitLock.acquireShared();
         try {
             long cursorCount = 0;
-            mOpenTreesLatch.acquireShared();
-            try {
-                stats.openIndexes = mOpenTrees.size();
-                for (TreeRef treeRef : mOpenTrees.values()) {
-                    Tree tree = treeRef.get();
-                    if (tree != null) {
-                        cursorCount += tree.mRoot.countCursors(); 
-                    }
+            int openTreesCount = 0;
+            for (TreeRef treeRef : mOpenTrees.values()) {
+                Tree tree = treeRef.get();
+                if (tree != null) {
+                    openTreesCount++;
+                    cursorCount += tree.mRoot.countCursors();
                 }
-            } finally {
-                mOpenTreesLatch.releaseShared();
             }
-
+            stats.openIndexes = openTreesCount;
             stats.cursorCount = cursorCount;
 
             PageDb.Stats pstats = mPageDb.stats();
