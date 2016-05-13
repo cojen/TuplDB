@@ -582,23 +582,13 @@ final class DirectPageOps {
     }
 
     static void p_copyFromBB(ByteBuffer src, long dstPage, int dstStart, int len) {
-        ByteBuffer dst = DirectAccess.ref(dstPage + dstStart, len);
-        try {
-            src.limit(src.position() + len);
-            dst.put(src);
-            src.limit(src.capacity());
-        } finally {
-            DirectAccess.unref(dst);
-        }
+        src.limit(src.position() + len);
+        DirectAccess.ref(dstPage + dstStart, len).put(src);
+        src.limit(src.capacity());
     }
 
     static void p_copyToBB(long srcPage, int srcStart, ByteBuffer dst, int len) {
-        ByteBuffer src = DirectAccess.ref(srcPage + srcStart, len);
-        try {
-            dst.put(src);
-        } finally {
-            DirectAccess.unref(src);
-        }
+        dst.put(DirectAccess.ref(srcPage + srcStart, len));
     }
 
     static void p_copy(long srcPage, int srcStart, long dstPage, int dstStart, int len) {
@@ -725,15 +715,12 @@ final class DirectPageOps {
         CRC32 crc = new CRC32();
 
         if (CRC_BUFFER_UPDATE_METHOD != null) {
-            ByteBuffer bb = DirectAccess.ref(srcPage + srcStart, len);
             try {
-                CRC_BUFFER_UPDATE_METHOD.invoke(crc, bb);
+                CRC_BUFFER_UPDATE_METHOD.invoke(crc, DirectAccess.ref(srcPage + srcStart, len));
             } catch (RuntimeException e) {
                 throw e;
             } catch (Exception e) {
                 throw new RuntimeException(e);
-            } finally {
-                DirectAccess.unref(bb);
             }
         } else {
             // Not the most efficient approach, but CRCs are only used by header pages.

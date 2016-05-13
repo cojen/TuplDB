@@ -155,12 +155,7 @@ final class JavaFileIO extends AbstractFileIO {
 
     @Override
     protected void doRead(long pos, long ptr, int length) throws IOException {
-        ByteBuffer bb = DirectAccess.ref(ptr, length);
-        try {
-            doRead(pos, bb);
-        } finally {
-            DirectAccess.unref(bb);
-        }
+        doRead(pos, DirectAccess.ref(ptr, length));
     }
 
     @Override
@@ -189,12 +184,7 @@ final class JavaFileIO extends AbstractFileIO {
 
     @Override
     protected void doWrite(long pos, long ptr, int length) throws IOException {
-        ByteBuffer bb = DirectAccess.ref(ptr, length);
-        try {
-            doWrite(pos, bb);
-        } finally {
-            DirectAccess.unref(bb);
-        }
+        doWrite(pos, DirectAccess.ref(ptr, length));
     }
 
     @Override

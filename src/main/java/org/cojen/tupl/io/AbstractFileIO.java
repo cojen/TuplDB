@@ -274,12 +274,7 @@ abstract class AbstractFileIO extends FileIO {
 
     private void access(boolean read, long pos, long ptr, int length) throws IOException {
         if (length > 0) {
-            ByteBuffer bb = DirectAccess.ref(ptr, length);
-            try {
-                access(read, pos, bb);
-            } finally {
-                DirectAccess.unref(bb);
-            }
+            access(read, pos, DirectAccess.ref(ptr, length));
         }
     }
 

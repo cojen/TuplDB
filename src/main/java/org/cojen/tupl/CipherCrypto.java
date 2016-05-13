@@ -498,16 +498,7 @@ public class CipherCrypto implements Crypto {
                                      long dstPage, int dstStart)
         throws GeneralSecurityException
     {
-        ByteBuffer src = DirectAccess.ref(srcPage + srcStart, srcLen);
-        try {
-            ByteBuffer dst = DirectAccess.ref2(dstPage + dstStart, srcLen);
-            try {
-                return cipher.doFinal(src, dst);
-            } finally {
-                DirectAccess.unref(dst);
-            }
-        } finally {
-            DirectAccess.unref(src);
-        }
+        return cipher.doFinal(DirectAccess.ref(srcPage + srcStart, srcLen),
+                              DirectAccess.ref2(dstPage + dstStart, srcLen));
     }
 }
