@@ -20,8 +20,6 @@ import sun.misc.Unsafe;
 
 import java.io.IOException;
 
-import java.lang.reflect.Method;
-
 import java.nio.ByteBuffer;
 
 import java.util.Arrays;
@@ -45,8 +43,6 @@ final class DirectPageOps {
     private static final long CLOSED_TREE_PAGE;
     private static final long NON_TREE_PAGE;
 
-    private static final Method CRC_BUFFER_UPDATE_METHOD;
-
     static {
         CLOSED_TREE_PAGE = newEmptyPage();
         NON_TREE_PAGE = newEmptyPage();
@@ -66,17 +62,6 @@ final class DirectPageOps {
         p_shortPutLE(empty, 10, Node.TN_HEADER_SIZE - 2); // searchVecEnd
 
         return empty;
-    }
-
-    static {
-        Method m;
-        try {
-            // Java 8 feature.
-            m = CRC32.class.getMethod("update", ByteBuffer.class);
-        } catch (Exception e) {
-            m = null;
-        }
-        CRC_BUFFER_UPDATE_METHOD = m;
     }
 
     static long p_null() {
@@ -713,22 +698,7 @@ final class DirectPageOps {
 
     static int p_crc32(long srcPage, int srcStart, int len) {
         CRC32 crc = new CRC32();
-
-        if (CRC_BUFFER_UPDATE_METHOD != null) {
-            try {
-                CRC_BUFFER_UPDATE_METHOD.invoke(crc, DirectAccess.ref(srcPage + srcStart, len));
-            } catch (RuntimeException e) {
-                throw e;
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        } else {
-            // Not the most efficient approach, but CRCs are only used by header pages.
-            byte[] temp = new byte[len];
-            p_copyToArray(srcPage, srcStart, temp, 0, len);
-            crc.update(temp);
-        }
-
+        crc.update(DirectAccess.ref(srcPage + srcStart, len));
         return (int) crc.getValue();
     }
 }
