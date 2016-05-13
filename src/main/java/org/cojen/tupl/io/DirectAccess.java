@@ -115,6 +115,17 @@ public class DirectAccess {
         return ref(cLocalBuffer2, ptr, length);
     }
 
+    public static long getAddress(Buffer buf) {
+        if (!buf.isDirect()) {
+            throw new IllegalArgumentException("Not a direct buffer");
+        }
+        try {
+            return cDirectAddress.getLong(buf);
+        } catch (Exception e) {
+            throw new UnsupportedOperationException(e);
+        }
+    }
+
     private static ByteBuffer ref(ThreadLocal<ByteBuffer> local, long ptr, int length) {
         if (local == null) {
             throw new UnsupportedOperationException();

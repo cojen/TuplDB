@@ -137,28 +137,29 @@ final class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected void doRead(long pos, long ptr, int length) throws IOException {
+    protected void doRead(long pos, ByteBuffer bb) throws IOException {
         RandomAccessFile file = accessFile();
         try {
-            ByteBuffer bb = DirectAccess.ref(ptr, length);
-            try {
-                FileChannel channel = file.getChannel();
-                while (true) {
-                    int amt = channel.read(bb, pos);
-                    if (amt < 0) {
-                        throw new EOFException("Attempt to read past end of file: " + pos);
-                    }
-                    length -= amt;
-                    if (length <= 0) {
-                        break;
-                    }
-                    pos += amt;
+            FileChannel channel = file.getChannel();
+            while (bb.hasRemaining()) {
+                int amt = channel.read(bb, pos);
+                if (amt < 0) {
+                    throw new EOFException("Attempt to read past end of file: " + pos);
                 }
-            } finally {
-                DirectAccess.unref(bb);
+                pos += amt;
             }
         } finally {
             yieldFile(file);
+        }
+    }
+
+    @Override
+    protected void doRead(long pos, long ptr, int length) throws IOException {
+        ByteBuffer bb = DirectAccess.ref(ptr, length);
+        try {
+            doRead(pos, bb);
+        } finally {
+            DirectAccess.unref(bb);
         }
     }
 
@@ -174,25 +175,25 @@ final class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected void doWrite(long pos, long ptr, int length) throws IOException {
+    protected void doWrite(long pos, ByteBuffer bb) throws IOException {
         RandomAccessFile file = accessFile();
         try {
-            ByteBuffer bb = DirectAccess.ref(ptr, length);
-            try {
-                FileChannel channel = file.getChannel();
-                while (true) {
-                    int amt = channel.write(bb, pos);
-                    length -= amt;
-                    if (length <= 0) {
-                        break;
-                    }
-                    pos += amt;
-                }
-            } finally {
-                DirectAccess.unref(bb);
+            FileChannel channel = file.getChannel();
+            while (bb.hasRemaining()) {
+                pos += channel.write(bb, pos);
             }
         } finally {
             yieldFile(file);
+        }
+    }
+
+    @Override
+    protected void doWrite(long pos, long ptr, int length) throws IOException {
+        ByteBuffer bb = DirectAccess.ref(ptr, length);
+        try {
+            doWrite(pos, bb);
+        } finally {
+            DirectAccess.unref(bb);
         }
     }
 

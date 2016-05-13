@@ -127,6 +127,16 @@ final class PosixFileIO extends AbstractFileIO {
     }
 
     @Override
+    protected void doRead(long pos, ByteBuffer bb) throws IOException {
+        if (bb.isDirect()) {
+            doRead(pos, DirectAccess.getAddress(bb), bb.remaining());
+        } else {
+            doRead(pos, (byte[]) bb.array(), bb.arrayOffset(), bb.remaining());
+        }
+        bb.position(bb.limit());
+    }
+
+    @Override
     protected void doRead(long pos, long ptr, int length) throws IOException {
         mAccessLatch.acquireShared();
         try {
@@ -143,6 +153,16 @@ final class PosixFileIO extends AbstractFileIO {
         bb.position(0);
         bb.put(buf, offset, length);
         doWrite(pos, ref.mPointer, length);
+    }
+
+    @Override
+    protected void doWrite(long pos, ByteBuffer bb) throws IOException {
+        if (bb.isDirect()) {
+            doWrite(pos, DirectAccess.getAddress(bb), bb.remaining());
+        } else {
+            doWrite(pos, (byte[]) bb.array(), bb.arrayOffset(), bb.remaining());
+        }
+        bb.position(bb.limit());
     }
 
     @Override
