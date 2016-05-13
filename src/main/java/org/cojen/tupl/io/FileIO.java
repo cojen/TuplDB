@@ -19,6 +19,8 @@ package org.cojen.tupl.io;
 import java.io.File;
 import java.io.IOException;
 
+import java.nio.ByteBuffer;
+
 import java.util.EnumSet;
 
 import java.nio.channels.FileChannel;
@@ -95,6 +97,13 @@ public abstract class FileIO implements CauseCloseable {
      */
     public abstract void read(long pos, byte[] buf, int offset, int length) throws IOException;
 
+    /**
+     * @param pos zero-based position in file
+     * @param bb receives read data
+     * @throws IllegalArgumentException
+     */
+    public abstract void read(long pos, ByteBuffer bb) throws IOException;
+
     public void read(long pos, long ptr, int offset, int length) throws IOException {
         throw new UnsupportedOperationException();
     }
@@ -107,6 +116,13 @@ public abstract class FileIO implements CauseCloseable {
      * @throws IllegalArgumentException
      */
     public abstract void write(long pos, byte[] buf, int offset, int length) throws IOException;
+
+    /**
+     * @param pos zero-based position in file
+     * @param bb data to write
+     * @throws IllegalArgumentException
+     */
+    public abstract void write(long pos, ByteBuffer bb) throws IOException;
 
     public void write(long pos, long ptr, int offset, int length) throws IOException {
         throw new UnsupportedOperationException();

@@ -115,6 +115,11 @@ abstract class AbstractFileIO extends FileIO {
     }
 
     @Override
+    public final void read(long pos, ByteBuffer bb) throws IOException {
+        access(true, pos, bb);
+    }
+
+    @Override
     public final void read(long pos, long ptr, int offset, int length) throws IOException {
         access(true, pos, ptr + offset, length);
     }
@@ -122,6 +127,11 @@ abstract class AbstractFileIO extends FileIO {
     @Override
     public final void write(long pos, byte[] buf, int offset, int length) throws IOException {
         access(false, pos, buf, offset, length);
+    }
+
+    @Override
+    public final void write(long pos, ByteBuffer bb) throws IOException {
+        access(false, pos, bb);
     }
 
     @Override
@@ -192,8 +202,8 @@ abstract class AbstractFileIO extends FileIO {
         }
     }
 
-    private void access(boolean read, long pos, long ptr, int length) throws IOException {
-        if (length <= 0) {
+    private void access(boolean read, long pos, ByteBuffer bb) throws IOException {
+        if (bb.remaining() <= 0) {
             return;
         }
 
@@ -204,52 +214,48 @@ abstract class AbstractFileIO extends FileIO {
             try {
                 Mapping[] mappings = mMappings;
                 if (mappings != null) {
-                    ByteBuffer bb = null;
-                    try {
-                        while (true) {
-                            int mi = (int) (pos >> MAPPING_SHIFT);
-                            int mlen = mappings.length;
-                            if (mi >= mlen) {
+                    while (true) {
+                        int mi = (int) (pos >> MAPPING_SHIFT);
+                        int mlen = mappings.length;
+                        if (mi >= mlen) {
+                            break;
+                        }
+
+                        Mapping mapping = mappings[mi];
+                        int mpos = (int) (pos & (MAPPING_SIZE - 1));
+                        int mavail;
+
+                        if (mi == (mlen - 1)) {
+                            mavail = mLastMappingSize - mpos;
+                            if (mavail <= 0) {
                                 break;
                             }
+                        } else {
+                            mavail = MAPPING_SIZE - mpos;
+                        }
 
-                            Mapping mapping = mappings[mi];
-                            int mpos = (int) (pos & (MAPPING_SIZE - 1));
-                            int mavail;
-
-                            if (mi == (mlen - 1)) {
-                                mavail = mLastMappingSize - mpos;
-                                if (mavail <= 0) {
-                                    break;
-                                }
-                            } else {
-                                mavail = MAPPING_SIZE - mpos;
-                            }
-
-                            if (mavail > length) {
-                                mavail = length;
-                            }
-
-                            if (bb == null) {
-                                bb = DirectAccess.ref(ptr, length);
-                            }
-
+                        if (mavail >= bb.remaining()) {
                             if (read) {
                                 mapping.read(mpos, bb);
                             } else {
                                 mapping.write(mpos, bb);
                             }
+                            return;
+                        }
 
-                            if (!bb.hasRemaining()) {
-                                return;
+                        int limit = bb.limit();
+                        bb.limit(bb.position() + mavail);
+                        try {
+                            if (read) {
+                                mapping.read(mpos, bb);
+                            } else {
+                                mapping.write(mpos, bb);
                             }
+                        } finally {
+                            bb.limit(limit);
+                        }
 
-                            pos += mavail;
-                        }
-                    } finally {
-                        if (bb != null) {
-                            DirectAccess.unref(bb);
-                        }
+                        pos += mavail;
                     }
                 }
             } finally {
@@ -257,12 +263,23 @@ abstract class AbstractFileIO extends FileIO {
             }
 
             if (read) {
-                doRead(pos, ptr, length);
+                doRead(pos, bb);
             } else {
-                doWrite(pos, ptr, length);
+                doWrite(pos, bb);
             }
         } catch (IOException e) {
             throw rethrow(e, mCause);
+        }
+    }
+
+    private void access(boolean read, long pos, long ptr, int length) throws IOException {
+        if (length > 0) {
+            ByteBuffer bb = DirectAccess.ref(ptr, length);
+            try {
+                access(read, pos, bb);
+            } finally {
+                DirectAccess.unref(bb);
+            }
         }
     }
 
@@ -485,10 +502,16 @@ abstract class AbstractFileIO extends FileIO {
     protected abstract void doRead(long pos, byte[] buf, int offset, int length)
         throws IOException;
 
+    protected abstract void doRead(long pos, ByteBuffer bb)
+        throws IOException;
+
     protected abstract void doRead(long pos, long ptr, int length)
         throws IOException;
 
     protected abstract void doWrite(long pos, byte[] buf, int offset, int length)
+        throws IOException;
+
+    protected abstract void doWrite(long pos, ByteBuffer bb)
         throws IOException;
 
     protected abstract void doWrite(long pos, long ptr, int length)
