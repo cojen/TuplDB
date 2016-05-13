@@ -1,6 +1,11 @@
 Changelog
 =========
 
+v1.3.2
+------
+* Fix deadlock when gathering stats while trees are concurrently closed.
+* Add file I/O support for ByteBuffers.
+
 v1.3.1 (2016-05-07)
 ------
 * Fix handling of invalidated transactions, and defined a new exception type for it.
