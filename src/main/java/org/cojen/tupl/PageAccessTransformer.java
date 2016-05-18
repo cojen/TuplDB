@@ -109,7 +109,7 @@ class PageAccessTransformer {
 
                     if (line != null) {
                         out.write(line);
-                        out.newLine();
+                        out.write('\n');
                     }
                 }
             }
