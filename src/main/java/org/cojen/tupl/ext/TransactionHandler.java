@@ -67,7 +67,8 @@ public interface TransactionHandler {
      * is called. Simply hold the lock when making transactional changes, and then no additional
      * locking is required when {@code checkpointStart} is called.
      */
-    void setCheckpointLock(Database db, Lock lock);
+    default void setCheckpointLock(Database db, Lock lock) {
+    }
 
     /**
      * Called to durably write all changes. Implementation must suspend all transactional
@@ -79,12 +80,15 @@ public interface TransactionHandler {
      *
      * @return optional object to be passed to {@link #checkpointFinish checkpointFinish}
      */
-    Object checkpointStart(Database db) throws IOException;
+    default Object checkpointStart(Database db) throws IOException {
+        return null;
+    }
 
     /**
      * Wait for a concurrent checkpoint to finish.
      *
      * @param obj optional object passed from {@link #checkpointStart checkpointStart}
      */
-    void checkpointFinish(Database db, Object obj) throws IOException;
+    default void checkpointFinish(Database db, Object obj) throws IOException {
+    }
 }
