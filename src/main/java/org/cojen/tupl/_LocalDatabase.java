@@ -3334,9 +3334,9 @@ final class _LocalDatabase implements Database {
     byte[] fragment(final byte[] value, final long vlength, int max)
         throws IOException
     {
-        int pageSize = mPageSize;
+        final int pageSize = mPageSize;
         long pageCount = vlength / pageSize;
-        int remainder = (int) (vlength % pageSize);
+        final int remainder = (int) (vlength % pageSize);
 
         if (vlength >= 65536) {
             // Subtract header size, full length field size, and size of one pointer.
@@ -3369,10 +3369,10 @@ final class _LocalDatabase implements Database {
             // extra pages will be full. All pointers fit too; encode direct.
 
             // Conveniently, 2 is the header bit and the inline length field size.
-            int inline = remainder == 0 ? 0 : 2;
+            final int inline = remainder == 0 ? 0 : 2;
 
             byte header = (byte) inline;
-            int offset;
+            final int offset;
             if (vlength < (1L << (2 * 8))) {
                 // (2 byte length field)
                 offset = 1 + 2;
@@ -3394,21 +3394,33 @@ final class _LocalDatabase implements Database {
                     // Value is sparse, so just fill with null pointers.
                     fill(newValue, poffset, poffset + ((int) pageCount) * 6, (byte) 0);
                 } else {
-                    int voffset = remainder;
-                    while (true) {
-                        _Node node = allocDirtyFragmentNode();
-                        try {
-                            encodeInt48LE(newValue, poffset, node.mId);
-                            p_copyFromArray(value, voffset, node.mPage, 0, pageSize);
-                            if (pageCount == 1) {
-                                break;
+                    try {
+                        int voffset = remainder;
+                        while (true) {
+                            _Node node = allocDirtyFragmentNode();
+                            try {
+                                encodeInt48LE(newValue, poffset, node.mId);
+                                p_copyFromArray(value, voffset, node.mPage, 0, pageSize);
+                                if (pageCount == 1) {
+                                    break;
+                                }
+                            } finally {
+                                node.releaseExclusive();
                             }
-                        } finally {
-                            node.releaseExclusive();
+                            pageCount--;
+                            poffset += 6;
+                            voffset += pageSize;
                         }
-                        pageCount--;
-                        poffset += 6;
-                        voffset += pageSize;
+                    } catch (DatabaseException e) {
+                        if (!e.isRecoverable()) {
+                            close(e);
+                        } else {
+                            // Clean up the mess.
+                            while ((poffset -= 6) >= (offset + inline + remainder)) {
+                                deleteFragment(decodeUnsignedInt48LE(newValue, poffset));
+                            }
+                        }
+                        throw e;
                     }
                 }
             }
@@ -3426,7 +3438,7 @@ final class _LocalDatabase implements Database {
             pointerSpace += 6;
 
             byte header;
-            int offset;
+            final int offset;
             if (vlength < (1L << (2 * 8))) {
                 header = 0x00; // ff = 0, i=0
                 offset = 1 + 2;
@@ -3449,26 +3461,39 @@ final class _LocalDatabase implements Database {
                         // Value is sparse, so just fill with null pointers.
                         fill(newValue, offset, offset + ((int) pageCount) * 6, (byte) 0);
                     } else {
-                        int voffset = 0;
-                        while (true) {
-                            _Node node = allocDirtyFragmentNode();
-                            try {
-                                encodeInt48LE(newValue, offset, node.mId);
-                                long page = node.mPage;
-                                if (pageCount > 1) {
-                                    p_copyFromArray(value, voffset, page, 0, pageSize);
-                                } else {
-                                    p_copyFromArray(value, voffset, page, 0, remainder);
-                                    // Zero fill the rest, making it easier to extend later.
-                                    p_clear(page, remainder, pageSize(page));
-                                    break;
+                        int poffset = offset;
+                        try {
+                            int voffset = 0;
+                            while (true) {
+                                _Node node = allocDirtyFragmentNode();
+                                try {
+                                    encodeInt48LE(newValue, poffset, node.mId);
+                                    long page = node.mPage;
+                                    if (pageCount > 1) {
+                                        p_copyFromArray(value, voffset, page, 0, pageSize);
+                                    } else {
+                                        p_copyFromArray(value, voffset, page, 0, remainder);
+                                        // Zero fill the rest, making it easier to extend later.
+                                        p_clear(page, remainder, pageSize(page));
+                                        break;
+                                    }
+                                } finally {
+                                    node.releaseExclusive();
                                 }
-                            } finally {
-                                node.releaseExclusive();
+                                pageCount--;
+                                poffset += 6;
+                                voffset += pageSize;
                             }
-                            pageCount--;
-                            offset += 6;
-                            voffset += pageSize;
+                        } catch (DatabaseException e) {
+                            if (!e.isRecoverable()) {
+                                close(e);
+                            } else {
+                                // Clean up the mess.
+                                while ((poffset -= 6) >= offset) {
+                                    deleteFragment(decodeUnsignedInt48LE(newValue, poffset));
+                                }
+                            }
+                            throw e;
                         }
                     }
                 }
@@ -3480,10 +3505,20 @@ final class _LocalDatabase implements Database {
                     // Value is sparse, so just store a null pointer.
                     encodeInt48LE(newValue, offset, 0);
                 } else {
-                    _Node inode = allocDirtyFragmentNode();
-                    encodeInt48LE(newValue, offset, inode.mId);
                     int levels = calculateInodeLevels(vlength);
-                    writeMultilevelFragments(levels, inode, value, 0, vlength);
+                    _Node inode = allocDirtyFragmentNode();
+                    try {
+                        encodeInt48LE(newValue, offset, inode.mId);
+                        writeMultilevelFragments(levels, inode, value, 0, vlength);
+                    } catch (DatabaseException e) {
+                        if (!e.isRecoverable()) {
+                            close(e);
+                        } else {
+                            // Clean up the mess.
+                            deleteMultilevelFragments(levels, inode, vlength);
+                        }
+                        throw e;
+                    }
                 }
             }
 
@@ -3546,31 +3581,32 @@ final class _LocalDatabase implements Database {
             int childNodeCount = (int) ((vlength + (levelCap - 1)) / levelCap);
 
             int poffset = 0;
-            for (int i=0; i<childNodeCount; poffset += 6, i++) {
-                _Node childNode = allocDirtyFragmentNode();
-                p_int48PutLE(page, poffset, childNode.mId);
+            try {
+                for (int i=0; i<childNodeCount; i++) {
+                    _Node childNode = allocDirtyFragmentNode();
+                    p_int48PutLE(page, poffset, childNode.mId);
+                    poffset += 6;
 
-                int len = (int) Math.min(levelCap, vlength);
-                if (level <= 0) {
-                    long childPage = childNode.mPage;
-                    p_copyFromArray(value, voffset, childPage, 0, len);
-                    // Zero fill the rest, making it easier to extend later.
-                    p_clear(childPage, len, pageSize(childPage));
-                    childNode.releaseExclusive();
-                } else {
-                    writeMultilevelFragments(level, childNode, value, voffset, len);
+                    int len = (int) Math.min(levelCap, vlength);
+                    if (level <= 0) {
+                        long childPage = childNode.mPage;
+                        p_copyFromArray(value, voffset, childPage, 0, len);
+                        // Zero fill the rest, making it easier to extend later.
+                        p_clear(childPage, len, pageSize(childPage));
+                        childNode.releaseExclusive();
+                    } else {
+                        writeMultilevelFragments(level, childNode, value, voffset, len);
+                    }
+
+                    vlength -= len;
+                    voffset += len;
                 }
-
-                vlength -= len;
-                voffset += len;
+            } finally {
+                // Zero fill the rest, making it easier to extend later. If an exception was
+                // thrown, this simplies cleanup. All of the allocated pages are referenced,
+                // but the rest are not.
+                p_clear(page, poffset, pageSize(page));
             }
-
-            // Zero fill the rest, making it easier to extend later.
-            p_clear(page, poffset, pageSize(page));
-        } catch (Throwable e) {
-            // Panic.
-            close(e);
-            throw e;
         } finally {
             inode.releaseExclusive();
         }
