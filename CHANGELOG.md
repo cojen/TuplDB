@@ -3,6 +3,7 @@ Changelog
 
 v1.3.2
 ------
+* Fix storage leak when database capacity is reached during fragmented value allocation.
 * Fix deadlock when gathering stats while trees are concurrently closed.
 * Add file I/O support for ByteBuffers.
 
