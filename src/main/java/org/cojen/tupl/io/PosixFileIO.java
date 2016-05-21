@@ -298,6 +298,9 @@ final class PosixFileIO extends AbstractFileIO {
             if (options.contains(OpenOption.SYNC_IO)) {
                 flags |= 010000;
             }
+            if (options.contains(OpenOption.DIRECT_IO)) {
+                flags |= 040000;
+            }
             fd = open(file.getPath(), flags);
         }
 
