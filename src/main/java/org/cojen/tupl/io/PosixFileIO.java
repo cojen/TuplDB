@@ -128,10 +128,12 @@ final class PosixFileIO extends AbstractFileIO {
 
     @Override
     protected void doRead(long pos, ByteBuffer bb) throws IOException {
+        int bufPos = bb.position();
+        int bufLen = bb.limit() - bufPos;
         if (bb.isDirect()) {
-            doRead(pos, DirectAccess.getAddress(bb), bb.remaining());
+            doRead(pos, DirectAccess.getAddress(bb) + bufPos, bufLen);
         } else {
-            doRead(pos, (byte[]) bb.array(), bb.arrayOffset(), bb.remaining());
+            doRead(pos, (byte[]) bb.array(), bb.arrayOffset() + bufPos, bufLen);
         }
         bb.position(bb.limit());
     }
@@ -157,10 +159,12 @@ final class PosixFileIO extends AbstractFileIO {
 
     @Override
     protected void doWrite(long pos, ByteBuffer bb) throws IOException {
+        int bufPos = bb.position();
+        int bufLen = bb.limit() - bufPos;
         if (bb.isDirect()) {
-            doWrite(pos, DirectAccess.getAddress(bb), bb.remaining());
+            doWrite(pos, DirectAccess.getAddress(bb) + bufPos, bufLen);
         } else {
-            doWrite(pos, (byte[]) bb.array(), bb.arrayOffset(), bb.remaining());
+            doWrite(pos, (byte[]) bb.array(), bb.arrayOffset() + bufPos, bufLen);
         }
         bb.position(bb.limit());
     }
