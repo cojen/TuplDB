@@ -460,7 +460,7 @@ class TreeCursor implements CauseCloseable, Cursor {
 
     /**
      * Note: When method returns, frame is unlatched and may no longer be
-     * valid. Leaf frame remains latched when method returns true.
+     * valid. Leaf frame remains latched when method returns a non-null node.
      *
      * @param frame leaf frame, not split, with shared latch
      * @return latched first node, possibly empty, bound by mLeaf frame, null if nothing left
@@ -759,10 +759,15 @@ class TreeCursor implements CauseCloseable, Cursor {
                                     !parentNode.tryUpgrade())
                                 {
                                     parentNode.releaseShared();
-                                } else try {
+                                } else {
                                     CommitLock commitLock = mTree.mDatabase.commitLock();
                                     if (commitLock.tryAcquireShared()) try {
-                                        parentNode = notSplitDirty(parentFrame);
+                                        try {
+                                            parentNode = notSplitDirty(parentFrame);
+                                        } catch (Throwable e) {
+                                            childNode.releaseShared();
+                                            throw e;
+                                        }
                                         childCount = childNode.countNonGhostKeys();
                                         parentNode.storeChildEntryCount(parentPos, childCount);
                                         if (childCount < amount) {
@@ -775,9 +780,6 @@ class TreeCursor implements CauseCloseable, Cursor {
                                         commitLock.releaseShared();
                                     }
                                     parentNode.releaseExclusive();
-                                } catch (Throwable e) {
-                                    parentNode.releaseExclusive();
-                                    throw e;
                                 }
 
                                 break loadChild;
@@ -1174,10 +1176,15 @@ class TreeCursor implements CauseCloseable, Cursor {
                                     !parentNode.tryUpgrade())
                                 {
                                     parentNode.releaseShared();
-                                } else try {
+                                } else {
                                     CommitLock commitLock = mTree.mDatabase.commitLock();
                                     if (commitLock.tryAcquireShared()) try {
-                                        parentNode = notSplitDirty(parentFrame);
+                                        try {
+                                            parentNode = notSplitDirty(parentFrame);
+                                        } catch (Throwable e) {
+                                            childNode.releaseShared();
+                                            throw e;
+                                        }
                                         childCount = childNode.countNonGhostKeys();
                                         parentNode.storeChildEntryCount(parentPos, childCount);
                                         if (childCount < amount) {
@@ -1190,9 +1197,6 @@ class TreeCursor implements CauseCloseable, Cursor {
                                         commitLock.releaseShared();
                                     }
                                     parentNode.releaseExclusive();
-                                } catch (Throwable e) {
-                                    parentNode.releaseExclusive();
-                                    throw e;
                                 }
 
                                 break loadChild;
