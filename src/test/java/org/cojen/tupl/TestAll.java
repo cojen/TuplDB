@@ -41,6 +41,7 @@ public class TestAll {
             CursorNonTransformTest.class,
             CursorBasicTransformTest.class,
             CursorBasicFilterTest.class,
+            CountTest.class,
             LargeKeyTest.class,
             LargeKeyDirectTest.class,
             LargeValueTest.class,
