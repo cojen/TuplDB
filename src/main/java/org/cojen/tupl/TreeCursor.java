@@ -808,6 +808,239 @@ class TreeCursor implements CauseCloseable, Cursor {
         }
     }
 
+    /**
+     * Called by Tree.count.
+     */
+    long count(byte[] lowKey, TreeCursor high) throws IOException {
+        mKeyOnly = true;
+
+        if (lowKey == null) {
+            first();
+        } else {
+            findGe(lowKey);
+        }
+
+        if (mKey == null || (high != null && compareUnsigned(mKey, high.mKey) >= 0)) {
+            // Found nothing.
+            return 0;
+        }
+
+        long count = 0;
+        CursorFrame frame = leafSharedNotSplit();
+
+        if (lowKey != null) {
+            // Directly count the entries in the lowest leaf.
+            int pos = frame.mNodePos;
+            if (pos != 0) {
+                if (pos < 0) {
+                    pos = ~pos;
+                }
+
+                Node node = frame.mNode;
+                int lowPos = node.searchVecStart() + pos;
+
+                if (high != null && node == high.mLeaf.mNode) {
+                    count = countNonGhostKeys(node, lowPos, high);
+                    node.releaseShared();
+                    return count;
+                }
+
+                count = node.countNonGhostKeys(lowPos, node.searchVecEnd());
+
+                // Move to the next leaf, just like the nextLeaf method.
+                frame.mNodePos = Integer.MAX_VALUE - 1;
+                node = toNextAny(frame);
+                if (node == null) {
+                    // Nothing left.
+                    return count;
+                } else {
+                    frame = mLeaf;
+                }
+            }
+        }
+
+        // Count remaining leaf nodes, using stored counts in parent node if available. For
+        // leaf nodes that needed to be counted directly, the counts are stored in the parent
+        // for later use.
+
+        outer: while (true) {
+            Node node = frame.mNode;
+
+            while (true) {
+                CursorFrame parentFrame = frame.peek();
+
+                if (parentFrame == null) {
+                    if (node.isLeaf()) {
+                        if (high != null && node == high.mLeaf.mNode) {
+                            count += countNonGhostKeys(node, node.searchVecStart(), high);
+                        } else {
+                            count += node.countNonGhostKeys();
+                        }
+                    }
+                    node.releaseShared();
+                    mLeaf = frame;
+                    return count;
+                }
+
+                Node parentNode;
+                int parentPos;
+
+                latchParent: {
+                    splitCheck: {
+                        // Latch coupling up the tree usually works, so give it a try. If it
+                        // works, then there's no need to worry about a node merge.
+                        parentNode = parentFrame.tryAcquireShared();
+
+                        if (parentNode == null) {
+                            // Latch coupling failed, and so acquire parent latch without
+                            // holding child latch. The child might have changed, and so it
+                            // must be checked again.
+                            node.releaseShared();
+                            parentNode = parentFrame.acquireShared();
+                            if (parentNode.mSplit == null) {
+                                break splitCheck;
+                            }
+                        } else if (parentNode.mSplit == null) {
+                            if (node.isLeaf()) {
+                                if (high != null && node == high.mLeaf.mNode) {
+                                    count += countNonGhostKeys(node, node.searchVecStart(), high);
+                                    node.releaseShared();
+                                    parentNode.releaseShared();
+                                    mLeaf = frame;
+                                    return count;
+                                } else {
+                                    count += node.countNonGhostKeys();
+                                }
+                            }
+                            node.releaseShared();
+                            frame.popv();
+                            parentPos = parentFrame.mNodePos;
+                            break latchParent;
+                        } else {
+                            node.releaseShared();
+                        }
+
+                        // When this point is reached, parent node must be split. Parent latch
+                        // is held, child latch is not held, but the frame is still valid.
+
+                        parentNode = finishSplitShared(parentFrame, parentNode);
+                    }
+
+                    // When this point is reached, child must be relatched. Parent latch is
+                    // held, and the child frame is still valid.
+
+                    parentPos = parentFrame.mNodePos;
+                    node = latchChildRetainParent(parentNode, parentPos);
+
+                    // Count leaf keys with parent latch held, avoiding counting errors when
+                    // latching up. A node merge might otherwise throw the count off.
+
+                    if (node.isLeaf()) {
+                        if (high != null && node == high.mLeaf.mNode) {
+                            count += countNonGhostKeys(node, node.searchVecStart(), high);
+                            node.releaseShared();
+                            parentNode.releaseShared();
+                            mLeaf = frame;
+                            return count;
+                        } else {
+                            count += node.countNonGhostKeys();
+                        }
+                    }
+
+                    node.releaseShared();
+                    frame.popv();
+                }
+
+                // When this point is reached, only the shared parent latch is held. Child
+                // frame is no longer valid.
+
+                while (parentPos < parentNode.highestInternalPos()) {
+                    parentFrame.mNodePos = (parentPos += 2);
+
+                    Node childNode;
+                    CursorFrame highFrame;
+
+                    // Note: Similar to code in skipNextGap and skipPreviousGap.
+                    loadChild: {
+                        if (parentNode.isBottomInternal() &&
+                            (high == null ||
+                             parentNode != (highFrame = high.mLeaf.mParentFrame).mNode ||
+                             parentPos < highFrame.mNodePos))
+                        {
+                            int childCount = parentNode.retrieveChildEntryCount(parentPos);
+
+                            if (childCount >= 0) {
+                                count += childCount;
+                                continue;
+                            } else if (mTree.allowStoredCounts()) {
+                                childNode = latchChildRetainParent(parentNode, parentPos);
+
+                                if (childNode.mCachedState != Node.CACHED_CLEAN ||
+                                    !parentNode.tryUpgrade())
+                                {
+                                    parentNode.releaseShared();
+                                } else {
+                                    CommitLock commitLock = mTree.mDatabase.commitLock();
+                                    if (commitLock.tryAcquireShared()) try {
+                                        try {
+                                            parentNode = notSplitDirty(parentFrame);
+                                        } catch (Throwable e) {
+                                            childNode.releaseShared();
+                                            throw e;
+                                        }
+                                        childCount = childNode.countNonGhostKeys();
+                                        parentNode.storeChildEntryCount(parentPos, childCount);
+                                        count += childCount;
+                                        childNode.releaseShared();
+                                        parentNode.downgrade();
+                                        continue;
+                                    } finally {
+                                        commitLock.releaseShared();
+                                    }
+                                    parentNode.releaseExclusive();
+                                }
+
+                                break loadChild;
+                            }
+                        }
+
+                        childNode = latchToChild(parentNode, parentPos);
+                    }
+
+                    // When this point is reached, the child node couldn't be skipped and has
+                    // been loaded.
+
+                    // Always create a new cursor frame. See CursorFrame.unbind.
+                    frame = new CursorFrame(parentFrame);
+
+                    if (!toFirst(childNode, frame)) {
+                        return count;
+                    }
+                    frame = mLeaf;
+                    continue outer;
+                }
+
+                frame = parentFrame;
+                node = parentNode;
+            }
+        }
+    }
+
+    /**
+     * Count from a low position to a high position in the same node.
+     *
+     * @param node must be a leaf
+     * @param lowPos absolute position in search vector
+     * @param high not null and must be bound to the same node
+     */
+    private static long countNonGhostKeys(Node node, int lowPos, TreeCursor high) {
+        int highPos = high.mLeaf.mNodePos;
+        if (highPos < 0) {
+            highPos = ~highPos;
+        }
+        return node.countNonGhostKeys(lowPos, node.searchVecStart() + highPos - 2);
+    }
+
     @Override
     public final LockResult previous() throws IOException {
         return previous(mTxn, leafSharedNotSplit());

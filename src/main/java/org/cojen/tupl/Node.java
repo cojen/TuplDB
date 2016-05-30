@@ -1116,10 +1116,20 @@ final class Node extends Latch implements DatabaseAccess {
      * Applicable only to leaf nodes. Caller must hold any latch.
      */
     int countNonGhostKeys() {
+        return countNonGhostKeys(searchVecStart(), searchVecEnd());
+    }
+
+    /**
+     * Applicable only to leaf nodes. Caller must hold any latch.
+     *
+     * @param lowPos 2-based search vector position (inclusive)
+     * @param highPos 2-based search vector position (inclusive)
+     */
+    int countNonGhostKeys(int lowPos, int highPos) {
         final /*P*/ byte[] page = mPage;
 
         int count = 0;
-        for (int i = searchVecStart(); i <= searchVecEnd(); i += 2) {
+        for (int i = lowPos; i <= highPos; i += 2) {
             int loc = p_ushortGetLE(page, i);
             if (p_byteGet(page, loc + keyLengthAtLoc(page, loc)) != -1) {
                 count++;

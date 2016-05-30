@@ -122,13 +122,32 @@ class _Tree implements View, Index {
         return new _TreeCursor(this, txn);
     }
 
-    /*
     @Override
     public long count(byte[] lowKey, byte[] highKey) throws IOException {
-        // FIXME: use bottom internal node counts if allowStoredCounts is true
-        throw null;
+        if (true) {
+            return ViewUtils.count(this, false, lowKey, highKey);
+        }
+
+        _TreeCursor cursor = new _TreeCursor(this, Transaction.BOGUS);
+        _TreeCursor high = null;
+        try {
+            if (highKey != null) {
+                high = new _TreeCursor(this, Transaction.BOGUS);
+                high.autoload(false);
+                high.find(highKey);
+                if (high.mKey == null) {
+                    // Found nothing.
+                    return 0;
+                }
+            }
+            return cursor.count(lowKey, high);
+        } finally {
+            cursor.reset();
+            if (high != null) {
+                high.reset();
+            }
+        }
     }
-    */
 
     @Override
     public final byte[] load(Transaction txn, byte[] key) throws IOException {
