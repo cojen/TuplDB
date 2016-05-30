@@ -124,10 +124,6 @@ class Tree implements View, Index {
 
     @Override
     public long count(byte[] lowKey, byte[] highKey) throws IOException {
-        if (true) {
-            return ViewUtils.count(this, false, lowKey, highKey);
-        }
-
         TreeCursor cursor = new TreeCursor(this, Transaction.BOGUS);
         TreeCursor high = null;
         try {

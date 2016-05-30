@@ -5,6 +5,7 @@ v1.3.2
 ------
 * Fix storage leak when database capacity is reached during fragmented value allocation.
 * Fix deadlock when gathering stats while trees are concurrently closed.
+* Optimize count method, utilizing stored internal node counts.
 * Add file I/O support for ByteBuffers.
 
 v1.3.1 (2016-05-07)
