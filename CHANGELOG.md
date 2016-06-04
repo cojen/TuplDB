@@ -1,7 +1,7 @@
 Changelog
 =========
 
-v1.3.2
+v1.3.2 (2016-06-04)
 ------
 * Fix storage leak when database capacity is reached during fragmented value allocation.
 * Fix deadlock when gathering stats while trees are concurrently closed.
