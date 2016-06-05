@@ -209,8 +209,8 @@ public interface Transaction {
     LockResult lockExclusive(long indexId, byte[] key) throws LockFailureException;
 
     /**
-     * Supply a message for a custom redo handler. Redo operations must always be paired with
-     * undo operations.
+     * Supply a message for a custom redo handler. Redo operations should be paired with undo
+     * operations.
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
@@ -223,8 +223,8 @@ public interface Transaction {
     void customRedo(byte[] message, long indexId, byte[] key) throws IOException;
 
     /**
-     * Supply a message for a custom undo handler. Undo operations must always be paired with
-     * redo operations.
+     * Supply a message for a custom undo handler. Undo operations should be paired with redo
+     * operations.
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
