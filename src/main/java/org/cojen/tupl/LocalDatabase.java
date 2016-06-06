@@ -78,7 +78,7 @@ import static org.cojen.tupl.Utils.*;
  *
  * @author Brian S O'Neill
  */
-final class LocalDatabase implements Database {
+final class LocalDatabase extends AbstractDatabase {
     private static final int DEFAULT_CACHED_NODES = 1000;
     // +2 for registry and key map root nodes, +1 for one user index, and +2 for at least one
     // usage list to function correctly.
@@ -4031,6 +4031,12 @@ final class LocalDatabase implements Database {
         node.mCachedState = mInitialReadState;
     }
 
+    @Override
+    EventListener eventListener() {
+        return mEventListener;
+    }
+
+    @Override
     void checkpoint(boolean force, long sizeThreshold, long delayThresholdNanos)
         throws IOException
     {

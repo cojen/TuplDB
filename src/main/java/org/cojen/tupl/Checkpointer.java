@@ -29,15 +29,14 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @author Brian S O'Neill
  */
-/*P*/
 final class Checkpointer implements Runnable {
     private static final int STATE_INIT = 0, STATE_RUNNING = 1, STATE_CLOSED = 2;
 
     private static int cThreadCounter;
 
     private final AtomicInteger mSuspendCount;
-    private final ReferenceQueue<LocalDatabase> mRefQueue;
-    private final WeakReference<LocalDatabase> mDatabaseRef;
+    private final ReferenceQueue<AbstractDatabase> mRefQueue;
+    private final WeakReference<AbstractDatabase> mDatabaseRef;
     private final long mRateNanos;
     private final long mSizeThreshold;
     private final long mDelayThresholdNanos;
@@ -46,7 +45,7 @@ final class Checkpointer implements Runnable {
     private Thread mShutdownHook;
     private List<ShutdownHook> mToShutdown;
 
-    Checkpointer(LocalDatabase db, DatabaseConfig config) {
+    Checkpointer(AbstractDatabase db, DatabaseConfig config) {
         mSuspendCount = new AtomicInteger();
 
         mRateNanos = config.mCheckpointRateNanos;
@@ -88,7 +87,7 @@ final class Checkpointer implements Runnable {
         try {
             if (mState == STATE_INIT) {
                 // Start with an initial forced checkpoint.
-                LocalDatabase db = mDatabaseRef.get();
+                AbstractDatabase db = mDatabaseRef.get();
                 if (db != null) {
                     db.checkpoint();
                 }
@@ -109,7 +108,7 @@ final class Checkpointer implements Runnable {
                     Thread.sleep(delayMillis); 
                 }
 
-                LocalDatabase db = mDatabaseRef.get();
+                AbstractDatabase db = mDatabaseRef.get();
                 if (db == null) {
                     close();
                     return;
@@ -125,7 +124,7 @@ final class Checkpointer implements Runnable {
 
                     lastDurationNanos = endNanos - startNanos;
                 } catch (DatabaseException e) {
-                    EventListener listener = db.mEventListener;
+                    EventListener listener = db.eventListener();
                     if (listener != null) {
                         listener.notify(EventType.CHECKPOINT_FAILED, "Checkpoint failed: %1$s", e);
                     }
@@ -137,8 +136,8 @@ final class Checkpointer implements Runnable {
             }
         } catch (Throwable e) {
             if (mState != STATE_CLOSED) {
-                LocalDatabase db = mDatabaseRef.get();
-                if (db != null && !db.mClosed) {
+                AbstractDatabase db = mDatabaseRef.get();
+                if (db != null) {
                     Utils.closeQuietly(null, db, e);
                 }
             }

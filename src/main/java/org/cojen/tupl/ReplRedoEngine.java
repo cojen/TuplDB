@@ -279,7 +279,7 @@ final class ReplRedoEngine implements RedoVisitor {
             try {
                 mDatabase.renameIndex(ix, newName, txnId);
             } catch (RuntimeException e) {
-                EventListener listener = mDatabase.mEventListener;
+                EventListener listener = mDatabase.eventListener();
                 if (listener != null) {
                     listener.notify(EventType.REPLICATION_WARNING,
                                     "Unable to rename index: %1$s", rootCause(e));
@@ -352,7 +352,7 @@ final class ReplRedoEngine implements RedoVisitor {
                 deletion.setDaemon(true);
                 deletion.start();
             } catch (Throwable e) {
-                EventListener listener = mDatabase.mEventListener;
+                EventListener listener = mDatabase.eventListener();
                 if (listener != null) {
                     listener.notify(EventType.REPLICATION_WARNING,
                                     "Unable to immediately delete index: %1$s", rootCause(e));
@@ -890,7 +890,7 @@ final class ReplRedoEngine implements RedoVisitor {
             reset();
         } catch (Throwable e) {
             if (!mDatabase.mClosed) {
-                EventListener listener = mDatabase.mEventListener;
+                EventListener listener = mDatabase.eventListener();
                 if (listener != null) {
                     listener.notify(EventType.REPLICATION_PANIC,
                                     "Unexpected replication exception: %1$s", rootCause(e));
