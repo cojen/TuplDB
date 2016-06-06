@@ -189,7 +189,7 @@ final class PendingTxnWaiter extends Thread {
     }
 
     private static void uncaught(LocalDatabase db, Throwable e) {
-        EventListener listener = db.mEventListener;
+        EventListener listener = db.eventListener();
         if (listener != null) {
             listener.notify(EventType.REPLICATION_PANIC,
                             "Unexpected transaction exception: %1$s", e);
