@@ -196,8 +196,13 @@ final class DurablePageDb extends PageDb {
                 // Commit twice to ensure both headers have valid data.
                 /*P*/ byte[] header = p_calloc(pageSize);
                 try {
-                    commit(false, header, null);
-                    commit(false, header, null);
+                    mCommitLock.acquireExclusive();
+                    try {
+                        commit(false, header, null);
+                        commit(false, header, null);
+                    } finally {
+                        mCommitLock.releaseExclusive();
+                    }
                 } finally {
                     p_delete(header);
                 }
@@ -546,18 +551,15 @@ final class DurablePageDb extends PageDb {
     public void commit(boolean resume, /*P*/ byte[] header, final CommitCallback callback)
         throws IOException
     {
-        mCommitLock.acquireExclusive();
+        // Acquire a shared lock to prevent concurrent commits after callback has released
+        // exclusive lock.
         mCommitLock.acquireShared();
 
-        mHeaderLatch.acquireShared();
-        final int commitNumber = mCommitNumber + 1;
-        mHeaderLatch.releaseShared();
-
-        // Downgrade and keep read lock. This prevents another commit from
-        // starting concurrently.
-        mCommitLock.releaseExclusive();
-
         try {
+            mHeaderLatch.acquireShared();
+            final int commitNumber = mCommitNumber + 1;
+            mHeaderLatch.releaseShared();
+
             try {
                 if (!resume) {
                     mPageManager.commitStart(header, I_MANAGER_HEADER);
