@@ -927,7 +927,7 @@ class Tree implements View, Index {
     final void append(byte[] key, byte[] value, CursorFrame frame) throws IOException {
         try {
             final CommitLock commitLock = mDatabase.commitLock();
-            commitLock.acquireShared();
+            commitLock.lock();
             Node node = latchDirty(frame);
             try {
                 // TODO: inline and specialize
@@ -950,7 +950,7 @@ class Tree implements View, Index {
                 }
             } finally {
                 node.releaseExclusive();
-                commitLock.releaseShared();
+                commitLock.unlock();
             }
         } catch (Throwable e) {
             throw closeOnFailure(mDatabase, e);

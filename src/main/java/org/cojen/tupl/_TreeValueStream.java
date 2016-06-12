@@ -103,7 +103,7 @@ final class _TreeValueStream extends AbstractStream {
                 action(leaf, OP_SET_LENGTH, length, EMPTY_BYTES, 0, 0);
                 leaf.mNode.releaseExclusive();
             } finally {
-                commitLock.releaseShared();
+                commitLock.unlock();
             }
         } catch (IllegalStateException e) {
             checkOpen();
@@ -138,7 +138,7 @@ final class _TreeValueStream extends AbstractStream {
                 action(leaf, OP_WRITE, pos, buf, off, len);
                 leaf.mNode.releaseExclusive();
             } finally {
-                commitLock.releaseShared();
+                commitLock.unlock();
             }
         } catch (IllegalStateException e) {
             checkOpen();
