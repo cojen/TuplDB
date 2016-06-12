@@ -204,7 +204,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
                     // aborted. Recovery would erroneously rollback committed
                     // transactions.
                     final CommitLock commitLock = mDatabase.commitLock();
-                    commitLock.acquireShared();
+                    commitLock.lock();
                     long commitPos;
                     try {
                         if ((commitPos = (mHasState & HAS_COMMIT)) != 0) {
@@ -216,7 +216,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
                         // be released safely. See recoveryCleanup.
                         undo.pushCommit();
                     } finally {
-                        commitLock.releaseShared();
+                        commitLock.unlock();
                     }
 
                     if (commitPos != 0) {
@@ -305,13 +305,13 @@ final class _LocalTransaction extends _Locker implements Transaction {
         long txnId = mTxnId;
 
         final CommitLock commitLock = mDatabase.commitLock();
-        commitLock.acquireShared();
+        commitLock.lock();
         try {
             if (txnId == 0) {
                 txnId = assignTransactionId(redo);
             }
         } catch (Throwable e) {
-            commitLock.releaseShared();
+            commitLock.unlock();
             throw e;
         }
 
@@ -339,7 +339,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
 
                     cursor.store(_LocalTransaction.BOGUS, cursor.leafExclusive(), value);
                 } catch (Throwable e) {
-                    commitLock.releaseShared();
+                    commitLock.unlock();
                     throw e;
                 }
 
@@ -347,7 +347,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
 
                 _UndoLog undo = mUndoLog;
                 if (undo == null) {
-                    commitLock.releaseShared();
+                    commitLock.unlock();
                     if (commitPos != 0) {
                         if (mDurabilityMode == DurabilityMode.SYNC) {
                             redo.txnCommitSync(this, commitPos);
@@ -361,7 +361,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
                     try {
                         undo.pushCommit();
                     } finally {
-                        commitLock.releaseShared();
+                        commitLock.unlock();
                     }
 
                     if (commitPos != 0) {
@@ -412,7 +412,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
                         mDurabilityMode = original;
                     }
                 } finally {
-                    commitLock.releaseShared();
+                    commitLock.unlock();
                 }
 
                 mHasState = hasState & ~(HAS_SCOPE | HAS_COMMIT);
@@ -658,11 +658,11 @@ final class _LocalTransaction extends _Locker implements Transaction {
 
             if (txnId == 0) {
                 final CommitLock commitLock = mDatabase.commitLock();
-                commitLock.acquireShared();
+                commitLock.lock();
                 try {
                     txnId = assignTransactionId(redo);
                 } finally {
-                    commitLock.releaseShared();
+                    commitLock.unlock();
                 }
             }
 
@@ -697,11 +697,11 @@ final class _LocalTransaction extends _Locker implements Transaction {
         check();
 
         final CommitLock commitLock = mDatabase.commitLock();
-        commitLock.acquireShared();
+        commitLock.lock();
         try {
             undoLog().pushCustom(message);
         } finally {
-            commitLock.releaseShared();
+            commitLock.unlock();
         }
     }
 
@@ -801,7 +801,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
     /**
      * Caller must hold commit lock if transaction id has not been assigned yet.
      */
-    final long txnId() throws IOException {
+    final long txnId() {
         long txnId = mTxnId;
         if (txnId == 0) {
             txnId = mDatabase.nextTransactionId();

@@ -201,12 +201,12 @@ final class _FragmentedTrash {
                 cursor.load();
                 byte[] value = cursor.value();
                 long fragmented = p_transfer(value);
-                commitLock.acquireShared();
+                commitLock.lock();
                 try {
                     db.deleteFragments(fragmented, 0, value.length);
                     cursor.store(null);
                 } finally {
-                    commitLock.releaseShared();
+                    commitLock.unlock();
                     p_delete(fragmented);
                 }
                 cursor.next();
@@ -240,12 +240,12 @@ final class _FragmentedTrash {
                     byte[] value = cursor.value();
                     long fragmented = p_transfer(value);
                     try {
-                        commitLock.acquireShared();
+                        commitLock.lock();
                         try {
                             db.deleteFragments(fragmented, 0, value.length);
                             cursor.store(null);
                         } finally {
-                            commitLock.releaseShared();
+                            commitLock.unlock();
                         }
                     } finally {
                         p_delete(fragmented);
