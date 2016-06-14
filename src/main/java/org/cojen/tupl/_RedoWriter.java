@@ -59,9 +59,7 @@ abstract class _RedoWriter implements CauseCloseable, ShutdownHook, Flushable {
     public long store(long indexId, byte[] key, byte[] value, DurabilityMode mode)
         throws IOException
     {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
+        keyCheck(key);
 
         synchronized (this) {
             if (value == null) {
@@ -92,9 +90,7 @@ abstract class _RedoWriter implements CauseCloseable, ShutdownHook, Flushable {
     public long storeNoLock(long indexId, byte[] key, byte[] value, DurabilityMode mode)
         throws IOException
     {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
+        keyCheck(key);
 
         synchronized (this) {
             if (value == null) {
@@ -207,9 +203,7 @@ abstract class _RedoWriter implements CauseCloseable, ShutdownHook, Flushable {
     public synchronized void txnStore(byte op, long txnId, long indexId, byte[] key, byte[] value)
         throws IOException
     {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
+        keyCheck(key);
         writeTxnOp(op, txnId);
         writeLongLE(indexId);
         writeUnsignedVarInt(key.length);
@@ -233,9 +227,7 @@ abstract class _RedoWriter implements CauseCloseable, ShutdownHook, Flushable {
     public synchronized void txnDelete(byte op, long txnId, long indexId, byte[] key)
         throws IOException
     {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
+        keyCheck(key);
         writeTxnOp(op, txnId);
         writeLongLE(indexId);
         writeUnsignedVarInt(key.length);
@@ -269,9 +261,7 @@ abstract class _RedoWriter implements CauseCloseable, ShutdownHook, Flushable {
     public synchronized void txnCustomLock(long txnId, byte[] message, long indexId, byte[] key)
         throws IOException
     {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
+        keyCheck(key);
         if (message == null) {
             throw new NullPointerException("Message is null");
         }

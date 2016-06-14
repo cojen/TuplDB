@@ -517,9 +517,7 @@ final class TransformedCursor implements Cursor {
     }
 
     private byte[] inverseTransformKey(final byte[] tkey) {
-        if (tkey == null) {
-            throw new NullPointerException("Key is null");
-        }
+        Utils.keyCheck(tkey);
         return mTransformer.inverseTransformKey(tkey);
     }
 

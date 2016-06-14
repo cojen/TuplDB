@@ -175,9 +175,7 @@ final class TrimmedView implements View {
     }
 
     byte[] applyPrefix(byte[] key, int offset, int length) {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
+        Utils.keyCheck(key);
         byte[] prefix = mPrefix;
         byte[] full = new byte[prefix.length + length];
         System.arraycopy(prefix, 0, full, 0, prefix.length);

@@ -27,30 +27,22 @@ import static org.cojen.tupl.Utils.*;
  */
 final class BoundedView extends SubView {
     static View viewGe(View view, byte[] key) {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
+        keyCheck(key);
         return new BoundedView(view, key, null, 0);
     }
 
     static View viewGt(View view, byte[] key) {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
+        keyCheck(key);
         return new BoundedView(view, key, null, START_EXCLUSIVE);
     }
 
     static View viewLe(View view, byte[] key) {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
+        keyCheck(key);
         return new BoundedView(view, null, key, 0);
     }
 
     static View viewLt(View view, byte[] key) {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
+        keyCheck(key);
         return new BoundedView(view, null, key, END_EXCLUSIVE);
     }
 
@@ -106,9 +98,7 @@ final class BoundedView extends SubView {
 
     @Override
     public View viewGe(byte[] key) {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
+        keyCheck(key);
         if (startRangeCompare(key) <= 0) {
             return this;
         }
@@ -117,9 +107,7 @@ final class BoundedView extends SubView {
 
     @Override
     public View viewGt(byte[] key) {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
+        keyCheck(key);
         if (startRangeCompare(key) < 0) {
             return this;
         }
@@ -128,9 +116,7 @@ final class BoundedView extends SubView {
 
     @Override
     public View viewLe(byte[] key) {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
+        keyCheck(key);
         if (endRangeCompare(key) >= 0) {
             return this;
         }
@@ -139,9 +125,7 @@ final class BoundedView extends SubView {
 
     @Override
     public View viewLt(byte[] key) {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
+        keyCheck(key);
         if (endRangeCompare(key) > 0) {
             return this;
         }
