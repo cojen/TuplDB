@@ -99,12 +99,12 @@ final class CommitLock {
     private void doReleaseShared() {
         mSharedCount.decrement();
 
-        if (mExclusive && mSharedCount.sum() == 0) {
-            mSecondLatch.acquireExclusive();
+        if (mExclusive) {
+            mSecondLatch.acquireShared();
             if (mExclusive && mSharedCount.sum() == 0) {
                 mSecondCondition.signal();
             }
-            mSecondLatch.releaseExclusive();
+            mSecondLatch.releaseShared();
         }
     }
 
@@ -123,8 +123,9 @@ final class CommitLock {
 
     public boolean tryAcquireExclusive(long nanosTimeout) throws InterruptedIOException {
         mFirstLatch.acquireExclusive();
-        mSecondLatch.acquireExclusive();
+
         mExclusive = true;
+        mSecondLatch.acquireExclusive();
 
         if (mSharedCount.sum() == 0) {
             mSecondLatch.releaseExclusive();
@@ -133,21 +134,26 @@ final class CommitLock {
         }
 
         long nanosEnd = System.nanoTime() + nanosTimeout;
-        int result = mSecondCondition.await(mSecondLatch, nanosTimeout, nanosEnd);
-        mSecondLatch.releaseExclusive();
 
-        if (result > 0) {
-            reentrant().count++;
-            return true;
-        }
+        while (true) {
+            int result = mSecondCondition.await(mSecondLatch, nanosTimeout, nanosEnd);
+            mSecondLatch.releaseExclusive();
 
-        mExclusive = false;
-        mFirstLatch.releaseExclusive();
+            if (mSharedCount.sum() == 0) {
+                mSecondLatch.releaseExclusive();
+                reentrant().count++;
+                return true;
+            }
 
-        if (result == 0) {
-            return false;
-        } else {
-            throw new InterruptedIOException();
+            if (result <= 0 || (nanosTimeout = nanosEnd - System.nanoTime()) <= 0) {
+                mExclusive = false;
+                mFirstLatch.releaseExclusive();
+                if (result < 0) {
+                    throw new InterruptedIOException();
+                } else {
+                    return false;
+                }
+            }
         }
     }
 
