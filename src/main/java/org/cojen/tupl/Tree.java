@@ -353,9 +353,7 @@ class Tree implements View, Index {
 
     @Override
     public void store(Transaction txn, byte[] key, byte[] value) throws IOException {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
+        keyCheck(key);
         TreeCursor cursor = new TreeCursor(this, txn);
         cursor.autoload(false);
         cursor.findAndStore(key, value);
@@ -363,17 +361,13 @@ class Tree implements View, Index {
 
     @Override
     public byte[] exchange(Transaction txn, byte[] key, byte[] value) throws IOException {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
+        keyCheck(key);
         return new TreeCursor(this, txn).findAndStore(key, value);
     }
 
     @Override
     public boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
+        keyCheck(key);
         TreeCursor cursor = new TreeCursor(this, txn);
         cursor.autoload(false);
         return cursor.findAndModify(key, TreeCursor.MODIFY_INSERT, value);
@@ -381,9 +375,7 @@ class Tree implements View, Index {
 
     @Override
     public boolean replace(Transaction txn, byte[] key, byte[] value) throws IOException {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
+        keyCheck(key);
         TreeCursor cursor = new TreeCursor(this, txn);
         cursor.autoload(false);
         return cursor.findAndModify(key, TreeCursor.MODIFY_REPLACE, value);
@@ -393,9 +385,7 @@ class Tree implements View, Index {
     public boolean update(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException
     {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
+        keyCheck(key);
         return new TreeCursor(this, txn).findAndModify(key, oldValue, newValue);
     }
 
