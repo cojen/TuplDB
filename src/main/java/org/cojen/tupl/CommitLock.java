@@ -137,7 +137,6 @@ final class CommitLock {
 
         while (true) {
             int result = mSecondCondition.await(mSecondLatch, nanosTimeout, nanosEnd);
-            mSecondLatch.releaseExclusive();
 
             if (mSharedCount.sum() == 0) {
                 mSecondLatch.releaseExclusive();
@@ -147,6 +146,7 @@ final class CommitLock {
 
             if (result <= 0 || (nanosTimeout = nanosEnd - System.nanoTime()) <= 0) {
                 mExclusive = false;
+                mSecondLatch.releaseExclusive();
                 mFirstLatch.releaseExclusive();
                 if (result < 0) {
                     throw new InterruptedIOException();
