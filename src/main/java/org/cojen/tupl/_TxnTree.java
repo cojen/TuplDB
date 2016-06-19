@@ -41,20 +41,24 @@ final class _TxnTree extends _Tree {
         if (txn != null) {
             super.store(txn, key, value);
         } else {
-            txn = mDatabase.newAlwaysRedoTransaction();
+            txnStore(key, value);
+        }
+    }
+
+    private void txnStore(byte[] key, byte[] value) throws IOException {
+        Transaction txn = mDatabase.newAlwaysRedoTransaction();
+        try {
+            _TreeCursor c = new _TreeCursor(this, txn);
             try {
-                _TreeCursor c = new _TreeCursor(this, txn);
-                try {
-                    c.mKeyOnly = true;
-                    c.doFind(key);
-                    c.commit(value);
-                } finally {
-                    c.reset();
-                }
-            } catch (Throwable e) {
-                txn.reset();
-                throw e;
+                c.mKeyOnly = true;
+                c.doFind(key);
+                c.commit(value);
+            } finally {
+                c.reset();
             }
+        } catch (Throwable e) {
+            txn.reset();
+            throw e;
         }
     }
 
@@ -63,21 +67,25 @@ final class _TxnTree extends _Tree {
         if (txn != null) {
             return super.exchange(txn, key, value);
         } else {
-            txn = mDatabase.newAlwaysRedoTransaction();
+            return txnExchange(key, value);
+        }
+    }
+
+    private byte[] txnExchange(byte[] key, byte[] value) throws IOException {
+        Transaction txn = mDatabase.newAlwaysRedoTransaction();
+        try {
+            _TreeCursor c = new _TreeCursor(this, txn);
             try {
-                _TreeCursor c = new _TreeCursor(this, txn);
-                try {
-                    c.doFind(key);
-                    byte[] oldValue = c.mValue;
-                    c.commit(value);
-                    return oldValue;
-                } finally {
-                    c.reset();
-                }
-            } catch (Throwable e) {
-                txn.reset();
-                throw e;
+                c.doFind(key);
+                byte[] oldValue = c.mValue;
+                c.commit(value);
+                return oldValue;
+            } finally {
+                c.reset();
             }
+        } catch (Throwable e) {
+            txn.reset();
+            throw e;
         }
     }
 
@@ -86,26 +94,30 @@ final class _TxnTree extends _Tree {
         if (txn != null) {
             return super.insert(txn, key, value);
         } else {
-            txn = mDatabase.newAlwaysRedoTransaction();
+            return txnInsert(key, value);
+        }
+    }
+
+    private boolean txnInsert(byte[] key, byte[] value) throws IOException {
+        Transaction txn = mDatabase.newAlwaysRedoTransaction();
+        try {
+            _TreeCursor c = new _TreeCursor(this, txn);
             try {
-                _TreeCursor c = new _TreeCursor(this, txn);
-                try {
-                    c.mKeyOnly = true;
-                    c.doFind(key);
-                    if (c.mValue == null) {
-                        c.commit(value);
-                        return true;
-                    } else {
-                        txn.reset();
-                        return false;
-                    }
-                } finally {
-                    c.reset();
+                c.mKeyOnly = true;
+                c.doFind(key);
+                if (c.mValue == null) {
+                    c.commit(value);
+                    return true;
+                } else {
+                    txn.reset();
+                    return false;
                 }
-            } catch (Throwable e) {
-                txn.reset();
-                throw e;
+            } finally {
+                c.reset();
             }
+        } catch (Throwable e) {
+            txn.reset();
+            throw e;
         }
     }
 
@@ -114,26 +126,30 @@ final class _TxnTree extends _Tree {
         if (txn != null) {
             return super.replace(txn, key, value);
         } else {
-            txn = mDatabase.newAlwaysRedoTransaction();
+            return txnReplace(key, value);
+        }
+    }
+
+    private boolean txnReplace(byte[] key, byte[] value) throws IOException {
+        Transaction txn = mDatabase.newAlwaysRedoTransaction();
+        try {
+            _TreeCursor c = new _TreeCursor(this, txn);
             try {
-                _TreeCursor c = new _TreeCursor(this, txn);
-                try {
-                    c.mKeyOnly = true;
-                    c.doFind(key);
-                    if (c.mValue != null) {
-                        c.commit(value);
-                        return true;
-                    } else {
-                        txn.reset();
-                        return false;
-                    }
-                } finally {
-                    c.reset();
+                c.mKeyOnly = true;
+                c.doFind(key);
+                if (c.mValue != null) {
+                    c.commit(value);
+                    return true;
+                } else {
+                    txn.reset();
+                    return false;
                 }
-            } catch (Throwable e) {
-                txn.reset();
-                throw e;
+            } finally {
+                c.reset();
             }
+        } catch (Throwable e) {
+            txn.reset();
+            throw e;
         }
     }
 
@@ -144,25 +160,29 @@ final class _TxnTree extends _Tree {
         if (txn != null) {
             return super.update(txn, key, oldValue, newValue);
         } else {
-            txn = mDatabase.newAlwaysRedoTransaction();
+            return txnUpdate(key, oldValue, newValue);
+        }
+    }
+
+    public boolean txnUpdate(byte[] key, byte[] oldValue, byte[] newValue) throws IOException {
+        Transaction txn = mDatabase.newAlwaysRedoTransaction();
+        try {
+            _TreeCursor c = new _TreeCursor(this, txn);
             try {
-                _TreeCursor c = new _TreeCursor(this, txn);
-                try {
-                    c.doFind(key);
-                    if (Arrays.equals(oldValue, c.mValue)) {
-                        c.commit(newValue);
-                        return true;
-                    } else {
-                        txn.reset();
-                        return false;
-                    }
-                } finally {
-                    c.reset();
+                c.doFind(key);
+                if (Arrays.equals(oldValue, c.mValue)) {
+                    c.commit(newValue);
+                    return true;
+                } else {
+                    txn.reset();
+                    return false;
                 }
-            } catch (Throwable e) {
-                txn.reset();
-                throw e;
+            } finally {
+                c.reset();
             }
+        } catch (Throwable e) {
+            txn.reset();
+            throw e;
         }
     }
 
