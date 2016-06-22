@@ -16,6 +16,7 @@
 
 package org.cojen.tupl;
 
+import java.io.EOFException;
 import java.io.IOException;
 
 import static org.cojen.tupl.RedoOps.*;
@@ -76,131 +77,204 @@ abstract class RedoDecoder {
                 break;
 
             case OP_TIMESTAMP:
-                long ts = in.readLongLE();
+                long ts;
+                try {
+                    ts = in.readLongLE();
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in) || !visitor.timestamp(ts)) {
                     return false;
                 }
                 break;
 
             case OP_SHUTDOWN:
-                ts = in.readLongLE();
+                try {
+                    ts = in.readLongLE();
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in) || !visitor.shutdown(ts)) {
                     return false;
                 }
                 break;
 
             case OP_CLOSE:
-                ts = in.readLongLE();
+                try {
+                    ts = in.readLongLE();
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in) || !visitor.close(ts)) {
                     return false;
                 }
                 break;
 
             case OP_END_FILE:
-                ts = in.readLongLE();
+                try {
+                    ts = in.readLongLE();
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in) || !visitor.endFile(ts)) {
                     return false;
                 }
                 break;
 
             case OP_NOP_RANDOM:
-                in.readLongLE();
+                try {
+                    in.readLongLE();
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in)) {
                     return false;
                 }
                 break;
 
             case OP_TXN_ENTER:
-                long txnId = readTxnId(in);
+                long txnId;
+                try {
+                    txnId = readTxnId(in);
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in) || !visitor.txnEnter(txnId)) {
                     return false;
                 }
                 break;
 
             case OP_TXN_ROLLBACK:
-                txnId = readTxnId(in);
+                try {
+                    txnId = readTxnId(in);
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in) || !visitor.txnRollback(txnId)) {
                     return false;
                 }
                 break;
 
             case OP_TXN_ROLLBACK_FINAL:
-                txnId = readTxnId(in);
+                try {
+                    txnId = readTxnId(in);
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in) || !visitor.txnRollbackFinal(txnId)) {
                     return false;
                 }
                 break;
 
             case OP_TXN_COMMIT:
-                txnId = readTxnId(in);
+                try {
+                    txnId = readTxnId(in);
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in) || !visitor.txnCommit(txnId)) {
                     return false;
                 }
                 break;
 
             case OP_TXN_COMMIT_FINAL:
-                txnId = readTxnId(in);
+                try {
+                    txnId = readTxnId(in);
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in) || !visitor.txnCommitFinal(txnId)) {
                     return false;
                 }
                 break;
 
             case OP_STORE:
-                long indexId = in.readLongLE();
-                byte[] key = in.readBytes();
-                byte[] value = in.readBytes();
+                long indexId;
+                byte[] key, value;
+                try {
+                    indexId = in.readLongLE();
+                    key = in.readBytes();
+                    value = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in) || !visitor.store(indexId, key, value)) {
                     return false;
                 }
                 break;
 
             case OP_STORE_NO_LOCK:
-                indexId = in.readLongLE();
-                key = in.readBytes();
-                value = in.readBytes();
+                try {
+                    indexId = in.readLongLE();
+                    key = in.readBytes();
+                    value = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in) || !visitor.storeNoLock(indexId, key, value)) {
                     return false;
                 }
                 break;
 
             case OP_DELETE:
-                indexId = in.readLongLE();
-                key = in.readBytes();
+                try {
+                    indexId = in.readLongLE();
+                    key = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in) || !visitor.store(indexId, key, null)) {
                     return false;
                 }
                 break;
 
             case OP_DELETE_NO_LOCK:
-                indexId = in.readLongLE();
-                key = in.readBytes();
+                try {
+                    indexId = in.readLongLE();
+                    key = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in) || !visitor.storeNoLock(indexId, key, null)) {
                     return false;
                 }
                 break;
 
             case OP_RENAME_INDEX:
-                txnId = readTxnId(in);
-                indexId = in.readLongLE();
-                byte[] newName = in.readBytes();
+                byte[] newName;
+                try {
+                    txnId = readTxnId(in);
+                    indexId = in.readLongLE();
+                    newName = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in) || !visitor.renameIndex(txnId, indexId, newName)) {
                     return false;
                 }
                 break;
 
             case OP_DELETE_INDEX:
-                txnId = readTxnId(in);
-                indexId = in.readLongLE();
+                try {
+                    txnId = readTxnId(in);
+                    indexId = in.readLongLE();
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in) || !visitor.deleteIndex(txnId, indexId)) {
                     return false;
                 }
                 break;
 
             case OP_TXN_ENTER_STORE:
-                txnId = readTxnId(in);
-                indexId = in.readLongLE();
-                key = in.readBytes();
-                value = in.readBytes();
+                try {
+                    txnId = readTxnId(in);
+                    indexId = in.readLongLE();
+                    key = in.readBytes();
+                    value = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in)
                     || !visitor.txnEnter(txnId)
                     || !visitor.txnStore(txnId, indexId, key, value))
@@ -210,20 +284,28 @@ abstract class RedoDecoder {
                 break;
 
             case OP_TXN_STORE:
-                txnId = readTxnId(in);
-                indexId = in.readLongLE();
-                key = in.readBytes();
-                value = in.readBytes();
+                try {
+                    txnId = readTxnId(in);
+                    indexId = in.readLongLE();
+                    key = in.readBytes();
+                    value = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in) || !visitor.txnStore(txnId, indexId, key, value)) {
                     return false;
                 }
                 break;
 
             case OP_TXN_STORE_COMMIT:
-                txnId = readTxnId(in);
-                indexId = in.readLongLE();
-                key = in.readBytes();
-                value = in.readBytes();
+                try {
+                    txnId = readTxnId(in);
+                    indexId = in.readLongLE();
+                    key = in.readBytes();
+                    value = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in)
                     || !visitor.txnStore(txnId, indexId, key, value)
                     || !visitor.txnCommit(txnId))
@@ -233,10 +315,14 @@ abstract class RedoDecoder {
                 break;
 
             case OP_TXN_STORE_COMMIT_FINAL:
-                txnId = readTxnId(in);
-                indexId = in.readLongLE();
-                key = in.readBytes();
-                value = in.readBytes();
+                try {
+                    txnId = readTxnId(in);
+                    indexId = in.readLongLE();
+                    key = in.readBytes();
+                    value = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in)
                     || !visitor.txnStoreCommitFinal(txnId, indexId, key, value))
                 {
@@ -245,9 +331,13 @@ abstract class RedoDecoder {
                 break;
 
             case OP_TXN_ENTER_DELETE:
-                txnId = readTxnId(in);
-                indexId = in.readLongLE();
-                key = in.readBytes();
+                try {
+                    txnId = readTxnId(in);
+                    indexId = in.readLongLE();
+                    key = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in)
                     || !visitor.txnEnter(txnId)
                     || !visitor.txnStore(txnId, indexId, key, null))
@@ -257,18 +347,26 @@ abstract class RedoDecoder {
                 break;
 
             case OP_TXN_DELETE:
-                txnId = readTxnId(in);
-                indexId = in.readLongLE();
-                key = in.readBytes();
+                try {
+                    txnId = readTxnId(in);
+                    indexId = in.readLongLE();
+                    key = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in) || !visitor.txnStore(txnId, indexId, key, null)) {
                     return false;
                 }
                 break;
 
             case OP_TXN_DELETE_COMMIT:
-                txnId = readTxnId(in);
-                indexId = in.readLongLE();
-                key = in.readBytes();
+                try {
+                    txnId = readTxnId(in);
+                    indexId = in.readLongLE();
+                    key = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in)
                     || !visitor.txnStore(txnId, indexId, key, null)
                     || !visitor.txnCommitFinal(txnId))
@@ -278,9 +376,13 @@ abstract class RedoDecoder {
                 break;
 
             case OP_TXN_DELETE_COMMIT_FINAL:
-                txnId = readTxnId(in);
-                indexId = in.readLongLE();
-                key = in.readBytes();
+                try {
+                    txnId = readTxnId(in);
+                    indexId = in.readLongLE();
+                    key = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in)
                     || !visitor.txnStoreCommitFinal(txnId, indexId, key, null))
                 {
@@ -289,18 +391,27 @@ abstract class RedoDecoder {
                 break;
 
             case (OP_TXN_CUSTOM & 0xff):
-                txnId = readTxnId(in);
-                byte[] message = in.readBytes();
+                byte[] message;
+                try {
+                    txnId = readTxnId(in);
+                    message = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in) || !visitor.txnCustom(txnId, message)) {
                     return false;
                 }
                 break;
 
             case (OP_TXN_CUSTOM_LOCK & 0xff):
-                txnId = readTxnId(in);
-                indexId = in.readLongLE();
-                key = in.readBytes();
-                message = in.readBytes();
+                try {
+                    txnId = readTxnId(in);
+                    indexId = in.readLongLE();
+                    key = in.readBytes();
+                    message = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in)
                     || !visitor.txnCustomLock(txnId, message, indexId, key))
                 {
