@@ -185,9 +185,6 @@ class TreeCursor implements CauseCloseable, Cursor {
      * Non-transactionally moves the cursor to the first leaf node, which might be empty or
      * full of ghosts. Leaf frame remains latched when method returns normally. Key and value
      * are not loaded.
-     *
-     * @param node latched node; can have no keys
-     * @param frame frame to bind node to
      */
     final void firstAny() throws IOException {
         reset();
@@ -366,9 +363,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     }
 
     private LockResult nextCmp(byte[] limitKey, int limitMode) throws IOException {
-        if (limitKey == null) {
-            throw new NullPointerException("Key is null");
-        }
+        keyCheck(limitKey);
         return nextCmp(limitKey, limitMode, leafSharedNotSplit());
     }
 
@@ -1057,9 +1052,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     }
 
     private LockResult previousCmp(byte[] limitKey, int limitMode) throws IOException {
-        if (limitKey == null) {
-            throw new NullPointerException("Key is null");
-        }
+        keyCheck(limitKey);
         return previousCmp(limitKey, limitMode, leafSharedNotSplit());
     }
 
@@ -1699,9 +1692,7 @@ class TreeCursor implements CauseCloseable, Cursor {
      * transaction.
      */
     private LocalTransaction prepareFind(byte[] key) {
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
+        keyCheck(key);
         LocalTransaction txn = mTxn;
         int hash;
         selectHash: {
@@ -1786,9 +1777,7 @@ class TreeCursor implements CauseCloseable, Cursor {
 
     private void findNoLock(byte[] key) throws IOException {
         reset();
-        if (key == null) {
-            throw new NullPointerException("Key is null");
-        }
+        keyCheck(key);
         // Never lock the requested key.
         find(null, key, VARIANT_CHECK, latchRootNode(), new CursorFrame());
     }

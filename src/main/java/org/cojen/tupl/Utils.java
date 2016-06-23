@@ -200,6 +200,15 @@ class Utils extends org.cojen.tupl.io.Utils {
     }
 
     /**
+     * @throws NullPointerException if key is null
+     */
+    static void keyCheck(byte[] key) {
+        if (key == null) {
+            throw new NullPointerException("Key is null");
+        }
+    }
+
+    /**
      * Returns a new key, midway between the given low and high keys. Returned key is never
      * equal to the low key, but it might be equal to the high key. If high key is not actually
      * higher than the given low key, an ArrayIndexOfBoundException might be thrown.
