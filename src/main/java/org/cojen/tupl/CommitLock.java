@@ -84,11 +84,15 @@ final class CommitLock {
     }
 
     public void acquireShared() {
+        mSharedCount.increment();
         Reentrant reentrant = reentrant();
-        while (!tryAcquireShared(reentrant)) {
+        if (mExclusive && reentrant.count <= 0) {
+            doReleaseShared();
             mFirstLatch.acquireShared();
+            mSharedCount.increment();
             mFirstLatch.releaseShared();
         }
+        reentrant.count++;
     }
 
     public void releaseShared() {
