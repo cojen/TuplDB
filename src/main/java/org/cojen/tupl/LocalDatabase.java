@@ -1853,23 +1853,9 @@ final class LocalDatabase extends AbstractDatabase {
             for (all.first(); all.key() != null; all.next()) {
                 long id = decodeLongBE(all.value(), 0);
 
-                Tree index = lookupIndexById(id);
-                if (index != null) {
-                    if (!visitor.apply(index)) {
-                        return false;
-                    }
-                } else {
-                    // Open the index.
-                    index = (Tree) indexById(id);
-                    boolean keepGoing = visitor.apply(index);
-                    try {
-                        index.close();
-                    } catch (IllegalStateException e) {
-                        // Leave open if in use now.
-                    }
-                    if (!keepGoing) {
-                        return false;
-                    }
+                Tree index = (Tree) indexById(id);
+                if (index != null && !visitor.apply(index)) {
+                    return false;
                 }
             }
         } finally {
