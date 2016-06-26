@@ -203,6 +203,12 @@ public interface Database extends CauseCloseable, Flushable {
     public abstract Runnable deleteIndex(Index index) throws IOException;
 
     /**
+     * Creates a new unnamed temporary index. Temporary indexes never get written to the redo
+     * log, and they are deleted when the database is re-opened.
+     */
+    public abstract Index newTemporaryIndex() throws IOException;
+
+    /**
      * Returns an {@link UnmodifiableViewException unmodifiable} View which maps all available
      * index names to identifiers. Identifiers are long integers, {@link
      * org.cojen.tupl.io.Utils#decodeLongBE big-endian} encoded.

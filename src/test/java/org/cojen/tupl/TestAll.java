@@ -98,6 +98,7 @@ public class TestAll {
             ContendedLockTest.class,
             DirectPageOpsTest.class,
             UnreplicatedTest.class,
+            TempIndexTest.class,
         };
 
         String[] names = new String[classes.length];
