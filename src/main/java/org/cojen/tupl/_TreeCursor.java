@@ -3124,11 +3124,19 @@ class _TreeCursor implements CauseCloseable, Cursor {
         autoload(false);
         firstAny();
 
-        final CommitLock commitLock = mTree.mDatabase.commitLock();
+        final _LocalDatabase db = mTree.mDatabase;
+        final CommitLock commitLock = db.commitLock();
 
         while (true) {
             commitLock.acquireShared();
             try {
+                // Close check is required because this method is called by the trashed tree
+                // deletion task. The tree isn't registered as an open tree, and so closing the
+                // database doesn't close the tree before deleting the node instances.
+                if (db.mClosed) {
+                    break;
+                }
+
                 mLeaf.acquireExclusive();
 
                 // Releases latch if an exception is thrown.
