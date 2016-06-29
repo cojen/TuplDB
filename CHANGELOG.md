@@ -1,6 +1,12 @@
 Changelog
 =========
 
+v1.3.3
+------
+* Support temporary indexes.
+* Don't close in-use indexes during verification.
+* Redo decoder should be lenient if EOF is reached in the middle of an operation.
+
 v1.3.2 (2016-06-04)
 ------
 * Fix storage leak when database capacity is reached during fragmented value allocation.
