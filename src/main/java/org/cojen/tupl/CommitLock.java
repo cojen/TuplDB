@@ -39,9 +39,9 @@ import org.cojen.tupl.util.LatchCondition;
 final class CommitLock {
     private final LongAdder mSharedCount = new LongAdder();
 
-    private final Latch mFirstLatch = new Latch();
-    private final Latch mSecondLatch = new Latch();
-    private final LatchCondition mSecondCondition = new LatchCondition();
+    private final Latch mExclusiveLatch = new Latch();
+    private final Latch mSharedLatch = new Latch();
+    private final LatchCondition mSharedCondition = new LatchCondition();
 
     private volatile boolean mExclusive;
 
@@ -88,9 +88,9 @@ final class CommitLock {
         Reentrant reentrant = reentrant();
         if (mExclusive && reentrant.count <= 0) {
             doReleaseShared();
-            mFirstLatch.acquireShared();
+            mExclusiveLatch.acquireShared();
             mSharedCount.increment();
-            mFirstLatch.releaseShared();
+            mExclusiveLatch.releaseShared();
         }
         reentrant.count++;
     }
@@ -104,11 +104,11 @@ final class CommitLock {
         mSharedCount.decrement();
 
         if (mExclusive) {
-            mSecondLatch.acquireShared();
+            mSharedLatch.acquireShared();
             if (mExclusive && mSharedCount.sum() == 0) {
-                mSecondCondition.signal();
+                mSharedCondition.signal();
             }
-            mSecondLatch.releaseShared();
+            mSharedLatch.releaseShared();
         }
     }
 
@@ -126,49 +126,56 @@ final class CommitLock {
     }
 
     public boolean tryAcquireExclusive(long nanosTimeout) throws InterruptedIOException {
-        mFirstLatch.acquireExclusive();
+        // Only one thread can obtain exclusive lock.
+        mExclusiveLatch.acquireExclusive();
 
+        // Prepare to wait for shared locks to be released, using a condition variable. This
+        // also handles race conditions when negative shared counts are observed. The thread
+        // which caused a negative count to be observed did so when releasing a shared lock.
+        // The thread will acquire the shared latch and check the count again.
+        mSharedLatch.acquireExclusive();
+
+        // Signal that shared locks cannot be granted anymore.
         mExclusive = true;
-        mSecondLatch.acquireExclusive();
 
-        if (mSharedCount.sum() == 0) {
-            mSecondLatch.releaseExclusive();
-            reentrant().count++;
-            return true;
-        }
+        if (mSharedCount.sum() != 0) {
+            // Wait for shared locks to be released.
 
-        long nanosEnd = System.nanoTime() + nanosTimeout;
+            long nanosEnd = System.nanoTime() + nanosTimeout;
 
-        while (true) {
-            int result = mSecondCondition.await(mSecondLatch, nanosTimeout, nanosEnd);
+            while (true) {
+                int result = mSharedCondition.await(mSharedLatch, nanosTimeout, nanosEnd);
 
-            if (mSharedCount.sum() == 0) {
-                mSecondLatch.releaseExclusive();
-                reentrant().count++;
-                return true;
-            }
+                if (mSharedCount.sum() == 0) {
+                    break;
+                }
 
-            if (result <= 0 || (nanosTimeout = nanosEnd - System.nanoTime()) <= 0) {
-                mExclusive = false;
-                mSecondLatch.releaseExclusive();
-                mFirstLatch.releaseExclusive();
-                if (result < 0) {
-                    throw new InterruptedIOException();
-                } else {
-                    return false;
+                if (result <= 0 || (nanosTimeout = nanosEnd - System.nanoTime()) <= 0) {
+                    mExclusive = false;
+                    mSharedLatch.releaseExclusive();
+                    mExclusiveLatch.releaseExclusive();
+                    if (result < 0) {
+                        throw new InterruptedIOException();
+                    } else {
+                        return false;
+                    }
                 }
             }
         }
+
+        mSharedLatch.releaseExclusive();
+        reentrant().count++;
+        return true;
     }
 
     public void releaseExclusive() {
         reentrant().count--;
         mExclusive = false;
-        mFirstLatch.releaseExclusive();
+        mExclusiveLatch.releaseExclusive();
     }
 
     public boolean hasQueuedThreads() {
-        return mFirstLatch.hasQueuedThreads();
+        return mExclusiveLatch.hasQueuedThreads();
     }
 
     public Lock readLock() {
@@ -176,14 +183,14 @@ final class CommitLock {
 
         if (lock == null) {
             // Double checked locking is not really harmful here.
-            mFirstLatch.acquireExclusive();
+            mExclusiveLatch.acquireExclusive();
             try {
                 lock = mReadLock;
                 if (lock == null) {
                     mReadLock = lock = new ReadLock(this);
                 }
             } finally {
-                mFirstLatch.releaseExclusive();
+                mExclusiveLatch.releaseExclusive();
             }
         }
 
@@ -192,7 +199,7 @@ final class CommitLock {
 
     @Override
     public String toString() {
-        return mSharedCount + ", " + mFirstLatch + ", " + mSecondLatch + ", " + mExclusive;
+        return mSharedCount + ", " + mExclusiveLatch + ", " + mSharedLatch + ", " + mExclusive;
     }
 
     static final class ReadLock implements Lock {
