@@ -36,7 +36,7 @@ import org.cojen.tupl.util.LatchCondition;
  *
  * @author Brian S O'Neill
  */
-final class CommitLock {
+final class CommitLock implements Lock {
     private final LongAdder mSharedCount = new LongAdder();
 
     private final Latch mExclusiveLatch = new Latch();
@@ -44,8 +44,6 @@ final class CommitLock {
     private final LatchCondition mSharedCondition = new LatchCondition();
 
     private volatile boolean mExclusive;
-
-    private Lock mReadLock;
 
     static final class Reentrant extends WeakReference<Thread> {
         int count;
@@ -67,11 +65,15 @@ final class CommitLock {
         return reentrant;
     }
 
-    public boolean tryAcquireShared() {
-        return tryAcquireShared(reentrant());
+    /**
+     * Acquire shared lock.
+     */
+    @Override
+    public boolean tryLock() {
+        return tryLock(reentrant());
     }
 
-    private boolean tryAcquireShared(Reentrant reentrant) {
+    private boolean tryLock(Reentrant reentrant) {
         mSharedCount.increment();
 
         if (mExclusive && reentrant.count <= 0) {
@@ -83,7 +85,11 @@ final class CommitLock {
         }
     }
 
-    public void acquireShared() {
+    /**
+     * Acquire shared lock.
+     */
+    @Override
+    public void lock() {
         mSharedCount.increment();
         Reentrant reentrant = reentrant();
         if (mExclusive && reentrant.count <= 0) {
@@ -95,7 +101,27 @@ final class CommitLock {
         reentrant.count++;
     }
 
-    public boolean tryAcquireShared(long time, TimeUnit unit) throws InterruptedException {
+    /**
+     * Acquire shared lock.
+     */
+    @Override
+    public void lockInterruptibly() throws InterruptedException {
+        mSharedCount.increment();
+        Reentrant reentrant = reentrant();
+        if (mExclusive && reentrant.count <= 0) {
+            doReleaseShared();
+            mExclusiveLatch.acquireSharedInterruptibly();
+            mSharedCount.increment();
+            mExclusiveLatch.releaseShared();
+        }
+        reentrant.count++;
+    }
+
+    /**
+     * Acquire shared lock.
+     */
+    @Override
+    public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
         mSharedCount.increment();
         Reentrant reentrant = reentrant();
         if (mExclusive && reentrant.count <= 0) {
@@ -112,7 +138,11 @@ final class CommitLock {
         return true;
     }
 
-    public void releaseShared() {
+    /**
+     * Release shared lock.
+     */
+    @Override
+    public void unlock() {
         reentrant().count--;
         doReleaseShared();
     }
@@ -129,7 +159,12 @@ final class CommitLock {
         }
     }
 
-    public void acquireExclusive() throws InterruptedIOException {
+    @Override
+    public Condition newCondition() {
+        throw new UnsupportedOperationException();
+    }
+
+    void acquireExclusive() throws InterruptedIOException {
         // If the exclusive lock cannot be immediately obtained, it's due to a shared lock
         // being held for a long time. While waiting for the exclusive lock, all other shared
         // requests are queued. By waiting a timed amount and giving up, the exclusive lock
@@ -142,7 +177,7 @@ final class CommitLock {
         }
     }
 
-    public boolean tryAcquireExclusive(long nanosTimeout) throws InterruptedIOException {
+    boolean tryAcquireExclusive(long nanosTimeout) throws InterruptedIOException {
         // Only one thread can obtain exclusive lock.
         mExclusiveLatch.acquireExclusive();
 
@@ -185,75 +220,18 @@ final class CommitLock {
         return true;
     }
 
-    public void releaseExclusive() {
+    void releaseExclusive() {
         reentrant().count--;
         mExclusive = false;
         mExclusiveLatch.releaseExclusive();
     }
 
-    public boolean hasQueuedThreads() {
+    boolean hasQueuedThreads() {
         return mExclusiveLatch.hasQueuedThreads();
-    }
-
-    public Lock readLock() {
-        Lock lock = mReadLock;
-
-        if (lock == null) {
-            // Double checked locking is not really harmful here.
-            mExclusiveLatch.acquireExclusive();
-            try {
-                lock = mReadLock;
-                if (lock == null) {
-                    mReadLock = lock = new ReadLock(this);
-                }
-            } finally {
-                mExclusiveLatch.releaseExclusive();
-            }
-        }
-
-        return lock;
     }
 
     @Override
     public String toString() {
         return mSharedCount + ", " + mExclusiveLatch + ", " + mSharedLatch + ", " + mExclusive;
-    }
-
-    static final class ReadLock implements Lock {
-        private final CommitLock mCommitLock;
-
-        ReadLock(CommitLock commitLock) {
-            mCommitLock = commitLock;
-        }
-
-        @Override
-        public void lock() {
-            mCommitLock.acquireShared();
-        }
-
-        @Override
-        public void lockInterruptibly() throws InterruptedException {
-            mCommitLock.acquireShared();
-        }
-
-        @Override
-        public boolean tryLock() {
-            return mCommitLock.tryAcquireShared();
-        }
-
-        @Override
-        public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
-            return mCommitLock.tryAcquireShared(time, unit);
-        }
-
-        @Override
-        public void unlock() {
-            mCommitLock.releaseShared();
-        }
-
-        @Override
-        public Condition newCondition() {
-            throw new UnsupportedOperationException();
-        }
     }
 }

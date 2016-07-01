@@ -448,7 +448,7 @@ final class PageManager {
         target = list.getRemoveScanTarget();
         mRemoveLock.unlock();
 
-        commitLock.acquireShared();
+        commitLock.lock();
         try {
             while (mCompacting) {
                 mRemoveLock.lock();
@@ -465,12 +465,12 @@ final class PageManager {
                     mRecycleFreeList.append(pageId);
                 }
                 if (commitLock.hasQueuedThreads()) {
-                    commitLock.releaseShared();
-                    commitLock.acquireShared();
+                    commitLock.unlock();
+                    commitLock.lock();
                 }
             }
         } finally {
-            commitLock.releaseShared();
+            commitLock.unlock();
         }
 
         return false;
