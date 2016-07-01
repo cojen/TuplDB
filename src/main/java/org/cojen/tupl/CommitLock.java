@@ -95,6 +95,23 @@ final class CommitLock {
         reentrant.count++;
     }
 
+    public boolean tryAcquireShared(long time, TimeUnit unit) throws InterruptedException {
+        mSharedCount.increment();
+        Reentrant reentrant = reentrant();
+        if (mExclusive && reentrant.count <= 0) {
+            doReleaseShared();
+            if (time < 0) {
+                mExclusiveLatch.acquireShared();
+            } else if (time == 0 || !mExclusiveLatch.tryAcquireSharedNanos(unit.toNanos(time))) {
+                return false;
+            }
+            mSharedCount.increment();
+            mExclusiveLatch.releaseShared();
+        }
+        reentrant.count++;
+        return true;
+    }
+
     public void releaseShared() {
         reentrant().count--;
         doReleaseShared();
@@ -226,9 +243,7 @@ final class CommitLock {
 
         @Override
         public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
-            // FIXME: honor the timeout
-            mCommitLock.acquireShared();
-            return true;
+            return mCommitLock.tryAcquireShared(time, unit);
         }
 
         @Override
