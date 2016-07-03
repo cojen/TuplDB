@@ -23,10 +23,15 @@ import java.io.EOFException;
 import java.io.InputStream;
 import java.io.IOException;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+
 import java.lang.reflect.Method;
 
 import java.nio.Buffer;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -36,6 +41,31 @@ import java.util.Map;
  * @author Brian S O'Neill
  */
 public class Utils {
+    private static final MethodHandle cCompareUnsigned_1;
+    private static final MethodHandle cCompareUnsigned_2;
+
+    static {
+        cCompareUnsigned_1 = findCompareMethod
+            (MethodType.methodType(int.class, byte[].class, byte[].class));
+
+        cCompareUnsigned_2 = findCompareMethod
+            (MethodType.methodType(int.class,
+                                   byte[].class, int.class, int.class,
+                                   byte[].class, int.class, int.class));
+    }
+
+    private static MethodHandle findCompareMethod(MethodType type) {
+        try {
+            return MethodHandles.publicLookup().findStatic(Arrays.class, "compareUnsigned", type);
+        } catch (NoSuchMethodException | IllegalAccessException e) {
+            try {
+                return MethodHandles.lookup().findStatic(Utils.class, "doCompareUnsigned", type);
+            } catch (Exception e2) {
+                throw rethrow(e2);
+            }
+        }
+    }
+
     protected Utils() {
     }
 
@@ -45,7 +75,11 @@ public class Utils {
      * @return negative if 'a' is less, zero if equal, greater than zero if greater
      */
     public static int compareUnsigned(byte[] a, byte[] b) {
-        return compareUnsigned(a, 0, a.length, b, 0, b.length);
+        try {
+            return (int) cCompareUnsigned_1.invokeExact(a, b);
+        } catch (Throwable e) {
+            throw rethrow(e);
+        }
     }
 
     /**
@@ -60,6 +94,20 @@ public class Utils {
      * @return negative if 'a' is less, zero if equal, greater than zero if greater
      */
     public static int compareUnsigned(byte[] a, int aoff, int alen, byte[] b, int boff, int blen) {
+        try {
+            return (int) cCompareUnsigned_2.invokeExact(a, aoff, alen, b, boff, blen);
+        } catch (Throwable e) {
+            throw rethrow(e);
+        }
+    }
+
+    private static int doCompareUnsigned(byte[] a, byte[] b) {
+        return doCompareUnsigned(a, 0, a.length, b, 0, b.length);
+    }
+
+    private static int doCompareUnsigned(byte[] a, int aoff, int alen,
+                                         byte[] b, int boff, int blen)
+    {
         int minLen = Math.min(alen, blen);
         for (int i=0; i<minLen; i++) {
             byte ab = a[aoff + i];
