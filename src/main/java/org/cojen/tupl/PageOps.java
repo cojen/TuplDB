@@ -307,7 +307,7 @@ final class PageOps {
     }
 
     static byte[] p_midKeyLowPage(/*P*/ byte[] lowPage, int lowOff, int lowLen,
-                                  /*P*/ byte[] high, int highOff, int highLen)
+                                  byte[] high, int highOff, int highLen)
     {
         return midKey(lowPage, lowOff, lowLen, high, highOff, highLen);
     }
