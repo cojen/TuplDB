@@ -3729,6 +3729,29 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     /**
+     * Fixes all bound cursors after a delete. Node must be latched exclusively.
+     *
+     * @param pos positive position of entry that was deleted
+     * @param key not-found key to set for cursors at given position
+     */
+    void postDelete(int pos, byte[] key) {
+        int newPos = ~pos;
+        CursorFrame frame = mLastCursorFrame;
+        do {
+            int framePos = frame.mNodePos;
+            if (framePos == pos) {
+                frame.mNodePos = newPos;
+                frame.mNotFoundKey = key;
+            } else if (framePos > pos) {
+                frame.mNodePos = framePos - 2;
+            } else if (framePos < newPos) {
+                // Position is a complement, so add instead of subtract.
+                frame.mNodePos = framePos + 2;
+            }
+        } while ((frame = frame.mPrevCousin) != null);
+    }
+
+    /**
      * Moves all the entries from the right node into the tail of the given
      * left node, and then deletes the right node node. Caller must ensure that
      * left node has enough room, and that both nodes are latched exclusively.
@@ -4279,6 +4302,73 @@ final class Node extends Latch implements DatabaseAccess {
             cause.addSuppressed(e);
             panic(cause);
         }
+    }
+
+    /**
+     * Split leaf for ascending order, and copy an entry from another page. The source entry
+     * must be ordered higher than all the entries of this target leaf node.
+     *
+     * @param snode source node to copy entry from
+     * @param spos source position to copy entry from
+     * @param encodedLen length of new entry to allocate
+     * @param pos normalized search vector position of entry to insert
+     */
+    void splitLeafAscendingAndCopyEntry(Tree tree, Node snode, int spos, int encodedLen, int pos)
+        throws IOException
+    {
+        // Note: This method is a specialized variant of the splitLeafAndCreateEntry method.
+
+        if (mSplit != null) {
+            throw new AssertionError("Node is already split");
+        }
+
+        /*P*/ byte[] page = mPage;
+
+        if (page == p_closedTreePage()) {
+            // Node is a closed tree root.
+            throw new ClosedIndexException();
+        }
+
+        Node newNode = tree.mDatabase.allocDirtyNode(NodeUsageList.MODE_UNEVICTABLE);
+        tree.mDatabase.nodeMapPut(newNode);
+
+        /*P*/ byte[] newPage = newNode.mPage;
+
+        /*P*/ // [
+        newNode.garbage(0);
+        /*P*/ // |
+        /*P*/ // p_intPutLE(newPage, 0, 0); // set type (fixed later), reserved byte, and garbage
+        /*P*/ // ]
+
+        final int searchVecStart = searchVecStart();
+        pos += searchVecStart;
+
+        Split split = null;
+        try {
+            split = newSplitRight(newNode);
+            // Choose an appropriate middle key for suffix compression.
+            setSplitKey(tree, split, midKey(pos - searchVecStart - 2, snode, spos));
+        } catch (Throwable e) {
+            cleanupSplit(e, newNode, split);
+            throw e;
+        }
+
+        mSplit = split;
+
+        // Position search vector at extreme right, allowing new entries to be placed in a
+        // natural ascending order.
+        newNode.rightSegTail(pageSize(newPage) - 1);
+        int newSearchVecStart = pageSize(newPage) - 2;
+        newNode.searchVecStart(newSearchVecStart);
+        newNode.searchVecEnd(newSearchVecStart);
+
+        final /*P*/ byte[] spage = snode.mPage;
+        final int sloc = p_ushortGetLE(spage, snode.searchVecStart() + spos);
+        p_copy(spage, sloc, newPage, TN_HEADER_SIZE, encodedLen);
+        p_shortPutLE(newPage, pageSize(newPage) - 2, TN_HEADER_SIZE);
+
+        newNode.leftSegTail(TN_HEADER_SIZE + encodedLen);
+        newNode.releaseExclusive();
     }
 
     /**
