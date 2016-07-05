@@ -22,8 +22,6 @@ import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
-import org.cojen.tupl.io.CauseCloseable;
-
 import static org.cojen.tupl.PageOps.*;
 import static org.cojen.tupl.Utils.*;
 
@@ -32,7 +30,7 @@ import static org.cojen.tupl.Utils.*;
  *
  * @author Brian S O'Neill
  */
-class TreeCursor implements CauseCloseable, Cursor {
+class TreeCursor extends AbstractCursor {
     // Sign is important because values are passed to Node.retrieveKeyCmp
     // method. Bit 0 is set for inclusive variants and clear for exclusive.
     private static final int LIMIT_LE = 1, LIMIT_LT = 2, LIMIT_GE = -1, LIMIT_GT = -2;
@@ -2870,35 +2868,13 @@ class TreeCursor implements CauseCloseable, Cursor {
                     }
 
                     node.deleteLeafEntry(pos);
+
+                    // Fix this and all bound cursors.
+                    node.postDelete(pos, key);
                 } catch (Throwable e) {
                     node.releaseExclusive();
                     throw e;
                 }
-
-                int newPos = ~pos;
-                leaf.mNodePos = newPos;
-                leaf.mNotFoundKey = key;
-
-                // Fix all cursors bound to the node.
-                CursorFrame frame = node.mLastCursorFrame;
-                do {
-                    if (frame == leaf) {
-                        // Don't need to fix self.
-                        continue;
-                    }
-
-                    int framePos = frame.mNodePos;
-
-                    if (framePos == pos) {
-                        frame.mNodePos = newPos;
-                        frame.mNotFoundKey = key;
-                    } else if (framePos > pos) {
-                        frame.mNodePos = framePos - 2;
-                    } else if (framePos < newPos) {
-                        // Position is a complement, so add instead of subtract.
-                        frame.mNodePos = framePos + 2;
-                    }
-                } while ((frame = frame.mPrevCousin) != null);
 
                 if (node.shouldLeafMerge()) {
                     mergeLeaf(leaf, node);
@@ -3153,7 +3129,7 @@ class TreeCursor implements CauseCloseable, Cursor {
 
                 if (node.hasKeys()) {
                     node.releaseExclusive();
-                } else if (!deleteNode(mLeaf, node)) {
+                } else if (!deleteLowestNode(mLeaf, node)) {
                     mLeaf = null;
                     reset();
                     return;
@@ -3165,14 +3141,14 @@ class TreeCursor implements CauseCloseable, Cursor {
     }
 
     /**
-     * Deletes the latched node and assigns the next node to the frame. All latches are
+     * Deletes the lowest latched node and assigns the next node to the frame. All latches are
      * released by this method. No other cursors or threads can be active in the tree.
      *
      * @param frame node frame
      * @param node latched node, with no keys, and dirty
      * @return false if tree is empty
      */
-    private boolean deleteNode(final CursorFrame frame, final Node node) throws IOException {
+    private boolean deleteLowestNode(final CursorFrame frame, final Node node) throws IOException {
         node.mLastCursorFrame = null;
 
         LocalDatabase db = mTree.mDatabase;
@@ -3194,7 +3170,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         if (parentNode.hasKeys()) {
             parentNode.deleteLeftChildRef(0);
         } else {
-            if (!deleteNode(parentFrame, parentNode)) {
+            if (!deleteLowestNode(parentFrame, parentNode)) {
                 db.deleteNode(node);
                 return false;
             }
@@ -3437,6 +3413,111 @@ class TreeCursor implements CauseCloseable, Cursor {
             // Ignore.
         } finally {
             reset();
+        }
+    }
+
+    @Override
+    final void appendInit() throws IOException {
+        if (mLeaf != null) {
+            throw new IllegalStateException();
+        }
+
+        Node root = mTree.mRoot;
+        root.acquireShared();
+        try {
+            if (root.isLeaf() && !root.hasKeys()) {
+                CursorFrame frame = new CursorFrame();
+                frame.bind(root, 0);
+                mLeaf = frame;
+            } else {
+                throw new IllegalStateException();
+            }
+        } finally {
+            root.releaseShared();
+        }
+    }
+
+    @Override
+    final void appendEntry(byte[] key, byte[] value) throws IOException {
+        final CommitLock commitLock = mTree.mDatabase.commitLock();
+        commitLock.acquireShared();
+        try {
+            final CursorFrame leaf = mLeaf;
+            Node node = notSplitDirty(leaf);
+            try {
+                node.insertLeafEntry(leaf, mTree, leaf.mNodePos, key, value);
+                leaf.mNodePos += 2;
+                if (node.mSplit != null) {
+                    node = mTree.finishSplit(leaf, node);
+                }
+            } finally {
+                node.releaseExclusive();
+            }
+        } catch (Throwable e) {
+            throw handleException(e, false);
+        } finally {
+            commitLock.releaseShared();
+        }
+    }
+
+    @Override
+    final void appendTransfer(AbstractCursor source) throws IOException {
+        TreeCursor scursor = (TreeCursor) source;
+
+        final CommitLock commitLock = mTree.mDatabase.commitLock();
+        commitLock.acquireShared();
+        try {
+            final CursorFrame tleaf = mLeaf;
+            Node tnode = tleaf.acquireExclusive();
+            tnode = notSplitDirty(tleaf);
+
+            CursorFrame sleaf = scursor.mLeaf;
+            Node snode = sleaf.acquireExclusive();
+
+            try {
+                snode = scursor.notSplitDirty(sleaf);
+                final int spos = sleaf.mNodePos;
+
+                try {
+                    final /*P*/ byte[] spage = snode.mPage;
+                    final int sloc = p_ushortGetLE(spage, snode.searchVecStart() + spos);
+                    final int encodedLen = Node.leafEntryLengthAtLoc(spage, sloc);
+
+                    final int tpos = tleaf.mNodePos;
+                    final int tloc = tnode.createLeafEntry(tleaf, mTree, tpos, encodedLen);
+
+                    if (tloc < 0) {
+                        tnode.splitLeafAscendingAndCopyEntry(mTree, snode, spos, encodedLen, tpos);
+                        tnode = mTree.finishSplit(tleaf, tnode);
+                    } else {
+                        p_copy(spage, sloc, tnode.mPage, tloc, encodedLen);
+                    }
+
+                    // Prepare for next append.
+                    tleaf.mNodePos += 2;
+
+                    snode.doDeleteLeafEntry(spos, encodedLen);
+                    snode.postDelete(spos, null);
+                } catch (Throwable e) {
+                    snode.releaseExclusive();
+                    throw e;
+                }
+            } finally {
+                tnode.releaseExclusive();
+            }
+
+            if (snode.hasKeys()) {
+                snode.downgrade();
+            } else {
+                scursor.mergeEmptyLeaf(sleaf, snode);
+                sleaf = scursor.leafSharedNotSplit();
+            }
+
+            scursor.next(LocalTransaction.BOGUS, sleaf);
+        } catch (Throwable e) {
+            throw handleException(e, false);
+        } finally {
+            commitLock.releaseShared();
         }
     }
 
@@ -3972,6 +4053,92 @@ class TreeCursor implements CauseCloseable, Cursor {
             // Since node latch was released, start over and check everything again properly.
             node = frame.acquireExclusive();
         }
+    }
+
+    /**
+     * Caller must hold exclusive latch, which is released by this method.
+     */
+    private void mergeEmptyLeaf(final CursorFrame leaf, Node node) throws IOException {
+        final CursorFrame parentFrame = leaf.mParentFrame;
+
+        if (parentFrame == null) {
+            // Root node cannot merge into anything.
+            node.releaseExclusive();
+            return;
+        }
+
+        // Always merge to the right sibling, unless there isn't one.
+
+        Node parentNode = parentFrame.tryAcquireExclusive();
+        if (parentNode == null) {
+            node.releaseExclusive();
+            parentNode = parentFrame.acquireExclusive();
+            node.acquireExclusive();
+        }
+
+        Node rightNode;
+        int pos;
+        while (true) {
+            if (parentNode.mSplit != null) {
+                parentNode = mTree.finishSplit(parentFrame, parentNode);
+            }
+
+            pos = parentFrame.mNodePos;
+
+            // Double check that node is still empty. Also check that a right sibling exists.
+            if (node.mSplit != null || node.hasKeys() || pos >= parentNode.highestInternalPos()) {
+                node.releaseExclusive();
+                parentNode.releaseExclusive();
+                return;
+            }
+
+            try {
+                rightNode = latchChildRetainParentEx(parentNode, pos + 2);
+            } catch (Throwable e) {
+                node.releaseExclusive();
+                throw e;
+            }
+
+            if (rightNode.mSplit != null) {
+                // Finish sibling split.
+                node.releaseExclusive();
+                parentNode.insertSplitChildRef(parentFrame, mTree, pos + 2, rightNode);
+                continue;
+            }
+
+            break;
+        }
+
+        try {
+            if (mTree.markDirty(rightNode)) {
+                parentNode.updateChildRefId(pos + 2, rightNode.mId);
+            }
+
+            mTree.mDatabase.prepareToDelete(node);
+
+            // All cursors in the empty left node must be moved to the right node.
+            for (CursorFrame frame = node.mLastCursorFrame; frame != null; ) {
+                // Capture previous frame from linked list before changing the links.
+                CursorFrame prev = frame.mPrevCousin;
+                frame.rebind(rightNode, -1);
+                frame = prev;
+            }
+
+            // If left node was low extremity, right node now is.
+            rightNode.type((byte) (rightNode.type() | (node.type() & Node.LOW_EXTREMITY)));
+
+            mTree.mDatabase.deleteNode(node);
+        } catch (Throwable e) {
+            node.releaseExclusive();
+            rightNode.releaseExclusive();
+            parentNode.releaseExclusive();
+            throw e;
+        }
+
+        parentNode.deleteLeftChildRef(pos);
+
+        // Pass the right node as if it was the left node, for the latch to be released.
+        mergeInternal(parentFrame, parentNode, rightNode, null);
     }
 
     /**
