@@ -24,11 +24,11 @@ import java.util.concurrent.atomic.LongAdder;
 
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.LockSupport;
 
 import java.util.concurrent.TimeUnit;
 
 import org.cojen.tupl.util.Latch;
-import org.cojen.tupl.util.LatchCondition;
 
 /**
  * Lock implementation which supports highly concurrent shared requests, but exclusive requests
@@ -41,9 +41,8 @@ final class CommitLock implements Lock {
 
     private final Latch mExclusiveLatch = new Latch();
     private final Latch mSharedLatch = new Latch();
-    private final LatchCondition mSharedCondition = new LatchCondition();
 
-    private volatile boolean mExclusive;
+    private volatile Thread mExclusiveThread;
 
     static final class Reentrant extends WeakReference<Thread> {
         int count;
@@ -76,7 +75,7 @@ final class CommitLock implements Lock {
     private boolean tryLock(Reentrant reentrant) {
         mSharedCount.increment();
 
-        if (mExclusive && reentrant.count <= 0) {
+        if (mExclusiveThread != null && reentrant.count <= 0) {
             doReleaseShared();
             return false;
         } else {
@@ -92,7 +91,7 @@ final class CommitLock implements Lock {
     public void lock() {
         mSharedCount.increment();
         Reentrant reentrant = reentrant();
-        if (mExclusive && reentrant.count <= 0) {
+        if (mExclusiveThread != null && reentrant.count <= 0) {
             doReleaseShared();
             mExclusiveLatch.acquireShared();
             mSharedCount.increment();
@@ -108,7 +107,7 @@ final class CommitLock implements Lock {
     public void lockInterruptibly() throws InterruptedException {
         mSharedCount.increment();
         Reentrant reentrant = reentrant();
-        if (mExclusive && reentrant.count <= 0) {
+        if (mExclusiveThread != null && reentrant.count <= 0) {
             doReleaseShared();
             mExclusiveLatch.acquireSharedInterruptibly();
             mSharedCount.increment();
@@ -124,7 +123,7 @@ final class CommitLock implements Lock {
     public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
         mSharedCount.increment();
         Reentrant reentrant = reentrant();
-        if (mExclusive && reentrant.count <= 0) {
+        if (mExclusiveThread != null && reentrant.count <= 0) {
             doReleaseShared();
             if (time < 0) {
                 mExclusiveLatch.acquireShared();
@@ -150,10 +149,11 @@ final class CommitLock implements Lock {
     private void doReleaseShared() {
         mSharedCount.decrement();
 
-        if (mExclusive) {
+        if (mExclusiveThread != null) {
             mSharedLatch.acquireShared();
-            if (mExclusive && mSharedCount.sum() == 0) {
-                mSharedCondition.signal();
+            Thread t = mExclusiveThread;
+            if (t != null && mSharedCount.sum() == 0) {
+                LockSupport.unpark(t);
             }
             mSharedLatch.releaseShared();
         }
@@ -181,36 +181,48 @@ final class CommitLock implements Lock {
         // Only one thread can obtain exclusive lock.
         mExclusiveLatch.acquireExclusive();
 
-        // Prepare to wait for shared locks to be released, using a condition variable. This
-        // also handles race conditions when negative shared counts are observed. The thread
-        // which caused a negative count to be observed did so when releasing a shared lock.
-        // The thread will acquire the shared latch and check the count again.
+        // Prepare to wait for shared locks to be released, using a second latch. This also
+        // handles race conditions when negative shared counts are observed. The thread which
+        // caused a negative count to be observed did so when releasing a shared lock. The
+        // thread will acquire the shared latch and check the count again.
         mSharedLatch.acquireExclusive();
 
         // Signal that shared locks cannot be granted anymore.
-        mExclusive = true;
+        mExclusiveThread = Thread.currentThread();
 
         if (mSharedCount.sum() != 0) {
             // Wait for shared locks to be released.
 
-            long nanosEnd = System.nanoTime() + nanosTimeout;
+            mSharedLatch.releaseExclusive();
+            long nanosEnd = nanosTimeout <= 0 ? 0 : System.nanoTime() + nanosTimeout;
 
             while (true) {
-                int result = mSharedCondition.await(mSharedLatch, nanosTimeout, nanosEnd);
+                if (nanosTimeout < 0) {
+                    LockSupport.park();
+                } else {
+                    LockSupport.parkNanos(nanosTimeout);
+                }
+
+                if (Thread.interrupted()) {
+                    mExclusiveThread = null;
+                    mExclusiveLatch.releaseExclusive();
+                    throw new InterruptedIOException();
+                }
+
+                mSharedLatch.acquireExclusive();
 
                 if (mSharedCount.sum() == 0) {
                     break;
                 }
 
-                if (result <= 0 || (nanosTimeout = nanosEnd - System.nanoTime()) <= 0) {
-                    mExclusive = false;
-                    mSharedLatch.releaseExclusive();
+                mSharedLatch.releaseExclusive();
+
+                if (nanosTimeout >= 0 &&
+                    (nanosTimeout == 0 || (nanosTimeout = nanosEnd - System.nanoTime()) <= 0))
+                {
+                    mExclusiveThread = null;
                     mExclusiveLatch.releaseExclusive();
-                    if (result < 0) {
-                        throw new InterruptedIOException();
-                    } else {
-                        return false;
-                    }
+                    return false;
                 }
             }
         }
@@ -222,7 +234,7 @@ final class CommitLock implements Lock {
 
     void releaseExclusive() {
         reentrant().count--;
-        mExclusive = false;
+        mExclusiveThread = null;
         mExclusiveLatch.releaseExclusive();
     }
 
@@ -232,6 +244,7 @@ final class CommitLock implements Lock {
 
     @Override
     public String toString() {
-        return mSharedCount + ", " + mExclusiveLatch + ", " + mSharedLatch + ", " + mExclusive;
+        return mSharedCount + ", " + mExclusiveLatch + ", " + mSharedLatch + ", " +
+            mExclusiveThread;
     }
 }
