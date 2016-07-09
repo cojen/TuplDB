@@ -222,11 +222,13 @@ abstract class PageDb implements CauseCloseable {
     public abstract int extraCommitDataOffset();
 
     /**
-     * Durably commits all writes and deletes to the underlying device.
+     * Durably commits all writes and deletes to the underlying device. Caller must hold commit
+     * lock.
      *
      * @param resume true if resuming an aborted commit
      * @param header must be page size
-     * @param callback optional callback to run during commit
+     * @param callback optional callback to run during commit, which can release the exclusive
+     * lock at any time
      */
     public abstract void commit(boolean resume, /*P*/ byte[] header, CommitCallback callback)
         throws IOException;
