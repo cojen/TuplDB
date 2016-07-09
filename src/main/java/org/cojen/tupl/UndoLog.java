@@ -405,11 +405,18 @@ final class UndoLog implements DatabaseAccess {
         commitLock.acquireShared();
         try {
             long savepoint = mLength;
-            doPush(OP_SCOPE_ENTER);
+            doScopeEnter();
             return savepoint;
         } finally {
             commitLock.releaseShared();
         }
+    }
+
+    /**
+     * Caller must hold db commit lock.
+     */
+    final void doScopeEnter() throws IOException {
+        doPush(OP_SCOPE_ENTER);
     }
 
     /**
