@@ -165,22 +165,31 @@ final class CommitLock implements Lock {
     }
 
     void acquireExclusive() throws InterruptedIOException {
-        // If the exclusive lock cannot be immediately obtained, it's due to a shared lock
+        // Only one thread can obtain exclusive lock.
+        try {
+            mExclusiveLatch.acquireExclusiveInterruptibly();
+        } catch (InterruptedException e) {
+            throw new InterruptedIOException();
+        }
+
+        // If full exclusive lock cannot be immediately obtained, it's due to a shared lock
         // being held for a long time. While waiting for the exclusive lock, all other shared
         // requests are queued. By waiting a timed amount and giving up, the exclusive lock
         // request is effectively de-prioritized. For each retry, the timeout is doubled, to
         // ensure that the exclusive request is not starved.
 
-        long nanosTimeout = 1000; // 1 microsecond
-        while (!tryAcquireExclusive(nanosTimeout)) {
-            nanosTimeout <<= 1;
+        try {
+            long nanosTimeout = 1000; // 1 microsecond
+            while (!finishAcquireExclusive(nanosTimeout)) {
+                nanosTimeout <<= 1;
+            }
+        } catch (Throwable e) {
+            mExclusiveLatch.releaseExclusive();
+            throw e;
         }
     }
 
-    boolean tryAcquireExclusive(long nanosTimeout) throws InterruptedIOException {
-        // Only one thread can obtain exclusive lock.
-        mExclusiveLatch.acquireExclusive();
-
+    private boolean finishAcquireExclusive(long nanosTimeout) throws InterruptedIOException {
         // Prepare to wait for shared locks to be released, using a second latch. This also
         // handles race conditions when negative shared counts are observed. The thread which
         // caused a negative count to be observed did so when releasing a shared lock. The
@@ -205,7 +214,6 @@ final class CommitLock implements Lock {
 
                 if (Thread.interrupted()) {
                     mExclusiveThread = null;
-                    mExclusiveLatch.releaseExclusive();
                     throw new InterruptedIOException();
                 }
 
@@ -221,7 +229,6 @@ final class CommitLock implements Lock {
                     (nanosTimeout == 0 || (nanosTimeout = nanosEnd - System.nanoTime()) <= 0))
                 {
                     mExclusiveThread = null;
-                    mExclusiveLatch.releaseExclusive();
                     return false;
                 }
             }

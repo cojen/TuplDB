@@ -26,6 +26,7 @@ public class TestAll {
     public static void main(String[] args) throws Exception {
         Class[] classes = {
             AAA_PageAccessTransformerTest.class,
+            CommitLockTest.class,
             ConfigTest.class,
             CrudTest.class,
             CrudDirectTest.class,
