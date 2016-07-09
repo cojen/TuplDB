@@ -70,12 +70,10 @@ public class LockTest {
 
     public static void selfInterrupt(final long delayMillis) {
         final Thread thread = Thread.currentThread();
-        new Thread() {
-            public void run() {
-                LockTest.sleep(delayMillis);
-                thread.interrupt();
-            }
-        }.start();
+        new Thread(() -> {
+            LockTest.sleep(delayMillis);
+            thread.interrupt();
+        }).start();
     }
 
     private LockManager mManager;
@@ -1399,22 +1397,20 @@ public class LockTest {
 
     private long schedule(final Locker locker, final long delayMillis, final int type) {
         long end = System.nanoTime() + delayMillis * ONE_MILLIS_IN_NANOS;
-        new Thread() {
-            public void run() {
-                LockTest.sleep(delayMillis);
-                switch (type) {
-                default:
-                    locker.unlock();
-                    break;
-                case 1:
-                    locker.unlockToShared();
-                    break;
-                case 2:
-                    locker.unlockToUpgradable();
-                    break;
-                }
+        new Thread(() -> {
+            LockTest.sleep(delayMillis);
+            switch (type) {
+            default:
+                locker.unlock();
+                break;
+            case 1:
+                locker.unlockToShared();
+                break;
+            case 2:
+                locker.unlockToUpgradable();
+                break;
             }
-        }.start();
+        }).start();
         return end;
     }
 

@@ -640,7 +640,7 @@ final class _LocalDatabase extends AbstractDatabase {
                     // Although handler shouldn't access the database yet, be safe and call
                     // this method at the point that the database is mostly functional. All
                     // other custom methods will be called soon as well.
-                    mCustomTxnHandler.setCheckpointLock(this, mCommitLock.readLock());
+                    mCustomTxnHandler.setCheckpointLock(this, mCommitLock);
                 }
 
                 ReplicationManager rm = config.mReplManager;
@@ -896,7 +896,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
         Index index;
 
-        mCommitLock.acquireShared();
+        mCommitLock.lock();
         try {
             if ((index = lookupIndexById(id)) != null) {
                 return index;
@@ -918,7 +918,7 @@ final class _LocalDatabase extends AbstractDatabase {
             DatabaseException.rethrowIfRecoverable(e);
             throw closeOnFailure(this, e);
         } finally {
-            mCommitLock.releaseShared();
+            mCommitLock.unlock();
         }
 
         if (index == null) {
@@ -1059,12 +1059,12 @@ final class _LocalDatabase extends AbstractDatabase {
             if (redoTxnId == 0 && (redo = txnRedoWriter()) != null) {
                 long commitPos;
 
-                mCommitLock.acquireShared();
+                mCommitLock.lock();
                 try {
                     commitPos = redo.renameIndex
                         (txn.txnId(), tree.mId, newName, mDurabilityMode.alwaysRedo());
                 } finally {
-                    mCommitLock.releaseShared();
+                    mCommitLock.unlock();
                 }
 
                 if (commitPos != 0) {
@@ -1622,7 +1622,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
         stats.pageSize = mPageSize;
 
-        mCommitLock.acquireShared();
+        mCommitLock.lock();
         try {
             long cursorCount = 0;
             int openTreesCount = 0;
@@ -1647,7 +1647,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 stats.txnsCreated = mTxnId;
             }
         } finally {
-            mCommitLock.releaseShared();
+            mCommitLock.unlock();
         }
 
         for (_NodeUsageList usageList : mUsageLists) {
@@ -2134,12 +2134,12 @@ final class _LocalDatabase extends AbstractDatabase {
                 // for the deletion task to be started immediately. The redo log still contains
                 // a commit operation, which is redundant and harmless.
 
-                mCommitLock.acquireShared();
+                mCommitLock.lock();
                 try {
                     commitPos = redo.deleteIndex
                         (txn.txnId(), treeId, mDurabilityMode.alwaysRedo());
                 } finally {
-                    mCommitLock.releaseShared();
+                    mCommitLock.unlock();
                 }
 
                 if (commitPos != 0) {
@@ -2167,7 +2167,7 @@ final class _LocalDatabase extends AbstractDatabase {
     void removeFromTrash(_Tree tree, _Node root) throws IOException {
         byte[] trashIdKey = newKey(KEY_TYPE_TRASH_ID, tree.mIdBytes);
 
-        mCommitLock.acquireShared();
+        mCommitLock.lock();
         try {
             if (root != null) {
                 root.acquireExclusive();
@@ -2178,7 +2178,7 @@ final class _LocalDatabase extends AbstractDatabase {
         } catch (Throwable e) {
             throw closeOnFailure(this, e);
         } finally {
-            mCommitLock.releaseShared();
+            mCommitLock.unlock();
         }
     }
 
@@ -2285,7 +2285,7 @@ final class _LocalDatabase extends AbstractDatabase {
     private _Tree openInternalTree(long treeId, boolean create, DatabaseConfig config)
         throws IOException
     {
-        mCommitLock.acquireShared();
+        mCommitLock.lock();
         try {
             byte[] treeIdBytes = new byte[8];
             encodeLongBE(treeIdBytes, 0, treeId);
@@ -2309,7 +2309,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
             return newTreeInstance(treeId, treeIdBytes, null, root);
         } finally {
-            mCommitLock.releaseShared();
+            mCommitLock.unlock();
         }
     }
 
@@ -2320,11 +2320,11 @@ final class _LocalDatabase extends AbstractDatabase {
     private _Tree openTree(Transaction findTxn, byte[] name, boolean create) throws IOException {
         _Tree tree = quickFindIndex(name);
         if (tree == null) {
-            mCommitLock.acquireShared();
+            mCommitLock.lock();
             try {
                 tree = doOpenTree(findTxn, name, create);
             } finally {
-                mCommitLock.releaseShared();
+                mCommitLock.unlock();
             }
         }
         return tree;
@@ -3029,12 +3029,12 @@ final class _LocalDatabase extends AbstractDatabase {
 
             checkClosed();
 
-            mCommitLock.acquireShared();
+            mCommitLock.lock();
             try {
                 // Try to free up nodes from unreferenced trees.
                 cleanupUnreferencedTrees();
             } finally {
-                mCommitLock.releaseShared();
+                mCommitLock.unlock();
             }
         }
 
@@ -4287,13 +4287,13 @@ final class _LocalDatabase extends AbstractDatabase {
             if (masterUndoLog != null) {
                 // Delete the master undo log, which won't take effect until
                 // the next checkpoint.
-                mCommitLock.acquireShared();
+                mCommitLock.lock();
                 try {
                     if (!mClosed) {
                         masterUndoLog.doTruncate(mCommitLock, false);
                     }
                 } finally {
-                    mCommitLock.releaseShared();
+                    mCommitLock.unlock();
                 }
             }
 
