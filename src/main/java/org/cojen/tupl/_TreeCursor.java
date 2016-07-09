@@ -754,7 +754,7 @@ class _TreeCursor extends AbstractCursor {
                                     parentNode.releaseShared();
                                 } else {
                                     CommitLock commitLock = mTree.mDatabase.commitLock();
-                                    if (commitLock.tryAcquireShared()) try {
+                                    if (commitLock.tryLock()) try {
                                         try {
                                             parentNode = notSplitDirty(parentFrame);
                                         } catch (Throwable e) {
@@ -770,7 +770,7 @@ class _TreeCursor extends AbstractCursor {
                                             continue;
                                         }
                                     } finally {
-                                        commitLock.releaseShared();
+                                        commitLock.unlock();
                                     }
                                     parentNode.releaseExclusive();
                                 }
@@ -974,7 +974,7 @@ class _TreeCursor extends AbstractCursor {
                                     parentNode.releaseShared();
                                 } else {
                                     CommitLock commitLock = mTree.mDatabase.commitLock();
-                                    if (commitLock.tryAcquireShared()) try {
+                                    if (commitLock.tryLock()) try {
                                         try {
                                             parentNode = notSplitDirty(parentFrame);
                                         } catch (Throwable e) {
@@ -988,7 +988,7 @@ class _TreeCursor extends AbstractCursor {
                                         parentNode.downgrade();
                                         continue;
                                     } finally {
-                                        commitLock.releaseShared();
+                                        commitLock.unlock();
                                     }
                                     parentNode.releaseExclusive();
                                 }
@@ -1402,7 +1402,7 @@ class _TreeCursor extends AbstractCursor {
                                     parentNode.releaseShared();
                                 } else {
                                     CommitLock commitLock = mTree.mDatabase.commitLock();
-                                    if (commitLock.tryAcquireShared()) try {
+                                    if (commitLock.tryLock()) try {
                                         try {
                                             parentNode = notSplitDirty(parentFrame);
                                         } catch (Throwable e) {
@@ -1418,7 +1418,7 @@ class _TreeCursor extends AbstractCursor {
                                             continue;
                                         }
                                     } finally {
-                                        commitLock.releaseShared();
+                                        commitLock.unlock();
                                     }
                                     parentNode.releaseExclusive();
                                 }
@@ -2832,15 +2832,15 @@ class _TreeCursor extends AbstractCursor {
 
             final CommitLock commitLock = mTree.mDatabase.commitLock();
 
-            if (!commitLock.tryAcquireShared()) {
+            if (!commitLock.tryLock()) {
                 leaf.mNode.releaseExclusive();
-                commitLock.acquireShared();
+                commitLock.lock();
                 leaf.acquireExclusive();
 
                 // Need to check if exists again.
                 if (leaf.mNodePos < 0) {
                     node = leaf.mNode;
-                    commitLock.releaseShared();
+                    commitLock.unlock();
                     break doDelete;
                 }
             }
@@ -2882,7 +2882,7 @@ class _TreeCursor extends AbstractCursor {
                     node = null;
                 }
             } finally {
-                commitLock.releaseShared();
+                commitLock.unlock();
             }
         } else {
             final CommitLock commitLock = commitLock(leaf);
@@ -2948,7 +2948,7 @@ class _TreeCursor extends AbstractCursor {
                     node = postInsert(leaf, node, key);
                 }
             } finally {
-                commitLock.releaseShared();
+                commitLock.unlock();
             }
         }
 
@@ -3066,7 +3066,7 @@ class _TreeCursor extends AbstractCursor {
         } catch (Throwable e) {
             throw handleException(e, false);
         } finally {
-            commitLock.releaseShared();
+            commitLock.unlock();
         }
     }
 
@@ -3104,7 +3104,7 @@ class _TreeCursor extends AbstractCursor {
         final CommitLock commitLock = db.commitLock();
 
         while (true) {
-            commitLock.acquireShared();
+            commitLock.lock();
             try {
                 // Close check is required because this method is called by the trashed tree
                 // deletion task. The tree isn't registered as an open tree, and so closing the
@@ -3135,7 +3135,7 @@ class _TreeCursor extends AbstractCursor {
                     return;
                 }
             } finally {
-                commitLock.releaseShared();
+                commitLock.unlock();
             }
         }
     }
@@ -3285,9 +3285,9 @@ class _TreeCursor extends AbstractCursor {
      */
     final CommitLock commitLock(final _CursorFrame leaf) {
         CommitLock commitLock = mTree.mDatabase.commitLock();
-        if (!commitLock.tryAcquireShared()) {
+        if (!commitLock.tryLock()) {
             leaf.mNode.releaseExclusive();
-            commitLock.acquireShared();
+            commitLock.lock();
             leaf.acquireExclusive();
         }
         return commitLock;
@@ -3671,7 +3671,7 @@ class _TreeCursor extends AbstractCursor {
         if (id > highestNodeId) {
             _LocalDatabase db = mTree.mDatabase;
             CommitLock commitLock = db.commitLock();
-            commitLock.acquireShared();
+            commitLock.lock();
             try {
                 node = frame.acquireExclusive();
                 id = node.mId;
@@ -3683,7 +3683,7 @@ class _TreeCursor extends AbstractCursor {
                 }
                 node.releaseExclusive();
             } finally {
-                commitLock.releaseShared();
+                commitLock.unlock();
             }
         }
 

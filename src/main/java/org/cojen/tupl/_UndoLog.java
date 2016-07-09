@@ -402,13 +402,13 @@ final class _UndoLog implements _DatabaseAccess {
      */
     final long scopeEnter() throws IOException {
         final CommitLock commitLock = mDatabase.commitLock();
-        commitLock.acquireShared();
+        commitLock.lock();
         try {
             long savepoint = mLength;
             doPush(OP_SCOPE_ENTER);
             return savepoint;
         } finally {
-            commitLock.releaseShared();
+            commitLock.unlock();
         }
     }
 
@@ -419,12 +419,12 @@ final class _UndoLog implements _DatabaseAccess {
      */
     final long scopeCommit() throws IOException {
         final CommitLock commitLock = mDatabase.commitLock();
-        commitLock.acquireShared();
+        commitLock.lock();
         try {
             doPush(OP_SCOPE_COMMIT);
             return mLength;
         } finally {
-            commitLock.releaseShared();
+            commitLock.unlock();
         }
     }
 
@@ -434,14 +434,14 @@ final class _UndoLog implements _DatabaseAccess {
      */
     final void scopeRollback(long savepoint) throws IOException {
         final CommitLock commitLock = mDatabase.commitLock();
-        commitLock.acquireShared();
+        commitLock.lock();
         try {
             if (savepoint < mLength) {
                 // Rollback the entire scope, including the enter op.
                 doRollback(savepoint);
             }
         } finally {
-            commitLock.releaseShared();
+            commitLock.unlock();
         }
     }
 
@@ -452,11 +452,11 @@ final class _UndoLog implements _DatabaseAccess {
      */
     final void truncate(boolean commit) throws IOException {
         final CommitLock commitLock = mDatabase.commitLock();
-        commitLock.acquireShared();
+        commitLock.lock();
         try {
             doTruncate(commitLock, commit);
         } finally {
-            commitLock.releaseShared();
+            commitLock.unlock();
         }
     }
 
@@ -491,8 +491,8 @@ final class _UndoLog implements _DatabaseAccess {
                     }
                     // Release and re-acquire, to unblock any threads waiting for
                     // checkpoint to begin.
-                    commitLock.releaseShared();
-                    commitLock.acquireShared();
+                    commitLock.unlock();
+                    commitLock.lock();
                 }
             }
             mLength = 0;
@@ -510,11 +510,11 @@ final class _UndoLog implements _DatabaseAccess {
         }
 
         final CommitLock commitLock = mDatabase.commitLock();
-        commitLock.acquireShared();
+        commitLock.lock();
         try {
             doRollback(0);
         } finally {
-            commitLock.releaseShared();
+            commitLock.unlock();
         }
     }
 

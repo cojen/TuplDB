@@ -41,28 +41,44 @@ import java.util.Map;
  * @author Brian S O'Neill
  */
 public class Utils {
-    private static final MethodHandle cCompareUnsigned_1;
-    private static final MethodHandle cCompareUnsigned_2;
+    private static final MethodHandle cCompareUnsigned_1; // basic form
+    private static final MethodHandle cCompareUnsigned_2; // offset/length form
+    private static final MethodHandle cCompareUnsigned_3; // start/end form
 
     static {
-        cCompareUnsigned_1 = findCompareMethod
-            (MethodType.methodType(int.class, byte[].class, byte[].class));
+        MethodType type = MethodType.methodType(int.class, byte[].class, byte[].class);
+        MethodHandle method = findFastCompareMethod("compareUnsigned", type);
+        if (method == null) {
+            method = findLocalCompareMethod("doCompareUnsigned", type);
+        }
+        cCompareUnsigned_1 = method;
 
-        cCompareUnsigned_2 = findCompareMethod
-            (MethodType.methodType(int.class,
-                                   byte[].class, int.class, int.class,
-                                   byte[].class, int.class, int.class));
+        type = MethodType.methodType
+            (int.class, byte[].class, int.class, int.class, byte[].class, int.class, int.class);
+        method = findFastCompareMethod("compareUnsigned", type);
+        if (method == null) {
+            cCompareUnsigned_2 = findLocalCompareMethod("doCompareUnsigned", type);
+            cCompareUnsigned_3 = null; // won't be used
+        } else {
+            // Use an adapter to fix handling of length paramaters.
+            cCompareUnsigned_2 = findLocalCompareMethod("compareUnsignedAdapter", type);
+            cCompareUnsigned_3 = method;
+        }
     }
 
-    private static MethodHandle findCompareMethod(MethodType type) {
+    private static MethodHandle findFastCompareMethod(String name, MethodType type) {
         try {
-            return MethodHandles.publicLookup().findStatic(Arrays.class, "compareUnsigned", type);
+            return MethodHandles.publicLookup().findStatic(Arrays.class, name, type);
         } catch (NoSuchMethodException | IllegalAccessException e) {
-            try {
-                return MethodHandles.lookup().findStatic(Utils.class, "doCompareUnsigned", type);
-            } catch (Exception e2) {
-                throw rethrow(e2);
-            }
+            return null;
+        }
+    }
+
+    private static MethodHandle findLocalCompareMethod(String name, MethodType type) {
+        try {
+            return MethodHandles.lookup().findStatic(Utils.class, name, type);
+        } catch (Exception e2) {
+            throw rethrow(e2);
         }
     }
 
@@ -117,6 +133,16 @@ public class Utils {
             }
         }
         return alen - blen;
+    }
+
+    /**
+     * Adapts the offset/length form to work with the start/end form.
+     */
+    private static int compareUnsignedAdapter(byte[] a, int aoff, int alen,
+                                              byte[] b, int boff, int blen)
+        throws Throwable
+    {
+        return (int) cCompareUnsigned_3.invokeExact(a, aoff, aoff + alen, b, boff, boff + blen);
     }
 
     /**
