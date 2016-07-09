@@ -885,10 +885,9 @@ final class _LocalTransaction extends _Locker implements Transaction {
         if (undo == null) {
             undo = new _UndoLog(mDatabase, txnId());
 
-            // TODO: Optimize into one scopeEnter(n) call.
             ParentScope parentScope = mParentScope;
             while (parentScope != null) {
-                undo.scopeEnter();
+                undo.doScopeEnter();
                 parentScope = parentScope.mParentScope;
             }
 
