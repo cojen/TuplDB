@@ -801,7 +801,7 @@ final class LocalTransaction extends Locker implements Transaction {
     /**
      * Caller must hold commit lock if transaction id has not been assigned yet.
      */
-    final long txnId() throws IOException {
+    final long txnId() {
         long txnId = mTxnId;
         if (txnId == 0) {
             txnId = mDatabase.nextTransactionId();
