@@ -6,6 +6,8 @@ v1.3.3
 * Support temporary indexes.
 * Don't close in-use indexes during verification.
 * Redo decoder should be lenient if EOF is reached in the middle of an operation.
+* Rewrite CommitLock to stripe shared lock requests, improving concurrency.
+* Use Java 9 vectorized comparison method if available.
 
 v1.3.2 (2016-06-04)
 ------

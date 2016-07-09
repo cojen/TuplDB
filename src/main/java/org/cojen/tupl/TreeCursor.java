@@ -3440,7 +3440,7 @@ class TreeCursor extends AbstractCursor {
     @Override
     final void appendEntry(byte[] key, byte[] value) throws IOException {
         final CommitLock commitLock = mTree.mDatabase.commitLock();
-        commitLock.acquireShared();
+        commitLock.lock();
         try {
             final CursorFrame leaf = mLeaf;
             Node node = notSplitDirty(leaf);
@@ -3456,7 +3456,7 @@ class TreeCursor extends AbstractCursor {
         } catch (Throwable e) {
             throw handleException(e, false);
         } finally {
-            commitLock.releaseShared();
+            commitLock.unlock();
         }
     }
 
@@ -3465,7 +3465,7 @@ class TreeCursor extends AbstractCursor {
         TreeCursor scursor = (TreeCursor) source;
 
         final CommitLock commitLock = mTree.mDatabase.commitLock();
-        commitLock.acquireShared();
+        commitLock.lock();
         try {
             final CursorFrame tleaf = mLeaf;
             Node tnode = tleaf.acquireExclusive();
@@ -3517,7 +3517,7 @@ class TreeCursor extends AbstractCursor {
         } catch (Throwable e) {
             throw handleException(e, false);
         } finally {
-            commitLock.releaseShared();
+            commitLock.unlock();
         }
     }
 
