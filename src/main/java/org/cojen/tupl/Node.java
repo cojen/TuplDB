@@ -1374,6 +1374,78 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     /**
+     * Compares two keys within this node.
+     *
+     * @param leftLoc absolute location of left key
+     * @param rightLoc absolute location of right key
+     */
+    private int compareKeys(int leftLoc, int rightLoc) throws IOException {
+        final /*P*/ byte[] page = mPage;
+
+        int leftLen = p_byteGet(page, leftLoc++);
+        int rightLen = p_byteGet(page, rightLoc++);
+
+        c1: { // break out of this scope when both keys are in the page
+            c2: { // break out of this scope when the left key is in the page
+                if (leftLen >= 0) {
+                    // Left key is tiny... break out and examine the right key.
+                    leftLen++;
+                    break c2;
+                }
+
+                int leftHeader = leftLen;
+                leftLen = ((leftLen & 0x3f) << 8) | p_ubyteGet(page, leftLoc++);
+                if ((leftHeader & ENTRY_FRAGMENTED) == 0) {
+                    // Left key is medium... break out and examine the right key.
+                    break c2;
+                }
+
+                // Left key is fragmented...
+                // Note: An optimized version wouldn't need to copy the whole key.
+                byte[] leftKey = getDatabase().reconstructKey(page, leftLoc, leftLen);
+
+                if (rightLen >= 0) {
+                    // Left key is fragmented, and right key is tiny.
+                    rightLen++;
+                } else {
+                    int rightHeader = rightLen;
+                    rightLen = ((rightLen & 0x3f) << 8) | p_ubyteGet(page, rightLoc++);
+                    if ((rightHeader & ENTRY_FRAGMENTED) != 0) {
+                        // Right key is fragmented too.
+                        // Note: An optimized version wouldn't need to copy the whole key.
+                        byte[] rightKey = getDatabase().reconstructKey(page, rightLoc, rightLen);
+                        return compareUnsigned(leftKey, 0, leftKey.length,
+                                               rightKey, 0, rightKey.length);
+                    }
+                }
+
+                return -p_compareKeysPageToArray(page, rightLoc, rightLen,
+                                                 leftKey, 0, leftKey.length);
+            } // end c2
+
+            if (rightLen >= 0) {
+                // Left key is tiny/medium, right key is tiny, and both fit in the page.
+                rightLen++;
+                break c1;
+            }
+
+            int rightHeader = rightLen;
+            rightLen = ((rightLen & 0x3f) << 8) | p_ubyteGet(page, rightLoc++);
+            if ((rightHeader & ENTRY_FRAGMENTED) == 0) {
+                // Left key is tiny/medium, right key is medium, and both fit in the page.
+                break c1;
+            }
+
+            // Left key is tiny/medium, and right key is fragmented.
+            // Note: An optimized version wouldn't need to copy the whole key.
+            byte[] rightKey = getDatabase().reconstructKey(page, rightLoc, rightLen);
+            return p_compareKeysPageToArray(page, leftLoc, leftLen, rightKey, 0, rightKey.length);
+        } // end c1
+
+        return p_compareKeysPageToPage(page, leftLoc, leftLen, page, rightLoc, rightLen);
+    }
+
+    /**
      * @param pos position as provided by binarySearch; must be positive
      * @param stats [0]: full length, [1]: number of pages (>0 if fragmented)
      */
@@ -5256,6 +5328,66 @@ final class Node extends Latch implements DatabaseAccess {
         newNode.type((byte) (type() & ~LOW_EXTREMITY));
         type((byte) (type() & ~HIGH_EXTREMITY));
         return split;
+    }
+
+    /**
+     * Sorts all the entries in a leaf node by key, and deletes any duplicates. The choice of
+     * which duplicates are deleted is undefined.
+     */
+    void sortLeaf() throws IOException {
+        // First heapify, highest at the root.
+        final int len = searchVecEnd() + 2 - searchVecStart();
+        final int halfPos = (len >>> 1) & ~1;
+        for (int pos = halfPos; (pos -= 2) >= 0; ) {
+            siftDownLeaf(pos, len, halfPos);
+        }
+
+        // Now finish the sort, reversing the heap order.
+
+        final /*P*/ byte[] page = mPage;
+        final int start = searchVecStart();
+
+        for (int pos = len; (pos -= 2) >= 0; ) {
+            int highLoc = p_ushortGetLE(page, start);
+            p_shortPutLE(page, start, p_ushortGetLE(page, start + pos));
+            p_shortPutLE(page, start + pos, highLoc);
+            if (pos > 2) {
+                siftDownLeaf(0, pos, (pos >>> 1) & ~1);
+            }
+        }
+    }
+
+    /**
+     * @param pos two-based position in search vector
+     * @param endPos two-based exclusive end position in search vector
+     * @param halfPos (end >>> 1) & ~1
+     */
+    private void siftDownLeaf(int pos, int endPos, int halfPos) throws IOException {
+        final /*P*/ byte[] page = mPage;
+        final int start = searchVecStart();
+        final int loc = p_ushortGetLE(page, start + pos);
+
+        do {
+            int childPos = (pos << 1) + 2;
+            int childLoc = p_ushortGetLE(page, start + childPos);
+            int rightPos = childPos + 2;
+            if (rightPos < endPos) {
+                int rightLoc = p_ushortGetLE(page, start + rightPos);
+                int compare = compareKeys(childLoc, rightLoc);
+                if (compare < 0) { // FIXME: dups; use common pointer
+                    childPos = rightPos;
+                    childLoc = p_ushortGetLE(page, start + childPos);
+                }
+            }
+            int compare = compareKeys(loc, childLoc);
+            if (compare >= 0) { // FIXME: dups; use common pointer
+                break;
+            }
+            p_shortPutLE(page, start + pos, childLoc);
+            pos = childPos;
+        } while (pos < halfPos);
+
+        p_shortPutLE(page, start + pos, loc);
     }
 
     /**
