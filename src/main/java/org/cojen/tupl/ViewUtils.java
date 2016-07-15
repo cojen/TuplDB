@@ -24,6 +24,15 @@ import java.io.IOException;
  * @author Brian S O'Neill
  */
 class ViewUtils {
+    /**
+     * @throws IllegalStateException if object is null
+     */
+    static void positionCheck(Object obj) {
+        if (obj == null) {
+            throw new IllegalStateException("Cursor position is undefined");
+        }
+    }
+
     static long count(View view, boolean autoload, byte[] lowKey, byte[] highKey)
         throws IOException
     {

@@ -36,9 +36,7 @@ final class TempTreeCursor extends TreeCursor {
     @Override
     public final void store(byte[] value) throws IOException {
         byte[] key = mKey;
-        if (key == null) {
-            throw new IllegalStateException("Cursor position is undefined");
-        }
+        ViewUtils.positionCheck(key);
 
         try {
             final LocalTransaction txn = mTxn;
@@ -69,9 +67,7 @@ final class TempTreeCursor extends TreeCursor {
     @Override
     public final void commit(byte[] value) throws IOException {
         byte[] key = mKey;
-        if (key == null) {
-            throw new IllegalStateException("Cursor position is undefined");
-        }
+        ViewUtils.positionCheck(key);
 
         try {
             final LocalTransaction txn = mTxn;
