@@ -473,6 +473,7 @@ final class TransformedCursor implements Cursor {
             throw new IllegalStateException("Cursor position is undefined");
         }
         c.store(mTransformer.inverseTransformValue(tvalue, key, tkey));
+        mValue = tvalue;
     }
 
     @Override
@@ -487,6 +488,7 @@ final class TransformedCursor implements Cursor {
             throw new IllegalStateException("Cursor position is undefined");
         }
         c.commit(mTransformer.inverseTransformValue(tvalue, key, tkey));
+        mValue = tvalue;
     }
 
     /*
