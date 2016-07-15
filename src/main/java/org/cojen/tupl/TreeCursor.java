@@ -2473,9 +2473,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         throws IOException
     {
         byte[] key = mKey;
-        if (key == null) {
-            throw new IllegalStateException("Cursor position is undefined");
-        }
+        ViewUtils.positionCheck(key);
 
         LockResult result;
         Locker locker;
@@ -2531,9 +2529,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     @Override
     public void store(byte[] value) throws IOException {
         byte[] key = mKey;
-        if (key == null) {
-            throw new IllegalStateException("Cursor position is undefined");
-        }
+        ViewUtils.positionCheck(key);
 
         try {
             final LocalTransaction txn = mTxn;
@@ -2558,9 +2554,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     @Override
     public void commit(byte[] value) throws IOException {
         byte[] key = mKey;
-        if (key == null) {
-            throw new IllegalStateException("Cursor position is undefined");
-        }
+        ViewUtils.positionCheck(key);
 
         try {
             final LocalTransaction txn = mTxn;
@@ -3046,9 +3040,7 @@ class TreeCursor implements CauseCloseable, Cursor {
      * NOT_LOADED as a side-effect.
      */
     final void storeFragmented(byte[] value) throws IOException {
-        if (mKey == null) {
-            throw new IllegalStateException("Cursor position is undefined");
-        }
+        ViewUtils.positionCheck(mKey);
         if (value == null) {
             throw new IllegalArgumentException("Value is null");
         }
@@ -3842,9 +3834,7 @@ class TreeCursor implements CauseCloseable, Cursor {
      */
     private CursorFrame leaf() {
         CursorFrame leaf = mLeaf;
-        if (leaf == null) {
-            throw new IllegalStateException("Cursor position is undefined");
-        }
+        ViewUtils.positionCheck(leaf);
         return leaf;
     }
 
