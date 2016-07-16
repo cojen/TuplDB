@@ -1654,10 +1654,6 @@ final class _LocalDatabase extends AbstractDatabase {
             stats.cachedPages += usageList.size();
         }
 
-        if (!mPageDb.isDurable() && stats.totalPages == 0) {
-            stats.totalPages = stats.cachedPages;
-        }
-
         return stats;
     }
 
