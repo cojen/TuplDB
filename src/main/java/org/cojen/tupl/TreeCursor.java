@@ -3488,7 +3488,7 @@ class TreeCursor extends AbstractCursor {
                     // Prepare for next append.
                     tleaf.mNodePos += 2;
 
-                    snode.doDeleteLeafEntry(spos, encodedLen);
+                    snode.finishDeleteLeafEntry(spos, encodedLen);
                     snode.postDelete(spos, null);
                 } catch (Throwable e) {
                     snode.releaseExclusive();
