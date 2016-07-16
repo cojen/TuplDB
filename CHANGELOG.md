@@ -8,6 +8,7 @@ v1.3.3
 * Redo decoder should be lenient if EOF is reached in the middle of an operation.
 * Rewrite CommitLock to stripe shared lock requests, improving concurrency.
 * Use Java 9 vectorized comparison method if available.
+* Add full stats support for non-durable databases.
 
 v1.3.2 (2016-06-04)
 ------
