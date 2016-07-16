@@ -21,6 +21,9 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.BitSet;
 
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
+
 import static org.cojen.tupl.PageOps.*;
 
 /**
@@ -33,7 +36,8 @@ final class NonPageDb extends PageDb {
     private final int mPageSize;
     private final PageCache mCache;
 
-    private long mAllocId;
+    private final AtomicLong mAllocId;
+    private final LongAdder mFreePageCount;
 
     /**
      * @param cache optional
@@ -42,7 +46,8 @@ final class NonPageDb extends PageDb {
         mPageSize = pageSize;
         mCache = cache;
         // Next assigned id is 2, the first legal identifier.
-        mAllocId = 1;
+        mAllocId = new AtomicLong(1);
+        mFreePageCount = new LongAdder();
     }
 
     @Override
@@ -66,6 +71,7 @@ final class NonPageDb extends PageDb {
         if (nodeId < 0) {
             // Recycle the id.
             nodeId = -nodeId;
+            mFreePageCount.decrement();
         } else {
             nodeId = allocPage();
         }
@@ -101,7 +107,10 @@ final class NonPageDb extends PageDb {
 
     @Override
     public Stats stats() {
-        return new Stats();
+        Stats stats = new Stats();
+        stats.freePages = Math.max(0, mFreePageCount.sum());
+        stats.totalPages = Math.max(stats.freePages, mAllocId.get());
+        return stats;
     }
 
     @Override
@@ -118,14 +127,14 @@ final class NonPageDb extends PageDb {
     }
 
     @Override
-    public synchronized long allocPage() throws IOException {
+    public long allocPage() throws IOException {
         // Cached nodes and fragmented values always require unique identifiers.
-        long id = mAllocId + 1;
+        long id = mAllocId.incrementAndGet();
         if (id > 0x0000_ffff_ffff_ffffL) {
             // Identifier is limited to 48-bit range.
+            mAllocId.decrementAndGet();
             throw new DatabaseFullException();
         }
-        mAllocId = id;
         return id;
     }
 
@@ -162,11 +171,12 @@ final class NonPageDb extends PageDb {
     @Override
     public void deletePage(long id) throws IOException {
         uncachePage(id);
+        mFreePageCount.increment();
     }
 
     @Override
     public void recyclePage(long id) throws IOException {
-        uncachePage(id);
+        deletePage(id);
     }
 
     @Override
