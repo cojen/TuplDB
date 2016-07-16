@@ -59,9 +59,6 @@ class Tree implements View, Index {
     // object when the tree root changes.
     final Node mRoot;
 
-    final int mMaxKeySize;
-    final int mMaxEntrySize;
-
     Tree(LocalDatabase db, long id, byte[] idBytes, byte[] name, Node root) {
         mDatabase = db;
         mLockManager = db.mLockManager;
@@ -69,15 +66,6 @@ class Tree implements View, Index {
         mIdBytes = idBytes;
         mName = name;
         mRoot = root;
-
-        int pageSize = db.pageSize();
-
-        // Key size is limited to ensure that internal nodes can hold at least two keys.
-        // Absolute maximum is dictated by key encoding, as described in Node class.
-        mMaxKeySize = Math.min(16383, (pageSize >> 1) - 22);
-
-        // Limit maximum non-fragmented entry size to 0.75 of usable node size.
-        mMaxEntrySize = ((pageSize - Node.TN_HEADER_SIZE) * 3) >> 2;
     }
 
     final int pageSize() {
@@ -1096,10 +1084,6 @@ class Tree implements View, Index {
      */
     final boolean markDirty(Node node) throws IOException {
         return mDatabase.markDirty(this, node);
-    }
-
-    final byte[] fragmentKey(byte[] key) throws IOException {
-        return mDatabase.fragment(key, key.length, mMaxKeySize);
     }
 
     private class Primer {

@@ -1930,12 +1930,14 @@ final class Node extends Latch implements DatabaseAccess {
     void insertLeafEntry(CursorFrame frame, Tree tree, int pos, byte[] okey, byte[] value)
         throws IOException
     {
+        final LocalDatabase db = tree.mDatabase;
+
         byte[] akey = okey;
-        int encodedKeyLen = calculateAllowedKeyLength(tree, okey);
+        int encodedKeyLen = calculateAllowedKeyLength(db, okey);
 
         if (encodedKeyLen < 0) {
             // Key must be fragmented.
-            akey = tree.fragmentKey(okey);
+            akey = db.fragmentKey(okey);
             encodedKeyLen = 2 + akey.length;
         }
 
@@ -1943,10 +1945,9 @@ final class Node extends Latch implements DatabaseAccess {
             int encodedLen = encodedKeyLen + calculateLeafValueLength(value);
 
             int vfrag;
-            if (encodedLen <= tree.mMaxEntrySize) {
+            if (encodedLen <= db.mMaxEntrySize) {
                 vfrag = 0;
             } else {
-                LocalDatabase db = tree.mDatabase;
                 value = db.fragment(value, value.length,
                                     db.mMaxFragmentedEntrySize - encodedKeyLen);
                 if (value == null) {
@@ -1986,12 +1987,14 @@ final class Node extends Latch implements DatabaseAccess {
     void insertBlankLeafEntry(CursorFrame frame, Tree tree, int pos, byte[] okey, long vlength)
         throws IOException
     {
+        final LocalDatabase db = tree.mDatabase;
+
         byte[] akey = okey;
-        int encodedKeyLen = calculateAllowedKeyLength(tree, okey);
+        int encodedKeyLen = calculateAllowedKeyLength(db, okey);
 
         if (encodedKeyLen < 0) {
             // Key must be fragmented.
-            akey = tree.fragmentKey(okey);
+            akey = db.fragmentKey(okey);
             encodedKeyLen = 2 + akey.length;
         }
 
@@ -2001,12 +2004,11 @@ final class Node extends Latch implements DatabaseAccess {
 
             int vfrag;
             byte[] value;
-            if (longEncodedLen <= tree.mMaxEntrySize) {
+            if (longEncodedLen <= db.mMaxEntrySize) {
                 vfrag = 0;
                 value = new byte[(int) vlength];
                 encodedLen = (int) longEncodedLen;
             } else {
-                LocalDatabase db = tree.mDatabase;
                 value = db.fragment(null, vlength, db.mMaxFragmentedEntrySize - encodedKeyLen);
                 if (value == null) {
                     throw new AssertionError();
@@ -2046,12 +2048,14 @@ final class Node extends Latch implements DatabaseAccess {
                                    Tree tree, int pos, byte[] okey, byte[] value)
         throws IOException
     {
+        final LocalDatabase db = tree.mDatabase;
+
         byte[] akey = okey;
-        int encodedKeyLen = calculateAllowedKeyLength(tree, okey);
+        int encodedKeyLen = calculateAllowedKeyLength(db, okey);
 
         if (encodedKeyLen < 0) {
             // Key must be fragmented.
-            akey = tree.fragmentKey(okey);
+            akey = db.fragmentKey(okey);
             encodedKeyLen = 2 + akey.length;
         }
 
@@ -2337,7 +2341,7 @@ final class Node extends Latch implements DatabaseAccess {
                     int highPos = lastSearchVecLoc - searchVecStart();
                     newKey = midKey(highPos - 2, this, highPos);
                     // Only attempt rebalance if new key doesn't need to be fragmented.
-                    newKeyLen = calculateAllowedKeyLength(tree, newKey);
+                    newKeyLen = calculateAllowedKeyLength(tree.mDatabase, newKey);
                     if (newKeyLen > 0) {
                         parentPage = parent.mPage;
                         parentKeyLoc = p_ushortGetLE
@@ -2534,7 +2538,7 @@ final class Node extends Latch implements DatabaseAccess {
                     int highPos = firstSearchVecLoc - searchVecStart();
                     newKey = midKey(highPos - 2, this, highPos);
                     // Only attempt rebalance if new key doesn't need to be fragmented.
-                    newKeyLen = calculateAllowedKeyLength(tree, newKey);
+                    newKeyLen = calculateAllowedKeyLength(tree.mDatabase, newKey);
                     if (newKeyLen > 0) {
                         parentPage = parent.mPage;
                         parentKeyLoc = p_ushortGetLE
@@ -3414,9 +3418,9 @@ final class Node extends Latch implements DatabaseAccess {
         if (vfrag != 0) {
             encodedLen = keyLen + calculateFragmentedValueLength(value);
         } else {
+            LocalDatabase db = tree.mDatabase;
             encodedLen = keyLen + calculateLeafValueLength(value);
-            if (encodedLen > tree.mMaxEntrySize) {
-                LocalDatabase db = tree.mDatabase;
+            if (encodedLen > db.mMaxEntrySize) {
                 value = db.fragment(value, value.length, db.mMaxFragmentedEntrySize - keyLen);
                 if (value == null) {
                     throw new AssertionError();
@@ -4035,14 +4039,14 @@ final class Node extends Latch implements DatabaseAccess {
      * Calculate encoded key length, including header. Returns -1 if key is too large and must
      * be fragmented.
      */
-    private static int calculateAllowedKeyLength(Tree tree, byte[] key) {
+    private static int calculateAllowedKeyLength(LocalDatabase db, byte[] key) {
         int len = key.length - 1;
         if ((len & ~(SMALL_KEY_LIMIT - 1)) == 0) {
             // Always safe because minimum node size is 512 bytes.
             return len + 2;
         } else {
             len++;
-            return len > tree.mMaxKeySize ? -1 : len + 2;
+            return len > db.mMaxKeySize ? -1 : len + 2;
         }
     }
 
@@ -5026,9 +5030,10 @@ final class Node extends Latch implements DatabaseAccess {
     private void setSplitKey(Tree tree, Split split, byte[] fullKey) throws IOException {
         byte[] actualKey = fullKey;
 
-        if (calculateAllowedKeyLength(tree, fullKey) < 0) {
+        LocalDatabase db = tree.mDatabase;
+        if (calculateAllowedKeyLength(db, fullKey) < 0) {
             // Key must be fragmented.
-            actualKey = tree.fragmentKey(fullKey);
+            actualKey = db.fragmentKey(fullKey);
         }
 
         split.setKey(fullKey, actualKey);
