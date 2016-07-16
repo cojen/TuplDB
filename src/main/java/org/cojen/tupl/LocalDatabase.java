@@ -3317,10 +3317,14 @@ final class LocalDatabase extends AbstractDatabase {
             nodeMapRemove(node, Long.hashCode(id));
 
             try {
-                if (canRecycle) {
-                    deletePage(id, node.mCachedState);
-                } else if (id != 0) {
-                    mPageDb.deletePage(id);
+                if (id != 0) {
+                    if (canRecycle && node.mCachedState == mCommitState) {
+                        // Newly reserved page was never used, so recycle it.
+                        mPageDb.recyclePage(id);
+                    } else {
+                        // Old data must survive until after checkpoint.
+                        mPageDb.deletePage(id);
+                    }
                 }
             } catch (Throwable e) {
                 // Try to undo things.
@@ -3346,21 +3350,6 @@ final class LocalDatabase extends AbstractDatabase {
 
         // Always releases the node latch.
         node.unused();
-    }
-
-    /**
-     * Caller must hold commit lock.
-     */
-    void deletePage(long id, int cachedState) throws IOException {
-        if (id != 0) {
-            if (cachedState == mCommitState) {
-                // Newly reserved page was never used, so recycle it.
-                mPageDb.recyclePage(id);
-            } else {
-                // Old data must survive until after checkpoint.
-                mPageDb.deletePage(id);
-            }
-        }
     }
 
     /**
