@@ -191,6 +191,8 @@ final class LocalDatabase extends AbstractDatabase {
     private final Node[] mNodeMapTable;
     private final Latch[] mNodeMapLatches;
 
+    final int mMaxKeySize;
+    final int mMaxEntrySize;
     final int mMaxFragmentedEntrySize;
 
     // Fragmented values which are transactionally deleted go here.
@@ -605,6 +607,13 @@ final class LocalDatabase extends AbstractDatabase {
                     mFragmentedTrash = new FragmentedTrash(tree);
                 }
             }
+
+            // Key size is limited to ensure that internal nodes can hold at least two keys.
+            // Absolute maximum is dictated by key encoding, as described in Node class.
+            mMaxKeySize = Math.min(16383, (pageSize >> 1) - 22);
+
+            // Limit maximum non-fragmented entry size to 0.75 of usable node size.
+            mMaxEntrySize = ((pageSize - Node.TN_HEADER_SIZE) * 3) >> 2;
 
             // Limit maximum fragmented entry size to guarantee that 2 entries fit. Each also
             // requires 2 bytes for pointer and up to 3 bytes for value length field.
@@ -3346,6 +3355,10 @@ final class LocalDatabase extends AbstractDatabase {
 
         // Always releases the node latch.
         node.unused();
+    }
+
+    final byte[] fragmentKey(byte[] key) throws IOException {
+        return fragment(key, key.length, mMaxKeySize);
     }
 
     /**
