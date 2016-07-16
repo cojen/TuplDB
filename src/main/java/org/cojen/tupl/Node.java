@@ -3734,27 +3734,28 @@ final class Node extends Latch implements DatabaseAccess {
      * @param pos position as provided by binarySearch; must be positive
      */
     void deleteLeafEntry(int pos) throws IOException {
-        final /*P*/ byte[] page = mPage;
+        /*P*/ byte[] page = mPage;
+        int entryLoc = p_ushortGetLE(page, searchVecStart() + pos);
+        finishDeleteLeafEntry(pos, doDeleteLeafEntry(page, entryLoc) - entryLoc);
+    }
 
-        int searchVecStart = searchVecStart();
-        final int entryLoc = p_ushortGetLE(page, searchVecStart + pos);
-
+    /**
+     * @param loc start location in page
+     * @return location just after end of cleared entry
+     */
+    private int doDeleteLeafEntry(/*P*/ byte[] page, int loc) throws IOException {
         // Note: Similar to leafEntryLengthAtLoc and retrieveLeafValueAtLoc.
 
-        int loc = entryLoc;
-
-        {
-            int keyLen = p_byteGet(page, loc++);
-            if (keyLen >= 0) {
-                loc += keyLen + 1;
-            } else {
-                int header = keyLen;
-                keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++);
-                if ((header & ENTRY_FRAGMENTED) != 0) {
-                    getDatabase().deleteFragments(page, loc, keyLen);
-                }
-                loc += keyLen;
+        int keyLen = p_byteGet(page, loc++);
+        if (keyLen >= 0) {
+            loc += keyLen + 1;
+        } else {
+            int header = keyLen;
+            keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++);
+            if ((header & ENTRY_FRAGMENTED) != 0) {
+                getDatabase().deleteFragments(page, loc, keyLen);
             }
+            loc += keyLen;
         }
 
         int header = p_byteGet(page, loc++);
@@ -3777,10 +3778,13 @@ final class Node extends Latch implements DatabaseAccess {
             loc += len;
         }
 
-        doDeleteLeafEntry(pos, loc - entryLoc);
+        return loc;
     }
 
-    void doDeleteLeafEntry(int pos, int entryLen) {
+    /**
+     * Finish the delete by updating garbage size and adjusting search vector.
+     */
+    void finishDeleteLeafEntry(int pos, int entryLen) {
         // Increment garbage by the size of the encoded entry.
         garbage(garbage() + entryLen);
 
@@ -5331,12 +5335,17 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     /**
-     * Sorts all the entries in a leaf node by key, and deletes any duplicates. The choice of
-     * which duplicates are deleted is undefined.
+     * Sorts all the entries in a leaf node by key, and deletes any duplicates. The duplicate
+     * at the highest node location is kept.
      */
     void sortLeaf() throws IOException {
-        // First heapify, highest at the root.
         final int len = searchVecEnd() + 2 - searchVecStart();
+        if (len <= 2) { // two-based length; actual length is half
+            return;
+        }
+
+        // First heapify, highest at the root.
+
         final int halfPos = (len >>> 1) & ~1;
         for (int pos = halfPos; (pos -= 2) >= 0; ) {
             siftDownLeaf(pos, len, halfPos);
@@ -5347,25 +5356,34 @@ final class Node extends Latch implements DatabaseAccess {
         final /*P*/ byte[] page = mPage;
         final int start = searchVecStart();
 
-        for (int pos = len; (pos -= 2) >= 0; ) {
+        int lastHighLoc = -1;
+        int vecPos = start + len;
+        int pos = len - 2;
+        do {
             int highLoc = p_ushortGetLE(page, start);
             p_shortPutLE(page, start, p_ushortGetLE(page, start + pos));
-            p_shortPutLE(page, start + pos, highLoc);
+            if (highLoc != lastHighLoc) {
+                // Add a non-duplicated pointer.
+                p_shortPutLE(page, vecPos -= 2, highLoc);
+                lastHighLoc = highLoc;
+            }
             if (pos > 2) {
                 siftDownLeaf(0, pos, (pos >>> 1) & ~1);
             }
-        }
+        } while ((pos -= 2) >= 0);
+
+        searchVecStart(vecPos);
     }
 
     /**
      * @param pos two-based position in search vector
      * @param endPos two-based exclusive end position in search vector
-     * @param halfPos (end >>> 1) & ~1
+     * @param halfPos (endPos >>> 1) & ~1
      */
     private void siftDownLeaf(int pos, int endPos, int halfPos) throws IOException {
         final /*P*/ byte[] page = mPage;
         final int start = searchVecStart();
-        final int loc = p_ushortGetLE(page, start + pos);
+        int loc = p_ushortGetLE(page, start + pos);
 
         do {
             int childPos = (pos << 1) + 2;
@@ -5374,20 +5392,53 @@ final class Node extends Latch implements DatabaseAccess {
             if (rightPos < endPos) {
                 int rightLoc = p_ushortGetLE(page, start + rightPos);
                 int compare = compareKeys(childLoc, rightLoc);
-                if (compare < 0) { // FIXME: dups; use common pointer
+                if (compare < 0) {
                     childPos = rightPos;
                     childLoc = p_ushortGetLE(page, start + childPos);
+                } else if (compare == 0) {
+                    // Found a duplicate key. Use a common pointer, favoring the higher one.
+                    if (childLoc < rightLoc) {
+                        deleteDuplicateLeafEntry(page, childLoc);
+                        childLoc = rightLoc;
+                        p_shortPutLE(page, start + childPos, childLoc);
+                    } else if (childLoc > rightLoc) {
+                        deleteDuplicateLeafEntry(page, rightLoc);
+                        p_shortPutLE(page, start + rightPos, childLoc);
+                    }
                 }
             }
             int compare = compareKeys(loc, childLoc);
-            if (compare >= 0) { // FIXME: dups; use common pointer
+            if (compare < 0) {
+                p_shortPutLE(page, start + pos, childLoc);
+                pos = childPos;
+            } else {
+                if (compare == 0) {
+                    // Found a duplicate key. Use a common pointer, favoring the higher one.
+                    if (loc < childLoc) {
+                        deleteDuplicateLeafEntry(page, loc);
+                        loc = childLoc;
+                    } else if (loc > childLoc) {
+                        deleteDuplicateLeafEntry(page, childLoc);
+                        p_shortPutLE(page, start + childPos, loc);
+                    }
+                }
                 break;
             }
-            p_shortPutLE(page, start + pos, childLoc);
-            pos = childPos;
         } while (pos < halfPos);
 
         p_shortPutLE(page, start + pos, loc);
+    }
+
+    private void deleteDuplicateLeafEntry(/*P*/ byte[] page, int loc) throws IOException {
+        int entryLen = doDeleteLeafEntry(page, loc) - loc;
+
+        // Increment garbage by the size of the encoded entry.
+        garbage(garbage() + entryLen);
+
+        // Encode an empty key and a ghost value, to faciliate cleanup when an exception
+        // occurs. This ensures that cleanup won't double-delete fragmented keys or values.
+        p_shortPutLE(page, loc, 0x8000); // encoding for an empty key
+        p_bytePut(page, loc + 2, -1); // encoding for a ghost value
     }
 
     /**
