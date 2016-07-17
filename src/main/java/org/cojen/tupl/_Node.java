@@ -332,6 +332,24 @@ final class _Node extends Latch implements _DatabaseAccess {
     }
 
     /**
+     * Prepares the node for appending entries out-of-order, and then sorting them.
+     *
+     * @see appendToSortLeaf
+     */
+    void asSortLeaf() {
+        type(TYPE_TN_LEAF);
+        garbage(0);
+        leftSegTail(TN_HEADER_SIZE);
+        int pageSize = pageSize(mPage);
+        rightSegTail(pageSize - 1);
+        // Position search vector on the left side, but appendToSortLeaf will move it to the
+        // right. It's not safe to position an empty search vector on the right side, because
+        // the inclusive start position would wrap around for the largest page size.
+        searchVecStart(TN_HEADER_SIZE);
+        searchVecEnd(TN_HEADER_SIZE - 2); // inclusive
+    }
+
+    /**
      * Close the root node when closing a tree.
      */
     void closeRoot() {
@@ -5339,9 +5357,99 @@ final class _Node extends Latch implements _DatabaseAccess {
         return split;
     }
 
+    @FunctionalInterface
+    static interface Supplier {
+        /**
+         * @param prev full node
+         * @return next node, properly initialized
+         */
+        _Node next(_Node prev) throws IOException;
+    }
+
     /**
-     * Sorts all the entries in a leaf node by key, and deletes any duplicates. The duplicate
-     * at the highest node location is kept.
+     * Appends an entry to a node, in no particular order. _Node must have been originally
+     * initialized with the asSortLeaf method. Call sortLeaf to sort the entries by key and
+     * delete any duplicates. The duplicates added last are kept.
+     *
+     * <p>If this node is full, the given supplier is called. It must supply a node which was
+     * properly initialized for receiving appended entries.
+     *
+     * @param node node to append to
+     * @param okey original key
+     * @return given node, or the next node from the supplier
+     */
+    static _Node appendToSortLeaf(_Node node, _LocalDatabase db,
+                                 byte[] okey, byte[] value, Supplier supplier)
+        throws IOException
+    {
+        byte[] akey = okey;
+        int encodedKeyLen = calculateAllowedKeyLength(db, okey);
+
+        if (encodedKeyLen < 0) {
+            // Key must be fragmented.
+            akey = db.fragmentKey(okey);
+            encodedKeyLen = 2 + akey.length;
+        }
+
+        try {
+            int encodedLen = encodedKeyLen + calculateLeafValueLength(value);
+
+            int vfrag;
+            if (encodedLen <= db.mMaxEntrySize) {
+                vfrag = 0;
+            } else {
+                value = db.fragment(value, value.length,
+                                    db.mMaxFragmentedEntrySize - encodedKeyLen);
+                if (value == null) {
+                    throw new AssertionError();
+                }
+                encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
+                vfrag = ENTRY_FRAGMENTED;
+            }
+
+            try {
+                while (true) {
+                    long page = node.mPage;
+                    int tail = node.leftSegTail();
+
+                    int start;
+                    if (tail == TN_HEADER_SIZE) {
+                        // Freshly initialized node.
+                        start = node.pageSize(page) - 2;
+                        node.searchVecEnd(start);
+                    } else {
+                        start = node.searchVecStart() - 2;
+                        if (encodedLen > (start - tail)) {
+                            // Entry doesn't fit, so get another node.
+                            node = supplier.next(node);
+                            continue;
+                        }
+                    }
+
+                    node.copyToLeafEntry(okey, akey, vfrag, value, tail);
+                    node.leftSegTail(tail + encodedLen);
+
+                    p_shortPutLE(page, start, tail);
+                    node.searchVecStart(start);
+                    return node;
+                }
+            } catch (Throwable e) {
+                if (vfrag == ENTRY_FRAGMENTED) {
+                    node.cleanupFragments(e, value);
+                }
+                throw e;
+            }
+        } catch (Throwable e) {
+            if (okey != akey) {
+                node.cleanupFragments(e, akey);
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * Sorts all the entries in a leaf node by key, and deletes any duplicates. The duplicates
+     * at the highest node locations are kept.
      */
     void sortLeaf() throws IOException {
         final int len = searchVecEnd() + 2 - searchVecStart();
