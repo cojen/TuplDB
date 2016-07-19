@@ -184,6 +184,7 @@ final class CommitLock implements Lock {
                 nanosTimeout <<= 1;
             }
         } catch (Throwable e) {
+            mExclusiveThread = null;
             mExclusiveLatch.releaseExclusive();
             throw e;
         }
@@ -213,7 +214,6 @@ final class CommitLock implements Lock {
                 }
 
                 if (Thread.interrupted()) {
-                    mExclusiveThread = null;
                     throw new InterruptedIOException();
                 }
 
