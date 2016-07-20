@@ -37,10 +37,13 @@ import org.cojen.tupl.util.Latch;
  * @author Brian S O'Neill
  */
 final class CommitLock implements Lock {
-    private final LongAdder mSharedCount = new LongAdder();
+    // See: "Using LongAdder to make a Reader-Writer Lock" by Concurrency Freaks, and also
+    // "NUMA-Aware Reader Writer Locks".
+
+    private final LongAdder mSharedAcquire = new LongAdder();
+    private final LongAdder mSharedRelease = new LongAdder();
 
     private final Latch mExclusiveLatch = new Latch();
-    private final Latch mSharedLatch = new Latch();
 
     private volatile Thread mExclusiveThread;
 
@@ -69,18 +72,13 @@ final class CommitLock implements Lock {
      */
     @Override
     public boolean tryLock() {
-        return tryLock(reentrant());
-    }
-
-    private boolean tryLock(Reentrant reentrant) {
-        mSharedCount.increment();
-
-        if (mExclusiveThread != null && reentrant.count <= 0) {
-            doReleaseShared();
-            return false;
-        } else {
+        Reentrant reentrant = reentrant();
+        if (mExclusiveThread == null || reentrant.count > 0) {
+            mSharedAcquire.increment();
             reentrant.count++;
             return true;
+        } else {
+            return false;
         }
     }
 
@@ -89,12 +87,12 @@ final class CommitLock implements Lock {
      */
     @Override
     public void lock() {
-        mSharedCount.increment();
         Reentrant reentrant = reentrant();
-        if (mExclusiveThread != null && reentrant.count <= 0) {
-            doReleaseShared();
+        if (mExclusiveThread == null || reentrant.count > 0) {
+            mSharedAcquire.increment();
+        } else {
             mExclusiveLatch.acquireShared();
-            mSharedCount.increment();
+            mSharedAcquire.increment();
             mExclusiveLatch.releaseShared();
         }
         reentrant.count++;
@@ -105,12 +103,12 @@ final class CommitLock implements Lock {
      */
     @Override
     public void lockInterruptibly() throws InterruptedException {
-        mSharedCount.increment();
         Reentrant reentrant = reentrant();
-        if (mExclusiveThread != null && reentrant.count <= 0) {
-            doReleaseShared();
+        if (mExclusiveThread == null || reentrant.count > 0) {
+            mSharedAcquire.increment();
+        } else {
             mExclusiveLatch.acquireSharedInterruptibly();
-            mSharedCount.increment();
+            mSharedAcquire.increment();
             mExclusiveLatch.releaseShared();
         }
         reentrant.count++;
@@ -121,16 +119,16 @@ final class CommitLock implements Lock {
      */
     @Override
     public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
-        mSharedCount.increment();
         Reentrant reentrant = reentrant();
-        if (mExclusiveThread != null && reentrant.count <= 0) {
-            doReleaseShared();
+        if (mExclusiveThread == null || reentrant.count > 0) {
+            mSharedAcquire.increment();
+        } else {
             if (time < 0) {
                 mExclusiveLatch.acquireShared();
             } else if (time == 0 || !mExclusiveLatch.tryAcquireSharedNanos(unit.toNanos(time))) {
                 return false;
             }
-            mSharedCount.increment();
+            mSharedAcquire.increment();
             mExclusiveLatch.releaseShared();
         }
         reentrant.count++;
@@ -143,19 +141,10 @@ final class CommitLock implements Lock {
     @Override
     public void unlock() {
         reentrant().count--;
-        doReleaseShared();
-    }
-
-    private void doReleaseShared() {
-        mSharedCount.decrement();
-
-        if (mExclusiveThread != null) {
-            mSharedLatch.acquireShared();
-            Thread t = mExclusiveThread;
-            if (t != null && mSharedCount.sum() == 0) {
-                LockSupport.unpark(t);
-            }
-            mSharedLatch.releaseShared();
+        mSharedRelease.increment();
+        Thread t = mExclusiveThread;
+        if (t != null && !hasSharedLockers()) {
+            LockSupport.unpark(t);
         }
     }
 
@@ -191,19 +180,12 @@ final class CommitLock implements Lock {
     }
 
     private boolean finishAcquireExclusive(long nanosTimeout) throws InterruptedIOException {
-        // Prepare to wait for shared locks to be released, using a second latch. This also
-        // handles race conditions when negative shared counts are observed. The thread which
-        // caused a negative count to be observed did so when releasing a shared lock. The
-        // thread will acquire the shared latch and check the count again.
-        mSharedLatch.acquireExclusive();
-
         // Signal that shared locks cannot be granted anymore.
         mExclusiveThread = Thread.currentThread();
 
-        if (mSharedCount.sum() != 0) {
+        if (hasSharedLockers()) {
             // Wait for shared locks to be released.
 
-            mSharedLatch.releaseExclusive();
             long nanosEnd = nanosTimeout <= 0 ? 0 : System.nanoTime() + nanosTimeout;
 
             while (true) {
@@ -217,13 +199,9 @@ final class CommitLock implements Lock {
                     throw new InterruptedIOException();
                 }
 
-                mSharedLatch.acquireExclusive();
-
-                if (mSharedCount.sum() == 0) {
+                if (!hasSharedLockers()) {
                     break;
                 }
-
-                mSharedLatch.releaseExclusive();
 
                 if (nanosTimeout >= 0 &&
                     (nanosTimeout == 0 || (nanosTimeout = nanosEnd - System.nanoTime()) <= 0))
@@ -234,7 +212,6 @@ final class CommitLock implements Lock {
             }
         }
 
-        mSharedLatch.releaseExclusive();
         reentrant().count++;
         return true;
     }
@@ -249,9 +226,8 @@ final class CommitLock implements Lock {
         return mExclusiveLatch.hasQueuedThreads();
     }
 
-    @Override
-    public String toString() {
-        return mSharedCount + ", " + mExclusiveLatch + ", " + mSharedLatch + ", " +
-            mExclusiveThread;
+    private boolean hasSharedLockers() {
+        // Ordering is important here. It prevents observing a release too soon.
+        return mSharedRelease.sum() != mSharedAcquire.sum();
     }
 }
