@@ -92,8 +92,11 @@ final class CommitLock implements Lock {
             mSharedAcquire.increment();
         } else {
             mExclusiveLatch.acquireShared();
-            mSharedAcquire.increment();
-            mExclusiveLatch.releaseShared();
+            try {
+                mSharedAcquire.increment();
+            } finally {
+                mExclusiveLatch.releaseShared();
+            }
         }
         reentrant.count++;
     }
@@ -108,8 +111,11 @@ final class CommitLock implements Lock {
             mSharedAcquire.increment();
         } else {
             mExclusiveLatch.acquireSharedInterruptibly();
-            mSharedAcquire.increment();
-            mExclusiveLatch.releaseShared();
+            try {
+                mSharedAcquire.increment();
+            } finally {
+                mExclusiveLatch.releaseShared();
+            }
         }
         reentrant.count++;
     }
@@ -128,8 +134,11 @@ final class CommitLock implements Lock {
             } else if (time == 0 || !mExclusiveLatch.tryAcquireSharedNanos(unit.toNanos(time))) {
                 return false;
             }
-            mSharedAcquire.increment();
-            mExclusiveLatch.releaseShared();
+            try {
+                mSharedAcquire.increment();
+            } finally {
+                mExclusiveLatch.releaseShared();
+            }
         }
         reentrant.count++;
         return true;
@@ -140,12 +149,12 @@ final class CommitLock implements Lock {
      */
     @Override
     public void unlock() {
-        reentrant().count--;
         mSharedRelease.increment();
         Thread t = mExclusiveThread;
         if (t != null && !hasSharedLockers()) {
             LockSupport.unpark(t);
         }
+        reentrant().count--;
     }
 
     @Override
@@ -217,9 +226,9 @@ final class CommitLock implements Lock {
     }
 
     void releaseExclusive() {
-        reentrant().count--;
         mExclusiveThread = null;
         mExclusiveLatch.releaseExclusive();
+        reentrant().count--;
     }
 
     boolean hasQueuedThreads() {
