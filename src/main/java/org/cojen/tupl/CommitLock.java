@@ -43,7 +43,7 @@ final class CommitLock implements Lock {
     private final LongAdder mSharedAcquire = new LongAdder();
     private final LongAdder mSharedRelease = new LongAdder();
 
-    private final Latch mExclusiveLatch = new Latch();
+    private final Latch mFullLatch = new Latch();
 
     private volatile Thread mExclusiveThread;
 
@@ -91,11 +91,11 @@ final class CommitLock implements Lock {
         if (mExclusiveThread == null || reentrant.count > 0) {
             mSharedAcquire.increment();
         } else {
-            mExclusiveLatch.acquireShared();
+            mFullLatch.acquireShared();
             try {
                 mSharedAcquire.increment();
             } finally {
-                mExclusiveLatch.releaseShared();
+                mFullLatch.releaseShared();
             }
         }
         reentrant.count++;
@@ -110,11 +110,11 @@ final class CommitLock implements Lock {
         if (mExclusiveThread == null || reentrant.count > 0) {
             mSharedAcquire.increment();
         } else {
-            mExclusiveLatch.acquireSharedInterruptibly();
+            mFullLatch.acquireSharedInterruptibly();
             try {
                 mSharedAcquire.increment();
             } finally {
-                mExclusiveLatch.releaseShared();
+                mFullLatch.releaseShared();
             }
         }
         reentrant.count++;
@@ -130,14 +130,14 @@ final class CommitLock implements Lock {
             mSharedAcquire.increment();
         } else {
             if (time < 0) {
-                mExclusiveLatch.acquireShared();
-            } else if (time == 0 || !mExclusiveLatch.tryAcquireSharedNanos(unit.toNanos(time))) {
+                mFullLatch.acquireShared();
+            } else if (time == 0 || !mFullLatch.tryAcquireSharedNanos(unit.toNanos(time))) {
                 return false;
             }
             try {
                 mSharedAcquire.increment();
             } finally {
-                mExclusiveLatch.releaseShared();
+                mFullLatch.releaseShared();
             }
         }
         reentrant.count++;
@@ -163,76 +163,76 @@ final class CommitLock implements Lock {
     }
 
     void acquireExclusive() throws InterruptedIOException {
-        // Only one thread can obtain exclusive lock.
-        try {
-            mExclusiveLatch.acquireExclusiveInterruptibly();
-        } catch (InterruptedException e) {
-            throw new InterruptedIOException();
-        }
-
         // If full exclusive lock cannot be immediately obtained, it's due to a shared lock
         // being held for a long time. While waiting for the exclusive lock, all other shared
         // requests are queued. By waiting a timed amount and giving up, the exclusive lock
         // request is effectively de-prioritized. For each retry, the timeout is doubled, to
         // ensure that the exclusive request is not starved.
 
-        try {
-            long nanosTimeout = 1000; // 1 microsecond
-            while (!finishAcquireExclusive(nanosTimeout)) {
-                nanosTimeout <<= 1;
-            }
-        } catch (Throwable e) {
-            mExclusiveThread = null;
-            mExclusiveLatch.releaseExclusive();
-            throw e;
+        long nanosTimeout = 1000; // 1 microsecond
+        while (!finishAcquireExclusive(nanosTimeout)) {
+            nanosTimeout <<= 1;
         }
     }
 
     private boolean finishAcquireExclusive(long nanosTimeout) throws InterruptedIOException {
+        try {
+            mFullLatch.acquireExclusiveInterruptibly();
+        } catch (InterruptedException e) {
+            throw new InterruptedIOException();
+        }
+
         // Signal that shared locks cannot be granted anymore.
         mExclusiveThread = Thread.currentThread();
 
-        if (hasSharedLockers()) {
-            // Wait for shared locks to be released.
+        try {
+            if (hasSharedLockers()) {
+                // Wait for shared locks to be released.
 
-            long nanosEnd = nanosTimeout <= 0 ? 0 : System.nanoTime() + nanosTimeout;
+                long nanosEnd = nanosTimeout <= 0 ? 0 : System.nanoTime() + nanosTimeout;
 
-            while (true) {
-                if (nanosTimeout < 0) {
-                    LockSupport.park();
-                } else {
-                    LockSupport.parkNanos(nanosTimeout);
-                }
+                while (true) {
+                    if (nanosTimeout < 0) {
+                        LockSupport.park();
+                    } else {
+                        LockSupport.parkNanos(nanosTimeout);
+                    }
 
-                if (Thread.interrupted()) {
-                    throw new InterruptedIOException();
-                }
+                    if (Thread.interrupted()) {
+                        throw new InterruptedIOException();
+                    }
 
-                if (!hasSharedLockers()) {
-                    break;
-                }
+                    if (!hasSharedLockers()) {
+                        break;
+                    }
 
-                if (nanosTimeout >= 0 &&
-                    (nanosTimeout == 0 || (nanosTimeout = nanosEnd - System.nanoTime()) <= 0))
-                {
-                    mExclusiveThread = null;
-                    return false;
+                    if (nanosTimeout >= 0 &&
+                        (nanosTimeout == 0 || (nanosTimeout = nanosEnd - System.nanoTime()) <= 0))
+                    {
+                        mExclusiveThread = null;
+                        mFullLatch.releaseExclusive();
+                        return false;
+                    }
                 }
             }
-        }
 
-        reentrant().count++;
-        return true;
+            reentrant().count++;
+            return true;
+        } catch (Throwable e) {
+            mExclusiveThread = null;
+            mFullLatch.releaseExclusive();
+            throw e;
+        }
     }
 
     void releaseExclusive() {
         mExclusiveThread = null;
-        mExclusiveLatch.releaseExclusive();
+        mFullLatch.releaseExclusive();
         reentrant().count--;
     }
 
     boolean hasQueuedThreads() {
-        return mExclusiveLatch.hasQueuedThreads();
+        return mFullLatch.hasQueuedThreads();
     }
 
     private boolean hasSharedLockers() {
