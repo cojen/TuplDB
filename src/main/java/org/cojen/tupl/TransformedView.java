@@ -248,6 +248,17 @@ final class TransformedView implements View {
     }
 
     @Override
+    public final LockResult tryLockShared(Transaction txn, byte[] tkey, long nanosTimeout)
+        throws DeadlockException, ViewConstraintException
+    {
+        byte[] key = inverseTransformKey(tkey);
+        if (key != null) {
+            return mSource.tryLockShared(txn, key, nanosTimeout);
+        }
+        throw fail();
+    }
+
+    @Override
     public final LockResult lockShared(Transaction txn, byte[] tkey)
         throws LockFailureException, ViewConstraintException
     {
@@ -259,12 +270,34 @@ final class TransformedView implements View {
     }
 
     @Override
+    public final LockResult tryLockUpgradable(Transaction txn, byte[] tkey, long nanosTimeout)
+        throws DeadlockException, ViewConstraintException
+    {
+        byte[] key = inverseTransformKey(tkey);
+        if (key != null) {
+            return mSource.tryLockUpgradable(txn, key, nanosTimeout);
+        }
+        throw fail();
+    }
+
+    @Override
     public final LockResult lockUpgradable(Transaction txn, byte[] tkey)
         throws LockFailureException, ViewConstraintException
     {
         byte[] key = inverseTransformKey(tkey);
         if (key != null) {
             return mSource.lockUpgradable(txn, key);
+        }
+        throw fail();
+    }
+
+    @Override
+    public final LockResult tryLockExclusive(Transaction txn, byte[] tkey, long nanosTimeout)
+        throws DeadlockException, ViewConstraintException
+    {
+        byte[] key = inverseTransformKey(tkey);
+        if (key != null) {
+            return mSource.tryLockExclusive(txn, key, nanosTimeout);
         }
         throw fail();
     }

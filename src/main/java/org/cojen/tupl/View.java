@@ -199,6 +199,31 @@ public interface View {
      * modified after calling this method.
      *
      * @param key non-null key to lock; instance is not cloned
+     * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
+     * @return {@link LockResult#INTERRUPTED INTERRUPTED}, {@link
+     * LockResult#TIMED_OUT_LOCK TIMED_OUT_LOCK}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
+     * @throws IllegalStateException if too many shared locks
+     * @throws DeadlockException if deadlock was detected after waiting full timeout
+     * @throws ViewConstraintException if key is not allowed
+     */
+    public default LockResult tryLockShared(Transaction txn, byte[] key, long nanosTimeout)
+        throws DeadlockException, ViewConstraintException
+    {
+        return ViewUtils.tryLock(txn, key, nanosTimeout, this::lockShared);
+    }
+
+    /**
+     * Explicitly acquire a shared lock for the given key, denying exclusive locks. Lock is
+     * retained until the end of the transaction or scope.
+     *
+     * <p>Transactions acquire locks automatically, and so use of this method is not
+     * required. Ownership of the key instance is transferred, and so the key must not be
+     * modified after calling this method.
+     *
+     * @param key non-null key to lock; instance is not cloned
      * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link LockResult#OWNED_SHARED
      * OWNED_SHARED}, {@link LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
@@ -219,6 +244,30 @@ public interface View {
      * modified after calling this method.
      *
      * @param key non-null key to lock; instance is not cloned
+     * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
+     * @return {@link LockResult#ILLEGAL ILLEGAL}, {@link
+     * LockResult#INTERRUPTED INTERRUPTED}, {@link LockResult#TIMED_OUT_LOCK
+     * TIMED_OUT_LOCK}, {@link LockResult#ACQUIRED ACQUIRED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
+     * @throws DeadlockException if deadlock was detected after waiting full timeout
+     * @throws ViewConstraintException if key is not allowed
+     */
+    public default LockResult tryLockUpgradable(Transaction txn, byte[] key, long nanosTimeout)
+        throws DeadlockException, ViewConstraintException
+    {
+        return ViewUtils.tryLock(txn, key, nanosTimeout, this::lockUpgradable);
+    }
+
+    /**
+     * Explicitly acquire an upgradable lock for the given key, denying exclusive and
+     * additional upgradable locks. Lock is retained until the end of the transaction or scope.
+     *
+     * <p>Transactions acquire locks automatically, and so use of this method is not
+     * required. Ownership of the key instance is transferred, and so the key must not be
+     * modified after calling this method.
+     *
+     * @param key non-null key to lock; instance is not cloned
      * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link LockResult#OWNED_UPGRADABLE
      * OWNED_UPGRADABLE}, or {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
@@ -227,6 +276,30 @@ public interface View {
      */
     public LockResult lockUpgradable(Transaction txn, byte[] key)
         throws LockFailureException, ViewConstraintException;
+
+    /**
+     * Explicitly acquire an exclusive lock for the given key, denying any additional
+     * locks. Lock is retained until the end of the transaction or scope.
+     *
+     * <p>Transactions acquire locks automatically, and so use of this method is not
+     * required. Ownership of the key instance is transferred, and so the key must not be
+     * modified after calling this method.
+     *
+     * @param key non-null key to lock; instance is not cloned
+     * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
+     * @return {@link LockResult#ILLEGAL ILLEGAL}, {@link
+     * LockResult#INTERRUPTED INTERRUPTED}, {@link LockResult#TIMED_OUT_LOCK
+     * TIMED_OUT_LOCK}, {@link LockResult#ACQUIRED ACQUIRED}, {@link
+     * LockResult#UPGRADED UPGRADED}, or {@link LockResult#OWNED_EXCLUSIVE
+     * OWNED_EXCLUSIVE}
+     * @throws DeadlockException if deadlock was detected after waiting full timeout
+     * @throws ViewConstraintException if key is not allowed
+     */
+    public default LockResult tryLockExclusive(Transaction txn, byte[] key, long nanosTimeout)
+        throws DeadlockException, ViewConstraintException
+    {
+        return ViewUtils.tryLock(txn, key, nanosTimeout, this::lockExclusive);
+    }
 
     /**
      * Explicitly acquire an exclusive lock for the given key, denying any additional

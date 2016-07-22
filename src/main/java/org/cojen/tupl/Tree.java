@@ -378,8 +378,22 @@ class Tree implements View, Index {
     }
 
     @Override
+    public final LockResult tryLockShared(Transaction txn, byte[] key, long nanosTimeout)
+        throws DeadlockException
+    {
+        return check(txn).tryLockShared(mId, key, nanosTimeout);
+    }
+
+    @Override
     public final LockResult lockShared(Transaction txn, byte[] key) throws LockFailureException {
         return check(txn).lockShared(mId, key);
+    }
+
+    @Override
+    public final LockResult tryLockUpgradable(Transaction txn, byte[] key, long nanosTimeout)
+        throws DeadlockException
+    {
+        return check(txn).tryLockUpgradable(mId, key, nanosTimeout);
     }
 
     @Override
@@ -387,6 +401,13 @@ class Tree implements View, Index {
         throws LockFailureException
     {
         return check(txn).lockUpgradable(mId, key);
+    }
+
+    @Override
+    public final LockResult tryLockExclusive(Transaction txn, byte[] key, long nanosTimeout)
+        throws DeadlockException
+    {
+        return check(txn).tryLockExclusive(mId, key, nanosTimeout);
     }
 
     @Override
