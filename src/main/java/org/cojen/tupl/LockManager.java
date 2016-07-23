@@ -17,6 +17,7 @@
 package org.cojen.tupl;
 
 import java.lang.ref.SoftReference;
+import java.lang.ref.WeakReference;
 
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.LatchCondition;
@@ -34,6 +35,8 @@ final class LockManager {
     // into Lock.mLockCount field, which is why the numbers seem a bit weird.
     static final int TYPE_SHARED = 1, TYPE_UPGRADABLE = 0x80000000, TYPE_EXCLUSIVE = ~0;
 
+    private final WeakReference<Database> mDatabaseRef;
+
     final LockUpgradeRule mDefaultLockUpgradeRule;
     final long mDefaultTimeoutNanos;
 
@@ -42,11 +45,18 @@ final class LockManager {
 
     private final ThreadLocal<SoftReference<Locker>> mLocalLockerRef;
 
-    LockManager(LockUpgradeRule lockUpgradeRule, long timeoutNanos) {
-        this(lockUpgradeRule, timeoutNanos, Runtime.getRuntime().availableProcessors() * 16);
+    /**
+     * @param db optional; used by DeadlockDetector to resolve index names
+     */
+    LockManager(Database db, LockUpgradeRule lockUpgradeRule, long timeoutNanos) {
+        this(db, lockUpgradeRule, timeoutNanos, Runtime.getRuntime().availableProcessors() * 16);
     }
 
-    private LockManager(LockUpgradeRule lockUpgradeRule, long timeoutNanos, int numHashTables) {
+    private LockManager(Database db, LockUpgradeRule lockUpgradeRule, long timeoutNanos,
+                        int numHashTables)
+    {
+        mDatabaseRef = db == null ? null : new WeakReference<>(db);
+
         if (lockUpgradeRule == null) {
             lockUpgradeRule = LockUpgradeRule.STRICT;
         }
@@ -61,6 +71,20 @@ final class LockManager {
         mHashTableShift = Integer.numberOfLeadingZeros(numHashTables - 1);
 
         mLocalLockerRef = new ThreadLocal<>();
+    }
+
+    final Index indexById(long id) {
+        if (mDatabaseRef != null) {
+            Database db = mDatabaseRef.get();
+            if (db != null) {
+                try {
+                    return db.indexById(id);
+                } catch (Exception e) {
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
