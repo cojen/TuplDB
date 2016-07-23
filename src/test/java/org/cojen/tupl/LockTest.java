@@ -88,7 +88,7 @@ public class LockTest {
 
     @Before
     public void setup() {
-        mManager = new LockManager(null, -1);
+        mManager = new LockManager(null, null, -1);
     }
 
     @After
@@ -324,7 +324,7 @@ public class LockTest {
 
     @Test
     public void lenientUpgradeRule() throws Exception {
-        LockManager manager = new LockManager(LockUpgradeRule.LENIENT, -1);
+        LockManager manager = new LockManager(null, LockUpgradeRule.LENIENT, -1);
 
         Locker locker1 = new Locker(manager);
         Locker locker2 = new Locker(manager);
@@ -354,7 +354,7 @@ public class LockTest {
 
     @Test
     public void uncheckedUpgradeRule() throws Exception {
-        LockManager manager = new LockManager(LockUpgradeRule.UNCHECKED, -1);
+        LockManager manager = new LockManager(null, LockUpgradeRule.UNCHECKED, -1);
 
         Locker locker1 = new Locker(manager);
         Locker locker2 = new Locker(manager);

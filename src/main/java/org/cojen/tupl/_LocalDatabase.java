@@ -328,7 +328,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
         mDurabilityMode = config.mDurabilityMode;
         mDefaultLockTimeoutNanos = config.mLockTimeoutNanos;
-        mLockManager = new _LockManager(config.mLockUpgradeRule, mDefaultLockTimeoutNanos);
+        mLockManager = new _LockManager(this, config.mLockUpgradeRule, mDefaultLockTimeoutNanos);
 
         // Initialize NodeMap, the primary cache of Nodes.
         {

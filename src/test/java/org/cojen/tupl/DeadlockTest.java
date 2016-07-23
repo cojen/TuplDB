@@ -39,7 +39,7 @@ public class DeadlockTest {
 
     @Before
     public void setup() {
-        mManager = new LockManager(null, -1);
+        mManager = new LockManager(null, null, -1);
         mTasks = new ArrayList<Task>();
     }
 
@@ -160,6 +160,30 @@ public class DeadlockTest {
 
         startTasks();
         joinTasks();
+    }
+
+    @Test
+    public void deadlockIndexName() throws Throwable {
+        Database db = Database.open(new DatabaseConfig()
+                                    .directPageAccess(false)
+                                    .lockUpgradeRule(LockUpgradeRule.UNCHECKED));
+
+        Index ix = db.openIndex("test");
+
+        Transaction txn1 = db.newTransaction();
+        Transaction txn2 = db.newTransaction();
+
+        byte[] key = "hello".getBytes();
+
+        txn1.lockUpgradable(ix.getId(), key);
+        txn2.lockShared(ix.getId(), key);
+
+        try {
+            txn2.lockExclusive(ix.getId(), key);
+            fail();
+        } catch (DeadlockException e) {
+            assertTrue(e.getMessage().indexOf("indexName: test") > 0);
+        }
     }
 
     private void startTasks() {
