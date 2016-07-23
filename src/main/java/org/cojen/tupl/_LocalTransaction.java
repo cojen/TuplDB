@@ -912,7 +912,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
 
         if (mBorked == null) {
             if (mDatabase.mClosed) {
-                initCause(borked, mDatabase.mClosedCause);
+                Utils.initCause(borked, mDatabase.mClosedCause);
                 mBorked = borked;
             } else if (rollback) {
                 // Attempt to rollback the mess and release the locks.
@@ -942,8 +942,8 @@ final class _LocalTransaction extends _Locker implements Transaction {
                     // even if the application later calls reset.
                     discardAllLocks();
 
-                    initCause(borked, mDatabase.mClosedCause);
-                    initCause(undoFailed, borked);
+                    Utils.initCause(borked, mDatabase.mClosedCause);
+                    Utils.initCause(undoFailed, borked);
                     borked = undoFailed;
                 }
 
@@ -957,14 +957,5 @@ final class _LocalTransaction extends _Locker implements Transaction {
         }
 
         return Utils.rethrow(borked);
-    }
-
-    private static void initCause(Throwable e, Throwable cause) {
-        if (e != null && cause != null) {
-            try {
-                e.initCause(cause);
-            } catch (Throwable e2) {
-            }
-        }
     }
 }
