@@ -422,7 +422,7 @@ final class _Node extends Latch implements _DatabaseAccess {
      * latch. Caller must ensure that child is not already loaded. If an exception is thrown,
      * parent and child latches are always released.
      *
-     * @param options descibed described by OPTION_* fields
+     * @param options described by OPTION_* fields
      * @return child node, possibly split
      */
     _Node loadChild(_LocalDatabase db, long childId, int options) throws IOException {
