@@ -3,6 +3,7 @@ Changelog
 
 v1.3.3
 ------
+* Fix transaction race condition which allowed shared locks to be prematurely released.
 * Support temporary indexes.
 * Don't close in-use indexes during verification.
 * Redo decoder should be lenient if EOF is reached in the middle of an operation.
