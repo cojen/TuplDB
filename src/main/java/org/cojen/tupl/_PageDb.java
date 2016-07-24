@@ -210,6 +210,12 @@ abstract class _PageDb implements CauseCloseable {
     public abstract boolean compactionEnd() throws IOException;
 
     /**
+     * Must be called after compactionEnd, and after running a checkpoint, to reclaim pages in
+     * the reserve list. Otherwise, the pages are reclaimed when restarting the database.
+     */
+    public abstract void compactionReclaim() throws IOException;
+
+    /**
      * Called after compaction, to actually shrink the file.
      *
      * @return false if nothing was truncated

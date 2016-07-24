@@ -206,6 +206,10 @@ final class NonPageDb extends PageDb {
     }
 
     @Override
+    public void compactionReclaim() throws IOException {
+    }
+
+    @Override
     public boolean truncatePages() throws IOException {
         return false;
     }
