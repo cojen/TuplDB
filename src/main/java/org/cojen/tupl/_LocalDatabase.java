@@ -1760,37 +1760,31 @@ final class _LocalDatabase extends AbstractDatabase {
             mCheckpointLock.unlock();
         }
 
-        if (!mPageDb.compactionScanFreeList()) {
-            mCheckpointLock.lock();
-            try {
-                mPageDb.compactionEnd();
-            } finally {
-                mCheckpointLock.unlock();
+        boolean completed = mPageDb.compactionScanFreeList();
+
+        if (completed) {
+            // Issue a checkpoint to ensure all dirty nodes are flushed out. This ensures that
+            // nodes can be moved out of the compaction zone by simply marking them dirty. If
+            // already dirty, they'll not be in the compaction zone unless compaction aborted.
+            checkpoint();
+
+            if (observer == null) {
+                observer = new CompactionObserver();
             }
-            return false;
-        }
 
-        // Issue a checkpoint to ensure all dirty nodes are flushed out. This ensures that
-        // nodes can be moved out of the compaction zone by simply marking them dirty. If
-        // already dirty, they'll not be in the compaction zone unless compaction aborted.
-        checkpoint();
+            final long highestNodeId = targetPageCount - 1;
+            final CompactionObserver fobserver = observer;
 
-        if (observer == null) {
-            observer = new CompactionObserver();
-        }
+            completed = scanAllIndexes((tree) -> {
+                return tree.compactTree(tree.observableView(), highestNodeId, fobserver);
+            });
 
-        final long highestNodeId = targetPageCount - 1;
-        final CompactionObserver fobserver = observer;
+            checkpoint(true, 0, 0);
 
-        boolean completed = scanAllIndexes((tree) -> {
-            return tree.compactTree(tree.observableView(), highestNodeId, fobserver);
-        });
-
-        checkpoint(true, 0, 0);
-
-        if (completed && mPageDb.compactionScanFreeList()) {
-            if (!mPageDb.compactionVerify() && mPageDb.compactionScanFreeList()) {
-                checkpoint(true, 0, 0);
+            if (completed && mPageDb.compactionScanFreeList()) {
+                if (!mPageDb.compactionVerify() && mPageDb.compactionScanFreeList()) {
+                    checkpoint(true, 0, 0);
+                }
             }
         }
 
@@ -1798,8 +1792,10 @@ final class _LocalDatabase extends AbstractDatabase {
         try {
             completed &= mPageDb.compactionEnd();
 
-            // If completed, then this allows file to shrink. Otherwise, it allows reclaimed
-            // reserved pages to be immediately usable.
+            // Reclaim reserved pages, but only after a checkpoint has been performed.
+            checkpoint(true, 0, 0);
+            mPageDb.compactionReclaim();
+            // Checkpoint again in order for reclaimed pages to be immediately available.
             checkpoint(true, 0, 0);
 
             if (completed) {

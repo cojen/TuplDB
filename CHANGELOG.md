@@ -4,6 +4,8 @@ Changelog
 v1.3.3
 ------
 * Fix transaction race condition which allowed shared locks to be prematurely released.
+* Fix when performing database compaction while old indexes are concurrently deleted. Some
+  pages would get lost, preventing compaction from ever working again.
 * Support temporary indexes.
 * Don't close in-use indexes during verification.
 * Redo decoder should be lenient if EOF is reached in the middle of an operation.

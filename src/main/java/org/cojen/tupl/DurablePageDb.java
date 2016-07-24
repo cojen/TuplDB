@@ -534,6 +534,15 @@ final class DurablePageDb extends PageDb {
     }
 
     @Override
+    public void compactionReclaim() throws IOException {
+        try {
+            mPageManager.compactionReclaim();
+        } catch (Throwable e) {
+            throw closeOnFailure(e);
+        }
+    }
+
+    @Override
     public boolean truncatePages() throws IOException {
         return mPageManager.truncatePages();
     }
