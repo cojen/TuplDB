@@ -72,13 +72,14 @@ final class CommitLock implements Lock {
      */
     @Override
     public boolean tryLock() {
+        mSharedAcquire.increment();
         Reentrant reentrant = reentrant();
-        if (mExclusiveThread == null || reentrant.count > 0) {
-            mSharedAcquire.increment();
+        if (mExclusiveThread != null && reentrant.count == 0) {
+            doUnlock();
+            return false;
+        } else {
             reentrant.count++;
             return true;
-        } else {
-            return false;
         }
     }
 
@@ -87,10 +88,10 @@ final class CommitLock implements Lock {
      */
     @Override
     public void lock() {
+        mSharedAcquire.increment();
         Reentrant reentrant = reentrant();
-        if (mExclusiveThread == null || reentrant.count > 0) {
-            mSharedAcquire.increment();
-        } else {
+        if (mExclusiveThread != null && reentrant.count == 0) {
+            doUnlock();
             mFullLatch.acquireShared();
             try {
                 mSharedAcquire.increment();
@@ -106,10 +107,10 @@ final class CommitLock implements Lock {
      */
     @Override
     public void lockInterruptibly() throws InterruptedException {
+        mSharedAcquire.increment();
         Reentrant reentrant = reentrant();
-        if (mExclusiveThread == null || reentrant.count > 0) {
-            mSharedAcquire.increment();
-        } else {
+        if (mExclusiveThread != null && reentrant.count == 0) {
+            doUnlock();
             mFullLatch.acquireSharedInterruptibly();
             try {
                 mSharedAcquire.increment();
@@ -125,10 +126,10 @@ final class CommitLock implements Lock {
      */
     @Override
     public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
+        mSharedAcquire.increment();
         Reentrant reentrant = reentrant();
-        if (mExclusiveThread == null || reentrant.count > 0) {
-            mSharedAcquire.increment();
-        } else {
+        if (mExclusiveThread != null && reentrant.count == 0) {
+            doUnlock();
             if (time < 0) {
                 mFullLatch.acquireShared();
             } else if (time == 0 || !mFullLatch.tryAcquireSharedNanos(unit.toNanos(time))) {
@@ -149,12 +150,16 @@ final class CommitLock implements Lock {
      */
     @Override
     public void unlock() {
+        doUnlock();
+        reentrant().count--;
+    }
+
+    private void doUnlock() {
         mSharedRelease.increment();
         Thread t = mExclusiveThread;
         if (t != null && !hasSharedLockers()) {
             LockSupport.unpark(t);
         }
-        reentrant().count--;
     }
 
     @Override
