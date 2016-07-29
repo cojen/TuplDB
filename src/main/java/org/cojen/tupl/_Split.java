@@ -97,6 +97,61 @@ final class _Split {
     }
 
     /**
+     * When binding to a node which is in a split state, the position must be adjusted in order
+     * for rebindFrame to work properly. The position cannot be used for accessing entries
+     * until after rebindFrame is called, or if unadjustBindPosition is called.
+     *
+     * @param pos non-negative bind position
+     * @return adjusted bind position
+     */
+    final int adjustBindPosition(int pos) {
+        if (!mSplitRight) {
+            // To prevent the rebind operation from breaking things, the position must be
+            // defined as though it was created before the node was split. When rebindFrame is
+            // called, the position is moved to the correct location.
+            _Node sibling = latchSibling();
+            pos += sibling.highestPos() + 2;
+            sibling.releaseShared();
+        }
+
+        return pos;
+    }
+
+    /**
+     * Retrieves a value from a split node, by selecting the sibling node or by adjusting the
+     * bind position. Given position must not be negative.
+     *
+     * @param node split applies to this node
+     * @param pos non-negative bind position
+     */
+    final byte[] retrieveLeafValue(_Node node, int pos) throws IOException {
+        if (mSplitRight) {
+            int highestPos = node.highestPos();
+            if (pos > highestPos) {
+                _Node sibling = latchSibling();
+                try {
+                    return sibling.retrieveLeafValue(pos - highestPos - 2);
+                } finally {
+                    sibling.releaseShared();
+                }
+            }
+        } else {
+            _Node sibling = latchSibling();
+            try {
+                int highestPos = sibling.highestPos();
+                if (pos <= highestPos) {
+                    return sibling.retrieveLeafValue(pos);
+                }
+                pos -= highestPos - 2;
+            } finally {
+                sibling.releaseShared();
+            }
+        }
+
+        return node.retrieveLeafValue(pos);
+    }
+
+    /**
      * Performs a binary search against the split, returning the position
      * within the original node as if it had not split.
      */
