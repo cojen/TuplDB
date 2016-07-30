@@ -63,6 +63,7 @@ final class _PageManager {
     private volatile boolean mCompacting;
     private long mCompactionTargetPageCount = Long.MAX_VALUE;
     private _PageQueue mReserveList;
+    private long mReclaimUpperBound = Long.MIN_VALUE;
 
     static final int
         ALLOC_TRY_RESERVE = -1, // Create pages: no.  Compaction zone: yes
@@ -233,10 +234,12 @@ final class _PageManager {
                             mCompacting = false;
                         }
                         // Attempt to raid the reserves.
-                        pageId = reserve.tryRemove(lock);
-                        if (pageId != 0) {
-                            // _Lock has been released as a side-effect.
-                            return pageId;
+                        if (mReclaimUpperBound == Long.MIN_VALUE) {
+                            pageId = reserve.tryRemove(lock);
+                            if (pageId != 0) {
+                                // _Lock has been released as a side-effect.
+                                return pageId;
+                            }
                         }
                     }
 
@@ -519,26 +522,31 @@ final class _PageManager {
         mCompacting = false;
         mCompactionTargetPageCount = Long.MAX_VALUE;
 
-        // Capture reserve list with full lock held to prevent allocPage from stealing from the
-        // reserves. They're now off limits.
-        _PageQueue reserve = mReserveList;
-        mReserveList = null;
+        // Set the reclamation upper bound with full lock held to prevent allocPage from
+        // stealing from the reserves. They're now off limits.
+        mReclaimUpperBound = upperBound;
 
         fullUnlock();
         commitLock.releaseExclusive();
 
+        return ready;
+    }
+
+    public void compactionReclaim() throws IOException {
+        mRemoveLock.lock();
+        _PageQueue reserve = mReserveList;
+        long upperBound = mReclaimUpperBound;
+        mReserveList = null;
+        mReclaimUpperBound = Long.MIN_VALUE;
+        mRemoveLock.unlock();
+
         if (reserve != null) {
             try {
-                // Need to unlock first because fullUnlock didn't see it.
-                reserve.appendLock().unlock();
-
                 reserve.reclaim(mRemoveLock, upperBound);
             } finally {
                 reserve.delete();
             }
         }
-
-        return ready;
     }
 
     /**

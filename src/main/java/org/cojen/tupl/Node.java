@@ -440,7 +440,7 @@ final class Node extends Latch implements DatabaseAccess {
      * latch. Caller must ensure that child is not already loaded. If an exception is thrown,
      * parent and child latches are always released.
      *
-     * @param options descibed described by OPTION_* fields
+     * @param options described by OPTION_* fields
      * @return child node, possibly split
      */
     Node loadChild(LocalDatabase db, long childId, int options) throws IOException {
@@ -2238,60 +2238,22 @@ final class Node extends Latch implements DatabaseAccess {
             int remaining = leftSpace + rightSpace - encodedLen - 2;
 
             if (garbage() > remaining) {
-                compact: {
-                    // Do full compaction and free up the garbage, or else node must be split.
+                // Do full compaction and free up the garbage, or else node must be split.
 
-                    if (garbage() + remaining < 0) {
-                        // Node compaction won't make enough room, but attempt to rebalance
-                        // before splitting.
-
-                        CursorFrame parentFrame;
-                        if (frame == null || (parentFrame = frame.mParentFrame) == null) {
-                            // No sibling nodes, so cannot rebalance.
-                            break compact;
-                        }
-
-                        // "Randomly" choose left or right node first.
-                        if ((mId & 1) == 0) {
-                            int result = tryRebalanceLeafLeft
-                                (tree, parentFrame, pos, encodedLen, -remaining);
-                            if (result == 0) {
-                                // First rebalance attempt failed.
-                                result = tryRebalanceLeafRight
-                                    (tree, parentFrame, pos, encodedLen, -remaining);
-                                if (result == 0) {
-                                    // Second rebalance attempt failed too, so split.
-                                    break compact;
-                                } else if (result > 0) {
-                                    return result;
-                                }
-                            } else if (result > 0) {
-                                return result;
-                            } else {
-                                pos += result;
-                            }
-                        } else {
-                            int result = tryRebalanceLeafRight
-                                (tree, parentFrame, pos, encodedLen, -remaining);
-                            if (result == 0) {
-                                // First rebalance attempt failed.
-                                result = tryRebalanceLeafLeft
-                                    (tree, parentFrame, pos, encodedLen, -remaining);
-                                if (result == 0) {
-                                    // Second rebalance attempt failed too, so split.
-                                    break compact;
-                                } else if (result > 0) {
-                                    return result;
-                                } else {
-                                    pos += result;
-                                }
-                            } else if (result > 0) {
-                                return result;
-                            }
-                        }
-                    }
-
+                if (garbage() + remaining >= 0) {
                     return compactLeaf(encodedLen, pos, true);
+                }
+
+                // Node compaction won't make enough room, but attempt to rebalance
+                // before splitting.
+
+                CursorFrame parentFrame;
+                if (frame != null && (parentFrame = frame.mParentFrame) != null) {
+                    int result = tryRebalanceLeaf(tree, parentFrame, pos, encodedLen, -remaining);
+                    if (result > 0) {
+                        // Rebalance worked.
+                        return result;
+                    }
                 }
 
                 // Determine max possible entry size allowed, accounting too for entry pointer,
@@ -2338,6 +2300,38 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     /**
+     * Attempt to make room in this node by moving entries to the left or right sibling
+     * node. First determines if moving entries to the sibling node is allowed and would free
+     * up enough space. Next, attempts to latch parent and child nodes without waiting,
+     * avoiding deadlocks.
+     *
+     * @param tree required
+     * @param parentFrame required
+     * @param pos position to insert into
+     * @param insertLen encoded length of entry to insert
+     * @param minAmount minimum amount of bytes to move to make room
+     * @return 0 if try failed, or entry location of re-used slot
+     */
+    private int tryRebalanceLeaf(Tree tree, CursorFrame parentFrame,
+                                 int pos, int insertLen, int minAmount)
+    {
+        int result;
+        // "Randomly" choose left or right node first.
+        if ((mId & 1) == 0) {
+            result = tryRebalanceLeafLeft(tree, parentFrame, pos, insertLen, minAmount);
+            if (result <= 0) {
+                result = tryRebalanceLeafRight(tree, parentFrame, pos, insertLen, minAmount);
+            }
+        } else {
+            result = tryRebalanceLeafRight(tree, parentFrame, pos, insertLen, minAmount);
+            if (result <= 0) {
+                result = tryRebalanceLeafLeft(tree, parentFrame, pos, insertLen, minAmount);
+            }
+        }
+        return result;
+    }
+
+    /**
      * Attempt to make room in this node by moving entries to the left sibling node. First
      * determines if moving entries to the left node is allowed and would free up enough space.
      * Next, attempts to latch parent and child nodes without waiting, avoiding deadlocks.
@@ -2347,8 +2341,7 @@ final class Node extends Latch implements DatabaseAccess {
      * @param pos position to insert into; this position cannot move left
      * @param insertLen encoded length of entry to insert
      * @param minAmount minimum amount of bytes to move to make room
-     * @return 0 if try failed, or entry location of re-used slot, or negative 2-based position
-     * decrement if no slot was found
+     * @return 0 if try failed, or entry location of re-used slot
      */
     private int tryRebalanceLeafLeft(Tree tree, CursorFrame parentFrame,
                                      int pos, int insertLen, int minAmount)
@@ -2519,12 +2512,6 @@ final class Node extends Latch implements DatabaseAccess {
         left.releaseExclusive();
         parent.releaseExclusive();
 
-        /* Not possible unless aggressive compaction is allowed.
-        if (insertLoc == 0) {
-            return -lastPos;
-        }
-        */
-
         // Expand search vector for inserted entry and write pointer to the re-used slot.
         garbage(garbage() - insertLen);
         pos -= lastPos;
@@ -2545,7 +2532,7 @@ final class Node extends Latch implements DatabaseAccess {
      * @param pos position to insert into; this position cannot move right
      * @param insertLen encoded length of entry to insert
      * @param minAmount minimum amount of bytes to move to make room
-     * @return 0 if try failed, or entry location of re-used slot, or negative if no slot was found
+     * @return 0 if try failed, or entry location of re-used slot
      */
     private int tryRebalanceLeafRight(Tree tree, CursorFrame parentFrame,
                                       int pos, int insertLen, int minAmount)
@@ -2721,12 +2708,6 @@ final class Node extends Latch implements DatabaseAccess {
 
         right.releaseExclusive();
         parent.releaseExclusive();
-
-        /* Not possible unless aggressive compaction is allowed.
-        if (insertLoc == 0) {
-            return -1;
-        }
-        */
 
         // Expand search vector for inserted entry and write pointer to the re-used slot.
         garbage(garbage() - insertLen);

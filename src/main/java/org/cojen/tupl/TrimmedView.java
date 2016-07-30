@@ -92,6 +92,13 @@ final class TrimmedView implements View {
     }
 
     @Override
+    public LockResult tryLockShared(Transaction txn, byte[] key, long nanosTimeout)
+        throws DeadlockException, ViewConstraintException
+    {
+        return mSource.tryLockShared(txn, applyPrefix(key), nanosTimeout);
+    }
+
+    @Override
     public final LockResult lockShared(Transaction txn, byte[] key)
         throws LockFailureException, ViewConstraintException
     {
@@ -99,10 +106,24 @@ final class TrimmedView implements View {
     }
 
     @Override
+    public LockResult tryLockUpgradable(Transaction txn, byte[] key, long nanosTimeout)
+        throws DeadlockException, ViewConstraintException
+    {
+        return mSource.tryLockUpgradable(txn, applyPrefix(key), nanosTimeout);
+    }
+
+    @Override
     public final LockResult lockUpgradable(Transaction txn, byte[] key)
         throws LockFailureException, ViewConstraintException
     {
         return mSource.lockUpgradable(txn, applyPrefix(key));
+    }
+
+    @Override
+    public LockResult tryLockExclusive(Transaction txn, byte[] key, long nanosTimeout)
+        throws DeadlockException, ViewConstraintException
+    {
+        return mSource.tryLockExclusive(txn, applyPrefix(key), nanosTimeout);
     }
 
     @Override

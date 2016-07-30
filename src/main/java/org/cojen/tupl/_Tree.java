@@ -287,7 +287,11 @@ class _Tree implements View, Index {
                     // Need to acquire the lock before loading. To prevent deadlock, a cursor
                     // frame must be bound and then the node latch can be released.
                     frame = new _CursorFrame();
-                    frame.bind(node, midPos - node.searchVecStart());
+                    int pos = midPos - node.searchVecStart();
+                    if (node.mSplit != null) {
+                        pos = node.mSplit.adjustBindPosition(pos);
+                    }
+                    frame.bind(node, pos);
                     break search;
                 }
             }
@@ -301,7 +305,11 @@ class _Tree implements View, Index {
             // Need to lock even if no value was found.
             frame = new _CursorFrame();
             frame.mNotFoundKey = key;
-            frame.bind(node, ~(lowPos - node.searchVecStart()));
+            int pos = lowPos - node.searchVecStart();
+            if (node.mSplit != null) {
+                pos = node.mSplit.adjustBindPosition(pos);
+            }
+            frame.bind(node, ~pos);
             break search;
         } finally {
             node.releaseShared();
@@ -321,11 +329,14 @@ class _Tree implements View, Index {
             try {
                 node = frame.acquireShared();
                 try {
-                    if (node.mSplit != null) {
-                        node = node.mSplit.selectNode(node, key);
-                    }
                     int pos = frame.mNodePos;
-                    return pos >= 0 ? node.retrieveLeafValue(pos) : null;
+                    if (pos < 0) {
+                        return null;
+                    } else if (node.mSplit == null) {
+                        return node.retrieveLeafValue(pos);
+                    } else {
+                        return node.mSplit.retrieveLeafValue(node, pos);
+                    }
                 } finally {
                     node.releaseShared();
                 }
@@ -378,8 +389,22 @@ class _Tree implements View, Index {
     }
 
     @Override
+    public final LockResult tryLockShared(Transaction txn, byte[] key, long nanosTimeout)
+        throws DeadlockException
+    {
+        return check(txn).tryLockShared(mId, key, nanosTimeout);
+    }
+
+    @Override
     public final LockResult lockShared(Transaction txn, byte[] key) throws LockFailureException {
         return check(txn).lockShared(mId, key);
+    }
+
+    @Override
+    public final LockResult tryLockUpgradable(Transaction txn, byte[] key, long nanosTimeout)
+        throws DeadlockException
+    {
+        return check(txn).tryLockUpgradable(mId, key, nanosTimeout);
     }
 
     @Override
@@ -387,6 +412,13 @@ class _Tree implements View, Index {
         throws LockFailureException
     {
         return check(txn).lockUpgradable(mId, key);
+    }
+
+    @Override
+    public final LockResult tryLockExclusive(Transaction txn, byte[] key, long nanosTimeout)
+        throws DeadlockException
+    {
+        return check(txn).tryLockExclusive(mId, key, nanosTimeout);
     }
 
     @Override
