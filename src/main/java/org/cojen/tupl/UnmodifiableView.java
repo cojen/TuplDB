@@ -132,6 +132,13 @@ final class UnmodifiableView implements Index {
     }
 
     @Override
+    public LockResult tryLockShared(Transaction txn, byte[] key, long nanosTimeout)
+        throws DeadlockException, ViewConstraintException
+    {
+        return mSource.tryLockShared(txn, key, nanosTimeout);
+    }
+
+    @Override
     public LockResult lockShared(Transaction txn, byte[] key)
         throws LockFailureException, ViewConstraintException
     {
@@ -139,10 +146,24 @@ final class UnmodifiableView implements Index {
     }
 
     @Override
+    public LockResult tryLockUpgradable(Transaction txn, byte[] key, long nanosTimeout)
+        throws DeadlockException, ViewConstraintException
+    {
+        return mSource.tryLockUpgradable(txn, key, nanosTimeout);
+    }
+
+    @Override
     public LockResult lockUpgradable(Transaction txn, byte[] key)
         throws LockFailureException, ViewConstraintException
     {
         return mSource.lockUpgradable(txn, key);
+    }
+
+    @Override
+    public LockResult tryLockExclusive(Transaction txn, byte[] key, long nanosTimeout)
+        throws DeadlockException, ViewConstraintException
+    {
+        return mSource.tryLockExclusive(txn, key, nanosTimeout);
     }
 
     @Override

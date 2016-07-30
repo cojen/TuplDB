@@ -96,6 +96,16 @@ abstract class SubView implements View {
     }
 
     @Override
+    public LockResult tryLockShared(Transaction txn, byte[] key, long nanosTimeout)
+        throws DeadlockException, ViewConstraintException
+    {
+        if (inRange(key)) {
+            return mSource.tryLockShared(txn, key, nanosTimeout);
+        }
+        throw fail();
+    }
+
+    @Override
     public final LockResult lockShared(Transaction txn, byte[] key)
         throws LockFailureException, ViewConstraintException
     {
@@ -106,11 +116,31 @@ abstract class SubView implements View {
     }
 
     @Override
+    public LockResult tryLockUpgradable(Transaction txn, byte[] key, long nanosTimeout)
+        throws DeadlockException, ViewConstraintException
+    {
+        if (inRange(key)) {
+            return mSource.tryLockUpgradable(txn, key, nanosTimeout);
+        }
+        throw fail();
+    }
+
+    @Override
     public final LockResult lockUpgradable(Transaction txn, byte[] key)
         throws LockFailureException, ViewConstraintException
     {
         if (inRange(key)) {
             return mSource.lockUpgradable(txn, key);
+        }
+        throw fail();
+    }
+
+    @Override
+    public final LockResult tryLockExclusive(Transaction txn, byte[] key, long nanosTimeout)
+        throws DeadlockException, ViewConstraintException
+    {
+        if (inRange(key)) {
+            return mSource.tryLockExclusive(txn, key, nanosTimeout);
         }
         throw fail();
     }

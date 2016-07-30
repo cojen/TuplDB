@@ -16,6 +16,7 @@
 
 package org.cojen.tupl;
 
+import java.io.IOException;
 import java.io.Serializable;
 
 import java.util.Set;
@@ -30,10 +31,12 @@ public final class DeadlockSet implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final long[] mIndexIds;
+    private final byte[][] mIndexNames;
     private final byte[][] mKeys;
 
-    DeadlockSet(long[] indexIds, byte[][] keys) {
+    DeadlockSet(long[] indexIds, byte[][] indexNames, byte[][] keys) {
         mIndexIds = indexIds;
+        mIndexNames = indexNames;
         mKeys = keys;
     }
 
@@ -50,6 +53,30 @@ public final class DeadlockSet implements Serializable {
      */
     public long getIndexId(int pos) {
         return mIndexIds[pos];
+    }
+
+    /**
+     * @return the lock request index name at the given set position, possibly null
+     * @throws IndexOutOfBoundsException
+     */
+    public byte[] getIndexName(int pos) {
+        return mIndexNames[pos];
+    }
+
+    /**
+     * @return the lock request index name string at the given set position, possibly null
+     * @throws IndexOutOfBoundsException
+     */
+    public String getIndexNameString(int pos) {
+        byte[] name = mIndexNames[pos];
+        if (name == null) {
+            return null;
+        }
+        try {
+            return new String(name, "UTF-8");
+        } catch (IOException e) {
+            return new String(name);
+        }
     }
 
     /**
@@ -76,6 +103,13 @@ public final class DeadlockSet implements Serializable {
             b.append('{');
             b.append("indexId").append(": ").append(mIndexIds[i]);
             b.append(", ");
+
+            String name = getIndexNameString(i);
+            if (name != null) {
+                b.append("indexName").append(": ").append(name);
+                b.append(", ");
+            }
+
             b.append("key").append(": ").append(Utils.toHex(mKeys[i]));
             b.append('}');
         }

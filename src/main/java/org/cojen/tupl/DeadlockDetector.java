@@ -53,20 +53,30 @@ final class DeadlockDetector {
     DeadlockSet newDeadlockSet() {
         int size = mLocks.size();
         long[] indexIds = new long[size];
+        byte[][] indexNames = new byte[size][];
         byte[][] keys = new byte[size][];
+
+        final LockManager manager = mOrigin.mManager;
 
         int i = 0;
         for (Lock lock : mLocks) {
             indexIds[i] = lock.mIndexId;
+
+            Index ix = manager.indexById(indexIds[i]);
+            if (ix != null) {
+                indexNames[i] = ix.getName();
+            }
+
             byte[] key = lock.mKey;
             if (key != null) {
                 key = key.clone();
             }
             keys[i] = key;
+
             i++;
         }
 
-        return new DeadlockSet(indexIds, keys);
+        return new DeadlockSet(indexIds, indexNames, keys);
     }
 
     /**

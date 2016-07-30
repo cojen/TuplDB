@@ -16,6 +16,12 @@
 
 package org.cojen.tupl;
 
+import java.nio.charset.StandardCharsets;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.concurrent.Executors;
@@ -30,6 +36,7 @@ import static org.cojen.tupl.LockResult.*;
  * 
  *
  * @author Brian S O'Neill
+ * @author anandsa
  */
 public class LockTest {
     public static void main(String[] args) throws Exception {
@@ -81,7 +88,7 @@ public class LockTest {
 
     @Before
     public void setup() {
-        mManager = new LockManager(null, -1);
+        mManager = new LockManager(null, null, -1);
     }
 
     @After
@@ -317,7 +324,7 @@ public class LockTest {
 
     @Test
     public void lenientUpgradeRule() throws Exception {
-        LockManager manager = new LockManager(LockUpgradeRule.LENIENT, -1);
+        LockManager manager = new LockManager(null, LockUpgradeRule.LENIENT, -1);
 
         Locker locker1 = new Locker(manager);
         Locker locker2 = new Locker(manager);
@@ -347,7 +354,7 @@ public class LockTest {
 
     @Test
     public void uncheckedUpgradeRule() throws Exception {
-        LockManager manager = new LockManager(LockUpgradeRule.UNCHECKED, -1);
+        LockManager manager = new LockManager(null, LockUpgradeRule.UNCHECKED, -1);
 
         Locker locker1 = new Locker(manager);
         Locker locker2 = new Locker(manager);
@@ -1262,6 +1269,90 @@ public class LockTest {
 
         assertEquals(OWNED_UPGRADABLE, locker.lockCheck(0, k1));
         assertEquals(UNOWNED, locker.lockCheck(0, k2));
+    }
+
+    @Test
+    public void reverseScan() throws Exception {
+        // Test which discovered a race condition in LockOwner.hashCode method.
+
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        View view = db.openIndex("index1");
+
+        int numAttempts = 100;
+        int batchSize = 20;
+
+        int numConcurrentReads = 4;
+        int numConcurrentWrites = 1;
+        ExecutorService executor = Executors.newFixedThreadPool
+            (numConcurrentReads + numConcurrentWrites);
+
+        for (int attempt=0; attempt<numAttempts; attempt++) {
+            final List<byte[]> keys = new ArrayList<>();
+            final List<byte[]> vals = new ArrayList<>();
+
+            // Prepare request
+            for (int id=0; id<batchSize; id++) {
+                int suffix = attempt*batchSize+id;
+
+                byte[] key = ("key" + suffix).getBytes(StandardCharsets.UTF_8);
+                byte[] val = ("value" + suffix).getBytes(StandardCharsets.UTF_8);
+
+                keys.add(key);
+                vals.add(val);
+            }
+
+            // Write
+            Future[] writeFutures = new Future[numConcurrentWrites];
+            for (int i=0; i<numConcurrentWrites; i++) {
+                writeFutures[i] = executor.submit(() -> {
+                    try {
+                        for(int id=0; id<batchSize; id++) {
+                            view.store(null, keys.get(id), vals.get(id));
+                        }
+                    } catch (Exception e) {
+                        fail("Unexpected exception " + e);
+                    }
+                });
+            };
+
+            final List<byte[]> reversedKeys = new ArrayList<>(keys);
+            Collections.reverse(reversedKeys);
+            final List<byte[]> reversedVals = new ArrayList<>(vals);
+            Collections.reverse(reversedVals);
+
+            for (Future f : writeFutures) {
+                f.get();
+            }
+
+            // Read
+            Future[] readFutures = new Future[numConcurrentReads];
+            for (int i=0; i<numConcurrentReads; i++) {
+                final boolean reverse = (i % 2 == 1);
+                readFutures[i] = executor.submit(() -> {
+                    try {
+                        final List<byte[]> ks = reverse ? reversedKeys : keys;
+                        final List<byte[]> vs = reverse ? reversedVals : vals;
+                        Transaction txn = db.newTransaction();
+                        txn.lockMode(LockMode.REPEATABLE_READ);
+                        for(int id=0; id<batchSize; id++) {
+                            final byte[] k = ks.get(id);
+                            final byte[] v = vs.get(id);
+                            byte[] a = view.load(txn, k);
+                            assertArrayEquals(a, v);
+                        }
+                        txn.reset();
+                    } catch (Exception e) {
+                        fail("Unexpected exception " + e);
+                    }
+                });
+            }
+
+            for (Future f : readFutures) {
+                f.get();
+            }
+        }
+
+        executor.shutdown();
     }
 
     /*
