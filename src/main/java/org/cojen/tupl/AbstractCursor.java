@@ -25,6 +25,7 @@ import org.cojen.tupl.io.CauseCloseable;
  *
  * @author Brian S O'Neill
  */
+// FIXME: remove this interface
 abstract class AbstractCursor implements CauseCloseable, Cursor {
     /**
      * Position the cursor for append operations. Tree must be empty.
@@ -37,6 +38,7 @@ abstract class AbstractCursor implements CauseCloseable, Cursor {
      * to verify that the entry is the highest and unique. Cursor key and value reference are
      * untouched.
      */
+    // FIXME: remove this
     abstract void appendEntry(byte[] key, byte[] value) throws IOException;
 
     /**
