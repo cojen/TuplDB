@@ -1,7 +1,7 @@
 Changelog
 =========
 
-v1.3.3
+v1.3.3 (2016-07-30)
 ------
 * Fixed transaction race condition which allowed shared locks to be prematurely released.
 * Fixed load race conditions which caused an incorrect value to be returned.
