@@ -3452,6 +3452,47 @@ class TreeCursor extends AbstractCursor {
         }
     }
 
+    /**
+     * Non-transactionally moves the first entry from the standalone node into this tree, as
+     * the highest overall. No other cursors can be active in the target tree. No check is
+     * performed to verify that the entry is the highest and unique. The source node is
+     * positioned at the next entry as a side effect, but the garbage field is untouched.
+     *
+     * Caller must hold shared commit lock and exclusive node latch.
+     */
+    final void appendTransfer(Node snode) throws IOException {
+        try {
+            final CursorFrame tleaf = mLeaf;
+            Node tnode = tleaf.acquireExclusive();
+            tnode = notSplitDirty(tleaf);
+
+            try {
+                final /*P*/ byte[] spage = snode.mPage;
+                final int sloc = p_ushortGetLE(spage, snode.searchVecStart());
+                final int encodedLen = Node.leafEntryLengthAtLoc(spage, sloc);
+
+                final int tpos = tleaf.mNodePos;
+                final int tloc = tnode.createLeafEntry(tleaf, mTree, tpos, encodedLen);
+
+                if (tloc < 0) {
+                    tnode.splitLeafAscendingAndCopyEntry(mTree, snode, 0, encodedLen, tpos);
+                    tnode = mTree.finishSplit(tleaf, tnode);
+                } else {
+                    p_copy(spage, sloc, tnode.mPage, tloc, encodedLen);
+                }
+
+                // Prepare for next append.
+                tleaf.mNodePos += 2;
+            } finally {
+                tnode.releaseExclusive();
+            }
+
+            snode.searchVecStart(snode.searchVecStart() + 2);
+        } catch (Throwable e) {
+            throw handleException(e, false);
+        }
+    }
+
     @Override
     final void appendTransfer(AbstractCursor source) throws IOException {
         TreeCursor scursor = (TreeCursor) source;

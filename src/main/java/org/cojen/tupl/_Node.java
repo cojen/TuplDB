@@ -995,7 +995,7 @@ final class _Node extends Latch implements _DatabaseAccess {
     /**
      * Set the search vector start pointer.
      */
-    private void searchVecStart(int start) {
+    void searchVecStart(int start) {
         /*P*/ // [
         // mSearchVecStart = start;
         /*P*/ // |
@@ -1392,16 +1392,17 @@ final class _Node extends Latch implements _DatabaseAccess {
     }
 
     /**
-     * Compares two keys within this node.
+     * Compares two node keys, in place if possible.
      *
      * @param leftLoc absolute location of left key
      * @param rightLoc absolute location of right key
      */
-    private int compareKeys(int leftLoc, int rightLoc) throws IOException {
-        final long page = mPage;
+    static int compareKeys(_Node left, int leftLoc, _Node right, int rightLoc) throws IOException {
+        final long leftPage = left.mPage;
+        final long rightPage = right.mPage;
 
-        int leftLen = p_byteGet(page, leftLoc++);
-        int rightLen = p_byteGet(page, rightLoc++);
+        int leftLen = p_byteGet(leftPage, leftLoc++);
+        int rightLen = p_byteGet(rightPage, rightLoc++);
 
         c1: { // break out of this scope when both keys are in the page
             c2: { // break out of this scope when the left key is in the page
@@ -1412,7 +1413,7 @@ final class _Node extends Latch implements _DatabaseAccess {
                 }
 
                 int leftHeader = leftLen;
-                leftLen = ((leftLen & 0x3f) << 8) | p_ubyteGet(page, leftLoc++);
+                leftLen = ((leftLen & 0x3f) << 8) | p_ubyteGet(leftPage, leftLoc++);
                 if ((leftHeader & ENTRY_FRAGMENTED) == 0) {
                     // Left key is medium... break out and examine the right key.
                     break c2;
@@ -1420,24 +1421,25 @@ final class _Node extends Latch implements _DatabaseAccess {
 
                 // Left key is fragmented...
                 // Note: An optimized version wouldn't need to copy the whole key.
-                byte[] leftKey = getDatabase().reconstructKey(page, leftLoc, leftLen);
+                byte[] leftKey = left.getDatabase().reconstructKey(leftPage, leftLoc, leftLen);
 
                 if (rightLen >= 0) {
                     // Left key is fragmented, and right key is tiny.
                     rightLen++;
                 } else {
                     int rightHeader = rightLen;
-                    rightLen = ((rightLen & 0x3f) << 8) | p_ubyteGet(page, rightLoc++);
+                    rightLen = ((rightLen & 0x3f) << 8) | p_ubyteGet(rightPage, rightLoc++);
                     if ((rightHeader & ENTRY_FRAGMENTED) != 0) {
                         // Right key is fragmented too.
                         // Note: An optimized version wouldn't need to copy the whole key.
-                        byte[] rightKey = getDatabase().reconstructKey(page, rightLoc, rightLen);
+                        byte[] rightKey = right.getDatabase()
+                            .reconstructKey(rightPage, rightLoc, rightLen);
                         return compareUnsigned(leftKey, 0, leftKey.length,
                                                rightKey, 0, rightKey.length);
                     }
                 }
 
-                return -p_compareKeysPageToArray(page, rightLoc, rightLen,
+                return -p_compareKeysPageToArray(rightPage, rightLoc, rightLen,
                                                  leftKey, 0, leftKey.length);
             } // end c2
 
@@ -1448,7 +1450,7 @@ final class _Node extends Latch implements _DatabaseAccess {
             }
 
             int rightHeader = rightLen;
-            rightLen = ((rightLen & 0x3f) << 8) | p_ubyteGet(page, rightLoc++);
+            rightLen = ((rightLen & 0x3f) << 8) | p_ubyteGet(rightPage, rightLoc++);
             if ((rightHeader & ENTRY_FRAGMENTED) == 0) {
                 // Left key is tiny/medium, right key is medium, and both fit in the page.
                 break c1;
@@ -1456,11 +1458,12 @@ final class _Node extends Latch implements _DatabaseAccess {
 
             // Left key is tiny/medium, and right key is fragmented.
             // Note: An optimized version wouldn't need to copy the whole key.
-            byte[] rightKey = getDatabase().reconstructKey(page, rightLoc, rightLen);
-            return p_compareKeysPageToArray(page, leftLoc, leftLen, rightKey, 0, rightKey.length);
+            byte[] rightKey = right.getDatabase().reconstructKey(rightPage, rightLoc, rightLen);
+            return p_compareKeysPageToArray(leftPage, leftLoc, leftLen,
+                                            rightKey, 0, rightKey.length);
         } // end c1
 
-        return p_compareKeysPageToPage(page, leftLoc, leftLen, page, rightLoc, rightLen);
+        return p_compareKeysPageToPage(leftPage, leftLoc, leftLen, rightPage, rightLoc, rightLen);
     }
 
     /**
@@ -5341,10 +5344,10 @@ final class _Node extends Latch implements _DatabaseAccess {
     @FunctionalInterface
     static interface Supplier {
         /**
-         * @param prev full node
+         * @param current full node
          * @return next node, properly initialized
          */
-        _Node next(_Node prev) throws IOException;
+        _Node next(_Node current) throws IOException;
     }
 
     /**
@@ -5485,7 +5488,7 @@ final class _Node extends Latch implements _DatabaseAccess {
             int rightPos = childPos + 2;
             if (rightPos < endPos) {
                 int rightLoc = p_ushortGetLE(page, start + rightPos);
-                int compare = compareKeys(childLoc, rightLoc);
+                int compare = compareKeys(this, childLoc, this, rightLoc);
                 if (compare < 0) {
                     childPos = rightPos;
                     childLoc = p_ushortGetLE(page, start + childPos);
@@ -5501,7 +5504,7 @@ final class _Node extends Latch implements _DatabaseAccess {
                     }
                 }
             }
-            int compare = compareKeys(loc, childLoc);
+            int compare = compareKeys(this, loc, this, childLoc);
             if (compare < 0) {
                 p_shortPutLE(page, start + pos, childLoc);
                 pos = childPos;
