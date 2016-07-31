@@ -1317,7 +1317,7 @@ final class _LocalDatabase extends AbstractDatabase {
     }
 
     @Override
-    public Index newTemporaryIndex() throws IOException {
+    public _Tree newTemporaryIndex() throws IOException {
         return openTree(null, true);
     }
 

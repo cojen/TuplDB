@@ -110,6 +110,30 @@ class Tree implements View, Index {
         return new TreeCursor(this, txn);
     }
 
+    /**
+     * Returns a new cursor for appendTransfer operations. Tree must be empty.
+     */
+    TreeCursor newAppendCursor() throws IOException {
+        TreeCursor c = new TreeCursor(this);
+        c.mTxn = LocalTransaction.BOGUS;
+
+        Node root = mRoot;
+        root.acquireShared();
+        try {
+            if (root.isLeaf() && !root.hasKeys()) {
+                CursorFrame frame = new CursorFrame();
+                frame.bind(root, 0);
+                c.mLeaf = frame;
+            } else {
+                throw new IllegalStateException();
+            }
+        } finally {
+            root.releaseShared();
+        }
+
+        return c;
+    }
+
     @Override
     public long count(byte[] lowKey, byte[] highKey) throws IOException {
         TreeCursor cursor = new TreeCursor(this, Transaction.BOGUS);
