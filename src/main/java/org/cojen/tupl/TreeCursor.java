@@ -22,6 +22,8 @@ import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
+import org.cojen.tupl.io.CauseCloseable;
+
 import static org.cojen.tupl.PageOps.*;
 import static org.cojen.tupl.Utils.*;
 
@@ -30,7 +32,7 @@ import static org.cojen.tupl.Utils.*;
  *
  * @author Brian S O'Neill
  */
-class TreeCursor extends AbstractCursor {
+class TreeCursor implements CauseCloseable, Cursor {
     // Sign is important because values are passed to Node.retrieveKeyCmp
     // method. Bit 0 is set for inclusive variants and clear for exclusive.
     private static final int LIMIT_LE = 1, LIMIT_LT = 2, LIMIT_GE = -1, LIMIT_GT = -2;
@@ -39,7 +41,7 @@ class TreeCursor extends AbstractCursor {
     LocalTransaction mTxn;
 
     // Top stack frame for cursor, always a leaf except during cleanup.
-    private CursorFrame mLeaf;
+    CursorFrame mLeaf;
 
     byte[] mKey;
     byte[] mValue;
@@ -3408,74 +3410,30 @@ class TreeCursor extends AbstractCursor {
         }
     }
 
-    @Override
-    final void appendInit() throws IOException {
-        if (mLeaf != null) {
-            throw new IllegalStateException();
-        }
-
-        Node root = mTree.mRoot;
-        root.acquireShared();
-        try {
-            if (root.isLeaf() && !root.hasKeys()) {
-                CursorFrame frame = new CursorFrame();
-                frame.bind(root, 0);
-                mLeaf = frame;
-            } else {
-                throw new IllegalStateException();
-            }
-        } finally {
-            root.releaseShared();
-        }
-    }
-
-    @Override
-    final void appendEntry(byte[] key, byte[] value) throws IOException {
-        final CommitLock commitLock = mTree.mDatabase.commitLock();
-        commitLock.lock();
-        try {
-            final CursorFrame leaf = mLeaf;
-            Node node = notSplitDirty(leaf);
-            try {
-                node.insertLeafEntry(leaf, mTree, leaf.mNodePos, key, value);
-                leaf.mNodePos += 2;
-                if (node.mSplit != null) {
-                    node = mTree.finishSplit(leaf, node);
-                }
-            } finally {
-                node.releaseExclusive();
-            }
-        } catch (Throwable e) {
-            throw handleException(e, false);
-        } finally {
-            commitLock.unlock();
-        }
-    }
-
     /**
-     * Non-transactionally moves the first entry from the standalone node into this tree, as
-     * the highest overall. No other cursors can be active in the target tree. No check is
-     * performed to verify that the entry is the highest and unique. The source node is
-     * positioned at the next entry as a side effect, but the garbage field is untouched.
+     * Non-transactionally moves the first entry from the source into the tree, as the highest
+     * overall. No other cursors can be active in the target tree, and no check is performed to
+     * verify that the entry is the highest and unique. The garbage field of the node source is
+     * untouched.
      *
      * Caller must hold shared commit lock and exclusive node latch.
      */
-    final void appendTransfer(Node snode) throws IOException {
+    final void appendTransfer(Node source) throws IOException {
         try {
             final CursorFrame tleaf = mLeaf;
             Node tnode = tleaf.acquireExclusive();
             tnode = notSplitDirty(tleaf);
 
             try {
-                final /*P*/ byte[] spage = snode.mPage;
-                final int sloc = p_ushortGetLE(spage, snode.searchVecStart());
+                final /*P*/ byte[] spage = source.mPage;
+                final int sloc = p_ushortGetLE(spage, source.searchVecStart());
                 final int encodedLen = Node.leafEntryLengthAtLoc(spage, sloc);
 
                 final int tpos = tleaf.mNodePos;
                 final int tloc = tnode.createLeafEntry(tleaf, mTree, tpos, encodedLen);
 
                 if (tloc < 0) {
-                    tnode.splitLeafAscendingAndCopyEntry(mTree, snode, 0, encodedLen, tpos);
+                    tnode.splitLeafAscendingAndCopyEntry(mTree, source, 0, encodedLen, tpos);
                     tnode = mTree.finishSplit(tleaf, tnode);
                 } else {
                     p_copy(spage, sloc, tnode.mPage, tloc, encodedLen);
@@ -3487,16 +3445,19 @@ class TreeCursor extends AbstractCursor {
                 tnode.releaseExclusive();
             }
 
-            snode.searchVecStart(snode.searchVecStart() + 2);
+            source.searchVecStart(source.searchVecStart() + 2);
         } catch (Throwable e) {
             throw handleException(e, false);
         }
     }
 
-    @Override
-    final void appendTransfer(AbstractCursor source) throws IOException {
-        TreeCursor scursor = (TreeCursor) source;
-
+    /**
+     * Non-transactionally moves the first entry from the source into the tree, as the highest
+     * overall. No other cursors can be active in the target tree, and no check is performed to
+     * verify that the entry is the highest and unique. This source is positioned at the next
+     * entry as a side effect, and nodes are deleted only when empty.
+     */
+    final void appendTransfer(TreeCursor source) throws IOException {
         final CommitLock commitLock = mTree.mDatabase.commitLock();
         commitLock.lock();
         try {
@@ -3504,11 +3465,11 @@ class TreeCursor extends AbstractCursor {
             Node tnode = tleaf.acquireExclusive();
             tnode = notSplitDirty(tleaf);
 
-            CursorFrame sleaf = scursor.mLeaf;
+            CursorFrame sleaf = source.mLeaf;
             Node snode = sleaf.acquireExclusive();
 
             try {
-                snode = scursor.notSplitDirty(sleaf);
+                snode = source.notSplitDirty(sleaf);
                 final int spos = sleaf.mNodePos;
 
                 try {
@@ -3542,11 +3503,11 @@ class TreeCursor extends AbstractCursor {
             if (snode.hasKeys()) {
                 snode.downgrade();
             } else {
-                scursor.mergeEmptyLeaf(sleaf, snode);
-                sleaf = scursor.leafSharedNotSplit();
+                source.mergeEmptyLeaf(sleaf, snode);
+                sleaf = source.leafSharedNotSplit();
             }
 
-            scursor.next(LocalTransaction.BOGUS, sleaf);
+            source.next(LocalTransaction.BOGUS, sleaf);
         } catch (Throwable e) {
             throw handleException(e, false);
         } finally {
