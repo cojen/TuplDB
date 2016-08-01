@@ -4065,7 +4065,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         if (parentNode == null) {
             node.releaseExclusive();
             parentNode = parentFrame.acquireExclusive();
-            node.acquireExclusive();
+            node = leaf.acquireExclusive();
         }
 
         Node rightNode;
