@@ -99,7 +99,7 @@ final class _Split {
     /**
      * When binding to a node which is in a split state, the position must be adjusted in order
      * for rebindFrame to work properly. The position cannot be used for accessing entries
-     * until after rebindFrame is called, or if unadjustBindPosition is called.
+     * until after rebindFrame is called, or if retrieveLeafValue is called.
      *
      * @param pos non-negative bind position
      * @return adjusted bind position
@@ -142,7 +142,7 @@ final class _Split {
                 if (pos <= highestPos) {
                     return sibling.retrieveLeafValue(pos);
                 }
-                pos -= highestPos - 2;
+                pos = pos - highestPos - 2;
             } finally {
                 sibling.releaseShared();
             }
