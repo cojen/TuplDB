@@ -3,7 +3,7 @@ Changelog
 
 v1.3.3.1 (2016-08-02)
 --------
-* Fix subtraction error when load encounters a split node.
+* Fix subtraction error when load encounters a split node, causing wrong value to be loaded.
 
 v1.3.3 (2016-07-30)
 ------
