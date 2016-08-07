@@ -327,7 +327,11 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     void asTrimmedRoot() {
-        type((byte) (TYPE_TN_LEAF | LOW_EXTREMITY | HIGH_EXTREMITY));
+        asEmptyLeaf(LOW_EXTREMITY | HIGH_EXTREMITY);
+    }
+
+    void asEmptyLeaf(int extremity) {
+        type((byte) (TYPE_TN_LEAF | extremity));
         clearEntries();
     }
 
@@ -1636,7 +1640,7 @@ final class Node extends Latch implements DatabaseAccess {
             // Note: An optimized version wouldn't need to copy the whole key.
             return Utils.midKey(retrieveKeyAtLoc(lowPage, lowLoc), highKey);
         } else {
-            return p_midKeyLowPage(lowPage, lowLoc + 1, lowKeyLen + 1, highKey, 0, highKey.length);
+            return p_midKeyLowPage(lowPage, lowLoc + 1, lowKeyLen + 1, highKey, 0);
         }
     }
 
@@ -1653,8 +1657,7 @@ final class Node extends Latch implements DatabaseAccess {
             // Note: An optimized version wouldn't need to copy the whole key.
             return Utils.midKey(lowKey, retrieveKeyAtLoc(highPage, highLoc));
         } else {
-            return p_midKeyHighPage(lowKey, 0, lowKey.length,
-                                    highPage, highLoc + 1, highKeyLen + 1);
+            return p_midKeyHighPage(lowKey, 0, lowKey.length, highPage, highLoc + 1);
         }
     }
 
@@ -1681,11 +1684,10 @@ final class Node extends Latch implements DatabaseAccess {
         if (highKeyLen < 0) {
             // Note: An optimized version wouldn't need to copy the whole key.
             byte[] highKey = retrieveKeyAtLoc(highPage, highLoc);
-            return p_midKeyLowPage(lowPage, lowLoc, lowKeyLen, highKey, 0, highKey.length);
+            return p_midKeyLowPage(lowPage, lowLoc, lowKeyLen, highKey, 0);
         }
 
-        return p_midKeyLowHighPage(lowPage, lowLoc, lowKeyLen,
-                                   highPage, highLoc + 1, highKeyLen + 1);
+        return p_midKeyLowHighPage(lowPage, lowLoc, lowKeyLen, highPage, highLoc + 1);
     }
 
     /**
@@ -4387,6 +4389,39 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     /**
+     * Split leaf to an empty right node. Intended for preparing an empty tree for use by
+     * TreeMerger.
+     */
+    void splitLeafRight(Tree tree, byte[] splitKey) throws IOException {
+        if (mSplit != null) {
+            throw new AssertionError("Node is already split");
+        }
+
+        if (mPage == p_closedTreePage()) {
+            // Node is a closed tree root.
+            throw new ClosedIndexException();
+        }
+
+        Node newNode = tree.mDatabase.allocDirtyNode(NodeUsageList.MODE_UNEVICTABLE);
+        tree.mDatabase.nodeMapPut(newNode);
+
+        newNode.clearEntries();
+
+        Split split = null;
+        try {
+            split = newSplitRight(newNode);
+            setSplitKey(tree, split, splitKey);
+        } catch (Throwable e) {
+            cleanupSplit(e, newNode, split);
+            throw e;
+        }
+
+        mSplit = split;
+
+        newNode.releaseExclusive();
+    }
+
+    /**
      * Split leaf for ascending order, and copy an entry from another page. The source entry
      * must be ordered higher than all the entries of this target leaf node.
      *
@@ -4422,14 +4457,11 @@ final class Node extends Latch implements DatabaseAccess {
         /*P*/ // p_intPutLE(newPage, 0, 0); // set type (fixed later), reserved byte, and garbage
         /*P*/ // ]
 
-        final int searchVecStart = searchVecStart();
-        pos += searchVecStart;
-
         Split split = null;
         try {
             split = newSplitRight(newNode);
             // Choose an appropriate middle key for suffix compression.
-            setSplitKey(tree, split, midKey(pos - searchVecStart - 2, snode, spos));
+            setSplitKey(tree, split, midKey(highestLeafPos(), snode, spos));
         } catch (Throwable e) {
             cleanupSplit(e, newNode, split);
             throw e;

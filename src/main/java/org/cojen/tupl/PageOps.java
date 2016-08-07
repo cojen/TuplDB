@@ -307,21 +307,21 @@ final class PageOps {
     }
 
     static byte[] p_midKeyLowPage(/*P*/ byte[] lowPage, int lowOff, int lowLen,
-                                  byte[] high, int highOff, int highLen)
+                                  byte[] high, int highOff)
     {
-        return midKey(lowPage, lowOff, lowLen, high, highOff, highLen);
+        return midKey(lowPage, lowOff, lowLen, high, highOff);
     }
 
     static byte[] p_midKeyHighPage(byte[] low, int lowOff, int lowLen,
-                                   /*P*/ byte[] highPage, int highOff, int highLen)
+                                   /*P*/ byte[] highPage, int highOff)
     {
-        return midKey(low, lowOff, lowLen, highPage, highOff, highLen);
+        return midKey(low, lowOff, lowLen, highPage, highOff);
     }
 
     static byte[] p_midKeyLowHighPage(/*P*/ byte[] lowPage, int lowOff, int lowLen,
-                                      /*P*/ byte[] highPage, int highOff, int highLen)
+                                      /*P*/ byte[] highPage, int highOff)
     {
-        return midKey(lowPage, lowOff, lowLen, highPage, highOff, highLen);
+        return midKey(lowPage, lowOff, lowLen, highPage, highOff);
     }
 
     static int p_crc32(/*P*/ byte[] srcPage, int srcStart, int len) {
