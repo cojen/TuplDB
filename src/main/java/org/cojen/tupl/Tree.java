@@ -111,27 +111,32 @@ class Tree implements View, Index {
     }
 
     /**
-     * Returns a new cursor for appendTransfer operations. Tree must be empty.
+     * Prepares an empty tree for use by TreeMerger by creating a root node which is split by
+     * the given partition keys, pointing to empty leaf nodes. The number of leaf nodes is one
+     * more than the number of partitions.
+     *
+     * @param partitions ordered split keys
      */
-    TreeCursor newAppendCursor() throws IOException {
-        TreeCursor c = new TreeCursor(this);
-        c.mTxn = LocalTransaction.BOGUS;
-
-        Node root = mRoot;
-        root.acquireShared();
+    void prepareForMerge(byte[][] partitions) throws IOException {
+        TreeCursor cursor = new TreeCursor(this, Transaction.BOGUS);
         try {
-            if (root.isLeaf() && !root.hasKeys()) {
-                CursorFrame frame = new CursorFrame();
-                frame.bind(root, 0);
-                c.mLeaf = frame;
-            } else {
-                throw new IllegalStateException();
+            // This will bind the cursor to the first leaf, at position 0, which doesn't really
+            // exist. Because of how the Split.rebindFrame method works, the binding always
+            // moves to the new right node.
+            cursor.firstAny();
+
+            CommitLock commitLock = mDatabase.commitLock();
+            for (byte[] splitKey : partitions) {
+                commitLock.lock();
+                try {
+                    cursor.splitLeafRight(splitKey);
+                } finally {
+                    commitLock.unlock();
+                }
             }
         } finally {
-            root.releaseShared();
+            cursor.reset();
         }
-
-        return c;
     }
 
     @Override
@@ -661,7 +666,7 @@ class Tree implements View, Index {
         TreeCursor cursor = new TreeCursor(this, Transaction.BOGUS);
         try {
             cursor.autoload(false);
-            cursor.first();
+            cursor.firstAny();
             int height = cursor.height();
             if (!observer.indexBegin(view, height)) {
                 cursor.reset();

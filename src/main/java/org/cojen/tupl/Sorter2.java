@@ -91,15 +91,35 @@ class Sorter2 {
      */
     public synchronized Index finish() throws IOException {
         try {
-            while (mActiveThreads > 0) {
-                wait();
-            }
-        } catch (InterruptedException e) {
-            throw new InterruptedIOException();
-        }
+            mergeNodes();
 
-        // FIXME
-        return null;
+            // FIXME: also prevent allocation of new nodes; sorter must be reset to be used again
+            mSortNodePos = 0;
+            Arrays.fill(mSortNodes, null);
+
+            waitForInactivity();
+
+            int allTreeCount = 0;
+            for (List<Tree> trees : mSortTreeLevels) {
+                allTreeCount += trees.size();
+            }
+
+            List<Tree> allTrees = new ArrayList<>(allTreeCount);
+            for (List<Tree> trees : mSortTreeLevels) {
+                allTrees.addAll(trees);
+                trees.clear();
+            }
+
+            mergeTrees(allTrees, 0);
+
+            waitForInactivity();
+
+            Tree tree = mSortTreeLevels.get(0).get(0);
+            mSortTreeLevels.clear();
+            return tree;
+        } finally {
+            reset();
+        }
     }
 
     /**
@@ -107,81 +127,100 @@ class Sorter2 {
      */
     public synchronized void reset() throws IOException {
         // FIXME
-        throw null;
+    }
+
+    // Caller must be synchronized.
+    private void waitForInactivity() throws InterruptedIOException {
+        try {
+            while (mActiveThreads > 0) {
+                wait();
+            }
+        } catch (InterruptedException e) {
+            throw new InterruptedIOException();
+        }
     }
 
     // Caller must be synchronized.
     private Node nextSortNode(Node current) throws IOException {
         current.releaseExclusive();
         int pos = mSortNodePos + 1;
-
         if (pos >= mSortNodes.length) {
-            // Merge the nodes into a new temporary index.
-
-            // FIXME: use custom PriorityQueue and avoid double copy
-            Node[] nodes = mSortNodes.clone();
-
-            executor(1).execute(() -> {
-                Tree dest;
-                try {
-                    PriorityQueue<Node> pq = new PriorityQueue<>
-                        (nodes.length, Sorter2::compareSortNode);
-
-                    for (int i=0; i<nodes.length; i++) {
-                        Node node = nodes[i];
-                        latchDirty(node);
-                        node.sortLeaf();
-                        // FIXME: store order in garbage field
-                        pq.add(node);
-                    }
-
-                    dest = mDatabase.newTemporaryIndex();
-                    TreeCursor appender = dest.newAppendCursor();
-                    try {
-                        while (true) {
-                            Node node = pq.poll();
-                            if (node == null) {
-                                break;
-                            }
-                            appender.appendTransfer(node);
-                            if (node.hasKeys()) {
-                                pq.add(node);
-                            } else {
-                                // FIXME: locally recycle the nodes!
-                                mDatabase.deleteNode(node);
-                            }
-                        }
-                    } finally {
-                        appender.reset();
-                    }
-                } catch (Throwable e) {
-                    synchronized (this) {
-                        mActiveThreads--;
-                        notify();
-                    }
-                    throw Utils.rethrow(e);
-                }
-
-                synchronized (this) {
-                    mActiveThreads--;
-                    try {
-                        addToLevel(dest, 0, L0_MAX_SIZE);
-                    } catch (Throwable e) {
-                        throw Utils.rethrow(e);
-                    }
-                    notify();
-                }
-            });
-
+            mergeNodes();
             pos = 0;
         }
-
         Node next = allocSortNode();
-
         mSortNodes[pos] = next;
         mSortNodePos = pos;
-
         return next;
+    }
+
+    // Caller must be synchronized.
+    private void mergeNodes() throws IOException {
+        // Merge the nodes into a new temporary index.
+
+        int len = mSortNodePos;
+        if (mSortNodes[len] != null) {
+            len++;
+        } else if (len == 0) {
+            return;
+        }
+
+        Node[] nodes = Arrays.copyOfRange(mSortNodes, 0, len);
+
+        executor(1).execute(() -> {
+            Tree dest;
+            try {
+                PriorityQueue<Node> pq = new PriorityQueue<>
+                    (nodes.length, Sorter2::compareSortNode);
+
+                for (int i=0; i<nodes.length; i++) {
+                    Node node = nodes[i];
+                    latchDirty(node);
+                    node.sortLeaf();
+                    // FIXME: store order in garbage field
+                    pq.add(node);
+                }
+
+                dest = mDatabase.newTemporaryIndex();
+
+                TreeCursor appender = dest.newCursor(Transaction.BOGUS);
+                try {
+                    appender.firstAny();
+                    while (true) {
+                        Node node = pq.poll();
+                        if (node == null) {
+                            break;
+                        }
+                        appender.appendTransfer(node);
+                        if (node.hasKeys()) {
+                            pq.add(node);
+                        } else {
+                            // FIXME: locally recycle the nodes!
+                            node.makeEvictable();
+                            mDatabase.deleteNode(node);
+                        }
+                    }
+                } finally {
+                    appender.reset();
+                }
+            } catch (Throwable e) {
+                synchronized (this) {
+                    mActiveThreads--;
+                    notify();
+                }
+                throw Utils.rethrow(e);
+            }
+
+            synchronized (this) {
+                mActiveThreads--;
+                try {
+                    addToLevel(dest, 0, L0_MAX_SIZE);
+                } catch (Throwable e) {
+                    throw Utils.rethrow(e);
+                }
+                notify();
+            }
+        });
     }
 
     private Node allocSortNode() throws IOException {
@@ -225,17 +264,17 @@ class Sorter2 {
             List<Tree> trees = new ArrayList<>();
             trees.add(tree);
             mSortTreeLevels.add(trees);
-            return;
+        } else {
+            List<Tree> trees = mSortTreeLevels.get(level);
+            trees.add(tree);
+            if (trees.size() >= maxLevelSize) {
+                mergeTrees(trees, level + 1);
+            }
         }
+    }
 
-        List<Tree> trees = mSortTreeLevels.get(level);
-        trees.add(tree);
-        //System.out.println("" + level + ", " + trees.size());
-
-        if (trees.size() < maxLevelSize) {
-            return;
-        }
-
+    // Caller must be synchronized.
+    private void mergeTrees(List<Tree> trees, int targetLevel) throws IOException {
         Tree[] toMerge = trees.toArray(new Tree[trees.size()]);
         trees.clear();
 
@@ -244,7 +283,7 @@ class Sorter2 {
         executor.execute(() -> {
             Tree merged;
             try {
-                merged = new TreeMerger(mDatabase, MERGE_THREAD_COUNT, toMerge).merge(executor);
+                merged = TreeMerger.merge(executor, mDatabase, MERGE_THREAD_COUNT, toMerge);
             } catch (Throwable e) {
                 synchronized (this) {
                     mActiveThreads -= MERGE_THREAD_COUNT + 1;
@@ -256,7 +295,7 @@ class Sorter2 {
             synchronized (this) {
                 mActiveThreads -= MERGE_THREAD_COUNT + 1;
                 try {
-                    addToLevel(merged, level + 1, L1_MAX_SIZE);
+                    addToLevel(merged, targetLevel, L1_MAX_SIZE);
                 } catch (Throwable e) {
                     throw Utils.rethrow(e);
                 }

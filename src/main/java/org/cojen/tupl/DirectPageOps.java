@@ -639,7 +639,7 @@ final class DirectPageOps {
     }
 
     static byte[] p_midKeyLowPage(long lowPage, int lowOff, int lowLen,
-                                  byte[] high, int highOff, int highLen)
+                                  byte[] high, int highOff)
     {
         lowPage += lowOff;
         for (int i=0; i<lowLen; i++) {
@@ -658,7 +658,7 @@ final class DirectPageOps {
     }
 
     static byte[] p_midKeyHighPage(byte[] low, int lowOff, int lowLen,
-                                   long highPage, int highOff, int highLen)
+                                   long highPage, int highOff)
     {
         highPage += highOff;
         for (int i=0; i<lowLen; i++) {
@@ -677,7 +677,7 @@ final class DirectPageOps {
     }
 
     static byte[] p_midKeyLowHighPage(long lowPage, int lowOff, int lowLen,
-                                      long highPage, int highOff, int highLen)
+                                      long highPage, int highOff)
     {
         lowPage += lowOff;
         highPage += highOff;
