@@ -1543,7 +1543,7 @@ final class Node extends Latch implements DatabaseAccess {
             // Note: An optimized version wouldn't need to copy the whole key.
             return Utils.midKey(retrieveKeyAtLoc(lowPage, lowLoc), highKey);
         } else {
-            return p_midKeyLowPage(lowPage, lowLoc + 1, lowKeyLen + 1, highKey, 0, highKey.length);
+            return p_midKeyLowPage(lowPage, lowLoc + 1, lowKeyLen + 1, highKey, 0);
         }
     }
 
@@ -1560,8 +1560,7 @@ final class Node extends Latch implements DatabaseAccess {
             // Note: An optimized version wouldn't need to copy the whole key.
             return Utils.midKey(lowKey, retrieveKeyAtLoc(highPage, highLoc));
         } else {
-            return p_midKeyHighPage(lowKey, 0, lowKey.length,
-                                    highPage, highLoc + 1, highKeyLen + 1);
+            return p_midKeyHighPage(lowKey, 0, lowKey.length, highPage, highLoc + 1);
         }
     }
 
@@ -1588,11 +1587,10 @@ final class Node extends Latch implements DatabaseAccess {
         if (highKeyLen < 0) {
             // Note: An optimized version wouldn't need to copy the whole key.
             byte[] highKey = retrieveKeyAtLoc(highPage, highLoc);
-            return p_midKeyLowPage(lowPage, lowLoc, lowKeyLen, highKey, 0, highKey.length);
+            return p_midKeyLowPage(lowPage, lowLoc, lowKeyLen, highKey, 0);
         }
 
-        return p_midKeyLowHighPage(lowPage, lowLoc, lowKeyLen,
-                                   highPage, highLoc + 1, highKeyLen + 1);
+        return p_midKeyLowHighPage(lowPage, lowLoc, lowKeyLen, highPage, highLoc + 1);
     }
 
     /**
