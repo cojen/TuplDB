@@ -217,7 +217,7 @@ class Utils extends org.cojen.tupl.io.Utils {
      * of the high key.
      */
     static byte[] midKey(byte[] low, byte[] high) {
-        return midKey(low, 0, low.length, high, 0, high.length);
+        return midKey(low, 0, low.length, high, 0);
     }
 
     /**
@@ -228,9 +228,7 @@ class Utils extends org.cojen.tupl.io.Utils {
      * <p>Method is used for internal node suffix compression. To disable, simply return a copy
      * of the high key.
      */
-    static byte[] midKey(byte[] low, int lowOff, int lowLen,
-                         byte[] high, int highOff, int highLen)
-    {
+    static byte[] midKey(byte[] low, int lowOff, int lowLen, byte[] high, int highOff) {
         for (int i=0; i<lowLen; i++) {
             byte lo = low[lowOff + i];
             byte hi = high[highOff + i];
