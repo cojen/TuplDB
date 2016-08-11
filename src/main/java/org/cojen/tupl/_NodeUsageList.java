@@ -44,6 +44,9 @@ final class _NodeUsageList extends Latch {
     private _Node mLeastRecentlyUsed;
 
     _NodeUsageList(_LocalDatabase db, int maxSize) {
+        if (maxSize <= 0) {
+            throw new IllegalArgumentException();
+        }
         mDatabase = db;
         mPageSize = db.pageSize();
         acquireExclusive();
@@ -102,8 +105,8 @@ final class _NodeUsageList extends Latch {
                 }
             } else {
                 // Move node to the most recently used position.
-                mLeastRecentlyUsed = moreUsed;
                 moreUsed.mLessUsed = null;
+                mLeastRecentlyUsed = moreUsed;
                 node.mMoreUsed = null;
                 (node.mLessUsed = mMostRecentlyUsed).mMoreUsed = node;
                 mMostRecentlyUsed = node;
@@ -199,10 +202,12 @@ final class _NodeUsageList extends Latch {
             mSize++;
 
             if ((mode & MODE_UNEVICTABLE) == 0) {
-                if ((node.mLessUsed = mMostRecentlyUsed) == null) {
+                _Node most = mMostRecentlyUsed;
+                node.mLessUsed = most;
+                if (most == null) {
                     mLeastRecentlyUsed = node;
                 } else {
-                    mMostRecentlyUsed.mMoreUsed = node;
+                    most.mMoreUsed = node;
                 }
                 mMostRecentlyUsed = node;
             }
@@ -227,7 +232,8 @@ final class _NodeUsageList extends Latch {
             _Node moreUsed = node.mMoreUsed;
             if (moreUsed != null) {
                 _Node lessUsed = node.mLessUsed;
-                if ((moreUsed.mLessUsed = lessUsed) == null) {
+                moreUsed.mLessUsed = lessUsed;
+                if (lessUsed == null) {
                     mLeastRecentlyUsed = moreUsed;
                 } else {
                     lessUsed.mMoreUsed = moreUsed;
@@ -258,33 +264,21 @@ final class _NodeUsageList extends Latch {
         }
 
         try {
-            if (mMaxSize == 0) {
-                // Closed.
-                return;
-            }
             _Node lessUsed = node.mLessUsed;
-            if (lessUsed == null) {
-                // _Node might already be least...
-                if (node.mMoreUsed != null) {
-                    // ...confirmed.
-                    return;
-                }
-                // ..._Node isn't in the usage list at all.
-            } else {
+            if (lessUsed != null) {
                 _Node moreUsed = node.mMoreUsed;
-                if ((lessUsed.mMoreUsed = moreUsed) == null) {
+                lessUsed.mMoreUsed = moreUsed;
+                if (moreUsed == null) {
                     mMostRecentlyUsed = lessUsed;
                 } else {
                     moreUsed.mLessUsed = lessUsed;
                 }
                 node.mLessUsed = null;
+                (node.mMoreUsed = mLeastRecentlyUsed).mLessUsed = node;
+                mLeastRecentlyUsed = node;
+            } else if (mMaxSize != 0) {
+                doMakeEvictableNow(node);
             }
-            _Node least = mLeastRecentlyUsed;
-            node.mMoreUsed = least;
-            if (least != null) {
-                least.mLessUsed = node;
-            }
-            mLeastRecentlyUsed = node;
         } finally {
             // The node latch must be released before releasing the usage list latch, to
             // prevent the node from being immediately promoted to the most recently used by
@@ -305,15 +299,17 @@ final class _NodeUsageList extends Latch {
             // Only insert if not closed and if not already in the list. The node latch doesn't
             // need to be held, and so a concurrent call to the unused method might insert the
             // node sooner.
-            if (mMaxSize != 0 && node.mMoreUsed == null && node.mLessUsed == null) {
+            if (mMaxSize != 0 && node.mMoreUsed == null) {
                 _Node most = mMostRecentlyUsed;
-                node.mLessUsed = most;
-                if (most == null) {
-                    mLeastRecentlyUsed = node;
-                } else {
-                    most.mMoreUsed = node;
+                if (node != most) {
+                    node.mLessUsed = most;
+                    if (most == null) {
+                        mLeastRecentlyUsed = node;
+                    } else {
+                        most.mMoreUsed = node;
+                    }
+                    mMostRecentlyUsed = node;
                 }
-                mMostRecentlyUsed = node;
             }
         } finally {
             releaseExclusive();
@@ -328,18 +324,28 @@ final class _NodeUsageList extends Latch {
         acquireExclusive();
         try {
             // See comment in the makeEvictable method.
-            if (mMaxSize != 0 && node.mMoreUsed == null && node.mLessUsed == null) {
-                _Node least = mLeastRecentlyUsed;
-                node.mMoreUsed = least;
-                if (least == null) {
-                    mMostRecentlyUsed = node;
-                } else {
-                    least.mLessUsed = node;
-                }
-                mLeastRecentlyUsed = node;
+            if (mMaxSize != 0 && node.mLessUsed == null) {
+                doMakeEvictableNow(node);
             }
         } finally {
             releaseExclusive();
+        }
+    }
+
+    /**
+     * Caller must hold latch, have checked that this list isn't closed, and have checked that
+     * node.mLessUsed is null.
+     */
+    private void doMakeEvictableNow(final _Node node) {
+        _Node least = mLeastRecentlyUsed;
+        if (node != least) {
+            node.mMoreUsed = least;
+            if (least == null) {
+                mMostRecentlyUsed = node;
+            } else {
+                least.mLessUsed = node;
+            }
+            mLeastRecentlyUsed = node;
         }
     }
 
@@ -363,23 +369,24 @@ final class _NodeUsageList extends Latch {
     private void doMakeUnevictable(final _Node node) {
         final _Node lessUsed = node.mLessUsed;
         final _Node moreUsed = node.mMoreUsed;
-        if (lessUsed == null) {
-            mLeastRecentlyUsed = moreUsed;
-            if (moreUsed != null) {
-                node.mMoreUsed = null;
-                moreUsed.mLessUsed = null;
-            } else if (node == mMostRecentlyUsed) {
-                mMostRecentlyUsed = null;
-            }
-        } else {
+
+        if (lessUsed != null) {
             node.mLessUsed = null;
             if (moreUsed != null) {
                 node.mMoreUsed = null;
                 lessUsed.mMoreUsed = moreUsed;
                 moreUsed.mLessUsed = lessUsed;
-            } else {
+            } else if (node == mMostRecentlyUsed) {
                 mMostRecentlyUsed = lessUsed;
                 lessUsed.mMoreUsed = null;
+            }
+        } else if (node == mLeastRecentlyUsed) {
+            mLeastRecentlyUsed = moreUsed;
+            if (moreUsed != null) {
+                node.mMoreUsed = null;
+                moreUsed.mLessUsed = null;
+            } else {
+                mMostRecentlyUsed = null;
             }
         }
     }
