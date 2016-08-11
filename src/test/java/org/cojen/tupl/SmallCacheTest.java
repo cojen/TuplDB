@@ -214,6 +214,12 @@ public class SmallCacheTest {
             fail();
         } catch (CacheExhaustedException e) {
         }
+
+        // Free up two nodes, as required by the tests.
+        for (int i=0; i<2; i++) {
+            indexes.remove(indexes.size() - 1).close();
+        }
+
         return indexes;
     }
 }

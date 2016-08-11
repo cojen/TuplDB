@@ -1,6 +1,11 @@
 Changelog
 =========
 
+v1.3.3.2
+--------
+* Fix NullPointerException when too many nodes are unevictable. A CacheExhaustedException
+  should be thrown instead.
+
 v1.3.3.1 (2016-08-02)
 --------
 * Fix subtraction error when load encounters a split node, causing wrong value to be loaded.
