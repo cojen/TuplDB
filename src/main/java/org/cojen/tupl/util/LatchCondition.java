@@ -78,7 +78,7 @@ public final class LatchCondition {
         if (nanosTimeout < 0) {
             while (true) {
                 latch.releaseExclusive();
-                LockSupport.park();
+                LockSupport.park(this);
                 latch.acquireExclusive();
                 int state = node.resumed(this);
                 if (state != 0) {
@@ -88,7 +88,7 @@ public final class LatchCondition {
         } else {
             while (true) {
                 latch.releaseExclusive();
-                LockSupport.parkNanos(nanosTimeout);
+                LockSupport.parkNanos(this, nanosTimeout);
                 latch.acquireExclusive();
                 int state = node.resumed(this);
                 if (state != 0) {
