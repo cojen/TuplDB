@@ -198,9 +198,9 @@ final class CommitLock implements Lock {
 
                 while (true) {
                     if (nanosTimeout < 0) {
-                        LockSupport.park();
+                        LockSupport.park(this);
                     } else {
-                        LockSupport.parkNanos(nanosTimeout);
+                        LockSupport.parkNanos(this, nanosTimeout);
                     }
 
                     if (Thread.interrupted()) {
