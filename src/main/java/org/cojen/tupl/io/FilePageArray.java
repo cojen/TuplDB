@@ -47,7 +47,7 @@ public class FilePageArray extends PageArray {
             factory.createFile(file);
         }
 
-        mFio = JavaFileIO.open(file, options);
+        mFio = FileIO.open(file, options);
     }
 
     @Override
