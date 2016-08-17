@@ -5523,16 +5523,20 @@ final class Node extends Latch implements DatabaseAccess {
                 int compare = compareKeys(this, childLoc, this, rightLoc);
                 if (compare < 0) {
                     childPos = rightPos;
-                    childLoc = p_ushortGetLE(page, start + childPos);
+                    childLoc = rightLoc;
                 } else if (compare == 0) {
                     // Found a duplicate key. Use a common pointer, favoring the higher one.
                     if (childLoc < rightLoc) {
-                        deleteDuplicateLeafEntry(page, childLoc);
+                        replaceDuplicateLeafEntry(page, childLoc, rightLoc);
+                        if (loc == childLoc) {
+                            return;
+                        }
                         childLoc = rightLoc;
-                        p_shortPutLE(page, start + childPos, childLoc);
                     } else if (childLoc > rightLoc) {
-                        deleteDuplicateLeafEntry(page, rightLoc);
-                        p_shortPutLE(page, start + rightPos, childLoc);
+                        replaceDuplicateLeafEntry(page, rightLoc, childLoc);
+                        if (loc == rightLoc) {
+                            return;
+                        }
                     }
                 }
             }
@@ -5544,11 +5548,10 @@ final class Node extends Latch implements DatabaseAccess {
                 if (compare == 0) {
                     // Found a duplicate key. Use a common pointer, favoring the higher one.
                     if (loc < childLoc) {
-                        deleteDuplicateLeafEntry(page, loc);
+                        replaceDuplicateLeafEntry(page, loc, childLoc);
                         loc = childLoc;
                     } else if (loc > childLoc) {
-                        deleteDuplicateLeafEntry(page, childLoc);
-                        p_shortPutLE(page, start + childPos, loc);
+                        replaceDuplicateLeafEntry(page, childLoc, loc);
                     }
                 }
                 break;
@@ -5558,7 +5561,9 @@ final class Node extends Latch implements DatabaseAccess {
         p_shortPutLE(page, start + pos, loc);
     }
 
-    private void deleteDuplicateLeafEntry(/*P*/ byte[] page, int loc) throws IOException {
+    private void replaceDuplicateLeafEntry(/*P*/ byte[] page, int loc, int newLoc)
+        throws IOException
+    {
         int entryLen = doDeleteLeafEntry(page, loc) - loc;
 
         // Increment garbage by the size of the encoded entry.
@@ -5568,6 +5573,15 @@ final class Node extends Latch implements DatabaseAccess {
         // occurs. This ensures that cleanup won't double-delete fragmented keys or values.
         p_shortPutLE(page, loc, 0x8000); // encoding for an empty key
         p_bytePut(page, loc + 2, -1); // encoding for a ghost value
+
+        // Replace all references to the old location.
+        int pos = searchVecStart();
+        int endPos = searchVecEnd();
+        for (; pos<=endPos; pos+=2) {
+            if (p_ushortGetLE(page, pos) == loc) {
+                p_shortPutLE(page, pos, newLoc);
+            }
+        }
     }
 
     /**
