@@ -3211,7 +3211,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
         try {
             if (oldId != 0) {
-                // FIXME: This can hang on I/O; release frame latch if deletePage would block?
+                // TODO: This can hang on I/O; release frame latch if deletePage would block?
                 // Then allow thread to block without node latch held.
                 mPageDb.deletePage(oldId);
                 nodeMapRemove(node, Long.hashCode(oldId));
