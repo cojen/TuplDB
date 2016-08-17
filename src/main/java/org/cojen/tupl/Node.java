@@ -3536,7 +3536,7 @@ final class Node extends Latch implements DatabaseAccess {
 
                     // Node is already split, and so value is too large.
                     if (vfrag != 0) {
-                        // FIXME: Can this happen?
+                        // TODO: Can this happen?
                         throw new DatabaseException("Fragmented entry doesn't fit");
                     }
                     LocalDatabase db = tree.mDatabase;
@@ -4813,7 +4813,7 @@ final class Node extends Latch implements DatabaseAccess {
             byte[] result = null;
             while (entryLoc < 0) {
                 if (vfrag != 0) {
-                    // FIXME: Can this happen?
+                    // TODO: Can this happen?
                     throw new DatabaseException("Fragmented entry doesn't fit");
                 }
                 LocalDatabase db = tree.mDatabase;
