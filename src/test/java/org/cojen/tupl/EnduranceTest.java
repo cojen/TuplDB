@@ -19,18 +19,16 @@ import static org.cojen.tupl.TestUtils.deleteTempDatabases;
 import static org.cojen.tupl.TestUtils.newTempDatabase;
 import static org.cojen.tupl.TestUtils.randomStr;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.After;
 import org.junit.Before;
@@ -52,6 +50,75 @@ public class EnduranceTest {
 
     protected Database mDb;
     protected Index mIx;
+
+    /**
+     * Regression test for a deadlock bug between splitting a page and checkpointing.
+     */
+    @Test
+    public void splitAndCheckpoint() throws Exception {
+
+        DatabaseConfig config = new DatabaseConfig()
+                .pageSize(1024)
+                .directPageAccess(false)
+                .durabilityMode(DurabilityMode.NO_REDO)
+                .checkpointRate(1, TimeUnit.MILLISECONDS)
+                .checkpointDelayThreshold(1, TimeUnit.MILLISECONDS);
+
+        decorate(config);
+
+        mDb = newTempDatabase(config);
+        mIx = mDb.openIndex("test");
+
+        int numWorkers = 5;
+        final AtomicBoolean keepRunning = new AtomicBoolean(true);
+        // Next row to insert
+        final AtomicLong nextRow = new AtomicLong(0);
+        final byte[] rowValue = new byte[512];
+        // Only use row ids up to this value, then wrap around
+        final long maxRows = 100_000;
+
+        // Creates a set of threads. Each thread grabs the next row to insert (by incrementing
+        // nextRow). The thread first inserts that row, then deletes the row as far from the
+        // grabbed row as possible.
+        //
+        // Since all of the threads are inserting keys right next to each other, the page
+        // often splits and all those threads fight to finish the split.
+        ExecutorService executor = Executors.newFixedThreadPool(numWorkers);
+        for (int i = 0; i < numWorkers; i++) {
+            Runnable writeRow = () -> {
+                ByteBuffer keyBuffer = ByteBuffer.allocate(8);
+                while (keepRunning.get()) {
+                    long rowId = nextRow.incrementAndGet();
+
+                    // Insert that row
+                    keyBuffer.clear();
+                    keyBuffer.putLong(rowId % maxRows);
+                    try {
+                        mIx.store(null, keyBuffer.array(), rowValue);
+                    } catch (IOException e) {
+                        assertNull(e);
+                    }
+
+                    // If the test only did inserts and stores, eventually all row ids would
+                    // be written. Splits only occur when rows get bigger. Overwriting rows
+                    // with new values of the same size does not cause splits.
+                    //
+                    // In order to keep splitting, old rows need to be deleted.
+                    keyBuffer.clear();
+                    keyBuffer.putLong((rowId + maxRows / 2) % maxRows);
+                    try {
+                        mIx.delete(null, keyBuffer.array());
+                    } catch (IOException e) {
+                        assertNull(e);
+                    }
+                }
+            };
+            executor.execute(writeRow);
+        }
+        Thread.sleep(1_000);
+        keepRunning.set(false);
+        executor.shutdown();
+    }
 
     @Test
     public void writeAndEvict() throws Exception {
