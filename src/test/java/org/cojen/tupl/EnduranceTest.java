@@ -18,6 +18,7 @@ package org.cojen.tupl;
 import static org.cojen.tupl.TestUtils.deleteTempDatabases;
 import static org.cojen.tupl.TestUtils.newTempDatabase;
 import static org.cojen.tupl.TestUtils.randomStr;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 
@@ -50,6 +51,96 @@ public class EnduranceTest {
 
     protected Database mDb;
     protected Index mIx;
+
+    /**
+     * Regression test for a racecondition loading fragmented values into the cache
+     */
+    @Test
+    public void loadFragmented() throws Exception {
+
+        DatabaseConfig config = new DatabaseConfig()
+                .pageSize(1024)
+                .directPageAccess(false)
+                .durabilityMode(DurabilityMode.NO_REDO)
+                .minCacheSize(200 * 1024)
+                .maxCacheSize(200 * 1024)
+                .checkpointRate(-1, null);
+
+        decorate(config);
+
+        mDb = newTempDatabase(config);
+        mIx = mDb.openIndex("test");
+
+        // Only use row ids up to this value, then wrap around
+        final long maxRows = 50;
+
+        // Seed the database
+        {
+            ByteBuffer keyBuffer = ByteBuffer.allocate(8);
+            // Use 10k values
+            ByteBuffer valueBuffer = ByteBuffer.allocate(10 * 1024);
+            for (long i = 0; i < maxRows; i++) {
+                // The key is exactly 8 bytes long and it is the row id.
+                keyBuffer.clear();
+                keyBuffer.putLong(i);
+                // The first 8 bytes of the value is the row id. The rest of the 10k is 0.
+                valueBuffer.clear();
+                long j = 0xFF0000;
+                while(valueBuffer.remaining() >= 16) {
+                    valueBuffer.putLong(i);
+                    valueBuffer.putLong(j);
+                    j++;
+                }
+                mIx.store(null, keyBuffer.array(), valueBuffer.array());
+                if (i % 10 == 9) {
+                    // Checkpoint after writing every 10 rows so that the very small cache
+                    // does not fill up.
+                    mDb.checkpoint();
+                }
+            }
+            mDb.checkpoint();
+        }
+
+        int numWorkers = 10;
+        final AtomicBoolean keepRunning = new AtomicBoolean(true);
+        // Next row to read
+        final AtomicLong nextRow = new AtomicLong(0);
+
+        ExecutorService executor = Executors.newFixedThreadPool(numWorkers);
+        ArrayList<Future<?>> futures = new ArrayList<>();
+        for (int i = 0; i < numWorkers; i++) {
+            Runnable readRows = () -> {
+                ByteBuffer keyBuffer = ByteBuffer.allocate(8);
+                long prevRowId = -1;
+                Cursor cursor = mIx.newCursor(null);
+                while (keepRunning.get()) {
+                    nextRow.compareAndSet(prevRowId, prevRowId + 1);
+                    long rowId = nextRow.get();
+
+                    keyBuffer.clear();
+                    keyBuffer.putLong(rowId % maxRows);
+                    try {
+                        cursor.find(keyBuffer.array());
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    long keyRowId = ByteBuffer.wrap(cursor.key()).getLong();
+                    assertEquals(rowId % maxRows, keyRowId);
+                    long valueRowId = ByteBuffer.wrap(cursor.value()).getLong();
+                    assertEquals(rowId % maxRows, valueRowId);
+                    prevRowId = rowId;
+                }
+                cursor.reset();
+            };
+            futures.add(executor.submit(readRows));
+        }
+        Thread.sleep(10_000);
+        keepRunning.set(false);
+        for (Future<?> f : futures) {
+            f.get();
+        }
+        executor.shutdown();
+    }
 
     /**
      * Regression test for a deadlock bug between splitting a page and checkpointing.
