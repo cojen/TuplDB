@@ -5585,6 +5585,16 @@ final class _Node extends Latch implements _DatabaseAccess {
     }
 
     /**
+     * Deletes the first entry, and leaves the garbage field alone.
+     */
+    void deleteFirstSortLeafEntry() throws IOException {
+        long page = mPage;
+        int start = searchVecStart();
+        doDeleteLeafEntry(page, p_ushortGetLE(page, start));
+        searchVecStart(start + 2);
+    }
+
+    /**
      * Count the number of cursors bound to this node.
      */
     long countCursors() {
