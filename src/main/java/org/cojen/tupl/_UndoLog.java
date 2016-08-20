@@ -496,10 +496,12 @@ final class _UndoLog implements _DatabaseAccess {
                         node.undoTop(end);
                         p_bytePut(page, end, OP_COMMIT_TRUNCATE);
                     }
-                    // Release and re-acquire, to unblock any threads waiting for
-                    // checkpoint to begin.
-                    commitLock.unlock();
-                    commitLock.lock();
+                    if (commitLock.hasQueuedThreads()) {
+                        // Release and re-acquire, to unblock any threads waiting for
+                        // checkpoint to begin.
+                        commitLock.unlock();
+                        commitLock.lock();
+                    }
                 }
             }
             mLength = 0;
