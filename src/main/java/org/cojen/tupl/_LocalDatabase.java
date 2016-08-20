@@ -48,6 +48,9 @@ import java.util.Random;
 import java.util.Set;
 
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -220,6 +223,8 @@ final class _LocalDatabase extends AbstractDatabase {
     /*P*/ // [|
     final boolean mFullyMapped;
     /*P*/ // ]
+
+    private volatile ExecutorService mSorterExecutor;
 
     volatile boolean mClosed;
     volatile Throwable mClosedCause;
@@ -1472,6 +1477,31 @@ final class _LocalDatabase extends AbstractDatabase {
     }
 
     @Override
+    public Sorter newSorter(Executor executor) throws IOException {
+        if (executor == null && (executor = mSorterExecutor) == null) {
+            mOpenTreesLatch.acquireExclusive();
+            try {
+                checkClosed();
+                executor = mSorterExecutor;
+                if (executor == null) {
+                    ExecutorService es = Executors.newCachedThreadPool(r -> {
+                        Thread t = new Thread(r);
+                        t.setDaemon(true);
+                        t.setName("Sorter-" + Long.toUnsignedString(t.getId()));
+                        return t;
+                    });
+                    mSorterExecutor = es;
+                    executor = es;
+                }
+            } finally {
+                mOpenTreesLatch.releaseExclusive();
+            }
+        }
+
+        return new _ParallelSorter(this, executor);
+    }
+
+    @Override
     public void capacityLimit(long bytes) {
         mPageDb.pageLimit(bytes < 0 ? -1 : (bytes / mPageSize));
     }
@@ -2010,6 +2040,11 @@ final class _LocalDatabase extends AbstractDatabase {
                 lock.acquireExclusive();
             }
             try {
+                if (mSorterExecutor != null) {
+                    mSorterExecutor.shutdown();
+                    mSorterExecutor = null;
+                }
+
                 if (mUsageLists != null) {
                     for (_NodeUsageList usageList : mUsageLists) {
                         if (usageList != null) {
@@ -3096,9 +3131,9 @@ final class _LocalDatabase extends AbstractDatabase {
     }
 
     /**
-     * Caller must hold commit lock and exclusive latch on node. Method does
-     * nothing if node is already dirty. Latch is never released by this method,
-     * even if an exception is thrown.
+     * Mark a tree node as dirty. Caller must hold commit lock and exclusive latch on
+     * node. Method does nothing if node is already dirty. Latch is never released by this
+     * method, even if an exception is thrown.
      *
      * @return true if just made dirty and id changed
      */
@@ -3112,9 +3147,9 @@ final class _LocalDatabase extends AbstractDatabase {
     }
 
     /**
-     * Caller must hold commit lock and exclusive latch on node. Method does
-     * nothing if node is already dirty. Latch is never released by this method,
-     * even if an exception is thrown.
+     * Mark a fragment node as dirty. Caller must hold commit lock and exclusive latch on
+     * node. Method does nothing if node is already dirty. Latch is never released by this
+     * method, even if an exception is thrown.
      *
      * @return true if just made dirty and id changed
      */
@@ -3153,11 +3188,11 @@ final class _LocalDatabase extends AbstractDatabase {
     }
 
     /**
-     * Caller must hold commit lock and exclusive latch on node. Method does
-     * nothing if node is already dirty. Latch is never released by this method,
-     * even if an exception is thrown.
+     * Mark an unmapped node as dirty. Caller must hold commit lock and exclusive latch on
+     * node. Method does nothing if node is already dirty. Latch is never released by this
+     * method, even if an exception is thrown.
      */
-    void markUndoLogDirty(_Node node) throws IOException {
+    void markUnmappedDirty(_Node node) throws IOException {
         if (node.mCachedState != mCommitState) {
             node.write(mPageDb);
 

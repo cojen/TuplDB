@@ -16,17 +16,15 @@
 
 package org.cojen.tupl;
 
-import java.io.Closeable;
+import java.io.InterruptedIOException;
 import java.io.IOException;
 
 import java.util.Arrays;
 import java.util.PriorityQueue;
 
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
+import java.util.concurrent.Executor;
+
+import java.util.function.BiConsumer;
 
 /**
  * Parallel tree merging utility.
@@ -35,29 +33,53 @@ import java.util.concurrent.Future;
  */
 /*P*/
 class TreeMerger {
+    private final LocalDatabase mDatabase;
+    private final BiConsumer<TreeMerger, Tree> mConsumer;
+    private final Tree[] mSources;
+    private final Worker[] mWorkers;
+
+    private Tree mTarget;
+    private int mActiveCount;
+    private int mStoppedCount;
+
     /**
-     * Merges the given sources into a new temporary tree. No other threads can be acting on
-     * the sources, which shrink during the merge. The sources are fully dropped when the merge
-     * finishes.
+     * @param workerCount maximum parallelism; must be at least 1
+     * @param consumer receives the target tree, plus any source trees if aborted, and then
+     * null when merger is finished
      */
-    static Tree merge(ExecutorService executor, LocalDatabase db, int threadCount, Tree... sources)
-        throws IOException
+    TreeMerger(LocalDatabase db, int workerCount, Tree[] sources,
+               BiConsumer<TreeMerger, Tree> consumer)
     {
-        if (executor == null || db == null || threadCount <= 0 || sources.length <= 0) {
+        if (db == null || workerCount <= 0 || sources.length <= 0 || consumer == null) {
             throw new IllegalArgumentException();
         }
+        mDatabase = db;
+        mSources = sources;
+        mConsumer = consumer;
+        mWorkers = new Worker[workerCount];
+    }
 
-        byte[][] partitions = selectPartitions(threadCount, sources);
+    /**
+     * Merges the sources into a new temporary tree. No other threads can be acting on the
+     * sources, which shrink during the merge. Unless the merge is aborted, the sources are
+     * fully dropped when the merge finishes.
+     *
+     * @param executor used for parallel merging; pass null to use only the calling thread
+     */
+    void start(Executor executor) throws IOException {
+        int workerCount = mWorkers.length;
+        byte[][] partitions = selectPartitions(workerCount, mSources);
 
-        Tree target = db.newTemporaryIndex();
-        if (partitions != null) {
+        Tree target = mDatabase.newTemporaryIndex();
+        if (partitions == null) {
+            workerCount = 1;
+        } else {
             target.prepareForMerge(partitions);
+            workerCount = Math.min(partitions.length + 1, workerCount);
         }
 
-        Worker[] workers = new Worker[threadCount];
-
         try {
-            for (int i=0; i<threadCount; i++) {
+            for (int i=0; i<workerCount; i++) {
                 TreeCursor tcursor = target.newCursor(Transaction.BOGUS);
 
                 if (partitions != null && i > 0) {
@@ -68,10 +90,10 @@ class TreeMerger {
                 }
 
                 Worker w = new Worker(tcursor);
-                workers[i] = w;
+                mWorkers[i] = w;
 
-                for (int j=0; j<sources.length; j++) {
-                    Tree source = sources[j];
+                for (int j=0; j<mSources.length; j++) {
+                    Tree source = mSources[j];
 
                     TreeCursor cursor = source.newCursor(Transaction.BOGUS);
                     cursor.autoload(false);
@@ -90,45 +112,92 @@ class TreeMerger {
                         }
                     }
 
-                    w.add(new Selector(j, cursor, upperBound));
+                    byte[] key = cursor.key();
+
+                    if (key != null) {
+                        if (upperBound == null || Utils.compareUnsigned(key, upperBound) < 0) {
+                            w.mQueue.add(new Selector(j, cursor, upperBound));
+                        } else {
+                            cursor.reset();
+                        }
+                    }
                 }
             }
 
-            Future[] results = new Future[threadCount];
-
-            for (int i=0; i<threadCount; i++) {
-                Worker w = workers[i];
-                results[i] = executor.submit(w);
-            }
-
-            for (Future result : results) {
-                try {
-                    result.get();
-                } catch (ExecutionException e) {
-                    Utils.rethrow(e.getCause());
-                } catch (Exception e) {
-                    Utils.rethrow(e);
+            synchronized (this) {
+                mTarget = target;
+                for (int i=0; i<workerCount; i++) {
+                    Worker w = mWorkers[i];
+                    if (executor == null) {
+                        w.run();
+                    } else {
+                        executor.execute(w);
+                    }
                 }
+                mActiveCount = workerCount;
             }
-
-            for (Tree source : sources) {
-                db.deleteIndex(source).run();
-            }
-
-            return target;
         } catch (Throwable e) {
+            stop();
+
             try {
-                db.deleteIndex(target).run();
+                mDatabase.deleteIndex(target).run();
             } catch (IOException e2) {
                 // Ignore.
             }
+
             throw e;
-        } finally {
-            for (Worker w : workers) {
-                if (w != null) {
-                    w.close();
+        }
+    }
+
+    /**
+     * Attempt to stop the merge. The remaining source trees are passed to the consumer,
+     * immediately after the target tree.
+     */
+    void stop() {
+        for (Worker w : mWorkers) {
+            if (w == null) {
+                break;
+            }
+            w.mStop = true;
+        }
+    }
+
+    /**
+     * Returns the first exception supressed by any worker, if any.
+     */
+    Throwable exceptionCheck() {
+        for (Worker w : mWorkers) {
+            if (w == null) {
+                break;
+            }
+            Throwable ex = w.mException;
+            if (ex != null) {
+                return ex;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @param stopped 1 if stopped, 0 if fully finished
+     */
+    private synchronized void workerFinished(int stopped) throws IOException {
+        mStoppedCount += stopped;
+
+        if (--mActiveCount <= 0) {
+            mConsumer.accept(this, mTarget);
+
+            if (mStoppedCount == 0) {
+                for (Tree source : mSources) {
+                    mDatabase.deleteIndex(source).run();
+                }
+            } else {
+                for (Tree source : mSources) {
+                    mConsumer.accept(this, source);
                 }
             }
+
+            mConsumer.accept(this, null);
         }
     }
 
@@ -159,8 +228,6 @@ class TreeMerger {
             }
         }
 
-        // FIXME: Skip duplicates! If too few remaining, reduce partition count. Caller must
-        // reduce thread count.
         Arrays.sort(samples, KeyComparator.THE);
 
         byte[][] partitions = new byte[threadCount - 1][];
@@ -168,6 +235,28 @@ class TreeMerger {
         for (int i=0; i<partitions.length; i++) {
             int pos = (samples.length * (i + 1)) / (partitions.length + 1);
             partitions[i] = samples[pos];
+        }
+
+        // Eliminate duplicate partitions.
+        if (partitions.length > 1) {
+            byte[] last = partitions[0];
+            for (int i=1; i<partitions.length; i++) {
+                byte[] partition = partitions[i];
+                if (!Arrays.equals(partition, last)) {
+                    last = partition;
+                } else {
+                    int pos = i;
+                    for (; i<partitions.length; i++) {
+                        partition = partitions[i];
+                        if (!Arrays.equals(partition, last)) {
+                            partitions[pos++] = partition;
+                            last = partition;
+                        }
+                    }
+                    partitions = Arrays.copyOf(partitions, pos);
+                    break;
+                }
+            }
         }
 
         // Trim the partitions for suffix compression. Find the lowest common length where all
@@ -197,61 +286,83 @@ class TreeMerger {
             }
         }
 
-        for (byte[] p : partitions) {
-            System.out.println(Utils.toHex(p));
-        }
-        System.out.println("---");
-
         return partitions;
     }
 
-    private static class Worker implements Callable<Object>, Closeable {
-        private final TreeCursor mTarget;
-        private final PriorityQueue<Selector> mQueue;
+    private class Worker implements Runnable {
+        final TreeCursor mTarget;
+        final PriorityQueue<Selector> mQueue;
+        volatile Throwable mException;
+        volatile boolean mStop;
 
         Worker(TreeCursor target) {
             mTarget = target;
             mQueue = new PriorityQueue<Selector>();
         }
 
-        void add(Selector s) {
-            mQueue.add(s);
-        }
-
         @Override
-        public Object call() throws IOException {
-            final TreeCursor target = mTarget;
-            final PriorityQueue<Selector> queue = mQueue;
+        public void run() {
+            try {
+                final TreeCursor target = mTarget;
+                final PriorityQueue<Selector> queue = mQueue;
 
-            Selector selector;
-            while ((selector = queue.poll()) != null) {
-                TreeCursor source = selector.mSource;
+                while (true) {
+                    if (mStop) {
+                        finished(1);
+                        return;
+                    }
 
-                // FIXME: needs dup detection; or can selector can skip them?
-                target.appendTransfer(source);
+                    Selector selector = queue.poll();
 
-                byte[] key = source.key();
+                    if (selector == null) {
+                        finished(0);
+                        return;
+                    }
 
-                if (key != null) {
-                    byte[] upperBound = selector.mUpperBound;
-                    if (upperBound == null || Utils.compareUnsigned(key, upperBound) < 0) {
-                        queue.add(selector);
+                    TreeCursor source = selector.mSource;
+
+                    if (selector.mSkip) {
+                        source.store(null);
+                        source.next();
+                        selector.mSkip = false;
                     } else {
-                        source.reset();
+                        target.appendTransfer(source);
+                    }
+
+                    byte[] key = source.key();
+
+                    if (key != null) {
+                        byte[] upperBound = selector.mUpperBound;
+                        if (upperBound == null || Utils.compareUnsigned(key, upperBound) < 0) {
+                            queue.add(selector);
+                        } else {
+                            source.reset();
+                        }
                     }
                 }
+            } catch (Throwable e) {
+                mException = e;
+                finished(1);
             }
-
-            return null;
         }
 
-        @Override
-        public void close() {
+        /**
+         * @param stopped 1 if stopped, 0 if fully finished
+         */
+        private void finished(int stopped) {
             mTarget.reset();
 
             Selector selector;
             while ((selector = mQueue.poll()) != null) {
                 selector.mSource.reset();
+            }
+
+            try {
+                workerFinished(stopped);
+            } catch (Throwable e) {
+                if (mException == null) {
+                    mException = e;
+                }
             }
         }
     }
@@ -260,6 +371,8 @@ class TreeMerger {
         final int mOrder;
         final TreeCursor mSource;
         final byte[] mUpperBound;
+
+        boolean mSkip;
 
         Selector(int order, TreeCursor source, byte[] upperBound) throws IOException {
             mOrder = order;
@@ -272,7 +385,13 @@ class TreeMerger {
             int compare = Utils.compareUnsigned(this.mSource.key(), other.mSource.key());
             if (compare == 0) {
                 // Favor the later source when duplicates are found.
-                compare = this.mOrder < other.mOrder ? 1 : -1;
+                if (this.mOrder < other.mOrder) {
+                    this.mSkip = true;
+                    compare = -1;
+                } else {
+                    other.mSkip = true;
+                    compare = 1;
+                }
             }
             return compare;
         }

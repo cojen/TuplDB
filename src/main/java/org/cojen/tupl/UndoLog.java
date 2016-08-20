@@ -284,7 +284,7 @@ final class UndoLog implements DatabaseAccess {
         if (node != null) {
             // Push into allocated node, which must be marked dirty.
             node.acquireExclusive();
-            mDatabase.markUndoLogDirty(node);
+            mDatabase.markUnmappedDirty(node);
         } else quick: {
             // Try to push into a local buffer before allocating a node.
             byte[] buffer = mBuffer;

@@ -3433,7 +3433,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
     /**
      * Non-transactionally moves the first entry from the source into the tree, as the highest
      * overall. No other cursors can be active in the target subtree, and no check is performed
-     * to verify that the entry is the highest and unique. The garbage field of the node source
+     * to verify that the entry is the highest and unique. The garbage field of the source node
      * is untouched.
      *
      * Caller must hold shared commit lock and exclusive node latch.
