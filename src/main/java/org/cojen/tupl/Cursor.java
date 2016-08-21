@@ -362,7 +362,9 @@ public interface Cursor {
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws NullPointerException if key is null
      */
-    public LockResult findNearby(byte[] key) throws IOException;
+    public default LockResult findNearby(byte[] key) throws IOException {
+        return find(key);
+    }
 
     /**
      * Moves the Cursor to a random entry, but not guaranteed to be chosen from
