@@ -64,8 +64,10 @@ class _Tree implements View, Index {
         mLockManager = db.mLockManager;
         mId = id;
         mIdBytes = idBytes;
-        mName = name;
         mRoot = root;
+        if (name != null) {
+            mName = name;
+        }
     }
 
     final int pageSize() {
