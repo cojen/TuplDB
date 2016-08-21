@@ -341,7 +341,7 @@ final class Node extends Latch implements DatabaseAccess {
      * @see appendToSortLeaf
      */
     void asSortLeaf() {
-        type(TYPE_TN_LEAF);
+        type((byte) (TYPE_TN_LEAF | LOW_EXTREMITY | HIGH_EXTREMITY));
         garbage(0);
         leftSegTail(TN_HEADER_SIZE);
         int pageSize = pageSize(mPage);
