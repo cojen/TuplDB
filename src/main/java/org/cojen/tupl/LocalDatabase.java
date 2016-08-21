@@ -1323,7 +1323,16 @@ final class LocalDatabase extends AbstractDatabase {
 
     @Override
     public Tree newTemporaryIndex() throws IOException {
-        return openTree(null, true);
+        return newTemporaryIndex(null);
+    }
+
+    Tree newTemporaryIndex(Node root) throws IOException {
+        mCommitLock.lock();
+        try {
+            return doOpenTree(null, null, true, root);
+        } finally {
+            mCommitLock.unlock();
+        }
     }
 
     @Override
@@ -2358,7 +2367,7 @@ final class LocalDatabase extends AbstractDatabase {
         if (tree == null) {
             mCommitLock.lock();
             try {
-                tree = doOpenTree(findTxn, name, create);
+                tree = doOpenTree(findTxn, name, create, null);
             } finally {
                 mCommitLock.unlock();
             }
@@ -2368,11 +2377,16 @@ final class LocalDatabase extends AbstractDatabase {
 
     /**
      * Caller must hold commit lock.
+     *
+     * @param name pass null for creation of temporary trees
+     * @param root must be null except for creation of temporary trees
      */
-    private Tree doOpenTree(Transaction findTxn, byte[] name, boolean create) throws IOException {
+    private Tree doOpenTree(Transaction findTxn, byte[] name, boolean create, Node root)
+        throws IOException
+    {
         checkClosed();
 
-        // Cleaup before opening more trees.
+        // Cleanup before opening more trees.
         cleanupUnreferencedTrees();
 
         byte[] nameKey = null, treeIdBytes = null;
@@ -2417,12 +2431,20 @@ final class LocalDatabase extends AbstractDatabase {
                 // non-recoverable.
                 boolean critical = true;
                 try {
+                    byte[] rootIdBytes;
+                    if (root == null) {
+                        rootIdBytes = EMPTY_BYTES;
+                    } else {
+                        rootIdBytes = new byte[8];
+                        encodeLongBE(rootIdBytes, 0, root.mId);
+                    }
+
                     do {
                         critical = false;
                         treeId = nextTreeId(name == null);
                         encodeLongBE(treeIdBytes, 0, treeId);
                         critical = true;
-                    } while (!mRegistry.insert(Transaction.BOGUS, treeIdBytes, EMPTY_BYTES));
+                    } while (!mRegistry.insert(Transaction.BOGUS, treeIdBytes, rootIdBytes));
 
                     critical = false;
 
@@ -2496,20 +2518,25 @@ final class LocalDatabase extends AbstractDatabase {
         // is written into it.
         Transaction txn = newNoRedoTransaction();
         try {
-            // Pass the transaction to acquire the lock.
-            byte[] rootIdBytes = mRegistry.load(txn, treeIdBytes);
+            if (root != null) {
+                mRegistry.lockUpgradable(txn, treeIdBytes);
+            } else {
+                // Pass the transaction to acquire the lock.
+                byte[] rootIdBytes = mRegistry.load(txn, treeIdBytes);
 
-            Tree tree = quickFindIndex(name);
-            if (tree != null) {
-                // Another thread got the lock first and loaded the tree.
-                return tree;
+                Tree tree = quickFindIndex(name);
+                if (tree != null) {
+                    // Another thread got the lock first and loaded the tree.
+                    return tree;
+                }
+
+                long rootId = (rootIdBytes == null || rootIdBytes.length == 0) ? 0
+                    : decodeLongLE(rootIdBytes, 0);
+
+                root = loadTreeRoot(rootId);
             }
 
-            long rootId = (rootIdBytes == null || rootIdBytes.length == 0) ? 0
-                : decodeLongLE(rootIdBytes, 0);
-
-            Node root = loadTreeRoot(rootId);
-
+            Tree tree;
             if (name == null) {
                 tree = new TempTree(this, treeId, treeIdBytes, name, root);
             } else {

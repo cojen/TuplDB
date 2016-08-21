@@ -52,8 +52,9 @@ class ParallelSorter implements Sorter {
     // Top of recycled sort node stack.
     private Node mNodePoolTop;
 
-    private final List<List<Tree>> mSortTreeLevels;
+    private List<List<Tree>> mSortTreeLevels;
 
+    // FIXME: Extend Latch and lazy init mActiveMergers (?)
     private final Set<TreeMerger> mActiveMergers;
     private int mActiveNodeMergers;
 
@@ -63,7 +64,6 @@ class ParallelSorter implements Sorter {
 
     ParallelSorter(LocalDatabase db, Executor executor) {
         mDatabase = db;
-        mSortTreeLevels = new ArrayList<>();
         mActiveMergers = new HashSet<>();
         mExecutor = executor;
     }
@@ -98,6 +98,7 @@ class ParallelSorter implements Sorter {
         try {
             return doFinish();
         } finally {
+            // FIXME: Only reset if exception; doFinish does the work.
             reset();
         }
     }
@@ -137,8 +138,25 @@ class ParallelSorter implements Sorter {
                 }
             }
 
-            if (topNode != null) {
-                doMergeNodes(topNode, count);
+            if (topNode == null) {
+                if (mSortTreeLevels == null || mSortTreeLevels.isEmpty()) {
+                    return mDatabase.newTemporaryIndex();
+                }
+            } else {
+                Tree tree;
+                if (count == 1) {
+                    latchDirty(topNode);
+                    topNode.sortLeaf();
+                    topNode.releaseExclusive();
+                    // FIXME: node must not be discarded by undo log
+                    tree = mDatabase.newTemporaryIndex(topNode);
+                } else {
+                    tree = doMergeNodes(topNode, count);
+                }
+                if (mSortTreeLevels == null || mSortTreeLevels.isEmpty()) {
+                    return tree;
+                }
+                addToLevel(tree, 0, L0_MAX_SIZE);
             }
         }
 
@@ -146,43 +164,46 @@ class ParallelSorter implements Sorter {
 
         List<Tree> allTrees;
         synchronized (this) {
-            int allTreeCount = 0;
-            for (List<Tree> trees : mSortTreeLevels) {
-                allTreeCount += trees.size();
-            }
-
-            allTrees = new ArrayList<>(allTreeCount);
-
-            // Iterate in reverse order to favor duplicates at lower levels.
-            for (int i=mSortTreeLevels.size(); --i>=0; ) {
-                List<Tree> trees = mSortTreeLevels.get(i);
-                allTrees.addAll(trees);
-                trees.clear();
-            }
-        }
-
-        Tree tree;
-        if (allTrees.size() <= 1) {
-            if (allTrees.isEmpty()) {
-                tree = mDatabase.newTemporaryIndex();
+            if (mSortTreeLevels.size() == 1) {
+                allTrees = mSortTreeLevels.get(0);
             } else {
-                tree = allTrees.get(0);
-            }
-            synchronized (this) {
-                mSortTreeLevels.clear();
-            }
-        } else {
-            mergeTrees(allTrees, 0);
+                int allTreeCount = 0;
+                for (int i=mSortTreeLevels.size(); --i>=0; ) {
+                    allTreeCount += mSortTreeLevels.get(i).size();
+                }
 
-            waitForInactivity(false);
+                allTrees = new ArrayList<>(allTreeCount);
 
-            synchronized (this) {
-                tree = mSortTreeLevels.get(0).get(0);
+                // Iterate in reverse order to favor duplicates at lower levels, which were
+                // added more recently.
+                for (int i=mSortTreeLevels.size(); --i>=0; ) {
+                    List<Tree> trees = mSortTreeLevels.get(i);
+                    allTrees.addAll(trees);
+                    trees.clear();
+                }
+            }
+
+            if (allTrees.size() <= 1) {
+                Tree tree;
+                if (allTrees.isEmpty()) {
+                    tree = mDatabase.newTemporaryIndex();
+                } else {
+                    tree = allTrees.get(0);
+                }
                 mSortTreeLevels.clear();
+                return tree;
             }
         }
 
-        return tree;
+        mergeTrees(allTrees, 0);
+
+        waitForInactivity(false);
+
+        synchronized (this) {
+            Tree tree = mSortTreeLevels.get(0).get(0);
+            mSortTreeLevels.clear();
+            return tree;
+        }
     }
 
     private void waitForInactivity(boolean stop) throws InterruptedIOException {
@@ -240,11 +261,28 @@ class ParallelSorter implements Sorter {
         mActiveNodeMergers++;
         try {
             mExecutor.execute(() -> {
+                Tree tree;
                 try {
-                    doMergeNodes(topNode, count);
+                    tree = doMergeNodes(topNode, count);
                 } catch (Throwable e) {
+                    synchronized (this) {
+                        mActiveNodeMergers--;
+                        notifyAll();
+                    }
                     // FIXME: stash it for later
-                    Utils.rethrow(e);
+                    throw Utils.rethrow(e);
+                }
+
+                synchronized (this) {
+                    mActiveNodeMergers--;
+                    try {
+                        addToLevel(tree, 0, L0_MAX_SIZE);
+                    } catch (Throwable e) {
+                        // FIXME: stash it for later
+                        throw Utils.rethrow(e);
+                    } finally {
+                        notifyAll();
+                    }
                 }
             });
         } catch (Throwable e) {
@@ -254,7 +292,10 @@ class ParallelSorter implements Sorter {
         }
     }
 
-    private void doMergeNodes(Node topNode, int count) throws IOException {
+    /**
+     * @return new temporary index
+     */
+    private Tree doMergeNodes(Node topNode, int count) throws IOException {
         PriorityQueue<Node> pq = new PriorityQueue<>(count, ParallelSorter::compareSortNode);
 
         do {
@@ -301,14 +342,7 @@ class ParallelSorter implements Sorter {
             appender.reset();
         }
 
-        synchronized (this) {
-            mActiveNodeMergers--;
-            try {
-                addToLevel(dest, 0, L0_MAX_SIZE);
-            } finally {
-                notifyAll();
-            }
-        }
+        return dest;
     }
 
     // Caller must be synchronized.
@@ -375,17 +409,19 @@ class ParallelSorter implements Sorter {
 
     // Caller must be synchronized.
     private void addToLevel(Tree tree, int level, int maxLevelSize) throws IOException {
-        if (level >= mSortTreeLevels.size()) {
-            List<Tree> trees = new ArrayList<>();
-            trees.add(tree);
-            mSortTreeLevels.add(trees);
-        } else {
+        if (mSortTreeLevels == null) {
+            mSortTreeLevels = new ArrayList<>();
+        } else if (level < mSortTreeLevels.size()) {
             List<Tree> trees = mSortTreeLevels.get(level);
             trees.add(tree);
             if (trees.size() >= maxLevelSize && !mFinishing) {
                 mergeTrees(trees, level + 1);
             }
+            return;
         }
+        List<Tree> trees = new ArrayList<>();
+        trees.add(tree);
+        mSortTreeLevels.add(trees);
     }
 
     private void mergeTrees(List<Tree> trees, int targetLevel) throws IOException {
