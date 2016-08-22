@@ -149,7 +149,8 @@ class _ParallelSorter implements Sorter {
                     topNode.sortLeaf();
                     topNode.releaseExclusive();
                     // FIXME: node must not be discarded by undo log
-                    tree = mDatabase.newTemporaryIndex(topNode);
+                    // FIXME: commit lock!
+                    tree = mDatabase.newTemporaryTree(topNode);
                 } else {
                     tree = doMergeNodes(topNode, count);
                 }
@@ -236,7 +237,7 @@ class _ParallelSorter implements Sorter {
         System.out.println("ex: " + merger.exceptionCheck());
     }
 
-    // Caller must be synchronized.
+    // Caller must be synchronized and hold commit lock.
     private _Node nextSortNode(_Node current) throws IOException {
         current.releaseExclusive();
         if (mSortNodeCount >= SORT_NODES) {
@@ -345,7 +346,7 @@ class _ParallelSorter implements Sorter {
         return dest;
     }
 
-    // Caller must be synchronized.
+    // Caller must be synchronized and hold commit lock.
     private _Node allocSortNode() throws IOException {
         checkFinishing();
 
