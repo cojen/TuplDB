@@ -574,9 +574,9 @@ final class _LocalDatabase extends AbstractDatabase {
 
             // Cannot call newTreeInstance because mRedoWriter isn't set yet.
             if (config.mReplManager != null) {
-                mRegistry = new _TxnTree(this, _Tree.REGISTRY_ID, null, null, rootNode);
+                mRegistry = new _TxnTree(this, _Tree.REGISTRY_ID, null, rootNode);
             } else {
-                mRegistry = new _Tree(this, _Tree.REGISTRY_ID, null, null, rootNode);
+                mRegistry = new _Tree(this, _Tree.REGISTRY_ID, null, rootNode);
             }
 
             mOpenTreesLatch = new Latch();
@@ -2349,7 +2349,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
             // Cannot call newTreeInstance because mRedoWriter isn't set yet.
             if (config != null && config.mReplManager != null) {
-                return new _TxnTree(this, treeId, treeIdBytes, null, root);
+                return new _TxnTree(this, treeId, treeIdBytes, root);
             }
 
             return newTreeInstance(treeId, treeIdBytes, null, root);
@@ -2538,7 +2538,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
             _Tree tree;
             if (name == null) {
-                tree = new _TempTree(this, treeId, treeIdBytes, name, root);
+                tree = new _TempTree(this, treeId, treeIdBytes, root);
             } else {
                 tree = newTreeInstance(treeId, treeIdBytes, name, root);
             }
@@ -2576,13 +2576,16 @@ final class _LocalDatabase extends AbstractDatabase {
     }
 
     private _Tree newTreeInstance(long id, byte[] idBytes, byte[] name, _Node root) {
+        _Tree tree;
         if (mRedoWriter instanceof _ReplRedoWriter) {
             // Always need an explcit transaction when using auto-commit, to ensure that
             // rollback is possible.
-            return new _TxnTree(this, id, idBytes, name, root);
+            tree = new _TxnTree(this, id, idBytes, root);
         } else {
-            return new _Tree(this, id, idBytes, name, root);
+            tree = new _Tree(this, id, idBytes, root);
         }
+        tree.mName = name;
+        return tree;
     }
 
     private long nextTreeId(boolean temporary) throws IOException {
