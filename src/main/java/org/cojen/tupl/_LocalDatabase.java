@@ -1243,7 +1243,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
         long treeId = decodeLongBE(treeIdBytes, 0);
 
-        return newTreeInstance(treeId, treeIdBytes, name, loadTreeRoot(rootId));
+        return newTreeInstance(treeId, treeIdBytes, name, loadTreeRoot(treeId, rootId));
     }
 
     private class Deletion implements Runnable {
@@ -2184,30 +2184,16 @@ final class _LocalDatabase extends AbstractDatabase {
     }
 
     /**
+     * @param treeId pass zero if unknown or not applicable
      * @param rootId pass zero to create
      * @return unlatched and unevictable root node
      */
-    private _Node loadTreeRoot(final long rootId) throws IOException {
-        if (rootId != 0) {
-            // Check if root node is still around after tree was closed.
-            final _Node rootNode = nodeMapGet(rootId);
-            if (rootNode != null) {
-                rootNode.acquireShared();
-                try {
-                    if (rootId == rootNode.mId) {
-                        rootNode.makeUnevictable();
-                        return rootNode;
-                    }
-                } finally {
-                    rootNode.releaseShared();
-                }
-            }
-        }
+    private _Node loadTreeRoot(final long treeId, final long rootId) throws IOException {
+        if (rootId == 0) {
+            // Pass tree identifer to spread allocations around.
+            _Node rootNode = allocLatchedNode(treeId, _NodeUsageList.MODE_UNEVICTABLE);
 
-        final _Node rootNode = allocLatchedNode(rootId, _NodeUsageList.MODE_UNEVICTABLE);
-
-        try {
-            if (rootId == 0) {
+            try {
                 /*P*/ // [
                 // rootNode.asEmptyRoot();
                 /*P*/ // |
@@ -2219,20 +2205,41 @@ final class _LocalDatabase extends AbstractDatabase {
                     rootNode.asEmptyRoot();
                 }
                 /*P*/ // ]
-            } else {
+                return rootNode;
+            } finally {
+                rootNode.releaseExclusive();
+            }
+        } else {
+            // Check if root node is still around after tree was closed.
+            _Node rootNode = nodeMapGet(rootId);
+
+            if (rootNode != null) {
+                rootNode.acquireShared();
+                try {
+                    if (rootId == rootNode.mId) {
+                        rootNode.makeUnevictable();
+                        return rootNode;
+                    }
+                } finally {
+                    rootNode.releaseShared();
+                }
+            }
+
+            rootNode = allocLatchedNode(rootId, _NodeUsageList.MODE_UNEVICTABLE);
+
+            try {
                 try {
                     rootNode.read(this, rootId);
-                } catch (IOException e) {
-                    rootNode.makeEvictableNow();
-                    throw e;
+                } finally {
+                    rootNode.releaseExclusive();
                 }
                 nodeMapPut(rootNode);
+                return rootNode;
+            } catch (Throwable e) {
+                rootNode.makeEvictableNow();
+                throw e;
             }
-        } finally {
-            rootNode.releaseExclusive();
         }
-
-        return rootNode;
     }
 
     /**
@@ -2276,7 +2283,7 @@ final class _LocalDatabase extends AbstractDatabase {
             rootId = decodeLongLE(header, I_ROOT_PAGE_ID);
         }
 
-        return loadTreeRoot(rootId);
+        return loadTreeRoot(0, rootId);
     }
 
     private _Tree openInternalTree(long treeId, boolean create) throws IOException {
@@ -2301,7 +2308,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 rootId = 0;
             }
 
-            _Node root = loadTreeRoot(rootId);
+            _Node root = loadTreeRoot(treeId, rootId);
 
             // Cannot call newTreeInstance because mRedoWriter isn't set yet.
             if (config != null && config.mReplManager != null) {
@@ -2473,7 +2480,7 @@ final class _LocalDatabase extends AbstractDatabase {
             long rootId = (rootIdBytes == null || rootIdBytes.length == 0) ? 0
                 : decodeLongLE(rootIdBytes, 0);
 
-            _Node root = loadTreeRoot(rootId);
+            _Node root = loadTreeRoot(treeId, rootId);
 
             if (name == null) {
                 tree = new _TempTree(this, treeId, treeIdBytes, name, root);
