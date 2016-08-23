@@ -2987,13 +2987,48 @@ final class _LocalDatabase extends AbstractDatabase {
         }
 
         node = allocLatchedNode(nodeId);
-        /*P*/ // [
-        // node.type(TYPE_FRAGMENT);
-        /*P*/ // ]
-        readNode(node, nodeId);
-        node.downgrade();
+        node.mId = nodeId;
 
-        nodeMapPut(node);
+        // node is currently exclusively locked. Insert it into the node map so that no other
+        // thread tries to read it at the same time. If another thread sees it at this point
+        // (before it is actually read from disk), until the node is read from disk, that
+        // thread will block trying to get a shared lock.
+        while (true) {
+            _Node existing = nodeMapPutIfAbsent(node);
+            if (existing == null) {
+                break;
+            }
+
+            // Was already loaded, or is currently being loaded.
+            existing.acquireShared();
+            if (nodeId == existing.mId) {
+                // The item is already loaded. Throw away the node this thread was trying to
+                // allocate.
+                //
+                // Even though node is not currently in the node map, it could have been in
+                // there then got recycled. Other thread may still have a reference to it from
+                // when it was in the node map. So its id needs to be invalidated.
+                node.mId = 0;
+                node.releaseExclusive();
+                return existing;
+            }
+            existing.releaseShared();
+        }
+
+        try {
+            /*P*/ // [
+            // node.type(TYPE_FRAGMENT);
+            /*P*/ // ]
+            readNode(node, nodeId);
+        } catch (Throwable t) {
+            // Something went wrong reading the node. Remove the node from the map, now that
+            // it definitely won't get read from disk.
+            nodeMapRemove(node);
+            node.mId = 0;
+            node.releaseExclusive();
+            throw t;
+        }
+        node.downgrade();
 
         return node;
     }

@@ -969,6 +969,11 @@ class _Tree implements View, Index {
      * Caller must hold exclusive latch and it must verify that node has
      * split. _Node latch is released if an exception is thrown.
      *
+     * The caller should also hold at least a shared commit lock, because this function tries
+     * to allocate pages, and the page db may try to acquire a shared commit lock. Since the
+     * commit lock is reentrant, if the caller already holds a shared commit lock, it
+     * guarantees the page db can acquire another shared commit lock.
+     *
      * @param frame bound cursor frame
      * @param node node which is bound to the frame, latched exclusively
      * @return replacement node, still latched
