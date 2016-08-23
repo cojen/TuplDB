@@ -18,19 +18,18 @@ package org.cojen.tupl;
 import static org.cojen.tupl.TestUtils.deleteTempDatabases;
 import static org.cojen.tupl.TestUtils.newTempDatabase;
 import static org.cojen.tupl.TestUtils.randomStr;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.After;
 import org.junit.Before;
@@ -52,6 +51,165 @@ public class EnduranceTest {
 
     protected Database mDb;
     protected Index mIx;
+
+    /**
+     * Regression test for a racecondition loading fragmented values into the cache
+     */
+    @Test
+    public void loadFragmented() throws Exception {
+
+        DatabaseConfig config = new DatabaseConfig()
+                .pageSize(1024)
+                .directPageAccess(false)
+                .durabilityMode(DurabilityMode.NO_REDO)
+                .minCacheSize(200 * 1024)
+                .maxCacheSize(200 * 1024)
+                .checkpointRate(-1, null);
+
+        decorate(config);
+
+        mDb = newTempDatabase(config);
+        mIx = mDb.openIndex("test");
+
+        // Only use row ids up to this value, then wrap around
+        final long maxRows = 50;
+
+        // Seed the database
+        {
+            ByteBuffer keyBuffer = ByteBuffer.allocate(8);
+            // Use 10k values
+            ByteBuffer valueBuffer = ByteBuffer.allocate(10 * 1024);
+            for (long i = 0; i < maxRows; i++) {
+                // The key is exactly 8 bytes long and it is the row id.
+                keyBuffer.clear();
+                keyBuffer.putLong(i);
+                // The first 8 bytes of the value is the row id. The rest of the 10k is 0.
+                valueBuffer.clear();
+                long j = 0xFF0000;
+                while(valueBuffer.remaining() >= 16) {
+                    valueBuffer.putLong(i);
+                    valueBuffer.putLong(j);
+                    j++;
+                }
+                mIx.store(null, keyBuffer.array(), valueBuffer.array());
+                if (i % 10 == 9) {
+                    // Checkpoint after writing every 10 rows so that the very small cache
+                    // does not fill up.
+                    mDb.checkpoint();
+                }
+            }
+            mDb.checkpoint();
+        }
+
+        int numWorkers = 10;
+        final AtomicBoolean keepRunning = new AtomicBoolean(true);
+        // Next row to read
+        final AtomicLong nextRow = new AtomicLong(0);
+
+        ExecutorService executor = Executors.newFixedThreadPool(numWorkers);
+        ArrayList<Future<?>> futures = new ArrayList<>();
+        for (int i = 0; i < numWorkers; i++) {
+            Runnable readRows = () -> {
+                ByteBuffer keyBuffer = ByteBuffer.allocate(8);
+                long prevRowId = -1;
+                Cursor cursor = mIx.newCursor(null);
+                while (keepRunning.get()) {
+                    nextRow.compareAndSet(prevRowId, prevRowId + 1);
+                    long rowId = nextRow.get();
+
+                    keyBuffer.clear();
+                    keyBuffer.putLong(rowId % maxRows);
+                    try {
+                        cursor.find(keyBuffer.array());
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    long keyRowId = ByteBuffer.wrap(cursor.key()).getLong();
+                    assertEquals(rowId % maxRows, keyRowId);
+                    long valueRowId = ByteBuffer.wrap(cursor.value()).getLong();
+                    assertEquals(rowId % maxRows, valueRowId);
+                    prevRowId = rowId;
+                }
+                cursor.reset();
+            };
+            futures.add(executor.submit(readRows));
+        }
+        Thread.sleep(10_000);
+        keepRunning.set(false);
+        for (Future<?> f : futures) {
+            f.get();
+        }
+        executor.shutdown();
+    }
+
+    /**
+     * Regression test for a deadlock bug between splitting a page and checkpointing.
+     */
+    @Test
+    public void splitAndCheckpoint() throws Exception {
+
+        DatabaseConfig config = new DatabaseConfig()
+                .pageSize(1024)
+                .directPageAccess(false)
+                .durabilityMode(DurabilityMode.NO_REDO)
+                .checkpointRate(1, TimeUnit.MILLISECONDS)
+                .checkpointDelayThreshold(1, TimeUnit.MILLISECONDS);
+
+        decorate(config);
+
+        mDb = newTempDatabase(config);
+        mIx = mDb.openIndex("test");
+
+        int numWorkers = 5;
+        final AtomicBoolean keepRunning = new AtomicBoolean(true);
+        // Next row to insert
+        final AtomicLong nextRow = new AtomicLong(0);
+        final byte[] rowValue = new byte[512];
+        // Only use row ids up to this value, then wrap around
+        final long maxRows = 100_000;
+
+        // Creates a set of threads. Each thread grabs the next row to insert (by incrementing
+        // nextRow). The thread first inserts that row, then deletes the row as far from the
+        // grabbed row as possible.
+        //
+        // Since all of the threads are inserting keys right next to each other, the page
+        // often splits and all those threads fight to finish the split.
+        ExecutorService executor = Executors.newFixedThreadPool(numWorkers);
+        for (int i = 0; i < numWorkers; i++) {
+            Runnable writeRow = () -> {
+                ByteBuffer keyBuffer = ByteBuffer.allocate(8);
+                while (keepRunning.get()) {
+                    long rowId = nextRow.incrementAndGet();
+
+                    // Insert that row
+                    keyBuffer.clear();
+                    keyBuffer.putLong(rowId % maxRows);
+                    try {
+                        mIx.store(null, keyBuffer.array(), rowValue);
+                    } catch (IOException e) {
+                        assertNull(e);
+                    }
+
+                    // If the test only did inserts and stores, eventually all row ids would
+                    // be written. Splits only occur when rows get bigger. Overwriting rows
+                    // with new values of the same size does not cause splits.
+                    //
+                    // In order to keep splitting, old rows need to be deleted.
+                    keyBuffer.clear();
+                    keyBuffer.putLong((rowId + maxRows / 2) % maxRows);
+                    try {
+                        mIx.delete(null, keyBuffer.array());
+                    } catch (IOException e) {
+                        assertNull(e);
+                    }
+                }
+            };
+            executor.execute(writeRow);
+        }
+        Thread.sleep(1_000);
+        keepRunning.set(false);
+        executor.shutdown();
+    }
 
     @Test
     public void writeAndEvict() throws Exception {

@@ -3885,14 +3885,38 @@ class TreeCursor implements CauseCloseable, Cursor {
      */
     final Node finishSplitShared(final CursorFrame frame, Node node) throws IOException {
         doSplit: {
-            if (!node.tryUpgrade()) {
-                node.releaseShared();
-                node = frame.acquireExclusive();
-                if (node.mSplit == null) {
-                    break doSplit;
+            // In order to call finishSplit, the caller must hold an exclusive node lock, and
+            // a shared commit lock. At this point only a shared node lock is held.
+            //
+            // Following proper lock order, the shared commit lock should be obtained before
+            // the node lock. However, the code optimistically tries to get the shared commit
+            // lock, then upgrade the shared node lock to an exclusive node lock.
+            //
+            // If either of those steps fail, all locks are released then acquired in the
+            // proper order.
+            CommitLock commitLock = mTree.mDatabase.commitLock();
+            boolean commitLocked = commitLock.tryLock();
+            try {
+                if (!commitLocked || !node.tryUpgrade()) {
+                    node.releaseShared();
+
+                    if (commitLocked) {
+                        commitLock.unlock();
+                        commitLocked = false;
+                    }
+                    commitLock.lock();
+                    commitLocked = true;
+
+                    node = frame.acquireExclusive();
+                    if (node.mSplit == null) {
+                        break doSplit;
+                    }
                 }
+                node = mTree.finishSplit(frame, node);
+            } finally {
+                if (commitLocked)
+                    commitLock.unlock();
             }
-            node = mTree.finishSplit(frame, node);
         }
         node.downgrade();
         return node;
