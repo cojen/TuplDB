@@ -303,10 +303,13 @@ public interface Cursor {
      */
     public default LockResult findGe(byte[] key) throws IOException {
         LockResult result = find(key);
-        if (value() == null && result == LockResult.ACQUIRED) {
-            link().unlock();
+        if (value() == null) {
+            if (result == LockResult.ACQUIRED) {
+                link().unlock();
+            }
+            result = next();
         }
-        return next();
+        return result;
     }
 
     /**
@@ -342,10 +345,13 @@ public interface Cursor {
      */
     public default LockResult findLe(byte[] key) throws IOException {
         LockResult result = find(key);
-        if (value() == null && result == LockResult.ACQUIRED) {
-            link().unlock();
+        if (value() == null) {
+            if (result == LockResult.ACQUIRED) {
+                link().unlock();
+            }
+            result = previous();
         }
-        return previous();
+        return result;
     }
 
     /**
