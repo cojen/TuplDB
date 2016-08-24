@@ -2990,8 +2990,8 @@ final class _LocalDatabase extends AbstractDatabase {
 
         // node is currently exclusively locked. Insert it into the node map so that no other
         // thread tries to read it at the same time. If another thread sees it at this point
-        // (before it is actually read from disk), until the node is read from disk, that
-        // thread will block trying to get a shared lock.
+        // (before it is actually read), until the node is read, that thread will block trying
+        // to get a shared lock.
         while (true) {
             _Node existing = nodeMapPutIfAbsent(node);
             if (existing == null) {
@@ -3008,7 +3008,9 @@ final class _LocalDatabase extends AbstractDatabase {
                 // there then got recycled. Other thread may still have a reference to it from
                 // when it was in the node map. So its id needs to be invalidated.
                 node.mId = 0;
-                node.releaseExclusive();
+                // This releases the exclusive latch and makes the node immediately usable for
+                // new allocations.
+                node.unused();
                 return existing;
             }
             existing.releaseShared();
@@ -3021,7 +3023,7 @@ final class _LocalDatabase extends AbstractDatabase {
             readNode(node, nodeId);
         } catch (Throwable t) {
             // Something went wrong reading the node. Remove the node from the map, now that
-            // it definitely won't get read from disk.
+            // it definitely won't get read.
             nodeMapRemove(node);
             node.mId = 0;
             node.releaseExclusive();
@@ -3040,6 +3042,9 @@ final class _LocalDatabase extends AbstractDatabase {
      * @return node with exclusive latch held
      */
     _Node nodeMapLoadFragmentExclusive(long nodeId, boolean read) throws IOException {
+        // Very similar to the nodeMapLoadFragment method. It has comments which explains
+        // what's going on here. No point in duplicating that as well.
+
         _Node node = nodeMapGet(nodeId);
 
         if (node != null) {
@@ -3052,16 +3057,35 @@ final class _LocalDatabase extends AbstractDatabase {
         }
 
         node = allocLatchedNode(nodeId);
-        /*P*/ // [
-        // node.type(TYPE_FRAGMENT);
-        /*P*/ // ]
-        if (read) {
-            readNode(node, nodeId);
-        } else {
-            node.mId = nodeId;
+        node.mId = nodeId;
+
+        while (true) {
+            _Node existing = nodeMapPutIfAbsent(node);
+            if (existing == null) {
+                break;
+            }
+            existing.acquireExclusive();
+            if (nodeId == existing.mId) {
+                node.mId = 0;
+                node.unused();
+                return existing;
+            }
+            existing.releaseExclusive();
         }
 
-        nodeMapPut(node);
+        try {
+            /*P*/ // [
+            // node.type(TYPE_FRAGMENT);
+            /*P*/ // ]
+            if (read) {
+                readNode(node, nodeId);
+            }
+        } catch (Throwable t) {
+            nodeMapRemove(node);
+            node.mId = 0;
+            node.releaseExclusive();
+            throw t;
+        }
 
         return node;
     }
