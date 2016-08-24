@@ -5,6 +5,9 @@ v1.3.3.2
 --------
 * Fix NullPointerException when too many nodes are unevictable. A CacheExhaustedException
   should be thrown instead.
+* Fix deadlock between node split and checkpoint.
+* Fix "Already in NodeMap" exception when loading fragmented nodes.
+* Add some default View and Cursor method implementations.
 
 v1.3.3.1 (2016-08-02)
 --------
