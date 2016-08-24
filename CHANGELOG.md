@@ -1,8 +1,8 @@
 Changelog
 =========
 
-v1.3.3.2
---------
+v1.3.4
+------
 * Fix NullPointerException when too many nodes are unevictable. A CacheExhaustedException
   should be thrown instead.
 * Fix deadlock between node split and checkpoint.
