@@ -1334,7 +1334,7 @@ final class LocalDatabase extends AbstractDatabase {
     /**
      * Caller must hold commit lock.
      *
-     * @param root pass null to create an empty index
+     * @param root pass null to create an empty index; pass an evictable node otherwise
      */
     Tree newTemporaryTree(Node root) throws IOException {
         checkClosed();
@@ -1386,20 +1386,17 @@ final class LocalDatabase extends AbstractDatabase {
             root = loadTreeRoot(treeId, 0);
         }
 
+        Tree tree = new TempTree(this, treeId, treeIdBytes, root);
+        TreeRef treeRef = new TreeRef(tree, mOpenTreesRefQueue);
+
         mOpenTreesLatch.acquireExclusive();
         try {
-            LHashTable.ObjEntry<TreeRef> entry = mOpenTreesById.insert(treeId);
-            TreeRef treeRef = entry.value;
-            Tree tree;
-            if (treeRef == null || (tree = treeRef.get()) == null) {
-                tree = new TempTree(this, treeId, treeIdBytes, root);
-                treeRef = new TreeRef(tree, mOpenTreesRefQueue);
-            }
-            entry.value = treeRef;
-            return tree;
+            mOpenTreesById.insert(treeId).value = treeRef;
         } finally {
             mOpenTreesLatch.releaseExclusive();
         }
+
+        return tree;
     }
 
     @Override
@@ -2116,6 +2113,8 @@ final class LocalDatabase extends AbstractDatabase {
                 lock.acquireExclusive();
             }
             try {
+                // FIXME: need to reset all the sorters; they still reference sort nodes
+
                 if (mSorterExecutor != null) {
                     mSorterExecutor.shutdown();
                     mSorterExecutor = null;

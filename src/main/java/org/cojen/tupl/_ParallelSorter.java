@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.PriorityQueue;
 import java.util.Set;
 
 import java.util.concurrent.Executor;
@@ -37,20 +36,22 @@ import static org.cojen.tupl.DirectPageOps.*;
  */
 /*P*/
 class _ParallelSorter implements Sorter {
-    private static final int SORT_NODES = 64; // absolute max allowed is 32768
-    private static final int L0_MAX_SIZE = 256; // max number of trees at first level
-    private static final int L1_MAX_SIZE = 1024; // max number of trees at higher levels
+    private static final int MIN_SORT_TREES = 8;
+    private static final int MAX_SORT_TREES = 64; // absolute max allowed is 32768
+    private static final int L0_MAX_SIZE = 256;   // max number of trees at first level
+    private static final int L1_MAX_SIZE = 1024;  // max number of trees at higher levels
 
     private static final int MERGE_THREAD_COUNT = Runtime.getRuntime().availableProcessors();
 
     private final _LocalDatabase mDatabase;
 
-    // Top of active sort node stack.
-    private _Node mSortNodeTop;
-    private int mSortNodeCount;
+    // Active sort trees, each of which has only a root node.
+    private _Tree[] mSortTrees;
+    private int mSortTreesSize;
 
-    // Top of recycled sort node stack.
-    private _Node mNodePoolTop;
+    // Pool of trees with only a root node.
+    private _Tree[] mSortTreePool;
+    private int mSortTreePoolSize;
 
     private List<List<_Tree>> mSortTreeLevels;
 
@@ -70,17 +71,18 @@ class _ParallelSorter implements Sorter {
 
     @Override
     public synchronized void add(byte[] key, byte[] value) throws IOException {
-        _Node node = mSortNodeTop;
-
         CommitLock lock = mDatabase.commitLock();
         lock.lock();
         try {
-            if (node == null) {
-                node = allocSortNode();
-                mSortNodeTop = node;
-                mSortNodeCount = 1;
+            _Node node;
+            if (mSortTreesSize == 0) {
+                _Tree sortTree = allocSortTree();
+                (mSortTrees = new _Tree[MIN_SORT_TREES])[0] = sortTree;
+                mSortTreesSize = 1;
+                node = sortTree.mRoot;
             } else {
-                latchDirty(node);
+                _Tree sortTree = mSortTrees[mSortTreesSize - 1];
+                node = latchRootDirty(sortTree);
             }
 
             try {
@@ -90,6 +92,60 @@ class _ParallelSorter implements Sorter {
             }
         } finally {
             lock.unlock();
+        }
+    }
+
+    // Caller must be synchronized and hold commit lock.
+    private _Node nextSortNode(_Node current) throws IOException {
+        current.releaseExclusive();
+
+        int size = mSortTreesSize;
+        if (size >= MAX_SORT_TREES) {
+            mergeSortTrees();
+            mSortTrees = new _Tree[MAX_SORT_TREES];
+            size = 0;
+        } else if (size >= mSortTrees.length) {
+            mSortTrees = Arrays.copyOf(mSortTrees, MAX_SORT_TREES);
+        }
+
+        _Tree sortTree = allocSortTree();
+
+        mSortTrees[size] = sortTree;
+        mSortTreesSize = size + 1;
+        
+        return sortTree.mRoot;
+    }
+
+    // Caller must be synchronized and hold commit lock.
+    private _Tree allocSortTree() throws IOException {
+        checkFinishing();
+
+        _Tree tree;
+        _Node root;
+
+        int size = mSortTreePoolSize;
+        if (size > 0) {
+            tree = mSortTreePool[--size];
+            mSortTreePoolSize = size;
+            root = latchRootDirty(tree);
+        } else {
+            root = mDatabase.allocDirtyNode(_NodeUsageList.MODE_UNEVICTABLE);
+            tree = mDatabase.newTemporaryTree(root);
+        }
+
+        root.asSortLeaf();
+        return tree;
+    }
+
+    private _Node latchRootDirty(_Tree tree) throws IOException {
+        _Node root = tree.mRoot;
+        root.acquireExclusive();
+        try {
+            mDatabase.markDirty(tree, root);
+            return root;
+        } catch (Throwable e) {
+            root.releaseExclusive();
+            throw e;
         }
     }
 
@@ -125,10 +181,10 @@ class _ParallelSorter implements Sorter {
 
             mFinishing = true;
 
-            _Node topNode = mSortNodeTop;
-            int count = mSortNodeCount;
-            mSortNodeTop = null;
-            mSortNodeCount = 0;
+            _Tree[] sortTrees = mSortTrees;
+            int size = mSortTreesSize;
+            mSortTrees = null;
+            mSortTreesSize = 0;
 
             while (mActiveNodeMergers > 0) {
                 try {
@@ -138,21 +194,19 @@ class _ParallelSorter implements Sorter {
                 }
             }
 
-            if (topNode == null) {
+            if (size == 0) {
                 if (mSortTreeLevels == null || mSortTreeLevels.isEmpty()) {
                     return mDatabase.newTemporaryIndex();
                 }
             } else {
                 _Tree tree;
-                if (count == 1) {
-                    latchDirty(topNode);
-                    topNode.sortLeaf();
-                    topNode.releaseExclusive();
-                    // FIXME: node must not be discarded by undo log
-                    // FIXME: commit lock!
-                    tree = mDatabase.newTemporaryTree(topNode);
+                if (size == 1) {
+                    tree = sortTrees[0];
+                    _Node node = latchRootDirty(tree);
+                    node.sortLeaf();
+                    node.releaseExclusive();
                 } else {
-                    tree = doMergeNodes(topNode, count);
+                    tree = doMergeSortTrees(sortTrees, size);
                 }
                 if (mSortTreeLevels == null || mSortTreeLevels.isEmpty()) {
                     return tree;
@@ -237,34 +291,21 @@ class _ParallelSorter implements Sorter {
         System.out.println("ex: " + merger.exceptionCheck());
     }
 
-    // Caller must be synchronized and hold commit lock.
-    private _Node nextSortNode(_Node current) throws IOException {
-        current.releaseExclusive();
-        if (mSortNodeCount >= SORT_NODES) {
-            mergeNodes();
-        }
-        _Node next = allocSortNode();
-        next.mLessUsed = mSortNodeTop;
-        mSortNodeTop = next;
-        mSortNodeCount++;
-        return next;
-    }
-
     // Caller must be synchronized.
-    private void mergeNodes() throws IOException {
-        // Merge the nodes into a new temporary index.
+    private void mergeSortTrees() throws IOException {
+        // Merge the sort tree nodes into a new temporary index.
 
-        _Node topNode = mSortNodeTop;
-        int count = mSortNodeCount;
-        mSortNodeTop = null;
-        mSortNodeCount = 0;
+        _Tree[] sortTrees = mSortTrees;
+        int size = mSortTreesSize;
+        mSortTrees = null;
+        mSortTreesSize = 0;
 
         mActiveNodeMergers++;
         try {
             mExecutor.execute(() -> {
                 _Tree tree;
                 try {
-                    tree = doMergeNodes(topNode, count);
+                    tree = doMergeSortTrees(sortTrees, size);
                 } catch (Throwable e) {
                     synchronized (this) {
                         mActiveNodeMergers--;
@@ -296,29 +337,35 @@ class _ParallelSorter implements Sorter {
     /**
      * @return new temporary index
      */
-    private _Tree doMergeNodes(_Node topNode, int count) throws IOException {
-        PriorityQueue<_Node> pq = new PriorityQueue<>(count, _ParallelSorter::compareSortNode);
-
-        do {
-            latchDirty(topNode);
-            topNode.sortLeaf();
-
+    private _Tree doMergeSortTrees(_Tree[] sortTrees, final int size) throws IOException {
+        // Latch and sort all the nodes.
+        for (int i=0; i<size; i++) {
+            _Node node = latchRootDirty(sortTrees[i]);
+            node.sortLeaf();
             // Use the garbage field for encoding the node order. Bit 0 is used for detecting
             // duplicates.
-            topNode.garbage((--count) << 1);
-            pq.add(topNode);
+            node.garbage(i << 1);
+        }
 
-            _Node less = topNode.mLessUsed;
-            topNode.mLessUsed = null;
-            topNode = less;
-        } while (count > 0);
+        // Heapify.
+        for (int i=size >>> 1; --i>=0; ) {
+            siftDown(sortTrees, size, i, sortTrees[i]);
+        }
 
         _Tree dest = mDatabase.newTemporaryIndex();
 
         _TreeCursor appender = dest.newCursor(Transaction.BOGUS);
         try {
             appender.firstAny();
-            for (_Node node; (node = pq.poll()) != null; ) {
+            int end = size - 1;
+
+            while (true) {
+                // Remove the lowest ordered sort tree from the heap, and prepare the next.
+                _Tree sortTree = sortTrees[0];
+                siftDown(sortTrees, end, 0, sortTrees[end]);
+
+                _Node node = sortTree.mRoot;
+
                 int order = node.garbage();
                 if ((order & 1) == 0) {
                     appender.appendTransfer(node);
@@ -329,83 +376,105 @@ class _ParallelSorter implements Sorter {
                 }
 
                 if (node.hasKeys()) {
-                    pq.add(node);
+                    // Add node back into the heap.
+                    siftUp(sortTrees, end, sortTree);
                 } else {
-                    // Recycle the node.
-                    node.releaseExclusive();
-                    synchronized (this) {
-                        node.mLessUsed = mNodePoolTop;
-                        mNodePoolTop = node;
+                    // Stash the tree at the end, and shrink the heap.
+                    sortTrees[end] = sortTree;
+                    if (end == 0) {
+                        // All done.
+                        break;
                     }
+                    end--;
                 }
             }
         } finally {
             appender.reset();
         }
 
+        // Unlatch the sort tree nodes.
+        for (int i=0; i<size; i++) {
+            sortTrees[i].mRoot.releaseExclusive();
+        }
+
+        // Recycle the sort trees.
+        synchronized (this) {
+            if (mSortTreePool == null || mSortTreePoolSize == 0) {
+                mSortTreePool = sortTrees;
+                mSortTreePoolSize = size;
+            } else {
+                int totalSize = mSortTreePoolSize + size;
+                if (totalSize > mSortTreePool.length) {
+                    mSortTreePool = Arrays.copyOf(mSortTreePool, totalSize);
+                }
+                System.arraycopy(sortTrees, 0, mSortTreePool, mSortTreePoolSize, size);
+                mSortTreePoolSize = totalSize;
+            }
+        }
+
         return dest;
     }
 
-    // Caller must be synchronized and hold commit lock.
-    private _Node allocSortNode() throws IOException {
-        checkFinishing();
-
-        _Node node = mNodePoolTop;
-        if (node == null) {
-            // FIXME: Track node using a special op in an _UndoLog instance.
-            node = mDatabase.allocDirtyNode(_NodeUsageList.MODE_UNEVICTABLE);
-        } else {
-            mNodePoolTop = node.mLessUsed;
-            node.mLessUsed = null;
-            latchDirty(node);
-        }
-
-        node.asSortLeaf();
-        return node;
-    }
-
-    private static int compareSortNode(_Node left, _Node right) {
-        try {
-            int compare = _Node.compareKeys
-                (left, p_ushortGetLE(left.mPage, left.searchVecStart()),
-                 right, p_ushortGetLE(right.mPage, right.searchVecStart()));
-
-            if (compare == 0) {
-                // Use node order (encoded in garbage field) for eliminating duplicates.
-                // Signal that the first entry from the node with the lower key must be
-                // deleted. Use bit 0 to signal this.
-
-                int leftOrder = left.garbage();
-                int rightOrder = right.garbage();
-
-                if (leftOrder < rightOrder) {
-                    left.garbage(leftOrder | 1);
-                    compare = -1;
-                } else {
-                    right.garbage(rightOrder | 1);
-                    compare = 1;
-                }
+    private static void siftDown(_Tree[] sortTrees, int size, int pos, _Tree toInsert)
+        throws IOException
+    {
+        int half = size >>> 1;
+        while (pos < half) {
+            int childPos = (pos << 1) + 1;
+            _Tree child = sortTrees[childPos];
+            int rightPos = childPos + 1;
+            if (rightPos < size && compareSortTrees(child, sortTrees[rightPos]) > 0) {
+                childPos = rightPos;
+                child = sortTrees[childPos];
             }
-
-            return compare;
-        } catch (Throwable e) {
-            throw Utils.rethrow(e);
+            if (compareSortTrees(toInsert, child) <= 0) {
+                break;
+            }
+            sortTrees[pos] = child;
+            pos = childPos;
         }
+        sortTrees[pos] = toInsert;
     }
 
-    private void latchDirty(_Node node) throws IOException {
-        node.acquireExclusive();
-        try {
-            // FIXME: When id changes... oops! Needs to be tracked again in undo log.
-            // FIXME: Not all callers hold commit lock!
-            // FIXME: If shouldMarkDirty, then don't. Allocate a new node instead. Rollback the
-            // transaction which is tracking the nodes, deleting them. The prepareToDelete
-            // method ensures that changes destined for the checkpoint are flushed out.
-            mDatabase.markUnmappedDirty(node);
-        } catch (Throwable e) {
-            node.releaseExclusive();
-            throw e;
+    private static void siftUp(_Tree[] sortTrees, int pos, _Tree toInsert) throws IOException {
+        while (pos > 0) {
+            int parentPos = (pos - 1) >>> 1;
+            _Tree parent = sortTrees[parentPos];
+            if (compareSortTrees(toInsert, parent) >= 0) {
+                break;
+            }
+            sortTrees[pos] = parent;
+            pos = parentPos;
         }
+        sortTrees[pos] = toInsert;
+    }
+
+    private static int compareSortTrees(_Tree leftTree, _Tree rightTree) throws IOException {
+        _Node left = leftTree.mRoot;
+        _Node right = rightTree.mRoot;
+
+        int compare = _Node.compareKeys
+            (left, p_ushortGetLE(left.mPage, left.searchVecStart()),
+             right, p_ushortGetLE(right.mPage, right.searchVecStart()));
+
+        if (compare == 0) {
+            // Use node order (encoded in garbage field) for eliminating duplicates.
+            // Signal that the first entry from the node with the lower key must be
+            // deleted. Use bit 0 to signal this.
+
+            int leftOrder = left.garbage();
+            int rightOrder = right.garbage();
+
+            if (leftOrder < rightOrder) {
+                left.garbage(leftOrder | 1);
+                compare = -1;
+            } else {
+                right.garbage(rightOrder | 1);
+                compare = 1;
+            }
+        }
+
+        return compare;
     }
 
     // Caller must be synchronized.
