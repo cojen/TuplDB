@@ -301,7 +301,13 @@ public interface Cursor {
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws NullPointerException if key is null
      */
-    public LockResult findGe(byte[] key) throws IOException;
+    public default LockResult findGe(byte[] key) throws IOException {
+        LockResult result = find(key);
+        if (value() == null && result == LockResult.ACQUIRED) {
+            link().unlock();
+        }
+        return next();
+    }
 
     /**
      * Moves the Cursor to find the first available entry greater than the
@@ -316,7 +322,10 @@ public interface Cursor {
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws NullPointerException if key is null
      */
-    public LockResult findGt(byte[] key) throws IOException;
+    public default LockResult findGt(byte[] key) throws IOException {
+        ViewUtils.findNoLock(this, key);
+        return next();
+    }
 
     /**
      * Moves the Cursor to find the first available entry less than or equal to
@@ -331,7 +340,13 @@ public interface Cursor {
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws NullPointerException if key is null
      */
-    public LockResult findLe(byte[] key) throws IOException;
+    public default LockResult findLe(byte[] key) throws IOException {
+        LockResult result = find(key);
+        if (value() == null && result == LockResult.ACQUIRED) {
+            link().unlock();
+        }
+        return previous();
+    }
 
     /**
      * Moves the Cursor to find the first available entry less than the given
@@ -346,7 +361,10 @@ public interface Cursor {
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws NullPointerException if key is null
      */
-    public LockResult findLt(byte[] key) throws IOException;
+    public default LockResult findLt(byte[] key) throws IOException {
+        ViewUtils.findNoLock(this, key);
+        return previous();
+    }
 
     /**
      * Optimized version of the regular find method, which can perform fewer search steps if

@@ -160,6 +160,17 @@ class ViewUtils {
         }
     }
 
+    static void findNoLock(Cursor c, byte[] key) throws IOException {
+        final boolean auto = c.autoload(false);
+        final Transaction txn = c.link(Transaction.BOGUS);
+        try {
+            c.find(key);
+        } finally {
+            c.link(txn);
+            c.autoload(auto);
+        }
+    }
+
     @FunctionalInterface
     static interface LockAction {
         LockResult lock(Transaction txn, byte[] key)
