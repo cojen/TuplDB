@@ -18,7 +18,7 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import java.util.Objects;
+import java.util.Arrays;
 
 /**
  * Mapping of keys to values, in no particular order. Subclasses and
@@ -194,7 +194,7 @@ public interface View {
         Cursor c = newCursor(txn);
         try {
             c.find(key);
-            if (!Objects.equals(c.value(), oldValue)) {
+            if (!Arrays.equals(c.value(), oldValue)) {
                 return false;
             }
             c.store(newValue);
