@@ -1161,6 +1161,45 @@ final class _LocalDatabase extends AbstractDatabase {
     }
 
     /**
+     * Quickly delete an empty temporary tree, which has no active threads and cursors.
+     */
+    void quickDeleteTemporaryTree(_Tree tree) throws IOException {
+        mOpenTreesLatch.acquireExclusive();
+        try {
+            _TreeRef ref = mOpenTreesById.removeValue(tree.mId);
+            if (ref == null || ref.get() != tree) {
+                // _Tree is likely being closed by a concurrent database close.
+                return;
+            }
+            ref.clear();
+        } finally {
+            mOpenTreesLatch.releaseExclusive();
+        }
+
+        _Node root = tree.mRoot;
+
+        prepare: {
+            mCommitLock.lock();
+            try {
+                root.acquireExclusive();
+                if (!root.hasKeys()) {
+                    prepareToDelete(root);
+                    root.releaseExclusive();
+                    break prepare;
+                }
+                root.releaseExclusive();
+            } finally {
+                mCommitLock.unlock();
+            }
+
+            // _Tree isn't truly empty -- it might be composed of many empty leaf nodes.
+            tree.deleteAll();
+        }
+
+        removeFromTrash(tree, root);
+    }
+
+    /**
      * @param lastIdBytes null to start with first
      * @return null if none available
      */

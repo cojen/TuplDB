@@ -189,7 +189,7 @@ class _TreeMerger {
 
             if (mStoppedCount == 0) {
                 for (_Tree source : mSources) {
-                    mDatabase.deleteIndex(source).run();
+                    mDatabase.quickDeleteTemporaryTree(source);
                 }
             } else {
                 for (_Tree source : mSources) {

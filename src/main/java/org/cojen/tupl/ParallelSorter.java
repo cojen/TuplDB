@@ -217,33 +217,38 @@ class ParallelSorter implements Sorter {
 
         waitForInactivity(true);
 
-        List<Tree> allTrees;
+        Tree[] allTrees;
         synchronized (this) {
             if (mSortTreeLevels.size() == 1) {
-                allTrees = mSortTreeLevels.get(0);
+                List<Tree> trees = mSortTreeLevels.get(0);
+                allTrees = trees.toArray(new Tree[trees.size()]);
+                trees.clear();
             } else {
                 int allTreeCount = 0;
                 for (int i=mSortTreeLevels.size(); --i>=0; ) {
                     allTreeCount += mSortTreeLevels.get(i).size();
                 }
 
-                allTrees = new ArrayList<>(allTreeCount);
+                allTrees = new Tree[allTreeCount];
 
                 // Iterate in reverse order to favor duplicates at lower levels, which were
                 // added more recently.
+                int pos = 0;
                 for (int i=mSortTreeLevels.size(); --i>=0; ) {
                     List<Tree> trees = mSortTreeLevels.get(i);
-                    allTrees.addAll(trees);
+                    for (int j=0; j<trees.size(); j++) {
+                        allTrees[pos++] = trees.get(j);
+                    }
                     trees.clear();
                 }
             }
 
-            if (allTrees.size() <= 1) {
+            if (allTrees.length <= 1) {
                 Tree tree;
-                if (allTrees.isEmpty()) {
+                if (allTrees.length == 0) {
                     tree = mDatabase.newTemporaryIndex();
                 } else {
-                    tree = allTrees.get(0);
+                    tree = allTrees[0];
                 }
                 mSortTreeLevels.clear();
                 return tree;
@@ -485,7 +490,9 @@ class ParallelSorter implements Sorter {
             List<Tree> trees = mSortTreeLevels.get(level);
             trees.add(tree);
             if (trees.size() >= maxLevelSize && !mFinishing) {
-                mergeTrees(trees, level + 1);
+                Tree[] toMerge = trees.toArray(new Tree[trees.size()]);
+                trees.clear();
+                mergeTrees(toMerge, level + 1);
             }
             return;
         }
@@ -494,10 +501,7 @@ class ParallelSorter implements Sorter {
         mSortTreeLevels.add(trees);
     }
 
-    private void mergeTrees(List<Tree> trees, int targetLevel) throws IOException {
-        Tree[] toMerge = trees.toArray(new Tree[trees.size()]);
-        trees.clear();
-
+    private void mergeTrees(Tree[] toMerge, int targetLevel) throws IOException {
         TreeMerger tm = new TreeMerger
             (mDatabase, MERGE_THREAD_COUNT, toMerge, (merger, target) -> {
                 if (target == null) {
