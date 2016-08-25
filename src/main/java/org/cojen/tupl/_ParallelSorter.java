@@ -27,6 +27,9 @@ import java.util.Set;
 
 import java.util.concurrent.Executor;
 
+import org.cojen.tupl.util.Latch;
+import org.cojen.tupl.util.LatchCondition;
+
 import static org.cojen.tupl.DirectPageOps.*;
 
 /**
@@ -43,7 +46,10 @@ class _ParallelSorter implements Sorter {
 
     private static final int MERGE_THREAD_COUNT = Runtime.getRuntime().availableProcessors();
 
+    private static final int STATE_READY = 0, STATE_FINISHING = 1, STATE_RESET = 2;
+
     private final _LocalDatabase mDatabase;
+    private final Executor mExecutor;
 
     // Active sort trees, each of which has only a root node.
     private _Tree[] mSortTrees;
@@ -55,17 +61,15 @@ class _ParallelSorter implements Sorter {
 
     private List<List<_Tree>> mSortTreeLevels;
 
-    // FIXME: Extend Latch and lazy init mActiveMergers (?)
-    private final Set<_TreeMerger> mActiveMergers;
+    private Latch mActiveMergersLatch;
+    private LatchCondition mActiveMergersCondition;
+    private Set<_TreeMerger> mActiveMergers;
     private int mActiveNodeMergers;
 
-    private final Executor mExecutor;
-
-    private boolean mFinishing;
+    private int mState;
 
     _ParallelSorter(_LocalDatabase db, Executor executor) {
         mDatabase = db;
-        mActiveMergers = new HashSet<>();
         mExecutor = executor;
     }
 
@@ -118,7 +122,7 @@ class _ParallelSorter implements Sorter {
 
     // Caller must be synchronized and hold commit lock.
     private _Tree allocSortTree() throws IOException {
-        checkFinishing();
+        checkState();
 
         _Tree tree;
         _Node root;
@@ -153,33 +157,42 @@ class _ParallelSorter implements Sorter {
     public Index finish() throws IOException {
         try {
             return doFinish();
-        } finally {
-            // FIXME: Only reset if exception; doFinish does the work.
-            reset();
+        } catch (Throwable e) {
+            try {
+                reset();
+            } catch (Exception e2) {
+                e.addSuppressed(e2);
+            }
+            throw e;
         }
     }
 
     @Override
-    public synchronized void reset() throws IOException {
-        // FIXME: implement reset
-        /* drain the pool...
-        node.makeEvictable();
-        mDatabase.deleteNode(node);
-        */
+    public void reset() throws IOException {
+        // FIXME: stop any active merging
+
+        synchronized (this) {
+            mState = STATE_RESET;
+            finishComplete();
+        }
     }
 
     // Caller must be synchronized.
-    private void checkFinishing() {
-        if (mFinishing) {
-            throw new IllegalStateException("finish in progress");
+    private void checkState() throws InterruptedIOException {
+        if (mState != 0) {
+            if (mState == STATE_FINISHING) {
+                throw new IllegalStateException("Finish in progress");
+            }
+            throw new InterruptedIOException("Sorter is reset");
         }
     }
 
     private _Tree doFinish() throws IOException {
+        Object shouldWait;
         synchronized (this) {
-            checkFinishing();
+            checkState();
 
-            mFinishing = true;
+            mState = STATE_FINISHING;
 
             _Tree[] sortTrees = mSortTrees;
             int size = mSortTreesSize;
@@ -196,7 +209,9 @@ class _ParallelSorter implements Sorter {
 
             if (size == 0) {
                 if (mSortTreeLevels == null || mSortTreeLevels.isEmpty()) {
-                    return mDatabase.newTemporaryIndex();
+                    _Tree tree = mDatabase.newTemporaryIndex();
+                    finishComplete();
+                    return tree;
                 }
             } else {
                 _Tree tree;
@@ -209,13 +224,18 @@ class _ParallelSorter implements Sorter {
                     tree = doMergeSortTrees(sortTrees, size);
                 }
                 if (mSortTreeLevels == null || mSortTreeLevels.isEmpty()) {
+                    finishComplete();
                     return tree;
                 }
                 addToLevel(tree, 0, L0_MAX_SIZE);
             }
+
+            shouldWait = mActiveMergersLatch;
         }
 
-        waitForInactivity(true);
+        if (shouldWait != null) {
+            waitForInactivity(true);
+        }
 
         _Tree[] allTrees;
         synchronized (this) {
@@ -251,8 +271,11 @@ class _ParallelSorter implements Sorter {
                     tree = allTrees[0];
                 }
                 mSortTreeLevels.clear();
+                finishComplete();
                 return tree;
             }
+
+            initForMerging();
         }
 
         mergeTrees(allTrees, 0);
@@ -262,38 +285,37 @@ class _ParallelSorter implements Sorter {
         synchronized (this) {
             _Tree tree = mSortTreeLevels.get(0).get(0);
             mSortTreeLevels.clear();
+            finishComplete();
             return tree;
         }
     }
 
-    private void waitForInactivity(boolean stop) throws InterruptedIOException {
-        try {
-            synchronized (mActiveMergers) {
-                if (stop) {
-                    for (_TreeMerger m : mActiveMergers) {
-                        m.stop();
-                    }
-                }
-
-                while (!mActiveMergers.isEmpty()) {
-                    mActiveMergers.wait();
-                }
-            }
-        } catch (InterruptedException e) {
-            throw new InterruptedIOException();
+    // Caller must be synchronized.
+    private void finishComplete() throws IOException {
+        // Drain the pool.
+        while (mSortTreePoolSize > 0) {
+            mDatabase.quickDeleteTemporaryTree(mSortTreePool[--mSortTreePoolSize]);
         }
+        mState = STATE_READY;
     }
 
-    private void finished(_TreeMerger merger) {
-        synchronized (mActiveMergers) {
-            mActiveMergers.remove(merger);
-            if (mActiveMergers.isEmpty()) {
-                mActiveMergers.notifyAll();
+    private void waitForInactivity(boolean stop) throws InterruptedIOException {
+        mActiveMergersLatch.acquireExclusive();
+        try {
+            if (stop) {
+                for (_TreeMerger m : mActiveMergers) {
+                    m.stop();
+                }
             }
-        }
 
-        // FIXME: capture this
-        System.out.println("ex: " + merger.exceptionCheck());
+            while (!mActiveMergers.isEmpty()) {
+                if (mActiveMergersCondition.await(mActiveMergersLatch, -1, 0) < 0) {
+                    throw new InterruptedIOException();
+                }
+            }
+        } finally {
+            mActiveMergersLatch.releaseExclusive();
+        }
     }
 
     // Caller must be synchronized.
@@ -483,15 +505,25 @@ class _ParallelSorter implements Sorter {
     }
 
     // Caller must be synchronized.
+    private void initForMerging() {
+        if (mActiveMergersLatch == null) {
+            mActiveMergersLatch = new Latch();
+            mActiveMergersCondition = new LatchCondition();
+            mActiveMergers = new HashSet<>();
+        }
+    }
+
+    // Caller must be synchronized.
     private void addToLevel(_Tree tree, int level, int maxLevelSize) throws IOException {
         if (mSortTreeLevels == null) {
             mSortTreeLevels = new ArrayList<>();
         } else if (level < mSortTreeLevels.size()) {
             List<_Tree> trees = mSortTreeLevels.get(level);
             trees.add(tree);
-            if (trees.size() >= maxLevelSize && !mFinishing) {
+            if (trees.size() >= maxLevelSize && mState == STATE_READY) {
                 _Tree[] toMerge = trees.toArray(new _Tree[trees.size()]);
                 trees.clear();
+                initForMerging();
                 mergeTrees(toMerge, level + 1);
             }
             return;
@@ -501,6 +533,7 @@ class _ParallelSorter implements Sorter {
         mSortTreeLevels.add(trees);
     }
 
+    // Must have called initForMerging.
     private void mergeTrees(_Tree[] toMerge, int targetLevel) throws IOException {
         _TreeMerger tm = new _TreeMerger
             (mDatabase, MERGE_THREAD_COUNT, toMerge, (merger, target) -> {
@@ -517,10 +550,28 @@ class _ParallelSorter implements Sorter {
                 }
             });
 
-        synchronized (mActiveMergers) {
+        mActiveMergersLatch.acquireExclusive();
+        try {
             mActiveMergers.add(tm);
+        } finally {
+            mActiveMergersLatch.releaseExclusive();
         }
 
         tm.start(mExecutor);
+    }
+
+    private void finished(_TreeMerger merger) {
+        mActiveMergersLatch.acquireExclusive();
+        try {
+            mActiveMergers.remove(merger);
+            if (mActiveMergers.isEmpty()) {
+                mActiveMergersCondition.signalAll();
+            }
+        } finally {
+            mActiveMergersLatch.releaseExclusive();
+        }
+
+        // FIXME: stash it for later
+        //System.out.println("ex: " + merger.exceptionCheck());
     }
 }
