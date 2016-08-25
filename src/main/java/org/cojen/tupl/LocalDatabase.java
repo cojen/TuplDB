@@ -1373,7 +1373,7 @@ final class LocalDatabase extends AbstractDatabase {
     /**
      * Caller must hold commit lock.
      *
-     * @param root pass null to create an empty index; pass an evictable node otherwise
+     * @param root pass null to create an empty index; pass an unevictable node otherwise
      */
     Tree newTemporaryTree(Node root) throws IOException {
         checkClosed();
@@ -1386,7 +1386,7 @@ final class LocalDatabase extends AbstractDatabase {
             rootIdBytes = EMPTY_BYTES;
         } else {
             rootIdBytes = new byte[8];
-            encodeLongBE(rootIdBytes, 0, root.mId);
+            encodeLongLE(rootIdBytes, 0, root.mId);
         }
 
         long treeId;
