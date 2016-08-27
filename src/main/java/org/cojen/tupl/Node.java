@@ -3645,27 +3645,28 @@ final class Node extends Latch implements DatabaseAccess {
      * @param pos position as provided by binarySearch; must be positive
      */
     void deleteLeafEntry(int pos) throws IOException {
-        final /*P*/ byte[] page = mPage;
+        /*P*/ byte[] page = mPage;
+        int entryLoc = p_ushortGetLE(page, searchVecStart() + pos);
+        finishDeleteLeafEntry(pos, doDeleteLeafEntry(page, entryLoc) - entryLoc);
+    }
 
-        int searchVecStart = searchVecStart();
-        final int entryLoc = p_ushortGetLE(page, searchVecStart + pos);
-
+    /**
+     * @param loc start location in page
+     * @return location just after end of cleared entry
+     */
+    private int doDeleteLeafEntry(/*P*/ byte[] page, int loc) throws IOException {
         // Note: Similar to leafEntryLengthAtLoc and retrieveLeafValueAtLoc.
 
-        int loc = entryLoc;
-
-        {
-            int keyLen = p_byteGet(page, loc++);
-            if (keyLen >= 0) {
-                loc += keyLen + 1;
-            } else {
-                int header = keyLen;
-                keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++);
-                if ((header & ENTRY_FRAGMENTED) != 0) {
-                    getDatabase().deleteFragments(page, loc, keyLen);
-                }
-                loc += keyLen;
+        int keyLen = p_byteGet(page, loc++);
+        if (keyLen >= 0) {
+            loc += keyLen + 1;
+        } else {
+            int header = keyLen;
+            keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++);
+            if ((header & ENTRY_FRAGMENTED) != 0) {
+                getDatabase().deleteFragments(page, loc, keyLen);
             }
+            loc += keyLen;
         }
 
         int header = p_byteGet(page, loc++);
@@ -3688,10 +3689,13 @@ final class Node extends Latch implements DatabaseAccess {
             loc += len;
         }
 
-        doDeleteLeafEntry(pos, loc - entryLoc);
+        return loc;
     }
 
-    void doDeleteLeafEntry(int pos, int entryLen) {
+    /**
+     * Finish the delete by updating garbage size and adjusting search vector.
+     */
+    void finishDeleteLeafEntry(int pos, int entryLen) {
         // Increment garbage by the size of the encoded entry.
         garbage(garbage() + entryLen);
 
@@ -3709,6 +3713,29 @@ final class Node extends Latch implements DatabaseAccess {
             p_copy(page, pos + 2, page, pos, searchVecEnd - pos);
             searchVecEnd(searchVecEnd - 2);
         }
+    }
+
+    /**
+     * Fixes all bound cursors after a delete. Node must be latched exclusively.
+     *
+     * @param pos positive position of entry that was deleted
+     * @param key not-found key to set for cursors at given position
+     */
+    void postDelete(int pos, byte[] key) {
+        int newPos = ~pos;
+        CursorFrame frame = mLastCursorFrame;
+        do {
+            int framePos = frame.mNodePos;
+            if (framePos == pos) {
+                frame.mNodePos = newPos;
+                frame.mNotFoundKey = key;
+            } else if (framePos > pos) {
+                frame.mNodePos = framePos - 2;
+            } else if (framePos < newPos) {
+                // Position is a complement, so add instead of subtract.
+                frame.mNodePos = framePos + 2;
+            }
+        } while ((frame = frame.mPrevCousin) != null);
     }
 
     /**
