@@ -569,9 +569,9 @@ final class LocalDatabase extends AbstractDatabase {
 
             // Cannot call newTreeInstance because mRedoWriter isn't set yet.
             if (config.mReplManager != null) {
-                mRegistry = new TxnTree(this, Tree.REGISTRY_ID, null, null, rootNode);
+                mRegistry = new TxnTree(this, Tree.REGISTRY_ID, null, rootNode);
             } else {
-                mRegistry = new Tree(this, Tree.REGISTRY_ID, null, null, rootNode);
+                mRegistry = new Tree(this, Tree.REGISTRY_ID, null, rootNode);
             }
 
             mOpenTreesLatch = new Latch();
@@ -1317,8 +1317,81 @@ final class LocalDatabase extends AbstractDatabase {
     }
 
     @Override
-    public Index newTemporaryIndex() throws IOException {
-        return openTree(null, true);
+    public Tree newTemporaryIndex() throws IOException {
+        mCommitLock.lock();
+        try {
+            return newTemporaryTree(null);
+        } finally {
+            mCommitLock.unlock();
+        }
+    }
+
+    /**
+     * Caller must hold commit lock.
+     *
+     * @param root pass null to create an empty index; pass an unevictable node otherwise
+     */
+    Tree newTemporaryTree(Node root) throws IOException {
+        checkClosed();
+
+        // Cleanup before opening more trees.
+        cleanupUnreferencedTrees();
+
+        byte[] rootIdBytes;
+        if (root == null) {
+            rootIdBytes = EMPTY_BYTES;
+        } else {
+            rootIdBytes = new byte[8];
+            encodeLongLE(rootIdBytes, 0, root.mId);
+        }
+
+        long treeId;
+        byte[] treeIdBytes = new byte[8];
+
+        try {
+            do {
+                treeId = nextTreeId(true);
+                encodeLongBE(treeIdBytes, 0, treeId);
+            } while (!mRegistry.insert(Transaction.BOGUS, treeIdBytes, rootIdBytes));
+
+            byte[] idKey = newKey(KEY_TYPE_INDEX_ID, treeIdBytes);
+
+            // Register temporary index as trash, unreplicated.
+            Transaction createTxn = newNoRedoTransaction();
+            try {
+                byte[] trashIdKey = newKey(KEY_TYPE_TRASH_ID, treeIdBytes);
+                if (!mRegistryKeyMap.insert(createTxn, trashIdKey, new byte[1])) {
+                    throw new DatabaseException("Unable to register temporary index");
+                }
+                createTxn.commit();
+            } finally {
+                createTxn.reset();
+            }
+        } catch (Throwable e) {
+            try {
+                mRegistry.delete(Transaction.BOGUS, treeIdBytes);
+            } catch (Throwable e2) {
+                // Panic.
+                throw closeOnFailure(this, e);
+            }
+            throw e;
+        }
+
+        if (root == null) {
+            root = loadTreeRoot(treeId, 0);
+        }
+
+        Tree tree = new TempTree(this, treeId, treeIdBytes, root);
+        TreeRef treeRef = new TreeRef(tree, mOpenTreesRefQueue);
+
+        mOpenTreesLatch.acquireExclusive();
+        try {
+            mOpenTreesById.insert(treeId).value = treeRef;
+        } finally {
+            mOpenTreesLatch.releaseExclusive();
+        }
+
+        return tree;
     }
 
     @Override
@@ -2312,7 +2385,7 @@ final class LocalDatabase extends AbstractDatabase {
 
             // Cannot call newTreeInstance because mRedoWriter isn't set yet.
             if (config != null && config.mReplManager != null) {
-                return new TxnTree(this, treeId, treeIdBytes, null, root);
+                return new TxnTree(this, treeId, treeIdBytes, root);
             }
 
             return newTreeInstance(treeId, treeIdBytes, null, root);
@@ -2321,10 +2394,16 @@ final class LocalDatabase extends AbstractDatabase {
         }
     }
 
+    /**
+     * @param name required (cannot be null)
+     */
     private Tree openTree(byte[] name, boolean create) throws IOException {
         return openTree(null, name, create);
     }
 
+    /**
+     * @param name required (cannot be null)
+     */
     private Tree openTree(Transaction findTxn, byte[] name, boolean create) throws IOException {
         Tree tree = quickFindIndex(name);
         if (tree == null) {
@@ -2340,18 +2419,17 @@ final class LocalDatabase extends AbstractDatabase {
 
     /**
      * Caller must hold commit lock.
+     *
+     * @param name required (cannot be null)
      */
     private Tree doOpenTree(Transaction findTxn, byte[] name, boolean create) throws IOException {
         checkClosed();
 
-        // Cleaup before opening more trees.
+        // Cleanup before opening more trees.
         cleanupUnreferencedTrees();
 
-        byte[] nameKey = null, treeIdBytes = null;
-        if (name != null) {
-            nameKey = newKey(KEY_TYPE_INDEX_NAME, name);
-            treeIdBytes = mRegistryKeyMap.load(findTxn, nameKey);
-        }
+        byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, name);
+        byte[] treeIdBytes = mRegistryKeyMap.load(findTxn, nameKey);
 
         long treeId;
         // Is non-null if tree was created.
@@ -2373,14 +2451,12 @@ final class LocalDatabase extends AbstractDatabase {
 
             mOpenTreesLatch.acquireExclusive();
             try {
-                if (nameKey != null) {
-                    treeIdBytes = mRegistryKeyMap.load(null, nameKey);
-                    if (treeIdBytes != null) {
-                        // Another thread created it.
-                        idKey = null;
-                        treeId = decodeLongBE(treeIdBytes, 0);
-                        break create;
-                    }
+                treeIdBytes = mRegistryKeyMap.load(null, nameKey);
+                if (treeIdBytes != null) {
+                    // Another thread created it.
+                    idKey = null;
+                    treeId = decodeLongBE(treeIdBytes, 0);
+                    break create;
                 }
 
                 treeIdBytes = new byte[8];
@@ -2391,7 +2467,7 @@ final class LocalDatabase extends AbstractDatabase {
                 try {
                     do {
                         critical = false;
-                        treeId = nextTreeId(name == null);
+                        treeId = nextTreeId(false);
                         encodeLongBE(treeIdBytes, 0, treeId);
                         critical = true;
                     } while (!mRegistry.insert(Transaction.BOGUS, treeIdBytes, EMPTY_BYTES));
@@ -2401,27 +2477,18 @@ final class LocalDatabase extends AbstractDatabase {
                     try {
                         idKey = newKey(KEY_TYPE_INDEX_ID, treeIdBytes);
 
-                        if (name == null) {
-                            // Register temporary index as trash, unreplicated.
-                            createTxn = newNoRedoTransaction();
-                            byte[] trashIdKey = newKey(KEY_TYPE_TRASH_ID, treeIdBytes);
-                            if (!mRegistryKeyMap.insert(createTxn, trashIdKey, new byte[1])) {
-                                throw new DatabaseException("Unable to register temporary index");
-                            }
+                        if (mRedoWriter instanceof ReplRedoController) {
+                            // Confirmation is required when replicated.
+                            createTxn = newTransaction(DurabilityMode.SYNC);
                         } else {
-                            if (mRedoWriter instanceof ReplRedoController) {
-                                // Confirmation is required when replicated.
-                                createTxn = newTransaction(DurabilityMode.SYNC);
-                            } else {
-                                createTxn = newAlwaysRedoTransaction();
-                            }
+                            createTxn = newAlwaysRedoTransaction();
+                        }
 
-                            if (!mRegistryKeyMap.insert(createTxn, idKey, name)) {
-                                throw new DatabaseException("Unable to insert index id");
-                            }
-                            if (!mRegistryKeyMap.insert(createTxn, nameKey, treeIdBytes)) {
-                                throw new DatabaseException("Unable to insert index name");
-                            }
+                        if (!mRegistryKeyMap.insert(createTxn, idKey, name)) {
+                            throw new DatabaseException("Unable to insert index id");
+                        }
+                        if (!mRegistryKeyMap.insert(createTxn, nameKey, treeIdBytes)) {
+                            throw new DatabaseException("Unable to insert index name");
                         }
                     } catch (Throwable e) {
                         critical = true;
@@ -2482,19 +2549,12 @@ final class LocalDatabase extends AbstractDatabase {
 
             Node root = loadTreeRoot(treeId, rootId);
 
-            if (name == null) {
-                tree = new TempTree(this, treeId, treeIdBytes, name, root);
-            } else {
-                tree = newTreeInstance(treeId, treeIdBytes, name, root);
-            }
-
+            tree = newTreeInstance(treeId, treeIdBytes, name, root);
             TreeRef treeRef = new TreeRef(tree, mOpenTreesRefQueue);
 
             mOpenTreesLatch.acquireExclusive();
             try {
-                if (name != null) {
-                    mOpenTrees.put(name, treeRef);
-                }
+                mOpenTrees.put(name, treeRef);
                 mOpenTreesById.insert(treeId).value = treeRef;
             } finally {
                 mOpenTreesLatch.releaseExclusive();
@@ -2506,9 +2566,7 @@ final class LocalDatabase extends AbstractDatabase {
                 // Rollback create of new tree.
                 try {
                     mRegistryKeyMap.delete(null, idKey);
-                    if (nameKey != null) {
-                        mRegistryKeyMap.delete(null, nameKey);
-                    }
+                    mRegistryKeyMap.delete(null, nameKey);
                     mRegistry.delete(Transaction.BOGUS, treeIdBytes);
                 } catch (Throwable e2) {
                     // Ignore.
@@ -2521,13 +2579,16 @@ final class LocalDatabase extends AbstractDatabase {
     }
 
     private Tree newTreeInstance(long id, byte[] idBytes, byte[] name, Node root) {
+        Tree tree;
         if (mRedoWriter instanceof ReplRedoWriter) {
             // Always need an explcit transaction when using auto-commit, to ensure that
             // rollback is possible.
-            return new TxnTree(this, id, idBytes, name, root);
+            tree = new TxnTree(this, id, idBytes, root);
         } else {
-            return new Tree(this, id, idBytes, name, root);
+            tree = new Tree(this, id, idBytes, root);
         }
+        tree.mName = name;
+        return tree;
     }
 
     private long nextTreeId(boolean temporary) throws IOException {
@@ -2587,13 +2648,10 @@ final class LocalDatabase extends AbstractDatabase {
     }
 
     /**
+     * @param name required (cannot be null)
      * @return null if not found
      */
     private Tree quickFindIndex(byte[] name) throws IOException {
-        if (name == null) {
-            return null;
-        }
-
         TreeRef treeRef;
         mOpenTreesLatch.acquireShared();
         try {
@@ -3162,9 +3220,9 @@ final class LocalDatabase extends AbstractDatabase {
     }
 
     /**
-     * Caller must hold commit lock and exclusive latch on node. Method does
-     * nothing if node is already dirty. Latch is never released by this method,
-     * even if an exception is thrown.
+     * Mark a tree node as dirty. Caller must hold commit lock and exclusive latch on
+     * node. Method does nothing if node is already dirty. Latch is never released by this
+     * method, even if an exception is thrown.
      *
      * @return true if just made dirty and id changed
      */
@@ -3178,9 +3236,9 @@ final class LocalDatabase extends AbstractDatabase {
     }
 
     /**
-     * Caller must hold commit lock and exclusive latch on node. Method does
-     * nothing if node is already dirty. Latch is never released by this method,
-     * even if an exception is thrown.
+     * Mark a fragment node as dirty. Caller must hold commit lock and exclusive latch on
+     * node. Method does nothing if node is already dirty. Latch is never released by this
+     * method, even if an exception is thrown.
      *
      * @return true if just made dirty and id changed
      */

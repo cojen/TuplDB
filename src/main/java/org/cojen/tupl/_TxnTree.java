@@ -27,8 +27,8 @@ import java.util.Arrays;
  */
 /*P*/
 final class _TxnTree extends _Tree {
-    _TxnTree(_LocalDatabase db, long id, byte[] idBytes, byte[] name, _Node root) {
-        super(db, id, idBytes, name, root);
+    _TxnTree(_LocalDatabase db, long id, byte[] idBytes, _Node root) {
+        super(db, id, idBytes, root);
     }
 
     @Override

@@ -51,20 +51,19 @@ class _Tree implements View, Index {
     // Id is null for registry.
     final byte[] mIdBytes;
 
-    // Name is null for all internal trees.
-    volatile byte[] mName;
-
     // Although tree roots can be created and deleted, the object which refers
     // to the root remains the same. Internal state is transferred to/from this
     // object when the tree root changes.
     final _Node mRoot;
 
-    _Tree(_LocalDatabase db, long id, byte[] idBytes, byte[] name, _Node root) {
+    // Name is null for all internal trees.
+    volatile byte[] mName;
+
+    _Tree(_LocalDatabase db, long id, byte[] idBytes, _Node root) {
         mDatabase = db;
         mLockManager = db.mLockManager;
         mId = id;
         mIdBytes = idBytes;
-        mName = name;
         mRoot = root;
     }
 

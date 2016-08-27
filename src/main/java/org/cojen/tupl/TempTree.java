@@ -27,8 +27,8 @@ import java.util.Arrays;
  */
 /*P*/
 final class TempTree extends Tree {
-    TempTree(LocalDatabase db, long id, byte[] idBytes, byte[] name, Node root) {
-        super(db, id, idBytes, name, root);
+    TempTree(LocalDatabase db, long id, byte[] idBytes, Node root) {
+        super(db, id, idBytes, root);
     }
 
     @Override
