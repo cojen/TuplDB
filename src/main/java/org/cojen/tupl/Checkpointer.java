@@ -32,8 +32,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 final class Checkpointer implements Runnable {
     private static final int STATE_INIT = 0, STATE_RUNNING = 1, STATE_CLOSED = 2;
 
-    private static int cThreadCounter;
-
     private final AtomicInteger mSuspendCount;
     private final ReferenceQueue<AbstractDatabase> mRefQueue;
     private final WeakReference<AbstractDatabase> mDatabaseRef;
@@ -65,18 +63,13 @@ final class Checkpointer implements Runnable {
      * @param initialCheckpoint true to perform an initial checkpoint in the new thread
      */
     void start(boolean initialCheckpoint) {
-        int num;
-        synchronized (Checkpointer.class) {
-            num = ++cThreadCounter;
-        }
-
         if (!initialCheckpoint) {
             mState = STATE_RUNNING;
         }
 
         Thread t = new Thread(this);
         t.setDaemon(true);
-        t.setName("Checkpointer-" + (num & 0xffffffffL));
+        t.setName("Checkpointer-" + Long.toUnsignedString(t.getId()));
         t.start();
 
         mThread = t;
