@@ -85,7 +85,90 @@ class ViewUtils {
         return view;
     }
 
+    /**
+     * Skip implementation which only locks the last key seen, as per the Cursor.skip contract.
+     */
     static LockResult skip(Cursor c, long amount, byte[] limitKey, boolean inclusive)
+        throws IOException
+    {
+        if (amount == 0) {
+            return c.skip(amount);
+        }
+
+        final boolean auto = c.autoload(false);
+        final Transaction txn = c.link(Transaction.BOGUS);
+        try {
+            if (amount > 0) {
+                int cmp = inclusive ? 1 : 0;
+                while (true) {
+                    c.next();
+                    if (c.key() == null) {
+                        return LockResult.UNOWNED;
+                    }
+                    if (limitKey != null && c.compareKeyTo(limitKey) >= cmp) {
+                        break;
+                    }
+                    if (--amount <= 0) {
+                        return auto ? c.load() : c.lock();
+                    }
+                }
+            } else {
+                int cmp = inclusive ? -1 : 0;
+                while (true) {
+                    c.previous();
+                    if (c.key() == null) {
+                        return LockResult.UNOWNED;
+                    }
+                    if (limitKey != null && c.compareKeyTo(limitKey) <= cmp) {
+                        break;
+                    }
+                    if (++amount >= 0) {
+                        return auto ? c.load() : c.lock();
+                    }
+                }
+            }
+        } finally {
+            c.link(txn);
+            c.autoload(auto);
+        }
+
+        c.reset();
+        return LockResult.UNOWNED;
+    }
+
+    /**
+     * Skip implementation which locks every key it sees, releasing all but the last one.
+     *
+     * @throws IllegalArgumentException when skip amount is zero
+     */
+    static LockResult skipWithLocks(Cursor c, long amount) throws IOException {
+        if (amount == 0) {
+            return c.skip(amount);
+        }
+
+        if (amount > 0) while (true) {
+            LockResult result = c.next();
+            if (c.key() == null || --amount <= 0) {
+                return result;
+            }
+            if (result == LockResult.ACQUIRED) {
+                c.link().unlock();
+            }
+        } else while (true) {
+            LockResult result = c.previous();
+            if (c.key() == null || ++amount >= 0) {
+                return result;
+            }
+            if (result == LockResult.ACQUIRED) {
+                c.link().unlock();
+            }
+        }
+    }
+
+    /**
+     * Skip implementation which locks every key it sees, releasing all but the last one.
+     */
+    static LockResult skipWithLocks(Cursor c, long amount, byte[] limitKey, boolean inclusive)
         throws IOException
     {
         if (amount == 0 || limitKey == null) {
@@ -132,32 +215,53 @@ class ViewUtils {
     }
 
     /**
-     * Simple skip implementation which doesn't support skip by zero.
-     *
-     * @throws IllegalArgumentException when skip amount is zero
+     * @param cmp 0 for nextLt, 1 for nextLe
      */
-    static LockResult doSkip(Cursor c, long amount) throws IOException {
-        if (amount == 0) {
-            throw new IllegalArgumentException("Skip is zero");
+    static LockResult nextCmp(Cursor c, byte[] limitKey, int cmp) throws IOException {
+        Utils.keyCheck(limitKey);
+
+        final boolean auto = c.autoload(false);
+        final Transaction txn = c.link(Transaction.BOGUS);
+        try {
+            c.next();
+        } finally {
+            c.link(txn);
+            c.autoload(auto);
         }
 
-        if (amount > 0) while (true) {
-            LockResult result = c.next();
-            if (c.key() == null || --amount <= 0) {
-                return result;
+        if (c.key() != null) {
+            if (c.compareKeyTo(limitKey) < cmp) {
+                return auto ? c.load() : c.lock();
             }
-            if (result == LockResult.ACQUIRED) {
-                c.link().unlock();
-            }
-        } else while (true) {
-            LockResult result = c.previous();
-            if (c.key() == null || ++amount >= 0) {
-                return result;
-            }
-            if (result == LockResult.ACQUIRED) {
-                c.link().unlock();
-            }
+            c.reset();
         }
+
+        return LockResult.UNOWNED;
+    }
+
+    /**
+     * @param cmp 0 for previousGt, -1 for previousGe
+     */
+    static LockResult previousCmp(Cursor c, byte[] limitKey, int cmp) throws IOException {
+        Utils.keyCheck(limitKey);
+
+        final boolean auto = c.autoload(false);
+        final Transaction txn = c.link(Transaction.BOGUS);
+        try {
+            c.previous();
+        } finally {
+            c.link(txn);
+            c.autoload(auto);
+        }
+
+        if (c.key() != null) {
+            if (c.compareKeyTo(limitKey) > cmp) {
+                return auto ? c.load() : c.lock();
+            }
+            c.reset();
+        }
+
+        return LockResult.UNOWNED;
     }
 
     static void findNoLock(Cursor c, byte[] key) throws IOException {

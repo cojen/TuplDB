@@ -181,6 +181,11 @@ final class ReverseCursor implements Cursor {
     }
 
     @Override
+    public LockResult lock() throws IOException {
+        return mSource.lock();
+    }
+
+    @Override
     public LockResult load() throws IOException {
         return mSource.load();
     }

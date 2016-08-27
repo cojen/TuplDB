@@ -2452,6 +2452,35 @@ class TreeCursor implements CauseCloseable, Cursor {
     }
 
     @Override
+    public final LockResult lock() throws IOException {
+        byte[] key = mKey;
+        ViewUtils.positionCheck(key);
+
+        LocalTransaction txn = mTxn;
+
+        if (txn == null) {
+            // Although it seems unnecessary, lock and then unlock is the correct behavior. At
+            // the very least, it ensures proper happens-before ordering.
+            mTree.mLockManager.lockUnlockSharedLocal(mTree.mId, key, keyHash());
+            return LockResult.UNOWNED;
+        }
+
+        LockMode mode = txn.lockMode();
+        if (mode.noReadLock) {
+            return LockResult.UNOWNED;
+        }
+
+        int keyHash = keyHash();
+
+        if (mode == LockMode.READ_COMMITTED) {
+            // See comment above.
+            return txn.lockUnlockShared(mTree.mId, key, keyHash, txn.mLockTimeoutNanos);
+        }
+
+        return txn.lock(mode.repeatable, mTree.mId, key, keyHash, txn.mLockTimeoutNanos);
+    }
+
+    @Override
     public final LockResult load() throws IOException {
         // This will always acquire a lock if required to. A try-lock pattern
         // can skip the lock acquisition in certain cases, but the optimization

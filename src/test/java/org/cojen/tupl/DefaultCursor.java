@@ -77,7 +77,11 @@ class DefaultCursor implements Cursor {
 
     @Override
     public LockResult skip(long amount) throws IOException {
-        return mSource.skip(amount);
+        if (amount == 0) {
+            return mSource.skip(amount);
+        } else {
+            return skip(amount, null, false);
+        }
     }
 
     @Override
@@ -86,28 +90,8 @@ class DefaultCursor implements Cursor {
     }
 
     @Override
-    public LockResult nextLe(byte[] limitKey) throws IOException {
-        return mSource.nextLe(limitKey);
-    }
-
-    @Override
-    public LockResult nextLt(byte[] limitKey) throws IOException {
-        return mSource.nextLt(limitKey);
-    }
-
-    @Override
     public LockResult previous() throws IOException {
         return mSource.previous();
-    }
-
-    @Override
-    public LockResult previousGe(byte[] limitKey) throws IOException {
-        return mSource.previousGe(limitKey);
-    }
-
-    @Override
-    public LockResult previousGt(byte[] limitKey) throws IOException {
-        return mSource.previousGt(limitKey);
     }
 
     @Override

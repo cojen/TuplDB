@@ -113,12 +113,12 @@ final class TransformedCursor implements Cursor {
 
     @Override
     public LockResult skip(long amount) throws IOException {
-        return amount == 0 ? mSource.skip(0) : ViewUtils.doSkip(this, amount);
+        return ViewUtils.skipWithLocks(this, amount);
     }
 
     @Override
     public LockResult skip(long amount, byte[] limitKey, boolean inclusive) throws IOException {
-        return ViewUtils.skip(this, amount, limitKey, inclusive);
+        return ViewUtils.skipWithLocks(this, amount, limitKey, inclusive);
     }
 
     @Override
@@ -447,6 +447,11 @@ final class TransformedCursor implements Cursor {
         }
 
         return result;
+    }
+
+    @Override
+    public LockResult lock() throws IOException {
+        return mSource.lock();
     }
 
     @Override
