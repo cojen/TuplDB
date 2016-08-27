@@ -77,7 +77,11 @@ class DefaultCursor implements Cursor {
 
     @Override
     public LockResult skip(long amount) throws IOException {
-        return mSource.skip(amount);
+        if (amount == 0) {
+            return mSource.skip(amount);
+        } else {
+            return skip(amount, null, false);
+        }
     }
 
     @Override
