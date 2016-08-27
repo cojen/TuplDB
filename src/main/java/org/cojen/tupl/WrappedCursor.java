@@ -243,6 +243,14 @@ public abstract class WrappedCursor<C extends Cursor> implements Cursor {
      * {@inheritDoc}
      */
     @Override
+    public LockResult lock() throws IOException {
+        return source.lock();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public LockResult load() throws IOException {
         return source.load();
     }

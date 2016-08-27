@@ -7,7 +7,8 @@ v1.3.4
   should be thrown instead.
 * Fix deadlock between node split and checkpoint.
 * Fix "Already in NodeMap" exception when loading fragmented nodes.
-* Add some default View and Cursor method implementations.
+* Added a Cursor lock method, for manual lock control.
+* Added some default View and Cursor method implementations.
 
 v1.3.3.1 (2016-08-02)
 --------
