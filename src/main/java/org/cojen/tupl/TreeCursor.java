@@ -3174,7 +3174,7 @@ class TreeCursor implements CauseCloseable, Cursor {
 
                 if (node.hasKeys()) {
                     node.releaseExclusive();
-                } else if (!deleteNode(mLeaf, node)) {
+                } else if (!deleteLowestNode(mLeaf, node)) {
                     mLeaf = null;
                     reset();
                     return;
@@ -3186,14 +3186,14 @@ class TreeCursor implements CauseCloseable, Cursor {
     }
 
     /**
-     * Deletes the latched node and assigns the next node to the frame. All latches are
+     * Deletes the lowest latched node and assigns the next node to the frame. All latches are
      * released by this method. No other cursors or threads can be active in the tree.
      *
      * @param frame node frame
      * @param node latched node, with no keys, and dirty
      * @return false if tree is empty
      */
-    private boolean deleteNode(final CursorFrame frame, final Node node) throws IOException {
+    private boolean deleteLowestNode(final CursorFrame frame, final Node node) throws IOException {
         node.mLastCursorFrame = null;
 
         LocalDatabase db = mTree.mDatabase;
@@ -3215,7 +3215,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         if (parentNode.hasKeys()) {
             parentNode.deleteLeftChildRef(0);
         } else {
-            if (!deleteNode(parentFrame, parentNode)) {
+            if (!deleteLowestNode(parentFrame, parentNode)) {
                 db.deleteNode(node);
                 return false;
             }
