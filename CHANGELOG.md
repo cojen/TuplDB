@@ -1,12 +1,13 @@
 Changelog
 =========
 
-v1.3.4
+v1.3.5 (2016-08-28)
 ------
 * Fix NullPointerException when too many nodes are unevictable. A CacheExhaustedException
   should be thrown instead.
 * Fix deadlock between node split and checkpoint.
 * Fix "Already in NodeMap" exception when loading fragmented nodes.
+* Fix for a rare assertion error when deleting the root node of a tree.
 * Added a Cursor lock method, for manual lock control.
 * Added some default View and Cursor method implementations.
 
