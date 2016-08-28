@@ -1,7 +1,7 @@
 Changelog
 =========
 
-v1.3.4
+v1.3.4 (2016-08-28)
 ------
 * Fix NullPointerException when too many nodes are unevictable. A CacheExhaustedException
   should be thrown instead.
