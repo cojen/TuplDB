@@ -3855,20 +3855,6 @@ class _TreeCursor implements CauseCloseable, Cursor {
     }
 
     /**
-     * Latches and returns leaf frame, not split.
-     *
-     * @throws IllegalStateException if unpositioned
-     */
-    final _CursorFrame leafExclusiveNotSplit() throws IOException {
-        _CursorFrame leaf = leaf();
-        _Node node = leaf.acquireExclusive();
-        if (node.mSplit != null) {
-            mTree.finishSplit(leaf, node);
-        }
-        return leaf;
-    }
-
-    /**
      * Latches and returns the leaf frame, not split.
      *
      * @throws IllegalStateException if unpositioned
