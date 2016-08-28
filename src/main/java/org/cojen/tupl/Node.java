@@ -4003,12 +4003,17 @@ final class Node extends Latch implements DatabaseAccess {
      * Lock the last frame, for use by the rootDelete method.
      */
     private CursorFrame lockLastFrame(CursorFrame lock) {
-        for (CursorFrame f = mLastCursorFrame; f != null; f = f.mPrevCousin) {
-            if (f.tryLock(lock) != null) {
+        while (true) {
+            CursorFrame f = mLastCursorFrame;
+            if (f.tryLock(lock) == f) {
                 return f;
             }
+            // Must keep trying against the last cursor frame instead of iterating to the
+            // previous frame. The lock attempt failed because of a concurrent unbind, but the
+            // last cursor frame reference might not have been updated yet. Assertions in the
+            // doRootDelete method further verify that the locked frame is in fact the last,
+            // with a compareAndSet call.
         }
-        throw new AssertionError();
     }
 
     /**
