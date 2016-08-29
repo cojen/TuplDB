@@ -41,7 +41,7 @@ Setting a minimum cache size is generally preferred over setting a maximum size,
 pre-allocates the cache when the Database is opened. This allows any heap size limits to be
 detected early, yielding an OutOfMemoryError. When not specified, the maximum cache size
 matches the minimum cache size. When neither is specified, the default cache size is 1000
-pages, where a page is 4096 bytes by default.
+pages, and the default page size is 4096 bytes.
 
 Basic operations
 ----------------
