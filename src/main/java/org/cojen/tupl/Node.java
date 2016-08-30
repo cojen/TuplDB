@@ -493,7 +493,7 @@ final class Node extends Latch implements DatabaseAccess {
         } catch (Throwable e) {
             if ((options & OPTION_PARENT_RELEASE_SHARED) == 0) {
                 // Obey the method contract and release parent latch due to exception.
-                releaseShared();
+                releaseEither();
             }
             throw e;
         } finally {
