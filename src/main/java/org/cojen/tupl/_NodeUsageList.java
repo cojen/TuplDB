@@ -43,6 +43,9 @@ final class _NodeUsageList extends Latch {
     private _Node mMostRecentlyUsed;
     private _Node mLeastRecentlyUsed;
 
+    // Padding to prevent cache line sharing.
+    private long a0, a1, a2, a3;
+
     _NodeUsageList(_LocalDatabase db, int maxSize) {
         if (maxSize <= 0) {
             throw new IllegalArgumentException();
