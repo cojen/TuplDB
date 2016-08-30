@@ -409,13 +409,11 @@ final class _Node extends Latch implements _DatabaseAccess {
     }
 
     /**
-     * Options for loadChild. Caller must latch parentas shared or exclusive, which can be
-     * retained (default) or released. Child node is latched shared (default) or exclusive.
+     * Options for loadChild. Caller must latch parent as shared or exclusive, which can be
+     * retained (default) or released if shared. Child node is latched shared (default) or
+     * exclusive.
      */
-    static final int
-        OPTION_PARENT_RELEASE_SHARED    = 0b001,
-        OPTION_PARENT_RELEASE_EXCLUSIVE = 0b010,
-        OPTION_CHILD_ACQUIRE_EXCLUSIVE  = 0b100;
+    static final int OPTION_PARENT_RELEASE_SHARED = 0b001, OPTION_CHILD_ACQUIRE_EXCLUSIVE = 0b100;
 
     /**
      * With this parent node latched shared or exclusive, loads child with shared or exclusive
@@ -458,8 +456,6 @@ final class _Node extends Latch implements _DatabaseAccess {
             // child and released its exclusive latch.
             if ((options & OPTION_PARENT_RELEASE_SHARED) != 0) {
                 releaseShared();
-            } else if ((options & OPTION_PARENT_RELEASE_EXCLUSIVE) != 0) {
-                releaseExclusive();
             }
         }
 
@@ -495,9 +491,9 @@ final class _Node extends Latch implements _DatabaseAccess {
 
             return childNode;
         } catch (Throwable e) {
-            if ((options & (OPTION_PARENT_RELEASE_SHARED | OPTION_PARENT_RELEASE_EXCLUSIVE)) == 0){
+            if ((options & OPTION_PARENT_RELEASE_SHARED) == 0) {
                 // Obey the method contract and release parent latch due to exception.
-                releaseEither();
+                releaseShared();
             }
             throw e;
         } finally {
