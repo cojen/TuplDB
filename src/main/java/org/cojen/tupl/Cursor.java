@@ -84,7 +84,8 @@ public interface Cursor {
     /**
      * By default, values are loaded automatically, as they are seen. When disabled, values
      * might need to be {@link Cursor#load manually loaded}. When a {@link Transformer} is
-     * used, the value might still be loaded automatically.
+     * used, the value might still be loaded automatically. When the value exists but hasn't
+     * been loaded, the value field of the cursor is set to {@link NOT_LOADED}.
      *
      * @param mode false to disable
      * @return prior autoload mode
@@ -415,7 +416,8 @@ public interface Cursor {
     /**
      * Locks the current entry, as if by calling load. Locking is performed automatically
      * within transactions, and so invocation of this method is necessary only when manually
-     * tweaking the lock mode.
+     * tweaking the lock mode. If a lock was acquired (even if not retained), the cursor value
+     * field is updated according to the current autoload mode.
      *
      * <p>By default, this method simply calls load. Subclasses are encouraged to provide a
      * more efficient implementation.
@@ -431,9 +433,8 @@ public interface Cursor {
     }
 
     /**
-     * Loads or reloads the value at the cursor's current position. Cursor
-     * value is set to null if entry no longer exists, but the position remains
-     * unmodified.
+     * Loads or reloads the value at the cursor's current position. Cursor value is set to null
+     * if entry no longer exists, but the position remains unmodified.
      *
      * @throws IllegalStateException if position is undefined at invocation time
      * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED

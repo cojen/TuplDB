@@ -220,23 +220,29 @@ class ViewUtils {
     static LockResult nextCmp(Cursor c, byte[] limitKey, int cmp) throws IOException {
         Utils.keyCheck(limitKey);
 
-        final boolean auto = c.autoload(false);
-        final Transaction txn = c.link(Transaction.BOGUS);
-        try {
-            c.next();
-        } finally {
-            c.link(txn);
-            c.autoload(auto);
-        }
-
-        if (c.key() != null) {
-            if (c.compareKeyTo(limitKey) < cmp) {
-                return auto ? c.load() : c.lock();
+        while (true) {
+            final boolean auto = c.autoload(false);
+            final Transaction txn = c.link(Transaction.BOGUS);
+            try {
+                c.next();
+            } finally {
+                c.link(txn);
+                c.autoload(auto);
             }
-            c.reset();
-        }
 
-        return LockResult.UNOWNED;
+            if (c.key() != null) {
+                if (c.compareKeyTo(limitKey) < cmp) {
+                    LockResult result = auto ? c.load() : c.lock();
+                    if (c.value() != null) {
+                        return result;
+                    }
+                    continue;
+                }
+                c.reset();
+            }
+
+            return LockResult.UNOWNED;
+        }
     }
 
     /**
@@ -245,23 +251,29 @@ class ViewUtils {
     static LockResult previousCmp(Cursor c, byte[] limitKey, int cmp) throws IOException {
         Utils.keyCheck(limitKey);
 
-        final boolean auto = c.autoload(false);
-        final Transaction txn = c.link(Transaction.BOGUS);
-        try {
-            c.previous();
-        } finally {
-            c.link(txn);
-            c.autoload(auto);
-        }
-
-        if (c.key() != null) {
-            if (c.compareKeyTo(limitKey) > cmp) {
-                return auto ? c.load() : c.lock();
+        while (true) {
+            final boolean auto = c.autoload(false);
+            final Transaction txn = c.link(Transaction.BOGUS);
+            try {
+                c.previous();
+            } finally {
+                c.link(txn);
+                c.autoload(auto);
             }
-            c.reset();
-        }
 
-        return LockResult.UNOWNED;
+            if (c.key() != null) {
+                if (c.compareKeyTo(limitKey) > cmp) {
+                    LockResult result = auto ? c.load() : c.lock();
+                    if (c.value() != null) {
+                        return result;
+                    }
+                    continue;
+                }
+                c.reset();
+            }
+
+            return LockResult.UNOWNED;
+        }
     }
 
     static void findNoLock(Cursor c, byte[] key) throws IOException {

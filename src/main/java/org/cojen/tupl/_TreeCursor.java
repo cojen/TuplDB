@@ -2453,31 +2453,65 @@ class _TreeCursor implements CauseCloseable, Cursor {
 
     @Override
     public final LockResult lock() throws IOException {
+        try {
+            return doLock(mTxn);
+        } catch (LockFailureException e) {
+            mValue = NOT_LOADED;
+            throw e;
+        }
+    }
+
+    private LockResult doLock(_LocalTransaction txn) throws IOException {
         byte[] key = mKey;
         ViewUtils.positionCheck(key);
 
-        _LocalTransaction txn = mTxn;
+        LockResult result;
+        _Locker locker;
 
         if (txn == null) {
-            // Although it seems unnecessary, lock and then unlock is the correct behavior. At
-            // the very least, it ensures proper happens-before ordering.
-            mTree.mLockManager.lockUnlockSharedLocal(mTree.mId, key, keyHash());
-            return LockResult.UNOWNED;
+            result = LockResult.UNOWNED;
+            locker = mTree.lockSharedLocal(key, keyHash());
+        } else {
+            LockMode mode = txn.lockMode();
+            if (mode.noReadLock) {
+                return LockResult.UNOWNED;
+            }
+            int keyHash = keyHash();
+            if (mode == LockMode.READ_COMMITTED) {
+                result = txn.lockShared(mTree.mId, key, keyHash);
+                if (result != LockResult.ACQUIRED) {
+                    return result;
+                }
+                result = LockResult.UNOWNED;
+                locker = txn;
+            } else {
+                result = txn.lock
+                    (mode.repeatable, mTree.mId, key, keyHash, txn.mLockTimeoutNanos);
+                if (result != LockResult.ACQUIRED) {
+                    return result;
+                }
+                locker = null;
+            }
         }
 
-        LockMode mode = txn.lockMode();
-        if (mode.noReadLock) {
-            return LockResult.UNOWNED;
+        try {
+            _CursorFrame frame = leafSharedNotSplit();
+            _Node node = frame.mNode;
+            try {
+                int pos = frame.mNodePos;
+                mValue = pos < 0 ? null
+                    : mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
+            } catch (Throwable e) {
+                node.releaseShared();
+                throw e;
+            }
+            node.releaseShared();
+            return result;
+        } finally {
+            if (locker != null) {
+                locker.unlock();
+            }
         }
-
-        int keyHash = keyHash();
-
-        if (mode == LockMode.READ_COMMITTED) {
-            // See comment above.
-            return txn.lockUnlockShared(mTree.mId, key, keyHash, txn.mLockTimeoutNanos);
-        }
-
-        return txn.lock(mode.repeatable, mTree.mId, key, keyHash, txn.mLockTimeoutNanos);
     }
 
     @Override

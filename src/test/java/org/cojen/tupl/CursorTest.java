@@ -421,6 +421,36 @@ public class CursorTest {
     }
 
     @Test
+    public void previousGeSkip() throws Exception {
+        View ix = openIndex("test");
+        ix.store(Transaction.BOGUS, key(0), value(0));
+        ix.store(Transaction.BOGUS, key(1), value(1));
+        ix.store(Transaction.BOGUS, key(2), value(2));
+
+        Cursor c = ix.newCursor(null);
+        c.last();
+
+        // Lock key 1.
+        Transaction txn = mDb.newTransaction();
+        ix.lockExclusive(txn, key(1));
+
+        // Wait and then delete the key.
+        new Thread(() -> {
+            try {
+                Thread.sleep(500);
+                ix.delete(txn, key(1));
+                txn.commit();
+            } catch (Exception e) {
+            }
+        }).start();
+
+        // Must fully skip past key 1.
+        c.previousGe(key(0));
+
+        fastAssertArrayEquals(value(0), c.value());
+    }
+
+    @Test
     public void nextLe() throws Exception {
         nextLe(3);
         nextLe(4);
@@ -478,6 +508,36 @@ public class CursorTest {
         fastAssertArrayEquals(value(1), c.value());
 
         c.reset();
+    }
+
+    @Test
+    public void nextLeSkip() throws Exception {
+        View ix = openIndex("test");
+        ix.store(Transaction.BOGUS, key(0), value(0));
+        ix.store(Transaction.BOGUS, key(1), value(1));
+        ix.store(Transaction.BOGUS, key(2), value(2));
+
+        Cursor c = ix.newCursor(null);
+        c.first();
+
+        // Lock key 1.
+        Transaction txn = mDb.newTransaction();
+        ix.lockExclusive(txn, key(1));
+
+        // Wait and then delete the key.
+        new Thread(() -> {
+            try {
+                Thread.sleep(500);
+                ix.delete(txn, key(1));
+                txn.commit();
+            } catch (Exception e) {
+            }
+        }).start();
+
+        // Must fully skip past key 1.
+        c.nextLe(key(2));
+
+        fastAssertArrayEquals(value(2), c.value());
     }
 
     @Test
