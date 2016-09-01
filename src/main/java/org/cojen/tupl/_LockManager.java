@@ -202,38 +202,6 @@ final class _LockManager {
         throw locker.failed(result, mDefaultTimeoutNanos);
     }
 
-    /**
-     * Locks and immediately unlocks the given key, unless the lock is uncontended.
-     */
-    final void lockUnlockSharedLocal(long indexId, byte[] key, int hash)
-        throws LockFailureException
-    {
-        _Locker locker;
-        LockResult result;
-
-        LockHT ht = getLockHT(hash);
-        ht.acquireExclusive();
-        try {
-            _Lock lock = ht.lockFor(indexId, key, hash);
-            if (lock == null) {
-                // Uncontended. The hashtable latch ensures proper happens-before ordering.
-                return;
-            }
-            locker = localLocker();
-            result = lock.tryLockShared(ht, locker, mDefaultTimeoutNanos);
-            if (result == LockResult.ACQUIRED) {
-                if (lock.unlock(locker, ht)) {
-                    ht.remove(lock);
-                }
-                return;
-            }
-        } finally {
-            ht.releaseExclusive();
-        }
-
-        throw locker.failed(result, mDefaultTimeoutNanos);
-    }
-
     final _Locker localLocker() {
         SoftReference<_Locker> lockerRef = mLocalLockerRef.get();
         _Locker locker;
