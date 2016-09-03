@@ -636,7 +636,7 @@ class Tree implements View, Index {
         TreeCursor cursor = new TreeCursor(this, Transaction.BOGUS);
         try {
             cursor.autoload(false);
-            cursor.firstAny();
+            cursor.first(); // must start with loaded key
             int height = cursor.height();
             if (!observer.indexBegin(view, height)) {
                 cursor.reset();
