@@ -32,6 +32,7 @@ import java.nio.channels.OverlappingFileLockException;
  */
 final class LockedFile implements Closeable {
     private final RandomAccessFile mRaf;
+    private final FileLock mLock;
 
     LockedFile(File file, boolean readOnly) throws IOException {
         try {
@@ -40,15 +41,18 @@ final class LockedFile implements Closeable {
         }
 
         RandomAccessFile raf;
+        FileLock lock;
+
         try {
             raf = new RandomAccessFile(file, readOnly ? "r" : "rw");
-            FileLock lock = raf.getChannel().tryLock(0, Long.MAX_VALUE, readOnly);
+            lock = raf.getChannel().tryLock(0, Long.MAX_VALUE, readOnly);
             if (lock == null) {
                 throw new DatabaseException("Database is open and locked by another process");
             }
         } catch (FileNotFoundException e) {
             if (readOnly) {
                 raf = null;
+                lock = null;
             } else {
                 throw e;
             }
@@ -57,13 +61,16 @@ final class LockedFile implements Closeable {
         }
 
         mRaf = raf;
+        mLock = lock;
     }
 
     @Override
     public void close() throws IOException {
-        RandomAccessFile raf = mRaf;
-        if (raf != null) {
-            raf.close();
+        if (mLock != null) {
+            mLock.close();
+        }
+        if (mRaf != null) {
+            mRaf.close();
         }
     }
 }

@@ -1,6 +1,12 @@
 Changelog
 =========
 
+v1.3.5.1
+--------
+* Fix database lock file retention issue.
+* Refine Cursor lock method to ensure that the latest value is retrieved.
+* Fix key order verification.
+
 v1.3.5 (2016-08-28)
 ------
 * Fix NullPointerException when too many nodes are unevictable. A CacheExhaustedException
