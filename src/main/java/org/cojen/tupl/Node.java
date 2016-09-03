@@ -5398,7 +5398,7 @@ final class Node extends Latch implements DatabaseAccess {
             }
 
             lastKeyLoc = loc;
-            lastKeyLoc = keyLen;
+            lastKeyLen = keyLen;
 
             if (isLeaf()) value: {
                 int len;

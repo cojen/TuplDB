@@ -5398,7 +5398,7 @@ final class _Node extends Latch implements _DatabaseAccess {
             }
 
             lastKeyLoc = loc;
-            lastKeyLoc = keyLen;
+            lastKeyLen = keyLen;
 
             if (isLeaf()) value: {
                 int len;
