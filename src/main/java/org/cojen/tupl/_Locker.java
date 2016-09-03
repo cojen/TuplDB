@@ -200,37 +200,6 @@ class _Locker extends _LockOwner {
     }
 
     /**
-     * Locks and then immediately unlocks the given key, unless transaction already has a lock.
-     */
-    final LockResult lockUnlockShared(long indexId, byte[] key, int hash, long nanosTimeout)
-        throws LockFailureException
-    {
-        LockResult result;
-
-        LockHT ht = manager().getLockHT(hash);
-        ht.acquireExclusive();
-        try {
-            _Lock lock = ht.lockFor(indexId, key, hash);
-            if (lock == null) {
-                // Uncontended. The hashtable latch ensures proper happens-before ordering.
-                return LockResult.UNOWNED;
-            }
-            result = lock.tryLockShared(ht, this, nanosTimeout);
-            if (result == LockResult.ACQUIRED) {
-                if (lock.unlock(this, ht)) {
-                    ht.remove(lock);
-                    result = LockResult.UNOWNED;
-                }
-                return result;
-            }
-        } finally {
-            ht.releaseExclusive();
-        }
-
-        throw failed(result, nanosTimeout);
-    }
-
-    /**
      * Attempts to acquire an upgradable lock for the given key, denying
      * exclusive and additional upgradable locks. If return value is {@link
      * LockResult#alreadyOwned owned}, transaction already owns a strong enough

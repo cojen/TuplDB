@@ -95,7 +95,7 @@ final class _TreeValueStream extends AbstractStream {
                 return;
             }
 
-            final _CursorFrame leaf = mCursor.leafExclusiveNotSplit();
+            final _CursorFrame leaf = mCursor.leafExclusive();
 
             final CommitLock commitLock = mCursor.commitLock(leaf);
             try {
@@ -130,7 +130,7 @@ final class _TreeValueStream extends AbstractStream {
     void doWrite(long pos, byte[] buf, int off, int len) throws IOException {
         // FIXME: txn undo/redo
         try {
-            final _CursorFrame leaf = mCursor.leafExclusiveNotSplit();
+            final _CursorFrame leaf = mCursor.leafExclusive();
 
             final CommitLock commitLock = mCursor.commitLock(leaf);
             try {
