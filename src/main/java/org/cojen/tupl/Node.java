@@ -1370,6 +1370,81 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     /**
+     * Compares two node keys, in place if possible.
+     *
+     * @param leftLoc absolute location of left key
+     * @param rightLoc absolute location of right key
+     */
+    static int compareKeys(Node left, int leftLoc, Node right, int rightLoc) throws IOException {
+        final /*P*/ byte[] leftPage = left.mPage;
+        final /*P*/ byte[] rightPage = right.mPage;
+
+        int leftLen = p_byteGet(leftPage, leftLoc++);
+        int rightLen = p_byteGet(rightPage, rightLoc++);
+
+        c1: { // break out of this scope when both keys are in the page
+            c2: { // break out of this scope when the left key is in the page
+                if (leftLen >= 0) {
+                    // Left key is tiny... break out and examine the right key.
+                    leftLen++;
+                    break c2;
+                }
+
+                int leftHeader = leftLen;
+                leftLen = ((leftLen & 0x3f) << 8) | p_ubyteGet(leftPage, leftLoc++);
+                if ((leftHeader & ENTRY_FRAGMENTED) == 0) {
+                    // Left key is medium... break out and examine the right key.
+                    break c2;
+                }
+
+                // Left key is fragmented...
+                // Note: An optimized version wouldn't need to copy the whole key.
+                byte[] leftKey = left.getDatabase().reconstructKey(leftPage, leftLoc, leftLen);
+
+                if (rightLen >= 0) {
+                    // Left key is fragmented, and right key is tiny.
+                    rightLen++;
+                } else {
+                    int rightHeader = rightLen;
+                    rightLen = ((rightLen & 0x3f) << 8) | p_ubyteGet(rightPage, rightLoc++);
+                    if ((rightHeader & ENTRY_FRAGMENTED) != 0) {
+                        // Right key is fragmented too.
+                        // Note: An optimized version wouldn't need to copy the whole key.
+                        byte[] rightKey = right.getDatabase()
+                            .reconstructKey(rightPage, rightLoc, rightLen);
+                        return compareUnsigned(leftKey, 0, leftKey.length,
+                                               rightKey, 0, rightKey.length);
+                    }
+                }
+
+                return -p_compareKeysPageToArray(rightPage, rightLoc, rightLen,
+                                                 leftKey, 0, leftKey.length);
+            } // end c2
+
+            if (rightLen >= 0) {
+                // Left key is tiny/medium, right key is tiny, and both fit in the page.
+                rightLen++;
+                break c1;
+            }
+
+            int rightHeader = rightLen;
+            rightLen = ((rightLen & 0x3f) << 8) | p_ubyteGet(rightPage, rightLoc++);
+            if ((rightHeader & ENTRY_FRAGMENTED) == 0) {
+                // Left key is tiny/medium, right key is medium, and both fit in the page.
+                break c1;
+            }
+
+            // Left key is tiny/medium, and right key is fragmented.
+            // Note: An optimized version wouldn't need to copy the whole key.
+            byte[] rightKey = right.getDatabase().reconstructKey(rightPage, rightLoc, rightLen);
+            return p_compareKeysPageToArray(leftPage, leftLoc, leftLen,
+                                            rightKey, 0, rightKey.length);
+        } // end c1
+
+        return p_compareKeysPageToPage(leftPage, leftLoc, leftLen, rightPage, rightLoc, rightLen);
+    }
+
+    /**
      * @param pos position as provided by binarySearch; must be positive
      * @param stats [0]: full length, [1]: number of pages (>0 if fragmented)
      */
@@ -5308,7 +5383,7 @@ final class Node extends Latch implements DatabaseAccess {
      *
      * @return false if should stop
      */
-    boolean verifyTreeNode(int level, VerificationObserver observer) {
+    boolean verifyTreeNode(int level, VerificationObserver observer) throws IOException {
         int type = type() & ~(LOW_EXTREMITY | HIGH_EXTREMITY);
         if (type != TYPE_TN_IN && type != TYPE_TN_BIN && !isLeaf()) {
             return verifyFailed(level, observer, "Not a tree node: " + type);
@@ -5359,10 +5434,10 @@ final class Node extends Latch implements DatabaseAccess {
         int largeValueCount = 0;
 
         int lastKeyLoc = 0;
-        int lastKeyLen = 0;
 
         for (int i = searchVecStart(); i <= searchVecEnd(); i += 2) {
-            int loc = p_ushortGetLE(page, i);
+            final int keyLoc = p_ushortGetLE(page, i);
+            int loc = keyLoc;
 
             if (loc < TN_HEADER_SIZE || loc >= pageSize(page) ||
                 (loc >= leftSegTail() && loc <= rightSegTail()))
@@ -5390,15 +5465,13 @@ final class Node extends Latch implements DatabaseAccess {
             }
 
             if (lastKeyLoc != 0) {
-                int result = p_compareKeysPageToPage(page, lastKeyLoc, lastKeyLen,
-                                                     page, loc, keyLen);
+                int result = compareKeys(this, lastKeyLoc, this, keyLoc);
                 if (result >= 0) {
                     return verifyFailed(level, observer, "Key order: " + result);
                 }
             }
 
-            lastKeyLoc = loc;
-            lastKeyLen = keyLen;
+            lastKeyLoc = keyLoc;
 
             if (isLeaf()) value: {
                 int len;
