@@ -18,21 +18,19 @@ package org.cojen.tupl.io;
 
 import java.io.EOFException;
 import java.io.File;
-import java.io.InterruptedIOException;
 import java.io.IOException;
 
 import java.nio.ByteBuffer;
 
 import java.nio.channels.ClosedChannelException;
-
+import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.List;
 
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-
-import com.sun.jna.Library;
 import com.sun.jna.Native;
 import com.sun.jna.Platform;
 import com.sun.jna.Pointer;
+import com.sun.jna.Structure;
 
 import org.cojen.tupl.util.Latch;
 
@@ -456,6 +454,122 @@ final class PosixFileIO extends AbstractFileIO {
         BufRef(ByteBuffer buffer) {
             mBuffer = buffer;
             mPointer = Pointer.nativeValue(Native.getDirectBufferPointer(buffer));
+        }
+    }
+
+    @Override
+    protected void preallocate(long pos, long length) throws IOException {
+        if (FallocateHolder.INSTANCE == null) {
+            // Don't have fallocate (or equivalent). Use default non-destructive zero-fill behavior.
+            super.preallocate(pos, length);
+            return;
+        } 
+
+        // Uses posix_fallocate call to quickly allocate blocks and mark them as uninitialized. 
+        // If the filesystem supports fallocate then this requires no I/O to the data blocks, 
+        // and is much faster than zero-filling the file, which is the fallback behavior. 
+        // Since linux 2.6.31 fallocate is supported by at least btrfs, ext4, ocfs2, and 
+        // xfs filesystems. Ext4 on Linux 4.2.0 takes ~30 microseconds to fallocate 64MB,
+        // compared to 27 milliseconds to zero-fill that same amount.
+        //
+        // On OSX, uses fcntl with command F_PREALLOCATE.
+        int result = FallocateHolder.INSTANCE.fallocate(fd(), pos, length);
+        if (result != 0) {
+            // Note: the native call above does not set errno.
+            throw new IOException(errorMessage(result));
+        }
+    }
+
+    private static abstract class Fallocate {
+        public abstract int fallocate(int fd, long pos, long length);
+    }
+
+    private static class DefaultFallocate extends Fallocate {
+        static {
+            Native.register(Platform.C_LIBRARY_NAME);
+        }
+
+        @Override
+        public int fallocate(int fd, long pos, long length) {
+            return posix_fallocate(fd, pos, length);
+        }
+
+        static native int posix_fallocate(int fd, long offset, long len);
+    }
+
+    /** 
+     * Uses fcntl with the F_PREALLOCATE command to force block allocation on OSX.
+     * On a Core i5 MacBook Pro w/SSD it takes on average 1.5ms to preallocate
+     * a 64MB file.
+     *
+     * Direct maps fcntl again with an explicit fstore_t parameter to avoid the more complex
+     * and slow method of using jna varags through library mapping.
+     */
+    private static class MacFallocate extends Fallocate {
+        @SuppressWarnings("unused")
+        public static class Fstore extends Structure {
+            public static class ByReference extends Fstore implements Structure.ByReference { }
+
+            public int  fst_flags;
+            public int  fst_posmode;
+            public long fst_offset;
+            public long fst_length;
+            public long fst_bytesalloc;
+
+            @Override
+            protected List<String> getFieldOrder() {
+                return Arrays.asList(FIELDS);
+            }
+
+            private static final String[] FIELDS = new String[] {
+                 "fst_flags"
+                ,"fst_posmode"
+                ,"fst_offset"
+                ,"fst_length"
+                ,"fst_bytesalloc"
+            };
+        }
+        
+        @Override
+        public int fallocate(int fd, long pos, long length) {
+            final Fstore.ByReference fstore = new Fstore.ByReference();
+            fstore.fst_flags   = 4;   // F_ALLOCATEALL - allocate all requested space or none at all.
+            fstore.fst_posmode = 3;   // F_PEOFPOSMODE
+            fstore.fst_offset  = 0;
+            fstore.fst_length  = length;
+
+            int cmd = 42; // F_PREALLOCATE command
+            int result = fcntl(fd, cmd, fstore);
+            if (result == -1) {
+                // Return errno to keep same behavior as posix_fallocate.
+                return Native.getLastError();
+            }
+            return 0;
+        }
+
+        static {
+            Native.register(Platform.C_LIBRARY_NAME);
+        }
+
+        static native int fcntl(int fd, int cmd, Fstore.ByReference fstore);
+    }
+
+
+    /** Account for posix_fallocate not being available on OSX. */
+    public static class FallocateHolder {
+        public static final Fallocate INSTANCE;
+        static {
+            Fallocate inst = null;
+            if (Platform.isMac()) {
+                inst = new MacFallocate();
+            } else {
+                try {
+                    inst = new DefaultFallocate();
+                } catch (UnsatisfiedLinkError e) {
+                    // ignore
+                }
+            }
+            INSTANCE = inst;
         }
     }
 
