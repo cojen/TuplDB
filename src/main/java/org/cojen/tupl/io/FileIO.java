@@ -18,7 +18,6 @@ package org.cojen.tupl.io;
 
 import java.io.File;
 import java.io.IOException;
-
 import java.nio.ByteBuffer;
 
 import java.util.EnumSet;
@@ -79,6 +78,18 @@ public abstract class FileIO implements CauseCloseable {
     }
 
     public abstract boolean isReadOnly();
+
+    /**
+     * Preallocates blocks to the file. This call ensures that disk space is allocated 
+     * for this file for the bytes in the range starting at offset and continuing for 
+     * length bytes.  Subsequent writes to the specified range are guaranteed not to 
+     * fail because of lack of disk space.
+     *
+     * @param pos zero-based position in file.
+     * @param length amount of bytes to preallocate starting at pos.
+     * @throws IllegalArgumentException
+     */
+    abstract void preallocate(long pos, long length) throws IOException;
 
     public abstract long length() throws IOException;
 

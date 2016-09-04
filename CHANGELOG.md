@@ -1,11 +1,15 @@
 Changelog
 =========
 
-v1.3.5.1
---------
+v1.3.6
+------
+* Fix updating of large entries into crammed nodes, which caused entries to get lost.
 * Fix database lock file retention issue.
 * Refine Cursor lock method to ensure that the latest value is retrieved.
-* Fix key order verification.
+* Fix key order check when running verification.
+* Added file preallocation option. Allows early handling of disk full exceptions to prevent
+  crashes with SIGBUS in the case where the file is mmap'ed and a delayed block allocation fails
+  due to no space left on device.
 
 v1.3.5 (2016-08-28)
 ------
