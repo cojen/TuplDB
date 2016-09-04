@@ -54,6 +54,7 @@ public class TestAll {
             ExtraLargeValueTest.class,
             ExtraLargeValueDirectTest.class,
             ExtraLargeValueNonDurableTest.class,
+            FileIOTest.class,
             LockTest.class,
             DeadlockTest.class,
             RecoverTest.class,
