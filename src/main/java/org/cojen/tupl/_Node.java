@@ -3494,15 +3494,14 @@ final class _Node extends Latch implements _DatabaseAccess {
                 // Do full compaction and free up the garbage, or split the node.
 
                 byte[][] akeyRef = new byte[1][];
-                int loc = p_ushortGetLE(page, searchVecStart + pos);
-                boolean isOriginal = retrieveActualKeyAtLoc(page, loc, akeyRef);
+                boolean isOriginal = retrieveActualKeyAtLoc(page, start, akeyRef);
                 byte[] akey = akeyRef[0];
 
                 if ((garbage + remaining) < 0) {
                     if (mSplit == null) {
                         // TODO: use frame for rebalancing
                         // _Node is full, so split it.
-                        byte[] okey = isOriginal ? akey : retrieveKeyAtLoc(this, page, loc);
+                        byte[] okey = isOriginal ? akey : retrieveKeyAtLoc(this, page, start);
                         splitLeafAndCreateEntry
                             (tree, okey, akey, vfrag, value, encodedLen, pos, false);
                         return;
