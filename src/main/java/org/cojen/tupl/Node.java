@@ -4546,10 +4546,11 @@ final class Node extends Latch implements DatabaseAccess {
             searchVecStart(searchVecLoc);
             garbage(originalGarbage + garbageAccum);
 
-            Split split = null;
             byte[] fv = null;
             try {
-                split = newSplitLeft(newNode);
+                // Assign early, to signal to updateLeafValue that it should fragment a large
+                // value instead of attempting to double split the node.
+                mSplit = newSplitLeft(newNode);
 
                 if (newLoc == 0) {
                     // Unable to insert new entry into left node. Insert it
@@ -4563,7 +4564,7 @@ final class Node extends Latch implements DatabaseAccess {
                 }
 
                 // Choose an appropriate middle key for suffix compression.
-                setSplitKey(tree, split, newNode.midKey(newNode.highestKeyPos(), this, 0));
+                setSplitKey(tree, mSplit, newNode.midKey(newNode.highestKeyPos(), this, 0));
 
                 newNode.rightSegTail(destLoc - 1);
                 newNode.releaseExclusive();
@@ -4571,11 +4572,10 @@ final class Node extends Latch implements DatabaseAccess {
                 searchVecStart(originalStart);
                 garbage(originalGarbage);
                 cleanupFragments(e, fv);
-                cleanupSplit(e, newNode, split);
+                cleanupSplit(e, newNode, mSplit);
+                mSplit = null;
                 throw e;
             }
-
-            mSplit = split;
         } else {
             // Split into new right node.
 
@@ -4639,10 +4639,11 @@ final class Node extends Latch implements DatabaseAccess {
             searchVecEnd(searchVecLoc);
             garbage(originalGarbage + garbageAccum);
 
-            Split split = null;
             byte[] fv = null;
             try {
-                split = newSplitRight(newNode);
+                // Assign early, to signal to updateLeafValue that it should fragment a large
+                // value instead of attempting to double split the node.
+                mSplit = newSplitRight(newNode);
 
                 if (newLoc == 0) {
                     // Unable to insert new entry into new right node. Insert
@@ -4656,7 +4657,7 @@ final class Node extends Latch implements DatabaseAccess {
                 }
 
                 // Choose an appropriate middle key for suffix compression.
-                setSplitKey(tree, split, this.midKey(this.highestKeyPos(), newNode, 0));
+                setSplitKey(tree, mSplit, this.midKey(this.highestKeyPos(), newNode, 0));
 
                 newNode.leftSegTail(destLoc);
                 newNode.releaseExclusive();
@@ -4664,16 +4665,18 @@ final class Node extends Latch implements DatabaseAccess {
                 searchVecEnd(originalEnd);
                 garbage(originalGarbage);
                 cleanupFragments(e, fv);
-                cleanupSplit(e, newNode, split);
+                cleanupSplit(e, newNode, mSplit);
+                mSplit = null;
                 throw e;
             }
-
-            mSplit = split;
         }
     }
 
     /**
-     * Store an entry into a node which has just been split and has room.
+     * Store an entry into a node which has just been split and has room. If for update, caller
+     * must ensure that the mSplit field has been set. It doesn't need to be fully filled in
+     * yet, however. The updateLeafValue checks if the mSplit field has been set to prevent
+     * double splitting.
      *
      * @param okey original key
      * @param akey key to actually store
