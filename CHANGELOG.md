@@ -1,7 +1,7 @@
 Changelog
 =========
 
-v1.3.6
+v1.3.6 (2016-09-05)
 ------
 * Fix updating of large entries into crammed nodes, which caused entries to get lost.
 * Fix database lock file retention issue.
