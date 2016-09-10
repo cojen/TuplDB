@@ -29,7 +29,7 @@ final class LocalTransaction extends Locker implements Transaction {
     static final LocalTransaction BOGUS = new LocalTransaction();
 
     static final int
-        HAS_SCOPE  = 1, // When set, scoped has been entered but not logged.
+        HAS_SCOPE  = 1, // When set, scope has been entered but not logged.
         HAS_COMMIT = 2, // When set, transaction has committable changes.
         HAS_TRASH  = 4; /* When set, fragmented values are in the trash and must be
                            fully deleted after committing the top-level scope. */
@@ -45,6 +45,8 @@ final class LocalTransaction extends Locker implements Transaction {
     private long mTxnId;
 
     private UndoLog mUndoLog;
+
+    private Object mAttachment;
 
     // Is an exception if transaction is borked, BOGUS if bogus.
     private Object mBorked;
@@ -100,6 +102,16 @@ final class LocalTransaction extends Locker implements Transaction {
         mDurabilityMode = DurabilityMode.NO_REDO;
         mLockMode = LockMode.UNSAFE;
         mBorked = this;
+    }
+
+    @Override
+    public void attach(Object obj) {
+        mAttachment = obj;
+    }
+
+    @Override
+    public Object attachment() {
+        return mAttachment;
     }
 
     @Override
@@ -277,6 +289,7 @@ final class LocalTransaction extends Locker implements Transaction {
         pending.mTxnId = mTxnId;
         pending.mCommitPos = commitPos;
         pending.mUndoLog = undo;
+        pending.attach(mAttachment);
         mUndoLog = null;
         int hasState = mHasState;
         if ((hasState & HAS_TRASH) != 0) {
@@ -502,7 +515,7 @@ final class LocalTransaction extends Locker implements Transaction {
             } else {
                 try {
                     int hasState = mHasState;
-                    if ((mHasState & HAS_SCOPE) != 0) {
+                    if ((hasState & HAS_SCOPE) != 0) {
                         mRedoWriter.txnRollback(mTxnId);
                         mHasState = hasState & ~(HAS_SCOPE | HAS_COMMIT);
                     }
@@ -595,6 +608,12 @@ final class LocalTransaction extends Locker implements Transaction {
         b.append("lockTimeout").append(": ");
         TimeUnit unit = Utils.inferUnit(TimeUnit.NANOSECONDS, mLockTimeoutNanos);
         Utils.appendTimeout(b, lockTimeout(unit), unit);
+
+        Object att = mAttachment;
+        if (att != null) {
+            b.append(", ");
+            b.append("attachment").append(": ").append(att);
+        }
 
         Object borked = mBorked;
         if (borked != null) {

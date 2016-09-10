@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author Brian S O'Neill
  */
 /*P*/
-class LockOwner extends AtomicInteger /* for hashCode */ {
+abstract class LockOwner extends AtomicInteger /* for hashCode */ {
     // LockOwner is currently waiting to acquire this lock. Used for deadlock detection.
     Lock mWaitingFor;
 
@@ -37,4 +37,8 @@ class LockOwner extends AtomicInteger /* for hashCode */ {
             }
         }
     }
+
+    public abstract void attach(Object obj);
+
+    public abstract Object attachment();
 }
