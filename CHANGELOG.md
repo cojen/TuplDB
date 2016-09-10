@@ -1,6 +1,11 @@
 Changelog
 =========
 
+v1.3.7
+------
+* Add support for attaching objects to transactions, for tracking them.
+* Detect deadlocks when lock timeout is zero, for non-try variants.
+
 v1.3.6 (2016-09-05)
 ------
 * Fix updating of large entries into crammed nodes, which caused entries to get lost.

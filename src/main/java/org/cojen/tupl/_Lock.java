@@ -97,6 +97,7 @@ final class _Lock {
         LatchCondition queueSX = mQueueSX;
         if (queueSX != null) {
             if (nanosTimeout == 0) {
+                locker.mWaitingFor = this;
                 return TIMED_OUT_LOCK;
             }
         } else {
@@ -105,6 +106,7 @@ final class _Lock {
                 return r;
             }
             if (nanosTimeout == 0) {
+                locker.mWaitingFor = this;
                 return TIMED_OUT_LOCK;
             }
             mQueueSX = queueSX = new LatchCondition();
@@ -189,6 +191,7 @@ final class _Lock {
         LatchCondition queueU = mQueueU;
         if (queueU != null) {
             if (nanosTimeout == 0) {
+                locker.mWaitingFor = this;
                 return TIMED_OUT_LOCK;
             }
         } else {
@@ -198,6 +201,7 @@ final class _Lock {
                 return ACQUIRED;
             }
             if (nanosTimeout == 0) {
+                locker.mWaitingFor = this;
                 return TIMED_OUT_LOCK;
             }
             mQueueU = queueU = new LatchCondition();
@@ -291,6 +295,7 @@ final class _Lock {
                 if (ur == ACQUIRED) {
                     unlockUpgradable();
                 }
+                locker.mWaitingFor = this;
                 return TIMED_OUT_LOCK;
             }
         } else {
@@ -302,6 +307,7 @@ final class _Lock {
                 if (ur == ACQUIRED) {
                     unlockUpgradable();
                 }
+                locker.mWaitingFor = this;
                 return TIMED_OUT_LOCK;
             }
             mQueueSX = queueSX = new LatchCondition();
@@ -596,6 +602,36 @@ final class _Lock {
 
     boolean matches(long indexId, byte[] key, int hash) {
         return mHashCode == hash && mIndexId == indexId && Arrays.equals(mKey, key);
+    }
+
+    /**
+     * Called with shared latch, to find any shared owner attachment, with no preference.
+     */
+    Object findSharedOwnerAttachment() {
+        Object sharedObj = mSharedLockOwnersObj;
+        if (sharedObj == null) {
+            return null;
+        }
+
+        if (sharedObj instanceof _LockOwner) {
+            return ((_LockOwner) sharedObj).attachment();
+        }
+
+        LockOwnerHTEntry[] entries = (LockOwnerHTEntry[]) sharedObj;
+
+        for (int i=entries.length; --i>=0; ) {
+            for (LockOwnerHTEntry e = entries[i]; e != null; e = e.mNext) {
+                _LockOwner owner = e.mOwner;
+                if (owner != null) {
+                    Object att = owner.attachment();
+                    if (att != null) {
+                        return att;
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 
     private boolean isSharedLockOwner(_LockOwner locker) {

@@ -65,6 +65,13 @@ public class DatabaseException extends IOException {
         return null;
     }
 
+    /*
+     * Applicable to timeout exceptions.
+     */
+    Object getOwnerAttachment() {
+        return null;
+    }
+
     /**
      * Rethrows if given a recoverable exception.
      */
