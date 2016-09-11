@@ -384,13 +384,10 @@ class _ParallelSorter implements Sorter {
         _TreeCursor appender = dest.newCursor(Transaction.BOGUS);
         try {
             appender.firstAny();
-            int end = size - 1;
+            int len = size;
 
             while (true) {
-                // Remove the lowest ordered sort tree from the heap, and prepare the next.
                 _Tree sortTree = sortTrees[0];
-                siftDown(sortTrees, end, 0, sortTrees[end]);
-
                 _Node node = sortTree.mRoot;
 
                 int order = node.garbage();
@@ -402,18 +399,20 @@ class _ParallelSorter implements Sorter {
                     node.garbage(order & ~1);
                 }
 
-                if (node.hasKeys()) {
-                    // Add node back into the heap.
-                    siftUp(sortTrees, end, sortTree);
-                } else {
-                    // Stash the tree at the end, and shrink the heap.
-                    sortTrees[end] = sortTree;
-                    if (end == 0) {
+                if (!node.hasKeys()) {
+                    // Shrink the heap, and stash the tree at the end.
+                    len--;
+                    if (len == 0) {
                         // All done.
                         break;
                     }
-                    end--;
+                    _Tree last = sortTrees[len];
+                    sortTrees[len] = sortTree;
+                    sortTree = last;
                 }
+
+                // Fix the heap.
+                siftDown(sortTrees, len, 0, sortTree);
             }
         } finally {
             appender.reset();
@@ -442,7 +441,7 @@ class _ParallelSorter implements Sorter {
         return dest;
     }
 
-    private static void siftDown(_Tree[] sortTrees, int size, int pos, _Tree toInsert)
+    private static void siftDown(_Tree[] sortTrees, int size, int pos, _Tree element)
         throws IOException
     {
         int half = size >>> 1;
@@ -454,26 +453,13 @@ class _ParallelSorter implements Sorter {
                 childPos = rightPos;
                 child = sortTrees[childPos];
             }
-            if (compareSortTrees(toInsert, child) <= 0) {
+            if (compareSortTrees(element, child) <= 0) {
                 break;
             }
             sortTrees[pos] = child;
             pos = childPos;
         }
-        sortTrees[pos] = toInsert;
-    }
-
-    private static void siftUp(_Tree[] sortTrees, int pos, _Tree toInsert) throws IOException {
-        while (pos > 0) {
-            int parentPos = (pos - 1) >>> 1;
-            _Tree parent = sortTrees[parentPos];
-            if (compareSortTrees(toInsert, parent) >= 0) {
-                break;
-            }
-            sortTrees[pos] = parent;
-            pos = parentPos;
-        }
-        sortTrees[pos] = toInsert;
+        sortTrees[pos] = element;
     }
 
     private static int compareSortTrees(_Tree leftTree, _Tree rightTree) throws IOException {
