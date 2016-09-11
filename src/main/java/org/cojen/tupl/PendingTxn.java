@@ -33,11 +33,22 @@ final class PendingTxn extends LockOwner {
     long mCommitPos;
     UndoLog mUndoLog;
     boolean mHasFragmentedTrash;
+    private Object mAttachment;
 
     PendingTxn mPrev;
 
     PendingTxn(Lock first) {
         mFirst = first;
+    }
+
+    @Override
+    public void attach(Object obj) {
+        mAttachment = obj;
+    }
+
+    @Override
+    public Object attachment() {
+        return mAttachment;
     }
 
     /**

@@ -31,8 +31,8 @@ public class DeadlockException extends LockTimeoutException {
     private final boolean mGuilty;
     private final DeadlockSet mSet;
 
-    DeadlockException(long nanosTimeout, boolean guilty, DeadlockSet set) {
-        super(nanosTimeout);
+    DeadlockException(long nanosTimeout, Object attachment, boolean guilty, DeadlockSet set) {
+        super(nanosTimeout, attachment);
         mGuilty = guilty;
         mSet = set;
     }

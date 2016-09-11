@@ -154,15 +154,29 @@ class Utils extends org.cojen.tupl.io.Utils {
     }
 
     static String timeoutMessage(long nanosTimeout, DatabaseException ex) {
+        String msg;
         if (nanosTimeout == 0) {
-            return "Never waited";
+            msg = "Never waited";
         } else if (nanosTimeout < 0) {
-            return "Infinite wait";
+            msg = "Infinite wait";
         } else {
             StringBuilder b = new StringBuilder("Waited ");
             appendTimeout(b, ex.getTimeout(), ex.getUnit());
+            Object att = ex.getOwnerAttachment();
+            if (att != null) {
+                appendAttachment(b, att);
+            }
             return b.toString();
         }
+
+        Object att = ex.getOwnerAttachment();
+        if (att != null) {
+            StringBuilder b = new StringBuilder(msg);
+            appendAttachment(b, att);
+            msg = b.toString();
+        }
+
+        return msg;
     }
 
     static void appendTimeout(StringBuilder b, long timeout, TimeUnit unit) {
@@ -179,6 +193,10 @@ class Utils extends org.cojen.tupl.io.Utils {
             }
             b.append(unitStr);
         }
+    }
+
+    private static void appendAttachment(StringBuilder b, Object att) {
+        b.append("; owner attachment: ").append(att);
     }
 
     /**

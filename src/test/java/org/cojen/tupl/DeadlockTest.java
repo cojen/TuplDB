@@ -163,7 +163,7 @@ public class DeadlockTest {
     }
 
     @Test
-    public void deadlockIndexName() throws Throwable {
+    public void deadlockInfo() throws Throwable {
         Database db = Database.open(new DatabaseConfig()
                                     .directPageAccess(false)
                                     .lockUpgradeRule(LockUpgradeRule.UNCHECKED));
@@ -171,7 +171,9 @@ public class DeadlockTest {
         Index ix = db.openIndex("test");
 
         Transaction txn1 = db.newTransaction();
+        txn1.attach("txn1");
         Transaction txn2 = db.newTransaction();
+        txn2.attach("txn2");
 
         byte[] key = "hello".getBytes();
 
@@ -183,6 +185,127 @@ public class DeadlockTest {
             fail();
         } catch (DeadlockException e) {
             assertTrue(e.getMessage().indexOf("indexName: test") > 0);
+            assertTrue(e.getMessage().indexOf("owner attachment: txn1") > 0);
+            assertEquals("txn1", e.getOwnerAttachment());
+        }
+
+        // Deadlock detection works with zero timeout, except with the tryLock variant.
+        txn2.lockTimeout(0, null);
+        try {
+            txn2.lockExclusive(ix.getId(), key);
+            fail();
+        } catch (DeadlockException e) {
+            assertEquals(0, e.getTimeout());
+            assertTrue(e.getMessage().indexOf("indexName: test") > 0);
+            assertTrue(e.getMessage().indexOf("owner attachment: txn1") > 0);
+            assertEquals("txn1", e.getOwnerAttachment());
+        }
+
+        // No deadlock detected here.
+        assertEquals(LockResult.TIMED_OUT_LOCK, txn2.tryLockExclusive(ix.getId(), key, 0));
+    }
+
+    @Test
+    public void selfDeadlock() throws Throwable {
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Index ix = db.openIndex("test");
+
+        Transaction txn1 = db.newTransaction();
+        txn1.attach("txn1");
+        Transaction txn2 = db.newTransaction();
+        txn2.attach("txn2");
+
+        byte[] key1 = "key1".getBytes();
+        byte[] key2 = "key2".getBytes();
+
+        txn1.lockUpgradable(ix.getId(), key1);
+        txn2.lockUpgradable(ix.getId(), key2);
+
+        try {
+            txn2.lockUpgradable(ix.getId(), key1);
+            fail();
+        } catch (DeadlockException e) {
+            // Not expected to work.
+            throw e;
+        } catch (LockTimeoutException e) {
+            assertEquals("txn1", e.getOwnerAttachment());
+        }
+
+        try {
+            txn1.lockUpgradable(ix.getId(), key2);
+            fail();
+        } catch (DeadlockException e) {
+            // Not expected to work.
+            throw e;
+        } catch (LockTimeoutException e) {
+            assertEquals("txn2", e.getOwnerAttachment());
+        }
+
+        // Verify owner attachment when not using an explicit transaction.
+        try {
+            ix.store(null, key1, key1);
+            fail();
+        } catch (LockTimeoutException e) {
+            assertEquals("txn1", e.getOwnerAttachment());
+        }
+    }
+
+    @Test
+    public void sharedOwner() throws Throwable {
+        // Not really a deadlock test. Checks for shared lock owner attachments.
+
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Index ix = db.openIndex("test");
+
+        Transaction txn1 = db.newTransaction();
+        txn1.attach("txn1");
+        Transaction txn2 = db.newTransaction();
+        txn2.attach("txn2");
+
+        byte[] key = "key".getBytes();
+
+        txn1.lockShared(ix.getId(), key);
+
+        // No conflict.
+        txn2.lockUpgradable(ix.getId(), key);
+        txn2.unlock();
+
+        try {
+            txn2.lockExclusive(ix.getId(), key);
+            fail();
+        } catch (LockTimeoutException e) {
+            assertEquals("txn1", e.getOwnerAttachment());
+        }
+
+        txn2.lockShared(ix.getId(), key);
+ 
+        Transaction txn3 = db.newTransaction();
+        try {
+            txn3.lockExclusive(ix.getId(), key);
+            fail();
+        } catch (LockTimeoutException e) {
+            Object att = e.getOwnerAttachment();
+            assertTrue("txn1".equals(att) || "txn2".equals(att));
+        }
+
+        // Can still get attachment even when not waited.
+        txn3.lockTimeout(0, null);
+        try {
+            txn3.lockExclusive(ix.getId(), key);
+            fail();
+        } catch (LockTimeoutException e) {
+            assertEquals(0, e.getTimeout());
+            Object att = e.getOwnerAttachment();
+            assertTrue("txn1".equals(att) || "txn2".equals(att));
+        }
+
+        // Verify owner attachment when not using an explicit transaction.
+        try {
+            ix.store(null, key, key);
+            fail();
+        } catch (LockTimeoutException e) {
+            Object att = e.getOwnerAttachment();
+            assertTrue("txn1".equals(att) || "txn2".equals(att));
         }
     }
 

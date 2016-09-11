@@ -438,4 +438,28 @@ public interface Transaction {
      * @throws IllegalStateException if no locks held, or if last lock is shared
      */
     void unlockToUpgradable();
+
+    /**
+     * Attach an arbitrary object to this transaction instance, for tracking it. Attachments
+     * can become visible to other threads as a result of a {@link LockTimeoutException}. A
+     * happens-before relationship is guaranteed only if the attachment is set before the
+     * associated lock is acquired. Also, the LockTimeoutException constructor calls toString
+     * on the attachment, and includes it in the message. A non-default toString implementation
+     * must consider thread-safety.
+     *
+     * @param obj the object to be attached; may be null
+     */
+    default void attach(Object obj) {
+        // Throw an exception for compatibility. All known implementations support the feature.
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Returns any attachment which was set earlier.
+     *
+     * @return the current attachment, or null if none
+     */
+    default Object attachment() {
+        return null;
+    }
 }

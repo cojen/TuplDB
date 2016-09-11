@@ -179,6 +179,6 @@ class RedoPrinter implements RedoVisitor {
     }
 
     private String toDateTime(long timestamp) {
-        return new java.util.Date(timestamp).toString();
+        return java.time.Instant.ofEpochMilli(timestamp).toString();
     }
 }
