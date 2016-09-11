@@ -46,7 +46,7 @@ class _ParallelSorter implements Sorter {
 
     private static final int MERGE_THREAD_COUNT = Runtime.getRuntime().availableProcessors();
 
-    private static final int STATE_READY = 0, STATE_FINISHING = 1, STATE_RESET = 2;
+    private static final int S_READY = 0, S_FINISHING = 1, S_EXCEPTION = 2, S_RESET = 3;
 
     private final _LocalDatabase mDatabase;
     private final Executor mExecutor;
@@ -67,6 +67,7 @@ class _ParallelSorter implements Sorter {
     private int mActiveNodeMergers;
 
     private int mState;
+    private Throwable mException;
 
     _ParallelSorter(_LocalDatabase db, Executor executor) {
         mDatabase = db;
@@ -172,16 +173,23 @@ class _ParallelSorter implements Sorter {
         // FIXME: stop any active merging
 
         synchronized (this) {
-            mState = STATE_RESET;
+            mState = S_RESET;
             finishComplete();
         }
     }
 
     // Caller must be synchronized.
     private void checkState() throws InterruptedIOException {
-        if (mState != 0) {
-            if (mState == STATE_FINISHING) {
+        if (mState != S_READY) {
+            switch (mState) {
+            case S_FINISHING:
                 throw new IllegalStateException("Finish in progress");
+            case S_EXCEPTION:
+                Throwable e = mException;
+                if (e != null) {
+                    Utils.addLocalTrace(e);
+                    throw Utils.rethrow(e);
+                }
             }
             throw new InterruptedIOException("Sorter is reset");
         }
@@ -192,7 +200,7 @@ class _ParallelSorter implements Sorter {
         synchronized (this) {
             checkState();
 
-            mState = STATE_FINISHING;
+            mState = S_FINISHING;
 
             _Tree[] sortTrees = mSortTrees;
             int size = mSortTreesSize;
@@ -296,7 +304,13 @@ class _ParallelSorter implements Sorter {
         while (mSortTreePoolSize > 0) {
             mDatabase.quickDeleteTemporaryTree(mSortTreePool[--mSortTreePoolSize]);
         }
-        mState = STATE_READY;
+
+        if (mState == S_EXCEPTION) {
+            checkState();
+        }
+
+        mState = S_READY;
+        mException = null;
     }
 
     private void waitForInactivity(boolean stop) throws InterruptedIOException {
@@ -336,10 +350,10 @@ class _ParallelSorter implements Sorter {
                 } catch (Throwable e) {
                     synchronized (this) {
                         mActiveNodeMergers--;
+                        exception(e);
                         notifyAll();
                     }
-                    // FIXME: stash it for later
-                    throw Utils.rethrow(e);
+                    return;
                 }
 
                 synchronized (this) {
@@ -347,8 +361,7 @@ class _ParallelSorter implements Sorter {
                     try {
                         addToLevel(tree, 0, L0_MAX_SIZE);
                     } catch (Throwable e) {
-                        // FIXME: stash it for later
-                        throw Utils.rethrow(e);
+                        exception(e);
                     } finally {
                         notifyAll();
                     }
@@ -506,7 +519,7 @@ class _ParallelSorter implements Sorter {
         } else if (level < mSortTreeLevels.size()) {
             List<_Tree> trees = mSortTreeLevels.get(level);
             trees.add(tree);
-            if (trees.size() >= maxLevelSize && mState == STATE_READY) {
+            if (trees.size() >= maxLevelSize && mState == S_READY) {
                 _Tree[] toMerge = trees.toArray(new _Tree[trees.size()]);
                 trees.clear();
                 initForMerging();
@@ -557,7 +570,17 @@ class _ParallelSorter implements Sorter {
             mActiveMergersLatch.releaseExclusive();
         }
 
-        // FIXME: stash it for later
-        //System.out.println("ex: " + merger.exceptionCheck());
+        Throwable e = merger.exceptionCheck();
+        if (e != null) synchronized (this) {
+            exception(e);
+        }
+    }
+
+    // Caller must be synchronized.
+    private void exception(Throwable e) {
+        if (mException == null) {
+            mException = e;
+        }
+        mState = S_EXCEPTION;
     }
 }
