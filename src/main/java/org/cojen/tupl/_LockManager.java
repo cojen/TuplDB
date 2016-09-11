@@ -187,7 +187,7 @@ final class _LockManager {
         if (result.isHeld()) {
             return locker;
         }
-        throw locker.failed(result, mDefaultTimeoutNanos);
+        throw locker.failed(TYPE_SHARED, result, mDefaultTimeoutNanos, hash);
     }
 
     final _Locker lockExclusiveLocal(long indexId, byte[] key, int hash)
@@ -199,7 +199,7 @@ final class _LockManager {
         if (result.isHeld()) {
             return locker;
         }
-        throw locker.failed(result, mDefaultTimeoutNanos);
+        throw locker.failed(TYPE_EXCLUSIVE, result, mDefaultTimeoutNanos, hash);
     }
 
     final _Locker localLocker() {
