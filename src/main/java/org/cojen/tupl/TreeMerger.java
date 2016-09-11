@@ -20,7 +20,6 @@ import java.io.InterruptedIOException;
 import java.io.IOException;
 
 import java.util.Arrays;
-import java.util.PriorityQueue;
 
 import java.util.concurrent.Executor;
 
@@ -89,7 +88,7 @@ class TreeMerger {
                     tcursor.firstAny();
                 }
 
-                Worker w = new Worker(tcursor);
+                Worker w = new Worker(tcursor, mSources.length);
                 mWorkers[i] = w;
 
                 for (int j=0; j<mSources.length; j++) {
@@ -116,7 +115,7 @@ class TreeMerger {
 
                     if (key != null) {
                         if (upperBound == null || Utils.compareUnsigned(key, upperBound) < 0) {
-                            w.mQueue.add(new Selector(j, cursor, upperBound));
+                            w.add(new Selector(j, cursor, upperBound));
                         } else {
                             cursor.reset();
                         }
@@ -291,20 +290,37 @@ class TreeMerger {
 
     private class Worker implements Runnable {
         final TreeCursor mTarget;
-        final PriorityQueue<Selector> mQueue;
+        private final Selector[] mQueue;
+        private int mQueueSize;
         volatile Throwable mException;
         volatile boolean mStop;
 
-        Worker(TreeCursor target) {
+        Worker(TreeCursor target, int capacity) {
             mTarget = target;
-            mQueue = new PriorityQueue<Selector>();
+            mQueue = new Selector[capacity];
+        }
+
+        void add(Selector selector) {
+            mQueue[mQueueSize++] = selector;
         }
 
         @Override
         public void run() {
             try {
+                int size = mQueueSize;
+
+                if (size == 0) {
+                    finished(0);
+                    return;
+                }
+
                 final TreeCursor target = mTarget;
-                final PriorityQueue<Selector> queue = mQueue;
+                final Selector[] queue = mQueue;
+
+                // Heapify.
+                for (int i=size >>> 1; --i>=0; ) {
+                    siftDown(queue, size, i, queue[i]);
+                }
 
                 while (true) {
                     if (mStop) {
@@ -312,13 +328,7 @@ class TreeMerger {
                         return;
                     }
 
-                    Selector selector = queue.poll();
-
-                    if (selector == null) {
-                        finished(0);
-                        return;
-                    }
-
+                    Selector selector = queue[0];
                     TreeCursor source = selector.mSource;
 
                     if (selector.mSkip) {
@@ -329,16 +339,29 @@ class TreeMerger {
                         target.appendTransfer(source);
                     }
 
-                    byte[] key = source.key();
+                    doneCheck: {
+                        byte[] key = source.key();
 
-                    if (key != null) {
-                        byte[] upperBound = selector.mUpperBound;
-                        if (upperBound == null || Utils.compareUnsigned(key, upperBound) < 0) {
-                            queue.add(selector);
-                        } else {
+                        if (key != null) {
+                            byte[] upperBound = selector.mUpperBound;
+                            if (upperBound == null || Utils.compareUnsigned(key, upperBound) < 0) {
+                                // Selector not done yet.
+                                break doneCheck;
+                            }
                             source.reset();
                         }
+
+                        if (--size == 0) {
+                            finished(0);
+                            return;
+                        }
+
+                        // Sift in the last selector.
+                        selector = queue[size];
                     }
+
+                    // Fix the heap.
+                    siftDown(queue, size, 0, selector);
                 }
             } catch (Throwable e) {
                 mException = e;
@@ -352,9 +375,8 @@ class TreeMerger {
         private void finished(int stopped) {
             mTarget.reset();
 
-            Selector selector;
-            while ((selector = mQueue.poll()) != null) {
-                selector.mSource.reset();
+            while (mQueueSize > 0) {
+                mQueue[--mQueueSize].mSource.reset();
             }
 
             try {
@@ -395,5 +417,26 @@ class TreeMerger {
             }
             return compare;
         }
+    }
+
+    private static void siftDown(Selector[] selectors, int size, int pos, Selector element)
+        throws IOException
+    {
+        int half = size >>> 1;
+        while (pos < half) {
+            int childPos = (pos << 1) + 1;
+            Selector child = selectors[childPos];
+            int rightPos = childPos + 1;
+            if (rightPos < size && child.compareTo(selectors[rightPos]) > 0) {
+                childPos = rightPos;
+                child = selectors[childPos];
+            }
+            if (element.compareTo(child) <= 0) {
+                break;
+            }
+            selectors[pos] = child;
+            pos = childPos;
+        }
+        selectors[pos] = element;
     }
 }
