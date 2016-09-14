@@ -617,15 +617,17 @@ final class Lock {
             return ((LockOwner) sharedObj).attachment();
         }
 
-        LockOwnerHTEntry[] entries = (LockOwnerHTEntry[]) sharedObj;
+        if (sharedObj instanceof LockOwnerHTEntry[]) {
+            LockOwnerHTEntry[] entries = (LockOwnerHTEntry[]) sharedObj;
 
-        for (int i=entries.length; --i>=0; ) {
-            for (LockOwnerHTEntry e = entries[i]; e != null; e = e.mNext) {
-                LockOwner owner = e.mOwner;
-                if (owner != null) {
-                    Object att = owner.attachment();
-                    if (att != null) {
-                        return att;
+            for (int i=entries.length; --i>=0; ) {
+                for (LockOwnerHTEntry e = entries[i]; e != null; e = e.mNext) {
+                    LockOwner owner = e.mOwner;
+                    if (owner != null) {
+                        Object att = owner.attachment();
+                        if (att != null) {
+                            return att;
+                        }
                     }
                 }
             }
