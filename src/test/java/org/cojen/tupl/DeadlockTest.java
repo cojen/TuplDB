@@ -309,6 +309,38 @@ public class DeadlockTest {
         }
     }
 
+    @Test
+    public void deleteTimeout() throws Throwable {
+        // Regression test. Deleting an entry within a transaction would cause the attachment
+        // check code to fail with a ClassCastException.
+
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Index ix = db.openIndex("test");
+
+        byte[] key = "key".getBytes();
+
+        ix.store(null, key, key);
+
+        Transaction txn = db.newTransaction();
+        ix.store(txn, key, null);
+
+        try {
+            ix.store(null, key, key);
+            fail();
+        } catch (LockTimeoutException e) {
+            assertNull(e.getOwnerAttachment());
+        }
+
+        // Also make sure that attachments can be retrieved.
+        txn.attach("foo");
+        try {
+            ix.store(null, key, key);
+            fail();
+        } catch (LockTimeoutException e) {
+            assertEquals("foo", e.getOwnerAttachment());
+        }
+    }
+
     private void startTasks() {
         for (Task t : mTasks) {
             t.start();
