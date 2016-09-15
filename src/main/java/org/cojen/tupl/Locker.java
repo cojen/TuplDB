@@ -422,7 +422,8 @@ class Locker extends LockOwner {
         }
 
         if (result.isTimedOut()) {
-            Object att = ownerAttachment(lockType, waitingFor, hash);
+            Object att = waitingFor == null ? null
+                : waitingFor.findOwnerAttachment(this, lockType, hash);
             return new LockTimeoutException(nanosTimeout, att);
         }
 
@@ -438,57 +439,12 @@ class Locker extends LockOwner {
     {
         DeadlockDetector detector = new DeadlockDetector(this);
         if (detector.scan()) {
-            Object att = ownerAttachment(lockType, waitingFor, hash);
+            Object att = waitingFor == null ? null
+                : waitingFor.findOwnerAttachment(this, lockType, hash);
             throw new DeadlockException(nanosTimeout, att,
                                         detector.mGuilty,
                                         detector.newDeadlockSet());
         }
-    }
-
-    /**
-     * @param lockType TYPE_SHARED, TYPE_UPGRADABLE, or TYPE_EXCLUSIVE
-     */
-    private Object ownerAttachment(int lockType, Lock lock, int hash) {
-        if (lock == null) {
-            return null;
-        }
-
-        // See note in DeadlockDetector regarding unlatched access to the Lock.
-        LockOwner owner = lock.mOwner;
-        if (owner != null) {
-            Object att = owner.attachment();
-            if (att != null) {
-                return att;
-            }
-        }
-
-        if (lockType != TYPE_EXCLUSIVE) {
-            // Only an exclusive lock request can be blocked by shared locks.
-            return null;
-        }
-
-        Object sharedObj = lock.mSharedLockOwnersObj;
-        if (sharedObj == null) {
-            return null;
-        }
-
-        if (sharedObj instanceof LockOwner) {
-            return ((LockOwner) sharedObj).attachment();
-        }
-
-        // Need a latch to safely check the shared lock owner hashtable.
-        LockManager manager = mManager;
-        if (manager != null) {
-            LockManager.LockHT ht = manager.getLockHT(hash);
-            ht.acquireShared();
-            try {
-                return lock.findSharedOwnerAttachment();
-            } finally {
-                ht.releaseShared();
-            }
-        }
-
-        return null;
     }
 
     /**
