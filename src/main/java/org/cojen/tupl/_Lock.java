@@ -605,9 +605,28 @@ final class _Lock {
     }
 
     /**
-     * Called with shared latch, to find any shared owner attachment, with no preference.
+     * Find an exclusive owner attachment, or the first found shared owner attachment. Might
+     * acquire and release a shared latch to access the shared owner attachment.
+     *
+     * @param locker pass null if already latched
+     * @param lockType TYPE_SHARED, TYPE_UPGRADABLE, or TYPE_EXCLUSIVE
      */
-    Object findSharedOwnerAttachment() {
+    Object findOwnerAttachment(_Locker locker, int lockType, int hash) {
+        // See note in _DeadlockDetector regarding unlatched access to this _Lock.
+
+        _LockOwner owner = mOwner;
+        if (owner != null) {
+            Object att = owner.attachment();
+            if (att != null) {
+                return att;
+            }
+        }
+
+        if (lockType != _LockManager.TYPE_EXCLUSIVE) {
+            // Only an exclusive lock request can be blocked by shared locks.
+            return null;
+        }
+
         Object sharedObj = mSharedLockOwnersObj;
         if (sharedObj == null) {
             return null;
@@ -618,15 +637,29 @@ final class _Lock {
         }
 
         if (sharedObj instanceof LockOwnerHTEntry[]) {
-            LockOwnerHTEntry[] entries = (LockOwnerHTEntry[]) sharedObj;
+            if (locker != null) {
+                // Need a latch to safely check the shared lock owner hashtable.
+                _LockManager manager = locker.mManager;
+                if (manager != null) {
+                    _LockManager.LockHT ht = manager.getLockHT(hash);
+                    ht.acquireShared();
+                    try {
+                        return findOwnerAttachment(null, lockType, hash);
+                    } finally {
+                        ht.releaseShared();
+                    }
+                }
+            } else {
+                LockOwnerHTEntry[] entries = (LockOwnerHTEntry[]) sharedObj;
 
-            for (int i=entries.length; --i>=0; ) {
-                for (LockOwnerHTEntry e = entries[i]; e != null; e = e.mNext) {
-                    _LockOwner owner = e.mOwner;
-                    if (owner != null) {
-                        Object att = owner.attachment();
-                        if (att != null) {
-                            return att;
+                for (int i=entries.length; --i>=0; ) {
+                    for (LockOwnerHTEntry e = entries[i]; e != null; e = e.mNext) {
+                        owner = e.mOwner;
+                        if (owner != null) {
+                            Object att = owner.attachment();
+                            if (att != null) {
+                                return att;
+                            }
                         }
                     }
                 }
