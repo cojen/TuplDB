@@ -89,11 +89,8 @@ public class RecoverTest {
 
         assertTrue(w.ex instanceof LockInterruptedException);
 
-        try {
-            txn1.exit();
-            fail();
-        } catch (DatabaseException e) {
-        }
+        // Any exception should be suppressed.
+        txn1.exit();
 
         Transaction txn2 = mDb.newTransaction();
         try {
