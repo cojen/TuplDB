@@ -2841,25 +2841,36 @@ class TreeCursor implements CauseCloseable, Cursor {
             find(null, key, VARIANT_NO_LOCK, new CursorFrame(), latchRootNode());
 
             CursorFrame leaf = mLeaf;
-            if (leaf.mNode.mPage == p_closedTreePage()) {
-                resetLatched(leaf.mNode);
-                return false;
-            }
+            Node node = leaf.mNode;
 
-            if (mValue == null) {
-                mKey = key;
-                mKeyHash = 0;
-                if (!leaf.mNode.tryUpgrade()) {
-                    leaf.mNode.releaseShared();
-                    leaf.acquireExclusive();
+            try {
+                if (node.mPage == p_closedTreePage()) {
+                    node.releaseShared();
+                    return false;
                 }
-                store(LocalTransaction.BOGUS, leaf, null);
-                reset();
-            } else {
-                resetLatched(leaf.mNode);
-            }
 
-            return true;
+                if (mValue == null) {
+                    if (!node.tryUpgrade()) {
+                        node.releaseShared();
+                        node = leaf.acquireExclusive();
+                        if (node.mPage == p_closedTreePage()) {
+                            node.releaseExclusive();
+                            return false;
+                        }
+                    }
+
+                    mKey = key;
+                    mKeyHash = 0;
+
+                    store(LocalTransaction.BOGUS, leaf, null);
+                } else {
+                    node.releaseShared();
+                }
+
+                return true;
+            } finally {
+                reset();
+            }
         } catch (Throwable e) {
             throw handleException(e, true);
         }
