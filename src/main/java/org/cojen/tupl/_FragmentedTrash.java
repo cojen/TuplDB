@@ -73,7 +73,7 @@ final class _FragmentedTrash {
         } catch (Throwable e) {
             try {
                 // Always expected to rethrow an exception, not necessarily the original.
-                txn.borked(e, false);
+                txn.borked(e, false, true);
             } catch (Throwable e2) {
                 e = e2;
             }
