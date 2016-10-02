@@ -30,21 +30,17 @@ import java.util.Set;
 public final class DeadlockSet implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private final long[] mIndexIds;
-    private final byte[][] mIndexNames;
-    private final byte[][] mKeys;
+    private final OwnerInfo[] mInfoSet;
 
-    DeadlockSet(long[] indexIds, byte[][] indexNames, byte[][] keys) {
-        mIndexIds = indexIds;
-        mIndexNames = indexNames;
-        mKeys = keys;
+    DeadlockSet(OwnerInfo[] infoSet) {
+        mInfoSet = infoSet;
     }
 
     /**
      * @return number of elements in the set
      */
     public int size() {
-        return mIndexIds.length;
+        return mInfoSet.length;
     }
 
     /**
@@ -52,7 +48,7 @@ public final class DeadlockSet implements Serializable {
      * @throws IndexOutOfBoundsException
      */
     public long getIndexId(int pos) {
-        return mIndexIds[pos];
+        return mInfoSet[pos].mIndexId;
     }
 
     /**
@@ -60,7 +56,7 @@ public final class DeadlockSet implements Serializable {
      * @throws IndexOutOfBoundsException
      */
     public byte[] getIndexName(int pos) {
-        return mIndexNames[pos];
+        return mInfoSet[pos].mIndexName;
     }
 
     /**
@@ -68,7 +64,10 @@ public final class DeadlockSet implements Serializable {
      * @throws IndexOutOfBoundsException
      */
     public String getIndexNameString(int pos) {
-        byte[] name = mIndexNames[pos];
+        return indexNameString(getIndexName(pos));
+    }
+
+    private static String indexNameString(byte[] name) {
         if (name == null) {
             return null;
         }
@@ -84,7 +83,15 @@ public final class DeadlockSet implements Serializable {
      * @throws IndexOutOfBoundsException
      */
     public byte[] getKey(int pos) {
-        return mKeys[pos];
+        return mInfoSet[pos].mKey;
+    }
+
+    /**
+     * @return the lock owner attachment at the given set position, possibly null
+     * @throws IndexOutOfBoundsException
+     */
+    public Object getOwnerAttachment(int pos) {
+        return mInfoSet[pos].mAttachment;
     }
 
     @Override
@@ -96,22 +103,37 @@ public final class DeadlockSet implements Serializable {
     }
 
     void appendMembers(StringBuilder b) {
-        for (int i=0; i<mIndexIds.length; i++) {
+        for (int i=0; i<mInfoSet.length; i++) {
+            OwnerInfo info = mInfoSet[i];
             if (i > 0) {
                 b.append(", ");
             }
             b.append('{');
-            b.append("indexId").append(": ").append(mIndexIds[i]);
+            b.append("indexId").append(": ").append(info.mIndexId);
             b.append(", ");
 
-            String name = getIndexNameString(i);
+            String name = indexNameString(info.mIndexName);
             if (name != null) {
                 b.append("indexName").append(": ").append(name);
                 b.append(", ");
             }
 
-            b.append("key").append(": ").append(Utils.toHex(mKeys[i]));
+            b.append("key").append(": ").append(Utils.toHex(info.mKey));
+
+            Object att = info.mAttachment;
+            if (att != null) {
+                b.append(", ");
+                b.append("attachment").append(": ").append(att);
+            }
+
             b.append('}');
         }
+    }
+
+    static class OwnerInfo {
+        long mIndexId;
+        byte[] mIndexName;
+        byte[] mKey;
+        Object mAttachment;
     }
 }

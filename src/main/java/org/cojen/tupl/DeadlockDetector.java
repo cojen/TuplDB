@@ -50,33 +50,39 @@ final class DeadlockDetector {
         mLocks = new LinkedHashSet<>();
     }
 
-    DeadlockSet newDeadlockSet() {
-        int size = mLocks.size();
-        long[] indexIds = new long[size];
-        byte[][] indexNames = new byte[size][];
-        byte[][] keys = new byte[size][];
+    /**
+     * @param lockType type of lock requested; TYPE_SHARED, TYPE_UPGRADABLE, or TYPE_EXCLUSIVE
+     * @param hash hash of lock key requested
+     */
+    DeadlockSet newDeadlockSet(int lockType, int hash) {
+        DeadlockSet.OwnerInfo[] infoSet = new DeadlockSet.OwnerInfo[mLocks.size()];
 
         final LockManager manager = mOrigin.mManager;
 
         int i = 0;
         for (Lock lock : mLocks) {
-            indexIds[i] = lock.mIndexId;
+            DeadlockSet.OwnerInfo info = new DeadlockSet.OwnerInfo();
+            infoSet[i] = info;
 
-            Index ix = manager.indexById(indexIds[i]);
+            info.mIndexId = lock.mIndexId;
+
+            Index ix = manager.indexById(info.mIndexId);
             if (ix != null) {
-                indexNames[i] = ix.getName();
+                info.mIndexName = ix.getName();
             }
 
             byte[] key = lock.mKey;
             if (key != null) {
                 key = key.clone();
             }
-            keys[i] = key;
+            info.mKey = key;
+
+            info.mAttachment = lock.findOwnerAttachment(mOrigin, lockType, hash);
 
             i++;
         }
 
-        return new DeadlockSet(indexIds, indexNames, keys);
+        return new DeadlockSet(infoSet);
     }
 
     /**

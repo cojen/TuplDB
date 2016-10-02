@@ -443,7 +443,7 @@ class _Locker extends _LockOwner {
                 : waitingFor.findOwnerAttachment(this, lockType, hash);
             throw new DeadlockException(nanosTimeout, att,
                                         detector.mGuilty,
-                                        detector.newDeadlockSet());
+                                        detector.newDeadlockSet(lockType, hash));
         }
     }
 
