@@ -18,8 +18,6 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import java.util.BitSet;
-
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.cojen.tupl.io.PageArray;
@@ -44,10 +42,10 @@ final class _PageManager {
     */
 
     // Indexes of entries in header.
-    private static final int I_TOTAL_PAGE_COUNT  = 0;
-    private static final int I_REGULAR_QUEUE     = I_TOTAL_PAGE_COUNT + 8;
-    private static final int I_RECYCLE_QUEUE     = I_REGULAR_QUEUE + _PageQueue.HEADER_SIZE;
-    private static final int I_RESERVE_QUEUE     = I_RECYCLE_QUEUE + _PageQueue.HEADER_SIZE;
+    static final int I_TOTAL_PAGE_COUNT  = 0;
+    static final int I_REGULAR_QUEUE     = I_TOTAL_PAGE_COUNT + 8;
+    static final int I_RECYCLE_QUEUE     = I_REGULAR_QUEUE + _PageQueue.HEADER_SIZE;
+    static final int I_RESERVE_QUEUE     = I_RECYCLE_QUEUE + _PageQueue.HEADER_SIZE;
 
     private final PageArray mPageArray;
 
@@ -672,30 +670,6 @@ final class _PageManager {
         } finally {
             fullUnlock();
         }
-    }
-
-    /**
-     * Sets a bit for each page except the first two.
-     */
-    void markAllPages(BitSet pages) throws IOException {
-        mRemoveLock.lock();
-        try {
-            int total = (int) mTotalPageCount;
-            for (int i=2; i<total; i++) {
-                pages.set(i);
-            }
-        } finally {
-            mRemoveLock.unlock();
-        }
-    }
-
-    /**
-     * Clears bits representing pages which are allocatable.
-     */
-    int traceFreePages(BitSet pages) throws IOException {
-        int count = mRegularFreeList.traceRemovablePages(pages);
-        count += mRecycleFreeList.traceRemovablePages(pages);
-        return count;
     }
 
     /**

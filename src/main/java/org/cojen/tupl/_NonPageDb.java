@@ -19,10 +19,11 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 import java.util.Arrays;
-import java.util.BitSet;
 
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
+
+import java.util.function.LongConsumer;
 
 import static org.cojen.tupl.DirectPageOps.*;
 
@@ -114,11 +115,6 @@ final class _NonPageDb extends _PageDb {
     }
 
     @Override
-    public BitSet tracePages() throws IOException {
-        return new BitSet();
-    }
-
-    @Override
     public void readPage(long id, long page) throws IOException {
         PageCache cache = mCache;
         if (cache == null || !cache.remove(id, page, 0, pageSize())) {
@@ -183,6 +179,12 @@ final class _NonPageDb extends _PageDb {
     public long allocatePages(long pageCount) throws IOException {
         // Do nothing.
         return 0;
+    }
+
+    @Override
+    public void scanFreeList(LongConsumer dst) throws IOException {
+        // No durable pages to scan.
+        return;
     }
 
     @Override

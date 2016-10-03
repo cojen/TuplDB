@@ -18,7 +18,7 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import java.util.BitSet;
+import java.util.function.LongConsumer;
 
 import org.cojen.tupl.io.CauseCloseable;
 
@@ -78,11 +78,6 @@ abstract class PageDb implements CauseCloseable {
             return "PageDb.Stats {totalPages=" + totalPages + ", freePages=" + freePages + '}';
         }
     }
-
-    /**
-     * Returns a BitSet where each clear bit indicates a free page.
-     */
-    public abstract BitSet tracePages() throws IOException;
 
     /**
      * Reads a page without locking. Caller must ensure that a deleted page
@@ -169,6 +164,13 @@ abstract class PageDb implements CauseCloseable {
     public CommitLock commitLock() {
         return mCommitLock;
     }
+
+    /**
+     * Scan all durable free pages, passing them to the given consumer.
+     *
+     * @param dst destination for scanned page ids
+     */
+    public abstract void scanFreeList(LongConsumer dst) throws IOException;
 
     /**
      * Caller must ensure that at most one compaction is in progress and that no checkpoints
