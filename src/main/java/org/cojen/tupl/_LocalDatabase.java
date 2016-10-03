@@ -1885,6 +1885,9 @@ final class _LocalDatabase extends AbstractDatabase {
     @Override
     public boolean verify(VerificationObserver observer) throws IOException {
         // TODO: Verify free lists.
+        if (false) {
+            mPageDb.scanFreeList(id -> System.out.println(id));
+        }
 
         if (observer == null) {
             observer = new VerificationObserver();

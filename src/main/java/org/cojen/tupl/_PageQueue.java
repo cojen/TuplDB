@@ -19,7 +19,6 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 import java.util.Arrays;
-import java.util.BitSet;
 
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -67,18 +66,18 @@ final class _PageQueue implements IntegerRef {
     */
 
     // Indexes of header entries.
-    private static final int I_REMOVE_PAGE_COUNT         = 0;
-    private static final int I_REMOVE_NODE_COUNT         = I_REMOVE_PAGE_COUNT + 8;
-    private static final int I_REMOVE_HEAD_ID            = I_REMOVE_NODE_COUNT + 8;
-    private static final int I_REMOVE_HEAD_OFFSET        = I_REMOVE_HEAD_ID + 8;
-    private static final int I_REMOVE_HEAD_FIRST_PAGE_ID = I_REMOVE_HEAD_OFFSET + 4;
-    private static final int I_APPEND_HEAD_ID            = I_REMOVE_HEAD_FIRST_PAGE_ID + 8;
-            static final int HEADER_SIZE                 = I_APPEND_HEAD_ID + 8;
+    static final int I_REMOVE_PAGE_COUNT         = 0;
+    static final int I_REMOVE_NODE_COUNT         = I_REMOVE_PAGE_COUNT + 8;
+    static final int I_REMOVE_HEAD_ID            = I_REMOVE_NODE_COUNT + 8;
+    static final int I_REMOVE_HEAD_OFFSET        = I_REMOVE_HEAD_ID + 8;
+    static final int I_REMOVE_HEAD_FIRST_PAGE_ID = I_REMOVE_HEAD_OFFSET + 4;
+    static final int I_APPEND_HEAD_ID            = I_REMOVE_HEAD_FIRST_PAGE_ID + 8;
+    static final int HEADER_SIZE                 = I_APPEND_HEAD_ID + 8;
 
     // Indexes of node entries.
-    private static final int I_NEXT_NODE_ID  = 0;
-    private static final int I_FIRST_PAGE_ID = I_NEXT_NODE_ID + 8;
-    private static final int I_NODE_START    = I_FIRST_PAGE_ID + 8;
+    static final int I_NEXT_NODE_ID  = 0;
+    static final int I_FIRST_PAGE_ID = I_NEXT_NODE_ID + 8;
+    static final int I_NODE_START    = I_FIRST_PAGE_ID + 8;
 
     private final _PageManager mManager;
     private final int mPageSize;
@@ -605,82 +604,6 @@ final class _PageQueue implements IntegerRef {
         }
 
         return hash == expectedHash && count == (endId - startId);
-    }
-
-    /**
-     * Clears bits representing all removable pages in the queue. Caller must
-     * hold remove lock.
-     */
-    int traceRemovablePages(BitSet pages) throws IOException {
-        int count = 0;
-
-        // Even though not removable, also clear append head. Otherwise, it
-        // gives the impression that one page is missing, even after startup.
-        long nodeId = mAppendHeadId;
-        if (nodeId < mManager.pageArray().getPageCount()) {
-            count++;
-            clearPageBit(pages, nodeId);
-        }
-
-        nodeId = mRemoveHeadId;
-
-        if (nodeId == 0) {
-            return count;
-        }
-
-        long node = p_clone(mRemoveHead, pageSize(mRemoveHead));
-        try {
-            long pageId = mRemoveHeadFirstPageId;
-            IntegerRef.Value nodeOffsetRef = new IntegerRef.Value();
-            nodeOffsetRef.value = mRemoveHeadOffset;
-
-            while (true) {
-                /*
-                  if (mManager.isPageOutOfBounds(pageId)) {
-                  throw new CorruptDatabaseException("Invalid page id in free list: " + pageId);
-                  }
-                */
-
-                count++;
-                clearPageBit(pages, pageId);
-
-                if (nodeOffsetRef.value < pageSize(node)) {
-                    long delta = p_ulongGetVar(node, nodeOffsetRef);
-                    if (delta > 0) {
-                        pageId += delta;
-                        continue;
-                    }
-                }
-
-                // Indicate free list node itself as free and move to the next node
-                // in the free list.
-
-                count++;
-                clearPageBit(pages, nodeId);
-
-                nodeId = p_longGetBE(node, I_NEXT_NODE_ID);
-                if (nodeId == mAppendHeadId || nodeId == mAppendTailId) {
-                    break;
-                }
-
-                mManager.pageArray().readPage(nodeId, node);
-                pageId = p_longGetBE(node, I_FIRST_PAGE_ID);
-                nodeOffsetRef.value = I_NODE_START;
-            }
-        } finally {
-            p_delete(node);
-        }
-
-        return count;
-    }
-
-    private static void clearPageBit(BitSet pages, long pageId) throws CorruptDatabaseException {
-        int index = (int) pageId;
-        if (pages.get(index)) {
-            pages.clear(index);
-        } else if (index < pages.size()) {
-            throw new CorruptDatabaseException("Doubly freed page: " + pageId);
-        }
     }
 
     private int pageSize(long page) {
