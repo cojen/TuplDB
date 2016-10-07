@@ -206,6 +206,10 @@ class TreeCursor implements CauseCloseable, Cursor {
                 frame.bind(node, 0);
                 if (node.mSplit != null) {
                     node = finishSplitShared(frame, node);
+                    if (frame.mNodePos != 0) {
+                        // Rebind if position changed (possibly negative).
+                        frame.bindOrReposition(node, 0);
+                    }
                 }
                 if (node.isLeaf()) {
                     mLeaf = frame;
@@ -4397,7 +4401,9 @@ class TreeCursor implements CauseCloseable, Cursor {
 
             checkChild: {
                 evictChild: if (childNode.mCachedState != Node.CACHED_CLEAN
-                                && parent.mCachedState == Node.CACHED_CLEAN)
+                                && parent.mCachedState == Node.CACHED_CLEAN
+                                // Must be a valid parent -- not a stub from Node.rootDelete.
+                                && parent.mId > 1)
                 {
                     // Parent was evicted before child. Evict child now and mark as clean. If
                     // this isn't done, the notSplitDirty method will short-circuit and not
@@ -4473,7 +4479,9 @@ class TreeCursor implements CauseCloseable, Cursor {
                 childNode.releaseExclusive();
             } else {
                 if (childNode.mCachedState != Node.CACHED_CLEAN
-                    && parent.mCachedState == Node.CACHED_CLEAN)
+                    && parent.mCachedState == Node.CACHED_CLEAN
+                    // Must be a valid parent -- not a stub from Node.rootDelete.
+                    && parent.mId > 1)
                 {
                     // Parent was evicted before child. Evict child now and mark as clean. If
                     // this isn't done, the notSplitDirty method will short-circuit and not
