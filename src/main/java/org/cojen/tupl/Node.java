@@ -4074,9 +4074,13 @@ final class Node extends Latch implements DatabaseAccess {
      */
     private CursorFrame lockLastFrame(CursorFrame lock) {
         while (true) {
-            CursorFrame f = mLastCursorFrame;
-            if (f.tryLock(lock) == f) {
-                return f;
+            CursorFrame last = mLastCursorFrame;
+            CursorFrame lockResult = last.tryLock(lock);
+            if (lockResult == last) {
+                return last;
+            }
+            if (lockResult != null) {
+                last.unlock(lockResult);
             }
             // Must keep trying against the last cursor frame instead of iterating to the
             // previous frame. The lock attempt failed because of a concurrent unbind, but the
