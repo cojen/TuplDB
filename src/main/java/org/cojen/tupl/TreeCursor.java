@@ -496,9 +496,8 @@ class TreeCursor implements CauseCloseable, Cursor {
             }
 
             Node parentNode;
-            int parentPos;
 
-            latchParent: {
+            latchParent: while (true) {
                 splitCheck: {
                     // Latch coupling up the tree usually works, so give it a try. If it works,
                     // then there's no need to worry about a node merge.
@@ -515,7 +514,6 @@ class TreeCursor implements CauseCloseable, Cursor {
                         }
                     } else if (parentNode.mSplit == null) {
                         frame.popv();
-                        parentPos = parentFrame.mNodePos;
                         break latchParent;
                     }
 
@@ -528,8 +526,14 @@ class TreeCursor implements CauseCloseable, Cursor {
                 // When this point is reached, child must be relatched. Parent
                 // latch is held, and the child frame is still valid.
 
-                parentPos = parentFrame.mNodePos;
-                node = latchChildRetainParent(parentNode, parentPos);
+                node = frame.acquireShared();
+
+                if (node.mSplit != null) {
+                    // TODO: try parent upgrade first and avoid looping
+                    parentNode.releaseShared();
+                    node = finishSplitShared(frame, node);
+                    continue latchParent;
+                }
 
                 // Quick check again, in case node got bigger due to merging.  Unlike the
                 // earlier quick check, this one must handle internal nodes too.
@@ -558,10 +562,13 @@ class TreeCursor implements CauseCloseable, Cursor {
 
                 node.releaseShared();
                 frame.popv();
+                break latchParent;
             }
 
             // When this point is reached, only the shared parent latch is held. Child frame is
             // no longer valid.
+
+            int parentPos = parentFrame.mNodePos;
 
             if (parentPos < parentNode.highestInternalPos()) {
                 parentFrame.mNodePos = (parentPos += 2);
@@ -624,9 +631,8 @@ class TreeCursor implements CauseCloseable, Cursor {
                 }
 
                 Node parentNode;
-                int parentPos;
 
-                latchParent: {
+                latchParent: while (true) {
                     splitCheck: {
                         // Latch coupling up the tree usually works, so give it a try. If it
                         // works, then there's no need to worry about a node merge.
@@ -643,7 +649,6 @@ class TreeCursor implements CauseCloseable, Cursor {
                             }
                         } else if (parentNode.mSplit == null) {
                             frame.popv();
-                            parentPos = parentFrame.mNodePos;
                             break latchParent;
                         }
 
@@ -656,8 +661,14 @@ class TreeCursor implements CauseCloseable, Cursor {
                     // When this point is reached, child must be relatched. Parent latch is
                     // held, and the child frame is still valid.
 
-                    parentPos = parentFrame.mNodePos;
-                    node = latchChildRetainParent(parentNode, parentPos);
+                    node = frame.acquireShared();
+
+                    if (node.mSplit != null) {
+                        // TODO: try parent upgrade first and avoid looping
+                        parentNode.releaseShared();
+                        node = finishSplitShared(frame, node);
+                        continue latchParent;
+                    }
 
                     // Quick check again, in case node got bigger due to merging. Unlike the
                     // earlier quick check, this one must handle internal nodes too.
@@ -717,10 +728,13 @@ class TreeCursor implements CauseCloseable, Cursor {
 
                     node.releaseShared();
                     frame.popv();
+                    break latchParent;
                 }
 
                 // When this point is reached, only the shared parent latch is held. Child
                 // frame is no longer valid.
+
+                int parentPos = parentFrame.mNodePos;
 
                 while (parentPos < parentNode.highestInternalPos()) {
                     if (inLimit != null) {
@@ -754,6 +768,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                             } else if (mTree.allowStoredCounts()) {
                                 childNode = latchChildRetainParent(parentNode, parentPos);
 
+                                // Note: If child node is split, it's also dirty.
                                 if (childNode.mCachedState != Node.CACHED_CLEAN ||
                                     !parentNode.tryUpgrade())
                                 {
@@ -882,9 +897,8 @@ class TreeCursor implements CauseCloseable, Cursor {
                 }
 
                 Node parentNode;
-                int parentPos;
 
-                latchParent: {
+                latchParent: while (true) {
                     splitCheck: {
                         // Latch coupling up the tree usually works, so give it a try. If it
                         // works, then there's no need to worry about a node merge.
@@ -913,7 +927,6 @@ class TreeCursor implements CauseCloseable, Cursor {
                             }
                             node.releaseShared();
                             frame.popv();
-                            parentPos = parentFrame.mNodePos;
                             break latchParent;
                         } else {
                             node.releaseShared();
@@ -928,8 +941,14 @@ class TreeCursor implements CauseCloseable, Cursor {
                     // When this point is reached, child must be relatched. Parent latch is
                     // held, and the child frame is still valid.
 
-                    parentPos = parentFrame.mNodePos;
-                    node = latchChildRetainParent(parentNode, parentPos);
+                    node = frame.acquireShared();
+
+                    if (node.mSplit != null) {
+                        // TODO: try parent upgrade first and avoid looping
+                        parentNode.releaseShared();
+                        node = finishSplitShared(frame, node);
+                        continue latchParent;
+                    }
 
                     // Count leaf keys with parent latch held, avoiding counting errors when
                     // latching up. A node merge might otherwise throw the count off.
@@ -948,10 +967,13 @@ class TreeCursor implements CauseCloseable, Cursor {
 
                     node.releaseShared();
                     frame.popv();
+                    break latchParent;
                 }
 
                 // When this point is reached, only the shared parent latch is held. Child
                 // frame is no longer valid.
+
+                int parentPos = parentFrame.mNodePos;
 
                 while (parentPos < parentNode.highestInternalPos()) {
                     parentFrame.mNodePos = (parentPos += 2);
@@ -974,6 +996,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                             } else if (mTree.allowStoredCounts()) {
                                 childNode = latchChildRetainParent(parentNode, parentPos);
 
+                                // Note: If child node is split, it's also dirty.
                                 if (childNode.mCachedState != Node.CACHED_CLEAN ||
                                     !parentNode.tryUpgrade())
                                 {
@@ -1146,9 +1169,8 @@ class TreeCursor implements CauseCloseable, Cursor {
             }
 
             Node parentNode;
-            int parentPos;
 
-            latchParent: {
+            latchParent: while (true) {
                 splitCheck: {
                     // Latch coupling up the tree usually works, so give it a try. If it works,
                     // then there's no need to worry about a node merge.
@@ -1165,7 +1187,6 @@ class TreeCursor implements CauseCloseable, Cursor {
                         }
                     } else if (parentNode.mSplit == null) {
                         frame.popv();
-                        parentPos = parentFrame.mNodePos;
                         break latchParent;
                     }
 
@@ -1178,8 +1199,14 @@ class TreeCursor implements CauseCloseable, Cursor {
                 // When this point is reached, child must be relatched. Parent latch is held,
                 // and the child frame is still valid.
 
-                parentPos = parentFrame.mNodePos;
-                node = latchChildRetainParent(parentNode, parentPos);
+                node = frame.acquireShared();
+
+                if (node.mSplit != null) {
+                    // TODO: try parent upgrade first and avoid looping
+                    parentNode.releaseShared();
+                    node = finishSplitShared(frame, node);
+                    continue latchParent;
+                }
 
                 // Quick check again, in case node got bigger due to merging.  Unlike the
                 // earlier quick check, this one must handle internal nodes too.
@@ -1208,10 +1235,13 @@ class TreeCursor implements CauseCloseable, Cursor {
 
                 node.releaseShared();
                 frame.popv();
+                break latchParent;
             }
 
             // When this point is reached, only the shared parent latch is held. Child frame is
             // no longer valid.
+
+            int parentPos = parentFrame.mNodePos;
 
             if (parentPos > 0) {
                 parentFrame.mNodePos = (parentPos -= 2);
@@ -1273,9 +1303,8 @@ class TreeCursor implements CauseCloseable, Cursor {
                 }
 
                 Node parentNode;
-                int parentPos;
 
-                latchParent: {
+                latchParent: while (true) {
                     splitCheck: {
                         // Latch coupling up the tree usually works, so give it a try. If it
                         // works, then there's no need to worry about a node merge.
@@ -1292,7 +1321,6 @@ class TreeCursor implements CauseCloseable, Cursor {
                             }
                         } else if (parentNode.mSplit == null) {
                             frame.popv();
-                            parentPos = parentFrame.mNodePos;
                             break latchParent;
                         }
 
@@ -1305,8 +1333,14 @@ class TreeCursor implements CauseCloseable, Cursor {
                     // When this point is reached, child must be relatched. Parent latch is
                     // held, and the child frame is still valid.
 
-                    parentPos = parentFrame.mNodePos;
-                    node = latchChildRetainParent(parentNode, parentPos);
+                    node = frame.acquireShared();
+
+                    if (node.mSplit != null) {
+                        // TODO: try parent upgrade first and avoid looping
+                        parentNode.releaseShared();
+                        node = finishSplitShared(frame, node);
+                        continue latchParent;
+                    }
 
                     // Quick check again, in case node got bigger due to merging. Unlike the
                     // earlier quick check, this one must handle internal nodes too.
@@ -1365,10 +1399,13 @@ class TreeCursor implements CauseCloseable, Cursor {
 
                     node.releaseShared();
                     frame.popv();
+                    break latchParent;
                 }
 
                 // When this point is reached, only the shared parent latch is held. Child
                 // frame is no longer valid.
+
+                int parentPos = parentFrame.mNodePos;
 
                 while (parentPos > 0) {
                     parentFrame.mNodePos = (parentPos -= 2);
@@ -1402,6 +1439,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                             } else if (mTree.allowStoredCounts()) {
                                 childNode = latchChildRetainParent(parentNode, parentPos);
 
+                                // Note: If child node is split, it's also dirty.
                                 if (childNode.mCachedState != Node.CACHED_CLEAN ||
                                     !parentNode.tryUpgrade())
                                 {
