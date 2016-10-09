@@ -305,7 +305,7 @@ public class EnduranceTest {
                         ix.store(Transaction.BOGUS, ("key-" + i).getBytes(),
                                  ("value-" + i).getBytes());
                     }
-                    for (int i=0; i<30; i++) {
+                    for (int i=0; i<120; i++) {
                         ix.store(Transaction.BOGUS, ("key-" + i).getBytes(), null);
                     }
                 }

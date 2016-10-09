@@ -3,10 +3,11 @@ Changelog
 
 v1.3.7
 ------
+* Fix corruption caused by cursor traversal into split nodes.
+* Fix corruption caused by broken cursor binding following a node split and merge.
 * Fix latch upgrade race condition when deleting a ghost.
 * Fix race conditions when handling parent-before-child node evictions.
 * Fix race conditions when deleting root node.
-* Fix corruption caused by broken cursor binding following a node split and merge.
 * Add support for attaching objects to transactions, for tracking them.
 * Detect deadlocks when lock timeout is zero, for non-try variants.
 * Suppress transaction exceptions from cleanup methods when database is closed.
