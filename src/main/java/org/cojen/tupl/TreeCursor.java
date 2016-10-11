@@ -462,7 +462,8 @@ class TreeCursor implements CauseCloseable, Cursor {
      * valid. Leaf frame remains latched when method returns a non-null node.
      *
      * @param frame leaf frame, not split, with shared latch
-     * @return latched first node, possibly empty, bound by mLeaf frame, null if nothing left
+     * @return latched first node, never split, possibly empty, bound by mLeaf frame, or null
+     * if nothing left
      */
     private Node toNextAny(CursorFrame frame) throws IOException {
         Node node = frame.mNode;
