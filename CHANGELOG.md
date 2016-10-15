@@ -1,7 +1,7 @@
 Changelog
 =========
 
-v1.3.7
+v1.3.7 (2016-10-15)
 ------
 * Fix corruption caused by cursor traversal into split nodes.
 * Fix corruption caused by broken cursor binding following a node split and merge.
