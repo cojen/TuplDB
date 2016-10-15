@@ -1245,6 +1245,63 @@ public class CursorTest {
     }
 
     @Test
+    public void stubRecycle() throws Exception {
+        // When the tree root is deleted, a stub will remain for any other active cursors.
+        // Stubs must not be recycled until after all frames bound to it have unbound.
+
+        View ix = openIndex("test");
+
+        final int count = 10000;
+        for (int i=0; i<count; i++) {
+            ix.store(Transaction.BOGUS, key(i), value(i));
+        }
+
+        // Position a cursor in the middle.
+        Cursor c = ix.newCursor(Transaction.BOGUS);
+        int mid = count / 2;
+        c.find(key(mid));
+        fastAssertArrayEquals(value(mid), c.value());
+
+        // Another at the same position.
+        Cursor c2 = c.copy();
+
+        // Delete everything.
+        for (int i=0; i<count; i++) {
+            ix.delete(Transaction.BOGUS, key(i));
+        }
+
+        // Ensure that stub pages aren't recycled.
+        mDb.checkpoint();
+        View ix2 = openIndex("test2");
+        for (int i=0; i<count; i++) {
+            ix2.store(Transaction.BOGUS, key(i), value(i));
+        }
+
+        // Original cursor should still be valid, acting on an empty index. Advancing forward
+        // should reset it. If the stub pages were recycled, then this step would likely fail
+        // with a CorruptDatabaseException.
+
+        c.next();
+        assertNull(c.key());
+
+        // Insert back into the first index, and verify that the other cursor works fine,
+        // oblivious to all the changes made to the underlying tree.
+
+        for (int i=0; i<count; i++) {
+            ix.store(Transaction.BOGUS, key(i), value(i));
+        }
+
+        for (; c2.key() != null; c2.next()) {
+            int actualKey = Utils.decodeIntBE(c2.key(), 0);
+            fastAssertArrayEquals(key(mid), c2.key());
+            fastAssertArrayEquals(value(mid), c2.value());
+            mid++;
+        }
+
+        assertEquals(count, mid);
+    }
+
+    @Test
     public void stability() throws Exception {
         // Verifies that cursors are positioned properly after making structural modifications
         // to the tree.

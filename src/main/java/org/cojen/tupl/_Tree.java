@@ -950,16 +950,93 @@ class _Tree implements View, Index {
      * @return replacement node, still latched
      */
     final _Node finishSplit(final _CursorFrame frame, _Node node) throws IOException {
-        while (true) {
-            if (node == mRoot) {
-                try {
-                    node.finishSplitRoot();
-                } finally {
+        begin: while (true) {
+            splitRoot: if (node == mRoot) {
+                // When tree loses a level, a stub node remains for any cursors which were
+                // bound to the old root. When a level is added back, the cursors bound to the
+                // stub must rebind to the new root node. This happens when the
+                // _Node.finishSplitRoot method is called, but the stub node must be latched
+                // exclusively for this to work correctly. Discover the stub node here, and
+                // latch it exclusively. The latch direction is in reverse order, and so
+                // deadlock is possible. To avoid this, fail fast and retry as necessary.
+                // Whenever the node latch is released and reacquired, the split state must be
+                // checked again. Another thread might have finished the split.
+
+                _Node stubNode = null;
+                for (_CursorFrame f = node.mLastCursorFrame; f != null; f = f.mPrevCousin) {
+                    _CursorFrame stubFrame = f.mParentFrame;
+                    if (stubFrame == null) {
+                        // No stub here.
+                        continue;
+                    }
+
+                    _Node n = stubFrame.mNode;
+                    if (n == null) {
+                        // Frame exists, but it's being concurrently unbound.
+                        continue;
+                    }
+
+                    if (n.tryAcquireExclusive()) {
+                        _Node current = stubFrame.mNode;
+                        if (current == n) {
+                            // Stub has been found and latched.
+                            stubNode = n;
+                            break;
+                        }
+                        // Frame is unbound now, so keep looking.
+                        n.releaseExclusive();
+                        if (current != null) {
+                            throw new AssertionError("Expected null node reference: " + current);
+                        }
+                        continue;
+                    }
+
+                    // Acquire the stub latch in the safe top-down order, but release it all
+                    // and retry anyhow. Any number of state changes can have occurred when the
+                    // root node latch was released, so just spin. Acquiring the stub latch
+                    // here increases the likelihood that the latch upwards will succeed
+                    // without extra spinning.
                     node.releaseExclusive();
+                    n.acquireExclusive();
+                    try {
+                        node = frame.acquireExclusive();
+                    } finally {
+                        n.releaseExclusive();
+                    }
+
+                    if (node.mSplit == null) {
+                        // Not split anymore.
+                        return node;
+                    }
+
+                    continue begin;
+                }
+
+                try {
+                    try {
+                        if (node != mRoot) {
+                            throw new AssertionError("Not root node anymore: " + node);
+                        }
+
+                        node.finishSplitRoot();
+                    } finally {
+                        node.releaseExclusive();
+                    }
+                } finally {
+                    if (stubNode != null) {
+                        stubNode.releaseExclusive();
+                    }
                 }
 
                 // Must return the node as referenced by the frame, which is no longer the root.
-                return frame.acquireExclusive();
+                node = frame.acquireExclusive();
+
+                if (node.mSplit != null) {
+                    // _Split again already!
+                    continue begin;
+                }
+
+                return node;
             }
 
             // TODO: Quick check by trying to latch upwards. Give up if parent is split.
@@ -980,7 +1057,7 @@ class _Tree implements View, Index {
                     // _Node became the root in between the time the latch was released and
                     // re-acquired. Go back to the case for handling root splits.
                     parentNode.releaseExclusive();
-                    break;
+                    continue begin;
                 }
                 parentNode.insertSplitChildRef(parentFrame, this, parentFrame.mNodePos, node);
             }
