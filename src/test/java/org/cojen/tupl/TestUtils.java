@@ -18,6 +18,7 @@ package org.cojen.tupl;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 import org.cojen.tupl.io.*;
 
@@ -75,12 +76,22 @@ class TestUtils {
     }
 
     static Database newTempDatabase(long cacheSize, OpenMode mode) throws IOException {
+        return newTempDatabase(cacheSize, mode, -1);
+    }
+
+    static Database newTempDatabase(long cacheSize, OpenMode mode, int checkpointRateMillis)
+        throws IOException
+    {
         DatabaseConfig config = new DatabaseConfig();
         if (cacheSize >= 0) {
             config.minCacheSize(cacheSize);
         }
         config.durabilityMode(DurabilityMode.NO_FLUSH);
         config.directPageAccess(false);
+
+        if (checkpointRateMillis >= 0) {
+            config.checkpointRate(checkpointRateMillis, TimeUnit.MILLISECONDS);
+        }
 
         switch (mode) {
         default:
@@ -100,6 +111,7 @@ class TestUtils {
                 cacheSize = pageSize * 1000;
             }
             File baseFile = newTempBaseFile();
+            config.baseFile(baseFile);
             File dbFile = new File(baseFile.getParentFile(), baseFile.getName() + ".db");
             MappedPageArray pa = MappedPageArray.open
                 (pageSize, (cacheSize + pageSize - 1) / pageSize, dbFile,
