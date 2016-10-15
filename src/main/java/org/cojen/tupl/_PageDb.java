@@ -154,6 +154,10 @@ abstract class _PageDb implements CauseCloseable {
         throw new UnsupportedOperationException();
     }
 
+    public long dirtyPage(long id) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
     public long copyPage(long srcId, long dstId) throws IOException {
         throw new UnsupportedOperationException();
     }

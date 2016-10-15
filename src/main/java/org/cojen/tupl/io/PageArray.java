@@ -247,6 +247,10 @@ public abstract class PageArray implements CauseCloseable {
         throw new UnsupportedOperationException();
     }
 
+    public long dirtyPage(long index) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
     public long copyPage(long srcIndex, long dstIndex) throws IOException {
         throw new UnsupportedOperationException();
     }

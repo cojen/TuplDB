@@ -485,6 +485,11 @@ final class _DurablePageDb extends _PageDb {
     }
 
     @Override
+    public long dirtyPage(long id) throws IOException {
+        return mPageArray.dirtyPage(id);
+    }
+
+    @Override
     public long copyPage(long srcId, long dstId) throws IOException {
         return mPageArray.copyPage(srcId, dstId);
     }
