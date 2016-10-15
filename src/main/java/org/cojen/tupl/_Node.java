@@ -4061,9 +4061,20 @@ final class _Node extends Latch implements _DatabaseAccess {
         this.fixFrameBindings(lock, childLastFrame); // Note: frames were swapped
         child.fixFrameBindings(lock, thisLastFrame);
 
-        child.mPage = oldRootPage;
-        child.type(oldRootType);
-        child.clearEntries();
+        /*P*/ // [
+        // child.mPage = oldRootPage;
+        // child.type(oldRootType);
+        // child.clearEntries();
+        /*P*/ // |
+        if (tree.mDatabase.mFullyMapped) {
+            // Must use a special reserved page because existing one will be recycled.
+            child.mPage = p_emptyTreeNode(oldRootType);
+        } else {
+            child.mPage = oldRootPage;
+            child.type(oldRootType);
+            child.clearEntries();
+        }
+        /*P*/ // ]
 
         // Search vector of stub needs a child pointer to the new root.
         p_longPutLE(oldRootPage, child.searchVecEnd() + 2, this.mId);

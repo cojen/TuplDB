@@ -44,7 +44,9 @@ final class DirectPageOps {
     private static final Unsafe UNSAFE = Hasher.getUnsafe();
     private static final long BYTE_ARRAY_OFFSET = UNSAFE.arrayBaseOffset(byte[].class);
     private static final long CLOSED_TREE_PAGE;
-    private static final long NON_TREE_PAGE;
+    private static final long EMPTY_TREE_IN;
+    private static final long EMPTY_TREE_BIN;
+    private static final long EMPTY_TREE_LEAF;
 
     static {
         Integer checkedPageSize = Integer.getInteger
@@ -58,14 +60,17 @@ final class DirectPageOps {
             CHECKED_PAGE_SIZE = checkedPageSize;
         }
 
-        CLOSED_TREE_PAGE = newEmptyPage();
-        NON_TREE_PAGE = newEmptyPage();
+        CLOSED_TREE_PAGE = newEmptyPage(Node.TYPE_TN_LEAF);
+
+        EMPTY_TREE_IN = newEmptyPage(Node.TYPE_TN_IN);
+        EMPTY_TREE_BIN = newEmptyPage(Node.TYPE_TN_BIN);
+        EMPTY_TREE_LEAF = newEmptyPage(Node.TYPE_TN_LEAF);
     }
 
-    private static long newEmptyPage() {
+    private static long newEmptyPage(byte type) {
         long empty = p_calloc(Node.TN_HEADER_SIZE);
 
-        p_bytePut(empty, 0, Node.TYPE_TN_LEAF | Node.LOW_EXTREMITY | Node.HIGH_EXTREMITY);
+        p_bytePut(empty, 0, type | Node.LOW_EXTREMITY | Node.HIGH_EXTREMITY);
 
         // Set fields such that binary search returns ~0 and availableBytes returns 0.
 
@@ -87,7 +92,27 @@ final class DirectPageOps {
     }
 
     static long p_nonTreePage() {
-        return NON_TREE_PAGE;
+        return EMPTY_TREE_LEAF;
+    }
+
+    /**
+     * Returns a static page pointer representing an empty tree node, of the given type. Only
+     * the upper 4 bits of the type are examined, which defines the major type as described in
+     * the Node class. The only supported types are of the "TN" type, which means TreeNode.
+     *
+     * @throws AssertionError if unknown type is provided
+     */
+    static long p_emptyTreeNode(byte type) {
+        switch (type & 0xf0) {
+        case Node.TYPE_TN_IN & 0xf0:
+            return EMPTY_TREE_IN;
+        case Node.TYPE_TN_BIN & 0xf0:
+            return EMPTY_TREE_BIN;
+        case Node.TYPE_TN_LEAF & 0xf0:
+            return EMPTY_TREE_LEAF;
+        default:
+            throw new AssertionError("Unknown tree node type: " + type);
+        }
     }
 
     static long p_alloc(int size) {
@@ -106,7 +131,12 @@ final class DirectPageOps {
 
     static void p_delete(final long page) {
         // Only delete pages that were allocated from the Unsafe class and aren't globals.
-        if (page != CLOSED_TREE_PAGE && page != NON_TREE_PAGE && !inArena(page)) {
+        if (page != CLOSED_TREE_PAGE &&
+            page != EMPTY_TREE_IN &&
+            page != EMPTY_TREE_BIN &&
+            page != EMPTY_TREE_LEAF &&
+            !inArena(page))
+        {
             UNSAFE.freeMemory(page);
         }
     }
