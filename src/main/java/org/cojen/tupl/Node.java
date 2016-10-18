@@ -3515,7 +3515,7 @@ final class Node extends Latch implements DatabaseAccess {
                     LocalDatabase db = tree.mDatabase;
                     int max = Math.min(db.mMaxFragmentedEntrySize,
                                        garbage + leftSpace + rightSpace);
-                    value = db.fragment(value, value.length, max);
+                    value = db.fragment(value, value.length, max - keyLen);
                     if (value == null) {
                         throw new AssertionError();
                     }
