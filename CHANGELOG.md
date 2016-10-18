@@ -1,6 +1,10 @@
 Changelog
 =========
 
+v1.3.7.1
+--------
+* Fix when updating a large value into a newly split node.
+
 v1.3.7 (2016-10-15)
 ------
 * Fix corruption caused by cursor traversal into split nodes.
