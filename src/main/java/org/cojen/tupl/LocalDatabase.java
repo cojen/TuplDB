@@ -201,11 +201,8 @@ final class LocalDatabase extends AbstractDatabase {
     // Pre-calculated maximum capacities for inode levels.
     private final long[] mFragmentInodeLevelCaps;
 
-    private final Object mTxnIdLock = new Object();
-    // The following fields are guarded by mTxnIdLock.
-    private long mTxnId;
-    private UndoLog mTopUndoLog;
-    private int mUndoLogCount;
+    // Stripe the transaction contexts, for improved concurrency.
+    private final TransactionContext[] mTxnContexts;
 
     // Checkpoint lock is fair, to ensure that user checkpoint requests are not stalled for too
     // long by checkpoint thread.
@@ -331,8 +328,9 @@ final class LocalDatabase extends AbstractDatabase {
         mLockManager = new LockManager(this, config.mLockUpgradeRule, mDefaultLockTimeoutNanos);
 
         // Initialize NodeMap, the primary cache of Nodes.
+        final int procCount = Runtime.getRuntime().availableProcessors();
         {
-            int latches = Utils.roundUpPower2(Runtime.getRuntime().availableProcessors() * 16);
+            int latches = Utils.roundUpPower2(procCount * 16);
             int capacity = Utils.roundUpPower2(maxCache);
             if (capacity < 0) {
                 capacity = 0x40000000;
@@ -498,7 +496,7 @@ final class LocalDatabase extends AbstractDatabase {
                     }
                 }
 
-                int stripes = roundUpPower2(Runtime.getRuntime().availableProcessors() * 4);
+                int stripes = roundUpPower2(procCount * 4);
 
                 int stripeSize;
                 while (true) {
@@ -551,8 +549,12 @@ final class LocalDatabase extends AbstractDatabase {
                                       duration, TimeUnit.SECONDS);
             }
 
-            int sparePageCount = Runtime.getRuntime().availableProcessors();
-            mSparePagePool = new PagePool(mPageSize, sparePageCount);
+            mTxnContexts = new TransactionContext[procCount * 4];
+            for (int i=0; i<mTxnContexts.length; i++) {
+                mTxnContexts[i] = new TransactionContext(procCount);
+            };
+
+            mSparePagePool = new PagePool(mPageSize, procCount);
 
             mCommitLock.acquireExclusive();
             try {
@@ -585,9 +587,7 @@ final class LocalDatabase extends AbstractDatabase {
                 mOpenTreesRefQueue = new ReferenceQueue<>();
             }
 
-            synchronized (mTxnIdLock) {
-                mTxnId = decodeLongLE(header, I_TRANSACTION_ID);
-            }
+            long txnId = decodeLongLE(header, I_TRANSACTION_ID);
 
             long redoNum = decodeLongLE(header, I_CHECKPOINT_NUMBER);
             long redoPos = decodeLongLE(header, I_REDO_POSITION);
@@ -689,11 +689,9 @@ final class LocalDatabase extends AbstractDatabase {
                     // Avoid re-using transaction ids used by recovery.
                     redoTxnId = applier.mHighestTxnId;
                     if (redoTxnId != 0) {
-                        synchronized (mTxnIdLock) {
-                            // Subtract for modulo comparison.
-                            if (mTxnId == 0 || (redoTxnId - mTxnId) > 0) {
-                                mTxnId = redoTxnId;
-                            }
+                        // Subtract for modulo comparison.
+                        if (txnId == 0 || (redoTxnId - txnId) > 0) {
+                            txnId = redoTxnId;
                         }
                     }
 
@@ -735,6 +733,10 @@ final class LocalDatabase extends AbstractDatabase {
 
                     recoveryComplete(recoveryStart);
                 }
+            }
+
+            for (TransactionContext txnContext : mTxnContexts) {
+                txnContext.resetTransactionId(txnId++);
             }
 
             if (mBaseFile == null || openMode == OPEN_TEMP) {
@@ -1457,69 +1459,10 @@ final class LocalDatabase extends AbstractDatabase {
     }
 
     /**
-     * Caller must hold commit lock. This ensures that highest transaction id
-     * is persisted correctly by checkpoint.
+     * Called by transaction constructor after hash code has been assigned.
      */
-    void register(UndoLog undo) {
-        synchronized (mTxnIdLock) {
-            UndoLog top = mTopUndoLog;
-            if (top != null) {
-                undo.mPrev = top;
-                top.mNext = undo;
-            }
-            mTopUndoLog = undo;
-            mUndoLogCount++;
-        }
-    }
-
-    /**
-     * To be called only by transaction instances, and caller must hold commit lock. The commit
-     * lock ensures that highest transaction id is persisted correctly by checkpoint.
-     *
-     * @return positive non-zero transaction id
-     */
-    long nextTransactionId() {
-        long txnId;
-        {
-            synchronized (mTxnIdLock) {
-                txnId = ++mTxnId;
-            }
-
-            if (txnId <= 0) {
-                // Improbably, the transaction identifier has wrapped around. Vend positive
-                // identifiers, except for non-replicated transactions.
-                synchronized (mTxnIdLock) {
-                    txnId = ++mTxnId;
-                    if (txnId <= 0) {
-                        mTxnId = txnId = 1;
-                    }
-                }
-            }
-        }
-
-        return txnId;
-    }
-
-    /**
-     * Should only be called after all log entries have been truncated or rolled back. Caller
-     * does not need to hold db commit lock.
-     */
-    void unregister(UndoLog log) {
-        synchronized (mTxnIdLock) {
-            UndoLog prev = log.mPrev;
-            UndoLog next = log.mNext;
-            if (prev != null) {
-                prev.mNext = next;
-                log.mPrev = null;
-            }
-            if (next != null) {
-                next.mPrev = prev;
-                log.mNext = null;
-            } else if (log == mTopUndoLog) {
-                mTopUndoLog = prev;
-            }
-            mUndoLogCount--;
-        }
+    TransactionContext selectTransactionContext(LocalTransaction txn) {
+        return mTxnContexts[(txn.hashCode() & 0x7fffffff) % mTxnContexts.length];
     }
 
     @Override
@@ -1724,9 +1667,8 @@ final class LocalDatabase extends AbstractDatabase {
 
             stats.lockCount = mLockManager.numLocksHeld();
 
-            synchronized (mTxnIdLock) {
-                stats.txnCount = mUndoLogCount;
-                stats.txnsCreated = mTxnId;
+            for (TransactionContext txnContext : mTxnContexts) {
+                txnContext.addStats(stats);
             }
         } finally {
             mCommitLock.unlock();
@@ -2098,11 +2040,12 @@ final class LocalDatabase extends AbstractDatabase {
                     mDirtyList.delete(this);
                 }
 
-                synchronized (mTxnIdLock) {
-                    for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
-                        log.delete();
+                if (mTxnContexts != null) {
+                    for (TransactionContext txnContext : mTxnContexts) {
+                        if (txnContext != null) {
+                            txnContext.deleteUndoLogs();
+                        }
                     }
-                    mTopUndoLog = null;
                 }
 
                 nodeMapDeleteAll();
@@ -4351,34 +4294,42 @@ final class LocalDatabase extends AbstractDatabase {
                 // Tree, but this requires more features to be added to Tree
                 // first. Specifically, large values and appending to them.
 
-                final long txnId;
+                long txnId = 0;
                 final long masterUndoLogId;
 
-                synchronized (mTxnIdLock) {
-                    txnId = mTxnId;
+                if (resume) {
+                    masterUndoLogId = masterUndoLog == null ? 0 : masterUndoLog.topNodeId();
+                } else {
+                    byte[] workspace = null;
 
-                    if (resume) {
-                        masterUndoLogId = masterUndoLog == null ? 0 : masterUndoLog.topNodeId();
-                    } else {
-                        int count = mUndoLogCount;
-                        if (count == 0) {
-                            masterUndoLogId = 0;
-                        } else {
-                            masterUndoLog = new UndoLog(this, 0);
-                            byte[] workspace = null;
-                            for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
-                                workspace = log.writeToMaster(masterUndoLog, workspace);
+                    for (TransactionContext txnContext : mTxnContexts) {
+                        txnContext.acquireShared();
+                        try {
+                            txnId = txnContext.maxTransactionId(txnId);
+
+                            if (txnContext.hasUndoLogs()) {
+                                if (masterUndoLog == null) {
+                                    masterUndoLog = new UndoLog(this, 0);
+                                }
+                                workspace = txnContext.writeToMaster(masterUndoLog, workspace);
                             }
-                            masterUndoLogId = masterUndoLog.topNodeId();
-                            if (masterUndoLogId == 0) {
-                                // Nothing was actually written to the log.
-                                masterUndoLog = null;
-                            }
+                        } finally {
+                            txnContext.releaseShared();
                         }
-
-                        // Stash it to resume after an aborted checkpoint.
-                        mCommitMasterUndoLog = masterUndoLog;
                     }
+
+                    if (masterUndoLog == null) {
+                        masterUndoLogId = 0;
+                    } else {
+                        masterUndoLogId = masterUndoLog.topNodeId();
+                        if (masterUndoLogId == 0) {
+                            // Nothing was actually written to the log.
+                            masterUndoLog = null;
+                        }
+                    }
+
+                    // Stash it to resume after an aborted checkpoint.
+                    mCommitMasterUndoLog = masterUndoLog;
                 }
 
                 p_longPutLE(header, hoff + I_TRANSACTION_ID, txnId);
