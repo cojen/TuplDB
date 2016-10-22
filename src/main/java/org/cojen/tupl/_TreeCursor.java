@@ -3774,8 +3774,11 @@ class _TreeCursor implements CauseCloseable, Cursor {
         throws IOException
     {
         _CursorFrame parentFrame = frame.mParentFrame;
+        _Node childNode;
 
-        if (parentFrame != null) {
+        if (parentFrame == null) {
+            childNode = frame.acquireShared();
+        } else {
             _Node parentNode = parentFrame.mNode;
             int parentLevel = level - 1;
             if (parentLevel > 0 && stack[parentLevel] != parentNode) {
@@ -3789,110 +3792,92 @@ class _TreeCursor implements CauseCloseable, Cursor {
                 }
             }
 
-            // Verify child node keys are lower/higher than parent node.
-
             parentNode = parentFrame.acquireShared();
-            _Node childNode = frame.acquireShared();
-            long childId = childNode.mId;
+            try {
+                childNode = frame.acquireShared();
 
-            if (!childNode.hasKeys() || !parentNode.hasKeys()) {
-                // Nodes can be empty before they're deleted.
-                childNode.releaseShared();
+                boolean result;
+                try {
+                    result = verifyParentChildFrames
+                        (level, parentFrame, parentNode, frame, childNode, observer);
+                } catch (Throwable e) {
+                    childNode.releaseShared();
+                    throw e;
+                }
+
+                if (!result) {
+                    childNode.releaseShared();
+                    return false;
+                }
+            } finally {
                 parentNode.releaseShared();
+            }
+        }
+
+        return childNode.verifyTreeNode(level, observer);
+    }
+
+    private boolean verifyParentChildFrames(int level,
+                                            _CursorFrame parentFrame, _Node parentNode,
+                                            _CursorFrame childFrame, _Node childNode,
+                                            VerificationObserver observer)
+        throws IOException
+    {
+        final long childId = childNode.mId;
+
+        // Verify child node keys are lower/higher than parent node. Nodes can be empty before
+        // they're deleted. Also, skip nodes which are splitting.
+
+        if (childNode.hasKeys() && parentNode.hasKeys()
+            && childNode.mSplit == null && parentNode.mSplit == null)
+        {
+            int parentPos = parentFrame.mNodePos;
+
+            int childPos;
+            boolean left;
+            if (parentPos >= parentNode.highestInternalPos()) {
+                // Verify lowest child key is greater than or equal to parent key.
+                parentPos = parentNode.highestKeyPos();
+                childPos = 0;
+                left = false;
             } else {
-                int parentPos = parentFrame.mNodePos;
-
-                int childPos;
-                boolean left;
-                if (parentPos >= parentNode.highestInternalPos()) {
-                    // Verify lowest child key is greater than or equal to parent key.
-                    parentPos = parentNode.highestKeyPos();
-                    childPos = 0;
-                    left = false;
-                } else {
-                    // Verify highest child key is lower than parent key.
-                    childPos = childNode.highestKeyPos();
-                    left = true;
-                }
-
-                byte[] parentKey = parentNode.retrieveKey(parentPos);
-                byte[] childKey = childNode.retrieveKey(childPos);
-
-                childNode.releaseShared();
-                parentNode.releaseShared();
-
-                int compare = compareUnsigned(childKey, parentKey);
-
-                if (left) {
-                    if (compare >= 0) {
-                        observer.failed = true;
-                        if (!observer.indexNodeFailed
-                            (childId, level,
-                             "Child keys are not less than parent key: " + parentNode))
-                        {
-                            return false;
-                        }
-                    }
-                } else if (childNode.isInternal()) {
-                    if (compare <= 0) {
-                        observer.failed = true;
-                        if (!observer.indexNodeFailed
-                            (childId, level,
-                             "Internal child keys are not greater than parent key: " + parentNode))
-                        {
-                            return false;
-                        }
-                    }
-                } else if (compare < 0) {
-                    observer.failed = true;
-                    if (!observer.indexNodeFailed
-                        (childId, level,
-                         "Child keys are not greater than or equal to parent key: " + parentNode))
-                    {
-                        return false;
-                    }
-                }
+                // Verify highest child key is lower than parent key.
+                childPos = childNode.highestKeyPos();
+                left = true;
             }
 
-            // Verify node level types.
+            byte[] parentKey = parentNode.retrieveKey(parentPos);
+            byte[] childKey = childNode.retrieveKey(childPos);
 
-            switch (parentNode.type()) {
-            case _Node.TYPE_TN_IN:
-                if (childNode.isLeaf()) {
+            int compare = compareUnsigned(childKey, parentKey);
+
+            if (left) {
+                if (compare >= 0) {
                     observer.failed = true;
                     if (!observer.indexNodeFailed
-                        (childId, level,
-                         "Child is a leaf, but parent is a regular internal node: " + parentNode))
+                        (childId, level, "Child keys are not less than parent key: " + parentNode))
                     {
                         return false;
                     }
                 }
-                break;
-            case _Node.TYPE_TN_BIN:
-                if (!childNode.isLeaf()) {
+            } else if (childNode.isInternal()) {
+                if (compare <= 0) {
                     observer.failed = true;
                     if (!observer.indexNodeFailed
                         (childId, level,
-                         "Child is not a leaf, but parent is a bottom internal node: "
-                         + parentNode))
+                         "Internal child keys are not greater than parent key: " + parentNode))
                     {
                         return false;
                     }
                 }
-                break;
-            default:
-                if (!parentNode.isLeaf()) {
-                    break;
-                }
-                // Fallthrough...
-            case _Node.TYPE_TN_LEAF:
+            } else if (compare < 0) {
                 observer.failed = true;
-                if (!observer.indexNodeFailed(childId, level,
-                                              "Child parent is a leaf node: " + parentNode))
+                if (!observer.indexNodeFailed
+                    (childId, level,
+                     "Child keys are not greater than or equal to parent key: " + parentNode))
                 {
                     return false;
                 }
-                break;
             }
 
             // Verify extremities.
@@ -3920,7 +3905,47 @@ class _TreeCursor implements CauseCloseable, Cursor {
             }
         }
 
-        return frame.acquireShared().verifyTreeNode(level, observer);
+        // Verify node level types.
+
+        switch (parentNode.type()) {
+        case _Node.TYPE_TN_IN:
+            if (childNode.isLeaf() && parentNode.mId > 1) { // stubs are never bins
+                observer.failed = true;
+                if (!observer.indexNodeFailed
+                    (childId, level,
+                     "Child is a leaf, but parent is a regular internal node: " + parentNode))
+                {
+                    return false;
+                }
+            }
+            break;
+        case _Node.TYPE_TN_BIN:
+            if (!childNode.isLeaf()) {
+                observer.failed = true;
+                if (!observer.indexNodeFailed
+                    (childId, level,
+                     "Child is not a leaf, but parent is a bottom internal node: " + parentNode))
+                {
+                    return false;
+                }
+            }
+            break;
+        default:
+            if (!parentNode.isLeaf()) {
+                break;
+            }
+            // Fallthrough...
+        case _Node.TYPE_TN_LEAF:
+            observer.failed = true;
+            if (!observer.indexNodeFailed
+                (childId, level, "Child parent is a leaf node: " + parentNode))
+            {
+                return false;
+            }
+            break;
+        }
+
+        return true;
     }
 
     /**
@@ -4222,7 +4247,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
                 if (rightChildNode != null) {
                     throw new AssertionError();
                 }
-                node.rootDelete(mTree, leftChildNode);
+                mTree.rootDelete(leftChildNode);
                 return;
             }
 

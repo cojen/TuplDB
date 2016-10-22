@@ -43,10 +43,9 @@ final class DirectPageOps {
 
     private static final Unsafe UNSAFE = Hasher.getUnsafe();
     private static final long BYTE_ARRAY_OFFSET = UNSAFE.arrayBaseOffset(byte[].class);
-    private static final long CLOSED_TREE_PAGE;
-    private static final long EMPTY_TREE_IN;
-    private static final long EMPTY_TREE_BIN;
     private static final long EMPTY_TREE_LEAF;
+    private static final long CLOSED_TREE_PAGE;
+    private static final long STUB_TREE_PAGE;
 
     static {
         Integer checkedPageSize = Integer.getInteger
@@ -60,23 +59,26 @@ final class DirectPageOps {
             CHECKED_PAGE_SIZE = checkedPageSize;
         }
 
-        CLOSED_TREE_PAGE = newEmptyPage(Node.TYPE_TN_LEAF);
-
-        EMPTY_TREE_IN = newEmptyPage(Node.TYPE_TN_IN);
-        EMPTY_TREE_BIN = newEmptyPage(Node.TYPE_TN_BIN);
-        EMPTY_TREE_LEAF = newEmptyPage(Node.TYPE_TN_LEAF);
+        EMPTY_TREE_LEAF = newEmptyTreeLeafPage();
+        CLOSED_TREE_PAGE = newEmptyTreeLeafPage();
+        STUB_TREE_PAGE = newEmptyTreePage(Node.TN_HEADER_SIZE + 8, Node.TYPE_TN_IN);
     }
 
-    private static long newEmptyPage(byte type) {
-        long empty = p_calloc(Node.TN_HEADER_SIZE);
+    private static long newEmptyTreeLeafPage() {
+        return newEmptyTreePage
+            (Node.TN_HEADER_SIZE, Node.TYPE_TN_LEAF | Node.LOW_EXTREMITY | Node.HIGH_EXTREMITY);
+    }
 
-        p_bytePut(empty, 0, type | Node.LOW_EXTREMITY | Node.HIGH_EXTREMITY);
+    private static long newEmptyTreePage(int pageSize, int type) {
+        long empty = p_calloc(pageSize);
+
+        p_bytePut(empty, 0, type);
 
         // Set fields such that binary search returns ~0 and availableBytes returns 0.
 
         // Note: Same as Node.clearEntries.
         p_shortPutLE(empty, 4,  Node.TN_HEADER_SIZE);     // leftSegTail
-        p_shortPutLE(empty, 6,  Node.TN_HEADER_SIZE - 1); // rightSegTail
+        p_shortPutLE(empty, 6,  pageSize - 1);            // rightSegTail
         p_shortPutLE(empty, 8,  Node.TN_HEADER_SIZE);     // searchVecStart
         p_shortPutLE(empty, 10, Node.TN_HEADER_SIZE - 2); // searchVecEnd
 
@@ -87,32 +89,16 @@ final class DirectPageOps {
         return 0;
     }
 
-    static long p_closedTreePage() {
-        return CLOSED_TREE_PAGE;
-    }
-
     static long p_nonTreePage() {
         return EMPTY_TREE_LEAF;
     }
 
-    /**
-     * Returns a static page pointer representing an empty tree node, of the given type. Only
-     * the upper 4 bits of the type are examined, which defines the major type as described in
-     * the Node class. The only supported types are of the "TN" type, which means TreeNode.
-     *
-     * @throws AssertionError if unknown type is provided
-     */
-    static long p_emptyTreeNode(byte type) {
-        switch (type & 0xf0) {
-        case Node.TYPE_TN_IN & 0xf0:
-            return EMPTY_TREE_IN;
-        case Node.TYPE_TN_BIN & 0xf0:
-            return EMPTY_TREE_BIN;
-        case Node.TYPE_TN_LEAF & 0xf0:
-            return EMPTY_TREE_LEAF;
-        default:
-            throw new AssertionError("Unknown tree node type: " + type);
-        }
+    static long p_closedTreePage() {
+        return CLOSED_TREE_PAGE;
+    }
+
+    static long p_stubTreePage() {
+        return STUB_TREE_PAGE;
     }
 
     static long p_alloc(int size) {
@@ -131,12 +117,7 @@ final class DirectPageOps {
 
     static void p_delete(final long page) {
         // Only delete pages that were allocated from the Unsafe class and aren't globals.
-        if (page != CLOSED_TREE_PAGE &&
-            page != EMPTY_TREE_IN &&
-            page != EMPTY_TREE_BIN &&
-            page != EMPTY_TREE_LEAF &&
-            !inArena(page))
-        {
+        if (page != CLOSED_TREE_PAGE && page != EMPTY_TREE_LEAF && !inArena(page)) {
             UNSAFE.freeMemory(page);
         }
     }
