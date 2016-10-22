@@ -59,6 +59,12 @@ class Tree implements View, Index {
     // Name is null for all internal trees.
     volatile byte[] mName;
 
+    // Linked list of stubs, which are created when the root node is deleted. They need to
+    // stick around indefinitely, to ensure that any bound cursors still function normally.
+    // When tree height increases again, the stub is replaced with a real node. Root node must
+    // be latched exclusively when modifying this list.
+    private Node mStubTail;
+
     Tree(LocalDatabase db, long id, byte[] idBytes, Node root) {
         mDatabase = db;
         mLockManager = db.mLockManager;
@@ -981,16 +987,85 @@ class Tree implements View, Index {
     final Node finishSplit(final CursorFrame frame, Node node) throws IOException {
         while (true) {
             if (node == mRoot) {
-                try {
-                    node.finishSplitRoot();
-                } finally {
-                    node.releaseExclusive();
+                // When tree loses a level, a stub node remains for any cursors which were
+                // bound to the old root. When a level is added back, the cursors bound to the
+                // stub must rebind to the new root node. This happens when the
+                // Node.finishSplitRoot method is called, but the stub node must be latched
+                // exclusively for this to work correctly. The latch direction is in reverse
+                // order, and so deadlock is possible. To avoid this, fail fast and retry as
+                // necessary. Whenever the node latch is released and reacquired, the split
+                // state must be checked again. Another thread might have finished the split.
+
+                Node stub = mStubTail;
+
+                if (stub == null) {
+                    try {
+                        node.finishSplitRoot();
+                    } finally {
+                        node.releaseExclusive();
+                    }
+                } else withStub: {
+                    if (!stub.tryAcquireExclusive()) {
+                        // Try to relatch in a different order.
+
+                        node.releaseExclusive();
+                        stub.acquireExclusive();
+
+                        try {
+                            node = frame.tryAcquireExclusive();
+                        } catch (Throwable e) {
+                            stub.releaseExclusive();
+                            throw e;
+                        }
+
+                        if (node == null) {
+                            // Latch attempt failed, so start over.
+                            stub.releaseExclusive();
+                            break withStub;
+                        }
+
+                        if (node.mSplit == null) {
+                            // Split is finished now.
+                            stub.releaseExclusive();
+                            return node;
+                        }
+
+                        if (node != mRoot || stub != mStubTail) {
+                            // Too much state has changed, so start over.
+                            node.releaseExclusive();
+                            stub.releaseExclusive();
+                            break withStub;
+                        }
+                    }
+
+                    try {
+                        node.finishSplitRoot();
+                        mStubTail = stub.mNodeMapNext;
+
+                        // Note: Some cursor frames might still be bound to the stub. This is
+                        // because the cursor is popping up to the stub, as part of an
+                        // iteration or findNearby operation. Since popping to a stub is
+                        // equivalent to popping past the root, the cursor operation is able to
+                        // handle this. Iteration will finish normally, and findNearby will
+                        // start over from the root. Also see stub comments in PageOps.
+                    } finally {
+                        node.releaseExclusive();
+                        stub.releaseExclusive();
+                    }
                 }
 
-                // Must return the node as referenced by the frame, which is no longer the root.
-                return frame.acquireExclusive();
+                // Must always relatch node as referenced by the frame.
+                node = frame.acquireExclusive();
+
+                if (node.mSplit != null) {
+                    // Still split.
+                    continue;
+                }
+
+                return node;
             }
 
+            // TODO: Quick check by trying to latch upwards. Give up if parent is split.
             final CursorFrame parentFrame = frame.mParentFrame;
             node.releaseExclusive();
 
@@ -1013,6 +1088,25 @@ class Tree implements View, Index {
                 parentNode.insertSplitChildRef(parentFrame, this, parentFrame.mNodePos, node);
             }
         }
+    }
+
+    /**
+     * Caller must have exclusively latched the tree root node instance and the lone child node.
+     *
+     * @param child must not be a leaf node
+     */
+    final void rootDelete(Node child) throws IOException {
+        // Allocate stuff early in case of out of memory, and while root is latched. Note that
+        // stub is assigned a NodeUsageList. Because the stub isn't in the list, attempting to
+        // update its position within it has no effect. Note too that the stub isn't placed
+        // into the database node map.
+        Node stub = new Node(mRoot.mUsageList);
+
+        // Stub isn't in the node map, so use this pointer field to link the stubs together.
+        stub.mNodeMapNext = mStubTail;
+        mStubTail = stub;
+
+        mRoot.rootDelete(this, child, stub);
     }
 
     final LocalTransaction check(Transaction txn) throws IllegalArgumentException {

@@ -176,6 +176,48 @@ public class LargeValueTest {
         }
     }
 
+    @Test
+    public void testUpdateLargerAgainAgain() throws Exception {
+        // Yet another update regression test. Update of large value into a split node must
+        // consider the key size when fragmenting.
+
+        Index ix = mDb.openIndex("test");
+
+        Random rnd = new Random(123456);
+
+        byte[][] keys = new byte[4][];
+        byte[][] values = new byte[keys.length][];
+
+        for (int i=0; i<keys.length; i++) {
+            keys[i] = new byte[300];
+            rnd.nextBytes(keys[i]);
+            // Define key ordering.
+            keys[i][0] = (byte) i;
+        }
+
+        // Store carefully crafted entries, to force an incorrectly balanced split.
+        int[] sizes = {1720, 0, 840, 300};
+        assertEquals(keys.length, sizes.length);
+        for (int i=0; i<keys.length; i++) { 
+            values[i] = new byte[sizes[i]];
+            rnd.nextBytes(values[i]);
+            ix.store(Transaction.BOGUS, keys[i], values[i]);
+        }
+
+        // Update a value to be larger, forcing a split. Value will be inline encoded if key
+        // size isn't considered, and it won't fit.
+        values[1] = new byte[2030];
+        rnd.nextBytes(values[1]);
+        ix.store(Transaction.BOGUS, keys[1], values[1]);
+
+        // Verify that all the entries are correct.
+        assertEquals(keys.length, ix.count(null, null));
+        for (int i=0; i<keys.length; i++) {
+            byte[] actual = ix.load(Transaction.BOGUS, keys[i]);
+            fastAssertArrayEquals(values[i], actual);
+        }
+    }
+
     private static byte[] key(int i) {
         byte[] key = new byte[4];
         Utils.encodeIntBE(key, 0, i);

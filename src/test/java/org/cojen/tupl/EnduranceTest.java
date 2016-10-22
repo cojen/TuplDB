@@ -30,6 +30,7 @@ import java.util.Random;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.After;
 import org.junit.Before;
@@ -278,6 +279,78 @@ public class EnduranceTest {
             mDb.deleteIndex(ix).run();
             mDb.checkpoint();
         }
+    }
+
+    @Test
+    public void churn() throws Exception {
+        // Stress test which ensures that cursor position doesn't break when concurrent
+        // insert/delete operations are making structural tree changes.
+
+        DatabaseConfig config = new DatabaseConfig()
+            .pageSize(512)
+            .directPageAccess(false);
+
+        decorate(config);
+
+        Database db = Database.open(config);
+
+        Index ix = db.openIndex("test");
+
+        final AtomicReference<Exception> failure = new AtomicReference<>();
+
+        Thread mutator = new Thread(() -> {
+            try {
+                while (true) {
+                    for (int i=0; i<120; i++) {
+                        ix.store(Transaction.BOGUS, ("key-" + i).getBytes(),
+                                 ("value-" + i).getBytes());
+                    }
+                    for (int i=0; i<120; i++) {
+                        ix.store(Transaction.BOGUS, ("key-" + i).getBytes(), null);
+                    }
+                }
+            } catch (Exception e) {
+                failure.set(e);
+            }
+        });
+
+        mutator.start();
+
+        for (int i=0; i<100_000; i++) {
+            Cursor c = ix.newCursor(Transaction.BOGUS);
+            try {
+                for (c.first(); c.key() != null; c.next()) {
+                }
+            } catch (Exception e) {
+                e.printStackTrace(System.out);
+                System.exit(1);
+            } finally {
+                c.reset();
+            }
+        }
+
+        assertNull(failure.get());
+
+        // Again in reverse.
+
+        for (int i=0; i<100_000; i++) {
+            Cursor c = ix.newCursor(Transaction.BOGUS);
+            try {
+                for (c.last(); c.key() != null; c.previous()) {
+                }
+            } catch (Exception e) {
+                e.printStackTrace(System.out);
+                System.exit(1);
+            } finally {
+                c.reset();
+            }
+        }
+
+        assertNull(failure.get());
+
+        db.close();
+
+        mutator.join();
     }
 
     @Test

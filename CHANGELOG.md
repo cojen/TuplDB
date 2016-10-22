@@ -1,10 +1,24 @@
 Changelog
 =========
 
-v1.3.7
+v1.3.7.1 (2016-10-22)
+--------
+* Fix when updating a large value into a newly split node.
+* Fix race conditions when handling tree node stubs.
+* Replicated transaction rollback should propagate immediately.
+
+v1.3.7 (2016-10-15)
 ------
+* Fix corruption caused by cursor traversal into split nodes.
+* Fix corruption caused by broken cursor binding following a node split and merge.
+* Fix latch upgrade race condition when deleting a ghost.
+* Fix race conditions when handling parent-before-child node evictions.
+* Fix race conditions when deleting and creating root node.
+* Fix snapshot handling when using fully mapped mode.
+* Fix stub node implementation when using fully mapped mode.
 * Add support for attaching objects to transactions, for tracking them.
 * Detect deadlocks when lock timeout is zero, for non-try variants.
+* Suppress transaction exceptions from cleanup methods when database is closed.
 
 v1.3.6 (2016-09-05)
 ------

@@ -276,6 +276,29 @@ final class _Node extends Latch implements _DatabaseAccess {
         mPage = page;
     }
 
+    // Construct a stub node, latched exclusively.
+    _Node(_NodeUsageList usageList) {
+        super(EXCLUSIVE);
+
+        mUsageList = usageList;
+        mPage = p_stubTreePage();
+
+        // Special stub id. Page 0 and 1 are never used by nodes, and negative indicates that
+        // node shouldn't be persisted.
+        mId = -1;
+
+        mCachedState = CACHED_CLEAN;
+
+        /*P*/ // [
+        // type(TYPE_TN_IN);
+        // garbage(0);
+        // leftSegTail(TN_HEADER_SIZE);
+        // rightSegTail(TN_HEADER_SIZE + 8 - 1);
+        // searchVecStart(TN_HEADER_SIZE);
+        // searchVecEnd(TN_HEADER_SIZE - 2); // inclusive
+        /*P*/ // ]
+    }
+
     // Construct a "lock" object for use when loading a node. See loadChild method.
     private _Node(long id) {
         super(EXCLUSIVE);
@@ -448,7 +471,17 @@ final class _Node extends Latch implements _DatabaseAccess {
     _Node loadChild(_LocalDatabase db, long childId, int options) throws IOException {
         // Insert a "lock", which is a temporary node latched exclusively. All other threads
         // attempting to load the child node will block trying to acquire the exclusive latch.
-        _Node lock = new _Node(childId);
+        _Node lock;
+        try {
+            lock = new _Node(childId);
+
+            if (childId <= 1) {
+                throw new AssertionError("Illegal child id: " + childId);
+            }
+        } catch (Throwable e) {
+            releaseEither();
+            throw e;
+        }
 
         try {
             while (true) {
@@ -3537,7 +3570,7 @@ final class _Node extends Latch implements _DatabaseAccess {
                     _LocalDatabase db = tree.mDatabase;
                     int max = Math.min(db.mMaxFragmentedEntrySize,
                                        garbage + leftSpace + rightSpace);
-                    value = db.fragment(value, value.length, max);
+                    value = db.fragment(value, value.length, max - keyLen);
                     if (value == null) {
                         throw new AssertionError();
                     }
@@ -4017,21 +4050,18 @@ final class _Node extends Latch implements _DatabaseAccess {
     }
 
     /**
-     * Delete this non-leaf root node, after all keys have been deleted. The state of the lone
-     * child is swapped with this root node, and the child node is repurposed into a stub root
-     * node. The old page used by the child node is deleted. This design allows active cursors
-     * to still function normally until they can unbind.
+     * Delete this non-leaf root node, after all keys have been deleted. Caller must hold
+     * exclusive latches for root node, lone child, and stub. Caller must also ensure that both
+     * nodes are not splitting. All latches are released, even if an exception is thrown.
      *
-     * <p>Caller must hold exclusive latches for root node and lone child. Caller must also
-     * ensure that both nodes are not splitting. Both latches are always released, even if an
-     * exception is thrown.
+     * @param stub frames bound to root node move here
      */
-    void rootDelete(_Tree tree, _Node child) throws IOException {
+    void rootDelete(_Tree tree, _Node child, _Node stub) throws IOException {
         try {
             tree.mDatabase.prepareToDelete(child);
 
             try {
-                doRootDelete(tree, child);
+                doRootDelete(tree, child, stub);
             } catch (Throwable e) {
                 child.releaseExclusive();
                 throw e;
@@ -4041,13 +4071,13 @@ final class _Node extends Latch implements _DatabaseAccess {
             // corruption if an unexpected exception occurs.
             tree.mDatabase.deleteNode(child);
         } finally {
+            stub.releaseExclusive();
             releaseExclusive();
         }
     }
 
-    private void doRootDelete(_Tree tree, _Node child) throws IOException {
+    private void doRootDelete(_Tree tree, _Node child, _Node stub) throws IOException {
         long oldRootPage = mPage;
-        byte oldRootType = type();
 
         /*P*/ // [
         // mPage = child.mPage;
@@ -4072,23 +4102,35 @@ final class _Node extends Latch implements _DatabaseAccess {
         _CursorFrame childLastFrame = child.lockLastFrame(lock);
         _CursorFrame thisLastFrame = this.lockLastFrame(lock);
 
-        // ...now they can be swapped...
+        // ...now they can be moved around...
+
+        // 1. Frames from child move to this node, the root.
         if (!_CursorFrame.cLastUpdater.compareAndSet(this, thisLastFrame, childLastFrame)) {
             throw new AssertionError();
         }
-        if (!_CursorFrame.cLastUpdater.compareAndSet(child, childLastFrame, thisLastFrame)) {
+        // 2. Frames of child node are cleared.
+        if (!_CursorFrame.cLastUpdater.compareAndSet(child, childLastFrame, null)) {
+            throw new AssertionError();
+        }
+        // 3. Frames from empty root move to the stub.
+        if (!_CursorFrame.cLastUpdater.compareAndSet(stub, null, thisLastFrame)) {
             throw new AssertionError();
         }
 
-        this.fixFrameBindings(lock, childLastFrame); // Note: frames were swapped
-        child.fixFrameBindings(lock, thisLastFrame);
+        this.fixFrameBindings(lock, childLastFrame); // Note: frames were moved
+        stub.fixFrameBindings(lock, thisLastFrame);
 
-        child.mPage = oldRootPage;
-        child.type(oldRootType);
-        child.clearEntries();
-
-        // Search vector of stub needs a child pointer to the new root.
-        p_longPutLE(oldRootPage, child.searchVecEnd() + 2, this.mId);
+        // Old page is moved to child, to be recycled after caller deletes the child.
+        /*P*/ // [
+        // child.mPage = oldRootPage;
+        /*P*/ // |
+        if (tree.mDatabase.mFullyMapped) {
+            // Must use a special reserved page because existing one will be recycled.
+            child.mPage = p_nonTreePage();
+        } else {
+            child.mPage = oldRootPage;
+        }
+        /*P*/ // ]
     }
 
     /**
@@ -4096,9 +4138,13 @@ final class _Node extends Latch implements _DatabaseAccess {
      */
     private _CursorFrame lockLastFrame(_CursorFrame lock) {
         while (true) {
-            _CursorFrame f = mLastCursorFrame;
-            if (f.tryLock(lock) == f) {
-                return f;
+            _CursorFrame last = mLastCursorFrame;
+            _CursorFrame lockResult = last.tryLock(lock);
+            if (lockResult == last) {
+                return last;
+            }
+            if (lockResult != null) {
+                last.unlock(lockResult);
             }
             // Must keep trying against the last cursor frame instead of iterating to the
             // previous frame. The lock attempt failed because of a concurrent unbind, but the
@@ -5760,7 +5806,7 @@ final class _Node extends Latch implements _DatabaseAccess {
 
             for (int i = childIdsStart; i < childIdsEnd; i += 8) {
                 long childId = p_uint48GetLE(page, i);
-                if (childId < 0 || childId == 0 || childId == 1) {
+                if (mId > 1 && childId <= 1) { // stubs don't have a valid child id
                     return verifyFailed(level, observer, "Illegal child id: " + childId);
                 }
                 LHashTable.IntEntry e = childIds.insert(childId);
@@ -5847,7 +5893,7 @@ final class _Node extends Latch implements _DatabaseAccess {
 
         int garbage = pageSize(page) - used;
 
-        if (garbage() != garbage) {
+        if (garbage() != garbage && mId > 1) { // exclude stubs
             return verifyFailed(level, observer, "Garbage: " + garbage() + " != " + garbage);
         }
 

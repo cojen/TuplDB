@@ -46,21 +46,32 @@ final class PageOps {
     static final int NODE_OVERHEAD = 100;
 
     private static final byte[] CLOSED_TREE_PAGE;
+    private static final byte[] STUB_TREE_PAGE;
 
     static {
-        byte[] closed = new byte[Node.TN_HEADER_SIZE];
+        CLOSED_TREE_PAGE = newEmptyTreeLeafPage();
+        STUB_TREE_PAGE = newEmptyTreePage(Node.TN_HEADER_SIZE + 8, Node.TYPE_TN_IN);
+    }
 
-        closed[0] = Node.TYPE_TN_LEAF | Node.LOW_EXTREMITY | Node.HIGH_EXTREMITY;
+    private static /*P*/ byte[] newEmptyTreeLeafPage() {
+        return newEmptyTreePage
+            (Node.TN_HEADER_SIZE, Node.TYPE_TN_LEAF | Node.LOW_EXTREMITY | Node.HIGH_EXTREMITY);
+    }
+
+    private static /*P*/ byte[] newEmptyTreePage(int pageSize, int type) {
+        byte[] empty = new byte[pageSize];
+
+        empty[0] = (byte) type;
 
         // Set fields such that binary search returns ~0 and availableBytes returns 0.
 
         // Note: Same as Node.clearEntries.
-        p_shortPutLE(closed, 4,  Node.TN_HEADER_SIZE);     // leftSegTail
-        p_shortPutLE(closed, 6,  Node.TN_HEADER_SIZE - 1); // rightSegTail
-        p_shortPutLE(closed, 8,  Node.TN_HEADER_SIZE);     // searchVecStart
-        p_shortPutLE(closed, 10, Node.TN_HEADER_SIZE - 2); // searchVecEnd
+        p_shortPutLE(empty, 4,  Node.TN_HEADER_SIZE);     // leftSegTail
+        p_shortPutLE(empty, 6,  pageSize - 1);            // rightSegTail
+        p_shortPutLE(empty, 8,  Node.TN_HEADER_SIZE);     // searchVecStart
+        p_shortPutLE(empty, 10, Node.TN_HEADER_SIZE - 2); // searchVecEnd
 
-        CLOSED_TREE_PAGE = closed;
+        return empty;
     }
 
     static /*P*/ byte[] p_null() {
@@ -73,6 +84,21 @@ final class PageOps {
      */
     static /*P*/ byte[] p_closedTreePage() {
         return CLOSED_TREE_PAGE;
+    }
+
+    /**
+     * Returned page is 20 bytes, defining a tree stub node. Contents must not be modified.
+     *
+     * A stub is an internal node (TYPE_TN_IN), no extremity bits set, with a single child id
+     * of zero. Stubs are encountered by cursors when popping up, which only happens during
+     * cursor iteration (next/previous), findNearby, and reset. Cursor iteration stops when it
+     * encounters a stub node, because it has no more children. The findNearby method might
+     * search into the child node, but this is prohibited. When the extremity bits are clear,
+     * findNearby keeps popping up until no more nodes are found. Then it starts over from the
+     * root node.
+     */
+    static /*P*/ byte[] p_stubTreePage() {
+        return STUB_TREE_PAGE;
     }
 
     static /*P*/ byte[] p_alloc(int size) {

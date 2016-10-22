@@ -1954,6 +1954,9 @@ final class LocalDatabase extends AbstractDatabase {
     @Override
     public boolean verify(VerificationObserver observer) throws IOException {
         // TODO: Verify free lists.
+        if (false) {
+            mPageDb.scanFreeList(id -> System.out.println(id));
+        }
 
         if (observer == null) {
             observer = new VerificationObserver();
@@ -3267,7 +3270,7 @@ final class LocalDatabase extends AbstractDatabase {
 
         /*P*/ // [|
         /*P*/ // if (mFullyMapped) {
-        /*P*/ //     node.mPage = mPageDb.directPagePointer(node.mId);
+        /*P*/ //     node.mPage = mPageDb.dirtyPage(node.mId);
         /*P*/ // }
         /*P*/ // ]
 
@@ -3449,7 +3452,7 @@ final class LocalDatabase extends AbstractDatabase {
         /*P*/ // [|
         /*P*/ // if (mFullyMapped) {
         /*P*/ //     if (node.mPage == p_nonTreePage()) {
-        /*P*/ //         node.mPage = mPageDb.directPagePointer(newId);
+        /*P*/ //         node.mPage = mPageDb.dirtyPage(newId);
         /*P*/ //         node.asEmptyRoot();
         /*P*/ //     } else if (node.mPage != p_closedTreePage()) {
         /*P*/ //         node.mPage = mPageDb.copyPage(node.mId, newId); // copy on write
@@ -3473,7 +3476,12 @@ final class LocalDatabase extends AbstractDatabase {
      * Caller must hold commit lock and exclusive latch on node. This method
      * should only be called for nodes whose existing data is not needed.
      */
-    void redirty(Node node) {
+    void redirty(Node node) throws IOException {
+        /*P*/ // [|
+        /*P*/ // if (mFullyMapped) {
+        /*P*/ //     mPageDb.dirtyPage(node.mId);
+        /*P*/ // }
+        /*P*/ // ]
         mDirtyList.add(node, mCommitState);
     }
 

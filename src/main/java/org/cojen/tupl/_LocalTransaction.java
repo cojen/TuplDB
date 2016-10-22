@@ -280,7 +280,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
                 }
             }
         } catch (Throwable e) {
-            throw borked(e, true);
+            borked(e, true, true);
         }
     }
 
@@ -439,7 +439,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
                 }
             }
         } catch (Throwable e) {
-            throw borked(e, true);
+            borked(e, true, true);
         }
     }
 
@@ -473,7 +473,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
             // Scope and commit states are set upon first actual use of this scope.
             mHasState &= ~(HAS_SCOPE | HAS_COMMIT);
         } catch (Throwable e) {
-            throw borked(e, true);
+            borked(e, true, true);
         }
     }
 
@@ -538,7 +538,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
                 mSavepoint = parentScope.mSavepoint;
             }
         } catch (Throwable e) {
-            throw borked(e, true);
+            borked(e, true, false);
         }
     }
 
@@ -584,7 +584,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
 
             mTxnId = 0;
         } catch (Throwable e) {
-            throw borked(e, true);
+            borked(e, true, false);
         }
     }
 
@@ -796,7 +796,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
 
                 mHasState = hasState | (HAS_SCOPE | HAS_COMMIT);
             } catch (Throwable e) {
-                throw borked(e, false);
+                borked(e, false, true);
             }
         }
     }
@@ -864,7 +864,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
         try {
             undoLog().push(indexId, op, payload, off, len);
         } catch (Throwable e) {
-            throw borked(e, false);
+            borked(e, false, true);
         }
     }
 
@@ -876,7 +876,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
         try {
             undoLog().push(indexId, _UndoLog.OP_UNINSERT, key, 0, key.length);
         } catch (Throwable e) {
-            throw borked(e, false);
+            borked(e, false, true);
         }
     }
 
@@ -892,7 +892,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
         try {
             undoLog().push(indexId, _UndoLog.OP_UNDELETE_FRAGMENTED, payload, off, len);
         } catch (Throwable e) {
-            throw borked(e, false);
+            borked(e, false, true);
         }
     }
 
@@ -917,20 +917,23 @@ final class _LocalTransaction extends _Locker implements Transaction {
     }
 
     /**
-     * Always rethrows the given exception or a replacement.
+     * Rethrows the given exception or a replacement, unless the database is closed.
      *
      * @param rollback Rollback should only be performed by user operations -- the public API.
      * Otherwise a latch deadlock can occur.
+     * @param rethrow true to always throw an exception
      */
-    final RuntimeException borked(Throwable borked, boolean rollback) {
+    final void borked(Throwable borked, boolean rollback, boolean rethrow) {
         // Note: The mBorked field is set only if the database is closed or if some action in
         // this method altered the state of the transaction. Leaving the field alone in all
         // other cases permits an application to fully rollback later when reset or exit is
         // called. Any action which releases locks must only do so after it has issued a
         // rollback operation to the undo log.
 
+        boolean closed = mDatabase.mClosed;
+
         if (mBorked == null) {
-            if (mDatabase.mClosed) {
+            if (closed) {
                 Utils.initCause(borked, mDatabase.mClosedCause);
                 mBorked = borked;
             } else if (rollback) {
@@ -975,6 +978,8 @@ final class _LocalTransaction extends _Locker implements Transaction {
             }
         }
 
-        return Utils.rethrow(borked);
+        if (rethrow || !closed) {
+            Utils.rethrow(borked);
+        }
     }
 }
