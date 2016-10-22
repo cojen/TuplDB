@@ -5,6 +5,7 @@ v1.3.7.1
 --------
 * Fix when updating a large value into a newly split node.
 * Fix race conditions when handling tree node stubs.
+* Replicated transaction rollback should propagate immediately.
 
 v1.3.7 (2016-10-15)
 ------
