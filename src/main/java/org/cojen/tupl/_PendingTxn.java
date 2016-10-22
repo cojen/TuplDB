@@ -29,6 +29,7 @@ final class _PendingTxn extends _LockOwner {
     private _Lock[] mRest;
     private int mRestSize;
 
+    _TransactionContext mTxnContext;
     long mTxnId;
     long mCommitPos;
     _UndoLog mUndoLog;
@@ -89,7 +90,7 @@ final class _PendingTxn extends _LockOwner {
         _UndoLog undo = mUndoLog;
         if (undo != null) {
             undo.truncate(true);
-            db.unregister(undo);
+            mTxnContext.unregister(undo);
         }
 
         if (mHasFragmentedTrash) {
@@ -112,7 +113,7 @@ final class _PendingTxn extends _LockOwner {
         unlockAll(db);
 
         if (undo != null) {
-            db.unregister(undo);
+            mTxnContext.unregister(undo);
         }
     }
 
