@@ -17,6 +17,7 @@
 package org.cojen.tupl;
 
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.*;
 import static org.junit.Assert.*;
@@ -187,6 +188,7 @@ public class DeadlockTest {
             assertTrue(e.getMessage().indexOf("indexName: test") > 0);
             assertTrue(e.getMessage().indexOf("owner attachment: txn1") > 0);
             assertEquals("txn1", e.getOwnerAttachment());
+            assertEquals("txn1", e.getDeadlockSet().getOwnerAttachment(0));
         }
 
         // Deadlock detection works with zero timeout, except with the tryLock variant.
@@ -199,10 +201,93 @@ public class DeadlockTest {
             assertTrue(e.getMessage().indexOf("indexName: test") > 0);
             assertTrue(e.getMessage().indexOf("owner attachment: txn1") > 0);
             assertEquals("txn1", e.getOwnerAttachment());
+            assertEquals("txn1", e.getDeadlockSet().getOwnerAttachment(0));
         }
 
         // No deadlock detected here.
         assertEquals(LockResult.TIMED_OUT_LOCK, txn2.tryLockExclusive(ix.getId(), key, 0));
+    }
+
+    @Test
+    public void deadlockAttachments() throws Throwable {
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+
+        Index ix = db.openIndex("test");
+
+        // Create a deadlock with two threads.
+        for (int i=0; i<2; i++) {
+            final int fi = i;
+
+            new Thread(() -> {
+                try {
+                    Transaction txn = db.newTransaction();
+                    try {
+                        txn.lockTimeout(2, TimeUnit.SECONDS);
+
+                        byte[] k1 = "k1".getBytes();
+                        byte[] k2 = "k2".getBytes();
+
+                        if (fi == 0) {
+                            txn.attach("txn1");
+                            ix.lockExclusive(txn, k1);
+                            ix.lockShared(txn, k2);
+                        } else {
+                            txn.attach("txn2");
+                            ix.lockExclusive(txn, k2);
+                            ix.lockUpgradable(txn, k1);
+                        }
+                    } finally {
+                        txn.reset();
+                    }
+                } catch (Exception e) {
+                    // Ignore.
+                }
+            }).start();
+        }
+
+        byte[] k1 = "k1".getBytes();
+        Transaction txn = db.newTransaction();
+
+        boolean deadlocked = false;
+
+        for (int i=0; i<100; i++) {
+            try {
+                try {
+                    ix.lockShared(txn, k1);
+                    // Wait and try again.
+                    Thread.sleep(100);
+                } finally {
+                    txn.reset();
+                }
+            } catch (DeadlockException e) {
+                deadlocked = true;
+
+                assertFalse(e.isGuilty());
+                assertEquals("txn1", e.getOwnerAttachment());
+
+                DeadlockSet set = e.getDeadlockSet();
+                assertEquals(2, set.size());
+
+                Object att1 = set.getOwnerAttachment(0);
+                Object att2 = set.getOwnerAttachment(1);
+
+                assertTrue(att1 != null && att2 != null);
+
+                if (att1.equals("txn1")) {
+                    assertEquals("txn2", att2);
+                } else if (att1.equals("txn2")) {
+                    assertEquals("txn1", att2);
+                } else {
+                    fail("Unknown attachments: " + att1 + ", " + att2);
+                }
+
+                break;
+            }
+        }
+
+        assertTrue(deadlocked);
+
+        db.close();
     }
 
     @Test

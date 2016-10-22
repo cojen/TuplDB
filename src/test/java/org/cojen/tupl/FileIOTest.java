@@ -64,6 +64,8 @@ public class FileIOTest {
         // the SIGBUS issue.
         fio.setLength(len);
         assertEquals(0, fio.length());
+
+        fio.close();
     }
 
     @Test
@@ -77,6 +79,8 @@ public class FileIOTest {
             fio.setLength(len);
             assertEquals(len, fio.length());
         }
+
+        fio.close();
     }
 
     @Test
@@ -95,6 +99,8 @@ public class FileIOTest {
         // Free space should be reduced. Pad expectation since external
         // events may interfere.
         assertTrue(alloc > (len >> 1));
+
+        fio.close();
     }
 
     @Ignore
@@ -123,5 +129,7 @@ public class FileIOTest {
             fio.write(pos, bb);
             bb.flip();
         }
+
+        fio.close();
     }
 }

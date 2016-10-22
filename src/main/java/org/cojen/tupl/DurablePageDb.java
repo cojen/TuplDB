@@ -24,8 +24,9 @@ import java.io.OutputStream;
 
 import java.security.GeneralSecurityException;
 
-import java.util.BitSet;
 import java.util.EnumSet;
+
+import java.util.function.LongConsumer;
 
 import org.cojen.tupl.io.FileFactory;
 import org.cojen.tupl.io.FilePageArray;
@@ -368,14 +369,6 @@ final class DurablePageDb extends PageDb {
     }
 
     @Override
-    public BitSet tracePages() throws IOException {
-        BitSet pages = new BitSet();
-        mPageManager.markAllPages(pages);
-        mPageManager.traceFreePages(pages);
-        return pages;
-    }
-
-    @Override
     public void readPage(long id, /*P*/ byte[] page) throws IOException {
         try {
             mPageArray.readPage(id, page, 0, pageSize());
@@ -492,8 +485,28 @@ final class DurablePageDb extends PageDb {
     }
 
     @Override
+    public long dirtyPage(long id) throws IOException {
+        return mPageArray.dirtyPage(id);
+    }
+
+    @Override
     public long copyPage(long srcId, long dstId) throws IOException {
         return mPageArray.copyPage(srcId, dstId);
+    }
+
+    @Override
+    public void scanFreeList(LongConsumer dst) throws IOException {
+        mCommitLock.lock();
+        try {
+            scanFreeList(I_MANAGER_HEADER + PageManager.I_REGULAR_QUEUE, dst);
+            scanFreeList(I_MANAGER_HEADER + PageManager.I_RECYCLE_QUEUE, dst);
+        } finally {
+            mCommitLock.unlock();
+        }
+    }
+
+    private void scanFreeList(int headerOffset, LongConsumer dst) throws IOException {
+        PageQueueScanner.scan(mPageArray, mCommitNumber & 1, headerOffset, dst);
     }
 
     @Override

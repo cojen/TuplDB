@@ -38,26 +38,47 @@ import org.cojen.tupl.io.MappedPageArray;
 final class DirectPageOps {
     static final int NODE_OVERHEAD = 100 - 24; // 6 fewer fields
 
+    private static final boolean CHECK_BOUNDS;
+    private static final int CHECKED_PAGE_SIZE;
+
     private static final Unsafe UNSAFE = Hasher.getUnsafe();
     private static final long BYTE_ARRAY_OFFSET = UNSAFE.arrayBaseOffset(byte[].class);
+    private static final long EMPTY_TREE_LEAF;
     private static final long CLOSED_TREE_PAGE;
-    private static final long NON_TREE_PAGE;
+    private static final long STUB_TREE_PAGE;
 
     static {
-        CLOSED_TREE_PAGE = newEmptyPage();
-        NON_TREE_PAGE = newEmptyPage();
+        Integer checkedPageSize = Integer.getInteger
+            (DirectPageOps.class.getName() + ".checkedPageSize");
+
+        if (checkedPageSize == null) {
+            CHECK_BOUNDS = false;
+            CHECKED_PAGE_SIZE = 0;
+        } else {
+            CHECK_BOUNDS = true;
+            CHECKED_PAGE_SIZE = checkedPageSize;
+        }
+
+        EMPTY_TREE_LEAF = newEmptyTreeLeafPage();
+        CLOSED_TREE_PAGE = newEmptyTreeLeafPage();
+        STUB_TREE_PAGE = newEmptyTreePage(Node.TN_HEADER_SIZE + 8, Node.TYPE_TN_IN);
     }
 
-    private static long newEmptyPage() {
-        long empty = p_calloc(Node.TN_HEADER_SIZE);
+    private static long newEmptyTreeLeafPage() {
+        return newEmptyTreePage
+            (Node.TN_HEADER_SIZE, Node.TYPE_TN_LEAF | Node.LOW_EXTREMITY | Node.HIGH_EXTREMITY);
+    }
 
-        p_bytePut(empty, 0, Node.TYPE_TN_LEAF | Node.LOW_EXTREMITY | Node.HIGH_EXTREMITY);
+    private static long newEmptyTreePage(int pageSize, int type) {
+        long empty = p_calloc(pageSize);
+
+        p_bytePut(empty, 0, type);
 
         // Set fields such that binary search returns ~0 and availableBytes returns 0.
 
         // Note: Same as Node.clearEntries.
         p_shortPutLE(empty, 4,  Node.TN_HEADER_SIZE);     // leftSegTail
-        p_shortPutLE(empty, 6,  Node.TN_HEADER_SIZE - 1); // rightSegTail
+        p_shortPutLE(empty, 6,  pageSize - 1);            // rightSegTail
         p_shortPutLE(empty, 8,  Node.TN_HEADER_SIZE);     // searchVecStart
         p_shortPutLE(empty, 10, Node.TN_HEADER_SIZE - 2); // searchVecEnd
 
@@ -68,12 +89,16 @@ final class DirectPageOps {
         return 0;
     }
 
+    static long p_nonTreePage() {
+        return EMPTY_TREE_LEAF;
+    }
+
     static long p_closedTreePage() {
         return CLOSED_TREE_PAGE;
     }
 
-    static long p_nonTreePage() {
-        return NON_TREE_PAGE;
+    static long p_stubTreePage() {
+        return STUB_TREE_PAGE;
     }
 
     static long p_alloc(int size) {
@@ -90,9 +115,9 @@ final class DirectPageOps {
         return new long[size];
     }
 
-    static void p_delete(long page) {
+    static void p_delete(final long page) {
         // Only delete pages that were allocated from the Unsafe class and aren't globals.
-        if (page != CLOSED_TREE_PAGE && page != NON_TREE_PAGE && !inArena(page)) {
+        if (page != CLOSED_TREE_PAGE && page != EMPTY_TREE_LEAF && !inArena(page)) {
             UNSAFE.freeMemory(page);
         }
     }
@@ -139,7 +164,7 @@ final class DirectPageOps {
 
     private static volatile Arena[] cArenas;
 
-    static boolean inArena(long page) {
+    static boolean inArena(final long page) {
         Arena[] arenas = cArenas;
 
         if (arenas != null) {
@@ -232,7 +257,7 @@ final class DirectPageOps {
 
     static long p_calloc(Object arena, int size) {
         if (arena instanceof Arena) {
-            long page = ((Arena) arena).p_calloc(size);
+            final long page = ((Arena) arena).p_calloc(size);
             if (page != p_null()) {
                 return page;
             }
@@ -243,7 +268,7 @@ final class DirectPageOps {
         return p_calloc(size);
     }
 
-    static long p_clone(long page, int length) {
+    static long p_clone(final long page, int length) {
         long dst = p_alloc(length);
         UNSAFE.copyMemory(page, dst, length);
         return dst;
@@ -251,50 +276,68 @@ final class DirectPageOps {
 
     static long p_transfer(byte[] array) {
         int length = array.length;
-        long page = p_alloc(length);
+        final long page = p_alloc(length);
         p_copyFromArray(array, 0, page, 0, length);
         return page;
     }
 
-    static long p_transferTo(byte[] array, long page) {
+    static long p_transferTo(byte[] array, final long page) {
         int length = array.length;
         p_copyFromArray(array, 0, page, 0, length);
         return page;
     }
 
-    static byte p_byteGet(long page, int index) {
+    static byte p_byteGet(final long page, int index) {
+        if (CHECK_BOUNDS && Long.compareUnsigned(index, CHECKED_PAGE_SIZE) >= 0) {
+            throw new ArrayIndexOutOfBoundsException(index);
+        }
         return UNSAFE.getByte(page + index);
     }
 
-    static int p_ubyteGet(long page, int index) {
-        return UNSAFE.getByte(page + index) & 0xff;
+    static int p_ubyteGet(final long page, int index) {
+        return p_byteGet(page, index) & 0xff;
     }
 
-    static void p_bytePut(long page, int index, byte v) {
+    static void p_bytePut(final long page, int index, byte v) {
+        if (CHECK_BOUNDS && Long.compareUnsigned(index, CHECKED_PAGE_SIZE) >= 0) {
+            throw new ArrayIndexOutOfBoundsException(index);
+        }
         UNSAFE.putByte(page + index, v);
     }
 
-    static void p_bytePut(long page, int index, int v) {
-        UNSAFE.putByte(page + index, (byte) v);
+    static void p_bytePut(final long page, int index, int v) {
+        p_bytePut(page, index, (byte) v);
     }
 
-    static int p_ushortGetLE(long page, int index) {
+    static int p_ushortGetLE(final long page, int index) {
+        if (CHECK_BOUNDS && (index < 0 || index + 2 > CHECKED_PAGE_SIZE)) {
+            throw new ArrayIndexOutOfBoundsException(index);
+        }
         return UNSAFE.getChar(page + index);
     }
 
-    static void p_shortPutLE(long page, int index, int v) {
+    static void p_shortPutLE(final long page, int index, int v) {
+        if (CHECK_BOUNDS && (index < 0 || index + 2 > CHECKED_PAGE_SIZE)) {
+            throw new ArrayIndexOutOfBoundsException(index);
+        }
         UNSAFE.putShort(page + index, (short) v);
     }
 
-    static int p_intGetLE(long page, int index) {
+    static int p_intGetLE(final long page, int index) {
+        if (CHECK_BOUNDS && (index < 0 || index + 4 > CHECKED_PAGE_SIZE)) {
+            throw new ArrayIndexOutOfBoundsException(index);
+        }
         return UNSAFE.getInt(page + index);
     }
 
-    static void p_intPutLE(long page, int index, int v) {
+    static void p_intPutLE(final long page, int index, int v) {
+        if (CHECK_BOUNDS && (index < 0 || index + 4 > CHECKED_PAGE_SIZE)) {
+            throw new ArrayIndexOutOfBoundsException(index);
+        }
         UNSAFE.putInt(page + index, v);
     }
 
-    static int p_uintGetVar(long page, int index) {
+    static int p_uintGetVar(final long page, int index) {
         int v = p_byteGet(page, index);
         if (v >= 0) {
             return v;
@@ -324,7 +367,7 @@ final class DirectPageOps {
         }
     }
 
-    static int p_uintPutVar(long page, int index, int v) {
+    static int p_uintPutVar(final long page, int index, int v) {
         if (v < (1 << 7)) {
             if (v < 0) {
                 v -= (1 << 28) + (1 << 21) + (1 << 14) + (1 << 7);
@@ -363,33 +406,39 @@ final class DirectPageOps {
         return Utils.calcUnsignedVarIntLength(v);
     }
 
-    static long p_uint48GetLE(long page, int index) {
-        return UNSAFE.getInt(page += index) & 0xffff_ffffL
-            | (((long) UNSAFE.getChar(page + 4)) << 32);
+    static long p_uint48GetLE(final long page, int index) {
+        return p_intGetLE(page, index) & 0xffff_ffffL
+            | (((long) p_ushortGetLE(page, index + 4)) << 32);
     }
 
-    static void p_int48PutLE(long page, int index, long v) {
-        UNSAFE.putInt(page += index, (int) v);
-        UNSAFE.putShort(page + 4, (short) (v >> 32));
+    static void p_int48PutLE(final long page, int index, long v) {
+        p_intPutLE(page, index, (int) v);
+        p_shortPutLE(page, index + 4, (short) (v >> 32));
     }
 
-    static long p_longGetLE(long page, int index) {
+    static long p_longGetLE(final long page, int index) {
+        if (CHECK_BOUNDS && (index < 0 || index + 8 > CHECKED_PAGE_SIZE)) {
+            throw new ArrayIndexOutOfBoundsException(index);
+        }
         return UNSAFE.getLong(page + index);
     }
 
-    static void p_longPutLE(long page, int index, long v) {
+    static void p_longPutLE(final long page, int index, long v) {
+        if (CHECK_BOUNDS && (index < 0 || index + 8 > CHECKED_PAGE_SIZE)) {
+            throw new ArrayIndexOutOfBoundsException(index);
+        }
         UNSAFE.putLong(page + index, v);
     }
 
-    static long p_longGetBE(long page, int index) {
-        return Long.reverseBytes(UNSAFE.getLong(page + index));
+    static long p_longGetBE(final long page, int index) {
+        return Long.reverseBytes(p_longGetLE(page, index));
     }
 
-    static void p_longPutBE(long page, int index, long v) {
-        UNSAFE.putLong(page + index, Long.reverseBytes(v));
+    static void p_longPutBE(final long page, int index, long v) {
+        p_longPutLE(page, index, Long.reverseBytes(v));
     }
 
-    static long p_ulongGetVar(long page, IntegerRef ref) {
+    static long p_ulongGetVar(final long page, IntegerRef ref) {
         int offset = ref.get();
         int val = p_byteGet(page, offset++);
         if (val >= 0) {
@@ -478,7 +527,7 @@ final class DirectPageOps {
         return decoded;
     }
 
-    static int p_ulongPutVar(long page, int index, long v) {
+    static int p_ulongPutVar(final long page, int index, long v) {
         if (v < (1L << 7)) {
             if (v < 0) {
                 v -= (1L << 56) + (1L << 49) + (1L << 42) + (1L << 35)
@@ -546,41 +595,86 @@ final class DirectPageOps {
         return Utils.calcUnsignedVarLongLength(v);
     }
 
-    static void p_clear(long page, int fromIndex, int toIndex) {
+    static void p_clear(final long page, int fromIndex, int toIndex) {
         int len = toIndex - fromIndex;
         if (len > 0) {
+            if (CHECK_BOUNDS) {
+                if (Long.compareUnsigned(fromIndex, CHECKED_PAGE_SIZE) >= 0) {
+                    throw new ArrayIndexOutOfBoundsException(fromIndex);
+                }
+                if (Long.compareUnsigned(toIndex, CHECKED_PAGE_SIZE) > 0) {
+                    throw new ArrayIndexOutOfBoundsException(toIndex);
+                }
+            }
             UNSAFE.setMemory(page + fromIndex, len, (byte) 0);
         }
     }
 
-    static byte[] p_copyIfNotArray(long page, byte[] dstArray) {
+    static byte[] p_copyIfNotArray(final long page, byte[] dstArray) {
         p_copyToArray(page, 0, dstArray, 0, dstArray.length);
         return dstArray;
     }
 
-    static void p_copyFromArray(byte[] src, int srcStart, long dstPage, int dstStart, int len) {
+    static void p_copyFromArray(byte[] src, int srcStart,
+                                final long dstPage, int dstStart, int len)
+    {
+        if (CHECK_BOUNDS) {
+            if (len < 0) {
+                throw new IndexOutOfBoundsException("len: " + len);
+            }
+            if (srcStart < 0 || srcStart + len > src.length) {
+                throw new IndexOutOfBoundsException("src: " + srcStart + ", " + len);
+            }
+            if (dstStart < 0 || dstStart + len > CHECKED_PAGE_SIZE) {
+                throw new IndexOutOfBoundsException("dst: " + dstStart + ", " + len);
+            }
+        }
         UNSAFE.copyMemory(src, BYTE_ARRAY_OFFSET + srcStart, null, dstPage + dstStart, len);
     }
 
-    static void p_copyToArray(long srcPage, int srcStart, byte[] dst, int dstStart, int len) {
+    static void p_copyToArray(final long srcPage, int srcStart,
+                              byte[] dst, int dstStart, int len)
+    {
+        if (CHECK_BOUNDS) {
+            if (len < 0) {
+                throw new IndexOutOfBoundsException("len: " + len);
+            }
+            if (srcStart < 0 || srcStart + len > CHECKED_PAGE_SIZE) {
+                throw new IndexOutOfBoundsException("src: " + srcStart + ", " + len);
+            }
+            if (dstStart < 0 || dstStart + len > dst.length) {
+                throw new IndexOutOfBoundsException("dst: " + dstStart + ", " + len);
+            }
+        }
         UNSAFE.copyMemory(null, srcPage + srcStart, dst, BYTE_ARRAY_OFFSET + dstStart, len);
     }
 
-    static void p_copyFromBB(ByteBuffer src, long dstPage, int dstStart, int len) {
+    static void p_copyFromBB(ByteBuffer src, final long dstPage, int dstStart, int len) {
         src.limit(src.position() + len);
         DirectAccess.ref(dstPage + dstStart, len).put(src);
         src.limit(src.capacity());
     }
 
-    static void p_copyToBB(long srcPage, int srcStart, ByteBuffer dst, int len) {
+    static void p_copyToBB(final long srcPage, int srcStart, ByteBuffer dst, int len) {
         dst.put(DirectAccess.ref(srcPage + srcStart, len));
     }
 
-    static void p_copy(long srcPage, int srcStart, long dstPage, int dstStart, int len) {
+    static void p_copy(final long srcPage, int srcStart, long dstPage, int dstStart, int len) {
+        if (CHECK_BOUNDS) {
+            if (len < 0) {
+                throw new IndexOutOfBoundsException("len: " + len);
+            }
+            if (srcStart < 0 || srcStart + len > CHECKED_PAGE_SIZE) {
+                throw new IndexOutOfBoundsException("src: " + srcStart + ", " + len);
+            }
+            if (dstStart < 0 || dstStart + len > CHECKED_PAGE_SIZE) {
+                throw new IndexOutOfBoundsException("dst: " + dstStart + ", " + len);
+            }
+        }
         UNSAFE.copyMemory(srcPage + srcStart, dstPage + dstStart, len);
     }
 
-    static void p_copies(long page,
+    static void p_copies(final long page,
                          int start1, int dest1, int length1,
                          int start2, int dest2, int length2)
     {
@@ -593,7 +687,7 @@ final class DirectPageOps {
         }
     }
 
-    static void p_copies(long page,
+    static void p_copies(final long page,
                          int start1, int dest1, int length1,
                          int start2, int dest2, int length2,
                          int start3, int dest3, int length3)
@@ -607,13 +701,12 @@ final class DirectPageOps {
         }
     }
 
-    static int p_compareKeysPageToArray(long apage, int aoff, int alen,
+    static int p_compareKeysPageToArray(final long apage, int aoff, int alen,
                                         byte[] b, int boff, int blen)
     {
-        apage += aoff;
         int minLen = Math.min(alen, blen);
         for (int i=0; i<minLen; i++) {
-            byte ab = UNSAFE.getByte(apage++);
+            byte ab = p_byteGet(apage, aoff++);
             byte bb = b[boff + i];
             if (ab != bb) {
                 return (ab & 0xff) - (bb & 0xff);
@@ -622,15 +715,13 @@ final class DirectPageOps {
         return alen - blen;
     }
 
-    static int p_compareKeysPageToPage(long apage, int aoff, int alen,
-                                       long bpage, int boff, int blen)
+    static int p_compareKeysPageToPage(final long apage, int aoff, int alen,
+                                       final long bpage, int boff, int blen)
     {
-        apage += aoff;
-        bpage += boff;
         int minLen = Math.min(alen, blen);
         for (int i=0; i<minLen; i++) {
-            byte ab = UNSAFE.getByte(apage++);
-            byte bb = UNSAFE.getByte(bpage++);
+            byte ab = p_byteGet(apage, aoff++);
+            byte bb = p_byteGet(bpage, boff++);
             if (ab != bb) {
                 return (ab & 0xff) - (bb & 0xff);
             }
@@ -638,16 +729,15 @@ final class DirectPageOps {
         return alen - blen;
     }
 
-    static byte[] p_midKeyLowPage(long lowPage, int lowOff, int lowLen,
+    static byte[] p_midKeyLowPage(final long lowPage, int lowOff, int lowLen,
                                   byte[] high, int highOff)
     {
-        lowPage += lowOff;
         for (int i=0; i<lowLen; i++) {
-            byte lo = UNSAFE.getByte(lowPage + i);
+            byte lo = p_byteGet(lowPage, lowOff + i);
             byte hi = high[highOff + i];
             if (lo != hi) {
                 byte[] mid = new byte[i + 1];
-                p_copyToArray(lowPage, 0, mid, 0, i);
+                p_copyToArray(lowPage, lowOff, mid, 0, i);
                 mid[i] = (byte) (((lo & 0xff) + (hi & 0xff) + 1) >> 1);
                 return mid;
             }
@@ -658,12 +748,11 @@ final class DirectPageOps {
     }
 
     static byte[] p_midKeyHighPage(byte[] low, int lowOff, int lowLen,
-                                   long highPage, int highOff)
+                                   final long highPage, int highOff)
     {
-        highPage += highOff;
         for (int i=0; i<lowLen; i++) {
             byte lo = low[lowOff + i];
-            byte hi = UNSAFE.getByte(highPage + i);
+            byte hi = p_byteGet(highPage, highOff + i);
             if (lo != hi) {
                 byte[] mid = new byte[i + 1];
                 System.arraycopy(low, lowOff, mid, 0, i);
@@ -672,27 +761,25 @@ final class DirectPageOps {
             }
         }
         byte[] mid = new byte[lowLen + 1];
-        p_copyToArray(highPage, 0, mid, 0, mid.length);
+        p_copyToArray(highPage, highOff, mid, 0, mid.length);
         return mid;
     }
 
-    static byte[] p_midKeyLowHighPage(long lowPage, int lowOff, int lowLen,
-                                      long highPage, int highOff)
+    static byte[] p_midKeyLowHighPage(final long lowPage, int lowOff, int lowLen,
+                                      final long highPage, int highOff)
     {
-        lowPage += lowOff;
-        highPage += highOff;
         for (int i=0; i<lowLen; i++) {
-            byte lo = UNSAFE.getByte(lowPage + i);
-            byte hi = UNSAFE.getByte(highPage + i);
+            byte lo = p_byteGet(lowPage, lowOff + i);
+            byte hi = p_byteGet(highPage, highOff + i);
             if (lo != hi) {
                 byte[] mid = new byte[i + 1];
-                p_copyToArray(lowPage, 0, mid, 0, i);
+                p_copyToArray(lowPage, lowOff, mid, 0, i);
                 mid[i] = (byte) (((lo & 0xff) + (hi & 0xff) + 1) >> 1);
                 return mid;
             }
         }
         byte[] mid = new byte[lowLen + 1];
-        p_copyToArray(highPage, 0, mid, 0, mid.length);
+        p_copyToArray(highPage, highOff, mid, 0, mid.length);
         return mid;
     }
 

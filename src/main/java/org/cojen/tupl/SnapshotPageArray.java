@@ -176,6 +176,11 @@ final class SnapshotPageArray extends PageArray {
         return mSource.directPagePointer(index);
     }
 
+    public long dirtyPage(long index) throws IOException {
+        preCopyPage(index);
+        return mSource.dirtyPage(index);
+    }
+
     @Override
     public long copyPage(long srcIndex, long dstIndex) throws IOException {
         preCopyPage(dstIndex);
