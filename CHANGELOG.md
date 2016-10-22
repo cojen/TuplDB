@@ -1,7 +1,7 @@
 Changelog
 =========
 
-v1.3.7.1
+v1.3.7.1 (2016-10-22)
 --------
 * Fix when updating a large value into a newly split node.
 * Fix race conditions when handling tree node stubs.
