@@ -132,8 +132,20 @@ abstract class RedoDecoder {
                 }
                 break;
 
-            case OP_TXN_ENTER:
+            case OP_TXN_ID_RESET:
                 long txnId;
+                try {
+                    txnId = in.readLongLE();
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in)) {
+                    return false;
+                }
+                mTxnId = txnId;
+                break;
+
+            case OP_TXN_ENTER:
                 try {
                     txnId = readTxnId(in);
                 } catch (EOFException e) {
