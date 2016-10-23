@@ -904,7 +904,7 @@ final class _UndoLog implements _DatabaseAccess {
      * Caller must hold exclusive db commit lock.
      *
      * @param workspace temporary buffer, allocated on demand
-     * @return new workspace instance
+     * @return new or original workspace instance
      */
     final byte[] writeToMaster(_UndoLog master, byte[] workspace) throws IOException {
         _Node node = mNode;

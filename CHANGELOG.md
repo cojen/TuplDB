@@ -1,6 +1,10 @@
 Changelog
 =========
 
+v1.3.8
+------
+* Stripe transaction state to improve concurrency.
+
 v1.3.7.1 (2016-10-22)
 --------
 * Fix when updating a large value into a newly split node.
