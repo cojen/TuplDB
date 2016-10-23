@@ -35,7 +35,8 @@ final class LocalTransaction extends Locker implements Transaction {
                            fully deleted after committing the top-level scope. */
 
     final LocalDatabase mDatabase;
-    final RedoWriter mRedoWriter;
+    private final TransactionContext mTxnContext;
+    private final RedoWriter mRedoWriter;
     DurabilityMode mDurabilityMode;
 
     private LockMode mLockMode;
@@ -56,6 +57,7 @@ final class LocalTransaction extends Locker implements Transaction {
     {
         super(db.mLockManager);
         mDatabase = db;
+        mTxnContext = db.selectTransactionContext(this);
         mRedoWriter = redo;
         mDurabilityMode = durabilityMode;
         mLockMode = lockMode;
@@ -90,7 +92,7 @@ final class LocalTransaction extends Locker implements Transaction {
 
     // Used by recovery.
     final void recoveredUndoLog(UndoLog undo) {
-        mDatabase.register(undo);
+        mTxnContext.register(undo);
         mUndoLog = undo;
     }
 
@@ -98,6 +100,7 @@ final class LocalTransaction extends Locker implements Transaction {
     private LocalTransaction() {
         super(null);
         mDatabase = null;
+        mTxnContext = null;
         mRedoWriter = null;
         mDurabilityMode = DurabilityMode.NO_REDO;
         mLockMode = LockMode.UNSAFE;
@@ -253,7 +256,7 @@ final class LocalTransaction extends Locker implements Transaction {
                     // to delete ghosts.
                     undo.truncate(true);
 
-                    mDatabase.unregister(undo);
+                    mTxnContext.unregister(undo);
                     mUndoLog = null;
 
                     int hasState = mHasState;
@@ -286,6 +289,7 @@ final class LocalTransaction extends Locker implements Transaction {
 
     private void commitPending(long commitPos, UndoLog undo) throws IOException {
         PendingTxn pending = transferExclusive();
+        pending.mTxnContext = mTxnContext;
         pending.mTxnId = mTxnId;
         pending.mCommitPos = commitPos;
         pending.mUndoLog = undo;
@@ -390,7 +394,7 @@ final class LocalTransaction extends Locker implements Transaction {
 
                     undo.truncate(true);
 
-                    mDatabase.unregister(undo);
+                    mTxnContext.unregister(undo);
                     mUndoLog = null;
 
                     if ((hasState & HAS_TRASH) != 0) {
@@ -507,7 +511,7 @@ final class LocalTransaction extends Locker implements Transaction {
 
                 mSavepoint = 0;
                 if (undo != null) {
-                    mDatabase.unregister(undo);
+                    mTxnContext.unregister(undo);
                     mUndoLog = null;
                 }
 
@@ -578,7 +582,7 @@ final class LocalTransaction extends Locker implements Transaction {
 
             mSavepoint = 0;
             if (undo != null) {
-                mDatabase.unregister(undo);
+                mTxnContext.unregister(undo);
                 mUndoLog = null;
             }
 
@@ -823,7 +827,7 @@ final class LocalTransaction extends Locker implements Transaction {
     final long txnId() {
         long txnId = mTxnId;
         if (txnId == 0) {
-            txnId = mDatabase.nextTransactionId();
+            txnId = mTxnContext.nextTransactionId();
             RedoWriter redo = mRedoWriter;
             if (redo != null) {
                 // Replicas set the high bit to ensure no identifier conflict with the leader.
@@ -840,7 +844,7 @@ final class LocalTransaction extends Locker implements Transaction {
      * @param redo not null
      */
     private long assignTransactionId(RedoWriter redo) {
-        long txnId = mDatabase.nextTransactionId();
+        long txnId = mTxnContext.nextTransactionId();
         // Replicas set the high bit to ensure no identifier conflict with the leader.
         txnId = redo.adjustTransactionId(txnId);
         mTxnId = txnId;
@@ -910,7 +914,7 @@ final class LocalTransaction extends Locker implements Transaction {
                 parentScope = parentScope.mParentScope;
             }
 
-            mDatabase.register(undo);
+            mTxnContext.register(undo);
             mUndoLog = undo;
         }
         return undo;
@@ -945,7 +949,7 @@ final class LocalTransaction extends Locker implements Transaction {
                     }
                     super.scopeExitAll();
                     if (undo != null) {
-                        mDatabase.unregister(undo);
+                        mTxnContext.unregister(undo);
                         mUndoLog = null;
                     }
                 } catch (Throwable undoFailed) {
