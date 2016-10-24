@@ -99,6 +99,8 @@
             <author>false</author>
             <nodeprecatedlist>true</nodeprecatedlist>
             <notimestamp>true</notimestamp>
+            <reportOutputDirectory>${basedir}/docs</reportOutputDirectory>
+            <destDir>javadoc</destDir>
           </configuration>
       </plugin>
 
