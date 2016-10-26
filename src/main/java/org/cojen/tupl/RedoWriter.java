@@ -301,6 +301,14 @@ abstract class RedoWriter implements CauseCloseable, ShutdownHook, Flushable {
         sync(metadata);
     }
 
+    synchronized void flushCommit() throws IOException {
+        try {
+            doCommitFlush();
+        } catch (IOException e) {
+            throw rethrow(e, mCause);
+        }
+    }
+
     @Override
     public final synchronized void close() throws IOException {
         close(null);

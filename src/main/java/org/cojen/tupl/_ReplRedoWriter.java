@@ -91,13 +91,16 @@ class _ReplRedoWriter extends _RedoWriter {
     @Override
     public final synchronized void txnRollback(long txnId) throws IOException {
         super.txnRollback(txnId);
-        flush();
+        // Flush rollback as a commit, ensuring no delay in processing of the operation.
+        // Without this, a replica can be stuck holding a lock indefinitely.
+        flushCommit();
     }
 
     @Override
     public final synchronized void txnRollbackFinal(long txnId) throws IOException {
         super.txnRollbackFinal(txnId);
-        flush();
+        // See above comments.
+        flushCommit();
     }
 
     @Override
