@@ -99,7 +99,7 @@ final class _RedoLog extends _RedoWriter {
             long logId, long redoPos, boolean replay)
         throws IOException
     {
-        super(4096, 0);
+        super(65536, 0);
 
         mCrypto = crypto;
         mBaseFile = baseFile;
