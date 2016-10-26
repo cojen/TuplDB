@@ -341,17 +341,19 @@ final class LocalTransaction extends Locker implements Transaction {
             if (parentScope == null) {
                 long commitPos;
                 try {
-                    if ((hasState & HAS_SCOPE) == 0) {
-                        redo.txnEnter(txnId);
-                        mHasState = hasState | HAS_SCOPE;
-                    }
+                    synchronized (redo) {
+                        if ((hasState & HAS_SCOPE) == 0) {
+                            redo.txnEnter(txnId);
+                            mHasState = hasState | HAS_SCOPE;
+                        }
 
-                    if (value == null) {
-                        commitPos = redo.txnDeleteCommitFinal
-                            (txnId, indexId, key, mDurabilityMode);
-                    } else {
-                        commitPos = redo.txnStoreCommitFinal
-                            (txnId, indexId, key, value, mDurabilityMode);
+                        if (value == null) {
+                            commitPos = redo.txnDeleteCommitFinal
+                                (txnId, indexId, key, mDurabilityMode);
+                        } else {
+                            commitPos = redo.txnStoreCommitFinal
+                                (txnId, indexId, key, value, mDurabilityMode);
+                        }
                     }
 
                     cursor.store(LocalTransaction.BOGUS, cursor.leafExclusive(), value);
