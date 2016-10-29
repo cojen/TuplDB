@@ -576,11 +576,13 @@ final class Lock {
      * set. Exclusive locks are transferred, and any other type is released. Method must be
      * called by LockManager with appropriate latch held.
      *
+     * @param ht used to remove this lock if not exclusively held and is no longer used; must
+     * be exclusively held
      * @param pending lock set to add into; can be null initially
      * @return new or original lock set
      * @throws IllegalStateException if lock not held
      */
-    PendingTxn transferExclusive(LockOwner locker, PendingTxn pending) {
+    PendingTxn transferExclusive(LockOwner locker, LockManager.LockHT ht, PendingTxn pending) {
         if (mLockCount == ~0) {
             // Held exclusively. Must double check expected owner because Locker tracks Lock
             // instance multiple times for handling upgrades. Without this check, Lock can be
@@ -594,8 +596,12 @@ final class Lock {
                 mOwner = pending;
             }
         } else {
-            // Unlock upgradable or shared lock.
-            unlock(locker, null);
+            // Unlock upgradable or shared lock. Note that ht isn't passed along, because no
+            // ghost needs to be deleted. An exclusive lock would have been held and detected
+            // above. If this assertion is wrong, a NullPointerException will be thrown.
+            if (unlock(locker, null)) {
+                ht.remove(this);
+            }
         }
         return pending;
     }

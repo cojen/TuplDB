@@ -556,15 +556,26 @@ final class _ReplRedoEngine implements RedoVisitor {
         throws IOException
     {
         Index ix = getIndex(indexId);
-        TxnEntry te = getTxnEntry(txnId);
+        TxnEntry te = removeTxnEntry(txnId);
 
         // Allow side-effect free operations to be performed before acquiring latch.
         mOpLatch.acquireShared();
 
-        Latch latch = te.latch();
-        try {
-            _LocalTransaction txn = te.mTxn;
+        _LocalTransaction txn;
+        Latch latch;
 
+        if (te == null) {
+            // Create the transaction, but don't store it in the transaction table.
+            txn = new _LocalTransaction
+                (mDatabase, txnId, LockMode.UPGRADABLE_READ, INFINITE_TIMEOUT);
+            // Latch isn't required because no other operations can access the transaction.
+            latch = null;
+        } else {
+            txn = te.mTxn;
+            latch = te.latch();
+        }
+
+        try {
             // Locks must be acquired in their original order to avoid
             // deadlock, so don't allow another task thread to run yet.
             txn.lockUpgradable(indexId, key, INFINITE_TIMEOUT);
@@ -584,7 +595,9 @@ final class _ReplRedoEngine implements RedoVisitor {
 
             txn.commitAll();
         } finally {
-            latch.releaseExclusive();
+            if (latch != null) {
+                latch.releaseExclusive();
+            }
         }
 
         // Only release if no exception.
