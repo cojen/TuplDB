@@ -4,6 +4,7 @@ Changelog
 v1.3.8
 ------
 * Stripe transaction state to improve concurrency.
+* Fix memory leaks when processing replicated transactions.
 
 v1.3.7.1 (2016-10-22)
 --------
