@@ -160,7 +160,7 @@ final class LockManager {
         LockHT ht = getLockHT(lock.mHashCode);
         ht.acquireExclusive();
         try {
-            return lock.transferExclusive(locker, pending);
+            return lock.transferExclusive(locker, ht, pending);
         } finally {
             ht.releaseExclusive();
         }
