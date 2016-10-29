@@ -3,8 +3,11 @@ Changelog
 
 v1.3.8
 ------
-* Stripe transaction state to improve concurrency.
 * Fix memory leaks when processing replicated transactions.
+* Use a larger redo log buffer, to better cope with stalls when writing to the file.
+* Stripe transaction state to improve concurrency.
+* Don't run shutdown hooks when panicking, to avoid deadlocks.
+* More replicated rollback improvements.
 
 v1.3.7.1 (2016-10-22)
 --------
