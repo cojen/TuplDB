@@ -2010,12 +2010,12 @@ final class LocalDatabase extends AbstractDatabase {
                 if (!mClosed) {
                     checkpoint(true, 0, 0);
                     if (c != null) {
-                        ct = c.close();
+                        ct = c.close(cause);
                     }
                 }
             } else {
                 if (c != null) {
-                    ct = c.close();
+                    ct = c.close(cause);
                 }
 
                 // Wait for any in-progress checkpoint to complete.

@@ -48,7 +48,7 @@ final class _TransactionContext extends Latch {
     void addStats(Database.Stats stats) {
         acquireShared();
         stats.txnCount += mUndoLogCount;
-        stats.txnsCreated += (mTxnId - mInitialTxnId) / mTxnStride;
+        stats.txnsCreated += mTxnId / mTxnStride;
         releaseShared();
     }
 
