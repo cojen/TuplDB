@@ -1,8 +1,8 @@
 Changelog
 =========
 
-v1.3.8
-------
+v1.3.8.1 (2016-10-29)
+--------
 * Fix memory leaks when processing replicated transactions.
 * Use a larger redo log buffer, to better cope with stalls when writing to the file.
 * Stripe transaction state to improve concurrency.
