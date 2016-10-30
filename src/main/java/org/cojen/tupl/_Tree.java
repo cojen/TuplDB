@@ -1208,9 +1208,9 @@ class _Tree implements View, Index {
                             mDin.readFully(key);
 
                             if (mTaskCount < mTaskLimit) spawn: {
-                                Task task;
+                                Thread task;
                                 try {
-                                    task = new Task();
+                                    task = new Thread(() -> prime());
                                 } catch (Throwable e) {
                                     break spawn;
                                 }
@@ -1235,13 +1235,6 @@ class _Tree implements View, Index {
                     mTaskCount--;
                     notifyAll();
                 }
-            }
-        }
-
-        class Task extends Thread {
-            @Override
-            public void run() {
-                prime();
             }
         }
     }
