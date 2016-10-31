@@ -468,11 +468,7 @@ public interface Cursor {
      * @throws ViewConstraintException if value is not permitted
      */
     public default void commit(byte[] value) throws IOException {
-        store(value);
-        Transaction txn = link();
-        if (txn != null && txn != Transaction.BOGUS) {
-            txn.commit();
-        }
+        ViewUtils.commit(this, value);
     }
 
     //public int read(LockResult[] result,int start,byte[] b, int off, int len) throws IOException;
