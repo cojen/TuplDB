@@ -288,7 +288,16 @@ class ViewUtils {
     }
 
     static void commit(Cursor c, byte[] value) throws IOException {
-        c.store(value);
+        try {
+            c.store(value);
+        } catch (Throwable e) {
+            Transaction txn = c.link();
+            if (txn != null) {
+                txn.reset(e);
+            }
+            throw e;
+        }
+
         Transaction txn = c.link();
         if (txn != null && txn != Transaction.BOGUS) {
             txn.commit();
