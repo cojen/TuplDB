@@ -595,6 +595,19 @@ final class _LocalTransaction extends _Locker implements Transaction {
     }
 
     @Override
+    public final void reset(Throwable cause) {
+        if (cause == null) {
+            try {
+                reset();
+            } catch (Throwable e) {
+                // Ignore.
+            }
+        } else {
+            borked(cause, true, false);
+        }
+    }
+
+    @Override
     public String toString() {
         StringBuilder b = new StringBuilder(Transaction.class.getName());
 
