@@ -157,6 +157,22 @@ public interface Transaction {
     void reset() throws IOException;
 
     /**
+     * Reset the transaction due to the given cause. This provides an opportunity to prevent
+     * this transaction from being used any further. No exception is thrown when invoking this
+     * method.
+     *
+     * @param cause pass a cause to reset and disable the transaction; pass null to simply
+     * reset the transaction and ignore any exception when doing so
+     */
+    default void reset(Throwable cause) {
+        try {
+            reset();
+        } catch (Throwable e) {
+            // Ignore.
+        }
+    }
+
+    /**
      * Attempts to acquire a shared lock for the given key, denying exclusive
      * locks. If return value is {@link LockResult#alreadyOwned owned}, transaction
      * already owns a strong enough lock, and no extra unlock should be
