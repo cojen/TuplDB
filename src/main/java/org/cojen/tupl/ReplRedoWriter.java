@@ -165,6 +165,22 @@ class ReplRedoWriter extends RedoWriter {
         }
     }
 
+    @Override
+    public long txnStoreCommitFinal(long txnId, long indexId,
+                                    byte[] key, byte[] value, DurabilityMode mode)
+        throws IOException
+    {
+        return super.txnStoreCommitFinal(txnId, indexId, key, value, DurabilityMode.SYNC);
+    }
+
+    @Override
+    public long txnDeleteCommitFinal(long txnId, long indexId,
+                                     byte[] key, DurabilityMode mode)
+        throws IOException
+    {
+        return super.txnDeleteCommitFinal(txnId, indexId, key, DurabilityMode.SYNC);
+    }
+
     protected final void flipped(long commitPos) {
         PendingTxnWaiter waiter;
         synchronized (this) {
