@@ -2196,14 +2196,17 @@ class TreeCursor implements CauseCloseable, Cursor {
                         if (rnd.nextBoolean()) {
                             result = highKey == null ? next(txn, frame)
                                 : nextCmp(highKey, LIMIT_LT, frame);
+                            if (mValue == null) {
+                                // Wrap around.
+                                return first();
+                            }
                         } else {
                             result = lowKey == null ? previous(txn, frame)
                                 : previousCmp(lowKey, LIMIT_GE, frame);
-                        }
-
-                        if (mValue == null) {
-                            // Nothing but ghosts in selected direction, so start over.
-                            continue start;
+                            if (mValue == null) {
+                                // Wrap around.
+                                return last();
+                            }
                         }
                     }
 
