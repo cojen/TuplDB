@@ -47,39 +47,49 @@ final class CommitLock implements Lock {
 
     private volatile Thread mExclusiveThread;
 
-    static final class Reentrant extends WeakReference<Thread> {
+    /**
+     * Shared acquire counter, for supporting reentrancy.
+     */
+    static final class Shared extends WeakReference<CommitLock> {
         int count;
 
-        Reentrant() {
-            super(Thread.currentThread());
+        Shared(CommitLock lock) {
+            super(lock);
+        }
+
+        void release() {
+            CommitLock lock = get();
+            if (lock != null) {
+                lock.releaseShared();
+            }
+            count--;
         }
     }
 
-    private final ThreadLocal<Reentrant> mReentant = ThreadLocal.withInitial(Reentrant::new);
-    private Reentrant mRecentReentant;
-
-    private Reentrant reentrant() {
-        Reentrant reentrant = mRecentReentant;
-        if (reentrant == null || reentrant.get() != Thread.currentThread()) {
-            reentrant = mReentant.get();
-            mRecentReentant = reentrant;
-        }
-        return reentrant;
-    }
+    private final ThreadLocal<Shared> mShared = ThreadLocal.withInitial(() -> new Shared(this));
 
     /**
      * Acquire shared lock.
      */
     @Override
     public boolean tryLock() {
+        return tryAcquireShared() != null;
+    }
+
+    /**
+     * Acquire shared lock.
+     *
+     * @return shared object to unlock; is null if acquire failed
+     */
+    Shared tryAcquireShared() {
         mSharedAcquire.increment();
-        Reentrant reentrant = reentrant();
-        if (mExclusiveThread != null && reentrant.count == 0) {
-            doUnlock();
-            return false;
+        Shared shared = mShared.get();
+        if (mExclusiveThread != null && shared.count == 0) {
+            releaseShared();
+            return null;
         } else {
-            reentrant.count++;
-            return true;
+            shared.count++;
+            return shared;
         }
     }
 
@@ -88,10 +98,19 @@ final class CommitLock implements Lock {
      */
     @Override
     public void lock() {
+        acquireShared();
+    }
+
+    /**
+     * Acquire shared lock.
+     *
+     * @return shared object to unlock
+     */
+    Shared acquireShared() {
         mSharedAcquire.increment();
-        Reentrant reentrant = reentrant();
-        if (mExclusiveThread != null && reentrant.count == 0) {
-            doUnlock();
+        Shared shared = mShared.get();
+        if (mExclusiveThread != null && shared.count == 0) {
+            releaseShared();
             mFullLatch.acquireShared();
             try {
                 mSharedAcquire.increment();
@@ -99,7 +118,8 @@ final class CommitLock implements Lock {
                 mFullLatch.releaseShared();
             }
         }
-        reentrant.count++;
+        shared.count++;
+        return shared;
     }
 
     /**
@@ -107,10 +127,19 @@ final class CommitLock implements Lock {
      */
     @Override
     public void lockInterruptibly() throws InterruptedException {
+        acquireSharedInterruptibly();
+    }
+
+    /**
+     * Acquire shared lock.
+     *
+     * @return shared object to unlock
+     */
+    Shared acquireSharedInterruptibly() throws InterruptedException {
         mSharedAcquire.increment();
-        Reentrant reentrant = reentrant();
-        if (mExclusiveThread != null && reentrant.count == 0) {
-            doUnlock();
+        Shared shared = mShared.get();
+        if (mExclusiveThread != null && shared.count == 0) {
+            releaseShared();
             mFullLatch.acquireSharedInterruptibly();
             try {
                 mSharedAcquire.increment();
@@ -118,7 +147,8 @@ final class CommitLock implements Lock {
                 mFullLatch.releaseShared();
             }
         }
-        reentrant.count++;
+        shared.count++;
+        return shared;
     }
 
     /**
@@ -126,14 +156,23 @@ final class CommitLock implements Lock {
      */
     @Override
     public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
+        return tryAcquireShared(time, unit) != null;
+    }
+
+    /**
+     * Acquire shared lock.
+     *
+     * @return shared object to unlock; is null if acquire failed
+     */
+    Shared tryAcquireShared(long time, TimeUnit unit) throws InterruptedException {
         mSharedAcquire.increment();
-        Reentrant reentrant = reentrant();
-        if (mExclusiveThread != null && reentrant.count == 0) {
-            doUnlock();
+        Shared shared = mShared.get();
+        if (mExclusiveThread != null && shared.count == 0) {
+            releaseShared();
             if (time < 0) {
                 mFullLatch.acquireShared();
             } else if (time == 0 || !mFullLatch.tryAcquireSharedNanos(unit.toNanos(time))) {
-                return false;
+                return null;
             }
             try {
                 mSharedAcquire.increment();
@@ -141,8 +180,8 @@ final class CommitLock implements Lock {
                 mFullLatch.releaseShared();
             }
         }
-        reentrant.count++;
-        return true;
+        shared.count++;
+        return shared;
     }
 
     /**
@@ -150,11 +189,11 @@ final class CommitLock implements Lock {
      */
     @Override
     public void unlock() {
-        doUnlock();
-        reentrant().count--;
+        releaseShared();
+        mShared.get().count--;
     }
 
-    private void doUnlock() {
+    void releaseShared() {
         mSharedRelease.increment();
         Thread t = mExclusiveThread;
         if (t != null && !hasSharedLockers()) {
@@ -221,7 +260,7 @@ final class CommitLock implements Lock {
                 }
             }
 
-            reentrant().count++;
+            mShared.get().count++;
             return true;
         } catch (Throwable e) {
             mExclusiveThread = null;
@@ -233,7 +272,7 @@ final class CommitLock implements Lock {
     void releaseExclusive() {
         mExclusiveThread = null;
         mFullLatch.releaseExclusive();
-        reentrant().count--;
+        mShared.get().count--;
     }
 
     boolean hasQueuedThreads() {
