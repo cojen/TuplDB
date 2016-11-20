@@ -97,13 +97,13 @@ final class TreeValueStream extends AbstractStream {
 
             final CursorFrame leaf = mCursor.leafExclusive();
 
-            final CommitLock commitLock = mCursor.commitLock(leaf);
+            final CommitLock.Shared shared = mCursor.commitLock(leaf);
             try {
                 mCursor.notSplitDirty(leaf);
                 action(leaf, OP_SET_LENGTH, length, EMPTY_BYTES, 0, 0);
                 leaf.mNode.releaseExclusive();
             } finally {
-                commitLock.unlock();
+                shared.release();
             }
         } catch (IllegalStateException e) {
             checkOpen();
@@ -132,13 +132,13 @@ final class TreeValueStream extends AbstractStream {
         try {
             final CursorFrame leaf = mCursor.leafExclusive();
 
-            final CommitLock commitLock = mCursor.commitLock(leaf);
+            final CommitLock.Shared shared = mCursor.commitLock(leaf);
             try {
                 mCursor.notSplitDirty(leaf);
                 action(leaf, OP_WRITE, pos, buf, off, len);
                 leaf.mNode.releaseExclusive();
             } finally {
-                commitLock.unlock();
+                shared.release();
             }
         } catch (IllegalStateException e) {
             checkOpen();
