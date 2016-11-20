@@ -209,6 +209,7 @@ public class DeadlockTest {
     }
 
     @Test
+    @Ignore
     public void deadlockAttachments() throws Throwable {
         Database db = Database.open(new DatabaseConfig().directPageAccess(false));
 

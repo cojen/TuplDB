@@ -379,7 +379,7 @@ final class _DurablePageDb extends _PageDb {
 
     @Override
     public long allocPage() throws IOException {
-        mCommitLock.lock();
+        CommitLock.Shared shared = mCommitLock.acquireShared();
         try {
             return mPageManager.allocPage();
         } catch (DatabaseException e) {
@@ -390,7 +390,7 @@ final class _DurablePageDb extends _PageDb {
         } catch (Throwable e) {
             throw closeOnFailure(e);
         } finally {
-            mCommitLock.unlock();
+            shared.release();
         }
     }
 
@@ -419,7 +419,7 @@ final class _DurablePageDb extends _PageDb {
     @Override
     public void deletePage(long id) throws IOException {
         checkId(id);
-        mCommitLock.lock();
+        CommitLock.Shared shared = mCommitLock.acquireShared();
         try {
             mPageManager.deletePage(id);
         } catch (IOException e) {
@@ -427,7 +427,7 @@ final class _DurablePageDb extends _PageDb {
         } catch (Throwable e) {
             throw closeOnFailure(e);
         } finally {
-            mCommitLock.unlock();
+            shared.release();
         }
         mPageArray.uncachePage(id);
     }
@@ -435,7 +435,7 @@ final class _DurablePageDb extends _PageDb {
     @Override
     public void recyclePage(long id) throws IOException {
         checkId(id);
-        mCommitLock.lock();
+        CommitLock.Shared shared = mCommitLock.acquireShared();
         try {
             try {
                 mPageManager.recyclePage(id);
@@ -447,7 +447,7 @@ final class _DurablePageDb extends _PageDb {
         } catch (Throwable e) {
             throw closeOnFailure(e);
         } finally {
-            mCommitLock.unlock();
+            shared.release();
         }
     }
 
@@ -466,13 +466,13 @@ final class _DurablePageDb extends _PageDb {
         }
 
         for (int i=0; i<pageCount; i++) {
-            mCommitLock.lock();
+            CommitLock.Shared shared = mCommitLock.acquireShared();
             try {
                 mPageManager.allocAndRecyclePage();
             } catch (Throwable e) {
                 throw closeOnFailure(e);
             } finally {
-                mCommitLock.unlock();
+                shared.release();
             }
         }
 
@@ -496,12 +496,12 @@ final class _DurablePageDb extends _PageDb {
 
     @Override
     public void scanFreeList(LongConsumer dst) throws IOException {
-        mCommitLock.lock();
+        CommitLock.Shared shared = mCommitLock.acquireShared();
         try {
             scanFreeList(I_MANAGER_HEADER + _PageManager.I_REGULAR_QUEUE, dst);
             scanFreeList(I_MANAGER_HEADER + _PageManager.I_RECYCLE_QUEUE, dst);
         } finally {
-            mCommitLock.unlock();
+            shared.release();
         }
     }
 
@@ -571,7 +571,7 @@ final class _DurablePageDb extends _PageDb {
     {
         // Acquire a shared lock to prevent concurrent commits after callback has released
         // exclusive lock.
-        mCommitLock.lock();
+        CommitLock.Shared shared = mCommitLock.acquireShared();
 
         try {
             mHeaderLatch.acquireShared();
@@ -601,7 +601,7 @@ final class _DurablePageDb extends _PageDb {
                 throw closeOnFailure(e);
             }
         } finally {
-            mCommitLock.unlock();
+            shared.release();
         }
     }
 

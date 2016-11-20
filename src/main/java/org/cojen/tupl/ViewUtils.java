@@ -72,19 +72,6 @@ class ViewUtils {
         return newKey;
     }
 
-
-    static View checkOrdering(View view) {
-        Ordering ordering = view.getOrdering();
-        if (ordering == Ordering.DESCENDING) {
-            view = view.viewReverse();
-            ordering = view.getOrdering();
-        }
-        if (ordering != Ordering.ASCENDING) {
-            throw new UnsupportedOperationException("Unsupported ordering: " + ordering);
-        }
-        return view;
-    }
-
     /**
      * Skip implementation which only locks the last key seen, as per the Cursor.skip contract.
      */
@@ -284,6 +271,23 @@ class ViewUtils {
         } finally {
             c.link(txn);
             c.autoload(auto);
+        }
+    }
+
+    static void commit(Cursor c, byte[] value) throws IOException {
+        try {
+            c.store(value);
+        } catch (Throwable e) {
+            Transaction txn = c.link();
+            if (txn != null) {
+                txn.reset(e);
+            }
+            throw e;
+        }
+
+        Transaction txn = c.link();
+        if (txn != null && txn != Transaction.BOGUS) {
+            txn.commit();
         }
     }
 
