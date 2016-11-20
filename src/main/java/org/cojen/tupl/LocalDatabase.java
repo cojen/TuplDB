@@ -44,10 +44,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -2558,7 +2558,7 @@ final class LocalDatabase extends AbstractDatabase {
 
                 if (treeIdMaskBytes == null) {
                     treeIdMaskBytes = new byte[8];
-                    new Random().nextBytes(treeIdMaskBytes);
+                    ThreadLocalRandom.current().nextBytes(treeIdMaskBytes);
                     mRegistryKeyMap.store(txn, key, treeIdMaskBytes);
                 }
 

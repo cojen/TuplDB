@@ -16,6 +16,8 @@
 
 package org.cojen.tupl;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 /**
  * Base class for any object which can own or acquire locks.
  *
@@ -29,7 +31,7 @@ abstract class _LockOwner {
     _Lock mWaitingFor;
 
     _LockOwner() {
-        mHash = Utils.cheapRandom();
+        mHash = ThreadLocalRandom.current().nextInt();
     }
 
     @Override
