@@ -21,8 +21,8 @@ import java.io.File;
 import java.io.IOException;
 
 import java.util.Arrays;
-import java.util.Random;
 
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 import static java.lang.System.arraycopy;
@@ -50,28 +50,16 @@ class Utils extends org.cojen.tupl.io.Utils {
         return (i | (i >> 16)) + 1;
     }
 
-    private static int cRandomMix = new Random().nextInt();
-
     /**
      * @return non-zero random number, suitable for Xorshift RNG or object hashcode
      */
     static int randomSeed() {
-        int seed = cheapRandom();
-        while (seed == 0) {
-            seed = new Random().nextInt();
-        }
+        ThreadLocalRandom rnd = ThreadLocalRandom.current();
+        int seed;
+        do {
+            seed = rnd.nextInt();
+        } while (seed == 0);
         return seed;
-    }
-
-    /**
-     * @return quickly generated random number, possibly zero
-     */
-    static int cheapRandom() {
-        int value = nextRandom(Long.hashCode(Thread.currentThread().getId()) ^ cRandomMix);
-        // Note the constant increment. This is to avoid getting stuck in an "always zero" rut.
-        // Adding by the magic fibonacci hashing constant provides more mixing than adding 1.
-        cRandomMix = value + 0x61c88647;
-        return value;
     }
 
     /**

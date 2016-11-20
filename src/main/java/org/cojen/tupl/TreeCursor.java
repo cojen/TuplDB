@@ -19,7 +19,6 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 import java.util.Arrays;
-import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.cojen.tupl.io.CauseCloseable;
@@ -3323,7 +3322,7 @@ class TreeCursor implements CauseCloseable, Cursor {
      * @param highKey end of range, exclusive. pass null for open range
      * @return <0 if node is empty or out of bounds
      */
-    private int randomPosition(Random rnd, Node node, byte[] lowKey, byte[] highKey)
+    private int randomPosition(ThreadLocalRandom rnd, Node node, byte[] lowKey, byte[] highKey)
         throws IOException
     {
        int pos = 0;
