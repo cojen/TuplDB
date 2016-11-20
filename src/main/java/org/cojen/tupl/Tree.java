@@ -132,11 +132,11 @@ class Tree implements View, Index {
 
             CommitLock commitLock = mDatabase.commitLock();
             for (byte[] splitKey : partitions) {
-                commitLock.lock();
+                CommitLock.Shared shared = commitLock.acquireShared();
                 try {
                     cursor.splitLeafRight(splitKey);
                 } finally {
-                    commitLock.unlock();
+                    shared.release();
                 }
             }
         } finally {
