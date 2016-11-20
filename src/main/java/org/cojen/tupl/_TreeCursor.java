@@ -3604,8 +3604,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
      * next entry as a side effect, and nodes are deleted only when empty.
      */
     final void appendTransfer(_TreeCursor source) throws IOException {
-        final CommitLock commitLock = mTree.mDatabase.commitLock();
-        commitLock.lock();
+        final CommitLock.Shared shared = mTree.mDatabase.commitLock().acquireShared();
         try {
             final _CursorFrame tleaf = mLeaf;
             _Node tnode = tleaf.acquireExclusive();
@@ -3659,7 +3658,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
         } catch (Throwable e) {
             throw handleException(e, false);
         } finally {
-            commitLock.unlock();
+            shared.release();
         }
     }
 

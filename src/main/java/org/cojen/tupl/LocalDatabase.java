@@ -1181,7 +1181,7 @@ final class LocalDatabase extends AbstractDatabase {
         Node root = tree.mRoot;
 
         prepare: {
-            mCommitLock.lock();
+            CommitLock.Shared shared = mCommitLock.acquireShared();
             try {
                 root.acquireExclusive();
                 if (!root.hasKeys()) {
@@ -1191,7 +1191,7 @@ final class LocalDatabase extends AbstractDatabase {
                 }
                 root.releaseExclusive();
             } finally {
-                mCommitLock.unlock();
+                shared.release();
             }
 
             // Tree isn't truly empty -- it might be composed of many empty leaf nodes.
