@@ -65,24 +65,32 @@ final class _TxnTreeCursor extends _TreeCursor {
 
     @Override
     public final void commit(byte[] value) throws IOException {
-        byte[] key = mKey;
-        ViewUtils.positionCheck(key);
+        _LocalTransaction txn = mTxn;
 
-        try {
-            _LocalTransaction txn = mTxn;
-            if (txn == null) {
-                txn = mTree.mDatabase.newAlwaysRedoTransaction();
-                try {
-                    doCommit(txn, key, value);
-                } catch (Throwable e) {
-                    txn.reset();
-                    throw e;
-                }
-            } else {
+        if (txn == null) {
+            store(value);
+        } else if (txn.durabilityMode() == DurabilityMode.NO_REDO) {
+            byte[] key = mKey;
+            ViewUtils.positionCheck(key);
+            try {
                 doCommit(txn, key, value);
+            } catch (Throwable e) {
+                throw handleException(e, false);
             }
-        } catch (Throwable e) {
-            throw handleException(e, false);
+        } else {
+            // Cannot use optimizations here. Replicated transactions need rollback support for
+            // all operations, including the last one.
+
+            // TODO: Figure out how to still use the combo store-commit redo operations.
+
+            try {
+                store(value);
+            } catch (Throwable e) {
+                txn.reset(e);
+                throw e;
+            }
+
+            txn.commit();
         }
     }
 }
