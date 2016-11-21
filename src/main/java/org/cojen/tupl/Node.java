@@ -4178,8 +4178,8 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     /**
-     * Calculate encoded key length, including header. Key must fit in the node or have been
-     * fragmented.
+     * Calculate encoded key length, including header. Key must fit in the node and hasn't been
+     * fragmented. Fragmented keys always lead with a 2-byte header.
      */
     static int calculateKeyLength(byte[] key) {
         int len = key.length - 1;
@@ -4187,8 +4187,8 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     /**
-     * Calculate encoded value length for leaf, including header. Value must fit in the node or
-     * have been fragmented.
+     * Calculate encoded value length for leaf, including header. Value must fit in the node
+     * and hasn't been fragmented.
      */
     private static int calculateLeafValueLength(byte[] value) {
         int len = value.length;
@@ -4196,22 +4196,24 @@ final class Node extends Latch implements DatabaseAccess {
     }
 
     /**
-     * Calculate encoded value length for leaf, including header. Value must fit in the node or
-     * have been fragmented.
+     * Calculate encoded value length for leaf, including header. Value must fit in the node
+     * and hasn't been fragmented.
      */
     private static long calculateLeafValueLength(long vlength) {
         return vlength + ((vlength <= 127) ? 1 : ((vlength <= 8192) ? 2 : 3));
     }
 
     /**
-     * Calculate encoded value length for leaf, including header.
+     * Calculate encoded value length for leaf, including header. Value must have been encoded
+     * as fragmented.
      */
     private static int calculateFragmentedValueLength(byte[] value) {
         return calculateFragmentedValueLength(value.length);
     }
 
     /**
-     * Calculate encoded value length for leaf, including header.
+     * Calculate encoded value length for leaf, including header. Value must have been encoded
+     * as fragmented.
      */
     static int calculateFragmentedValueLength(int vlength) {
         return vlength + ((vlength <= 8192) ? 2 : 3);
@@ -4748,7 +4750,9 @@ final class Node extends Latch implements DatabaseAccess {
                 }
                 LocalDatabase db = tree.mDatabase;
                 int max = Math.min(~entryLoc, db.mMaxFragmentedEntrySize);
-                int encodedKeyLen = calculateKeyLength(akey);
+                // Compute the encoded key length by subtracting off the value length. This
+                // properly handles the case where the key has been fragmented.
+                int encodedKeyLen = encodedLen - calculateLeafValueLength(value);
                 value = db.fragment(value, value.length, max - encodedKeyLen);
                 if (value == null) {
                     throw new AssertionError();
