@@ -218,8 +218,30 @@ public class LargeValueTest {
         }
     }
 
+    @Test
+    public void testInsertLargeKeyOverflow() throws Exception {
+        // Regression test. Insert a large key/value pair which causes an imbalanced split and
+        // also forces the value to be fragmented. Due to a bug, the fragmented key was not
+        // accounted for properly, and so the allocated space for the new entry was calculated
+        // incorrectly. It was one byte smaller, and the value overflowed the entry slot. This
+        // caused an IndexOutOfBoundsException or it would corrupt the node.
+
+        Index ix = mDb.openIndex("test");
+
+        ix.store(null, key(1), new byte[2005]);
+        ix.store(null, key(3), new byte[2000]);
+        ix.store(null, key(2500, 2), new byte[3000]);
+
+        // Without the fix, this would fail because the garbage field didn't match actual usage.
+        assertTrue(ix.verify(new VerificationObserver()));
+    }
+
     private static byte[] key(int i) {
-        byte[] key = new byte[4];
+        return key(4, i);
+    }
+
+    private static byte[] key(int size, int i) {
+        byte[] key = new byte[size];
         Utils.encodeIntBE(key, 0, i);
         return key;
     }
