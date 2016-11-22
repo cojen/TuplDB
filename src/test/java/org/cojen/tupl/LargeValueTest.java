@@ -236,6 +236,92 @@ public class LargeValueTest {
         assertTrue(ix.verify(new VerificationObserver()));
     }
 
+    @Test
+    public void testInsertLargeKeyNoFit() throws Exception {
+        // Regression test. Insert a large key/value pair which causes an imbalanced split and
+        // also forces the value to be fragmented. The fragmented value should be placed into
+        // the node that has more space.
+
+        Index ix = mDb.openIndex("test");
+
+        ix.store(null, key(1), new byte[11]);
+        ix.store(null, key(2), new byte[3010]);
+        ix.store(null, key(4), new byte[1020]);
+
+        // Without the fix, this would cause an assertion error to be thrown.
+        ix.store(null, key(1030, 3), new byte[2025]);
+    }
+
+    @Test
+    public void testInsertLargeKeyLateFragment() throws Exception {
+        // Create a split imbalance which causes the inserted value to be stored into the
+        // original left node, and it must be fragmented to fit.
+
+        Index ix = mDb.openIndex("test");
+
+        ix.store(null, key(500, 1), new byte[10]);
+        ix.store(null, key(500, 2), new byte[10]);
+        ix.store(null, key(1500, 4), new byte[10]);
+        ix.store(null, key(1500, 5), new byte[10]);
+
+        ix.store(null, key(3), new byte[3050]);
+
+        assertTrue(ix.verify(new VerificationObserver()));
+    }
+
+    @Test
+    public void testInsertLargeKeyLateFragment2() throws Exception {
+        // Create a split imbalance which causes the inserted value to be stored into the
+        // original right node, and it must be fragmented to fit.
+
+        Index ix = mDb.openIndex("test");
+
+        ix.store(null, key(1020, 0), new byte[10]);
+        ix.store(null, key(800, 2), new byte[10]);
+        ix.store(null, key(800, 4), new byte[10]);
+        ix.store(null, key(800, 6), new byte[10]);
+        ix.store(null, key(800, 8), new byte[10]);
+
+        ix.store(null, key(1), new byte[3050]);
+
+        assertTrue(ix.verify(new VerificationObserver()));
+    }
+
+    @Test
+    public void testUpdateLargeKeyLateFragment() throws Exception {
+        // Create a split imbalance which causes the updated value to be stored into the
+        // original left node, and it must be fragmented to fit.
+
+        Index ix = mDb.openIndex("test");
+
+        ix.store(null, key(1500, 1), new byte[10]);
+        ix.store(null, key(1500, 2), new byte[10]);
+        ix.store(null, key(3), new byte[0]);
+        ix.store(null, key(500, 4), new byte[10]);
+        ix.store(null, key(500, 5), new byte[10]);
+
+        ix.store(null, key(3), new byte[3050]);
+
+        assertTrue(ix.verify(new VerificationObserver()));
+    }
+
+    @Test
+    public void testUpdateLargeKeyLateFragment2() throws Exception {
+        // Create a split imbalance which causes the updated value to be stored into the
+        // original right node, and it must be fragmented to fit.
+
+        Index ix = mDb.openIndex("test");
+
+        ix.store(null, key(1500, 2), new byte[10]);
+        ix.store(null, key(3), new byte[0]);
+        ix.store(null, key(500, 4), new byte[10]);
+        ix.store(null, key(1500, 5), new byte[10]);
+
+        ix.store(null, key(3), new byte[3050]);
+
+        assertTrue(ix.verify(new VerificationObserver()));
+    }
+
     private static byte[] key(int i) {
         return key(4, i);
     }
