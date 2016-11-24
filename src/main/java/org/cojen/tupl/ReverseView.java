@@ -41,6 +41,11 @@ final class ReverseView implements View {
     }
 
     @Override
+    public Transaction newTransaction(DurabilityMode durabilityMode) {
+        return mSource.newTransaction(durabilityMode);
+    }
+
+    @Override
     public long count(byte[] lowKey, byte[] highKey) throws IOException {
         return mSource.count(appendZero(highKey), appendZero((lowKey)));
     }

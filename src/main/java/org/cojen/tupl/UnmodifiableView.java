@@ -77,6 +77,11 @@ final class UnmodifiableView implements Index {
     }
 
     @Override
+    public Transaction newTransaction(DurabilityMode durabilityMode) {
+        return mSource.newTransaction(durabilityMode);
+    }
+
+    @Override
     public long count(byte[] lowKey, byte[] highKey) throws IOException {
         return mSource.count(lowKey, highKey);
     }
