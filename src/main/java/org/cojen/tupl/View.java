@@ -203,6 +203,7 @@ public interface View {
     {
         Cursor c = newCursor(txn);
         try {
+            c.autoload(oldValue != null);
             c.find(key);
             if (!Arrays.equals(c.value(), oldValue)) {
                 return false;
