@@ -4524,7 +4524,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                 }
             }
 
-            childNode.used();
+            childNode.used(ThreadLocalRandom.current());
             return childNode;
         }
 
@@ -4569,7 +4569,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                     }
                     childNode.mCachedState = Node.CACHED_CLEAN;
                 }
-                childNode.used();
+                childNode.used(ThreadLocalRandom.current());
                 return childNode;
             }
         }
