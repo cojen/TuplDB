@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 import org.cojen.tupl.util.Latch;
 
 import static org.cojen.tupl.PageOps.*;
@@ -395,8 +397,8 @@ final class Node extends Latch implements DatabaseAccess {
      * list and cannot be evicted. Caller must hold any latch on node. Latch is never released
      * by this method, even if an exception is thrown.
      */
-    void used() {
-        mUsageList.used(this);
+    void used(ThreadLocalRandom rnd) {
+        mUsageList.used(this, rnd);
     }
 
     /**

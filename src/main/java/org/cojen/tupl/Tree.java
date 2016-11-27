@@ -21,6 +21,8 @@ import java.io.DataOutput;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 import static org.cojen.tupl.PageOps.*;
 import static org.cojen.tupl.Utils.*;
 
@@ -163,6 +165,8 @@ class Tree implements View, Index {
         // before releasing the root latch. Also, Node.used is not invoked for the root node,
         // because it cannot be evicted.
 
+        ThreadLocalRandom rnd = ThreadLocalRandom.current();
+
         while (!node.isLeaf()) {
             int childPos;
             try {
@@ -185,7 +189,7 @@ class Tree implements View, Index {
                     if (node.mSplit != null) {
                         node = node.mSplit.selectNode(node, key);
                     }
-                    node.used();
+                    node.used(rnd);
                     continue;
                 }
 

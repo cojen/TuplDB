@@ -50,6 +50,16 @@ class Utils extends org.cojen.tupl.io.Utils {
         return (i | (i >> 16)) + 1;
     }
 
+    static long roundUpPower2(long i) {
+        i--;
+        i |= i >> 1;
+        i |= i >> 2;
+        i |= i >> 4;
+        i |= i >> 8;
+        i |= i >> 16;
+        return (i | (i >> 32)) + 1;
+    }
+
     /**
      * @return non-zero random number, suitable for Xorshift RNG or object hashcode
      */
