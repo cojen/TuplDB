@@ -524,50 +524,152 @@ final class Lock {
      * @param latch might be briefly released and re-acquired
      */
     void deleteGhost(Latch latch) {
-        // TODO: Unlock due to rollback can be optimized. It never needs to
-        // actually delete ghosts, because the undo actions replaced
-        // them. Calling TreeCursor.deleteGhost performs a pointless search.
+        // TODO: Unlock due to rollback can be optimized. It never needs to actually delete
+        // ghosts, because the undo actions replaced them.
 
         Object obj = mSharedLockOwnersObj;
-        if (!(obj instanceof Tree)) {
+        if (!(obj instanceof GhostFrame)) {
             return;
         }
 
-        Tree tree = (Tree) obj;
+        final LocalDatabase db = mOwner.getDatabase();
+        if (db == null) {
+            // Database was closed.
+            return;
+        }
 
-        try {
-            while (true) {
-                TreeCursor c = new TreeCursor(tree, null);
-                c.autoload(false);
-                byte[] key = mKey;
-                mSharedLockOwnersObj = null;
+        final GhostFrame frame = (GhostFrame) obj;
+        mSharedLockOwnersObj = null;
+        byte[] key = mKey;
+        boolean unlatched = false;
 
-                // Release to prevent deadlock, since additional latches are
-                // required for delete.
-                latch.releaseExclusive();
-                try {
-                    if (c.deleteGhost(key)) {
-                        break;
+        CommitLock.Shared shared = db.commitLock().tryAcquireShared();
+        if (shared == null) {
+            // Release lock management latch to prevent deadlock.
+            latch.releaseExclusive();
+            unlatched = true;
+            shared = db.commitLock().acquireShared();
+        }
+
+        doDelete: try {
+            Node node;
+            latchNode: {
+                if (!unlatched) {
+                    if ((node = frame.tryAcquireExclusive()) != null) {
+                        break latchNode;
                     }
-                    // Reopen closed index.
-                    tree = (Tree) tree.mDatabase.indexById(tree.mId);
-                    if (tree == null) {
-                        // Assume index was deleted.
-                        break;
-                    }
-                } finally {
-                    latch.acquireExclusive();
+                    // Release lock management latch to prevent deadlock.
+                    latch.releaseExclusive();
+                    unlatched = true;
                 }
+                node = frame.acquireExclusive();
+            }
+
+            if (frame.isEvicted()) {
+                // Will need to delete the slow way.
+                node.releaseExclusive();
+            } else if (!db.isMutable(node)) {
+                // Node cannot be dirtied without a full cursor, so delete the slow way.
+                node.releaseExclusive();
+                GhostFrame.popAll(frame);
+            } else {
+                // Frame is still valid and node is mutable, so perform a quick delete.
+
+                int pos = frame.mNodePos;
+                if (pos < 0) {
+                    // Already deleted.
+                    node.releaseExclusive();
+                    GhostFrame.popAll(frame);
+                    break doDelete;
+                }
+
+                Split split = node.mSplit;
+                if (split == null) {
+                    try {
+                        if (node.hasLeafValue(pos) == null) {
+                            // Ghost still exists, so delete it.
+                            node.deleteLeafEntry(pos);
+                            node.postDelete(pos, key);
+                        }
+                    } finally {
+                        node.releaseExclusive();
+                        GhostFrame.popAll(frame);
+                    }
+                } else {
+                    Node sibling;
+                    try {
+                        sibling = split.latchSiblingEx();
+                    } catch (Throwable e) {
+                        node.releaseExclusive();
+                        GhostFrame.popAll(frame);
+                        throw e;
+                    }
+
+                    try {
+                        split.rebindFrame(frame, sibling);
+
+                        Node actualNode = frame.mNode;
+                        int actualPos = frame.mNodePos;
+
+                        if (actualNode.hasLeafValue(actualPos) == null) {
+                            // Ghost still exists, so delete it.
+                            actualNode.deleteLeafEntry(actualPos);
+                            // Fix existing frames on original node. Other than potentially the
+                            // ghost frame, no frames exist on the sibling.
+                            node.postDelete(pos, key);
+                        }
+                    } finally {
+                        // Pop the frames before releasing the latches, preventing other
+                        // threads from observing a frame bound to the sibling too soon.
+                        GhostFrame.popAll(frame);
+                        sibling.releaseExclusive();
+                        node.releaseExclusive();
+                    }
+                }
+
+                break doDelete;
+            }
+
+            // Delete the ghost the slow way. Open the index, and then search for the ghost.
+
+            if (!unlatched) {
+                // Release lock management latch to prevent deadlock.
+                latch.releaseExclusive();
+                unlatched = true;
+            }
+
+            while (true) {
+                Index ix = db.anyIndexById(mIndexId);
+                if (!(ix instanceof Tree)) {
+                    // Assume index was deleted.
+                    break;
+                }
+                TreeCursor c = new TreeCursor((Tree) ix);
+                c.mKeyOnly = true;
+                if (c.deleteGhost(key)) {
+                    break;
+                }
+                // Reopen a closed index.
             }
         } catch (Throwable e) {
-            // Exception indicates that database is borked. Ghost will get
-            // cleaned up when database is re-opened.
-            latch.releaseExclusive();
+            // Exception indicates that database is borked. Ghost will get cleaned up when
+            // database is re-opened.
+            shared.release();
+            if (!unlatched) {
+                // Release lock management latch to prevent deadlock.
+                latch.releaseExclusive();
+            }
             try {
-                Utils.closeQuietly(null, ((Tree) obj).mDatabase, e);
+                Utils.closeQuietly(null, mOwner.getDatabase(), e);
             } finally {
                 latch.acquireExclusive();
             }
+            return;
+        }
+
+        shared.release();
+        if (unlatched) {
+            latch.acquireExclusive();
         }
     }
 

@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 import org.cojen.tupl.util.Latch;
 
 import static org.cojen.tupl.Node.*;
@@ -38,6 +40,7 @@ final class NodeUsageList extends Latch {
 
     final transient LocalDatabase mDatabase;
     private final int mPageSize;
+    private final long mUsedRate;
     private int mMaxSize;
     private int mSize;
     private Node mMostRecentlyUsed;
@@ -46,12 +49,21 @@ final class NodeUsageList extends Latch {
     // Padding to prevent cache line sharing.
     private long a0, a1, a2, a3;
 
-    NodeUsageList(LocalDatabase db, int maxSize) {
+    /**
+     * @param usedRate must be power of 2 minus 1, and it determines the likelihood that
+     * calling the used method actually moves the node in the usage list. The higher the used
+     * rate value, the less likely that calling the used method does anything. The used rate
+     * value should be proportional to the total cache size. For larger caches, exact MRU
+     * ordering is less critical, and the cost of updating the ordering is also higher. Hence,
+     * a larger used rate value is recommended.
+     */
+    NodeUsageList(LocalDatabase db, long usedRate, int maxSize) {
         if (maxSize <= 0) {
             throw new IllegalArgumentException();
         }
         mDatabase = db;
         mPageSize = db.pageSize();
+        mUsedRate = usedRate;
         acquireExclusive();
         mMaxSize = maxSize;
         releaseExclusive();
@@ -227,26 +239,35 @@ final class NodeUsageList extends Latch {
      * list and cannot be evicted. Caller must hold any latch on node. Latch is never released
      * by this method, even if an exception is thrown.
      */
-    void used(final Node node) {
-        // Because this method can be a bottleneck, don't wait for exclusive latch. If node is
-        // popular, it will get more chances to be identified as most recently used. This
+    void used(final Node node, final ThreadLocalRandom rnd) {
+        // Moving the node in the usage list is expensive for several reasons. First is the
+        // rapid rate at which shared memory is written to. This creates memory access
+        // contention between CPU cores. Second is the garbage collector. The G1 collector in
+        // particular appears to be very sensitive to old generation objects being shuffled
+        // around too much. Finally, latch acquisition itself can cause contention. If the node
+        // is popular, it will get more chances to be identified as most recently used. This
         // strategy works well enough because cache eviction is always a best-guess approach.
-        if (tryAcquireExclusive()) {
-            Node moreUsed = node.mMoreUsed;
-            if (moreUsed != null) {
-                Node lessUsed = node.mLessUsed;
-                moreUsed.mLessUsed = lessUsed;
-                if (lessUsed == null) {
-                    mLeastRecentlyUsed = moreUsed;
-                } else {
-                    lessUsed.mMoreUsed = moreUsed;
-                }
-                node.mMoreUsed = null;
-                (node.mLessUsed = mMostRecentlyUsed).mMoreUsed = node;
-                mMostRecentlyUsed = node;
-            }
-            releaseExclusive();
+
+        if ((rnd.nextLong() & mUsedRate) == 0 && tryAcquireExclusive()) {
+            doUsed(node);
         }
+    }
+
+    private void doUsed(final Node node) {
+        Node moreUsed = node.mMoreUsed;
+        if (moreUsed != null) {
+            Node lessUsed = node.mLessUsed;
+            moreUsed.mLessUsed = lessUsed;
+            if (lessUsed == null) {
+                mLeastRecentlyUsed = moreUsed;
+            } else {
+                lessUsed.mMoreUsed = moreUsed;
+            }
+            node.mMoreUsed = null;
+            (node.mLessUsed = mMostRecentlyUsed).mMoreUsed = node;
+            mMostRecentlyUsed = node;
+        }
+        releaseExclusive();
     }
 
     /**

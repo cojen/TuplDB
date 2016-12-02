@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 import org.cojen.tupl.util.Latch;
 
 import static org.cojen.tupl.DirectPageOps.*;
@@ -417,8 +419,8 @@ final class _Node extends Latch implements _DatabaseAccess {
      * list and cannot be evicted. Caller must hold any latch on node. Latch is never released
      * by this method, even if an exception is thrown.
      */
-    void used() {
-        mUsageList.used(this);
+    void used(ThreadLocalRandom rnd) {
+        mUsageList.used(this, rnd);
     }
 
     /**
@@ -798,12 +800,21 @@ final class _Node extends Latch implements _DatabaseAccess {
      * @return false if cannot evict
      */
     boolean evict(_LocalDatabase db) throws IOException {
-        if (mLastCursorFrame != null || mSplit != null) {
-            // Cannot evict if in use by a cursor or if splitting. The split
-            // check is redundant, since a node cannot be in a split state
-            // without a cursor registered against it.
-            releaseExclusive();
-            return false;
+        evictCheck: {
+            _CursorFrame last = mLastCursorFrame;
+            if (last != null) {
+                // Cannot evict if in use by a cursor or if splitting, unless the only frame is
+                // for deleting a ghost. No explicit split check is required, since a node
+                // cannot be in a split state without a cursor bound to it.
+                if (last instanceof _GhostFrame && last.mPrevCousin == null) {
+                    // Allow eviction. A full search will be required when the ghost is
+                    // eventually deleted.
+                    ((_GhostFrame) last).evicted();
+                    break evictCheck;
+                }
+                releaseExclusive();
+                return false;
+            }
         }
 
         try {
@@ -1874,6 +1885,9 @@ final class _Node extends Latch implements _DatabaseAccess {
     void txnDeleteLeafEntry(_LocalTransaction txn, _Tree tree, byte[] key, int keyHash, int pos)
         throws IOException
     {
+        // Allocate early, in case out of memory.
+        _GhostFrame frame = new _GhostFrame();
+
         final long page = mPage;
         final int entryLoc = p_ushortGetLE(page, searchVecStart() + pos);
         int loc = entryLoc;
@@ -1916,8 +1930,10 @@ final class _Node extends Latch implements _DatabaseAccess {
             txn.pushUndoStore(tree.mId, _UndoLog.OP_UNDELETE, page, entryLoc, loc - entryLoc);
         }
 
+        frame.bind(this, pos);
+
         // Ghost will be deleted later when locks are released.
-        tree.mLockManager.ghosted(tree, key, keyHash);
+        tree.mLockManager.ghosted(tree.mId, key, keyHash, frame);
 
         // Replace value with ghost.
         p_bytePut(page, valueHeaderLoc, -1);
@@ -2227,9 +2243,8 @@ final class _Node extends Latch implements _DatabaseAccess {
     /**
      * @param frame optional frame which is bound to this node; only used for rebalancing
      * @param pos complement of position as provided by binarySearch; must be positive
-     * @return Location for newly allocated entry, already pointed to by search
-     * vector, or negative if leaf must be split. Complement of negative value
-     * is maximum space available.
+     * @return Location for newly allocated entry, already pointed to by search vector, or
+     * negative if leaf must be split. Complement of negative value is available leaf bytes.
      */
     int createLeafEntry(final _CursorFrame frame, _Tree tree, int pos, final int encodedLen) {
         int searchVecStart = searchVecStart();
@@ -2290,11 +2305,8 @@ final class _Node extends Latch implements _DatabaseAccess {
                     }
                 }
 
-                // Determine max possible entry size allowed, accounting too for entry pointer,
-                // key length, and value length. Key and value length might only require only
-                // require 1 byte fields, but be safe and choose the larger size of 2.
-                int max = garbage() + leftSpace + rightSpace - (2 + 2 + 2);
-                return max <= 0 ? -1 : ~max;
+                // Return the total available space.
+                return ~(garbage() + leftSpace + rightSpace);
             }
 
             int vecLen = searchVecEnd - searchVecStart + 2;
@@ -4200,8 +4212,8 @@ final class _Node extends Latch implements _DatabaseAccess {
     }
 
     /**
-     * Calculate encoded key length, including header. Key must fit in the node or have been
-     * fragmented.
+     * Calculate encoded key length, including header. Key must fit in the node and hasn't been
+     * fragmented. Fragmented keys always lead with a 2-byte header.
      */
     static int calculateKeyLength(byte[] key) {
         int len = key.length - 1;
@@ -4209,8 +4221,8 @@ final class _Node extends Latch implements _DatabaseAccess {
     }
 
     /**
-     * Calculate encoded value length for leaf, including header. Value must fit in the node or
-     * have been fragmented.
+     * Calculate encoded value length for leaf, including header. Value must fit in the node
+     * and hasn't been fragmented.
      */
     private static int calculateLeafValueLength(byte[] value) {
         int len = value.length;
@@ -4218,22 +4230,24 @@ final class _Node extends Latch implements _DatabaseAccess {
     }
 
     /**
-     * Calculate encoded value length for leaf, including header. Value must fit in the node or
-     * have been fragmented.
+     * Calculate encoded value length for leaf, including header. Value must fit in the node
+     * and hasn't been fragmented.
      */
     private static long calculateLeafValueLength(long vlength) {
         return vlength + ((vlength <= 127) ? 1 : ((vlength <= 8192) ? 2 : 3));
     }
 
     /**
-     * Calculate encoded value length for leaf, including header.
+     * Calculate encoded value length for leaf, including header. Value must have been encoded
+     * as fragmented.
      */
     private static int calculateFragmentedValueLength(byte[] value) {
         return calculateFragmentedValueLength(value.length);
     }
 
     /**
-     * Calculate encoded value length for leaf, including header.
+     * Calculate encoded value length for leaf, including header. Value must have been encoded
+     * as fragmented.
      */
     static int calculateFragmentedValueLength(int vlength) {
         return vlength + ((vlength <= 8192) ? 2 : 3);
@@ -4661,6 +4675,9 @@ final class _Node extends Latch implements _DatabaseAccess {
             int destLoc = pageSize(newPage);
             int newSearchVecLoc = TN_HEADER_SIZE;
 
+            // Is assigned if value needed to be fragmented. Used by exception handler below.
+            byte[] fv = null;
+
             int searchVecLoc = searchVecStart;
             for (; newAvail > avail; searchVecLoc += 2, newSearchVecLoc += 2) {
                 int entryLoc = p_ushortGetLE(page, searchVecLoc);
@@ -4668,10 +4685,29 @@ final class _Node extends Latch implements _DatabaseAccess {
 
                 if (searchVecLoc == pos) {
                     if ((newAvail -= encodedLen + 2) < 0) {
-                        // Entry doesn't fit into new node.
-                        break;
+                        // Entry doesn't fit into new node. If value hasn't been fragmented
+                        // yet, then fragment the value to make it fit.
+                        if (vfrag != 0) {
+                            break;
+                        }
+
+                        newAvail += encodedLen + 2; // undo
+
+                        FragParams params = new FragParams();
+                        params.value = value;
+                        params.encodedLen = encodedLen;
+                        params.available = newAvail;
+
+                        fragmentValueForSplit(tree, params);
+
+                        vfrag = ENTRY_FRAGMENTED;
+                        fv = value = params.value;
+                        encodedLen = params.encodedLen;
+                        newAvail = params.available;
                     }
+
                     newLoc = newSearchVecLoc;
+
                     if (forInsert) {
                         // Reserve slot in vector for new entry.
                         newSearchVecLoc += 2;
@@ -4711,7 +4747,6 @@ final class _Node extends Latch implements _DatabaseAccess {
             searchVecStart(searchVecLoc);
             garbage(originalGarbage + garbageAccum);
 
-            byte[] fv = null;
             try {
                 // Assign early, to signal to updateLeafValue that it should fragment a large
                 // value instead of attempting to double split the node.
@@ -4747,6 +4782,9 @@ final class _Node extends Latch implements _DatabaseAccess {
             int destLoc = TN_HEADER_SIZE;
             int newSearchVecLoc = pageSize(newPage) - 2;
 
+            // Is assigned if value needed to be fragmented. Used by exception handler below.
+            byte[] fv = null;
+
             int searchVecLoc = searchVecEnd;
             for (; newAvail > avail; searchVecLoc -= 2, newSearchVecLoc -= 2) {
                 int entryLoc = p_ushortGetLE(page, searchVecLoc);
@@ -4755,9 +4793,27 @@ final class _Node extends Latch implements _DatabaseAccess {
                 if (forInsert) {
                     if (searchVecLoc + 2 == pos) {
                         if ((newAvail -= encodedLen + 2) < 0) {
-                            // Inserted entry doesn't fit into new node.
-                            break;
+                            // Inserted entry doesn't fit into new node. If value hasn't been
+                            // fragmented yet, then fragment the value to make it fit.
+                            if (vfrag != 0) {
+                                break;
+                            }
+
+                            newAvail += encodedLen + 2; // undo
+
+                            FragParams params = new FragParams();
+                            params.value = value;
+                            params.encodedLen = encodedLen;
+                            params.available = newAvail;
+
+                            fragmentValueForSplit(tree, params);
+
+                            vfrag = ENTRY_FRAGMENTED;
+                            fv = value = params.value;
+                            encodedLen = params.encodedLen;
+                            newAvail = params.available;
                         }
+
                         // Reserve spot in vector for new entry.
                         newLoc = newSearchVecLoc;
                         newSearchVecLoc -= 2;
@@ -4769,9 +4825,27 @@ final class _Node extends Latch implements _DatabaseAccess {
                 } else {
                     if (searchVecLoc == pos) {
                         if ((newAvail -= encodedLen + 2) < 0) {
-                            // Updated entry doesn't fit into new node.
-                            break;
+                            // Updated entry doesn't fit into new node. If value hasn't been
+                            // fragmented yet, then fragment the value to make it fit.
+                            if (vfrag != 0) {
+                                break;
+                            }
+
+                            newAvail += encodedLen + 2; // undo
+
+                            FragParams params = new FragParams();
+                            params.value = value;
+                            params.encodedLen = encodedLen;
+                            params.available = newAvail;
+
+                            fragmentValueForSplit(tree, params);
+
+                            vfrag = ENTRY_FRAGMENTED;
+                            fv = value = params.value;
+                            encodedLen = params.encodedLen;
+                            newAvail = params.available;
                         }
+
                         // Don't copy old entry.
                         newLoc = newSearchVecLoc;
                         garbageAccum += entryLen;
@@ -4804,15 +4878,14 @@ final class _Node extends Latch implements _DatabaseAccess {
             searchVecEnd(searchVecLoc);
             garbage(originalGarbage + garbageAccum);
 
-            byte[] fv = null;
             try {
                 // Assign early, to signal to updateLeafValue that it should fragment a large
                 // value instead of attempting to double split the node.
                 mSplit = newSplitRight(newNode);
 
                 if (newLoc == 0) {
-                    // Unable to insert new entry into new right node. Insert
-                    // it into the left node, which should have space now.
+                    // Unable to insert new entry into new right node. Insert it into the
+                    // left node, which should have space now.
                     fv = storeIntoSplitLeaf(tree, okey, akey, vfrag, value, encodedLen, forInsert);
                 } else {
                     // Create new entry and point to it.
@@ -4838,6 +4911,48 @@ final class _Node extends Latch implements _DatabaseAccess {
     }
 
     /**
+     * In/out parameters passed to the fragmentValue method.
+     */
+    private static final class FragParams {
+        byte[] value;   // in: unfragmented value;  out: fragmented value
+        int encodedLen; // in: entry encoded length;  out: updated entry encoded length
+        int available;  // in: available bytes in the target leaf node;  out: updated
+    }
+
+    /**
+     * Fragments a value to fit into a node which is splitting.
+     */
+    private static void fragmentValueForSplit(_Tree tree, FragParams params) throws IOException {
+        byte[] value = params.value;
+
+        // Compute the encoded key length by subtracting off the value length. This properly
+        // handles the case where the key has been fragmented.
+        int encodedKeyLen = params.encodedLen - calculateLeafValueLength(value);
+
+        _LocalDatabase db = tree.mDatabase;
+
+        // Maximum allowed size for fragmented value is limited by available node space, the
+        // maximum allowed fragmented entry size, the space occupied by the key, and the 2-byte
+        // pointer which will reference the entry.
+        int max = Math.min(params.available, db.mMaxFragmentedEntrySize) - encodedKeyLen - 2;
+
+        value = db.fragment(value, value.length, max);
+
+        if (value == null) {
+            // This shouldn't happen with a properly defined maximum key size.
+            throw new AssertionError();
+        }
+
+        params.value = value;
+        params.encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
+
+        if ((params.available -= params.encodedLen + 2) < 0) {
+            // Miscalculated the maximum allowed size.
+            throw new AssertionError();
+        }
+    }
+
+    /**
      * Store an entry into a node which has just been split and has room. If for update, caller
      * must ensure that the mSplit field has been set. It doesn't need to be fully filled in
      * yet, however. The updateLeafValue checks if the mSplit field has been set to prevent
@@ -4854,38 +4969,43 @@ final class _Node extends Latch implements _DatabaseAccess {
         throws IOException
     {
         int pos = binarySearch(okey);
-        if (forInsert) {
-            if (pos >= 0) {
-                throw new AssertionError("Key exists");
-            }
-            int entryLoc = createLeafEntry(null, tree, ~pos, encodedLen);
-            byte[] result = null;
-            while (entryLoc < 0) {
-                if (vfrag != 0) {
-                    // TODO: Can this happen?
-                    throw new DatabaseException("Fragmented entry doesn't fit");
-                }
-                _LocalDatabase db = tree.mDatabase;
-                int max = Math.min(~entryLoc, db.mMaxFragmentedEntrySize);
-                int encodedKeyLen = calculateKeyLength(akey);
-                value = db.fragment(value, value.length, max - encodedKeyLen);
-                if (value == null) {
-                    throw new AssertionError();
-                }
-                result = value;
-                vfrag = ENTRY_FRAGMENTED;
-                encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
-                entryLoc = createLeafEntry(null, tree, ~pos, encodedLen);
-            }
-            copyToLeafEntry(okey, akey, vfrag, value, entryLoc);
-            return result;
-        } else {
+        if (!forInsert) {
             if (pos < 0) {
                 throw new AssertionError("Key not found");
             }
             updateLeafValue(null, tree, pos, vfrag, value);
             return null;
         }
+
+        if (pos >= 0) {
+            throw new AssertionError("Key exists");
+        }
+
+        int entryLoc = createLeafEntry(null, tree, ~pos, encodedLen);
+        byte[] result = null;
+
+        while (entryLoc < 0) {
+            if (vfrag != 0) {
+                // TODO: Can this happen?
+                throw new DatabaseException("Fragmented entry doesn't fit");
+            }
+
+            FragParams params = new FragParams();
+            params.value = value;
+            params.encodedLen = encodedLen;
+            params.available = ~entryLoc;
+
+            fragmentValueForSplit(tree, params);
+
+            vfrag = ENTRY_FRAGMENTED;
+            result = value = params.value;
+            encodedLen = params.encodedLen;
+
+            entryLoc = createLeafEntry(null, tree, ~pos, encodedLen);
+        }
+
+        copyToLeafEntry(okey, akey, vfrag, value, entryLoc);
+        return result;
     }
 
     /**
@@ -5654,7 +5774,9 @@ final class _Node extends Latch implements _DatabaseAccess {
             try {
                 _CursorFrame frame = mLastCursorFrame;
                 while (frame != null) {
-                    count++;
+                    if (!(frame instanceof _GhostFrame)) {
+                        count++;
+                    }
                     frame = frame.mPrevCousin;
                 }
             } finally {
@@ -5689,15 +5811,17 @@ final class _Node extends Latch implements _DatabaseAccess {
                 }
             }
 
-            long count = 1;
+            long count = 0;
 
             while (true) {
+                if (!(frame instanceof _GhostFrame)) {
+                    count++;
+                }
                 _CursorFrame prev = frame.tryLockPrevious(lock);
                 frame.unlock(lockResult);
                 if (prev == null) {
                     return count;
                 }
-                count++;
                 lockResult = frame;
                 frame = prev;
             }

@@ -1,6 +1,18 @@
 Changelog
 =========
 
+v1.3.9 (2016-11-27)
+------
+* Avoid looping indefinitely if random search encounters ghosts.
+* Fix split insert handling of large keys and values which caused an overflow.
+* Fix edge cases when storing large values into split nodes, and the values must be fragmented.
+* Add method to reset a transaction due to an exception.
+* Added a convenience method to create transactions from view instances.
+* Cursor exceptions suppressed when database is closed.
+* Optimize handling of shared commit lock reentrancy by eliminating a contended write.
+* Optimize generation of random numbers, used internally.
+* Update node MRU position less aggressively, improving performance due to fewer memory writes.
+
 v1.3.8 (2016-10-29)
 ------
 * Fix memory leaks when processing replicated transactions.
