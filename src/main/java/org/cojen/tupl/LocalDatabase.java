@@ -3165,6 +3165,13 @@ final class LocalDatabase extends AbstractDatabase {
     /**
      * Caller must hold commit lock and any latch on node.
      */
+    boolean isMutable(Node node) {
+        return node.mCachedState == mCommitState && node.mId > 1;
+    }
+
+    /**
+     * Caller must hold commit lock and any latch on node.
+     */
     boolean shouldMarkDirty(Node node) {
         return node.mCachedState != mCommitState && node.mId >= 0;
     }

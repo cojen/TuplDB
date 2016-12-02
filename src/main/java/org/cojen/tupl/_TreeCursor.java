@@ -2974,13 +2974,15 @@ class _TreeCursor implements CauseCloseable, Cursor {
                     break doDelete;
                 }
 
-                try {
+                dd: try {
                     if (txn == null) {
                         commitPos = mTree.redoStore(key, null);
                     } else if (txn.lockMode() != LockMode.UNSAFE) {
                         node.txnDeleteLeafEntry(txn, mTree, key, keyHash(), pos);
-                        // Above operation leaves a ghost, so no cursors to fix.
-                        break doDelete;
+                        // Above operation leaves a ghost, so no cursors to fix. Break out of
+                        // this section and attempt to merge, since the ghost delete operation
+                        // won't be able to.
+                        break dd;
                     } else if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
                         commitPos = mTree.redoStoreNoLock(key, null);
                     }
