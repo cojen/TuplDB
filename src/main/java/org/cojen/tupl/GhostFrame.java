@@ -1,5 +1,5 @@
 /*
- *  Copyright 2015 Cojen.org
+ *  Copyright 2016 Cojen.org
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -16,30 +16,29 @@
 
 package org.cojen.tupl;
 
-import java.util.concurrent.ThreadLocalRandom;
-
 /**
- * Base class for any object which can own or acquire locks.
+ * Special frame type for tracking ghosted entries within leaf nodes. Unlike regular frames,
+ * ghost frames don't prevent the bound node from being evicted.
  *
  * @author Brian S O'Neill
  */
 /*P*/
-abstract class LockOwner implements DatabaseAccess { // weak access to database
-    private final int mHash;
+final class GhostFrame extends CursorFrame {
+    private static final byte[] EVICTED = new byte[0];
 
-    // LockOwner is currently waiting to acquire this lock. Used for deadlock detection.
-    Lock mWaitingFor;
-
-    LockOwner() {
-        mHash = ThreadLocalRandom.current().nextInt();
+    GhostFrame() {
     }
 
-    @Override
-    public final int hashCode() {
-        return mHash;
+    /**
+     * Called with node latch held exclusively, when the node referenced by this frame has been
+     * evicted.
+     */
+    void evicted() {
+        mNotFoundKey = EVICTED;
+        popAll(this);
     }
 
-    public abstract void attach(Object obj);
-
-    public abstract Object attachment();
+    boolean isEvicted() {
+        return mNotFoundKey == EVICTED;
+    }
 }

@@ -778,12 +778,21 @@ final class Node extends Latch implements DatabaseAccess {
      * @return false if cannot evict
      */
     boolean evict(LocalDatabase db) throws IOException {
-        if (mLastCursorFrame != null || mSplit != null) {
-            // Cannot evict if in use by a cursor or if splitting. The split
-            // check is redundant, since a node cannot be in a split state
-            // without a cursor registered against it.
-            releaseExclusive();
-            return false;
+        evictCheck: {
+            CursorFrame last = mLastCursorFrame;
+            if (last != null) {
+                // Cannot evict if in use by a cursor or if splitting, unless the only frame is
+                // for deleting a ghost. No explicit split check is required, since a node
+                // cannot be in a split state without a cursor bound to it.
+                if (last instanceof GhostFrame && last.mPrevCousin == null) {
+                    // Allow eviction. A full search will be required when the ghost is
+                    // eventually deleted.
+                    ((GhostFrame) last).evicted();
+                    break evictCheck;
+                }
+                releaseExclusive();
+                return false;
+            }
         }
 
         try {
@@ -1854,6 +1863,9 @@ final class Node extends Latch implements DatabaseAccess {
     void txnDeleteLeafEntry(LocalTransaction txn, Tree tree, byte[] key, int keyHash, int pos)
         throws IOException
     {
+        // Allocate early, in case out of memory.
+        GhostFrame frame = new GhostFrame();
+
         final /*P*/ byte[] page = mPage;
         final int entryLoc = p_ushortGetLE(page, searchVecStart() + pos);
         int loc = entryLoc;
@@ -1896,8 +1908,10 @@ final class Node extends Latch implements DatabaseAccess {
             txn.pushUndoStore(tree.mId, UndoLog.OP_UNDELETE, page, entryLoc, loc - entryLoc);
         }
 
+        frame.bind(this, pos);
+
         // Ghost will be deleted later when locks are released.
-        tree.mLockManager.ghosted(tree, key, keyHash);
+        tree.mLockManager.ghosted(tree.mId, key, keyHash, frame);
 
         // Replace value with ghost.
         p_bytePut(page, valueHeaderLoc, -1);
@@ -5420,7 +5434,9 @@ final class Node extends Latch implements DatabaseAccess {
             try {
                 CursorFrame frame = mLastCursorFrame;
                 while (frame != null) {
-                    count++;
+                    if (!(frame instanceof GhostFrame)) {
+                        count++;
+                    }
                     frame = frame.mPrevCousin;
                 }
             } finally {
@@ -5455,15 +5471,17 @@ final class Node extends Latch implements DatabaseAccess {
                 }
             }
 
-            long count = 1;
+            long count = 0;
 
             while (true) {
+                if (!(frame instanceof GhostFrame)) {
+                    count++;
+                }
                 CursorFrame prev = frame.tryLockPrevious(lock);
                 frame.unlock(lockResult);
                 if (prev == null) {
                     return count;
                 }
-                count++;
                 lockResult = frame;
                 frame = prev;
             }

@@ -52,6 +52,11 @@ class _Locker extends _LockOwner {
     }
 
     @Override
+    public final _LocalDatabase getDatabase() {
+        return manager().mDatabaseRef.get();
+    }
+
+    @Override
     public void attach(Object obj) {
         // Thread-local lockers aren't accessible from the public API.
         throw new UnsupportedOperationException();

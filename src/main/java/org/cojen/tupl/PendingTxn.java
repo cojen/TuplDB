@@ -43,6 +43,11 @@ final class PendingTxn extends LockOwner {
     }
 
     @Override
+    public final LocalDatabase getDatabase() {
+        return mUndoLog.getDatabase();
+    }
+
+    @Override
     public void attach(Object obj) {
         mAttachment = obj;
     }
