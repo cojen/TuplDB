@@ -41,6 +41,16 @@ public interface View {
     public Cursor newCursor(Transaction txn);
 
     /**
+     * Returns a new transaction which is compatible with this view. If the provided durability
+     * mode is null, a default mode is selected.
+     *
+     * @throws UnsupportedOperationException if not supported
+     */
+    public default Transaction newTransaction(DurabilityMode durabilityMode) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * Non-transactionally counts the number of entries within the given range. Implementations
      * of this method typically scan over the entries, and so it shouldn't be expected to run
      * in constant time.
@@ -193,6 +203,7 @@ public interface View {
     {
         Cursor c = newCursor(txn);
         try {
+            c.autoload(oldValue != null);
             c.find(key);
             if (!Arrays.equals(c.value(), oldValue)) {
                 return false;

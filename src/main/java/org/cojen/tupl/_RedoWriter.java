@@ -19,7 +19,7 @@ package org.cojen.tupl;
 import java.io.Flushable;
 import java.io.IOException;
 
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.cojen.tupl.io.CauseCloseable;
 
@@ -286,7 +286,7 @@ abstract class _RedoWriter implements CauseCloseable, ShutdownHook, Flushable {
     }
 
     public synchronized void nopRandom() throws IOException {
-        writeOp(OP_NOP_RANDOM, new Random().nextLong());
+        writeOp(OP_NOP_RANDOM, ThreadLocalRandom.current().nextLong());
         writeTerminator();
         flush();
     }

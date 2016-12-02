@@ -19,7 +19,6 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 import java.util.Arrays;
-import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.cojen.tupl.io.CauseCloseable;
@@ -2975,13 +2974,15 @@ class TreeCursor implements CauseCloseable, Cursor {
                     break doDelete;
                 }
 
-                try {
+                dd: try {
                     if (txn == null) {
                         commitPos = mTree.redoStore(key, null);
                     } else if (txn.lockMode() != LockMode.UNSAFE) {
                         node.txnDeleteLeafEntry(txn, mTree, key, keyHash(), pos);
-                        // Above operation leaves a ghost, so no cursors to fix.
-                        break doDelete;
+                        // Above operation leaves a ghost, so no cursors to fix. Break out of
+                        // this section and attempt to merge, since the ghost delete operation
+                        // won't be able to.
+                        break dd;
                     } else if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
                         commitPos = mTree.redoStoreNoLock(key, null);
                     }
@@ -3323,7 +3324,7 @@ class TreeCursor implements CauseCloseable, Cursor {
      * @param highKey end of range, exclusive. pass null for open range
      * @return <0 if node is empty or out of bounds
      */
-    private int randomPosition(Random rnd, Node node, byte[] lowKey, byte[] highKey)
+    private int randomPosition(ThreadLocalRandom rnd, Node node, byte[] lowKey, byte[] highKey)
         throws IOException
     {
        int pos = 0;
@@ -3412,6 +3413,10 @@ class TreeCursor implements CauseCloseable, Cursor {
     }
 
     protected final IOException handleException(Throwable e, boolean reset) throws IOException {
+        // Checks if cause of exception is likely due to the database being closed. If so, the
+        // given exception is discarded and a new DatabaseException is thrown.
+        mTree.mDatabase.checkClosed();
+
         if (mLeaf == null && e instanceof IllegalStateException) {
             // Exception is caused by cursor state; store is safe.
             if (reset) {
@@ -4306,8 +4311,7 @@ class TreeCursor implements CauseCloseable, Cursor {
 
         parentNode.deleteLeftChildRef(pos);
 
-        // Pass the right node as if it was the left node, for the latch to be released.
-        mergeInternal(parentFrame, parentNode, rightNode, null);
+        mergeInternal(parentFrame, parentNode, rightNode);
     }
 
     /**
@@ -4413,7 +4417,11 @@ class TreeCursor implements CauseCloseable, Cursor {
 
         int remaining = leftAvail + rightAvail - pageSize(node.mPage) + Node.TN_HEADER_SIZE;
 
-        if (remaining >= 0) {
+        if (remaining < 0) {
+            if (rightNode != null) {
+                rightNode.releaseExclusive();
+            }
+        } else {
             // Migrate the entire contents of the right node into the left node, and then
             // delete the right node. Left must be marked dirty, and parent is already
             // expected to be dirty.
@@ -4436,50 +4444,31 @@ class TreeCursor implements CauseCloseable, Cursor {
                 parentNode.releaseExclusive();
                 throw e;
             }
-            rightNode = null;
             parentNode.deleteRightChildRef(leftPos + 2);
         }
 
-        mergeInternal(parentFrame, parentNode, leftNode, rightNode);
+        mergeInternal(parentFrame, parentNode, leftNode);
     }
 
     /**
      * Caller must hold exclusive latch, which is released by this method.
      *
-     * @param leftChildNode never null, latched exclusively, always released by this method
-     * @param rightChildNode null if contents merged into left node, otherwise latched
-     * exclusively and should simply be unlatched
+     * @param childNode never null, latched exclusively, always released by this method
      */
-    private void mergeInternal(CursorFrame frame, Node node,
-                               Node leftChildNode, Node rightChildNode)
-        throws IOException
-    {
-        up: {
-            if (node.shouldInternalMerge()) {
-                if (node.hasKeys() || node != mTree.mRoot) {
-                    // Continue merging up the tree.
-                    break up;
-                }
-                // Delete the empty root node, eliminating a tree level.
-                if (rightChildNode != null) {
-                    throw new AssertionError();
-                }
-                mTree.rootDelete(leftChildNode);
-                return;
-            }
-
-            if (rightChildNode != null) {
-                rightChildNode.releaseExclusive();
-            }
-            leftChildNode.releaseExclusive();
+    private void mergeInternal(CursorFrame frame, Node node, Node childNode) throws IOException {
+        if (!node.shouldInternalMerge()) {
+            childNode.releaseExclusive();
             node.releaseExclusive();
             return;
         }
 
-        if (rightChildNode != null) {
-            rightChildNode.releaseExclusive();
+        if (!node.hasKeys() && node == mTree.mRoot) {
+            // Delete the empty root node, eliminating a tree level.
+            mTree.rootDelete(childNode);
+            return;
         }
-        leftChildNode.releaseExclusive();
+
+        childNode.releaseExclusive();
 
         // At this point, only one node latch is held, and it should merge with
         // a sibling node. Node is guaranteed to be an internal node.
@@ -4564,7 +4553,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         if (leftNode == null) {
             if (rightNode == null) {
                 // Tail call. I could just loop here, but this is simpler.
-                mergeInternal(parentFrame, parentNode, node, null);
+                mergeInternal(parentFrame, parentNode, node);
                 return;
             }
             leftAvail = -1;
@@ -4601,7 +4590,11 @@ class TreeCursor implements CauseCloseable, Cursor {
         int remaining = leftAvail - parentEntryLen
             + rightAvail - pageSize(parentPage) + (Node.TN_HEADER_SIZE - 2);
 
-        if (remaining >= 0) {
+        if (remaining < 0) {
+            if (rightNode != null) {
+                rightNode.releaseExclusive();
+            }
+        } else {
             // Migrate the entire contents of the right node into the left node, and then
             // delete the right node. Left must be marked dirty, and parent is already
             // expected to be dirty.
@@ -4625,12 +4618,11 @@ class TreeCursor implements CauseCloseable, Cursor {
                 parentNode.releaseExclusive();
                 throw e;
             }
-            rightNode = null;
             parentNode.deleteRightChildRef(leftPos + 2);
         }
 
         // Tail call. I could just loop here, but this is simpler.
-        mergeInternal(parentFrame, parentNode, leftNode, rightNode);
+        mergeInternal(parentFrame, parentNode, leftNode);
     }
 
     private int pageSize(/*P*/ byte[] page) {
@@ -4735,7 +4727,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                 }
             }
 
-            childNode.used();
+            childNode.used(ThreadLocalRandom.current());
             return childNode;
         }
 
@@ -4780,7 +4772,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                     }
                     childNode.mCachedState = Node.CACHED_CLEAN;
                 }
-                childNode.used();
+                childNode.used(ThreadLocalRandom.current());
                 return childNode;
             }
         }

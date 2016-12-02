@@ -50,6 +50,11 @@ final class TrimmedView implements View {
     }
 
     @Override
+    public Transaction newTransaction(DurabilityMode durabilityMode) {
+        return mSource.newTransaction(durabilityMode);
+    }
+
+    @Override
     public byte[] load(Transaction txn, byte[] key) throws IOException {
         return mSource.load(txn, applyPrefix(key));
     }

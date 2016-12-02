@@ -458,6 +458,9 @@ public class CompactTest {
 
         txn.commit();
 
+        // Make sure enough free pages are available for compaction to use.
+        mDb.checkpoint();
+
         // Compact will work this time now that undo log is gone.
         mDb.compactFile(null, 0.9);
         Database.Stats stats3 = mDb.stats();

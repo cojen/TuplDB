@@ -21,6 +21,8 @@ import java.io.DataOutput;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 import static org.cojen.tupl.DirectPageOps.*;
 import static org.cojen.tupl.Utils.*;
 
@@ -145,6 +147,11 @@ class _Tree implements View, Index {
     }
 
     @Override
+    public Transaction newTransaction(DurabilityMode durabilityMode) {
+        return mDatabase.newTransaction(durabilityMode);
+    }
+
+    @Override
     public long count(byte[] lowKey, byte[] highKey) throws IOException {
         _TreeCursor cursor = new _TreeCursor(this, Transaction.BOGUS);
         _TreeCursor high = null;
@@ -187,6 +194,8 @@ class _Tree implements View, Index {
         // before releasing the root latch. Also, _Node.used is not invoked for the root node,
         // because it cannot be evicted.
 
+        ThreadLocalRandom rnd = ThreadLocalRandom.current();
+
         while (!node.isLeaf()) {
             int childPos;
             try {
@@ -209,7 +218,7 @@ class _Tree implements View, Index {
                     if (node.mSplit != null) {
                         node = node.mSplit.selectNode(node, key);
                     }
-                    node.used();
+                    node.used(rnd);
                     continue;
                 }
 
