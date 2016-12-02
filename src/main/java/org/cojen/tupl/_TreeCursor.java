@@ -4204,7 +4204,11 @@ class _TreeCursor implements CauseCloseable, Cursor {
 
         int remaining = leftAvail + rightAvail - pageSize(node.mPage) + _Node.TN_HEADER_SIZE;
 
-        if (remaining >= 0) {
+        if (remaining < 0) {
+            if (rightNode != null) {
+                rightNode.releaseExclusive();
+            }
+        } else {
             // Migrate the entire contents of the right node into the left node, and then
             // delete the right node. Left must be marked dirty, and parent is already
             // expected to be dirty.
@@ -4227,50 +4231,31 @@ class _TreeCursor implements CauseCloseable, Cursor {
                 parentNode.releaseExclusive();
                 throw e;
             }
-            rightNode = null;
             parentNode.deleteRightChildRef(leftPos + 2);
         }
 
-        mergeInternal(parentFrame, parentNode, leftNode, rightNode);
+        mergeInternal(parentFrame, parentNode, leftNode);
     }
 
     /**
      * Caller must hold exclusive latch, which is released by this method.
      *
-     * @param leftChildNode never null, latched exclusively, always released by this method
-     * @param rightChildNode null if contents merged into left node, otherwise latched
-     * exclusively and should simply be unlatched
+     * @param childNode never null, latched exclusively, always released by this method
      */
-    private void mergeInternal(_CursorFrame frame, _Node node,
-                               _Node leftChildNode, _Node rightChildNode)
-        throws IOException
-    {
-        up: {
-            if (node.shouldInternalMerge()) {
-                if (node.hasKeys() || node != mTree.mRoot) {
-                    // Continue merging up the tree.
-                    break up;
-                }
-                // Delete the empty root node, eliminating a tree level.
-                if (rightChildNode != null) {
-                    throw new AssertionError();
-                }
-                mTree.rootDelete(leftChildNode);
-                return;
-            }
-
-            if (rightChildNode != null) {
-                rightChildNode.releaseExclusive();
-            }
-            leftChildNode.releaseExclusive();
+    private void mergeInternal(_CursorFrame frame, _Node node, _Node childNode) throws IOException {
+        if (!node.shouldInternalMerge()) {
+            childNode.releaseExclusive();
             node.releaseExclusive();
             return;
         }
 
-        if (rightChildNode != null) {
-            rightChildNode.releaseExclusive();
+        if (!node.hasKeys() && node == mTree.mRoot) {
+            // Delete the empty root node, eliminating a tree level.
+            mTree.rootDelete(childNode);
+            return;
         }
-        leftChildNode.releaseExclusive();
+
+        childNode.releaseExclusive();
 
         // At this point, only one node latch is held, and it should merge with
         // a sibling node. _Node is guaranteed to be an internal node.
@@ -4355,7 +4340,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
         if (leftNode == null) {
             if (rightNode == null) {
                 // Tail call. I could just loop here, but this is simpler.
-                mergeInternal(parentFrame, parentNode, node, null);
+                mergeInternal(parentFrame, parentNode, node);
                 return;
             }
             leftAvail = -1;
@@ -4392,7 +4377,11 @@ class _TreeCursor implements CauseCloseable, Cursor {
         int remaining = leftAvail - parentEntryLen
             + rightAvail - pageSize(parentPage) + (_Node.TN_HEADER_SIZE - 2);
 
-        if (remaining >= 0) {
+        if (remaining < 0) {
+            if (rightNode != null) {
+                rightNode.releaseExclusive();
+            }
+        } else {
             // Migrate the entire contents of the right node into the left node, and then
             // delete the right node. Left must be marked dirty, and parent is already
             // expected to be dirty.
@@ -4416,12 +4405,11 @@ class _TreeCursor implements CauseCloseable, Cursor {
                 parentNode.releaseExclusive();
                 throw e;
             }
-            rightNode = null;
             parentNode.deleteRightChildRef(leftPos + 2);
         }
 
         // Tail call. I could just loop here, but this is simpler.
-        mergeInternal(parentFrame, parentNode, leftNode, rightNode);
+        mergeInternal(parentFrame, parentNode, leftNode);
     }
 
     private int pageSize(long page) {
