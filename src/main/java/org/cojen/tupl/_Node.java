@@ -4569,7 +4569,9 @@ final class _Node extends Latch implements _DatabaseAccess {
             byte[] fv = null;
 
             int searchVecLoc = searchVecStart;
-            for (; newAvail > avail; searchVecLoc += 2, newSearchVecLoc += 2) {
+            for (; searchVecLoc < searchVecEnd && newAvail > avail;
+                 searchVecLoc += 2, newSearchVecLoc += 2)
+            {
                 int entryLoc = p_ushortGetLE(page, searchVecLoc);
                 int entryLen = leafEntryLengthAtLoc(page, entryLoc);
 
@@ -4676,7 +4678,9 @@ final class _Node extends Latch implements _DatabaseAccess {
             byte[] fv = null;
 
             int searchVecLoc = searchVecEnd;
-            for (; newAvail > avail; searchVecLoc -= 2, newSearchVecLoc -= 2) {
+            for (; searchVecLoc > searchVecStart && newAvail > avail;
+                 searchVecLoc -= 2, newSearchVecLoc -= 2)
+            {
                 int entryLoc = p_ushortGetLE(page, searchVecLoc);
                 int entryLen = leafEntryLengthAtLoc(page, entryLoc);
 
