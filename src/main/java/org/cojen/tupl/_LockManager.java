@@ -172,7 +172,7 @@ final class _LockManager {
      *
      * @param frame must be bound to the ghost position
      */
-    final void ghosted(long indexId, byte[] key, int hash, _GhostFrame frame) {
+    final void ghosted(long indexId, byte[] key, int hash, _CursorFrame.Ghost frame) {
         LockHT ht = getLockHT(hash);
         ht.acquireExclusive();
         try {

@@ -784,10 +784,10 @@ final class Node extends Latch implements DatabaseAccess {
                 // Cannot evict if in use by a cursor or if splitting, unless the only frame is
                 // for deleting a ghost. No explicit split check is required, since a node
                 // cannot be in a split state without a cursor bound to it.
-                if (last instanceof GhostFrame && last.mPrevCousin == null) {
+                if (last instanceof CursorFrame.Ghost && last.mPrevCousin == null) {
                     // Allow eviction. A full search will be required when the ghost is
                     // eventually deleted.
-                    ((GhostFrame) last).evicted();
+                    CursorFrame.popAll(last);
                     break evictCheck;
                 }
                 releaseExclusive();
@@ -1864,7 +1864,7 @@ final class Node extends Latch implements DatabaseAccess {
         throws IOException
     {
         // Allocate early, in case out of memory.
-        GhostFrame frame = new GhostFrame();
+        CursorFrame.Ghost frame = new CursorFrame.Ghost();
 
         final /*P*/ byte[] page = mPage;
         final int entryLoc = p_ushortGetLE(page, searchVecStart() + pos);
@@ -5434,7 +5434,7 @@ final class Node extends Latch implements DatabaseAccess {
             try {
                 CursorFrame frame = mLastCursorFrame;
                 while (frame != null) {
-                    if (!(frame instanceof GhostFrame)) {
+                    if (!(frame instanceof CursorFrame.Ghost)) {
                         count++;
                     }
                     frame = frame.mPrevCousin;
@@ -5474,7 +5474,7 @@ final class Node extends Latch implements DatabaseAccess {
             long count = 0;
 
             while (true) {
-                if (!(frame instanceof GhostFrame)) {
+                if (!(frame instanceof CursorFrame.Ghost)) {
                     count++;
                 }
                 CursorFrame prev = frame.tryLockPrevious(lock);
