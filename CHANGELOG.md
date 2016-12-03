@@ -1,6 +1,11 @@
 Changelog
 =========
 
+v1.3.10 (2016-12-03)
+-------
+* Fix bug which allowed a split node to become empty.
+* Optimized transactional deletes.
+
 v1.3.9 (2016-11-27)
 ------
 * Avoid looping indefinitely if random search encounters ghosts.
