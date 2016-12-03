@@ -528,7 +528,7 @@ final class _Lock {
         // ghosts, because the undo actions replaced them.
 
         Object obj = mSharedLockOwnersObj;
-        if (!(obj instanceof _GhostFrame)) {
+        if (!(obj instanceof _CursorFrame.Ghost)) {
             return;
         }
 
@@ -538,7 +538,7 @@ final class _Lock {
             return;
         }
 
-        final _GhostFrame frame = (_GhostFrame) obj;
+        final _CursorFrame.Ghost frame = (_CursorFrame.Ghost) obj;
         mSharedLockOwnersObj = null;
         byte[] key = mKey;
         boolean unlatched = false;
@@ -552,26 +552,35 @@ final class _Lock {
         }
 
         doDelete: try {
-            _Node node;
-            latchNode: {
+            _Node node = frame.mNode;
+            if (node != null) latchNode: {
                 if (!unlatched) {
-                    if ((node = frame.tryAcquireExclusive()) != null) {
-                        break latchNode;
+                    while (node.tryAcquireExclusive()) {
+                        _Node actualNode = frame.mNode;
+                        if (actualNode == node) {
+                            break latchNode;
+                        }
+                        node.releaseExclusive();
+                        node = actualNode;
+                        if (node == null) {
+                            break latchNode;
+                        }
                     }
+
                     // Release lock management latch to prevent deadlock.
                     latch.releaseExclusive();
                     unlatched = true;
                 }
-                node = frame.acquireExclusive();
+
+                node = frame.acquireExclusiveIfBound();
             }
 
-            if (frame.isEvicted()) {
+            if (node == null) {
                 // Will need to delete the slow way.
-                node.releaseExclusive();
             } else if (!db.isMutable(node)) {
                 // _Node cannot be dirtied without a full cursor, so delete the slow way.
                 node.releaseExclusive();
-                _GhostFrame.popAll(frame);
+                _CursorFrame.popAll(frame);
             } else {
                 // Frame is still valid and node is mutable, so perform a quick delete.
 
@@ -579,7 +588,7 @@ final class _Lock {
                 if (pos < 0) {
                     // Already deleted.
                     node.releaseExclusive();
-                    _GhostFrame.popAll(frame);
+                    _CursorFrame.popAll(frame);
                     break doDelete;
                 }
 
@@ -593,7 +602,7 @@ final class _Lock {
                         }
                     } finally {
                         node.releaseExclusive();
-                        _GhostFrame.popAll(frame);
+                        _CursorFrame.popAll(frame);
                     }
                 } else {
                     _Node sibling;
@@ -601,7 +610,7 @@ final class _Lock {
                         sibling = split.latchSiblingEx();
                     } catch (Throwable e) {
                         node.releaseExclusive();
-                        _GhostFrame.popAll(frame);
+                        _CursorFrame.popAll(frame);
                         throw e;
                     }
 
@@ -621,7 +630,7 @@ final class _Lock {
                     } finally {
                         // Pop the frames before releasing the latches, preventing other
                         // threads from observing a frame bound to the sibling too soon.
-                        _GhostFrame.popAll(frame);
+                        _CursorFrame.popAll(frame);
                         sibling.releaseExclusive();
                         node.releaseExclusive();
                     }
