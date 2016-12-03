@@ -778,21 +778,30 @@ final class _Node extends Latch implements _DatabaseAccess {
      * @return false if cannot evict
      */
     boolean evict(_LocalDatabase db) throws IOException {
-        evictCheck: {
-            _CursorFrame last = mLastCursorFrame;
-            if (last != null) {
-                // Cannot evict if in use by a cursor or if splitting, unless the only frame is
-                // for deleting a ghost. No explicit split check is required, since a node
-                // cannot be in a split state without a cursor bound to it.
-                if (last instanceof _CursorFrame.Ghost && last.mPrevCousin == null) {
-                    // Allow eviction. A full search will be required when the ghost is
-                    // eventually deleted.
-                    _CursorFrame.popAll(last);
-                    break evictCheck;
+        _CursorFrame last = mLastCursorFrame;
+
+        if (last != null) {
+            // Cannot evict if in use by a cursor or if splitting, unless the only frames are
+            // for deleting ghosts. No explicit split check is required, since a node cannot be
+            // in a split state without a cursor bound to it.
+
+            _CursorFrame frame = last;
+            do {
+                if (!(frame instanceof _CursorFrame.Ghost)) {
+                    releaseExclusive();
+                    return false;
                 }
-                releaseExclusive();
-                return false;
-            }
+                frame = frame.mPrevCousin;
+            } while (frame != null);
+
+            // Allow eviction. A full search will be required when the ghost is
+            // eventually deleted.
+
+            do {
+                frame = last.mPrevCousin;
+                _CursorFrame.popAll(last);
+                last = frame;
+            } while (last != null);
         }
 
         try {
