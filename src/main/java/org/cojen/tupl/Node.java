@@ -4569,9 +4569,7 @@ final class Node extends Latch implements DatabaseAccess {
             byte[] fv = null;
 
             int searchVecLoc = searchVecStart;
-            for (; searchVecLoc < searchVecEnd && newAvail > avail;
-                 searchVecLoc += 2, newSearchVecLoc += 2)
-            {
+            for (; newAvail > avail; searchVecLoc += 2, newSearchVecLoc += 2) {
                 int entryLoc = p_ushortGetLE(page, searchVecLoc);
                 int entryLen = leafEntryLengthAtLoc(page, entryLoc);
 
@@ -4613,6 +4611,11 @@ final class Node extends Latch implements DatabaseAccess {
                         avail += entryLen;
                         continue;
                     }
+                }
+
+                if (searchVecLoc == searchVecEnd) {
+                    // At least one entry must remain in the original node.
+                    break;
                 }
 
                 if ((newAvail -= entryLen + 2) < 0) {
@@ -4678,9 +4681,7 @@ final class Node extends Latch implements DatabaseAccess {
             byte[] fv = null;
 
             int searchVecLoc = searchVecEnd;
-            for (; searchVecLoc > searchVecStart && newAvail > avail;
-                 searchVecLoc -= 2, newSearchVecLoc -= 2)
-            {
+            for (; newAvail > avail; searchVecLoc -= 2, newSearchVecLoc -= 2) {
                 int entryLoc = p_ushortGetLE(page, searchVecLoc);
                 int entryLen = leafEntryLengthAtLoc(page, entryLoc);
 
@@ -4746,6 +4747,11 @@ final class Node extends Latch implements DatabaseAccess {
                         avail += entryLen;
                         continue;
                     }
+                }
+
+                if (searchVecLoc == searchVecStart) {
+                    // At least one entry must remain in the original node.
+                    break;
                 }
 
                 if ((newAvail -= entryLen + 2) < 0) {
