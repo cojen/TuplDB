@@ -1,6 +1,10 @@
 Changelog
 =========
 
+v1.3.10.1 (2016-12-05)
+---------
+* Fix regression bug created by earlier fix which allowed a split node to become empty.
+
 v1.3.10 (2016-12-03)
 -------
 * Fix bug which allowed a split node to become empty.
