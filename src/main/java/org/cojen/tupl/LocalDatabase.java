@@ -612,8 +612,14 @@ final class LocalDatabase extends AbstractDatabase {
                 }
             }
 
-            // Key size is limited to ensure that internal nodes can hold at least two keys.
-            // Absolute maximum is dictated by key encoding, as described in Node class.
+            // Key size is limited to ensure that internal nodes and leaf nodes can hold at
+            // least two keys. All nodes have a 12-byte header, large keys have a 2-byte
+            // header, and each node entry has a 2-byte pointer to it. Internal nodes have an
+            // 8-byte field for each child pointer, and leaf nodes require at least 11 bytes to
+            // hold a fragmented value. The magic constant for internal nodes is (12 + 2 + 2 +
+            // 2 + 2 + 8 * 3) = 44, and half that is 22. Leaf node constant is (12 + 2 + 2 + 2
+            // + 2 + 11 * 2) = 42, and half that is 21. The internal node constant is more
+            // restrictive, and so that's what's used.
             mMaxKeySize = Math.min(16383, (pageSize >> 1) - 22);
 
             // Limit maximum non-fragmented entry size to 0.75 of usable node size.

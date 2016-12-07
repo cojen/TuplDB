@@ -1,6 +1,11 @@
 Changelog
 =========
 
+v1.3.10.2
+---------
+* Fix deadlock when dropping an index.
+* Fix maximum key size limit calculation. Key header must be considered.
+
 v1.3.10.1 (2016-12-05)
 ---------
 * Fix regression bug created by earlier fix which allowed a split node to become empty.

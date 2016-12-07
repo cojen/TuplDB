@@ -4188,13 +4188,13 @@ final class Node extends Latch implements DatabaseAccess {
      * be fragmented.
      */
     private static int calculateAllowedKeyLength(LocalDatabase db, byte[] key) {
-        int len = key.length - 1;
-        if ((len & ~(SMALL_KEY_LIMIT - 1)) == 0) {
+        int len = key.length;
+        if (((len - 1) & ~(SMALL_KEY_LIMIT - 1)) == 0) {
             // Always safe because minimum node size is 512 bytes.
-            return len + 2;
+            return len + 1;
         } else {
-            len++;
-            return len > db.mMaxKeySize ? -1 : len + 2;
+            len += 2;
+            return len > db.mMaxKeySize ? -1 : len;
         }
     }
 
