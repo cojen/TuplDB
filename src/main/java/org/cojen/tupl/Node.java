@@ -4193,8 +4193,7 @@ final class Node extends Latch implements DatabaseAccess {
             // Always safe because minimum node size is 512 bytes.
             return len + 1;
         } else {
-            len += 2;
-            return len > db.mMaxKeySize ? -1 : len;
+            return len > db.mMaxKeySize ? -1 : (len + 2);
         }
     }
 
@@ -4588,7 +4587,12 @@ final class Node extends Latch implements DatabaseAccess {
                         params.encodedLen = encodedLen;
                         params.available = newAvail;
 
-                        fragmentValueForSplit(tree, params);
+                        try {
+                            fragmentValueForSplit(tree, params);
+                        } catch (Throwable e) {
+                            cleanupSplit(e, newNode, null);
+                            throw e;
+                        }
 
                         vfrag = ENTRY_FRAGMENTED;
                         fv = value = params.value;
@@ -4701,7 +4705,12 @@ final class Node extends Latch implements DatabaseAccess {
                             params.encodedLen = encodedLen;
                             params.available = newAvail;
 
-                            fragmentValueForSplit(tree, params);
+                            try {
+                                fragmentValueForSplit(tree, params);
+                            } catch (Throwable e) {
+                                cleanupSplit(e, newNode, null);
+                                throw e;
+                            }
 
                             vfrag = ENTRY_FRAGMENTED;
                             fv = value = params.value;
@@ -4733,7 +4742,12 @@ final class Node extends Latch implements DatabaseAccess {
                             params.encodedLen = encodedLen;
                             params.available = newAvail;
 
-                            fragmentValueForSplit(tree, params);
+                            try {
+                                fragmentValueForSplit(tree, params);
+                            } catch (Throwable e) {
+                                cleanupSplit(e, newNode, null);
+                                throw e;
+                            }
 
                             vfrag = ENTRY_FRAGMENTED;
                             fv = value = params.value;
@@ -4831,16 +4845,16 @@ final class Node extends Latch implements DatabaseAccess {
 
         LocalDatabase db = tree.mDatabase;
 
-        // Maximum allowed size for fragmented value is limited by available node space, the
-        // maximum allowed fragmented entry size, the space occupied by the key, and the 2-byte
-        // pointer which will reference the entry.
-        int max = Math.min(params.available, db.mMaxFragmentedEntrySize) - encodedKeyLen - 2;
+        // Maximum allowed size for fragmented value is limited by available node space
+        // (accounting for the entry pointer), the maximum allowed fragmented entry size, and
+        // the space occupied by the key.
+        int max = Math.min(params.available - 2, db.mMaxFragmentedEntrySize) - encodedKeyLen;
 
         value = db.fragment(value, value.length, max);
 
         if (value == null) {
             // This shouldn't happen with a properly defined maximum key size.
-            throw new AssertionError();
+            throw new AssertionError("Frag max: " + max);
         }
 
         params.value = value;

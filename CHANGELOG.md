@@ -4,7 +4,8 @@ Changelog
 v1.3.10.2
 ---------
 * Fix deadlock when dropping an index.
-* Fix maximum key size limit calculation. Key header must be considered.
+* Fix maximum size calculation when fragmenting a value to fit into a split node. Entries with
+  large keys would sometimes be rejected.
 
 v1.3.10.1 (2016-12-05)
 ---------
