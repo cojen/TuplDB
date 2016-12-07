@@ -1146,13 +1146,23 @@ final class LocalDatabase extends AbstractDatabase {
 
     /**
      * Called by Tree.drop with root node latch held exclusively.
+     *
+     * @param shared commit lock held shared; always released by this method
      */
-    Runnable deleteTree(Tree tree) throws IOException {
-        Node root;
-        if ((!(tree instanceof TempTree) && !moveToTrash(tree.mId, tree.mIdBytes))
-            || (root = tree.close(true, true)) == null)
-        {
-            // Handle concurrent delete attempt.
+    Runnable deleteTree(Tree tree, CommitLock.Shared shared) throws IOException {
+        try {
+            if (!(tree instanceof TempTree) && !moveToTrash(tree.mId, tree.mIdBytes)) {
+                // Handle concurrent delete attempt.
+                throw new ClosedIndexException();
+            }
+        } finally {
+            // Always release before calling close, which might require an exclusive lock.
+            shared.release();
+        }
+
+        Node root = tree.close(true, true);
+        if (root == null) {
+            // Handle concurrent close attempt.
             throw new ClosedIndexException();
         }
 
