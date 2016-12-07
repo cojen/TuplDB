@@ -83,7 +83,8 @@ public class LargeKeyTest {
 
         byte[] value = new byte[0];
 
-        final int max = Math.min(16383, (pageSize / 2) - 22);
+        // Subtract 2 to account for key header.
+        final int max = Math.min(16383, (pageSize / 2) - 22) - 2;
 
         byte[][] keys = new byte[1000][];
         Random rnd = new Random(87324);

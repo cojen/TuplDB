@@ -348,6 +348,21 @@ public class LargeValueTest {
         assertTrue(ix.verify(new VerificationObserver()));
     }
 
+    @Test
+    public void testInsertLargeValueEarlyFragment() throws Exception {
+        // Ensure that loop which moves entries into a newly split node moves as much as
+        // possible and not too much.
+
+        Index ix = mDb.openIndex("test");
+
+        ix.store(null, key(1000, 0), new byte[1060]);
+        ix.store(null, key(2), new byte[20]);
+
+        ix.store(null, key(2026, 1), new byte[1060]);
+
+        assertTrue(ix.verify(new VerificationObserver()));
+    }
+
     private static byte[] key(int i) {
         return key(4, i);
     }
