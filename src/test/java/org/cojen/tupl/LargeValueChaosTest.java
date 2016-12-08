@@ -47,25 +47,74 @@ public class LargeValueChaosTest {
     protected Database mDb;
 
     @Test
-    public void insertChaos() throws Exception {
+    public void insertChaos1() throws Exception {
+        // Running with these parameters found several bugs. A large number of iterations was
+        // required to find one of them.
+
+        doInsertChaos(2,        // threads
+                      500_000,  // iterationsPerThread
+                      2, 7,     // count min/max
+                      10, 4000, // key min/max
+                      10, 4000  // value min/max
+                      );
+    }
+
+    @Test
+    public void insertChaos2() throws Exception {
+        // Test with small keys and large values. Use a higher count to cover more cases.
+
+        doInsertChaos(2,        // threads
+                      100_000,  // iterationsPerThread
+                      2, 20,    // count min/max
+                      10, 40,   // key min/max
+                      10, 4000  // value min/max
+                      );
+    }
+
+    @Test
+    public void insertChaos3() throws Exception {
+        // Test with large keys and small values. Use a higher count to cover more cases.
+
+        doInsertChaos(2,        // threads
+                      100_000,  // iterationsPerThread
+                      2, 20,    // count min/max
+                      10, 4000, // key min/max
+                      10, 40    // value min/max
+                      );
+    }
+
+    private void doInsertChaos(int threads, int iterationsPerThread,
+                               int countMin, int countMax,
+                               int keyMin, int keyMax,
+                               int valueMin, int valueMax)
+        throws Exception
+    {
         class Runner extends Thread {
             long seed;
             Throwable error;
 
+            Runner(long seed) {
+                this.seed = seed;
+            }
+
             @Override
             public void run() {
-                seed = new Random().nextLong();
                 try {
-                    doInsertChaos(seed, 500_000);
+                    doInsertChaos(seed, iterationsPerThread,
+                                  countMin, countMax, keyMin, keyMax, valueMin, valueMax);
                 } catch (Throwable e) {
                     error = e;
                 }
             }
         };
 
-        Runner[] runners = new Runner[2];
+        // Base seed. Each thread gets a different seed and stores into a separate index. The
+        // threads shouldn't interfere with each other.
+        long seed = new Random().nextLong();
+
+        Runner[] runners = new Runner[threads];
         for (int i=0; i<runners.length; i++) {
-            (runners[i] = new Runner()).start();
+            (runners[i] = new Runner(seed++)).start();
         }
 
         for (Runner r : runners) {
@@ -79,16 +128,21 @@ public class LargeValueChaosTest {
         }
     }
 
-    private void doInsertChaos(long seed, int iterations) throws Exception {
+    private void doInsertChaos(long seed, int iterations,
+                               int countMin, int countMax,
+                               int keyMin, int keyMax,
+                               int valueMin, int valueMax)
+        throws Exception
+    {
         Random rnd = new Random(seed);
 
         for (int i=0; i<iterations; i++) {
             Index ix = mDb.openIndex("test-" + seed);
 
-            int count = rnd.nextInt(5) + 2;
+            int count = rnd.nextInt(countMax - countMin) + countMin;
             for (int j=0; j<count; j++) {
-                byte[] key = rndBytes(rnd, 10, 4000);
-                byte[] value = rndBytes(rnd, 10, 4000);
+                byte[] key = rndBytes(rnd, keyMin, keyMax);
+                byte[] value = rndBytes(rnd, valueMin, valueMax);
                 ix.store(Transaction.BOGUS, key, value);
                 assertTrue(ix.verify(null));
             }
