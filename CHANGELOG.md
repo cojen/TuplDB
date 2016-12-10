@@ -1,7 +1,7 @@
 Changelog
 =========
 
-v1.3.10.2
+v1.3.10.2 (2016-12-10)
 ---------
 * Fix deadlock when dropping an index.
 * Fix maximum size calculation when fragmenting a value to fit into a split node. Entries with
