@@ -4312,9 +4312,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 p_longPutLE(header, hoff + I_CHECKPOINT_NUMBER, redoNum);
                 p_longPutLE(header, hoff + I_REDO_TXN_ID, redoTxnId);
                 p_longPutLE(header, hoff + I_REDO_POSITION, redoPos);
-
-                p_longPutLE(header, hoff + I_REPL_ENCODING,
-                            mRedoWriter == null ? 0 : mRedoWriter.encoding());
+                p_longPutLE(header, hoff + I_REPL_ENCODING, redo == null ? 0 : redo.encoding());
 
                 // TODO: I don't like all this activity with exclusive commit
                 // lock held. _UndoLog can be refactored to store into a special
