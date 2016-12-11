@@ -97,6 +97,11 @@ class Utils extends org.cojen.tupl.io.Utils {
         return v + (v << 31);
     }
 
+    /* 
+      32-bit variant
+      https://gist.github.com/lh3/59882d6b96166dfc3d8d
+    */
+
     /*
     public static long unscramble(long v) {
         // http://naml.us/blog/2012/03/inverse-of-a-hash-function
