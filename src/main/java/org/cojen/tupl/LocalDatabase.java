@@ -2211,6 +2211,11 @@ final class LocalDatabase extends AbstractDatabase {
         try {
             if (root != null) {
                 root.acquireExclusive();
+                if (root.mPage == p_closedTreePage()) {
+                    // Database has been closed.
+                    root.releaseExclusive();
+                    return;
+                }
                 deleteNode(root);
             }
             mRegistryKeyMap.delete(Transaction.BOGUS, trashIdKey);
