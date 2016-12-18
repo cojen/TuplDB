@@ -150,6 +150,12 @@ abstract class _RedoWriter implements CauseCloseable, ShutdownHook, Flushable {
         writeTerminator();
     }
 
+    public synchronized void resetTxnId(long txnId) throws IOException {
+        writeOp(OP_TXN_ID_RESET, txnId);
+        mLastTxnId = txnId;
+        writeTerminator();
+    }
+
     public synchronized void txnEnter(long txnId) throws IOException {
         writeTxnOp(OP_TXN_ENTER, txnId);
         writeTerminator();
