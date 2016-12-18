@@ -25,6 +25,8 @@ import java.util.concurrent.locks.LockSupport;
  * @author Brian S O'Neill
  */
 public final class LatchCondition {
+    private static final ThreadLocal<Node> cLocalNode = ThreadLocal.withInitial(Node::new);
+
     Node mHead;
     Node mTail;
 
@@ -45,7 +47,9 @@ public final class LatchCondition {
      * @return -1 if interrupted, 0 if timed out, 1 if signaled
      */
     public int await(Latch latch, long nanosTimeout, long nanosEnd) {
-        return await(latch, new Node(), nanosTimeout, nanosEnd);
+        Node node = cLocalNode.get();
+        node.mWaitState = 1;
+        return await(latch, node, nanosTimeout, nanosEnd);
     }
 
     /**
@@ -60,12 +64,12 @@ public final class LatchCondition {
      * @return -1 if interrupted, 0 if timed out, 1 if signaled
      */
     public int awaitShared(Latch latch, long nanosTimeout, long nanosEnd) {
-        return await(latch, new Shared(), nanosTimeout, nanosEnd);
+        Node node = cLocalNode.get();
+        node.mWaitState = 2;
+        return await(latch, node, nanosTimeout, nanosEnd);
     }
 
     private int await(Latch latch, Node node, long nanosTimeout, long nanosEnd) {
-        node.mWaiter = Thread.currentThread();
-
         Node tail = mTail;
         if (tail == null) {
             mHead = node;
@@ -80,9 +84,9 @@ public final class LatchCondition {
                 latch.releaseExclusive();
                 LockSupport.park(this);
                 latch.acquireExclusive();
-                int state = node.resumed(this);
-                if (state != 0) {
-                    return state;
+                int result = node.resumed(this);
+                if (result != 0) {
+                    return result;
                 }
             }
         } else {
@@ -90,9 +94,9 @@ public final class LatchCondition {
                 latch.releaseExclusive();
                 LockSupport.parkNanos(this, nanosTimeout);
                 latch.acquireExclusive();
-                int state = node.resumed(this);
-                if (state != 0) {
-                    return state;
+                int result = node.resumed(this);
+                if (result != 0) {
+                    return result;
                 }
                 if (nanosTimeout == 0 || (nanosTimeout = nanosEnd - System.nanoTime()) <= 0) {
                     node.remove(this);
@@ -143,7 +147,7 @@ public final class LatchCondition {
      */
     public void signalShared() {
         Node head = mHead;
-        if (head instanceof Shared) {
+        if (head != null && head.mWaitState == 2) {
             head.signal();
         }
     }
@@ -159,7 +163,7 @@ public final class LatchCondition {
         if (head == null) {
             return false;
         }
-        if (head instanceof Shared) {
+        if (head.mWaitState == 2) {
             head.signal();
         }
         return true;
@@ -171,9 +175,8 @@ public final class LatchCondition {
     public void clear() {
         Node node = mHead;
         while (node != null) {
-            Thread waiter = node.mWaiter;
-            if (waiter != null) {
-                waiter.interrupt();
+            if (node.mWaitState != 0) {
+                node.mOwner.interrupt();
             }
             node.mPrev = null;
             Node next = node.mNext;
@@ -185,9 +188,17 @@ public final class LatchCondition {
     }
 
     static class Node {
-        Thread mWaiter;
+        final Thread mOwner;
+
+        // 0: signaled or not waiting, 1: waiting for signal, 2: waiting for shared signal
+        int mWaitState;
+
         Node mPrev;
         Node mNext;
+
+        Node() {
+            mOwner = Thread.currentThread();
+        }
 
         /**
          * Called by thread which was parked after it resumes. Caller is
@@ -196,12 +207,11 @@ public final class LatchCondition {
          * @return -1 if interrupted, 0 if not signaled, 1 if signaled
          */
         final int resumed(LatchCondition queue) {
-            Thread thread = mWaiter;
-            if (thread == null) {
+            if (mWaitState == 0) {
                 remove(queue);
                 return 1;
             }
-            if (thread.isInterrupted()) {
+            if (mOwner.isInterrupted()) {
                 Thread.interrupted();
                 remove(queue);
                 return -1;
@@ -210,8 +220,8 @@ public final class LatchCondition {
         }
 
         final void signal() {
-            LockSupport.unpark(mWaiter);
-            mWaiter = null;
+            mWaitState = 0;
+            LockSupport.unpark(mOwner);
         }
 
         final void remove(LatchCondition queue) {
@@ -233,8 +243,5 @@ public final class LatchCondition {
             }
             mNext = null;
         }
-    }
-
-    static final class Shared extends Node {
     }
 }
