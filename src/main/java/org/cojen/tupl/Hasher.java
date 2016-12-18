@@ -24,9 +24,8 @@ import java.nio.ByteOrder;
 /**
  * Fast non-cryptographic hash function which computes a Wang/Jenkins hash over 8-byte
  * chunks. Chunks are combined by multiplying the cumulative hash by 31 and xor'ng the next
- * chunk hash. Technique is similar to SipHash, but computation is faster. It's also faster
- * than a simple x31 hash, except for keys less than 8 bytes in length. Small keys could use
- * x31, but it would produce more collisions.
+ * chunk hash. It's faster than a simple x31 hash, except for keys less than 8 bytes in
+ * length. Small keys could use x31, but it would produce more collisions.
  *
  * @author Brian S O'Neill
  */
@@ -56,6 +55,10 @@ class Hasher {
         return INSTANCE.doHash(hash, b);
     }
 
+    public static int hash32(long hash, byte[] b) {
+        return INSTANCE.doHash32(hash, b);
+    }
+
     @SuppressWarnings("fallthrough")
     long doHash(long hash, byte[] b) {
         int len = b.length;
@@ -79,7 +82,7 @@ class Hasher {
             case 1:
                 v = (v << 8) | (b[0] & 0xffL);
             }
-            hash = (hash << 5) - hash + Utils.scramble(v);
+            hash = (hash << 5) - hash ^ Utils.scramble(v);
             return hash;
         }
 
@@ -87,15 +90,57 @@ class Hasher {
         int i = 0;
 
         while (i < end) {
-            hash = (hash << 5) - hash + Utils.scramble(Utils.decodeLongLE(b, i));
+            hash = (hash << 5) - hash ^ Utils.scramble(Utils.decodeLongLE(b, i));
             i += 8;
         }
 
         if ((len & 7) != 0) {
-            hash = (hash << 5) - hash + Utils.scramble(Utils.decodeLongLE(b, len - 8));
+            hash = (hash << 5) - hash ^ Utils.scramble(Utils.decodeLongLE(b, len - 8));
         }
 
         return hash;
+    }
+
+    @SuppressWarnings("fallthrough")
+    int doHash32(long hash, byte[] b) {
+        int len = b.length;
+        int h32 = Utils.hash64to32(hash ^ len);
+
+        if (len < 8) {
+            long v = 0;
+            switch (len) {
+            case 7:
+                v = (v << 8) | (b[6] & 0xffL);
+            case 6:
+                v = (v << 8) | (b[5] & 0xffL);
+            case 5:
+                v = (v << 8) | (b[4] & 0xffL);
+            case 4:
+                v = (v << 8) | (b[3] & 0xffL);
+            case 3:
+                v = (v << 8) | (b[2] & 0xffL);
+            case 2:
+                v = (v << 8) | (b[1] & 0xffL);
+            case 1:
+                v = (v << 8) | (b[0] & 0xffL);
+            }
+            h32 = (h32 << 5) - h32 ^ Utils.hash64to32(v);
+            return h32;
+        }
+
+        int end = len & ~7;
+        int i = 0;
+
+        while (i < end) {
+            h32 = (h32 << 5) - h32 ^ Utils.hash64to32(Utils.decodeLongLE(b, i));
+            i += 8;
+        }
+
+        if ((len & 7) != 0) {
+            h32 = (h32 << 5) - h32 ^ Utils.hash64to32(Utils.decodeLongLE(b, len - 8));
+        }
+
+        return h32;
     }
 
     static Unsafe getUnsafe() {
@@ -167,6 +212,51 @@ class Hasher {
             }
 
             return hash;
+        }
+
+        @Override
+        @SuppressWarnings("fallthrough")
+        int doHash32(long hash, byte[] b) {
+            int len = b.length;
+            int h32 = Utils.hash64to32(hash ^ len);
+
+            if (len < 8) {
+                long v = 0;
+                switch (len) {
+                case 7:
+                    v = (v << 8) | (b[6] & 0xffL);
+                case 6:
+                    v = (v << 8) | (b[5] & 0xffL);
+                case 5:
+                    v = (v << 8) | (b[4] & 0xffL);
+                case 4:
+                    v = (v << 8) | (b[3] & 0xffL);
+                case 3:
+                    v = (v << 8) | (b[2] & 0xffL);
+                case 2:
+                    v = (v << 8) | (b[1] & 0xffL);
+                case 1:
+                    v = (v << 8) | (b[0] & 0xffL);
+                }
+                h32 = ((h32 << 5) - h32) ^ Utils.hash64to32(v);
+                return h32;
+            }
+
+            int end = len & ~7;
+            int i = 0;
+
+            while (i < end) {
+                h32 = ((h32 << 5) - h32) ^
+                    Utils.hash64to32(UNSAFE.getLong(b, BYTE_ARRAY_OFFSET + i));
+                i += 8;
+            }
+
+            if ((len & 7) != 0) {
+                h32 = ((h32 << 5) - h32) ^
+                    Utils.hash64to32(UNSAFE.getLong(b, BYTE_ARRAY_OFFSET + len - 8));
+            }
+
+            return h32;
         }
     }
 }
