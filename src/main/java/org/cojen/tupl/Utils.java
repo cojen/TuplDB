@@ -369,7 +369,7 @@ class Utils extends org.cojen.tupl.io.Utils {
      */
     public static long decodeSignedVarLong(byte[] b, IntegerRef offsetRef) {
         long v = decodeUnsignedVarLong(b, offsetRef);
-        return ((v & 1) != 0) ? ((~(v >> 1)) | (1 << 31)) : (v >>> 1);
+        return ((v & 1) != 0) ? ((~(v >> 1)) | (1L << 63)) : (v >>> 1);
     }
 
     /**

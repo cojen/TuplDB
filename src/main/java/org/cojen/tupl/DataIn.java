@@ -325,7 +325,7 @@ abstract class DataIn extends InputStream {
 
     public long readSignedVarLong() throws IOException {
         long v = readUnsignedVarLong();
-        return ((v & 1) != 0) ? ((~(v >> 1)) | (1 << 31)) : (v >>> 1);
+        return ((v & 1) != 0) ? ((~(v >> 1)) | (1L << 63)) : (v >>> 1);
     }
 
     public void readFully(byte[] b) throws IOException {
