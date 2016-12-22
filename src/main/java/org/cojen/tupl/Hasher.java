@@ -79,7 +79,7 @@ class Hasher {
             case 1:
                 v = (v << 8) | (b[0] & 0xffL);
             }
-            hash = (hash << 5) - hash + Utils.scramble(v);
+            hash = (hash << 5) - hash ^ Utils.scramble(v);
             return hash;
         }
 
@@ -87,12 +87,12 @@ class Hasher {
         int i = 0;
 
         while (i < end) {
-            hash = (hash << 5) - hash + Utils.scramble(Utils.decodeLongLE(b, i));
+            hash = (hash << 5) - hash ^ Utils.scramble(Utils.decodeLongLE(b, i));
             i += 8;
         }
 
         if ((len & 7) != 0) {
-            hash = (hash << 5) - hash + Utils.scramble(Utils.decodeLongLE(b, len - 8));
+            hash = (hash << 5) - hash ^ Utils.scramble(Utils.decodeLongLE(b, len - 8));
         }
 
         return hash;
