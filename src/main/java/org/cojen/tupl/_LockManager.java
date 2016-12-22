@@ -225,7 +225,7 @@ final class _LockManager {
     }
 
     final static int hash(long indexId, byte[] key) {
-        return Hasher.hash32(indexId, key);
+        return (int) Hasher.hash(indexId, key);
     }
 
     LockHT getLockHT(int hash) {

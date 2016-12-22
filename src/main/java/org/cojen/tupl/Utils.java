@@ -84,16 +84,6 @@ class Utils extends org.cojen.tupl.io.Utils {
     }
 
     /**
-     * Returns a strong non-zero hash code for the given value.
-     */
-    static int nzHash(long v) {
-        int h = hash64to32(v);
-        // n is -1 if h is 0; n is 0 for all other cases
-        int n = ((h & -h) - 1) >> 31;
-        return h + n;
-    }
-
-    /**
      * Apply Wang/Jenkins hash function to given value. Hash is invertible, and
      * so no uniqueness is lost.
      */
@@ -111,16 +101,6 @@ class Utils extends org.cojen.tupl.io.Utils {
       32-bit variant
       https://gist.github.com/lh3/59882d6b96166dfc3d8d
     */
-
-    static int hash64to32(long v) {
-        v = v = (v << 18) - v - 1; // (~v) + (v << 18)
-        v = v ^ (v >>> 31);
-        v = (v + (v << 2)) + (v << 4); // v * 21
-        v = v ^ (v >>> 11);
-        v = v + (v << 6);
-        v = v ^ (v >>> 22);
-        return (int) v;
-    }
 
     /*
     public static long unscramble(long v) {
