@@ -1,6 +1,13 @@
 Changelog
 =========
 
+v1.3.10.3 (2016-12-26)
+---------
+* Fix striped transaction id stride value.
+* Fix variable length decoding of large 64-bit signed values.
+* Don't attempt deleting root node of deleted tree after database has been closed.
+* Use thread-local object when waiting for a lock, reducing garbage accumulation.
+
 v1.3.10.2 (2016-12-10)
 ---------
 * Fix deadlock when dropping an index.

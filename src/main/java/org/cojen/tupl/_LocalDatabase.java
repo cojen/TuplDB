@@ -555,7 +555,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
             mTxnContexts = new _TransactionContext[procCount * 4];
             for (int i=0; i<mTxnContexts.length; i++) {
-                mTxnContexts[i] = new _TransactionContext(procCount);
+                mTxnContexts[i] = new _TransactionContext(mTxnContexts.length);
             };
 
             mSparePagePool = new _PagePool(mPageSize, procCount);
