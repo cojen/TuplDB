@@ -21,6 +21,8 @@ import java.io.DataOutput;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
+import java.nio.charset.StandardCharsets;
+
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.cojen.tupl.DirectPageOps.*;
@@ -105,11 +107,7 @@ class _Tree implements View, Index {
         if (name == null) {
             return null;
         }
-        try {
-            return new String(name, "UTF-8");
-        } catch (IOException e) {
-            return new String(name);
-        }
+        return new String(name, StandardCharsets.UTF_8);
     }
 
     @Override

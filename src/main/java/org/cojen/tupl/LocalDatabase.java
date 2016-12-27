@@ -39,6 +39,8 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 
+import java.nio.charset.StandardCharsets;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -453,7 +455,8 @@ final class LocalDatabase extends AbstractDatabase {
                 }
 
                 BufferedWriter w = new BufferedWriter
-                    (new OutputStreamWriter(new FileOutputStream(infoFile), "UTF-8"));
+                    (new OutputStreamWriter(new FileOutputStream(infoFile),
+                                            StandardCharsets.UTF_8));
 
                 try {
                     config.writeInfo(w);
