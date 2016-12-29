@@ -900,7 +900,7 @@ final class _ReplRedoEngine implements RedoVisitor {
             // End of stream reached, and so local instance is now leader.
             reset();
         } catch (Throwable e) {
-            if (!mDatabase.mClosed) {
+            if (!mDatabase.isClosed()) {
                 EventListener listener = mDatabase.eventListener();
                 if (listener != null) {
                     listener.notify(EventType.REPLICATION_PANIC,

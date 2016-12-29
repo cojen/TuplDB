@@ -218,8 +218,8 @@ final class LocalDatabase extends AbstractDatabase {
     /*P*/ // final boolean mFullyMapped;
     /*P*/ // ]
 
-    volatile boolean mClosed;
-    volatile Throwable mClosedCause;
+    private volatile boolean mClosed;
+    private volatile Throwable mClosedCause;
 
     private static final AtomicReferenceFieldUpdater<LocalDatabase, Throwable>
         cClosedCauseUpdater = AtomicReferenceFieldUpdater.newUpdater
@@ -1314,7 +1314,7 @@ final class LocalDatabase extends AbstractDatabase {
 
                 mTrashed = null;
             } catch (IOException e) {
-                if ((!mClosed || mClosedCause != null) && mListener != null) {
+                if (!isClosed() && mListener != null) {
                     mListener.notify
                         (EventType.DELETION_FAILED,
                          "Index deletion failed: %1$d, name: %2$s, exception: %3$s",
@@ -1328,7 +1328,7 @@ final class LocalDatabase extends AbstractDatabase {
                 try {
                     mTrashed = openNextTrashedTree(idBytes);
                 } catch (IOException e) {
-                    if ((!mClosed || mClosedCause != null) && mListener != null) {
+                    if (!isClosed() && mListener != null) {
                         mListener.notify
                             (EventType.DELETION_FAILED,
                              "Unable to resume deletion: %1$s", rootCause(e));
@@ -1488,7 +1488,7 @@ final class LocalDatabase extends AbstractDatabase {
 
     @Override
     public long preallocate(long bytes) throws IOException {
-        if (!mClosed && mPageDb.isDurable()) {
+        if (!isClosed() && mPageDb.isDurable()) {
             int pageSize = mPageSize;
             long pageCount = (bytes + pageSize - 1) / pageSize;
             if (pageCount > 0) {
@@ -1704,21 +1704,21 @@ final class LocalDatabase extends AbstractDatabase {
 
     @Override
     public void flush() throws IOException {
-        if (!mClosed && mRedoWriter != null) {
+        if (!isClosed() && mRedoWriter != null) {
             mRedoWriter.flush();
         }
     }
 
     @Override
     public void sync() throws IOException {
-        if (!mClosed && mRedoWriter != null) {
+        if (!isClosed() && mRedoWriter != null) {
             mRedoWriter.flushSync(false);
         }
     }
 
     @Override
     public void checkpoint() throws IOException {
-        if (!mClosed && mPageDb.isDurable()) {
+        if (!isClosed() && mPageDb.isDurable()) {
             try {
                 checkpoint(false, 0, 0);
             } catch (Throwable e) {
@@ -2110,8 +2110,12 @@ final class LocalDatabase extends AbstractDatabase {
         }
     }
 
+    boolean isClosed() {
+        return mClosed || mClosedCause != null;
+    }
+
     void checkClosed() throws DatabaseException {
-        if (mClosed) {
+        if (isClosed()) {
             String message = "Closed";
             Throwable cause = mClosedCause;
             if (cause != null) {
@@ -2119,6 +2123,10 @@ final class LocalDatabase extends AbstractDatabase {
             }
             throw new DatabaseException(message, cause);
         }
+    }
+
+    Throwable closedCause() {
+        return mClosedCause;
     }
 
     void treeClosed(Tree tree) {
@@ -2667,7 +2675,7 @@ final class LocalDatabase extends AbstractDatabase {
                 }
             }
         } catch (Exception e) {
-            if (!mClosed) {
+            if (!isClosed()) {
                 throw e;
             }
         }
@@ -4195,7 +4203,7 @@ final class LocalDatabase extends AbstractDatabase {
         // Checkpoint lock ensures consistent state between page store and logs.
         mCheckpointLock.lock();
         try {
-            if (mClosed) {
+            if (isClosed()) {
                 return;
             }
 
@@ -4397,7 +4405,7 @@ final class LocalDatabase extends AbstractDatabase {
                 // the next checkpoint.
                 CommitLock.Shared shared = mCommitLock.acquireShared();
                 try {
-                    if (!mClosed) {
+                    if (!isClosed()) {
                         shared = masterUndoLog.doTruncate(mCommitLock, shared, false);
                     }
                 } finally {

@@ -945,11 +945,11 @@ final class LocalTransaction extends Locker implements Transaction {
         // called. Any action which releases locks must only do so after it has issued a
         // rollback operation to the undo log.
 
-        boolean closed = mDatabase.mClosed;
+        boolean closed = mDatabase.isClosed();
 
         if (mBorked == null) {
             if (closed) {
-                Utils.initCause(borked, mDatabase.mClosedCause);
+                Utils.initCause(borked, mDatabase.closedCause());
                 mBorked = borked;
             } else if (rollback) {
                 // Attempt to rollback the mess and release the locks.
@@ -979,7 +979,7 @@ final class LocalTransaction extends Locker implements Transaction {
                     // even if the application later calls reset.
                     discardAllLocks();
 
-                    Utils.initCause(borked, mDatabase.mClosedCause);
+                    Utils.initCause(borked, mDatabase.closedCause());
                     Utils.initCause(undoFailed, borked);
                     borked = undoFailed;
                 }
