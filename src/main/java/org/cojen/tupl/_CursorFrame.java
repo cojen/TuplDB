@@ -460,9 +460,8 @@ class _CursorFrame extends AtomicReference<_CursorFrame> {
 
     @Override
     public final String toString() {
-        return getClass().getName() + '@' + Integer.toHexString(hashCode());
+        return Utils.toMiniString(this);
     }
-
 
     /**
      * Special frame type for tracking ghosted entries within leaf nodes. Unlike regular
