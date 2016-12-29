@@ -845,20 +845,13 @@ final class LocalDatabase extends AbstractDatabase {
         }
     }
 
-    static class ShutdownPrimer implements ShutdownHook {
-        private final WeakReference<LocalDatabase> mDatabaseRef;
-
+    static class ShutdownPrimer extends ShutdownHook.Weak<LocalDatabase> {
         ShutdownPrimer(LocalDatabase db) {
-            mDatabaseRef = new WeakReference<>(db);
+            super(db);
         }
 
         @Override
-        public void shutdown() {
-            LocalDatabase db = mDatabaseRef.get();
-            if (db == null) {
-                return;
-            }
-
+        void doShutdown(LocalDatabase db) {
             File primer = db.primerFile();
 
             FileOutputStream fout;

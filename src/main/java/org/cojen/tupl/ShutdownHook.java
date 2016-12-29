@@ -16,6 +16,8 @@
 
 package org.cojen.tupl;
 
+import java.lang.ref.WeakReference;
+
 /**
  * Shutdown operation registered with Checkpointer.
  *
@@ -23,4 +25,23 @@ package org.cojen.tupl;
  */
 interface ShutdownHook {
     void shutdown();
+
+    /**
+     * ShutdownHook must not maintain a strong reference to the Database.
+     */
+    static abstract class Weak<A> extends WeakReference<A> implements ShutdownHook {
+        Weak(A obj) {
+            super(obj);
+        }
+
+        @Override
+        public final void shutdown() {
+            A obj = get();
+            if (obj != null) {
+                doShutdown(obj);
+            }
+        }
+
+        abstract void doShutdown(A obj);
+    }
 }
