@@ -34,8 +34,6 @@ import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
 import org.cojen.tupl.io.StripedPageArray;
 
-import org.cojen.tupl.util.Latch;
-
 import static java.lang.System.arraycopy;
 
 import static org.cojen.tupl.PageOps.*;
@@ -93,7 +91,7 @@ final class DurablePageDb extends PageDb {
     private final SnapshotPageArray mPageArray;
     private final PageManager mPageManager;
 
-    private final Latch mHeaderLatch;
+    private final AltLatch mHeaderLatch;
     // Commit number is the highest one which has been committed.
     private int mCommitNumber;
 
@@ -181,7 +179,7 @@ final class DurablePageDb extends PageDb {
         PageArray array = crypto == null ? rawArray : new CryptoPageArray(rawArray, crypto);
 
         mPageArray = new SnapshotPageArray(array, rawArray, cache);
-        mHeaderLatch = new Latch();
+        mHeaderLatch = new AltLatch();
 
         try {
             int pageSize = mPageArray.pageSize();

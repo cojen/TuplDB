@@ -22,8 +22,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 
-import org.cojen.tupl.util.Latch;
-
 /**
  * Page cache which uses direct buffers and very few Java objects, eliminating garbage
  * collection overhead. Caller should scramble page ids to reduce hash collisions.
@@ -33,7 +31,7 @@ import org.cojen.tupl.util.Latch;
  * @author Brian S O'Neill
  */
 @SuppressWarnings("serial")
-final class BasicPageCache extends Latch implements PageCache {
+final class BasicPageCache extends AltLatch implements PageCache {
     /*
       Node format:
 
