@@ -208,8 +208,8 @@ public class DatabaseConfig implements Cloneable, Serializable {
     /**
      * Set the size of the secondary off-heap cache, which is empty by default. A secondary
      * cache is slower than a primary cache, but a very large primary cache can cause high
-     * garbage collection overhead. The -XX:MaxDirectMemorySize Java option might be required
-     * when specifying a secondary cache.
+     * garbage collection overhead. The {@code -XX:MaxDirectMemorySize} Java option might be
+     * required when specifying a secondary cache.
      *
      * @param size secondary cache size, in bytes
      */
