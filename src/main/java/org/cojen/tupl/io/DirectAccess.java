@@ -16,8 +16,6 @@
 
 package org.cojen.tupl.io;
 
-import java.lang.reflect.Field;
-
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 
@@ -29,7 +27,7 @@ import sun.misc.Unsafe;
  * @author Brian S O'Neill
  */
 public class DirectAccess {
-    private static final Unsafe UNSAFE;
+    private static final Unsafe UNSAFE = UnsafeAccess.tryObtain();
 
     private static final Class<?> cDirectByteBufferClass;
     private static final long cDirectAddressOffset;
@@ -38,22 +36,16 @@ public class DirectAccess {
     private static final ThreadLocal<ByteBuffer> cLocalBuffer2;
 
     static {
-        Unsafe unsafe = null;
-
         Class<?> clazz;
         long addrOffset, capOffset;
         ThreadLocal<ByteBuffer> local;
         ThreadLocal<ByteBuffer> local2;
 
         try {
-            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafe.setAccessible(true);
-            unsafe = (Unsafe) theUnsafe.get(null);
-
             clazz = Class.forName("java.nio.DirectByteBuffer");
 
-            addrOffset = unsafe.objectFieldOffset(Buffer.class.getDeclaredField("address"));
-            capOffset = unsafe.objectFieldOffset(Buffer.class.getDeclaredField("capacity"));
+            addrOffset = UNSAFE.objectFieldOffset(Buffer.class.getDeclaredField("address"));
+            capOffset = UNSAFE.objectFieldOffset(Buffer.class.getDeclaredField("capacity"));
 
             local = new ThreadLocal<>();
             local2 = new ThreadLocal<>();
@@ -64,8 +56,6 @@ public class DirectAccess {
             local = null;
             local2 = null;
         }
-
-        UNSAFE = unsafe;
 
         cDirectByteBufferClass = clazz;
         cDirectAddressOffset = addrOffset;

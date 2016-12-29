@@ -18,8 +18,9 @@ package org.cojen.tupl;
 
 import sun.misc.Unsafe;
 
-import java.lang.reflect.Field;
 import java.nio.ByteOrder;
+
+import org.cojen.tupl.io.UnsafeAccess;
 
 /**
  * Fast non-cryptographic hash function which computes a Wang/Jenkins hash over 8-byte
@@ -98,26 +99,17 @@ class Hasher {
         return hash;
     }
 
-    static Unsafe getUnsafe() {
-        if (INSTANCE instanceof UnsafeLE) {
-            return UnsafeLE.UNSAFE;
-        }
-        return null;
-    }
-
     /**
      * Same as default implementation except longs are read directly using Unsafe to avoid the
      * shifting transformation.
      */
     private static class UnsafeLE extends Hasher {
-        static final Unsafe UNSAFE;
+        private static final Unsafe UNSAFE;
         private static final long BYTE_ARRAY_OFFSET;
 
         static {
             try {
-                Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-                theUnsafe.setAccessible(true);
-                UNSAFE = (Unsafe) theUnsafe.get(null);
+                UNSAFE = UnsafeAccess.tryObtain();
                 BYTE_ARRAY_OFFSET = UNSAFE.arrayBaseOffset(byte[].class);
             } catch (Throwable e) {
                 throw new ExceptionInInitializerError();
