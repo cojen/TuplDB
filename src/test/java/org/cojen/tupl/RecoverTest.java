@@ -693,4 +693,28 @@ public class RecoverTest {
         mDb = reopenTempDatabase(mDb, mConfig);
         assertNull(mDb.findIndex(ixname));
     }
+
+    @Test
+    public void rollbackDeadlock() throws Exception {
+        // Rollbacks must release their locks before any other commits appear in the log, or
+        // else recovery can deadlock or timeout.
+
+        Index ix = mDb.openIndex("trash");
+
+        Transaction t1 = mDb.newTransaction(DurabilityMode.NO_FLUSH);
+        ix.store(t1, "hello".getBytes(), "world".getBytes());
+        // Force a flush of TransactionContext with a big value.
+        ix.store(t1, "xxx".getBytes(), new byte[100_000]);
+        t1.exit();
+
+        Transaction t2 = mDb.newTransaction(DurabilityMode.SYNC);
+        ix.store(t2, "hello".getBytes(), "world!!!".getBytes());
+        t2.commit();
+
+        mDb = reopenTempDatabase(mDb, mConfig);
+
+        ix = mDb.openIndex("trash");
+        assertArrayEquals("world!!!".getBytes(), ix.load(null, "hello".getBytes()));
+        assertNull(ix.load(null, "xxx".getBytes()));
+    }
 }
