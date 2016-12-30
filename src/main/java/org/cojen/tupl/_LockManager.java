@@ -125,11 +125,10 @@ final class _LockManager {
         LockHT ht = getLockHT(lock.mHashCode);
         ht.acquireExclusive();
         try {
-            if (lock.unlock(locker, ht)) {
-                ht.remove(lock);
-            }
-        } finally {
+            lock.unlock(locker, ht);
+        } catch (Throwable e) {
             ht.releaseExclusive();
+            throw e;
         }
     }
 
@@ -138,8 +137,9 @@ final class _LockManager {
         ht.acquireExclusive();
         try {
             lock.unlockToShared(locker, ht);
-        } finally {
+        } catch (Throwable e) {
             ht.releaseExclusive();
+            throw e;
         }
     }
 
@@ -148,8 +148,9 @@ final class _LockManager {
         ht.acquireExclusive();
         try {
             lock.unlockToUpgradable(locker, ht);
-        } finally {
+        } catch (Throwable e) {
             ht.releaseExclusive();
+            throw e;
         }
     }
 
@@ -158,8 +159,9 @@ final class _LockManager {
         ht.acquireExclusive();
         try {
             return lock.transferExclusive(locker, ht, pending);
-        } finally {
+        } catch (Throwable e) {
             ht.releaseExclusive();
+            throw e;
         }
     }
 
