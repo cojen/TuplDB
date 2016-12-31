@@ -112,7 +112,7 @@ class _ReplRedoWriter extends _RedoWriter {
     public final void txnCommitSync(_LocalTransaction txn, long commitPos) throws IOException {
         ReplicationManager.Writer writer = mReplWriter;
         if (writer == null) {
-            throw new UnmodifiableReplicaException();
+            throw mEngine.unmodifiable();
         }
 
         if (writer.confirm(commitPos)) {
@@ -132,7 +132,7 @@ class _ReplRedoWriter extends _RedoWriter {
             }
         }
 
-        throw unmodifiable();
+        throw nowUnmodifiable();
     }
 
     @Override
@@ -314,10 +314,10 @@ class _ReplRedoWriter extends _RedoWriter {
         if (len > 0) {
             ReplicationManager.Writer writer = mReplWriter;
             if (writer == null) {
-                throw new UnmodifiableReplicaException();
+                throw mEngine.unmodifiable();
             }
             if (writer.write(buffer, 0, len) < 0) {
-                throw unmodifiable();
+                throw nowUnmodifiable();
             }
         }
     }
@@ -329,7 +329,7 @@ class _ReplRedoWriter extends _RedoWriter {
         if (len > 0) {
             ReplicationManager.Writer writer = mReplWriter;
             if (writer == null) {
-                throw new UnmodifiableReplicaException();
+                throw mEngine.unmodifiable();
             }
             long pos = writer.writeCommit(buffer, 0, len);
             if (pos >= 0) {
@@ -337,7 +337,7 @@ class _ReplRedoWriter extends _RedoWriter {
                 mLastCommitTxnId = lastTransactionId();
                 return pos;
             } else {
-                throw unmodifiable();
+                throw nowUnmodifiable();
             }
         }
         return 0;
@@ -378,7 +378,7 @@ class _ReplRedoWriter extends _RedoWriter {
         return new UnsupportedOperationException();
     }
 
-    private UnmodifiableReplicaException unmodifiable() {
-        return mEngine.mController.unmodifiable(mReplWriter);
+    private UnmodifiableReplicaException nowUnmodifiable() throws DatabaseException {
+        return mEngine.mController.nowUnmodifiable(mReplWriter);
     }
 }
