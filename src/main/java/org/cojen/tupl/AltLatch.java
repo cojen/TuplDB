@@ -128,22 +128,12 @@ class AltLatch {
      * Caller should have already called tryAcquireExclusive.
      */
     private boolean tryAcquireExclusiveSpin() {
-        // Spin and yield a bit, avoiding an expensive enqueue.
-
+        // Try a few more times, avoiding an expensive enqueue.
         for (int i=1; i<SPIN_LIMIT; i++) {
             if (tryAcquireExclusive()) {
                 return true;
             }
         }
-
-        Thread.yield();
-
-        for (int i=0; i<SPIN_LIMIT; i++) {
-            if (tryAcquireExclusive()) {
-                return true;
-            }
-        }
-
         return false;
     }
 
