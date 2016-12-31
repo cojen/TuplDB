@@ -150,7 +150,7 @@ final class ReplRedoController extends ReplRedoWriter {
                     mCheckpointTxnId = redo.mConfirmedTxnId;
                 }
 
-                throw unmodifiable(writer);
+                throw nowUnmodifiable(writer);
             }
         }
 
@@ -169,7 +169,7 @@ final class ReplRedoController extends ReplRedoWriter {
 
     @Override
     void opWriteCheck() throws IOException {
-        throw new UnmodifiableReplicaException();
+        throw mEngine.unmodifiable();
     }
 
     @Override
@@ -231,7 +231,7 @@ final class ReplRedoController extends ReplRedoWriter {
             redo.mConfirmedTxnId = redo.mLastCommitTxnId = 0;
 
             if (!writer.leaderNotify(() -> switchToReplica(writer, false))) {
-                throw unmodifiable(writer);
+                throw nowUnmodifiable(writer);
             }
 
             // Clear the log state and write a reset op to signal leader transition.
@@ -248,9 +248,11 @@ final class ReplRedoController extends ReplRedoWriter {
     }
 
     // Also called by synchronized ReplRedoWriter.
-    UnmodifiableReplicaException unmodifiable(ReplicationManager.Writer expect) {
+    UnmodifiableReplicaException nowUnmodifiable(ReplicationManager.Writer expect)
+        throws DatabaseException
+    {
         switchToReplica(expect, false);
-        return new UnmodifiableReplicaException();
+        return mEngine.unmodifiable();
     }
 
     boolean switchToReplica(final ReplicationManager.Writer expect, final boolean syncd) {

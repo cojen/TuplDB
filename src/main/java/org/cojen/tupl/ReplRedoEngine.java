@@ -346,7 +346,8 @@ final class ReplRedoEngine implements RedoVisitor {
             try {
                 // Allow index deletion to run concurrently. If multiple deletes are received
                 // concurrently, then the application is likely doing concurrent deletes.
-                Thread deletion = new Thread(task, "IndexDeletion-" + (ix == null ? indexId : ix.getNameString()));
+                Thread deletion = new Thread
+                    (task, "IndexDeletion-" + (ix == null ? indexId : ix.getNameString()));
                 deletion.setDaemon(true);
                 deletion.start();
             } catch (Throwable e) {
@@ -819,7 +820,8 @@ final class ReplRedoEngine implements RedoVisitor {
      *
      * @return null if not found
      */
-    private Index openIndex(Transaction txn, long indexId, LHashTable.ObjEntry<SoftReference<Index>> entry)
+    private Index openIndex(Transaction txn, long indexId,
+                            LHashTable.ObjEntry<SoftReference<Index>> entry)
         throws IOException
     {
         Index ix = mDatabase.anyIndexById(txn, indexId);
@@ -942,15 +944,14 @@ final class ReplRedoEngine implements RedoVisitor {
         }
     }
 
-    private static int cTaskNumber;
-
-    static synchronized long taskNumber() {
-        return (++cTaskNumber) & 0xffffffffL;
+    UnmodifiableReplicaException unmodifiable() throws DatabaseException {
+        mDatabase.checkClosed();
+        return new UnmodifiableReplicaException();
     }
 
     final class DecodeTask extends Thread {
         DecodeTask() {
-            super("ReplicationReceiver-" + taskNumber());
+            setName("ReplicationReceiver-" + Long.toUnsignedString(getId()));
             setDaemon(true);
         }
 
