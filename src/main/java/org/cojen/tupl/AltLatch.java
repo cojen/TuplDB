@@ -25,9 +25,7 @@ import java.util.concurrent.locks.LockSupport;
 import org.cojen.tupl.io.UnsafeAccess;
 
 /**
- * Alternative latch implementation which maintains less state. Requests which timed out or are
- * interrupted aren't immediately removed from the queue. This can lead to a memory leak if the
- * latch never gets acquired again.
+ * Alternative latch implementation which maintains less state.
  *
  * @author Brian S O'Neill
  */
@@ -497,7 +495,12 @@ class AltLatch {
                         return true;
                     }
 
-                    // TODO: remove from queue
+                    // Remove the node from the queue. If it's the first, it cannot be safely
+                    // removed without the latch having been properly acquired. So let it
+                    // linger around until the latch is released.
+                    if (prev != null) {
+                        remove(node, prev);
+                    }
 
                     return false;
                 }
@@ -508,48 +511,67 @@ class AltLatch {
         }
 
         if (acquireResult != 0) {
-            // Only one thread is allowed to remove nodes.
+            // Only remove the node if requested to do so.
             return true;
         }
 
-        // Remove the node now, releasing memory. Because the latch is held, no other dequeues
-        // are in progress, but enqueues still are.
+        // Remove the node now, releasing memory.
 
-        if (mLatchFirst == node) {
-            while (true) {
-                WaitNode next = node.get();
-                if (next != null) {
-                    mLatchFirst = next;
-                    return true;
-                } else {
-                    // Queue is now empty, unless an enqueue is in progress.
-                    WaitNode last = mLatchLast;
-                    if (last == node &&
-                        UNSAFE.compareAndSwapObject(this, LAST_OFFSET, last, null))
-                    {
-                        UNSAFE.compareAndSwapObject(this, FIRST_OFFSET, last, null);
-                        return true;
-                    }
-                }
-            }
-        } else {
+        if (mLatchFirst != node) {
+            remove(node, prev);
+            return true;
+        }
+
+        // Removing the first node requires special attention. Because the latch is now held by
+        // the current thread, no other dequeues are in progress, but enqueues still are.
+
+        while (true) {
             WaitNode next = node.get();
-            if (next == null) {
-                // Removing the last node creates race conditions with enqueues. Instead, stash
-                // a reference to the previous node and let the enqueue deal with it after a
-                // new node has been enqueued.
-                node.mPrev = prev;
-                next = node.get();
-                // Double check in case an enqueue just occurred that may have failed to notice
-                // the previous node assignment.
-                if (next == null) {
+            if (next != null) {
+                mLatchFirst = next;
+                return true;
+            } else {
+                // Queue is now empty, unless an enqueue is in progress.
+                WaitNode last = mLatchLast;
+                if (last == node && UNSAFE.compareAndSwapObject(this, LAST_OFFSET, last, null)) {
+                    UNSAFE.compareAndSwapObject(this, FIRST_OFFSET, last, null);
                     return true;
                 }
             }
-            // Bypass the removed node, allowing it to be released.
-            prev.lazySet(next);
-            return true;
         }
+    }
+
+    /**
+     * @param node node to remove, not null
+     * @param prev previous node, not null
+     */
+    private void remove(final WaitNode node, final WaitNode prev) {
+        WaitNode next = node.get();
+
+        if (next == null) {
+            // Removing the last node creates race conditions with enqueues. Instead, stash a
+            // reference to the previous node and let the enqueue deal with it after a new node
+            // has been enqueued.
+            node.mPrev = prev;
+            next = node.get();
+            // Double check in case an enqueue just occurred that may have failed to notice the
+            // previous node assignment.
+            if (next == null) {
+                return;
+            }
+        }
+
+        while (next.mWaiter == null) {
+            // Skip more nodes if possible.
+            WaitNode nextNext = next.get();
+            if (nextNext == null) {
+                break;
+            }
+            next = nextNext;
+        }
+
+        // Bypass the removed node, allowing it to be released.
+        prev.lazySet(next);
     }
 
     private WaitNode first() {
