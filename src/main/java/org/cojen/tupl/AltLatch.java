@@ -135,6 +135,20 @@ class AltLatch {
         return false;
     }
 
+    private boolean tryAcquireExclusiveAfterParking() {
+        // Try many times before requesting fair handoff and parking again.
+        int i = 0;
+        while (true) {
+            if (tryAcquireExclusive() || tryAcquireExclusiveSpin()) {
+                return true;
+            }
+            if (++i >= SPIN_LIMIT >> 1) {
+                return false;
+            }
+            Thread.yield();
+        }
+    }
+
     /**
      * Acquire the exclusive latch, aborting if interrupted.
      */
@@ -472,6 +486,7 @@ class AltLatch {
         int acquireResult = node.acquire(this);
 
         if (acquireResult < 0) {
+            int denied = 0;
             while (true) {
                 boolean parkAbort = node.park(this);
 
@@ -506,7 +521,10 @@ class AltLatch {
                 }
 
                 // Lost the race. Request fair handoff.
-                node.mDenied = true;
+
+                if (denied++ == 0) {
+                    node.mDenied = true;
+                }
             }
         }
 
@@ -665,7 +683,7 @@ class AltLatch {
          * if acquired and node should not be removed
          */
         int acquire(AltLatch latch) {
-            if (latch.tryAcquireExclusive()) {
+            if (latch.tryAcquireExclusiveAfterParking()) {
                 // Acquired, so no need to reference the thread anymore.
                 UNSAFE.putOrderedObject(this, WAITER_OFFSET, null);
                 return 0;
