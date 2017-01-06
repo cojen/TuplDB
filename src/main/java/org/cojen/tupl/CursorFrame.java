@@ -113,6 +113,25 @@ class CursorFrame extends AtomicReference<CursorFrame> {
     /**
      * Acquire an exclusive latch on this frame's bound node.
      *
+     * @return frame node, or null if not not bound
+     */
+    final Node acquireExclusiveIfBound() {
+        Node node = mNode;
+        while (node != null) {
+            node.acquireExclusive();
+            Node actualNode = mNode;
+            if (actualNode == node) {
+                return actualNode;
+            }
+            node.releaseExclusive();
+            node = actualNode;
+        }
+        return null;
+    }
+
+    /**
+     * Acquire an exclusive latch on this frame's bound node.
+     *
      * @return frame node, or null if not acquired
      */
     final Node tryAcquireExclusive() {
@@ -441,6 +460,13 @@ class CursorFrame extends AtomicReference<CursorFrame> {
 
     @Override
     public final String toString() {
-        return getClass().getName() + '@' + Integer.toHexString(hashCode());
+        return Utils.toMiniString(this);
+    }
+
+    /**
+     * Special frame type for tracking ghosted entries within leaf nodes. Unlike regular
+     * frames, ghost frames don't prevent the bound node from being evicted.
+     */
+    final static class Ghost extends CursorFrame {
     }
 }

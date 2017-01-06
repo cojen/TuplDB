@@ -318,8 +318,8 @@ class ViewUtils {
     }
 
     static final String toString(Index ix) {
-        StringBuilder b = new StringBuilder(ix.getClass().getName());
-        b.append('@').append(Integer.toHexString(ix.hashCode()));
+        StringBuilder b = new StringBuilder();
+        Utils.appendMiniString(b, ix);
         b.append(" {");
         String nameStr = ix.getNameString();
         if (nameStr != null) {

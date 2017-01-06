@@ -322,6 +322,47 @@ public class LargeValueTest {
         assertTrue(ix.verify(new VerificationObserver()));
     }
 
+    @Test
+    public void testUpdateLargeKeyLateFragment3() throws Exception {
+        // Create a split imbalance which causes the updated value to be stored into the
+        // original right node, and it must be fragmented to fit. This is a regression test
+        // which ensures that some entries remain in the original node.
+
+        Index ix = mDb.openIndex("test");
+
+        // First fill the node with non-zeros and delete the entries. If an illegal region of
+        // the node is read, it will cause an ArrayIndexOutOfBoundsException to be thrown.
+        for (int i=0; i<4; i++) {
+            ix.store(null, key(i), filledValue(1020));
+        }
+        for (int i=0; i<4; i++) {
+            ix.store(null, key(i), null);
+        }
+
+        ix.store(null, filledKey(943, 0), filledValue(944));
+        ix.store(null, filledKey(332, 1), filledValue(12));
+        ix.store(null, filledKey(597, 2), filledValue(592));
+
+        ix.store(null, filledKey(332, 1), filledValue(2672));
+
+        assertTrue(ix.verify(new VerificationObserver()));
+    }
+
+    @Test
+    public void testInsertLargeValueEarlyFragment() throws Exception {
+        // Ensure that loop which moves entries into a newly split node moves as much as
+        // possible and not too much.
+
+        Index ix = mDb.openIndex("test");
+
+        ix.store(null, key(1000, 0), new byte[1060]);
+        ix.store(null, key(2), new byte[20]);
+
+        ix.store(null, key(2026, 1), new byte[1060]);
+
+        assertTrue(ix.verify(new VerificationObserver()));
+    }
+
     private static byte[] key(int i) {
         return key(4, i);
     }
@@ -330,6 +371,18 @@ public class LargeValueTest {
         byte[] key = new byte[size];
         Utils.encodeIntBE(key, 0, i);
         return key;
+    }
+
+    private static byte[] filledKey(int size, int i) {
+        byte[] key = filledValue(size);
+        Utils.encodeIntBE(key, 0, i);
+        return key;
+    }
+
+    private static byte[] filledValue(int size) {
+        byte[] value = new byte[size];
+        Arrays.fill(value, (byte) -1);
+        return value;
     }
 
     @Test

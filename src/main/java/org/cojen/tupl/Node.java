@@ -20,8 +20,6 @@ import java.io.IOException;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-import org.cojen.tupl.util.Latch;
-
 import static org.cojen.tupl.PageOps.*;
 
 import static org.cojen.tupl.Utils.EMPTY_BYTES;
@@ -35,7 +33,7 @@ import static org.cojen.tupl.Utils.rethrow;
  * @author Brian S O'Neill
  */
 @SuppressWarnings("serial")
-final class Node extends Latch implements DatabaseAccess {
+final class Node extends AltLatch implements DatabaseAccess {
     // Note: Changing these values affects how the Database class handles the
     // commit flag. It only needs to flip bit 0 to switch dirty states.
     static final byte
@@ -800,21 +798,30 @@ final class Node extends Latch implements DatabaseAccess {
      * @return false if cannot evict
      */
     boolean evict(LocalDatabase db) throws IOException {
-        evictCheck: {
-            CursorFrame last = mLastCursorFrame;
-            if (last != null) {
-                // Cannot evict if in use by a cursor or if splitting, unless the only frame is
-                // for deleting a ghost. No explicit split check is required, since a node
-                // cannot be in a split state without a cursor bound to it.
-                if (last instanceof GhostFrame && last.mPrevCousin == null) {
-                    // Allow eviction. A full search will be required when the ghost is
-                    // eventually deleted.
-                    ((GhostFrame) last).evicted();
-                    break evictCheck;
+        CursorFrame last = mLastCursorFrame;
+
+        if (last != null) {
+            // Cannot evict if in use by a cursor or if splitting, unless the only frames are
+            // for deleting ghosts. No explicit split check is required, since a node cannot be
+            // in a split state without a cursor bound to it.
+
+            CursorFrame frame = last;
+            do {
+                if (!(frame instanceof CursorFrame.Ghost)) {
+                    releaseExclusive();
+                    return false;
                 }
-                releaseExclusive();
-                return false;
-            }
+                frame = frame.mPrevCousin;
+            } while (frame != null);
+
+            // Allow eviction. A full search will be required when the ghost is
+            // eventually deleted.
+
+            do {
+                frame = last.mPrevCousin;
+                CursorFrame.popAll(last);
+                last = frame;
+            } while (last != null);
         }
 
         try {
@@ -1886,7 +1893,7 @@ final class Node extends Latch implements DatabaseAccess {
         throws IOException
     {
         // Allocate early, in case out of memory.
-        GhostFrame frame = new GhostFrame();
+        CursorFrame.Ghost frame = new CursorFrame.Ghost();
 
         final /*P*/ byte[] page = mPage;
         final int entryLoc = p_ushortGetLE(page, searchVecStart() + pos);
@@ -4201,13 +4208,12 @@ final class Node extends Latch implements DatabaseAccess {
      * be fragmented.
      */
     private static int calculateAllowedKeyLength(LocalDatabase db, byte[] key) {
-        int len = key.length - 1;
-        if ((len & ~(SMALL_KEY_LIMIT - 1)) == 0) {
+        int len = key.length;
+        if (((len - 1) & ~(SMALL_KEY_LIMIT - 1)) == 0) {
             // Always safe because minimum node size is 512 bytes.
-            return len + 2;
+            return len + 1;
         } else {
-            len++;
-            return len > db.mMaxKeySize ? -1 : len + 2;
+            return len > db.mMaxKeySize ? -1 : (len + 2);
         }
     }
 
@@ -4698,7 +4704,12 @@ final class Node extends Latch implements DatabaseAccess {
                         params.encodedLen = encodedLen;
                         params.available = newAvail;
 
-                        fragmentValueForSplit(tree, params);
+                        try {
+                            fragmentValueForSplit(tree, params);
+                        } catch (Throwable e) {
+                            cleanupSplit(e, newNode, null);
+                            throw e;
+                        }
 
                         vfrag = ENTRY_FRAGMENTED;
                         fv = value = params.value;
@@ -4721,6 +4732,11 @@ final class Node extends Latch implements DatabaseAccess {
                         avail += entryLen;
                         continue;
                     }
+                }
+
+                if (searchVecLoc == searchVecEnd) {
+                    // At least one entry must remain in the original node.
+                    break;
                 }
 
                 if ((newAvail -= entryLen + 2) < 0) {
@@ -4806,7 +4822,12 @@ final class Node extends Latch implements DatabaseAccess {
                             params.encodedLen = encodedLen;
                             params.available = newAvail;
 
-                            fragmentValueForSplit(tree, params);
+                            try {
+                                fragmentValueForSplit(tree, params);
+                            } catch (Throwable e) {
+                                cleanupSplit(e, newNode, null);
+                                throw e;
+                            }
 
                             vfrag = ENTRY_FRAGMENTED;
                             fv = value = params.value;
@@ -4838,7 +4859,12 @@ final class Node extends Latch implements DatabaseAccess {
                             params.encodedLen = encodedLen;
                             params.available = newAvail;
 
-                            fragmentValueForSplit(tree, params);
+                            try {
+                                fragmentValueForSplit(tree, params);
+                            } catch (Throwable e) {
+                                cleanupSplit(e, newNode, null);
+                                throw e;
+                            }
 
                             vfrag = ENTRY_FRAGMENTED;
                             fv = value = params.value;
@@ -4852,6 +4878,11 @@ final class Node extends Latch implements DatabaseAccess {
                         avail += entryLen;
                         continue;
                     }
+                }
+
+                if (searchVecLoc == searchVecStart) {
+                    // At least one entry must remain in the original node.
+                    break;
                 }
 
                 if ((newAvail -= entryLen + 2) < 0) {
@@ -4931,16 +4962,16 @@ final class Node extends Latch implements DatabaseAccess {
 
         LocalDatabase db = tree.mDatabase;
 
-        // Maximum allowed size for fragmented value is limited by available node space, the
-        // maximum allowed fragmented entry size, the space occupied by the key, and the 2-byte
-        // pointer which will reference the entry.
-        int max = Math.min(params.available, db.mMaxFragmentedEntrySize) - encodedKeyLen - 2;
+        // Maximum allowed size for fragmented value is limited by available node space
+        // (accounting for the entry pointer), the maximum allowed fragmented entry size, and
+        // the space occupied by the key.
+        int max = Math.min(params.available - 2, db.mMaxFragmentedEntrySize) - encodedKeyLen;
 
         value = db.fragment(value, value.length, max);
 
         if (value == null) {
             // This shouldn't happen with a properly defined maximum key size.
-            throw new AssertionError();
+            throw new AssertionError("Frag max: " + max);
         }
 
         params.value = value;
@@ -5774,7 +5805,7 @@ final class Node extends Latch implements DatabaseAccess {
             try {
                 CursorFrame frame = mLastCursorFrame;
                 while (frame != null) {
-                    if (!(frame instanceof GhostFrame)) {
+                    if (!(frame instanceof CursorFrame.Ghost)) {
                         count++;
                     }
                     frame = frame.mPrevCousin;
@@ -5814,7 +5845,7 @@ final class Node extends Latch implements DatabaseAccess {
             long count = 0;
 
             while (true) {
-                if (!(frame instanceof GhostFrame)) {
+                if (!(frame instanceof CursorFrame.Ghost)) {
                     count++;
                 }
                 CursorFrame prev = frame.tryLockPrevious(lock);

@@ -20,8 +20,6 @@ import java.io.IOException;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-import org.cojen.tupl.util.Latch;
-
 import static org.cojen.tupl.Node.*;
 import static org.cojen.tupl.PageOps.*;
 
@@ -31,7 +29,7 @@ import static org.cojen.tupl.PageOps.*;
  * @author Brian S O'Neill
  */
 @SuppressWarnings("serial")
-final class NodeUsageList extends Latch {
+final class NodeUsageList extends AltLatch {
     // Allocate an unevictable node.
     static final int MODE_UNEVICTABLE = 1;
 

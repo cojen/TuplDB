@@ -17,7 +17,6 @@
 package org.cojen.tupl.io;
 
 import java.io.InterruptedIOException;
-import java.lang.reflect.Field;
 import java.io.IOException;
 
 import java.nio.ByteBuffer;
@@ -27,8 +26,6 @@ import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 import org.cojen.tupl.util.Latch;
-
-import sun.misc.Unsafe;
 
 import static org.cojen.tupl.io.Utils.rethrow;
 
@@ -52,10 +49,7 @@ abstract class AbstractFileIO extends FileIO {
     static {
         int pageSize = 4096;
         try {
-            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafe.setAccessible(true);
-            Unsafe unsafe = (Unsafe) theUnsafe.get(null);
-            pageSize = unsafe.pageSize();
+            pageSize = UnsafeAccess.tryObtain().pageSize();
         } catch (Throwable e) {
             // Ignore. Use default value.
         }

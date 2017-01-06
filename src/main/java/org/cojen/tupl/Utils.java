@@ -84,6 +84,16 @@ class Utils extends org.cojen.tupl.io.Utils {
     }
 
     /**
+     * Returns a strong non-zero hash code for the given value.
+     */
+    static int nzHash(long v) {
+        int h = hash64to32(v);
+        // n is -1 if h is 0; n is 0 for all other cases
+        int n = ((h & -h) - 1) >> 31;
+        return h + n;
+    }
+
+    /**
      * Apply Wang/Jenkins hash function to given value. Hash is invertible, and
      * so no uniqueness is lost.
      */
@@ -95,6 +105,21 @@ class Utils extends org.cojen.tupl.io.Utils {
         v = (v + (v << 2)) + (v << 4); // v * 21
         v = v ^ (v >>> 28);
         return v + (v << 31);
+    }
+
+    /* 
+      32-bit variant
+      https://gist.github.com/lh3/59882d6b96166dfc3d8d
+    */
+
+    static int hash64to32(long v) {
+        v = v = (v << 18) - v - 1; // (~v) + (v << 18)
+        v = v ^ (v >>> 31);
+        v = (v + (v << 2)) + (v << 4); // v * 21
+        v = v ^ (v >>> 11);
+        v = v + (v << 6);
+        v = v ^ (v >>> 22);
+        return (int) v;
     }
 
     /*
@@ -364,7 +389,7 @@ class Utils extends org.cojen.tupl.io.Utils {
      */
     public static long decodeSignedVarLong(byte[] b, IntegerRef offsetRef) {
         long v = decodeUnsignedVarLong(b, offsetRef);
-        return ((v & 1) != 0) ? ((~(v >> 1)) | (1 << 31)) : (v >>> 1);
+        return ((v & 1) != 0) ? ((~(v >> 1)) | (1L << 63)) : (v >>> 1);
     }
 
     /**
@@ -530,6 +555,22 @@ class Utils extends org.cojen.tupl.io.Utils {
     }
 
     /**
+     * Converts a signed int such that it can be efficiently encoded as unsigned. Must be
+     * converted later with decodeSignedVarInt.
+     */
+    public static int convertSignedVarInt(int v) {
+        if (v < 0) {
+            // Complement negative value to turn all the ones to zeros, which
+            // can be compacted. Shift and put sign bit at LSB.
+            v = ((~v) << 1) | 1;
+        } else {
+            // Shift and put sign bit at LSB.
+            v <<= 1;
+        }
+        return v;
+    }
+
+    /**
      * Encode the given integer using 1 to 5 bytes. Values closer to zero are
      * encoded in fewer bytes.
      *
@@ -546,6 +587,14 @@ class Utils extends org.cojen.tupl.io.Utils {
      * @return new offset
      */
     public static int encodeSignedVarInt(byte[] b, int offset, int v) {
+        return encodeUnsignedVarInt(b, offset, convertSignedVarInt(v));
+    }
+
+    /**
+     * Converts a signed long such that it can be efficiently encoded as unsigned. Must be
+     * converted later with decodeSignedVarLong.
+     */
+    public static long convertSignedVarLong(long v) {
         if (v < 0) {
             // Complement negative value to turn all the ones to zeros, which
             // can be compacted. Shift and put sign bit at LSB.
@@ -554,22 +603,14 @@ class Utils extends org.cojen.tupl.io.Utils {
             // Shift and put sign bit at LSB.
             v <<= 1;
         }
-        return encodeUnsignedVarInt(b, offset, v);
+        return v;
     }
 
     /**
      * @return new offset
      */
     public static int encodeSignedVarLong(byte[] b, int offset, long v) {
-        if (v < 0) {
-            // Complement negative value to turn all the ones to zeros, which
-            // can be compacted. Shift and put sign bit at LSB.
-            v = ((~v) << 1) | 1;
-        } else {
-            // Shift and put sign bit at LSB.
-            v <<= 1;
-        }
-        return encodeUnsignedVarLong(b, offset, v);
+        return encodeUnsignedVarLong(b, offset, convertSignedVarLong(v));
     }
 
     public static int calcUnsignedVarLongLength(long v) {
@@ -880,5 +921,19 @@ class Utils extends org.cojen.tupl.io.Utils {
         System.arraycopy(local, 1, merged, original.length + 1, local.length - 1);
 
         e.setStackTrace(merged);
+    }
+
+    static String toMiniString(Object obj) {
+        StringBuilder b = new StringBuilder();
+        appendMiniString(b, obj);
+        return b.toString();
+    }
+
+    static void appendMiniString(StringBuilder b, Object obj) {
+        if (obj == null) {
+            b.append("null");
+            return;
+        }
+        b.append(obj.getClass().getName()).append('@').append(Integer.toHexString(obj.hashCode()));
     }
 }

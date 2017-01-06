@@ -26,6 +26,9 @@ import java.lang.reflect.Method;
 
 import java.util.concurrent.Executor;
 
+import java.nio.charset.StandardCharsets;
+
+
 import org.cojen.tupl.io.CauseCloseable;
 
 import static org.cojen.tupl.Utils.*;
@@ -118,7 +121,7 @@ public interface Database extends CauseCloseable, Flushable {
      * @return shared Index instance; null if not found
      */
     public default Index findIndex(String name) throws IOException {
-        return findIndex(name.getBytes("UTF-8"));
+        return findIndex(name.getBytes(StandardCharsets.UTF_8));
     }
 
     /**
@@ -135,7 +138,7 @@ public interface Database extends CauseCloseable, Flushable {
      * @return shared Index instance
      */
     public default Index openIndex(String name) throws IOException {
-        return openIndex(name.getBytes("UTF-8"));
+        return openIndex(name.getBytes(StandardCharsets.UTF_8));
     }
 
     /**
@@ -179,7 +182,7 @@ public interface Database extends CauseCloseable, Flushable {
      * @throws IllegalArgumentException if index belongs to another database instance
      */
     public default void renameIndex(Index index, String newName) throws IOException {
-        renameIndex(index, newName.getBytes("UTF-8"));
+        renameIndex(index, newName.getBytes(StandardCharsets.UTF_8));
     }
 
     /**

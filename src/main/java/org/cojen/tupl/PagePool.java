@@ -16,22 +16,19 @@
 
 package org.cojen.tupl;
 
-import org.cojen.tupl.util.Latch;
-import org.cojen.tupl.util.LatchCondition;
-
 /**
  * Pool of spare page buffers not currently in use by nodes.
  *
  * @author Brian S O'Neill
  */
 @SuppressWarnings("serial")
-final class PagePool extends Latch {
-    private final transient LatchCondition mQueue;
+final class PagePool extends AltLatch {
+    private final transient AltLatchCondition mQueue;
     private final /*P*/ byte[][] mPool;
     private int mPos;
 
     PagePool(int pageSize, int poolSize) {
-        mQueue = new LatchCondition();
+        mQueue = new AltLatchCondition();
         /*P*/ byte[][] pool = PageOps.p_allocArray(poolSize);
         for (int i=0; i<poolSize; i++) {
             pool[i] = PageOps.p_calloc(pageSize);

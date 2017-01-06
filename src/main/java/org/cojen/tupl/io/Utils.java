@@ -27,13 +27,17 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import java.nio.Buffer;
+import java.nio.ByteBuffer;
 
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+
+import sun.misc.Unsafe;
 
 /**
  * Generic data and I/O utility methods.
@@ -450,34 +454,67 @@ public class Utils {
         }
     }
 
-    private static volatile boolean cDeleteUnsupported;
+    private static volatile int cDeleteSupport;
 
     /**
      * Attempt to delete the given direct or mapped byte buffer.
      */
     public static boolean delete(Buffer bb) {
+        return bb instanceof ByteBuffer ? delete((ByteBuffer) bb) : false;
+    }
+
+    /**
+     * Attempt to delete the given direct or mapped byte buffer.
+     */
+    public static boolean delete(ByteBuffer bb) {
+        if (!bb.isDirect()) {
+            return false;
+        }
+
         // http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4724038
-        if (!cDeleteUnsupported) {
+
+        int deleteSupport = cDeleteSupport;
+
+        if (deleteSupport < 0) {
+            return false;
+        }
+
+        if (deleteSupport == 0) {
             try {
                 Method m = bb.getClass().getMethod("cleaner");
-                if (m != null) {
-                    m.setAccessible(true);
-                    Object cleaner = m.invoke(bb);
-                    if (cleaner != null) {
-                        m = cleaner.getClass().getMethod("clean");
-                        if (m != null) {
-                            m.setAccessible(true);
-                            m.invoke(cleaner);
-                            return true;
-                        }
-                    }
+                m.setAccessible(true);
+                Object cleaner = m.invoke(bb);
+                if (cleaner == null) {
+                    // No cleaner, so nothing to do.
+                    return false;
                 }
+                m = cleaner.getClass().getMethod("clean");
+                m.setAccessible(true);
+                m.invoke(cleaner);
+                return true;
             } catch (Exception e) {
-                cDeleteUnsupported = true;
+                // Try another way.
+                cDeleteSupport = 1;
             }
         }
 
-        return false;
+        try {
+            Unsafe u = UnsafeAccess.obtain();
+            Method m = u.getClass().getMethod("invokeCleaner", ByteBuffer.class);
+            m.invoke(u, bb);
+            return true;
+        } catch (InvocationTargetException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof IllegalArgumentException) {
+                // Duplicate or slice.
+                return false;
+            }
+            throw rethrow(cause);
+        } catch (Exception e) {
+            // Unsupported.
+            cDeleteSupport = -1;
+            return false;
+        }
     }
 
     private static Map<Closeable, Thread> cCloseThreads;

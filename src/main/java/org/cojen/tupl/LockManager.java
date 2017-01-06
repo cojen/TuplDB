@@ -19,9 +19,6 @@ package org.cojen.tupl;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 
-import org.cojen.tupl.util.Latch;
-import org.cojen.tupl.util.LatchCondition;
-
 import static org.cojen.tupl.LockResult.*;
 
 /**
@@ -128,11 +125,10 @@ final class LockManager {
         LockHT ht = getLockHT(lock.mHashCode);
         ht.acquireExclusive();
         try {
-            if (lock.unlock(locker, ht)) {
-                ht.remove(lock);
-            }
-        } finally {
+            lock.unlock(locker, ht);
+        } catch (Throwable e) {
             ht.releaseExclusive();
+            throw e;
         }
     }
 
@@ -141,8 +137,9 @@ final class LockManager {
         ht.acquireExclusive();
         try {
             lock.unlockToShared(locker, ht);
-        } finally {
+        } catch (Throwable e) {
             ht.releaseExclusive();
+            throw e;
         }
     }
 
@@ -151,8 +148,9 @@ final class LockManager {
         ht.acquireExclusive();
         try {
             lock.unlockToUpgradable(locker, ht);
-        } finally {
+        } catch (Throwable e) {
             ht.releaseExclusive();
+            throw e;
         }
     }
 
@@ -161,8 +159,9 @@ final class LockManager {
         ht.acquireExclusive();
         try {
             return lock.transferExclusive(locker, ht, pending);
-        } finally {
+        } catch (Throwable e) {
             ht.releaseExclusive();
+            throw e;
         }
     }
 
@@ -172,7 +171,7 @@ final class LockManager {
      *
      * @param frame must be bound to the ghost position
      */
-    final void ghosted(long indexId, byte[] key, int hash, GhostFrame frame) {
+    final void ghosted(long indexId, byte[] key, int hash, CursorFrame.Ghost frame) {
         LockHT ht = getLockHT(hash);
         ht.acquireExclusive();
         try {
@@ -236,7 +235,7 @@ final class LockManager {
      * Simple hashtable of Locks.
      */
     @SuppressWarnings("serial")
-    static final class LockHT extends Latch {
+    static final class LockHT extends AltLatch {
         private static final float LOAD_FACTOR = 0.75f;
 
         private transient Lock[] mEntries;
@@ -485,7 +484,7 @@ final class LockManager {
 
                             // Interrupt all waiters.
 
-                            LatchCondition q = e.mQueueU;
+                            AltLatchCondition q = e.mQueueU;
                             if (q != null) {
                                 q.clear();
                                 e.mQueueU = null;

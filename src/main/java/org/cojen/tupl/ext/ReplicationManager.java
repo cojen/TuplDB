@@ -134,7 +134,7 @@ public interface ReplicationManager extends Closeable {
          * Blocks until all data up to the given log position is confirmed.
          *
          * @param position confirmation position as provided by the write method
-         * @return false if not leader
+         * @return false if not leader at the given position
          * @throws ConfirmationFailureException
          */
         default boolean confirm(long position) throws IOException {
@@ -146,7 +146,7 @@ public interface ReplicationManager extends Closeable {
          *
          * @param position confirmation position as provided by the write method
          * @param timeoutNanos pass -1 for infinite
-         * @return false if not leader
+         * @return false if not leader at the given position
          * @throws ConfirmationFailureException
          */
         boolean confirm(long position, long timeoutNanos) throws IOException;

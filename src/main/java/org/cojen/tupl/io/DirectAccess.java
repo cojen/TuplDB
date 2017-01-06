@@ -16,11 +16,10 @@
 
 package org.cojen.tupl.io;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
+
+import sun.misc.Unsafe;
 
 /**
  * Backdoor access to DirectByteBuffer.
@@ -28,43 +27,39 @@ import java.nio.ByteBuffer;
  * @author Brian S O'Neill
  */
 public class DirectAccess {
-    private static final Field cDirectAddress;
-    private static final Field cDirectCapacity;
-    private static final Constructor<?> cDirectCtor;
+    private static final Unsafe UNSAFE = UnsafeAccess.tryObtain();
+
+    private static final Class<?> cDirectByteBufferClass;
+    private static final long cDirectAddressOffset;
+    private static final long cDirectCapacityOffset;
     private static final ThreadLocal<ByteBuffer> cLocalBuffer;
     private static final ThreadLocal<ByteBuffer> cLocalBuffer2;
 
     static {
-        Field addrField;
-        Field capField;
-        Constructor<?> ctor;
+        Class<?> clazz;
+        long addrOffset, capOffset;
         ThreadLocal<ByteBuffer> local;
         ThreadLocal<ByteBuffer> local2;
 
         try {
-            addrField = Buffer.class.getDeclaredField("address");
-            addrField.setAccessible(true);
+            clazz = Class.forName("java.nio.DirectByteBuffer");
 
-            capField = Buffer.class.getDeclaredField("capacity");
-            capField.setAccessible(true);
-
-            Class<?> clazz = Class.forName("java.nio.DirectByteBuffer");
-            ctor = clazz.getDeclaredConstructor(long.class, int.class);
-            ctor.setAccessible(true);
+            addrOffset = UNSAFE.objectFieldOffset(Buffer.class.getDeclaredField("address"));
+            capOffset = UNSAFE.objectFieldOffset(Buffer.class.getDeclaredField("capacity"));
 
             local = new ThreadLocal<>();
             local2 = new ThreadLocal<>();
         } catch (Exception e) {
-            addrField = null;
-            capField = null;
-            ctor = null;
+            clazz = null;
+            addrOffset = 0;
+            capOffset = 0;
             local = null;
             local2 = null;
         }
 
-        cDirectAddress = addrField;
-        cDirectCapacity = capField;
-        cDirectCtor = ctor;
+        cDirectByteBufferClass = clazz;
+        cDirectAddressOffset = addrOffset;
+        cDirectCapacityOffset = capOffset;
         cLocalBuffer = local;
         cLocalBuffer2 = local2;
     }
@@ -93,7 +88,7 @@ public class DirectAccess {
     }
 
     public static boolean isSupported() {
-        return cDirectCtor != null;
+        return cLocalBuffer2 != null;
     }
 
     /**
@@ -120,7 +115,7 @@ public class DirectAccess {
             throw new IllegalArgumentException("Not a direct buffer");
         }
         try {
-            return cDirectAddress.getLong(buf);
+            return UNSAFE.getLong(buf, cDirectAddressOffset);
         } catch (Exception e) {
             throw new UnsupportedOperationException(e);
         }
@@ -135,12 +130,12 @@ public class DirectAccess {
 
         try {
             if (bb == null) {
-                bb = (ByteBuffer) cDirectCtor.newInstance(ptr, length);
+                bb = (ByteBuffer) UNSAFE.allocateInstance(cDirectByteBufferClass);
+                bb.clear();
                 local.set(bb);
-            } else {
-                cDirectAddress.setLong(bb, ptr);
-                cDirectCapacity.setInt(bb, length);
             }
+            UNSAFE.putLong(bb, cDirectAddressOffset, ptr);
+            UNSAFE.putInt(bb, cDirectCapacityOffset, length);
         } catch (Exception e) {
             throw new UnsupportedOperationException(e);
         }
@@ -157,8 +152,8 @@ public class DirectAccess {
     public static void unref(ByteBuffer bb) {
         bb.position(0).limit(0);
         try {
-            cDirectCapacity.setInt(bb, 0);
-            cDirectAddress.setLong(bb, 0);
+            UNSAFE.putInt(bb, cDirectCapacityOffset, 0);
+            UNSAFE.putLong(bb, cDirectAddressOffset, 0);
         } catch (Exception e) {
             throw new UnsupportedOperationException(e);
         }
