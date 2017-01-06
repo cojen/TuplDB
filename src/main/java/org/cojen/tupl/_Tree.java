@@ -1142,7 +1142,11 @@ class _Tree implements View, Index {
      */
     final long redoStore(byte[] key, byte[] value) throws IOException {
         _RedoWriter redo = mDatabase.mRedoWriter;
-        return redo == null ? 0 : redo.store(mId, key, value, mDatabase.mDurabilityMode);
+        if (redo == null) {
+            return 0;
+        }
+        return mDatabase.anyTransactionContext().redoStoreAutoCommit
+            (redo.txnRedoWriter(), mId, key, value, mDatabase.mDurabilityMode);
     }
 
     /**
@@ -1150,7 +1154,11 @@ class _Tree implements View, Index {
      */
     final long redoStoreNoLock(byte[] key, byte[] value) throws IOException {
         _RedoWriter redo = mDatabase.mRedoWriter;
-        return redo == null ? 0 : redo.storeNoLock(mId, key, value, mDatabase.mDurabilityMode);
+        if (redo == null) {
+            return 0;
+        }
+        return mDatabase.anyTransactionContext().redoStoreNoLockAutoCommit
+            (redo.txnRedoWriter(), mId, key, value, mDatabase.mDurabilityMode);
     }
 
     final void txnCommitSync(_LocalTransaction txn, long commitPos) throws IOException {

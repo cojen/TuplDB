@@ -32,80 +32,15 @@ class _ReplRedoWriter extends _RedoWriter {
     // Is non-null if writes are allowed.
     final ReplicationManager.Writer mReplWriter;
 
-    // These fields capture the state of the last written commit.
+    // These fields capture the state of the last written commit, but not yet confirmed.
     long mLastCommitPos;
     long mLastCommitTxnId;
-
-    // These fields capture the state of the highest confirmed commit.
-    long mConfirmedPos;
-    long mConfirmedTxnId;
 
     private volatile _PendingTxnWaiter mPendingWaiter;
 
     _ReplRedoWriter(_ReplRedoEngine engine, ReplicationManager.Writer writer) {
-        super(4096, 0);
         mEngine = engine;
         mReplWriter = writer;
-    }
-
-    // All inherited methods which accept a DurabilityMode must be overridden and always use
-    // SYNC mode. This ensures that writeCommit is called, to capture the log position. If
-    // Transaction.commit sees that DurabilityMode wasn't actually SYNC, it prepares a
-    // _PendingTxn instead of immediately calling txnCommitSync. Replication makes no
-    // distinction between NO_FLUSH and NO_SYNC mode.
-
-    @Override
-    public final long store(long indexId, byte[] key, byte[] value, DurabilityMode mode)
-        throws IOException
-    {
-        // Note: This method can only have been called when using an auto-commit transaction,
-        // but this is prohibited by _TxnTree. It creates explict transactions if necessary,
-        // ensuring that all store operations can roll back.
-        return super.store(indexId, key, value, DurabilityMode.SYNC);
-    }
-
-    @Override
-    public final long storeNoLock(long indexId, byte[] key, byte[] value, DurabilityMode mode)
-        throws IOException
-    {
-        // Note: This method can only be have been called when using a transaction which uses
-        // the unsafe locking mode and also supports redo durability. The store cannot roll
-        // back if leadership is lost, resulting in an inconsistency. Unsafe is what it is.
-        return super.storeNoLock(indexId, key, value, DurabilityMode.SYNC);
-    }
-
-    @Override
-    public final long renameIndex(long txnId, long indexId, byte[] newName, DurabilityMode mode)
-        throws IOException
-    {
-        return super.renameIndex(txnId, indexId, newName, DurabilityMode.SYNC);
-    }
-
-    @Override
-    public final long deleteIndex(long txnId, long indexId, DurabilityMode mode)
-        throws IOException
-    {
-        return super.deleteIndex(txnId, indexId, DurabilityMode.SYNC);
-    }
-
-    @Override
-    public final synchronized void txnRollback(long txnId) throws IOException {
-        super.txnRollback(txnId);
-        // Flush rollback as a commit, ensuring no delay in processing of the operation.
-        // Without this, a replica can be stuck holding a lock indefinitely.
-        flushCommit();
-    }
-
-    @Override
-    public final synchronized void txnRollbackFinal(long txnId) throws IOException {
-        super.txnRollbackFinal(txnId);
-        // See above comments.
-        flushCommit();
-    }
-
-    @Override
-    public final long txnCommitFinal(long txnId, DurabilityMode mode) throws IOException {
-        return super.txnCommitFinal(txnId, DurabilityMode.SYNC);
     }
 
     @Override
@@ -114,25 +49,11 @@ class _ReplRedoWriter extends _RedoWriter {
         if (writer == null) {
             throw mEngine.unmodifiable();
         }
-
         if (writer.confirm(commitPos)) {
-            synchronized (this) {
-                if (commitPos > mConfirmedPos) {
-                    mConfirmedPos = commitPos;
-                    mConfirmedTxnId = txn.txnId();
-                }
-            }
-            return;
+            txn.mContext.confirmed(commitPos, txn.txnId());
+        } else {
+            throw nowUnmodifiable();
         }
-
-        synchronized (this) {
-            if (mConfirmedPos >= commitPos) {
-                // Was already was confirmed.
-                return;
-            }
-        }
-
-        throw nowUnmodifiable();
     }
 
     @Override
@@ -140,7 +61,8 @@ class _ReplRedoWriter extends _RedoWriter {
         _PendingTxnWaiter waiter = mPendingWaiter;
         int action;
         if (waiter == null || (action = waiter.add(pending)) == _PendingTxnWaiter.EXITED) {
-            synchronized (this) {
+            acquireExclusive();
+            try {
                 waiter = mPendingWaiter;
                 if (waiter == null || (action = waiter.add(pending)) == _PendingTxnWaiter.EXITED) {
                     waiter = new _PendingTxnWaiter(this);
@@ -152,6 +74,8 @@ class _ReplRedoWriter extends _RedoWriter {
                         waiter.start();
                     }
                 }
+            } finally {
+                releaseExclusive();
             }
         }
 
@@ -165,25 +89,10 @@ class _ReplRedoWriter extends _RedoWriter {
         }
     }
 
-    @Override
-    public long txnStoreCommitFinal(long txnId, long indexId,
-                                    byte[] key, byte[] value, DurabilityMode mode)
-        throws IOException
-    {
-        return super.txnStoreCommitFinal(txnId, indexId, key, value, DurabilityMode.SYNC);
-    }
-
-    @Override
-    public long txnDeleteCommitFinal(long txnId, long indexId,
-                                     byte[] key, DurabilityMode mode)
-        throws IOException
-    {
-        return super.txnDeleteCommitFinal(txnId, indexId, key, DurabilityMode.SYNC);
-    }
-
     protected final void flipped(long commitPos) {
         _PendingTxnWaiter waiter;
-        synchronized (this) {
+        acquireExclusive();
+        try {
             waiter = mPendingWaiter;
             if (waiter == null) {
                 waiter = new _PendingTxnWaiter(this);
@@ -191,6 +100,8 @@ class _ReplRedoWriter extends _RedoWriter {
                 // Don't start it.
             }
             waiter.flipped(commitPos);
+        } finally {
+            releaseExclusive();
         }
 
         waiter.finishAll();
@@ -200,7 +111,7 @@ class _ReplRedoWriter extends _RedoWriter {
      * Block waiting for the given committed position to be confirmed. Returns false if not the
      * leader.
      */
-    final boolean confirm(long txnId, long commitPos) {
+    final boolean confirm(_PendingTxn pending) {
         // Note: Similar to txnCommitSync.
 
         ReplicationManager.Writer writer = mReplWriter;
@@ -208,25 +119,15 @@ class _ReplRedoWriter extends _RedoWriter {
             return false;
         }
 
+        long commitPos = pending.mCommitPos;
+
         try {
             if (writer.confirm(commitPos)) {
-                synchronized (this) {
-                    if (commitPos > mConfirmedPos) {
-                        mConfirmedPos = commitPos;
-                        mConfirmedTxnId = txnId;
-                    }
-                }
+                pending.mContext.confirmed(commitPos, pending.mTxnId);
                 return true;
             }
         } catch (IOException e) {
             // Treat as leader switch.
-        }
-
-        synchronized (this) {
-            if (mConfirmedPos >= commitPos) {
-                // Was already was confirmed.
-                return true;
-            }
         }
 
         mEngine.mController.switchToReplica(mReplWriter, false);
@@ -235,22 +136,8 @@ class _ReplRedoWriter extends _RedoWriter {
     }
 
     @Override
-    public final synchronized void close(Throwable cause) throws IOException {
-        super.close(cause);
-        forceAndClose();
-    }
-
-    @Override
     public final long encoding() {
         return mEngine.mManager.encoding();
-    }
-
-    @Override
-    final boolean isOpen() {
-        // Returning false all the time prevents close and shutdown messages from being
-        // written. They aren't very useful anyhow, considering that they don't prevent new log
-        // messages from appearing afterwards.
-        return false;
     }
 
     @Override
@@ -269,7 +156,7 @@ class _ReplRedoWriter extends _RedoWriter {
     }
 
     @Override
-    void checkpointSwitch() throws IOException {
+    void checkpointSwitch(_TransactionContext[] contexts) throws IOException {
         throw fail();
     }
 
@@ -308,39 +195,47 @@ class _ReplRedoWriter extends _RedoWriter {
     }
 
     @Override
-    final void write(byte[] buffer, int len) throws IOException {
-        // Length check is included because super class can invoke this method to flush the
-        // buffer even when empty. Operation should never fail.
-        if (len > 0) {
-            ReplicationManager.Writer writer = mReplWriter;
-            if (writer == null) {
-                throw mEngine.unmodifiable();
-            }
-            if (writer.write(buffer, 0, len) < 0) {
-                throw nowUnmodifiable();
-            }
-        }
+    DurabilityMode opWriteCheck(DurabilityMode mode) throws IOException {
+        // All redo methods which accept a DurabilityMode must always use SYNC mode. This
+        // ensures that write commit option is true, for capturing the log position. If
+        // Transaction.commit sees that DurabilityMode wasn't actually SYNC, it prepares a
+        // _PendingTxn instead of immediately calling txnCommitSync. Replication makes no
+        // distinction between NO_FLUSH and NO_SYNC mode.
+        return DurabilityMode.SYNC;
     }
 
     @Override
-    final long writeCommit(byte[] buffer, int len) throws IOException {
-        // Length check is included because super class can invoke this method to flush the
-        // buffer even when empty. Operation should never fail.
-        if (len > 0) {
-            ReplicationManager.Writer writer = mReplWriter;
-            if (writer == null) {
-                throw mEngine.unmodifiable();
-            }
-            long pos = writer.writeCommit(buffer, 0, len);
+    boolean shouldWriteTerminators() {
+        return false;
+    }
+
+    @Override
+    final long write(boolean commit, byte[] bytes, int offset, int length) throws IOException {
+        ReplicationManager.Writer writer = mReplWriter;
+        if (writer == null) {
+            throw mEngine.unmodifiable();
+        }
+
+        if (commit) {
+            long pos = writer.writeCommit(bytes, offset, length);
             if (pos >= 0) {
                 mLastCommitPos = pos;
-                mLastCommitTxnId = lastTransactionId();
+                mLastCommitTxnId = mLastTxnId;
                 return pos;
-            } else {
-                throw nowUnmodifiable();
+            }
+        } else {
+            long pos = writer.write(bytes, offset, length);
+            if (pos >= 0) {
+                return pos;
             }
         }
-        return 0;
+
+        throw nowUnmodifiable();
+    }
+
+    @Override
+    void alwaysFlush(boolean enable) throws IOException {
+        // Always flushes already.
     }
 
     @Override
@@ -349,28 +244,8 @@ class _ReplRedoWriter extends _RedoWriter {
     }
 
     @Override
-    final void forceAndClose() throws IOException {
-        IOException ex = null;
-        try {
-            force(false);
-        } catch (IOException e) {
-            ex = e;
-        }
-        try {
-            mEngine.mManager.close();
-        } catch (IOException e) {
-            if (ex == null) {
-                ex = e;
-            }
-        }
-        if (ex != null) {
-            throw ex;
-        }
-    }
-
-    @Override
-    final void writeTerminator() throws IOException {
-        // No terminators.
+    public void close() throws IOException {
+        mEngine.mManager.close();
     }
 
     private UnsupportedOperationException fail() {

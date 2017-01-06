@@ -556,7 +556,7 @@ final class LocalDatabase extends AbstractDatabase {
 
             mTxnContexts = new TransactionContext[procCount * 4];
             for (int i=0; i<mTxnContexts.length; i++) {
-                mTxnContexts[i] = new TransactionContext(mTxnContexts.length);
+                mTxnContexts[i] = new TransactionContext(mTxnContexts.length, 4096);
             };
 
             mSparePagePool = new PagePool(mPageSize, procCount);
@@ -725,7 +725,7 @@ final class LocalDatabase extends AbstractDatabase {
                     }
 
                     // New redo logs begin with identifiers one higher than last scanned.
-                    mRedoWriter = new RedoLog(config, replayLog);
+                    mRedoWriter = new RedoLog(config, replayLog, mTxnContexts[0]);
 
                     // TODO: If any exception is thrown before checkpoint is complete, delete
                     // the newly created redo log file.
@@ -767,7 +767,7 @@ final class LocalDatabase extends AbstractDatabase {
      */
     private void finishInit(DatabaseConfig config) throws IOException {
         if (mRedoWriter == null && mTempFileManager == null) {
-            // Nothing is durable and nothing to ever clean up 
+            // Nothing is durable and nothing to ever clean up. 
             return;
         }
 
@@ -775,7 +775,7 @@ final class LocalDatabase extends AbstractDatabase {
         mCheckpointer = c;
 
         // Register objects to automatically shutdown.
-        c.register(mRedoWriter);
+        c.register(new RedoClose(this));
         c.register(mTempFileManager);
 
         if (mRedoWriter instanceof ReplRedoWriter) {
@@ -1074,10 +1074,11 @@ final class LocalDatabase extends AbstractDatabase {
             if (redoTxnId == 0 && (redo = txnRedoWriter()) != null) {
                 long commitPos;
 
+                txn.durabilityMode(mDurabilityMode.alwaysRedo());
+
                 CommitLock.Shared shared = mCommitLock.acquireShared();
                 try {
-                    commitPos = redo.renameIndex
-                        (txn.txnId(), tree.mId, newName, mDurabilityMode.alwaysRedo());
+                    commitPos = txn.redoRenameIndexCommitFinal(tree.mId, newName);
                 } finally {
                     shared.release();
                 }
@@ -1473,10 +1474,32 @@ final class LocalDatabase extends AbstractDatabase {
     }
 
     /**
+     * Used by auto-commit operations that don't have an explicit transaction.
+     */
+    TransactionContext anyTransactionContext() {
+        return selectTransactionContext(ThreadLocalRandom.current().nextInt());
+    }
+
+    /**
      * Called by transaction constructor after hash code has been assigned.
      */
     TransactionContext selectTransactionContext(LocalTransaction txn) {
-        return mTxnContexts[(txn.hashCode() & 0x7fffffff) % mTxnContexts.length];
+        return selectTransactionContext(txn.hashCode());
+    }
+
+    private TransactionContext selectTransactionContext(int num) {
+        return mTxnContexts[(num & 0x7fffffff) % mTxnContexts.length];
+    }
+
+    /**
+     * Returns the transaction context with the highest confirmed position.
+     */
+    TransactionContext highestTransactionContext() {
+        TransactionContext context = mTxnContexts[0];
+        for (int i=1; i<mTxnContexts.length; i++) {
+            context = context.higherConfirmed(mTxnContexts[i]);
+        }
+        return context;
     }
 
     @Override
@@ -1695,17 +1718,85 @@ final class LocalDatabase extends AbstractDatabase {
         return stats;
     }
 
+    static class RedoClose extends ShutdownHook.Weak<LocalDatabase> {
+        RedoClose(LocalDatabase db) {
+            super(db);
+        }
+
+        @Override
+        void doShutdown(LocalDatabase db) {
+            db.redoClose(RedoOps.OP_SHUTDOWN, null);
+        }
+    }
+
+    /**
+     * @param op OP_CLOSE or OP_SHUTDOWN
+     */
+    private void redoClose(byte op, Throwable cause) {
+        RedoWriter redo = mRedoWriter;
+        if (redo == null) {
+            return;
+        }
+
+        redo.closeCause(cause);
+        redo = redo.txnRedoWriter();
+        redo.closeCause(cause);
+
+        try {
+            // NO_FLUSH now behaves like NO_SYNC.
+            redo.alwaysFlush(true);
+        } catch (IOException e) {
+            // Ignore.
+        }
+
+        if (mTxnContexts != null) {
+            // Flush out any lingering NO_FLUSH commits.
+            for (TransactionContext context : mTxnContexts) {
+                try {
+                    context.flush();
+                } catch (IOException e) {
+                    // Ignore for now and discover again later.
+                }
+            }
+        }
+
+        try {
+            TransactionContext context = anyTransactionContext();
+            context.redoTimestamp(redo, op); 
+            context.flush();
+
+            redo.force(true);
+
+            // When shutdown hook is invoked, don't close the redo writer. It may interfere
+            // with other shutdown hooks, causing unexpected exceptions to be thrown during the
+            // whole shutdown sequence.
+
+            if (op == RedoOps.OP_CLOSE) {
+                redo.close();
+            }
+        } catch (IOException e) {
+            // Ignore.
+        }
+    }
+
+    private void flushAllContexts() throws IOException {
+        for (TransactionContext context : mTxnContexts) {
+            context.flush();
+        }
+    }
+
     @Override
     public void flush() throws IOException {
         if (!isClosed() && mRedoWriter != null) {
-            mRedoWriter.flush();
+            flushAllContexts();
         }
     }
 
     @Override
     public void sync() throws IOException {
         if (!isClosed() && mRedoWriter != null) {
-            mRedoWriter.flushSync(false);
+            flushAllContexts();
+            mRedoWriter.force(false);
         }
     }
 
@@ -2064,9 +2155,9 @@ final class LocalDatabase extends AbstractDatabase {
 
                 nodeMapDeleteAll();
 
-                IOException ex = null;
+                redoClose(RedoOps.OP_CLOSE, cause);
 
-                ex = closeQuietly(ex, mRedoWriter, cause);
+                IOException ex = null;
                 ex = closeQuietly(ex, mPageDb, cause);
                 ex = closeQuietly(ex, mTempFileManager, cause);
 
@@ -2176,10 +2267,11 @@ final class LocalDatabase extends AbstractDatabase {
                 // for the deletion task to be started immediately. The redo log still contains
                 // a commit operation, which is redundant and harmless.
 
+                txn.durabilityMode(mDurabilityMode.alwaysRedo());
+
                 CommitLock.Shared shared = mCommitLock.acquireShared();
                 try {
-                    commitPos = redo.deleteIndex
-                        (txn.txnId(), treeId, mDurabilityMode.alwaysRedo());
+                    commitPos = txn.redoDeleteIndexCommitFinal(treeId);
                 } finally {
                     shared.release();
                 }
@@ -4225,7 +4317,8 @@ final class LocalDatabase extends AbstractDatabase {
 
                     // Thresholds not met for a full checkpoint, but fully sync the redo log
                     // for durability.
-                    mRedoWriter.flushSync(true);
+                    flushAllContexts();
+                    mRedoWriter.force(true);
 
                     return;
                 }
@@ -4245,7 +4338,8 @@ final class LocalDatabase extends AbstractDatabase {
                     // Root is clean, so no need for full checkpoint,
                     // but fully sync the redo log for durability.
                     if (mRedoWriter != null) {
-                        mRedoWriter.flushSync(true);
+                        flushAllContexts();
+                        mRedoWriter.force(true);
                     }
                     return;
                 }
@@ -4310,7 +4404,7 @@ final class LocalDatabase extends AbstractDatabase {
                     redoTxnId = 0;
                 } else {
                     // Switch and capture state while commit lock is held.
-                    redo.checkpointSwitch();
+                    redo.checkpointSwitch(mTxnContexts);
                     redoNum = redo.checkpointNumber();
                     redoPos = redo.checkpointPosition();
                     redoTxnId = redo.checkpointTransactionId();
@@ -4335,18 +4429,15 @@ final class LocalDatabase extends AbstractDatabase {
                     byte[] workspace = null;
 
                     for (TransactionContext txnContext : mTxnContexts) {
-                        txnContext.acquireShared();
-                        try {
-                            txnId = txnContext.maxTransactionId(txnId);
+                        txnId = txnContext.higherTransactionId(txnId);
 
+                        synchronized (txnContext) {
                             if (txnContext.hasUndoLogs()) {
                                 if (masterUndoLog == null) {
                                     masterUndoLog = new UndoLog(this, 0);
                                 }
                                 workspace = txnContext.writeToMaster(masterUndoLog, workspace);
                             }
-                        } finally {
-                            txnContext.releaseShared();
                         }
                     }
 

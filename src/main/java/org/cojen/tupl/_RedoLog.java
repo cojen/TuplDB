@@ -52,6 +52,11 @@ final class _RedoLog extends _RedoWriter {
 
     private final boolean mReplayMode;
 
+    private final byte[] mBuffer;
+    private int mBufferPos;
+
+    private boolean mAlwaysFlush;
+
     private long mLogId;
     private long mPosition;
     private OutputStream mOut;
@@ -76,58 +81,63 @@ final class _RedoLog extends _RedoWriter {
      * @param logId first log id to open
      */
     _RedoLog(DatabaseConfig config, long logId, long redoPos) throws IOException {
-        this(config.mCrypto, config.mBaseFile, config.mFileFactory, logId, redoPos, true);
+        this(config.mCrypto, config.mBaseFile, config.mFileFactory, logId, redoPos, null);
     }
 
     /**
      * Open after replay.
      *
      * @param logId first log id to open
+     * @param context used for creating next log file; must not be null
      */
-    _RedoLog(DatabaseConfig config, _RedoLog replayed) throws IOException {
+    _RedoLog(DatabaseConfig config, _RedoLog replayed, _TransactionContext context)
+        throws IOException
+    {
         this(config.mCrypto, config.mBaseFile, config.mFileFactory,
-             replayed.mLogId, replayed.mPosition, false);
+             replayed.mLogId, replayed.mPosition, context);
     }
 
     /**
      * @param crypto optional
      * @param factory optional
      * @param logId first log id to open
+     * @param context used for creating next log file; pass null for replay mode
      */
     _RedoLog(Crypto crypto, File baseFile, FileFactory factory,
-            long logId, long redoPos, boolean replay)
+            long logId, long redoPos, _TransactionContext context)
         throws IOException
     {
-        super(65536, 0);
-
         mCrypto = crypto;
         mBaseFile = baseFile;
         mFileFactory = factory;
-        mReplayMode = replay;
+        mReplayMode = context == null;
 
-        synchronized (this) {
-            mLogId = logId;
-            mPosition = redoPos;
-            if (!replay) {
-                openNextFile(logId);
-                applyNextFile();
-                // Log will be deleted after next checkpoint finishes.
-                mDeleteLogId = logId;
-            }
+        mBuffer = new byte[8192];
+
+        acquireExclusive();
+        mLogId = logId;
+        mPosition = redoPos;
+        releaseExclusive();
+
+        if (context != null) {
+            openNextFile(logId);
+            applyNextFile(context);
+            // Log will be deleted after next checkpoint finishes.
+            mDeleteLogId = logId;
         }
     }
 
     /**
      * @return all the files which were replayed
      */
-    synchronized Set<File> replay(RedoVisitor visitor,
-                                  EventListener listener, EventType type, String message)
+    Set<File> replay(RedoVisitor visitor, EventListener listener, EventType type, String message)
         throws IOException
     {
         if (!mReplayMode || mBaseFile == null) {
             throw new IllegalStateException();
         }
 
+        acquireExclusive();
         try {
             Set<File> files = new LinkedHashSet<>(2);
 
@@ -177,7 +187,9 @@ final class _RedoLog extends _RedoWriter {
 
             return files;
         } catch (IOException e) {
-            throw Utils.rethrow(e, mCause);
+            throw Utils.rethrow(e, mCloseCause);
+        } finally {
+            releaseExclusive();
         }
     }
 
@@ -200,7 +212,9 @@ final class _RedoLog extends _RedoWriter {
         FileOutputStream fout = null;
         OutputStream nextOut;
         FileChannel nextChannel;
-        int nextTermRndSeed = Utils.randomSeed();
+
+        // Zero indicates that Xorshift random numbers aren't used for terminators anymore.
+        int nextTermRndSeed = 0;
 
         try {
             fout = new FileOutputStream(file);
@@ -241,15 +255,24 @@ final class _RedoLog extends _RedoWriter {
         mNextTermRndSeed = nextTermRndSeed;
     }
 
-    private void applyNextFile() throws IOException {
+    private void applyNextFile(_TransactionContext... contexts) throws IOException {
         final OutputStream oldOut;
         final FileChannel oldChannel;
-        synchronized (this) {
+
+        _TransactionContext context = contexts[0];
+        for (int i = contexts.length; --i >= 1; ) {
+            contexts[i].flush();
+        }
+
+        context.fullAcquireRedoLatch(this);
+        try {
             oldOut = mOut;
             oldChannel = mChannel;
 
             if (oldOut != null) {
-                endFile();
+                context.doRedoTimestamp(this, RedoOps.OP_END_FILE);
+                context.doFlush();
+                doFlush();
             }
 
             mNextPosition = mPosition;
@@ -262,8 +285,16 @@ final class _RedoLog extends _RedoWriter {
             mNextOut = null;
             mNextChannel = null;
 
-            timestamp();
-            reset();
+            // Reset the transaction id early in order for terminators to be encoded correctly.
+            // _RedoLogDecoder always starts with an initial transaction id of 0.
+            mLastTxnId = 0;
+
+            context.doRedoTimestamp(this, RedoOps.OP_TIMESTAMP);
+            context.doRedoReset(this);
+
+            context.doFlush();
+        } finally {
+            context.releaseRedoLatch();
         }
 
         // Close old file if previous checkpoint aborted.
@@ -281,19 +312,27 @@ final class _RedoLog extends _RedoWriter {
     }
 
     @Override
-    public final long encoding() {
+    void txnCommitSync(_LocalTransaction txn, long commitPos) throws IOException {
+        try {
+            force(false);
+        } catch (IOException e) {
+            throw Utils.rethrow(e, mCloseCause);
+        }
+    }
+
+    @Override
+    void txnCommitPending(_PendingTxn pending) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    final long encoding() {
         return 0;
     }
 
     @Override
-    public final _RedoWriter txnRedoWriter() {
+    final _RedoWriter txnRedoWriter() {
         return this;
-    }
-
-    @Override
-    boolean isOpen() {
-        FileChannel channel = mChannel;
-        return channel != null && channel.isOpen();
     }
 
     @Override
@@ -312,16 +351,16 @@ final class _RedoLog extends _RedoWriter {
             throw new IllegalStateException();
         }
 
-        final long logId;
-        synchronized (this) {
-            logId = mLogId;
-        }
+        acquireShared();
+        final long logId = mLogId;
+        releaseShared();
+
         openNextFile(logId + 1);
     }
 
     @Override
-    void checkpointSwitch() throws IOException {
-        applyNextFile();
+    void checkpointSwitch(_TransactionContext[] contexts) throws IOException {
+        applyNextFile(contexts);
     }
 
     @Override
@@ -388,22 +427,74 @@ final class _RedoLog extends _RedoWriter {
     }
 
     @Override
-    void write(byte[] buffer, int len) throws IOException {
+    DurabilityMode opWriteCheck(DurabilityMode mode) throws IOException {
+        // Mode stays the same when not replicated.
+        return mode;
+    }
+
+    @Override
+    boolean shouldWriteTerminators() {
+        return true;
+    }
+
+    @Override
+    long write(boolean commit, byte[] bytes, int offset, int length) throws IOException {
         try {
-            mOut.write(buffer, 0, len);
-            mPosition += len;
+            byte[] buf = mBuffer;
+            int avail = buf.length - mBufferPos;
+
+            if (avail >= length) {
+                if (mBufferPos == 0 && avail == length) {
+                    mOut.write(bytes, offset, length);
+                } else {
+                    System.arraycopy(bytes, offset, buf, mBufferPos, length);
+                    mBufferPos += length;
+                    if (mBufferPos == buf.length || commit || mAlwaysFlush) {
+                        mOut.write(buf, 0, mBufferPos);
+                        mBufferPos = 0;
+                    }
+                }
+            } else {
+                // Fill remainder of buffer and flush it.
+                System.arraycopy(bytes, offset, buf, mBufferPos, avail);
+                mBufferPos = buf.length;
+                mOut.write(buf, 0, mBufferPos);
+                offset += avail;
+                length -= avail;
+                if (length >= buf.length || commit || mAlwaysFlush) {
+                    mBufferPos = 0;
+                    mOut.write(bytes, offset, length);
+                } else {
+                    System.arraycopy(bytes, offset, buf, 0, length);
+                    mBufferPos = length;
+                }
+            }
+
+            return mPosition += length;
         } catch (IOException e) {
             throw new WriteFailureException(e);
         }
     }
 
     @Override
-    long writeCommit(byte[] buffer, int len) throws IOException {
+    void alwaysFlush(boolean enable) throws IOException {
+        acquireExclusive();
         try {
-            long pos = mPosition + len;
-            mOut.write(buffer, 0, len);
-            mPosition = pos;
-            return pos;
+            mAlwaysFlush = enable;
+            if (enable) {
+                doFlush();
+            }
+        } finally {
+            releaseExclusive();
+        }
+    }
+
+    private void doFlush() throws IOException {
+        try {
+            if (mBufferPos > 0) {
+                mOut.write(mBuffer, 0, mBufferPos);
+                mBufferPos = 0;
+            }
         } catch (IOException e) {
             throw new WriteFailureException(e);
         }
@@ -433,28 +524,22 @@ final class _RedoLog extends _RedoWriter {
     }
 
     @Override
-    void forceAndClose() throws IOException {
+    public void close() throws IOException {
+        Utils.closeQuietly(null, mOldOut);
+
         FileChannel channel = mChannel;
         if (channel != null) {
             try {
-                channel.force(true);
-                try {
-                    channel.close();
-                } catch (IOException e) {
-                    // Ignore.
-                }
+                channel.close();
             } catch (ClosedChannelException e) {
                 // Ignore.
             }
         }
+
+        Utils.closeQuietly(null, mOut);
     }
 
-    @Override
-    void writeTerminator() throws IOException {
-        writeIntLE(nextTermRnd());
-    }
-
-    // Caller must be synchronized (replay is exempt)
+    // Caller must hold exclusive latch (replay is exempt)
     int nextTermRnd() {
         return mTermRndSeed = Utils.nextRandom(mTermRndSeed);
     }

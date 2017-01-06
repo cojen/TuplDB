@@ -35,8 +35,8 @@ final class LocalTransaction extends Locker implements Transaction {
                            fully deleted after committing the top-level scope. */
 
     final LocalDatabase mDatabase;
-    private final TransactionContext mTxnContext;
-    private final RedoWriter mRedoWriter;
+    final TransactionContext mContext;
+    private final RedoWriter mRedo;
     DurabilityMode mDurabilityMode;
 
     private LockMode mLockMode;
@@ -57,8 +57,8 @@ final class LocalTransaction extends Locker implements Transaction {
     {
         super(db.mLockManager);
         mDatabase = db;
-        mTxnContext = db.selectTransactionContext(this);
-        mRedoWriter = redo;
+        mContext = db.selectTransactionContext(this);
+        mRedo = redo;
         mDurabilityMode = durabilityMode;
         mLockMode = lockMode;
         mLockTimeoutNanos = timeoutNanos;
@@ -92,7 +92,7 @@ final class LocalTransaction extends Locker implements Transaction {
 
     // Used by recovery.
     final void recoveredUndoLog(UndoLog undo) {
-        mTxnContext.register(undo);
+        mContext.register(undo);
         mUndoLog = undo;
     }
 
@@ -100,8 +100,8 @@ final class LocalTransaction extends Locker implements Transaction {
     private LocalTransaction() {
         super(null);
         mDatabase = null;
-        mTxnContext = null;
-        mRedoWriter = null;
+        mContext = null;
+        mRedo = null;
         mDurabilityMode = DurabilityMode.NO_REDO;
         mLockMode = LockMode.UNSAFE;
         mBorked = this;
@@ -199,12 +199,11 @@ final class LocalTransaction extends Locker implements Transaction {
                 if (undo == null) {
                     int hasState = mHasState;
                     if ((hasState & HAS_COMMIT) != 0) {
-                        RedoWriter redo = mRedoWriter;
-                        long commitPos = redo.txnCommitFinal(mTxnId, mDurabilityMode);
+                        long commitPos = mContext.redoCommitFinal(mRedo, mTxnId, mDurabilityMode);
                         mHasState = hasState & ~(HAS_SCOPE | HAS_COMMIT);
                         if (commitPos != 0) {
                             if (mDurabilityMode == DurabilityMode.SYNC) {
-                                redo.txnCommitSync(this, commitPos);
+                                mRedo.txnCommitSync(this, commitPos);
                             } else {
                                 commitPending(commitPos, null);
                                 return;
@@ -222,7 +221,7 @@ final class LocalTransaction extends Locker implements Transaction {
                     long commitPos;
                     try {
                         if ((commitPos = (mHasState & HAS_COMMIT)) != 0) {
-                            commitPos = mRedoWriter.txnCommitFinal(mTxnId, mDurabilityMode);
+                            commitPos = mContext.redoCommitFinal(mRedo, mTxnId, mDurabilityMode);
                             mHasState &= ~(HAS_SCOPE | HAS_COMMIT);
                         }
                         // Indicates that undo log should be truncated instead
@@ -237,7 +236,7 @@ final class LocalTransaction extends Locker implements Transaction {
                         // Durably sync the redo log after releasing the commit lock,
                         // preventing additional blocking.
                         if (mDurabilityMode == DurabilityMode.SYNC) {
-                            mRedoWriter.txnCommitSync(this, commitPos);
+                            mRedo.txnCommitSync(this, commitPos);
                         } else {
                             commitPending(commitPos, undo);
                             return;
@@ -255,7 +254,7 @@ final class LocalTransaction extends Locker implements Transaction {
                     // to delete ghosts.
                     undo.truncate(true);
 
-                    mTxnContext.unregister(undo);
+                    mContext.unregister(undo);
                     mUndoLog = null;
 
                     int hasState = mHasState;
@@ -269,7 +268,7 @@ final class LocalTransaction extends Locker implements Transaction {
             } else {
                 int hasState = mHasState;
                 if ((hasState & HAS_COMMIT) != 0) {
-                    mRedoWriter.txnCommit(mTxnId);
+                    mContext.redoCommit(mRedo, mTxnId);
                     mHasState = hasState & ~(HAS_SCOPE | HAS_COMMIT);
                     parentScope.mHasState |= HAS_COMMIT;
                 }
@@ -288,7 +287,7 @@ final class LocalTransaction extends Locker implements Transaction {
 
     private void commitPending(long commitPos, UndoLog undo) throws IOException {
         PendingTxn pending = transferExclusive();
-        pending.mTxnContext = mTxnContext;
+        pending.mContext = mContext;
         pending.mTxnId = mTxnId;
         pending.mCommitPos = commitPos;
         pending.mUndoLog = undo;
@@ -300,15 +299,14 @@ final class LocalTransaction extends Locker implements Transaction {
             mHasState = hasState & ~HAS_TRASH;
         }
         mTxnId = 0;
-        mRedoWriter.txnCommitPending(pending);
+        mRedo.txnCommitPending(pending);
     }
 
     /**
      * Commit combined with a store operation.
      */
     final void storeCommit(TreeCursor cursor, byte[] value) throws IOException {
-        RedoWriter redo = mRedoWriter;
-        if (redo == null) {
+        if (mRedo == null) {
             cursor.store(this, cursor.leafExclusive(), value);
             commit();
             return;
@@ -323,7 +321,7 @@ final class LocalTransaction extends Locker implements Transaction {
         final CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
         try {
             if (txnId == 0) {
-                txnId = assignTransactionId(redo);
+                txnId = assignTransactionId();
             }
         } catch (Throwable e) {
             shared.release();
@@ -339,19 +337,17 @@ final class LocalTransaction extends Locker implements Transaction {
             if (parentScope == null) {
                 long commitPos;
                 try {
-                    synchronized (redo) {
-                        if ((hasState & HAS_SCOPE) == 0) {
-                            redo.txnEnter(txnId);
-                            mHasState = hasState | HAS_SCOPE;
-                        }
+                    if ((hasState & HAS_SCOPE) == 0) {
+                        mContext.redoEnter(mRedo, txnId);
+                        mHasState = hasState | HAS_SCOPE;
+                    }
 
-                        if (value == null) {
-                            commitPos = redo.txnDeleteCommitFinal
-                                (txnId, indexId, key, mDurabilityMode);
-                        } else {
-                            commitPos = redo.txnStoreCommitFinal
-                                (txnId, indexId, key, value, mDurabilityMode);
-                        }
+                    if (value == null) {
+                        commitPos = mContext.redoDeleteCommitFinal
+                            (mRedo, txnId, indexId, key, mDurabilityMode);
+                    } else {
+                        commitPos = mContext.redoStoreCommitFinal
+                            (mRedo, txnId, indexId, key, value, mDurabilityMode);
                     }
 
                     cursor.store(LocalTransaction.BOGUS, cursor.leafExclusive(), value);
@@ -367,7 +363,7 @@ final class LocalTransaction extends Locker implements Transaction {
                     shared.release();
                     if (commitPos != 0) {
                         if (mDurabilityMode == DurabilityMode.SYNC) {
-                            redo.txnCommitSync(this, commitPos);
+                            mRedo.txnCommitSync(this, commitPos);
                         } else {
                             commitPending(commitPos, null);
                             return;
@@ -383,7 +379,7 @@ final class LocalTransaction extends Locker implements Transaction {
 
                     if (commitPos != 0) {
                         if (mDurabilityMode == DurabilityMode.SYNC) {
-                            redo.txnCommitSync(this, commitPos);
+                            mRedo.txnCommitSync(this, commitPos);
                         } else {
                             commitPending(commitPos, undo);
                             return;
@@ -394,7 +390,7 @@ final class LocalTransaction extends Locker implements Transaction {
 
                     undo.truncate(true);
 
-                    mTxnContext.unregister(undo);
+                    mContext.unregister(undo);
                     mUndoLog = null;
 
                     if ((hasState & HAS_TRASH) != 0) {
@@ -407,17 +403,21 @@ final class LocalTransaction extends Locker implements Transaction {
             } else {
                 try {
                     if ((hasState & HAS_SCOPE) == 0) {
-                        setScopeState(redo, parentScope);
+                        setScopeState(parentScope);
                         if (value == null) {
-                            redo.txnDelete(RedoOps.OP_TXN_DELETE, txnId, indexId, key);
+                            mContext.redoDelete
+                                (mRedo, RedoOps.OP_TXN_DELETE, txnId, indexId, key);
                         } else {
-                            redo.txnStore(RedoOps.OP_TXN_STORE, txnId, indexId, key, value);
+                            mContext.redoStore
+                                (mRedo, RedoOps.OP_TXN_STORE, txnId, indexId, key, value);
                         }
                     } else {
                         if (value == null) {
-                            redo.txnDelete(RedoOps.OP_TXN_DELETE_COMMIT, txnId, indexId, key);
+                            mContext.redoDelete
+                                (mRedo, RedoOps.OP_TXN_DELETE_COMMIT, txnId, indexId, key);
                         } else {
-                            redo.txnStore(RedoOps.OP_TXN_STORE_COMMIT, txnId, indexId, key, value);
+                            mContext.redoStore
+                                (mRedo, RedoOps.OP_TXN_STORE_COMMIT, txnId, indexId, key, value);
                         }
                     }
 
@@ -494,7 +494,7 @@ final class LocalTransaction extends Locker implements Transaction {
                 try {
                     int hasState = mHasState;
                     if ((hasState & HAS_SCOPE) != 0) {
-                        mRedoWriter.txnRollbackFinal(mTxnId);
+                        mContext.redoRollbackFinal(mRedo, mTxnId);
                     }
                     mHasState = 0;
                 } catch (UnmodifiableReplicaException e) {
@@ -511,7 +511,7 @@ final class LocalTransaction extends Locker implements Transaction {
 
                 mSavepoint = 0;
                 if (undo != null) {
-                    mTxnContext.unregister(undo);
+                    mContext.unregister(undo);
                     mUndoLog = null;
                 }
 
@@ -520,7 +520,7 @@ final class LocalTransaction extends Locker implements Transaction {
                 try {
                     int hasState = mHasState;
                     if ((hasState & HAS_SCOPE) != 0) {
-                        mRedoWriter.txnRollback(mTxnId);
+                        mContext.redoRollback(mRedo, mTxnId);
                         mHasState = hasState & ~(HAS_SCOPE | HAS_COMMIT);
                     }
                 } catch (UnmodifiableReplicaException e) {
@@ -559,13 +559,13 @@ final class LocalTransaction extends Locker implements Transaction {
                 ParentScope parentScope = mParentScope;
                 while (parentScope != null) {
                     if ((hasState & HAS_SCOPE) != 0) {
-                        mRedoWriter.txnRollback(mTxnId);
+                        mContext.redoRollback(mRedo, mTxnId);
                     }
                     hasState = parentScope.mHasState;
                     parentScope = parentScope.mParentScope;
                 }
                 if ((hasState & HAS_SCOPE) != 0) {
-                    mRedoWriter.txnRollbackFinal(mTxnId);
+                    mContext.redoRollbackFinal(mRedo, mTxnId);
                 }
                 mHasState = 0;
             } catch (UnmodifiableReplicaException e) {
@@ -582,7 +582,7 @@ final class LocalTransaction extends Locker implements Transaction {
 
             mSavepoint = 0;
             if (undo != null) {
-                mTxnContext.unregister(undo);
+                mContext.unregister(undo);
                 mUndoLog = null;
             }
 
@@ -688,14 +688,13 @@ final class LocalTransaction extends Locker implements Transaction {
             throw new IllegalStateException("Custom transaction handler is not installed");
         }
         check();
-        RedoWriter redo = mRedoWriter;
-        if (redo != null) {
+        if (mRedo != null) {
             long txnId = mTxnId;
 
             if (txnId == 0) {
                 final CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
                 try {
-                    txnId = assignTransactionId(redo);
+                    txnId = assignTransactionId();
                 } finally {
                     shared.release();
                 }
@@ -705,9 +704,9 @@ final class LocalTransaction extends Locker implements Transaction {
             if ((hasState & HAS_SCOPE) == 0) {
                 ParentScope parentScope = mParentScope;
                 if (parentScope != null) {
-                    setScopeState(redo, parentScope);
+                    setScopeState(parentScope);
                 }
-                redo.txnEnter(txnId);
+                mContext.redoEnter(mRedo, txnId);
             }
 
             mHasState = hasState | (HAS_SCOPE | HAS_COMMIT);
@@ -716,9 +715,9 @@ final class LocalTransaction extends Locker implements Transaction {
                 if (key != null) {
                     throw new IllegalArgumentException("Key cannot be used if indexId is zero");
                 }
-                redo.txnCustom(txnId, message);
+                mContext.redoCustom(mRedo, txnId, message);
             } else {
-                redo.txnCustomLock(txnId, message, indexId, key);
+                mContext.redoCustomLock(mRedo, txnId, message, indexId, key);
             }
         }
     }
@@ -781,12 +780,11 @@ final class LocalTransaction extends Locker implements Transaction {
     final void redoStore(long indexId, byte[] key, byte[] value) throws IOException {
         check();
 
-        RedoWriter redo = mRedoWriter;
-        if (redo != null) {
+        if (mRedo != null) {
             long txnId = mTxnId;
 
             if (txnId == 0) {
-                txnId = assignTransactionId(redo);
+                txnId = assignTransactionId();
             }
 
             try {
@@ -794,18 +792,22 @@ final class LocalTransaction extends Locker implements Transaction {
                 if ((hasState & HAS_SCOPE) == 0) {
                     ParentScope parentScope = mParentScope;
                     if (parentScope != null) {
-                        setScopeState(redo, parentScope);
+                        setScopeState(parentScope);
                     }
                     if (value == null) {
-                        redo.txnDelete(RedoOps.OP_TXN_ENTER_DELETE, txnId, indexId, key);
+                        mContext.redoDelete
+                            (mRedo, RedoOps.OP_TXN_ENTER_DELETE, txnId, indexId, key);
                     } else {
-                        redo.txnStore(RedoOps.OP_TXN_ENTER_STORE, txnId, indexId, key, value);
+                        mContext.redoStore
+                            (mRedo, RedoOps.OP_TXN_ENTER_STORE, txnId, indexId, key, value);
                     }
                 } else {
                     if (value == null) {
-                        redo.txnDelete(RedoOps.OP_TXN_DELETE, txnId, indexId, key);
+                        mContext.redoDelete
+                            (mRedo, RedoOps.OP_TXN_DELETE, txnId, indexId, key);
                     } else {
-                        redo.txnStore(RedoOps.OP_TXN_STORE, txnId, indexId, key, value);
+                        mContext.redoStore
+                            (mRedo, RedoOps.OP_TXN_STORE, txnId, indexId, key, value);
                     }
                 }
 
@@ -817,17 +819,42 @@ final class LocalTransaction extends Locker implements Transaction {
     }
 
     /**
+     * Auto-commit index rename. Caller must hold commit lock.
+     *
+     * @param indexId non-zero index id
+     * @param newName non-null new index name
+     * @return non-zero position if caller should call txnCommitSync
+     */
+    final long redoRenameIndexCommitFinal(long indexId, byte[] newName) throws IOException {
+        check();
+        return mContext.redoRenameIndexCommitFinal
+            (mRedo, txnId(), indexId, newName, mDurabilityMode);
+    }
+
+    /**
+     * Auto-commit index delete. Caller must hold commit lock.
+     *
+     * @param indexId non-zero index id
+     * @return non-zero position if caller should call txnCommitSync
+     */
+    final long redoDeleteIndexCommitFinal(long indexId) throws IOException {
+        check();
+        return mContext.redoDeleteIndexCommitFinal
+            (mRedo, txnId(), indexId, mDurabilityMode);
+    }
+
+    /**
      * Transaction id must be assigned.
      */
-    private void setScopeState(RedoWriter redo, ParentScope scope) throws IOException {
+    private void setScopeState(ParentScope scope) throws IOException {
         int hasState = scope.mHasState;
         if ((hasState & HAS_SCOPE) == 0) {
             ParentScope parentScope = scope.mParentScope;
             if (parentScope != null) {
-                setScopeState(redo, parentScope);
+                setScopeState(parentScope);
             }
 
-            redo.txnEnter(mTxnId);
+            mContext.redoEnter(mRedo, mTxnId);
             scope.mHasState = hasState | HAS_SCOPE;
         }
     }
@@ -838,11 +865,10 @@ final class LocalTransaction extends Locker implements Transaction {
     final long txnId() {
         long txnId = mTxnId;
         if (txnId == 0) {
-            txnId = mTxnContext.nextTransactionId();
-            RedoWriter redo = mRedoWriter;
-            if (redo != null) {
+            txnId = mContext.nextTransactionId();
+            if (mRedo != null) {
                 // Replicas set the high bit to ensure no identifier conflict with the leader.
-                txnId = redo.adjustTransactionId(txnId);
+                txnId = mRedo.adjustTransactionId(txnId);
             }
             mTxnId = txnId;
         }
@@ -851,13 +877,11 @@ final class LocalTransaction extends Locker implements Transaction {
 
     /**
      * Caller must hold commit lock and have verified that current transaction id is 0.
-     *
-     * @param redo not null
      */
-    private long assignTransactionId(RedoWriter redo) {
-        long txnId = mTxnContext.nextTransactionId();
+    private long assignTransactionId() {
+        long txnId = mContext.nextTransactionId();
         // Replicas set the high bit to ensure no identifier conflict with the leader.
-        txnId = redo.adjustTransactionId(txnId);
+        txnId = mRedo.adjustTransactionId(txnId);
         mTxnId = txnId;
         return txnId;
     }
@@ -925,7 +949,7 @@ final class LocalTransaction extends Locker implements Transaction {
                 parentScope = parentScope.mParentScope;
             }
 
-            mTxnContext.register(undo);
+            mContext.register(undo);
             mUndoLog = undo;
         }
         return undo;
@@ -960,7 +984,7 @@ final class LocalTransaction extends Locker implements Transaction {
                     }
                     super.scopeExitAll();
                     if (undo != null) {
-                        mTxnContext.unregister(undo);
+                        mContext.unregister(undo);
                         mUndoLog = null;
                     }
                 } catch (Throwable undoFailed) {
