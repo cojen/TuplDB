@@ -18,8 +18,9 @@ package org.cojen.tupl;
 
 import sun.misc.Unsafe;
 
-import java.lang.reflect.Field;
 import java.nio.ByteOrder;
+
+import org.cojen.tupl.io.UnsafeAccess;
 
 /**
  * Fast non-cryptographic hash function which computes a Wang/Jenkins hash over 8-byte
@@ -79,7 +80,7 @@ class Hasher {
             case 1:
                 v = (v << 8) | (b[0] & 0xffL);
             }
-            hash = (hash << 5) - hash + Utils.scramble(v);
+            hash = (hash << 5) - hash ^ Utils.scramble(v);
             return hash;
         }
 
@@ -87,22 +88,15 @@ class Hasher {
         int i = 0;
 
         while (i < end) {
-            hash = (hash << 5) - hash + Utils.scramble(Utils.decodeLongLE(b, i));
+            hash = (hash << 5) - hash ^ Utils.scramble(Utils.decodeLongLE(b, i));
             i += 8;
         }
 
         if ((len & 7) != 0) {
-            hash = (hash << 5) - hash + Utils.scramble(Utils.decodeLongLE(b, len - 8));
+            hash = (hash << 5) - hash ^ Utils.scramble(Utils.decodeLongLE(b, len - 8));
         }
 
         return hash;
-    }
-
-    static Unsafe getUnsafe() {
-        if (INSTANCE instanceof UnsafeLE) {
-            return UnsafeLE.UNSAFE;
-        }
-        return null;
     }
 
     /**
@@ -110,14 +104,12 @@ class Hasher {
      * shifting transformation.
      */
     private static class UnsafeLE extends Hasher {
-        static final Unsafe UNSAFE;
+        private static final Unsafe UNSAFE;
         private static final long BYTE_ARRAY_OFFSET;
 
         static {
             try {
-                Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-                theUnsafe.setAccessible(true);
-                UNSAFE = (Unsafe) theUnsafe.get(null);
+                UNSAFE = UnsafeAccess.tryObtain();
                 BYTE_ARRAY_OFFSET = UNSAFE.arrayBaseOffset(byte[].class);
             } catch (Throwable e) {
                 throw new ExceptionInInitializerError();

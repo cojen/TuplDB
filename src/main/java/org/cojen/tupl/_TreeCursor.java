@@ -3227,7 +3227,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
                 // Close check is required because this method is called by the trashed tree
                 // deletion task. The tree isn't registered as an open tree, and so closing the
                 // database doesn't close the tree before deleting the node instances.
-                if (db.mClosed) {
+                if (db.isClosed()) {
                     break;
                 }
 

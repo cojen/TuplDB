@@ -201,6 +201,10 @@ final class Checkpointer implements Runnable {
         }
     }
 
+    boolean isClosed() {
+        return mState == STATE_CLOSED;
+    }
+
     /**
      * @return thread to interrupt, when no checkpoint is in progress
      */

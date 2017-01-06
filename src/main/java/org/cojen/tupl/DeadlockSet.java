@@ -19,6 +19,8 @@ package org.cojen.tupl;
 import java.io.IOException;
 import java.io.Serializable;
 
+import java.nio.charset.StandardCharsets;
+
 import java.util.Set;
 
 /**
@@ -71,11 +73,7 @@ public final class DeadlockSet implements Serializable {
         if (name == null) {
             return null;
         }
-        try {
-            return new String(name, "UTF-8");
-        } catch (IOException e) {
-            return new String(name);
-        }
+        return new String(name, StandardCharsets.UTF_8);
     }
 
     /**
@@ -130,7 +128,9 @@ public final class DeadlockSet implements Serializable {
         }
     }
 
-    static class OwnerInfo {
+    static class OwnerInfo implements Serializable {
+        private static final long serialVersionUID = 1L;
+
         long mIndexId;
         byte[] mIndexName;
         byte[] mKey;

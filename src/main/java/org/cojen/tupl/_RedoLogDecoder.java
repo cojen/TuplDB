@@ -46,7 +46,8 @@ final class _RedoLogDecoder extends RedoDecoder {
     @Override
     boolean verifyTerminator(DataIn in) throws IOException {
         try {
-            if (in.readIntLE() == mLog.nextTermRnd()) {
+            int term = in.readIntLE();
+            if (term == mLog.nextTermRnd() || term == Utils.nzHash(mTxnId)) {
                 return true;
             }
             if (mListener != null) {

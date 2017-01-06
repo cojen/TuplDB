@@ -67,10 +67,10 @@ abstract class RedoDecoder {
                     ("Unknown redo log operation: " + op + " at " + (in.mPos - 1));
 
             case OP_RESET:
+                mTxnId = 0;
                 if (!verifyTerminator(in)) {
                     return false;
                 }
-                mTxnId = 0;
                 if (!visitor.reset()) {
                     return false;
                 }
@@ -139,10 +139,10 @@ abstract class RedoDecoder {
                 } catch (EOFException e) {
                     return true;
                 }
+                mTxnId = txnId;
                 if (!verifyTerminator(in)) {
                     return false;
                 }
-                mTxnId = txnId;
                 break;
 
             case OP_TXN_ENTER:

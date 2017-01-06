@@ -28,6 +28,7 @@ import java.util.zip.CRC32;
 
 import org.cojen.tupl.io.DirectAccess;
 import org.cojen.tupl.io.MappedPageArray;
+import org.cojen.tupl.io.UnsafeAccess;
 
 /**
  * 
@@ -41,7 +42,7 @@ final class DirectPageOps {
     private static final boolean CHECK_BOUNDS;
     private static final int CHECKED_PAGE_SIZE;
 
-    private static final Unsafe UNSAFE = Hasher.getUnsafe();
+    private static final Unsafe UNSAFE = UnsafeAccess.obtain();
     private static final long BYTE_ARRAY_OFFSET = UNSAFE.arrayBaseOffset(byte[].class);
     private static final long EMPTY_TREE_LEAF;
     private static final long CLOSED_TREE_PAGE;

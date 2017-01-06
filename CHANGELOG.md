@@ -1,6 +1,28 @@
 Changelog
 =========
 
+v1.3.10.3 (2016-12-26)
+---------
+* Fix striped transaction id stride value.
+* Fix variable length decoding of large 64-bit signed values.
+* Don't attempt deleting root node of deleted tree after database has been closed.
+* Use thread-local object when waiting for a lock, reducing garbage accumulation.
+
+v1.3.10.2 (2016-12-10)
+---------
+* Fix deadlock when dropping an index.
+* Fix maximum size calculation when fragmenting a value to fit into a split node. Entries with
+  large keys would sometimes be rejected.
+
+v1.3.10.1 (2016-12-05)
+---------
+* Fix regression bug created by earlier fix which allowed a split node to become empty.
+
+v1.3.10 (2016-12-03)
+-------
+* Fix bug which allowed a split node to become empty.
+* Optimized transactional deletes.
+
 v1.3.9 (2016-11-27)
 ------
 * Avoid looping indefinitely if random search encounters ghosts.

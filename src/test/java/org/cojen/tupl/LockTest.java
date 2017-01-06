@@ -500,6 +500,96 @@ public class LockTest {
     }
 
     @Test
+    public void downgrade2() throws Exception {
+        // Owner holds exclusive lock, one waiter is upgradable, the other is shared.
+        // Downgrading the owner allows bother waiters to acquire the lock.
+        release2(true);
+    }
+
+    @Test
+    public void release2() throws Exception {
+        // Owner holds exclusive lock, one waiter is upgradable, the other is shared.
+        // Releasing the owner allows bother waiters to acquire the lock.
+        release2(false);
+    }
+
+    private void release2(boolean downgrade) throws Exception {
+        Locker locker1 = new Locker(mManager);
+        Locker locker2 = new Locker(mManager);
+        Locker locker3 = new Locker(mManager);
+
+        assertEquals(LockResult.ACQUIRED, locker1.lockExclusive(0, k1, -1));
+
+        class Upgradable extends Thread {
+            volatile Throwable failed;
+            volatile LockResult result;
+
+            @Override
+            public void run() {
+                try {
+                    result = locker2.lockUpgradable(0, k1, -1);
+                } catch (Throwable e) {
+                    failed = e;
+                }
+            }
+        }
+
+        class Shared extends Thread {
+            volatile Throwable failed;
+            volatile LockResult result;
+
+            @Override
+            public void run() {
+                try {
+                    result = locker3.lockShared(0, k1, -1);
+                } catch (Throwable e) {
+                    failed = e;
+                }
+            }
+        }
+
+        Upgradable w1 = startAndWaitUntilBlocked(new Upgradable());
+        Shared w2 = startAndWaitUntilBlocked(new Shared());
+
+        assertNull(w1.result);
+        assertNull(w2.result);
+
+        if (downgrade) {
+            locker1.unlockToShared();
+        } else {
+            locker1.unlock();
+        }
+
+        w1.join();
+        w2.join();
+
+        assertNull(w1.failed);
+        assertNull(w2.failed);
+
+        assertEquals(LockResult.ACQUIRED, w1.result);
+        assertEquals(LockResult.ACQUIRED, w2.result);
+
+        int hash = LockManager.hash(0, k1);
+
+        if (downgrade) {
+            assertEquals(LockResult.OWNED_SHARED, mManager.check(locker1, 0, k1, hash));
+        } else {
+            assertEquals(LockResult.UNOWNED, mManager.check(locker1, 0, k1, hash));
+        }
+
+        assertEquals(LockResult.OWNED_UPGRADABLE, mManager.check(locker2, 0, k1, hash));
+        assertEquals(LockResult.OWNED_SHARED, mManager.check(locker3, 0, k1, hash));
+    }
+
+    private static <T extends Thread> T startAndWaitUntilBlocked(T t) {
+        t.start();
+        while (t.getState() != Thread.State.WAITING) {
+            Thread.yield();
+        }
+        return t;
+    }
+
+    @Test
     public void pileOfLocks() throws Exception {
         Locker locker = new Locker(mManager);
         for (int i=0; i<1000; i++) {
