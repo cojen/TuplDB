@@ -36,7 +36,7 @@ public interface Snapshot extends Closeable {
     public long length();
 
     /**
-     * Returns the {@link ReplicationManager#start position} that the snapsnot applies to.
+     * Returns the {@link ReplicationManager#start position} that the snapshot applies to.
      */
     public long position();
 
