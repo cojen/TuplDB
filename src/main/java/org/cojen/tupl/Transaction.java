@@ -159,8 +159,10 @@ public interface Transaction {
         try {
             commitAll();
         } catch (IOException e) {
+            reset(e);
             exception = e;
         } catch (Throwable e) {
+            reset(e);
             // If this fails with OutOfMemory error... that's bad.
             exception = new IOException(e);
         }
