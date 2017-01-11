@@ -22,6 +22,8 @@ import java.util.concurrent.TimeUnit;
 
 import java.util.concurrent.locks.Lock;
 
+import java.util.function.Consumer;
+
 /**
  * Defines a logical unit of work. Transaction instances can only be safely
  * used by one thread at a time, and they must be {@link #reset reset} when no
@@ -131,6 +133,44 @@ public interface Transaction {
      * Commits and exits all transaction scopes.
      */
     void commitAll() throws IOException;
+
+    /**
+     * Commits and exits all transaction scopes using continuation-passing style.
+     * Implementation is permitted to:
+     *
+     * <p><ul>
+     * <li>commit and call the given continuation from the current thread, or
+     * <li>return immediately and call the continuation in the future via another thread, or
+     * <li>never return and call an indefinite number of continuations for other commits.
+     * </ul>
+     *
+     * <p>For those reasons, this style of commit is only appropriate when called by a method
+     * which itself supports continuation-passing style.
+     *
+     * @param continuation called after commit has completed, receiving null if it succeeded
+     * @throws NullPointerException if continuation is null
+     */
+    default void commitAll(Consumer<? super IOException> continuation) {
+        if (continuation == null) {
+            throw new NullPointerException();
+        }
+
+        IOException exception = null;
+        try {
+            commitAll();
+        } catch (IOException e) {
+            exception = e;
+        } catch (Throwable e) {
+            // If this fails with OutOfMemory error... that's bad.
+            exception = new IOException(e);
+        }
+
+        try {
+            continuation.accept(exception);
+        } catch (Throwable e) {
+            Utils.uncaught(e);
+        }
+    }
 
     /**
      * Enters a nested transaction scope.
