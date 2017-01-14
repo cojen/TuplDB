@@ -47,9 +47,14 @@ final class AltLatchCondition {
      * @return -1 if interrupted, 0 if timed out, 1 if signaled
      */
     public int await(AltLatch latch, long nanosTimeout, long nanosEnd) {
-        Node node = cLocalNode.get();
-        node.mWaitState = Node.WAITING;
-        return await(latch, node, nanosTimeout, nanosEnd);
+        try {
+            Node node = cLocalNode.get();
+            node.mWaitState = Node.WAITING;
+            return await(latch, node, nanosTimeout, nanosEnd);
+        } catch (Throwable e) {
+            // Possibly an OutOfMemoryError.
+            return -1;
+        }
     }
 
     /**
@@ -64,9 +69,14 @@ final class AltLatchCondition {
      * @return -1 if interrupted, 0 if timed out, 1 if signaled
      */
     public int awaitShared(AltLatch latch, long nanosTimeout, long nanosEnd) {
-        Node node = cLocalNode.get();
-        node.mWaitState = Node.WAITING_SHARED;
-        return await(latch, node, nanosTimeout, nanosEnd);
+        try {
+            Node node = cLocalNode.get();
+            node.mWaitState = Node.WAITING_SHARED;
+            return await(latch, node, nanosTimeout, nanosEnd);
+        } catch (Throwable e) {
+            // Possibly an OutOfMemoryError.
+            return -1;
+        }
     }
 
     private int await(AltLatch latch, Node node, long nanosTimeout, long nanosEnd) {

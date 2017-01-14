@@ -104,13 +104,15 @@ class AltLatch {
             return false;
         }
 
-        boolean result = acquire(new Timed(nanosTimeout));
-
-        if (!result && (Thread.interrupted() || nanosTimeout < 0)) {
-            throw new InterruptedException();
+        boolean result;
+        try {
+            result = acquire(new Timed(nanosTimeout));
+        } catch (Throwable e) {
+            // Possibly an OutOfMemoryError.
+            return false;
         }
 
-        return result;
+        return checkTimedResult(result, nanosTimeout);
     }
 
     /**
@@ -118,7 +120,19 @@ class AltLatch {
      */
     public final void acquireExclusive() {
         if (!tryAcquireExclusive() && !tryAcquireExclusiveSpin()) {
+            doAcquireExclusive();
+        }
+    }
+
+    /**
+     * Caller should have already called tryAcquireExclusive.
+     */
+    private void doAcquireExclusive() {
+        try {
             acquire(new WaitNode());
+        } catch (Throwable e) {
+            // Possibly an OutOfMemoryError. Caller isn't expecting an exception, so spin.
+            while (!tryAcquireExclusive());
         }
     }
 
@@ -345,10 +359,29 @@ class AltLatch {
             return false;
         }
 
-        boolean result = acquire(new TimedShared(nanosTimeout));
+        boolean result;
+        try {
+            result = acquire(new TimedShared(nanosTimeout));
+        } catch (Throwable e) {
+            // Possibly an OutOfMemoryError.
+            return false;
+        }
 
+        return checkTimedResult(result, nanosTimeout);
+    }
+
+    private static boolean checkTimedResult(boolean result, long nanosTimeout)
+        throws InterruptedException
+    {
         if (!result && (Thread.interrupted() || nanosTimeout < 0)) {
-            throw new InterruptedException();
+            InterruptedException e;
+            try {
+                e = new InterruptedException();
+            } catch (Throwable e2) {
+                // Possibly an OutOfMemoryError.
+                return false;
+            }
+            throw e;
         }
 
         return result;
@@ -368,7 +401,12 @@ class AltLatch {
             }
         }
 
-        return acquire(new Shared());
+        try {
+            return acquire(new Shared());
+        } catch (Throwable e) {
+            // Possibly an OutOfMemoryError.
+            return false;
+        }
     }
 
     /**
@@ -387,7 +425,12 @@ class AltLatch {
             }
         }
 
-        acquire(new Shared());
+        try {
+            acquire(new Shared());
+        } catch (Throwable e) {
+            // Possibly an OutOfMemoryError. Caller isn't expecting an exception, so spin.
+            while (!tryAcquireShared());
+        }
     }
 
     /**
