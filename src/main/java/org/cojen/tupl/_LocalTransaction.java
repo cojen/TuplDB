@@ -791,6 +791,12 @@ final class _LocalTransaction extends _Locker implements Transaction {
 
             try {
                 int hasState = mHasState;
+
+                // Set early in case an exception is thrown. Caller is permitted to write redo
+                // entry after making any changes, and setting the commit state ensures that
+                // undo log is not prematurely truncated when commit is called.
+                mHasState = hasState | HAS_COMMIT;
+
                 if ((hasState & HAS_SCOPE) == 0) {
                     ParentScope parentScope = mParentScope;
                     if (parentScope != null) {
@@ -801,6 +807,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
                     } else {
                         redo.txnStore(RedoOps.OP_TXN_ENTER_STORE, txnId, indexId, key, value);
                     }
+                    mHasState = hasState | (HAS_SCOPE | HAS_COMMIT);
                 } else {
                     if (value == null) {
                         redo.txnDelete(RedoOps.OP_TXN_DELETE, txnId, indexId, key);
@@ -808,8 +815,6 @@ final class _LocalTransaction extends _Locker implements Transaction {
                         redo.txnStore(RedoOps.OP_TXN_STORE, txnId, indexId, key, value);
                     }
                 }
-
-                mHasState = hasState | (HAS_SCOPE | HAS_COMMIT);
             } catch (Throwable e) {
                 borked(e, false, true);
             }

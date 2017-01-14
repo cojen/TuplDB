@@ -1857,11 +1857,11 @@ final class Node extends AltLatch implements DatabaseAccess {
     }
 
     /**
-     * Transactionally delete a leaf entry, replacing the value with a
-     * ghost. When read back, it is interpreted as null. Ghosts are used by
-     * transactional deletes, to ensure that they are not visible by cursors in
-     * other transactions. They need to acquire a lock first. When the original
-     * transaction commits, it deletes all the ghosted entries it created.
+     * Transactionally delete a leaf entry (but with no redo logging), replacing the value with
+     * a ghost. When read back, it is interpreted as null. Ghosts are used by transactional
+     * deletes, to ensure that they are not visible by cursors in other transactions. They need
+     * to acquire a lock first. When the original transaction commits, it deletes all the
+     * ghosted entries it created.
      *
      * <p>Caller must hold commit lock and exclusive latch on node.
      *
@@ -1923,16 +1923,12 @@ final class Node extends AltLatch implements DatabaseAccess {
         // Replace value with ghost.
         p_bytePut(page, valueHeaderLoc, -1);
         garbage(garbage() + loc - valueHeaderLoc - 1);
-
-        if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
-            txn.redoStore(tree.mId, key, null);
-        }
     }
 
     /**
-     * Copies existing entry to undo log prior to it being updated. Fragmented
-     * values are added to the trash and the fragmented bit is cleared. Caller
-     * must hold commit lock and exlusive latch on node.
+     * Copies existing entry to undo log prior to it being updated. Fragmented values are added
+     * to the trash and the fragmented bit is cleared. Caller must hold commit lock and
+     * exlusive latch on node.
      *
      * @param pos position as provided by binarySearch; must be positive
      */
@@ -1974,9 +1970,8 @@ final class Node extends AltLatch implements DatabaseAccess {
                         (txn, tree.mId, page,
                          entryLoc, valueHeaderLoc - entryLoc,  // keyStart, keyLen
                          valueStartLoc, loc - valueStartLoc);  // valueStart, valueLen
-                    // Clearing the fragmented bit prevents the update from
-                    // double-deleting the fragments, and it also allows the
-                    // old entry slot to be re-used.
+                    // Clearing the fragmented bit prevents the update from double-deleting the
+                    // fragments, and it also allows the old entry slot to be re-used.
                     p_bytePut(page, valueHeaderLoc, header & ~ENTRY_FRAGMENTED);
                     return;
                 }
