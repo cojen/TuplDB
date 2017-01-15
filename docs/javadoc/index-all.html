@@ -75,8 +75,7 @@
 <dl>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#acquireExclusive--">acquireExclusive()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>
-<div class="block">Acquire the exclusive latch, barging ahead of any waiting threads if
- possible.</div>
+<div class="block">Acquire the exclusive latch, barging ahead of any waiting threads if possible.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#acquireExclusiveInterruptibly--">acquireExclusiveInterruptibly()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>
@@ -1097,6 +1096,8 @@
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Index.Stats.html#hashCode--">hashCode()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#hasQueuedThreads--">hasQueuedThreads()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/VerificationObserver.html#height">height</a></span> - Variable in class org.cojen.tupl.<a href="org/cojen/tupl/VerificationObserver.html" title="class in org.cojen.tupl">VerificationObserver</a></dt>
 <dd>
 <div class="block">Index height; is zero for empty indexes.</div>
@@ -1896,7 +1897,7 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#releaseEither--">releaseEither()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>
-<div class="block">Releases exclusive or shared latch.</div>
+<div class="block">Releases an exclusive or shared latch.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#releaseExclusive--">releaseExclusive()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>
@@ -2044,9 +2045,19 @@
 <dd>
 <div class="block">Signals the first waiter, but only if it's a shared waiter.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/LatchCondition.html#signalRelease-org.cojen.tupl.util.Latch-">signalRelease(Latch)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
+<dd>
+<div class="block">If a first waiter exists, it's removed, the held exclusive latch is released, and then
+ the waiter is signaled.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/LatchCondition.html#signalShared--">signalShared()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
 <dd>
 <div class="block">Signals the first waiter, but only if it's a shared waiter.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/LatchCondition.html#signalSharedRelease-org.cojen.tupl.util.Latch-">signalSharedRelease(Latch)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
+<dd>
+<div class="block">If a first shared waiter exists, it's removed, the held exclusive latch is released, and
+ then the waiter is signaled.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/DeadlockSet.html#size--">size()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/DeadlockSet.html" title="class in org.cojen.tupl">DeadlockSet</a></dt>
 <dd>&nbsp;</dd>
@@ -2182,6 +2193,8 @@
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/tools/Verify.html#toString--">toString()</a></span> - Method in class org.cojen.tupl.tools.<a href="org/cojen/tupl/tools/Verify.html" title="class in org.cojen.tupl.tools">Verify</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#toString--">toString()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Index.Stats.html#totalBytes">totalBytes</a></span> - Variable in class org.cojen.tupl.<a href="org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Index.Stats.html#totalBytes--">totalBytes()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></dt>
@@ -2232,12 +2245,9 @@
 <dd>
 <div class="block">Transform or filter out the given value.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#tryAcquire-int-">tryAcquire(int)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
-<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#tryAcquireExclusive--">tryAcquireExclusive()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>
-<div class="block">Attempt to acquire the exclusive latch, barging ahead of any waiting
- threads if possible.</div>
+<div class="block">Try to acquire the exclusive latch, barging ahead of any waiting threads if possible.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#tryAcquireExclusiveNanos-long-">tryAcquireExclusiveNanos(long)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>
@@ -2245,11 +2255,8 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#tryAcquireShared--">tryAcquireShared()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>
-<div class="block">Attempt to acquire a shared latch, barging ahead of any waiting threads
- if possible.</div>
+<div class="block">Try to acquire a shared latch, barging ahead of any waiting threads if possible.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#tryAcquireShared-int-">tryAcquireShared(int)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
-<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#tryAcquireSharedNanos-long-">tryAcquireSharedNanos(long)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>
 <div class="block">Attempt to acquire a shared latch, aborting if interrupted.</div>
@@ -2284,10 +2291,6 @@
  additional upgradable locks.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/UnsafeAccess.html#tryObtain--">tryObtain()</a></span> - Static method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/UnsafeAccess.html" title="class in org.cojen.tupl.io">UnsafeAccess</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#tryRelease-int-">tryRelease(int)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#tryReleaseShared-int-">tryReleaseShared(int)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#tryUpgrade--">tryUpgrade()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>
@@ -2538,6 +2541,10 @@ the order they are declared.</div>
 </a>
 <h2 class="title">W</h2>
 <dl>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#weakAcquireShared--">weakAcquireShared()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
+<dd>
+<div class="block">Like tryAcquireShared, except blocks if an exclusive latch is held.</div>
+</dd>
 <dt><a href="org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl"><span class="typeNameLink">WrappedCursor</span></a>&lt;<a href="org/cojen/tupl/WrappedCursor.html" title="type parameter in WrappedCursor">C</a> extends <a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a>&gt; - Class in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
 <div class="block">Abstract wrapper around another cursor.</div>

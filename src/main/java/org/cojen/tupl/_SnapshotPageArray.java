@@ -26,6 +26,8 @@ import static java.lang.System.arraycopy;
 import org.cojen.tupl.io.CauseCloseable;
 import org.cojen.tupl.io.PageArray;
 
+import org.cojen.tupl.util.Latch;
+
 import static org.cojen.tupl.DirectPageOps.*;
 import static org.cojen.tupl.Utils.*;
 
@@ -315,7 +317,7 @@ final class _SnapshotPageArray extends PageArray {
 
         private final Object mSnapshotLock;
 
-        private final AltLatch mCaptureLatch;
+        private final Latch mCaptureLatch;
         private final byte[] mCaptureBufferArray;
         private final long mCaptureBuffer;
 
@@ -350,7 +352,7 @@ final class _SnapshotPageArray extends PageArray {
             mTempFile = config.mBaseFile;
 
             mSnapshotLock = new Object();
-            mCaptureLatch = new AltLatch();
+            mCaptureLatch = new Latch();
             mCaptureBufferArray = new byte[pageSize];
             // Allocates if page is not an array. The copy is not actually required.
             mCaptureBuffer = p_transfer(mCaptureBufferArray);
