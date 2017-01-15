@@ -19,6 +19,9 @@ package org.cojen.tupl;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 
+import org.cojen.tupl.util.Latch;
+import org.cojen.tupl.util.LatchCondition;
+
 import static org.cojen.tupl.LockResult.*;
 
 /**
@@ -235,7 +238,7 @@ final class LockManager {
      * Simple hashtable of Locks.
      */
     @SuppressWarnings("serial")
-    static final class LockHT extends AltLatch {
+    static final class LockHT extends Latch {
         private static final float LOAD_FACTOR = 0.75f;
 
         private transient Lock[] mEntries;
@@ -484,7 +487,7 @@ final class LockManager {
 
                             // Interrupt all waiters.
 
-                            AltLatchCondition q = e.mQueueU;
+                            LatchCondition q = e.mQueueU;
                             if (q != null) {
                                 q.clear();
                                 e.mQueueU = null;

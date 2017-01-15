@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10,"i16":10,"i17":10};
+var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10,"i16":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -73,7 +73,7 @@ var activeTableTab = "activeTableTab";
 <div>
 <ul class="subNavList">
 <li>Summary:&nbsp;</li>
-<li><a href="#nested.classes.inherited.from.class.java.util.concurrent.locks.AbstractQueuedSynchronizer">Nested</a>&nbsp;|&nbsp;</li>
+<li>Nested&nbsp;|&nbsp;</li>
 <li><a href="#field.summary">Field</a>&nbsp;|&nbsp;</li>
 <li><a href="#constructor.summary">Constr</a>&nbsp;|&nbsp;</li>
 <li><a href="#method.summary">Method</a></li>
@@ -99,38 +99,23 @@ var activeTableTab = "activeTableTab";
 <li><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">java.lang.Object</a></li>
 <li>
 <ul class="inheritance">
-<li><a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractOwnableSynchronizer.html?is-external=true" title="class or interface in java.util.concurrent.locks">java.util.concurrent.locks.AbstractOwnableSynchronizer</a></li>
-<li>
-<ul class="inheritance">
-<li><a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true" title="class or interface in java.util.concurrent.locks">java.util.concurrent.locks.AbstractQueuedSynchronizer</a></li>
-<li>
-<ul class="inheritance">
 <li>org.cojen.tupl.util.Latch</li>
-</ul>
-</li>
-</ul>
-</li>
 </ul>
 </li>
 </ul>
 <div class="description">
 <ul class="blockList">
 <li class="blockList">
-<dl>
-<dt>All Implemented Interfaces:</dt>
-<dd><a href="http://docs.oracle.com/javase/8/docs/api/java/io/Serializable.html?is-external=true" title="class or interface in java.io">Serializable</a></dd>
-</dl>
 <hr>
 <br>
 <pre>public class <span class="typeNameLabel">Latch</span>
-extends <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true" title="class or interface in java.util.concurrent.locks">AbstractQueuedSynchronizer</a></pre>
+extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a></pre>
 <div class="block">Non-reentrant read/write latch, using unfair acquisition. Implementation
  also does not track thread ownership or check for illegal usage. As a
  result, it typically outperforms ReentrantLock and Java synchronization.</div>
 <dl>
 <dt><span class="seeLabel">See Also:</span></dt>
-<dd><a href="../../../../org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util"><code>LatchCondition</code></a>, 
-<a href="../../../../serialized-form.html#org.cojen.tupl.util.Latch">Serialized Form</a></dd>
+<dd><a href="../../../../org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util"><code>LatchCondition</code></a></dd>
 </dl>
 </li>
 </ul>
@@ -138,21 +123,6 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/l
 <div class="summary">
 <ul class="blockList">
 <li class="blockList">
-<!-- ======== NESTED CLASS SUMMARY ======== -->
-<ul class="blockList">
-<li class="blockList"><a name="nested.class.summary">
-<!--   -->
-</a>
-<h3>Nested Class Summary</h3>
-<ul class="blockList">
-<li class="blockList"><a name="nested.classes.inherited.from.class.java.util.concurrent.locks.AbstractQueuedSynchronizer">
-<!--   -->
-</a>
-<h3>Nested classes/interfaces inherited from class&nbsp;java.util.concurrent.locks.<a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true" title="class or interface in java.util.concurrent.locks">AbstractQueuedSynchronizer</a></h3>
-<code><a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.ConditionObject.html?is-external=true" title="class or interface in java.util.concurrent.locks">AbstractQueuedSynchronizer.ConditionObject</a></code></li>
-</ul>
-</li>
-</ul>
 <!-- =========== FIELD SUMMARY =========== -->
 <ul class="blockList">
 <li class="blockList"><a name="field.summary">
@@ -215,8 +185,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/l
 <tr id="i0" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#acquireExclusive--">acquireExclusive</a></span>()</code>
-<div class="block">Acquire the exclusive latch, barging ahead of any waiting threads if
- possible.</div>
+<div class="block">Acquire the exclusive latch, barging ahead of any waiting threads if possible.</div>
 </td>
 </tr>
 <tr id="i1" class="rowColor">
@@ -244,56 +213,54 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/l
 </td>
 </tr>
 <tr id="i5" class="rowColor">
+<td class="colFirst"><code>boolean</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#hasQueuedThreads--">hasQueuedThreads</a></span>()</code>&nbsp;</td>
+</tr>
+<tr id="i6" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#release-boolean-">release</a></span>(boolean&nbsp;exclusive)</code>
 <div class="block">Convenience method, which releases the held exclusive or shared latch.</div>
 </td>
 </tr>
-<tr id="i6" class="altColor">
+<tr id="i7" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#releaseEither--">releaseEither</a></span>()</code>
-<div class="block">Releases exclusive or shared latch.</div>
+<div class="block">Releases an exclusive or shared latch.</div>
 </td>
 </tr>
-<tr id="i7" class="rowColor">
+<tr id="i8" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#releaseExclusive--">releaseExclusive</a></span>()</code>
 <div class="block">Release the held exclusive latch.</div>
 </td>
 </tr>
-<tr id="i8" class="altColor">
+<tr id="i9" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#releaseShared--">releaseShared</a></span>()</code>
 <div class="block">Release a held shared latch.</div>
 </td>
 </tr>
-<tr id="i9" class="rowColor">
-<td class="colFirst"><code>protected boolean</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#tryAcquire-int-">tryAcquire</a></span>(int&nbsp;x)</code>&nbsp;</td>
-</tr>
 <tr id="i10" class="altColor">
-<td class="colFirst"><code>boolean</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#tryAcquireExclusive--">tryAcquireExclusive</a></span>()</code>
-<div class="block">Attempt to acquire the exclusive latch, barging ahead of any waiting
- threads if possible.</div>
-</td>
+<td class="colFirst"><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a></code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#toString--">toString</a></span>()</code>&nbsp;</td>
 </tr>
 <tr id="i11" class="rowColor">
+<td class="colFirst"><code>boolean</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#tryAcquireExclusive--">tryAcquireExclusive</a></span>()</code>
+<div class="block">Try to acquire the exclusive latch, barging ahead of any waiting threads if possible.</div>
+</td>
+</tr>
+<tr id="i12" class="altColor">
 <td class="colFirst"><code>boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#tryAcquireExclusiveNanos-long-">tryAcquireExclusiveNanos</a></span>(long&nbsp;nanosTimeout)</code>
 <div class="block">Attempt to acquire the exclusive latch, aborting if interrupted.</div>
 </td>
 </tr>
-<tr id="i12" class="altColor">
+<tr id="i13" class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#tryAcquireShared--">tryAcquireShared</a></span>()</code>
-<div class="block">Attempt to acquire a shared latch, barging ahead of any waiting threads
- if possible.</div>
+<div class="block">Try to acquire a shared latch, barging ahead of any waiting threads if possible.</div>
 </td>
-</tr>
-<tr id="i13" class="rowColor">
-<td class="colFirst"><code>protected int</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#tryAcquireShared-int-">tryAcquireShared</a></span>(int&nbsp;x)</code>&nbsp;</td>
 </tr>
 <tr id="i14" class="altColor">
 <td class="colFirst"><code>boolean</code></td>
@@ -302,34 +269,18 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/l
 </td>
 </tr>
 <tr id="i15" class="rowColor">
-<td class="colFirst"><code>protected boolean</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#tryRelease-int-">tryRelease</a></span>(int&nbsp;newState)</code>&nbsp;</td>
-</tr>
-<tr id="i16" class="altColor">
-<td class="colFirst"><code>protected boolean</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#tryReleaseShared-int-">tryReleaseShared</a></span>(int&nbsp;x)</code>&nbsp;</td>
-</tr>
-<tr id="i17" class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#tryUpgrade--">tryUpgrade</a></span>()</code>
 <div class="block">Attempt to upgrade a held shared latch into an exclusive latch.</div>
 </td>
 </tr>
+<tr id="i16" class="altColor">
+<td class="colFirst"><code>boolean</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#weakAcquireShared--">weakAcquireShared</a></span>()</code>
+<div class="block">Like tryAcquireShared, except blocks if an exclusive latch is held.</div>
+</td>
+</tr>
 </table>
-<ul class="blockList">
-<li class="blockList"><a name="methods.inherited.from.class.java.util.concurrent.locks.AbstractQueuedSynchronizer">
-<!--   -->
-</a>
-<h3>Methods inherited from class&nbsp;java.util.concurrent.locks.<a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true" title="class or interface in java.util.concurrent.locks">AbstractQueuedSynchronizer</a></h3>
-<code><a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#acquire-int-" title="class or interface in java.util.concurrent.locks">acquire</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#acquireInterruptibly-int-" title="class or interface in java.util.concurrent.locks">acquireInterruptibly</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#acquireShared-int-" title="class or interface in java.util.concurrent.locks">acquireShared</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#acquireSharedInterruptibly-int-" title="class or interface in java.util.concurrent.locks">acquireSharedInterruptibly</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#compareAndSetState-int-int-" title="class or interface in java.util.concurrent.locks">compareAndSetState</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#getExclusiveQueuedThreads--" title="class or interface in java.util.concurrent.locks">getExclusiveQueuedThreads</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#getFirstQueuedThread--" title="class or interface in java.util.concurrent.locks">getFirstQueuedThread</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#getQueuedThreads--" title="class or interface in java.util.concurrent.locks">getQueuedThreads</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#getQueueLength--" title="class or interface in java.util.concurrent.locks">getQueueLength</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#getSharedQueuedThreads--" title="class or interface in java.util.concurrent.locks">getSharedQueuedThreads</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#getState--" title="class or interface in java.util.concurrent.locks">getState</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#getWaitingThreads-java.util.concurrent.locks.AbstractQueuedSynchronizer.ConditionObject-" title="class or interface in java.util.concurrent.locks">getWaitingThreads</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#getWaitQueueLength-java.util.concurrent.locks.AbstractQueuedSynchronizer.ConditionObject-" title="class or interface in java.util.concurrent.locks">getWaitQueueLength</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#hasContended--" title="class or interface in java.util.concurrent.locks">hasContended</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#hasQueuedPredecessors--" title="class or interface in java.util.concurrent.locks">hasQueuedPredecessors</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#hasQueuedThreads--" title="class or interface in java.util.concurrent.locks">hasQueuedThreads</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#hasWaiters-java.util.concurrent.locks.AbstractQueuedSynchronizer.ConditionObject-" title="class or interface in java.util.concurrent.locks">hasWaiters</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#isHeldExclusively--" title="class or interface in java.util.concurrent.locks">isHeldExclusively</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#isQueued-java.lang.Thread-" title="class or interface in java.util.concurrent.locks">isQueued</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#owns-java.util.concurrent.locks.AbstractQueuedSynchronizer.ConditionObject-" title="class or interface in java.util.concurrent.locks">owns</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#release-int-" title="class or interface in java.util.concurrent.locks">release</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#releaseShared-int-" title="class or interface in java.util.concurrent.locks">releaseShared</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#setState-int-" title="class or interface in java.util.concurrent.locks">setState</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#toString--" title="class or interface in java.util.concurrent.locks">toString</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#tryAcquireNanos-int-long-" title="class or interface in java.util.concurrent.locks">tryAcquireNanos</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#tryAcquireSharedNanos-int-long-" title="class or interface in java.util.concurrent.locks">tryAcquireSharedNanos</a></code></li>
-</ul>
-<ul class="blockList">
-<li class="blockList"><a name="methods.inherited.from.class.java.util.concurrent.locks.AbstractOwnableSynchronizer">
-<!--   -->
-</a>
-<h3>Methods inherited from class&nbsp;java.util.concurrent.locks.<a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractOwnableSynchronizer.html?is-external=true" title="class or interface in java.util.concurrent.locks">AbstractOwnableSynchronizer</a></h3>
-<code><a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractOwnableSynchronizer.html?is-external=true#getExclusiveOwnerThread--" title="class or interface in java.util.concurrent.locks">getExclusiveOwnerThread</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractOwnableSynchronizer.html?is-external=true#setExclusiveOwnerThread-java.lang.Thread-" title="class or interface in java.util.concurrent.locks">setExclusiveOwnerThread</a></code></li>
-</ul>
 <ul class="blockList">
 <li class="blockList"><a name="methods.inherited.from.class.java.lang.Object">
 <!--   -->
@@ -416,7 +367,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/l
 <pre>public&nbsp;Latch(int&nbsp;initialState)</pre>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>initialState</code> - UNLATCHED, EXCLUSIVE or SHARED</dd>
+<dd><code>initialState</code> - UNLATCHED, EXCLUSIVE, or SHARED</dd>
 </dl>
 </li>
 </ul>
@@ -435,8 +386,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/l
 <li class="blockList">
 <h4>tryAcquireExclusive</h4>
 <pre>public final&nbsp;boolean&nbsp;tryAcquireExclusive()</pre>
-<div class="block">Attempt to acquire the exclusive latch, barging ahead of any waiting
- threads if possible.</div>
+<div class="block">Try to acquire the exclusive latch, barging ahead of any waiting threads if possible.</div>
 </li>
 </ul>
 <a name="tryAcquireExclusiveNanos-long-">
@@ -449,6 +399,8 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/l
                                        throws <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang">InterruptedException</a></pre>
 <div class="block">Attempt to acquire the exclusive latch, aborting if interrupted.</div>
 <dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>nanosTimeout</code> - pass negative for infinite timeout</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang">InterruptedException</a></code></dd>
 </dl>
@@ -461,8 +413,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/l
 <li class="blockList">
 <h4>acquireExclusive</h4>
 <pre>public final&nbsp;void&nbsp;acquireExclusive()</pre>
-<div class="block">Acquire the exclusive latch, barging ahead of any waiting threads if
- possible.</div>
+<div class="block">Acquire the exclusive latch, barging ahead of any waiting threads if possible.</div>
 </li>
 </ul>
 <a name="acquireExclusiveInterruptibly--">
@@ -487,8 +438,8 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/l
 <li class="blockList">
 <h4>downgrade</h4>
 <pre>public final&nbsp;void&nbsp;downgrade()</pre>
-<div class="block">Downgrade the held exclusive latch into a shared latch. Caller must later
- call releaseShared instead of releaseExclusive.</div>
+<div class="block">Downgrade the held exclusive latch into a shared latch. Caller must later call
+ releaseShared instead of releaseExclusive.</div>
 </li>
 </ul>
 <a name="releaseExclusive--">
@@ -511,7 +462,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/l
 <div class="block">Convenience method, which releases the held exclusive or shared latch.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>exclusive</code> - call releaseExclusive if true, else call releaseShared.</dd>
+<dd><code>exclusive</code> - call releaseExclusive if true, else call releaseShared</dd>
 </dl>
 </li>
 </ul>
@@ -522,7 +473,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/l
 <li class="blockList">
 <h4>releaseEither</h4>
 <pre>public final&nbsp;void&nbsp;releaseEither()</pre>
-<div class="block">Releases exclusive or shared latch.</div>
+<div class="block">Releases an exclusive or shared latch.</div>
 </li>
 </ul>
 <a name="tryAcquireShared--">
@@ -532,8 +483,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/l
 <li class="blockList">
 <h4>tryAcquireShared</h4>
 <pre>public final&nbsp;boolean&nbsp;tryAcquireShared()</pre>
-<div class="block">Attempt to acquire a shared latch, barging ahead of any waiting threads
- if possible.</div>
+<div class="block">Try to acquire a shared latch, barging ahead of any waiting threads if possible.</div>
 </li>
 </ul>
 <a name="tryAcquireSharedNanos-long-">
@@ -546,8 +496,24 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/l
                                     throws <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang">InterruptedException</a></pre>
 <div class="block">Attempt to acquire a shared latch, aborting if interrupted.</div>
 <dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>nanosTimeout</code> - pass negative for infinite timeout</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang">InterruptedException</a></code></dd>
+</dl>
+</li>
+</ul>
+<a name="weakAcquireShared--">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>weakAcquireShared</h4>
+<pre>public final&nbsp;boolean&nbsp;weakAcquireShared()</pre>
+<div class="block">Like tryAcquireShared, except blocks if an exclusive latch is held.</div>
+<dl>
+<dt><span class="returnLabel">Returns:</span></dt>
+<dd>false if not acquired due to contention with other shared requests</dd>
 </dl>
 </li>
 </ul>
@@ -583,9 +549,9 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/l
 <li class="blockList">
 <h4>tryUpgrade</h4>
 <pre>public final&nbsp;boolean&nbsp;tryUpgrade()</pre>
-<div class="block">Attempt to upgrade a held shared latch into an exclusive latch. Upgrade
- fails if shared latch is held by more than one thread. If successful,
- caller must later call releaseExclusive instead of releaseShared.</div>
+<div class="block">Attempt to upgrade a held shared latch into an exclusive latch. Upgrade fails if shared
+ latch is held by more than one thread. If successful, caller must later call
+ releaseExclusive instead of releaseShared.</div>
 </li>
 </ul>
 <a name="releaseShared--">
@@ -598,55 +564,25 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/l
 <div class="block">Release a held shared latch.</div>
 </li>
 </ul>
-<a name="tryAcquire-int-">
+<a name="hasQueuedThreads--">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>tryAcquire</h4>
-<pre>protected final&nbsp;boolean&nbsp;tryAcquire(int&nbsp;x)</pre>
-<dl>
-<dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#tryAcquire-int-" title="class or interface in java.util.concurrent.locks">tryAcquire</a></code>&nbsp;in class&nbsp;<code><a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true" title="class or interface in java.util.concurrent.locks">AbstractQueuedSynchronizer</a></code></dd>
-</dl>
+<h4>hasQueuedThreads</h4>
+<pre>public final&nbsp;boolean&nbsp;hasQueuedThreads()</pre>
 </li>
 </ul>
-<a name="tryAcquireShared-int-">
-<!--   -->
-</a>
-<ul class="blockList">
-<li class="blockList">
-<h4>tryAcquireShared</h4>
-<pre>protected final&nbsp;int&nbsp;tryAcquireShared(int&nbsp;x)</pre>
-<dl>
-<dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#tryAcquireShared-int-" title="class or interface in java.util.concurrent.locks">tryAcquireShared</a></code>&nbsp;in class&nbsp;<code><a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true" title="class or interface in java.util.concurrent.locks">AbstractQueuedSynchronizer</a></code></dd>
-</dl>
-</li>
-</ul>
-<a name="tryReleaseShared-int-">
-<!--   -->
-</a>
-<ul class="blockList">
-<li class="blockList">
-<h4>tryReleaseShared</h4>
-<pre>protected final&nbsp;boolean&nbsp;tryReleaseShared(int&nbsp;x)</pre>
-<dl>
-<dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#tryReleaseShared-int-" title="class or interface in java.util.concurrent.locks">tryReleaseShared</a></code>&nbsp;in class&nbsp;<code><a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true" title="class or interface in java.util.concurrent.locks">AbstractQueuedSynchronizer</a></code></dd>
-</dl>
-</li>
-</ul>
-<a name="tryRelease-int-">
+<a name="toString--">
 <!--   -->
 </a>
 <ul class="blockListLast">
 <li class="blockList">
-<h4>tryRelease</h4>
-<pre>protected final&nbsp;boolean&nbsp;tryRelease(int&nbsp;newState)</pre>
+<h4>toString</h4>
+<pre>public&nbsp;<a href="http://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&nbsp;toString()</pre>
 <dl>
 <dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true#tryRelease-int-" title="class or interface in java.util.concurrent.locks">tryRelease</a></code>&nbsp;in class&nbsp;<code><a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html?is-external=true" title="class or interface in java.util.concurrent.locks">AbstractQueuedSynchronizer</a></code></dd>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#toString--" title="class or interface in java.lang">toString</a></code>&nbsp;in class&nbsp;<code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -702,7 +638,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/l
 <div>
 <ul class="subNavList">
 <li>Summary:&nbsp;</li>
-<li><a href="#nested.classes.inherited.from.class.java.util.concurrent.locks.AbstractQueuedSynchronizer">Nested</a>&nbsp;|&nbsp;</li>
+<li>Nested&nbsp;|&nbsp;</li>
 <li><a href="#field.summary">Field</a>&nbsp;|&nbsp;</li>
 <li><a href="#constructor.summary">Constr</a>&nbsp;|&nbsp;</li>
 <li><a href="#method.summary">Method</a></li>

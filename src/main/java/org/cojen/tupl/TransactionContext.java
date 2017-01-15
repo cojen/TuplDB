@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import org.cojen.tupl.util.Latch;
+
 /**
  * Collection of state which is shared by multiple transactions. Contention is reduced by
  * creating many context instances, and distributing them among the transactions.
@@ -25,7 +27,7 @@ import java.io.IOException;
  * @author Brian S O'Neill
  */
 /*P*/
-final class TransactionContext extends AltLatch {
+final class TransactionContext extends Latch {
     private final int mTxnStride;
 
     private long mInitialTxnId;
