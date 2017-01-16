@@ -24,6 +24,8 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
+import org.cojen.tupl.util.Latch;
+
 import static org.cojen.tupl.RedoOps.*;
 import static org.cojen.tupl.Utils.*;
 
@@ -36,12 +38,14 @@ import static org.cojen.tupl.Utils.*;
  * @author Brian S O'Neill
  */
 /*P*/
-final class TransactionContext extends AltLatch implements Flushable {
+final class TransactionContext extends Latch implements Flushable {
     private final static AtomicLongFieldUpdater<TransactionContext> cHighTxnIdUpdater =
         AtomicLongFieldUpdater.newUpdater(TransactionContext.class, "mHighTxnId");
 
     private final static AtomicLongFieldUpdater<TransactionContext> cConfirmedPosUpdater =
         AtomicLongFieldUpdater.newUpdater(TransactionContext.class, "mConfirmedPos");
+
+    private static final int SPIN_LIMIT = Runtime.getRuntime().availableProcessors();
 
     private final int mTxnStride;
 
@@ -901,7 +905,11 @@ final class TransactionContext extends AltLatch implements Flushable {
             if (confirmedPos != -1 && cConfirmedPosUpdater.compareAndSet(this, confirmedPos, -1)) {
                 return confirmedPos;
             }
-            trials = AltLatch.spin(trials);
+            trials++;
+            if (trials >= SPIN_LIMIT) {
+                Thread.yield();
+                trials = 0;
+            }
         }
     }
 

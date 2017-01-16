@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import org.cojen.tupl.util.Latch;
+
 /**
  * List of dirty nodes.
  *
@@ -25,7 +27,7 @@ import java.io.IOException;
  */
 /*P*/
 @SuppressWarnings("serial")
-final class NodeDirtyList extends AltLatch {
+final class NodeDirtyList extends Latch {
     // Linked list of dirty nodes.
     private Node mFirstDirty;
     private Node mLastDirty;
