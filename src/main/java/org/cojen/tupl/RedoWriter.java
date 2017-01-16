@@ -19,6 +19,8 @@ package org.cojen.tupl;
 import java.io.Closeable;
 import java.io.IOException;
 
+import org.cojen.tupl.util.Latch;
+
 /**
  * Abstract class for active transactions to write into. Redo operations are encoded and
  * buffered by TransactionContext.
@@ -27,7 +29,7 @@ import java.io.IOException;
  * @see RedoDecoder
  */
 /*P*/
-abstract class RedoWriter extends AltLatch implements Closeable {
+abstract class RedoWriter extends Latch implements Closeable {
     // Only access while latched. Is accessed by TransactionContext and ReplRedoWriter.
     long mLastTxnId;
 

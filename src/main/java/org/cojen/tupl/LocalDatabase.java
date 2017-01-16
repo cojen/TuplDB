@@ -69,6 +69,8 @@ import org.cojen.tupl.io.MappedPageArray;
 import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
 
+import org.cojen.tupl.util.Latch;
+
 import static org.cojen.tupl.Node.*;
 import static org.cojen.tupl.PageOps.*;
 import static org.cojen.tupl.Utils.*;
@@ -178,7 +180,7 @@ final class LocalDatabase extends AbstractDatabase {
     // Various mappings, defined by KEY_TYPE_ fields.
     private final Tree mRegistryKeyMap;
 
-    private final AltLatch mOpenTreesLatch;
+    private final Latch mOpenTreesLatch;
     // Maps tree names to open trees.
     // Must be a concurrent map because we rely on concurrent iteration.
     private final Map<byte[], TreeRef> mOpenTrees;
@@ -189,7 +191,7 @@ final class LocalDatabase extends AbstractDatabase {
 
     // Map of all loaded nodes.
     private final Node[] mNodeMapTable;
-    private final AltLatch[] mNodeMapLatches;
+    private final Latch[] mNodeMapLatches;
 
     final int mMaxKeySize;
     final int mMaxEntrySize;
@@ -336,9 +338,9 @@ final class LocalDatabase extends AbstractDatabase {
                 capacity = 0x40000000;
             }
             mNodeMapTable = new Node[capacity];
-            mNodeMapLatches = new AltLatch[latches];
+            mNodeMapLatches = new Latch[latches];
             for (int i=0; i<latches; i++) {
-                mNodeMapLatches[i] = new AltLatch();
+                mNodeMapLatches[i] = new Latch();
             }
         }
 
@@ -581,7 +583,7 @@ final class LocalDatabase extends AbstractDatabase {
                 mRegistry = new Tree(this, Tree.REGISTRY_ID, null, rootNode);
             }
 
-            mOpenTreesLatch = new AltLatch();
+            mOpenTreesLatch = new Latch();
             if (openMode == OPEN_TEMP) {
                 mOpenTrees = Collections.emptyMap();
                 mOpenTreesById = new LHashTable.Obj<>(0);
@@ -2855,8 +2857,8 @@ final class LocalDatabase extends AbstractDatabase {
 
         // Again with shared partition latch held.
 
-        final AltLatch[] latches = mNodeMapLatches;
-        final AltLatch latch = latches[hash & (latches.length - 1)];
+        final Latch[] latches = mNodeMapLatches;
+        final Latch latch = latches[hash & (latches.length - 1)];
         latch.acquireShared();
 
         node = table[hash & (table.length - 1)];
@@ -2883,8 +2885,8 @@ final class LocalDatabase extends AbstractDatabase {
      * Put a node into the map, but caller must confirm that node is not already present.
      */
     void nodeMapPut(final Node node, final int hash) {
-        final AltLatch[] latches = mNodeMapLatches;
-        final AltLatch latch = latches[hash & (latches.length - 1)];
+        final Latch[] latches = mNodeMapLatches;
+        final Latch latch = latches[hash & (latches.length - 1)];
         latch.acquireExclusive();
 
         final Node[] table = mNodeMapTable;
@@ -2916,8 +2918,8 @@ final class LocalDatabase extends AbstractDatabase {
      */
     Node nodeMapPutIfAbsent(final Node node) {
         final int hash = Long.hashCode(node.mId);
-        final AltLatch[] latches = mNodeMapLatches;
-        final AltLatch latch = latches[hash & (latches.length - 1)];
+        final Latch[] latches = mNodeMapLatches;
+        final Latch latch = latches[hash & (latches.length - 1)];
         latch.acquireExclusive();
 
         final Node[] table = mNodeMapTable;
@@ -2943,8 +2945,8 @@ final class LocalDatabase extends AbstractDatabase {
      */
     void nodeMapReplace(final Node oldNode, final Node newNode) {
         final int hash = Long.hashCode(oldNode.mId);
-        final AltLatch[] latches = mNodeMapLatches;
-        final AltLatch latch = latches[hash & (latches.length - 1)];
+        final Latch[] latches = mNodeMapLatches;
+        final Latch latch = latches[hash & (latches.length - 1)];
         latch.acquireExclusive();
 
         newNode.mNodeMapNext = oldNode.mNodeMapNext;
@@ -2973,8 +2975,8 @@ final class LocalDatabase extends AbstractDatabase {
     }
 
     void nodeMapRemove(final Node node, final int hash) {
-        final AltLatch[] latches = mNodeMapLatches;
-        final AltLatch latch = latches[hash & (latches.length - 1)];
+        final Latch[] latches = mNodeMapLatches;
+        final Latch latch = latches[hash & (latches.length - 1)];
         latch.acquireExclusive();
 
         final Node[] table = mNodeMapTable;
@@ -3141,7 +3143,7 @@ final class LocalDatabase extends AbstractDatabase {
      */
     void nodeMapDeleteAll() {
         start: while (true) {
-            for (AltLatch latch : mNodeMapLatches) {
+            for (Latch latch : mNodeMapLatches) {
                 latch.acquireExclusive();
             }
 
@@ -3167,7 +3169,7 @@ final class LocalDatabase extends AbstractDatabase {
                     }
                 }
             } finally {
-                for (AltLatch latch : mNodeMapLatches) {
+                for (Latch latch : mNodeMapLatches) {
                     latch.releaseExclusive();
                 }
             }

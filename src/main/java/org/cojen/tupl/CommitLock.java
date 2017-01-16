@@ -28,6 +28,8 @@ import java.util.concurrent.locks.LockSupport;
 
 import java.util.concurrent.TimeUnit;
 
+import org.cojen.tupl.util.Latch;
+
 /**
  * Lock implementation which supports highly concurrent shared requests, but exclusive requests
  * are a little more expensive. Shared lock acquisition is reentrant, but exclusive is not.
@@ -41,7 +43,7 @@ final class CommitLock implements Lock {
     private final LongAdder mSharedAcquire = new LongAdder();
     private final LongAdder mSharedRelease = new LongAdder();
 
-    private final AltLatch mFullLatch = new AltLatch();
+    private final Latch mFullLatch = new Latch();
 
     private volatile Thread mExclusiveThread;
 
