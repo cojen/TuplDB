@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.concurrent.RecursiveAction;
+
 import java.util.concurrent.TimeUnit;
 
 import java.util.concurrent.locks.Lock;
@@ -135,43 +137,44 @@ public interface Transaction {
     void commitAll() throws IOException;
 
     /**
-     * Commits and exits all transaction scopes using continuation-passing style.
-     * Implementation is permitted to:
+     * Asynchronously commits and exits all transaction scopes. The given continuation is
+     * invoked after the commit has finished, usually by another thread.
      *
-     * <p><ul>
-     * <li>commit and call the given continuation from the current thread, or
-     * <li>return immediately and call the continuation in the future via another thread, or
-     * <li>never return and call an indefinite number of continuations for other commits.
-     * </ul>
-     *
-     * <p>For those reasons, this style of commit is only appropriate when called by a method
-     * which itself supports continuation-passing style.
-     *
-     * @param continuation called after commit has completed, receiving null if it succeeded
-     * @throws NullPointerException if continuation is null
+     * @param cont asynchronously invoked continuation; receives null if commit succeeded
+     * @throws NullPointerException if cont is null
      */
-    default void commitAll(Consumer<? super IOException> continuation) {
-        if (continuation == null) {
+    default void commitAllAsync(Consumer<? super IOException> cont) {
+        if (cont == null) {
             throw new NullPointerException();
         }
 
-        IOException exception = null;
-        try {
-            commitAll();
-        } catch (IOException e) {
-            reset(e);
-            exception = e;
-        } catch (Throwable e) {
-            reset(e);
-            // If this fails with OutOfMemory error... that's bad.
-            exception = new IOException(e);
-        }
+        new RecursiveAction() {
+            @Override
+            protected void compute() {
+                IOException exception = null;
+                try {
+                    commitAll();
+                } catch (IOException e) {
+                    reset(e);
+                    exception = e;
+                } catch (Throwable e) {
+                    reset(e);
+                    // If this fails with OutOfMemory error... that's bad.
+                    try {
+                        exception = new IOException(e);
+                    } catch (Throwable e2) {
+                        Utils.uncaught(e2);
+                        return;
+                    }
+                }
 
-        try {
-            continuation.accept(exception);
-        } catch (Throwable e) {
-            Utils.uncaught(e);
-        }
+                try {
+                    cont.accept(exception);
+                } catch (Throwable e) {
+                    Utils.uncaught(e);
+                }
+            }
+        }.fork();
     }
 
     /**
