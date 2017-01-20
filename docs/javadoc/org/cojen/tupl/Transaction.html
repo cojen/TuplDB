@@ -204,8 +204,8 @@ var activeTableTab = "activeTableTab";
 </tr>
 <tr id="i5" class="rowColor">
 <td class="colFirst"><code>default void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#commitAll-java.util.function.Consumer-">commitAll</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;? super <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a>&gt;&nbsp;continuation)</code>
-<div class="block">Commits and exits all transaction scopes using continuation-passing style.</div>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#commitAllAsync-java.util.function.Consumer-">commitAllAsync</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;? super <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a>&gt;&nbsp;cont)</code>
+<div class="block">Asynchronously commits and exits all transaction scopes.</div>
 </td>
 </tr>
 <tr id="i6" class="altColor">
@@ -583,29 +583,20 @@ var activeTableTab = "activeTableTab";
 </dl>
 </li>
 </ul>
-<a name="commitAll-java.util.function.Consumer-">
+<a name="commitAllAsync-java.util.function.Consumer-">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>commitAll</h4>
-<pre>default&nbsp;void&nbsp;commitAll(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;? super <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a>&gt;&nbsp;continuation)</pre>
-<div class="block">Commits and exits all transaction scopes using continuation-passing style.
- Implementation is permitted to:
-
- <p><ul>
- <li>commit and call the given continuation from the current thread, or
- <li>return immediately and call the continuation in the future via another thread, or
- <li>never return and call an indefinite number of continuations for other commits.
- </ul>
-
- <p>For those reasons, this style of commit is only appropriate when called by a method
- which itself supports continuation-passing style.</div>
+<h4>commitAllAsync</h4>
+<pre>default&nbsp;void&nbsp;commitAllAsync(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;? super <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a>&gt;&nbsp;cont)</pre>
+<div class="block">Asynchronously commits and exits all transaction scopes. The given continuation is
+ invoked after the commit has finished, usually by another thread.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>continuation</code> - called after commit has completed, receiving null if it succeeded</dd>
+<dd><code>cont</code> - asynchronously invoked continuation; receives null if commit succeeded</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if continuation is null</dd>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if cont is null</dd>
 </dl>
 </li>
 </ul>
