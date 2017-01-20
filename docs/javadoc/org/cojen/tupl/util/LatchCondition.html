@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10};
+var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -156,6 +156,13 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?
 </td>
 </tr>
 <tr id="i1" class="rowColor">
+<td class="colFirst"><code>void</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#awaitAsync-org.cojen.tupl.util.Latch-java.lang.Runnable-">awaitAsync</a></span>(<a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
+          <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang">Runnable</a>&nbsp;cont)</code>
+<div class="block">Asynchronously invokes the given continuation when a signal is received.</div>
+</td>
+</tr>
+<tr id="i2" class="altColor">
 <td class="colFirst"><code>int</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#awaitShared-org.cojen.tupl.util.Latch-long-long-">awaitShared</a></span>(<a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
            long&nbsp;nanosTimeout,
@@ -163,56 +170,63 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?
 <div class="block">Blocks the current thread until a signal is received.</div>
 </td>
 </tr>
-<tr id="i2" class="altColor">
+<tr id="i3" class="rowColor">
+<td class="colFirst"><code>void</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#awaitSharedAsync-org.cojen.tupl.util.Latch-java.lang.Runnable-">awaitSharedAsync</a></span>(<a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
+                <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang">Runnable</a>&nbsp;cont)</code>
+<div class="block">Asynchronously invokes the given continuation when a signal is received.</div>
+</td>
+</tr>
+<tr id="i4" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#clear--">clear</a></span>()</code>
 <div class="block">Clears out all waiting threads and interrupts them.</div>
 </td>
 </tr>
-<tr id="i3" class="rowColor">
+<tr id="i5" class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#isEmpty--">isEmpty</a></span>()</code>
 <div class="block">Returns true if no waiters are enqueued.</div>
 </td>
 </tr>
-<tr id="i4" class="altColor">
+<tr id="i6" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#signal--">signal</a></span>()</code>
 <div class="block">Signals the first waiter, of any type.</div>
 </td>
 </tr>
-<tr id="i5" class="rowColor">
+<tr id="i7" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#signalAll--">signalAll</a></span>()</code>
 <div class="block">Signals all waiters, of any type.</div>
 </td>
 </tr>
-<tr id="i6" class="altColor">
+<tr id="i8" class="altColor">
 <td class="colFirst"><code>boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#signalNext--">signalNext</a></span>()</code>
 <div class="block">Signals the first waiter, of any type.</div>
 </td>
 </tr>
-<tr id="i7" class="rowColor">
+<tr id="i9" class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#signalNextShared--">signalNextShared</a></span>()</code>
 <div class="block">Signals the first waiter, but only if it's a shared waiter.</div>
 </td>
 </tr>
-<tr id="i8" class="altColor">
+<tr id="i10" class="altColor">
 <td class="colFirst"><code>boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#signalRelease-org.cojen.tupl.util.Latch-">signalRelease</a></span>(<a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch)</code>
 <div class="block">If a first waiter exists, it's removed, the held exclusive latch is released, and then
  the waiter is signaled.</div>
 </td>
 </tr>
-<tr id="i9" class="rowColor">
+<tr id="i11" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#signalShared--">signalShared</a></span>()</code>
 <div class="block">Signals the first waiter, but only if it's a shared waiter.</div>
 </td>
 </tr>
-<tr id="i10" class="altColor">
+<tr id="i12" class="altColor">
 <td class="colFirst"><code>boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#signalSharedRelease-org.cojen.tupl.util.Latch-">signalSharedRelease</a></span>(<a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch)</code>
 <div class="block">If a first shared waiter exists, it's removed, the held exclusive latch is released, and
@@ -278,7 +292,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?
                  long&nbsp;nanosTimeout,
                  long&nbsp;nanosEnd)</pre>
 <div class="block">Blocks the current thread until a signal is received. Exclusive latch must be acquired
- by caller, which is released and then re-acquired by this method.</div>
+ by the caller, which is released and then re-acquired by this method.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>latch</code> - latch being used by this condition</dd>
@@ -299,9 +313,11 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?
                        long&nbsp;nanosTimeout,
                        long&nbsp;nanosEnd)</pre>
 <div class="block">Blocks the current thread until a signal is received. Exclusive latch must be acquired
- by caller, which is released and then re-acquired by this method. A shared waiter
- intends to access a resource with shared access, and it can be signaled specially. After
- waiting, caller is responsible for signaling the next shared waiter.</div>
+ by the caller, which is released and then re-acquired by this method.
+
+ <p>A shared waiter intends to access a resource with shared access, and it can be
+ signaled specially. After waiting, the caller is responsible for signaling the next
+ shared waiter.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>latch</code> - latch being used by this condition</dd>
@@ -309,6 +325,50 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?
 <dd><code>nanosEnd</code> - absolute nanosecond time to wait until; used only with &gt;0 timeout</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>-1 if interrupted, 0 if timed out, 1 if signaled</dd>
+</dl>
+</li>
+</ul>
+<a name="awaitAsync-org.cojen.tupl.util.Latch-java.lang.Runnable-">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>awaitAsync</h4>
+<pre>public&nbsp;void&nbsp;awaitAsync(<a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
+                       <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang">Runnable</a>&nbsp;cont)</pre>
+<div class="block">Asynchronously invokes the given continuation when a signal is received. Exclusive latch
+ must be acquired by the caller, which is released by this method and then later acquired
+ for use by the continuation.</div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>latch</code> - latch being used by this condition</dd>
+<dd><code>cont</code> - asynchronously invoked continuation, with exclusive latch held</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if cont is null</dd>
+</dl>
+</li>
+</ul>
+<a name="awaitSharedAsync-org.cojen.tupl.util.Latch-java.lang.Runnable-">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>awaitSharedAsync</h4>
+<pre>public&nbsp;void&nbsp;awaitSharedAsync(<a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
+                             <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang">Runnable</a>&nbsp;cont)</pre>
+<div class="block">Asynchronously invokes the given continuation when a signal is received. Exclusive latch
+ must be acquired by the caller, which is released by this method and then later acquired
+ for use by the continuation.
+
+ <p>A shared waiter intends to access a resource with shared access, and it can be
+ signaled specially. After waiting, the continuation is responsible for signaling the
+ next shared waiter.</div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>latch</code> - latch being used by this condition</dd>
+<dd><code>cont</code> - asynchronously invoked continuation, with exclusive latch held</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if cont is null</dd>
 </dl>
 </li>
 </ul>
