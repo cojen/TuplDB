@@ -26,9 +26,10 @@ import org.cojen.tupl.io.UnsafeAccess;
 import org.cojen.tupl.io.Utils;
 
 /**
- * Non-reentrant read/write latch, using unfair acquisition. Implementation
- * also does not track thread ownership or check for illegal usage. As a
- * result, it typically outperforms ReentrantLock and Java synchronization.
+ * Non-reentrant read/write latch, designed for throughout over fairness. Implementation
+ * doesn't track thread ownership or check for illegal usage. As a result, it typically
+ * outperforms ReentrantLock and built-in Java synchronization. Although latch acquisition is
+ * typically unfair, waiting threads aren't starved indefinitely.
  *
  * @author Brian S O'Neill
  * @see LatchCondition
@@ -262,7 +263,7 @@ public class Latch {
                         return;
                     }
 
-                    if (!first.mDenied) {
+                    if (!first.mFair) {
                         // Unpark the waiter, but allow another thread to barge in.
                         mLatchState = 0;
                         LockSupport.unpark(waiter);
@@ -530,7 +531,7 @@ public class Latch {
             }
         }
 
-        int acquireResult = node.acquire(this);
+        int acquireResult = node.acquire(this, false);
 
         if (acquireResult < 0) {
             int denied = 0;
@@ -542,7 +543,7 @@ public class Latch {
                     return true;
                 }
 
-                acquireResult = node.acquire(this);
+                acquireResult = node.acquire(this, true);
 
                 if (acquireResult >= 0) {
                     // Latch acquired after parking.
@@ -570,7 +571,7 @@ public class Latch {
                 // Lost the race. Request fair handoff.
 
                 if (denied++ == 0) {
-                    node.mDenied = true;
+                    node.mFair = true;
                 }
             }
         }
@@ -720,7 +721,7 @@ public class Latch {
      */
     static class WaitNode extends AtomicReference<WaitNode> {
         volatile Thread mWaiter;
-        volatile boolean mDenied;
+        volatile boolean mFair;
 
         // Only set if node was deleted and must be bypassed when a new node is enqueued.
         volatile WaitNode mPrev;
@@ -737,8 +738,10 @@ public class Latch {
          * @return <0 if thread should park; 0 if acquired and node should also be removed; >0
          * if acquired and node should not be removed
          */
-        int acquire(Latch latch) {
-            if (latch.tryAcquireExclusiveAfterParking()) {
+        int acquire(Latch latch, boolean afterParking) {
+            if (afterParking ? latch.tryAcquireExclusiveAfterParking()
+                : latch.tryAcquireExclusive())
+            {
                 // Acquired, so no need to reference the thread anymore.
                 UNSAFE.putOrderedObject(this, WAITER_OFFSET, null);
                 return 0;
@@ -752,7 +755,7 @@ public class Latch {
             StringBuilder b = new StringBuilder();
             appendMiniString(b, this);
             b.append(" {waiter=").append(mWaiter);
-            b.append(", denied=").append(mDenied);
+            b.append(", fair=").append(mFair);
             b.append(", next="); appendMiniString(b, get());
             b.append(", prev="); appendMiniString(b, mPrev);
             return b.append('}').toString();
@@ -787,7 +790,7 @@ public class Latch {
 
     static class Shared extends WaitNode {
         @Override
-        final int acquire(Latch latch) {
+        final int acquire(Latch latch, boolean afterParking) {
             int trials = 0;
             while (true) {
                 int state = latch.mLatchState;

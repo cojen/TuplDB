@@ -110,9 +110,10 @@ var activeTableTab = "activeTableTab";
 <br>
 <pre>public class <span class="typeNameLabel">Latch</span>
 extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a></pre>
-<div class="block">Non-reentrant read/write latch, using unfair acquisition. Implementation
- also does not track thread ownership or check for illegal usage. As a
- result, it typically outperforms ReentrantLock and Java synchronization.</div>
+<div class="block">Non-reentrant read/write latch, designed for throughout over fairness. Implementation
+ doesn't track thread ownership or check for illegal usage. As a result, it typically
+ outperforms ReentrantLock and built-in Java synchronization. Although latch acquisition is
+ typically unfair, waiting threads aren't starved indefinitely.</div>
 <dl>
 <dt><span class="seeLabel">See Also:</span></dt>
 <dd><a href="../../../../org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util"><code>LatchCondition</code></a></dd>
