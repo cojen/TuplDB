@@ -123,9 +123,10 @@ public interface ReplicationManager extends Closeable {
          * @param b message buffer
          * @param off message buffer offset
          * @param len message length
-         * @param commit offset into message buffer just after the highest transaction commit;
-         * pass -1 if none
+         * @param commit message position just after the highest transaction commit; pass -1 if
+         * none
          * @return potential confirmation position, or -1 if not leader
+         * @throws IllegalArgumentException if commit is greater than len
          */
         long write(byte[] b, int off, int len, int commit) throws IOException;
 

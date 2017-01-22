@@ -223,7 +223,7 @@ class _ReplRedoWriter extends _RedoWriter {
         }
 
         if (commit >= 0) {
-            mLastCommitPos = pos - offset + commit;
+            mLastCommitPos = pos - length + commit;
             mLastCommitTxnId = mLastTxnId;
         }
 
