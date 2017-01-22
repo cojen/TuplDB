@@ -210,27 +210,24 @@ class ReplRedoWriter extends RedoWriter {
     }
 
     @Override
-    final long write(boolean commit, byte[] bytes, int offset, int length) throws IOException {
+    final long write(byte[] bytes, int offset, int length, int commit) throws IOException {
         ReplicationManager.Writer writer = mReplWriter;
         if (writer == null) {
             throw mEngine.unmodifiable();
         }
 
-        if (commit) {
-            long pos = writer.writeCommit(bytes, offset, length);
-            if (pos >= 0) {
-                mLastCommitPos = pos;
-                mLastCommitTxnId = mLastTxnId;
-                return pos;
-            }
-        } else {
-            long pos = writer.write(bytes, offset, length);
-            if (pos >= 0) {
-                return pos;
-            }
+        long pos = writer.write(bytes, offset, length, commit);
+
+        if (pos < 0) {
+            throw nowUnmodifiable();
         }
 
-        throw nowUnmodifiable();
+        if (commit >= 0) {
+            mLastCommitPos = pos - offset + commit;
+            mLastCommitTxnId = mLastTxnId;
+        }
+
+        return pos;
     }
 
     @Override

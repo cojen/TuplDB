@@ -132,7 +132,7 @@ final class _TransactionContext extends Latch implements Flushable {
                     if (length != 0) {
                         // Flush out the remaining messages.
                         try {
-                            mRedoWriter.write(false, mRedoBuffer, 0, length);
+                            mRedoWriter.write(mRedoBuffer, 0, length, -1);
                         } catch (IOException e) {
                             throw rethrow(e, mRedoWriter.mCloseCause);
                         }
@@ -557,7 +557,7 @@ final class _TransactionContext extends Latch implements Flushable {
         if (length > buffer.length - 4) {
             // Flush and make room for the terminator.
             try {
-                redo.write(false, buffer, 0, length);
+                redo.write(buffer, 0, length, -1);
             } catch (IOException e) {
                 throw rethrow(e, redo.mCloseCause);
             }
@@ -570,7 +570,7 @@ final class _TransactionContext extends Latch implements Flushable {
 
         long commitPos;
         try {
-            commitPos = redo.write(commit, buffer, 0, length);
+            commitPos = redo.write(buffer, 0, length, commit ? length : -1);
         } catch (IOException e) {
             throw rethrow(e, redo.mCloseCause);
         }
@@ -640,7 +640,7 @@ final class _TransactionContext extends Latch implements Flushable {
             if (mRedoPos == 0 && avail == length) {
                 _RedoWriter redo = latchWriter();
                 try {
-                    redo.write(false, bytes, offset, length);
+                    redo.write(bytes, offset, length, -1);
                 } catch (IOException e) {
                     throw rethrow(e, redo.mCloseCause);
                 }
@@ -661,7 +661,7 @@ final class _TransactionContext extends Latch implements Flushable {
 
             if (length >= buffer.length) {
                 try {
-                    mRedoWriter.write(false, bytes, offset, length);
+                    mRedoWriter.write(bytes, offset, length, -1);
                 } catch (IOException e) {
                     throw rethrow(e, mRedoWriter.mCloseCause);
                 }
@@ -818,7 +818,7 @@ final class _TransactionContext extends Latch implements Flushable {
         long commitPos;
         try {
             try {
-                commitPos = redo.write(commit, buffer, offset, length);
+                commitPos = redo.write(buffer, offset, length, commit ? length : -1);
             } catch (IOException e) {
                 throw rethrow(e, redo.mCloseCause);
             }

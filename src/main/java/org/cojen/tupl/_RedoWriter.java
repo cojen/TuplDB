@@ -153,13 +153,12 @@ abstract class _RedoWriter extends Latch implements Closeable {
     /**
      * Write to the physical log.
      *
-     * @param commit true if last encoded operation should be treated as a transaction commit
-     * and be flushed immediately
      * @param length never 0
+     * @param commit highest commit offset; -1 if none
      * @return highest log position afterwards
      */
     // Caller must hold exclusive latch.
-    abstract long write(boolean commit, byte[] bytes, int offset, int length) throws IOException;
+    abstract long write(byte[] bytes, int offset, int length, int commit) throws IOException;
 
     /**
      * @param enable when enabled, a flush is also performed immediately
