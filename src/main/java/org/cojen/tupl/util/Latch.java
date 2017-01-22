@@ -849,8 +849,8 @@ public class Latch {
          * if acquired and node should not be removed
          */
         int acquire(Latch latch, boolean afterParking) {
-            if (afterParking ? latch.tryAcquireExclusive()
-                : latch.tryAcquireExclusiveAfterParking())
+            if (afterParking ? latch.tryAcquireExclusiveAfterParking()
+                : latch.tryAcquireExclusive())
             {
                 // Acquired, so no need to reference the thread anymore.
                 UNSAFE.putOrderedObject(this, WAITER_OFFSET, null);

@@ -27,7 +27,9 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 /*P*/
 // Note: Atomic reference is to the next frame bound to a _Node.
 class _CursorFrame extends AtomicReference<_CursorFrame> {
-    private static final int SPIN_LIMIT = Runtime.getRuntime().availableProcessors();
+    // Under contention a thread will initially spin up to SPIN_LIMIT before yielding, after
+    // which it more aggressively spins up to 2 * SPIN_LIMIT before additional yields.
+    private static final int SPIN_LIMIT = Runtime.getRuntime().availableProcessors() > 1 ? 1 << 10 : 0;
 
     private static final _CursorFrame REBIND_FRAME = new _CursorFrame();
 
@@ -168,8 +170,7 @@ class _CursorFrame extends AtomicReference<_CursorFrame> {
         // Next is set to self to indicate that this frame is the last.
         this.set(this);
 
-        int trials = 0;
-        while (true) {
+        for (int trials = SPIN_LIMIT;;) {
             _CursorFrame last = node.mLastCursorFrame;
             mPrevCousin = last;
             if (last == null) {
@@ -209,12 +210,10 @@ class _CursorFrame extends AtomicReference<_CursorFrame> {
                 return;
             }
 
-            trials++;
-
-            if (trials >= SPIN_LIMIT) {
+            if (--trials < 0) {
                 // Spinning too much due to high contention. Back off a tad.
                 Thread.yield();
-                trials = 0;
+                trials = SPIN_LIMIT << 1;
             }
         }
     }
@@ -257,8 +256,7 @@ class _CursorFrame extends AtomicReference<_CursorFrame> {
      * @param to null to fully unbind and never use frame again, or REBIND_FRAME if rebinding
      */
     private boolean unbind(_CursorFrame to) {
-        int trials = 0;
-        while (true) {
+        for (int trials = SPIN_LIMIT;;) {
             _CursorFrame n = this.get(); // get next frame
 
             if (n == null) {
@@ -299,12 +297,10 @@ class _CursorFrame extends AtomicReference<_CursorFrame> {
                 }
             }
 
-            trials++;
-
-            if (trials >= SPIN_LIMIT) {
+            if (--trials < 0) {
                 // Spinning too much due to high contention. Back off a tad.
                 Thread.yield();
-                trials = 0;
+                trials = SPIN_LIMIT << 1;
             }
         }
     }
@@ -316,8 +312,7 @@ class _CursorFrame extends AtomicReference<_CursorFrame> {
      * @return frame to pass to unlock method, or null if frame is not bound
      */
     final _CursorFrame tryLock(_CursorFrame lock) {
-        int trials = 0;
-        while (true) {
+        for (int trials = SPIN_LIMIT;;) {
             _CursorFrame n = this.get(); // get next frame
 
             if (n == null) {
@@ -344,12 +339,10 @@ class _CursorFrame extends AtomicReference<_CursorFrame> {
                 }
             }
 
-            trials++;
-
-            if (trials >= SPIN_LIMIT) {
+            if (--trials < 0) {
                 // Spinning too much due to high contention. Back off a tad.
                 Thread.yield();
-                trials = 0;
+                trials = SPIN_LIMIT << 1;
             }
         }
     }
