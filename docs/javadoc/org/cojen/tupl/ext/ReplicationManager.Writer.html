@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":18,"i1":6,"i2":6,"i3":6,"i4":6,"i5":18};
+var methods = {"i0":18,"i1":6,"i2":6,"i3":6,"i4":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -150,19 +150,11 @@ var activeTableTab = "activeTableTab";
 </tr>
 <tr id="i4" class="altColor">
 <td class="colFirst"><code>long</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Writer.html#write-byte:A-int-int-">write</a></span>(byte[]&nbsp;b,
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Writer.html#write-byte:A-int-int-int-">write</a></span>(byte[]&nbsp;b,
      int&nbsp;off,
-     int&nbsp;len)</code>
+     int&nbsp;len,
+     int&nbsp;commit)</code>
 <div class="block">Fully writes the given data, returning a potential confirmation position.</div>
-</td>
-</tr>
-<tr id="i5" class="rowColor">
-<td class="colFirst"><code>default long</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Writer.html#writeCommit-byte:A-int-int-">writeCommit</a></span>(byte[]&nbsp;b,
-           int&nbsp;off,
-           int&nbsp;len)</code>
-<div class="block">Same as the regular write method, except that the message contains a transaction
- commit operation.</div>
 </td>
 </tr>
 </table>
@@ -206,7 +198,7 @@ var activeTableTab = "activeTableTab";
 </dl>
 </li>
 </ul>
-<a name="write-byte:A-int-int-">
+<a name="write-byte:A-int-int-int-">
 <!--   -->
 </a>
 <ul class="blockList">
@@ -214,33 +206,24 @@ var activeTableTab = "activeTableTab";
 <h4>write</h4>
 <pre>long&nbsp;write(byte[]&nbsp;b,
            int&nbsp;off,
-           int&nbsp;len)
+           int&nbsp;len,
+           int&nbsp;commit)
     throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Fully writes the given data, returning a potential confirmation position. When the
  local instance loses leadership, all data rolls back to the highest confirmed
- position.</div>
+ position.
+
+ <p>An optional commit parameter defines the highest position in the message which
+ immediately follows a transaction commit operation. If leadership is lost, the
+ message stream is guaranteed to be truncated at a position no higher than the
+ highest commit position ever provided.</div>
 <dl>
-<dt><span class="returnLabel">Returns:</span></dt>
-<dd>potential confirmation position, or -1 if not leader</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
-</dl>
-</li>
-</ul>
-<a name="writeCommit-byte:A-int-int-">
-<!--   -->
-</a>
-<ul class="blockList">
-<li class="blockList">
-<h4>writeCommit</h4>
-<pre>default&nbsp;long&nbsp;writeCommit(byte[]&nbsp;b,
-                         int&nbsp;off,
-                         int&nbsp;len)
-                  throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
-<div class="block">Same as the regular write method, except that the message contains a transaction
- commit operation. This variant exists to allow an implementation to capture the
- confirmation position of a transaction, in a thread-local variable.</div>
-<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>b</code> - message buffer</dd>
+<dd><code>off</code> - message buffer offset</dd>
+<dd><code>len</code> - message length</dd>
+<dd><code>commit</code> - offset into message buffer just after the highest transaction commit;
+ pass -1 if none</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>potential confirmation position, or -1 if not leader</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
