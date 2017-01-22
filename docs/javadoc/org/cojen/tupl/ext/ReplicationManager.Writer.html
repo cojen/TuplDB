@@ -222,11 +222,12 @@ var activeTableTab = "activeTableTab";
 <dd><code>b</code> - message buffer</dd>
 <dd><code>off</code> - message buffer offset</dd>
 <dd><code>len</code> - message length</dd>
-<dd><code>commit</code> - offset into message buffer just after the highest transaction commit;
- pass -1 if none</dd>
+<dd><code>commit</code> - message position just after the highest transaction commit; pass -1 if
+ none</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>potential confirmation position, or -1 if not leader</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if commit is greater than len</dd>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
