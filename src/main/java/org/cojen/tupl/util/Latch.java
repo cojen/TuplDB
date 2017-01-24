@@ -39,7 +39,7 @@ import org.cojen.tupl.io.Utils;
 public class Latch {
     public static final int UNLATCHED = 0, EXCLUSIVE = 0x80000000, SHARED = 1;
 
-    static final int SPIN_LIMIT = Runtime.getRuntime().availableProcessors();
+    static final int SPIN_LIMIT = Runtime.getRuntime().availableProcessors() > 1 ? 1 << 10 : 1;
 
     // TODO: Switch to VarHandle when available and utilize specialized operations. 
 
@@ -189,7 +189,7 @@ public class Latch {
         return false;
     }
 
-    private boolean tryAcquireExclusiveAfterParking() {
+    private boolean tryAcquireExclusiveYieldSpin() {
         // Try many times before requesting fair handoff and parking again.
         int i = 0;
         while (true) {
@@ -579,7 +579,7 @@ public class Latch {
     private boolean acquire(final WaitNode node) {
         node.mWaiter = Thread.currentThread();
         WaitNode prev = enqueue(node);
-        int acquireResult = node.acquire(this, false);
+        int acquireResult = node.acquire(this);
 
         if (acquireResult < 0) {
             int denied = 0;
@@ -591,7 +591,7 @@ public class Latch {
                     return true;
                 }
 
-                acquireResult = node.acquire(this, true);
+                acquireResult = node.acquire(this);
 
                 if (acquireResult >= 0) {
                     // Latch acquired after parking.
@@ -848,10 +848,8 @@ public class Latch {
          * @return <0 if thread should park; 0 if acquired and node should also be removed; >0
          * if acquired and node should not be removed
          */
-        int acquire(Latch latch, boolean afterParking) {
-            if (afterParking ? latch.tryAcquireExclusiveAfterParking()
-                : latch.tryAcquireExclusive())
-            {
+        int acquire(Latch latch) {
+            if (latch.tryAcquireExclusiveYieldSpin()) {
                 // Acquired, so no need to reference the thread anymore.
                 UNSAFE.putOrderedObject(this, WAITER_OFFSET, null);
                 return 0;
@@ -900,7 +898,7 @@ public class Latch {
 
     static class Shared extends WaitNode {
         @Override
-        final int acquire(Latch latch, boolean afterParking) {
+        final int acquire(Latch latch) {
             int trials = 0;
             while (true) {
                 int state = latch.mLatchState;
