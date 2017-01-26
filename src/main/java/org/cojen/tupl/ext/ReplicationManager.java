@@ -125,7 +125,7 @@ public interface ReplicationManager extends Closeable {
          * @param len message length
          * @param commitPos highest transaction commit position; pass 0 if nothing changed
          * @return potential log confirmation position, or -1 if not leader
-         * @throws IllegalArgumentException if commit is greater than len
+         * @throws IllegalArgumentException if commitPos is negative
          */
         long write(byte[] b, int off, int len, long commitPos) throws IOException;
 
