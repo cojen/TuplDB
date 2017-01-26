@@ -17,8 +17,14 @@
 package org.cojen.tupl;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
+
+import java.util.concurrent.locks.LockSupport;
 
 import org.cojen.tupl.ext.ReplicationManager;
+
+import org.cojen.tupl.util.Latch;
+import org.cojen.tupl.util.LatchCondition;
 
 /**
  * 
@@ -32,15 +38,41 @@ class ReplRedoWriter extends RedoWriter {
     // Is non-null if writes are allowed.
     final ReplicationManager.Writer mReplWriter;
 
-    // These fields capture the state of the last written commit, but not yet confirmed.
+    // These fields capture the state of the last produced commit, but not yet confirmed.
     long mLastCommitPos;
     long mLastCommitTxnId;
 
     private volatile PendingTxnWaiter mPendingWaiter;
 
+    private final Latch mBufferLatch;
+    private Thread mProducer;
+    private Thread mConsumer;
+    private byte[] mBuffer; // circular buffer; empty when tail < 0, full when head == tail
+    private int mBufferHead;
+    private int mBufferTail = -1;
+    private long mWritePos; // absolute log position
+
     ReplRedoWriter(ReplRedoEngine engine, ReplicationManager.Writer writer) {
         mEngine = engine;
         mReplWriter = writer;
+
+        if (writer == null) {
+            mBufferLatch = null;
+        } else {
+            mBufferLatch = new Latch();
+            mBufferLatch.acquireExclusive();
+            mWritePos = writer.position();
+            mBuffer = new byte[65536];
+            mBufferLatch.releaseExclusive();
+
+            Thread consumer = new Thread(() -> {
+                consume();
+            });
+
+            consumer.setName("WriteConsumer-" + consumer.getId());
+            consumer.setDaemon(true);
+            consumer.start();
+        }
     }
 
     @Override
@@ -210,21 +242,80 @@ class ReplRedoWriter extends RedoWriter {
     }
 
     @Override
-    final long write(byte[] bytes, int offset, int length, int commit) throws IOException {
-        ReplicationManager.Writer writer = mReplWriter;
-        if (writer == null) {
+    final long write(boolean commit, byte[] bytes, int offset, int length) throws IOException {
+        if (mReplWriter == null) {
             throw mEngine.unmodifiable();
         }
 
-        long pos = writer.write(bytes, offset, length, commit);
+        long pos;
 
-        if (pos < 0) {
-            throw nowUnmodifiable();
-        }
+        mBufferLatch.acquireExclusive();
+        try {
+            byte[] buffer = mBuffer;
+            if (buffer == null) {
+                throw nowUnmodifiable();
+            }
 
-        if (commit >= 0) {
-            mLastCommitPos = pos - length + commit;
-            mLastCommitTxnId = mLastTxnId;
+            while (true) {
+                if (mBufferHead == mBufferTail) {
+                    mProducer = Thread.currentThread();
+                    try {
+                        do {
+                            mBufferLatch.releaseExclusive();
+                            LockSupport.unpark(mConsumer);
+                            LockSupport.park();
+                            mBufferLatch.acquireExclusive();
+                            buffer = mBuffer;
+                            if (buffer == null) {
+                                throw nowUnmodifiable();
+                            }
+                        } while (mBufferHead == mBufferTail);
+                    } finally {
+                        mProducer = null;
+                    }
+                }
+
+                int amt;
+                if (mBufferHead < mBufferTail) {
+                    amt = buffer.length - mBufferTail;
+                } else if (mBufferTail >= 0) {
+                    amt = mBufferHead - mBufferTail;
+                } else {
+                    mBufferHead = 0;
+                    mBufferTail = 0;
+                    amt = buffer.length;
+                }
+
+                if (length <= amt) {
+                    System.arraycopy(bytes, offset, buffer, mBufferTail, length);
+
+                    pos = mWritePos += length;
+                    if ((mBufferTail += length) >= buffer.length) {
+                        mBufferTail = 0;
+                    }
+
+                    if (commit) {
+                        mLastCommitPos = mWritePos;
+                        mLastCommitTxnId = mLastTxnId;
+                    }
+
+                    break;
+                }
+
+                System.arraycopy(bytes, offset, buffer, mBufferTail, amt);
+
+                mWritePos += amt;
+                length -= amt;
+                offset += amt;
+
+                if ((mBufferTail += amt) >= buffer.length) {
+                    mBufferTail = 0;
+                }
+            }
+
+            LockSupport.unpark(mConsumer);
+        } finally {
+            mBufferLatch.releaseExclusive();
         }
 
         return pos;
@@ -252,5 +343,94 @@ class ReplRedoWriter extends RedoWriter {
 
     private UnmodifiableReplicaException nowUnmodifiable() throws DatabaseException {
         return mEngine.mController.nowUnmodifiable(mReplWriter);
+    }
+
+    /**
+     * Consumes data from the circular buffer and writes into the replication log. Method doesn't
+     * exit until leadership is revoked.
+     */
+    private void consume() {
+        mBufferLatch.acquireExclusive();
+        mConsumer = Thread.currentThread();
+
+        while (true) {
+            byte[] buffer = mBuffer;
+            int head = mBufferHead;
+            int tail = mBufferTail;
+            long commitPos = mLastCommitPos;
+
+            try {
+                if (head == tail) {
+                    // Buffer is full, so consume everything with the latch held.
+
+                    // Write the head section.
+                    if (mReplWriter.write(buffer, head, buffer.length - head, commitPos) < 0) {
+                        break;
+                    }
+
+                    if (head > 0) {
+                        // Write the tail section.
+                        mBufferHead = 0;
+                        if (mReplWriter.write(buffer, 0, tail, commitPos) < 0) {
+                            break;
+                        }
+                    }
+
+                    // Buffer is now empty.
+                    mBufferTail = -1;
+                } else if (tail >= 0) {
+                    // Buffer is partially full. Consume it with the latch released, to
+                    // allow a producer to fill in a bit more.
+                    mBufferLatch.releaseExclusive();
+                    try {
+                        if (head < tail) {
+                            // No circular wraparound.
+                            if (mReplWriter.write(buffer, head, tail - head, commitPos) < 0) {
+                                break;
+                            }
+                            head = tail;
+                        } else {
+                            // Write only the head section.
+                            int len = buffer.length - head;
+                            if (mReplWriter.write(buffer, head, len, commitPos) < 0) {
+                                break;
+                            }
+                            head = 0;
+                        }
+                    } finally {
+                        mBufferLatch.acquireExclusive();
+                    }
+
+                    if (head != mBufferTail) {
+                        // More data to consume.
+                        mBufferHead = head;
+                        continue;
+                    }
+
+                    // Buffer is now empty.
+                    mBufferTail = -1;
+                }
+            } catch (Throwable e) {
+                if (!(e instanceof IOException)) {
+                    Utils.uncaught(e);
+                }
+                // Keep consuming until an official leadership change is observed.
+                Thread.yield();
+                continue;
+            }
+
+            // Wait for producer and loop back.
+            mBufferLatch.releaseExclusive();
+            LockSupport.unpark(mProducer);
+            LockSupport.park(mBufferLatch);
+            mBufferLatch.acquireExclusive();
+        }
+
+        mConsumer = null;
+        mBuffer = null;
+        LockSupport.unpark(mProducer);
+        mBufferLatch.releaseExclusive();
+
+        mEngine.mController.switchToReplica(mReplWriter, false);
     }
 }
