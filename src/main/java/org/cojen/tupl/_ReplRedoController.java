@@ -260,7 +260,7 @@ final class _ReplRedoController extends _ReplRedoWriter {
         }
     }
 
-    // Also called by latched _ReplRedoWriter.
+    // Also called by _ReplRedoWriter, sometimes with the latch held.
     UnmodifiableReplicaException nowUnmodifiable(ReplicationManager.Writer expect)
         throws DatabaseException
     {
@@ -283,7 +283,7 @@ final class _ReplRedoController extends _ReplRedoWriter {
             // Use this instance for replica mode.
             mTxnRedoWriter = this;
         } else {
-            // Invoke from a separate thread, avoiding deadlock. This method is invoked by
+            // Invoke from a separate thread, avoiding deadlock. This method can be invoked by
             // _ReplRedoWriter while latched, which is an inconsistent order.
             new Thread(() -> {
                 _ReplRedoController.this.acquireExclusive();
