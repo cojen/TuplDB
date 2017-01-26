@@ -115,20 +115,19 @@ public interface ReplicationManager extends Closeable {
          * local instance loses leadership, all data rolls back to the highest confirmed
          * position.
          *
-         * @return potential confirmation position, or -1 if not leader
-         */
-        long write(byte[] b, int off, int len) throws IOException;
-
-        /**
-         * Same as the regular write method, except that the message contains a transaction
-         * commit operation. This variant exists to allow an implementation to capture the
-         * confirmation position of a transaction, in a thread-local variable.
+         * <p>An optional commit parameter defines the highest log position which immediately
+         * follows a transaction commit operation. If leadership is lost, the message stream is
+         * guaranteed to be truncated at a position no higher than the highest commit position
+         * ever provided.
          *
-         * @return potential confirmation position, or -1 if not leader
+         * @param b message buffer
+         * @param off message buffer offset
+         * @param len message length
+         * @param commitPos highest transaction commit position; pass 0 if nothing changed
+         * @return potential log confirmation position, or -1 if not leader
+         * @throws IllegalArgumentException if commitPos is negative
          */
-        default long writeCommit(byte[] b, int off, int len) throws IOException {
-            return write(b, off, len);
-        }
+        long write(byte[] b, int off, int len, long commitPos) throws IOException;
 
         /**
          * Blocks until all data up to the given log position is confirmed.

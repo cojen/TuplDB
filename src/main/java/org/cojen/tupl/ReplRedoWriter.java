@@ -42,10 +42,18 @@ class ReplRedoWriter extends RedoWriter {
 
     private volatile PendingTxnWaiter mPendingWaiter;
 
+    private long mWritePos; // absolute log position
+
     ReplRedoWriter(ReplRedoEngine engine, ReplicationManager.Writer writer) {
         super(4096, 0);
         mEngine = engine;
         mReplWriter = writer;
+
+        if (writer != null) {
+            synchronized (this) {
+                mWritePos = writer.position();
+            }
+        }
     }
 
     // All inherited methods which accept a DurabilityMode must be overridden and always use
@@ -316,7 +324,10 @@ class ReplRedoWriter extends RedoWriter {
             if (writer == null) {
                 throw mEngine.unmodifiable();
             }
-            if (writer.write(buffer, 0, len) < 0) {
+            long pos = writer.write(buffer, 0, len, 0);
+            if (pos >= 0) {
+                mWritePos = pos;
+            } else {
                 throw nowUnmodifiable();
             }
         }
@@ -331,8 +342,9 @@ class ReplRedoWriter extends RedoWriter {
             if (writer == null) {
                 throw mEngine.unmodifiable();
             }
-            long pos = writer.writeCommit(buffer, 0, len);
+            long pos = writer.write(buffer, 0, len, mWritePos + len);
             if (pos >= 0) {
+                mWritePos = pos;
                 mLastCommitPos = pos;
                 mLastCommitTxnId = lastTransactionId();
                 return pos;
