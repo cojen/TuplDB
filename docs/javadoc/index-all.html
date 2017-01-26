@@ -77,6 +77,11 @@
 <dd>
 <div class="block">Acquire the exclusive latch, barging ahead of any waiting threads if possible.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#acquireExclusiveAsync-java.lang.Runnable-">acquireExclusiveAsync(Runnable)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
+<dd>
+<div class="block">Asynchronously acquire the exclusive latch, barging ahead of any waiting threads if
+ possible.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#acquireExclusiveInterruptibly--">acquireExclusiveInterruptibly()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>
 <div class="block">Acquire the exclusive latch, aborting if interrupted.</div>
@@ -84,6 +89,10 @@
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#acquireShared--">acquireShared()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>
 <div class="block">Acquire a shared latch, barging ahead of any waiting threads if possible.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#acquireSharedAsync-java.lang.Runnable-">acquireSharedAsync(Runnable)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
+<dd>
+<div class="block">Asynchronously acquire a shared latch, barging ahead of any waiting threads if possible.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#acquireSharedInterruptibly--">acquireSharedInterruptibly()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>
@@ -145,9 +154,17 @@
 <dd>
 <div class="block">Blocks the current thread until a signal is received.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/LatchCondition.html#awaitAsync-org.cojen.tupl.util.Latch-java.lang.Runnable-">awaitAsync(Latch, Runnable)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
+<dd>
+<div class="block">Asynchronously invokes the given continuation when a signal is received.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/LatchCondition.html#awaitShared-org.cojen.tupl.util.Latch-long-long-">awaitShared(Latch, long, long)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
 <dd>
 <div class="block">Blocks the current thread until a signal is received.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/LatchCondition.html#awaitSharedAsync-org.cojen.tupl.util.Latch-java.lang.Runnable-">awaitSharedAsync(Latch, Runnable)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
+<dd>
+<div class="block">Asynchronously invokes the given continuation when a signal is received.</div>
 </dd>
 </dl>
 <a name="I:B">
