@@ -118,37 +118,38 @@ public interface ReplicationManager extends Closeable {
          * <p>An optional commit parameter defines the highest log position which immediately
          * follows a transaction commit operation. If leadership is lost, the message stream is
          * guaranteed to be truncated at a position no higher than the highest commit position
-         * ever provided.
+         * ever provided. The given commit position is ignored if it's higher than what has
+         * actually been written.
          *
          * @param b message buffer
          * @param off message buffer offset
          * @param len message length
          * @param commitPos highest transaction commit position; pass 0 if nothing changed
-         * @return potential log confirmation position, or -1 if not leader
+         * @return false if not leader
          * @throws IllegalArgumentException if commitPos is negative
          */
-        long write(byte[] b, int off, int len, long commitPos) throws IOException;
+        boolean write(byte[] b, int off, int len, long commitPos) throws IOException;
 
         /**
          * Blocks until all data up to the given log position is confirmed.
          *
-         * @param position confirmation position as provided by the write method
+         * @param commitPos commit position which was passed to the write method
          * @return false if not leader at the given position
          * @throws ConfirmationFailureException
          */
-        default boolean confirm(long position) throws IOException {
-            return confirm(position, -1);
+        default boolean confirm(long commitPos) throws IOException {
+            return confirm(commitPos, -1);
         }
 
         /**
          * Blocks until all data up to the given log position is confirmed.
          *
-         * @param position confirmation position as provided by the write method
+         * @param commitPos commit position which was passed to the write method
          * @param timeoutNanos pass -1 for infinite
          * @return false if not leader at the given position
          * @throws ConfirmationFailureException
          */
-        boolean confirm(long position, long timeoutNanos) throws IOException;
+        boolean confirm(long commitPos, long timeoutNanos) throws IOException;
     }
 
     /**

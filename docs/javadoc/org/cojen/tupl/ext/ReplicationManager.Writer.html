@@ -125,13 +125,13 @@ var activeTableTab = "activeTableTab";
 </tr>
 <tr id="i0" class="altColor">
 <td class="colFirst"><code>default boolean</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Writer.html#confirm-long-">confirm</a></span>(long&nbsp;position)</code>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Writer.html#confirm-long-">confirm</a></span>(long&nbsp;commitPos)</code>
 <div class="block">Blocks until all data up to the given log position is confirmed.</div>
 </td>
 </tr>
 <tr id="i1" class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Writer.html#confirm-long-long-">confirm</a></span>(long&nbsp;position,
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Writer.html#confirm-long-long-">confirm</a></span>(long&nbsp;commitPos,
        long&nbsp;timeoutNanos)</code>
 <div class="block">Blocks until all data up to the given log position is confirmed.</div>
 </td>
@@ -149,7 +149,7 @@ var activeTableTab = "activeTableTab";
 </td>
 </tr>
 <tr id="i4" class="altColor">
-<td class="colFirst"><code>long</code></td>
+<td class="colFirst"><code>boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Writer.html#write-byte:A-int-int-long-">write</a></span>(byte[]&nbsp;b,
      int&nbsp;off,
      int&nbsp;len,
@@ -204,11 +204,11 @@ var activeTableTab = "activeTableTab";
 <ul class="blockList">
 <li class="blockList">
 <h4>write</h4>
-<pre>long&nbsp;write(byte[]&nbsp;b,
-           int&nbsp;off,
-           int&nbsp;len,
-           long&nbsp;commitPos)
-    throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre>boolean&nbsp;write(byte[]&nbsp;b,
+              int&nbsp;off,
+              int&nbsp;len,
+              long&nbsp;commitPos)
+       throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Fully writes the given data, returning a potential confirmation position. When the
  local instance loses leadership, all data rolls back to the highest confirmed
  position.
@@ -216,7 +216,8 @@ var activeTableTab = "activeTableTab";
  <p>An optional commit parameter defines the highest log position which immediately
  follows a transaction commit operation. If leadership is lost, the message stream is
  guaranteed to be truncated at a position no higher than the highest commit position
- ever provided.</div>
+ ever provided. The given commit position is ignored if it's higher than what has
+ actually been written.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>b</code> - message buffer</dd>
@@ -224,7 +225,7 @@ var activeTableTab = "activeTableTab";
 <dd><code>len</code> - message length</dd>
 <dd><code>commitPos</code> - highest transaction commit position; pass 0 if nothing changed</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
-<dd>potential log confirmation position, or -1 if not leader</dd>
+<dd>false if not leader</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if commitPos is negative</dd>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
@@ -237,12 +238,12 @@ var activeTableTab = "activeTableTab";
 <ul class="blockList">
 <li class="blockList">
 <h4>confirm</h4>
-<pre>default&nbsp;boolean&nbsp;confirm(long&nbsp;position)
+<pre>default&nbsp;boolean&nbsp;confirm(long&nbsp;commitPos)
                  throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Blocks until all data up to the given log position is confirmed.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>position</code> - confirmation position as provided by the write method</dd>
+<dd><code>commitPos</code> - commit position which was passed to the write method</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>false if not leader at the given position</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
@@ -257,13 +258,13 @@ var activeTableTab = "activeTableTab";
 <ul class="blockListLast">
 <li class="blockList">
 <h4>confirm</h4>
-<pre>boolean&nbsp;confirm(long&nbsp;position,
+<pre>boolean&nbsp;confirm(long&nbsp;commitPos,
                 long&nbsp;timeoutNanos)
          throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Blocks until all data up to the given log position is confirmed.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>position</code> - confirmation position as provided by the write method</dd>
+<dd><code>commitPos</code> - commit position which was passed to the write method</dd>
 <dd><code>timeoutNanos</code> - pass -1 for infinite</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>false if not leader at the given position</dd>
