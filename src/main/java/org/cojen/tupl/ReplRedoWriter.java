@@ -324,9 +324,8 @@ class ReplRedoWriter extends RedoWriter {
             if (writer == null) {
                 throw mEngine.unmodifiable();
             }
-            long pos = writer.write(buffer, 0, len, 0);
-            if (pos >= 0) {
-                mWritePos = pos;
+            if (writer.write(buffer, 0, len, 0)) {
+                mWritePos += len;
             } else {
                 throw nowUnmodifiable();
             }
@@ -342,8 +341,8 @@ class ReplRedoWriter extends RedoWriter {
             if (writer == null) {
                 throw mEngine.unmodifiable();
             }
-            long pos = writer.write(buffer, 0, len, mWritePos + len);
-            if (pos >= 0) {
+            long pos = mWritePos + len;
+            if (writer.write(buffer, 0, len, pos)) {
                 mWritePos = pos;
                 mLastCommitPos = pos;
                 mLastCommitTxnId = lastTransactionId();
