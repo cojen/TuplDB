@@ -39,18 +39,28 @@ class ReplRedoWriter extends RedoWriter {
     final ReplicationManager.Writer mReplWriter;
 
     // These fields capture the state of the last produced commit, but not yet confirmed.
+    // Access is guarded by RedoWriter latch and mBufferLatch. Both latches must be held to
+    // modify these fields, and so either latch must be held for reading the fields.
     long mLastCommitPos;
     long mLastCommitTxnId;
 
     private volatile PendingTxnWaiter mPendingWaiter;
 
+    // These fields are guarded by mBufferLatch.
     private final Latch mBufferLatch;
     private Thread mProducer;
     private Thread mConsumer;
-    private byte[] mBuffer; // circular buffer; empty when tail < 0, full when head == tail
+    // Circular buffer; empty when mBufferTail < 0, full when mBufferHead == mBufferTail.
+    private byte[] mBuffer;
+    // If mBufferTail is in the range of [0, buffer.length] then this is the first used byte in
+    // the buffer. If mBufferTail is negative, there is no used byte in the buffer.
     private int mBufferHead;
+    // In the range of [0, buffer.length), mBufferTail represents the first free byte in the
+    // buffer, unless it equals mBufferHead (in which case there are no free bytes in the
+    // buffer). It can also be negative, which means the buffer is empty.
     private int mBufferTail = -1;
-    private long mWritePos; // absolute log position
+    // Absolute log position.
+    private long mWritePos;
 
     ReplRedoWriter(ReplRedoEngine engine, ReplicationManager.Writer writer) {
         mEngine = engine;
@@ -60,14 +70,15 @@ class ReplRedoWriter extends RedoWriter {
             mBufferLatch = null;
         } else {
             mBufferLatch = new Latch();
+            // Acquire the latch here, to avoid any odd race conditions caused by launching a
+            // thread from within a constructor. The consume method first acquires the latch
+            // before doing anything.
             mBufferLatch.acquireExclusive();
             mWritePos = writer.position();
             mBuffer = new byte[65536];
             mBufferLatch.releaseExclusive();
 
-            Thread consumer = new Thread(() -> {
-                consume();
-            });
+            Thread consumer = new Thread(this::consume);
 
             consumer.setName("WriteConsumer-" + consumer.getId());
             consumer.setDaemon(true);
@@ -247,8 +258,6 @@ class ReplRedoWriter extends RedoWriter {
             throw mEngine.unmodifiable();
         }
 
-        long pos;
-
         mBufferLatch.acquireExclusive();
         try {
             byte[] buffer = mBuffer;
@@ -260,10 +269,11 @@ class ReplRedoWriter extends RedoWriter {
                 if (mBufferHead == mBufferTail) {
                     mProducer = Thread.currentThread();
                     try {
+                        Thread consumer = mConsumer;
                         do {
                             mBufferLatch.releaseExclusive();
-                            LockSupport.unpark(mConsumer);
-                            LockSupport.park();
+                            LockSupport.unpark(consumer);
+                            LockSupport.park(mBufferLatch);
                             mBufferLatch.acquireExclusive();
                             buffer = mBuffer;
                             if (buffer == null) {
@@ -276,33 +286,61 @@ class ReplRedoWriter extends RedoWriter {
                 }
 
                 int amt;
+                //assert mBufferHead != mBufferTail;
                 if (mBufferHead < mBufferTail) {
+                    // Allow filling up to the end of the buffer without wrapping around. The
+                    // next iteration of this loop will wrap around in the buffer if necessary.
                     amt = buffer.length - mBufferTail;
                 } else if (mBufferTail >= 0) {
+                    // The tail has wrapped around, but the head has not. Allow filling up to
+                    // the head.
                     amt = mBufferHead - mBufferTail;
                 } else {
-                    mBufferHead = 0;
-                    mBufferTail = 0;
+                    // The buffer is empty, so allow filling the whole thing. Note that this is
+                    // intermediate state, which implies that the buffer is full. After the
+                    // arraycopy, the tail is set correctly.
+                    if (length != 0) {
+                        mBufferHead = 0;
+                        mBufferTail = 0;
+                    }
                     amt = buffer.length;
                 }
 
                 if (length <= amt) {
-                    System.arraycopy(bytes, offset, buffer, mBufferTail, length);
+                    try {
+                        System.arraycopy(bytes, offset, buffer, mBufferTail, length);
+                    } catch (Throwable e) {
+                        // Fix any intermediate state.
+                        if (mBufferHead == mBufferTail) {
+                            mBufferTail = -1;
+                        }
+                        throw e;
+                    }
 
-                    pos = mWritePos += length;
+                    long pos = mWritePos += length;
+
                     if ((mBufferTail += length) >= buffer.length) {
                         mBufferTail = 0;
                     }
 
                     if (commit) {
-                        mLastCommitPos = mWritePos;
+                        mLastCommitPos = pos;
                         mLastCommitTxnId = mLastTxnId;
                     }
 
-                    break;
+                    LockSupport.unpark(mConsumer);
+                    return pos;
                 }
 
-                System.arraycopy(bytes, offset, buffer, mBufferTail, amt);
+                try {
+                    System.arraycopy(bytes, offset, buffer, mBufferTail, amt);
+                } catch (Throwable e) {
+                    // Fix any intermediate state.
+                    if (mBufferHead == mBufferTail) {
+                        mBufferTail = -1;
+                    }
+                    throw e;
+                }
 
                 mWritePos += amt;
                 length -= amt;
@@ -312,13 +350,9 @@ class ReplRedoWriter extends RedoWriter {
                     mBufferTail = 0;
                 }
             }
-
-            LockSupport.unpark(mConsumer);
         } finally {
             mBufferLatch.releaseExclusive();
         }
-
-        return pos;
     }
 
     @Override
@@ -334,6 +368,21 @@ class ReplRedoWriter extends RedoWriter {
     @Override
     public void close() throws IOException {
         mEngine.mManager.close();
+
+        mBufferLatch.acquireExclusive();
+        try {
+            Thread consumer = mConsumer;
+            if (consumer != null) {
+                mConsumer = null;
+                try {
+                    consumer.join();
+                } catch (InterruptedException e) {
+                    throw new InterruptedIOException();
+                }
+            }
+        } finally {
+            mBufferLatch.releaseExclusive();
+        }
     }
 
     private UnsupportedOperationException fail() {
@@ -353,8 +402,9 @@ class ReplRedoWriter extends RedoWriter {
         mBufferLatch.acquireExclusive();
         mConsumer = Thread.currentThread();
 
-        while (true) {
-            byte[] buffer = mBuffer;
+        final byte[] buffer = mBuffer;
+
+        while (mConsumer != null) {
             int head = mBufferHead;
             int tail = mBufferTail;
             long commitPos = mLastCommitPos;
@@ -364,14 +414,14 @@ class ReplRedoWriter extends RedoWriter {
                     // Buffer is full, so consume everything with the latch held.
 
                     // Write the head section.
-                    if (mReplWriter.write(buffer, head, buffer.length - head, commitPos) < 0) {
+                    if (!mReplWriter.write(buffer, head, buffer.length - head, commitPos)) {
                         break;
                     }
 
                     if (head > 0) {
                         // Write the tail section.
                         mBufferHead = 0;
-                        if (mReplWriter.write(buffer, 0, tail, commitPos) < 0) {
+                        if (!mReplWriter.write(buffer, 0, tail, commitPos)) {
                             break;
                         }
                     }
@@ -385,14 +435,14 @@ class ReplRedoWriter extends RedoWriter {
                     try {
                         if (head < tail) {
                             // No circular wraparound.
-                            if (mReplWriter.write(buffer, head, tail - head, commitPos) < 0) {
+                            if (!mReplWriter.write(buffer, head, tail - head, commitPos)) {
                                 break;
                             }
                             head = tail;
                         } else {
                             // Write only the head section.
                             int len = buffer.length - head;
-                            if (mReplWriter.write(buffer, head, len, commitPos) < 0) {
+                            if (!mReplWriter.write(buffer, head, len, commitPos)) {
                                 break;
                             }
                             head = 0;
