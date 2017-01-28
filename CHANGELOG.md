@@ -1,6 +1,16 @@
 Changelog
 =========
 
+v1.3.11 (2017-01-28)
+-------
+* New latch implementation which offers higher performance on multi-core hardware and also uses
+  less memory.
+* Redo log decoding changes, to prevent compatibility issues with future versions.
+* Writes to the redo log are now performed after applying any index changes. This allows the redo
+  log to block without holding node latch, improving concurrency.
+* Replication manager interface changes.
+* Java 9 compatibility fixes.
+
 v1.3.10.3 (2016-12-26)
 ---------
 * Fix striped transaction id stride value.
