@@ -269,6 +269,10 @@ final class _ReplRedoController extends _ReplRedoWriter {
     }
 
     boolean switchToReplica(final ReplicationManager.Writer expect, final boolean syncd) {
+        if (mEngine.mDatabase.isClosed()) {
+            return true;
+        }
+
         final _ReplRedoWriter redo = mTxnRedoWriter;
         ReplicationManager.Writer writer = redo.mReplWriter;
 
