@@ -189,20 +189,6 @@ public class Latch {
         return false;
     }
 
-    private boolean tryAcquireExclusiveYieldSpin() {
-        // Try many times before requesting fair handoff and parking again.
-        int i = 0;
-        while (true) {
-            if (tryAcquireExclusive() || tryAcquireExclusiveSpin()) {
-                return true;
-            }
-            if (++i >= SPIN_LIMIT >> 1) {
-                return false;
-            }
-            Thread.yield();
-        }
-    }
-
     /**
      * Acquire the exclusive latch, aborting if interrupted.
      */
@@ -579,19 +565,14 @@ public class Latch {
     private boolean acquire(final WaitNode node) {
         node.mWaiter = Thread.currentThread();
         WaitNode prev = enqueue(node);
-        int acquireResult = node.acquire(this);
+        int acquireResult = node.acquire(this, true);
 
         if (acquireResult < 0) {
             int denied = 0;
             while (true) {
                 boolean parkAbort = node.park(this);
 
-                if (node.mWaiter == null) {
-                    // Fair handoff, and so node is no longer in the queue.
-                    return true;
-                }
-
-                acquireResult = node.acquire(this);
+                acquireResult = node.acquire(this, true);
 
                 if (acquireResult >= 0) {
                     // Latch acquired after parking.
@@ -848,14 +829,54 @@ public class Latch {
          * @return <0 if thread should park; 0 if acquired and node should also be removed; >0
          * if acquired and node should not be removed
          */
-        int acquire(Latch latch) {
-            if (latch.tryAcquireExclusiveYieldSpin()) {
-                // Acquired, so no need to reference the thread anymore.
-                UNSAFE.putOrderedObject(this, WAITER_OFFSET, null);
-                return 0;
-            } else {
+        int acquire(Latch latch, boolean yield) {
+            if (!tryAcquireExclusiveSpin(latch, yield)) {
                 return -1;
             }
+
+            while (true) {
+                Object waiter = mWaiter;
+
+                if (waiter == null) {
+                    // Fair handoff, and so node is no longer in the queue.
+                    return 1;
+                }
+
+                // Acquired, so no need to reference the waiter anymore.
+
+                if (!mFair) {
+                    UNSAFE.putOrderedObject(this, WAITER_OFFSET, null);
+                    return 0;
+                }
+
+                if (UNSAFE.compareAndSwapObject(this, WAITER_OFFSET, waiter, null)) {
+                    return 0;
+                }
+            }
+        }
+
+        private boolean tryAcquireExclusiveSpin(Latch latch, boolean yield) {
+            if (yield) {
+                // Yield to avoid parking.
+                int i = 0;
+                while (true) {
+                    if (tryAcquireExclusiveSpin(latch, false)) {
+                        return true;
+                    }
+                    if (++i >= SPIN_LIMIT >> 1) {
+                        return false;
+                    }
+                    Thread.yield();
+                }
+            } else {
+                for (int i=0; i<SPIN_LIMIT; i++) {
+                    if (latch.tryAcquireExclusive() || mWaiter == null) {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         @Override
@@ -898,7 +919,7 @@ public class Latch {
 
     static class Shared extends WaitNode {
         @Override
-        final int acquire(Latch latch) {
+        final int acquire(Latch latch, boolean yield) {
             int trials = 0;
             while (true) {
                 int state = latch.mLatchState;
