@@ -119,52 +119,6 @@ public final class LatchCondition {
         }
     }
 
-    /**
-     * Asynchronously invokes the given continuation when a signal is received. Exclusive latch
-     * must be acquired by the caller, which is released by this method and then later acquired
-     * for use by the continuation.
-     *
-     * @param latch latch being used by this condition
-     * @param cont asynchronously invoked continuation, with exclusive latch held
-     * @throws NullPointerException if cont is null
-     */
-    public void awaitAsync(Latch latch, Runnable cont) {
-        awaitAsync(latch, cont, Node.WAITING);
-    }
-
-    /**
-     * Asynchronously invokes the given continuation when a signal is received. Exclusive latch
-     * must be acquired by the caller, which is released by this method and then later acquired
-     * for use by the continuation.
-     *
-     * <p>A shared waiter intends to access a resource with shared access, and it can be
-     * signaled specially. After waiting, the continuation is responsible for signaling the
-     * next shared waiter.
-     *
-     * @param latch latch being used by this condition
-     * @param cont asynchronously invoked continuation, with exclusive latch held
-     * @throws NullPointerException if cont is null
-     */
-    public void awaitSharedAsync(Latch latch, Runnable cont) {
-        awaitAsync(latch, cont, Node.WAITING_SHARED);
-    }
-
-    private void awaitAsync(Latch latch, Runnable cont, int waitState) {
-        if (cont == null) {
-            throw new NullPointerException();
-        }
-
-        try {
-            Node node = new Node((Runnable) () -> {
-                latch.acquireExclusiveAsync(() -> cont.run());
-            });
-            node.mWaitState = waitState;
-            enqueue(node);
-        } finally {
-            latch.releaseExclusive();
-        }
-    }
-
     private void enqueue(Node node) {
         Node tail = mTail;
         if (tail == null) {
@@ -197,7 +151,7 @@ public final class LatchCondition {
         if (head != null) {
             head.remove(this);
             latch.releaseExclusive();
-            Latch.unpark(head.mWaiter);
+            LockSupport.unpark(head.mWaiter);
             return true;
         } else {
             return false;
@@ -251,7 +205,7 @@ public final class LatchCondition {
         if (head != null && head.mWaitState == Node.WAITING_SHARED) {
             head.remove(this);
             latch.releaseExclusive();
-            Latch.unpark(head.mWaiter);
+            LockSupport.unpark(head.mWaiter);
             return true;
         } else {
             return false;
@@ -296,7 +250,7 @@ public final class LatchCondition {
     }
 
     static class Node {
-        final Object mWaiter;
+        final Thread mWaiter;
 
         static final int REMOVED = 0, SIGNALED = 1, WAITING = 2, WAITING_SHARED = 3;
         int mWaitState;
@@ -304,7 +258,7 @@ public final class LatchCondition {
         Node mPrev;
         Node mNext;
 
-        Node(Object waiter) {
+        Node(Thread waiter) {
             mWaiter = waiter;
         }
 
@@ -322,8 +276,7 @@ public final class LatchCondition {
                 return 1;
             }
 
-            Object waiter = mWaiter;
-            if (waiter instanceof Thread && ((Thread) waiter).isInterrupted()) {
+            if (mWaiter.isInterrupted()) {
                 Thread.interrupted();
                 remove(queue);
                 return -1;
@@ -334,7 +287,7 @@ public final class LatchCondition {
 
         final void signal() {
             mWaitState = SIGNALED;
-            Latch.unpark(mWaiter);
+            LockSupport.unpark(mWaiter);
         }
 
         final void remove(LatchCondition queue) {
