@@ -297,7 +297,7 @@ class ReplRedoWriter extends RedoWriter {
                     amt = mBufferHead - mBufferTail;
                 } else {
                     // The buffer is empty, so allow filling the whole thing. Note that this is
-                    // intermediate state, which implies that the buffer is full. After the
+                    // an intermediate state, which implies that the buffer is full. After the
                     // arraycopy, the tail is set correctly.
                     if (length != 0) {
                         mBufferHead = 0;
@@ -370,18 +370,17 @@ class ReplRedoWriter extends RedoWriter {
         mEngine.mManager.close();
 
         mBufferLatch.acquireExclusive();
-        try {
-            Thread consumer = mConsumer;
-            if (consumer != null) {
-                mConsumer = null;
-                try {
-                    consumer.join();
-                } catch (InterruptedException e) {
-                    throw new InterruptedIOException();
-                }
+        Thread consumer = mConsumer;
+        mConsumer = null;
+        mBufferLatch.releaseExclusive();
+
+        if (consumer != null) {
+            LockSupport.unpark(consumer);
+            try {
+                consumer.join();
+            } catch (InterruptedException e) {
+                throw new InterruptedIOException();
             }
-        } finally {
-            mBufferLatch.releaseExclusive();
         }
     }
 
