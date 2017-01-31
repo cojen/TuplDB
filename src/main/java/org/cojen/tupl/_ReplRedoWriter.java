@@ -369,6 +369,10 @@ class _ReplRedoWriter extends _RedoWriter {
     public void close() throws IOException {
         mEngine.mManager.close();
 
+        if (mBufferLatch == null) {
+            return;
+        }
+
         mBufferLatch.acquireExclusive();
         Thread consumer = mConsumer;
         mConsumer = null;
