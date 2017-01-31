@@ -18,8 +18,6 @@ package org.cojen.tupl.util;
 
 import sun.misc.Unsafe;
 
-import java.util.concurrent.ForkJoinTask;
-
 import java.util.concurrent.atomic.AtomicReference;
 
 import java.util.concurrent.locks.LockSupport;
@@ -145,38 +143,6 @@ public class Latch {
     }
 
     /**
-     * Asynchronously acquire the exclusive latch, barging ahead of any waiting threads if
-     * possible. The given continuation is invoked after the latch has been acquired, usually
-     * by another thread.
-     *
-     * @param cont asynchronously invoked continuation
-     * @throws NullPointerException if cont is null
-     */
-    public final void acquireExclusiveAsync(Runnable cont) {
-        if (cont == null) {
-            throw new NullPointerException();
-        }
-        if (tryAcquireExclusive() || tryAcquireExclusiveSpin()) {
-            fork(cont);
-        } else {
-            doAcquireExclusiveAsync(cont);
-        }
-    }
-
-    /**
-     * Caller should have already called tryAcquireExclusive.
-     */
-    private void doAcquireExclusiveAsync(Runnable cont) {
-        try {
-            acquireAsync(new WaitNode(), cont);
-        } catch (Throwable e) {
-            // Possibly an OutOfMemoryError. Caller isn't expecting an exception, so spin.
-            while (!tryAcquireExclusive());
-            run(cont);
-        }
-    }
-
-    /**
      * Caller should have already called tryAcquireExclusive.
      */
     private boolean tryAcquireExclusiveSpin() {
@@ -187,20 +153,6 @@ public class Latch {
             }
         }
         return false;
-    }
-
-    private boolean tryAcquireExclusiveYieldSpin() {
-        // Try many times before requesting fair handoff and parking again.
-        int i = 0;
-        while (true) {
-            if (tryAcquireExclusive() || tryAcquireExclusiveSpin()) {
-                return true;
-            }
-            if (++i >= SPIN_LIMIT >> 1) {
-                return false;
-            }
-            Thread.yield();
-        }
     }
 
     /**
@@ -226,12 +178,12 @@ public class Latch {
 
             WaitNode node = first;
             while (true) {
-                Object waiter = (Thread) node.mWaiter;
+                Thread waiter = node.mWaiter;
                 if (waiter != null) {
                     if (node instanceof Shared) {
                         UNSAFE.getAndAddInt(this, STATE_OFFSET, 1);
                         if (UNSAFE.compareAndSwapObject(node, WAITER_OFFSET, waiter, null)) {
-                            unpark(waiter);
+                            LockSupport.unpark(waiter);
                         } else {
                             // Already unparked, so fix the share count.
                             UNSAFE.getAndAddInt(this, STATE_OFFSET, -1);
@@ -288,7 +240,7 @@ public class Latch {
             WaitNode first = mLatchFirst;
 
             unpark: if (first != null) {
-                Object waiter = first.mWaiter;
+                Thread waiter = first.mWaiter;
 
                 if (waiter != null) {
                     if (first instanceof Shared) {
@@ -301,7 +253,7 @@ public class Latch {
                     if (!first.mFair) {
                         // Unpark the waiter, but allow another thread to barge in.
                         mLatchState = 0;
-                        unpark(waiter);
+                        LockSupport.unpark(waiter);
                         return;
                     }
                 }
@@ -326,7 +278,7 @@ public class Latch {
                     UNSAFE.compareAndSwapObject(first, WAITER_OFFSET, waiter, null))
                 {
                     // Fair handoff to waiting thread.
-                    unpark(waiter);
+                    LockSupport.unpark(waiter);
                     return;
                 }
             }
@@ -463,31 +415,6 @@ public class Latch {
         }
     }
 
-    /**
-     * Asynchronously acquire a shared latch, barging ahead of any waiting threads if possible.
-     * The given continuation is invoked after the latch has been acquired, usually by
-     * another thread.
-     *
-     * @param cont asynchronously invoked continuation
-     * @throws NullPointerException if cont is null
-     */
-    public final void acquireSharedAsync(Runnable cont) {
-        if (cont == null) {
-            throw new NullPointerException();
-        }
-        if (tryAcquireSharedSpin()) {
-            fork(cont);
-        } else {
-            try {
-                acquireAsync(new Shared(), cont);
-            } catch (Throwable e) {
-                // Possibly an OutOfMemoryError. Caller isn't expecting an exception, so spin.
-                while (!tryAcquireShared());
-                run(cont);
-            }
-        }
-    }
-
     private boolean tryAcquireSharedSpin() {
         WaitNode first = mLatchFirst;
         if (first == null || first instanceof Shared) {
@@ -579,19 +506,14 @@ public class Latch {
     private boolean acquire(final WaitNode node) {
         node.mWaiter = Thread.currentThread();
         WaitNode prev = enqueue(node);
-        int acquireResult = node.acquire(this);
+        int acquireResult = node.acquire(this, true);
 
         if (acquireResult < 0) {
             int denied = 0;
             while (true) {
                 boolean parkAbort = node.park(this);
 
-                if (node.mWaiter == null) {
-                    // Fair handoff, and so node is no longer in the queue.
-                    return true;
-                }
-
-                acquireResult = node.acquire(this);
+                acquireResult = node.acquire(this, true);
 
                 if (acquireResult >= 0) {
                     // Latch acquired after parking.
@@ -653,13 +575,6 @@ public class Latch {
                 }
             }
         }
-    }
-
-    private void acquireAsync(WaitNode node, Runnable cont) {
-        // ForkJoinTask context switching is cheap, so always request fair acquisition.
-        UNSAFE.putBoolean(node, FAIR_OFFSET, true);
-        node.mWaiter = cont;
-        enqueue(node);
     }
 
     private WaitNode enqueue(final WaitNode node) {
@@ -791,46 +706,10 @@ public class Latch {
     }
 
     /**
-     * @param waiter Thread or Runnable
-     */
-    static void unpark(Object waiter) {
-        if (waiter instanceof Thread) {
-            LockSupport.unpark((Thread) waiter);
-        } else {
-            fork((Runnable) waiter);
-        }
-    }
-
-    private static void fork(Runnable cont) {
-        ForkJoinTask<?> task;
-        try {
-            task = ForkJoinTask.adapt(cont);
-        } catch (Throwable e) {
-            // Possibly an OutOfMemoryError.
-            run(cont);
-            return;
-        }
-
-        try {
-            task.fork();
-        } catch (Throwable e) {
-            Utils.uncaught(e);
-        }
-    }
-
-    static void run(Runnable cont) {
-        try {
-            cont.run();
-        } catch (Throwable e) {
-            Utils.uncaught(e);
-        }
-    }
-
-    /**
      * Atomic reference is to the next node in the chain.
      */
     static class WaitNode extends AtomicReference<WaitNode> {
-        volatile Object mWaiter;
+        volatile Thread mWaiter;
         volatile boolean mFair;
 
         // Only set if node was deleted and must be bypassed when a new node is enqueued.
@@ -848,14 +727,54 @@ public class Latch {
          * @return <0 if thread should park; 0 if acquired and node should also be removed; >0
          * if acquired and node should not be removed
          */
-        int acquire(Latch latch) {
-            if (latch.tryAcquireExclusiveYieldSpin()) {
-                // Acquired, so no need to reference the thread anymore.
-                UNSAFE.putOrderedObject(this, WAITER_OFFSET, null);
-                return 0;
-            } else {
+        int acquire(Latch latch, boolean yield) {
+            if (!tryAcquireExclusiveSpin(latch, yield)) {
                 return -1;
             }
+
+            while (true) {
+                Object waiter = mWaiter;
+
+                if (waiter == null) {
+                    // Fair handoff, and so node is no longer in the queue.
+                    return 1;
+                }
+
+                // Acquired, so no need to reference the waiter anymore.
+
+                if (!mFair) {
+                    UNSAFE.putOrderedObject(this, WAITER_OFFSET, null);
+                    return 0;
+                }
+
+                if (UNSAFE.compareAndSwapObject(this, WAITER_OFFSET, waiter, null)) {
+                    return 0;
+                }
+            }
+        }
+
+        private boolean tryAcquireExclusiveSpin(Latch latch, boolean yield) {
+            if (yield) {
+                // Yield to avoid parking.
+                int i = 0;
+                while (true) {
+                    if (tryAcquireExclusiveSpin(latch, false)) {
+                        return true;
+                    }
+                    if (++i >= SPIN_LIMIT >> 1) {
+                        return false;
+                    }
+                    Thread.yield();
+                }
+            } else {
+                for (int i=0; i<SPIN_LIMIT; i++) {
+                    if (latch.tryAcquireExclusive() || mWaiter == null) {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         @Override
@@ -898,7 +817,7 @@ public class Latch {
 
     static class Shared extends WaitNode {
         @Override
-        final int acquire(Latch latch) {
+        final int acquire(Latch latch, boolean yield) {
             int trials = 0;
             while (true) {
                 int state = latch.mLatchState;
