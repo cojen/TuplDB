@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":18,"i1":18,"i2":6,"i3":6,"i4":6,"i5":18,"i6":6,"i7":6,"i8":6,"i9":6,"i10":6,"i11":6,"i12":6,"i13":6,"i14":6,"i15":6,"i16":6,"i17":6,"i18":6,"i19":6,"i20":6,"i21":6,"i22":6,"i23":6,"i24":6,"i25":6,"i26":6,"i27":6,"i28":18,"i29":6,"i30":6,"i31":6,"i32":6,"i33":6,"i34":6};
+var methods = {"i0":18,"i1":18,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":6,"i8":6,"i9":6,"i10":6,"i11":6,"i12":6,"i13":6,"i14":6,"i15":6,"i16":6,"i17":6,"i18":6,"i19":6,"i20":6,"i21":6,"i22":6,"i23":6,"i24":6,"i25":6,"i26":6,"i27":18,"i28":6,"i29":6,"i30":6,"i31":6,"i32":6,"i33":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -203,12 +203,6 @@ var activeTableTab = "activeTableTab";
 </td>
 </tr>
 <tr id="i5" class="rowColor">
-<td class="colFirst"><code>default void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#commitAllAsync-java.util.function.Consumer-">commitAllAsync</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;? super <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a>&gt;&nbsp;cont)</code>
-<div class="block">Asynchronously commits and exits all transaction scopes.</div>
-</td>
-</tr>
-<tr id="i6" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#customRedo-byte:A-long-byte:A-">customRedo</a></span>(byte[]&nbsp;message,
           long&nbsp;indexId,
@@ -216,63 +210,63 @@ var activeTableTab = "activeTableTab";
 <div class="block">Supply a message for a custom redo handler.</div>
 </td>
 </tr>
-<tr id="i7" class="rowColor">
+<tr id="i6" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#customUndo-byte:A-">customUndo</a></span>(byte[]&nbsp;message)</code>
 <div class="block">Supply a message for a custom undo handler.</div>
 </td>
 </tr>
-<tr id="i8" class="altColor">
+<tr id="i7" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/DurabilityMode.html" title="enum in org.cojen.tupl">DurabilityMode</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#durabilityMode--">durabilityMode</a></span>()</code>
 <div class="block">Returns the durability mode of this transaction.</div>
 </td>
 </tr>
-<tr id="i9" class="rowColor">
+<tr id="i8" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#durabilityMode-org.cojen.tupl.DurabilityMode-">durabilityMode</a></span>(<a href="../../../org/cojen/tupl/DurabilityMode.html" title="enum in org.cojen.tupl">DurabilityMode</a>&nbsp;mode)</code>
 <div class="block">Sets the durability mode for the entire transaction, not just the current scope.</div>
 </td>
 </tr>
-<tr id="i10" class="altColor">
+<tr id="i9" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#enter--">enter</a></span>()</code>
 <div class="block">Enters a nested transaction scope.</div>
 </td>
 </tr>
-<tr id="i11" class="rowColor">
+<tr id="i10" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#exit--">exit</a></span>()</code>
 <div class="block">Exits the current transaction scope, rolling back all uncommitted
  modifications made within.</div>
 </td>
 </tr>
-<tr id="i12" class="altColor">
+<tr id="i11" class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#isNested--">isNested</a></span>()</code>
 <div class="block">Returns true if the current transaction scope is nested.</div>
 </td>
 </tr>
-<tr id="i13" class="rowColor">
+<tr id="i12" class="altColor">
 <td class="colFirst"><code>long</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lastLockedIndex--">lastLockedIndex</a></span>()</code>
 <div class="block">Returns the index id of the last lock acquired, within the current scope.</div>
 </td>
 </tr>
-<tr id="i14" class="altColor">
+<tr id="i13" class="rowColor">
 <td class="colFirst"><code>byte[]</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lastLockedKey--">lastLockedKey</a></span>()</code>
 <div class="block">Returns the key of the last lock acquired, within the current scope.</div>
 </td>
 </tr>
-<tr id="i15" class="rowColor">
+<tr id="i14" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lockCheck-long-byte:A-">lockCheck</a></span>(long&nbsp;indexId,
          byte[]&nbsp;key)</code>
 <div class="block">Checks the lock ownership for the given key.</div>
 </td>
 </tr>
-<tr id="i16" class="altColor">
+<tr id="i15" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lockExclusive-long-byte:A-">lockExclusive</a></span>(long&nbsp;indexId,
              byte[]&nbsp;key)</code>
@@ -280,7 +274,7 @@ var activeTableTab = "activeTableTab";
  additional locks.</div>
 </td>
 </tr>
-<tr id="i17" class="rowColor">
+<tr id="i16" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lockExclusive-long-byte:A-long-">lockExclusive</a></span>(long&nbsp;indexId,
              byte[]&nbsp;key,
@@ -289,19 +283,19 @@ var activeTableTab = "activeTableTab";
  additional locks.</div>
 </td>
 </tr>
-<tr id="i18" class="altColor">
+<tr id="i17" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockMode.html" title="enum in org.cojen.tupl">LockMode</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lockMode--">lockMode</a></span>()</code>
 <div class="block">Returns the current lock mode.</div>
 </td>
 </tr>
-<tr id="i19" class="rowColor">
+<tr id="i18" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lockMode-org.cojen.tupl.LockMode-">lockMode</a></span>(<a href="../../../org/cojen/tupl/LockMode.html" title="enum in org.cojen.tupl">LockMode</a>&nbsp;mode)</code>
 <div class="block">Sets the lock mode for the current scope.</div>
 </td>
 </tr>
-<tr id="i20" class="altColor">
+<tr id="i19" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lockShared-long-byte:A-">lockShared</a></span>(long&nbsp;indexId,
           byte[]&nbsp;key)</code>
@@ -309,7 +303,7 @@ var activeTableTab = "activeTableTab";
  locks.</div>
 </td>
 </tr>
-<tr id="i21" class="rowColor">
+<tr id="i20" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lockShared-long-byte:A-long-">lockShared</a></span>(long&nbsp;indexId,
           byte[]&nbsp;key,
@@ -318,20 +312,20 @@ var activeTableTab = "activeTableTab";
  locks.</div>
 </td>
 </tr>
-<tr id="i22" class="altColor">
+<tr id="i21" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lockTimeout-long-java.util.concurrent.TimeUnit-">lockTimeout</a></span>(long&nbsp;timeout,
            <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent">TimeUnit</a>&nbsp;unit)</code>
 <div class="block">Sets the lock timeout for the current scope.</div>
 </td>
 </tr>
-<tr id="i23" class="rowColor">
+<tr id="i22" class="altColor">
 <td class="colFirst"><code>long</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lockTimeout-java.util.concurrent.TimeUnit-">lockTimeout</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent">TimeUnit</a>&nbsp;unit)</code>
 <div class="block">Returns the current lock timeout, in the given unit.</div>
 </td>
 </tr>
-<tr id="i24" class="altColor">
+<tr id="i23" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lockUpgradable-long-byte:A-">lockUpgradable</a></span>(long&nbsp;indexId,
               byte[]&nbsp;key)</code>
@@ -339,7 +333,7 @@ var activeTableTab = "activeTableTab";
  exclusive and additional upgradable locks.</div>
 </td>
 </tr>
-<tr id="i25" class="rowColor">
+<tr id="i24" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lockUpgradable-long-byte:A-long-">lockUpgradable</a></span>(long&nbsp;indexId,
               byte[]&nbsp;key,
@@ -348,25 +342,25 @@ var activeTableTab = "activeTableTab";
  exclusive and additional upgradable locks.</div>
 </td>
 </tr>
-<tr id="i26" class="altColor">
+<tr id="i25" class="rowColor">
 <td class="colFirst"><code>int</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#nestingLevel--">nestingLevel</a></span>()</code>
 <div class="block">Counts the current transaction scope nesting level.</div>
 </td>
 </tr>
-<tr id="i27" class="rowColor">
+<tr id="i26" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#reset--">reset</a></span>()</code>
 <div class="block">Exits all transaction scopes, rolling back all uncommitted modifications.</div>
 </td>
 </tr>
-<tr id="i28" class="altColor">
+<tr id="i27" class="rowColor">
 <td class="colFirst"><code>default void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#reset-java.lang.Throwable-">reset</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang">Throwable</a>&nbsp;cause)</code>
 <div class="block">Reset the transaction due to the given cause.</div>
 </td>
 </tr>
-<tr id="i29" class="rowColor">
+<tr id="i28" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#tryLockExclusive-long-byte:A-long-">tryLockExclusive</a></span>(long&nbsp;indexId,
                 byte[]&nbsp;key,
@@ -375,7 +369,7 @@ var activeTableTab = "activeTableTab";
  additional locks.</div>
 </td>
 </tr>
-<tr id="i30" class="altColor">
+<tr id="i29" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#tryLockShared-long-byte:A-long-">tryLockShared</a></span>(long&nbsp;indexId,
              byte[]&nbsp;key,
@@ -384,7 +378,7 @@ var activeTableTab = "activeTableTab";
  locks.</div>
 </td>
 </tr>
-<tr id="i31" class="rowColor">
+<tr id="i30" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#tryLockUpgradable-long-byte:A-long-">tryLockUpgradable</a></span>(long&nbsp;indexId,
                  byte[]&nbsp;key,
@@ -393,20 +387,20 @@ var activeTableTab = "activeTableTab";
  exclusive and additional upgradable locks.</div>
 </td>
 </tr>
-<tr id="i32" class="altColor">
+<tr id="i31" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#unlock--">unlock</a></span>()</code>
 <div class="block">Fully releases last lock acquired, within the current scope.</div>
 </td>
 </tr>
-<tr id="i33" class="rowColor">
+<tr id="i32" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#unlockToShared--">unlockToShared</a></span>()</code>
 <div class="block">Releases last lock acquired, within the current scope, retaining a
  shared lock.</div>
 </td>
 </tr>
-<tr id="i34" class="altColor">
+<tr id="i33" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#unlockToUpgradable--">unlockToUpgradable</a></span>()</code>
 <div class="block">Releases last lock acquired or upgraded, within the current scope,
@@ -580,23 +574,6 @@ var activeTableTab = "activeTableTab";
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
-</dl>
-</li>
-</ul>
-<a name="commitAllAsync-java.util.function.Consumer-">
-<!--   -->
-</a>
-<ul class="blockList">
-<li class="blockList">
-<h4>commitAllAsync</h4>
-<pre>default&nbsp;void&nbsp;commitAllAsync(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;? super <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a>&gt;&nbsp;cont)</pre>
-<div class="block">Asynchronously commits and exits all transaction scopes. The given continuation is
- invoked after the commit has finished, usually by another thread.</div>
-<dl>
-<dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>cont</code> - asynchronously invoked continuation; receives null if commit succeeded</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if cont is null</dd>
 </dl>
 </li>
 </ul>
