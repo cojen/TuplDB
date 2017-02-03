@@ -18,13 +18,7 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import java.util.concurrent.RecursiveAction;
-
 import java.util.concurrent.TimeUnit;
-
-import java.util.concurrent.locks.Lock;
-
-import java.util.function.Consumer;
 
 /**
  * Defines a logical unit of work. Transaction instances can only be safely
@@ -135,47 +129,6 @@ public interface Transaction {
      * Commits and exits all transaction scopes.
      */
     void commitAll() throws IOException;
-
-    /**
-     * Asynchronously commits and exits all transaction scopes. The given continuation is
-     * invoked after the commit has finished, usually by another thread.
-     *
-     * @param cont asynchronously invoked continuation; receives null if commit succeeded
-     * @throws NullPointerException if cont is null
-     */
-    default void commitAllAsync(Consumer<? super IOException> cont) {
-        if (cont == null) {
-            throw new NullPointerException();
-        }
-
-        new RecursiveAction() {
-            @Override
-            protected void compute() {
-                IOException exception = null;
-                try {
-                    commitAll();
-                } catch (IOException e) {
-                    reset(e);
-                    exception = e;
-                } catch (Throwable e) {
-                    reset(e);
-                    // If this fails with OutOfMemory error... that's bad.
-                    try {
-                        exception = new IOException(e);
-                    } catch (Throwable e2) {
-                        Utils.uncaught(e2);
-                        return;
-                    }
-                }
-
-                try {
-                    cont.accept(exception);
-                } catch (Throwable e) {
-                    Utils.uncaught(e);
-                }
-            }
-        }.fork();
-    }
 
     /**
      * Enters a nested transaction scope.
