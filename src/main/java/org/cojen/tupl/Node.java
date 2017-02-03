@@ -3467,12 +3467,9 @@ final class Node extends Latch implements DatabaseAccess {
                 }
                 if ((header & ENTRY_FRAGMENTED) != 0) {
                     tree.mDatabase.deleteFragments(page, loc, len);
-                    // TODO: If new value needs to be fragmented too, try to
-                    // re-use existing value slot.
-                    if (vfrag == 0) {
-                        // Clear fragmented bit in case new value can be quick copied.
-                        p_bytePut(page, valueHeaderLoc, header & ~ENTRY_FRAGMENTED);
-                    }
+                    // Clearing the fragmented bit prevents the update from double-deleting the
+                    // fragments, and it also allows the old entry slot to be re-used.
+                    p_bytePut(page, valueHeaderLoc, header & ~ENTRY_FRAGMENTED);
                 }
             }
 
