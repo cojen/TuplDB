@@ -376,8 +376,7 @@ final class ReplRedoEngine implements RedoVisitor {
         mOpLatch.acquireShared();
 
         if (e == null) {
-            LocalTransaction txn = new LocalTransaction
-                (mDatabase, txnId, LockMode.UPGRADABLE_READ, INFINITE_TIMEOUT);
+            LocalTransaction txn = newTransaction(txnId);
             mTransactions.insert(scrambledTxnId).init(txn, selectLatch(scrambledTxnId));
 
             // Only release if no exception.
@@ -567,8 +566,7 @@ final class ReplRedoEngine implements RedoVisitor {
 
         if (te == null) {
             // Create the transaction, but don't store it in the transaction table.
-            txn = new LocalTransaction
-                (mDatabase, txnId, LockMode.UPGRADABLE_READ, INFINITE_TIMEOUT);
+            txn = newTransaction(txnId);
             // Latch isn't required because no other operations can access the transaction.
             latch = null;
         } else {
@@ -774,13 +772,19 @@ final class ReplRedoEngine implements RedoVisitor {
         if (e == null) {
             // Create transaction on demand if necessary. Startup transaction recovery only
             // applies to those which generated undo log entries.
-            LocalTransaction txn = new LocalTransaction
-                (mDatabase, txnId, LockMode.UPGRADABLE_READ, INFINITE_TIMEOUT);
+            LocalTransaction txn = newTransaction(txnId);
             e = mTransactions.insert(scrambledTxnId);
             e.init(txn, selectLatch(scrambledTxnId));
         }
 
         return e;
+    }
+
+    private LocalTransaction newTransaction(long txnId) {
+        LocalTransaction txn = new LocalTransaction
+            (mDatabase, txnId, LockMode.UPGRADABLE_READ, INFINITE_TIMEOUT);
+        txn.attach("replication");
+        return txn;
     }
 
     /**
