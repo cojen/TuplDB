@@ -89,7 +89,7 @@ final class Lock {
      * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      * @throws IllegalStateException if too many shared locks
      */
-    LockResult tryLockShared(Latch latch, LockOwner locker, long nanosTimeout) {
+    LockResult tryLockShared(Latch latch, Locker locker, long nanosTimeout) {
         if (mOwner == locker) {
             return mLockCount == ~0 ? OWNED_EXCLUSIVE : OWNED_UPGRADABLE;
         }
@@ -756,13 +756,28 @@ final class Lock {
     }
 
     /**
+     * @param lockType TYPE_SHARED, TYPE_UPGRADABLE, or TYPE_EXCLUSIVE
+     */
+    void detectDeadlock(Locker locker, int lockType, long nanosTimeout)
+        throws DeadlockException
+    {
+        DeadlockDetector detector = new DeadlockDetector(locker);
+        if (detector.scan()) {
+            Object att = findOwnerAttachment(locker, lockType);
+            throw new DeadlockException(nanosTimeout, att,
+                                        detector.mGuilty,
+                                        detector.newDeadlockSet(lockType));
+        }
+    }
+
+    /**
      * Find an exclusive owner attachment, or the first found shared owner attachment. Might
      * acquire and release a shared latch to access the shared owner attachment.
      *
      * @param locker pass null if already latched
      * @param lockType TYPE_SHARED, TYPE_UPGRADABLE, or TYPE_EXCLUSIVE
      */
-    Object findOwnerAttachment(Locker locker, int lockType, int hash) {
+    Object findOwnerAttachment(Locker locker, int lockType) {
         // See note in DeadlockDetector regarding unlatched access to this Lock.
 
         LockOwner owner = mOwner;
@@ -792,10 +807,10 @@ final class Lock {
                 // Need a latch to safely check the shared lock owner hashtable.
                 LockManager manager = locker.mManager;
                 if (manager != null) {
-                    LockManager.LockHT ht = manager.getLockHT(hash);
+                    LockManager.LockHT ht = manager.getLockHT(mHashCode);
                     ht.acquireShared();
                     try {
-                        return findOwnerAttachment(null, lockType, hash);
+                        return findOwnerAttachment(null, lockType);
                     } finally {
                         ht.releaseShared();
                     }
