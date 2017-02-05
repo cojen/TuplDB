@@ -168,13 +168,13 @@ public class UnreplicatedTest {
 
         try {
             // Large value to force a flush.
-            ix.store(txn, "key1".getBytes(), new byte[10000]);
+            ix.store(txn, "key1".getBytes(), new byte[100000]);
             fail();
         } catch (UnmodifiableReplicaException e) {
             // Expected.
         }
 
-        fastAssertArrayEquals(new byte[10000], ix.load(txn, "key1".getBytes()));
+        fastAssertArrayEquals(new byte[100000], ix.load(txn, "key1".getBytes()));
 
         try {
             txn.commit();
