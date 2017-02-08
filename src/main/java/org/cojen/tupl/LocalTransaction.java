@@ -291,14 +291,13 @@ final class LocalTransaction extends Locker implements Transaction {
         pending.mTxnId = mTxnId;
         pending.mCommitPos = commitPos;
         pending.mUndoLog = undo;
+        pending.mHasState = mHasState;
         pending.attach(mAttachment);
+
         mUndoLog = null;
-        int hasState = mHasState;
-        if ((hasState & HAS_TRASH) != 0) {
-            pending.mHasFragmentedTrash = true;
-            mHasState = hasState & ~HAS_TRASH;
-        }
+        mHasState = 0;
         mTxnId = 0;
+
         mRedo.txnCommitPending(pending);
     }
 
