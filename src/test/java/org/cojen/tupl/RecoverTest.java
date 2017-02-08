@@ -717,4 +717,64 @@ public class RecoverTest {
         assertArrayEquals("world!!!".getBytes(), ix.load(null, "hello".getBytes()));
         assertNull(ix.load(null, "xxx".getBytes()));
     }
+
+    @Test
+    public void lostRollback() throws Exception {
+        // A transaction which auto-resets due to an exception must alway issue a rollback
+        // operation into the redo log.
+
+        byte[] k1 = "key1".getBytes();
+        byte[] k2 = "key2".getBytes();
+
+        Index ix = mDb.openIndex("test");
+
+        Transaction t1 = mDb.newTransaction();
+        // lock k1 and write to redo log
+        ix.store(t1, k1, k1);
+
+        Transaction t2 = mDb.newTransaction();
+        // lock k2 and write to redo log
+        ix.store(t2, k2, k2);
+
+        // Perform an operation which auto-resets the transaction on lock timeout. The default
+        // Cursor.commit method calls ViewUtils.commit, which resets the transaction if an
+        // exception is thrown. In case the implementation ever changes, the original code is
+        // copied here.
+        Cursor c = ix.newCursor(t2);
+        t2.lockMode(LockMode.UNSAFE);
+        c.find(k1);
+        t2.lockMode(LockMode.UPGRADABLE_READ);
+        byte[] value = "v2".getBytes();
+        try {
+            // Same as ViewUtils.commit (except with test assertions added).
+            try {
+                c.store(value);
+            } catch (Throwable e) {
+                Transaction txn = c.link();
+                if (txn != null) {
+                    txn.reset(e);
+                } else {
+                    fail("no linked transaction");
+                }
+                throw e;
+            }
+
+            fail("should not be reached");
+        } catch (LockTimeoutException e) {
+            // Expected.
+        }
+
+        // Transaction t1 can write k2, since t1 has released all of its locks.
+        ix.store(t1, k2, k2);
+        t1.commit();
+
+        // If t1 didn't issue a rollback, then recovery will deadlock or fail on the second
+        // attempt to lock k2. A replicated log will deadlock, but a local redo log throws a
+        // LockTimeoutException and aborts recovery.
+        mDb = reopenTempDatabase(mDb, mConfig);
+
+        ix = mDb.openIndex("test");
+        assertArrayEquals(k1, ix.load(null, k1));
+        assertArrayEquals(k2, ix.load(null, k2));
+    }
 }

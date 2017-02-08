@@ -281,7 +281,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
                 }
             }
         } catch (Throwable e) {
-            borked(e, true, true);
+            borked(e, true, true); // rollback = true, rethrow = true
         }
     }
 
@@ -442,7 +442,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
                 }
             }
         } catch (Throwable e) {
-            borked(e, true, true);
+            borked(e, true, true); // rollback = true, rethrow = true
         }
     }
 
@@ -476,7 +476,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
             // Scope and commit states are set upon first actual use of this scope.
             mHasState &= ~(HAS_SCOPE | HAS_COMMIT);
         } catch (Throwable e) {
-            borked(e, true, true);
+            borked(e, true, true); // rollback = true, rethrow = true
         }
     }
 
@@ -541,53 +541,20 @@ final class _LocalTransaction extends _Locker implements Transaction {
                 mSavepoint = parentScope.mSavepoint;
             }
         } catch (Throwable e) {
-            borked(e, true, false);
+            borked(e, true, false); // rollback = true, rethrow = false
         }
     }
 
     @Override
     public final void reset() throws IOException {
-        if (mBorked != null) {
-            super.scopeExitAll();
-            return;
-        }
-
-        try {
+        if (mBorked == null) {
             try {
-                int hasState = mHasState;
-                ParentScope parentScope = mParentScope;
-                while (parentScope != null) {
-                    if ((hasState & HAS_SCOPE) != 0) {
-                        mContext.redoRollback(mRedo, mTxnId);
-                    }
-                    hasState = parentScope.mHasState;
-                    parentScope = parentScope.mParentScope;
-                }
-                if ((hasState & HAS_SCOPE) != 0) {
-                    mContext.redoRollbackFinal(mRedo, mTxnId);
-                }
-                mHasState = 0;
-            } catch (UnmodifiableReplicaException e) {
-                // Suppress and let undo proceed.
+                rollback();
+            } catch (Throwable e) {
+                borked(e, true, false); // rollback = true, rethrow = false
             }
-
-            _UndoLog undo = mUndoLog;
-            if (undo != null) {
-                undo.rollback();
-            }
-
-            // Exit and release all locks.
+        } else {
             super.scopeExitAll();
-
-            mSavepoint = 0;
-            if (undo != null) {
-                mContext.unregister(undo);
-                mUndoLog = null;
-            }
-
-            mTxnId = 0;
-        } catch (Throwable e) {
-            borked(e, true, false);
         }
     }
 
@@ -597,11 +564,45 @@ final class _LocalTransaction extends _Locker implements Transaction {
             try {
                 reset();
             } catch (Throwable e) {
-                // Ignore.
+                // Ignore. Transaction is borked as a side-effect.
             }
         } else {
-            borked(cause, true, false);
+            borked(cause, true, false); // rollback = true, rethrow = false
         }
+    }
+
+    private void rollback() throws IOException {
+        int hasState = mHasState;
+        ParentScope parentScope = mParentScope;
+        while (parentScope != null) {
+            hasState |= parentScope.mHasState;
+            parentScope = parentScope.mParentScope;
+        }
+
+        try {
+            if ((hasState & (HAS_SCOPE | HAS_COMMIT)) != 0) {
+                mContext.redoRollbackFinal(mRedo, mTxnId);
+            }
+            mHasState = 0;
+        } catch (UnmodifiableReplicaException e) {
+            // Suppress and let undo proceed.
+        }
+
+        _UndoLog undo = mUndoLog;
+        if (undo != null) {
+            undo.rollback();
+        }
+
+        // Exit and release all locks.
+        super.scopeExitAll();
+
+        mSavepoint = 0;
+        if (undo != null) {
+            mContext.unregister(undo);
+            mUndoLog = null;
+        }
+
+        mTxnId = 0;
     }
 
     @Override
@@ -817,7 +818,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
                     }
                 }
             } catch (Throwable e) {
-                borked(e, false, true);
+                borked(e, false, true); // rollback = false, rethrow = true
             }
         }
     }
@@ -907,7 +908,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
         try {
             undoLog().push(indexId, op, payload, off, len);
         } catch (Throwable e) {
-            borked(e, false, true);
+            borked(e, false, true); // rollback = false, rethrow = true
         }
     }
 
@@ -919,7 +920,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
         try {
             undoLog().push(indexId, _UndoLog.OP_UNINSERT, key, 0, key.length);
         } catch (Throwable e) {
-            borked(e, false, true);
+            borked(e, false, true); // rollback = false, rethrow = true
         }
     }
 
@@ -935,7 +936,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
         try {
             undoLog().push(indexId, _UndoLog.OP_UNDELETE_FRAGMENTED, payload, off, len);
         } catch (Throwable e) {
-            borked(e, false, true);
+            borked(e, false, true); // rollback = false, rethrow = true
         }
     }
 
@@ -981,24 +982,18 @@ final class _LocalTransaction extends _Locker implements Transaction {
                 mBorked = borked;
             } else if (rollback) {
                 // Attempt to rollback the mess and release the locks.
-                _UndoLog undo = mUndoLog;
                 try {
-                    if (undo != null) {
-                        undo.rollback();
-                    }
-                    super.scopeExitAll();
-                    if (undo != null) {
-                        mContext.unregister(undo);
-                        mUndoLog = null;
-                    }
-                } catch (Throwable undoFailed) {
-                    // Undo failed. Locks cannot be released, ensuring other transactions
+                    rollback();
+                } catch (Throwable rollbackFailed) {
+                    // Rollback failed. Locks cannot be released, ensuring other transactions
                     // cannot see the partial changes made by this transaction. A restart is
                     // required, which then performs a clean rollback.
 
+                    borked.addSuppressed(rollbackFailed);
+
                     // Also panic the database if not done so already.
                     try {
-                        Utils.closeOnFailure(mDatabase, undoFailed);
+                        Utils.closeOnFailure(mDatabase, borked);
                     } catch (Throwable e) {
                         // Ignore.
                     }
@@ -1006,10 +1001,6 @@ final class _LocalTransaction extends _Locker implements Transaction {
                     // Discard all of the locks, making it impossible for them to be released
                     // even if the application later calls reset.
                     discardAllLocks();
-
-                    Utils.initCause(borked, mDatabase.closedCause());
-                    Utils.initCause(undoFailed, borked);
-                    borked = undoFailed;
                 }
 
                 // Setting this field permits future operations like reset to simply release
