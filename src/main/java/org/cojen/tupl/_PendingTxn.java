@@ -33,7 +33,7 @@ final class _PendingTxn extends _LockOwner {
     long mTxnId;
     long mCommitPos;
     _UndoLog mUndoLog;
-    boolean mHasFragmentedTrash;
+    int mHasState;
     private Object mAttachment;
 
     _PendingTxn mPrev;
@@ -98,7 +98,7 @@ final class _PendingTxn extends _LockOwner {
             mContext.unregister(undo);
         }
 
-        if (mHasFragmentedTrash) {
+        if ((mHasState & _LocalTransaction.HAS_TRASH) != 0) {
             db.fragmentedTrash().emptyTrash(mTxnId);
         }
     }
