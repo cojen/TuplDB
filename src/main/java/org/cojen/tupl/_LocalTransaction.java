@@ -733,6 +733,8 @@ final class _LocalTransaction extends _Locker implements Transaction {
         final CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
         try {
             undoLog().pushCustom(message);
+        } catch (Throwable e) {
+            borked(e, true, true); // rollback = true, rethrow = true
         } finally {
             shared.release();
         }
@@ -963,9 +965,11 @@ final class _LocalTransaction extends _Locker implements Transaction {
     /**
      * Rethrows the given exception or a replacement, unless the database is closed.
      *
-     * @param rollback Rollback should only be performed by user operations -- the public API.
-     * Otherwise a latch deadlock can occur.
-     * @param rethrow true to always throw an exception
+     * @param rollback rollback should only be performed by operations which don't hold tree
+     * node latches; otherwise a latch deadlock can occur as the undo rollback attempts to
+     * apply compensating actions against the tree nodes.
+     * @param rethrow true to always throw an exception; false to suppress rethrowing if
+     * database is known to be closed
      */
     final void borked(Throwable borked, boolean rollback, boolean rethrow) {
         // Note: The mBorked field is set only if the database is closed or if some action in
@@ -974,7 +978,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
         // called. Any action which releases locks must only do so after it has issued a
         // rollback operation to the undo log.
 
-        boolean closed = mDatabase.isClosed();
+        boolean closed = mDatabase == null ? false : mDatabase.isClosed();
 
         if (mBorked == null) {
             if (closed) {

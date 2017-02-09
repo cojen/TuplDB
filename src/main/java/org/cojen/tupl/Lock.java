@@ -49,11 +49,11 @@ final class Lock {
     // Exclusive or upgradable locker.
     LockOwner mOwner;
 
-    // LockOwner instance if one shared locker, or else a hashtable for more.
-    // Field is re-used to indicate when an exclusive lock has ghosted an
-    // entry, which should be deleted when the transaction commits. A C-style
-    // union type would be handy. Object is a Tree if entry is ghosted.
-    Object mSharedLockOwnersObj;
+    // LockOwner instance if one shared locker, or else a hashtable for more. Field is re-used
+    // to indicate when an exclusive lock has ghosted an entry, which should be deleted when
+    // the transaction commits. A C-style union type would be handy. Object is a
+    // CursorFrame.Ghost if entry is ghosted.
+    private Object mSharedLockOwnersObj;
 
     // Waiters for upgradable lock. Contains only regular waiters.
     LatchCondition mQueueU;
@@ -566,14 +566,15 @@ final class Lock {
             return;
         }
 
+        final CursorFrame.Ghost frame = (CursorFrame.Ghost) obj;
+        mSharedLockOwnersObj = null;
+
         final LocalDatabase db = mOwner.getDatabase();
         if (db == null) {
             // Database was closed.
             return;
         }
 
-        final CursorFrame.Ghost frame = (CursorFrame.Ghost) obj;
-        mSharedLockOwnersObj = null;
         byte[] key = mKey;
         boolean unlatched = false;
 
@@ -753,6 +754,24 @@ final class Lock {
 
     boolean matches(long indexId, byte[] key, int hash) {
         return mHashCode == hash && mIndexId == indexId && Arrays.equals(mKey, key);
+    }
+
+    /**
+     * Must hold exclusive lock to be valid.
+     */
+    void setGhostFrame(CursorFrame.Ghost frame) {
+        mSharedLockOwnersObj = frame;
+    }
+
+    void setSharedLockOwner(LockOwner owner) {
+        mSharedLockOwnersObj = owner;
+    }
+
+    /**
+     * Is null, a LockOwner, a LockOwnerHTEntry[], or a CursorFrame.Ghost.
+     */
+    Object getSharedLockOwner() {
+        return mSharedLockOwnersObj;
     }
 
     /**

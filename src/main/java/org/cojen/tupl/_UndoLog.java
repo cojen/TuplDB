@@ -1048,10 +1048,12 @@ final class _UndoLog implements _DatabaseAccess {
                     } finally {
                         p_delete(pentry);
                     }
-                    
+
                     scope.addLock(mActiveIndexId, key)
-                        // Indicate that a ghost must be deleted if transaction is committed.
-                        .mSharedLockOwnersObj = mDatabase.anyIndexById(mActiveIndexId);
+                        // Indicate that a ghost must be deleted when the transaction is
+                        // committed. When the frame is uninitialized, the _Node.deleteGhost
+                        // method uses the slow path and searches for the entry.
+                        .setGhostFrame(new _CursorFrame.Ghost());
                 }
                 break;
 

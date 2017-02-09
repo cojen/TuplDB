@@ -49,11 +49,11 @@ final class _Lock {
     // Exclusive or upgradable locker.
     _LockOwner mOwner;
 
-    // _LockOwner instance if one shared locker, or else a hashtable for more.
-    // Field is re-used to indicate when an exclusive lock has ghosted an
-    // entry, which should be deleted when the transaction commits. A C-style
-    // union type would be handy. Object is a _Tree if entry is ghosted.
-    Object mSharedLockOwnersObj;
+    // _LockOwner instance if one shared locker, or else a hashtable for more. Field is re-used
+    // to indicate when an exclusive lock has ghosted an entry, which should be deleted when
+    // the transaction commits. A C-style union type would be handy. Object is a
+    // _CursorFrame.Ghost if entry is ghosted.
+    private Object mSharedLockOwnersObj;
 
     // Waiters for upgradable lock. Contains only regular waiters.
     LatchCondition mQueueU;
@@ -566,14 +566,15 @@ final class _Lock {
             return;
         }
 
+        final _CursorFrame.Ghost frame = (_CursorFrame.Ghost) obj;
+        mSharedLockOwnersObj = null;
+
         final _LocalDatabase db = mOwner.getDatabase();
         if (db == null) {
             // Database was closed.
             return;
         }
 
-        final _CursorFrame.Ghost frame = (_CursorFrame.Ghost) obj;
-        mSharedLockOwnersObj = null;
         byte[] key = mKey;
         boolean unlatched = false;
 
@@ -753,6 +754,24 @@ final class _Lock {
 
     boolean matches(long indexId, byte[] key, int hash) {
         return mHashCode == hash && mIndexId == indexId && Arrays.equals(mKey, key);
+    }
+
+    /**
+     * Must hold exclusive lock to be valid.
+     */
+    void setGhostFrame(_CursorFrame.Ghost frame) {
+        mSharedLockOwnersObj = frame;
+    }
+
+    void setSharedLockOwner(_LockOwner owner) {
+        mSharedLockOwnersObj = owner;
+    }
+
+    /**
+     * Is null, a _LockOwner, a LockOwnerHTEntry[], or a _CursorFrame.Ghost.
+     */
+    Object getSharedLockOwner() {
+        return mSharedLockOwnersObj;
     }
 
     /**
