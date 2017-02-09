@@ -1,6 +1,13 @@
 Changelog
 =========
 
+v1.3.12
+-------
+* Fix recovery handling of fragmented and deleted entries.
+* Ensure that broken transactions always attempt to write rollback operations into the redo log.
+* Improved performance of writing into the redo log when under heavy contention.
+* More latch performance tweaks.
+
 v1.3.11 (2017-01-28)
 -------
 * New latch implementation which offers higher performance on multi-core hardware and also uses
