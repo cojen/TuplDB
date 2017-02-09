@@ -172,6 +172,30 @@ public class RecoverTest {
     }
 
     @Test
+    public void recoverDeleteGhost() throws Exception {
+        byte[] k1 = "k1".getBytes();
+        byte[] k2 = "k2".getBytes();
+        byte[] value = "value".getBytes();
+
+        Index ix = mDb.openIndex("test");
+
+        Transaction txn = mDb.newTransaction();
+        ix.store(txn, k2, value);
+        txn.commit();
+
+        txn = mDb.newTransaction();
+        ix.store(txn, k2, null);
+        mDb.checkpoint();
+        ix.store(txn, k1, value);
+        txn.commit();
+
+        mDb = reopenTempDatabase(mDb, mConfig);
+        ix = mDb.openIndex("test");
+        assertArrayEquals(value, ix.load(null, k1));
+        assertEquals(null, ix.load(null, k2));
+    }
+
+    @Test
     public void scopeRollback1() throws Exception {
         scopeRollback(0, false);
     }

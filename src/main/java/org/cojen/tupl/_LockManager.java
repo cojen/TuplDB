@@ -178,7 +178,7 @@ final class _LockManager {
         LockHT ht = getLockHT(hash);
         ht.acquireExclusive();
         try {
-            ht.lockFor(indexId, key, hash).mSharedLockOwnersObj = frame;
+            ht.lockFor(indexId, key, hash).setGhostFrame(frame);
         } finally {
             ht.releaseExclusive();
         }
@@ -336,7 +336,7 @@ final class _LockManager {
 
                         lock.mLockCount = type;
                         if (type == TYPE_SHARED) {
-                            lock.mSharedLockOwnersObj = locker;
+                            lock.setSharedLockOwner(locker);
                         } else {
                             lock.mOwner = locker;
                         }
@@ -483,7 +483,7 @@ final class _LockManager {
                                 mSize--;
                             }
 
-                            e.mSharedLockOwnersObj = null;
+                            e.setSharedLockOwner((_LockOwner) null);
 
                             // Interrupt all waiters.
 

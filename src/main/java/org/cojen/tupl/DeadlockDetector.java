@@ -116,7 +116,7 @@ final class DeadlockDetector {
             }
 
             LockOwner owner = lock.mOwner;
-            Object shared = lock.mSharedLockOwnersObj;
+            Object shared = lock.getSharedLockOwner();
 
             // If the owner is the locker, then it is trying to upgrade. It's
             // waiting for another locker to release the shared lock.

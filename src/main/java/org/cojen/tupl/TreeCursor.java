@@ -3000,6 +3000,9 @@ class TreeCursor implements CauseCloseable, Cursor {
                 }
             } catch (Throwable e) {
                 shared.release();
+                if (txn != null) {
+                    txn.reset(e);
+                }
                 throw e;
             }
         } else {
@@ -3055,6 +3058,9 @@ class TreeCursor implements CauseCloseable, Cursor {
                 }
             } catch (Throwable e) {
                 shared.release();
+                if (txn != null) {
+                    txn.reset(e);
+                }
                 throw e;
             }
         }
