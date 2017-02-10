@@ -1768,16 +1768,16 @@ final class _LocalDatabase extends AbstractDatabase {
             context.flush();
 
             redo.force(true);
-
-            // When shutdown hook is invoked, don't close the redo writer. It may interfere
-            // with other shutdown hooks, causing unexpected exceptions to be thrown during the
-            // whole shutdown sequence.
-
-            if (op == RedoOps.OP_CLOSE) {
-                redo.close();
-            }
         } catch (IOException e) {
             // Ignore.
+        }
+
+        // When shutdown hook is invoked, don't close the redo writer. It may interfere with
+        // other shutdown hooks, causing unexpected exceptions to be thrown during the whole
+        // shutdown sequence.
+
+        if (op == RedoOps.OP_CLOSE) {
+            Utils.closeQuietly(null, redo);
         }
     }
 
