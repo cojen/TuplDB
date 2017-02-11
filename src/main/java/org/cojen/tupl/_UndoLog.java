@@ -129,6 +129,7 @@ final class _UndoLog implements _DatabaseAccess {
 
     // Top node, if required. Nodes are not used for logs which fit into local buffer.
     private _Node mNode;
+    private int mNodeTopPos;
 
     private long mActiveIndexId;
 
@@ -143,34 +144,41 @@ final class _UndoLog implements _DatabaseAccess {
     }
 
     /**
-     * Ensures all entries are stored in persistable nodes. Caller must hold db
-     * commit lock.
+     * Ensures all entries are stored in persistable nodes. Caller must hold db commit lock.
      */
     private void persistReady() throws IOException {
-        if (mNode != null) {
-            return;
-        }
+        _Node node = mNode;
 
-        _Node node;
-        byte[] buffer = mBuffer;
-        if (buffer == null) {
-            mNode = node = allocUnevictableNode(0);
-            // Set pointer to top entry (none at the moment).
-            node.undoTop(pageSize(node.mPage));
-            node.releaseExclusive();
+        if (node != null) {
+            node.acquireExclusive();
+            try {
+                mDatabase.markUnmappedDirty(node);
+            } catch (Throwable e) {
+                node.releaseExclusive();
+                throw e;
+            }
         } else {
             mNode = node = allocUnevictableNode(0);
-            int pos = mBufferPos;
-            int size = buffer.length - pos;
-            long page = node.mPage;
-            int newPos = pageSize(page) - size;
-            p_copyFromArray(buffer, pos, page, newPos, size);
-            // Set pointer to top entry.
-            node.undoTop(newPos);
-            mBuffer = null;
-            mBufferPos = 0;
-            node.releaseExclusive();
+
+            byte[] buffer = mBuffer;
+            if (buffer == null) {
+                // Set pointer to top entry (none at the moment).
+                mNodeTopPos = pageSize(node.mPage);
+            } else {
+                int pos = mBufferPos;
+                int size = buffer.length - pos;
+                long page = node.mPage;
+                int newPos = pageSize(page) - size;
+                p_copyFromArray(buffer, pos, page, newPos, size);
+                // Set pointer to top entry.
+                mNodeTopPos = newPos;
+                mBuffer = null;
+                mBufferPos = 0;
+            }
         }
+
+        node.undoTop(mNodeTopPos);
+        node.releaseExclusive();
     }
 
     private int pageSize(long page) {
@@ -284,7 +292,12 @@ final class _UndoLog implements _DatabaseAccess {
         if (node != null) {
             // Push into allocated node, which must be marked dirty.
             node.acquireExclusive();
-            mDatabase.markUnmappedDirty(node);
+            try {
+                mDatabase.markUnmappedDirty(node);
+            } catch (Throwable e) {
+                node.releaseExclusive();
+                throw e;
+            }
         } else quick: {
             // Try to push into a local buffer before allocating a node.
             byte[] buffer = mBuffer;
@@ -299,7 +312,7 @@ final class _UndoLog implements _DatabaseAccess {
                     // Required capacity is large, so just use a node.
                     mNode = node = allocUnevictableNode(0);
                     // Set pointer to top entry (none at the moment).
-                    node.undoTop(pageSize);
+                    mNodeTopPos = pageSize;
                     break quick;
                 }
             } else {
@@ -320,7 +333,7 @@ final class _UndoLog implements _DatabaseAccess {
                         int newPos = pageSize(page) - size;
                         p_copyFromArray(buffer, pos, page, newPos, size);
                         // Set pointer to top entry.
-                        node.undoTop(newPos);
+                        mNodeTopPos = newPos;
                         mBuffer = null;
                         mBufferPos = 0;
                         break quick;
@@ -334,19 +347,17 @@ final class _UndoLog implements _DatabaseAccess {
             return;
         }
 
-        // Re-use garbage as pointer to top entry.
-        int pos = node.undoTop();
+        int pos = mNodeTopPos;
         int available = pos - HEADER_SIZE;
         if (available >= encodedLen) {
             writePageEntry(node.mPage, pos -= encodedLen, op, payload, off, len);
-            node.undoTop(pos);
             node.releaseExclusive();
+            mNodeTopPos = pos;
             mLength += encodedLen;
             return;
         }
 
         // Payload doesn't fit into node, so break it up.
-        final int originalPos = node.undoTop();
         int remaining = len;
 
         while (true) {
@@ -356,14 +367,12 @@ final class _UndoLog implements _DatabaseAccess {
             remaining -= amt;
             long page = node.mPage;
             p_copyFromArray(payload, off + remaining, page, pos, amt);
-            node.undoTop(pos);
 
             if (remaining <= 0 && available >= (1 + varIntLen)) {
                 if (varIntLen > 0) {
                     p_uintPutVar(page, pos -= varIntLen, len);
                 }
                 p_bytePut(page, --pos, op);
-                node.undoTop(pos);
                 node.releaseExclusive();
                 break;
             }
@@ -376,22 +385,22 @@ final class _UndoLog implements _DatabaseAccess {
                 while (node != mNode) {
                     node = popNode(node, true);
                 }
-                node.undoTop(originalPos);
                 node.releaseExclusive();
                 throw e;
             }
 
-            newNode.undoTop(pos = pageSize(page));
-            available = pos - HEADER_SIZE;
-
+            node.undoTop(pos);
             mDatabase.nodeMapPut(node);
             node.releaseExclusive();
             node.makeEvictable();
 
             node = newNode;
+            pos = pageSize(page);
+            available = pos - HEADER_SIZE;
         }
 
         mNode = node;
+        mNodeTopPos = pos;
         mLength += encodedLen;
     }
 
@@ -706,7 +715,7 @@ final class _UndoLog implements _DatabaseAccess {
     }
 
     /**
-     * @param delete true to delete nodes
+     * @param delete true to delete empty nodes
      * @return last pushed op, or 0 if empty
      */
     final byte peek(boolean delete) throws IOException {
@@ -718,9 +727,8 @@ final class _UndoLog implements _DatabaseAccess {
         node.acquireExclusive();
         while (true) {
             long page = node.mPage;
-            int pos = node.undoTop();
-            if (pos < pageSize(page)) {
-                byte op = p_byteGet(page, pos);
+            if (mNodeTopPos < pageSize(page)) {
+                byte op = p_byteGet(page, mNodeTopPos);
                 node.releaseExclusive();
                 return op;
             }
@@ -769,11 +777,9 @@ final class _UndoLog implements _DatabaseAccess {
 
         node.acquireExclusive();
         long page;
-        int pos;
         while (true) {
             page = node.mPage;
-            pos = node.undoTop();
-            if (pos < pageSize(page)) {
+            if (mNodeTopPos < pageSize(page)) {
                 break;
             }
             if ((node = popNode(node, delete)) == null) {
@@ -782,10 +788,9 @@ final class _UndoLog implements _DatabaseAccess {
             }
         }
 
-        if ((opRef[0] = p_byteGet(page, pos++)) < PAYLOAD_OP) {
+        if ((opRef[0] = p_byteGet(page, mNodeTopPos++)) < PAYLOAD_OP) {
             mLength -= 1;
-            node.undoTop(pos);
-            if (pos >= pageSize(page)) {
+            if (mNodeTopPos >= pageSize(page)) {
                 node = popNode(node, delete);
             }
             if (node != null) {
@@ -796,9 +801,9 @@ final class _UndoLog implements _DatabaseAccess {
 
         int payloadLen;
         {
-            payloadLen = p_uintGetVar(page, pos);
+            payloadLen = p_uintGetVar(page, mNodeTopPos);
             int varIntLen = p_uintVarSize(payloadLen);
-            pos += varIntLen;
+            mNodeTopPos += varIntLen;
             mLength -= 1 + varIntLen + payloadLen;
         }
 
@@ -806,13 +811,12 @@ final class _UndoLog implements _DatabaseAccess {
         int entryPos = 0;
 
         while (true) {
-            int avail = Math.min(payloadLen, pageSize(page) - pos);
-            p_copyToArray(page, pos, entry, entryPos, avail);
+            int avail = Math.min(payloadLen, pageSize(page) - mNodeTopPos);
+            p_copyToArray(page, mNodeTopPos, entry, entryPos, avail);
             payloadLen -= avail;
-            pos += avail;
-            node.undoTop(pos);
+            mNodeTopPos += avail;
 
-            if (pos >= pageSize(page)) {
+            if (mNodeTopPos >= pageSize(page)) {
                 node = popNode(node, delete);
             }
 
@@ -828,7 +832,6 @@ final class _UndoLog implements _DatabaseAccess {
             }
 
             page = node.mPage;
-            pos = node.undoTop();
             entryPos += avail;
         }
     }
@@ -868,7 +871,10 @@ final class _UndoLog implements _DatabaseAccess {
             parent.releaseExclusive();
         }
 
-        return mNode = lowerNode;
+        mNode = lowerNode;
+        mNodeTopPos = lowerNode == null ? 0 : lowerNode.undoTop();
+
+        return lowerNode;
     }
 
     private static void writeBufferEntry(byte[] dest, int destPos,
@@ -936,7 +942,7 @@ final class _UndoLog implements _DatabaseAccess {
             writeHeaderToMaster(workspace);
             encodeLongLE(workspace, (8 + 8), mLength);
             encodeLongLE(workspace, (8 + 8 + 8), node.mId);
-            encodeShortLE(workspace, (8 + 8 + 8 + 8), node.undoTop());
+            encodeShortLE(workspace, (8 + 8 + 8 + 8), mNodeTopPos);
             master.doPush(OP_LOG_REF, workspace, 0, (8 + 8 + 8 + 8 + 2), 1);
         }
         return workspace;
@@ -951,7 +957,9 @@ final class _UndoLog implements _DatabaseAccess {
         _UndoLog log = new _UndoLog(db, 0);
         // Length is not recoverable.
         log.mLength = Long.MAX_VALUE;
-        (log.mNode = readUndoLogNode(db, nodeId)).releaseExclusive();
+        log.mNode = readUndoLogNode(db, nodeId);
+        log.mNodeTopPos = log.mNode.undoTop();
+        log.mNode.releaseExclusive();
         return log;
     }
 
@@ -1146,7 +1154,7 @@ final class _UndoLog implements _DatabaseAccess {
             long nodeId = decodeLongLE(masterLogEntry, (8 + 8 + 8));
             int topEntry = decodeUnsignedShortLE(masterLogEntry, (8 + 8 + 8 + 8));
             log.mNode = readUndoLogNode(mDatabase, nodeId);
-            log.mNode.undoTop(topEntry);
+            log.mNodeTopPos = topEntry;
             log.mNode.releaseExclusive();
         }
 
