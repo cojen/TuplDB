@@ -615,22 +615,17 @@ final class _LocalDatabase extends AbstractDatabase {
                 }
             }
 
-            // Key size is limited to ensure that internal nodes and leaf nodes can hold at
-            // least two keys. All nodes have a 12-byte header, large keys have a 2-byte
-            // header, and each node entry has a 2-byte pointer to it. Internal nodes have an
-            // 8-byte field for each child pointer, and leaf nodes require at least 11 bytes to
-            // hold a fragmented value. The magic constant for internal nodes is (12 + 2 + 2 +
-            // 2 + 2 + 8 * 3) = 44, and half that is 22. Leaf node constant is (12 + 2 + 2 + 2
-            // + 2 + 11 * 2) = 42, and half that is 21. The internal node constant is more
-            // restrictive, and so that's what's used.
-            mMaxKeySize = Math.min(16383, (pageSize >> 1) - 22);
-
             // Limit maximum non-fragmented entry size to 0.75 of usable node size.
             mMaxEntrySize = ((pageSize - _Node.TN_HEADER_SIZE) * 3) >> 2;
 
             // Limit maximum fragmented entry size to guarantee that 2 entries fit. Each also
             // requires 2 bytes for pointer and up to 3 bytes for value length field.
             mMaxFragmentedEntrySize = (pageSize - _Node.TN_HEADER_SIZE - (2 + 3 + 2 + 3)) >> 1;
+
+            // Limit the maximum key size to allow enough room for a fragmented value. It might
+            // require up to 11 bytes for fragment encoding (when length is >= 65536), and tho
+            // additional bytes are required for the value header inside the tree node.
+            mMaxKeySize = Math.min(16383, mMaxFragmentedEntrySize - (2 + 11));
 
             mFragmentInodeLevelCaps = calculateInodeLevelCaps(mPageSize);
 
