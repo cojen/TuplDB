@@ -3609,15 +3609,14 @@ final class _LocalDatabase extends AbstractDatabase {
         long pointerSpace = pageCount * 6;
 
         byte[] newValue;
+        final int inline; // length of inline field size
         if (remainder <= max && remainder < 65536
-            && (pointerSpace <= (max + (6 - 2) - remainder)))
+            && (pointerSpace <= (max + 6 - (inline = remainder == 0 ? 0 : 2) - remainder)))
         {
             // Remainder fits inline, minimizing internal fragmentation. All
             // extra pages will be full. All pointers fit too; encode direct.
 
             // Conveniently, 2 is the header bit and the inline length field size.
-            final int inline = remainder == 0 ? 0 : 2;
-
             byte header = (byte) inline;
             final int offset;
             if (vlength < (1L << (2 * 8))) {
