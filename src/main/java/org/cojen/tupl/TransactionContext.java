@@ -764,6 +764,7 @@ final class TransactionContext extends Latch implements Flushable {
         } finally {
             if (mRedoWriterLatched) {
                 mRedoWriter.releaseExclusive();
+                mRedoWriterLatched = false;
             }
         }
 
