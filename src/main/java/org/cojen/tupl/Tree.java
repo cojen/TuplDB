@@ -175,26 +175,15 @@ class Tree implements View, Index {
             }
 
             long childId = node.retrieveChildRefId(childPos);
-            Node childNode = mDatabase.nodeMapGet(childId);
+            Node childNode = mDatabase.nodeMapGetShared(childId);
 
             if (childNode != null) {
-                childNode.acquireShared();
-
-                // Need to check again in case evict snuck in.
-                if (childId == childNode.mId) {
-                    node.releaseShared();
-                    node = childNode;
-                    if (node.mSplit != null) {
-                        node = node.mSplit.selectNode(node, key);
-                    }
-                    node.used(rnd);
-                    continue;
-                }
-
-                childNode.releaseShared();
+                node.releaseShared();
+                node = childNode;
+                node.used(rnd);
+            } else {
+                node = node.loadChild(mDatabase, childId, Node.OPTION_PARENT_RELEASE_SHARED);
             }
-
-            node = node.loadChild(mDatabase, childId, Node.OPTION_PARENT_RELEASE_SHARED);
 
             if (node.mSplit != null) {
                 node = node.mSplit.selectNode(node, key);
@@ -860,20 +849,14 @@ class Tree implements View, Index {
                         break toLower;
                     }
                     long childId = node.retrieveChildRefId(pos);
-                    Node child = mDatabase.nodeMapGet(childId);
+                    Node child = mDatabase.nodeMapGetExclusive(childId);
                     if (child != null) {
-                        child.acquireExclusive();
-                        // Need to check again in case evict snuck in.
-                        if (childId != child.mId) {
-                            child.releaseExclusive();
-                        } else {
-                            frame = new CursorFrame(frame);
-                            frame.bind(node, pos);
-                            node.releaseExclusive();
-                            node = child;
-                            pos = 0;
-                            continue toLower;
-                        }
+                        frame = new CursorFrame(frame);
+                        frame.bind(node, pos);
+                        node.releaseExclusive();
+                        node = child;
+                        pos = 0;
+                        continue toLower;
                     }
                     pos += 2;
                 }

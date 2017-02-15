@@ -872,16 +872,16 @@ final class Node extends Latch implements DatabaseAccess {
         final int highestPtr = childPtr + (highestInternalPos() << 2);
         for (; childPtr <= highestPtr; childPtr += 8) {
             long childId = p_uint48GetLE(mPage, childPtr);
-            Node child = db.nodeMapGet(childId);
+            Node child = db.nodeMapGetExclusive(childId);
             if (child != null) {
-                child.acquireExclusive();
-                if (childId == child.mId) {
+                try {
                     if (closed == null) {
                         closed = createClosedNode();
                     }
                     child.invalidateCursors(closed);
+                } finally {
+                    child.releaseExclusive();
                 }
-                child.releaseExclusive();
             }
         }
     }

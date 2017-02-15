@@ -2346,17 +2346,14 @@ final class LocalDatabase extends AbstractDatabase {
             }
         } else {
             // Check if root node is still around after tree was closed.
-            Node rootNode = nodeMapGet(rootId);
+            Node rootNode = nodeMapGetAndRemove(rootId);
 
             if (rootNode != null) {
-                rootNode.acquireShared();
                 try {
-                    if (rootId == rootNode.mId) {
-                        rootNode.makeUnevictable();
-                        return rootNode;
-                    }
+                    rootNode.makeUnevictable();
+                    return rootNode;
                 } finally {
-                    rootNode.releaseShared();
+                    rootNode.releaseExclusive();
                 }
             }
 
@@ -2368,7 +2365,6 @@ final class LocalDatabase extends AbstractDatabase {
                 } finally {
                     rootNode.releaseExclusive();
                 }
-                nodeMapPut(rootNode);
                 return rootNode;
             } catch (Throwable e) {
                 rootNode.makeEvictableNow();
@@ -2824,6 +2820,42 @@ final class LocalDatabase extends AbstractDatabase {
     }
 
     /**
+     * @return shared latched node if found; null if not found
+     */
+    Node nodeMapGetShared(long nodeId) {
+        int hash = Long.hashCode(nodeId);
+        while (true) {
+            Node node = nodeMapGet(nodeId, hash);
+            if (node == null) {
+                return null;
+            }
+            node.acquireShared();
+            if (nodeId == node.mId) {
+                return node;
+            }
+            node.releaseShared();
+        }
+    }
+
+    /**
+     * @return exclusively latched node if found; null if not found
+     */
+    Node nodeMapGetExclusive(long nodeId) {
+        int hash = Long.hashCode(nodeId);
+        while (true) {
+            Node node = nodeMapGet(nodeId, hash);
+            if (node == null) {
+                return null;
+            }
+            node.acquireExclusive();
+            if (nodeId == node.mId) {
+                return node;
+            }
+            node.releaseExclusive();
+        }
+    }
+
+    /**
      * Returns unconfirmed node if found. Caller must latch and confirm that node identifier
      * matches, in case an eviction snuck in.
      */
@@ -2965,11 +2997,13 @@ final class LocalDatabase extends AbstractDatabase {
         latch.releaseExclusive();
     }
 
-    void nodeMapRemove(final Node node) {
-        nodeMapRemove(node, Long.hashCode(node.mId));
+    boolean nodeMapRemove(final Node node) {
+        return nodeMapRemove(node, Long.hashCode(node.mId));
     }
 
-    void nodeMapRemove(final Node node, final int hash) {
+    boolean nodeMapRemove(final Node node, final int hash) {
+        boolean found = false;
+
         final Latch[] latches = mNodeMapLatches;
         final Latch latch = latches[hash & (latches.length - 1)];
         latch.acquireExclusive();
@@ -2978,10 +3012,12 @@ final class LocalDatabase extends AbstractDatabase {
         final int index = hash & (table.length - 1);
         Node e = table[index];
         if (e == node) {
+            found = true;
             table[index] = e.mNodeMapNext;
         } else while (e != null) {
             Node next = e.mNodeMapNext;
             if (next == node) {
+                found = true;
                 e.mNodeMapNext = next.mNodeMapNext;
                 break;
             }
@@ -2991,6 +3027,8 @@ final class LocalDatabase extends AbstractDatabase {
         node.mNodeMapNext = null;
 
         latch.releaseExclusive();
+
+        return found;
     }
 
     /**
@@ -2999,15 +3037,11 @@ final class LocalDatabase extends AbstractDatabase {
      * @return node with shared latch held
      */
     Node nodeMapLoadFragment(long nodeId) throws IOException {
-        Node node = nodeMapGet(nodeId);
+        Node node = nodeMapGetShared(nodeId);
 
         if (node != null) {
-            node.acquireShared();
-            if (nodeId == node.mId) {
-                node.used(ThreadLocalRandom.current());
-                return node;
-            }
-            node.releaseShared();
+            node.used(ThreadLocalRandom.current());
+            return node;
         }
 
         node = allocLatchedNode(nodeId);
@@ -3070,15 +3104,11 @@ final class LocalDatabase extends AbstractDatabase {
         // Very similar to the nodeMapLoadFragment method. It has comments which explains
         // what's going on here. No point in duplicating that as well.
 
-        Node node = nodeMapGet(nodeId);
+        Node node = nodeMapGetExclusive(nodeId);
 
         if (node != null) {
-            node.acquireExclusive();
-            if (nodeId == node.mId) {
-                node.used(ThreadLocalRandom.current());
-                return node;
-            }
-            node.releaseExclusive();
+            node.used(ThreadLocalRandom.current());
+            return node;
         }
 
         node = allocLatchedNode(nodeId);
@@ -3119,16 +3149,9 @@ final class LocalDatabase extends AbstractDatabase {
      * @return exclusively latched node if found; null if not found
      */
     Node nodeMapGetAndRemove(long nodeId) {
-        int hash = Long.hashCode(nodeId);
-        Node node = nodeMapGet(nodeId, hash);
+        Node node = nodeMapGetExclusive(nodeId);
         if (node != null) {
-            node.acquireExclusive();
-            if (nodeId != node.mId) {
-                node.releaseExclusive();
-                node = null;
-            } else {
-                nodeMapRemove(node, hash);
-            }
+            nodeMapRemove(node);
         }
         return node;
     }
@@ -3513,7 +3536,7 @@ final class LocalDatabase extends AbstractDatabase {
 
             // Must be removed from map before page is deleted. It could be recycled too soon,
             // creating a NodeMap collision.
-            nodeMapRemove(node, Long.hashCode(id));
+            boolean removed = nodeMapRemove(node, Long.hashCode(id));
 
             try {
                 if (id != 0) {
@@ -3527,10 +3550,12 @@ final class LocalDatabase extends AbstractDatabase {
                 }
             } catch (Throwable e) {
                 // Try to undo things.
-                try {
-                    nodeMapPut(node);
-                } catch (Throwable e2) {
-                    e.addSuppressed(e2);
+                if (removed) {
+                    try {
+                        nodeMapPut(node);
+                    } catch (Throwable e2) {
+                        e.addSuppressed(e2);
+                    }
                 }
                 throw e;
             }
@@ -3751,13 +3776,19 @@ final class LocalDatabase extends AbstractDatabase {
                     try {
                         encodeInt48LE(newValue, offset, inode.mId);
                         writeMultilevelFragments(levels, inode, value, 0, vlength);
+                        inode.releaseExclusive();
                     } catch (DatabaseException e) {
                         if (!e.isRecoverable()) {
                             close(e);
                         } else {
-                            // Clean up the mess.
+                            // Clean up the mess. Note that inode is still latched here,
+                            // because writeMultilevelFragments never releases it. The call to
+                            // deleteMultilevelFragments always releases the inode latch.
                             deleteMultilevelFragments(levels, inode, vlength);
                         }
+                        throw e;
+                    } catch (Throwable e) {
+                        close(e);
                         throw e;
                     }
                 }
@@ -3807,49 +3838,49 @@ final class LocalDatabase extends AbstractDatabase {
 
     /**
      * @param level inode level; at least 1
-     * @param inode exclusive latched parent inode; always released by this method
+     * @param inode exclusive latched parent inode; never released by this method
      * @param value slice of complete value being fragmented
      */
     private void writeMultilevelFragments(int level, Node inode,
                                           byte[] value, int voffset, long vlength)
         throws IOException
     {
+        /*P*/ byte[] page = inode.mPage;
+        level--;
+        long levelCap = levelCap(level);
+
+        int childNodeCount = (int) ((vlength + (levelCap - 1)) / levelCap);
+
+        int poffset = 0;
         try {
-            /*P*/ byte[] page = inode.mPage;
-            level--;
-            long levelCap = levelCap(level);
+            for (int i=0; i<childNodeCount; i++) {
+                Node childNode = allocDirtyFragmentNode();
+                p_int48PutLE(page, poffset, childNode.mId);
+                poffset += 6;
 
-            int childNodeCount = (int) ((vlength + (levelCap - 1)) / levelCap);
-
-            int poffset = 0;
-            try {
-                for (int i=0; i<childNodeCount; i++) {
-                    Node childNode = allocDirtyFragmentNode();
-                    p_int48PutLE(page, poffset, childNode.mId);
-                    poffset += 6;
-
-                    int len = (int) Math.min(levelCap, vlength);
-                    if (level <= 0) {
-                        /*P*/ byte[] childPage = childNode.mPage;
-                        p_copyFromArray(value, voffset, childPage, 0, len);
-                        // Zero fill the rest, making it easier to extend later.
-                        p_clear(childPage, len, pageSize(childPage));
-                        childNode.releaseExclusive();
-                    } else {
+                int len = (int) Math.min(levelCap, vlength);
+                if (level <= 0) {
+                    /*P*/ byte[] childPage = childNode.mPage;
+                    p_copyFromArray(value, voffset, childPage, 0, len);
+                    // Zero fill the rest, making it easier to extend later.
+                    p_clear(childPage, len, pageSize(childPage));
+                    childNode.releaseExclusive();
+                } else {
+                    try {
                         writeMultilevelFragments(level, childNode, value, voffset, len);
+                    } finally {
+                        childNode.releaseExclusive();
                     }
-
-                    vlength -= len;
-                    voffset += len;
                 }
-            } finally {
-                // Zero fill the rest, making it easier to extend later. If an exception was
-                // thrown, this simplies cleanup. All of the allocated pages are referenced,
-                // but the rest are not.
-                p_clear(page, poffset, pageSize(page));
+
+                vlength -= len;
+                voffset += len;
             }
         } finally {
-            inode.releaseExclusive();
+            // Zero fill the rest, making it easier to extend later. If an exception was
+            // thrown, this simplies cleanup. All of the allocated pages are referenced,
+            // but the rest are not.
+            p_clear(page, poffset, pageSize(page));
         }
     }
 

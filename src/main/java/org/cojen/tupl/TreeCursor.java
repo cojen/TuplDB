@@ -4455,16 +4455,9 @@ class TreeCursor implements CauseCloseable, Cursor {
      */
     private Node latchChild(Node parent, int childPos, int options) throws IOException {
         long childId = parent.retrieveChildRefId(childPos);
-        Node childNode = mTree.mDatabase.nodeMapGet(childId);
+        Node childNode = mTree.mDatabase.nodeMapGetShared(childId);
 
         tryFind: if (childNode != null) {
-            childNode.acquireShared();
-            // Need to check again in case evict snuck in.
-            if (childId != childNode.mId) {
-                childNode.releaseShared();
-                break tryFind;
-            }
-
             checkChild: {
                 evictChild: if (childNode.mCachedState != Node.CACHED_CLEAN
                                 && parent.mCachedState == Node.CACHED_CLEAN
@@ -4482,13 +4475,8 @@ class TreeCursor implements CauseCloseable, Cursor {
 
                     if (!childNode.tryUpgrade()) {
                         childNode.releaseShared();
-                        childNode = mTree.mDatabase.nodeMapGet(childId);                        
+                        childNode = mTree.mDatabase.nodeMapGetExclusive(childId);
                         if (childNode == null) {
-                            break tryFind;
-                        }
-                        childNode.acquireExclusive();
-                        if (childId != childNode.mId) {
-                            childNode.releaseExclusive();
                             break tryFind;
                         }
                         if (childNode.mCachedState == Node.CACHED_CLEAN) {
@@ -4536,38 +4524,32 @@ class TreeCursor implements CauseCloseable, Cursor {
      */
     private Node latchChildRetainParentEx(Node parent, int childPos) throws IOException {
         long childId = parent.retrieveChildRefId(childPos);
-        Node childNode = mTree.mDatabase.nodeMapGet(childId);
+        Node childNode = mTree.mDatabase.nodeMapGetExclusive(childId);
 
         if (childNode != null) {
-            childNode.acquireExclusive();
-            // Need to check again in case evict snuck in.
-            if (childId != childNode.mId) {
-                childNode.releaseExclusive();
-            } else {
-                if (childNode.mCachedState != Node.CACHED_CLEAN
-                    && parent.mCachedState == Node.CACHED_CLEAN
-                    // Must be a valid parent -- not a stub from Node.rootDelete.
-                    && parent.mId > 1)
-                {
-                    // Parent was evicted before child. Evict child now and mark as clean. If
-                    // this isn't done, the notSplitDirty method will short-circuit and not
-                    // ensure that all the parent nodes are dirty. The splitting and merging
-                    // code assumes that all nodes referenced by the cursor are dirty. The
-                    // short-circuit check could be skipped, but then every change would
-                    // require a full latch up the tree. Another option is to remark the parent
-                    // as dirty, but this is dodgy and also requires a full latch up the tree.
-                    // Parent-before-child eviction is infrequent, and so simple is better.
-                    try {
-                        childNode.write(mTree.mDatabase.mPageDb);
-                    } catch (Throwable e) {
-                        childNode.releaseExclusive();
-                        throw e;
-                    }
-                    childNode.mCachedState = Node.CACHED_CLEAN;
+            if (childNode.mCachedState != Node.CACHED_CLEAN
+                && parent.mCachedState == Node.CACHED_CLEAN
+                // Must be a valid parent -- not a stub from Node.rootDelete.
+                && parent.mId > 1)
+            {
+                // Parent was evicted before child. Evict child now and mark as clean. If
+                // this isn't done, the notSplitDirty method will short-circuit and not
+                // ensure that all the parent nodes are dirty. The splitting and merging
+                // code assumes that all nodes referenced by the cursor are dirty. The
+                // short-circuit check could be skipped, but then every change would
+                // require a full latch up the tree. Another option is to remark the parent
+                // as dirty, but this is dodgy and also requires a full latch up the tree.
+                // Parent-before-child eviction is infrequent, and so simple is better.
+                try {
+                    childNode.write(mTree.mDatabase.mPageDb);
+                } catch (Throwable e) {
+                    childNode.releaseExclusive();
+                    throw e;
                 }
-                childNode.used(ThreadLocalRandom.current());
-                return childNode;
+                childNode.mCachedState = Node.CACHED_CLEAN;
             }
+            childNode.used(ThreadLocalRandom.current());
+            return childNode;
         }
 
         return parent.loadChild(mTree.mDatabase, childId, Node.OPTION_CHILD_ACQUIRE_EXCLUSIVE);
