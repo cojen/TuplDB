@@ -36,7 +36,7 @@ final class LocalTransaction extends Locker implements Transaction {
 
     final LocalDatabase mDatabase;
     final TransactionContext mContext;
-    private final RedoWriter mRedo;
+    final RedoWriter mRedo;
     DurabilityMode mDurabilityMode;
 
     private LockMode mLockMode;
@@ -823,31 +823,6 @@ final class LocalTransaction extends Locker implements Transaction {
                 borked(e, false, true); // rollback = false, rethrow = true
             }
         }
-    }
-
-    /**
-     * Auto-commit index rename. Caller must hold commit lock.
-     *
-     * @param indexId non-zero index id
-     * @param newName non-null new index name
-     * @return non-zero position if caller should call txnCommitSync
-     */
-    final long redoRenameIndexCommitFinal(long indexId, byte[] newName) throws IOException {
-        check();
-        return mContext.redoRenameIndexCommitFinal
-            (mRedo, txnId(), indexId, newName, mDurabilityMode);
-    }
-
-    /**
-     * Auto-commit index delete. Caller must hold commit lock.
-     *
-     * @param indexId non-zero index id
-     * @return non-zero position if caller should call txnCommitSync
-     */
-    final long redoDeleteIndexCommitFinal(long indexId) throws IOException {
-        check();
-        return mContext.redoDeleteIndexCommitFinal
-            (mRedo, txnId(), indexId, mDurabilityMode);
     }
 
     /**

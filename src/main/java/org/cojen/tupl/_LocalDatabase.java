@@ -1067,15 +1067,15 @@ final class _LocalDatabase extends AbstractDatabase {
                 c.reset();
             }
 
-            _RedoWriter redo;
-            if (redoTxnId == 0 && (redo = txnRedoWriter()) != null) {
-                long commitPos;
-
+            if (redoTxnId == 0 && txn.mRedo != null) {
                 txn.durabilityMode(mDurabilityMode.alwaysRedo());
 
+                long commitPos;
                 CommitLock.Shared shared = mCommitLock.acquireShared();
                 try {
-                    commitPos = txn.redoRenameIndexCommitFinal(tree.mId, newName);
+                    txn.check();
+                    commitPos = txn.mContext.redoRenameIndexCommitFinal
+                        (txn.mRedo, txn.txnId(), tree.mId, newName, txn.durabilityMode());
                 } finally {
                     shared.release();
                 }
@@ -1084,7 +1084,7 @@ final class _LocalDatabase extends AbstractDatabase {
                     // Must wait for durability confirmation before performing actions below
                     // which cannot be easily rolled back. No global latches or locks are held
                     // while waiting.
-                    redo.txnCommitSync(txn, commitPos);
+                    txn.mRedo.txnCommitSync(txn, commitPos);
                 }
             }
 
@@ -2255,10 +2255,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 mRegistryKeyMap.store(txn, trashIdKey, nameKey);
             }
 
-            _RedoWriter redo = txnRedoWriter();
-            if (redo != null) {
-                long commitPos;
-
+            if (txn.mRedo != null) {
                 // Note: No additional operations can appear after OP_DELETE_INDEX. When a
                 // replica reads this operation it immediately commits the transaction in order
                 // for the deletion task to be started immediately. The redo log still contains
@@ -2266,9 +2263,12 @@ final class _LocalDatabase extends AbstractDatabase {
 
                 txn.durabilityMode(mDurabilityMode.alwaysRedo());
 
+                long commitPos;
                 CommitLock.Shared shared = mCommitLock.acquireShared();
                 try {
-                    commitPos = txn.redoDeleteIndexCommitFinal(treeId);
+                    txn.check();
+                    commitPos = txn.mContext.redoDeleteIndexCommitFinal
+                        (txn.mRedo, txn.txnId(), treeId, txn.durabilityMode());
                 } finally {
                     shared.release();
                 }
@@ -2277,7 +2277,7 @@ final class _LocalDatabase extends AbstractDatabase {
                     // Must wait for durability confirmation before performing actions below
                     // which cannot be easily rolled back. No global latches or locks are held
                     // while waiting.
-                    redo.txnCommitSync(txn, commitPos);
+                    txn.mRedo.txnCommitSync(txn, commitPos);
                 }
             }
 
