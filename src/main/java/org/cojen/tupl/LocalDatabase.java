@@ -332,11 +332,14 @@ final class LocalDatabase extends AbstractDatabase {
         // Initialize NodeMap, the primary cache of Nodes.
         final int procCount = Runtime.getRuntime().availableProcessors();
         {
-            int latches = Utils.roundUpPower2(procCount * 16);
             int capacity = Utils.roundUpPower2(maxCache);
             if (capacity < 0) {
                 capacity = 0x40000000;
             }
+            // The number of latches must not be more than the number of hash buckets. This
+            // ensures that a hash bucket is guarded by exactly one latch, which can be shared
+            // across multiple buckets.
+            int latches = Math.min(capacity, Utils.roundUpPower2(procCount * 16));
             mNodeMapTable = new Node[capacity];
             mNodeMapLatches = new Latch[latches];
             for (int i=0; i<latches; i++) {
