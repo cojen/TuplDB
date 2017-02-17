@@ -801,4 +801,27 @@ public class RecoverTest {
         assertArrayEquals(k1, ix.load(null, k1));
         assertArrayEquals(k2, ix.load(null, k2));
     }
+
+    @Test
+    public void manyOpenTransactions() throws Exception {
+        // Test which ensures that the master undo log can properly track all active
+        // transactions, even when multiple undo log nodes are required to encode them all.
+
+        Index ix = mDb.openIndex("test");
+
+        Transaction[] txns = new Transaction[1000];
+
+        for (int i=0; i<txns.length; i++) {
+            txns[i] = mDb.newTransaction();
+            ix.store(txns[i], ("key-" + i).getBytes(), ("value-" + i).getBytes());
+        }
+
+        mDb.checkpoint();
+
+        mDb = reopenTempDatabase(mDb, mConfig);
+
+        // Everything should have rolled back.
+        ix = mDb.openIndex("test");
+        assertEquals(0, ix.count(null, null));
+    }
 }

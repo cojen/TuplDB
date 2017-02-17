@@ -4474,7 +4474,7 @@ final class LocalDatabase extends AbstractDatabase {
                     if (masterUndoLog == null) {
                         masterUndoLogId = 0;
                     } else {
-                        masterUndoLogId = masterUndoLog.topNodeId();
+                        masterUndoLogId = masterUndoLog.persistReady();
                         if (masterUndoLogId == 0) {
                             // Nothing was actually written to the log.
                             masterUndoLog = null;

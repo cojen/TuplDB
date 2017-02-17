@@ -144,9 +144,12 @@ final class _UndoLog implements _DatabaseAccess {
     }
 
     /**
-     * Ensures all entries are stored in persistable nodes. Caller must hold db commit lock.
+     * Ensures all entries are stored in persistable nodes, unless the log is empty. Caller
+     * must hold db commit lock.
+     *
+     * @return top node id or 0 if log is empty
      */
-    private void persistReady() throws IOException {
+    long persistReady() throws IOException {
         _Node node = mNode;
 
         if (node != null) {
@@ -157,6 +160,8 @@ final class _UndoLog implements _DatabaseAccess {
                 node.releaseExclusive();
                 throw e;
             }
+        } else if (mLength == 0) {
+            return 0;
         } else {
             mNode = node = allocUnevictableNode(0);
 
@@ -179,6 +184,18 @@ final class _UndoLog implements _DatabaseAccess {
 
         node.undoTop(mNodeTopPos);
         node.releaseExclusive();
+
+        return mNode.mId;
+    }
+
+    /**
+     * Returns the top node id as returned by the last call to persistReady. Caller must hold
+     * db commit lock.
+     *
+     * @return top node id or 0 if log is empty
+     */
+    long topNodeId() throws IOException {
+        return mNode == null ? 0 : mNode.mId;
     }
 
     private int pageSize(long page) {
@@ -191,21 +208,6 @@ final class _UndoLog implements _DatabaseAccess {
 
     long txnId() {
         return mTxnId;
-    }
-
-    /**
-     * Caller must hold db commit lock.
-     *
-     * @return 0 if log is empty
-     */
-    long topNodeId() throws IOException {
-        if (mNode == null) {
-            if (mLength == 0) {
-                return 0;
-            }
-            persistReady();
-        }
-        return mNode.mId;
     }
 
     /**
