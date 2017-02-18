@@ -16,8 +16,6 @@
 
 package org.cojen.tupl.util;
 
-import sun.misc.Unsafe;
-
 import java.util.concurrent.atomic.AtomicReference;
 
 import java.util.concurrent.locks.LockSupport;
@@ -41,7 +39,7 @@ public class Latch {
 
     // TODO: Switch to VarHandle when available and utilize specialized operations. 
 
-    static final Unsafe UNSAFE = UnsafeAccess.obtain();
+    static final sun.misc.Unsafe UNSAFE = UnsafeAccess.obtain();
 
     static final long STATE_OFFSET, FIRST_OFFSET, LAST_OFFSET;
     static final long WAITER_OFFSET, FAIR_OFFSET;
