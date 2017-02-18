@@ -834,6 +834,18 @@ final class _UndoLog implements _DatabaseAccess {
             }
 
             page = node.mPage;
+
+            // Payloads which spill over should always continue into a node which is full. If
+            // the top position is actually at the end, then it likely references a
+            // OP_COMMIT_TRUNCATE operation, in which case the transaction has actully
+            // committed, and full decoding of the undo log is unnecessary or impossible.
+            if (mNodeTopPos == pageSize(page) - 1 &&
+                p_byteGet(page, mNodeTopPos) == OP_COMMIT_TRUNCATE)
+            {
+                node.releaseExclusive();
+                return entry;
+            }
+
             entryPos += avail;
         }
     }
@@ -1006,7 +1018,7 @@ final class _UndoLog implements _DatabaseAccess {
         boolean acquireLocks = true;
         int depth = 1;
 
-        while (mLength > 0) {
+        loop: while (mLength > 0) {
             byte[] entry = pop(opRef, false);
             if (entry == null) {
                 break;
@@ -1018,11 +1030,19 @@ final class _UndoLog implements _DatabaseAccess {
                 throw new DatabaseException("Unknown undo log entry type: " + op);
 
             case OP_COMMIT:
-            case OP_COMMIT_TRUNCATE:
                 // Handled by Transaction.recoveryCleanup, but don't acquire
                 // locks. This avoids deadlocks with later transactions.
                 acquireLocks = false;
                 break;
+
+            case OP_COMMIT_TRUNCATE:
+                // Skip examining the rest of the log. It will likely appear to be corrupt
+                // anyhow due to the OP_COMMIT_TRUNCATE having overwritten existing data.
+                mNode.makeEvictable();
+                mNode.releaseExclusive();
+                mNode = null;
+                mNodeTopPos = 0;
+                break loop;
 
             case OP_SCOPE_ENTER:
                 depth++;
@@ -1157,6 +1177,15 @@ final class _UndoLog implements _DatabaseAccess {
             int topEntry = decodeUnsignedShortLE(masterLogEntry, (8 + 8 + 8 + 8));
             log.mNode = readUndoLogNode(mDatabase, nodeId);
             log.mNodeTopPos = topEntry;
+
+            // If node contains OP_COMMIT_TRUNCATE at the end, then the corresponding transaction
+            // was committed and the undo log nodes don't need to be fully examined.
+            if (log.mNode.undoTop() == pageSize(log.mNode.mPage) - 1 &&
+                p_byteGet(log.mNode.mPage, log.mNode.undoTop()) == OP_COMMIT_TRUNCATE)
+            {
+                log.mNodeTopPos = log.mNode.undoTop();
+            }
+
             log.mNode.releaseExclusive();
         }
 
