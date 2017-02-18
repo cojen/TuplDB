@@ -18,25 +18,23 @@ package org.cojen.tupl.io;
 
 import java.lang.reflect.Field;
 
-import sun.misc.Unsafe;
-
 /**
  * Utility for accessing the unsupported Unsafe class.
  *
  * @author Brian S O'Neill
  */
 public class UnsafeAccess {
-    private static final Unsafe UNSAFE;
+    private static final sun.misc.Unsafe UNSAFE;
     private static final Throwable UNSUPPORTED;
 
     static {
-        Unsafe unsafe = null;
+        sun.misc.Unsafe unsafe = null;
         Throwable unsupported = null;
 
         try {
-            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+            Field theUnsafe = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
             theUnsafe.setAccessible(true);
-            unsafe = (Unsafe) theUnsafe.get(null);
+            unsafe = (sun.misc.Unsafe) theUnsafe.get(null);
         } catch (Throwable e) {
             unsupported = e;
         }
@@ -48,15 +46,15 @@ public class UnsafeAccess {
     /**
      * @return null if not supported
      */
-    public static Unsafe tryObtain() {
+    public static sun.misc.Unsafe tryObtain() {
         return UNSAFE;
     }
 
     /**
      * @throws UnsupportedOperationException if not supported
      */
-    public static Unsafe obtain() throws UnsupportedOperationException {
-        Unsafe u = UNSAFE;
+    public static sun.misc.Unsafe obtain() throws UnsupportedOperationException {
+        sun.misc.Unsafe u = UNSAFE;
         if (u == null) {
             throw new UnsupportedOperationException(UNSUPPORTED);
         }

@@ -37,8 +37,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import sun.misc.Unsafe;
-
 /**
  * Generic data and I/O utility methods.
  *
@@ -499,7 +497,7 @@ public class Utils {
         }
 
         try {
-            Unsafe u = UnsafeAccess.obtain();
+            sun.misc.Unsafe u = UnsafeAccess.obtain();
             Method m = u.getClass().getMethod("invokeCleaner", ByteBuffer.class);
             m.invoke(u, bb);
             return true;

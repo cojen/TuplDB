@@ -20,8 +20,6 @@ import java.io.IOException;
 
 import java.nio.ByteBuffer;
 
-import sun.misc.Unsafe;
-
 /**
  * 
  *
@@ -70,6 +68,6 @@ final class PosixMapping extends Mapping {
         PosixFileIO.munmapAddr(mAddr, mSize);
     }
 
-    private static final Unsafe UNSAFE = UnsafeAccess.obtain();
+    private static final sun.misc.Unsafe UNSAFE = UnsafeAccess.obtain();
     private static final long ARRAY = (long) UNSAFE.arrayBaseOffset(byte[].class);
 }

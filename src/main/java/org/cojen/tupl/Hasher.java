@@ -16,8 +16,6 @@
 
 package org.cojen.tupl;
 
-import sun.misc.Unsafe;
-
 import java.nio.ByteOrder;
 
 import org.cojen.tupl.io.UnsafeAccess;
@@ -104,7 +102,7 @@ class Hasher {
      * shifting transformation.
      */
     private static class UnsafeLE extends Hasher {
-        private static final Unsafe UNSAFE;
+        private static final sun.misc.Unsafe UNSAFE;
         private static final long BYTE_ARRAY_OFFSET;
 
         static {
