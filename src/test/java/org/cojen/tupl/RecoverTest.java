@@ -824,4 +824,58 @@ public class RecoverTest {
         ix = mDb.openIndex("test");
         assertEquals(0, ix.count(null, null));
     }
+
+    @Test
+    public void largeUndoMidCheckpoint() throws Exception {
+        // Test commit of a transaction with a large undo log, with a checkpoint in the middle
+        // of it. This exersizes handling of the OP_COMMIT_TRUNCATE operation during recovery.
+
+        final Index ix = mDb.openIndex("test");
+        Random rnd = new Random(3494847);
+
+        Transaction txn = mDb.newTransaction();
+        for (int i=0; i<100_000; i++) {
+            byte[] key = randomStr(rnd, 10, 5000);
+            byte[] value = randomStr(rnd, 10, 50);
+            ix.store(txn, key, value);
+        }
+
+        Thread checkpointer = new Thread(() -> {
+            try {
+                Thread.sleep(100);
+
+                // Start another write, for the the commit lock to indicate that it has queued
+                // waiters when the checkpoint is waiting to acquire the exclusive commit lock.
+                new Thread(() -> {
+                    try {
+                        Thread.sleep(100);
+                        ix.store(null, "hello".getBytes(), "world".getBytes());
+                    } catch (Exception e) {
+                    }
+                }).start();
+
+                mDb.checkpoint();
+            } catch (Exception e) {
+                Utils.rethrow(e);
+            }
+        });
+
+        checkpointer.start();
+
+        txn.commit();
+
+        mDb = reopenTempDatabase(mDb, mConfig);
+
+        // Everything should have committed.
+
+        Index ix2 = mDb.openIndex("test");
+
+        rnd = new Random(3494847);
+
+        for (int i=0; i<100_000; i++) {
+            byte[] key = randomStr(rnd, 10, 5000);
+            byte[] value = randomStr(rnd, 10, 50);
+            fastAssertArrayEquals(value, ix2.load(null, key));
+        }
+    }
 }
