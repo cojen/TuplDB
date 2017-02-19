@@ -330,7 +330,7 @@ final class _DurablePageDb extends _PageDb {
             try {
                 recyclePage(nodeId);
             } catch (Throwable e2) {
-                e.addSuppressed(e2);
+                Utils.suppress(e, e2);
             }
             throw e;
         }

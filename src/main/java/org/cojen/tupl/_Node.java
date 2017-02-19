@@ -2214,7 +2214,7 @@ final class _Node extends Latch implements _DatabaseAccess {
             try {
                 getDatabase().deleteFragments(copy, 0, fragmented.length);
             } catch (Throwable e) {
-                cause.addSuppressed(e);
+                Utils.suppress(cause, e);
                 panic(cause);
             } finally {
                 p_delete(copy);
@@ -4421,7 +4421,7 @@ final class _Node extends Latch implements _DatabaseAccess {
         try {
             getDatabase().deleteNode(newNode);
         } catch (Throwable e) {
-            cause.addSuppressed(e);
+            Utils.suppress(cause, e);
             panic(cause);
         }
     }

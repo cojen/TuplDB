@@ -2560,7 +2560,7 @@ final class _LocalDatabase extends AbstractDatabase {
                             mRegistry.delete(Transaction.BOGUS, treeIdBytes);
                             critical = false;
                         } catch (Throwable e2) {
-                            e.addSuppressed(e2);
+                            Utils.suppress(e, e2);
                         }
                         throw e;
                     }
@@ -2583,7 +2583,7 @@ final class _LocalDatabase extends AbstractDatabase {
                         createTxn.reset();
                         mRegistry.delete(Transaction.BOGUS, treeIdBytes);
                     } catch (Throwable e2) {
-                        e.addSuppressed(e2);
+                        Utils.suppress(e, e2);
                         throw closeOnFailure(this, e);
                     }
                     DatabaseException.rethrowIfRecoverable(e);
@@ -3356,7 +3356,7 @@ final class _LocalDatabase extends AbstractDatabase {
                         mPageDb.recyclePage(newId);
                     } catch (Throwable e2) {
                         // Panic.
-                        e.addSuppressed(e2);
+                        Utils.suppress(e, e2);
                         close(e);
                     }
                     throw e;
@@ -3390,7 +3390,7 @@ final class _LocalDatabase extends AbstractDatabase {
                     mPageDb.recyclePage(newId);
                 } catch (Throwable e2) {
                     // Panic.
-                    e.addSuppressed(e2);
+                    Utils.suppress(e, e2);
                     close(e);
                 }
                 throw e;
@@ -3422,7 +3422,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 mPageDb.recyclePage(newId);
             } catch (Throwable e2) {
                 // Panic.
-                e.addSuppressed(e2);
+                Utils.suppress(e, e2);
                 close(e);
             }
             throw e;
@@ -3443,7 +3443,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 mPageDb.recyclePage(newId);
             } catch (Throwable e2) {
                 // Panic.
-                e.addSuppressed(e2);
+                Utils.suppress(e, e2);
                 close(e);
             }
             throw e;
@@ -3557,7 +3557,7 @@ final class _LocalDatabase extends AbstractDatabase {
                     try {
                         nodeMapPut(node);
                     } catch (Throwable e2) {
-                        e.addSuppressed(e2);
+                        Utils.suppress(e, e2);
                     }
                 }
                 throw e;

@@ -74,7 +74,7 @@ class PosixMappedPageArray extends MappedPageArray {
                 try {
                     PosixFileIO.closeFd(fd);
                 } catch (IOException e2) {
-                    e.addSuppressed(e2);
+                    Utils.suppress(e, e2);
                 }
                 throw e;
             }
@@ -103,7 +103,7 @@ class PosixMappedPageArray extends MappedPageArray {
                 try {
                     PosixFileIO.closeFd(fd);
                 } catch (IOException e2) {
-                    e.addSuppressed(e2);
+                    Utils.suppress(e, e2);
                 }
                 throw e;
             }
@@ -119,7 +119,7 @@ class PosixMappedPageArray extends MappedPageArray {
             try {
                 PosixFileIO.closeFd(fd);
             } catch (IOException e2) {
-                e.addSuppressed(e2);
+                Utils.suppress(e, e2);
             }
             throw e;
         }

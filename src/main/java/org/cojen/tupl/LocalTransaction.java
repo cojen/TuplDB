@@ -968,7 +968,7 @@ final class LocalTransaction extends Locker implements Transaction {
                     // cannot see the partial changes made by this transaction. A restart is
                     // required, which then performs a clean rollback.
 
-                    borked.addSuppressed(rollbackFailed);
+                    Utils.suppress(borked, rollbackFailed);
 
                     // Also panic the database if not done so already.
                     try {

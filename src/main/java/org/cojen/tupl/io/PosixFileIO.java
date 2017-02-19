@@ -251,9 +251,7 @@ final class PosixFileIO extends AbstractFileIO {
         try {
             closeFd(fd);
         } catch (IOException e) {
-            if (ex != null) {
-                e.addSuppressed(ex);
-            }
+            Utils.suppress(e, ex);
             throw e;
         }
     }
