@@ -52,9 +52,8 @@ final class _DeadlockDetector {
 
     /**
      * @param lockType type of lock requested; TYPE_SHARED, TYPE_UPGRADABLE, or TYPE_EXCLUSIVE
-     * @param hash hash of lock key requested
      */
-    DeadlockSet newDeadlockSet(int lockType, int hash) {
+    DeadlockSet newDeadlockSet(int lockType) {
         DeadlockSet.OwnerInfo[] infoSet = new DeadlockSet.OwnerInfo[mLocks.size()];
 
         final _LockManager manager = mOrigin.mManager;
@@ -77,7 +76,7 @@ final class _DeadlockDetector {
             }
             info.mKey = key;
 
-            info.mAttachment = lock.findOwnerAttachment(mOrigin, lockType, hash);
+            info.mAttachment = lock.findOwnerAttachment(mOrigin, lockType);
 
             i++;
         }
@@ -117,7 +116,7 @@ final class _DeadlockDetector {
             }
 
             _LockOwner owner = lock.mOwner;
-            Object shared = lock.mSharedLockOwnersObj;
+            Object shared = lock.getSharedLockOwner();
 
             // If the owner is the locker, then it is trying to upgrade. It's
             // waiting for another locker to release the shared lock.
@@ -130,29 +129,27 @@ final class _DeadlockDetector {
                 found |= scan(owner);
             }
 
-            scanShared: if (shared != null) {
-                if (shared instanceof _Locker) {
-                    // Tail call.
-                    locker = (_Locker) shared;
-                    continue outer;
-                }
+            if (shared instanceof _LockOwner) {
+                // Tail call.
+                locker = (_LockOwner) shared;
+                continue outer;
+            }
 
-                if (!(shared instanceof _Lock.LockOwnerHTEntry[])) {
-                    break scanShared;
-                }
+            if (!(shared instanceof _Lock.LockOwnerHTEntry[])) {
+                return found;
+            }
 
-                _Lock.LockOwnerHTEntry[] entries = (_Lock.LockOwnerHTEntry[]) shared;
-                for (int i=entries.length; --i>=0; ) {
-                    for (_Lock.LockOwnerHTEntry e = entries[i]; e != null; ) {
-                        _Lock.LockOwnerHTEntry next = e.mNext;
-                        if (i == 0 && next == null) {
-                            // Tail call.
-                            locker = e.mOwner;
-                            continue outer;
-                        }
-                        found |= scan(e.mOwner);
-                        e = next;
+            _Lock.LockOwnerHTEntry[] entries = (_Lock.LockOwnerHTEntry[]) shared;
+            for (int i=entries.length; --i>=0; ) {
+                for (_Lock.LockOwnerHTEntry e = entries[i]; e != null; ) {
+                    _Lock.LockOwnerHTEntry next = e.mNext;
+                    if (i == 0 && next == null) {
+                        // Tail call.
+                        locker = e.mOwner;
+                        continue outer;
                     }
+                    found |= scan(e.mOwner);
+                    e = next;
                 }
             }
 

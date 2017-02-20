@@ -172,6 +172,30 @@ public class RecoverTest {
     }
 
     @Test
+    public void recoverDeleteGhost() throws Exception {
+        byte[] k1 = "k1".getBytes();
+        byte[] k2 = "k2".getBytes();
+        byte[] value = "value".getBytes();
+
+        Index ix = mDb.openIndex("test");
+
+        Transaction txn = mDb.newTransaction();
+        ix.store(txn, k2, value);
+        txn.commit();
+
+        txn = mDb.newTransaction();
+        ix.store(txn, k2, null);
+        mDb.checkpoint();
+        ix.store(txn, k1, value);
+        txn.commit();
+
+        mDb = reopenTempDatabase(mDb, mConfig);
+        ix = mDb.openIndex("test");
+        assertArrayEquals(value, ix.load(null, k1));
+        assertEquals(null, ix.load(null, k2));
+    }
+
+    @Test
     public void scopeRollback1() throws Exception {
         scopeRollback(0, false);
     }
@@ -716,5 +740,142 @@ public class RecoverTest {
         ix = mDb.openIndex("trash");
         assertArrayEquals("world!!!".getBytes(), ix.load(null, "hello".getBytes()));
         assertNull(ix.load(null, "xxx".getBytes()));
+    }
+
+    @Test
+    public void lostRollback() throws Exception {
+        // A transaction which auto-resets due to an exception must alway issue a rollback
+        // operation into the redo log.
+
+        byte[] k1 = "key1".getBytes();
+        byte[] k2 = "key2".getBytes();
+
+        Index ix = mDb.openIndex("test");
+
+        Transaction t1 = mDb.newTransaction();
+        // lock k1 and write to redo log
+        ix.store(t1, k1, k1);
+
+        Transaction t2 = mDb.newTransaction();
+        // lock k2 and write to redo log
+        ix.store(t2, k2, k2);
+
+        // Perform an operation which auto-resets the transaction on lock timeout. The default
+        // Cursor.commit method calls ViewUtils.commit, which resets the transaction if an
+        // exception is thrown. In case the implementation ever changes, the original code is
+        // copied here.
+        Cursor c = ix.newCursor(t2);
+        t2.lockMode(LockMode.UNSAFE);
+        c.find(k1);
+        t2.lockMode(LockMode.UPGRADABLE_READ);
+        byte[] value = "v2".getBytes();
+        try {
+            // Same as ViewUtils.commit (except with test assertions added).
+            try {
+                c.store(value);
+            } catch (Throwable e) {
+                Transaction txn = c.link();
+                if (txn != null) {
+                    txn.reset(e);
+                } else {
+                    fail("no linked transaction");
+                }
+                throw e;
+            }
+
+            fail("should not be reached");
+        } catch (LockTimeoutException e) {
+            // Expected.
+        }
+
+        // Transaction t1 can write k2, since t1 has released all of its locks.
+        ix.store(t1, k2, k2);
+        t1.commit();
+
+        // If t1 didn't issue a rollback, then recovery will deadlock or fail on the second
+        // attempt to lock k2. A replicated log will deadlock, but a local redo log throws a
+        // LockTimeoutException and aborts recovery.
+        mDb = reopenTempDatabase(mDb, mConfig);
+
+        ix = mDb.openIndex("test");
+        assertArrayEquals(k1, ix.load(null, k1));
+        assertArrayEquals(k2, ix.load(null, k2));
+    }
+
+    @Test
+    public void manyOpenTransactions() throws Exception {
+        // Test which ensures that the master undo log can properly track all active
+        // transactions, even when multiple undo log nodes are required to encode them all.
+
+        Index ix = mDb.openIndex("test");
+
+        Transaction[] txns = new Transaction[1000];
+
+        for (int i=0; i<txns.length; i++) {
+            txns[i] = mDb.newTransaction();
+            ix.store(txns[i], ("key-" + i).getBytes(), ("value-" + i).getBytes());
+        }
+
+        mDb.checkpoint();
+
+        mDb = reopenTempDatabase(mDb, mConfig);
+
+        // Everything should have rolled back.
+        ix = mDb.openIndex("test");
+        assertEquals(0, ix.count(null, null));
+    }
+
+    @Test
+    public void largeUndoMidCheckpoint() throws Exception {
+        // Test commit of a transaction with a large undo log, with a checkpoint in the middle
+        // of it. This exersizes handling of the OP_COMMIT_TRUNCATE operation during recovery.
+
+        final Index ix = mDb.openIndex("test");
+        Random rnd = new Random(3494847);
+
+        Transaction txn = mDb.newTransaction();
+        for (int i=0; i<100_000; i++) {
+            byte[] key = randomStr(rnd, 10, 5000);
+            byte[] value = randomStr(rnd, 10, 50);
+            ix.store(txn, key, value);
+        }
+
+        Thread checkpointer = new Thread(() -> {
+            try {
+                Thread.sleep(100);
+
+                // Start another write, for the the commit lock to indicate that it has queued
+                // waiters when the checkpoint is waiting to acquire the exclusive commit lock.
+                new Thread(() -> {
+                    try {
+                        Thread.sleep(100);
+                        ix.store(null, "hello".getBytes(), "world".getBytes());
+                    } catch (Exception e) {
+                    }
+                }).start();
+
+                mDb.checkpoint();
+            } catch (Exception e) {
+                Utils.rethrow(e);
+            }
+        });
+
+        checkpointer.start();
+
+        txn.commit();
+
+        mDb = reopenTempDatabase(mDb, mConfig);
+
+        // Everything should have committed.
+
+        Index ix2 = mDb.openIndex("test");
+
+        rnd = new Random(3494847);
+
+        for (int i=0; i<100_000; i++) {
+            byte[] key = randomStr(rnd, 10, 5000);
+            byte[] value = randomStr(rnd, 10, 50);
+            fastAssertArrayEquals(value, ix2.load(null, key));
+        }
     }
 }

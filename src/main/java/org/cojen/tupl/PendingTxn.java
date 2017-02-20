@@ -29,11 +29,11 @@ final class PendingTxn extends LockOwner {
     private Lock[] mRest;
     private int mRestSize;
 
-    TransactionContext mTxnContext;
+    TransactionContext mContext;
     long mTxnId;
     long mCommitPos;
     UndoLog mUndoLog;
-    boolean mHasFragmentedTrash;
+    int mHasState;
     private Object mAttachment;
 
     PendingTxn mPrev;
@@ -95,10 +95,10 @@ final class PendingTxn extends LockOwner {
         UndoLog undo = mUndoLog;
         if (undo != null) {
             undo.truncate(true);
-            mTxnContext.unregister(undo);
+            mContext.unregister(undo);
         }
 
-        if (mHasFragmentedTrash) {
+        if ((mHasState & LocalTransaction.HAS_TRASH) != 0) {
             db.fragmentedTrash().emptyTrash(mTxnId);
         }
     }
@@ -118,7 +118,7 @@ final class PendingTxn extends LockOwner {
         unlockAll(db);
 
         if (undo != null) {
-            mTxnContext.unregister(undo);
+            mContext.unregister(undo);
         }
     }
 

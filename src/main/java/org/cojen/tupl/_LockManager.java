@@ -19,6 +19,9 @@ package org.cojen.tupl;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 
+import org.cojen.tupl.util.Latch;
+import org.cojen.tupl.util.LatchCondition;
+
 import static org.cojen.tupl.LockResult.*;
 
 /**
@@ -175,7 +178,7 @@ final class _LockManager {
         LockHT ht = getLockHT(hash);
         ht.acquireExclusive();
         try {
-            ht.lockFor(indexId, key, hash).mSharedLockOwnersObj = frame;
+            ht.lockFor(indexId, key, hash).setGhostFrame(frame);
         } finally {
             ht.releaseExclusive();
         }
@@ -188,7 +191,7 @@ final class _LockManager {
         if (result.isHeld()) {
             return locker;
         }
-        throw locker.failed(TYPE_SHARED, result, mDefaultTimeoutNanos, hash);
+        throw locker.failed(TYPE_SHARED, result, mDefaultTimeoutNanos);
     }
 
     final _Locker lockExclusiveLocal(long indexId, byte[] key, int hash)
@@ -200,7 +203,7 @@ final class _LockManager {
         if (result.isHeld()) {
             return locker;
         }
-        throw locker.failed(TYPE_EXCLUSIVE, result, mDefaultTimeoutNanos, hash);
+        throw locker.failed(TYPE_EXCLUSIVE, result, mDefaultTimeoutNanos);
     }
 
     final _Locker localLocker() {
@@ -235,7 +238,7 @@ final class _LockManager {
      * Simple hashtable of Locks.
      */
     @SuppressWarnings("serial")
-    static final class LockHT extends AltLatch {
+    static final class LockHT extends Latch {
         private static final float LOAD_FACTOR = 0.75f;
 
         private transient _Lock[] mEntries;
@@ -333,7 +336,7 @@ final class _LockManager {
 
                         lock.mLockCount = type;
                         if (type == TYPE_SHARED) {
-                            lock.mSharedLockOwnersObj = locker;
+                            lock.setSharedLockOwner(locker);
                         } else {
                             lock.mOwner = locker;
                         }
@@ -480,11 +483,11 @@ final class _LockManager {
                                 mSize--;
                             }
 
-                            e.mSharedLockOwnersObj = null;
+                            e.setSharedLockOwner((_LockOwner) null);
 
                             // Interrupt all waiters.
 
-                            AltLatchCondition q = e.mQueueU;
+                            LatchCondition q = e.mQueueU;
                             if (q != null) {
                                 q.clear();
                                 e.mQueueU = null;

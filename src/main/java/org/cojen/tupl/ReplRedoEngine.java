@@ -22,10 +22,12 @@ import java.lang.ref.SoftReference;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.cojen.tupl.ext.ReplicationManager;
+
+import org.cojen.tupl.util.Latch;
 
 import static org.cojen.tupl.Utils.*;
 
@@ -38,7 +40,13 @@ import org.cojen.tupl.ext.TransactionHandler;
  */
 /*P*/
 final class ReplRedoEngine implements RedoVisitor {
-    private final static long INFINITE_TIMEOUT = -1L;
+    private static final long INFINITE_TIMEOUT = -1L;
+    private static final int MIN_SPINS = 20;
+    private static final int MAX_SPINS = 2000;
+
+    // Hash spreader. Based on rounded value of 2 ** 63 * (sqrt(5) - 1) equivalent 
+    // to unsigned 11400714819323198485.
+    private static final long HASH_SPREAD = -7046029254386353131L;
 
     final ReplicationManager mManager;
     final LocalDatabase mDatabase;
@@ -50,7 +58,7 @@ final class ReplRedoEngine implements RedoVisitor {
     // weak references to indexes. They'd get closed too soon.
     private final LHashTable.Obj<SoftReference<Index>> mIndexes;
 
-    private final AltLatch[] mLatches;
+    private final Latch[] mLatches;
     private final int mLatchesMask;
 
     private final TxnTable mTransactions;
@@ -61,14 +69,18 @@ final class ReplRedoEngine implements RedoVisitor {
     private final ConcurrentMap<DecodeTask, Object> mTaskThreadSet;
 
     // Latch must be held exclusively while reading from decoder.
-    private final AltLatch mDecodeLatch;
+    private final Latch mDecodeLatch;
+    private final Latch mCustomLatch;
+
+    private final AtomicInteger mCommitSpins;
+    private final AtomicInteger mDecodeSpins;
 
     private ReplRedoDecoder mDecoder;
 
     // Shared latch held when applying operations. Checkpoint suspends all tasks by acquiring
     // an exclusive latch. If any operation fails to be applied, shared latch is still held,
     // preventing checkpoints.
-    final AltLatch mOpLatch;
+    final Latch mOpLatch;
 
     // Updated with exclusive decode latch and shared op latch. Values can be read with op
     // latch exclusively held, when engine is suspended.
@@ -98,8 +110,12 @@ final class ReplRedoEngine implements RedoVisitor {
 
         mIndexes = new LHashTable.Obj<>(16);
 
-        mDecodeLatch = new AltLatch();
-        mOpLatch = new AltLatch();
+        mDecodeLatch = new Latch();
+        mCustomLatch = new Latch();
+        mOpLatch = new Latch();
+
+        mCommitSpins = new AtomicInteger(); 
+        mDecodeSpins = new AtomicInteger(); 
 
         mMaxThreads = maxThreads;
         mTotalThreads = new AtomicInteger();
@@ -111,10 +127,10 @@ final class ReplRedoEngine implements RedoVisitor {
             latchCount = 1 << 30;
         }
 
-        mLatches = new AltLatch[latchCount];
+        mLatches = new Latch[latchCount];
         mLatchesMask = mLatches.length - 1;
         for (int i=0; i<mLatches.length; i++) {
-            mLatches[i] = new AltLatch();
+            mLatches[i] = new Latch();
         }
 
         final TxnTable txnTable;
@@ -125,8 +141,8 @@ final class ReplRedoEngine implements RedoVisitor {
 
             txns.traverse((entry) -> {
                 // Reduce hash collisions.
-                long scrambledTxnId = scramble(entry.key);
-                AltLatch latch = selectLatch(scrambledTxnId);
+                long scrambledTxnId = mix(entry.key);
+                Latch latch = selectLatch(scrambledTxnId);
                 LocalTransaction txn = entry.value;
                 if (!txn.recoveryCleanup(false)) {
                     txnTable.insert(scrambledTxnId).init(txn, latch);
@@ -177,7 +193,7 @@ final class ReplRedoEngine implements RedoVisitor {
 
         // Reset and discard all transactions.
         mTransactions.traverse((entry) -> {
-            AltLatch latch = entry.latch();
+            Latch latch = entry.latch();
             try {
                 entry.mTxn.recoveryCleanup(true);
             } finally {
@@ -317,7 +333,7 @@ final class ReplRedoEngine implements RedoVisitor {
 
         // Commit the transaction now and delete the index. See LocalDatabase.moveToTrash for
         // more info.
-        AltLatch latch = te.latch();
+        Latch latch = te.latch();
         try {
             try {
                 txn.commit();
@@ -367,15 +383,14 @@ final class ReplRedoEngine implements RedoVisitor {
     @Override
     public boolean txnEnter(long txnId) throws IOException {
         // Reduce hash collisions.
-        long scrambledTxnId = scramble(txnId);
+        long scrambledTxnId = mix(txnId);
         TxnEntry e = mTransactions.get(scrambledTxnId);
 
         // Allow side-effect free operations to be performed before acquiring latch.
         mOpLatch.acquireShared();
 
         if (e == null) {
-            LocalTransaction txn = new LocalTransaction
-                (mDatabase, txnId, LockMode.UPGRADABLE_READ, INFINITE_TIMEOUT);
+            LocalTransaction txn = newTransaction(txnId);
             mTransactions.insert(scrambledTxnId).init(txn, selectLatch(scrambledTxnId));
 
             // Only release if no exception.
@@ -384,7 +399,7 @@ final class ReplRedoEngine implements RedoVisitor {
             return true;
         }
 
-        AltLatch latch = e.latch();
+        Latch latch = e.latch();
         try {
             // Cheap operation, so don't let another task thread run.
             e.mTxn.enter();
@@ -406,7 +421,7 @@ final class ReplRedoEngine implements RedoVisitor {
         // Allow side-effect free operations to be performed before acquiring latch.
         mOpLatch.acquireShared();
 
-        AltLatch latch = te.latch();
+        Latch latch = te.latch();
         try {
             // Allow another task thread to run while operation completes.
             nextTask();
@@ -435,7 +450,7 @@ final class ReplRedoEngine implements RedoVisitor {
             return true;
         }
 
-        AltLatch latch = te.latch();
+        Latch latch = te.latch();
         try {
             // Allow another task thread to run while operation completes.
             nextTask();
@@ -459,7 +474,7 @@ final class ReplRedoEngine implements RedoVisitor {
         // Allow side-effect free operations to be performed before acquiring latch.
         mOpLatch.acquireShared();
 
-        AltLatch latch = te.latch();
+        Latch latch = te.latch();
         try {
             // Commit is expected to complete quickly, so don't let another
             // task thread run.
@@ -489,7 +504,7 @@ final class ReplRedoEngine implements RedoVisitor {
         TxnEntry te = removeTxnEntry(txnId);
 
         if (te != null) {
-            AltLatch latch = te.latch();
+            Latch latch = te.latch(mCommitSpins);
             try {
                 // Commit is expected to complete quickly, so don't let another
                 // task thread run.
@@ -517,7 +532,7 @@ final class ReplRedoEngine implements RedoVisitor {
         // Allow side-effect free operations to be performed before acquiring latch.
         mOpLatch.acquireShared();
 
-        AltLatch latch = te.latch();
+        Latch latch = te.latch();
         try {
             LocalTransaction txn = te.mTxn;
 
@@ -561,12 +576,11 @@ final class ReplRedoEngine implements RedoVisitor {
         mOpLatch.acquireShared();
 
         LocalTransaction txn;
-        AltLatch latch;
+        Latch latch;
 
         if (te == null) {
             // Create the transaction, but don't store it in the transaction table.
-            txn = new LocalTransaction
-                (mDatabase, txnId, LockMode.UPGRADABLE_READ, INFINITE_TIMEOUT);
+            txn = newTransaction(txnId);
             // Latch isn't required because no other operations can access the transaction.
             latch = null;
         } else {
@@ -618,19 +632,20 @@ final class ReplRedoEngine implements RedoVisitor {
 
         TxnEntry te = getTxnEntry(txnId);
 
-        // Allow side-effect free operations to be performed before acquiring latch. Without a
-        // custom lock, this operation must run in isolation to prevent race conditions.
-        mOpLatch.acquireExclusive();
+        // Allow side-effect free operations to be performed before acquiring latch.
+        mOpLatch.acquireShared();
+        mCustomLatch.acquireExclusive();
 
-        AltLatch latch = te.latch();
+        Latch latch = te.latch();
         try {
             handler.redo(mDatabase, te.mTxn, message);
         } finally {
             latch.releaseExclusive();
+            mCustomLatch.releaseExclusive();
         }
 
         // Only release if no exception.
-        opFinishedExclusive();
+        opFinishedShared();
 
         // Return true and allow RedoDecoder to loop back.
         return true;
@@ -651,7 +666,7 @@ final class ReplRedoEngine implements RedoVisitor {
         // Allow side-effect free operations to be performed before acquiring latch.
         mOpLatch.acquireShared();
 
-        AltLatch latch = te.latch();
+        Latch latch = te.latch();
         try {
             LocalTransaction txn = te.mTxn;
 
@@ -739,7 +754,7 @@ final class ReplRedoEngine implements RedoVisitor {
                     task.start();
                 } catch (Throwable e) {
                     mDecodeLatch.releaseExclusive();
-                    mTotalThreads.decrementAndGet();
+                    mTotalThreads.getAndDecrement();
                     throw e;
                 }
                 mTaskThreadSet.put(task, this);
@@ -766,14 +781,13 @@ final class ReplRedoEngine implements RedoVisitor {
      * @return TxnEntry with scrambled transaction id
      */
     private TxnEntry getTxnEntry(long txnId) throws IOException {
-        long scrambledTxnId = scramble(txnId);
+        long scrambledTxnId = mix(txnId);
         TxnEntry e = mTransactions.get(scrambledTxnId);
 
         if (e == null) {
             // Create transaction on demand if necessary. Startup transaction recovery only
             // applies to those which generated undo log entries.
-            LocalTransaction txn = new LocalTransaction
-                (mDatabase, txnId, LockMode.UPGRADABLE_READ, INFINITE_TIMEOUT);
+            LocalTransaction txn = newTransaction(txnId);
             e = mTransactions.insert(scrambledTxnId);
             e.init(txn, selectLatch(scrambledTxnId));
         }
@@ -781,11 +795,18 @@ final class ReplRedoEngine implements RedoVisitor {
         return e;
     }
 
+    private LocalTransaction newTransaction(long txnId) {
+        LocalTransaction txn = new LocalTransaction
+            (mDatabase, txnId, LockMode.UPGRADABLE_READ, INFINITE_TIMEOUT);
+        txn.attach("replication");
+        return txn;
+    }
+
     /**
      * @return TxnEntry with scrambled transaction id; null if not found
      */
     private TxnEntry removeTxnEntry(long txnId) throws IOException {
-        long scrambledTxnId = scramble(txnId);
+        long scrambledTxnId = mix(txnId);
         return mTransactions.remove(scrambledTxnId);
     }
 
@@ -855,7 +876,7 @@ final class ReplRedoEngine implements RedoVisitor {
         return openIndex(null, indexId, entry);
     }
 
-    private AltLatch selectLatch(long scrambledTxnId) {
+    private Latch selectLatch(long scrambledTxnId) {
         return mLatches[((int) scrambledTxnId) & mLatchesMask];
     }
 
@@ -865,11 +886,11 @@ final class ReplRedoEngine implements RedoVisitor {
      * @return false if thread should exit
      */
     boolean decode() {
-        mIdleThreads.incrementAndGet();
+        mIdleThreads.getAndIncrement();
         try {
             while (true) {
                 try {
-                    if (mDecodeLatch.tryAcquireExclusiveNanos(IDLE_TIMEOUT_NANOS)) {
+                    if (acquireHandoff(mDecodeLatch, IDLE_TIMEOUT_NANOS, mDecodeSpins)) {
                         break;
                     }
                 } catch (InterruptedException e) {
@@ -883,14 +904,14 @@ final class ReplRedoEngine implements RedoVisitor {
                 }
             }
         } finally {
-            mIdleThreads.decrementAndGet();
+            mIdleThreads.getAndDecrement();
         }
 
         // At this point, decode latch is held exclusively.
 
         RedoDecoder decoder = mDecoder;
         if (decoder == null) {
-            mTotalThreads.decrementAndGet();
+            mTotalThreads.getAndDecrement();
             mDecodeLatch.releaseExclusive();
             return false;
         }
@@ -911,7 +932,7 @@ final class ReplRedoEngine implements RedoVisitor {
                     uncaught(e);
                 }
             }
-            mTotalThreads.decrementAndGet();
+            mTotalThreads.getAndDecrement();
             mDecodeLatch.releaseExclusive();
             // Panic.
             closeQuietly(null, mDatabase, e);
@@ -919,7 +940,7 @@ final class ReplRedoEngine implements RedoVisitor {
         }
 
         mDecoder = null;
-        mTotalThreads.decrementAndGet();
+        mTotalThreads.getAndDecrement();
         mDecodeLatch.releaseExclusive();
 
         try {
@@ -951,28 +972,101 @@ final class ReplRedoEngine implements RedoVisitor {
 
     final class DecodeTask extends Thread {
         DecodeTask() {
-            setName("ReplicationReceiver-" + Long.toUnsignedString(getId()));
             setDaemon(true);
         }
 
         public void run() {
-            while (ReplRedoEngine.this.decode());
-            mTaskThreadSet.remove(this);
+            setName("ReplicationReceiver-" + Long.toUnsignedString(getId()));
+            try {
+                while (ReplRedoEngine.this.decode());
+            } finally {
+                mTaskThreadSet.remove(this);
+            }
         }
+    }
+
+    private static long mix(long txnId) {
+        return HASH_SPREAD * txnId;
+    }
+
+    private static void acquireHandoff(Latch latch, AtomicInteger spinCfg) {
+        try {
+            acquireHandoff(latch, INFINITE_TIMEOUT, spinCfg);
+        } catch (InterruptedException ie) {
+            // Shouldn't happen. The call above only throws
+            // InterruptedException for a timed wait.
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /**
+     * Acquire the exclusive latch using an adaptive spin strategy. The
+     * expectation is that the latch is most often uncontended or held
+     * exclusive by another thread that is handing off to an exclusive
+     * waiter. Spinning here helps avoid costly thread park/unpark.
+     */
+    private static boolean acquireHandoff(Latch latch, long nanos, AtomicInteger spinCfg) throws InterruptedException {
+        int prevSpins = spinCfg.get();
+        int cutoff = prevSpins == 0 ? MAX_SPINS : prevSpins;
+        int h = 0, tries;
+
+        for (tries = 0;;) {
+            if (latch.tryAcquireExclusive()) {
+                break;
+            } else if (tries < cutoff) {
+                h ^= h << 1; h ^= h >>> 3; h ^= h << 10; // xorshift rng
+                if (h == 0) {
+                    h = ThreadLocalRandom.current().nextInt();
+                } else if (h < 0) {
+                    ++tries;
+                }
+            } else if (nanos < 0) {
+                latch.acquireExclusive();
+                break;
+            } else {
+                // Timed acquire.
+                if (latch.tryAcquireExclusiveNanos(nanos)) break;
+                else return false;
+            }
+        }
+
+        int target;
+        if (tries >= MAX_SPINS) {
+            // Spinning was pointless if we hit max spins. Next
+            // time spin the minimum.
+            target = MIN_SPINS;
+        } else {
+            // Target up to 2 * tries spins next time.
+            target = Math.min(MAX_SPINS, Math.max(MIN_SPINS, tries << 1));
+        }
+
+        if (prevSpins == 0) {
+            spinCfg.set(target);
+        } else {
+            // Smooth and update the spin config, ignoring any cas failure.
+            spinCfg.weakCompareAndSet(prevSpins, prevSpins + (target - prevSpins) / 8);
+        }
+        return true;
     }
 
     static final class TxnEntry extends LHashTable.Entry<TxnEntry> {
         LocalTransaction mTxn;
-        AltLatch mLatch;
+        Latch mLatch;
 
-        void init(LocalTransaction txn, AltLatch latch) {
+        void init(LocalTransaction txn, Latch latch) {
             mTxn = txn;
             mLatch = latch;
         }
 
-        AltLatch latch() {
-            AltLatch latch = mLatch;
+        Latch latch() {
+            Latch latch = mLatch;
             latch.acquireExclusive();
+            return latch;
+        }
+
+        Latch latch(AtomicInteger spinCfg) {
+            Latch latch = mLatch;
+            acquireHandoff(latch, spinCfg);
             return latch;
         }
     }

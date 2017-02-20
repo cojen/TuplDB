@@ -149,32 +149,6 @@ public class LimitCapacityTest {
     }
 
     @Test
-    public void fragmentRecovery() throws Exception {
-        // Tests that large value is in the redo log, even though it's not in the database.
-        // The opposite behavior is worse -- in the database but not in the redo log. This can
-        // happen if writing to the redo log fails. This is why redo is written first.
-
-        mDb.capacityLimit(1_000_000L);
-        Index ix = mDb.openIndex("test");
-
-        byte[] value = randomStr(new java.util.Random(), 1_000_000);
-
-        try {
-            ix.store(null, "key".getBytes(), value);
-            fail();
-        } catch (DatabaseFullException e) {
-            // Expected.
-        }
-
-        // Reopen without capacity limit.
-        mDb = reopenTempDatabase(mDb, mConfig);
-        ix = mDb.openIndex("test");
-
-        // Value was re-inserted.
-        fastAssertArrayEquals(value, ix.load(null, "key".getBytes()));
-    }
-
-    @Test
     public void fragmentRollback() throws Exception {
         // Tests that large value is fully rolled back when an explicit transaction is used.
 
@@ -191,6 +165,30 @@ public class LimitCapacityTest {
             // Expected.
         } finally {
             txn.reset();
+        }
+
+        // Reopen without capacity limit.
+        mDb = reopenTempDatabase(mDb, mConfig);
+        ix = mDb.openIndex("test");
+
+        // Value is still gone.
+        assertEquals(null, ix.load(null, "key".getBytes()));
+    }
+
+    @Test
+    public void fragmentRollbackAutoCommit() throws Exception {
+        // Tests that large value is fully rolled back for auto-commit transaction.
+
+        mDb.capacityLimit(1_000_000L);
+        Index ix = mDb.openIndex("test");
+
+        byte[] value = randomStr(new java.util.Random(), 1_000_000);
+
+        try {
+            ix.store(null, "key".getBytes(), value);
+            fail();
+        } catch (DatabaseFullException e) {
+            // Expected.
         }
 
         // Reopen without capacity limit.

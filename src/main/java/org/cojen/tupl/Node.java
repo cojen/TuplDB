@@ -20,6 +20,8 @@ import java.io.IOException;
 
 import java.util.concurrent.ThreadLocalRandom;
 
+import org.cojen.tupl.util.Latch;
+
 import static org.cojen.tupl.PageOps.*;
 
 import static org.cojen.tupl.Utils.EMPTY_BYTES;
@@ -33,7 +35,7 @@ import static org.cojen.tupl.Utils.rethrow;
  * @author Brian S O'Neill
  */
 @SuppressWarnings("serial")
-final class Node extends AltLatch implements DatabaseAccess {
+final class Node extends Latch implements DatabaseAccess {
     // Note: Changing these values affects how the Database class handles the
     // commit flag. It only needs to flip bit 0 to switch dirty states.
     static final byte
@@ -892,16 +894,16 @@ final class Node extends AltLatch implements DatabaseAccess {
         final int highestPtr = childPtr + (highestInternalPos() << 2);
         for (; childPtr <= highestPtr; childPtr += 8) {
             long childId = p_uint48GetLE(mPage, childPtr);
-            Node child = db.nodeMapGet(childId);
+            Node child = db.nodeMapGetExclusive(childId);
             if (child != null) {
-                child.acquireExclusive();
-                if (childId == child.mId) {
+                try {
                     if (closed == null) {
                         closed = createClosedNode();
                     }
                     child.invalidateCursors(closed);
+                } finally {
+                    child.releaseExclusive();
                 }
-                child.releaseExclusive();
             }
         }
     }
@@ -1879,11 +1881,11 @@ final class Node extends AltLatch implements DatabaseAccess {
     }
 
     /**
-     * Transactionally delete a leaf entry, replacing the value with a
-     * ghost. When read back, it is interpreted as null. Ghosts are used by
-     * transactional deletes, to ensure that they are not visible by cursors in
-     * other transactions. They need to acquire a lock first. When the original
-     * transaction commits, it deletes all the ghosted entries it created.
+     * Transactionally delete a leaf entry (but with no redo logging), replacing the value with
+     * a ghost. When read back, it is interpreted as null. Ghosts are used by transactional
+     * deletes, to ensure that they are not visible by cursors in other transactions. They need
+     * to acquire a lock first. When the original transaction commits, it deletes all the
+     * ghosted entries it created.
      *
      * <p>Caller must hold commit lock and exclusive latch on node.
      *
@@ -1945,16 +1947,12 @@ final class Node extends AltLatch implements DatabaseAccess {
         // Replace value with ghost.
         p_bytePut(page, valueHeaderLoc, -1);
         garbage(garbage() + loc - valueHeaderLoc - 1);
-
-        if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
-            txn.redoStore(tree.mId, key, null);
-        }
     }
 
     /**
-     * Copies existing entry to undo log prior to it being updated. Fragmented
-     * values are added to the trash and the fragmented bit is cleared. Caller
-     * must hold commit lock and exlusive latch on node.
+     * Copies existing entry to undo log prior to it being updated. Fragmented values are added
+     * to the trash and the fragmented bit is cleared. Caller must hold commit lock and
+     * exlusive latch on node.
      *
      * @param pos position as provided by binarySearch; must be positive
      */
@@ -1996,9 +1994,8 @@ final class Node extends AltLatch implements DatabaseAccess {
                         (txn, tree.mId, page,
                          entryLoc, valueHeaderLoc - entryLoc,  // keyStart, keyLen
                          valueStartLoc, loc - valueStartLoc);  // valueStart, valueLen
-                    // Clearing the fragmented bit prevents the update from
-                    // double-deleting the fragments, and it also allows the
-                    // old entry slot to be re-used.
+                    // Clearing the fragmented bit prevents the update from double-deleting the
+                    // fragments, and it also allows the old entry slot to be re-used.
                     p_bytePut(page, valueHeaderLoc, header & ~ENTRY_FRAGMENTED);
                     return;
                 }
@@ -2239,7 +2236,7 @@ final class Node extends AltLatch implements DatabaseAccess {
             try {
                 getDatabase().deleteFragments(copy, 0, fragmented.length);
             } catch (Throwable e) {
-                cause.addSuppressed(e);
+                Utils.suppress(cause, e);
                 panic(cause);
             } finally {
                 p_delete(copy);
@@ -3492,12 +3489,9 @@ final class Node extends AltLatch implements DatabaseAccess {
                 }
                 if ((header & ENTRY_FRAGMENTED) != 0) {
                     tree.mDatabase.deleteFragments(page, loc, len);
-                    // TODO: If new value needs to be fragmented too, try to
-                    // re-use existing value slot.
-                    if (vfrag == 0) {
-                        // Clear fragmented bit in case new value can be quick copied.
-                        p_bytePut(page, valueHeaderLoc, header & ~ENTRY_FRAGMENTED);
-                    }
+                    // Clearing the fragmented bit prevents the update from double-deleting the
+                    // fragments, and it also allows the old entry slot to be re-used.
+                    p_bytePut(page, valueHeaderLoc, header & ~ENTRY_FRAGMENTED);
                 }
             }
 
@@ -4449,7 +4443,7 @@ final class Node extends AltLatch implements DatabaseAccess {
         try {
             getDatabase().deleteNode(newNode);
         } catch (Throwable e) {
-            cause.addSuppressed(e);
+            Utils.suppress(cause, e);
             panic(cause);
         }
     }

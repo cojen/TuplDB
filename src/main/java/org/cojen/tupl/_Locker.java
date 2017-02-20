@@ -102,7 +102,7 @@ class _Locker extends _LockOwner {
                 try {
                     // Perform deadlock detection except for the fast-fail case.
                     if (nanosTimeout != 0) {
-                        detectDeadlock(waitingFor, lockType, nanosTimeout, hash);
+                        waitingFor.detectDeadlock(this, lockType, nanosTimeout);
                     }
                 } finally {
                     mWaitingFor = null;
@@ -124,7 +124,7 @@ class _Locker extends _LockOwner {
         if (result.isHeld()) {
             return result;
         }
-        throw failed(lockType, result, nanosTimeout, hash);
+        throw failed(lockType, result, nanosTimeout);
     }
 
     /**
@@ -369,7 +369,7 @@ class _Locker extends _LockOwner {
         if (result.isHeld()) {
             return result;
         }
-        throw failed(TYPE_EXCLUSIVE, result, nanosTimeout, lock.mHashCode);
+        throw failed(TYPE_EXCLUSIVE, result, nanosTimeout);
     }
 
     /**
@@ -401,7 +401,7 @@ class _Locker extends _LockOwner {
      * @param lockType TYPE_SHARED, TYPE_UPGRADABLE, or TYPE_EXCLUSIVE
      */
     @SuppressWarnings("incomplete-switch")
-    LockFailureException failed(int lockType, LockResult result, long nanosTimeout, int hash)
+    LockFailureException failed(int lockType, LockResult result, long nanosTimeout)
         throws DeadlockException
     {
         _Lock waitingFor;
@@ -411,7 +411,7 @@ class _Locker extends _LockOwner {
             waitingFor = mWaitingFor;
             if (waitingFor != null) {
                 try {
-                    detectDeadlock(waitingFor, lockType, nanosTimeout, hash);
+                    waitingFor.detectDeadlock(this, lockType, nanosTimeout);
                 } finally {
                     mWaitingFor = null;
                 }
@@ -428,28 +428,11 @@ class _Locker extends _LockOwner {
 
         if (result.isTimedOut()) {
             Object att = waitingFor == null ? null
-                : waitingFor.findOwnerAttachment(this, lockType, hash);
+                : waitingFor.findOwnerAttachment(this, lockType);
             return new LockTimeoutException(nanosTimeout, att);
         }
 
         return new LockFailureException();
-    }
-
-    /**
-     * @param waitingFor should not be not null
-     * @param lockType TYPE_SHARED, TYPE_UPGRADABLE, or TYPE_EXCLUSIVE
-     */
-    private void detectDeadlock(_Lock waitingFor, int lockType, long nanosTimeout, int hash)
-        throws DeadlockException
-    {
-        _DeadlockDetector detector = new _DeadlockDetector(this);
-        if (detector.scan()) {
-            Object att = waitingFor == null ? null
-                : waitingFor.findOwnerAttachment(this, lockType, hash);
-            throw new DeadlockException(nanosTimeout, att,
-                                        detector.mGuilty,
-                                        detector.newDeadlockSet(lockType, hash));
-        }
     }
 
     /**

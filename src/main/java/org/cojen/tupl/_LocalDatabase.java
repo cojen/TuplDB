@@ -72,6 +72,8 @@ import org.cojen.tupl.io.MappedPageArray;
 import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
 
+import org.cojen.tupl.util.Latch;
+
 import static org.cojen.tupl._Node.*;
 import static org.cojen.tupl.DirectPageOps.*;
 import static org.cojen.tupl.Utils.*;
@@ -181,7 +183,7 @@ final class _LocalDatabase extends AbstractDatabase {
     // Various mappings, defined by KEY_TYPE_ fields.
     private final _Tree mRegistryKeyMap;
 
-    private final AltLatch mOpenTreesLatch;
+    private final Latch mOpenTreesLatch;
     // Maps tree names to open trees.
     // Must be a concurrent map because we rely on concurrent iteration.
     private final Map<byte[], _TreeRef> mOpenTrees;
@@ -192,7 +194,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
     // Map of all loaded nodes.
     private final _Node[] mNodeMapTable;
-    private final AltLatch[] mNodeMapLatches;
+    private final Latch[] mNodeMapLatches;
 
     final int mMaxKeySize;
     final int mMaxEntrySize;
@@ -335,15 +337,18 @@ final class _LocalDatabase extends AbstractDatabase {
         // Initialize NodeMap, the primary cache of Nodes.
         final int procCount = Runtime.getRuntime().availableProcessors();
         {
-            int latches = Utils.roundUpPower2(procCount * 16);
             int capacity = Utils.roundUpPower2(maxCache);
             if (capacity < 0) {
                 capacity = 0x40000000;
             }
+            // The number of latches must not be more than the number of hash buckets. This
+            // ensures that a hash bucket is guarded by exactly one latch, which can be shared
+            // across multiple buckets.
+            int latches = Math.min(capacity, Utils.roundUpPower2(procCount * 16));
             mNodeMapTable = new _Node[capacity];
-            mNodeMapLatches = new AltLatch[latches];
+            mNodeMapLatches = new Latch[latches];
             for (int i=0; i<latches; i++) {
-                mNodeMapLatches[i] = new AltLatch();
+                mNodeMapLatches[i] = new Latch();
             }
         }
 
@@ -561,7 +566,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
             mTxnContexts = new _TransactionContext[procCount * 4];
             for (int i=0; i<mTxnContexts.length; i++) {
-                mTxnContexts[i] = new _TransactionContext(mTxnContexts.length);
+                mTxnContexts[i] = new _TransactionContext(mTxnContexts.length, 4096);
             };
 
             mSparePagePool = new _PagePool(mPageSize, procCount);
@@ -586,7 +591,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 mRegistry = new _Tree(this, _Tree.REGISTRY_ID, null, rootNode);
             }
 
-            mOpenTreesLatch = new AltLatch();
+            mOpenTreesLatch = new Latch();
             if (openMode == OPEN_TEMP) {
                 mOpenTrees = Collections.emptyMap();
                 mOpenTreesById = new LHashTable.Obj<>(0);
@@ -618,22 +623,17 @@ final class _LocalDatabase extends AbstractDatabase {
                 }
             }
 
-            // Key size is limited to ensure that internal nodes and leaf nodes can hold at
-            // least two keys. All nodes have a 12-byte header, large keys have a 2-byte
-            // header, and each node entry has a 2-byte pointer to it. Internal nodes have an
-            // 8-byte field for each child pointer, and leaf nodes require at least 11 bytes to
-            // hold a fragmented value. The magic constant for internal nodes is (12 + 2 + 2 +
-            // 2 + 2 + 8 * 3) = 44, and half that is 22. Leaf node constant is (12 + 2 + 2 + 2
-            // + 2 + 11 * 2) = 42, and half that is 21. The internal node constant is more
-            // restrictive, and so that's what's used.
-            mMaxKeySize = Math.min(16383, (pageSize >> 1) - 22);
-
             // Limit maximum non-fragmented entry size to 0.75 of usable node size.
             mMaxEntrySize = ((pageSize - _Node.TN_HEADER_SIZE) * 3) >> 2;
 
             // Limit maximum fragmented entry size to guarantee that 2 entries fit. Each also
             // requires 2 bytes for pointer and up to 3 bytes for value length field.
             mMaxFragmentedEntrySize = (pageSize - _Node.TN_HEADER_SIZE - (2 + 3 + 2 + 3)) >> 1;
+
+            // Limit the maximum key size to allow enough room for a fragmented value. It might
+            // require up to 11 bytes for fragment encoding (when length is >= 65536), and tho
+            // additional bytes are required for the value header inside the tree node.
+            mMaxKeySize = Math.min(16383, mMaxFragmentedEntrySize - (2 + 11));
 
             mFragmentInodeLevelCaps = calculateInodeLevelCaps(mPageSize);
 
@@ -730,7 +730,7 @@ final class _LocalDatabase extends AbstractDatabase {
                     }
 
                     // New redo logs begin with identifiers one higher than last scanned.
-                    mRedoWriter = new _RedoLog(config, replayLog);
+                    mRedoWriter = new _RedoLog(config, replayLog, mTxnContexts[0]);
 
                     // TODO: If any exception is thrown before checkpoint is complete, delete
                     // the newly created redo log file.
@@ -772,7 +772,7 @@ final class _LocalDatabase extends AbstractDatabase {
      */
     private void finishInit(DatabaseConfig config) throws IOException {
         if (mRedoWriter == null && mTempFileManager == null) {
-            // Nothing is durable and nothing to ever clean up 
+            // Nothing is durable and nothing to ever clean up. 
             return;
         }
 
@@ -780,7 +780,7 @@ final class _LocalDatabase extends AbstractDatabase {
         mCheckpointer = c;
 
         // Register objects to automatically shutdown.
-        c.register(mRedoWriter);
+        c.register(new RedoClose(this));
         c.register(mTempFileManager);
 
         if (mRedoWriter instanceof _ReplRedoWriter) {
@@ -1075,14 +1075,15 @@ final class _LocalDatabase extends AbstractDatabase {
                 c.reset();
             }
 
-            _RedoWriter redo;
-            if (redoTxnId == 0 && (redo = txnRedoWriter()) != null) {
-                long commitPos;
+            if (redoTxnId == 0 && txn.mRedo != null) {
+                txn.durabilityMode(mDurabilityMode.alwaysRedo());
 
+                long commitPos;
                 CommitLock.Shared shared = mCommitLock.acquireShared();
                 try {
-                    commitPos = redo.renameIndex
-                        (txn.txnId(), tree.mId, newName, mDurabilityMode.alwaysRedo());
+                    txn.check();
+                    commitPos = txn.mContext.redoRenameIndexCommitFinal
+                        (txn.mRedo, txn.txnId(), tree.mId, newName, txn.durabilityMode());
                 } finally {
                     shared.release();
                 }
@@ -1091,7 +1092,7 @@ final class _LocalDatabase extends AbstractDatabase {
                     // Must wait for durability confirmation before performing actions below
                     // which cannot be easily rolled back. No global latches or locks are held
                     // while waiting.
-                    redo.txnCommitSync(txn, commitPos);
+                    txn.mRedo.txnCommitSync(txn, commitPos);
                 }
             }
 
@@ -1517,10 +1518,32 @@ final class _LocalDatabase extends AbstractDatabase {
     }
 
     /**
+     * Used by auto-commit operations that don't have an explicit transaction.
+     */
+    _TransactionContext anyTransactionContext() {
+        return selectTransactionContext(ThreadLocalRandom.current().nextInt());
+    }
+
+    /**
      * Called by transaction constructor after hash code has been assigned.
      */
     _TransactionContext selectTransactionContext(_LocalTransaction txn) {
-        return mTxnContexts[(txn.hashCode() & 0x7fffffff) % mTxnContexts.length];
+        return selectTransactionContext(txn.hashCode());
+    }
+
+    private _TransactionContext selectTransactionContext(int num) {
+        return mTxnContexts[(num & 0x7fffffff) % mTxnContexts.length];
+    }
+
+    /**
+     * Returns the transaction context with the highest confirmed position.
+     */
+    _TransactionContext highestTransactionContext() {
+        _TransactionContext context = mTxnContexts[0];
+        for (int i=1; i<mTxnContexts.length; i++) {
+            context = context.higherConfirmed(mTxnContexts[i]);
+        }
+        return context;
     }
 
     @Override
@@ -1764,17 +1787,85 @@ final class _LocalDatabase extends AbstractDatabase {
         return stats;
     }
 
+    static class RedoClose extends ShutdownHook.Weak<_LocalDatabase> {
+        RedoClose(_LocalDatabase db) {
+            super(db);
+        }
+
+        @Override
+        void doShutdown(_LocalDatabase db) {
+            db.redoClose(RedoOps.OP_SHUTDOWN, null);
+        }
+    }
+
+    /**
+     * @param op OP_CLOSE or OP_SHUTDOWN
+     */
+    private void redoClose(byte op, Throwable cause) {
+        _RedoWriter redo = mRedoWriter;
+        if (redo == null) {
+            return;
+        }
+
+        redo.closeCause(cause);
+        redo = redo.txnRedoWriter();
+        redo.closeCause(cause);
+
+        try {
+            // NO_FLUSH now behaves like NO_SYNC.
+            redo.alwaysFlush(true);
+        } catch (IOException e) {
+            // Ignore.
+        }
+
+        if (mTxnContexts != null) {
+            // Flush out any lingering NO_FLUSH commits.
+            for (_TransactionContext context : mTxnContexts) {
+                try {
+                    context.flush();
+                } catch (IOException e) {
+                    // Ignore for now and discover again later.
+                }
+            }
+        }
+
+        try {
+            _TransactionContext context = anyTransactionContext();
+            context.redoTimestamp(redo, op); 
+            context.flush();
+
+            redo.force(true);
+        } catch (IOException e) {
+            // Ignore.
+        }
+
+        // When shutdown hook is invoked, don't close the redo writer. It may interfere with
+        // other shutdown hooks, causing unexpected exceptions to be thrown during the whole
+        // shutdown sequence.
+
+        if (op == RedoOps.OP_CLOSE) {
+            Utils.closeQuietly(null, redo);
+        }
+    }
+
+    private void flushAllContexts() throws IOException {
+        for (_TransactionContext context : mTxnContexts) {
+            context.flush();
+        }
+    }
+
     @Override
     public void flush() throws IOException {
         if (!isClosed() && mRedoWriter != null) {
-            mRedoWriter.flush();
+            flushAllContexts();
         }
     }
 
     @Override
     public void sync() throws IOException {
         if (!isClosed() && mRedoWriter != null) {
-            mRedoWriter.flushSync(false);
+            flushAllContexts();
+            mRedoWriter.force(false);
         }
     }
 
@@ -2140,9 +2231,9 @@ final class _LocalDatabase extends AbstractDatabase {
 
                 nodeMapDeleteAll();
 
-                IOException ex = null;
+                redoClose(RedoOps.OP_CLOSE, cause);
 
-                ex = closeQuietly(ex, mRedoWriter, cause);
+                IOException ex = null;
                 ex = closeQuietly(ex, mPageDb, cause);
                 ex = closeQuietly(ex, mTempFileManager, cause);
 
@@ -2243,19 +2334,20 @@ final class _LocalDatabase extends AbstractDatabase {
                 mRegistryKeyMap.store(txn, trashIdKey, nameKey);
             }
 
-            _RedoWriter redo = txnRedoWriter();
-            if (redo != null) {
-                long commitPos;
-
+            if (txn.mRedo != null) {
                 // Note: No additional operations can appear after OP_DELETE_INDEX. When a
                 // replica reads this operation it immediately commits the transaction in order
                 // for the deletion task to be started immediately. The redo log still contains
                 // a commit operation, which is redundant and harmless.
 
+                txn.durabilityMode(mDurabilityMode.alwaysRedo());
+
+                long commitPos;
                 CommitLock.Shared shared = mCommitLock.acquireShared();
                 try {
-                    commitPos = redo.deleteIndex
-                        (txn.txnId(), treeId, mDurabilityMode.alwaysRedo());
+                    txn.check();
+                    commitPos = txn.mContext.redoDeleteIndexCommitFinal
+                        (txn.mRedo, txn.txnId(), treeId, txn.durabilityMode());
                 } finally {
                     shared.release();
                 }
@@ -2264,7 +2356,7 @@ final class _LocalDatabase extends AbstractDatabase {
                     // Must wait for durability confirmation before performing actions below
                     // which cannot be easily rolled back. No global latches or locks are held
                     // while waiting.
-                    redo.txnCommitSync(txn, commitPos);
+                    txn.mRedo.txnCommitSync(txn, commitPos);
                 }
             }
 
@@ -2333,17 +2425,14 @@ final class _LocalDatabase extends AbstractDatabase {
             }
         } else {
             // Check if root node is still around after tree was closed.
-            _Node rootNode = nodeMapGet(rootId);
+            _Node rootNode = nodeMapGetAndRemove(rootId);
 
             if (rootNode != null) {
-                rootNode.acquireShared();
                 try {
-                    if (rootId == rootNode.mId) {
-                        rootNode.makeUnevictable();
-                        return rootNode;
-                    }
+                    rootNode.makeUnevictable();
+                    return rootNode;
                 } finally {
-                    rootNode.releaseShared();
+                    rootNode.releaseExclusive();
                 }
             }
 
@@ -2355,7 +2444,6 @@ final class _LocalDatabase extends AbstractDatabase {
                 } finally {
                     rootNode.releaseExclusive();
                 }
-                nodeMapPut(rootNode);
                 return rootNode;
             } catch (Throwable e) {
                 rootNode.makeEvictableNow();
@@ -2548,7 +2636,7 @@ final class _LocalDatabase extends AbstractDatabase {
                             mRegistry.delete(Transaction.BOGUS, treeIdBytes);
                             critical = false;
                         } catch (Throwable e2) {
-                            e.addSuppressed(e2);
+                            Utils.suppress(e, e2);
                         }
                         throw e;
                     }
@@ -2571,7 +2659,7 @@ final class _LocalDatabase extends AbstractDatabase {
                         createTxn.reset();
                         mRegistry.delete(Transaction.BOGUS, treeIdBytes);
                     } catch (Throwable e2) {
-                        e.addSuppressed(e2);
+                        Utils.suppress(e, e2);
                         throw closeOnFailure(this, e);
                     }
                     DatabaseException.rethrowIfRecoverable(e);
@@ -2811,6 +2899,42 @@ final class _LocalDatabase extends AbstractDatabase {
     }
 
     /**
+     * @return shared latched node if found; null if not found
+     */
+    _Node nodeMapGetShared(long nodeId) {
+        int hash = Long.hashCode(nodeId);
+        while (true) {
+            _Node node = nodeMapGet(nodeId, hash);
+            if (node == null) {
+                return null;
+            }
+            node.acquireShared();
+            if (nodeId == node.mId) {
+                return node;
+            }
+            node.releaseShared();
+        }
+    }
+
+    /**
+     * @return exclusively latched node if found; null if not found
+     */
+    _Node nodeMapGetExclusive(long nodeId) {
+        int hash = Long.hashCode(nodeId);
+        while (true) {
+            _Node node = nodeMapGet(nodeId, hash);
+            if (node == null) {
+                return null;
+            }
+            node.acquireExclusive();
+            if (nodeId == node.mId) {
+                return node;
+            }
+            node.releaseExclusive();
+        }
+    }
+
+    /**
      * Returns unconfirmed node if found. Caller must latch and confirm that node identifier
      * matches, in case an eviction snuck in.
      */
@@ -2839,8 +2963,8 @@ final class _LocalDatabase extends AbstractDatabase {
 
         // Again with shared partition latch held.
 
-        final AltLatch[] latches = mNodeMapLatches;
-        final AltLatch latch = latches[hash & (latches.length - 1)];
+        final Latch[] latches = mNodeMapLatches;
+        final Latch latch = latches[hash & (latches.length - 1)];
         latch.acquireShared();
 
         node = table[hash & (table.length - 1)];
@@ -2867,8 +2991,8 @@ final class _LocalDatabase extends AbstractDatabase {
      * Put a node into the map, but caller must confirm that node is not already present.
      */
     void nodeMapPut(final _Node node, final int hash) {
-        final AltLatch[] latches = mNodeMapLatches;
-        final AltLatch latch = latches[hash & (latches.length - 1)];
+        final Latch[] latches = mNodeMapLatches;
+        final Latch latch = latches[hash & (latches.length - 1)];
         latch.acquireExclusive();
 
         final _Node[] table = mNodeMapTable;
@@ -2900,8 +3024,8 @@ final class _LocalDatabase extends AbstractDatabase {
      */
     _Node nodeMapPutIfAbsent(final _Node node) {
         final int hash = Long.hashCode(node.mId);
-        final AltLatch[] latches = mNodeMapLatches;
-        final AltLatch latch = latches[hash & (latches.length - 1)];
+        final Latch[] latches = mNodeMapLatches;
+        final Latch latch = latches[hash & (latches.length - 1)];
         latch.acquireExclusive();
 
         final _Node[] table = mNodeMapTable;
@@ -2927,8 +3051,8 @@ final class _LocalDatabase extends AbstractDatabase {
      */
     void nodeMapReplace(final _Node oldNode, final _Node newNode) {
         final int hash = Long.hashCode(oldNode.mId);
-        final AltLatch[] latches = mNodeMapLatches;
-        final AltLatch latch = latches[hash & (latches.length - 1)];
+        final Latch[] latches = mNodeMapLatches;
+        final Latch latch = latches[hash & (latches.length - 1)];
         latch.acquireExclusive();
 
         newNode.mNodeMapNext = oldNode.mNodeMapNext;
@@ -2952,23 +3076,27 @@ final class _LocalDatabase extends AbstractDatabase {
         latch.releaseExclusive();
     }
 
-    void nodeMapRemove(final _Node node) {
-        nodeMapRemove(node, Long.hashCode(node.mId));
+    boolean nodeMapRemove(final _Node node) {
+        return nodeMapRemove(node, Long.hashCode(node.mId));
     }
 
-    void nodeMapRemove(final _Node node, final int hash) {
-        final AltLatch[] latches = mNodeMapLatches;
-        final AltLatch latch = latches[hash & (latches.length - 1)];
+    boolean nodeMapRemove(final _Node node, final int hash) {
+        boolean found = false;
+
+        final Latch[] latches = mNodeMapLatches;
+        final Latch latch = latches[hash & (latches.length - 1)];
         latch.acquireExclusive();
 
         final _Node[] table = mNodeMapTable;
         final int index = hash & (table.length - 1);
         _Node e = table[index];
         if (e == node) {
+            found = true;
             table[index] = e.mNodeMapNext;
         } else while (e != null) {
             _Node next = e.mNodeMapNext;
             if (next == node) {
+                found = true;
                 e.mNodeMapNext = next.mNodeMapNext;
                 break;
             }
@@ -2978,6 +3106,8 @@ final class _LocalDatabase extends AbstractDatabase {
         node.mNodeMapNext = null;
 
         latch.releaseExclusive();
+
+        return found;
     }
 
     /**
@@ -2986,15 +3116,11 @@ final class _LocalDatabase extends AbstractDatabase {
      * @return node with shared latch held
      */
     _Node nodeMapLoadFragment(long nodeId) throws IOException {
-        _Node node = nodeMapGet(nodeId);
+        _Node node = nodeMapGetShared(nodeId);
 
         if (node != null) {
-            node.acquireShared();
-            if (nodeId == node.mId) {
-                node.used(ThreadLocalRandom.current());
-                return node;
-            }
-            node.releaseShared();
+            node.used(ThreadLocalRandom.current());
+            return node;
         }
 
         node = allocLatchedNode(nodeId);
@@ -3057,15 +3183,11 @@ final class _LocalDatabase extends AbstractDatabase {
         // Very similar to the nodeMapLoadFragment method. It has comments which explains
         // what's going on here. No point in duplicating that as well.
 
-        _Node node = nodeMapGet(nodeId);
+        _Node node = nodeMapGetExclusive(nodeId);
 
         if (node != null) {
-            node.acquireExclusive();
-            if (nodeId == node.mId) {
-                node.used(ThreadLocalRandom.current());
-                return node;
-            }
-            node.releaseExclusive();
+            node.used(ThreadLocalRandom.current());
+            return node;
         }
 
         node = allocLatchedNode(nodeId);
@@ -3106,16 +3228,9 @@ final class _LocalDatabase extends AbstractDatabase {
      * @return exclusively latched node if found; null if not found
      */
     _Node nodeMapGetAndRemove(long nodeId) {
-        int hash = Long.hashCode(nodeId);
-        _Node node = nodeMapGet(nodeId, hash);
+        _Node node = nodeMapGetExclusive(nodeId);
         if (node != null) {
-            node.acquireExclusive();
-            if (nodeId != node.mId) {
-                node.releaseExclusive();
-                node = null;
-            } else {
-                nodeMapRemove(node, hash);
-            }
+            nodeMapRemove(node);
         }
         return node;
     }
@@ -3125,7 +3240,7 @@ final class _LocalDatabase extends AbstractDatabase {
      */
     void nodeMapDeleteAll() {
         start: while (true) {
-            for (AltLatch latch : mNodeMapLatches) {
+            for (Latch latch : mNodeMapLatches) {
                 latch.acquireExclusive();
             }
 
@@ -3151,7 +3266,7 @@ final class _LocalDatabase extends AbstractDatabase {
                     }
                 }
             } finally {
-                for (AltLatch latch : mNodeMapLatches) {
+                for (Latch latch : mNodeMapLatches) {
                     latch.releaseExclusive();
                 }
             }
@@ -3317,7 +3432,7 @@ final class _LocalDatabase extends AbstractDatabase {
                         mPageDb.recyclePage(newId);
                     } catch (Throwable e2) {
                         // Panic.
-                        e.addSuppressed(e2);
+                        Utils.suppress(e, e2);
                         close(e);
                     }
                     throw e;
@@ -3351,7 +3466,7 @@ final class _LocalDatabase extends AbstractDatabase {
                     mPageDb.recyclePage(newId);
                 } catch (Throwable e2) {
                     // Panic.
-                    e.addSuppressed(e2);
+                    Utils.suppress(e, e2);
                     close(e);
                 }
                 throw e;
@@ -3383,7 +3498,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 mPageDb.recyclePage(newId);
             } catch (Throwable e2) {
                 // Panic.
-                e.addSuppressed(e2);
+                Utils.suppress(e, e2);
                 close(e);
             }
             throw e;
@@ -3404,7 +3519,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 mPageDb.recyclePage(newId);
             } catch (Throwable e2) {
                 // Panic.
-                e.addSuppressed(e2);
+                Utils.suppress(e, e2);
                 close(e);
             }
             throw e;
@@ -3500,7 +3615,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
             // Must be removed from map before page is deleted. It could be recycled too soon,
             // creating a NodeMap collision.
-            nodeMapRemove(node, Long.hashCode(id));
+            boolean removed = nodeMapRemove(node, Long.hashCode(id));
 
             try {
                 if (id != 0) {
@@ -3514,10 +3629,12 @@ final class _LocalDatabase extends AbstractDatabase {
                 }
             } catch (Throwable e) {
                 // Try to undo things.
-                try {
-                    nodeMapPut(node);
-                } catch (Throwable e2) {
-                    e.addSuppressed(e2);
+                if (removed) {
+                    try {
+                        nodeMapPut(node);
+                    } catch (Throwable e2) {
+                        Utils.suppress(e, e2);
+                    }
                 }
                 throw e;
             }
@@ -3591,15 +3708,14 @@ final class _LocalDatabase extends AbstractDatabase {
         long pointerSpace = pageCount * 6;
 
         byte[] newValue;
+        final int inline; // length of inline field size
         if (remainder <= max && remainder < 65536
-            && (pointerSpace <= (max + (6 - 2) - remainder)))
+            && (pointerSpace <= (max + 6 - (inline = remainder == 0 ? 0 : 2) - remainder)))
         {
             // Remainder fits inline, minimizing internal fragmentation. All
             // extra pages will be full. All pointers fit too; encode direct.
 
             // Conveniently, 2 is the header bit and the inline length field size.
-            final int inline = remainder == 0 ? 0 : 2;
-
             byte header = (byte) inline;
             final int offset;
             if (vlength < (1L << (2 * 8))) {
@@ -3739,13 +3855,19 @@ final class _LocalDatabase extends AbstractDatabase {
                     try {
                         encodeInt48LE(newValue, offset, inode.mId);
                         writeMultilevelFragments(levels, inode, value, 0, vlength);
+                        inode.releaseExclusive();
                     } catch (DatabaseException e) {
                         if (!e.isRecoverable()) {
                             close(e);
                         } else {
-                            // Clean up the mess.
+                            // Clean up the mess. Note that inode is still latched here,
+                            // because writeMultilevelFragments never releases it. The call to
+                            // deleteMultilevelFragments always releases the inode latch.
                             deleteMultilevelFragments(levels, inode, vlength);
                         }
+                        throw e;
+                    } catch (Throwable e) {
+                        close(e);
                         throw e;
                     }
                 }
@@ -3795,49 +3917,49 @@ final class _LocalDatabase extends AbstractDatabase {
 
     /**
      * @param level inode level; at least 1
-     * @param inode exclusive latched parent inode; always released by this method
+     * @param inode exclusive latched parent inode; never released by this method
      * @param value slice of complete value being fragmented
      */
     private void writeMultilevelFragments(int level, _Node inode,
                                           byte[] value, int voffset, long vlength)
         throws IOException
     {
+        long page = inode.mPage;
+        level--;
+        long levelCap = levelCap(level);
+
+        int childNodeCount = (int) ((vlength + (levelCap - 1)) / levelCap);
+
+        int poffset = 0;
         try {
-            long page = inode.mPage;
-            level--;
-            long levelCap = levelCap(level);
+            for (int i=0; i<childNodeCount; i++) {
+                _Node childNode = allocDirtyFragmentNode();
+                p_int48PutLE(page, poffset, childNode.mId);
+                poffset += 6;
 
-            int childNodeCount = (int) ((vlength + (levelCap - 1)) / levelCap);
-
-            int poffset = 0;
-            try {
-                for (int i=0; i<childNodeCount; i++) {
-                    _Node childNode = allocDirtyFragmentNode();
-                    p_int48PutLE(page, poffset, childNode.mId);
-                    poffset += 6;
-
-                    int len = (int) Math.min(levelCap, vlength);
-                    if (level <= 0) {
-                        long childPage = childNode.mPage;
-                        p_copyFromArray(value, voffset, childPage, 0, len);
-                        // Zero fill the rest, making it easier to extend later.
-                        p_clear(childPage, len, pageSize(childPage));
-                        childNode.releaseExclusive();
-                    } else {
+                int len = (int) Math.min(levelCap, vlength);
+                if (level <= 0) {
+                    long childPage = childNode.mPage;
+                    p_copyFromArray(value, voffset, childPage, 0, len);
+                    // Zero fill the rest, making it easier to extend later.
+                    p_clear(childPage, len, pageSize(childPage));
+                    childNode.releaseExclusive();
+                } else {
+                    try {
                         writeMultilevelFragments(level, childNode, value, voffset, len);
+                    } finally {
+                        childNode.releaseExclusive();
                     }
-
-                    vlength -= len;
-                    voffset += len;
                 }
-            } finally {
-                // Zero fill the rest, making it easier to extend later. If an exception was
-                // thrown, this simplies cleanup. All of the allocated pages are referenced,
-                // but the rest are not.
-                p_clear(page, poffset, pageSize(page));
+
+                vlength -= len;
+                voffset += len;
             }
         } finally {
-            inode.releaseExclusive();
+            // Zero fill the rest, making it easier to extend later. If an exception was
+            // thrown, this simplies cleanup. All of the allocated pages are referenced,
+            // but the rest are not.
+            p_clear(page, poffset, pageSize(page));
         }
     }
 
@@ -4301,7 +4423,8 @@ final class _LocalDatabase extends AbstractDatabase {
 
                     // Thresholds not met for a full checkpoint, but fully sync the redo log
                     // for durability.
-                    mRedoWriter.flushSync(true);
+                    flushAllContexts();
+                    mRedoWriter.force(true);
 
                     return;
                 }
@@ -4321,7 +4444,8 @@ final class _LocalDatabase extends AbstractDatabase {
                     // Root is clean, so no need for full checkpoint,
                     // but fully sync the redo log for durability.
                     if (mRedoWriter != null) {
-                        mRedoWriter.flushSync(true);
+                        flushAllContexts();
+                        mRedoWriter.force(true);
                     }
                     return;
                 }
@@ -4386,7 +4510,7 @@ final class _LocalDatabase extends AbstractDatabase {
                     redoTxnId = 0;
                 } else {
                     // Switch and capture state while commit lock is held.
-                    redo.checkpointSwitch();
+                    redo.checkpointSwitch(mTxnContexts);
                     redoNum = redo.checkpointNumber();
                     redoPos = redo.checkpointPosition();
                     redoTxnId = redo.checkpointTransactionId();
@@ -4411,25 +4535,22 @@ final class _LocalDatabase extends AbstractDatabase {
                     byte[] workspace = null;
 
                     for (_TransactionContext txnContext : mTxnContexts) {
-                        txnContext.acquireShared();
-                        try {
-                            txnId = txnContext.maxTransactionId(txnId);
+                        txnId = txnContext.higherTransactionId(txnId);
 
+                        synchronized (txnContext) {
                             if (txnContext.hasUndoLogs()) {
                                 if (masterUndoLog == null) {
                                     masterUndoLog = new _UndoLog(this, 0);
                                 }
                                 workspace = txnContext.writeToMaster(masterUndoLog, workspace);
                             }
-                        } finally {
-                            txnContext.releaseShared();
                         }
                     }
 
                     if (masterUndoLog == null) {
                         masterUndoLogId = 0;
                     } else {
-                        masterUndoLogId = masterUndoLog.topNodeId();
+                        masterUndoLogId = masterUndoLog.persistReady();
                         if (masterUndoLogId == 0) {
                             // Nothing was actually written to the log.
                             masterUndoLog = null;

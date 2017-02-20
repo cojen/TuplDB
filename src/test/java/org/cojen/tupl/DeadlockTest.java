@@ -17,6 +17,7 @@
 package org.cojen.tupl;
 
 import java.util.*;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.*;
@@ -209,21 +210,24 @@ public class DeadlockTest {
     }
 
     @Test
-    @Ignore
     public void deadlockAttachments() throws Throwable {
         Database db = Database.open(new DatabaseConfig().directPageAccess(false));
 
         Index ix = db.openIndex("test");
 
         // Create a deadlock with two threads.
-        for (int i=0; i<2; i++) {
+
+        Thread[] threads = new Thread[2];
+        CyclicBarrier cb = new CyclicBarrier(threads.length);
+
+        for (int i=0; i<threads.length; i++) {
             final int fi = i;
 
-            new Thread(() -> {
+            threads[i] = new Thread(() -> {
                 try {
                     Transaction txn = db.newTransaction();
                     try {
-                        txn.lockTimeout(2, TimeUnit.SECONDS);
+                        txn.lockTimeout(10, TimeUnit.SECONDS);
 
                         byte[] k1 = "k1".getBytes();
                         byte[] k2 = "k2".getBytes();
@@ -231,10 +235,12 @@ public class DeadlockTest {
                         if (fi == 0) {
                             txn.attach("txn1");
                             ix.lockExclusive(txn, k1);
+                            cb.await();
                             ix.lockShared(txn, k2);
                         } else {
                             txn.attach("txn2");
                             ix.lockExclusive(txn, k2);
+                            cb.await();
                             ix.lockUpgradable(txn, k1);
                         }
                     } finally {
@@ -243,50 +249,50 @@ public class DeadlockTest {
                 } catch (Exception e) {
                     // Ignore.
                 }
-            }).start();
+            });
+
+            threads[i].start();
+        }
+
+        waitForDeadlock: {
+            check: for (int i=0; i<100; i++) {
+                for (int j=0; j<threads.length; j++) {
+                    if (threads[j].getState() != Thread.State.TIMED_WAITING) {
+                        Thread.sleep(100);
+                        continue check;
+                    }
+                }
+                break waitForDeadlock;
+            }
+            fail("no deadlock after waiting");
         }
 
         byte[] k1 = "k1".getBytes();
         Transaction txn = db.newTransaction();
 
-        boolean deadlocked = false;
+        try {
+            ix.lockShared(txn, k1);
+            fail("no deadlock");
+        } catch (DeadlockException e) {
+            assertFalse(e.isGuilty());
+            assertEquals("txn1", e.getOwnerAttachment());
 
-        for (int i=0; i<100; i++) {
-            try {
-                try {
-                    ix.lockShared(txn, k1);
-                    // Wait and try again.
-                    Thread.sleep(100);
-                } finally {
-                    txn.reset();
-                }
-            } catch (DeadlockException e) {
-                deadlocked = true;
+            DeadlockSet set = e.getDeadlockSet();
+            assertEquals(2, set.size());
 
-                assertFalse(e.isGuilty());
-                assertEquals("txn1", e.getOwnerAttachment());
+            Object att1 = set.getOwnerAttachment(0);
+            Object att2 = set.getOwnerAttachment(1);
 
-                DeadlockSet set = e.getDeadlockSet();
-                assertEquals(2, set.size());
+            assertTrue(att1 != null && att2 != null);
 
-                Object att1 = set.getOwnerAttachment(0);
-                Object att2 = set.getOwnerAttachment(1);
-
-                assertTrue(att1 != null && att2 != null);
-
-                if (att1.equals("txn1")) {
-                    assertEquals("txn2", att2);
-                } else if (att1.equals("txn2")) {
-                    assertEquals("txn1", att2);
-                } else {
-                    fail("Unknown attachments: " + att1 + ", " + att2);
-                }
-
-                break;
+            if (att1.equals("txn1")) {
+                assertEquals("txn2", att2);
+            } else if (att1.equals("txn2")) {
+                assertEquals("txn1", att2);
+            } else {
+                fail("Unknown attachments: " + att1 + ", " + att2);
             }
         }
-
-        assertTrue(deadlocked);
 
         db.close();
     }

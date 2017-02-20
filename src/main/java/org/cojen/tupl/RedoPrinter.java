@@ -27,7 +27,7 @@ class RedoPrinter implements RedoVisitor {
     public static void main(String[] args) throws Exception {
         java.io.File baseFile = new java.io.File(args[0]);
         long logId = Long.parseLong(args[1]);
-        new RedoLog(null, baseFile, null, logId, 0, true)
+        new RedoLog(null, baseFile, null, logId, 0, null)
             .replay(new RedoPrinter(), null, null, null);
     }
 

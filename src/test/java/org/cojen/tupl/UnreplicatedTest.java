@@ -138,4 +138,52 @@ public class UnreplicatedTest {
         byte[] value = ix.load(null, "key".getBytes());
         assertNull(value);
     }
+
+    @Test
+    public void redoSideEffects() throws Exception {
+        // When a write fails do to redo failure, the local transaction still observes the
+        // change until the transaction rolls back.
+
+        mReplManager.asLeader();
+        Thread.yield();
+
+        Index ix = null;
+        for (int i=0; i<10; i++) {
+            try {
+                ix = mDb.openIndex("test");
+                break;
+            } catch (UnmodifiableReplicaException e) {
+                // Wait for replication thread to finish the switch.
+                Thread.sleep(100);
+            }
+        }
+
+        assertTrue(ix != null);
+
+        ix.store(null, "key1".getBytes(), "value1".getBytes());
+
+        mReplManager.asReplica();
+
+        Transaction txn = mDb.newTransaction();
+
+        try {
+            // Large value to force a flush.
+            ix.store(txn, "key1".getBytes(), new byte[100000]);
+            fail();
+        } catch (UnmodifiableReplicaException e) {
+            // Expected.
+        }
+
+        fastAssertArrayEquals(new byte[100000], ix.load(txn, "key1".getBytes()));
+
+        try {
+            txn.commit();
+            fail();
+        } catch (UnmodifiableReplicaException e) {
+            // Expected.
+        }
+
+        // Transaction should rollback when commit fails.
+        fastAssertArrayEquals("value1".getBytes(), ix.load(txn, "key1".getBytes()));
+    }
 }
