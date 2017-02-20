@@ -35,9 +35,9 @@ import java.nio.ByteBuffer;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
-
-import sun.misc.Unsafe;
+import java.util.Set;
 
 /**
  * Generic data and I/O utility methods.
@@ -499,7 +499,7 @@ public class Utils {
         }
 
         try {
-            Unsafe u = UnsafeAccess.obtain();
+            sun.misc.Unsafe u = UnsafeAccess.obtain();
             Method m = u.getClass().getMethod("invokeCleaner", ByteBuffer.class);
             m.invoke(u, bb);
             return true;
@@ -658,6 +658,66 @@ public class Utils {
         } else {
             resource.close();
         }
+    }
+
+    /**
+     * Add a suppressed exception without creating a circular reference or throwing a new
+     * exception.
+     *
+     * @param target exception to receive suppressed exception; can be null
+     * @param toSuppress exception to suppress and add to target; can be null
+     */
+    public static void suppress(Throwable target, Throwable toSuppress) {
+        try {
+            if (target == null || toSuppress == null || target == toSuppress) {
+                return;
+            }
+
+            Throwable[] s1 = target.getSuppressed();
+            Throwable[] s2 = toSuppress.getSuppressed();
+
+            if (s1.length != 0 || s2.length != 0) {
+                Set<Throwable> all = new HashSet<>();
+                all.add(target);
+                if (!gatherSuppressed(all, s1) || !gatherSuppressed(all, s2)) {
+                    return;
+                }
+                if (all.contains(toSuppress)) {
+                    return;
+                }
+            }
+
+            target.addSuppressed(toSuppress);
+        } catch (Throwable e2) {
+            // Ignore.
+        }
+    }
+
+    /**
+     * @return false if duplicates found
+     */
+    private static boolean gatherSuppressed(Set<Throwable> all, Throwable[] suppressed) {
+        for (Throwable s : suppressed) {
+            if (!gatherSuppressed(all, s)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * @return false if duplicates found
+     */
+    private static boolean gatherSuppressed(Set<Throwable> all, Throwable e) {
+        if (!all.add(e)) {
+            return false;
+        }
+        for (Throwable s : e.getSuppressed()) {
+            if (!gatherSuppressed(all, s)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

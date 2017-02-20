@@ -189,28 +189,30 @@ final class _FragmentedTrash {
 
         _LocalDatabase db = mTrash.mDatabase;
         final CommitLock commitLock = db.commitLock();
+
         _TreeCursor cursor = new _TreeCursor(mTrash, Transaction.BOGUS);
         try {
             cursor.autoload(false);
             cursor.findGt(prefix);
+
             while (true) {
                 byte[] key = cursor.key();
                 if (key == null || compareUnsigned(key, 0, 8, prefix, 0, 8) != 0) {
                     break;
                 }
-                cursor.load();
-                byte[] value = cursor.value();
-                long fragmented = p_transfer(value);
+
+                // Acquire shared lock before loading value, avoiding race conditions with a
+                // concurrent call to emptyAllTrash.
                 CommitLock.Shared shared = commitLock.acquireShared();
                 try {
-                    db.deleteFragments(fragmented, 0, value.length);
-                    cursor.store(null);
+                    deleteFragmented(db, cursor);
                 } finally {
                     shared.release();
-                    p_delete(fragmented);
                 }
+
                 cursor.next();
             }
+
             cursor.reset();
         } catch (Throwable e) {
             throw closeOnFailure(cursor, e);
@@ -218,45 +220,64 @@ final class _FragmentedTrash {
     }
 
     /**
-     * Non-transactionally deletes all fragmented values. Expected to be called
-     * only during recovery.
+     * Non-transactionally deletes all fragmented values. Expected to be called only during
+     * recovery, and never concurrently.
      *
      * @return true if any trash was found
      */
     boolean emptyAllTrash(EventListener listener) throws IOException {
         boolean found = false;
+
         _LocalDatabase db = mTrash.mDatabase;
         final CommitLock commitLock = db.commitLock();
+
         _TreeCursor cursor = new _TreeCursor(mTrash, Transaction.BOGUS);
         try {
+            cursor.autoload(false);
             cursor.first();
+
             if (cursor.key() != null) {
                 if (listener != null) {
                     listener.notify(EventType.RECOVERY_DELETE_FRAGMENTS,
                                     "Deleting unused large fragments");
                 }
-                found = true;
+
                 do {
-                    byte[] value = cursor.value();
-                    long fragmented = p_transfer(value);
+                    // Acquire exclusive lock to stall concurrent calls to the emptyTrash(txn)
+                    // method. Without this, fragmented values can be double deleted.
+                    commitLock.acquireExclusive();
                     try {
-                        CommitLock.Shared shared = commitLock.acquireShared();
-                        try {
-                            db.deleteFragments(fragmented, 0, value.length);
-                            cursor.store(null);
-                        } finally {
-                            shared.release();
-                        }
+                        found |= deleteFragmented(db, cursor);
                     } finally {
-                        p_delete(fragmented);
+                        commitLock.releaseExclusive();
                     }
+
                     cursor.next();
                 } while (cursor.key() != null);
             }
+
             cursor.reset();
         } catch (Throwable e) {
             throw closeOnFailure(cursor, e);
         }
+
         return found;
+    }
+
+    private static boolean deleteFragmented(_LocalDatabase db, Cursor cursor) throws IOException {
+        cursor.load();
+        byte[] value = cursor.value();
+        if (value == null) {
+            return false;
+        } else {
+            long fragmented = p_transfer(value);
+            try {
+                db.deleteFragments(fragmented, 0, value.length);
+                cursor.store(null);
+            } finally {
+                p_delete(fragmented);
+            }
+            return true;
+        }
     }
 }

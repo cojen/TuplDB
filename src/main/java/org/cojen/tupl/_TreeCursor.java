@@ -2934,21 +2934,21 @@ class _TreeCursor implements CauseCloseable, Cursor {
                                final byte[] value)
         throws IOException
     {
-        byte[] key = mKey;
-        _Node node;
-        long commitPos = 0;
+        byte[] key;
+        CommitLock.Shared shared;
 
-        if (value == null) doDelete: {
+        if (value == null) {
             // Delete entry...
 
             if (leaf.mNodePos < 0) {
                 // Entry doesn't exist, so nothing to do.
-                node = leaf.mNode;
-                break doDelete;
+                leaf.mNode.releaseExclusive();
+                mValue = null;
+                return;
             }
 
             CommitLock commitLock = mTree.mDatabase.commitLock();
-            CommitLock.Shared shared = commitLock.tryAcquireShared();
+            shared = commitLock.tryAcquireShared();
 
             if (shared == null) {
                 leaf.mNode.releaseExclusive();
@@ -2957,76 +2957,71 @@ class _TreeCursor implements CauseCloseable, Cursor {
 
                 // Need to check if exists again.
                 if (leaf.mNodePos < 0) {
-                    node = leaf.mNode;
+                    leaf.mNode.releaseExclusive();
                     shared.release();
-                    break doDelete;
+                    mValue = null;
+                    return;
                 }
             }
 
             try {
                 // Releases latch if an exception is thrown.
-                node = notSplitDirty(leaf);
+                _Node node = notSplitDirty(leaf);
                 final int pos = leaf.mNodePos;
 
                 // The notSplitDirty method might have released and re-acquired the node latch,
                 // so double check the position.
                 if (pos < 0) {
-                    break doDelete;
+                    node.releaseExclusive();
+                    mValue = null;
+                    return;
                 }
 
-                dd: try {
-                    if (txn == null) {
-                        commitPos = mTree.redoStore(key, null);
-                    } else if (txn.lockMode() != LockMode.UNSAFE) {
+                key = mKey;
+
+                try {
+                    if (txn != null && txn.lockMode() != LockMode.UNSAFE) {
                         node.txnDeleteLeafEntry(txn, mTree, key, keyHash(), pos);
-                        // Above operation leaves a ghost, so no cursors to fix. Break out of
-                        // this section and attempt to merge, since the ghost delete operation
-                        // won't be able to.
-                        break dd;
-                    } else if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
-                        commitPos = mTree.redoStoreNoLock(key, null);
+                    } else {
+                        node.deleteLeafEntry(pos);
+                        // Fix all bound cursors, including this one.
+                        node.postDelete(pos, key);
                     }
-
-                    node.deleteLeafEntry(pos);
-
-                    // Fix this and all bound cursors.
-                    node.postDelete(pos, key);
                 } catch (Throwable e) {
                     node.releaseExclusive();
                     throw e;
                 }
 
                 if (node.shouldLeafMerge()) {
+                    // Releases node as a side-effect.
                     mergeLeaf(leaf, node);
-                    // Always released by mergeLeaf.
-                    node = null;
+                } else {
+                    node.releaseExclusive();
                 }
-            } finally {
+            } catch (Throwable e) {
                 shared.release();
+                if (txn != null) {
+                    txn.reset(e);
+                }
+                throw e;
             }
         } else {
-            final CommitLock.Shared shared = commitLock(leaf);
+            key = mKey;
+
+            shared = commitLock(leaf);
             try {
-                // Update and insert always dirty the node. Releases latch if an exception is
-                // thrown.
-                node = notSplitDirty(leaf);
+                // Update and insert always dirty the node.
+                // Releases latch if an exception is thrown.
+                _Node node = notSplitDirty(leaf);
                 final int pos = leaf.mNodePos;
 
                 if (pos >= 0) {
                     // Update entry...
 
                     try {
-                        if (txn == null) {
-                            commitPos = mTree.redoStore(key, value);
-                        } else if (txn.lockMode() != LockMode.UNSAFE) {
+                        if (txn != null && txn.lockMode() != LockMode.UNSAFE) {
                             node.txnPreUpdateLeafEntry(txn, mTree, key, pos);
-                            if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
-                                txn.redoStore(mTree.mId, key, value);
-                            }
-                        } else if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
-                            commitPos = mTree.redoStoreNoLock(key, value);
                         }
-
                         node.updateLeafValue(leaf, mTree, pos, 0, value);
                     } catch (Throwable e) {
                         node.releaseExclusive();
@@ -3034,30 +3029,22 @@ class _TreeCursor implements CauseCloseable, Cursor {
                     }
 
                     if (node.shouldLeafMerge()) {
+                        // Releases node as a side-effect.
                         mergeLeaf(leaf, node);
-                        // Always released by mergeLeaf.
-                        node = null;
                     } else {
                         if (node.mSplit != null) {
                             // Releases latch if an exception is thrown.
                             node = mTree.finishSplit(leaf, node);
                         }
+                        node.releaseExclusive();
                     }
                 } else {
                     // Insert entry...
 
                     try {
-                        if (txn == null) {
-                            commitPos = mTree.redoStore(key, value);
-                        } else if (txn.lockMode() != LockMode.UNSAFE) {
+                        if (txn != null && txn.lockMode() != LockMode.UNSAFE) {
                             txn.pushUninsert(mTree.mId, key);
-                            if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
-                                txn.redoStore(mTree.mId, key, value);
-                            }
-                        } else if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
-                            commitPos = mTree.redoStoreNoLock(key, value);
                         }
-
                         node.insertLeafEntry(leaf, mTree, ~pos, key, value);
                     } catch (Throwable e) {
                         node.releaseExclusive();
@@ -3066,16 +3053,35 @@ class _TreeCursor implements CauseCloseable, Cursor {
 
                     // Releases latch if an exception is thrown.
                     node = postInsert(leaf, node, key);
+
+                    node.releaseExclusive();
                 }
-            } finally {
+            } catch (Throwable e) {
                 shared.release();
+                if (txn != null) {
+                    txn.reset(e);
+                }
+                throw e;
             }
         }
 
-        if (node != null) {
-            node.releaseExclusive();
+        long commitPos;
+        try {
+            mValue = value;
+
+            if (txn == null) {
+                commitPos = mTree.redoStore(key, value);
+            } else if (txn.mDurabilityMode == DurabilityMode.NO_REDO) {
+                return;
+            } else if (txn.lockMode() != LockMode.UNSAFE) {
+                txn.redoStore(mTree.mId, key, value);
+                return;
+            } else {
+                commitPos = mTree.redoStoreNoLock(key, value);
+            }
+        } finally {
+            shared.release();
         }
-        mValue = value;
 
         if (commitPos != 0) {
             // Wait for commit sync without holding commit lock and node latch.
@@ -4662,16 +4668,9 @@ class _TreeCursor implements CauseCloseable, Cursor {
      */
     private _Node latchChild(_Node parent, int childPos, int options) throws IOException {
         long childId = parent.retrieveChildRefId(childPos);
-        _Node childNode = mTree.mDatabase.nodeMapGet(childId);
+        _Node childNode = mTree.mDatabase.nodeMapGetShared(childId);
 
         tryFind: if (childNode != null) {
-            childNode.acquireShared();
-            // Need to check again in case evict snuck in.
-            if (childId != childNode.mId) {
-                childNode.releaseShared();
-                break tryFind;
-            }
-
             checkChild: {
                 evictChild: if (childNode.mCachedState != _Node.CACHED_CLEAN
                                 && parent.mCachedState == _Node.CACHED_CLEAN
@@ -4689,13 +4688,8 @@ class _TreeCursor implements CauseCloseable, Cursor {
 
                     if (!childNode.tryUpgrade()) {
                         childNode.releaseShared();
-                        childNode = mTree.mDatabase.nodeMapGet(childId);                        
+                        childNode = mTree.mDatabase.nodeMapGetExclusive(childId);
                         if (childNode == null) {
-                            break tryFind;
-                        }
-                        childNode.acquireExclusive();
-                        if (childId != childNode.mId) {
-                            childNode.releaseExclusive();
                             break tryFind;
                         }
                         if (childNode.mCachedState == _Node.CACHED_CLEAN) {
@@ -4743,38 +4737,32 @@ class _TreeCursor implements CauseCloseable, Cursor {
      */
     private _Node latchChildRetainParentEx(_Node parent, int childPos) throws IOException {
         long childId = parent.retrieveChildRefId(childPos);
-        _Node childNode = mTree.mDatabase.nodeMapGet(childId);
+        _Node childNode = mTree.mDatabase.nodeMapGetExclusive(childId);
 
         if (childNode != null) {
-            childNode.acquireExclusive();
-            // Need to check again in case evict snuck in.
-            if (childId != childNode.mId) {
-                childNode.releaseExclusive();
-            } else {
-                if (childNode.mCachedState != _Node.CACHED_CLEAN
-                    && parent.mCachedState == _Node.CACHED_CLEAN
-                    // Must be a valid parent -- not a stub from _Node.rootDelete.
-                    && parent.mId > 1)
-                {
-                    // Parent was evicted before child. Evict child now and mark as clean. If
-                    // this isn't done, the notSplitDirty method will short-circuit and not
-                    // ensure that all the parent nodes are dirty. The splitting and merging
-                    // code assumes that all nodes referenced by the cursor are dirty. The
-                    // short-circuit check could be skipped, but then every change would
-                    // require a full latch up the tree. Another option is to remark the parent
-                    // as dirty, but this is dodgy and also requires a full latch up the tree.
-                    // Parent-before-child eviction is infrequent, and so simple is better.
-                    try {
-                        childNode.write(mTree.mDatabase.mPageDb);
-                    } catch (Throwable e) {
-                        childNode.releaseExclusive();
-                        throw e;
-                    }
-                    childNode.mCachedState = _Node.CACHED_CLEAN;
+            if (childNode.mCachedState != _Node.CACHED_CLEAN
+                && parent.mCachedState == _Node.CACHED_CLEAN
+                // Must be a valid parent -- not a stub from _Node.rootDelete.
+                && parent.mId > 1)
+            {
+                // Parent was evicted before child. Evict child now and mark as clean. If
+                // this isn't done, the notSplitDirty method will short-circuit and not
+                // ensure that all the parent nodes are dirty. The splitting and merging
+                // code assumes that all nodes referenced by the cursor are dirty. The
+                // short-circuit check could be skipped, but then every change would
+                // require a full latch up the tree. Another option is to remark the parent
+                // as dirty, but this is dodgy and also requires a full latch up the tree.
+                // Parent-before-child eviction is infrequent, and so simple is better.
+                try {
+                    childNode.write(mTree.mDatabase.mPageDb);
+                } catch (Throwable e) {
+                    childNode.releaseExclusive();
+                    throw e;
                 }
-                childNode.used(ThreadLocalRandom.current());
-                return childNode;
+                childNode.mCachedState = _Node.CACHED_CLEAN;
             }
+            childNode.used(ThreadLocalRandom.current());
+            return childNode;
         }
 
         return parent.loadChild(mTree.mDatabase, childId, _Node.OPTION_CHILD_ACQUIRE_EXCLUSIVE);

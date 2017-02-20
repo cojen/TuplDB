@@ -145,7 +145,7 @@ final class _PendingTxnWaiter extends Thread {
                 }
             }
 
-            if (!mWriter.confirm(behind.mTxnId, behind.mCommitPos)) {
+            if (!mWriter.confirm(behind)) {
                 // Don't set the exited flag, allowing pending transactions to accumulate until
                 // the flipped method is called.
                 return;

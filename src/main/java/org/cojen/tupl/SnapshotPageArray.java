@@ -21,10 +21,14 @@ import java.io.InterruptedIOException;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 import static java.lang.System.arraycopy;
 
 import org.cojen.tupl.io.CauseCloseable;
 import org.cojen.tupl.io.PageArray;
+
+import org.cojen.tupl.util.Latch;
 
 import static org.cojen.tupl.PageOps.*;
 import static org.cojen.tupl.Utils.*;
@@ -313,20 +317,16 @@ final class SnapshotPageArray extends PageArray {
         private final Tree mPageCopyIndex;
         private final File mTempFile;
 
-        private final Object mSnapshotLock;
+        private final Latch mSnapshotLatch;
 
-        private final AltLatch mCaptureLatch;
-        private final byte[] mCaptureBufferArray;
-        private final /*P*/ byte[] mCaptureBuffer;
+        private final Latch[] mCaptureLatches;
+        private final byte[][] mCaptureBufferArrays;
+        private final /*P*/ byte[][] mCaptureBuffers;
 
         // The highest page written by the writeTo method.
         private volatile long mProgress;
-        // Always equal to or one more than mProgress.
-        private long mWriteInProgress;
-        private long mCaptureInProgress;
 
-        private volatile boolean mClosed;
-        private Throwable mAbortCause;
+        private volatile Throwable mAbortCause;
 
         /**
          * @param nodeCache optional
@@ -342,23 +342,33 @@ final class SnapshotPageArray extends PageArray {
             mSnapshotPageCount = pageCount;
             mSnapshotRedoPosition = redoPos;
 
-            int pageSize = pageSize();
+            final int pageSize = pageSize();
+
+            mSnapshotLatch = new Latch();
+
+            final int slots = Runtime.getRuntime().availableProcessors() * 4;
+            mCaptureLatches = new Latch[slots];
+            mCaptureBufferArrays = new byte[slots][];
+            /*P*/ // [
+            mCaptureBuffers = new byte[slots][];
+            /*P*/ // |
+            /*P*/ // mCaptureBuffers = new long[slots];
+            /*P*/ // ]
+
+            for (int i=0; i<slots; i++) {
+                mCaptureLatches[i] = new Latch();
+                mCaptureBufferArrays[i] = new byte[pageSize];
+                // Allocates if page is not an array. The copy is not actually required.
+                mCaptureBuffers[i] = p_transfer(mCaptureBufferArrays[i]);
+            }
 
             DatabaseConfig config = new DatabaseConfig()
-                .pageSize(pageSize).minCacheSize(pageSize * 100);
+                .pageSize(pageSize).minCacheSize(pageSize * Math.max(100, slots * 16));
             mPageCopyIndex = LocalDatabase.openTemp(tfm, config);
             mTempFile = config.mBaseFile;
 
-            mSnapshotLock = new Object();
-            mCaptureLatch = new AltLatch();
-            mCaptureBufferArray = new byte[pageSize];
-            // Allocates if page is not an array. The copy is not actually required.
-            mCaptureBuffer = p_transfer(mCaptureBufferArray);
-
             // -2: Not yet started. -1: Started, but nothing written yet.
             mProgress = -2;
-            mWriteInProgress = -2;
-            mCaptureInProgress = -1;
         }
 
         @Override
@@ -373,147 +383,138 @@ final class SnapshotPageArray extends PageArray {
 
         @Override
         public void writeTo(OutputStream out) throws IOException {
-            synchronized (mSnapshotLock) {
-                if (mProgress > -2) {
-                    throw new IllegalStateException("Snapshot already started");
-                }
-                if (mClosed) {
+            mSnapshotLatch.acquireExclusive();
+            try {
+                long progress = mProgress;
+                if (progress == Long.MAX_VALUE) {
                     throw aborted(mAbortCause);
                 }
+                if (progress > -2) {
+                    throw new IllegalStateException("Snapshot already started");
+                }
                 mProgress = -1;
-                mWriteInProgress = -1;
+            } finally {
+                mSnapshotLatch.releaseExclusive();
             }
 
             final byte[] pageBufferArray = new byte[pageSize()];
             // Allocates if page is not an array. The copy is not actually required.
             final /*P*/ byte[] pageBuffer = p_transfer(pageBufferArray);
 
-            Cursor c = null;
+            final LocalDatabase cache = mNodeCache;
+            final byte[] key = new byte[8];
+            final long count = mSnapshotPageCount;
+
+            Transaction txn = mPageCopyIndex.mDatabase.newTransaction();
             try {
-                final LocalDatabase cache = mNodeCache;
-                final byte[] key = new byte[8];
-                final long count = mSnapshotPageCount;
+                // Disable writes to the undo log and fragmented value trash.
+                txn.lockMode(LockMode.UNSAFE);
 
-                for (long index = 0; index < count; index++, increment(key, 0, 8)) {
-                    synchronized (mSnapshotLock) {
-                        while (true) {
-                            if (mClosed) {
-                                throw aborted(mAbortCause);
-                            }
-                            if (index == mCaptureInProgress) {
-                                try {
-                                    mSnapshotLock.wait();
-                                } catch (InterruptedException e) {
-                                    throw new InterruptedIOException();
-                                }
-                            } else {
-                                mWriteInProgress = index;
-                                break;
-                            }
-                        }
-                    }
+                Cursor c = mPageCopyIndex.newCursor(txn);
+                try {
+                    for (long index = 0; index < count; index++, increment(key, 0, 8)) {
+                        txn.lockExclusive(mPageCopyIndex.getId(), key);
 
-                    if (c == null) {
-                        c = mPageCopyIndex.newCursor(Transaction.BOGUS);
-                        c.find(key);
-                    } else {
-                        c.findNearby(key);
-                    }
-
-                    byte[] value = c.value();
-
-                    if (value != null) {
-                        c.store(null);
-                    } else {
-                        read: {
-                            Node node;
-                            if (cache != null && (node = cache.nodeMapGet(index)) != null) {
-                                if (node.tryAcquireShared()) try {
-                                    if (node.mId == index
-                                        && node.mCachedState == Node.CACHED_CLEAN)
-                                    {
-                                        p_copy(node.mPage, 0, pageBuffer, 0, pageSize());
-                                        break read;
-                                    }
-                                } finally {
-                                    node.releaseShared();
-                                }
-                            }
-
-                            mRawPageArray.readPage(index, pageBuffer);
-                        }
-
-                        value = p_copyIfNotArray(pageBuffer, pageBufferArray);
-                    }
-
-                    synchronized (mSnapshotLock) {
+                        // Advance progress after lock acquisition.
                         mProgress = index;
-                        mSnapshotLock.notifyAll();
-                    }
 
-                    out.write(value);
+                        c.findNearby(key);
+                        byte[] value = c.value();
+
+                        if (value != null) {
+                            c.commit(null);
+                        } else {
+                            read: {
+                                Node node;
+                                if (cache != null && (node = cache.nodeMapGet(index)) != null) {
+                                    if (node.tryAcquireShared()) try {
+                                        if (node.mId == index
+                                            && node.mCachedState == Node.CACHED_CLEAN)
+                                        {
+                                            p_copy(node.mPage, 0, pageBuffer, 0, pageSize());
+                                            break read;
+                                        }
+                                    } finally {
+                                        node.releaseShared();
+                                    }
+                                }
+
+                                mRawPageArray.readPage(index, pageBuffer);
+                            }
+
+                            txn.commit();
+                            value = p_copyIfNotArray(pageBuffer, pageBufferArray);
+                        }
+
+                        out.write(value);
+                    }
+                } catch (Throwable e) {
+                    if (mProgress == Long.MAX_VALUE) {
+                        throw aborted(mAbortCause);
+                    }
+                    throw e;
+                } finally {
+                    c.reset();
+                    p_delete(pageBuffer);
+                    close();
                 }
             } finally {
-                p_delete(pageBuffer);
-                if (c != null) {
-                    c.reset();
-                }
-                close();
+                txn.reset();
             }
         }
 
         void capture(final long index) {
-            if (index >= mSnapshotPageCount) {
+            if (index >= mSnapshotPageCount || index <= mProgress) {
                 return;
             }
 
-            Cursor c = null;
+            Cursor c = mPageCopyIndex.newCursor(Transaction.BOGUS);
             try {
-                while (true) {
-                    if (index <= mProgress) {
+                c.autoload(false);
+                byte[] key = new byte[8];
+                encodeLongBE(key, 0, index);
+                c.find(key);
+
+                if (c.value() != null) {
+                    // Already captured.
+                    return;
+                }
+
+                // Lock and check again.
+
+                Transaction txn = mPageCopyIndex.mDatabase.newTransaction();
+                try {
+                    c.link(txn);
+                    c.load();
+
+                    if (c.value() != null || index <= mProgress) {
+                        // Already captured or writer has advanced ahead.
+                        txn.reset();
                         return;
                     }
-                    synchronized (mSnapshotLock) {
-                        if (mClosed || index <= mProgress) {
-                            return;
+
+                    int slot = ThreadLocalRandom.current().nextInt(mCaptureLatches.length);
+
+                    Latch latch = mCaptureLatches[slot];
+                    latch.acquireExclusive();
+                    try {
+                        byte[] bufferArray = mCaptureBufferArrays[slot];
+                        if (bufferArray != null) {
+                            /*P*/ byte[] buffer = mCaptureBuffers[slot];
+                            mRawPageArray.readPage(index, buffer);
+                            c.commit(p_copyIfNotArray(buffer, bufferArray));
                         }
-                        if (index == mWriteInProgress) {
-                            mSnapshotLock.wait();
-                        } else {
-                            byte[] key = new byte[8];
-                            encodeLongBE(key, 0, index);
-                            c = mPageCopyIndex.newCursor(Transaction.BOGUS);
-                            c.autoload(false);
-                            c.find(key);
-                            if (c.value() != null) {
-                                // Already captured.
-                                return;
-                            }
-                            // Prevent main writer from catching up while page is captured.
-                            mCaptureLatch.acquireExclusive();
-                            mCaptureInProgress = index;
-                            break;
-                        }
+                    } finally {
+                        latch.releaseExclusive();
                     }
-                }
-
-                try {
-                    mRawPageArray.readPage(index, mCaptureBuffer);
-                    c.store(p_copyIfNotArray(mCaptureBuffer, mCaptureBufferArray));
-                } finally {
-                    mCaptureLatch.releaseExclusive();
-                }
-
-                synchronized (mSnapshotLock) {
-                    mCaptureInProgress = -1;
-                    mSnapshotLock.notifyAll();
+                } catch (Throwable e) {
+                    txn.reset();
+                    throw e;
                 }
             } catch (Throwable e) {
                 abort(e);
             } finally {
-                if (c != null) {
-                    c.reset();
-                }
+                c.reset();
             }
         }
 
@@ -524,21 +525,33 @@ final class SnapshotPageArray extends PageArray {
 
         @Override
         public void close(Throwable cause) throws IOException {
-            if (mClosed) {
+            if (mProgress == Long.MAX_VALUE) {
                 return;
             }
-            synchronized (mSnapshotLock) {
-                if (mClosed) {
+
+            mSnapshotLatch.acquireExclusive();
+            try {
+                if (mProgress == Long.MAX_VALUE) {
                     return;
                 }
-                p_delete(mCaptureBuffer);
-                mProgress = ~0L;
-                mWriteInProgress = ~0L;
-                mCaptureInProgress = -1;
+
+                mProgress = Long.MAX_VALUE;
                 mAbortCause = cause;
-                mClosed = true;
-                mSnapshotLock.notifyAll();
+
+                for (int i=0; i<mCaptureLatches.length; i++) {
+                    Latch latch = mCaptureLatches[i];
+                    latch.acquireExclusive();
+                    try {
+                        mCaptureBufferArrays[i] = null;
+                        p_delete(mCaptureBuffers[i]);
+                    } finally {
+                        latch.releaseExclusive();
+                    }
+                }
+            } finally {
+                mSnapshotLatch.releaseExclusive();
             }
+
             unregister(this);
             closeQuietly(null, mPageCopyIndex.mDatabase);
             mTempFileManager.deleteTempFile(mTempFile);

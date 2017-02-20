@@ -20,8 +20,6 @@ import java.io.IOException;
 
 import java.util.concurrent.TimeUnit;
 
-import java.util.concurrent.locks.Lock;
-
 /**
  * Defines a logical unit of work. Transaction instances can only be safely
  * used by one thread at a time, and they must be {@link #reset reset} when no

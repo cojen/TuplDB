@@ -4,7 +4,7 @@ This file intended to be used by Tupl developers.
 
 Prerequisite: install gpg.
 
-Set JAVA_HOME environment variable to JDK1.7 (building with JDK1.8 is broken at Javadoc step)
+Set JAVA_HOME environment variable to JDK1.8.
 
 Then do:
 

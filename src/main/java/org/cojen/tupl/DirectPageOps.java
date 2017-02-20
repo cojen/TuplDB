@@ -16,8 +16,6 @@
 
 package org.cojen.tupl;
 
-import sun.misc.Unsafe;
-
 import java.io.IOException;
 
 import java.nio.ByteBuffer;
@@ -42,7 +40,7 @@ final class DirectPageOps {
     private static final boolean CHECK_BOUNDS;
     private static final int CHECKED_PAGE_SIZE;
 
-    private static final Unsafe UNSAFE = UnsafeAccess.obtain();
+    private static final sun.misc.Unsafe UNSAFE = UnsafeAccess.obtain();
     private static final long BYTE_ARRAY_OFFSET = UNSAFE.arrayBaseOffset(byte[].class);
     private static final long EMPTY_TREE_LEAF;
     private static final long CLOSED_TREE_PAGE;

@@ -1,2 +1,9 @@
 /maven.bat
 /target
+/.settings
+/.project
+/.classpath
+/release.properties
+*~
+/.gitignore~
+/javadoc

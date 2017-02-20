@@ -204,26 +204,15 @@ class _Tree implements View, Index {
             }
 
             long childId = node.retrieveChildRefId(childPos);
-            _Node childNode = mDatabase.nodeMapGet(childId);
+            _Node childNode = mDatabase.nodeMapGetShared(childId);
 
             if (childNode != null) {
-                childNode.acquireShared();
-
-                // Need to check again in case evict snuck in.
-                if (childId == childNode.mId) {
-                    node.releaseShared();
-                    node = childNode;
-                    if (node.mSplit != null) {
-                        node = node.mSplit.selectNode(node, key);
-                    }
-                    node.used(rnd);
-                    continue;
-                }
-
-                childNode.releaseShared();
+                node.releaseShared();
+                node = childNode;
+                node.used(rnd);
+            } else {
+                node = node.loadChild(mDatabase, childId, _Node.OPTION_PARENT_RELEASE_SHARED);
             }
-
-            node = node.loadChild(mDatabase, childId, _Node.OPTION_PARENT_RELEASE_SHARED);
 
             if (node.mSplit != null) {
                 node = node.mSplit.selectNode(node, key);
@@ -889,20 +878,14 @@ class _Tree implements View, Index {
                         break toLower;
                     }
                     long childId = node.retrieveChildRefId(pos);
-                    _Node child = mDatabase.nodeMapGet(childId);
+                    _Node child = mDatabase.nodeMapGetExclusive(childId);
                     if (child != null) {
-                        child.acquireExclusive();
-                        // Need to check again in case evict snuck in.
-                        if (childId != child.mId) {
-                            child.releaseExclusive();
-                        } else {
-                            frame = new _CursorFrame(frame);
-                            frame.bind(node, pos);
-                            node.releaseExclusive();
-                            node = child;
-                            pos = 0;
-                            continue toLower;
-                        }
+                        frame = new _CursorFrame(frame);
+                        frame.bind(node, pos);
+                        node.releaseExclusive();
+                        node = child;
+                        pos = 0;
+                        continue toLower;
                     }
                     pos += 2;
                 }
@@ -1171,7 +1154,11 @@ class _Tree implements View, Index {
      */
     final long redoStore(byte[] key, byte[] value) throws IOException {
         _RedoWriter redo = mDatabase.mRedoWriter;
-        return redo == null ? 0 : redo.store(mId, key, value, mDatabase.mDurabilityMode);
+        if (redo == null) {
+            return 0;
+        }
+        return mDatabase.anyTransactionContext().redoStoreAutoCommit
+            (redo.txnRedoWriter(), mId, key, value, mDatabase.mDurabilityMode);
     }
 
     /**
@@ -1179,7 +1166,11 @@ class _Tree implements View, Index {
      */
     final long redoStoreNoLock(byte[] key, byte[] value) throws IOException {
         _RedoWriter redo = mDatabase.mRedoWriter;
-        return redo == null ? 0 : redo.storeNoLock(mId, key, value, mDatabase.mDurabilityMode);
+        if (redo == null) {
+            return 0;
+        }
+        return mDatabase.anyTransactionContext().redoStoreNoLockAutoCommit
+            (redo.txnRedoWriter(), mId, key, value, mDatabase.mDurabilityMode);
     }
 
     final void txnCommitSync(_LocalTransaction txn, long commitPos) throws IOException {

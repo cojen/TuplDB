@@ -428,4 +428,64 @@ public class LargeValueTest {
             assertNull(value);
         }
     }
+
+    private static void shuffle(Random rnd, int[] keys) {
+        for (int i = 0; i < keys.length; i++) {
+            int exchangeIndex = rnd.nextInt(keys.length - i) + i;
+            int temp = keys[i];
+            keys[i] = keys[exchangeIndex];
+            keys[exchangeIndex] = temp;
+        }
+    }
+
+    @Test
+    public void testFragmentRollback() throws Exception {
+        mDb.suspendCheckpoints();
+        Index ix = mDb.openIndex("test");
+
+        Random rnd = new Random(1234L);
+
+        final int keyCount = 10000;
+        // List of numbers [0, keyCount) in a random order
+        int keys[] = new int[keyCount];
+
+        // Initialize the list of keys as sequential
+        for (int i = 0; i < keyCount; i++) {
+            keys[i] = i;
+        }
+        // Now make the list of keys random
+        shuffle(rnd, keys);
+
+        // For each of those keys, insert a random value of a random length
+        for (int i = 0; i < keyCount; i++) {
+            // Pick a length for the value, in the range [1B, 12.5KB]. The distribution is
+            // biased so that half of the values are less than 117.
+            int valueLength = (int)Math.pow(1.1, rnd.nextDouble() * 100);
+            byte[] value = new byte[valueLength];
+            rnd.nextBytes(value);
+            ix.store(null, key(keys[i]), value);
+        }
+
+        // Update all of the keys (in a different order) with new values of different sizes.
+        // Do not commit the transactions.
+        shuffle(rnd, keys);
+        Transaction[] txns = new Transaction[keyCount];
+        for (int i = 0; i < keyCount; i++) {
+            int valueLength = (int)Math.pow(1.1, rnd.nextInt(100));
+            byte[] value = new byte[valueLength];
+            rnd.nextBytes(value);
+            Transaction txn = ix.newTransaction(DurabilityMode.NO_FLUSH);
+            ix.store(txn, key(keys[i]), value);
+            txns[i] = txn;
+        }
+
+        shuffle(rnd, keys);
+        // Rollback all of the transactions. This forces non-fragmented values to get restored
+        // to fragmented values, and vice versa.
+        for (int i = 0; i < keyCount; i++) {
+            txns[i].reset();
+        }
+
+        assertTrue(ix.verify(new VerificationObserver()));
+    }
 }

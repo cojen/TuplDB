@@ -127,8 +127,8 @@ class NonReplicationManager implements ReplicationManager {
         }
 
         @Override
-        public synchronized long write(byte[] b, int off, int len) {
-            return mClosed ? -1 : 0;
+        public synchronized boolean write(byte[] b, int off, int len, long commitPos) {
+            return !mClosed;
         }
 
         @Override

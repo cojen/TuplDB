@@ -19,15 +19,13 @@ package org.cojen.tupl.io;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 
-import sun.misc.Unsafe;
-
 /**
  * Backdoor access to DirectByteBuffer.
  *
  * @author Brian S O'Neill
  */
 public class DirectAccess {
-    private static final Unsafe UNSAFE = UnsafeAccess.tryObtain();
+    private static final sun.misc.Unsafe UNSAFE = UnsafeAccess.tryObtain();
 
     private static final Class<?> cDirectByteBufferClass;
     private static final long cDirectAddressOffset;

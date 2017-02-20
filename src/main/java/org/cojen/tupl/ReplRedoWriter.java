@@ -17,8 +17,14 @@
 package org.cojen.tupl;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
+
+import java.util.concurrent.locks.LockSupport;
 
 import org.cojen.tupl.ext.ReplicationManager;
+
+import org.cojen.tupl.util.Latch;
+import org.cojen.tupl.util.LatchCondition;
 
 /**
  * 
@@ -32,80 +38,52 @@ class ReplRedoWriter extends RedoWriter {
     // Is non-null if writes are allowed.
     final ReplicationManager.Writer mReplWriter;
 
-    // These fields capture the state of the last written commit.
+    // These fields capture the state of the last produced commit, but not yet confirmed.
+    // Access is guarded by RedoWriter latch and mBufferLatch. Both latches must be held to
+    // modify these fields, and so either latch must be held for reading the fields.
     long mLastCommitPos;
     long mLastCommitTxnId;
 
-    // These fields capture the state of the highest confirmed commit.
-    long mConfirmedPos;
-    long mConfirmedTxnId;
-
     private volatile PendingTxnWaiter mPendingWaiter;
 
+    // These fields are guarded by mBufferLatch.
+    private final Latch mBufferLatch;
+    private Thread mProducer;
+    private Thread mConsumer;
+    // Circular buffer; empty when mBufferTail < 0, full when mBufferHead == mBufferTail.
+    private byte[] mBuffer;
+    // If mBufferTail is in the range of [0, buffer.length] then this is the first used byte in
+    // the buffer. If mBufferTail is negative, there is no used byte in the buffer.
+    private int mBufferHead;
+    // In the range of [0, buffer.length), mBufferTail represents the first free byte in the
+    // buffer, unless it equals mBufferHead (in which case there are no free bytes in the
+    // buffer). It can also be negative, which means the buffer is empty.
+    private int mBufferTail = -1;
+    // Absolute log position.
+    private long mWritePos;
+
     ReplRedoWriter(ReplRedoEngine engine, ReplicationManager.Writer writer) {
-        super(4096, 0);
         mEngine = engine;
         mReplWriter = writer;
-    }
 
-    // All inherited methods which accept a DurabilityMode must be overridden and always use
-    // SYNC mode. This ensures that writeCommit is called, to capture the log position. If
-    // Transaction.commit sees that DurabilityMode wasn't actually SYNC, it prepares a
-    // PendingTxn instead of immediately calling txnCommitSync. Replication makes no
-    // distinction between NO_FLUSH and NO_SYNC mode.
+        if (writer == null) {
+            mBufferLatch = null;
+        } else {
+            mBufferLatch = new Latch();
+            // Acquire the latch here, to avoid any odd race conditions caused by launching a
+            // thread from within a constructor. The consume method first acquires the latch
+            // before doing anything.
+            mBufferLatch.acquireExclusive();
+            mWritePos = writer.position();
+            mBuffer = new byte[65536];
+            mBufferLatch.releaseExclusive();
 
-    @Override
-    public final long store(long indexId, byte[] key, byte[] value, DurabilityMode mode)
-        throws IOException
-    {
-        // Note: This method can only have been called when using an auto-commit transaction,
-        // but this is prohibited by TxnTree. It creates explict transactions if necessary,
-        // ensuring that all store operations can roll back.
-        return super.store(indexId, key, value, DurabilityMode.SYNC);
-    }
+            Thread consumer = new Thread(this::consume);
 
-    @Override
-    public final long storeNoLock(long indexId, byte[] key, byte[] value, DurabilityMode mode)
-        throws IOException
-    {
-        // Note: This method can only be have been called when using a transaction which uses
-        // the unsafe locking mode and also supports redo durability. The store cannot roll
-        // back if leadership is lost, resulting in an inconsistency. Unsafe is what it is.
-        return super.storeNoLock(indexId, key, value, DurabilityMode.SYNC);
-    }
-
-    @Override
-    public final long renameIndex(long txnId, long indexId, byte[] newName, DurabilityMode mode)
-        throws IOException
-    {
-        return super.renameIndex(txnId, indexId, newName, DurabilityMode.SYNC);
-    }
-
-    @Override
-    public final long deleteIndex(long txnId, long indexId, DurabilityMode mode)
-        throws IOException
-    {
-        return super.deleteIndex(txnId, indexId, DurabilityMode.SYNC);
-    }
-
-    @Override
-    public final synchronized void txnRollback(long txnId) throws IOException {
-        super.txnRollback(txnId);
-        // Flush rollback as a commit, ensuring no delay in processing of the operation.
-        // Without this, a replica can be stuck holding a lock indefinitely.
-        flushCommit();
-    }
-
-    @Override
-    public final synchronized void txnRollbackFinal(long txnId) throws IOException {
-        super.txnRollbackFinal(txnId);
-        // See above comments.
-        flushCommit();
-    }
-
-    @Override
-    public final long txnCommitFinal(long txnId, DurabilityMode mode) throws IOException {
-        return super.txnCommitFinal(txnId, DurabilityMode.SYNC);
+            consumer.setName("WriteConsumer-" + consumer.getId());
+            consumer.setDaemon(true);
+            consumer.start();
+        }
     }
 
     @Override
@@ -114,25 +92,11 @@ class ReplRedoWriter extends RedoWriter {
         if (writer == null) {
             throw mEngine.unmodifiable();
         }
-
         if (writer.confirm(commitPos)) {
-            synchronized (this) {
-                if (commitPos > mConfirmedPos) {
-                    mConfirmedPos = commitPos;
-                    mConfirmedTxnId = txn.txnId();
-                }
-            }
-            return;
+            txn.mContext.confirmed(commitPos, txn.txnId());
+        } else {
+            throw nowUnmodifiable();
         }
-
-        synchronized (this) {
-            if (mConfirmedPos >= commitPos) {
-                // Was already was confirmed.
-                return;
-            }
-        }
-
-        throw nowUnmodifiable();
     }
 
     @Override
@@ -140,7 +104,8 @@ class ReplRedoWriter extends RedoWriter {
         PendingTxnWaiter waiter = mPendingWaiter;
         int action;
         if (waiter == null || (action = waiter.add(pending)) == PendingTxnWaiter.EXITED) {
-            synchronized (this) {
+            acquireExclusive();
+            try {
                 waiter = mPendingWaiter;
                 if (waiter == null || (action = waiter.add(pending)) == PendingTxnWaiter.EXITED) {
                     waiter = new PendingTxnWaiter(this);
@@ -152,6 +117,8 @@ class ReplRedoWriter extends RedoWriter {
                         waiter.start();
                     }
                 }
+            } finally {
+                releaseExclusive();
             }
         }
 
@@ -165,25 +132,10 @@ class ReplRedoWriter extends RedoWriter {
         }
     }
 
-    @Override
-    public long txnStoreCommitFinal(long txnId, long indexId,
-                                    byte[] key, byte[] value, DurabilityMode mode)
-        throws IOException
-    {
-        return super.txnStoreCommitFinal(txnId, indexId, key, value, DurabilityMode.SYNC);
-    }
-
-    @Override
-    public long txnDeleteCommitFinal(long txnId, long indexId,
-                                     byte[] key, DurabilityMode mode)
-        throws IOException
-    {
-        return super.txnDeleteCommitFinal(txnId, indexId, key, DurabilityMode.SYNC);
-    }
-
     protected final void flipped(long commitPos) {
         PendingTxnWaiter waiter;
-        synchronized (this) {
+        acquireExclusive();
+        try {
             waiter = mPendingWaiter;
             if (waiter == null) {
                 waiter = new PendingTxnWaiter(this);
@@ -191,6 +143,8 @@ class ReplRedoWriter extends RedoWriter {
                 // Don't start it.
             }
             waiter.flipped(commitPos);
+        } finally {
+            releaseExclusive();
         }
 
         waiter.finishAll();
@@ -200,7 +154,7 @@ class ReplRedoWriter extends RedoWriter {
      * Block waiting for the given committed position to be confirmed. Returns false if not the
      * leader.
      */
-    final boolean confirm(long txnId, long commitPos) {
+    final boolean confirm(PendingTxn pending) {
         // Note: Similar to txnCommitSync.
 
         ReplicationManager.Writer writer = mReplWriter;
@@ -208,25 +162,15 @@ class ReplRedoWriter extends RedoWriter {
             return false;
         }
 
+        long commitPos = pending.mCommitPos;
+
         try {
             if (writer.confirm(commitPos)) {
-                synchronized (this) {
-                    if (commitPos > mConfirmedPos) {
-                        mConfirmedPos = commitPos;
-                        mConfirmedTxnId = txnId;
-                    }
-                }
+                pending.mContext.confirmed(commitPos, pending.mTxnId);
                 return true;
             }
         } catch (IOException e) {
             // Treat as leader switch.
-        }
-
-        synchronized (this) {
-            if (mConfirmedPos >= commitPos) {
-                // Was already was confirmed.
-                return true;
-            }
         }
 
         mEngine.mController.switchToReplica(mReplWriter, false);
@@ -235,22 +179,8 @@ class ReplRedoWriter extends RedoWriter {
     }
 
     @Override
-    public final synchronized void close(Throwable cause) throws IOException {
-        super.close(cause);
-        forceAndClose();
-    }
-
-    @Override
     public final long encoding() {
         return mEngine.mManager.encoding();
-    }
-
-    @Override
-    final boolean isOpen() {
-        // Returning false all the time prevents close and shutdown messages from being
-        // written. They aren't very useful anyhow, considering that they don't prevent new log
-        // messages from appearing afterwards.
-        return false;
     }
 
     @Override
@@ -269,7 +199,7 @@ class ReplRedoWriter extends RedoWriter {
     }
 
     @Override
-    void checkpointSwitch() throws IOException {
+    void checkpointSwitch(TransactionContext[] contexts) throws IOException {
         throw fail();
     }
 
@@ -308,39 +238,126 @@ class ReplRedoWriter extends RedoWriter {
     }
 
     @Override
-    final void write(byte[] buffer, int len) throws IOException {
-        // Length check is included because super class can invoke this method to flush the
-        // buffer even when empty. Operation should never fail.
-        if (len > 0) {
-            ReplicationManager.Writer writer = mReplWriter;
-            if (writer == null) {
-                throw mEngine.unmodifiable();
-            }
-            if (writer.write(buffer, 0, len) < 0) {
+    DurabilityMode opWriteCheck(DurabilityMode mode) throws IOException {
+        // All redo methods which accept a DurabilityMode must always use SYNC mode. This
+        // ensures that write commit option is true, for capturing the log position. If
+        // Transaction.commit sees that DurabilityMode wasn't actually SYNC, it prepares a
+        // PendingTxn instead of immediately calling txnCommitSync. Replication makes no
+        // distinction between NO_FLUSH and NO_SYNC mode.
+        return DurabilityMode.SYNC;
+    }
+
+    @Override
+    boolean shouldWriteTerminators() {
+        return false;
+    }
+
+    @Override
+    final long write(boolean commit, byte[] bytes, int offset, int length) throws IOException {
+        if (mReplWriter == null) {
+            throw mEngine.unmodifiable();
+        }
+
+        mBufferLatch.acquireExclusive();
+        try {
+            byte[] buffer = mBuffer;
+            if (buffer == null) {
                 throw nowUnmodifiable();
             }
+
+            while (true) {
+                if (mBufferHead == mBufferTail) {
+                    mProducer = Thread.currentThread();
+                    try {
+                        Thread consumer = mConsumer;
+                        do {
+                            mBufferLatch.releaseExclusive();
+                            LockSupport.unpark(consumer);
+                            LockSupport.park(mBufferLatch);
+                            mBufferLatch.acquireExclusive();
+                            buffer = mBuffer;
+                            if (buffer == null) {
+                                throw nowUnmodifiable();
+                            }
+                        } while (mBufferHead == mBufferTail);
+                    } finally {
+                        mProducer = null;
+                    }
+                }
+
+                int amt;
+                //assert mBufferHead != mBufferTail;
+                if (mBufferHead < mBufferTail) {
+                    // Allow filling up to the end of the buffer without wrapping around. The
+                    // next iteration of this loop will wrap around in the buffer if necessary.
+                    amt = buffer.length - mBufferTail;
+                } else if (mBufferTail >= 0) {
+                    // The tail has wrapped around, but the head has not. Allow filling up to
+                    // the head.
+                    amt = mBufferHead - mBufferTail;
+                } else {
+                    // The buffer is empty, so allow filling the whole thing. Note that this is
+                    // an intermediate state, which implies that the buffer is full. After the
+                    // arraycopy, the tail is set correctly.
+                    if (length != 0) {
+                        mBufferHead = 0;
+                        mBufferTail = 0;
+                    }
+                    amt = buffer.length;
+                }
+
+                if (length <= amt) {
+                    try {
+                        System.arraycopy(bytes, offset, buffer, mBufferTail, length);
+                    } catch (Throwable e) {
+                        // Fix any intermediate state.
+                        if (mBufferHead == mBufferTail) {
+                            mBufferTail = -1;
+                        }
+                        throw e;
+                    }
+
+                    long pos = mWritePos += length;
+
+                    if ((mBufferTail += length) >= buffer.length) {
+                        mBufferTail = 0;
+                    }
+
+                    if (commit) {
+                        mLastCommitPos = pos;
+                        mLastCommitTxnId = mLastTxnId;
+                    }
+
+                    LockSupport.unpark(mConsumer);
+                    return pos;
+                }
+
+                try {
+                    System.arraycopy(bytes, offset, buffer, mBufferTail, amt);
+                } catch (Throwable e) {
+                    // Fix any intermediate state.
+                    if (mBufferHead == mBufferTail) {
+                        mBufferTail = -1;
+                    }
+                    throw e;
+                }
+
+                mWritePos += amt;
+                length -= amt;
+                offset += amt;
+
+                if ((mBufferTail += amt) >= buffer.length) {
+                    mBufferTail = 0;
+                }
+            }
+        } finally {
+            mBufferLatch.releaseExclusive();
         }
     }
 
     @Override
-    final long writeCommit(byte[] buffer, int len) throws IOException {
-        // Length check is included because super class can invoke this method to flush the
-        // buffer even when empty. Operation should never fail.
-        if (len > 0) {
-            ReplicationManager.Writer writer = mReplWriter;
-            if (writer == null) {
-                throw mEngine.unmodifiable();
-            }
-            long pos = writer.writeCommit(buffer, 0, len);
-            if (pos >= 0) {
-                mLastCommitPos = pos;
-                mLastCommitTxnId = lastTransactionId();
-                return pos;
-            } else {
-                throw nowUnmodifiable();
-            }
-        }
-        return 0;
+    void alwaysFlush(boolean enable) throws IOException {
+        // Always flushes already.
     }
 
     @Override
@@ -349,28 +366,26 @@ class ReplRedoWriter extends RedoWriter {
     }
 
     @Override
-    final void forceAndClose() throws IOException {
-        IOException ex = null;
-        try {
-            force(false);
-        } catch (IOException e) {
-            ex = e;
+    public void close() throws IOException {
+        mEngine.mManager.close();
+
+        if (mBufferLatch == null) {
+            return;
         }
-        try {
-            mEngine.mManager.close();
-        } catch (IOException e) {
-            if (ex == null) {
-                ex = e;
+
+        mBufferLatch.acquireExclusive();
+        Thread consumer = mConsumer;
+        mConsumer = null;
+        mBufferLatch.releaseExclusive();
+
+        if (consumer != null) {
+            LockSupport.unpark(consumer);
+            try {
+                consumer.join();
+            } catch (InterruptedException e) {
+                throw new InterruptedIOException();
             }
         }
-        if (ex != null) {
-            throw ex;
-        }
-    }
-
-    @Override
-    final void writeTerminator() throws IOException {
-        // No terminators.
     }
 
     private UnsupportedOperationException fail() {
@@ -380,5 +395,95 @@ class ReplRedoWriter extends RedoWriter {
 
     private UnmodifiableReplicaException nowUnmodifiable() throws DatabaseException {
         return mEngine.mController.nowUnmodifiable(mReplWriter);
+    }
+
+    /**
+     * Consumes data from the circular buffer and writes into the replication log. Method doesn't
+     * exit until leadership is revoked.
+     */
+    private void consume() {
+        mBufferLatch.acquireExclusive();
+        mConsumer = Thread.currentThread();
+
+        final byte[] buffer = mBuffer;
+
+        while (mConsumer != null) {
+            int head = mBufferHead;
+            int tail = mBufferTail;
+            long commitPos = mLastCommitPos;
+
+            try {
+                if (head == tail) {
+                    // Buffer is full, so consume everything with the latch held.
+
+                    // Write the head section.
+                    if (!mReplWriter.write(buffer, head, buffer.length - head, commitPos)) {
+                        break;
+                    }
+
+                    if (head > 0) {
+                        // Write the tail section.
+                        mBufferHead = 0;
+                        if (!mReplWriter.write(buffer, 0, tail, commitPos)) {
+                            break;
+                        }
+                    }
+
+                    // Buffer is now empty.
+                    mBufferTail = -1;
+                } else if (tail >= 0) {
+                    // Buffer is partially full. Consume it with the latch released, to
+                    // allow a producer to fill in a bit more.
+                    mBufferLatch.releaseExclusive();
+                    try {
+                        if (head < tail) {
+                            // No circular wraparound.
+                            if (!mReplWriter.write(buffer, head, tail - head, commitPos)) {
+                                break;
+                            }
+                            head = tail;
+                        } else {
+                            // Write only the head section.
+                            int len = buffer.length - head;
+                            if (!mReplWriter.write(buffer, head, len, commitPos)) {
+                                break;
+                            }
+                            head = 0;
+                        }
+                    } finally {
+                        mBufferLatch.acquireExclusive();
+                    }
+
+                    if (head != mBufferTail) {
+                        // More data to consume.
+                        mBufferHead = head;
+                        continue;
+                    }
+
+                    // Buffer is now empty.
+                    mBufferTail = -1;
+                }
+            } catch (Throwable e) {
+                if (!(e instanceof IOException)) {
+                    Utils.uncaught(e);
+                }
+                // Keep consuming until an official leadership change is observed.
+                Thread.yield();
+                continue;
+            }
+
+            // Wait for producer and loop back.
+            mBufferLatch.releaseExclusive();
+            LockSupport.unpark(mProducer);
+            LockSupport.park(mBufferLatch);
+            mBufferLatch.acquireExclusive();
+        }
+
+        mConsumer = null;
+        mBuffer = null;
+        LockSupport.unpark(mProducer);
+        mBufferLatch.releaseExclusive();
+
+        mEngine.mController.switchToReplica(mReplWriter, false);
     }
 }

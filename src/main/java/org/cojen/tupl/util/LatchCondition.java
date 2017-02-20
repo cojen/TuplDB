@@ -1,5 +1,5 @@
 /*
- *  Copyright 2011-2015 Cojen.org
+ *  Copyright 2016 Cojen.org
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import java.util.concurrent.locks.LockSupport;
  * @author Brian S O'Neill
  */
 public final class LatchCondition {
-    private static final ThreadLocal<Node> cLocalNode = ThreadLocal.withInitial(Node::new);
+    private static final ThreadLocal<Node> cLocalNode = new ThreadLocal<>();
 
     Node mHead;
     Node mTail;
@@ -39,7 +39,7 @@ public final class LatchCondition {
 
     /**
      * Blocks the current thread until a signal is received. Exclusive latch must be acquired
-     * by caller, which is released and then re-acquired by this method.
+     * by the caller, which is released and then re-acquired by this method.
      *
      * @param latch latch being used by this condition
      * @param nanosTimeout relative nanosecond time to wait; infinite if &lt;0
@@ -47,16 +47,22 @@ public final class LatchCondition {
      * @return -1 if interrupted, 0 if timed out, 1 if signaled
      */
     public int await(Latch latch, long nanosTimeout, long nanosEnd) {
-        Node node = cLocalNode.get();
-        node.mWaitState = 1;
-        return await(latch, node, nanosTimeout, nanosEnd);
+        try {
+            return await(latch, localNode(Node.WAITING), nanosTimeout, nanosEnd);
+        } catch (Throwable e) {
+            // Possibly an OutOfMemoryError.
+            latch.releaseExclusive();
+            return -1;
+        }
     }
 
     /**
      * Blocks the current thread until a signal is received. Exclusive latch must be acquired
-     * by caller, which is released and then re-acquired by this method. A shared waiter
-     * intends to access a resource with shared access, and it can be signaled specially. After
-     * waiting, caller is responsible for signaling the next shared waiter.
+     * by the caller, which is released and then re-acquired by this method.
+     *
+     * <p>A shared waiter intends to access a resource with shared access, and it can be
+     * signaled specially. After waiting, the caller is responsible for signaling the next
+     * shared waiter.
      *
      * @param latch latch being used by this condition
      * @param nanosTimeout relative nanosecond time to wait; infinite if &lt;0
@@ -64,20 +70,27 @@ public final class LatchCondition {
      * @return -1 if interrupted, 0 if timed out, 1 if signaled
      */
     public int awaitShared(Latch latch, long nanosTimeout, long nanosEnd) {
+        try {
+            return await(latch, localNode(Node.WAITING_SHARED), nanosTimeout, nanosEnd);
+        } catch (Throwable e) {
+            // Possibly an OutOfMemoryError.
+            latch.releaseExclusive();
+            return -1;
+        }
+    }
+
+    private Node localNode(int waitState) {
         Node node = cLocalNode.get();
-        node.mWaitState = 2;
-        return await(latch, node, nanosTimeout, nanosEnd);
+        if (node == null) {
+            node = new Node(Thread.currentThread());
+            cLocalNode.set(node);
+        }
+        node.mWaitState = waitState;
+        return node;
     }
 
     private int await(Latch latch, Node node, long nanosTimeout, long nanosEnd) {
-        Node tail = mTail;
-        if (tail == null) {
-            mHead = node;
-        } else {
-            tail.mNext = node;
-            node.mPrev = tail;
-        }
-        mTail = node;
+        enqueue(node);
 
         if (nanosTimeout < 0) {
             while (true) {
@@ -106,6 +119,17 @@ public final class LatchCondition {
         }
     }
 
+    private void enqueue(Node node) {
+        Node tail = mTail;
+        if (tail == null) {
+            mHead = node;
+        } else {
+            tail.mNext = node;
+            node.mPrev = tail;
+        }
+        mTail = node;
+    }
+
     /**
      * Signals the first waiter, of any type. Caller must hold shared or exclusive latch.
      */
@@ -113,6 +137,24 @@ public final class LatchCondition {
         Node head = mHead;
         if (head != null) {
             head.signal();
+        }
+    }
+
+    /**
+     * If a first waiter exists, it's removed, the held exclusive latch is released, and then
+     * the waiter is signaled.
+     *
+     * @return false if no waiter and latch wasn't released
+     */
+    public boolean signalRelease(Latch latch) {
+        Node head = mHead;
+        if (head != null) {
+            head.remove(this);
+            latch.releaseExclusive();
+            LockSupport.unpark(head.mWaiter);
+            return true;
+        } else {
+            return false;
         }
     }
 
@@ -147,8 +189,26 @@ public final class LatchCondition {
      */
     public void signalShared() {
         Node head = mHead;
-        if (head != null && head.mWaitState == 2) {
+        if (head != null && head.mWaitState == Node.WAITING_SHARED) {
             head.signal();
+        }
+    }
+
+    /**
+     * If a first shared waiter exists, it's removed, the held exclusive latch is released, and
+     * then the waiter is signaled.
+     *
+     * @return false if no shared waiter and latch wasn't released
+     */
+    public boolean signalSharedRelease(Latch latch) {
+        Node head = mHead;
+        if (head != null && head.mWaitState == Node.WAITING_SHARED) {
+            head.remove(this);
+            latch.releaseExclusive();
+            LockSupport.unpark(head.mWaiter);
+            return true;
+        } else {
+            return false;
         }
     }
 
@@ -163,7 +223,7 @@ public final class LatchCondition {
         if (head == null) {
             return false;
         }
-        if (head.mWaitState == 2) {
+        if (head.mWaitState == Node.WAITING_SHARED) {
             head.signal();
         }
         return true;
@@ -175,8 +235,10 @@ public final class LatchCondition {
     public void clear() {
         Node node = mHead;
         while (node != null) {
-            if (node.mWaitState != 0) {
-                node.mOwner.interrupt();
+            if (node.mWaitState >= Node.WAITING) {
+                if (node.mWaiter instanceof Thread) {
+                    ((Thread) node.mWaiter).interrupt();
+                }
             }
             node.mPrev = null;
             Node next = node.mNext;
@@ -188,16 +250,16 @@ public final class LatchCondition {
     }
 
     static class Node {
-        final Thread mOwner;
+        final Thread mWaiter;
 
-        // 0: signaled or not waiting, 1: waiting for signal, 2: waiting for shared signal
+        static final int REMOVED = 0, SIGNALED = 1, WAITING = 2, WAITING_SHARED = 3;
         int mWaitState;
 
         Node mPrev;
         Node mNext;
 
-        Node() {
-            mOwner = Thread.currentThread();
+        Node(Thread waiter) {
+            mWaiter = waiter;
         }
 
         /**
@@ -207,21 +269,25 @@ public final class LatchCondition {
          * @return -1 if interrupted, 0 if not signaled, 1 if signaled
          */
         final int resumed(LatchCondition queue) {
-            if (mWaitState == 0) {
-                remove(queue);
+            if (mWaitState < WAITING) {
+                if (mWaitState != REMOVED) {
+                    remove(queue);
+                }
                 return 1;
             }
-            if (mOwner.isInterrupted()) {
+
+            if (mWaiter.isInterrupted()) {
                 Thread.interrupted();
                 remove(queue);
                 return -1;
             }
+
             return 0;
         }
 
         final void signal() {
-            mWaitState = 0;
-            LockSupport.unpark(mOwner);
+            mWaitState = SIGNALED;
+            LockSupport.unpark(mWaiter);
         }
 
         final void remove(LatchCondition queue) {
@@ -242,6 +308,8 @@ public final class LatchCondition {
                 mPrev = null;
             }
             mNext = null;
+
+            mWaitState = REMOVED;
         }
     }
 }
