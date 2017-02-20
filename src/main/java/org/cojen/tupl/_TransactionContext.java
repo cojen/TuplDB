@@ -62,7 +62,6 @@ final class _TransactionContext extends Latch implements Flushable {
     private long mRedoLastTxnId;
     private _RedoWriter mRedoWriter;
     private boolean mRedoWriterLatched;
-    private long mRedoWriterPos;
 
     // These fields capture the state of the highest confirmed commit, used by replication.
     // Access to these fields is protected by spinning on the mConfirmedPos field.
@@ -779,8 +778,7 @@ final class _TransactionContext extends Latch implements Flushable {
      */
     private long redoFlushCommit(DurabilityMode mode) throws IOException {
         if (mode == DurabilityMode.SYNC) {
-            redoFlush(true);
-            return mRedoWriterPos;
+            return redoFlush(true);
         } else {
             redoFlush(mode == DurabilityMode.NO_SYNC); // ignore commit for NO_FLUSH, etc.
             return 0;
@@ -792,11 +790,12 @@ final class _TransactionContext extends Latch implements Flushable {
      *
      * @param commit true if last encoded operation should be treated as a transaction commit
      * and be flushed immediately
+     * @return highest log position afterwards
      */
-    private void redoFlush(boolean commit) throws IOException {
+    private long redoFlush(boolean commit) throws IOException {
         int length = mRedoPos;
         if (length == 0) {
-            return;
+            return 0;
         }
 
         byte[] buffer = mRedoBuffer;
@@ -817,9 +816,10 @@ final class _TransactionContext extends Latch implements Flushable {
             redo.mLastTxnId = mRedoLastTxnId;
         }
 
+        long commitPos;
         try {
             try {
-                mRedoWriterPos = redo.write(commit, buffer, offset, length);
+                commitPos = redo.write(commit, buffer, offset, length);
             } catch (IOException e) {
                 throw rethrow(e, redo.mCloseCause);
             }
@@ -831,6 +831,8 @@ final class _TransactionContext extends Latch implements Flushable {
 
         mRedoPos = 0;
         mRedoFirstTxnId = 0;
+
+        return commitPos;
     }
 
     // Caller must hold redo latch.
