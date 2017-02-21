@@ -1038,10 +1038,12 @@ final class _UndoLog implements _DatabaseAccess {
             case OP_COMMIT_TRUNCATE:
                 // Skip examining the rest of the log. It will likely appear to be corrupt
                 // anyhow due to the OP_COMMIT_TRUNCATE having overwritten existing data.
-                mNode.makeEvictable();
-                mNode.releaseExclusive();
-                mNode = null;
-                mNodeTopPos = 0;
+                if (mNode != null) {
+                    mNode.makeEvictable();
+                    mNode.releaseExclusive();
+                    mNode = null;
+                    mNodeTopPos = 0;
+                }
                 break loop;
 
             case OP_SCOPE_ENTER:
