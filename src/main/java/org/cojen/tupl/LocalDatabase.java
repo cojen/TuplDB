@@ -3349,9 +3349,21 @@ final class LocalDatabase extends AbstractDatabase {
             long oldId = node.mId;
 
             if (oldId != 0) {
+                // Must be removed from map before page is deleted. It could be recycled too
+                // soon, creating a NodeMap collision.
+                boolean removed = nodeMapRemove(node, Long.hashCode(oldId));
+
                 try {
                     mPageDb.deletePage(oldId);
                 } catch (Throwable e) {
+                    // Try to undo things.
+                    if (removed) {
+                        try {
+                            nodeMapPut(node);
+                        } catch (Throwable e2) {
+                            Utils.suppress(e, e2);
+                        }
+                    }
                     try {
                         mPageDb.recyclePage(newId);
                     } catch (Throwable e2) {
@@ -3361,8 +3373,6 @@ final class LocalDatabase extends AbstractDatabase {
                     }
                     throw e;
                 }
-
-                nodeMapRemove(node, Long.hashCode(oldId));
             }
 
             dirty(node, newId);
@@ -3428,25 +3438,36 @@ final class LocalDatabase extends AbstractDatabase {
             throw e;
         }
 
-        try {
-            if (oldId != 0) {
+        if (oldId != 0) {
+            // Must be removed from map before page is deleted. It could be recycled too soon,
+            // creating a NodeMap collision.
+            boolean removed = nodeMapRemove(node, Long.hashCode(oldId));
+
+            try {
                 // TODO: This can hang on I/O; release frame latch if deletePage would block?
                 // Then allow thread to block without node latch held.
                 mPageDb.deletePage(oldId);
-                nodeMapRemove(node, Long.hashCode(oldId));
-            }
-        } catch (Throwable e) {
-            try {
-                if (node == tree.mRoot) {
-                    storeTreeRootId(tree, oldId);
+            } catch (Throwable e) {
+                // Try to undo things.
+                if (removed) {
+                    try {
+                        nodeMapPut(node);
+                    } catch (Throwable e2) {
+                        Utils.suppress(e, e2);
+                    }
                 }
-                mPageDb.recyclePage(newId);
-            } catch (Throwable e2) {
-                // Panic.
-                Utils.suppress(e, e2);
-                close(e);
+                try {
+                    if (node == tree.mRoot) {
+                        storeTreeRootId(tree, oldId);
+                    }
+                    mPageDb.recyclePage(newId);
+                } catch (Throwable e2) {
+                    // Panic.
+                    Utils.suppress(e, e2);
+                    close(e);
+                }
+                throw e;
             }
-            throw e;
         }
 
         dirty(node, newId);
@@ -3537,12 +3558,12 @@ final class LocalDatabase extends AbstractDatabase {
         try {
             long id = node.mId;
 
-            // Must be removed from map before page is deleted. It could be recycled too soon,
-            // creating a NodeMap collision.
-            boolean removed = nodeMapRemove(node, Long.hashCode(id));
+            if (id != 0) {
+                // Must be removed from map before page is deleted. It could be recycled too
+                // soon, creating a NodeMap collision.
+                boolean removed = nodeMapRemove(node, Long.hashCode(id));
 
-            try {
-                if (id != 0) {
+                try {
                     if (canRecycle && node.mCachedState == mCommitState) {
                         // Newly reserved page was never used, so recycle it.
                         mPageDb.recyclePage(id);
@@ -3550,22 +3571,23 @@ final class LocalDatabase extends AbstractDatabase {
                         // Old data must survive until after checkpoint.
                         mPageDb.deletePage(id);
                     }
-                }
-            } catch (Throwable e) {
-                // Try to undo things.
-                if (removed) {
-                    try {
-                        nodeMapPut(node);
-                    } catch (Throwable e2) {
-                        Utils.suppress(e, e2);
+                } catch (Throwable e) {
+                    // Try to undo things.
+                    if (removed) {
+                        try {
+                            nodeMapPut(node);
+                        } catch (Throwable e2) {
+                            Utils.suppress(e, e2);
+                        }
                     }
+                    throw e;
                 }
-                throw e;
-            }
 
-            // When id is <= 1, it won't be moved to a secondary cache. Preserve the original
-            // id for non-durable database to recycle it. Durable database relies on free list.
-            node.mId = -id;
+                // When id is <= 1, it won't be moved to a secondary cache. Preserve the
+                // original id for non-durable database to recycle it. Durable database relies
+                // on the free list.
+                node.mId = -id;
+            }
 
             // When node is re-allocated, it will be evicted. Ensure that eviction
             // doesn't write anything.
