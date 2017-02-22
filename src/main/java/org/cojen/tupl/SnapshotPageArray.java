@@ -23,6 +23,8 @@ import java.io.OutputStream;
 
 import java.util.concurrent.ThreadLocalRandom;
 
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+
 import static java.lang.System.arraycopy;
 
 import org.cojen.tupl.io.CauseCloseable;
@@ -306,6 +308,11 @@ final class SnapshotPageArray extends PageArray {
         mSnapshots = newSnapshots;
     }
 
+    // This should be declared in the SnapshotImpl class, but the Java compiler prohibits this
+    // for no good reason. This also requires that the field be declared as package-private.
+    static final AtomicLongFieldUpdater<SnapshotImpl> mProgressUpdater =
+        AtomicLongFieldUpdater.newUpdater(SnapshotImpl.class, "mProgress");
+
     class SnapshotImpl implements CauseCloseable, Snapshot {
         private final LocalDatabase mNodeCache;
         private final PageArray mRawPageArray;
@@ -324,7 +331,7 @@ final class SnapshotPageArray extends PageArray {
         private final /*P*/ byte[][] mCaptureBuffers;
 
         // The highest page written by the writeTo method.
-        private volatile long mProgress;
+        volatile long mProgress;
 
         private volatile Throwable mAbortCause;
 
@@ -416,7 +423,10 @@ final class SnapshotPageArray extends PageArray {
                         txn.lockExclusive(mPageCopyIndex.getId(), key);
 
                         // Advance progress after lock acquisition.
-                        mProgress = index;
+                        if (!mProgressUpdater.compareAndSet(this, index - 1, index)) {
+                            // If closed, the exception handler below throws a better exception.
+                            throw new IllegalStateException();
+                        }
 
                         c.findNearby(key);
                         byte[] value = c.value();
