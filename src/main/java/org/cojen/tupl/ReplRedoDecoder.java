@@ -49,7 +49,7 @@ final class ReplRedoDecoder extends RedoDecoder {
         private final ReplicationManager mManager;
 
         In(long position, ReplicationManager manager) {
-            this(position, manager, 4096);
+            this(position, manager, 64 << 10);
         }
 
         In(long position, ReplicationManager manager, int bufferSize) {
