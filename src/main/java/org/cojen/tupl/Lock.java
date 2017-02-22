@@ -120,8 +120,14 @@ final class Lock {
             int w = queueSX.awaitShared(latch, nanosTimeout, nanosEnd);
             queueSX = mQueueSX;
 
+            if (queueSX == null) {
+                // Assume LockManager was closed.
+                locker.mWaitingFor = null;
+                return INTERRUPTED;
+            }
+
             // After consuming one signal, next shared waiter must be signaled, and so on.
-            if (queueSX != null && !queueSX.signalNextShared()) {
+            if (!queueSX.signalNextShared()) {
                 // Indicate that last signal has been consumed, and also free memory.
                 mQueueSX = null;
             }
@@ -153,10 +159,6 @@ final class Lock {
 
             if (nanosTimeout >= 0 && (nanosTimeout = nanosEnd - System.nanoTime()) <= 0) {
                 return TIMED_OUT_LOCK;
-            }
-
-            if (mQueueSX == null) {
-                mQueueSX = queueSX = new LatchCondition();
             }
         }
     }
@@ -215,7 +217,13 @@ final class Lock {
             int w = queueU.await(latch, nanosTimeout, nanosEnd);
             queueU = mQueueU;
 
-            if (queueU != null && queueU.isEmpty()) {
+            if (queueU == null) {
+                // Assume LockManager was closed.
+                locker.mWaitingFor = null;
+                return INTERRUPTED;
+            }
+
+            if (queueU.isEmpty()) {
                 // Indicate that last signal has been consumed, and also free memory.
                 mQueueU = null;
             }
@@ -268,10 +276,6 @@ final class Lock {
             if (nanosTimeout >= 0 && (nanosTimeout = nanosEnd - System.nanoTime()) <= 0) {
                 return TIMED_OUT_LOCK;
             }
-
-            if (mQueueU == null) {
-                mQueueU = queueU = new LatchCondition();
-            }
         }
     }
 
@@ -321,7 +325,13 @@ final class Lock {
             int w = queueSX.await(latch, nanosTimeout, nanosEnd);
             queueSX = mQueueSX;
 
-            if (queueSX != null && queueSX.isEmpty()) {
+            if (queueSX == null) {
+                // Assume LockManager was closed.
+                locker.mWaitingFor = null;
+                return INTERRUPTED;
+            }
+
+            if (queueSX.isEmpty()) {
                 // Indicate that last signal has been consumed, and also free memory.
                 mQueueSX = null;
             }
@@ -356,10 +366,6 @@ final class Lock {
 
             if (nanosTimeout >= 0 && (nanosTimeout = nanosEnd - System.nanoTime()) <= 0) {
                 return TIMED_OUT_LOCK;
-            }
-
-            if (mQueueSX == null) {
-                mQueueSX = queueSX = new LatchCondition();
             }
         }
     }
