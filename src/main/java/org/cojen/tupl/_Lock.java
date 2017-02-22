@@ -457,7 +457,7 @@ final class _Lock {
                     }
                 }
 
-                throw new IllegalStateException("_Lock not held");
+                throw new IllegalStateException("Lock not held");
             }
 
             mLockCount = --count;
@@ -527,7 +527,7 @@ final class _Lock {
                 return;
             }
         } else if (mLockCount == 0 || !isSharedLockOwner(locker)) {
-            throw new IllegalStateException("_Lock not held");
+            throw new IllegalStateException("Lock not held");
         }
 
         latch.releaseExclusive();
@@ -543,7 +543,7 @@ final class _Lock {
         if (mOwner != locker) {
             String message = "Exclusive or upgradable lock not held";
             if (mLockCount == 0 || !isSharedLockOwner(locker)) {
-                message = "_Lock not held";
+                message = "Lock not held";
             }
             throw new IllegalStateException(message);
         }

@@ -120,7 +120,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
     @Override
     public final void lockMode(LockMode mode) {
         if (mode == null) {
-            throw new IllegalArgumentException("_Lock mode is null");
+            throw new IllegalArgumentException("Lock mode is null");
         } else {
             bogusCheck();
             mLockMode = mode;
