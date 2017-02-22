@@ -2968,7 +2968,7 @@ final class _Node extends Latch implements _DatabaseAccess {
                 // _Node is full, so split it.
 
                 if (!allowSplit) {
-                    throw new AssertionError("_Split not allowed");
+                    throw new AssertionError("Split not allowed");
                 }
 
                 // No side-effects if an IOException is thrown here.
@@ -4439,7 +4439,7 @@ final class _Node extends Latch implements _DatabaseAccess {
         throws IOException
     {
         if (mSplit != null) {
-            throw new AssertionError("_Node is already split");
+            throw new AssertionError("Node is already split");
         }
 
         // _Split can move node entries to a new left or right node. Choose such that the
@@ -4925,7 +4925,7 @@ final class _Node extends Latch implements _DatabaseAccess {
         throws IOException
     {
         if (mSplit != null) {
-            throw new AssertionError("_Node is already split");
+            throw new AssertionError("Node is already split");
         }
 
         // _Split can move node entries to a new left or right node. Choose such that the
@@ -5553,7 +5553,7 @@ final class _Node extends Latch implements _DatabaseAccess {
             break;
         default:
             if (!isLeaf()) {
-                return "_Node: {id=" + mId +
+                return "Node: {id=" + mId +
                     ", cachedState=" + mCachedState +
                     ", latchState=" + super.toString() +
                     '}';
@@ -5564,7 +5564,7 @@ final class _Node extends Latch implements _DatabaseAccess {
             break;
         }
 
-        return prefix + "_Node: {id=" + mId +
+        return prefix + "Node: {id=" + mId +
             ", cachedState=" + mCachedState +
             ", isSplit=" + (mSplit != null) +
             ", availableBytes=" + availableBytes() +
