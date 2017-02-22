@@ -149,9 +149,19 @@ public final class LatchCondition {
     public boolean signalRelease(Latch latch) {
         Node head = mHead;
         if (head != null) {
-            head.remove(this);
-            latch.releaseExclusive();
-            LockSupport.unpark(head.mWaiter);
+            if (head == mTail) {
+                // Don't permit the queue to go completely empty. The Lock class depends on the
+                // queue having at least one waiter in it until the waiter acquires the latch
+                // again. Without this, the Lock object can be removed from the LockManager too
+                // soon and the Lock is orphaned. This behavior can change if direct latch
+                // ownership transfer is supported.
+                head.signal();
+                latch.releaseExclusive();
+            } else {
+                head.remove(this);
+                latch.releaseExclusive();
+                LockSupport.unpark(head.mWaiter);
+            }
             return true;
         } else {
             return false;
@@ -203,9 +213,15 @@ public final class LatchCondition {
     public boolean signalSharedRelease(Latch latch) {
         Node head = mHead;
         if (head != null && head.mWaitState == Node.WAITING_SHARED) {
-            head.remove(this);
-            latch.releaseExclusive();
-            LockSupport.unpark(head.mWaiter);
+            if (head == mTail) {
+                // See comments in signalRelease method.
+                head.signal();
+                latch.releaseExclusive();
+            } else {
+                head.remove(this);
+                latch.releaseExclusive();
+                LockSupport.unpark(head.mWaiter);
+            }
             return true;
         } else {
             return false;

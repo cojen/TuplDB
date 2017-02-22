@@ -502,14 +502,14 @@ public class LockTest {
     @Test
     public void downgrade2() throws Exception {
         // Owner holds exclusive lock, one waiter is upgradable, the other is shared.
-        // Downgrading the owner allows bother waiters to acquire the lock.
+        // Downgrading the owner allows both waiters to acquire the lock.
         release2(true);
     }
 
     @Test
     public void release2() throws Exception {
         // Owner holds exclusive lock, one waiter is upgradable, the other is shared.
-        // Releasing the owner allows bother waiters to acquire the lock.
+        // Releasing the owner allows both waiters to acquire the lock.
         release2(false);
     }
 
