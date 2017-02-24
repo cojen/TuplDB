@@ -149,6 +149,8 @@ final class _ReplRedoController extends _ReplRedoWriter {
 
                 mCheckpointPos = result[0];
                 mCheckpointTxnId = result[1];
+                // Force next checkpoint to behave like a replica
+                mCheckpointRedoWriter = this;
 
                 throw nowUnmodifiable(writer);
             }

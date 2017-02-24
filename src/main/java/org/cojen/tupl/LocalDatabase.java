@@ -1779,24 +1779,41 @@ final class LocalDatabase extends AbstractDatabase {
         }
     }
 
-    private void flushAllContexts() throws IOException {
-        for (TransactionContext context : mTxnContexts) {
-            context.flush();
-        }
-    }
-
     @Override
     public void flush() throws IOException {
-        if (!isClosed() && mRedoWriter != null) {
-            flushAllContexts();
-        }
+        flush(0); // flush only
     }
 
     @Override
     public void sync() throws IOException {
+        flush(1); // flush and sync
+    }
+
+    /**
+     * @param level 0: flush only, 1: flush and sync, 2: flush and sync metadata
+     */
+    private void flush(int level) throws IOException {
+        UnmodifiableReplicaException ure = null;
+
         if (!isClosed() && mRedoWriter != null) {
-            flushAllContexts();
-            mRedoWriter.force(false);
+            for (TransactionContext context : mTxnContexts) {
+                try {
+                    context.flush();
+                } catch (UnmodifiableReplicaException e) {
+                    // Discard all transaction contexts if no longer the leader.
+                    if (ure == null) {
+                        ure = e;
+                    }
+                }
+            }
+
+            if (level > 0) {
+                mRedoWriter.force(level > 1);
+            }
+        }
+
+        if (ure != null) {
+            throw ure;
         }
     }
 
@@ -4369,8 +4386,11 @@ final class LocalDatabase extends AbstractDatabase {
 
                     // Thresholds not met for a full checkpoint, but fully sync the redo log
                     // for durability.
-                    flushAllContexts();
-                    mRedoWriter.force(true);
+                    try {
+                        flush(2); // flush and sync metadata
+                    } catch (UnmodifiableReplicaException e) {
+                        // Ignore.
+                    }
 
                     return;
                 }
@@ -4387,12 +4407,14 @@ final class LocalDatabase extends AbstractDatabase {
                         root.releaseShared();
                     }
 
-                    // Root is clean, so no need for full checkpoint,
-                    // but fully sync the redo log for durability.
-                    if (mRedoWriter != null) {
-                        flushAllContexts();
-                        mRedoWriter.force(true);
+                    // Root is clean, so no need for full checkpoint, but fully sync the redo
+                    // log for durability.
+                    try {
+                        flush(2); // flush and sync metadata
+                    } catch (UnmodifiableReplicaException e) {
+                        // Ignore.
                     }
+
                     return;
                 }
             }
