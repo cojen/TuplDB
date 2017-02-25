@@ -202,8 +202,9 @@ final class ReplRedoEngine implements RedoVisitor {
             return true;
         });
 
-        // Now's a good time to clean out any lingering trash.
-        mDatabase.emptyAllFragmentedTrash(false);
+        // Although it might seem like a good time to clean out any lingering trash, concurrent
+        // transactions are still active and need the trash to rollback properly.
+        //mDatabase.emptyAllFragmentedTrash(false);
 
         // Only release if no exception.
         opFinishedShared();

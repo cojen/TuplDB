@@ -4277,7 +4277,7 @@ final class LocalDatabase extends AbstractDatabase {
      * If fragmented trash exists, non-transactionally delete all fragmented values. Expected
      * to be called only during recovery or replication leader switch.
      */
-    void emptyAllFragmentedTrash(boolean checkpoint) throws IOException {
+    private void emptyAllFragmentedTrash(boolean checkpoint) throws IOException {
         FragmentedTrash trash = mFragmentedTrash;
         if (trash != null && trash.emptyAllTrash(mEventListener) && checkpoint) {
             checkpoint(false, 0, 0);
