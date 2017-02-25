@@ -31,14 +31,12 @@ import static org.cojen.tupl.Utils.*;
  */
 final class _FragmentedTrash {
     final _Tree mTrash;
-    private final CommitLock mEmptyAllLock;
 
     /**
      * @param trash internal index for persisting trash
      */
     _FragmentedTrash(_Tree trash) {
         mTrash = trash;
-        mEmptyAllLock = new CommitLock();
     }
 
     /**
@@ -192,42 +190,36 @@ final class _FragmentedTrash {
         _LocalDatabase db = mTrash.mDatabase;
         final CommitLock commitLock = db.commitLock();
 
-        // Disable a concurrent call to emptyAllTrash, preventing double delete races.
-        CommitLock.Shared emptyAllShared = mEmptyAllLock.acquireShared();
+        _TreeCursor cursor = new _TreeCursor(mTrash, Transaction.BOGUS);
         try {
-            _TreeCursor cursor = new _TreeCursor(mTrash, Transaction.BOGUS);
-            try {
-                cursor.autoload(false);
-                cursor.findGt(prefix);
+            cursor.autoload(false);
+            cursor.findGt(prefix);
 
-                while (true) {
-                    byte[] key = cursor.key();
-                    if (key == null || compareUnsigned(key, 0, 8, prefix, 0, 8) != 0) {
-                        break;
-                    }
-
-                    CommitLock.Shared shared = commitLock.acquireShared();
-                    try {
-                        deleteFragmented(db, cursor);
-                    } finally {
-                        shared.release();
-                    }
-
-                    cursor.next();
+            while (true) {
+                byte[] key = cursor.key();
+                if (key == null || compareUnsigned(key, 0, 8, prefix, 0, 8) != 0) {
+                    break;
                 }
 
-                cursor.reset();
-            } catch (Throwable e) {
-                throw closeOnFailure(cursor, e);
+                CommitLock.Shared shared = commitLock.acquireShared();
+                try {
+                    deleteFragmented(db, cursor);
+                } finally {
+                    shared.release();
+                }
+
+                cursor.next();
             }
-        } finally {
-            emptyAllShared.release();
+
+            cursor.reset();
+        } catch (Throwable e) {
+            throw closeOnFailure(cursor, e);
         }
     }
 
     /**
      * Non-transactionally deletes all fragmented values. Expected to be called only during
-     * recovery, and never concurrently.
+     * recovery, and never when other calls into the trash are being made concurrently.
      *
      * @return true if any trash was found
      */
@@ -237,41 +229,35 @@ final class _FragmentedTrash {
         _LocalDatabase db = mTrash.mDatabase;
         final CommitLock commitLock = db.commitLock();
 
-        // Only permit one thread to empty the trash, preventing double delete races.
-        mEmptyAllLock.acquireExclusive();
+        _TreeCursor cursor = new _TreeCursor(mTrash, Transaction.BOGUS);
         try {
-            _TreeCursor cursor = new _TreeCursor(mTrash, Transaction.BOGUS);
-            try {
-                cursor.autoload(false);
-                cursor.first();
+            cursor.autoload(false);
+            cursor.first();
 
-                if (cursor.key() != null) {
-                    if (listener != null) {
-                        listener.notify(EventType.RECOVERY_DELETE_FRAGMENTS,
-                                        "Deleting unused large fragments");
-                    }
-
-                    do {
-                        CommitLock.Shared shared = commitLock.acquireShared();
-                        try {
-                            found |= deleteFragmented(db, cursor);
-                        } finally {
-                            shared.release();
-                        }
-
-                        cursor.next();
-                    } while (cursor.key() != null);
+            if (cursor.key() != null) {
+                if (listener != null) {
+                    listener.notify(EventType.RECOVERY_DELETE_FRAGMENTS,
+                                    "Deleting unused large fragments");
                 }
 
-                cursor.reset();
-            } catch (Throwable e) {
-                throw closeOnFailure(cursor, e);
+                do {
+                    CommitLock.Shared shared = commitLock.acquireShared();
+                    try {
+                        found |= deleteFragmented(db, cursor);
+                    } finally {
+                        shared.release();
+                    }
+
+                    cursor.next();
+                } while (cursor.key() != null);
             }
 
-            return found;
-        } finally {
-            mEmptyAllLock.releaseExclusive();
+            cursor.reset();
+        } catch (Throwable e) {
+            throw closeOnFailure(cursor, e);
         }
+
+        return found;
     }
 
     private static boolean deleteFragmented(_LocalDatabase db, Cursor cursor) throws IOException {
