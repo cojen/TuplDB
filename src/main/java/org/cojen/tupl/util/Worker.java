@@ -31,7 +31,7 @@ import org.cojen.tupl.io.Utils;
  * must provide its own mutual exclusion to protect against concurrent enqueues.
  *
  * @author Brian S O'Neill
- * @see WorkerGang
+ * @see WorkerGroup
  */
 public class Worker {
     private static final sun.misc.Unsafe UNSAFE = UnsafeAccess.obtain();
