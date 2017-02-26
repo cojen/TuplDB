@@ -133,6 +133,8 @@ final class FragmentedTrash {
     /**
      * Remove an entry from the trash, as an undo operation. Original entry is
      * stored back into index.
+     *
+     * @param index index to store entry into; pass null to fully delete it instead
      */
     void remove(long txnId, Tree index, byte[] undoEntry) throws IOException {
         // Extract the index and trash keys.
@@ -153,29 +155,30 @@ final class FragmentedTrash {
             p_delete(undo);
         }
 
-        byte[] fragmented;
-        TreeCursor cursor = new TreeCursor(mTrash, Transaction.BOGUS);
+        TreeCursor trashCursor = new TreeCursor(mTrash, Transaction.BOGUS);
         try {
-            cursor.find(trashKey);
-            fragmented = cursor.value();
-            if (fragmented == null) {
-                // Nothing to remove, possibly caused by double undo.
-                cursor.reset();
-                return;
-            }
-            cursor.store(null);
-            cursor.reset();
-        } catch (Throwable e) {
-            throw closeOnFailure(cursor, e);
-        }
+            trashCursor.find(trashKey);
 
-        cursor = new TreeCursor(index, Transaction.BOGUS);
-        try {
-            cursor.find(indexKey);
-            cursor.storeFragmented(fragmented);
-            cursor.reset();
+            if (index == null) {
+                deleteFragmented(mTrash.mDatabase, trashCursor);
+            } else {
+                byte[] fragmented = trashCursor.value();
+                if (fragmented != null) {
+                    TreeCursor ixCursor = new TreeCursor(index, Transaction.BOGUS);
+                    try {
+                        ixCursor.find(indexKey);
+                        ixCursor.storeFragmented(fragmented);
+                        ixCursor.reset();
+                    } catch (Throwable e) {
+                        throw closeOnFailure(ixCursor, e);
+                    }
+                    trashCursor.store(null);
+                }
+            }
+
+            trashCursor.reset();
         } catch (Throwable e) {
-            throw closeOnFailure(cursor, e);
+            throw closeOnFailure(trashCursor, e);
         }
     }
 
