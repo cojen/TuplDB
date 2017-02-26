@@ -682,8 +682,9 @@ final class UndoLog implements DatabaseAccess {
         }
 
         case OP_UNDELETE_FRAGMENTED:
-            while ((activeIndex = findIndex(activeIndex)) != null) {
+            while (true) {
                 try {
+                    activeIndex = findIndex(activeIndex);
                     mDatabase.fragmentedTrash().remove(mTxnId, (Tree) activeIndex, entry);
                     break;
                 } catch (ClosedIndexException e) {
