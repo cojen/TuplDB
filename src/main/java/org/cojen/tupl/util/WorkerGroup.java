@@ -22,13 +22,13 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 /**
- * A gang of {@link Worker workers} for running tasks. This class isn't thread safe for
+ * A group of {@link Worker workers} for running tasks. This class isn't thread safe for
  * enqueuing tasks, and so the caller must provide its own mutual exclusion to protect against
  * concurrent enqueues.
  *
  * @author Brian S O'Neill
  */
-public class WorkerGang {
+public class WorkerGroup {
     private final Worker[] mWorkers;
     private int mLastSelected;
 
@@ -41,10 +41,10 @@ public class WorkerGang {
      * @param unit keepAliveTime time unit per worker
      * @param threadFactory null for default
      */
-    public WorkerGang(int workerCount,
-                      int maxSize, int notifyAvailable,
-                      long keepAliveTime, TimeUnit unit,
-                      ThreadFactory threadFactory)
+    public WorkerGroup(int workerCount,
+                       int maxSize, int notifyAvailable,
+                       long keepAliveTime, TimeUnit unit,
+                       ThreadFactory threadFactory)
     {
         if (workerCount < 1) {
             throw new IllegalArgumentException();
