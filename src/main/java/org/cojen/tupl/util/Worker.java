@@ -104,6 +104,10 @@ public class Worker {
      * @return false if queue is full and task wasn't enqueued
      */
     public boolean tryEnqueue(Task task) {
+        if (task == null) {
+            throw new NullPointerException();
+        }
+
         int size = mSize;
         if (size >= mMaxSize) {
             return false;
@@ -156,7 +160,12 @@ public class Worker {
      */
     public void enqueue(Task task) {
         while (!tryEnqueue(task)) {
-            // Try again without fully parking just yet.
+            // Keep trying before parking.
+            for (int i=1; i<Latch.SPIN_LIMIT; i++) {
+                if (tryEnqueue(task)) {
+                    return;
+                }
+            }
             Thread.yield();
             if (tryEnqueue(task)) {
                 return;
@@ -174,7 +183,12 @@ public class Worker {
      */
     public void join(boolean interrupt) {
         while (mSize > 0) {
-            // Try again without fully parking just yet.
+            // Keep trying before parking.
+            for (int i=1; i<Latch.SPIN_LIMIT; i++) {
+                if (mSize <= 0) {
+                    return;
+                }
+            }
             Thread.yield();
             if (mSize <= 0) {
                 return;
@@ -201,7 +215,7 @@ public class Worker {
     private void runTasks() {
         int size = 0;
 
-        while (true) {
+        outer: while (true) {
             if (size > 0 || (size = mSize) > 0) {
                 Task task;
                 while ((task = mFirst) == null);
@@ -242,7 +256,15 @@ public class Worker {
                 continue;
             }
 
-            // Try again without fully parking just yet.
+            // Keep trying before parking.
+
+            for (int i=1; i<Latch.SPIN_LIMIT; i++) {
+                size = mSize;
+                if (size > 0) {
+                    continue outer;
+                }
+            }
+
             Thread.yield();
 
             size = mSize;
