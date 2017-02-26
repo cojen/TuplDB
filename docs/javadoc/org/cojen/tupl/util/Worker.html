@@ -113,6 +113,10 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?
 <div class="block">Simple task worker which has at most one background thread, and is expected to have only one
  thread enqueing tasks. This class isn't thread safe for enqueuing tasks, and so the caller
  must provide its own mutual exclusion to protect against concurrent enqueues.</div>
+<dl>
+<dt><span class="seeLabel">See Also:</span></dt>
+<dd><a href="../../../../org/cojen/tupl/util/WorkerGang.html" title="class in org.cojen.tupl.util"><code>WorkerGang</code></a></dd>
+</dl>
 </li>
 </ul>
 </div>
@@ -133,7 +137,9 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?
 </tr>
 <tr class="altColor">
 <td class="colFirst"><code>static class&nbsp;</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Worker.Task.html" title="class in org.cojen.tupl.util">Worker.Task</a></span></code>&nbsp;</td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Worker.Task.html" title="class in org.cojen.tupl.util">Worker.Task</a></span></code>
+<div class="block">One-shot <a href="../../../../org/cojen/tupl/util/Worker.html" title="class in org.cojen.tupl.util"><code>worker</code></a> task instance.</div>
+</td>
 </tr>
 </table>
 </li>
