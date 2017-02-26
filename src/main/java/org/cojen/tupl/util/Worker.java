@@ -274,6 +274,12 @@ public class Worker {
 
             mThreadState = THREAD_WAITING;
 
+            size = mSize;
+            if (size > 0) {
+                mThreadState = THREAD_RUNNING;
+                continue;
+            }
+
             if (mKeepAliveNanos < 0) {
                 LockSupport.park(this);
             } else {
