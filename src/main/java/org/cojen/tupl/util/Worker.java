@@ -34,6 +34,29 @@ import org.cojen.tupl.io.Utils;
  * @see WorkerGroup
  */
 public class Worker {
+    /**
+     * @param maxSize maximum amount of tasks which can be enqueued
+     * @param notifyAvailable minimum available space in the queue before worker can wake up a
+     * blocked eneueue (pass zero for immediate wake up)
+     * @param keepAliveTime maximum idle time before worker thread exits
+     * @param unit keepAliveTime time unit
+     * @param threadFactory null for default
+     */
+    public static Worker make(int maxSize, int notifyAvailable,
+                              long keepAliveTime, TimeUnit unit,
+                              ThreadFactory threadFactory)
+    {
+        if (maxSize <= 0 || notifyAvailable > maxSize) {
+            throw new IllegalArgumentException();
+        }
+
+        if (threadFactory == null) {
+            threadFactory = Executors.defaultThreadFactory();
+        }
+
+        return new Worker(maxSize, notifyAvailable, keepAliveTime, unit, threadFactory);
+    }
+
     private static final sun.misc.Unsafe UNSAFE = UnsafeAccess.obtain();
 
     static final long SIZE_OFFSET, FIRST_OFFSET, LAST_OFFSET, STATE_OFFSET, THREAD_OFFSET;
@@ -65,26 +88,10 @@ public class Worker {
 
     private volatile Thread mWaiter;
 
-    /**
-     * @param maxSize maximum amount of tasks which can be enqueued
-     * @param notifyAvailable minimum available space in the queue before worker can wake up a
-     * blocked eneueue (pass zero for immediate wake up)
-     * @param keepAliveTime maximum idle time before worker thread exits
-     * @param unit keepAliveTime time unit
-     * @param threadFactory null for default
-     */
-    public Worker(int maxSize, int notifyAvailable,
-                  long keepAliveTime, TimeUnit unit,
-                  ThreadFactory threadFactory)
+    private Worker(int maxSize, int notifyAvailable,
+                   long keepAliveTime, TimeUnit unit,
+                   ThreadFactory threadFactory)
     {
-        if (maxSize <= 0 || notifyAvailable > maxSize) {
-            throw new IllegalArgumentException();
-        }
-
-        if (threadFactory == null) {
-            threadFactory = Executors.defaultThreadFactory();
-        }
-
         mThreadFactory = threadFactory;
 
         mMaxSize = maxSize;

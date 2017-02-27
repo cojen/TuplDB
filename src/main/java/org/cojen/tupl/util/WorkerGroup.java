@@ -28,10 +28,7 @@ import java.util.concurrent.TimeUnit;
  *
  * @author Brian S O'Neill
  */
-public class WorkerGroup {
-    private final Worker[] mWorkers;
-    private int mLastSelected;
-
+public abstract class WorkerGroup {
     /**
      * @param workerCount number of workers
      * @param maxSize maximum amount of tasks which can be enqueued per worker
@@ -41,10 +38,10 @@ public class WorkerGroup {
      * @param unit keepAliveTime time unit per worker
      * @param threadFactory null for default
      */
-    public WorkerGroup(int workerCount,
-                       int maxSize, int notifyAvailable,
-                       long keepAliveTime, TimeUnit unit,
-                       ThreadFactory threadFactory)
+    public static WorkerGroup make(int workerCount,
+                                   int maxSize, int notifyAvailable,
+                                   long keepAliveTime, TimeUnit unit,
+                                   ThreadFactory threadFactory)
     {
         if (workerCount < 1) {
             throw new IllegalArgumentException();
@@ -54,13 +51,13 @@ public class WorkerGroup {
             threadFactory = Executors.defaultThreadFactory();
         }
 
-        Worker[] workers = new Worker[workerCount];
-
-        for (int i=0; i<workers.length; i++) {
-            workers[i] = new Worker(maxSize, notifyAvailable, keepAliveTime, unit, threadFactory);
+        if (workerCount == 1) {
+            Worker worker = Worker.make
+                (maxSize, notifyAvailable, keepAliveTime, unit, threadFactory);
+            return new One(worker);
         }
 
-        mWorkers = workers;
+        return new Many(workerCount, maxSize, notifyAvailable, keepAliveTime, unit, threadFactory);
     }
 
     /**
@@ -69,25 +66,7 @@ public class WorkerGroup {
      *
      * @return selected worker or null if all worker queues are full and task wasn't enqueued
      */
-    public Worker tryEnqueue(Worker.Task task) {
-        // Start the search just lower than the last one selected, to drive tasks towards the
-        // lower workers. The higher workers can then idle and allow their threads to exit.
-        int slot = Math.max(0, mLastSelected - 1);
-
-        for (int i=0; i<mWorkers.length; i++) {
-            Worker w = mWorkers[slot];
-            if (w.tryEnqueue(task)) {
-                mLastSelected = slot;
-                return w;
-            }
-            slot++;
-            if (slot >= mWorkers.length) {
-                slot = 0;
-            }
-        }
-
-        return null;
-    }
+    public abstract Worker tryEnqueue(Worker.Task task);
 
     /**
      * Enqueue a task, blocking if necessary until space is available. When the task object is
@@ -95,14 +74,7 @@ public class WorkerGroup {
      *
      * @return selected worker
      */
-    public Worker enqueue(Worker.Task task) {
-        Worker w = tryEnqueue(task);
-        if (w == null) {
-            w = mWorkers[mLastSelected = ThreadLocalRandom.current().nextInt(mWorkers.length)];
-            w.enqueue(task);
-        }
-        return w;
-    }
+    public abstract Worker enqueue(Worker.Task task);
 
     /**
      * Waits until all the worker queues are drained. If the worker threads are interrupted and
@@ -110,9 +82,88 @@ public class WorkerGroup {
      *
      * @param interrupt pass true to interrupt the worker threads so that they exit
      */
-    public void join(boolean interrupt) {
-        for (Worker w : mWorkers) {
-            w.join(interrupt);
+    public abstract void join(boolean interrupt);
+
+    private static final class One extends WorkerGroup {
+        private final Worker mWorker;
+
+        One(Worker worker) {
+            mWorker = worker;
+        }
+
+        @Override
+        public Worker tryEnqueue(Worker.Task task) {
+            mWorker.tryEnqueue(task);
+            return mWorker;
+        }
+
+        @Override
+        public Worker enqueue(Worker.Task task) {
+            mWorker.enqueue(task);
+            return mWorker;
+        }
+
+        @Override
+        public void join(boolean interrupt) {
+            mWorker.join(interrupt);
+        }
+    }
+
+    private static final class Many extends WorkerGroup {
+        private final Worker[] mWorkers;
+        private int mLastSelected;
+
+        Many(int workerCount,
+             int maxSize, int notifyAvailable,
+             long keepAliveTime, TimeUnit unit,
+             ThreadFactory threadFactory)
+        {
+            Worker[] workers = new Worker[workerCount];
+
+            for (int i=0; i<workers.length; i++) {
+                workers[i] = Worker.make
+                    (maxSize, notifyAvailable, keepAliveTime, unit, threadFactory);
+            }
+
+            mWorkers = workers;
+        }
+
+        @Override
+        public Worker tryEnqueue(Worker.Task task) {
+            // Start the search just lower than the last one selected, to drive tasks towards the
+            // lower workers. The higher workers can then idle and allow their threads to exit.
+            int slot = Math.max(0, mLastSelected - 1);
+
+            for (int i=0; i<mWorkers.length; i++) {
+                Worker w = mWorkers[slot];
+                if (w.tryEnqueue(task)) {
+                    mLastSelected = slot;
+                    return w;
+                }
+                slot++;
+                if (slot >= mWorkers.length) {
+                    slot = 0;
+                }
+            }
+
+            return null;
+        }
+
+        @Override
+        public Worker enqueue(Worker.Task task) {
+            Worker w = tryEnqueue(task);
+            if (w == null) {
+                w = mWorkers[mLastSelected = ThreadLocalRandom.current().nextInt(mWorkers.length)];
+                w.enqueue(task);
+            }
+            return w;
+        }
+
+        @Override
+        public void join(boolean interrupt) {
+            for (Worker w : mWorkers) {
+                w.join(interrupt);
+            }
         }
     }
 }
