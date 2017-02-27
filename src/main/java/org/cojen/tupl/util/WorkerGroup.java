@@ -32,14 +32,11 @@ public abstract class WorkerGroup {
     /**
      * @param workerCount number of workers
      * @param maxSize maximum amount of tasks which can be enqueued per worker
-     * @param notifyAvailable minimum available space in a worker queue before it can wake up a
-     * blocked eneueue (pass zero for immediate wake up)
      * @param keepAliveTime maximum idle time before worker threads exit
      * @param unit keepAliveTime time unit per worker
      * @param threadFactory null for default
      */
-    public static WorkerGroup make(int workerCount,
-                                   int maxSize, int notifyAvailable,
+    public static WorkerGroup make(int workerCount, int maxSize,
                                    long keepAliveTime, TimeUnit unit,
                                    ThreadFactory threadFactory)
     {
@@ -52,12 +49,10 @@ public abstract class WorkerGroup {
         }
 
         if (workerCount == 1) {
-            Worker worker = Worker.make
-                (maxSize, notifyAvailable, keepAliveTime, unit, threadFactory);
-            return new One(worker);
+            return new One(Worker.make(maxSize, keepAliveTime, unit, threadFactory));
         }
 
-        return new Many(workerCount, maxSize, notifyAvailable, keepAliveTime, unit, threadFactory);
+        return new Many(workerCount, maxSize, keepAliveTime, unit, threadFactory);
     }
 
     /**
@@ -113,16 +108,14 @@ public abstract class WorkerGroup {
         private final Worker[] mWorkers;
         private int mLastSelected;
 
-        Many(int workerCount,
-             int maxSize, int notifyAvailable,
+        Many(int workerCount, int maxSize,
              long keepAliveTime, TimeUnit unit,
              ThreadFactory threadFactory)
         {
             Worker[] workers = new Worker[workerCount];
 
             for (int i=0; i<workers.length; i++) {
-                workers[i] = Worker.make
-                    (maxSize, notifyAvailable, keepAliveTime, unit, threadFactory);
+                workers[i] = Worker.make(maxSize, keepAliveTime, unit, threadFactory);
             }
 
             mWorkers = workers;

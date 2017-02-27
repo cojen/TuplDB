@@ -162,9 +162,8 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?
 </tr>
 <tr id="i2" class="altColor">
 <td class="colFirst"><code>static <a href="../../../../org/cojen/tupl/util/WorkerGroup.html" title="class in org.cojen.tupl.util">WorkerGroup</a></code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/WorkerGroup.html#make-int-int-int-long-java.util.concurrent.TimeUnit-java.util.concurrent.ThreadFactory-">make</a></span>(int&nbsp;workerCount,
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/WorkerGroup.html#make-int-int-long-java.util.concurrent.TimeUnit-java.util.concurrent.ThreadFactory-">make</a></span>(int&nbsp;workerCount,
     int&nbsp;maxSize,
-    int&nbsp;notifyAvailable,
     long&nbsp;keepAliveTime,
     <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent">TimeUnit</a>&nbsp;unit,
     <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/ThreadFactory.html?is-external=true" title="class or interface in java.util.concurrent">ThreadFactory</a>&nbsp;threadFactory)</code>&nbsp;</td>
@@ -214,7 +213,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?
 <!--   -->
 </a>
 <h3>Method Detail</h3>
-<a name="make-int-int-int-long-java.util.concurrent.TimeUnit-java.util.concurrent.ThreadFactory-">
+<a name="make-int-int-long-java.util.concurrent.TimeUnit-java.util.concurrent.ThreadFactory-">
 <!--   -->
 </a>
 <ul class="blockList">
@@ -222,7 +221,6 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?
 <h4>make</h4>
 <pre>public static&nbsp;<a href="../../../../org/cojen/tupl/util/WorkerGroup.html" title="class in org.cojen.tupl.util">WorkerGroup</a>&nbsp;make(int&nbsp;workerCount,
                                int&nbsp;maxSize,
-                               int&nbsp;notifyAvailable,
                                long&nbsp;keepAliveTime,
                                <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent">TimeUnit</a>&nbsp;unit,
                                <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/ThreadFactory.html?is-external=true" title="class or interface in java.util.concurrent">ThreadFactory</a>&nbsp;threadFactory)</pre>
@@ -230,8 +228,6 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>workerCount</code> - number of workers</dd>
 <dd><code>maxSize</code> - maximum amount of tasks which can be enqueued per worker</dd>
-<dd><code>notifyAvailable</code> - minimum available space in a worker queue before it can wake up a
- blocked eneueue (pass zero for immediate wake up)</dd>
 <dd><code>keepAliveTime</code> - maximum idle time before worker threads exit</dd>
 <dd><code>unit</code> - keepAliveTime time unit per worker</dd>
 <dd><code>threadFactory</code> - null for default</dd>
