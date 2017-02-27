@@ -36,17 +36,14 @@ import org.cojen.tupl.io.Utils;
 public class Worker {
     /**
      * @param maxSize maximum amount of tasks which can be enqueued
-     * @param notifyAvailable minimum available space in the queue before worker can wake up a
-     * blocked eneueue (pass zero for immediate wake up)
      * @param keepAliveTime maximum idle time before worker thread exits
      * @param unit keepAliveTime time unit
      * @param threadFactory null for default
      */
-    public static Worker make(int maxSize, int notifyAvailable,
-                              long keepAliveTime, TimeUnit unit,
+    public static Worker make(int maxSize, long keepAliveTime, TimeUnit unit,
                               ThreadFactory threadFactory)
     {
-        if (maxSize <= 0 || notifyAvailable > maxSize) {
+        if (maxSize <= 0) {
             throw new IllegalArgumentException();
         }
 
@@ -54,7 +51,7 @@ public class Worker {
             threadFactory = Executors.defaultThreadFactory();
         }
 
-        return new Worker(maxSize, notifyAvailable, keepAliveTime, unit, threadFactory);
+        return new Worker(maxSize, keepAliveTime, unit, threadFactory);
     }
 
     private static final sun.misc.Unsafe UNSAFE = UnsafeAccess.obtain();
@@ -75,27 +72,27 @@ public class Worker {
 
     private final ThreadFactory mThreadFactory;
     private final int mMaxSize;
-    private final int mNotifyAvailable;
     private final long mKeepAliveNanos;
 
     private volatile int mSize;
     private volatile Task mFirst;
     private volatile Task mLast;
 
-    private static final int THREAD_NONE = 0, THREAD_RUNNING = 1, THREAD_WAITING = 2;
+    private static final int
+        THREAD_NONE = 0,    // no worker thread
+        THREAD_RUNNING = 1, // worker thread is running
+        THREAD_BLOCKED = 2, // worker thread is running and an enqueue/join thread is blocked
+        THREAD_IDLE = 3;    // worker thread is idle
+
     private volatile int mThreadState;
     private volatile Thread mThread;
 
-    private volatile Thread mWaiter;
+    private Thread mWaiter;
 
-    private Worker(int maxSize, int notifyAvailable,
-                   long keepAliveTime, TimeUnit unit,
-                   ThreadFactory threadFactory)
-    {
+    private Worker(int maxSize, long keepAliveTime, TimeUnit unit, ThreadFactory threadFactory) {
         mThreadFactory = threadFactory;
 
         mMaxSize = maxSize;
-        mNotifyAvailable = notifyAvailable;
 
         if (keepAliveTime > 0) {
             mKeepAliveNanos = unit.toNanos(keepAliveTime);
@@ -153,7 +150,8 @@ public class Worker {
                 return true;
             }
 
-            // assert state == THREAD_WAITING
+            // assert state == THREAD_IDLE
+
             if (UNSAFE.compareAndSwapInt(this, STATE_OFFSET, state, THREAD_RUNNING)) {
                 LockSupport.unpark(mThread);
                 return true;
@@ -178,7 +176,10 @@ public class Worker {
                 return;
             }
             mWaiter = Thread.currentThread();
-            LockSupport.park(this);
+            if (UNSAFE.compareAndSwapInt(this, STATE_OFFSET, THREAD_RUNNING, THREAD_BLOCKED)) {
+                LockSupport.park(this);
+            }
+            mWaiter = null;
         }
     }
 
@@ -201,7 +202,10 @@ public class Worker {
                 return;
             }
             mWaiter = Thread.currentThread();
-            LockSupport.park(this);
+            if (UNSAFE.compareAndSwapInt(this, STATE_OFFSET, THREAD_RUNNING, THREAD_BLOCKED)) {
+                LockSupport.park(this);
+            }
+            mWaiter = null;
         }
 
         if (interrupt) {
@@ -252,12 +256,9 @@ public class Worker {
 
                 size = UNSAFE.getAndAddInt(this, SIZE_OFFSET, -1) - 1;
 
-                if ((mMaxSize - size) >= mNotifyAvailable) {
-                    Thread waiter = mWaiter;
-                    if (waiter != null) {
-                        mWaiter = null;
-                        LockSupport.unpark(waiter);
-                    }
+                if (mThreadState == THREAD_BLOCKED) {
+                    mThreadState = THREAD_RUNNING;
+                    LockSupport.unpark(mWaiter);
                 }
 
                 continue;
@@ -266,46 +267,56 @@ public class Worker {
             // Keep trying before parking.
 
             for (int i=1; i<Latch.SPIN_LIMIT; i++) {
-                size = mSize;
-                if (size > 0) {
+                if ((size = mSize) > 0) {
                     continue outer;
+                }
+                if (mThreadState == THREAD_BLOCKED) {
+                    mThreadState = THREAD_RUNNING;
+                    LockSupport.unpark(mWaiter);
                 }
             }
 
             Thread.yield();
 
-            size = mSize;
-            if (size > 0) {
+            if ((size = mSize) > 0) {
                 continue;
             }
 
-            mThreadState = THREAD_WAITING;
-
-            size = mSize;
-            if (size > 0) {
-                mThreadState = THREAD_RUNNING;
+            if (!UNSAFE.compareAndSwapInt(this, STATE_OFFSET, THREAD_RUNNING, THREAD_IDLE)) {
                 continue;
             }
 
-            if (mKeepAliveNanos < 0) {
-                LockSupport.park(this);
-            } else {
-                LockSupport.parkNanos(this, mKeepAliveNanos);
+            long parkNanos = mKeepAliveNanos;
+            long endNanos = parkNanos < 0 ? 0 : (System.nanoTime() + parkNanos);
+
+            while ((size = mSize) <= 0) {
+                if (parkNanos < 0) {
+                    LockSupport.park(this);
+                } else {
+                    LockSupport.parkNanos(this, parkNanos);
+                    parkNanos = Math.max(0, endNanos - System.nanoTime());
+                }
+
+                boolean interrupted = Thread.interrupted();
+
+                if ((size = mSize) > 0) {
+                    break;
+                }
+
+                if (parkNanos == 0 || interrupted) {
+                    if (!UNSAFE.compareAndSwapInt(this, STATE_OFFSET, THREAD_IDLE, THREAD_NONE)) {
+                        continue outer;
+                    }
+                    UNSAFE.compareAndSwapObject(this, THREAD_OFFSET, Thread.currentThread(), null);
+                    return;
+                }
+
+                if (mThreadState != THREAD_IDLE) {
+                    continue outer;
+                }
             }
 
-            // Clear any interrupted state.
-            Thread.interrupted();
-
-            size = mSize;
-
-            if (size > 0) {
-                mThreadState = THREAD_RUNNING;
-            } else if (mThreadState == THREAD_WAITING &&
-                       UNSAFE.compareAndSwapInt(this, STATE_OFFSET, THREAD_WAITING, THREAD_NONE))
-            {
-                UNSAFE.compareAndSwapObject(this, THREAD_OFFSET, Thread.currentThread(), null);
-                return;
-            }
+            UNSAFE.compareAndSwapInt(this, STATE_OFFSET, THREAD_IDLE, THREAD_RUNNING);
         }
     }
 }
