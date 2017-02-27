@@ -624,6 +624,69 @@ final class ReplRedoEngine implements RedoVisitor {
     }
 
     @Override
+    public boolean txnLockShared(long txnId, long indexId, byte[] key) throws IOException {
+        TxnEntry te = getTxnEntry(txnId);
+
+        // Allow side-effect free operations to be performed before acquiring latch.
+        mOpLatch.acquireShared();
+
+        Latch latch = te.latch();
+        try {
+            te.mTxn.lockShared(indexId, key, INFINITE_TIMEOUT);
+        } finally {
+            latch.releaseExclusive();
+        }
+
+        // Only release if no exception.
+        mOpLatch.releaseShared();
+
+        // Return true and allow RedoDecoder to loop back.
+        return true;
+    }
+
+    @Override
+    public boolean txnLockUpgradable(long txnId, long indexId, byte[] key) throws IOException {
+        TxnEntry te = getTxnEntry(txnId);
+
+        // Allow side-effect free operations to be performed before acquiring latch.
+        mOpLatch.acquireShared();
+
+        Latch latch = te.latch();
+        try {
+            te.mTxn.lockUpgradable(indexId, key, INFINITE_TIMEOUT);
+        } finally {
+            latch.releaseExclusive();
+        }
+
+        // Only release if no exception.
+        mOpLatch.releaseShared();
+
+        // Return true and allow RedoDecoder to loop back.
+        return true;
+    }
+
+    @Override
+    public boolean txnLockExclusive(long txnId, long indexId, byte[] key) throws IOException {
+        TxnEntry te = getTxnEntry(txnId);
+
+        // Allow side-effect free operations to be performed before acquiring latch.
+        mOpLatch.acquireShared();
+
+        Latch latch = te.latch();
+        try {
+            te.mTxn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
+        } finally {
+            latch.releaseExclusive();
+        }
+
+        // Only release if no exception.
+        mOpLatch.releaseShared();
+
+        // Return true and allow RedoDecoder to loop back.
+        return true;
+    }
+
+    @Override
     public boolean txnCustom(long txnId, byte[] message) throws IOException {
         TransactionHandler handler = mDatabase.mCustomTxnHandler;
 
