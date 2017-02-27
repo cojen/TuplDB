@@ -188,6 +188,33 @@ final class RedoLogApplier implements RedoVisitor {
     }
 
     @Override
+    public boolean txnLockShared(long txnId, long indexId, byte[] key) throws IOException {
+        Transaction txn = txn(txnId);
+        if (txn != null) {
+            txn.lockShared(indexId, key);
+        }
+        return true;
+    }
+
+    @Override
+    public boolean txnLockUpgradable(long txnId, long indexId, byte[] key) throws IOException {
+        Transaction txn = txn(txnId);
+        if (txn != null) {
+            txn.lockUpgradable(indexId, key);
+        }
+        return true;
+    }
+
+    @Override
+    public boolean txnLockExclusive(long txnId, long indexId, byte[] key) throws IOException {
+        Transaction txn = txn(txnId);
+        if (txn != null) {
+            txn.lockExclusive(indexId, key);
+        }
+        return true;
+    }
+
+    @Override
     public boolean txnCustom(long txnId, byte[] message) throws IOException {
         Transaction txn = txn(txnId);
         if (txn != null) {

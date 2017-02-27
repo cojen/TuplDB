@@ -82,6 +82,15 @@ class RedoOps {
         /** txnId: delta */
         OP_TXN_COMMIT_FINAL = 28,
 
+        /** txnId: delta, indexId: long, keyLength: varInt, key: bytes */
+        OP_TXN_LOCK_SHARED = 29,
+
+        /** txnId: delta, indexId: long, keyLength: varInt, key: bytes */
+        OP_TXN_LOCK_UPGRADABLE = 30,
+
+        /** txnId: delta, indexId: long, keyLength: varInt, key: bytes */
+        OP_TXN_LOCK_EXCLUSIVE = 31,
+
         /** txnId: delta, indexId: long, keyLength: varInt, key: bytes,
             valueLength: varInt, value: bytes */
         OP_TXN_ENTER_STORE = 32,

@@ -140,6 +140,27 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
+    public boolean txnLockShared(long txnId, long indexId, byte[] key) {
+        mOut.println("txnLockShared: txnId=" + txnId + ", indexId=" + indexId +
+                     ", key=" + toHex(key));
+        return true;
+    }
+
+    @Override
+    public boolean txnLockUpgradable(long txnId, long indexId, byte[] key) {
+        mOut.println("txnLockUpgradable: txnId=" + txnId + ", indexId=" + indexId +
+                     ", key=" + toHex(key));
+        return true;
+    }
+
+    @Override
+    public boolean txnLockExclusive(long txnId, long indexId, byte[] key) {
+        mOut.println("txnLockExclusive: txnId=" + txnId + ", indexId=" + indexId +
+                     ", key=" + toHex(key));
+        return true;
+    }
+
+    @Override
     public boolean txnCustom(long txnId, byte[] message) {
         mOut.println("txnCustom: txnId=" + txnId + ", message=" + toHex(message));
         return true;

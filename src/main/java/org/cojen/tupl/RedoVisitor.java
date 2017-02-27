@@ -129,6 +129,30 @@ interface RedoVisitor {
 
     /**
      * @param txnId non-zero transaction id
+     * @param indexId non-zero index id
+     * @param key non-null key
+     * @return false to stop visiting
+     */
+    public boolean txnLockShared(long txnId, long indexId, byte[] key) throws IOException;
+
+    /**
+     * @param txnId non-zero transaction id
+     * @param indexId non-zero index id
+     * @param key non-null key
+     * @return false to stop visiting
+     */
+    public boolean txnLockUpgradable(long txnId, long indexId, byte[] key) throws IOException;
+
+    /**
+     * @param txnId non-zero transaction id
+     * @param indexId non-zero index id
+     * @param key non-null key
+     * @return false to stop visiting
+     */
+    public boolean txnLockExclusive(long txnId, long indexId, byte[] key) throws IOException;
+
+    /**
+     * @param txnId non-zero transaction id
      * @param message custom message
      */
     public boolean txnCustom(long txnId, byte[] message) throws IOException;
