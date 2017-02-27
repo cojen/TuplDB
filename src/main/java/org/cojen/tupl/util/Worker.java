@@ -266,7 +266,8 @@ public class Worker {
 
             // Keep trying before parking.
 
-            for (int i=1; i<Latch.SPIN_LIMIT; i++) {
+            // Start at zero to ensure at least one check for THREAD_BLOCKED state is made.
+            for (int i=0; i<Latch.SPIN_LIMIT; i++) {
                 if ((size = mSize) > 0) {
                     continue outer;
                 }
