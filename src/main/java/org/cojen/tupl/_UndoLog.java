@@ -115,6 +115,17 @@ final class _UndoLog implements _DatabaseAccess {
     // Payload is custom message.
     static final byte OP_CUSTOM = (byte) 24;
 
+    private static final int LK_ADJUST = 5;
+
+    // Payload is a (large) key and value to store, to undo an update.
+    static final byte OP_UNUPDATE_LK = (byte) (OP_UNUPDATE + LK_ADJUST); //25
+
+    // Payload is a (large) key and value to store, to undo a delete.
+    static final byte OP_UNDELETE_LK = (byte) (OP_UNDELETE + LK_ADJUST); //26
+
+    // Payload is a (large) key and trash id, to undo a fragmented value delete.
+    static final byte OP_UNDELETE_LK_FRAGMENTED = (byte) (OP_UNDELETE_FRAGMENTED + LK_ADJUST); //27
+
     private final _LocalDatabase mDatabase;
     private final long mTxnId;
 
@@ -225,41 +236,79 @@ final class _UndoLog implements _DatabaseAccess {
     /**
      * Caller must hold db commit lock.
      */
-    final void push(long indexId, byte op, byte[] payload) throws IOException {
-        push(indexId, op, payload, 0, payload.length);
+    final void pushUninsert(final long indexId, byte[] key) throws IOException {
+        setActiveIndexId(indexId);
+        doPush(OP_UNINSERT, key, 0, key.length, calcUnsignedVarIntLength(key.length));
     }
 
     /**
-     * Caller must hold db commit lock.
+     * Push an operation with a _Node-encoded key and value, which might be fragmented. Caller
+     * must hold db commit lock.
+     *
+     * @param op OP_UNUPDATE, OP_UNDELETE or OP_UNDELETE_FRAGMENTED
      */
-    final void push(final long indexId,
-                    final byte op, final byte[] payload, final int off, final int len)
+    final void pushNodeEncoded(final long indexId, byte op, byte[] payload, int off, int len)
         throws IOException
     {
-        long activeIndexId = mActiveIndexId;
-        if (indexId != activeIndexId) {
-            if (activeIndexId != 0) {
-                pushIndexId(activeIndexId);
+        setActiveIndexId(indexId);
+
+        if ((payload[off] & 0xc0) == 0xc0) {
+            // Key is fragmented and cannot be stored as-is, so expand it fully and switch to
+            // using the "LK" op variant.
+            long copy = p_transfer(payload);
+            try {
+                payload = _Node.expandKeyAtLoc(this, copy, off, len, op != OP_UNDELETE_FRAGMENTED);
+            } finally {
+                p_delete(copy);
             }
-            mActiveIndexId = indexId;
+            off = 0;
+            len = payload.length;
+            op += LK_ADJUST;
         }
 
         doPush(op, payload, off, len, calcUnsignedVarIntLength(len));
     }
 
-    final void push(final long indexId,
-                    final byte op, final long payloadPtr, final int off, final int len)
+    /**
+     * Push an operation with a _Node-encoded key and value, which might be fragmented. Caller
+     * must hold db commit lock.
+     *
+     * @param op OP_UNUPDATE, OP_UNDELETE or OP_UNDELETE_FRAGMENTED
+     */
+    final void pushNodeEncoded(final long indexId, byte op, long payloadPtr, int off, int len)
         throws IOException
     {
-        byte[] temp = new byte[len];
-        DirectPageOps.p_copyToArray(payloadPtr, off, temp, 0, len);
-        push(indexId, op, temp, 0, len);
+        setActiveIndexId(indexId);
+
+        byte[] payload;
+        if ((DirectPageOps.p_byteGet(payloadPtr, off) & 0xc0) == 0xc0) {
+            // Key is fragmented and cannot be stored as-is, so expand it fully and switch to
+            // using the "LK" op variant.
+            /*P*/ // [
+            // throw new AssertionError(); // shouldn't be using direct page access
+            /*P*/ // |
+            payload = _Node.expandKeyAtLoc
+                (this, payloadPtr, off, len, op != OP_UNDELETE_FRAGMENTED);
+            op += LK_ADJUST;
+            /*P*/ // ]
+        } else {
+            payload = new byte[len];
+            DirectPageOps.p_copyToArray(payloadPtr, off, payload, 0, len);
+        }
+
+        doPush(op, payload, 0, payload.length, calcUnsignedVarIntLength(payload.length));
     }
 
-    private void pushIndexId(long indexId) throws IOException {
-        byte[] payload = new byte[8];
-        encodeLongLE(payload, 0, indexId);
-        doPush(OP_INDEX, payload, 0, 8, 1);
+    private void setActiveIndexId(long indexId) throws IOException {
+        long activeIndexId = mActiveIndexId;
+        if (indexId != activeIndexId) {
+            if (activeIndexId != 0) {
+                byte[] payload = new byte[8];
+                encodeLongLE(payload, 0, activeIndexId);
+                doPush(OP_INDEX, payload, 0, 8, 1);
+            }
+            mActiveIndexId = indexId;
+        }
     }
 
     /**
@@ -588,6 +637,7 @@ final class _UndoLog implements _DatabaseAccess {
             case OP_UNINSERT:
             case OP_UNUPDATE:
             case OP_CUSTOM:
+            case OP_UNUPDATE_LK:
                 // Ignore.
                 break;
 
@@ -600,7 +650,7 @@ final class _UndoLog implements _DatabaseAccess {
             case OP_UNDELETE_FRAGMENTED:
                 // Since transaction was committed, don't insert an entry
                 // to undo a delete, but instead delete the ghost.
-                while ((activeIndex = findIndex(activeIndex)) != null) {
+                if ((activeIndex = findIndex(activeIndex)) != null) {
                     byte[] key;
                     long pentry = p_transfer(entry);
                     try {
@@ -609,16 +659,41 @@ final class _UndoLog implements _DatabaseAccess {
                         p_delete(pentry);
                     }
 
-                    _TreeCursor cursor = new _TreeCursor((_Tree) activeIndex, null);
-                    try {
-                        cursor.deleteGhost(key);
-                        break;
-                    } catch (ClosedIndexException e) {
-                        // User closed the shared index reference, so re-open it.
-                        activeIndex = null;
-                    } catch (Throwable e) {
-                        throw closeOnFailure(cursor, e);
-                    }
+                    do {
+                        _TreeCursor cursor = new _TreeCursor((_Tree) activeIndex, null);
+                        try {
+                            cursor.deleteGhost(key);
+                            break;
+                        } catch (ClosedIndexException e) {
+                            // User closed the shared index reference, so re-open it.
+                            activeIndex = findIndex(null);
+                        } catch (Throwable e) {
+                            throw closeOnFailure(cursor, e);
+                        }
+                    } while (activeIndex != null);
+                }
+                break;
+
+            case OP_UNDELETE_LK:
+            case OP_UNDELETE_LK_FRAGMENTED:
+                // Since transaction was committed, don't insert an entry
+                // to undo a delete, but instead delete the ghost.
+                if ((activeIndex = findIndex(activeIndex)) != null) {
+                    byte[] key = new byte[decodeUnsignedVarInt(entry, 0)];
+                    arraycopy(entry, calcUnsignedVarIntLength(key.length), key, 0, key.length);
+
+                    do {
+                        _TreeCursor cursor = new _TreeCursor((_Tree) activeIndex, null);
+                        try {
+                            cursor.deleteGhost(key);
+                            break;
+                        } catch (ClosedIndexException e) {
+                            // User closed the shared index reference, so re-open it.
+                            activeIndex = findIndex(null);
+                        } catch (Throwable e) {
+                            throw closeOnFailure(cursor, e);
+                        }
+                    } while (activeIndex != null);
                 }
                 break;
             }
@@ -661,25 +736,50 @@ final class _UndoLog implements _DatabaseAccess {
 
         case OP_UNUPDATE:
         case OP_UNDELETE: {
-            byte[][] pair;
-            long pentry = p_transfer(entry);
-            try {
-                pair = _Node.retrieveKeyValueAtLoc(this, pentry, 0);
-            } finally {
-                p_delete(pentry);
-            }
-
-            while ((activeIndex = findIndex(activeIndex)) != null) {
+            if ((activeIndex = findIndex(activeIndex)) != null) {
+                byte[][] pair;
+                long pentry = p_transfer(entry);
                 try {
-                    activeIndex.store(Transaction.BOGUS, pair[0], pair[1]);
-                    break;
-                } catch (ClosedIndexException e) {
-                    // User closed the shared index reference, so re-open it.
-                    activeIndex = null;
+                    pair = _Node.retrieveKeyValueAtLoc(this, pentry, 0);
+                } finally {
+                    p_delete(pentry);
                 }
+
+                do {
+                    try {
+                        activeIndex.store(Transaction.BOGUS, pair[0], pair[1]);
+                        break;
+                    } catch (ClosedIndexException e) {
+                        // User closed the shared index reference, so re-open it.
+                        activeIndex = findIndex(null);
+                    }
+                } while (activeIndex != null);
             }
             break;
         }
+
+        case OP_UNUPDATE_LK:
+        case OP_UNDELETE_LK:
+            if ((activeIndex = findIndex(activeIndex)) != null) {
+                byte[] key = new byte[decodeUnsignedVarInt(entry, 0)];
+                int keyLoc = calcUnsignedVarIntLength(key.length);
+                arraycopy(entry, keyLoc, key, 0, key.length);
+
+                int valueLoc = keyLoc + key.length;
+                byte[] value = new byte[entry.length - valueLoc];
+                arraycopy(entry, valueLoc, value, 0, value.length);
+
+                do {
+                    try {
+                        activeIndex.store(Transaction.BOGUS, key, value);
+                        break;
+                    } catch (ClosedIndexException e) {
+                        // User closed the shared index reference, so re-open it.
+                        activeIndex = findIndex(null);
+                    }
+                } while (activeIndex != null);
+            }
+            break;
 
         case OP_UNDELETE_FRAGMENTED:
             while (true) {
@@ -691,6 +791,31 @@ final class _UndoLog implements _DatabaseAccess {
                     // User closed the shared index reference, so re-open it.
                     activeIndex = null;
                 }
+            }
+            break;
+
+        case OP_UNDELETE_LK_FRAGMENTED:
+            if ((activeIndex = findIndex(activeIndex)) != null) {
+                byte[] key = new byte[decodeUnsignedVarInt(entry, 0)];
+                int keyLoc = calcUnsignedVarIntLength(key.length);
+                arraycopy(entry, keyLoc, key, 0, key.length);
+
+                int tidLoc = keyLoc + key.length;
+                int tidLen = entry.length - tidLoc;
+                byte[] trashKey = new byte[8 + tidLen];
+                encodeLongBE(trashKey, 0, mTxnId);
+                arraycopy(entry, tidLoc, trashKey, 8, tidLen);
+
+                do {
+                    try {
+                        activeIndex = findIndex(activeIndex);
+                        mDatabase.fragmentedTrash().remove((_Tree) activeIndex, key, trashKey);
+                        break;
+                    } catch (ClosedIndexException e) {
+                        // User closed the shared index reference, so re-open it.
+                        activeIndex = findIndex(null);
+                    }
+                } while (activeIndex != null);
             }
             break;
 
@@ -1081,6 +1206,21 @@ final class _UndoLog implements _DatabaseAccess {
                     } finally {
                         p_delete(pentry);
                     }
+
+                    scope.addLock(mActiveIndexId, key)
+                        // Indicate that a ghost must be deleted when the transaction is
+                        // committed. When the frame is uninitialized, the _Node.deleteGhost
+                        // method uses the slow path and searches for the entry.
+                        .setGhostFrame(new _CursorFrame.Ghost());
+                }
+                break;
+
+            case OP_UNUPDATE_LK:
+            case OP_UNDELETE_LK:
+            case OP_UNDELETE_LK_FRAGMENTED:
+                if (lockMode != LockMode.UNSAFE) {
+                    byte[] key = new byte[decodeUnsignedVarInt(entry, 0)];
+                    arraycopy(entry, calcUnsignedVarIntLength(key.length), key, 0, key.length);
 
                     scope.addLock(mActiveIndexId, key)
                         // Indicate that a ghost must be deleted when the transaction is
