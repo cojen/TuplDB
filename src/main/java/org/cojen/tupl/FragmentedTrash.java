@@ -155,6 +155,16 @@ final class FragmentedTrash {
             p_delete(undo);
         }
 
+        remove(index, indexKey, trashKey);
+    }
+
+    /**
+     * Remove an entry from the trash, as an undo operation. Original entry is
+     * stored back into index.
+     *
+     * @param index index to store entry into; pass null to fully delete it instead
+     */
+    void remove(Tree index, byte[] indexKey, byte[] trashKey) throws IOException {
         TreeCursor trashCursor = new TreeCursor(mTrash, Transaction.BOGUS);
         try {
             trashCursor.find(trashKey);

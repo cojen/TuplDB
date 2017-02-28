@@ -883,7 +883,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
     {
         check();
         try {
-            undoLog().push(indexId, op, payload, off, len);
+            undoLog().pushNodeEncoded(indexId, op, payload, off, len);
         } catch (Throwable e) {
             borked(e, false, true); // rollback = false, rethrow = true
         }
@@ -895,7 +895,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
     final void pushUninsert(long indexId, byte[] key) throws IOException {
         check();
         try {
-            undoLog().push(indexId, _UndoLog.OP_UNINSERT, key, 0, key.length);
+            undoLog().pushUninsert(indexId, key);
         } catch (Throwable e) {
             borked(e, false, true); // rollback = false, rethrow = true
         }
@@ -911,7 +911,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
     {
         check();
         try {
-            undoLog().push(indexId, _UndoLog.OP_UNDELETE_FRAGMENTED, payload, off, len);
+            undoLog().pushNodeEncoded(indexId, _UndoLog.OP_UNDELETE_FRAGMENTED, payload, off, len);
         } catch (Throwable e) {
             borked(e, false, true); // rollback = false, rethrow = true
         }
