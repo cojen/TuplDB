@@ -28,7 +28,6 @@ import org.cojen.tupl.ext.ReplicationManager;
 import org.cojen.tupl.ext.TransactionHandler;
 
 import org.cojen.tupl.util.Latch;
-import org.cojen.tupl.util.LatchCondition;
 import org.cojen.tupl.util.Worker;
 import org.cojen.tupl.util.WorkerGroup;
 
@@ -58,11 +57,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     private final WorkerGroup mWorkerGroup;
 
     private final Latch mDecodeLatch;
-    private final LatchCondition mDecodeCondition;
-    private static final int
-        DECODE_DISABLED = 0, DECODE_DO_SUSPEND = 1,
-        DECODE_SUSPENDED = 2, DECODE_RUNNING = 3;
-    private int mDecodeState;
 
     private final TxnTable mTransactions;
 
@@ -71,12 +65,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     // weak references to indexes. They'd get closed too soon.
     private final LHashTable.Obj<SoftReference<Index>> mIndexes;
 
-    private volatile ReplRedoDecoder mDecoder;
-
-    // Updated by lone decoder thread with shared op lock held. Values can be read with op lock
-    // exclusively held, when engine is suspended.
-    long mDecodePosition;
-    long mDecodeTransactionId;
+    private ReplRedoDecoder mDecoder;
 
     /**
      * @param manager already started
@@ -101,7 +90,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         mController = new ReplRedoController(this);
 
         mDecodeLatch = new Latch();
-        mDecodeCondition = new LatchCondition();
 
         if (maxThreads <= 1) {
             // Just use the decoder thread and don't hand off tasks to worker threads.
@@ -133,11 +121,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         mTransactions = txnTable;
 
         mIndexes = new LHashTable.Obj<>(16);
-
-        // Initialize the decode position early.
-        mDecodeLatch.acquireExclusive();
-        mDecodePosition = manager.readPosition();
-        mDecodeLatch.releaseExclusive();
     }
 
     public RedoWriter initWriter(long redoNum) {
@@ -149,8 +132,9 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         try {
             mDecodeLatch.acquireExclusive();
             try {
-                if (mDecoder == null) {
-                    mDecoder = new ReplRedoDecoder(mManager, initialPosition, initialTxnId);
+                if (mDecoder == null || mDecoder.mDeactivated) {
+                    mDecoder = new ReplRedoDecoder
+                        (mManager, initialPosition, initialTxnId, mDecodeLatch);
                     newThread(this::decode).start();
                 }
             } finally {
@@ -739,22 +723,45 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     /**
+     * Returns the position of the next operation to decode. Call suspend to capture a stable
+     * pairing of the position and transaction id.
+     */
+    long decodePosition() {
+        mDecodeLatch.acquireShared();
+        try {
+            ReplRedoDecoder decoder = mDecoder;
+            return decoder == null ? mManager.readPosition() : decoder.mDecodePosition;
+        } finally {
+            mDecodeLatch.releaseShared();
+        }
+    }
+
+    /**
+     * Returns the last transaction id which was decoded. Call suspend to capture a stable
+     * pairing of the position and transaction id.
+     *
+     * @throws IllegalStateException if not decoding
+     */
+    long decodeTransactionId() {
+        mDecodeLatch.acquireShared();
+        try {
+            ReplRedoDecoder decoder = mDecoder;
+            if (decoder != null) {
+                return decoder.mDecodeTransactionId;
+            }
+        } finally {
+            mDecodeLatch.releaseShared();
+        }
+
+        throw new IllegalStateException("Not decoding");
+    }
+
+    /**
      * Prevents new operations from starting and waits for in-flight operations to complete.
      */
     void suspend() {
         // Prevent new operations from being decoded.
-        mDecodeLatch.acquireExclusive();
-        try {
-            if (mDecodeState == DECODE_RUNNING) {
-                mDecodeState = DECODE_DO_SUSPEND;
-                while (mDecodeState == DECODE_DO_SUSPEND) {
-                    mDecodeCondition.await(mDecodeLatch, -1, 0);
-                }
-            }
-        } catch (Throwable e) {
-            mDecodeLatch.releaseExclusive();
-            throw e;
-        }
+        mDecodeLatch.acquireShared();
 
         // Wait for work to complete.
         if (mWorkerGroup != null) {
@@ -763,11 +770,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     void resume() {
-        if (mDecodeState == DECODE_SUSPENDED) {
-            mDecodeState = DECODE_RUNNING;
-            mDecodeCondition.signalAll();
-        }
-        mDecodeLatch.releaseExclusive();
+        mDecodeLatch.releaseShared();
     }
 
     /**
@@ -896,37 +899,12 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     private void decode() {
+        final ReplRedoDecoder decoder = mDecoder;
+
         try {
-            final ReplRedoDecoder decoder = mDecoder;
+            while (!decoder.run(this));
 
-            while (true) {
-                mDecodeLatch.acquireExclusive();
-                try {
-                    if (mDecodeState != DECODE_RUNNING) {
-                        if (mDecodeState == DECODE_DISABLED) {
-                            mDecodeState = DECODE_RUNNING;
-                        } else {
-                            mDecodeState = DECODE_SUSPENDED;
-                            mDecodeCondition.signalAll();
-                            while (mDecodeState != DECODE_RUNNING) {
-                                mDecodeCondition.await(mDecodeLatch, -1, 0);
-                            }
-                        }
-                    }
-
-                    // Capture the position for the next operation. Also capture the last
-                    // transaction id, before a delta is applied.
-                    mDecodePosition = decoder.in().mPos;
-                    mDecodeTransactionId = decoder.mTxnId;
-                } finally {
-                    mDecodeLatch.releaseExclusive();
-                }
-
-                if (decoder.run(this)) {
-                    // End of stream reached, and so local instance is now the leader.
-                    break;
-                }
-            }
+            // End of stream reached, and so local instance is now the leader.
 
             // Wait for work to complete.
             if (mWorkerGroup != null) {
@@ -939,13 +917,8 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             fail(e);
             return;
         } finally {
-            mDecodeLatch.acquireExclusive();
-            mDecodeState = DECODE_DISABLED;
-            mDecodeCondition.signalAll();
-            mDecodeLatch.releaseExclusive();
+            decoder.mDeactivated = true;
         }
-
-        mDecoder = null;
 
         try {
             mController.leaderNotify();

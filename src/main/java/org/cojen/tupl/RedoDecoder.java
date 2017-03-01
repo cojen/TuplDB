@@ -19,6 +19,8 @@ package org.cojen.tupl;
 import java.io.EOFException;
 import java.io.IOException;
 
+import org.cojen.tupl.util.Latch;
+
 import static org.cojen.tupl.RedoOps.*;
 
 /**
@@ -29,12 +31,30 @@ import static org.cojen.tupl.RedoOps.*;
  */
 abstract class RedoDecoder {
     private final boolean mLenient;
+    private final DataIn mIn;
 
     long mTxnId;
 
-    RedoDecoder(boolean lenient, long initialTxnId) {
+    final Latch mDecodeLatch;
+
+    // Decode position and transaction id are captured immediately before reading the next op
+    // code, with the decode latch held exclusively.
+    long mDecodePosition;
+    long mDecodeTransactionId;
+
+    /**
+     * @param decodeLatch is held exclusive when operations are being processed
+     */
+    RedoDecoder(boolean lenient, long initialTxnId, DataIn in, Latch decodeLatch) {
         mLenient = lenient;
+        mIn = in;
+
         mTxnId = initialTxnId;
+
+        mDecodeLatch = decodeLatch;
+
+        mDecodePosition = in.mPos;
+        mDecodeTransactionId = initialTxnId;
     }
 
     /**
@@ -43,13 +63,30 @@ abstract class RedoDecoder {
      *
      * @return true if end of stream reached; false if visitor returned false
      */
-    @SuppressWarnings("fallthrough")
     boolean run(RedoVisitor visitor) throws IOException {
-        while (true) {
-            // Must be called before each operation, for the benefit of subclasses.
-            DataIn in = in();
+        mDecodeLatch.acquireExclusive();
+        try {
+            return doRun(visitor, mIn);
+        } finally {
+            mDecodeLatch.releaseExclusive();
+        }
+    }
 
-            int op = in.read();
+    @SuppressWarnings("fallthrough")
+    private boolean doRun(RedoVisitor visitor, DataIn in) throws IOException {
+        while (true) {
+            mDecodePosition = mIn.mPos;
+            mDecodeTransactionId = mTxnId;
+
+            mDecodeLatch.releaseExclusive();
+
+            int op;
+            try {
+                op = in.read();
+            } finally {
+                mDecodeLatch.acquireExclusive();
+            }
+
             if (op < 0) {
                 return true;
             }
@@ -461,14 +498,9 @@ abstract class RedoDecoder {
         }
     }
 
-    long readTxnId(DataIn in) throws IOException {
+    private long readTxnId(DataIn in) throws IOException {
         return mTxnId += in.readSignedVarLong();
     }
-
-    /**
-     * Invoked before each operation is read.
-     */
-    abstract DataIn in();
 
     /**
      * If false is returned, assume rest of redo data is corrupt.

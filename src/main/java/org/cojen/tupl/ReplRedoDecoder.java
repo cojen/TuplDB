@@ -20,6 +20,8 @@ import java.io.IOException;
 
 import org.cojen.tupl.ext.ReplicationManager;
 
+import org.cojen.tupl.util.Latch;
+
 /**
  * 
  *
@@ -27,16 +29,13 @@ import org.cojen.tupl.ext.ReplicationManager;
  * @see ReplRedoEngine
  */
 final class ReplRedoDecoder extends RedoDecoder {
-    private final In mIn;
+    volatile boolean mDeactivated;
 
-    ReplRedoDecoder(ReplicationManager manager, long initialPosition, long initialTxnId) {
-        super(false, initialTxnId);
-        mIn = new In(initialPosition, manager);
-    }
-
-    @Override
-    DataIn in() {
-        return mIn;
+    ReplRedoDecoder(ReplicationManager manager,
+                    long initialPosition, long initialTxnId,
+                    Latch decodeLatch)
+    {
+        super(false, initialTxnId, new In(initialPosition, manager), decodeLatch);
     }
 
     @Override

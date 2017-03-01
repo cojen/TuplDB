@@ -19,6 +19,8 @@ package org.cojen.tupl;
 import java.io.EOFException;
 import java.io.IOException;
 
+import org.cojen.tupl.util.Latch;
+
 /**
  * 
  *
@@ -28,19 +30,12 @@ import java.io.IOException;
 /*P*/
 final class RedoLogDecoder extends RedoDecoder {
     private final RedoLog mLog;
-    private final DataIn mIn;
     private final EventListener mListener;
 
     RedoLogDecoder(RedoLog log, DataIn in, EventListener listener) {
-        super(true, 0);
+        super(true, 0, in, new Latch());
         mLog = log;
-        mIn = in;
         mListener = listener;
-    }
-
-    @Override
-    DataIn in() {
-        return mIn;
     }
 
     @Override
