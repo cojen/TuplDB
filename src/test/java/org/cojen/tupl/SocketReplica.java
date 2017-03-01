@@ -28,8 +28,8 @@ class SocketReplica {
         DatabaseConfig config = new DatabaseConfig()
             .minCacheSize(1_000_000_000)
             .durabilityMode(DurabilityMode.NO_FLUSH)
-            .replicate(man)
-            .maxReplicaThreads(1);
+            .replicate(man);
+        //.maxReplicaThreads(2);
 
         Database db = TestUtils.newTempDatabase(config);
         System.out.println(db);
@@ -50,6 +50,7 @@ class SocketReplica {
         while (true) {
             System.out.println(ix.count(null, null));
             Thread.sleep(1000);
+            ix = db.openIndex("test"); // detect if db is closed
         }
     }
 }

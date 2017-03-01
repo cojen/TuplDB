@@ -166,6 +166,14 @@ final class RedoLogApplier implements RedoVisitor {
     }
 
     @Override
+    public boolean txnEnterStore(long txnId, long indexId, byte[] key, byte[] value)
+        throws IOException
+    {
+        txnEnter(txnId);
+        return txnStore(txnId, indexId, key, value);
+    }
+
+    @Override
     public boolean txnStore(long txnId, long indexId, byte[] key, byte[] value)
         throws IOException
     {
@@ -177,6 +185,14 @@ final class RedoLogApplier implements RedoVisitor {
             }
         }
         return true;
+    }
+
+    @Override
+    public boolean txnStoreCommit(long txnId, long indexId, byte[] key, byte[] value)
+        throws IOException
+    {
+        txnStore(txnId, indexId, key, value);
+        return txnCommit(txnId);
     }
 
     @Override
