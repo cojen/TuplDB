@@ -16,7 +16,6 @@
 
 package org.cojen.tupl;
 
-import java.io.InterruptedIOException;
 import java.io.IOException;
 
 import java.lang.ref.SoftReference;
@@ -29,6 +28,7 @@ import org.cojen.tupl.ext.ReplicationManager;
 import org.cojen.tupl.ext.TransactionHandler;
 
 import org.cojen.tupl.util.Latch;
+import org.cojen.tupl.util.LatchCondition;
 import org.cojen.tupl.util.Worker;
 import org.cojen.tupl.util.WorkerGroup;
 
@@ -57,7 +57,12 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
     private final WorkerGroup mWorkerGroup;
 
-    private final Latch mOpLatch;
+    private final Latch mDecodeLatch;
+    private final LatchCondition mDecodeCondition;
+    private static final int
+        DECODE_DISABLED = 0, DECODE_DO_SUSPEND = 1,
+        DECODE_SUSPENDED = 2, DECODE_RUNNING = 3;
+    private int mDecodeState;
 
     private final TxnTable mTransactions;
 
@@ -95,7 +100,8 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         mController = new ReplRedoController(this);
 
-        mOpLatch = new Latch();
+        mDecodeLatch = new Latch();
+        mDecodeCondition = new LatchCondition();
 
         if (maxThreads <= 1) {
             // Just use the decoder thread and don't hand off tasks to worker threads.
@@ -129,9 +135,9 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         mIndexes = new LHashTable.Obj<>(16);
 
         // Initialize the decode position early.
-        mOpLatch.acquireExclusive();
+        mDecodeLatch.acquireExclusive();
         mDecodePosition = manager.readPosition();
-        mOpLatch.releaseExclusive();
+        mDecodeLatch.releaseExclusive();
     }
 
     public RedoWriter initWriter(long redoNum) {
@@ -141,14 +147,14 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
     public void startReceiving(long initialPosition, long initialTxnId) {
         try {
-            mOpLatch.acquireExclusive();
+            mDecodeLatch.acquireExclusive();
             try {
                 if (mDecoder == null) {
                     mDecoder = new ReplRedoDecoder(mManager, initialPosition, initialTxnId);
                     newThread(this::decode).start();
                 }
             } finally {
-                mOpLatch.releaseExclusive();
+                mDecodeLatch.releaseExclusive();
             }
         } catch (Throwable e) {
             fail(e);
@@ -732,16 +738,36 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         return false;
     }
 
-
     /**
-     * Prevents new operations from starting.
+     * Prevents new operations from starting and waits for in-flight operations to complete.
      */
-    void suspend() throws InterruptedIOException {
-        mOpLatch.acquireExclusive();
+    void suspend() {
+        // Prevent new operations from being decoded.
+        mDecodeLatch.acquireExclusive();
+        try {
+            if (mDecodeState == DECODE_RUNNING) {
+                mDecodeState = DECODE_DO_SUSPEND;
+                while (mDecodeState == DECODE_DO_SUSPEND) {
+                    mDecodeCondition.await(mDecodeLatch, -1, 0);
+                }
+            }
+        } catch (Throwable e) {
+            mDecodeLatch.releaseExclusive();
+            throw e;
+        }
+
+        // Wait for work to complete.
+        if (mWorkerGroup != null) {
+            mWorkerGroup.join(false);
+        }
     }
 
     void resume() {
-        mOpLatch.releaseExclusive();
+        if (mDecodeState == DECODE_SUSPENDED) {
+            mDecodeState = DECODE_RUNNING;
+            mDecodeCondition.signalAll();
+        }
+        mDecodeLatch.releaseExclusive();
     }
 
     /**
@@ -874,22 +900,49 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             final ReplRedoDecoder decoder = mDecoder;
 
             while (true) {
-                // Capture the position for the next operation. Also capture the last
-                // transaction id, before a delta is applied.
-                mOpLatch.acquireExclusive();
-                mDecodePosition = decoder.in().mPos;
-                mDecodeTransactionId = decoder.mTxnId;
-                mOpLatch.releaseExclusive();
+                mDecodeLatch.acquireExclusive();
+                try {
+                    if (mDecodeState != DECODE_RUNNING) {
+                        if (mDecodeState == DECODE_DISABLED) {
+                            mDecodeState = DECODE_RUNNING;
+                        } else {
+                            mDecodeState = DECODE_SUSPENDED;
+                            mDecodeCondition.signalAll();
+                            while (mDecodeState != DECODE_RUNNING) {
+                                mDecodeCondition.await(mDecodeLatch, -1, 0);
+                            }
+                        }
+                    }
+
+                    // Capture the position for the next operation. Also capture the last
+                    // transaction id, before a delta is applied.
+                    mDecodePosition = decoder.in().mPos;
+                    mDecodeTransactionId = decoder.mTxnId;
+                } finally {
+                    mDecodeLatch.releaseExclusive();
+                }
 
                 if (decoder.run(this)) {
-                    // End of stream reached, and so local instance is now leader.
-                    reset();
+                    // End of stream reached, and so local instance is now the leader.
                     break;
                 }
             }
+
+            // Wait for work to complete.
+            if (mWorkerGroup != null) {
+                mWorkerGroup.join(false);
+            }
+
+            // Rollback any lingering transactions.
+            reset();
         } catch (Throwable e) {
             fail(e);
             return;
+        } finally {
+            mDecodeLatch.acquireExclusive();
+            mDecodeState = DECODE_DISABLED;
+            mDecodeCondition.signalAll();
+            mDecodeLatch.releaseExclusive();
         }
 
         mDecoder = null;
