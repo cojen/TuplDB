@@ -381,7 +381,7 @@ abstract class RedoDecoder {
                 }
                 if (!verifyTerminator(in)
                     || !visitor.txnStore(txnId, indexId, key, null)
-                    || !visitor.txnCommitFinal(txnId))
+                    || !visitor.txnCommit(txnId))
                 {
                     return false;
                 }
