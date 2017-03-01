@@ -77,14 +77,27 @@ public interface Database extends CauseCloseable, Flushable {
      */
     public static Database open(DatabaseConfig config) throws IOException {
         Method m = config.directOpenMethod();
+
+        Throwable ex = null;
         if (m != null) {
             try {
                 return (Database) m.invoke(null, config);
             } catch (Exception e) {
                 config.handleDirectException(e);
+                ex = e;
             }
         }
-        return LocalDatabase.open(config);
+
+        try {
+            return LocalDatabase.open(config);
+        } catch (Throwable e) {
+            if (ex == null) {
+                throw e;
+            }
+            ex = Utils.rootCause(ex);
+            Utils.suppress(ex, e);
+            throw Utils.rethrow(ex);
+        }
     }
 
     /**
