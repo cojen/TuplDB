@@ -67,7 +67,7 @@ final class ReplRedoController extends ReplRedoWriter {
         acquireShared();
         try {
             ReplicationManager.Writer writer = mTxnRedoWriter.mReplWriter;
-            long pos = writer == null ? mEngine.mDecodePosition : writer.position();
+            long pos = writer == null ? mEngine.decodePosition() : writer.position();
             return (pos - mCheckpointPos) >= sizeThreshold;
         } finally {
             releaseShared();
@@ -90,8 +90,8 @@ final class ReplRedoController extends ReplRedoWriter {
             mCheckpointRedoWriter = redo;
             ReplicationManager.Writer writer = redo.mReplWriter;
             if (writer == null) {
-                mCheckpointPos = mEngine.mDecodePosition;
-                mCheckpointTxnId = mEngine.mDecodeTransactionId;
+                mCheckpointPos = mEngine.decodePosition();
+                mCheckpointTxnId = mEngine.decodeTransactionId();
             } else {
                 redo.acquireShared();
                 mCheckpointPos = redo.mLastCommitPos;
@@ -188,7 +188,7 @@ final class ReplRedoController extends ReplRedoWriter {
             {
                 ReplRedoWriter redo = mTxnRedoWriter;
                 if (redo.mReplWriter == null) {
-                    pos = mEngine.mDecodePosition;
+                    pos = mEngine.decodePosition();
                 } else {
                     redo.acquireShared();
                     pos = redo.mLastCommitPos;
