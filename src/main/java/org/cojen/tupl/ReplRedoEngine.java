@@ -57,10 +57,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
     private final WorkerGroup mWorkerGroup;
 
-    // Shared lock is held when applying operations. Checkpoint suspends all tasks by acquiring
-    // an exclusive lock. If any operation fails to be applied, shared lock is still held,
-    // preventing checkpoints.
-    private final OpLock mOpLock;
+    private final Latch mOpLatch;
 
     private final TxnTable mTransactions;
 
@@ -98,7 +95,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         mController = new ReplRedoController(this);
 
-        mOpLock = new OpLock();
+        mOpLatch = new Latch();
 
         if (maxThreads <= 1) {
             // Just use the decoder thread and don't hand off tasks to worker threads.
@@ -132,9 +129,9 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         mIndexes = new LHashTable.Obj<>(16);
 
         // Initialize the decode position early.
-        mOpLock.acquireExclusive();
+        mOpLatch.acquireExclusive();
         mDecodePosition = manager.readPosition();
-        mOpLock.releaseExclusive();
+        mOpLatch.releaseExclusive();
     }
 
     public RedoWriter initWriter(long redoNum) {
@@ -144,14 +141,14 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
     public void startReceiving(long initialPosition, long initialTxnId) {
         try {
-            mOpLock.acquireExclusive();
+            mOpLatch.acquireExclusive();
             try {
                 if (mDecoder == null) {
                     mDecoder = new ReplRedoDecoder(mManager, initialPosition, initialTxnId);
                     newThread(this::decode).start();
                 }
             } finally {
-                mOpLock.releaseExclusive();
+                mOpLatch.releaseExclusive();
             }
         } catch (Throwable e) {
             fail(e);
@@ -195,31 +192,28 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         // transactions are still active and need the trash to rollback properly.
         //mDatabase.emptyAllFragmentedTrash(false);
 
-        // Only release if no exception.
-        mOpLock.releaseShared();
-
         // Return control back to the decode method.
         return false;
     }
 
     @Override
     public boolean timestamp(long timestamp) throws IOException {
-        return nop();
+        return false;
     }
 
     @Override
     public boolean shutdown(long timestamp) throws IOException {
-        return nop();
+        return false;
     }
 
     @Override
     public boolean close(long timestamp) throws IOException {
-        return nop();
+        return false;
     }
 
     @Override
     public boolean endFile(long timestamp) throws IOException {
-        return nop();
+        return false;
     }
 
     @Override
@@ -247,9 +241,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                             ix = openIndex(indexId, null);
                         }
                     }
-
-                    // Only release if no exception.
-                    mOpLock.releaseShared();
                 } catch (Throwable e) {
                     fail(e);
                     return;
@@ -292,9 +283,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             }
         }
 
-        // Only release if no exception.
-        mOpLock.releaseShared();
-
         if (ix != null) {
             try {
                 mManager.notifyRename(ix, oldName, newName.clone());
@@ -326,9 +314,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     } finally {
                         txn.exit();
                     }
-
-                    // Only release if no exception.
-                    mOpLock.releaseShared();
 
                     if (ix != null) {
                         ix.close();
@@ -380,9 +365,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             // Create a new transaction.
 
             mTransactions.insert(scrambledTxnId).init(newTransaction(txnId));
-
-            // Only release if no exception.
-            mOpLock.releaseShared();
         } else {
             // Enter nested scope of an existing transaction.
 
@@ -390,7 +372,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                 public void run() {
                     try {
                         te.mTxn.enter();
-                        mOpLock.releaseShared();
                     } catch (Throwable e) {
                         fail(e);
                     }
@@ -410,7 +391,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             public void run() {
                 try {
                     te.mTxn.exit();
-                    mOpLock.releaseShared();
                 } catch (Throwable e) {
                     fail(e);
                 }
@@ -430,7 +410,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                 public void run() {
                     try {
                         te.mTxn.reset();
-                        mOpLock.releaseShared();
                     } catch (Throwable e) {
                         fail(e);
                     }
@@ -450,7 +429,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             public void run() {
                 try {
                     te.mTxn.commit();
-                    mOpLock.releaseShared();
                 } catch (Throwable e) {
                     fail(e);
                 }
@@ -470,7 +448,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                 public void run() {
                     try {
                         te.mTxn.commitAll();
-                        mOpLock.releaseShared();
                     } catch (Throwable e) {
                         fail(e);
                     }
@@ -521,9 +498,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                             ix = openIndex(indexId, null);
                         }
                     }
-
-                    // Only release if no exception.
-                    mOpLock.releaseShared();
                 } catch (Throwable e) {
                     fail(e);
                     return;
@@ -568,9 +542,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                             ix = openIndex(indexId, null);
                         }
                     }
-
-                    // Only release if no exception.
-                    mOpLock.releaseShared();
                 } catch (Throwable e) {
                     fail(e);
                     return;
@@ -618,9 +589,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     }
 
                     txn.commit();
-
-                    // Only release if no exception.
-                    mOpLock.releaseShared();
                 } catch (Throwable e) {
                     fail(e);
                     return;
@@ -674,9 +642,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     }
 
                     txn.commitAll();
-
-                    // Only release if no exception.
-                    mOpLock.releaseShared();
                 } catch (Throwable e) {
                     fail(e);
                     return;
@@ -699,7 +664,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     @Override
     public boolean txnLockShared(long txnId, long indexId, byte[] key) throws IOException {
         getTxnEntry(txnId).mTxn.lockShared(indexId, key, INFINITE_TIMEOUT);
-        mOpLock.releaseShared();
         // Return control back to the decode method.
         return false;
     }
@@ -707,7 +671,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     @Override
     public boolean txnLockUpgradable(long txnId, long indexId, byte[] key) throws IOException {
         getTxnEntry(txnId).mTxn.lockUpgradable(indexId, key, INFINITE_TIMEOUT);
-        mOpLock.releaseShared();
         // Return control back to the decode method.
         return false;
     }
@@ -715,7 +678,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     @Override
     public boolean txnLockExclusive(long txnId, long indexId, byte[] key) throws IOException {
         getTxnEntry(txnId).mTxn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
-        mOpLock.releaseShared();
         // Return control back to the decode method.
         return false;
     }
@@ -730,9 +692,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             public void run() {
                 try {
                     handler.redo(mDatabase, txn, message);
-
-                    // Only release if no exception.
-                    mOpLock.releaseShared();
                 } catch (Throwable e) {
                     fail(e);
                     return;
@@ -762,9 +721,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     txn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
 
                     handler.redo(mDatabase, txn, message, indexId, key);
-
-                    // Only release if no exception.
-                    mOpLock.releaseShared();
                 } catch (Throwable e) {
                     fail(e);
                     return;
@@ -776,24 +732,16 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         return false;
     }
 
-    /**
-     * Called for an operation which is ignored.
-     */
-    private boolean nop() {
-        mOpLock.releaseShared();
-        return false;
-    }
 
     /**
-     * Waits for all incoming replication operations to finish and prevents new ones from
-     * starting.
+     * Prevents new operations from starting.
      */
     void suspend() throws InterruptedIOException {
-        mOpLock.acquireExclusive();
+        mOpLatch.acquireExclusive();
     }
 
     void resume() {
-        mOpLock.releaseExclusive();
+        mOpLatch.releaseExclusive();
     }
 
     /**
@@ -926,13 +874,12 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             final ReplRedoDecoder decoder = mDecoder;
 
             while (true) {
-                // Shared latch is acquired here and released by visitor method.
-                mOpLock.acquireShared();
-
                 // Capture the position for the next operation. Also capture the last
                 // transaction id, before a delta is applied.
+                mOpLatch.acquireExclusive();
                 mDecodePosition = decoder.in().mPos;
                 mDecodeTransactionId = decoder.mTxnId;
+                mOpLatch.releaseExclusive();
 
                 if (decoder.run(this)) {
                     // End of stream reached, and so local instance is now leader.
