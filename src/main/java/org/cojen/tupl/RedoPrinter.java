@@ -127,6 +127,13 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
+    public boolean txnEnterStore(long txnId, long indexId, byte[] key, byte[] value) {
+        txnEnter(txnId);
+        txnStore(txnId, indexId, key, value);
+        return true;
+    }
+
+    @Override
     public boolean txnStore(long txnId, long indexId, byte[] key, byte[] value) {
         mOut.println("txnStore: txnId=" + txnId + ", indexId=" + indexId +
                      ", key=" + toHex(key) + ", value=" + toHex(value));
@@ -134,9 +141,15 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
-    public boolean txnStoreCommitFinal(long txnId, long indexId, byte[] key, byte[] value) {
+    public boolean txnStoreCommit(long txnId, long indexId, byte[] key, byte[] value) {
         txnStore(txnId, indexId, key, value);
         return txnCommit(txnId);
+    }
+
+    @Override
+    public boolean txnStoreCommitFinal(long txnId, long indexId, byte[] key, byte[] value) {
+        txnStore(txnId, indexId, key, value);
+        return txnCommitFinal(txnId);
     }
 
     @Override
