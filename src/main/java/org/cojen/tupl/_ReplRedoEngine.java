@@ -44,6 +44,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
     private static final int MAX_QUEUE_SIZE = 100;
     private static final int MAX_KEEP_ALIVE_MILLIS = 60_000;
     private static final long INFINITE_TIMEOUT = -1L;
+    private static final String ATTACHMENT = "replication";
 
     // Hash spreader. Based on rounded value of 2 ** 63 * (sqrt(5) - 1) equivalent 
     // to unsigned 11400714819323198485.
@@ -57,6 +58,8 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
     private final WorkerGroup mWorkerGroup;
 
     private final Latch mDecodeLatch;
+
+    private final DecodeLocker mDecodeLocker;
 
     private final TxnTable mTransactions;
 
@@ -90,6 +93,8 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         mController = new _ReplRedoController(this);
 
         mDecodeLatch = new Latch();
+
+        mDecodeLocker = new DecodeLocker(db.mLockManager);
 
         if (maxThreads <= 1) {
             // Just use the decoder thread and don't hand off tasks to worker threads.
@@ -208,9 +213,9 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
     @Override
     public boolean store(long indexId, byte[] key, byte[] value) throws IOException {
-        // Must acquire lock before task is enqueued.
-        _Locker locker = mDatabase.mLockManager.localLocker();
-        locker.lockUpgradable(indexId, key, INFINITE_TIMEOUT);
+        // Must acquire the lock before task is enqueued.
+        _Locker locker = new DecodeLocker(mDatabase.mLockManager);
+        locker.tryLockUpgradable(indexId, key, INFINITE_TIMEOUT);
 
         runTaskAnywhere(new Worker.Task() {
             public void run() {
@@ -234,6 +239,8 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
                 } catch (Throwable e) {
                     fail(e);
                     return;
+                } finally {
+                    locker.scopeUnlockAll();
                 }
 
                 notifyStore(ix, key, value);
@@ -353,7 +360,6 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         if (te == null) {
             // Create a new transaction.
-
             mTransactions.insert(scrambledTxnId).init(newTransaction(txnId));
         } else {
             // Enter nested scope of an existing transaction.
@@ -457,27 +463,34 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         TxnEntry te = mTransactions.get(scrambledTxnId);
 
         _LocalTransaction txn;
+        boolean newTxn;
         if (te == null) {
             // Create a new transaction.
             txn = newTransaction(txnId);
-            mTransactions.insert(scrambledTxnId).init(txn);
+            te = mTransactions.insert(scrambledTxnId);
+            te.init(txn);
+            newTxn = true;
         } else {
             // Enter nested scope of an existing transaction.
             txn = te.mTxn;
+            newTxn = false;
         }
 
-        // Must acquire lock before task is enqueued.
-        txn.lockUpgradable(indexId, key, INFINITE_TIMEOUT);
+        // Must acquire the lock before task is enqueued.
+        mDecodeLocker.captureLockUpgradable(indexId, key, txn);
 
-        Worker.Task task = new Worker.Task() {
+        runTask(te, new Worker.Task() {
             public void run() {
                 Index ix;
                 try {
-                    if (te != null) {
+                    if (!newTxn) {
                         txn.enter();
                     }
 
                     ix = getIndex(indexId);
+
+                    // Transaction must own the lock, so transfer it.
+                    txn.transferLockUpgradable(indexId, key);
 
                     while (true) {
                         try {
@@ -495,13 +508,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
                 notifyStore(ix, key, value);
             }
-        };
-
-        if (te == null) {
-            runTaskAnywhere(task);
-        } else {
-            runTask(te, task);
-        }
+        });
 
         // Return control back to the decode method.
         return false;
@@ -514,14 +521,17 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         TxnEntry te = getTxnEntry(txnId);
         _LocalTransaction txn = te.mTxn;
 
-        // Must acquire lock before task is enqueued.
-        txn.lockUpgradable(indexId, key, INFINITE_TIMEOUT);
+        // Must acquire the lock before task is enqueued.
+        mDecodeLocker.captureLockUpgradable(indexId, key, txn);
 
         runTask(te, new Worker.Task() {
             public void run() {
                 Index ix;
                 try {
                     ix = getIndex(indexId);
+
+                    // Transaction must own the lock, so transfer it.
+                    txn.transferLockUpgradable(indexId, key);
 
                     while (true) {
                         try {
@@ -550,23 +560,19 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         throws IOException
     {
         TxnEntry te = getTxnEntry(txnId);
+        _LocalTransaction txn = te.mTxn;
 
-        _LocalTransaction txn;
-        if (te == null) {
-            // Create the transaction, but don't store it in the transaction table.
-            txn = newTransaction(txnId);
-        } else {
-            txn = te.mTxn;
-        }
+        // Must acquire the lock before task is enqueued.
+        mDecodeLocker.captureLockUpgradable(indexId, key, txn);
 
-        // Must acquire lock before task is enqueued.
-        txn.lockUpgradable(indexId, key, INFINITE_TIMEOUT);
-
-        Worker.Task task = new Worker.Task() {
+        runTask(te, new Worker.Task() {
             public void run() {
                 Index ix;
                 try {
                     ix = getIndex(indexId);
+
+                    // Transaction must own the lock, so transfer it.
+                    txn.transferLockUpgradable(indexId, key);
 
                     while (true) {
                         try {
@@ -586,13 +592,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
                 notifyStore(ix, key, value);
             }
-        };
-
-        if (te == null) {
-            runTaskAnywhere(task);
-        } else {
-            runTask(te, task);
-        }
+        });
 
         // Return control back to the decode method.
         return false;
@@ -612,14 +612,17 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
             txn = te.mTxn;
         }
 
-        // Must acquire lock before task is enqueued.
-        txn.lockUpgradable(indexId, key, INFINITE_TIMEOUT);
+        // Must acquire the lock before task is enqueued.
+        mDecodeLocker.captureLockUpgradable(indexId, key, txn);
 
         Worker.Task task = new Worker.Task() {
             public void run() {
                 Index ix;
                 try {
                     ix = getIndex(indexId);
+
+                    // Transaction must own the lock, so transfer it.
+                    txn.transferLockUpgradable(indexId, key);
 
                     while (true) {
                         try {
@@ -653,21 +656,58 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
     @Override
     public boolean txnLockShared(long txnId, long indexId, byte[] key) throws IOException {
-        getTxnEntry(txnId).mTxn.lockShared(indexId, key, INFINITE_TIMEOUT);
+        // FIXME: must support proper ownership transfer
+        //getTxnEntry(txnId).mTxn.lockShared(indexId, key, INFINITE_TIMEOUT);
         // Return control back to the decode method.
         return false;
     }
 
     @Override
     public boolean txnLockUpgradable(long txnId, long indexId, byte[] key) throws IOException {
-        getTxnEntry(txnId).mTxn.lockUpgradable(indexId, key, INFINITE_TIMEOUT);
+        TxnEntry te = getTxnEntry(txnId);
+        _LocalTransaction txn = te.mTxn;
+
+        // Must acquire the lock before task is enqueued.
+        mDecodeLocker.captureLockUpgradable(indexId, key, txn);
+
+        runTask(te, new Worker.Task() {
+            public void run() {
+                try {
+                    // Transaction must own the lock, so transfer it.
+                    txn.transferLockUpgradable(indexId, key);
+                } catch (Throwable e) {
+                    fail(e);
+                    return;
+                }
+            }
+        });
+
         // Return control back to the decode method.
         return false;
     }
 
     @Override
     public boolean txnLockExclusive(long txnId, long indexId, byte[] key) throws IOException {
-        getTxnEntry(txnId).mTxn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
+        TxnEntry te = getTxnEntry(txnId);
+        _LocalTransaction txn = te.mTxn;
+
+        // Must acquire the lock before task is enqueued.
+        mDecodeLocker.captureLockUpgradable(indexId, key, txn);
+
+        runTask(te, new Worker.Task() {
+            public void run() {
+                try {
+                    // Transaction must own the lock, so transfer it.
+                    txn.transferLockUpgradable(indexId, key);
+
+                    txn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
+                } catch (Throwable e) {
+                    fail(e);
+                    return;
+                }
+            }
+        });
+
         // Return control back to the decode method.
         return false;
     }
@@ -701,14 +741,14 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         TxnEntry te = getTxnEntry(txnId);
         _LocalTransaction txn = te.mTxn;
 
-        // Must acquire lock before task is enqueued.
-        txn.lockUpgradable(indexId, key, INFINITE_TIMEOUT);
+        // Must acquire the lock before task is enqueued.
+        mDecodeLocker.captureLockUpgradable(indexId, key, txn);
 
         runTask(te, new Worker.Task() {
             public void run() {
                 try {
-                    // Full exclusive lock is required.
-                    txn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
+                    // Transaction must own the lock, so transfer it.
+                    txn.transferLockUpgradable(indexId, key);
 
                     handler.redo(mDatabase, txn, message, indexId, key);
                 } catch (Throwable e) {
@@ -820,7 +860,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
     private _LocalTransaction newTransaction(long txnId) {
         _LocalTransaction txn = new _LocalTransaction
             (mDatabase, txnId, LockMode.UPGRADABLE_READ, INFINITE_TIMEOUT);
-        txn.attach("replication");
+        txn.attach(ATTACHMENT);
         return txn;
     }
 
@@ -969,6 +1009,17 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
     private static long mix(long txnId) {
         return HASH_SPREAD * txnId;
+    }
+
+    static final class DecodeLocker extends _Locker {
+        DecodeLocker(_LockManager manager) {
+            super(manager);
+        }
+
+        @Override
+        public Object attachment() {
+            return ATTACHMENT;
+        }
     }
 
     static final class TxnEntry extends LHashTable.Entry<TxnEntry> {
