@@ -398,6 +398,56 @@ class Locker extends LockOwner {
     }
 
     /**
+     * Capture a lock to be transferred to another locker. The lock is initially owned by this
+     * locker, but it's not actually pushed into the lock table.
+     *
+     * @param target locker to transfer to later; can pass this if this locker and target
+     * don't re-acquire locks
+     */
+    final void captureLockUpgradable(long indexId, byte[] key, Locker target)
+        throws LockFailureException
+    {
+        int hash = hash(indexId, key);
+        LockManager.LockHT ht = mManager.getLockHT(hash);
+
+        ht.acquireExclusive();
+        try {
+            Lock lock = ht.lockAccess(indexId, key, hash);
+
+            if (lock.mOwner != target) {
+                LockResult result = lock.tryLockUpgradable(ht, this, -1);
+                if (!result.isHeld()) {
+                    throw failed(TYPE_EXCLUSIVE, result, -1);
+                }
+            }
+        } finally {
+            ht.releaseExclusive();
+        }
+    }
+
+    /**
+     * Transfer and push a lock which was captured by another locker.
+     */
+    final void transferLockUpgradable(long indexId, byte[] key) {
+        int hash = hash(indexId, key);
+        LockManager.LockHT ht = mManager.getLockHT(hash);
+
+        Lock lock;
+        ht.acquireExclusive();
+        try {
+            lock = ht.lockFor(indexId, key, hash);
+            if (lock.mOwner == this) {
+                return;
+            }
+            lock.mOwner = this;
+        } finally {
+            ht.releaseExclusive();
+        }
+
+        push(lock, 0);
+    }
+
+    /**
      * @param lockType TYPE_SHARED, TYPE_UPGRADABLE, or TYPE_EXCLUSIVE
      */
     @SuppressWarnings("incomplete-switch")
