@@ -20,12 +20,12 @@ import java.io.InterruptedIOException;
 import java.io.IOException;
 
 import java.nio.ByteBuffer;
-
 import java.util.EnumSet;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 import org.cojen.tupl.util.Latch;
+import org.cojen.tupl.util.RWLock;
 
 import static org.cojen.tupl.io.Utils.rethrow;
 
@@ -61,7 +61,7 @@ abstract class AbstractFileIO extends FileIO {
     private final ResizeLatch mResizeLatch;
 
     private final Latch mRemapLatch;
-    private final Latch mMappingLatch;
+    private final RWLock mMappingLock;
     private Mapping[] mMappings;
     private int mLastMappingSize;
 
@@ -75,7 +75,7 @@ abstract class AbstractFileIO extends FileIO {
         mReadOnly = options.contains(OpenOption.READ_ONLY);
         mPreallocate = options.contains(OpenOption.PREALLOCATE);
         mRemapLatch = new Latch();
-        mMappingLatch = new Latch();
+        mMappingLock = new RWLock();
         mSyncLatch = new Latch();
 
         mResizeLatch = mPreallocate ? new ResizeLatch() : ResizeLatch.NONE;
@@ -88,13 +88,13 @@ abstract class AbstractFileIO extends FileIO {
 
     @Override
     public final long length() throws IOException {
-        mMappingLatch.acquireShared();
+        mMappingLock.acquireShared();
         try {
             return doLength();
         } catch (IOException e) {
             throw rethrow(e, mCause);
         } finally {
-            mMappingLatch.releaseShared();
+            mMappingLock.releaseShared();
         }
     }
 
@@ -185,7 +185,7 @@ abstract class AbstractFileIO extends FileIO {
         syncWait();
 
         try {
-            mMappingLatch.acquireShared();
+            mMappingLock.acquireShared();
             try {
                 Mapping[] mappings = mMappings;
                 if (mappings != null) {
@@ -229,7 +229,7 @@ abstract class AbstractFileIO extends FileIO {
                     }
                 }
             } finally {
-                mMappingLatch.releaseShared();
+                mMappingLock.releaseShared();
             }
 
             if (read) {
@@ -255,7 +255,7 @@ abstract class AbstractFileIO extends FileIO {
         syncWait();
 
         try {
-            mMappingLatch.acquireShared();
+            mMappingLock.acquireShared();
             try {
                 Mapping[] mappings = mMappings;
                 if (mappings != null) {
@@ -304,7 +304,7 @@ abstract class AbstractFileIO extends FileIO {
                     }
                 }
             } finally {
-                mMappingLatch.releaseShared();
+                mMappingLock.releaseShared();
             }
 
             if (read) {
@@ -342,7 +342,7 @@ abstract class AbstractFileIO extends FileIO {
 
             mSyncLatch.acquireShared();
             try {
-                mMappingLatch.acquireShared();
+                mMappingLock.acquireShared();
                 try {
                     Mapping[] mappings = mMappings;
                     if (mappings != null) {
@@ -352,7 +352,7 @@ abstract class AbstractFileIO extends FileIO {
                         }
                     }
                 } finally {
-                    mMappingLatch.releaseShared();
+                    mMappingLock.releaseShared();
                 }
 
                 doSync(metadata);
@@ -402,7 +402,7 @@ abstract class AbstractFileIO extends FileIO {
 
     // Caller must hold mRemapLatch exclusively.
     private void doUnmap(boolean reopen) throws IOException {
-        mMappingLatch.acquireExclusive();
+        mMappingLock.acquireExclusive();
         try {
             Mapping[] mappings = mMappings;
             if (mappings == null) {
@@ -434,7 +434,7 @@ abstract class AbstractFileIO extends FileIO {
                 throw ex;
             }
         } finally {
-            mMappingLatch.releaseExclusive();
+            mMappingLock.releaseExclusive();
         }
     }
 
@@ -445,7 +445,7 @@ abstract class AbstractFileIO extends FileIO {
         Mapping[] newMappings;
         int newLastSize;
 
-        mMappingLatch.acquireShared();
+        mMappingLock.acquireShared();
         try {
             oldMappings = mMappings;
             if (oldMappings == null && remap) {
@@ -503,13 +503,13 @@ abstract class AbstractFileIO extends FileIO {
                 newMappings[i] = openMapping(mReadOnly, pos, newLastSize);
             }
         } finally {
-            mMappingLatch.releaseShared();
+            mMappingLock.releaseShared();
         }
 
-        mMappingLatch.acquireExclusive();
+        mMappingLock.acquireExclusive();
         mMappings = newMappings;
         mLastMappingSize = newLastSize;
-        mMappingLatch.releaseExclusive();
+        mMappingLock.releaseExclusive();
 
         if (oldMappings != null) {
             IOException ex = null;
