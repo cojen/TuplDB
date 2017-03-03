@@ -398,53 +398,55 @@ class _Locker extends _LockOwner {
     }
 
     /**
-     * Capture a lock to be transferred to another locker. The lock is initially owned by this
-     * locker, but it's not actually pushed into the lock table.
-     *
-     * @param target locker to transfer to later; can pass this if this locker and target
-     * don't re-acquire locks
+     * Acquire a shared lock, with infinite timeout, but don't push the lock into the owned
+     * lock stack. Returns the lock which was acquired, or null if already owned.
      */
-    final void captureLockUpgradable(long indexId, byte[] key, _Locker target)
-        throws LockFailureException
-    {
-        int hash = hash(indexId, key);
-        _LockManager.LockHT ht = mManager.getLockHT(hash);
-
-        ht.acquireExclusive();
-        try {
-            _Lock lock = ht.lockAccess(indexId, key, hash);
-
-            if (lock.mOwner != target) {
-                LockResult result = lock.tryLockUpgradable(ht, this, -1);
-                if (!result.isHeld()) {
-                    throw failed(TYPE_EXCLUSIVE, result, -1);
-                }
-            }
-        } finally {
-            ht.releaseExclusive();
-        }
-    }
-
-    /**
-     * Transfer and push a lock which was captured by another locker.
-     */
-    final void transferLockUpgradable(long indexId, byte[] key) {
+    final _Lock lockSharedNoPush(long indexId, byte[] key) throws LockFailureException {
         int hash = hash(indexId, key);
         _LockManager.LockHT ht = mManager.getLockHT(hash);
 
         _Lock lock;
+        LockResult result;
+
         ht.acquireExclusive();
         try {
-            lock = ht.lockFor(indexId, key, hash);
-            if (lock.mOwner == this) {
-                return;
-            }
-            lock.mOwner = this;
+            lock = ht.lockAccess(indexId, key, hash);
+            result = lock.tryLockShared(ht, this, -1);
         } finally {
             ht.releaseExclusive();
         }
 
-        push(lock, 0);
+        if (!result.isHeld()) {
+            throw failed(TYPE_SHARED, result, -1);
+        }
+
+        return result == LockResult.ACQUIRED ? lock : null;
+    }
+
+    /**
+     * Acquire an upgradable lock, with infinite timeout, but don't push the lock into the
+     * owned lock stack. Returns the lock which was acquired, or null if already owned.
+     */
+    final _Lock lockUpgradableNoPush(long indexId, byte[] key) throws LockFailureException {
+        int hash = hash(indexId, key);
+        _LockManager.LockHT ht = mManager.getLockHT(hash);
+
+        _Lock lock;
+        LockResult result;
+
+        ht.acquireExclusive();
+        try {
+            lock = ht.lockAccess(indexId, key, hash);
+            result = lock.tryLockUpgradable(ht, this, -1);
+        } finally {
+            ht.releaseExclusive();
+        }
+
+        if (!result.isHeld()) {
+            throw failed(TYPE_UPGRADABLE, result, -1);
+        }
+
+        return result == LockResult.ACQUIRED ? lock : null;
     }
 
     /**
