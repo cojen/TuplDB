@@ -1871,7 +1871,7 @@ final class LocalDatabase extends AbstractDatabase {
                 // Total pages freed.
                 long freed = stats.totalPages - targetPageCount;
 
-                // Scale by the maximum size for encoding page identifers, assuming no savings
+                // Scale by the maximum size for encoding page identifiers, assuming no savings
                 // from delta encoding.
                 freed *= calcUnsignedVarLongLength(stats.totalPages << 1);
 
@@ -2345,7 +2345,7 @@ final class LocalDatabase extends AbstractDatabase {
      */
     private Node loadTreeRoot(final long treeId, final long rootId) throws IOException {
         if (rootId == 0) {
-            // Pass tree identifer to spread allocations around.
+            // Pass tree identifier to spread allocations around.
             Node rootNode = allocLatchedNode(treeId, NodeUsageList.MODE_UNEVICTABLE);
 
             try {
