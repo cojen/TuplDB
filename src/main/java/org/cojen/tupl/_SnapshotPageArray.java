@@ -409,7 +409,6 @@ final class _SnapshotPageArray extends PageArray {
             final long pageBuffer = p_transfer(pageBufferArray);
 
             final _LocalDatabase cache = mNodeCache;
-            final byte[] key = new byte[8];
             final long count = mSnapshotPageCount;
 
             Transaction txn = mPageCopyIndex.mDatabase.newTransaction();
@@ -419,7 +418,9 @@ final class _SnapshotPageArray extends PageArray {
 
                 Cursor c = mPageCopyIndex.newCursor(txn);
                 try {
-                    for (long index = 0; index < count; index++, increment(key, 0, 8)) {
+                    for (long index = 0; index < count; index++) {
+                        byte[] key = new byte[8];
+                        encodeLongBE(key, 0, index);
                         txn.lockExclusive(mPageCopyIndex.getId(), key);
 
                         // Advance progress after lock acquisition.
