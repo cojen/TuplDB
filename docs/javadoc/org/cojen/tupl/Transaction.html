@@ -665,7 +665,8 @@ var activeTableTab = "activeTableTab";
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>key</code> - non-null key to lock; instance is not cloned</dd>
+<dd><code>key</code> - non-null key to lock; instance is not cloned and so it must not be modified
+ after calling this method</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
@@ -691,7 +692,8 @@ var activeTableTab = "activeTableTab";
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>key</code> - non-null key to lock; instance is not cloned</dd>
+<dd><code>key</code> - non-null key to lock; instance is not cloned and so it must not be modified
+ after calling this method</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
@@ -717,7 +719,8 @@ var activeTableTab = "activeTableTab";
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>key</code> - non-null key to lock; instance is not cloned</dd>
+<dd><code>key</code> - non-null key to lock; instance is not cloned and so it must not be modified
+ after calling this method</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#UPGRADED"><code>UPGRADED</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
@@ -814,7 +817,8 @@ var activeTableTab = "activeTableTab";
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>key</code> - non-null key to lock; instance is not cloned</dd>
+<dd><code>key</code> - non-null key to lock; instance is not cloned and so it must not be modified
+ after calling this method</dd>
 <dd><code>nanosTimeout</code> - maximum time to wait for lock; negative timeout is infinite</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#INTERRUPTED"><code>INTERRUPTED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#TIMED_OUT_LOCK"><code>TIMED_OUT_LOCK</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
@@ -842,7 +846,8 @@ var activeTableTab = "activeTableTab";
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>key</code> - non-null key to lock; instance is not cloned</dd>
+<dd><code>key</code> - non-null key to lock; instance is not cloned and so it must not be modified
+ after calling this method</dd>
 <dd><code>nanosTimeout</code> - maximum time to wait for lock; negative timeout is infinite</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
@@ -871,7 +876,8 @@ var activeTableTab = "activeTableTab";
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>key</code> - non-null key to lock; instance is not cloned</dd>
+<dd><code>key</code> - non-null key to lock; instance is not cloned and so it must not be modified
+ after calling this method</dd>
 <dd><code>nanosTimeout</code> - maximum time to wait for lock; negative timeout is infinite</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#ILLEGAL"><code>ILLEGAL</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#INTERRUPTED"><code>INTERRUPTED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#TIMED_OUT_LOCK"><code>TIMED_OUT_LOCK</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
@@ -897,7 +903,8 @@ var activeTableTab = "activeTableTab";
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>key</code> - non-null key to lock; instance is not cloned</dd>
+<dd><code>key</code> - non-null key to lock; instance is not cloned and so it must not be modified
+ after calling this method</dd>
 <dd><code>nanosTimeout</code> - maximum time to wait for lock; negative timeout is infinite</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
@@ -925,7 +932,8 @@ var activeTableTab = "activeTableTab";
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>key</code> - non-null key to lock; instance is not cloned</dd>
+<dd><code>key</code> - non-null key to lock; instance is not cloned and so it must not be modified
+ after calling this method</dd>
 <dd><code>nanosTimeout</code> - maximum time to wait for lock; negative timeout is infinite</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#ILLEGAL"><code>ILLEGAL</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#INTERRUPTED"><code>INTERRUPTED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#TIMED_OUT_LOCK"><code>TIMED_OUT_LOCK</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#UPGRADED"><code>UPGRADED</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
@@ -952,7 +960,8 @@ var activeTableTab = "activeTableTab";
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>key</code> - non-null key to lock; instance is not cloned</dd>
+<dd><code>key</code> - non-null key to lock; instance is not cloned and so it must not be modified
+ after calling this method</dd>
 <dd><code>nanosTimeout</code> - maximum time to wait for lock; negative timeout is infinite</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#UPGRADED"><code>UPGRADED</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
