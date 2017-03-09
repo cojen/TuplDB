@@ -96,6 +96,9 @@ final class _Lock {
 
         LatchCondition queueSX = mQueueSX;
         if (queueSX != null) {
+            if (mLockCount != 0 && isSharedLockOwner(locker)) {
+                return OWNED_SHARED;
+            }
             if (nanosTimeout == 0) {
                 locker.mWaitingFor = this;
                 return TIMED_OUT_LOCK;
