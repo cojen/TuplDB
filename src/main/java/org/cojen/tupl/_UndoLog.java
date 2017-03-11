@@ -370,7 +370,12 @@ final class _UndoLog implements _DatabaseAccess {
                 pos = mBufferPos;
                 if (pos < encodedLen) {
                     final int size = buffer.length - pos;
-                    int newCap = Math.max(buffer.length << 1, roundUpPower2(encodedLen + size));
+                    int newCap = roundUpPower2(encodedLen + size);
+                    if (newCap < 0) {
+                        newCap = Integer.MAX_VALUE;
+                    } else {
+                        newCap = Math.max(buffer.length << 1, newCap);
+                    }
                     if (newCap <= (mDatabase.pageSize() >> 1)) {
                         byte[] newBuf = new byte[newCap];
                         int newPos = newCap - size;
@@ -1122,6 +1127,7 @@ final class _UndoLog implements _DatabaseAccess {
 
             // Reload the _UndoLog, since recoverTransaction consumes it all.
             txn.recoveredUndoLog(recoverUndoLog(opRef[0], entry));
+            txn.attach("recovery");
 
             txns.insert(log.mTxnId).value = txn;
         }
