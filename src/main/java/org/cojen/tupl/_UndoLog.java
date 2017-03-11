@@ -1122,6 +1122,7 @@ final class _UndoLog implements _DatabaseAccess {
 
             // Reload the _UndoLog, since recoverTransaction consumes it all.
             txn.recoveredUndoLog(recoverUndoLog(opRef[0], entry));
+            txn.attach("recovery");
 
             txns.insert(log.mTxnId).value = txn;
         }

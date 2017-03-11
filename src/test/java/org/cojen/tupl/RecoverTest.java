@@ -878,4 +878,57 @@ public class RecoverTest {
             fastAssertArrayEquals(value, ix2.load(null, key));
         }
     }
+
+    @Test
+    public void testUndoNonReplicatedTransaction() throws Exception {
+        DatabaseConfig config = new DatabaseConfig()
+                .directPageAccess(true)
+                .checkpointRate(-1, null)
+                .durabilityMode(DurabilityMode.SYNC);
+
+        // open database with NonReplicationManager
+        NonReplicationManager replMan = new NonReplicationManager();
+        config.replicate(replMan);
+        Database db = newTempDatabase(config);
+
+        // open index
+        replMan.asLeader();
+        Thread.yield();
+        Index ix = null;
+        for (int i=0; i<10; i++) {
+            try {
+                ix = db.openIndex("test");
+                break;
+            } catch (UnmodifiableReplicaException e) {
+                // Wait for replication thread to finish the switch.
+                Thread.sleep(100);
+            }
+        }
+        assertTrue(ix != null);
+
+        // switch to replica
+        replMan.asReplica();
+        try {
+            ix.store(null, "somekey".getBytes(), "someval".getBytes());
+            fail();
+        } catch (UnmodifiableReplicaException e) {
+            // Expected.
+        }
+
+        // checkpoint with a live open transaction
+        Transaction txn = db.newTransaction(DurabilityMode.NO_REDO);
+        ix.store(txn, "key1".getBytes(), "val1".getBytes());
+        db.checkpoint();
+        db.close();
+
+        // reopen database as replica
+        replMan = new NonReplicationManager();  // Use new ReplicationManager as the existing one is closed.
+        replMan.asReplica();
+        Database db2 = Database.open(config.replicate(replMan));
+
+        // assert no lingering locks exist on the key after recovery
+        Index ix2 = db2.openIndex("test");
+        Transaction txn2 = db2.newTransaction();
+        assertTrue(ix2.tryLockExclusive(txn2, "key1".getBytes(), 1).isHeld());
+    }
 }
