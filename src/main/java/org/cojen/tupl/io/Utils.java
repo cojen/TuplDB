@@ -673,6 +673,11 @@ public class Utils {
                 return;
             }
 
+            // TODO: Should examine the entire cause chain in search of duplicates.
+            if (target.getCause() == toSuppress || toSuppress.getCause() == target) {
+                return;
+            }
+
             Throwable[] s1 = target.getSuppressed();
             Throwable[] s2 = toSuppress.getSuppressed();
 
