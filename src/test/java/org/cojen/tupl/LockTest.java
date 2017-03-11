@@ -1445,6 +1445,42 @@ public class LockTest {
         executor.shutdown();
     }
 
+    @Test
+    public void doubleLockSharedWithExclusiveWaiter() throws Exception {
+        // Shared lock request must always check for existing ownership before blocking.
+
+        Locker locker1 = new Locker(mManager);
+
+        assertEquals(ACQUIRED, locker1.tryLockShared(0, k1, -1));
+
+        Thread t = new Thread(() -> {
+            try {
+                Locker locker2 = new Locker(mManager);
+                locker2.tryLockExclusive(0, k1, -1);
+            } catch (Exception e) {
+                // Bail.
+            }
+        });
+
+        t.start();
+
+        wait: {
+            for (int i=0; i<100; i++) {
+                if (t.getState() == Thread.State.WAITING) {
+                    break wait;
+                }
+                Thread.sleep(100);
+            }
+
+            fail("Thread not blocked waiting for lock");
+        }
+
+        assertEquals(LockResult.OWNED_SHARED, locker1.tryLockShared(0, k1, 10_000_000_000L));
+
+        locker1.scopeExitAll();
+        t.join();
+    }
+
     /*
     @Test
     public void illegalUnlock() throws Exception {
