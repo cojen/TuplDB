@@ -28,14 +28,8 @@ public class RecoverMappedDirectTest extends RecoverMappedTest {
         org.junit.runner.JUnitCore.main(RecoverMappedDirectTest.class.getName());
     }
 
-    @Before
     @Override
-    public void createTempDb() throws Exception {
-        mConfig = new DatabaseConfig()
-            .checkpointRate(-1, null)
-            .durabilityMode(DurabilityMode.NO_FLUSH)
-            .directPageAccess(true)
-            .mapDataFiles(true);
-        mDb = TestUtils.newTempDatabase(mConfig);
+    protected void decorate(DatabaseConfig config) throws Exception {
+        config.directPageAccess(true).mapDataFiles(true);
     }
 }

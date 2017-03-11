@@ -36,12 +36,16 @@ public class RecoverTest {
         org.junit.runner.JUnitCore.main(RecoverTest.class.getName());
     }
 
+    protected void decorate(DatabaseConfig config) throws Exception {
+    }
+
     @Before
     public void createTempDb() throws Exception {
         mConfig = new DatabaseConfig()
             .directPageAccess(false)
             .checkpointRate(-1, null)
             .durabilityMode(DurabilityMode.NO_FLUSH);
+        decorate(mConfig);
         mDb = newTempDatabase(mConfig);
     }
 
@@ -882,9 +886,11 @@ public class RecoverTest {
     @Test
     public void testUndoNonReplicatedTransaction() throws Exception {
         DatabaseConfig config = new DatabaseConfig()
-                .directPageAccess(true)
+                .directPageAccess(false)
                 .checkpointRate(-1, null)
                 .durabilityMode(DurabilityMode.SYNC);
+
+        decorate(config);
 
         // open database with NonReplicationManager
         NonReplicationManager replMan = new NonReplicationManager();
