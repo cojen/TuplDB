@@ -35,10 +35,13 @@ class NonReplicationManager implements ReplicationManager {
     private int mState;
     private NonWriter mWriter;
 
-    synchronized void asReplica() {
+    synchronized void asReplica() throws InterruptedException {
         mState = REPLICA;
         if (mWriter != null) {
             mWriter.close();
+            while (mWriter != null) {
+                wait();
+            }
         }
         notifyAll();
     }
@@ -81,6 +84,7 @@ class NonReplicationManager implements ReplicationManager {
     @Override
     public synchronized void flip() {
         mWriter = mState == LEADER ? new NonWriter() : null;
+        notifyAll();
     }
 
     @Override
