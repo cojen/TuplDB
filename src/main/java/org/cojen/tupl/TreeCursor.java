@@ -2803,11 +2803,16 @@ class TreeCursor implements CauseCloseable, Cursor {
                     return true;
                 }
             } catch (Throwable e) {
-                if (result == LockResult.ACQUIRED) {
-                    txn.unlock();
-                } else if (result == LockResult.UPGRADED) {
-                    txn.unlockToUpgradable();
+                try {
+                    if (result == LockResult.ACQUIRED) {
+                        txn.unlock();
+                    } else if (result == LockResult.UPGRADED) {
+                        txn.unlockToUpgradable();
+                    }
+                } catch (Throwable e2) {
+                    // Assume transaction is invalid now.
                 }
+
                 throw e;
             }
 

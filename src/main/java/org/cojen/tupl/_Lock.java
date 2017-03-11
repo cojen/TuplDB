@@ -595,6 +595,12 @@ final class _Lock {
             shared = db.commitLock().acquireShared();
         }
 
+        // Note: Unlike regular frames, ghost frames cannot be unbound (popAll)
+        // from the node after the node latch is released. If the node latch is
+        // released before the frame is unbound, another thread can then evict
+        // the node and unbind the ghost frame instances concurrently, which
+        // isn't thread-safe and can corrupt the cursor frame list.
+
         doDelete: try {
             _Node node = frame.mNode;
             if (node != null) latchNode: {
@@ -623,16 +629,16 @@ final class _Lock {
                 // Will need to delete the slow way.
             } else if (!db.isMutable(node)) {
                 // _Node cannot be dirtied without a full cursor, so delete the slow way.
-                node.releaseExclusive();
                 _CursorFrame.popAll(frame);
+                node.releaseExclusive();
             } else {
                 // Frame is still valid and node is mutable, so perform a quick delete.
 
                 int pos = frame.mNodePos;
                 if (pos < 0) {
                     // Already deleted.
-                    node.releaseExclusive();
                     _CursorFrame.popAll(frame);
+                    node.releaseExclusive();
                     break doDelete;
                 }
 
@@ -645,16 +651,16 @@ final class _Lock {
                             node.postDelete(pos, key);
                         }
                     } finally {
-                        node.releaseExclusive();
                         _CursorFrame.popAll(frame);
+                        node.releaseExclusive();
                     }
                 } else {
                     _Node sibling;
                     try {
                         sibling = split.latchSiblingEx();
                     } catch (Throwable e) {
-                        node.releaseExclusive();
                         _CursorFrame.popAll(frame);
+                        node.releaseExclusive();
                         throw e;
                     }
 

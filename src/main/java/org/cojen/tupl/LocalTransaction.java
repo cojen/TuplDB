@@ -741,7 +741,7 @@ final class LocalTransaction extends Locker implements Transaction {
     }
 
     /**
-     * @param resetAlways when false, only resets committed transactions
+     * @param resetAlways when false, only resets committed transactions and transactions with negative identifiers
      * @return true if was reset
      */
     final boolean recoveryCleanup(boolean resetAlways) throws IOException {
@@ -767,6 +767,7 @@ final class LocalTransaction extends Locker implements Transaction {
             }
         }
 
+        resetAlways |= (mTxnId < 0);
         if (resetAlways) {
             reset();
         }
