@@ -287,10 +287,7 @@ abstract class RedoDecoder {
                 } catch (EOFException e) {
                     return true;
                 }
-                if (!verifyTerminator(in)
-                    || !visitor.txnEnter(txnId)
-                    || !visitor.txnStore(txnId, indexId, key, value))
-                {
+                if (!verifyTerminator(in) || !visitor.txnEnterStore(txnId, indexId, key, value)) {
                     return false;
                 }
                 break;
@@ -318,10 +315,7 @@ abstract class RedoDecoder {
                 } catch (EOFException e) {
                     return true;
                 }
-                if (!verifyTerminator(in)
-                    || !visitor.txnStore(txnId, indexId, key, value)
-                    || !visitor.txnCommit(txnId))
-                {
+                if (!verifyTerminator(in) || !visitor.txnStoreCommit(txnId, indexId, key, value)) {
                     return false;
                 }
                 break;
@@ -350,10 +344,7 @@ abstract class RedoDecoder {
                 } catch (EOFException e) {
                     return true;
                 }
-                if (!verifyTerminator(in)
-                    || !visitor.txnEnter(txnId)
-                    || !visitor.txnStore(txnId, indexId, key, null))
-                {
+                if (!verifyTerminator(in) || !visitor.txnEnterStore(txnId, indexId, key, null)) {
                     return false;
                 }
                 break;
@@ -379,10 +370,7 @@ abstract class RedoDecoder {
                 } catch (EOFException e) {
                     return true;
                 }
-                if (!verifyTerminator(in)
-                    || !visitor.txnStore(txnId, indexId, key, null)
-                    || !visitor.txnCommit(txnId))
-                {
+                if (!verifyTerminator(in) || !visitor.txnStoreCommit(txnId, indexId, key, null)) {
                     return false;
                 }
                 break;

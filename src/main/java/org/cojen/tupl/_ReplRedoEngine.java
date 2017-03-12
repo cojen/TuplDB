@@ -524,6 +524,13 @@ final class _ReplRedoEngine implements RedoVisitor {
     }
 
     @Override
+    public boolean txnEnterStore(long txnId, long indexId, byte[] key, byte[] value)
+        throws IOException
+    {
+        return txnEnter(txnId) && txnStore(txnId, indexId, key, value);
+    }
+
+    @Override
     public boolean txnStore(long txnId, long indexId, byte[] key, byte[] value)
         throws IOException
     {
@@ -564,6 +571,13 @@ final class _ReplRedoEngine implements RedoVisitor {
 
         // Return false to prevent RedoDecoder from looping back.
         return false;
+    }
+
+    @Override
+    public boolean txnStoreCommit(long txnId, long indexId, byte[] key, byte[] value)
+        throws IOException
+    {
+        return txnStore(txnId, indexId, key, value) && txnCommit(txnId);
     }
 
     @Override
