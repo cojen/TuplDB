@@ -31,6 +31,7 @@ import org.cojen.tupl.ext.ReplicationManager;
  * @author Brian S O'Neill
  */
 class SocketReplicationManager implements ReplicationManager {
+    private final ServerSocket mServerSocket;
     private final String mReplicaHost;
     private final int mPort;
 
@@ -43,9 +44,20 @@ class SocketReplicationManager implements ReplicationManager {
      * @param replicaHost replica to connect to; pass null if local host is the replica
      * @param port replica port for connecting or listening
      */
-    public SocketReplicationManager(String replicaHost, int port) {
+    public SocketReplicationManager(String replicaHost, int port) throws IOException {
+        if (replicaHost != null) {
+            mServerSocket = null;
+        } else {
+            mServerSocket = new ServerSocket(port);
+            port = mServerSocket.getLocalPort();
+        }
+
         mReplicaHost = replicaHost;
         mPort = port;
+    }
+
+    int getPort() {
+        return mPort;
     }
 
     @Override
@@ -56,10 +68,9 @@ class SocketReplicationManager implements ReplicationManager {
     @Override
     public void start(long position) throws IOException {
         mPos = position;
-        if (mReplicaHost == null) {
+        if (mServerSocket != null) {
             // Local host is the replica. Wait for leader to connect.
-            ServerSocket ss = new ServerSocket(mPort);
-            Socket s = ss.accept();
+            Socket s = mServerSocket.accept();
             mReader = s.getInputStream();
         } else {
             // Local host is the leader. Wait to connect to replica.
