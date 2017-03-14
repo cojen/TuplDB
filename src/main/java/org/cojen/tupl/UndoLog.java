@@ -18,6 +18,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.nio.charset.StandardCharsets;
+
 import java.util.ArrayDeque;
 import java.util.Deque;
 
@@ -656,13 +658,7 @@ final class UndoLog implements DatabaseAccess {
                 // Since transaction was committed, don't insert an entry
                 // to undo a delete, but instead delete the ghost.
                 if ((activeIndex = findIndex(activeIndex)) != null) {
-                    byte[] key;
-                    /*P*/ byte[] pentry = p_transfer(entry);
-                    try {
-                        key = Node.retrieveKeyAtLoc(this, pentry, 0);
-                    } finally {
-                        p_delete(pentry);
-                    }
+                    byte[] key = decodeNodeKey(entry);
 
                     do {
                         TreeCursor cursor = new TreeCursor((Tree) activeIndex, null);
@@ -742,13 +738,7 @@ final class UndoLog implements DatabaseAccess {
         case OP_UNUPDATE:
         case OP_UNDELETE: {
             if ((activeIndex = findIndex(activeIndex)) != null) {
-                byte[][] pair;
-                /*P*/ byte[] pentry = p_transfer(entry);
-                try {
-                    pair = Node.retrieveKeyValueAtLoc(this, pentry, 0);
-                } finally {
-                    p_delete(pentry);
-                }
+                byte[][] pair = decodeNodeKeyValuePair(entry);
 
                 do {
                     try {
@@ -835,6 +825,28 @@ final class UndoLog implements DatabaseAccess {
         }
 
         return activeIndex;
+    }
+
+    private byte[] decodeNodeKey(byte[] entry) throws IOException {
+        byte[] key;
+        /*P*/ byte[] pentry = p_transfer(entry);
+        try {
+            key = Node.retrieveKeyAtLoc(this, pentry, 0);
+        } finally {
+            p_delete(pentry);
+        }
+        return key;
+    }
+
+    private byte[][] decodeNodeKeyValuePair(byte[] entry) throws IOException {
+        byte[][] pair;
+        /*P*/ byte[] pentry = p_transfer(entry);
+        try {
+            pair = Node.retrieveKeyValueAtLoc(this, pentry, 0);
+        } finally {
+            p_delete(pentry);
+        }
+        return pair;
     }
 
     /**
@@ -1114,8 +1126,12 @@ final class UndoLog implements DatabaseAccess {
      * All transactions are registered, and so they must be reset after
      * recovery is complete. Master log is truncated as a side effect of
      * calling this method.
+     *
+     * @param debugListener optional
+     * @param trace when true, log all recovered undo operations to debugListener
      */
-    void recoverTransactions(LHashTable.Obj<LocalTransaction> txns,
+    void recoverTransactions(EventListener debugListener, boolean trace,
+                             LHashTable.Obj<LocalTransaction> txns,
                              LockMode lockMode, long timeoutNanos)
         throws IOException
     {
@@ -1123,7 +1139,19 @@ final class UndoLog implements DatabaseAccess {
         byte[] entry;
         while ((entry = pop(opRef, true)) != null) {
             UndoLog log = recoverUndoLog(opRef[0], entry);
-            LocalTransaction txn = log.recoverTransaction(lockMode, timeoutNanos);
+
+            if (debugListener != null) {
+                debugListener.notify
+                    (EventType.DEBUG,
+                     "Recovered transaction undo log: " +
+                     "txnId=%1$d, length=%2$d, bufferPos=%3$d, " +
+                     "nodeId=%4$d, nodeTopPos=%5$d, activeIndexId=%6$s",
+                     log.mTxnId, log.mLength, log.mBufferPos,
+                     log.mNode == null ? 0 : log.mNode.mId, log.mNodeTopPos, log.mActiveIndexId);
+            }
+
+            LocalTransaction txn = log.recoverTransaction
+                (debugListener, trace, lockMode, timeoutNanos);
 
             // Reload the UndoLog, since recoverTransaction consumes it all.
             txn.recoveredUndoLog(recoverUndoLog(opRef[0], entry));
@@ -1136,7 +1164,8 @@ final class UndoLog implements DatabaseAccess {
     /**
      * Method consumes entire log as a side-effect.
      */
-    private final LocalTransaction recoverTransaction(LockMode lockMode, long timeoutNanos)
+    private final LocalTransaction recoverTransaction(EventListener debugListener, boolean trace,
+                                                      LockMode lockMode, long timeoutNanos)
         throws IOException
     {
         byte[] opRef = new byte[1];
@@ -1157,6 +1186,11 @@ final class UndoLog implements DatabaseAccess {
             }
 
             byte op = opRef[0];
+
+            if (trace) {
+                traceOp(debugListener, op, entry);
+            }
+
             switch (op) {
             default:
                 throw new DatabaseException("Unknown undo log entry type: " + op);
@@ -1205,13 +1239,7 @@ final class UndoLog implements DatabaseAccess {
             case OP_UNDELETE:
             case OP_UNDELETE_FRAGMENTED:
                 if (lockMode != LockMode.UNSAFE) {
-                    byte[] key;
-                    /*P*/ byte[] pentry = p_transfer(entry);
-                    try {
-                        key = Node.retrieveKeyAtLoc(this, pentry, 0);
-                    } finally {
-                        p_delete(pentry);
-                    }
+                    byte[] key = decodeNodeKey(entry);
 
                     scope.addLock(mActiveIndexId, key)
                         // Indicate that a ghost must be deleted when the transaction is
@@ -1259,6 +1287,105 @@ final class UndoLog implements DatabaseAccess {
         }
 
         return txn;
+    }
+
+    private void traceOp(EventListener debugListener, byte op, byte[] entry) throws IOException {
+        String opStr;
+        String payloadStr = null;
+
+        switch (op) {
+        default:
+            opStr = "UNKNOWN";
+            payloadStr = "op=" + (op & 0xff) + ", entry=0x" + Utils.toHex(entry);
+            break;
+
+        case OP_SCOPE_ENTER:
+            opStr = "SCOPE_ENTER";
+            break;
+
+        case OP_SCOPE_COMMIT:
+            opStr = "SCOPE_COMMIT";
+            break;
+
+        case OP_COMMIT:
+            opStr = "COMMIT";
+            break;
+
+        case OP_COMMIT_TRUNCATE:
+            opStr = "COMMIT_TRUNCATE";
+            break;
+
+        case OP_LOG_COPY:
+            opStr = "LOG_COPY";
+            break;
+
+        case OP_LOG_REF:
+            opStr = "LOG_REF";
+            break;
+
+        case OP_INDEX:
+            opStr = "INDEX";
+            payloadStr = "indexId=" + decodeLongLE(entry, 0);
+            break;
+
+        case OP_UNINSERT:
+            opStr = "UNINSERT";
+            payloadStr = "key=0x" + Utils.toHex(entry) + " (" +
+                new String(entry, StandardCharsets.UTF_8) + ')';
+            break;
+
+        case OP_UNUPDATE: case OP_UNDELETE:
+            opStr = op == OP_UNUPDATE ? "UNUPDATE" : "UNDELETE";
+            byte[][] pair = decodeNodeKeyValuePair(entry);
+            payloadStr = "key=0x" + Utils.toHex(pair[0]) + " (" +
+                new String(pair[0], StandardCharsets.UTF_8) + ") value=0x" + Utils.toHex(pair[1]);
+            break;
+
+        case OP_UNDELETE_FRAGMENTED:
+            opStr = "UNDELETE_FRAGMENTED";
+            byte[] key = decodeNodeKey(entry);
+            payloadStr = "key=0x" + Utils.toHex(key) + " (" +
+                new String(key, StandardCharsets.UTF_8) + ')';
+            break;
+
+        case OP_CUSTOM:
+            opStr = "CUSTOM";
+            payloadStr = "entry=0x" + Utils.toHex(entry);
+            break;
+
+        case OP_UNUPDATE_LK: case OP_UNDELETE_LK:
+            opStr = op == OP_UNUPDATE ? "UNUPDATE_LK" : "UNDELETE_LK";
+
+            key = new byte[decodeUnsignedVarInt(entry, 0)];
+            int keyLoc = calcUnsignedVarIntLength(key.length);
+            arraycopy(entry, keyLoc, key, 0, key.length);
+
+            int valueLoc = keyLoc + key.length;
+            byte[] value = new byte[entry.length - valueLoc];
+            arraycopy(entry, valueLoc, value, 0, value.length);
+
+            payloadStr = "key=0x" + Utils.toHex(key) + " (" +
+                new String(key, StandardCharsets.UTF_8) + ") value=0x" + Utils.toHex(value);
+
+            break;
+
+        case OP_UNDELETE_LK_FRAGMENTED:
+            opStr = "UNDELETE_LK_FRAGMENTED";
+
+            key = new byte[decodeUnsignedVarInt(entry, 0)];
+            arraycopy(entry, calcUnsignedVarIntLength(key.length), key, 0, key.length);
+
+            payloadStr = "key=0x" + Utils.toHex(key) + " (" +
+                new String(key, StandardCharsets.UTF_8) + ')';
+
+            break;
+        }
+
+        if (payloadStr == null) {
+            debugListener.notify(EventType.DEBUG, "Undo recover %1$s", opStr);
+        } else {
+            debugListener.notify(EventType.DEBUG, "Undo recover %1$s %2$s", opStr, payloadStr);
+        }
     }
 
     /**
