@@ -138,33 +138,44 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Enum.html?is
 <th class="colOne" scope="col">Enum Constant and Description</th>
 </tr>
 <tr class="altColor">
+<td class="colOne"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/OpenOption.html#CLOSE_DONTNEED">CLOSE_DONTNEED</a></span></code>
+<div class="block">Optional hint to apply at file close indicating that the file data will not 
+ be accessed in the near future.</div>
+</td>
+</tr>
+<tr class="rowColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/OpenOption.html#CREATE">CREATE</a></span></code>
 <div class="block">Create the file if it doesn't already exist.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/OpenOption.html#DIRECT_IO">DIRECT_IO</a></span></code>
 <div class="block">All file I/O should be durable and bypass the file system cache, if possible.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/OpenOption.html#MAPPED">MAPPED</a></span></code>
 <div class="block">Map the file into main memory.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/OpenOption.html#NON_DURABLE">NON_DURABLE</a></span></code>
 <div class="block">File contents don't persist after an OS crash or power failure.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/OpenOption.html#PREALLOCATE">PREALLOCATE</a></span></code>
 <div class="block">Preallocate file blocks when increasing file length, if possible.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/OpenOption.html#READ_ONLY">READ_ONLY</a></span></code>
 <div class="block">Open file in read-only mode.</div>
+</td>
+</tr>
+<tr class="rowColor">
+<td class="colOne"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/OpenOption.html#READAHEAD">READAHEAD</a></span></code>
+<div class="block">Optional hint to perform readahead on the file.</div>
 </td>
 </tr>
 <tr class="altColor">
@@ -292,11 +303,32 @@ the order they are declared.</div>
 <a name="PREALLOCATE">
 <!--   -->
 </a>
-<ul class="blockListLast">
+<ul class="blockList">
 <li class="blockList">
 <h4>PREALLOCATE</h4>
 <pre>public static final&nbsp;<a href="../../../../org/cojen/tupl/io/OpenOption.html" title="enum in org.cojen.tupl.io">OpenOption</a> PREALLOCATE</pre>
 <div class="block">Preallocate file blocks when increasing file length, if possible.</div>
+</li>
+</ul>
+<a name="READAHEAD">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>READAHEAD</h4>
+<pre>public static final&nbsp;<a href="../../../../org/cojen/tupl/io/OpenOption.html" title="enum in org.cojen.tupl.io">OpenOption</a> READAHEAD</pre>
+<div class="block">Optional hint to perform readahead on the file.</div>
+</li>
+</ul>
+<a name="CLOSE_DONTNEED">
+<!--   -->
+</a>
+<ul class="blockListLast">
+<li class="blockList">
+<h4>CLOSE_DONTNEED</h4>
+<pre>public static final&nbsp;<a href="../../../../org/cojen/tupl/io/OpenOption.html" title="enum in org.cojen.tupl.io">OpenOption</a> CLOSE_DONTNEED</pre>
+<div class="block">Optional hint to apply at file close indicating that the file data will not 
+ be accessed in the near future.</div>
 </li>
 </ul>
 </li>
