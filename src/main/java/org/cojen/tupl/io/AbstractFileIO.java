@@ -23,6 +23,7 @@ import java.nio.ByteBuffer;
 import java.util.EnumSet;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.RWLock;
@@ -43,8 +44,11 @@ abstract class AbstractFileIO extends FileIO {
     // If sync is taking longer than 10 seconds, start slowing down access.
     private static final long SYNC_YIELD_THRESHOLD_NANOS = 10L * 1000 * 1000 * 1000;
 
-    private static final AtomicIntegerFieldUpdater<AbstractFileIO> cSyncCountUpdater =
-        AtomicIntegerFieldUpdater.newUpdater(AbstractFileIO.class, "mSyncCount");
+    // Max amount of time to stall access if sync is taking longer than the threshold above.
+    private static final long SYNC_YIELD_MAX_NANOS = 100L * 1000 * 1000;
+
+    private static final AtomicLongFieldUpdater<AbstractFileIO> cSyncStartNanosUpdater =
+        AtomicLongFieldUpdater.newUpdater(AbstractFileIO.class, "mSyncStartNanos");
 
     static {
         int pageSize = 4096;
@@ -62,14 +66,16 @@ abstract class AbstractFileIO extends FileIO {
 
     private final Latch mRemapLatch;
     private final RWLock mMappingLock;
+    private final Latch mSyncLatch;
     private Mapping[] mMappings;
     private int mLastMappingSize;
-
-    private final Latch mSyncLatch;
-    private volatile int mSyncCount;
-    private volatile long mSyncStartNanos;
-
     protected volatile Throwable mCause;
+
+    // FIXME: The Contended annotation is not supported in Java 9 at present.
+    // When migrating either find an equivalent, manually pad, or live with the
+    // contention.
+    @sun.misc.Contended
+    private volatile long mSyncStartNanos;
 
     AbstractFileIO(EnumSet<OpenOption> options) {
         mReadOnly = options.contains(OpenOption.READ_ONLY);
@@ -334,12 +340,12 @@ abstract class AbstractFileIO extends FileIO {
             return;
         }
 
-        int count = cSyncCountUpdater.getAndIncrement(this);
+        // Set the start time if there's not already an ongoing sync. Ignore
+        // cas fails; first writer wins.
+        long startNs = mSyncStartNanos;
+        boolean shouldReset = startNs == 0 && 
+            cSyncStartNanosUpdater.compareAndSet(this, startNs, System.nanoTime());
         try {
-            if (count == 0) {
-                mSyncStartNanos = System.nanoTime();
-            }
-
             mSyncLatch.acquireShared();
             try {
                 mMappingLock.acquireShared();
@@ -362,7 +368,10 @@ abstract class AbstractFileIO extends FileIO {
                 mSyncLatch.releaseShared();
             }
         } finally {
-            cSyncCountUpdater.decrementAndGet(this);
+            // Reset sync state to unblock read/write ops.
+            if (shouldReset) {
+                cSyncStartNanosUpdater.set(this, 0);
+            }
         }
     }
 
@@ -523,12 +532,13 @@ abstract class AbstractFileIO extends FileIO {
     }
  
     protected void syncWait() throws InterruptedIOException {
-        if (mSyncCount != 0) {
-            long syncTimeNanos = System.nanoTime() - mSyncStartNanos;
+        long syncStartNanos;
+        if ((syncStartNanos = mSyncStartNanos) != 0) {
+            long syncTimeNanos = System.nanoTime() - syncStartNanos;
             if (syncTimeNanos > SYNC_YIELD_THRESHOLD_NANOS) {
                 // Yield 1ms for each second that sync has been running. Use a latch instead
                 // of a sleep, preventing prolonged sleep after sync finishes.
-                long sleepNanos = syncTimeNanos / 1000L;
+                long sleepNanos = Math.min(syncTimeNanos / 1000L, SYNC_YIELD_MAX_NANOS);
                 try {
                     if (mSyncLatch.tryAcquireExclusiveNanos(sleepNanos)) {
                         mSyncLatch.releaseExclusive();

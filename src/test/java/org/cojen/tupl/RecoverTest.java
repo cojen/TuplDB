@@ -936,5 +936,7 @@ public class RecoverTest {
         Index ix2 = db2.openIndex("test");
         Transaction txn2 = db2.newTransaction();
         assertTrue(ix2.tryLockExclusive(txn2, "key1".getBytes(), 1).isHeld());
+
+        db2.close();
     }
 }

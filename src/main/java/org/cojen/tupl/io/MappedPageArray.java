@@ -19,8 +19,6 @@ package org.cojen.tupl.io;
 import java.io.File;
 import java.io.IOException;
 
-import java.nio.ByteBuffer;
-
 import java.nio.channels.ClosedChannelException;
 
 import java.util.EnumSet;
@@ -106,7 +104,7 @@ public abstract class MappedPageArray extends PageArray {
         throws IOException
     {
         readCheck(index);
-        DirectAccess.ref(mappingPtr() + index * mPageSize, length).get(buf, offset, length);
+        UNSAFE.copyMemory(null, mappingPtr() + index * mPageSize, buf, ARRAY + offset, length);
     }
 
     public void readPage(long index, long ptr, int offset, int length)
@@ -119,16 +117,14 @@ public abstract class MappedPageArray extends PageArray {
 
         long srcPtr = mappingPtr() + index * pageSize;
         if (srcPtr != ptr) {
-            ByteBuffer src = DirectAccess.ref(srcPtr, length);
-            ByteBuffer dst = DirectAccess.ref2(ptr, length);
-            dst.put(src);
+            UNSAFE.copyMemory(null, srcPtr, null, ptr, length);
         }
     }
 
     public void writePage(long index, byte[] buf, int offset) throws IOException {
         writeCheck(index);
         int pageSize = mPageSize;
-        DirectAccess.ref(mappingPtr() + index * pageSize, pageSize).put(buf, offset, pageSize);
+        UNSAFE.copyMemory(buf, ARRAY + offset, null, mappingPtr() + index * pageSize, pageSize);
     }
 
     public void writePage(long index, long ptr, int offset) throws IOException {
@@ -139,9 +135,7 @@ public abstract class MappedPageArray extends PageArray {
 
         long dstPtr = mappingPtr() + index * pageSize;
         if (dstPtr != ptr) {
-            ByteBuffer dst = DirectAccess.ref(dstPtr, pageSize);
-            ByteBuffer src = DirectAccess.ref2(ptr, pageSize);
-            dst.put(src);
+            UNSAFE.copyMemory(null, ptr, null, dstPtr, pageSize);
         }
     }
 
@@ -174,9 +168,7 @@ public abstract class MappedPageArray extends PageArray {
         int pageSize = mPageSize;
         long ptr = mappingPtr();
         long dstPtr = ptr + dstIndex * pageSize;
-        ByteBuffer dst = DirectAccess.ref(dstPtr, pageSize);
-        ByteBuffer src = DirectAccess.ref2(ptr + srcIndex * pageSize, pageSize);
-        dst.put(src);
+        UNSAFE.copyMemory(null, ptr + srcIndex * pageSize, null, dstPtr, pageSize);
 
         return dstPtr;
     }
@@ -190,9 +182,7 @@ public abstract class MappedPageArray extends PageArray {
 
         int pageSize = mPageSize;
         long dstPtr = mappingPtr() + dstIndex * pageSize;
-        ByteBuffer dst = DirectAccess.ref(dstPtr, pageSize);
-        ByteBuffer src = DirectAccess.ref2(srcPointer, pageSize);
-        dst.put(src);
+        UNSAFE.copyMemory(null, srcPointer, null, dstPtr, pageSize);
 
         return dstPtr;
     }
@@ -273,4 +263,7 @@ public abstract class MappedPageArray extends PageArray {
                 ("Mapped file length limit reached: " + (mPageCount * mPageSize));
         }
     }
+
+    private static final sun.misc.Unsafe UNSAFE = UnsafeAccess.obtain();
+    private static final long ARRAY = (long) UNSAFE.arrayBaseOffset(byte[].class);
 }
