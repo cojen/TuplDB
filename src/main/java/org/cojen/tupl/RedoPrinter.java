@@ -186,7 +186,7 @@ class RedoPrinter implements RedoVisitor {
         return true;
     }
 
-    private String toHex(byte[] bytes) {
+    private static String toHex(byte[] bytes) {
         if (bytes == null) {
             return "null";
         }
@@ -212,7 +212,7 @@ class RedoPrinter implements RedoVisitor {
         return bob.toString();
     }
 
-    private String toDateTime(long timestamp) {
+    private static String toDateTime(long timestamp) {
         return java.time.Instant.ofEpochMilli(timestamp).toString();
     }
 }
