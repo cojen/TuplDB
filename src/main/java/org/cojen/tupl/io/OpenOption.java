@@ -42,4 +42,13 @@ public enum OpenOption {
 
     /** Preallocate file blocks when increasing file length, if possible. */
     PREALLOCATE,
+    
+    /** Optional hint to perform readahead on the file. */
+    READAHEAD,
+
+    /** 
+     * Optional hint to apply at file close indicating that the file data will not 
+     * be accessed in the near future.
+     */
+    CLOSE_DONTNEED,
 }
