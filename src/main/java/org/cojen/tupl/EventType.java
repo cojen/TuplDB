@@ -25,6 +25,9 @@ import java.util.logging.Level;
  * @author Brian S O'Neill
  */
 public enum EventType {
+    /** General debug event type. */
+    DEBUG(Category.DEBUG, Level.INFO),
+
     /** Signals the beginning of cache initialization. */
     CACHE_INIT_BEGIN(Category.CACHE_INIT, Level.INFO),
     /** Signals the end of cache initialization, reporting the duration. */
@@ -87,6 +90,9 @@ public enum EventType {
      * @see EventType
      */
     public enum Category {
+        /** General debug category. */
+        DEBUG,
+
         /** Cache initialization allocates memory according to the minimum cache size. */
         CACHE_INIT,
 

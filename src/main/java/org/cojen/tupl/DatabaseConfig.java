@@ -22,10 +22,12 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.InputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.io.Serializable;
 
 import java.lang.reflect.Method;
 
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.TreeMap;
@@ -78,6 +80,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
     int mMaxReplicaThreads;
     transient Crypto mCrypto;
     transient TransactionHandler mTxnHandler;
+    Map<String, ? extends Object> mDebugOpen;
 
     // Fields are set as a side-effect of constructing a replicated Database.
     transient long mReplRecoveryStartNanos;
@@ -400,6 +403,42 @@ public class DatabaseConfig implements Cloneable, Serializable {
 
     public TransactionHandler getCustomTransactionHandler() {
         return mTxnHandler;
+    }
+
+    /**
+     * Opens the database in read-only mode for debugging purposes, and then closes it. The
+     * format of the printed messages and the supported properties are subject to change.
+     *
+     * <ul>
+     * <li>traceUndo=true to print all recovered undo log messages
+     * <li>traceRedo=true to print all recovered redo log messages
+     * </ul>
+     *
+     * @param out pass null to print to standard out
+     * @param properties optional
+     */
+    public void debugOpen(PrintStream out, Map<String, ? extends Object> properties)
+        throws IOException
+    {
+        if (out == null) {
+            out = System.out;
+        }
+
+        if (properties == null) {
+            properties = Collections.emptyMap();
+        }
+
+        DatabaseConfig config = clone();
+
+        config.eventListener(new EventPrinter(out));
+        config.mReadOnly = true;
+        config.mDebugOpen = properties;
+
+        if (config.mDirectPageAccess == null) {
+            config.directPageAccess(false);
+        }
+
+        Database.open(config).close();
     }
 
     @Override

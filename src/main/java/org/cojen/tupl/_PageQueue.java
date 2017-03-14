@@ -202,7 +202,7 @@ final class _PageQueue implements IntegerRef {
     /**
      * Initialize a restored queue. Caller must hold append and remove locks.
      */
-    void init(long header, int offset) throws IOException {
+    void init(EventListener debugListener, long header, int offset) throws IOException {
         mRemovePageCount = p_longGetLE(header, offset + I_REMOVE_PAGE_COUNT);
         mRemoveNodeCount = p_longGetLE(header, offset + I_REMOVE_NODE_COUNT);
 
@@ -211,6 +211,26 @@ final class _PageQueue implements IntegerRef {
         mRemoveHeadFirstPageId = p_longGetLE(header, offset + I_REMOVE_HEAD_FIRST_PAGE_ID);
 
         mAppendHeadId = mAppendTailId = p_longGetLE(header, offset + I_APPEND_HEAD_ID);
+
+        if (debugListener != null) {
+            String type;
+            if (mAllocMode == ALLOC_NORMAL) {
+                type = mAggressive ? "Recycle" : "Regular";
+            } else {
+                type = "Reserve";
+            }
+
+            debugListener.notify(EventType.DEBUG, "%1$s free list REMOVE_PAGE_COUNT: %2$d",
+                                 type, mRemovePageCount);
+            debugListener.notify(EventType.DEBUG, "%1$s free list REMOVE_NODE_COUNT: %2$d",
+                                 type, mRemoveNodeCount);
+            debugListener.notify(EventType.DEBUG, "%1$s free list REMOVE_HEAD_ID: %2$d",
+                                 type, mRemoveHeadId);
+            debugListener.notify(EventType.DEBUG, "%1$s free list REMOVE_HEAD_OFFSET: %2$d",
+                                 type, mRemoveHeadOffset);
+            debugListener.notify(EventType.DEBUG, "%1$s free list REMOVE_HEAD_FIRST_PAGE_ID: %2$d",
+                                 type, mRemoveHeadFirstPageId);
+        }
 
         if (mRemoveHeadId == 0) {
             mRemoveStoppedId = mAppendHeadId;

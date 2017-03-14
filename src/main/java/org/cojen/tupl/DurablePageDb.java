@@ -102,7 +102,8 @@ final class DurablePageDb extends PageDb {
      * @param cache optional
      * @param crypto optional
      */
-    static DurablePageDb open(boolean explicitPageSize, int pageSize,
+    static DurablePageDb open(EventListener debugListener,
+                              boolean explicitPageSize, int pageSize,
                               File[] files, FileFactory factory, EnumSet<OpenOption> options,
                               PageCache cache, Crypto crypto, boolean destroy)
         throws IOException
@@ -110,7 +111,9 @@ final class DurablePageDb extends PageDb {
         while (true) {
             try {
                 return new DurablePageDb
-                    (openPageArray(pageSize, files, factory, options), cache, crypto, destroy);
+                    (debugListener,
+                     openPageArray(pageSize, files, factory, options),
+                     cache, crypto, destroy);
             } catch (WrongPageSize e) {
                 if (explicitPageSize) {
                     throw e.rethrow();
@@ -125,11 +128,12 @@ final class DurablePageDb extends PageDb {
      * @param cache optional
      * @param crypto optional
      */
-    static DurablePageDb open(PageArray rawArray, PageCache cache, Crypto crypto, boolean destroy)
+    static DurablePageDb open(EventListener debugListener,
+                              PageArray rawArray, PageCache cache, Crypto crypto, boolean destroy)
         throws IOException
     {
         try {
-            return new DurablePageDb(rawArray, cache, crypto, destroy);
+            return new DurablePageDb(debugListener, rawArray, cache, crypto, destroy);
         } catch (WrongPageSize e) {
             throw e.rethrow();
         }
@@ -172,7 +176,8 @@ final class DurablePageDb extends PageDb {
         }
     }
 
-    private DurablePageDb(final PageArray rawArray, final PageCache cache,
+    private DurablePageDb(final EventListener debugListener,
+                          final PageArray rawArray, final PageCache cache,
                           final Crypto crypto, final boolean destroy)
         throws IOException, WrongPageSize
     {
@@ -283,7 +288,13 @@ final class DurablePageDb extends PageDb {
                     mCommitNumber = commitNumber;
                     mHeaderLatch.releaseExclusive();
 
-                    mPageManager = new PageManager(mPageArray, header, I_MANAGER_HEADER);
+                    if (debugListener != null) {
+                        debugListener.notify(EventType.DEBUG, "PAGE_SIZE: %1$d", pageSize);
+                        debugListener.notify(EventType.DEBUG, "COMMIT_NUMBER: %1$d", commitNumber);
+                    }
+
+                    mPageManager = new PageManager
+                        (debugListener, mPageArray, header, I_MANAGER_HEADER);
                 } finally {
                     p_delete(header0);
                     p_delete(header1);
@@ -788,7 +799,7 @@ final class DurablePageDb extends PageDb {
         }
 
         try {
-            return new DurablePageDb(pa, cache, crypto, false);
+            return new DurablePageDb(null, pa, cache, crypto, false);
         } catch (WrongPageSize e) {
             throw e.rethrow();
         }
