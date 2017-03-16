@@ -336,6 +336,8 @@ final class _LocalTransaction extends _Locker implements Transaction {
             if (parentScope == null) {
                 long commitPos;
                 try {
+                    cursor.store(_LocalTransaction.BOGUS, cursor.leafExclusive(), value);
+
                     if ((hasState & HAS_SCOPE) == 0) {
                         mContext.redoEnter(mRedo, txnId);
                         mHasState = hasState | HAS_SCOPE;
@@ -348,8 +350,6 @@ final class _LocalTransaction extends _Locker implements Transaction {
                         commitPos = mContext.redoStoreCommitFinal
                             (mRedo, txnId, indexId, key, value, mDurabilityMode);
                     }
-
-                    cursor.store(_LocalTransaction.BOGUS, cursor.leafExclusive(), value);
                 } catch (Throwable e) {
                     shared.release();
                     throw e;
@@ -401,6 +401,14 @@ final class _LocalTransaction extends _Locker implements Transaction {
                 mTxnId = 0;
             } else {
                 try {
+                    final DurabilityMode original = mDurabilityMode;
+                    mDurabilityMode = DurabilityMode.NO_REDO;
+                    try {
+                        cursor.store(this, cursor.leafExclusive(), value);
+                    } finally {
+                        mDurabilityMode = original;
+                    }
+
                     if ((hasState & HAS_SCOPE) == 0) {
                         setScopeState(parentScope);
                         if (value == null) {
@@ -418,14 +426,6 @@ final class _LocalTransaction extends _Locker implements Transaction {
                             mContext.redoStore
                                 (mRedo, RedoOps.OP_TXN_STORE_COMMIT, txnId, indexId, key, value);
                         }
-                    }
-
-                    final DurabilityMode original = mDurabilityMode;
-                    mDurabilityMode = DurabilityMode.NO_REDO;
-                    try {
-                        cursor.store(this, cursor.leafExclusive(), value);
-                    } finally {
-                        mDurabilityMode = original;
                     }
                 } finally {
                     shared.release();
@@ -717,6 +717,10 @@ final class _LocalTransaction extends _Locker implements Transaction {
                 }
                 mContext.redoCustom(mRedo, txnId, message);
             } else {
+                LockResult result = lockCheck(indexId, key);
+                if (result != LockResult.OWNED_EXCLUSIVE) {
+                    throw new IllegalStateException("Lock isn't owned exclusively: " + result);
+                }
                 mContext.redoCustomLock(mRedo, txnId, message, indexId, key);
             }
         }
@@ -741,7 +745,8 @@ final class _LocalTransaction extends _Locker implements Transaction {
     }
 
     /**
-     * @param resetAlways when false, only resets committed transactions and transactions with negative identifiers
+     * @param resetAlways when false, only resets committed transactions and transactions with
+     * negative identifiers
      * @return true if was reset
      */
     final boolean recoveryCleanup(boolean resetAlways) throws IOException {

@@ -234,7 +234,9 @@ public interface Transaction {
      * @param message message to pass to transaction handler
      * @param indexId index for lock acquisition; zero if not applicable
      * @param key key which has been locked exclusively; null if not applicable
-     * @throws IllegalStateException if no transaction handler is installed
+     * @throws IllegalStateException if no transaction handler is installed; if index and key
+     * are provided but lock isn't held
+     * @throws IllegalArgumentException if index id is zero and key is non-null
      * @see org.cojen.tupl.ext.TransactionHandler
      */
     void customRedo(byte[] message, long indexId, byte[] key) throws IOException;

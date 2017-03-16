@@ -61,6 +61,11 @@ final class RedoLogApplier implements RedoVisitor {
     }
 
     @Override
+    public boolean fence() {
+        return true;
+    }
+
+    @Override
     public boolean reset() {
         return true;
     }

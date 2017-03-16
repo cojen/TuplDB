@@ -22,7 +22,8 @@ package org.cojen.tupl;
  * @author Brian S O'Neill
  */
 class RedoOps {
-    // Note: When updating the opcodes, be sure to update RedoDecoder and TransactionContext.
+    // Note: When updating the opcodes, be sure to update RedoDecoder, TransactionContext, and
+    // RedoWriter.
 
     static final byte
         /** no operands */
@@ -45,6 +46,9 @@ class RedoOps {
 
         /** txnId: long */
         OP_TXN_ID_RESET = 7,
+
+        /** no operands */
+        OP_FENCE = 8,
 
         /** indexId: long, keyLength: varInt, key: bytes, valueLength: varInt, value: bytes */
         OP_STORE = 16,

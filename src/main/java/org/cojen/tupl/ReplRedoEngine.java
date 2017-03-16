@@ -20,7 +20,6 @@ import java.io.IOException;
 
 import java.lang.ref.SoftReference;
 
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
@@ -156,15 +155,12 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
     @Override
     public boolean reset() throws IOException {
-        CountDownLatch cd = new CountDownLatch(mTransactions.size());
-
         // Reset and discard all transactions.
         mTransactions.traverse(te -> {
             runTask(te, new Worker.Task() {
                 public void run() {
                     try {
                         te.mTxn.recoveryCleanup(true);
-                        cd.countDown();
                     } catch (Throwable e) {
                         fail(e);
                     }
@@ -173,38 +169,51 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             return true;
         });
 
-        try {
-            cd.await();
-        } catch (InterruptedException e) {
-            fail(e);
+        // Wait for work to complete.
+        if (mWorkerGroup != null) {
+            mWorkerGroup.join(false);
         }
 
         // Although it might seem like a good time to clean out any lingering trash, concurrent
-        // transactions are still active and need the trash to rollback properly.
+        // transactions are still active and need the trash to rollback properly. Waiting for
+        // the worker group to finish isn't sufficient. Not all transactions are replicated.
         //mDatabase.emptyAllFragmentedTrash(false);
 
-        // Return control back to the decode method.
-        return false;
+        return true;
     }
 
     @Override
     public boolean timestamp(long timestamp) throws IOException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean shutdown(long timestamp) throws IOException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean close(long timestamp) throws IOException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean endFile(long timestamp) throws IOException {
-        return false;
+        return true;
+    }
+
+    @Override
+    public boolean fence() throws IOException {
+        // Wait for work to complete.
+        if (mWorkerGroup != null) {
+            mWorkerGroup.join(false);
+        }
+
+
+        // Call with decode latch held, suspending checkpoints.
+        mManager.fenced(mDecoder.mIn.mPos);
+
+        return true;
     }
 
     @Override
@@ -244,8 +253,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             }
         });
 
-        // Return control back to the decode method.
-        return false;
+        return true;
     }
 
     @Override
@@ -260,33 +268,37 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     @Override
     public boolean renameIndex(long txnId, long indexId, byte[] newName) throws IOException {
         Index ix = getIndex(indexId);
-        byte[] oldName = null;
 
-        if (ix != null) {
-            oldName = ix.getName();
-            try {
-                mDatabase.renameIndex(ix, newName, txnId);
-            } catch (RuntimeException e) {
-                EventListener listener = mDatabase.eventListener();
-                if (listener != null) {
-                    listener.notify(EventType.REPLICATION_WARNING,
-                                    "Unable to rename index: %1$s", rootCause(e));
-                    // Disable notification.
-                    ix = null;
+        if (ix == null) {
+            // No notification.
+            return true;
+        }
+
+        byte[] oldName = ix.getName();
+
+        try {
+            mDatabase.renameIndex(ix, newName, txnId);
+        } catch (RuntimeException e) {
+            EventListener listener = mDatabase.eventListener();
+            if (listener != null) {
+                listener.notify(EventType.REPLICATION_WARNING,
+                                "Unable to rename index: %1$s", rootCause(e));
+                // No notification.
+                return true;
+            }
+        }
+
+        runTaskAnywhere(new Worker.Task() {
+            public void run() {
+                try {
+                    mManager.notifyRename(ix, oldName, newName.clone());
+                } catch (Throwable e) {
+                    uncaught(e);
                 }
             }
-        }
+        });
 
-        if (ix != null) {
-            try {
-                mManager.notifyRename(ix, oldName, newName.clone());
-            } catch (Throwable e) {
-                uncaught(e);
-            }
-        }
-
-        // Return control back to the decode method.
-        return false;
+        return true;
     }
 
     @Override
@@ -346,8 +358,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             }
         });
 
-        // Return control back to the decode method.
-        return false;
+        return true;
     }
 
     @Override
@@ -372,8 +383,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             });
         }
 
-        // Return control back to the decode method.
-        return false;
+        return true;
     }
 
     @Override
@@ -390,8 +400,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             }
         });
 
-        // Return control back to the decode method.
-        return false;
+        return true;
     }
 
     @Override
@@ -410,8 +419,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             });
         }
 
-        // Return control back to the decode method.
-        return false;
+        return true;
     }
 
     @Override
@@ -428,8 +436,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             }
         });
 
-        // Return control back to the decode method.
-        return false;
+        return true;
     }
 
     @Override
@@ -448,8 +455,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             });
         }
 
-        // Return control back to the decode method.
-        return false;
+        return true;
     }
 
     @Override
@@ -508,8 +514,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             }
         });
 
-        // Return control back to the decode method.
-        return false;
+        return true;
     }
 
     @Override
@@ -550,8 +555,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             }
         });
 
-        // Return control back to the decode method.
-        return false;
+        return true;
     }
 
     @Override
@@ -594,8 +598,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             }
         });
 
-        // Return control back to the decode method.
-        return false;
+        return true;
     }
 
     @Override
@@ -651,8 +654,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             runTask(te, task);
         }
 
-        // Return control back to the decode method.
-        return false;
+        return true;
     }
 
     @Override
@@ -677,8 +679,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             });
         }
 
-        // Return control back to the decode method.
-        return false;
+        return true;
     }
 
     @Override
@@ -703,8 +704,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             });
         }
 
-        // Return control back to the decode method.
-        return false;
+        return true;
     }
 
     @Override
@@ -732,8 +732,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             }
         });
 
-        // Return control back to the decode method.
-        return false;
+        return true;
     }
 
     @Override
@@ -753,8 +752,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             }
         });
 
-        // Return control back to the decode method.
-        return false;
+        return true;
     }
 
     @Override
@@ -775,6 +773,8 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                         txn.push(lock, 0);
                     }
 
+                    txn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
+
                     handler.redo(mDatabase, txn, message, indexId, key);
                 } catch (Throwable e) {
                     fail(e);
@@ -783,8 +783,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             }
         });
 
-        // Return control back to the decode method.
-        return false;
+        return true;
     }
 
     /**

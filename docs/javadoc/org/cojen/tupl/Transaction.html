@@ -749,7 +749,9 @@ var activeTableTab = "activeTableTab";
 <dd><code>indexId</code> - index for lock acquisition; zero if not applicable</dd>
 <dd><code>key</code> - key which has been locked exclusively; null if not applicable</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no transaction handler is installed</dd>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no transaction handler is installed; if index and key
+ are provided but lock isn't held</dd>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if index id is zero and key is non-null</dd>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 <dt><span class="seeLabel">See Also:</span></dt>
 <dd><a href="../../../org/cojen/tupl/ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext"><code>TransactionHandler</code></a></dd>

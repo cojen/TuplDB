@@ -50,6 +50,11 @@ interface RedoVisitor {
     public boolean endFile(long timestamp) throws IOException;
 
     /**
+     * @return false to stop visiting
+     */
+    public boolean fence() throws IOException;
+
+    /**
      * @param indexId non-zero index id
      * @param key non-null key
      * @param value value to store; null to delete

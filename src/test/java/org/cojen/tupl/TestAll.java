@@ -103,6 +103,7 @@ public class TestAll {
             ContendedLockTest.class,
             DirectPageOpsTest.class,
             UnreplicatedTest.class,
+            ReplicationTest.class,
             TempIndexTest.class,
             WorkerTest.class,
         };
