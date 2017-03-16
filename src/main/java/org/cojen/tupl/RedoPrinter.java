@@ -70,6 +70,12 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
+    public boolean fence() {
+        mOut.println("fence");
+        return true;
+    }
+
+    @Override
     public boolean store(long indexId, byte[] key, byte[] value) {
         mOut.println("store: indexId=" + indexId +
                      ", key=" + toHex(key) + ", value=" + toHex(value));

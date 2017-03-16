@@ -4436,6 +4436,12 @@ final class _LocalDatabase extends AbstractDatabase {
     }
 
     @Override
+    long redoFence() throws IOException {
+        _RedoWriter redo = txnRedoWriter();
+        return redo == null ? 0 : redo.writeFence();
+    }
+
+    @Override
     void checkpoint(boolean force, long sizeThreshold, long delayThresholdNanos)
         throws IOException
     {

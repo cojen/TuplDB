@@ -38,7 +38,9 @@ class SocketReplicationManager implements ReplicationManager {
     private volatile InputStream mReader;
     private volatile StreamWriter mWriter;
 
-    private long mPos;
+    private volatile long mPos;
+
+    private long mFencedPos;
 
     /**
      * @param replicaHost replica to connect to; pass null if local host is the replica
@@ -91,7 +93,14 @@ class SocketReplicationManager implements ReplicationManager {
     @Override
     public int read(byte[] b, int off, int len) throws IOException {
         InputStream in = mReader;
-        return in == null ? -1 : in.read(b, off, len);
+        if (in == null) {
+            return -1;
+        }
+        int amt = in.read(b, off, len);
+        if (amt > 0) {
+            mPos += amt;
+        }
+        return amt;
     }
 
     @Override
@@ -116,6 +125,12 @@ class SocketReplicationManager implements ReplicationManager {
     }
 
     @Override
+    public synchronized void fenced(long position) throws IOException {
+        mFencedPos = position;
+        notifyAll();
+    }
+
+    @Override
     public void close() throws IOException {
         if (mReader != null) {
             mReader.close();
@@ -131,6 +146,16 @@ class SocketReplicationManager implements ReplicationManager {
             throw new IllegalStateException();
         }
         while (!writer.mNotified) {
+            wait();
+        }
+    }
+
+    public synchronized long waitForFence(long position) throws InterruptedException {
+        while (true) {
+            long current = mFencedPos;
+            if (current >= position) {
+                return current;
+            }
             wait();
         }
     }
@@ -153,7 +178,7 @@ class SocketReplicationManager implements ReplicationManager {
             // Leadership is never lost, so no need to register the callback.
             mNotified = true;
             synchronized (SocketReplicationManager.this) {
-                SocketReplicationManager.this.notify();
+                SocketReplicationManager.this.notifyAll();
             }
             return true;
         }

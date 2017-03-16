@@ -31,7 +31,7 @@ import static org.cojen.tupl.RedoOps.*;
  */
 abstract class RedoDecoder {
     private final boolean mLenient;
-    private final DataIn mIn;
+    final DataIn mIn;
 
     long mTxnId;
 
@@ -75,7 +75,7 @@ abstract class RedoDecoder {
     @SuppressWarnings("fallthrough")
     private boolean doRun(RedoVisitor visitor, DataIn in) throws IOException {
         while (true) {
-            mDecodePosition = mIn.mPos;
+            mDecodePosition = in.mPos;
             mDecodeTransactionId = mTxnId;
 
             mDecodeLatch.releaseExclusive();
@@ -178,6 +178,15 @@ abstract class RedoDecoder {
                 }
                 mTxnId = txnId;
                 if (!verifyTerminator(in)) {
+                    return false;
+                }
+                break;
+
+            case OP_FENCE:
+                if (!verifyTerminator(in)) {
+                    return false;
+                }
+                if (!visitor.fence()) {
                     return false;
                 }
                 break;
