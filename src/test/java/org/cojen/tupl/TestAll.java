@@ -104,6 +104,7 @@ public class TestAll {
             DirectPageOpsTest.class,
             UnreplicatedTest.class,
             TempIndexTest.class,
+            WorkerTest.class,
         };
 
         String[] names = new String[classes.length];
