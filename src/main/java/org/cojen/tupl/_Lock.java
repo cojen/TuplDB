@@ -460,6 +460,11 @@ final class _Lock {
                     }
                 }
 
+                if (isClosed(locker)) {
+                    ht.releaseExclusive();
+                    return;
+                }
+
                 throw new IllegalStateException("Lock not held");
             }
 
@@ -529,7 +534,7 @@ final class _Lock {
             if (queueU != null && queueU.signalRelease(latch)) {
                 return;
             }
-        } else if (mLockCount == 0 || !isSharedLockOwner(locker)) {
+        } else if ((mLockCount == 0 || !isSharedLockOwner(locker)) && !isClosed(locker)) {
             throw new IllegalStateException("Lock not held");
         }
 
@@ -544,6 +549,10 @@ final class _Lock {
      */
     void unlockToUpgradable(_LockOwner locker, Latch latch) {
         if (mOwner != locker) {
+            if (isClosed(locker)) {
+                latch.releaseExclusive();
+                return;
+            }
             String message = "Exclusive or upgradable lock not held";
             if (mLockCount == 0 || !isSharedLockOwner(locker)) {
                 message = "Lock not held";
@@ -561,6 +570,11 @@ final class _Lock {
         if (queueSX == null || !queueSX.signalSharedRelease(latch)) {
             latch.releaseExclusive();
         }
+    }
+
+    private static boolean isClosed(_LockOwner locker) {
+        _LocalDatabase db = locker.getDatabase();
+        return db != null && db.isClosed();
     }
 
     /**

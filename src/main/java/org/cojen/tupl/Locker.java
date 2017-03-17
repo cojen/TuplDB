@@ -16,6 +16,8 @@
 
 package org.cojen.tupl;
 
+import java.lang.ref.WeakReference;
+
 import static org.cojen.tupl.LockManager.*;
 
 /**
@@ -53,7 +55,14 @@ class Locker extends LockOwner {
 
     @Override
     public final LocalDatabase getDatabase() {
-        return manager().mDatabaseRef.get();
+        LockManager manager = mManager;
+        if (manager != null) {
+            WeakReference<LocalDatabase> ref = manager.mDatabaseRef;
+            if (ref != null) {
+                return ref.get();
+            }
+        }
+        return null;
     }
 
     @Override
