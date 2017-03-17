@@ -350,6 +350,198 @@ public class ReplicationTest {
         assertNull(rix.load(null, "key".getBytes()));
     }
 
+    @Test
+    public void nestedRollback() throws Exception {
+        Index lix = mLeader.openIndex("test");
+        Transaction ltxn = mLeader.newTransaction();
+        lix.store(ltxn, "k1".getBytes(), "v1".getBytes());
+        ltxn.enter();
+        lix.store(ltxn, "k2".getBytes(), "v2".getBytes());
+        // Explicit flush of the TransactionContext.
+        mLeader.flush();
+        fence();
+
+        Index rix = mReplica.openIndex("test");
+
+        try {
+            rix.load(null, "k1".getBytes());
+            fail();
+        } catch (LockTimeoutException e) {
+            // Expected.
+        }
+
+        try {
+            rix.load(null, "k2".getBytes());
+            fail();
+        } catch (LockTimeoutException e) {
+            // Expected.
+        }
+
+        fastAssertArrayEquals("v1".getBytes(), rix.load(Transaction.BOGUS, "k1".getBytes()));
+        fastAssertArrayEquals("v2".getBytes(), rix.load(Transaction.BOGUS, "k2".getBytes()));
+
+        // Rollback one scope.
+        ltxn.exit();
+        fence();
+
+        try {
+            rix.load(null, "k1".getBytes());
+            fail();
+        } catch (LockTimeoutException e) {
+            // Expected.
+        }
+
+        fastAssertArrayEquals("v1".getBytes(), rix.load(Transaction.BOGUS, "k1".getBytes()));
+        assertNull(rix.load(null, "k2".getBytes()));
+
+        ltxn.commit();
+        fence();
+
+        fastAssertArrayEquals("v1".getBytes(), rix.load(null, "k1".getBytes()));
+        assertNull(rix.load(null, "k2".getBytes()));
+    }
+
+    @Test
+    public void nestedCommit() throws Exception {
+        Index lix = mLeader.openIndex("test");
+        Transaction ltxn = mLeader.newTransaction();
+        lix.store(ltxn, "k1".getBytes(), "v1".getBytes());
+        ltxn.enter();
+        lix.store(ltxn, "k2".getBytes(), "v2".getBytes());
+        // Explicit flush of the TransactionContext.
+        mLeader.flush();
+        fence();
+
+        Index rix = mReplica.openIndex("test");
+
+        try {
+            rix.load(null, "k1".getBytes());
+            fail();
+        } catch (LockTimeoutException e) {
+            // Expected.
+        }
+
+        try {
+            rix.load(null, "k2".getBytes());
+            fail();
+        } catch (LockTimeoutException e) {
+            // Expected.
+        }
+
+        fastAssertArrayEquals("v1".getBytes(), rix.load(Transaction.BOGUS, "k1".getBytes()));
+        fastAssertArrayEquals("v2".getBytes(), rix.load(Transaction.BOGUS, "k2".getBytes()));
+
+        // Commit one scope.
+        ltxn.commit();
+        ltxn.exit();
+        fence();
+
+        try {
+            rix.load(null, "k1".getBytes());
+            fail();
+        } catch (LockTimeoutException e) {
+            // Expected.
+        }
+
+        try {
+            rix.load(null, "k2".getBytes());
+            fail();
+        } catch (LockTimeoutException e) {
+            // Expected.
+        }
+
+        fastAssertArrayEquals("v1".getBytes(), rix.load(Transaction.BOGUS, "k1".getBytes()));
+        fastAssertArrayEquals("v2".getBytes(), rix.load(Transaction.BOGUS, "k2".getBytes()));
+
+        ltxn.commit();
+        fence();
+
+        fastAssertArrayEquals("v1".getBytes(), rix.load(null, "k1".getBytes()));
+        fastAssertArrayEquals("v2".getBytes(), rix.load(null, "k2".getBytes()));
+    }
+
+    @Test
+    public void nestedStoreCommit() throws Exception {
+        Index lix = mLeader.openIndex("test");
+        Transaction ltxn = mLeader.newTransaction();
+
+        ltxn.enter();
+        lix.store(ltxn, "k1".getBytes(), "v1".getBytes());
+        Cursor c = lix.newCursor(ltxn);
+        c.find("k2".getBytes());
+        c.commit("v2".getBytes());
+
+        // Need explicit flush because nested commits don't flush immediately.
+        mLeader.flush();
+
+        fence();
+        Index rix = mReplica.openIndex("test");
+
+        try {
+            rix.load(null, "k1".getBytes());
+            fail();
+        } catch (LockTimeoutException e) {
+            // Expected.
+        }
+
+        try {
+            rix.load(null, "k2".getBytes());
+            fail();
+        } catch (LockTimeoutException e) {
+            // Expected.
+        }
+
+        ltxn.exit();
+        ltxn.commit();
+        fence();
+
+        fastAssertArrayEquals("v1".getBytes(), rix.load(null, "k1".getBytes()));
+        fastAssertArrayEquals("v2".getBytes(), rix.load(null, "k2".getBytes()));
+    }
+
+    @Test
+    public void autoCommitRollback() throws Exception {
+        Index lix = mLeader.openIndex("test");
+
+        lix.store(null, "k1".getBytes(), "v1".getBytes());
+        fence();
+        mLeaderMan.disableWrites();
+        lix.store(null, "k2".getBytes(), "v2".getBytes());
+
+        fastAssertArrayEquals("v1".getBytes(), lix.load(null, "k1".getBytes()));
+        assertNull(lix.load(null, "k2".getBytes()));
+
+        Index rix = mReplica.openIndex("test");
+
+        fastAssertArrayEquals("v1".getBytes(), rix.load(null, "k1".getBytes()));
+        assertNull(rix.load(null, "k2".getBytes()));
+    }
+
+    @Test
+    public void autoCommitRollbackWithCursor() throws Exception {
+        Index lix = mLeader.openIndex("test");
+        Transaction ltxn = mLeader.newTransaction();
+
+        Cursor c = lix.newCursor(ltxn);
+        c.find("k1".getBytes());
+        c.commit("v1".getBytes());
+
+        fence();
+        mLeaderMan.disableWrites();
+
+        c = lix.newCursor(ltxn);
+        c.find("k2".getBytes());
+        c.commit("v2".getBytes());
+
+        fastAssertArrayEquals("v1".getBytes(), lix.load(null, "k1".getBytes()));
+        assertNull(lix.load(null, "k2".getBytes()));
+
+        Index rix = mReplica.openIndex("test");
+
+        fastAssertArrayEquals("v1".getBytes(), rix.load(null, "k1".getBytes()));
+        assertNull(rix.load(null, "k2".getBytes()));
+    }
+
     /**
      * Writes a fence to the leader and waits for the replica to catch up.
      */

@@ -303,8 +303,12 @@ final class _LocalTransaction extends _Locker implements Transaction {
 
     /**
      * Commit combined with a store operation.
+     *
+     * @param requireUndo true if undo logging is required
      */
-    final void storeCommit(_TreeCursor cursor, byte[] value) throws IOException {
+    final void storeCommit(boolean requireUndo, _TreeCursor cursor, byte[] value)
+        throws IOException
+    {
         if (mRedo == null) {
             cursor.store(this, cursor.leafExclusive(), value);
             commit();
@@ -336,7 +340,17 @@ final class _LocalTransaction extends _Locker implements Transaction {
             if (parentScope == null) {
                 long commitPos;
                 try {
-                    cursor.store(_LocalTransaction.BOGUS, cursor.leafExclusive(), value);
+                    if (requireUndo) {
+                        final DurabilityMode original = mDurabilityMode;
+                        mDurabilityMode = DurabilityMode.NO_REDO;
+                        try {
+                            cursor.store(this, cursor.leafExclusive(), value);
+                        } finally {
+                            mDurabilityMode = original;
+                        }
+                    } else {
+                        cursor.store(_LocalTransaction.BOGUS, cursor.leafExclusive(), value);
+                    }
 
                     if ((hasState & HAS_SCOPE) == 0) {
                         mContext.redoEnter(mRedo, txnId);
