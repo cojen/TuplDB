@@ -189,7 +189,7 @@ public interface ReplicationManager extends Closeable {
      * Called after a fence operation has been received and processed. All replication
      * processing and checkpoints are suspended until this method returns.
      *
-     * @param position log position immediately after the fench operation
+     * @param position log position immediately after the fence operation
      */
     default void fenced(long position) throws IOException {}
 
