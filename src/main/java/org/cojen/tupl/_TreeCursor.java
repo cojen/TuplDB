@@ -2676,7 +2676,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
                     locker.unlock();
                 }
             } else {
-                doCommit(txn, key, value);
+                doCommit(false, txn, key, value);
             }
         } catch (Throwable e) {
             throw handleException(e, false);
@@ -2684,13 +2684,16 @@ class _TreeCursor implements CauseCloseable, Cursor {
     }
 
     /**
+     * @param requireUndo true if undo logging is required (when key has been locked)
      * @param txn non-null
      */
-    final void doCommit(_LocalTransaction txn, byte[] key, byte[] value) throws IOException {
+    final void doCommit(boolean requireUndo, _LocalTransaction txn, byte[] key, byte[] value)
+        throws IOException
+    {
         if (txn.lockMode() != LockMode.UNSAFE) {
             txn.lockExclusive(mTree.mId, key, keyHash());
             if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
-                txn.storeCommit(this, value);
+                txn.storeCommit(requireUndo, this, value);
                 return;
             }
         }

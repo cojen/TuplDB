@@ -33,6 +33,9 @@ final class _TxnTreeCursor extends _TreeCursor {
         super(tree);
     }
 
+    // Note: Replicated transactions (via redo logging) require undo logging for all
+    // operations, because rollback is required when commits are rejected.
+
     @Override
     public final void store(byte[] value) throws IOException {
         byte[] key = mKey;
@@ -43,11 +46,7 @@ final class _TxnTreeCursor extends _TreeCursor {
             if (txn == null) {
                 txn = mTree.mDatabase.newAlwaysRedoTransaction();
                 try {
-                    if (txn.lockMode() != LockMode.UNSAFE) {
-                        txn.lockExclusive(mTree.mId, key, keyHash());
-                    }
-                    store(txn, leafExclusive(), value);
-                    txn.commit();
+                    doCommit(true, txn, key, value);
                 } catch (Throwable e) {
                     txn.reset();
                     throw e;
@@ -65,32 +64,24 @@ final class _TxnTreeCursor extends _TreeCursor {
 
     @Override
     public final void commit(byte[] value) throws IOException {
-        _LocalTransaction txn = mTxn;
+        byte[] key = mKey;
+        ViewUtils.positionCheck(key);
 
-        if (txn == null) {
-            store(value);
-        } else if (txn.durabilityMode() == DurabilityMode.NO_REDO) {
-            byte[] key = mKey;
-            ViewUtils.positionCheck(key);
-            try {
-                doCommit(txn, key, value);
-            } catch (Throwable e) {
-                throw handleException(e, false);
+        try {
+            _LocalTransaction txn = mTxn;
+            if (txn == null) {
+                txn = mTree.mDatabase.newAlwaysRedoTransaction();
+                try {
+                    doCommit(true, txn, key, value);
+                } catch (Throwable e) {
+                    txn.reset();
+                    throw e;
+                }
+            } else {
+                doCommit(txn.durabilityMode() != DurabilityMode.NO_REDO, txn, key, value);
             }
-        } else {
-            // Cannot use optimizations here. Replicated transactions need rollback support for
-            // all operations, including the last one.
-
-            // TODO: Figure out how to still use the combo store-commit redo operations.
-
-            try {
-                store(value);
-            } catch (Throwable e) {
-                txn.reset(e);
-                throw e;
-            }
-
-            txn.commit();
+        } catch (Throwable e) {
+            throw handleException(e, false);
         }
     }
 }

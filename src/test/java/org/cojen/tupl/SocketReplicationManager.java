@@ -150,6 +150,10 @@ class SocketReplicationManager implements ReplicationManager {
         }
     }
 
+    public void disableWrites() {
+        mWriter.mDisabled = true;
+    }
+
     public synchronized long waitForFence(long position) throws InterruptedException {
         while (true) {
             long current = mFencedPos;
@@ -163,6 +167,7 @@ class SocketReplicationManager implements ReplicationManager {
     private class StreamWriter implements Writer {
         private final OutputStream mOut;
         private boolean mNotified;
+        private volatile boolean mDisabled;
 
         StreamWriter(OutputStream out) throws IOException {
             mOut = out;
@@ -186,8 +191,10 @@ class SocketReplicationManager implements ReplicationManager {
         @Override
         public boolean write(byte[] b, int off, int len, long commitPos) {
             try {
-                mOut.write(b, off, len);
-                mPos += len;
+                if (!mDisabled) {
+                    mOut.write(b, off, len);
+                    mPos += len;
+                }
                 return true;
             } catch (IOException e) {
                 return false;
@@ -195,8 +202,12 @@ class SocketReplicationManager implements ReplicationManager {
         }
 
         @Override
-        public boolean confirm(long position, long timeoutNanos) {
-            // Implicitly confirmed.
+        public boolean confirm(long position, long timeoutNanos)
+            throws ConfirmationFailureException
+        {
+            if (mDisabled) {
+                throw new ConfirmationFailureException();
+            }
             return true;
         }
     }
