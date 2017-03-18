@@ -1,6 +1,9 @@
 Changelog
 =========
 
+v1.3.13
+-------
+
 v1.3.12 (2017-03-18)
 -------
 * Fix recovery handling of fragmented and deleted entries.
