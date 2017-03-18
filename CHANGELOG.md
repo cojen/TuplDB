@@ -1,7 +1,7 @@
 Changelog
 =========
 
-v1.3.12
+v1.3.12 (2017-03-18)
 -------
 * Fix recovery handling of fragmented and deleted entries.
 * Ensure that broken transactions always attempt to write rollback operations into the redo log.
