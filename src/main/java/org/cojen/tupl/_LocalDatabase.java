@@ -32,6 +32,7 @@ import java.io.InterruptedIOException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.io.Writer;
 
@@ -137,6 +138,7 @@ final class _LocalDatabase extends AbstractDatabase {
     final TransactionHandler mCustomTxnHandler;
 
     private final File mBaseFile;
+    private final boolean mReadOnly;
     private final LockedFile mLockFile;
 
     final DurabilityMode mDurabilityMode;
@@ -282,6 +284,7 @@ final class _LocalDatabase extends AbstractDatabase {
         mCustomTxnHandler = config.mTxnHandler;
 
         mBaseFile = config.mBaseFile;
+        mReadOnly = config.mReadOnly;
         final File[] dataFiles = config.dataFiles();
 
         int pageSize = config.mPageSize;
@@ -352,7 +355,7 @@ final class _LocalDatabase extends AbstractDatabase {
             }
         }
 
-        if (mBaseFile != null && !config.mReadOnly && config.mMkdirs) {
+        if (mBaseFile != null && !mReadOnly && config.mMkdirs) {
             FileFactory factory = config.mFileFactory;
 
             final boolean baseDirectoriesCreated;
@@ -392,11 +395,11 @@ final class _LocalDatabase extends AbstractDatabase {
                 File lockFile = new File(mBaseFile.getPath() + LOCK_FILE_SUFFIX);
 
                 FileFactory factory = config.mFileFactory;
-                if (factory != null && !config.mReadOnly) {
+                if (factory != null && !mReadOnly) {
                     factory.createFile(lockFile);
                 }
 
-                mLockFile = new LockedFile(lockFile, config.mReadOnly);
+                mLockFile = new LockedFile(lockFile, mReadOnly);
             }
 
             if (openMode == OPEN_DESTROY) {
@@ -417,6 +420,11 @@ final class _LocalDatabase extends AbstractDatabase {
             boolean fullyMapped = false;
             /*P*/ // ]
 
+            EventListener debugListener = null;
+            if (config.mDebugOpen != null) {
+                debugListener = mEventListener;
+            }
+
             if (dataFiles == null) {
                 PageArray dataPageArray = config.mDataPageArray;
                 if (dataPageArray == null) {
@@ -425,7 +433,7 @@ final class _LocalDatabase extends AbstractDatabase {
                     dataPageArray = dataPageArray.open();
                     Crypto crypto = config.mCrypto;
                     mPageDb = _DurablePageDb.open
-                        (dataPageArray, cache, crypto, openMode == OPEN_DESTROY);
+                        (debugListener, dataPageArray, cache, crypto, openMode == OPEN_DESTROY);
                     /*P*/ // [|
                     fullyMapped = crypto == null && cache == null
                                   && dataPageArray instanceof MappedPageArray;
@@ -433,10 +441,21 @@ final class _LocalDatabase extends AbstractDatabase {
                 }
             } else {
                 EnumSet<OpenOption> options = config.createOpenOptions();
-                mPageDb = _DurablePageDb.open
-                    (explicitPageSize, pageSize,
-                     dataFiles, config.mFileFactory, options,
-                     cache, config.mCrypto, openMode == OPEN_DESTROY);
+
+                _PageDb pageDb;
+                try {
+                    pageDb = _DurablePageDb.open
+                        (debugListener, explicitPageSize, pageSize,
+                         dataFiles, config.mFileFactory, options,
+                         cache, config.mCrypto, openMode == OPEN_DESTROY);
+                } catch (FileNotFoundException e) {
+                    if (!mReadOnly) {
+                        throw e;
+                    }
+                    pageDb = new _NonPageDb(pageSize, cache);
+                }
+
+                mPageDb = pageDb;
             }
 
             /*P*/ // [|
@@ -454,7 +473,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
             // Write info file of properties, after database has been opened and after page
             // size is truly known.
-            if (mBaseFile != null && openMode != OPEN_TEMP && !config.mReadOnly) {
+            if (mBaseFile != null && openMode != OPEN_TEMP && !mReadOnly) {
                 File infoFile = new File(mBaseFile.getPath() + INFO_FILE_SUFFIX);
 
                 FileFactory factory = config.mFileFactory;
@@ -582,7 +601,7 @@ final class _LocalDatabase extends AbstractDatabase {
             mPageDb.readExtraCommitData(header);
 
             // Also verifies the database and replication encodings.
-            _Node rootNode = loadRegistryRoot(header, config.mReplManager);
+            _Node rootNode = loadRegistryRoot(config, header);
 
             // Cannot call newTreeInstance because mRedoWriter isn't set yet.
             if (config.mReplManager != null) {
@@ -608,10 +627,32 @@ final class _LocalDatabase extends AbstractDatabase {
             long redoPos = decodeLongLE(header, I_REDO_POSITION);
             long redoTxnId = decodeLongLE(header, I_REDO_TXN_ID);
 
+            if (debugListener != null) {
+                debugListener.notify(EventType.DEBUG, "MASTER_UNDO_LOG_PAGE_ID: %1$d",
+                                     decodeLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID));
+                debugListener.notify(EventType.DEBUG, "TRANSACTION_ID: %1$d", txnId);
+                debugListener.notify(EventType.DEBUG, "CHECKPOINT_NUMBER: %1$d", redoNum);
+                debugListener.notify(EventType.DEBUG, "REDO_TXN_ID: %1$d", redoPos);
+                debugListener.notify(EventType.DEBUG, "REDO_POSITION: %1$d", redoTxnId);
+            }
+
             if (openMode == OPEN_TEMP) {
                 mRegistryKeyMap = null;
             } else {
                 mRegistryKeyMap = openInternalTree(_Tree.REGISTRY_KEY_MAP_ID, true, config);
+                if (debugListener != null) {
+                    Cursor c = indexRegistryById().newCursor(Transaction.BOGUS);
+                    try {
+                        for (c.first(); c.key() != null; c.next()) {
+                            long indexId = decodeLongBE(c.key(), 0);
+                            String nameStr = new String(c.value(), StandardCharsets.UTF_8);
+                            debugListener.notify(EventType.DEBUG, "Index: id=%1$d, name=%2$s",
+                                                 indexId, nameStr);
+                        }
+                    } finally {
+                        c.reset();
+                    }
+                }
             }
 
             mDirtyList = new _NodeDirtyList();
@@ -656,8 +697,14 @@ final class _LocalDatabase extends AbstractDatabase {
                             mEventListener.notify
                                 (EventType.RECOVERY_LOAD_UNDO_LOGS, "Loading undo logs");
                         }
-                        _UndoLog.recoverMasterUndoLog(this, masterNodeId)
-                            .recoverTransactions(txns, LockMode.UPGRADABLE_READ, 0L);
+
+                        _UndoLog master = _UndoLog.recoverMasterUndoLog(this, masterNodeId);
+
+                        boolean trace = debugListener != null &&
+                            Boolean.TRUE.equals(config.mDebugOpen.get("traceUndo"));
+
+                        master.recoverTransactions
+                            (debugListener, trace, txns, LockMode.UPGRADABLE_READ, 0);
                     }
                 }
 
@@ -684,68 +731,85 @@ final class _LocalDatabase extends AbstractDatabase {
                     // Apply cache primer before applying redo logs.
                     applyCachePrimer(config);
 
-                    long logId = redoNum;
+                    final long logId = redoNum;
 
-                    // Make sure old redo logs are deleted. Process might have exited
-                    // before last checkpoint could delete them.
-                    for (int i=1; i<=2; i++) {
-                        _RedoLog.deleteOldFile(config.mBaseFile, logId - i);
-                    }
+                    if (mReadOnly) {
+                        mRedoWriter = null;
 
-                    _RedoLogApplier applier = new _RedoLogApplier(this, txns);
-                    _RedoLog replayLog = new _RedoLog(config, logId, redoPos);
+                        if (debugListener != null &&
+                            Boolean.TRUE.equals(config.mDebugOpen.get("traceRedo")))
+                        {
+                            RedoEventPrinter printer = new RedoEventPrinter
+                                (debugListener, EventType.DEBUG);
 
-                    // As a side-effect, log id is set one higher than last file scanned.
-                    Set<File> redoFiles = replayLog.replay
-                        (applier, mEventListener, EventType.RECOVERY_APPLY_REDO_LOG,
-                         "Applying redo log: %1$d");
+                            _RedoLog replayLog = new _RedoLog(config, logId, redoPos);
 
-                    boolean doCheckpoint = !redoFiles.isEmpty();
-
-                    // Avoid re-using transaction ids used by recovery.
-                    redoTxnId = applier.mHighestTxnId;
-                    if (redoTxnId != 0) {
-                        // Subtract for modulo comparison.
-                        if (txnId == 0 || (redoTxnId - txnId) > 0) {
-                            txnId = redoTxnId;
+                            replayLog.replay
+                                (printer, debugListener, EventType.RECOVERY_APPLY_REDO_LOG,
+                                 "Applying redo log: %1$d");
                         }
-                    }
-
-                    if (txns.size() > 0) {
-                        // Rollback or truncate all remaining transactions. They were never
-                        // explicitly rolled back, or they were committed but not cleaned up.
-
-                        if (mEventListener != null) {
-                            mEventListener.notify
-                                (EventType.RECOVERY_PROCESS_REMAINING,
-                                 "Processing remaining transactions");
+                    } else {
+                        // Make sure old redo logs are deleted. Process might have exited
+                        // before last checkpoint could delete them.
+                        for (int i=1; i<=2; i++) {
+                            _RedoLog.deleteOldFile(config.mBaseFile, logId - i);
                         }
 
-                        txns.traverse((entry) -> {
-                            entry.value.recoveryCleanup(true);
-                            return false;
-                        });
+                        _RedoLogApplier applier = new _RedoLogApplier(this, txns);
+                        _RedoLog replayLog = new _RedoLog(config, logId, redoPos);
 
-                        doCheckpoint = true;
-                    }
+                        // As a side-effect, log id is set one higher than last file scanned.
+                        Set<File> redoFiles = replayLog.replay
+                            (applier, mEventListener, EventType.RECOVERY_APPLY_REDO_LOG,
+                             "Applying redo log: %1$d");
 
-                    // New redo logs begin with identifiers one higher than last scanned.
-                    mRedoWriter = new _RedoLog(config, replayLog, mTxnContexts[0]);
+                        boolean doCheckpoint = !redoFiles.isEmpty();
 
-                    // TODO: If any exception is thrown before checkpoint is complete, delete
-                    // the newly created redo log file.
-
-                    if (doCheckpoint) {
-                        checkpoint(true, 0, 0);
-                        // Only cleanup after successful checkpoint.
-                        for (File file : redoFiles) {
-                            file.delete();
+                        // Avoid re-using transaction ids used by recovery.
+                        redoTxnId = applier.mHighestTxnId;
+                        if (redoTxnId != 0) {
+                            // Subtract for modulo comparison.
+                            if (txnId == 0 || (redoTxnId - txnId) > 0) {
+                                txnId = redoTxnId;
+                            }
                         }
-                    }
 
-                    // Delete lingering fragmented values after undo logs have been processed,
-                    // ensuring deletes were committed.
-                    emptyAllFragmentedTrash(true);
+                        if (txns.size() > 0) {
+                            // Rollback or truncate all remaining transactions. They were never
+                            // explicitly rolled back, or they were committed but not cleaned up.
+
+                            if (mEventListener != null) {
+                                mEventListener.notify
+                                    (EventType.RECOVERY_PROCESS_REMAINING,
+                                     "Processing remaining transactions");
+                            }
+
+                            txns.traverse((entry) -> {
+                                entry.value.recoveryCleanup(true);
+                                return false;
+                            });
+
+                            doCheckpoint = true;
+                        }
+
+                        // New redo logs begin with identifiers one higher than last scanned.
+                        mRedoWriter = new _RedoLog(config, replayLog, mTxnContexts[0]);
+
+                        // TODO: If any exception is thrown before checkpoint is complete,
+                        // delete the newly created redo log file.
+
+                        if (doCheckpoint) {
+                            checkpoint(true, 0, 0);
+                            // Only cleanup after successful checkpoint.
+                            for (File file : redoFiles) {
+                                file.delete();
+                            }
+                        }
+
+                        // Delete lingering fragmented values after undo logs have been
+                        // processed, ensuring deletes were committed.
+                        emptyAllFragmentedTrash(true);
+                    }
 
                     recoveryComplete(recoveryStart);
                 }
@@ -789,7 +853,7 @@ final class _LocalDatabase extends AbstractDatabase {
             applyCachePrimer(config);
         }
 
-        if (config.mCachePriming && mPageDb.isDurable()) {
+        if (config.mCachePriming && mPageDb.isDurable() && !mReadOnly) {
             c.register(new ShutdownPrimer(this));
         }
 
@@ -839,13 +903,14 @@ final class _LocalDatabase extends AbstractDatabase {
                             applyCachePrimer(bin);
                         } catch (IOException e) {
                             fin.close();
-                            primer.delete();
                         }
                     } catch (IOException e) {
                     }
                 }
             } finally {
-                primer.delete();
+                if (!mReadOnly) {
+                    primer.delete();
+                }
             }
         }
     }
@@ -857,6 +922,10 @@ final class _LocalDatabase extends AbstractDatabase {
 
         @Override
         void doShutdown(_LocalDatabase db) {
+            if (db.mReadOnly) {
+                return;
+            }
+
             File primer = db.primerFile();
 
             FileOutputStream fout;
@@ -880,7 +949,7 @@ final class _LocalDatabase extends AbstractDatabase {
     }
 
     private void recoveryComplete(long recoveryStart) {
-        if (mRedoWriter != null && mEventListener != null) {
+        if (mEventListener != null) {
             double duration = (System.nanoTime() - recoveryStart) / 1_000_000_000.0;
             mEventListener.notify(EventType.RECOVERY_COMPLETE,
                                   "Recovery completed in %1$1.3f seconds",
@@ -889,7 +958,7 @@ final class _LocalDatabase extends AbstractDatabase {
     }
 
     private void deleteRedoLogFiles() throws IOException {
-        if (mBaseFile != null) {
+        if (mBaseFile != null && !mReadOnly) {
             deleteNumberedFiles(mBaseFile, REDO_FILE_SUFFIX);
         }
     }
@@ -1627,6 +1696,10 @@ final class _LocalDatabase extends AbstractDatabase {
      * @param in snapshot source; does not require extra buffering; auto-closed
      */
     static Database restoreFromSnapshot(DatabaseConfig config, InputStream in) throws IOException {
+        if (config.mReadOnly) {
+            throw new IllegalArgumentException("Cannot restore into a read-only database");
+        }
+
         config = config.clone();
         _PageDb restored;
 
@@ -1647,13 +1720,11 @@ final class _LocalDatabase extends AbstractDatabase {
 
             restored = _DurablePageDb.restoreFromSnapshot(dataPageArray, null, config.mCrypto, in);
         } else {
-            if (!config.mReadOnly) {
-                for (File f : dataFiles) {
-                    // Delete old data file.
-                    f.delete();
-                    if (config.mMkdirs) {
-                        f.getParentFile().mkdirs();
-                    }
+            for (File f : dataFiles) {
+                // Delete old data file.
+                f.delete();
+                if (config.mMkdirs) {
+                    f.getParentFile().mkdirs();
                 }
             }
 
@@ -1848,24 +1919,41 @@ final class _LocalDatabase extends AbstractDatabase {
         }
     }
 
-    private void flushAllContexts() throws IOException {
-        for (_TransactionContext context : mTxnContexts) {
-            context.flush();
-        }
-    }
-
     @Override
     public void flush() throws IOException {
-        if (!isClosed() && mRedoWriter != null) {
-            flushAllContexts();
-        }
+        flush(0); // flush only
     }
 
     @Override
     public void sync() throws IOException {
+        flush(1); // flush and sync
+    }
+
+    /**
+     * @param level 0: flush only, 1: flush and sync, 2: flush and sync metadata
+     */
+    private void flush(int level) throws IOException {
+        UnmodifiableReplicaException ure = null;
+
         if (!isClosed() && mRedoWriter != null) {
-            flushAllContexts();
-            mRedoWriter.force(false);
+            for (_TransactionContext context : mTxnContexts) {
+                try {
+                    context.flush();
+                } catch (UnmodifiableReplicaException e) {
+                    // Discard all transaction contexts if no longer the leader.
+                    if (ure == null) {
+                        ure = e;
+                    }
+                }
+            }
+
+            if (level > 0) {
+                mRedoWriter.force(level > 1);
+            }
+        }
+
+        if (ure != null) {
+            throw ure;
         }
     }
 
@@ -1923,7 +2011,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 // Total pages freed.
                 long freed = stats.totalPages - targetPageCount;
 
-                // Scale by the maximum size for encoding page identifers, assuming no savings
+                // Scale by the maximum size for encoding page identifiers, assuming no savings
                 // from delta encoding.
                 freed *= calcUnsignedVarLongLength(stats.totalPages << 1);
 
@@ -2237,7 +2325,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 ex = closeQuietly(ex, mPageDb, cause);
                 ex = closeQuietly(ex, mTempFileManager, cause);
 
-                if (shutdown && mBaseFile != null) {
+                if (shutdown && mBaseFile != null && !mReadOnly) {
                     deleteRedoLogFiles();
                     new File(mBaseFile.getPath() + INFO_FILE_SUFFIX).delete();
                     ex = closeQuietly(ex, mLockFile, cause);
@@ -2404,7 +2492,7 @@ final class _LocalDatabase extends AbstractDatabase {
      */
     private _Node loadTreeRoot(final long treeId, final long rootId) throws IOException {
         if (rootId == 0) {
-            // Pass tree identifer to spread allocations around.
+            // Pass tree identifier to spread allocations around.
             _Node rootNode = allocLatchedNode(treeId, _NodeUsageList.MODE_UNEVICTABLE);
 
             try {
@@ -2456,8 +2544,12 @@ final class _LocalDatabase extends AbstractDatabase {
      * Loads the root registry node, or creates one if store is new. Root node
      * is not eligible for eviction.
      */
-    private _Node loadRegistryRoot(byte[] header, ReplicationManager rm) throws IOException {
+    private _Node loadRegistryRoot(DatabaseConfig config, byte[] header) throws IOException {
         int version = decodeIntLE(header, I_ENCODING_VERSION);
+
+        if (config.mDebugOpen != null) {
+            mEventListener.notify(EventType.DEBUG, "ENCODING_VERSION: %1$d", version);
+        }
 
         long rootId;
         if (version == 0) {
@@ -2470,6 +2562,12 @@ final class _LocalDatabase extends AbstractDatabase {
             }
 
             long replEncoding = decodeLongLE(header, I_REPL_ENCODING);
+
+            if (config.mDebugOpen != null) {
+                mEventListener.notify(EventType.DEBUG, "REPL_ENCODING: %1$d", replEncoding);
+            }
+
+            ReplicationManager rm = config.mReplManager;
 
             if (rm == null) {
                 if (replEncoding != 0) {
@@ -2491,6 +2589,10 @@ final class _LocalDatabase extends AbstractDatabase {
             }
 
             rootId = decodeLongLE(header, I_ROOT_PAGE_ID);
+
+            if (config.mDebugOpen != null) {
+                mEventListener.notify(EventType.DEBUG, "ROOT_PAGE_ID: %1$d", rootId);
+            }
         }
 
         return loadTreeRoot(0, rootId);
@@ -3425,9 +3527,21 @@ final class _LocalDatabase extends AbstractDatabase {
             long oldId = node.mId;
 
             if (oldId != 0) {
+                // Must be removed from map before page is deleted. It could be recycled too
+                // soon, creating a NodeMap collision.
+                boolean removed = nodeMapRemove(node, Long.hashCode(oldId));
+
                 try {
                     mPageDb.deletePage(oldId);
                 } catch (Throwable e) {
+                    // Try to undo things.
+                    if (removed) {
+                        try {
+                            nodeMapPut(node);
+                        } catch (Throwable e2) {
+                            Utils.suppress(e, e2);
+                        }
+                    }
                     try {
                         mPageDb.recyclePage(newId);
                     } catch (Throwable e2) {
@@ -3437,8 +3551,6 @@ final class _LocalDatabase extends AbstractDatabase {
                     }
                     throw e;
                 }
-
-                nodeMapRemove(node, Long.hashCode(oldId));
             }
 
             dirty(node, newId);
@@ -3504,25 +3616,36 @@ final class _LocalDatabase extends AbstractDatabase {
             throw e;
         }
 
-        try {
-            if (oldId != 0) {
+        if (oldId != 0) {
+            // Must be removed from map before page is deleted. It could be recycled too soon,
+            // creating a NodeMap collision.
+            boolean removed = nodeMapRemove(node, Long.hashCode(oldId));
+
+            try {
                 // TODO: This can hang on I/O; release frame latch if deletePage would block?
                 // Then allow thread to block without node latch held.
                 mPageDb.deletePage(oldId);
-                nodeMapRemove(node, Long.hashCode(oldId));
-            }
-        } catch (Throwable e) {
-            try {
-                if (node == tree.mRoot) {
-                    storeTreeRootId(tree, oldId);
+            } catch (Throwable e) {
+                // Try to undo things.
+                if (removed) {
+                    try {
+                        nodeMapPut(node);
+                    } catch (Throwable e2) {
+                        Utils.suppress(e, e2);
+                    }
                 }
-                mPageDb.recyclePage(newId);
-            } catch (Throwable e2) {
-                // Panic.
-                Utils.suppress(e, e2);
-                close(e);
+                try {
+                    if (node == tree.mRoot) {
+                        storeTreeRootId(tree, oldId);
+                    }
+                    mPageDb.recyclePage(newId);
+                } catch (Throwable e2) {
+                    // Panic.
+                    Utils.suppress(e, e2);
+                    close(e);
+                }
+                throw e;
             }
-            throw e;
         }
 
         dirty(node, newId);
@@ -3613,12 +3736,12 @@ final class _LocalDatabase extends AbstractDatabase {
         try {
             long id = node.mId;
 
-            // Must be removed from map before page is deleted. It could be recycled too soon,
-            // creating a NodeMap collision.
-            boolean removed = nodeMapRemove(node, Long.hashCode(id));
+            if (id != 0) {
+                // Must be removed from map before page is deleted. It could be recycled too
+                // soon, creating a NodeMap collision.
+                boolean removed = nodeMapRemove(node, Long.hashCode(id));
 
-            try {
-                if (id != 0) {
+                try {
                     if (canRecycle && node.mCachedState == mCommitState) {
                         // Newly reserved page was never used, so recycle it.
                         mPageDb.recyclePage(id);
@@ -3626,22 +3749,23 @@ final class _LocalDatabase extends AbstractDatabase {
                         // Old data must survive until after checkpoint.
                         mPageDb.deletePage(id);
                     }
-                }
-            } catch (Throwable e) {
-                // Try to undo things.
-                if (removed) {
-                    try {
-                        nodeMapPut(node);
-                    } catch (Throwable e2) {
-                        Utils.suppress(e, e2);
+                } catch (Throwable e) {
+                    // Try to undo things.
+                    if (removed) {
+                        try {
+                            nodeMapPut(node);
+                        } catch (Throwable e2) {
+                            Utils.suppress(e, e2);
+                        }
                     }
+                    throw e;
                 }
-                throw e;
-            }
 
-            // When id is <= 1, it won't be moved to a secondary cache. Preserve the original
-            // id for non-durable database to recycle it. Durable database relies on free list.
-            node.mId = -id;
+                // When id is <= 1, it won't be moved to a secondary cache. Preserve the
+                // original id for non-durable database to recycle it. Durable database relies
+                // on the free list.
+                node.mId = -id;
+            }
 
             // When node is re-allocated, it will be evicted. Ensure that eviction
             // doesn't write anything.
@@ -4314,7 +4438,7 @@ final class _LocalDatabase extends AbstractDatabase {
      * If fragmented trash exists, non-transactionally delete all fragmented values. Expected
      * to be called only during recovery or replication leader switch.
      */
-    void emptyAllFragmentedTrash(boolean checkpoint) throws IOException {
+    private void emptyAllFragmentedTrash(boolean checkpoint) throws IOException {
         _FragmentedTrash trash = mFragmentedTrash;
         if (trash != null && trash.emptyAllTrash(mEventListener) && checkpoint) {
             checkpoint(false, 0, 0);
@@ -4388,6 +4512,12 @@ final class _LocalDatabase extends AbstractDatabase {
     }
 
     @Override
+    long redoFence() throws IOException {
+        _RedoWriter redo = txnRedoWriter();
+        return redo == null ? 0 : redo.writeFence();
+    }
+
+    @Override
     void checkpoint(boolean force, long sizeThreshold, long delayThresholdNanos)
         throws IOException
     {
@@ -4423,8 +4553,11 @@ final class _LocalDatabase extends AbstractDatabase {
 
                     // Thresholds not met for a full checkpoint, but fully sync the redo log
                     // for durability.
-                    flushAllContexts();
-                    mRedoWriter.force(true);
+                    try {
+                        flush(2); // flush and sync metadata
+                    } catch (UnmodifiableReplicaException e) {
+                        // Ignore.
+                    }
 
                     return;
                 }
@@ -4441,12 +4574,14 @@ final class _LocalDatabase extends AbstractDatabase {
                         root.releaseShared();
                     }
 
-                    // Root is clean, so no need for full checkpoint,
-                    // but fully sync the redo log for durability.
-                    if (mRedoWriter != null) {
-                        flushAllContexts();
-                        mRedoWriter.force(true);
+                    // Root is clean, so no need for full checkpoint, but fully sync the redo
+                    // log for durability.
+                    try {
+                        flush(2); // flush and sync metadata
+                    } catch (UnmodifiableReplicaException e) {
+                        // Ignore.
                     }
+
                     return;
                 }
             }

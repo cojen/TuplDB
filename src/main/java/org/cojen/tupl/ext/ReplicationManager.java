@@ -186,6 +186,14 @@ public interface ReplicationManager extends Closeable {
     void checkpointed(long position) throws IOException;
 
     /**
+     * Called after a fence operation has been received and processed. All replication
+     * processing and checkpoints are suspended until this method returns.
+     *
+     * @param position log position immediately after the fence operation
+     */
+    default void fenced(long position) throws IOException {}
+
+    /**
      * Notification to replica when an entry is stored into an index. All notifications are
      * {@link LockMode#READ_UNCOMMITTED uncommitted}, and so loading with an appropriate lock
      * mode is required for confirmation. The current thread is free to perform any blocking

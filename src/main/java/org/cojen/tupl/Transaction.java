@@ -178,7 +178,8 @@ public interface Transaction {
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @param key non-null key to lock; instance is not cloned
+     * @param key non-null key to lock; instance is not cloned and so it must not be modified
+     * after calling this method
      * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link
      * LockResult#OWNED_SHARED OWNED_SHARED}, {@link
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
@@ -197,7 +198,8 @@ public interface Transaction {
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @param key non-null key to lock; instance is not cloned
+     * @param key non-null key to lock; instance is not cloned and so it must not be modified
+     * after calling this method
      * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
@@ -214,7 +216,8 @@ public interface Transaction {
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @param key non-null key to lock; instance is not cloned
+     * @param key non-null key to lock; instance is not cloned and so it must not be modified
+     * after calling this method
      * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link LockResult#UPGRADED
      * UPGRADED}, or {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
@@ -231,7 +234,9 @@ public interface Transaction {
      * @param message message to pass to transaction handler
      * @param indexId index for lock acquisition; zero if not applicable
      * @param key key which has been locked exclusively; null if not applicable
-     * @throws IllegalStateException if no transaction handler is installed
+     * @throws IllegalStateException if no transaction handler is installed; if index and key
+     * are provided but lock isn't held
+     * @throws IllegalArgumentException if index id is zero and key is non-null
      * @see org.cojen.tupl.ext.TransactionHandler
      */
     void customRedo(byte[] message, long indexId, byte[] key) throws IOException;
@@ -266,7 +271,8 @@ public interface Transaction {
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @param key non-null key to lock; instance is not cloned
+     * @param key non-null key to lock; instance is not cloned and so it must not be modified
+     * after calling this method
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
      * @return {@link LockResult#INTERRUPTED INTERRUPTED}, {@link
      * LockResult#TIMED_OUT_LOCK TIMED_OUT_LOCK}, {@link LockResult#ACQUIRED
@@ -287,7 +293,8 @@ public interface Transaction {
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @param key non-null key to lock; instance is not cloned
+     * @param key non-null key to lock; instance is not cloned and so it must not be modified
+     * after calling this method
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
      * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link
      * LockResult#OWNED_SHARED OWNED_SHARED}, {@link
@@ -310,7 +317,8 @@ public interface Transaction {
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @param key non-null key to lock; instance is not cloned
+     * @param key non-null key to lock; instance is not cloned and so it must not be modified
+     * after calling this method
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
      * @return {@link LockResult#ILLEGAL ILLEGAL}, {@link
      * LockResult#INTERRUPTED INTERRUPTED}, {@link LockResult#TIMED_OUT_LOCK
@@ -330,7 +338,8 @@ public interface Transaction {
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @param key non-null key to lock; instance is not cloned
+     * @param key non-null key to lock; instance is not cloned and so it must not be modified
+     * after calling this method
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
      * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
@@ -350,7 +359,8 @@ public interface Transaction {
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @param key non-null key to lock; instance is not cloned
+     * @param key non-null key to lock; instance is not cloned and so it must not be modified
+     * after calling this method
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
      * @return {@link LockResult#ILLEGAL ILLEGAL}, {@link
      * LockResult#INTERRUPTED INTERRUPTED}, {@link LockResult#TIMED_OUT_LOCK
@@ -370,7 +380,8 @@ public interface Transaction {
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @param key non-null key to lock; instance is not cloned
+     * @param key non-null key to lock; instance is not cloned and so it must not be modified
+     * after calling this method
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
      * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link LockResult#UPGRADED
      * UPGRADED}, or {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}

@@ -260,7 +260,8 @@ public interface View {
      * required. Ownership of the key instance is transferred, and so the key must not be
      * modified after calling this method.
      *
-     * @param key non-null key to lock; instance is not cloned
+     * @param key non-null key to lock; instance is not cloned and so it must not be modified
+     * after calling this method
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
      * @return {@link LockResult#INTERRUPTED INTERRUPTED}, {@link
      * LockResult#TIMED_OUT_LOCK TIMED_OUT_LOCK}, {@link LockResult#ACQUIRED
@@ -285,7 +286,8 @@ public interface View {
      * required. Ownership of the key instance is transferred, and so the key must not be
      * modified after calling this method.
      *
-     * @param key non-null key to lock; instance is not cloned
+     * @param key non-null key to lock; instance is not cloned and so it must not be modified
+     * after calling this method
      * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link LockResult#OWNED_SHARED
      * OWNED_SHARED}, {@link LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
@@ -305,7 +307,8 @@ public interface View {
      * required. Ownership of the key instance is transferred, and so the key must not be
      * modified after calling this method.
      *
-     * @param key non-null key to lock; instance is not cloned
+     * @param key non-null key to lock; instance is not cloned and so it must not be modified
+     * after calling this method
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
      * @return {@link LockResult#ILLEGAL ILLEGAL}, {@link
      * LockResult#INTERRUPTED INTERRUPTED}, {@link LockResult#TIMED_OUT_LOCK
@@ -329,7 +332,8 @@ public interface View {
      * required. Ownership of the key instance is transferred, and so the key must not be
      * modified after calling this method.
      *
-     * @param key non-null key to lock; instance is not cloned
+     * @param key non-null key to lock; instance is not cloned and so it must not be modified
+     * after calling this method
      * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link LockResult#OWNED_UPGRADABLE
      * OWNED_UPGRADABLE}, or {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
@@ -347,7 +351,8 @@ public interface View {
      * required. Ownership of the key instance is transferred, and so the key must not be
      * modified after calling this method.
      *
-     * @param key non-null key to lock; instance is not cloned
+     * @param key non-null key to lock; instance is not cloned and so it must not be modified
+     * after calling this method
      * @param nanosTimeout maximum time to wait for lock; negative timeout is infinite
      * @return {@link LockResult#ILLEGAL ILLEGAL}, {@link
      * LockResult#INTERRUPTED INTERRUPTED}, {@link LockResult#TIMED_OUT_LOCK
@@ -371,7 +376,8 @@ public interface View {
      * required. Ownership of the key instance is transferred, and so the key must not be
      * modified after calling this method.
      *
-     * @param key non-null key to lock; instance is not cloned
+     * @param key non-null key to lock; instance is not cloned and so it must not be modified
+     * after calling this method
      * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link LockResult#UPGRADED UPGRADED}, or
      * {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade

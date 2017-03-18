@@ -75,7 +75,7 @@ abstract class _PageDb implements CauseCloseable {
         public long freePages;
 
         public String toString() {
-            return "_PageDb.Stats {totalPages=" + totalPages + ", freePages=" + freePages + '}';
+            return "PageDb.Stats {totalPages=" + totalPages + ", freePages=" + freePages + '}';
         }
     }
 

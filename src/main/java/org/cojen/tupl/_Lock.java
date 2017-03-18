@@ -96,6 +96,9 @@ final class _Lock {
 
         LatchCondition queueSX = mQueueSX;
         if (queueSX != null) {
+            if (mLockCount != 0 && isSharedLockOwner(locker)) {
+                return OWNED_SHARED;
+            }
             if (nanosTimeout == 0) {
                 locker.mWaitingFor = this;
                 return TIMED_OUT_LOCK;
@@ -120,8 +123,14 @@ final class _Lock {
             int w = queueSX.awaitShared(latch, nanosTimeout, nanosEnd);
             queueSX = mQueueSX;
 
+            if (queueSX == null) {
+                // Assume _LockManager was closed.
+                locker.mWaitingFor = null;
+                return INTERRUPTED;
+            }
+
             // After consuming one signal, next shared waiter must be signaled, and so on.
-            if (queueSX != null && !queueSX.signalNextShared()) {
+            if (!queueSX.signalNextShared()) {
                 // Indicate that last signal has been consumed, and also free memory.
                 mQueueSX = null;
             }
@@ -153,10 +162,6 @@ final class _Lock {
 
             if (nanosTimeout >= 0 && (nanosTimeout = nanosEnd - System.nanoTime()) <= 0) {
                 return TIMED_OUT_LOCK;
-            }
-
-            if (mQueueSX == null) {
-                mQueueSX = queueSX = new LatchCondition();
             }
         }
     }
@@ -215,7 +220,13 @@ final class _Lock {
             int w = queueU.await(latch, nanosTimeout, nanosEnd);
             queueU = mQueueU;
 
-            if (queueU != null && queueU.isEmpty()) {
+            if (queueU == null) {
+                // Assume _LockManager was closed.
+                locker.mWaitingFor = null;
+                return INTERRUPTED;
+            }
+
+            if (queueU.isEmpty()) {
                 // Indicate that last signal has been consumed, and also free memory.
                 mQueueU = null;
             }
@@ -268,10 +279,6 @@ final class _Lock {
             if (nanosTimeout >= 0 && (nanosTimeout = nanosEnd - System.nanoTime()) <= 0) {
                 return TIMED_OUT_LOCK;
             }
-
-            if (mQueueU == null) {
-                mQueueU = queueU = new LatchCondition();
-            }
         }
     }
 
@@ -321,7 +328,13 @@ final class _Lock {
             int w = queueSX.await(latch, nanosTimeout, nanosEnd);
             queueSX = mQueueSX;
 
-            if (queueSX != null && queueSX.isEmpty()) {
+            if (queueSX == null) {
+                // Assume _LockManager was closed.
+                locker.mWaitingFor = null;
+                return INTERRUPTED;
+            }
+
+            if (queueSX.isEmpty()) {
                 // Indicate that last signal has been consumed, and also free memory.
                 mQueueSX = null;
             }
@@ -356,10 +369,6 @@ final class _Lock {
 
             if (nanosTimeout >= 0 && (nanosTimeout = nanosEnd - System.nanoTime()) <= 0) {
                 return TIMED_OUT_LOCK;
-            }
-
-            if (mQueueSX == null) {
-                mQueueSX = queueSX = new LatchCondition();
             }
         }
     }
@@ -451,7 +460,12 @@ final class _Lock {
                     }
                 }
 
-                throw new IllegalStateException("_Lock not held");
+                if (isClosed(locker)) {
+                    ht.releaseExclusive();
+                    return;
+                }
+
+                throw new IllegalStateException("Lock not held");
             }
 
             mLockCount = --count;
@@ -520,8 +534,8 @@ final class _Lock {
             if (queueU != null && queueU.signalRelease(latch)) {
                 return;
             }
-        } else if (mLockCount == 0 || !isSharedLockOwner(locker)) {
-            throw new IllegalStateException("_Lock not held");
+        } else if ((mLockCount == 0 || !isSharedLockOwner(locker)) && !isClosed(locker)) {
+            throw new IllegalStateException("Lock not held");
         }
 
         latch.releaseExclusive();
@@ -535,9 +549,13 @@ final class _Lock {
      */
     void unlockToUpgradable(_LockOwner locker, Latch latch) {
         if (mOwner != locker) {
+            if (isClosed(locker)) {
+                latch.releaseExclusive();
+                return;
+            }
             String message = "Exclusive or upgradable lock not held";
             if (mLockCount == 0 || !isSharedLockOwner(locker)) {
-                message = "_Lock not held";
+                message = "Lock not held";
             }
             throw new IllegalStateException(message);
         }
@@ -552,6 +570,11 @@ final class _Lock {
         if (queueSX == null || !queueSX.signalSharedRelease(latch)) {
             latch.releaseExclusive();
         }
+    }
+
+    private static boolean isClosed(_LockOwner locker) {
+        _LocalDatabase db = locker.getDatabase();
+        return db != null && db.isClosed();
     }
 
     /**
@@ -586,6 +609,12 @@ final class _Lock {
             shared = db.commitLock().acquireShared();
         }
 
+        // Note: Unlike regular frames, ghost frames cannot be unbound (popAll)
+        // from the node after the node latch is released. If the node latch is
+        // released before the frame is unbound, another thread can then evict
+        // the node and unbind the ghost frame instances concurrently, which
+        // isn't thread-safe and can corrupt the cursor frame list.
+
         doDelete: try {
             _Node node = frame.mNode;
             if (node != null) latchNode: {
@@ -614,16 +643,16 @@ final class _Lock {
                 // Will need to delete the slow way.
             } else if (!db.isMutable(node)) {
                 // _Node cannot be dirtied without a full cursor, so delete the slow way.
-                node.releaseExclusive();
                 _CursorFrame.popAll(frame);
+                node.releaseExclusive();
             } else {
                 // Frame is still valid and node is mutable, so perform a quick delete.
 
                 int pos = frame.mNodePos;
                 if (pos < 0) {
                     // Already deleted.
-                    node.releaseExclusive();
                     _CursorFrame.popAll(frame);
+                    node.releaseExclusive();
                     break doDelete;
                 }
 
@@ -636,16 +665,16 @@ final class _Lock {
                             node.postDelete(pos, key);
                         }
                     } finally {
-                        node.releaseExclusive();
                         _CursorFrame.popAll(frame);
+                        node.releaseExclusive();
                     }
                 } else {
                     _Node sibling;
                     try {
                         sibling = split.latchSiblingEx();
                     } catch (Throwable e) {
-                        node.releaseExclusive();
                         _CursorFrame.popAll(frame);
+                        node.releaseExclusive();
                         throw e;
                     }
 

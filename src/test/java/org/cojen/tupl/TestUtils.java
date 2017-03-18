@@ -292,11 +292,21 @@ class TestUtils {
         return str;
     }
 
-    static void sleep(int millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
+    static void sleep(long millis) {
+        if (millis <= 0) {
+            if (millis < 0) {
+                throw new IllegalArgumentException("" + millis);
+            }
+            return;
         }
+
+        long end = System.currentTimeMillis() + millis;
+        do {
+            try {
+                Thread.sleep(millis);
+            } catch (InterruptedException e) {
+            }
+        } while ((millis = end - System.currentTimeMillis()) > 0);
     }
 
     static boolean is64bit() {

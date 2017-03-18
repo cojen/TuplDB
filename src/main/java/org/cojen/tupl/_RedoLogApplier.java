@@ -61,6 +61,11 @@ final class _RedoLogApplier implements RedoVisitor {
     }
 
     @Override
+    public boolean fence() {
+        return true;
+    }
+
+    @Override
     public boolean reset() {
         return true;
     }
@@ -166,6 +171,14 @@ final class _RedoLogApplier implements RedoVisitor {
     }
 
     @Override
+    public boolean txnEnterStore(long txnId, long indexId, byte[] key, byte[] value)
+        throws IOException
+    {
+        txnEnter(txnId);
+        return txnStore(txnId, indexId, key, value);
+    }
+
+    @Override
     public boolean txnStore(long txnId, long indexId, byte[] key, byte[] value)
         throws IOException
     {
@@ -180,11 +193,46 @@ final class _RedoLogApplier implements RedoVisitor {
     }
 
     @Override
+    public boolean txnStoreCommit(long txnId, long indexId, byte[] key, byte[] value)
+        throws IOException
+    {
+        txnStore(txnId, indexId, key, value);
+        return txnCommit(txnId);
+    }
+
+    @Override
     public boolean txnStoreCommitFinal(long txnId, long indexId, byte[] key, byte[] value)
         throws IOException
     {
         txnStore(txnId, indexId, key, value);
         return txnCommitFinal(txnId);
+    }
+
+    @Override
+    public boolean txnLockShared(long txnId, long indexId, byte[] key) throws IOException {
+        Transaction txn = txn(txnId);
+        if (txn != null) {
+            txn.lockShared(indexId, key);
+        }
+        return true;
+    }
+
+    @Override
+    public boolean txnLockUpgradable(long txnId, long indexId, byte[] key) throws IOException {
+        Transaction txn = txn(txnId);
+        if (txn != null) {
+            txn.lockUpgradable(indexId, key);
+        }
+        return true;
+    }
+
+    @Override
+    public boolean txnLockExclusive(long txnId, long indexId, byte[] key) throws IOException {
+        Transaction txn = txn(txnId);
+        if (txn != null) {
+            txn.lockExclusive(indexId, key);
+        }
+        return true;
     }
 
     @Override

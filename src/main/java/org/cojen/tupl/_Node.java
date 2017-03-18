@@ -1677,6 +1677,51 @@ final class _Node extends Latch implements _DatabaseAccess {
     }
 
     /**
+     * Given an entry with a fragmented key (caller must verify this), retrieves the key and
+     * returns a new entry with the full key encoded inline. The length of the key is encoded
+     * in varint format instead of the usual key header. The value portion of entry is copied
+     * immediately after the inline key, with the header stripped off if requested. This
+     * format is expected to be used only by _UndoLog.
+     */
+    static byte[] expandKeyAtLoc(_DatabaseAccess dbAccess, long page, int loc, int len,
+                                 boolean stripValueHeader)
+        throws IOException
+    {
+        int endLoc = loc + len;
+
+        int keyLen = ((p_byteGet(page, loc++) & 0x3f) << 8) | p_ubyteGet(page, loc++);
+
+        int valueLoc = loc + keyLen;
+        int valueLen = endLoc - valueLoc;
+
+        if (stripValueHeader) {
+            int skip = 1;
+            int header = p_byteGet(page, valueLoc);
+            if (header < 0) {
+                if ((header & 0x20) == 0) {
+                    skip = 2;
+                } else if (header != -1) {
+                    skip = 3;
+                }
+            }
+            valueLoc += skip;
+            valueLen -= skip;
+        }
+
+        byte[] key = dbAccess.getDatabase().reconstructKey(page, loc, keyLen);
+        int keyHeaderLen = Utils.calcUnsignedVarIntLength(key.length);
+
+        byte[] expanded = new byte[keyHeaderLen + key.length + valueLen];
+
+        int offset = Utils.encodeUnsignedVarInt(expanded, 0, key.length);
+        System.arraycopy(key, 0, expanded, offset, key.length);
+        offset += key.length;
+        p_copyToArray(page, valueLoc, expanded, offset, valueLen);
+
+        return expanded;
+    }
+
+    /**
      * Returns a new key between the low key in this node and the given high key.
      *
      * @see Utils#midKey
@@ -2990,7 +3035,7 @@ final class _Node extends Latch implements _DatabaseAccess {
                 // _Node is full, so split it.
 
                 if (!allowSplit) {
-                    throw new AssertionError("_Split not allowed");
+                    throw new AssertionError("Split not allowed");
                 }
 
                 // No side-effects if an IOException is thrown here.
@@ -4558,7 +4603,7 @@ final class _Node extends Latch implements _DatabaseAccess {
         throws IOException
     {
         if (mSplit != null) {
-            throw new AssertionError("_Node is already split");
+            throw new AssertionError("Node is already split");
         }
 
         // _Split can move node entries to a new left or right node. Choose such that the
@@ -5044,7 +5089,7 @@ final class _Node extends Latch implements _DatabaseAccess {
         throws IOException
     {
         if (mSplit != null) {
-            throw new AssertionError("_Node is already split");
+            throw new AssertionError("Node is already split");
         }
 
         // _Split can move node entries to a new left or right node. Choose such that the
@@ -5893,7 +5938,7 @@ final class _Node extends Latch implements _DatabaseAccess {
             break;
         default:
             if (!isLeaf()) {
-                return "_Node: {id=" + mId +
+                return "Node: {id=" + mId +
                     ", cachedState=" + mCachedState +
                     ", latchState=" + super.toString() +
                     '}';
@@ -5904,7 +5949,7 @@ final class _Node extends Latch implements _DatabaseAccess {
             break;
         }
 
-        return prefix + "_Node: {id=" + mId +
+        return prefix + "Node: {id=" + mId +
             ", cachedState=" + mCachedState +
             ", isSplit=" + (mSplit != null) +
             ", availableBytes=" + availableBytes() +

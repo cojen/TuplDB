@@ -72,7 +72,7 @@ final class _PageManager {
      * Create a new _PageManager.
      */
     _PageManager(PageArray array) throws IOException {
-        this(false, array, DirectPageOps.p_null(), 0);
+        this(null, false, array, DirectPageOps.p_null(), 0);
     }
 
     /**
@@ -81,11 +81,14 @@ final class _PageManager {
      * @param header source for reading allocator root structure
      * @param offset offset into header
      */
-    _PageManager(PageArray array, long header, int offset) throws IOException {
-        this(true, array, header, offset);
+    _PageManager(EventListener debugListener, PageArray array, long header, int offset)
+        throws IOException
+    {
+        this(debugListener, true, array, header, offset);
     }
 
-    private _PageManager(boolean restored, PageArray array, long header, int offset)
+    private _PageManager(EventListener debugListener,
+                        boolean restored, PageArray array, long header, int offset)
         throws IOException
     {
         if (array == null) {
@@ -110,6 +113,11 @@ final class _PageManager {
             } else {
                 mTotalPageCount = readTotalPageCount(header, offset + I_TOTAL_PAGE_COUNT);
 
+                if (debugListener != null) {
+                    debugListener.notify(EventType.DEBUG, "TOTAL_PAGE_COUNT: %1$d",
+                                         mTotalPageCount);
+                }
+
                 long actualPageCount = array.getPageCount();
                 if (actualPageCount > mTotalPageCount) {
                     if (!array.isReadOnly()) {
@@ -123,19 +131,22 @@ final class _PageManager {
                 _PageQueue reserve;
                 fullLock();
                 try {
-                    mRegularFreeList.init(header, offset + I_REGULAR_QUEUE);
-                    mRecycleFreeList.init(header, offset + I_RECYCLE_QUEUE);
+                    mRegularFreeList.init(debugListener, header, offset + I_REGULAR_QUEUE);
+                    mRecycleFreeList.init(debugListener, header, offset + I_RECYCLE_QUEUE);
 
                     if (_PageQueue.exists(header, offset + I_RESERVE_QUEUE)) {
                         reserve = mRegularFreeList.newReserveFreeList();
                         try {
-                            reserve.init(header, offset + I_RESERVE_QUEUE);
+                            reserve.init(debugListener, header, offset + I_RESERVE_QUEUE);
                         } catch (Throwable e) {
                             reserve.delete();
                             throw e;
                         }
                     } else {
                         reserve = null;
+                        if (debugListener != null) {
+                            debugListener.notify(EventType.DEBUG, "Reserve free list is null");
+                        }
                     }
                 } finally {
                     fullUnlock();

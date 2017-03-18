@@ -50,6 +50,11 @@ interface RedoVisitor {
     public boolean endFile(long timestamp) throws IOException;
 
     /**
+     * @return false to stop visiting
+     */
+    public boolean fence() throws IOException;
+
+    /**
      * @param indexId non-zero index id
      * @param key non-null key
      * @param value value to store; null to delete
@@ -115,7 +120,27 @@ interface RedoVisitor {
      * @param value value to store; null to delete
      * @return false to stop visiting
      */
+    public boolean txnEnterStore(long txnId, long indexId, byte[] key, byte[] value)
+        throws IOException;
+
+    /**
+     * @param txnId non-zero transaction id
+     * @param indexId non-zero index id
+     * @param key non-null key
+     * @param value value to store; null to delete
+     * @return false to stop visiting
+     */
     public boolean txnStore(long txnId, long indexId, byte[] key, byte[] value) throws IOException;
+
+    /**
+     * @param txnId non-zero transaction id
+     * @param indexId non-zero index id
+     * @param key non-null key
+     * @param value value to store; null to delete
+     * @return false to stop visiting
+     */
+    public boolean txnStoreCommit(long txnId, long indexId, byte[] key, byte[] value)
+        throws IOException;
 
     /**
      * @param txnId non-zero transaction id
@@ -126,6 +151,30 @@ interface RedoVisitor {
      */
     public boolean txnStoreCommitFinal(long txnId, long indexId, byte[] key, byte[] value)
         throws IOException;
+
+    /**
+     * @param txnId non-zero transaction id
+     * @param indexId non-zero index id
+     * @param key non-null key
+     * @return false to stop visiting
+     */
+    public boolean txnLockShared(long txnId, long indexId, byte[] key) throws IOException;
+
+    /**
+     * @param txnId non-zero transaction id
+     * @param indexId non-zero index id
+     * @param key non-null key
+     * @return false to stop visiting
+     */
+    public boolean txnLockUpgradable(long txnId, long indexId, byte[] key) throws IOException;
+
+    /**
+     * @param txnId non-zero transaction id
+     * @param indexId non-zero index id
+     * @param key non-null key
+     * @return false to stop visiting
+     */
+    public boolean txnLockExclusive(long txnId, long indexId, byte[] key) throws IOException;
 
     /**
      * @param txnId non-zero transaction id

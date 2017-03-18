@@ -139,7 +139,7 @@ final class TempTree extends Tree {
         }
     }
 
-    public boolean txnUpdate(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
+    private boolean txnUpdate(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException
     {
         final DurabilityMode dmode = txn.durabilityMode();

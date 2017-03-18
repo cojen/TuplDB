@@ -187,7 +187,10 @@ class PageAccessTransformer {
 
     private String replaceNames(String line) {
         for (Map.Entry<String, Pattern> e : mNames.entrySet()) {
-            line = e.getValue().matcher(line).replaceAll("_" + e.getKey());
+            String line2 = e.getValue().matcher(line).replaceAll("_" + e.getKey());
+            if (!line2.equals(line) && line2.indexOf("\"_") <= 0) {
+                line = line2;
+            }
         }
         return line;
     }

@@ -111,6 +111,7 @@ public class CustomLogTest {
         txn.customUndo(message1);
         txn.customRedo(message1, 0, null);
         txn.customUndo(message2);
+        txn.lockExclusive(1234, key);
         txn.customRedo(message2, 1234, key);
         txn.commit();
 
