@@ -532,6 +532,15 @@ public interface View {
     }
 
     /**
+     * Returns a view, backed by this one, which only provides the keys. Values are always
+     * represented as {@link Cursor#NOT_LOADED NOT_LOADED}, and attempting to store a value
+     * other than null causes a {@link ViewConstraintException} to be thrown.
+     */
+    public default View viewKeys() {
+        return new KeyOnlyView(this);
+    }
+
+    /**
      * Returns a view, backed by this one, whose natural order is reversed.
      */
     public default View viewReverse() {

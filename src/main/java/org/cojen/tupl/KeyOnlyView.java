@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2015 Cojen.org
+ *  Copyright 2017 Cojen.org
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -23,21 +23,32 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-final class ReverseView implements View {
+final class KeyOnlyView implements View {
     private final View mSource;
 
-    ReverseView(View source) {
+    KeyOnlyView(View source) {
         mSource = source;
+    }
+
+    static void valueCheck(byte[] value) throws ViewConstraintException {
+        if (value != null) {
+            throw new ViewConstraintException("Cannot store non-null value into key-only view");
+        }
+    }
+
+    static byte[] valueScrub(byte[] value) {
+        // Don't trust the source view to always return null or NOT_LOADED.
+        return value == null ? null : Cursor.NOT_LOADED;
     }
 
     @Override
     public Ordering getOrdering() {
-        return mSource.getOrdering().reverse();
+        return mSource.getOrdering();
     }
 
     @Override
     public Cursor newCursor(Transaction txn) {
-        return new ReverseCursor(mSource.newCursor(txn));
+        return new KeyOnlyCursor(mSource.newCursor(txn));
     }
 
     @Override
@@ -47,49 +58,82 @@ final class ReverseView implements View {
 
     @Override
     public long count(byte[] lowKey, byte[] highKey) throws IOException {
-        return mSource.count(appendZero(highKey), appendZero((lowKey)));
+        return mSource.count(lowKey, highKey);
     }
 
     @Override
     public byte[] load(Transaction txn, byte[] key) throws IOException {
-        return mSource.load(txn, key);
-    }
-
-    @Override
-    public void store(Transaction txn, byte[] key, byte[] value) throws IOException {
-        mSource.store(txn, key, value);
+        Cursor c = mSource.newCursor(txn);
+        try {
+            c.autoload(false);
+            c.find(key);
+            return valueScrub(c.value());
+        } finally {
+            c.reset();
+        }
     }
 
     @Override
     public byte[] exchange(Transaction txn, byte[] key, byte[] value) throws IOException {
-        return mSource.exchange(txn, key, value);
+        valueCheck(value);
+
+        Cursor c = mSource.newCursor(txn);
+        try {
+            c.autoload(false);
+            c.find(key);
+            byte[] old = valueScrub(c.value());
+            c.store(value);
+            return old;
+        } finally {
+            c.reset();
+        }
+    }
+
+    @Override
+    public void store(Transaction txn, byte[] key, byte[] value) throws IOException {
+        valueCheck(value);
+        mSource.store(txn, key, null);
     }
 
     @Override
     public boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException {
-        return mSource.insert(txn, key, value);
+        valueCheck(value);
+        return mSource.insert(txn, key, null);
     }
 
     @Override
     public boolean replace(Transaction txn, byte[] key, byte[] value) throws IOException {
-        return mSource.replace(txn, key, value);
+        valueCheck(value);
+        return mSource.replace(txn, key, null);
     }
 
     @Override
     public boolean update(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException
     {
-        return mSource.update(txn, key, oldValue, newValue);
+        valueCheck(newValue);
+
+        if (oldValue == null) {
+            return mSource.update(txn, key, null, null);
+        } else {
+            Cursor c = mSource.newCursor(txn);
+            try {
+                c.autoload(false);
+                c.find(key);
+                if (valueScrub(c.value()) != oldValue) { // don't compare array contents
+                    return false;
+                }
+                c.store(null);
+                return true;
+            } finally {
+                c.reset();
+            }
+        }
     }
 
     @Override
     public boolean delete(Transaction txn, byte[] key) throws IOException {
         return mSource.delete(txn, key);
-    }
-
-    @Override
-    public boolean remove(Transaction txn, byte[] key, byte[] value) throws IOException {
-        return mSource.remove(txn, key, value);
     }
 
     @Override
@@ -135,69 +179,28 @@ final class ReverseView implements View {
     }
 
     @Override
-    public final LockResult lockCheck(Transaction txn, byte[] key) throws ViewConstraintException {
+    public LockResult lockCheck(Transaction txn, byte[] key) throws ViewConstraintException {
         return mSource.lockCheck(txn, key);
-    }
-
-    /*
-    @Override
-    public Stream newStream() {
-        return mSource.newStream();
-    }
-    */
-
-    @Override
-    public View viewGe(byte[] key) {
-        return new ReverseView(mSource.viewLe(key));
-    }
-
-    @Override
-    public View viewGt(byte[] key) {
-        return new ReverseView(mSource.viewLt(key));
-    }
-
-    @Override
-    public View viewLe(byte[] key) {
-        return new ReverseView(mSource.viewGe(key));
-    }
-
-    @Override
-    public View viewLt(byte[] key) {
-        return new ReverseView(mSource.viewGt(key));
-    }
-
-    @Override
-    public View viewPrefix(byte[] prefix, int trim) {
-        return new ReverseView(mSource.viewPrefix(prefix, trim));
-    }
-
-    @Override
-    public View viewTransformed(Transformer transformer) {
-        return new ReverseView(mSource.viewTransformed(transformer));
     }
 
     @Override
     public View viewKeys() {
-        View sourceKeys = mSource.viewKeys();
-        return sourceKeys == mSource ? this : new ReverseView(sourceKeys);
+        return this;
     }
 
     @Override
     public View viewReverse() {
-        return mSource;
+        return new KeyOnlyView(mSource.viewReverse());
     }
 
     @Override
     public View viewUnmodifiable() {
-        return UnmodifiableView.apply(this);
+        View source = mSource.viewUnmodifiable();
+        return source == mSource ? this : UnmodifiableView.apply(this);
     }
 
     @Override
     public boolean isUnmodifiable() {
         return mSource.isUnmodifiable();
-    }
-
-    static byte[] appendZero(byte[] key) {
-        return key == null ? null : ViewUtils.appendZero(key);
     }
 }

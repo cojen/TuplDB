@@ -182,6 +182,12 @@ final class TrimmedView implements View {
     }
 
     @Override
+    public View viewKeys() {
+        View sourceKeys = mSource.viewKeys();
+        return sourceKeys == mSource ? this : new TrimmedView(sourceKeys, mPrefix, mTrim);
+    }
+
+    @Override
     public View viewReverse() {
         return new TrimmedView(mSource.viewReverse(), mPrefix, mTrim);
     }
