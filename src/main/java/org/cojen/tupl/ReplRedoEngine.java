@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2015 Cojen.org
+ *  Copyright 2012-2017 Cojen.org
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -20,29 +20,30 @@ import java.io.IOException;
 
 import java.lang.ref.SoftReference;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 
 import org.cojen.tupl.ext.ReplicationManager;
+import org.cojen.tupl.ext.TransactionHandler;
 
 import org.cojen.tupl.util.Latch;
+import org.cojen.tupl.util.Worker;
+import org.cojen.tupl.util.WorkerGroup;
 
 import static org.cojen.tupl.Utils.*;
-
-import org.cojen.tupl.ext.TransactionHandler;
 
 /**
  * 
  *
  * @author Brian S O'Neill
+ * @see ReplRedoEngine
  */
 /*P*/
-final class ReplRedoEngine implements RedoVisitor {
+class ReplRedoEngine implements RedoVisitor, ThreadFactory {
+    private static final int MAX_QUEUE_SIZE = 100;
+    private static final int MAX_KEEP_ALIVE_MILLIS = 60_000;
     private static final long INFINITE_TIMEOUT = -1L;
-    private static final int MIN_SPINS = 20;
-    private static final int MAX_SPINS = 2000;
+    private static final String ATTACHMENT = "replication";
 
     // Hash spreader. Based on rounded value of 2 ** 63 * (sqrt(5) - 1) equivalent 
     // to unsigned 11400714819323198485.
@@ -53,39 +54,18 @@ final class ReplRedoEngine implements RedoVisitor {
 
     final ReplRedoController mController;
 
+    private final WorkerGroup mWorkerGroup;
+
+    private final Latch mDecodeLatch;
+
+    private final TxnTable mTransactions;
+
     // Maintain soft references to indexes, allowing them to get closed if not
     // used for awhile. Without the soft references, Database maintains only
     // weak references to indexes. They'd get closed too soon.
     private final LHashTable.Obj<SoftReference<Index>> mIndexes;
 
-    private final Latch[] mLatches;
-    private final int mLatchesMask;
-
-    private final TxnTable mTransactions;
-
-    private final int mMaxThreads;
-    private final AtomicInteger mTotalThreads;
-    private final AtomicInteger mIdleThreads;
-    private final ConcurrentMap<DecodeTask, Object> mTaskThreadSet;
-
-    // Latch must be held exclusively while reading from decoder.
-    private final Latch mDecodeLatch;
-    private final Latch mCustomLatch;
-
-    private final AtomicInteger mCommitSpins;
-    private final AtomicInteger mDecodeSpins;
-
     private ReplRedoDecoder mDecoder;
-
-    // Shared latch held when applying operations. Checkpoint suspends all tasks by acquiring
-    // an exclusive latch. If any operation fails to be applied, shared latch is still held,
-    // preventing checkpoints.
-    final Latch mOpLatch;
-
-    // Updated with exclusive decode latch and shared op latch. Values can be read with op
-    // latch exclusively held, when engine is suspended.
-    long mDecodePosition;
-    long mDecodeTransactionId;
 
     /**
      * @param manager already started
@@ -96,9 +76,10 @@ final class ReplRedoEngine implements RedoVisitor {
         throws IOException
     {
         if (maxThreads <= 0) {
-            int procs = Runtime.getRuntime().availableProcessors();
-            maxThreads = maxThreads == 0 ? procs : (-maxThreads * procs);
+            int procCount = Runtime.getRuntime().availableProcessors();
+            maxThreads = maxThreads == 0 ? procCount : (-maxThreads * procCount);
             if (maxThreads <= 0) {
+                // Overflowed.
                 maxThreads = Integer.MAX_VALUE;
             }
         }
@@ -108,29 +89,16 @@ final class ReplRedoEngine implements RedoVisitor {
 
         mController = new ReplRedoController(this);
 
-        mIndexes = new LHashTable.Obj<>(16);
-
         mDecodeLatch = new Latch();
-        mCustomLatch = new Latch();
-        mOpLatch = new Latch();
 
-        mCommitSpins = new AtomicInteger(); 
-        mDecodeSpins = new AtomicInteger(); 
-
-        mMaxThreads = maxThreads;
-        mTotalThreads = new AtomicInteger();
-        mIdleThreads = new AtomicInteger();
-        mTaskThreadSet = new ConcurrentHashMap<>(16, 0.75f, 1);
-
-        int latchCount = roundUpPower2(maxThreads * 2);
-        if (latchCount <= 0) {
-            latchCount = 1 << 30;
-        }
-
-        mLatches = new Latch[latchCount];
-        mLatchesMask = mLatches.length - 1;
-        for (int i=0; i<mLatches.length; i++) {
-            mLatches[i] = new Latch();
+        if (maxThreads <= 1) {
+            // Just use the decoder thread and don't hand off tasks to worker threads.
+            mWorkerGroup = null;
+        } else {
+            mWorkerGroup = WorkerGroup.make(maxThreads - 1, // one thread will be the decoder
+                                            MAX_QUEUE_SIZE,
+                                            MAX_KEEP_ALIVE_MILLIS, TimeUnit.MILLISECONDS,
+                                            this); // ThreadFactory
         }
 
         final TxnTable txnTable;
@@ -139,13 +107,11 @@ final class ReplRedoEngine implements RedoVisitor {
         } else {
             txnTable = new TxnTable(txns.size());
 
-            txns.traverse((entry) -> {
-                // Reduce hash collisions.
-                long scrambledTxnId = mix(entry.key);
-                Latch latch = selectLatch(scrambledTxnId);
-                LocalTransaction txn = entry.value;
+            txns.traverse(te -> {
+                long scrambledTxnId = mix(te.key);
+                LocalTransaction txn = te.value;
                 if (!txn.recoveryCleanup(false)) {
-                    txnTable.insert(scrambledTxnId).init(txn, latch);
+                    txnTable.insert(scrambledTxnId).init(txn);
                 }
                 // Delete entry.
                 return true;
@@ -154,10 +120,7 @@ final class ReplRedoEngine implements RedoVisitor {
 
         mTransactions = txnTable;
 
-        // Initialize the decode position early.
-        mDecodeLatch.acquireExclusive();
-        mDecodePosition = manager.readPosition();
-        mDecodeLatch.releaseExclusive();
+        mIndexes = new LHashTable.Obj<>(16);
     }
 
     public RedoWriter initWriter(long redoNum) {
@@ -166,116 +129,138 @@ final class ReplRedoEngine implements RedoVisitor {
     }
 
     public void startReceiving(long initialPosition, long initialTxnId) {
-        mDecodeLatch.acquireExclusive();
-        if (mDecoder == null) {
-            mOpLatch.acquireExclusive();
+        try {
+            mDecodeLatch.acquireExclusive();
             try {
-                try {
-                    mDecoder = new ReplRedoDecoder(mManager, initialPosition, initialTxnId);
-                } catch (Throwable e) {
-                    mDecodeLatch.releaseExclusive();
-                    throw e;
+                if (mDecoder == null || mDecoder.mDeactivated) {
+                    mDecoder = new ReplRedoDecoder
+                        (mManager, initialPosition, initialTxnId, mDecodeLatch);
+                    newThread(this::decode).start();
                 }
-                mDecodeTransactionId = initialTxnId;
-                nextTask();
             } finally {
-                mOpLatch.releaseExclusive();
+                mDecodeLatch.releaseExclusive();
             }
-        } else {
-            mDecodeLatch.releaseExclusive();
+        } catch (Throwable e) {
+            fail(e);
         }
+    }
+
+    @Override
+    public Thread newThread(Runnable r) {
+        Thread t = new Thread(r);
+        t.setDaemon(true);
+        t.setName("ReplicationReceiver-" + Long.toUnsignedString(t.getId()));
+        return t;
     }
 
     @Override
     public boolean reset() throws IOException {
-        // Acquire latch before performing operations with side-effects.
-        mOpLatch.acquireShared();
-
         // Reset and discard all transactions.
-        mTransactions.traverse((entry) -> {
-            Latch latch = entry.latch();
-            try {
-                entry.mTxn.recoveryCleanup(true);
-            } finally {
-                latch.releaseExclusive();
-            }
+        mTransactions.traverse(te -> {
+            runTask(te, new Worker.Task() {
+                public void run() {
+                    try {
+                        te.mTxn.recoveryCleanup(true);
+                    } catch (Throwable e) {
+                        fail(e);
+                    }
+                }
+            });
             return true;
         });
 
-        // Now's a good time to clean out any lingering trash.
-        mDatabase.emptyAllFragmentedTrash(false);
+        // Wait for work to complete.
+        if (mWorkerGroup != null) {
+            mWorkerGroup.join(false);
+        }
 
-        // Only release if no exception.
-        opFinishedShared();
+        // Although it might seem like a good time to clean out any lingering trash, concurrent
+        // transactions are still active and need the trash to rollback properly. Waiting for
+        // the worker group to finish isn't sufficient. Not all transactions are replicated.
+        //mDatabase.emptyAllFragmentedTrash(false);
 
-        // Return true and allow RedoDecoder to loop back.
         return true;
     }
 
     @Override
-    public boolean timestamp(long timestamp) {
-        return nop();
+    public boolean timestamp(long timestamp) throws IOException {
+        return true;
     }
 
     @Override
-    public boolean shutdown(long timestamp) {
-        return nop();
+    public boolean shutdown(long timestamp) throws IOException {
+        return true;
     }
 
     @Override
-    public boolean close(long timestamp) {
-        return nop();
+    public boolean close(long timestamp) throws IOException {
+        return true;
     }
 
     @Override
-    public boolean endFile(long timestamp) {
-        return nop();
+    public boolean endFile(long timestamp) throws IOException {
+        return true;
+    }
+
+    @Override
+    public boolean fence() throws IOException {
+        // Wait for work to complete.
+        if (mWorkerGroup != null) {
+            mWorkerGroup.join(false);
+        }
+
+
+        // Call with decode latch held, suspending checkpoints.
+        mManager.fenced(mDecoder.mIn.mPos);
+
+        return true;
     }
 
     @Override
     public boolean store(long indexId, byte[] key, byte[] value) throws IOException {
-        Index ix = getIndex(indexId);
+        // Must acquire the lock before task is enqueued.
+        Locker locker = new Locker(mDatabase.mLockManager);
+        locker.attach(ATTACHMENT);
+        locker.tryLockUpgradable(indexId, key, INFINITE_TIMEOUT);
 
-        // Allow side-effect free operations to be performed before acquiring latch.
-        mOpLatch.acquireShared();
-
-        // Locks must be acquired in their original order to avoid
-        // deadlock, so don't allow another task thread to run yet.
-        Locker locker = mDatabase.mLockManager.localLocker();
-        locker.lockExclusive(indexId, key, INFINITE_TIMEOUT);
-
-        // Allow another task thread to run while operation completes.
-        nextTask();
-
-        try {
-            while (ix != null) {
+        runTaskAnywhere(new Worker.Task() {
+            public void run() {
+                Index ix;
                 try {
-                    ix.store(Transaction.BOGUS, key, value);
-                    break;
-                } catch (ClosedIndexException e) {
-                    // User closed the shared index reference, so re-open it.
-                    ix = openIndex(indexId, null);
+                    ix = getIndex(indexId);
+
+                    // Full exclusive lock is required.
+                    locker.lockExclusive(indexId, key, INFINITE_TIMEOUT);
+
+                    while (true) {
+                        try {
+                            ix = getIndex(indexId);
+                            ix.store(Transaction.BOGUS, key, value);
+                            break;
+                        } catch (ClosedIndexException e) {
+                            // User closed the shared index reference, so re-open it.
+                            ix = openIndex(indexId, null);
+                        }
+                    }
+                } catch (Throwable e) {
+                    fail(e);
+                    return;
+                } finally {
+                    locker.scopeUnlockAll();
                 }
+
+                notifyStore(ix, key, value);
             }
-        } finally {
-            locker.scopeUnlockAll();
-        }
+        });
 
-        // Only release if no exception.
-        mOpLatch.releaseShared();
-
-        notifyStore(ix, key, value);
-
-        // Return false to prevent RedoDecoder from looping back.
-        return false;
+        return true;
     }
 
     @Override
     public boolean storeNoLock(long indexId, byte[] key, byte[] value) throws IOException {
-        // A no-lock change is created when using the UNSAFE lock mode. If the
-        // application has performed its own locking, consistency can be
-        // preserved by locking the index entry. Otherwise, the outcome is
-        // unpredictable.
+        // A no-lock change is created when using the UNSAFE lock mode. If the application has
+        // performed its own locking, consistency can be preserved by locking the index
+        // entry. Otherwise, the outcome is unpredictable.
 
         return store(indexId, key, value);
     }
@@ -283,134 +268,121 @@ final class ReplRedoEngine implements RedoVisitor {
     @Override
     public boolean renameIndex(long txnId, long indexId, byte[] newName) throws IOException {
         Index ix = getIndex(indexId);
-        byte[] oldName = null;
 
-        // Acquire latch before performing operations with side-effects.
-        mOpLatch.acquireShared();
+        if (ix == null) {
+            // No notification.
+            return true;
+        }
 
-        if (ix != null) {
-            oldName = ix.getName();
-            try {
-                mDatabase.renameIndex(ix, newName, txnId);
-            } catch (RuntimeException e) {
-                EventListener listener = mDatabase.eventListener();
-                if (listener != null) {
-                    listener.notify(EventType.REPLICATION_WARNING,
-                                    "Unable to rename index: %1$s", rootCause(e));
-                    // Disable notification.
-                    ix = null;
+        byte[] oldName = ix.getName();
+
+        try {
+            mDatabase.renameIndex(ix, newName, txnId);
+        } catch (RuntimeException e) {
+            EventListener listener = mDatabase.eventListener();
+            if (listener != null) {
+                listener.notify(EventType.REPLICATION_WARNING,
+                                "Unable to rename index: %1$s", rootCause(e));
+                // No notification.
+                return true;
+            }
+        }
+
+        runTaskAnywhere(new Worker.Task() {
+            public void run() {
+                try {
+                    mManager.notifyRename(ix, oldName, newName.clone());
+                } catch (Throwable e) {
+                    uncaught(e);
                 }
             }
-        }
+        });
 
-        // Only release if no exception.
-        opFinishedShared();
-
-        if (ix != null) {
-            try {
-                mManager.notifyRename(ix, oldName, newName.clone());
-            } catch (Throwable e) {
-                uncaught(e);
-            }
-        }
-
-        // Return true and allow RedoDecoder to loop back.
         return true;
     }
 
     @Override
     public boolean deleteIndex(long txnId, long indexId) throws IOException {
         TxnEntry te = getTxnEntry(txnId);
-        LocalTransaction txn = te.mTxn;
 
-        // Open the index with the transaction to prevent deadlock
-        // when the instance is not cached and has to be loaded.
-        Index ix = getIndex(txn, indexId);
-        mIndexes.remove(indexId);
+        runTask(te, new Worker.Task() {
+            public void run() {
+                try {
+                    LocalTransaction txn = te.mTxn;
 
-        // Acquire latch before performing operations with side-effects.
-        mOpLatch.acquireShared();
+                    // Open the index with the transaction to prevent deadlock
+                    // when the instance is not cached and has to be loaded.
+                    Index ix = getIndex(txn, indexId);
+                    mIndexes.remove(indexId);
 
-        // Commit the transaction now and delete the index. See LocalDatabase.moveToTrash for
-        // more info.
-        Latch latch = te.latch();
-        try {
-            try {
-                txn.commit();
-            } finally {
-                txn.exit();
-            }
-        } finally {
-            latch.releaseExclusive();
-        }
+                    try {
+                        txn.commit();
+                    } finally {
+                        txn.exit();
+                    }
 
-        // Only release if no exception.
-        opFinishedShared();
+                    if (ix != null) {
+                        ix.close();
+                        try {
+                            mManager.notifyDrop(ix);
+                        } catch (Throwable e) {
+                            uncaught(e);
+                        }
+                    }
 
-        if (ix != null) {
-            ix.close();
-            try {
-                mManager.notifyDrop(ix);
-            } catch (Throwable e) {
-                uncaught(e);
-            }
-        }
+                    Runnable task = mDatabase.replicaDeleteTree(indexId);
 
-        Runnable task = mDatabase.replicaDeleteTree(indexId);
-
-        if (task != null) {
-            try {
-                // Allow index deletion to run concurrently. If multiple deletes are received
-                // concurrently, then the application is likely doing concurrent deletes.
-                Thread deletion = new Thread
-                    (task, "IndexDeletion-" + (ix == null ? indexId : ix.getNameString()));
-                deletion.setDaemon(true);
-                deletion.start();
-            } catch (Throwable e) {
-                EventListener listener = mDatabase.eventListener();
-                if (listener != null) {
-                    listener.notify(EventType.REPLICATION_WARNING,
-                                    "Unable to immediately delete index: %1$s", rootCause(e));
+                    if (task != null) {
+                        try {
+                            // Allow index deletion to run concurrently. If multiple deletes
+                            // are received concurrently, then the application is likely doing
+                            // concurrent deletes.
+                            Thread deletion = new Thread
+                                (task, "IndexDeletion-" +
+                                 (ix == null ? indexId : ix.getNameString()));
+                            deletion.setDaemon(true);
+                            deletion.start();
+                        } catch (Throwable e) {
+                            EventListener listener = mDatabase.eventListener();
+                            if (listener != null) {
+                                listener.notify(EventType.REPLICATION_WARNING,
+                                                "Unable to immediately delete index: %1$s",
+                                                rootCause(e));
+                            }
+                            // Index will get fully deleted when database is re-opened.
+                        }
+                    }
+                } catch (Throwable e) {
+                    fail(e);
                 }
-                // Index will get fully deleted when database is re-opened.
             }
-        }
+        });
 
-        // Return true and allow RedoDecoder to loop back.
         return true;
     }
 
     @Override
     public boolean txnEnter(long txnId) throws IOException {
-        // Reduce hash collisions.
         long scrambledTxnId = mix(txnId);
-        TxnEntry e = mTransactions.get(scrambledTxnId);
+        TxnEntry te = mTransactions.get(scrambledTxnId);
 
-        // Allow side-effect free operations to be performed before acquiring latch.
-        mOpLatch.acquireShared();
+        if (te == null) {
+            // Create a new transaction.
+            mTransactions.insert(scrambledTxnId).init(newTransaction(txnId));
+        } else {
+            // Enter nested scope of an existing transaction.
 
-        if (e == null) {
-            LocalTransaction txn = newTransaction(txnId);
-            mTransactions.insert(scrambledTxnId).init(txn, selectLatch(scrambledTxnId));
-
-            // Only release if no exception.
-            opFinishedShared();
-
-            return true;
+            runTask(te, new Worker.Task() {
+                public void run() {
+                    try {
+                        te.mTxn.enter();
+                    } catch (Throwable e) {
+                        fail(e);
+                    }
+                }
+            });
         }
 
-        Latch latch = e.latch();
-        try {
-            // Cheap operation, so don't let another task thread run.
-            e.mTxn.enter();
-        } finally {
-            latch.releaseExclusive();
-        }
-
-        // Only release if no exception.
-        opFinishedShared();
-
-        // Return true and allow RedoDecoder to loop back.
         return true;
     }
 
@@ -418,107 +390,130 @@ final class ReplRedoEngine implements RedoVisitor {
     public boolean txnRollback(long txnId) throws IOException {
         TxnEntry te = getTxnEntry(txnId);
 
-        // Allow side-effect free operations to be performed before acquiring latch.
-        mOpLatch.acquireShared();
+        runTask(te, new Worker.Task() {
+            public void run() {
+                try {
+                    te.mTxn.exit();
+                } catch (Throwable e) {
+                    fail(e);
+                }
+            }
+        });
 
-        Latch latch = te.latch();
-        try {
-            // Allow another task thread to run while operation completes.
-            nextTask();
-
-            te.mTxn.exit();
-        } finally {
-            latch.releaseExclusive();
-        }
-
-        // Only release if no exception.
-        mOpLatch.releaseShared();
-
-        // Return false to prevent RedoDecoder from looping back.
-        return false;
+        return true;
     }
 
     @Override
     public boolean txnRollbackFinal(long txnId) throws IOException {
-        // Acquire latch before performing operations with side-effects.
-        mOpLatch.acquireShared();
-
         TxnEntry te = removeTxnEntry(txnId);
 
-        if (te == null) {
-            opFinishedShared();
-            return true;
+        if (te != null) {
+            runTask(te, new Worker.Task() {
+                public void run() {
+                    try {
+                        te.mTxn.reset();
+                    } catch (Throwable e) {
+                        fail(e);
+                    }
+                }
+            });
         }
 
-        Latch latch = te.latch();
-        try {
-            // Allow another task thread to run while operation completes.
-            nextTask();
-
-            te.mTxn.reset();
-        } finally {
-            latch.releaseExclusive();
-        }
-
-        // Only release if no exception.
-        mOpLatch.releaseShared();
-
-        // Return false to prevent RedoDecoder from looping back.
-        return false;
+        return true;
     }
 
     @Override
     public boolean txnCommit(long txnId) throws IOException {
         TxnEntry te = getTxnEntry(txnId);
 
-        // Allow side-effect free operations to be performed before acquiring latch.
-        mOpLatch.acquireShared();
-
-        Latch latch = te.latch();
-        try {
-            // Commit is expected to complete quickly, so don't let another
-            // task thread run.
-
-            Transaction txn = te.mTxn;
-            try {
-                txn.commit();
-            } finally {
-                txn.exit();
+        runTask(te, new Worker.Task() {
+            public void run() {
+                try {
+                    te.mTxn.commit();
+                } catch (Throwable e) {
+                    fail(e);
+                }
             }
-        } finally {
-            latch.releaseExclusive();
-        }
+        });
 
-        // Only release if no exception.
-        opFinishedShared();
-
-        // Return true and allow RedoDecoder to loop back.
         return true;
     }
 
     @Override
     public boolean txnCommitFinal(long txnId) throws IOException {
-        // Acquire latch before performing operations with side-effects.
-        mOpLatch.acquireShared();
-
         TxnEntry te = removeTxnEntry(txnId);
 
         if (te != null) {
-            Latch latch = te.latch(mCommitSpins);
-            try {
-                // Commit is expected to complete quickly, so don't let another
-                // task thread run.
-
-                te.mTxn.commitAll();
-            } finally {
-                latch.releaseExclusive();
-            }
+            runTask(te, new Worker.Task() {
+                public void run() {
+                    try {
+                        te.mTxn.commitAll();
+                    } catch (Throwable e) {
+                        fail(e);
+                    }
+                }
+            });
         }
 
-        // Only release if no exception.
-        opFinishedShared();
+        return true;
+    }
 
-        // Return true and allow RedoDecoder to loop back.
+    @Override
+    public boolean txnEnterStore(long txnId, long indexId, byte[] key, byte[] value)
+        throws IOException
+    {
+        long scrambledTxnId = mix(txnId);
+        TxnEntry te = mTransactions.get(scrambledTxnId);
+
+        LocalTransaction txn;
+        boolean newTxn;
+        if (te == null) {
+            // Create a new transaction.
+            txn = newTransaction(txnId);
+            te = mTransactions.insert(scrambledTxnId);
+            te.init(txn);
+            newTxn = true;
+        } else {
+            // Enter nested scope of an existing transaction.
+            txn = te.mTxn;
+            newTxn = false;
+        }
+
+        // Acquire the lock on behalf of the transaction, but push it using the correct thread.
+        Lock lock = txn.lockUpgradableNoPush(indexId, key);
+
+        runTask(te, new Worker.Task() {
+            public void run() {
+                Index ix;
+                try {
+                    if (!newTxn) {
+                        txn.enter();
+                    }
+
+                    if (lock != null) {
+                        txn.push(lock, 0);
+                    }
+
+                    ix = getIndex(indexId);
+
+                    while (true) {
+                        try {
+                            ix.store(txn, key, value);
+                            break;
+                        } catch (ClosedIndexException e) {
+                            // User closed the shared index reference, so re-open it.
+                            ix = openIndex(indexId, null);
+                        }
+                    }
+                } catch (Throwable e) {
+                    fail(e);
+                    return;
+                }
+
+                notifyStore(ix, key, value);
+            }
+        });
+
         return true;
     }
 
@@ -526,128 +521,237 @@ final class ReplRedoEngine implements RedoVisitor {
     public boolean txnStore(long txnId, long indexId, byte[] key, byte[] value)
         throws IOException
     {
-        Index ix = getIndex(indexId);
         TxnEntry te = getTxnEntry(txnId);
+        LocalTransaction txn = te.mTxn;
 
-        // Allow side-effect free operations to be performed before acquiring latch.
-        mOpLatch.acquireShared();
+        // Acquire the lock on behalf of the transaction, but push it using the correct thread.
+        Lock lock = txn.lockUpgradableNoPush(indexId, key);
 
-        Latch latch = te.latch();
-        try {
-            LocalTransaction txn = te.mTxn;
-
-            // Locks must be acquired in their original order to avoid
-            // deadlock, so don't allow another task thread to run yet.
-            txn.lockUpgradable(indexId, key, INFINITE_TIMEOUT);
-
-            // Allow another task thread to run while operation completes.
-            nextTask();
-
-            while (ix != null) {
+        runTask(te, new Worker.Task() {
+            public void run() {
+                Index ix;
                 try {
-                    ix.store(txn, key, value);
-                    break;
-                } catch (ClosedIndexException e) {
-                    // User closed the shared index reference, so re-open it.
-                    ix = openIndex(indexId, null);
+                    if (lock != null) {
+                        txn.push(lock, 0);
+                    }
+
+                    ix = getIndex(indexId);
+
+                    while (true) {
+                        try {
+                            ix.store(txn, key, value);
+                            break;
+                        } catch (ClosedIndexException e) {
+                            // User closed the shared index reference, so re-open it.
+                            ix = openIndex(indexId, null);
+                        }
+                    }
+                } catch (Throwable e) {
+                    fail(e);
+                    return;
                 }
+
+                notifyStore(ix, key, value);
             }
-        } finally {
-            latch.releaseExclusive();
-        }
+        });
 
-        // Only release if no exception.
-        mOpLatch.releaseShared();
+        return true;
+    }
 
-        notifyStore(ix, key, value);
+    @Override
+    public boolean txnStoreCommit(long txnId, long indexId, byte[] key, byte[] value)
+        throws IOException
+    {
+        TxnEntry te = getTxnEntry(txnId);
+        LocalTransaction txn = te.mTxn;
 
-        // Return false to prevent RedoDecoder from looping back.
-        return false;
+        // Acquire the lock on behalf of the transaction, but push it using the correct thread.
+        Lock lock = txn.lockUpgradableNoPush(indexId, key);
+
+        runTask(te, new Worker.Task() {
+            public void run() {
+                Index ix;
+                try {
+                    if (lock != null) {
+                        txn.push(lock, 0);
+                    }
+
+                    ix = getIndex(indexId);
+
+                    while (true) {
+                        try {
+                            ix.store(txn, key, value);
+                            break;
+                        } catch (ClosedIndexException e) {
+                            // User closed the shared index reference, so re-open it.
+                            ix = openIndex(indexId, null);
+                        }
+                    }
+
+                    txn.commit();
+                } catch (Throwable e) {
+                    fail(e);
+                    return;
+                }
+
+                notifyStore(ix, key, value);
+            }
+        });
+
+        return true;
     }
 
     @Override
     public boolean txnStoreCommitFinal(long txnId, long indexId, byte[] key, byte[] value)
         throws IOException
     {
-        Index ix = getIndex(indexId);
         TxnEntry te = removeTxnEntry(txnId);
 
-        // Allow side-effect free operations to be performed before acquiring latch.
-        mOpLatch.acquireShared();
-
         LocalTransaction txn;
-        Latch latch;
-
         if (te == null) {
             // Create the transaction, but don't store it in the transaction table.
             txn = newTransaction(txnId);
-            // Latch isn't required because no other operations can access the transaction.
-            latch = null;
         } else {
             txn = te.mTxn;
-            latch = te.latch();
         }
 
-        try {
-            // Locks must be acquired in their original order to avoid
-            // deadlock, so don't allow another task thread to run yet.
-            txn.lockUpgradable(indexId, key, INFINITE_TIMEOUT);
+        // Acquire the lock on behalf of the transaction, but push it using the correct thread.
+        Lock lock = txn.lockUpgradableNoPush(indexId, key);
 
-            // Allow another task thread to run while operation completes.
-            nextTask();
-
-            while (ix != null) {
+        Worker.Task task = new Worker.Task() {
+            public void run() {
+                Index ix;
                 try {
-                    ix.store(txn, key, value);
-                    break;
-                } catch (ClosedIndexException e) {
-                    // User closed the shared index reference, so re-open it.
-                    ix = openIndex(indexId, null);
+                    if (lock != null) {
+                        txn.push(lock, 0);
+                    }
+
+                    ix = getIndex(indexId);
+
+                    while (true) {
+                        try {
+                            ix.store(txn, key, value);
+                            break;
+                        } catch (ClosedIndexException e) {
+                            // User closed the shared index reference, so re-open it.
+                            ix = openIndex(indexId, null);
+                        }
+                    }
+
+                    txn.commitAll();
+                } catch (Throwable e) {
+                    fail(e);
+                    return;
+                }
+
+                notifyStore(ix, key, value);
+            }
+        };
+
+        if (te == null) {
+            runTaskAnywhere(task);
+        } else {
+            runTask(te, task);
+        }
+
+        return true;
+    }
+
+    @Override
+    public boolean txnLockShared(long txnId, long indexId, byte[] key) throws IOException {
+        TxnEntry te = getTxnEntry(txnId);
+        LocalTransaction txn = te.mTxn;
+
+        // Acquire the lock on behalf of the transaction, but push it using the correct thread.
+        Lock lock = txn.lockSharedNoPush(indexId, key);
+
+        // TODO: No need to run special task if transaction was just created.
+        if (lock != null) {
+            runTask(te, new Worker.Task() {
+                public void run() {
+                    try {
+                        txn.push(lock, 0);
+                    } catch (Throwable e) {
+                        fail(e);
+                        return;
+                    }
+                }
+            });
+        }
+
+        return true;
+    }
+
+    @Override
+    public boolean txnLockUpgradable(long txnId, long indexId, byte[] key) throws IOException {
+        TxnEntry te = getTxnEntry(txnId);
+        LocalTransaction txn = te.mTxn;
+
+        // Acquire the lock on behalf of the transaction, but push it using the correct thread.
+        Lock lock = txn.lockUpgradableNoPush(indexId, key);
+
+        // TODO: No need to run special task if transaction was just created.
+        if (lock != null) {
+            runTask(te, new Worker.Task() {
+                public void run() {
+                    try {
+                        txn.push(lock, 0);
+                    } catch (Throwable e) {
+                        fail(e);
+                        return;
+                    }
+                }
+            });
+        }
+
+        return true;
+    }
+
+    @Override
+    public boolean txnLockExclusive(long txnId, long indexId, byte[] key) throws IOException {
+        TxnEntry te = getTxnEntry(txnId);
+        LocalTransaction txn = te.mTxn;
+
+        // Acquire the lock on behalf of the transaction, but push it using the correct thread.
+        Lock lock = txn.lockUpgradableNoPush(indexId, key);
+
+        // TODO: Can acquire exclusive at first, but must know what push mode to use (0 or 1)
+        // TODO: No need to run special task if transaction was just created.
+        runTask(te, new Worker.Task() {
+            public void run() {
+                try {
+                    if (lock != null) {
+                        txn.push(lock, 0);
+                    }
+
+                    txn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
+                } catch (Throwable e) {
+                    fail(e);
+                    return;
                 }
             }
+        });
 
-            txn.commitAll();
-        } finally {
-            if (latch != null) {
-                latch.releaseExclusive();
-            }
-        }
-
-        // Only release if no exception.
-        mOpLatch.releaseShared();
-
-        notifyStore(ix, key, value);
-
-        // Return false to prevent RedoDecoder from looping back.
-        return false;
+        return true;
     }
 
     @Override
     public boolean txnCustom(long txnId, byte[] message) throws IOException {
-        TransactionHandler handler = mDatabase.mCustomTxnHandler;
-
-        if (handler == null) {
-            throw new DatabaseException("Custom transaction handler is not installed");
-        }
-
+        TransactionHandler handler = customHandler();
         TxnEntry te = getTxnEntry(txnId);
+        LocalTransaction txn = te.mTxn;
 
-        // Allow side-effect free operations to be performed before acquiring latch.
-        mOpLatch.acquireShared();
-        mCustomLatch.acquireExclusive();
+        runTask(te, new Worker.Task() {
+            public void run() {
+                try {
+                    handler.redo(mDatabase, txn, message);
+                } catch (Throwable e) {
+                    fail(e);
+                    return;
+                }
+            }
+        });
 
-        Latch latch = te.latch();
-        try {
-            handler.redo(mDatabase, te.mTxn, message);
-        } finally {
-            latch.releaseExclusive();
-            mCustomLatch.releaseExclusive();
-        }
-
-        // Only release if no exception.
-        opFinishedShared();
-
-        // Return true and allow RedoDecoder to loop back.
         return true;
     }
 
@@ -655,126 +759,82 @@ final class ReplRedoEngine implements RedoVisitor {
     public boolean txnCustomLock(long txnId, byte[] message, long indexId, byte[] key)
         throws IOException
     {
-        TransactionHandler handler = mDatabase.mCustomTxnHandler;
-
-        if (handler == null) {
-            throw new DatabaseException("Custom transaction handler is not installed");
-        }
-
+        TransactionHandler handler = customHandler();
         TxnEntry te = getTxnEntry(txnId);
+        LocalTransaction txn = te.mTxn;
 
-        // Allow side-effect free operations to be performed before acquiring latch.
-        mOpLatch.acquireShared();
+        // Acquire the lock on behalf of the transaction, but push it using the correct thread.
+        Lock lock = txn.lockUpgradableNoPush(indexId, key);
 
-        Latch latch = te.latch();
-        try {
-            LocalTransaction txn = te.mTxn;
+        runTask(te, new Worker.Task() {
+            public void run() {
+                try {
+                    if (lock != null) {
+                        txn.push(lock, 0);
+                    }
 
-            // Locks must be acquired in their original order to avoid
-            // deadlock, so don't allow another task thread to run yet.
-            txn.lockUpgradable(indexId, key, INFINITE_TIMEOUT);
+                    txn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
 
-            // Allow another task thread to run while operation completes.
-            nextTask();
+                    handler.redo(mDatabase, txn, message, indexId, key);
+                } catch (Throwable e) {
+                    fail(e);
+                    return;
+                }
+            }
+        });
 
-            // Wait to acquire exclusive now that another thread is running.
-            txn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
-
-            handler.redo(mDatabase, txn, message, indexId, key);
-        } finally {
-            latch.releaseExclusive();
-        }
-
-        // Only release if no exception.
-        mOpLatch.releaseShared();
-
-        // Return false to prevent RedoDecoder from looping back.
-        return false;
-    }
-
-    /**
-     * Called for an operation which is ignored.
-     */
-    private boolean nop() {
-        mOpLatch.acquireShared();
-        opFinishedShared();
         return true;
     }
 
     /**
-     * Called after an operation is finished which didn't spawn a task thread. Caller must hold
-     * shared op latch, which is released by this method. Decode latch must also be held, which
-     * caller must release.
+     * Returns the position of the next operation to decode. Call suspend to capture a stable
+     * pairing of the position and transaction id.
      */
-    private void opFinishedShared() {
-        doOpFinished();
-        mOpLatch.releaseShared();
+    long decodePosition() {
+        mDecodeLatch.acquireShared();
+        try {
+            ReplRedoDecoder decoder = mDecoder;
+            return decoder == null ? mManager.readPosition() : decoder.mDecodePosition;
+        } finally {
+            mDecodeLatch.releaseShared();
+        }
     }
 
     /**
-     * Called after an operation is finished which didn't spawn a task thread. Caller must hold
-     * exclusive op latch, which is released by this method. Decode latch must also be held,
-     * which caller must release.
-     */
-    private void opFinishedExclusive() {
-        doOpFinished();
-        mOpLatch.releaseExclusive();
-    }
-
-    private void doOpFinished() {
-        // Capture the position for the next operation. Also capture the last transaction id,
-        // before a delta is applied.
-        ReplRedoDecoder decoder = mDecoder;
-        mDecodePosition = decoder.in().mPos;
-        mDecodeTransactionId = decoder.mTxnId;
-    }
-
-    /**
-     * Launch a task thread to continue processing more redo entries
-     * concurrently. Caller must return false from the visitor method, to
-     * prevent multiple threads from trying to decode the redo input stream. If
-     * thread limit is reached, the remaining task threads continue working.
+     * Returns the last transaction id which was decoded. Call suspend to capture a stable
+     * pairing of the position and transaction id.
      *
-     * Caller must hold exclusive decode latch, which is released by this method. Shared op
-     * latch must also be held, which caller must release.
+     * @throws IllegalStateException if not decoding
      */
-    private void nextTask() {
-        // Capture the position for the next operation. Also capture the last transaction id,
-        // before a delta is applied.
-        ReplRedoDecoder decoder = mDecoder;
-        mDecodePosition = decoder.in().mPos;
-        mDecodeTransactionId = decoder.mTxnId;
-
-        if (mIdleThreads.get() == 0) {
-            int total = mTotalThreads.get();
-            if (total < mMaxThreads && mTotalThreads.compareAndSet(total, total + 1)) {
-                DecodeTask task;
-                try {
-                    task = new DecodeTask();
-                    task.start();
-                } catch (Throwable e) {
-                    mDecodeLatch.releaseExclusive();
-                    mTotalThreads.getAndDecrement();
-                    throw e;
-                }
-                mTaskThreadSet.put(task, this);
+    long decodeTransactionId() {
+        mDecodeLatch.acquireShared();
+        try {
+            ReplRedoDecoder decoder = mDecoder;
+            if (decoder != null) {
+                return decoder.mDecodeTransactionId;
             }
+        } finally {
+            mDecodeLatch.releaseShared();
         }
 
-        // Allow task thread to proceed.
-        mDecodeLatch.releaseExclusive();
+        throw new IllegalStateException("Not decoding");
     }
 
     /**
-     * Waits for all incoming replication operations to finish and prevents new ones from
-     * starting.
+     * Prevents new operations from starting and waits for in-flight operations to complete.
      */
     void suspend() {
-        mOpLatch.acquireExclusive();
+        // Prevent new operations from being decoded.
+        mDecodeLatch.acquireShared();
+
+        // Wait for work to complete.
+        if (mWorkerGroup != null) {
+            mWorkerGroup.join(false);
+        }
     }
 
     void resume() {
-        mOpLatch.releaseExclusive();
+        mDecodeLatch.releaseShared();
     }
 
     /**
@@ -782,23 +842,49 @@ final class ReplRedoEngine implements RedoVisitor {
      */
     private TxnEntry getTxnEntry(long txnId) throws IOException {
         long scrambledTxnId = mix(txnId);
-        TxnEntry e = mTransactions.get(scrambledTxnId);
+        TxnEntry te = mTransactions.get(scrambledTxnId);
 
-        if (e == null) {
+        if (te == null) {
             // Create transaction on demand if necessary. Startup transaction recovery only
             // applies to those which generated undo log entries.
             LocalTransaction txn = newTransaction(txnId);
-            e = mTransactions.insert(scrambledTxnId);
-            e.init(txn, selectLatch(scrambledTxnId));
+            te = mTransactions.insert(scrambledTxnId);
+            te.init(txn);
         }
 
-        return e;
+        return te;
+    }
+
+    /**
+     * Only to be called from decode thread. Selects a worker for the first task against the
+     * given transaction, and then uses the same worker for subsequent tasks.
+     */
+    private void runTask(TxnEntry te, Worker.Task task) {
+        Worker w = te.mWorker;
+        if (w == null) {
+            te.mWorker = runTaskAnywhere(task);
+        } else {
+            w.enqueue(task);
+        }
+    }
+
+    private Worker runTaskAnywhere(Worker.Task task) {
+        if (mWorkerGroup == null) {
+            try {
+                task.run();
+            } catch (Throwable e) {
+                uncaught(e);
+            }
+            return null;
+        } else {
+            return mWorkerGroup.enqueue(task);
+        }
     }
 
     private LocalTransaction newTransaction(long txnId) {
         LocalTransaction txn = new LocalTransaction
             (mDatabase, txnId, LockMode.UPGRADABLE_READ, INFINITE_TIMEOUT);
-        txn.attach("replication");
+        txn.attach(ATTACHMENT);
         return txn;
     }
 
@@ -859,7 +945,7 @@ final class ReplRedoEngine implements RedoVisitor {
 
         if (entry != null) {
             // Remove entries for all other cleared references, freeing up memory.
-            mIndexes.traverse((e) -> e.value.get() == null);
+            mIndexes.traverse(e -> e.value.get() == null);
         }
 
         return ix;
@@ -876,72 +962,27 @@ final class ReplRedoEngine implements RedoVisitor {
         return openIndex(null, indexId, entry);
     }
 
-    private Latch selectLatch(long scrambledTxnId) {
-        return mLatches[((int) scrambledTxnId) & mLatchesMask];
-    }
-
-    private static final long IDLE_TIMEOUT_NANOS = 5 * 1000000000L;
-
-    /**
-     * @return false if thread should exit
-     */
-    boolean decode() {
-        mIdleThreads.getAndIncrement();
-        try {
-            while (true) {
-                try {
-                    if (acquireHandoff(mDecodeLatch, IDLE_TIMEOUT_NANOS, mDecodeSpins)) {
-                        break;
-                    }
-                } catch (InterruptedException e) {
-                    // Treat as timeout.
-                    Thread.interrupted();
-                }
-
-                int total = mTotalThreads.get();
-                if (total > 1 && mTotalThreads.compareAndSet(total, total - 1)) {
-                    return false;
-                }
-            }
-        } finally {
-            mIdleThreads.getAndDecrement();
-        }
-
-        // At this point, decode latch is held exclusively.
-
-        RedoDecoder decoder = mDecoder;
-        if (decoder == null) {
-            mTotalThreads.getAndDecrement();
-            mDecodeLatch.releaseExclusive();
-            return false;
-        }
+    private void decode() {
+        final ReplRedoDecoder decoder = mDecoder;
 
         try {
-            if (!decoder.run(this)) {
-                return true;
+            while (!decoder.run(this));
+
+            // End of stream reached, and so local instance is now the leader.
+
+            // Wait for work to complete.
+            if (mWorkerGroup != null) {
+                mWorkerGroup.join(false);
             }
-            // End of stream reached, and so local instance is now leader.
+
+            // Rollback any lingering transactions.
             reset();
         } catch (Throwable e) {
-            if (!mDatabase.isClosed()) {
-                EventListener listener = mDatabase.eventListener();
-                if (listener != null) {
-                    listener.notify(EventType.REPLICATION_PANIC,
-                                    "Unexpected replication exception: %1$s", rootCause(e));
-                } else {
-                    uncaught(e);
-                }
-            }
-            mTotalThreads.getAndDecrement();
-            mDecodeLatch.releaseExclusive();
-            // Panic.
-            closeQuietly(null, mDatabase, e);
-            return false;
+            fail(e);
+            return;
+        } finally {
+            decoder.mDeactivated = true;
         }
-
-        mDecoder = null;
-        mTotalThreads.getAndDecrement();
-        mDecodeLatch.releaseExclusive();
 
         try {
             mController.leaderNotify();
@@ -951,8 +992,14 @@ final class ReplRedoEngine implements RedoVisitor {
             // Could try to switch to receiving mode, but panic seems to be the safe option.
             closeQuietly(null, mDatabase, e);
         }
+    }
 
-        return false;
+    private TransactionHandler customHandler() throws DatabaseException {
+        TransactionHandler handler = mDatabase.mCustomTxnHandler;
+        if (handler == null) {
+            throw new DatabaseException("Custom transaction handler is not installed");
+        }
+        return handler;
     }
 
     private void notifyStore(Index ix, byte[] key, byte[] value) {
@@ -965,109 +1012,35 @@ final class ReplRedoEngine implements RedoVisitor {
         }
     }
 
+    private void fail(Throwable e) {
+        if (!mDatabase.isClosed()) {
+            EventListener listener = mDatabase.eventListener();
+            if (listener != null) {
+                listener.notify(EventType.REPLICATION_PANIC,
+                                "Unexpected replication exception: %1$s", rootCause(e));
+            } else {
+                uncaught(e);
+            }
+        }
+        // Panic.
+        closeQuietly(null, mDatabase, e);
+    }
+
     UnmodifiableReplicaException unmodifiable() throws DatabaseException {
         mDatabase.checkClosed();
         return new UnmodifiableReplicaException();
-    }
-
-    final class DecodeTask extends Thread {
-        DecodeTask() {
-            setDaemon(true);
-        }
-
-        public void run() {
-            setName("ReplicationReceiver-" + Long.toUnsignedString(getId()));
-            try {
-                while (ReplRedoEngine.this.decode());
-            } finally {
-                mTaskThreadSet.remove(this);
-            }
-        }
     }
 
     private static long mix(long txnId) {
         return HASH_SPREAD * txnId;
     }
 
-    private static void acquireHandoff(Latch latch, AtomicInteger spinCfg) {
-        try {
-            acquireHandoff(latch, INFINITE_TIMEOUT, spinCfg);
-        } catch (InterruptedException ie) {
-            // Shouldn't happen. The call above only throws
-            // InterruptedException for a timed wait.
-            Thread.currentThread().interrupt();
-        }
-    }
-
-    /**
-     * Acquire the exclusive latch using an adaptive spin strategy. The
-     * expectation is that the latch is most often uncontended or held
-     * exclusive by another thread that is handing off to an exclusive
-     * waiter. Spinning here helps avoid costly thread park/unpark.
-     */
-    private static boolean acquireHandoff(Latch latch, long nanos, AtomicInteger spinCfg) throws InterruptedException {
-        int prevSpins = spinCfg.get();
-        int cutoff = prevSpins == 0 ? MAX_SPINS : prevSpins;
-        int h = 0, tries;
-
-        for (tries = 0;;) {
-            if (latch.tryAcquireExclusive()) {
-                break;
-            } else if (tries < cutoff) {
-                h ^= h << 1; h ^= h >>> 3; h ^= h << 10; // xorshift rng
-                if (h == 0) {
-                    h = ThreadLocalRandom.current().nextInt();
-                } else if (h < 0) {
-                    ++tries;
-                }
-            } else if (nanos < 0) {
-                latch.acquireExclusive();
-                break;
-            } else {
-                // Timed acquire.
-                if (latch.tryAcquireExclusiveNanos(nanos)) break;
-                else return false;
-            }
-        }
-
-        int target;
-        if (tries >= MAX_SPINS) {
-            // Spinning was pointless if we hit max spins. Next
-            // time spin the minimum.
-            target = MIN_SPINS;
-        } else {
-            // Target up to 2 * tries spins next time.
-            target = Math.min(MAX_SPINS, Math.max(MIN_SPINS, tries << 1));
-        }
-
-        if (prevSpins == 0) {
-            spinCfg.set(target);
-        } else {
-            // Smooth and update the spin config, ignoring any cas failure.
-            spinCfg.weakCompareAndSet(prevSpins, prevSpins + (target - prevSpins) / 8);
-        }
-        return true;
-    }
-
     static final class TxnEntry extends LHashTable.Entry<TxnEntry> {
         LocalTransaction mTxn;
-        Latch mLatch;
+        Worker mWorker;
 
-        void init(LocalTransaction txn, Latch latch) {
+        void init(LocalTransaction txn) {
             mTxn = txn;
-            mLatch = latch;
-        }
-
-        Latch latch() {
-            Latch latch = mLatch;
-            latch.acquireExclusive();
-            return latch;
-        }
-
-        Latch latch(AtomicInteger spinCfg) {
-            Latch latch = mLatch;
-            acquireHandoff(latch, spinCfg);
-            return latch;
         }
     }
 

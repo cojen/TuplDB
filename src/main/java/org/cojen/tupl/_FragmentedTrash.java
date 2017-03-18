@@ -133,6 +133,8 @@ final class _FragmentedTrash {
     /**
      * Remove an entry from the trash, as an undo operation. Original entry is
      * stored back into index.
+     *
+     * @param index index to store entry into; pass null to fully delete it instead
      */
     void remove(long txnId, _Tree index, byte[] undoEntry) throws IOException {
         // Extract the index and trash keys.
@@ -153,29 +155,40 @@ final class _FragmentedTrash {
             p_delete(undo);
         }
 
-        byte[] fragmented;
-        _TreeCursor cursor = new _TreeCursor(mTrash, Transaction.BOGUS);
-        try {
-            cursor.find(trashKey);
-            fragmented = cursor.value();
-            if (fragmented == null) {
-                // Nothing to remove, possibly caused by double undo.
-                cursor.reset();
-                return;
-            }
-            cursor.store(null);
-            cursor.reset();
-        } catch (Throwable e) {
-            throw closeOnFailure(cursor, e);
-        }
+        remove(index, indexKey, trashKey);
+    }
 
-        cursor = new _TreeCursor(index, Transaction.BOGUS);
+    /**
+     * Remove an entry from the trash, as an undo operation. Original entry is
+     * stored back into index.
+     *
+     * @param index index to store entry into; pass null to fully delete it instead
+     */
+    void remove(_Tree index, byte[] indexKey, byte[] trashKey) throws IOException {
+        _TreeCursor trashCursor = new _TreeCursor(mTrash, Transaction.BOGUS);
         try {
-            cursor.find(indexKey);
-            cursor.storeFragmented(fragmented);
-            cursor.reset();
+            trashCursor.find(trashKey);
+
+            if (index == null) {
+                deleteFragmented(mTrash.mDatabase, trashCursor);
+            } else {
+                byte[] fragmented = trashCursor.value();
+                if (fragmented != null) {
+                    _TreeCursor ixCursor = new _TreeCursor(index, Transaction.BOGUS);
+                    try {
+                        ixCursor.find(indexKey);
+                        ixCursor.storeFragmented(fragmented);
+                        ixCursor.reset();
+                    } catch (Throwable e) {
+                        throw closeOnFailure(ixCursor, e);
+                    }
+                    trashCursor.store(null);
+                }
+            }
+
+            trashCursor.reset();
         } catch (Throwable e) {
-            throw closeOnFailure(cursor, e);
+            throw closeOnFailure(trashCursor, e);
         }
     }
 
@@ -201,8 +214,6 @@ final class _FragmentedTrash {
                     break;
                 }
 
-                // Acquire shared lock before loading value, avoiding race conditions with a
-                // concurrent call to emptyAllTrash.
                 CommitLock.Shared shared = commitLock.acquireShared();
                 try {
                     deleteFragmented(db, cursor);
@@ -221,7 +232,7 @@ final class _FragmentedTrash {
 
     /**
      * Non-transactionally deletes all fragmented values. Expected to be called only during
-     * recovery, and never concurrently.
+     * recovery, and never when other calls into the trash are being made concurrently.
      *
      * @return true if any trash was found
      */
@@ -243,13 +254,11 @@ final class _FragmentedTrash {
                 }
 
                 do {
-                    // Acquire exclusive lock to stall concurrent calls to the emptyTrash(txn)
-                    // method. Without this, fragmented values can be double deleted.
-                    commitLock.acquireExclusive();
+                    CommitLock.Shared shared = commitLock.acquireShared();
                     try {
                         found |= deleteFragmented(db, cursor);
                     } finally {
-                        commitLock.releaseExclusive();
+                        shared.release();
                     }
 
                     cursor.next();

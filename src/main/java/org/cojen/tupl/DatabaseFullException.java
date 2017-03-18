@@ -31,6 +31,10 @@ public class DatabaseFullException extends DatabaseException {
         super(cause);
     }
 
+    public DatabaseFullException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
     public DatabaseFullException(String message) {
         super(message);
     }

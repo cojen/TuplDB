@@ -16,6 +16,8 @@
 
 package org.cojen.tupl;
 
+import java.lang.ref.WeakReference;
+
 import static org.cojen.tupl._LockManager.*;
 
 /**
@@ -53,7 +55,14 @@ class _Locker extends _LockOwner {
 
     @Override
     public final _LocalDatabase getDatabase() {
-        return manager().mDatabaseRef.get();
+        _LockManager manager = mManager;
+        if (manager != null) {
+            WeakReference<_LocalDatabase> ref = manager.mDatabaseRef;
+            if (ref != null) {
+                return ref.get();
+            }
+        }
+        return null;
     }
 
     @Override
@@ -395,6 +404,58 @@ class _Locker extends _LockOwner {
         LockUpgradeRule lockUpgradeRule = mManager.mDefaultLockUpgradeRule;
         return lockUpgradeRule == LockUpgradeRule.UNCHECKED
             | (lockUpgradeRule == LockUpgradeRule.LENIENT & count == 1);
+    }
+
+    /**
+     * Acquire a shared lock, with infinite timeout, but don't push the lock into the owned
+     * lock stack. Returns the lock which was acquired, or null if already owned.
+     */
+    final _Lock lockSharedNoPush(long indexId, byte[] key) throws LockFailureException {
+        int hash = hash(indexId, key);
+        _LockManager.LockHT ht = mManager.getLockHT(hash);
+
+        _Lock lock;
+        LockResult result;
+
+        ht.acquireExclusive();
+        try {
+            lock = ht.lockAccess(indexId, key, hash);
+            result = lock.tryLockShared(ht, this, -1);
+        } finally {
+            ht.releaseExclusive();
+        }
+
+        if (!result.isHeld()) {
+            throw failed(TYPE_SHARED, result, -1);
+        }
+
+        return result == LockResult.ACQUIRED ? lock : null;
+    }
+
+    /**
+     * Acquire an upgradable lock, with infinite timeout, but don't push the lock into the
+     * owned lock stack. Returns the lock which was acquired, or null if already owned.
+     */
+    final _Lock lockUpgradableNoPush(long indexId, byte[] key) throws LockFailureException {
+        int hash = hash(indexId, key);
+        _LockManager.LockHT ht = mManager.getLockHT(hash);
+
+        _Lock lock;
+        LockResult result;
+
+        ht.acquireExclusive();
+        try {
+            lock = ht.lockAccess(indexId, key, hash);
+            result = lock.tryLockUpgradable(ht, this, -1);
+        } finally {
+            ht.releaseExclusive();
+        }
+
+        if (!result.isHeld()) {
+            throw failed(TYPE_UPGRADABLE, result, -1);
+        }
+
+        return result == LockResult.ACQUIRED ? lock : null;
     }
 
     /**

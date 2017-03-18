@@ -70,6 +70,12 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
+    public boolean fence() {
+        mOut.println("fence");
+        return true;
+    }
+
+    @Override
     public boolean store(long indexId, byte[] key, byte[] value) {
         mOut.println("store: indexId=" + indexId +
                      ", key=" + toHex(key) + ", value=" + toHex(value));
@@ -127,6 +133,13 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
+    public boolean txnEnterStore(long txnId, long indexId, byte[] key, byte[] value) {
+        txnEnter(txnId);
+        txnStore(txnId, indexId, key, value);
+        return true;
+    }
+
+    @Override
     public boolean txnStore(long txnId, long indexId, byte[] key, byte[] value) {
         mOut.println("txnStore: txnId=" + txnId + ", indexId=" + indexId +
                      ", key=" + toHex(key) + ", value=" + toHex(value));
@@ -134,9 +147,36 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
-    public boolean txnStoreCommitFinal(long txnId, long indexId, byte[] key, byte[] value) {
+    public boolean txnStoreCommit(long txnId, long indexId, byte[] key, byte[] value) {
         txnStore(txnId, indexId, key, value);
         return txnCommit(txnId);
+    }
+
+    @Override
+    public boolean txnStoreCommitFinal(long txnId, long indexId, byte[] key, byte[] value) {
+        txnStore(txnId, indexId, key, value);
+        return txnCommitFinal(txnId);
+    }
+
+    @Override
+    public boolean txnLockShared(long txnId, long indexId, byte[] key) {
+        mOut.println("txnLockShared: txnId=" + txnId + ", indexId=" + indexId +
+                     ", key=" + toHex(key));
+        return true;
+    }
+
+    @Override
+    public boolean txnLockUpgradable(long txnId, long indexId, byte[] key) {
+        mOut.println("txnLockUpgradable: txnId=" + txnId + ", indexId=" + indexId +
+                     ", key=" + toHex(key));
+        return true;
+    }
+
+    @Override
+    public boolean txnLockExclusive(long txnId, long indexId, byte[] key) {
+        mOut.println("txnLockExclusive: txnId=" + txnId + ", indexId=" + indexId +
+                     ", key=" + toHex(key));
+        return true;
     }
 
     @Override
@@ -152,7 +192,7 @@ class RedoPrinter implements RedoVisitor {
         return true;
     }
 
-    private String toHex(byte[] bytes) {
+    private static String toHex(byte[] bytes) {
         if (bytes == null) {
             return "null";
         }
@@ -178,7 +218,7 @@ class RedoPrinter implements RedoVisitor {
         return bob.toString();
     }
 
-    private String toDateTime(long timestamp) {
+    private static String toDateTime(long timestamp) {
         return java.time.Instant.ofEpochMilli(timestamp).toString();
     }
 }

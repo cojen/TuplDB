@@ -19,6 +19,8 @@ package org.cojen.tupl;
 import java.io.EOFException;
 import java.io.IOException;
 
+import org.cojen.tupl.util.Latch;
+
 import static org.cojen.tupl.RedoOps.*;
 
 /**
@@ -29,12 +31,30 @@ import static org.cojen.tupl.RedoOps.*;
  */
 abstract class RedoDecoder {
     private final boolean mLenient;
+    final DataIn mIn;
 
     long mTxnId;
 
-    RedoDecoder(boolean lenient, long initialTxnId) {
+    final Latch mDecodeLatch;
+
+    // Decode position and transaction id are captured immediately before reading the next op
+    // code, with the decode latch held exclusively.
+    long mDecodePosition;
+    long mDecodeTransactionId;
+
+    /**
+     * @param decodeLatch is held exclusive when operations are being processed
+     */
+    RedoDecoder(boolean lenient, long initialTxnId, DataIn in, Latch decodeLatch) {
         mLenient = lenient;
+        mIn = in;
+
         mTxnId = initialTxnId;
+
+        mDecodeLatch = decodeLatch;
+
+        mDecodePosition = in.mPos;
+        mDecodeTransactionId = initialTxnId;
     }
 
     /**
@@ -43,13 +63,30 @@ abstract class RedoDecoder {
      *
      * @return true if end of stream reached; false if visitor returned false
      */
-    @SuppressWarnings("fallthrough")
     boolean run(RedoVisitor visitor) throws IOException {
-        while (true) {
-            // Must be called before each operation, for the benefit of subclasses.
-            DataIn in = in();
+        mDecodeLatch.acquireExclusive();
+        try {
+            return doRun(visitor, mIn);
+        } finally {
+            mDecodeLatch.releaseExclusive();
+        }
+    }
 
-            int op = in.read();
+    @SuppressWarnings("fallthrough")
+    private boolean doRun(RedoVisitor visitor, DataIn in) throws IOException {
+        while (true) {
+            mDecodePosition = in.mPos;
+            mDecodeTransactionId = mTxnId;
+
+            mDecodeLatch.releaseExclusive();
+
+            int op;
+            try {
+                op = in.read();
+            } finally {
+                mDecodeLatch.acquireExclusive();
+            }
+
             if (op < 0) {
                 return true;
             }
@@ -141,6 +178,15 @@ abstract class RedoDecoder {
                 }
                 mTxnId = txnId;
                 if (!verifyTerminator(in)) {
+                    return false;
+                }
+                break;
+
+            case OP_FENCE:
+                if (!verifyTerminator(in)) {
+                    return false;
+                }
+                if (!visitor.fence()) {
                     return false;
                 }
                 break;
@@ -287,10 +333,7 @@ abstract class RedoDecoder {
                 } catch (EOFException e) {
                     return true;
                 }
-                if (!verifyTerminator(in)
-                    || !visitor.txnEnter(txnId)
-                    || !visitor.txnStore(txnId, indexId, key, value))
-                {
+                if (!verifyTerminator(in) || !visitor.txnEnterStore(txnId, indexId, key, value)) {
                     return false;
                 }
                 break;
@@ -318,10 +361,7 @@ abstract class RedoDecoder {
                 } catch (EOFException e) {
                     return true;
                 }
-                if (!verifyTerminator(in)
-                    || !visitor.txnStore(txnId, indexId, key, value)
-                    || !visitor.txnCommit(txnId))
-                {
+                if (!verifyTerminator(in) || !visitor.txnStoreCommit(txnId, indexId, key, value)) {
                     return false;
                 }
                 break;
@@ -350,10 +390,7 @@ abstract class RedoDecoder {
                 } catch (EOFException e) {
                     return true;
                 }
-                if (!verifyTerminator(in)
-                    || !visitor.txnEnter(txnId)
-                    || !visitor.txnStore(txnId, indexId, key, null))
-                {
+                if (!verifyTerminator(in) || !visitor.txnEnterStore(txnId, indexId, key, null)) {
                     return false;
                 }
                 break;
@@ -379,10 +416,7 @@ abstract class RedoDecoder {
                 } catch (EOFException e) {
                     return true;
                 }
-                if (!verifyTerminator(in)
-                    || !visitor.txnStore(txnId, indexId, key, null)
-                    || !visitor.txnCommitFinal(txnId))
-                {
+                if (!verifyTerminator(in) || !visitor.txnStoreCommit(txnId, indexId, key, null)) {
                     return false;
                 }
                 break;
@@ -398,6 +432,45 @@ abstract class RedoDecoder {
                 if (!verifyTerminator(in)
                     || !visitor.txnStoreCommitFinal(txnId, indexId, key, null))
                 {
+                    return false;
+                }
+                break;
+
+            case OP_TXN_LOCK_SHARED:
+                try {
+                    txnId = readTxnId(in);
+                    indexId = in.readLongLE();
+                    key = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in) || !visitor.txnLockShared(txnId, indexId, key)) {
+                    return false;
+                }
+                break;
+
+            case OP_TXN_LOCK_UPGRADABLE:
+                try {
+                    txnId = readTxnId(in);
+                    indexId = in.readLongLE();
+                    key = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in) || !visitor.txnLockUpgradable(txnId, indexId, key)) {
+                    return false;
+                }
+                break;
+
+            case OP_TXN_LOCK_EXCLUSIVE:
+                try {
+                    txnId = readTxnId(in);
+                    indexId = in.readLongLE();
+                    key = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in) || !visitor.txnLockExclusive(txnId, indexId, key)) {
                     return false;
                 }
                 break;
@@ -434,14 +507,9 @@ abstract class RedoDecoder {
         }
     }
 
-    long readTxnId(DataIn in) throws IOException {
+    private long readTxnId(DataIn in) throws IOException {
         return mTxnId += in.readSignedVarLong();
     }
-
-    /**
-     * Invoked before each operation is read.
-     */
-    abstract DataIn in();
 
     /**
      * If false is returned, assume rest of redo data is corrupt.

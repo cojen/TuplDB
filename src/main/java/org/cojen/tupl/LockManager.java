@@ -262,7 +262,7 @@ final class LockManager {
         }
 
         /**
-         * Caller must hold latch.
+         * Finds a lock or returns null if not found. Caller must hold latch.
          *
          * @return null if not found
          */
@@ -275,6 +275,51 @@ final class LockManager {
                 }
             }
             return null;
+        }
+
+        /**
+         * Finds or creates a lock. Caller must hold exclusive latch.
+         */
+        Lock lockAccess(long indexId, byte[] key, int hash) {
+            Lock[] entries = mEntries;
+            int index = hash & (entries.length - 1);
+            for (Lock lock = entries[index]; lock != null; lock = lock.mLockManagerNext) {
+                if (lock.matches(indexId, key, hash)) {
+                    return lock;
+                }
+            }
+
+            if (mSize >= mGrowThreshold) {
+                int capacity = entries.length << 1;
+                Lock[] newEntries = new Lock[capacity];
+                int newMask = capacity - 1;
+
+                for (int i=entries.length; --i>=0 ;) {
+                    for (Lock e = entries[i]; e != null; ) {
+                        Lock next = e.mLockManagerNext;
+                        int ix = e.mHashCode & newMask;
+                        e.mLockManagerNext = newEntries[ix];
+                        newEntries[ix] = e;
+                        e = next;
+                    }
+                }
+
+                mEntries = entries = newEntries;
+                mGrowThreshold = (int) (capacity * LOAD_FACTOR);
+                index = hash & newMask;
+            }
+
+            Lock lock = new Lock();
+
+            lock.mIndexId = indexId;
+            lock.mKey = key;
+            lock.mHashCode = hash;
+            lock.mLockManagerNext = entries[index];
+
+            entries[index] = lock;
+            mSize++;
+
+            return lock;
         }
 
         /**

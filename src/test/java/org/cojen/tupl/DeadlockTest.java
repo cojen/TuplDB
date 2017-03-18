@@ -295,6 +295,10 @@ public class DeadlockTest {
         }
 
         db.close();
+
+        for (Thread t : threads) {
+            t.join();
+        }
     }
 
     @Test

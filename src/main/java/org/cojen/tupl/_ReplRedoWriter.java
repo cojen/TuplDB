@@ -112,7 +112,7 @@ class _ReplRedoWriter extends _RedoWriter {
                     mPendingWaiter = waiter;
                     action = waiter.add(pending);
                     if (action == _PendingTxnWaiter.PENDING) {
-                        waiter.setName("_PendingTxnWaiter-" + waiter.getId());
+                        waiter.setName("PendingTxnWaiter-" + waiter.getId());
                         waiter.setDaemon(true);
                         waiter.start();
                     }

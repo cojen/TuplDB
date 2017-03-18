@@ -48,7 +48,7 @@ final class _TxnTree extends _Tree {
     private void txnStore(byte[] key, byte[] value) throws IOException {
         Transaction txn = mDatabase.newAlwaysRedoTransaction();
         try {
-            _TreeCursor c = new _TreeCursor(this, txn);
+            _TreeCursor c = new _TxnTreeCursor(this, txn);
             try {
                 c.mKeyOnly = true;
                 c.doFind(key);
@@ -74,7 +74,7 @@ final class _TxnTree extends _Tree {
     private byte[] txnExchange(byte[] key, byte[] value) throws IOException {
         Transaction txn = mDatabase.newAlwaysRedoTransaction();
         try {
-            _TreeCursor c = new _TreeCursor(this, txn);
+            _TreeCursor c = new _TxnTreeCursor(this, txn);
             try {
                 c.doFind(key);
                 byte[] oldValue = c.mValue;
@@ -101,7 +101,7 @@ final class _TxnTree extends _Tree {
     private boolean txnInsert(byte[] key, byte[] value) throws IOException {
         Transaction txn = mDatabase.newAlwaysRedoTransaction();
         try {
-            _TreeCursor c = new _TreeCursor(this, txn);
+            _TreeCursor c = new _TxnTreeCursor(this, txn);
             try {
                 c.mKeyOnly = true;
                 c.doFind(key);
@@ -133,7 +133,7 @@ final class _TxnTree extends _Tree {
     private boolean txnReplace(byte[] key, byte[] value) throws IOException {
         Transaction txn = mDatabase.newAlwaysRedoTransaction();
         try {
-            _TreeCursor c = new _TreeCursor(this, txn);
+            _TreeCursor c = new _TxnTreeCursor(this, txn);
             try {
                 c.mKeyOnly = true;
                 c.doFind(key);
@@ -164,10 +164,10 @@ final class _TxnTree extends _Tree {
         }
     }
 
-    public boolean txnUpdate(byte[] key, byte[] oldValue, byte[] newValue) throws IOException {
+    private boolean txnUpdate(byte[] key, byte[] oldValue, byte[] newValue) throws IOException {
         Transaction txn = mDatabase.newAlwaysRedoTransaction();
         try {
-            _TreeCursor c = new _TreeCursor(this, txn);
+            _TreeCursor c = new _TxnTreeCursor(this, txn);
             try {
                 c.doFind(key);
                 if (Arrays.equals(oldValue, c.mValue)) {

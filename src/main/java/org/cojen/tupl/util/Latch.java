@@ -83,6 +83,10 @@ public class Latch {
         UNSAFE.putInt(this, STATE_OFFSET, initialState);
     }
 
+    boolean isHeldExclusive() {
+        return mLatchState == EXCLUSIVE;
+    }
+
     /**
      * Try to acquire the exclusive latch, barging ahead of any waiting threads if possible.
      */
