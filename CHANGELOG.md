@@ -5,8 +5,32 @@ v1.3.12
 -------
 * Fix recovery handling of fragmented and deleted entries.
 * Ensure that broken transactions always attempt to write rollback operations into the redo log.
-* Improved performance of writing into the redo log when under heavy contention.
+* Disable emptying of trash following failover. It races with concurrent transaction undo
+  operations.
+* Undo log fixes for fully mapped mode, for large transactions, for many open transactions, for
+  large keys, and for large values.
+* Fix various race conditions which can corrupt the node map data structure.
+* Fix inline fragmented value calculation to consider that a remainder of zero means that no
+  inline length field is required.
+* Limit maximum key size based on the maximum entry size. With a page size of 4096, the maximum
+  was 2026 bytes, but now it's 2024. Larger keys are fragment encoded as before.
+* Fix redo writer latch state when switching redo writers.
+* Index rename and delete operations should always commit against the same redo writer that the
+  transaction uses.
+* Fix stuck checkpoints following leader failover.
+* Fix handling of commit operations which force the buffer to be flushed early.
+* Fix handling of delete commit operation.
+* Fix shared lock reentrancy bug when another thread is waiting in the queue.
+* Fix ghost deletion race condition.
+* Always rollback recovered transactions which shouldn't be replicated, unless they were
+  explicitly committed.
 * More latch performance tweaks.
+* Improved performance of writing into the redo log when under heavy contention.
+* Improved performance when accessing mapped files.
+* Add open options for readahead and close hinting to increase page cache efficiency.
+* Reduce contention on application threads when snapshots are in progress.
+* Promptly unblock threads waiting on locks when database is closed.
+* New threading model for ReplRedoEngine to support concurrent replication processing.
 
 v1.3.11 (2017-01-28)
 -------
