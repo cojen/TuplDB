@@ -113,6 +113,16 @@ public class TransformerTest {
         }
     }
 
+    @Test
+    public void skipZero() throws Exception {
+        Index ix = fill();
+        View view = ix.viewTransformed(new KeyFlipper());
+        Cursor c = view.newCursor(null);
+        c.first();
+        assertEquals(LockResult.UNOWNED, c.skip(0));
+        c.reset();
+    }
+
     private Index fill() throws Exception {
         Index ix = mDb.openIndex("transformed");
         for (int i=20; i<=90; i+=3) {
