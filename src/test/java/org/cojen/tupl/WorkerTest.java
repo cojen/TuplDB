@@ -125,13 +125,11 @@ public class WorkerTest {
         w.join(true);
 
         long start = System.currentTimeMillis();
-        Thread.State state;
-        while ((state = thread.getState()) == Thread.State.RUNNABLE) {
+        while (thread.getState() != Thread.State.TERMINATED) {
             TestUtils.sleep(1);
         }
         long end = System.currentTimeMillis();
 
-        assertEquals(Thread.State.TERMINATED, state);
         assertTrue((end - start) < 1_000);
 
         // Launch a few new tasks.
