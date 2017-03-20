@@ -3471,9 +3471,8 @@ class _TreeCursor implements CauseCloseable, Cursor {
     @Override
     public final _TreeCursor copy() {
         _TreeCursor copy = copyNoValue();
-        if (!(copy.mKeyOnly = mKeyOnly)) {
-            copy.mValue = cloneArray(mValue);
-        }
+        copy.mKeyOnly = mKeyOnly;
+        copy.mValue = ViewUtils.copyValue(mValue);
         return copy;
     }
 
