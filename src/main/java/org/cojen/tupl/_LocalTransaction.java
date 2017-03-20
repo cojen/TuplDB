@@ -495,7 +495,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
     }
 
     @Override
-    public final void exit() throws IOException {
+    public final void exit() {
         if (mBorked != null) {
             super.scopeExit();
             return;
@@ -560,7 +560,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
     }
 
     @Override
-    public final void reset() throws IOException {
+    public final void reset() {
         if (mBorked == null) {
             try {
                 rollback();
