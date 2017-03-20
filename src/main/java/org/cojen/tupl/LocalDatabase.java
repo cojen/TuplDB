@@ -627,8 +627,8 @@ final class LocalDatabase extends AbstractDatabase {
                                      decodeLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID));
                 debugListener.notify(EventType.DEBUG, "TRANSACTION_ID: %1$d", txnId);
                 debugListener.notify(EventType.DEBUG, "CHECKPOINT_NUMBER: %1$d", redoNum);
-                debugListener.notify(EventType.DEBUG, "REDO_TXN_ID: %1$d", redoPos);
-                debugListener.notify(EventType.DEBUG, "REDO_POSITION: %1$d", redoTxnId);
+                debugListener.notify(EventType.DEBUG, "REDO_TXN_ID: %1$d", redoTxnId);
+                debugListener.notify(EventType.DEBUG, "REDO_POSITION: %1$d", redoPos);
             }
 
             if (openMode == OPEN_TEMP) {
