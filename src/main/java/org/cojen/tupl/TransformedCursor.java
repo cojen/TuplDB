@@ -502,7 +502,7 @@ final class TransformedCursor implements Cursor {
     public Cursor copy() {
         TransformedCursor copy = new TransformedCursor(mSource.copy(), mTransformer);
         copy.mKey = Utils.cloneArray(mKey);
-        copy.mValue = Utils.cloneArray(mValue);
+        copy.mValue = ViewUtils.copyValue(mValue);
         return copy;
     }
 

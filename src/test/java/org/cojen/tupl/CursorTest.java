@@ -1389,6 +1389,25 @@ public class CursorTest {
         verifyPositions(ix, cursors);
     }
 
+    @Test
+    public void copyNotLoaded() throws Exception {
+        View ix = openIndex("test");
+        byte[] key = key(1);
+        byte[] value = value(1);
+        ix.store(Transaction.BOGUS, key, value);
+        Cursor c = ix.newCursor(null);
+        c.autoload(false);
+        c.find(key);
+        fastAssertArrayEquals(c.key(), key);
+        Cursor copy = c.copy();
+        fastAssertArrayEquals(c.key(), key);
+        if (c.value() == Cursor.NOT_LOADED) {
+            assertTrue(copy.value() == Cursor.NOT_LOADED);
+        } else {
+            fastAssertArrayEquals(c.value(), copy.value());
+        }
+    }
+
     protected void verifyPositions(View ix, Cursor[] cursors) throws Exception {
         for (Cursor existing : cursors) {
             Cursor c = ix.newCursor(Transaction.BOGUS);

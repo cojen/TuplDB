@@ -291,6 +291,10 @@ class ViewUtils {
         }
     }
 
+    static byte[] copyValue(byte[] value) {
+        return value == Cursor.NOT_LOADED ? value : Utils.cloneArray(value);
+    }
+
     @FunctionalInterface
     static interface LockAction {
         LockResult lock(Transaction txn, byte[] key)
