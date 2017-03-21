@@ -713,15 +713,28 @@ final class LocalDatabase extends AbstractDatabase {
                 ReplicationManager rm = config.mReplManager;
                 if (rm != null) {
                     rm.start(redoPos);
-                    ReplRedoEngine engine = new ReplRedoEngine
-                        (rm, config.mMaxReplicaThreads, this, txns);
-                    mRedoWriter = engine.initWriter(redoNum);
 
-                    // Cannot start recovery until constructor is finished and final field
-                    // values are visible to other threads. Pass the state to the caller
-                    // through the config object.
-                    config.mReplRecoveryStartNanos = recoveryStart;
-                    config.mReplInitialTxnId = redoTxnId;
+                    if (mReadOnly) {
+                        mRedoWriter = null;
+
+                        if (debugListener != null &&
+                            Boolean.TRUE.equals(config.mDebugOpen.get("traceRedo")))
+                        {
+                            RedoEventPrinter printer = new RedoEventPrinter
+                                (debugListener, EventType.DEBUG);
+                            new ReplRedoDecoder(rm, redoPos, redoTxnId, new Latch()).run(printer);
+                        }
+                    } else {
+                        ReplRedoEngine engine = new ReplRedoEngine
+                            (rm, config.mMaxReplicaThreads, this, txns);
+                        mRedoWriter = engine.initWriter(redoNum);
+
+                        // Cannot start recovery until constructor is finished and final field
+                        // values are visible to other threads. Pass the state to the caller
+                        // through the config object.
+                        config.mReplRecoveryStartNanos = recoveryStart;
+                        config.mReplInitialTxnId = redoTxnId;
+                    }
                 } else {
                     // Apply cache primer before applying redo logs.
                     applyCachePrimer(config);
@@ -814,7 +827,7 @@ final class LocalDatabase extends AbstractDatabase {
                 txnContext.resetTransactionId(txnId++);
             }
 
-            if (mBaseFile == null || openMode == OPEN_TEMP) {
+            if (mBaseFile == null || openMode == OPEN_TEMP || debugListener != null) {
                 mTempFileManager = null;
             } else {
                 mTempFileManager = new TempFileManager(mBaseFile, config.mFileFactory);
@@ -831,7 +844,7 @@ final class LocalDatabase extends AbstractDatabase {
      */
     private void finishInit(DatabaseConfig config) throws IOException {
         if (mRedoWriter == null && mTempFileManager == null) {
-            // Nothing is durable and nothing to ever clean up. 
+            // Nothing is durable and nothing to ever clean up.
             return;
         }
 
