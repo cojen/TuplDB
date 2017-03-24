@@ -473,8 +473,9 @@ class _ReplRedoWriter extends _RedoWriter {
             }
 
             // Wait for producer and loop back.
+            Thread producer = mProducer;
             mBufferLatch.releaseExclusive();
-            LockSupport.unpark(mProducer);
+            LockSupport.unpark(producer);
             LockSupport.park(mBufferLatch);
             mBufferLatch.acquireExclusive();
         }
