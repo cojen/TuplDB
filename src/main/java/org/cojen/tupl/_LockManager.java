@@ -19,6 +19,8 @@ package org.cojen.tupl;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 
+import org.cojen.tupl.io.UnsafeAccess;
+
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.LatchCondition;
 
@@ -109,8 +111,7 @@ final class _LockManager {
         // immediately observe the activity of other threads acting upon the same lock. If
         // another thread has just acquired an exclusive lock, it must still acquire the node
         // latch before any changes can be made.
-        _Lock lock = getLockHT(hash).lockFor(indexId, key, hash);
-        return lock == null ? true : lock.isAvailable(locker);
+        return getLockHT(hash).isAvailable(locker, indexId, key, hash);
     }
 
     final LockResult check(_LockOwner locker, long indexId, byte[] key, int hash) {
@@ -240,13 +241,18 @@ final class _LockManager {
     @SuppressWarnings("serial")
     static final class LockHT extends Latch {
         private static final float LOAD_FACTOR = 0.75f;
+        private static final sun.misc.Unsafe UNSAFE = UnsafeAccess.obtain();
 
-        private transient _Lock[] mEntries;
+        private _Lock[] mEntries;
         private int mSize;
         private int mGrowThreshold;
 
+        // Increments with each rehash or when the close method is called. Is negative when
+        // either of these operations is in progress, and is positive otherwise.
+        private volatile int mStamp;
+
         // Padding to prevent cache line sharing.
-        private long a0, a1, a2, a3;
+        private long a0, a1, a2;
 
         LockHT() {
             // Initial capacity of must be a power of 2.
@@ -259,6 +265,36 @@ final class _LockManager {
             int size = mSize;
             releaseShared();
             return size;
+        }
+
+        /**
+         * Returns true if a shared lock can be granted for the given key. Caller must hold the
+         * node latch which contains the key.
+         *
+         * @param locker optional locker
+         */
+        boolean isAvailable(_LockOwner locker, long indexId, byte[] key, int hash) {
+            // Optimistically find the lock.
+            int stamp = mStamp;
+            if (stamp >= 0) {
+                _Lock lock = lockFor(indexId, key, hash);
+                if (lock != null) {
+                    return lock.isAvailable(locker);
+                }
+                if (stamp == mStamp) {
+                    return true;
+                }
+            }
+
+            _Lock lock;
+            acquireShared();
+            try {
+                lock = lockFor(indexId, key, hash);
+            } finally {
+                releaseShared();
+            }
+
+            return lock == null ? true : lock.isAvailable(locker);
         }
 
         /**
@@ -290,23 +326,8 @@ final class _LockManager {
             }
 
             if (mSize >= mGrowThreshold) {
-                int capacity = entries.length << 1;
-                _Lock[] newEntries = new _Lock[capacity];
-                int newMask = capacity - 1;
-
-                for (int i=entries.length; --i>=0 ;) {
-                    for (_Lock e = entries[i]; e != null; ) {
-                        _Lock next = e.mLockManagerNext;
-                        int ix = e.mHashCode & newMask;
-                        e.mLockManagerNext = newEntries[ix];
-                        newEntries[ix] = e;
-                        e = next;
-                    }
-                }
-
-                mEntries = entries = newEntries;
-                mGrowThreshold = (int) (capacity * LOAD_FACTOR);
-                index = hash & newMask;
+                entries = rehash(entries);
+                index = hash & (entries.length - 1);
             }
 
             _Lock lock = new _Lock();
@@ -316,7 +337,10 @@ final class _LockManager {
             lock.mHashCode = hash;
             lock.mLockManagerNext = entries[index];
 
+            // Fence so that the isAvailable method doesn't observe a broken chain.
+            UNSAFE.storeFence();
             entries[index] = lock;
+
             mSize++;
 
             return lock;
@@ -353,23 +377,8 @@ final class _LockManager {
                         }
 
                         if (mSize >= mGrowThreshold) {
-                            int capacity = entries.length << 1;
-                            _Lock[] newEntries = new _Lock[capacity];
-                            int newMask = capacity - 1;
-
-                            for (int i=entries.length; --i>=0 ;) {
-                                for (_Lock e = entries[i]; e != null; ) {
-                                    _Lock next = e.mLockManagerNext;
-                                    int ix = e.mHashCode & newMask;
-                                    e.mLockManagerNext = newEntries[ix];
-                                    newEntries[ix] = e;
-                                    e = next;
-                                }
-                            }
-
-                            mEntries = entries = newEntries;
-                            mGrowThreshold = (int) (capacity * LOAD_FACTOR);
-                            index = hash & newMask;
+                            entries = rehash(entries);
+                            index = hash & (entries.length - 1);
                         }
 
                         lock = new _Lock();
@@ -386,7 +395,10 @@ final class _LockManager {
                             lock.mOwner = locker;
                         }
 
+                        // Fence so that the isAvailable method doesn't observe a broken chain.
+                        UNSAFE.storeFence();
                         entries[index] = lock;
+
                         mSize++;
                     } finally {
                         releaseExclusive();
@@ -438,23 +450,8 @@ final class _LockManager {
                     }
 
                     if (mSize >= mGrowThreshold) {
-                        int capacity = entries.length << 1;
-                        _Lock[] newEntries = new _Lock[capacity];
-                        int newMask = capacity - 1;
-
-                        for (int i=entries.length; --i>=0 ;) {
-                            for (_Lock e = entries[i]; e != null; ) {
-                                _Lock next = e.mLockManagerNext;
-                                int ix = e.mHashCode & newMask;
-                                e.mLockManagerNext = newEntries[ix];
-                                newEntries[ix] = e;
-                                e = next;
-                            }
-                        }
-
-                        mEntries = entries = newEntries;
-                        mGrowThreshold = (int) (capacity * LOAD_FACTOR);
-                        index = hash & newMask;
+                        entries = rehash(entries);
+                        index = hash & (entries.length - 1);
                     }
 
                     lock = newLock;
@@ -462,7 +459,10 @@ final class _LockManager {
                     lock.mLockCount = ~0;
                     lock.mOwner = locker;
 
+                    // Fence so that the isAvailable method doesn't observe a broken chain.
+                    UNSAFE.storeFence();
                     entries[index] = lock;
+
                     mSize++;
                 } finally {
                     releaseExclusive();
@@ -507,6 +507,9 @@ final class _LockManager {
             acquireExclusive();
             try {
                 if (mSize > 0) {
+                    // Signal that close is in progress.
+                    mStamp |= 0x80000000;
+
                     _Lock[] entries = mEntries;
                     for (int i=entries.length; --i>=0 ;) {
                         for (_Lock e = entries[i], prev = null; e != null; ) {
@@ -548,10 +551,37 @@ final class _LockManager {
                             e = next;
                         }
                     }
+
+                    mStamp = (mStamp + 1) & ~0x80000000;
                 }
             } finally {
                 releaseExclusive();
             }
+        }
+
+        private _Lock[] rehash(_Lock[] entries) {
+            int capacity = entries.length << 1;
+            _Lock[] newEntries = new _Lock[capacity];
+            int newMask = capacity - 1;
+
+            // Signal that rehash is in progress.
+            mStamp |= 0x80000000;
+
+            for (int i=entries.length; --i>=0 ;) {
+                for (_Lock e = entries[i]; e != null; ) {
+                    _Lock next = e.mLockManagerNext;
+                    int ix = e.mHashCode & newMask;
+                    e.mLockManagerNext = newEntries[ix];
+                    newEntries[ix] = e;
+                    e = next;
+                }
+            }
+
+            mEntries = entries = newEntries;
+            mStamp = (mStamp + 1) & ~0x80000000;
+
+            mGrowThreshold = (int) (capacity * LOAD_FACTOR);
+            return entries;
         }
     }
 }
