@@ -123,6 +123,61 @@ public class TransformerTest {
         c.reset();
     }
 
+    @Test
+    public void unsupportedKeys() throws Exception {
+        // Tests expected behavior when loading/storing unsupported keys.
+
+        Index ix = fill();
+        View view = ix.viewTransformed(new OddKeys());
+
+        assertNull(view.load(null, key(20)));
+        fastAssertArrayEquals(key(23), view.load(null, key(23)));
+
+        for (int i=10; i<=20; i+=10) {
+            view.store(null, key(i), null);
+            try {
+                view.store(null, key(i), "world".getBytes());
+                fail();
+            } catch (ViewConstraintException e) {
+                // Expected.
+            }
+
+            assertNull(view.exchange(null, key(i), null));
+            try {
+                view.exchange(null, key(i), "world".getBytes());
+                fail();
+            } catch (ViewConstraintException e) {
+                // Expected.
+            }
+
+            assertFalse(view.insert(null, key(i), null));
+            try {
+                view.insert(null, key(i), "world".getBytes());
+                fail();
+            } catch (ViewConstraintException e) {
+                // Expected.
+            }
+
+            assertFalse(view.replace(null, key(i), null));
+            assertFalse(view.replace(null, key(i), "world".getBytes()));
+
+            assertFalse(view.update(null, key(i), "world".getBytes(), null));
+            assertFalse(view.update(null, key(i), "world".getBytes(), "world".getBytes()));
+            assertTrue(view.update(null, key(i), null, null));
+            try {
+                view.update(null, key(i), null, "world".getBytes());
+                fail();
+            } catch (ViewConstraintException e) {
+                // Expected.
+            }
+
+            assertFalse(view.delete(null, key(i)));
+
+            assertFalse(view.remove(null, key(i), "world".getBytes()));
+            assertTrue(view.remove(null, key(i), null));
+        }
+    }
+
     private Index fill() throws Exception {
         Index ix = mDb.openIndex("transformed");
         for (int i=20; i<=90; i+=3) {
@@ -171,6 +226,18 @@ public class TransformerTest {
                 flipped[j] = t;
             }
             return flipped;
+        }
+    }
+
+    static class OddKeys implements Filter {
+        @Override
+        public boolean isAllowed(byte[] key, byte[] value) {
+            return key.length > 0 && (key[key.length - 1] & 1) != 0;
+        }
+
+        @Override
+        public byte[] inverseTransformKey(byte[] tkey) {
+            return isAllowed(tkey, null) ? tkey : null;
         }
     }
 }
