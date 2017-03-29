@@ -425,43 +425,38 @@ public interface Transaction {
     byte[] lastLockedKey();
 
     /**
-     * Fully releases last lock acquired, within the current scope. If the last
-     * lock operation was an upgrade, for a lock not immediately acquired,
-     * unlock is not allowed. Instead, an IllegalStateException is thrown.
+     * Fully releases last lock acquired, within the current scope. If the last lock operation
+     * was an upgrade, for a lock not immediately acquired, unlock is not allowed. Instead, an
+     * IllegalStateException is thrown.
      *
-     * <p><i>Note: This method is intended for advanced use cases.</i> Also, the current
-     * implementation does not accurately track scopes. It may permit an unlock operation to
-     * cross a scope boundary, which has undefined behavior.
+     * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @throws IllegalStateException if no locks held, or if unlocking a
-     * non-immediate upgrade
+     * @throws IllegalStateException if no locks held, or if unlocking a non-immediate upgrade,
+     * or if crossing a scope boundary
      */
     void unlock();
 
     /**
-     * Releases last lock acquired, within the current scope, retaining a
-     * shared lock. If the last lock operation was an upgrade, for a lock not
-     * immediately acquired, unlock is not allowed. Instead, an
-     * IllegalStateException is thrown.
+     * Releases last lock acquired, within the current scope, retaining a shared lock. If the
+     * last lock operation was an upgrade, for a lock not immediately acquired, unlock is not
+     * allowed. Instead, an IllegalStateException is thrown.
      *
-     * <p><i>Note: This method is intended for advanced use cases.</i> Also, the current
-     * implementation does not accurately track scopes. It may permit an unlock operation to
-     * cross a scope boundary, which has undefined behavior.
+     * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @throws IllegalStateException if no locks held, or if too many shared
-     * locks, or if unlocking a non-immediate upgrade
+     * @throws IllegalStateException if no locks held, or if too many shared locks, or if
+     * unlocking a non-immediate upgrade, or if unlocking a non-immediate upgrade, or if
+     * crossing a scope boundary
      */
     void unlockToShared();
 
     /**
-     * Releases last lock acquired or upgraded, within the current scope,
-     * retaining an upgradable lock.
+     * Releases last lock acquired or upgraded, within the current scope, retaining an
+     * upgradable lock.
      *
-     * <p><i>Note: This method is intended for advanced use cases.</i> Also, the current
-     * implementation does not accurately track scopes. It may permit an unlock operation to
-     * cross a scope boundary, which has undefined behavior.
+     * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @throws IllegalStateException if no locks held, or if last lock is shared
+     * @throws IllegalStateException if no locks held, or if last lock is shared, or if
+     * crossing a scope boundary
      */
     void unlockToUpgradable();
 

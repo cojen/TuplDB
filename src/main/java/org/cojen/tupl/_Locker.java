@@ -544,16 +544,14 @@ class _Locker extends _LockOwner {
     }
 
     /**
-     * Fully releases last lock acquired, within the current scope. If the last
-     * lock operation was an upgrade, for a lock not immediately acquired,
-     * unlock is not allowed. Instead, an IllegalStateException is thrown.
+     * Fully releases last lock acquired, within the current scope. If the last lock operation
+     * was an upgrade, for a lock not immediately acquired, unlock is not allowed. Instead, an
+     * IllegalStateException is thrown.
      *
-     * <p><i>Note: This method is intended for advanced use cases.</i> Also, the current
-     * implementation does not accurately track scopes. It may permit an unlock operation to
-     * cross a scope boundary, which has undefined behavior.
+     * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @throws IllegalStateException if no locks held, or if unlocking a
-     * non-immediate upgrade
+     * @throws IllegalStateException if no locks held, or if unlocking a non-immediate upgrade,
+     * or if crossing a scope boundary
      */
     public final void unlock() {
         Object tailObj = mTailBlock;
@@ -561,6 +559,10 @@ class _Locker extends _LockOwner {
             throw new IllegalStateException("No locks held");
         }
         if (tailObj instanceof _Lock) {
+            ParentScope parent = mParentScope;
+            if (parent != null && parent.mTailBlock == tailObj) {
+                throw new IllegalStateException("Cannot unlock across a scope boundary");
+            }
             mTailBlock = null;
             mManager.unlock(this, (_Lock) tailObj);
         } else {
@@ -569,17 +571,15 @@ class _Locker extends _LockOwner {
     }
 
     /**
-     * Releases last lock acquired, within the current scope, retaining a
-     * shared lock. If the last lock operation was an upgrade, for a lock not
-     * immediately acquired, unlock is not allowed. Instead, an
-     * IllegalStateException is thrown.
+     * Releases last lock acquired, within the current scope, retaining a shared lock. If the
+     * last lock operation was an upgrade, for a lock not immediately acquired, unlock is not
+     * allowed. Instead, an IllegalStateException is thrown.
      *
-     * <p><i>Note: This method is intended for advanced use cases.</i> Also, the current
-     * implementation does not accurately track scopes. It may permit an unlock operation to
-     * cross a scope boundary, which has undefined behavior.
+     * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @throws IllegalStateException if no locks held, or if too many shared
-     * locks, or if unlocking a non-immediate upgrade
+     * @throws IllegalStateException if no locks held, or if too many shared locks, or if
+     * unlocking a non-immediate upgrade, or if unlocking a non-immediate upgrade, or if
+     * crossing a scope boundary
      */
     public final void unlockToShared() {
         Object tailObj = mTailBlock;
@@ -587,6 +587,10 @@ class _Locker extends _LockOwner {
             throw new IllegalStateException("No locks held");
         }
         if (tailObj instanceof _Lock) {
+            ParentScope parent = mParentScope;
+            if (parent != null && parent.mTailBlock == tailObj) {
+                throw new IllegalStateException("Cannot unlock across a scope boundary");
+            }
             mManager.unlockToShared(this, (_Lock) tailObj);
         } else {
             ((Block) tailObj).unlockLastToShared(this);
@@ -594,14 +598,13 @@ class _Locker extends _LockOwner {
     }
 
     /**
-     * Releases last lock acquired or upgraded, within the current scope,
-     * retaining an upgradable lock.
+     * Releases last lock acquired or upgraded, within the current scope, retaining an
+     * upgradable lock.
      *
-     * <p><i>Note: This method is intended for advanced use cases.</i> Also, the current
-     * implementation does not accurately track scopes. It may permit an unlock operation to
-     * cross a scope boundary, which has undefined behavior.
+     * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @throws IllegalStateException if no locks held, or if last lock is shared
+     * @throws IllegalStateException if no locks held, or if last lock is shared, or if
+     * crossing a scope boundary
      */
     public final void unlockToUpgradable() {
         Object tailObj = mTailBlock;
@@ -609,6 +612,10 @@ class _Locker extends _LockOwner {
             throw new IllegalStateException("No locks held");
         }
         if (tailObj instanceof _Lock) {
+            ParentScope parent = mParentScope;
+            if (parent != null && parent.mTailBlock == tailObj) {
+                throw new IllegalStateException("Cannot unlock across a scope boundary");
+            }
             mManager.unlockToUpgradable(this, (_Lock) tailObj);
         } else {
             ((Block) tailObj).unlockLastToUpgradable(this);
@@ -860,7 +867,10 @@ class _Locker extends _LockOwner {
             }
 
             _Lock[] locks = mLocks;
-            locker.mManager.unlock(locker, locks[size]);
+            _Lock lock = locks[size];
+            parentCheck(locker, lock);
+
+            locker.mManager.unlock(locker, lock);
 
             // Only pop lock if unlock succeeded.
             locks[size] = null;
@@ -878,13 +888,21 @@ class _Locker extends _LockOwner {
             if ((mUpgrades & (1L << size)) != 0) {
                 throw new IllegalStateException("Cannot unlock non-immediate upgrade");
             }
-            locker.mManager.unlockToShared(locker, mLocks[size]);
+
+            _Lock lock = mLocks[size];
+            parentCheck(locker, lock);
+
+            locker.mManager.unlockToShared(locker, lock);
         }
 
         void unlockLastToUpgradable(_Locker locker) {
             _Lock[] locks = mLocks;
             int size = mSize;
-            locker.mManager.unlockToUpgradable(locker, locks[--size]);
+
+            _Lock lock = locks[--size];
+            parentCheck(locker, lock);
+
+            locker.mManager.unlockToUpgradable(locker, lock);
 
             long upgrades = mUpgrades;
             long mask = 1L << size;
@@ -897,6 +915,16 @@ class _Locker extends _LockOwner {
                 } else {
                     mUpgrades = upgrades & ~mask;
                     mSize = size;
+                }
+            }
+        }
+
+        private void parentCheck(_Locker locker, _Lock lock) throws IllegalStateException {
+            ParentScope parent = locker.mParentScope;
+            if (parent != null) {
+                Object parentTail = parent.mTailBlock;
+                if (parentTail == lock || (parentTail == this && parent.mTailBlockSize == mSize)) {
+                    throw new IllegalStateException("Cannot unlock across a scope boundary");
                 }
             }
         }
