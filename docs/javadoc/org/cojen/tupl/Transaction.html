@@ -396,15 +396,14 @@ var activeTableTab = "activeTableTab";
 <tr id="i32" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#unlockToShared--">unlockToShared</a></span>()</code>
-<div class="block">Releases last lock acquired, within the current scope, retaining a
- shared lock.</div>
+<div class="block">Releases last lock acquired, within the current scope, retaining a shared lock.</div>
 </td>
 </tr>
 <tr id="i33" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#unlockToUpgradable--">unlockToUpgradable</a></span>()</code>
-<div class="block">Releases last lock acquired or upgraded, within the current scope,
- retaining an upgradable lock.</div>
+<div class="block">Releases last lock acquired or upgraded, within the current scope, retaining an
+ upgradable lock.</div>
 </td>
 </tr>
 </table>
@@ -1033,17 +1032,15 @@ var activeTableTab = "activeTableTab";
 <li class="blockList">
 <h4>unlock</h4>
 <pre>void&nbsp;unlock()</pre>
-<div class="block">Fully releases last lock acquired, within the current scope. If the last
- lock operation was an upgrade, for a lock not immediately acquired,
- unlock is not allowed. Instead, an IllegalStateException is thrown.
+<div class="block">Fully releases last lock acquired, within the current scope. If the last lock operation
+ was an upgrade, for a lock not immediately acquired, unlock is not allowed. Instead, an
+ IllegalStateException is thrown.
 
- <p><i>Note: This method is intended for advanced use cases.</i> Also, the current
- implementation does not accurately track scopes. It may permit an unlock operation to
- cross a scope boundary, which has undefined behavior.</div>
+ <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no locks held, or if unlocking a
- non-immediate upgrade</dd>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no locks held, or if unlocking a non-immediate upgrade,
+ or if crossing a scope boundary</dd>
 </dl>
 </li>
 </ul>
@@ -1054,18 +1051,16 @@ var activeTableTab = "activeTableTab";
 <li class="blockList">
 <h4>unlockToShared</h4>
 <pre>void&nbsp;unlockToShared()</pre>
-<div class="block">Releases last lock acquired, within the current scope, retaining a
- shared lock. If the last lock operation was an upgrade, for a lock not
- immediately acquired, unlock is not allowed. Instead, an
- IllegalStateException is thrown.
+<div class="block">Releases last lock acquired, within the current scope, retaining a shared lock. If the
+ last lock operation was an upgrade, for a lock not immediately acquired, unlock is not
+ allowed. Instead, an IllegalStateException is thrown.
 
- <p><i>Note: This method is intended for advanced use cases.</i> Also, the current
- implementation does not accurately track scopes. It may permit an unlock operation to
- cross a scope boundary, which has undefined behavior.</div>
+ <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no locks held, or if too many shared
- locks, or if unlocking a non-immediate upgrade</dd>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no locks held, or if too many shared locks, or if
+ unlocking a non-immediate upgrade, or if unlocking a non-immediate upgrade, or if
+ crossing a scope boundary</dd>
 </dl>
 </li>
 </ul>
@@ -1076,15 +1071,14 @@ var activeTableTab = "activeTableTab";
 <li class="blockList">
 <h4>unlockToUpgradable</h4>
 <pre>void&nbsp;unlockToUpgradable()</pre>
-<div class="block">Releases last lock acquired or upgraded, within the current scope,
- retaining an upgradable lock.
+<div class="block">Releases last lock acquired or upgraded, within the current scope, retaining an
+ upgradable lock.
 
- <p><i>Note: This method is intended for advanced use cases.</i> Also, the current
- implementation does not accurately track scopes. It may permit an unlock operation to
- cross a scope boundary, which has undefined behavior.</div>
+ <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no locks held, or if last lock is shared</dd>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no locks held, or if last lock is shared, or if
+ crossing a scope boundary</dd>
 </dl>
 </li>
 </ul>

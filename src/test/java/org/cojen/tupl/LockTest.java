@@ -1164,8 +1164,12 @@ public class LockTest {
             locker.unlock();
             assertEquals(UNOWNED, locker.lockCheck(0, k2));
             assertEquals(OWNED_EXCLUSIVE, locker.lockCheck(0, k1));
-            locker.unlockToUpgradable();
-            assertEquals(OWNED_UPGRADABLE, locker.lockCheck(0, k1));
+            try {
+                locker.unlockToUpgradable();
+                fail();
+            } catch (IllegalStateException e) {
+            }
+            assertEquals(OWNED_EXCLUSIVE, locker.lockCheck(0, k1));
             locker.scopeExitAll();
             assertEquals(UNOWNED, locker.lockCheck(0, k1));
         }
@@ -1482,7 +1486,6 @@ public class LockTest {
         t.join();
     }
 
-    /*
     @Test
     public void illegalUnlock() throws Exception {
         Locker locker = new Locker(mManager);
@@ -1564,6 +1567,46 @@ public class LockTest {
     public void illegalUnlock5() throws Exception {
         Locker locker = new Locker(mManager);
 
+        locker.lockExclusive(0, k1, -1);
+        locker.scopeEnter();
+        locker.lockExclusive(0, k2, -1);
+        locker.unlock();
+
+        try {
+            locker.unlockToShared();
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        assertEquals(OWNED_EXCLUSIVE, locker.lockCheck(0, k1));
+        assertEquals(UNOWNED, locker.lockCheck(0, k2));
+    }
+
+    @Test
+    public void illegalUnlock6() throws Exception {
+        Locker locker = new Locker(mManager);
+
+        locker.lockExclusive(0, k1, -1);
+        locker.lockExclusive(0, k2, -1);
+        locker.scopeEnter();
+        locker.lockExclusive(0, k3, -1);
+        locker.unlock();
+
+        try {
+            locker.unlockToShared();
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        assertEquals(OWNED_EXCLUSIVE, locker.lockCheck(0, k1));
+        assertEquals(OWNED_EXCLUSIVE, locker.lockCheck(0, k2));
+        assertEquals(UNOWNED, locker.lockCheck(0, k3));
+    }
+
+    @Test
+    public void illegalUnlock7() throws Exception {
+        Locker locker = new Locker(mManager);
+
         assertEquals(ACQUIRED, locker.tryLockExclusive(0, k1, -1));
         locker.scopeEnter();
         assertEquals(OWNED_EXCLUSIVE, locker.lockCheck(0, k1));
@@ -1578,7 +1621,47 @@ public class LockTest {
     }
 
     @Test
-    public void illegalUnlock6() throws Exception {
+    public void illegalUnlock8() throws Exception {
+        Locker locker = new Locker(mManager);
+
+        locker.lockExclusive(0, k1, -1);
+        locker.scopeEnter();
+        locker.lockExclusive(0, k2, -1);
+        locker.unlock();
+
+        try {
+            locker.unlockToUpgradable();
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        assertEquals(OWNED_EXCLUSIVE, locker.lockCheck(0, k1));
+        assertEquals(UNOWNED, locker.lockCheck(0, k2));
+    }
+
+    @Test
+    public void illegalUnlock9() throws Exception {
+        Locker locker = new Locker(mManager);
+
+        locker.lockExclusive(0, k1, -1);
+        locker.lockExclusive(0, k2, -1);
+        locker.scopeEnter();
+        locker.lockExclusive(0, k3, -1);
+        locker.unlock();
+
+        try {
+            locker.unlockToUpgradable();
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        assertEquals(OWNED_EXCLUSIVE, locker.lockCheck(0, k1));
+        assertEquals(OWNED_EXCLUSIVE, locker.lockCheck(0, k2));
+        assertEquals(UNOWNED, locker.lockCheck(0, k3));
+    }
+
+    @Test
+    public void illegalUnlock10() throws Exception {
         Locker locker = new Locker(mManager);
 
         assertEquals(ACQUIRED, locker.tryLockUpgradable(0, k1, -1));
@@ -1587,19 +1670,31 @@ public class LockTest {
         assertEquals(OWNED_EXCLUSIVE, locker.lockCheck(0, k1));
         locker.scopeEnter();
         assertEquals(OWNED_EXCLUSIVE, locker.lockCheck(0, k1));
-        locker.unlockToUpgradable(); // illegal
 
-        /*
-        assertEquals(ACQUIRED, locker.tryLockUpgradable(0, k1, -1));
+        try {
+            locker.unlockToUpgradable();
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        assertEquals(OWNED_EXCLUSIVE, locker.tryLockUpgradable(0, k1, -1));
         locker.scopeEnter();
-        assertEquals(OWNED_UPGRADABLE, locker.lockCheck(0, k1));
-        assertEquals(UPGRADED, locker.tryLockExclusive(0, k1, -1));
         assertEquals(OWNED_EXCLUSIVE, locker.lockCheck(0, k1));
-        locker.unlockToUpgradable(); // allowed
-        locker.unlock();
-        * /
+        assertEquals(OWNED_EXCLUSIVE, locker.tryLockExclusive(0, k1, -1));
+        assertEquals(OWNED_EXCLUSIVE, locker.lockCheck(0, k1));
+
+        try {
+            locker.unlockToUpgradable();
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        try {
+            locker.unlock();
+            fail();
+        } catch (IllegalStateException e) {
+        }
     }
-    */
 
     private long scheduleUnlock(final Locker locker, final long delayMillis) {
         return schedule(locker, delayMillis, 0);
