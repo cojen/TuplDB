@@ -1,8 +1,13 @@
 Changelog
 =========
 
-v1.3.13
--------
+v1.3.12.1 (2017-04-01)
+---------
+* Fix stack overflow error when skipping by zero on a transformed view.
+* Copied cursor should have NOT_LOADED value assigned when applicable.
+* Support redo tracing when replication manager is installed.
+* Storing unsupported keys into transformed views shouldn't fail in all cases.
+* Safely permit quick lock availability checks.
 
 v1.3.12 (2017-03-18)
 -------
