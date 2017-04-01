@@ -177,12 +177,6 @@ final class ReverseView implements View {
     }
 
     @Override
-    public View viewKeys() {
-        View sourceKeys = mSource.viewKeys();
-        return sourceKeys == mSource ? this : new ReverseView(sourceKeys);
-    }
-
-    @Override
     public View viewReverse() {
         return mSource;
     }
