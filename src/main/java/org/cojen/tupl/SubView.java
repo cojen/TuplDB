@@ -19,6 +19,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.Comparator;
+
 /**
  * 
  *
@@ -29,6 +31,21 @@ abstract class SubView implements View {
 
     SubView(View source) {
         mSource = source;
+    }
+
+    @Override
+    public Ordering getOrdering() {
+        return mSource.getOrdering();
+    }
+
+    @Override
+    public Comparator<byte[]> getComparator() {
+        return mSource.getComparator();
+    }
+
+    @Override
+    public Transaction newTransaction(DurabilityMode durabilityMode) {
+        return mSource.newTransaction(durabilityMode);
     }
 
     @Override
