@@ -180,7 +180,8 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Enum.html?is
 </tr>
 <tr class="rowColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED">UNOWNED</a></span></code>
-<div class="block">Result from lock check indicating that locker doesn't own the lock.</div>
+<div class="block">Result from lock check indicating that locker doesn't own the lock, or the result from a
+ method which didn't require that a lock be acquired.</div>
 </td>
 </tr>
 <tr class="altColor">
@@ -367,7 +368,8 @@ the order they are declared.</div>
 <li class="blockList">
 <h4>UNOWNED</h4>
 <pre>public static final&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a> UNOWNED</pre>
-<div class="block">Result from lock check indicating that locker doesn't own the lock.</div>
+<div class="block">Result from lock check indicating that locker doesn't own the lock, or the result from a
+ method which didn't require that a lock be acquired.</div>
 </li>
 </ul>
 </li>

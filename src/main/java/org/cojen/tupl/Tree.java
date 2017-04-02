@@ -360,6 +360,114 @@ class Tree implements View, Index {
     }
 
     @Override
+    public final boolean exists(Transaction txn, byte[] key) throws IOException {
+        LocalTransaction local = check(txn);
+
+        // If lock must be acquired and retained, acquire now and skip the quick check later.
+        if (local != null) {
+            int lockType = local.lockMode().repeatable;
+            if (lockType != 0) {
+                int hash = LockManager.hash(mId, key);
+                local.lock(lockType, mId, key, hash, local.mLockTimeoutNanos);
+            }
+        }
+
+        Node node = mRoot;
+        node.acquireShared();
+
+        // Note: No need to check if root has split, since root splits are always completed
+        // before releasing the root latch. Also, Node.used is not invoked for the root node,
+        // because it cannot be evicted.
+
+        ThreadLocalRandom rnd = ThreadLocalRandom.current();
+
+        while (!node.isLeaf()) {
+            int childPos;
+            try {
+                childPos = Node.internalPos(node.binarySearch(key));
+            } catch (Throwable e) {
+                node.releaseShared();
+                throw e;
+            }
+
+            long childId = node.retrieveChildRefId(childPos);
+            Node childNode = mDatabase.nodeMapGetShared(childId);
+
+            if (childNode != null) {
+                node.releaseShared();
+                node = childNode;
+                node.used(rnd);
+            } else {
+                node = node.loadChild(mDatabase, childId, Node.OPTION_PARENT_RELEASE_SHARED);
+            }
+
+            if (node.mSplit != null) {
+                node = node.mSplit.selectNode(node, key);
+            }
+        }
+
+        // Sub search into leaf with shared latch held.
+
+        CursorFrame frame;
+        int keyHash;
+
+        try {
+            int pos = node.binarySearch(key);
+
+            if ((local != null && local.lockMode() != LockMode.READ_COMMITTED) ||
+                mLockManager.isAvailable(local, mId, key, keyHash = LockManager.hash(mId, key)))
+            {
+                return pos >= 0 && node.hasLeafValue(pos) != null;
+            }
+
+            // Need to acquire the lock before loading. To prevent deadlock, a cursor
+            // frame must be bound and then the node latch can be released.
+            frame = new CursorFrame();
+
+            if (pos >= 0) {
+                if (node.mSplit != null) {
+                    pos = node.mSplit.adjustBindPosition(pos);
+                }
+            } else {
+                frame.mNotFoundKey = key;
+                if (node.mSplit != null) {
+                    pos = ~node.mSplit.adjustBindPosition(~pos);
+                }
+            }
+
+            frame.bind(node, pos);
+        } finally {
+            node.releaseShared();
+        }
+
+        try {
+            Locker locker;
+            if (local == null) {
+                locker = lockSharedLocal(key, keyHash);
+            } else if (local.lockShared(mId, key, keyHash) == LockResult.ACQUIRED) {
+                locker = local;
+            } else {
+                // Transaction already had the lock for some reason, so don't release it.
+                locker = null;
+            }
+
+            try {
+                node = frame.acquireShared();
+                int pos = frame.mNodePos;
+                boolean result = pos >= 0 && node.hasLeafValue(pos) != null;
+                node.releaseShared();
+                return result;
+            } finally {
+                if (locker != null) {
+                    locker.unlock();
+                }
+            }
+        } finally {
+            CursorFrame.popAll(frame);
+        }
+    }
+
+    @Override
     public void store(Transaction txn, byte[] key, byte[] value) throws IOException {
         keyCheck(key);
         TreeCursor cursor = new TreeCursor(this, txn);

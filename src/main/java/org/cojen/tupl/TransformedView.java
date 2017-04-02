@@ -94,6 +94,35 @@ final class TransformedView implements View {
     }
 
     @Override
+    public boolean exists(final Transaction txn, final byte[] tkey) throws IOException {
+        final byte[] key = inverseTransformKey(tkey);
+
+        if (key == null) {
+            return false;
+        }
+
+        if (!mTransformer.requireValue()) {
+            return mSource.exists(txn, key);
+        }
+
+        if (txn == null || !txn.lockMode().isRepeatable()) {
+            return mTransformer.transformValue(mSource.load(txn, key), key, tkey) != null;
+        }
+
+        txn.enter();
+        try {
+            byte[] value = mSource.load(txn, key);
+            if (value == null || (value = mTransformer.transformValue(value, key, tkey)) != null) {
+                // Keep the lock if value doesn't exist or if allowed by transformer.
+                txn.commit();
+            }
+            return value != null;
+        } finally {
+            txn.exit();
+        }
+    }
+
+    @Override
     public void store(final Transaction txn, final byte[] tkey, final byte[] tvalue)
         throws IOException
     {

@@ -72,8 +72,59 @@ public class CrudTest {
             // Expected.
         }
 
-        assertEquals(null, ix.load(txn, new byte[0]));
-        assertEquals(null, ix.load(txn, "key".getBytes()));
+        try {
+            ix.exists(txn, null);
+            fail();
+        } catch (NullPointerException e) {
+            // Expected.
+        }
+
+        assertNull(ix.load(txn, new byte[0]));
+        assertNull(ix.load(txn, "key".getBytes()));
+        assertFalse(ix.exists(txn, new byte[0]));
+        assertFalse(ix.exists(txn, "key".getBytes()));
+    }
+
+    @Test
+    public void existsLockWait() throws Exception {
+        View ix = openIndex("test");
+
+        byte[] k1 = "k1".getBytes();
+        byte[] k2 = "k2".getBytes();
+
+        ix.store(null, k2, "v2".getBytes());
+
+        Thread t = startAndWaitUntilBlocked(new Thread(() -> {
+            try {
+                Transaction txn = mDb.newTransaction();
+                try {
+                    ix.lockExclusive(txn, k1);
+                    ix.store(txn, k2, null);
+                    Thread.sleep(2500);
+                } finally {
+                    txn.exit();
+                }
+            } catch (Exception e) {
+                Utils.uncaught(e);
+            }
+        }));
+
+        try {
+            ix.exists(null, k1);
+            fail();
+        } catch (LockTimeoutException e) {
+        }
+
+        try {
+            ix.exists(null, k2);
+            fail();
+        } catch (LockTimeoutException e) {
+        }
+
+        assertTrue(ix.exists(null, k2));
+        assertFalse(ix.exists(null, k1));
+
+        t.join();
     }
 
     @Test
@@ -100,27 +151,34 @@ public class CrudTest {
 
         ix.store(txn, key, value);
         assertArrayEquals(value, ix.load(txn, key));
+        assertTrue(ix.exists(txn, key));
 
         ix.store(txn, key, value2);
         assertArrayEquals(value2, ix.load(txn, key));
+        assertTrue(ix.exists(txn, key));
 
         assertNull(ix.load(txn, key2));
+        assertFalse(ix.exists(txn, key2));
 
         ix.store(txn, key, null);
         assertNull(ix.load(txn, key));
+        assertFalse(ix.exists(txn, key));
 
         if (txn != null && txn != Transaction.BOGUS) {
             ix.store(txn, key, value);
             txn.commit();
             assertArrayEquals(value, ix.load(txn, key));
+            assertTrue(ix.exists(txn, key));
 
             ix.store(txn, key, value2);
             txn.commit();
             assertArrayEquals(value2, ix.load(txn, key));
+            assertTrue(ix.exists(txn, key));
 
             ix.store(txn, key, value);
             txn.exit();
             assertArrayEquals(value2, ix.load(txn, key));
+            assertTrue(ix.exists(txn, key));
         }
     }
 

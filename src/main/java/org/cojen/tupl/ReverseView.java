@@ -64,6 +64,11 @@ final class ReverseView implements View {
     }
 
     @Override
+    public boolean exists(Transaction txn, byte[] key) throws IOException {
+        return mSource.exists(txn, key);
+    }
+
+    @Override
     public void store(Transaction txn, byte[] key, byte[] value) throws IOException {
         mSource.store(txn, key, value);
     }

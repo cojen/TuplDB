@@ -81,6 +81,11 @@ final class KeyOnlyView implements View {
     }
 
     @Override
+    public boolean exists(Transaction txn, byte[] key) throws IOException {
+        return mSource.exists(txn, key);
+    }
+
+    @Override
     public byte[] exchange(Transaction txn, byte[] key, byte[] value) throws IOException {
         valueCheck(value);
 

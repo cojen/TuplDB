@@ -32,6 +32,7 @@ import org.junit.*;
 import static org.junit.Assert.*;
 
 import static org.cojen.tupl.LockResult.*;
+import static org.cojen.tupl.TestUtils.startAndWaitUntilBlocked;
 
 /**
  * 
@@ -580,14 +581,6 @@ public class LockTest {
 
         assertEquals(LockResult.OWNED_UPGRADABLE, mManager.check(locker2, 0, k1, hash));
         assertEquals(LockResult.OWNED_SHARED, mManager.check(locker3, 0, k1, hash));
-    }
-
-    private static <T extends Thread> T startAndWaitUntilBlocked(T t) {
-        t.start();
-        while (t.getState() != Thread.State.WAITING) {
-            Thread.yield();
-        }
-        return t;
     }
 
     @Test
