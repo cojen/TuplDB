@@ -54,6 +54,11 @@ abstract class SubView implements View {
     }
 
     @Override
+    public boolean exists(Transaction txn, byte[] key) throws IOException {
+        return inRange(key) ? mSource.exists(txn, key) : false;
+    }
+
+    @Override
     public void store(Transaction txn, byte[] key, byte[] value) throws IOException {
         if (inRange(key)) {
             mSource.store(txn, key, value);

@@ -77,8 +77,8 @@ public interface View {
      * <p>If the entry must be locked, ownership of the key instance is transferred. The key
      * must not be modified after calling this method.
      *
-     * @param txn optional transaction; pass null for {@link
-     * LockMode#READ_COMMITTED READ_COMMITTED} locking behavior
+     * @param txn optional transaction; pass null for {@link LockMode#READ_COMMITTED
+     * READ_COMMITTED} locking behavior
      * @param key non-null key
      * @return copy of value, or null if entry doesn't exist
      * @throws NullPointerException if key is null
@@ -92,6 +92,25 @@ public interface View {
         } finally {
             c.reset();
         }
+    }
+
+    /**
+     * Checks if an entry for the given key exists, which should be called only if the value
+     * doesn't need to be loaded or stored. Calling exists and then calling a load or store
+     * method is typically less efficient than skipping the exists check entirely.
+     *
+     * <p>If the entry must be locked, ownership of the key instance is transferred. The key
+     * must not be modified after calling this method.
+     *
+     * @param txn optional transaction; pass null for {@link LockMode#READ_COMMITTED
+     * READ_COMMITTED} locking behavior
+     * @param key non-null key
+     * @return true if entry exists
+     * @throws NullPointerException if key is null
+     * @throws IllegalArgumentException if transaction belongs to another database instance
+     */
+    public default boolean exists(Transaction txn, byte[] key) throws IOException {
+        return load(txn, key) != null;
     }
 
     /**
@@ -277,6 +296,7 @@ public interface View {
      * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
+     * @throws IllegalArgumentException if transaction belongs to another database instance
      * @throws IllegalStateException if too many shared locks
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      * @throws ViewConstraintException if key is not allowed
@@ -300,6 +320,7 @@ public interface View {
      * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link LockResult#OWNED_SHARED
      * OWNED_SHARED}, {@link LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
+     * @throws IllegalArgumentException if transaction belongs to another database instance
      * @throws IllegalStateException if too many shared locks
      * @throws LockFailureException if interrupted or timed out
      * @throws DeadlockException if deadlock was detected after waiting full timeout
@@ -324,6 +345,7 @@ public interface View {
      * TIMED_OUT_LOCK}, {@link LockResult#ACQUIRED ACQUIRED}, {@link
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
+     * @throws IllegalArgumentException if transaction belongs to another database instance
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      * @throws ViewConstraintException if key is not allowed
      */
@@ -345,6 +367,7 @@ public interface View {
      * after calling this method
      * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link LockResult#OWNED_UPGRADABLE
      * OWNED_UPGRADABLE}, or {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
+     * @throws IllegalArgumentException if transaction belongs to another database instance
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      * @throws ViewConstraintException if key is not allowed
@@ -368,6 +391,7 @@ public interface View {
      * TIMED_OUT_LOCK}, {@link LockResult#ACQUIRED ACQUIRED}, {@link
      * LockResult#UPGRADED UPGRADED}, or {@link LockResult#OWNED_EXCLUSIVE
      * OWNED_EXCLUSIVE}
+     * @throws IllegalArgumentException if transaction belongs to another database instance
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      * @throws ViewConstraintException if key is not allowed
      */
@@ -389,6 +413,7 @@ public interface View {
      * after calling this method
      * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link LockResult#UPGRADED UPGRADED}, or
      * {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
+     * @throws IllegalArgumentException if transaction belongs to another database instance
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      * @throws ViewConstraintException if key is not allowed
@@ -402,6 +427,7 @@ public interface View {
      * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#OWNED_SHARED
      * OWNED_SHARED}, {@link LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
+     * @throws IllegalArgumentException if transaction belongs to another database instance
      * @throws ViewConstraintException if key is not allowed
      */
     public LockResult lockCheck(Transaction txn, byte[] key) throws ViewConstraintException;

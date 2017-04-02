@@ -77,7 +77,10 @@ public enum LockResult {
      */
     OWNED_EXCLUSIVE(3),
 
-    /** Result from lock check indicating that locker doesn't own the lock. */
+    /**
+     * Result from lock check indicating that locker doesn't own the lock, or the result from a
+     * method which didn't require that a lock be acquired.
+     */
     UNOWNED(0);
 
     // 1: timed out, 2: acquired, 3: owned

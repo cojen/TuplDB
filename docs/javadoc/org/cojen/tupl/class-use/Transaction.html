@@ -203,6 +203,14 @@
 </tr>
 <tr class="rowColor">
 <td class="colFirst"><code>default boolean</code></td>
+<td class="colLast"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/View.html#exists-org.cojen.tupl.Transaction-byte:A-">exists</a></span>(<a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+      byte[]&nbsp;key)</code>
+<div class="block">Checks if an entry for the given key exists, which should be called only if the value
+ doesn't need to be loaded or stored.</div>
+</td>
+</tr>
+<tr class="altColor">
+<td class="colFirst"><code>default boolean</code></td>
 <td class="colLast"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/View.html#insert-org.cojen.tupl.Transaction-byte:A-byte:A-">insert</a></span>(<a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
       byte[]&nbsp;key,
       byte[]&nbsp;value)</code>
@@ -210,33 +218,33 @@
  exists.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></td>
 <td class="colLast"><span class="typeNameLabel">WrappedCursor.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/WrappedCursor.html#link-org.cojen.tupl.Transaction-">link</a></span>(<a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code>
 <div class="block">Link to a transaction, which can be null for auto-commit mode.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></td>
 <td class="colLast"><span class="typeNameLabel">Cursor.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/Cursor.html#link-org.cojen.tupl.Transaction-">link</a></span>(<a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code>
 <div class="block">Link to a transaction, which can be null for auto-commit mode.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code>default byte[]</code></td>
 <td class="colLast"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/View.html#load-org.cojen.tupl.Transaction-byte:A-">load</a></span>(<a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
     byte[]&nbsp;key)</code>
 <div class="block">Returns a copy of the value for the given key, or null if no matching entry exists.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/View.html#lockCheck-org.cojen.tupl.Transaction-byte:A-">lockCheck</a></span>(<a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
          byte[]&nbsp;key)</code>
 <div class="block">Checks the lock ownership for the given key.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/View.html#lockExclusive-org.cojen.tupl.Transaction-byte:A-">lockExclusive</a></span>(<a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
              byte[]&nbsp;key)</code>
@@ -244,14 +252,14 @@
  locks.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/View.html#lockShared-org.cojen.tupl.Transaction-byte:A-">lockShared</a></span>(<a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
           byte[]&nbsp;key)</code>
 <div class="block">Explicitly acquire a shared lock for the given key, denying exclusive locks.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/View.html#lockUpgradable-org.cojen.tupl.Transaction-byte:A-">lockUpgradable</a></span>(<a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
               byte[]&nbsp;key)</code>
@@ -259,11 +267,11 @@
  additional upgradable locks.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></code></td>
 <td class="colLast"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/View.html#newCursor-org.cojen.tupl.Transaction-">newCursor</a></span>(<a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code>&nbsp;</td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code>default boolean</code></td>
 <td class="colLast"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/View.html#remove-org.cojen.tupl.Transaction-byte:A-byte:A-">remove</a></span>(<a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
       byte[]&nbsp;key,
@@ -272,7 +280,7 @@
  matches.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code>default boolean</code></td>
 <td class="colLast"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/View.html#replace-org.cojen.tupl.Transaction-byte:A-byte:A-">replace</a></span>(<a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
        byte[]&nbsp;key,
@@ -280,7 +288,7 @@
 <div class="block">Associates a value with the given key, but only if a corresponding value already exists.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code>default void</code></td>
 <td class="colLast"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/View.html#store-org.cojen.tupl.Transaction-byte:A-byte:A-">store</a></span>(<a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
      byte[]&nbsp;key,
@@ -288,7 +296,7 @@
 <div class="block">Unconditionally associates a value with the given key.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code>default <a href="../../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/View.html#tryLockExclusive-org.cojen.tupl.Transaction-byte:A-long-">tryLockExclusive</a></span>(<a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
                 byte[]&nbsp;key,
@@ -297,7 +305,7 @@
  locks.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code>default <a href="../../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/View.html#tryLockShared-org.cojen.tupl.Transaction-byte:A-long-">tryLockShared</a></span>(<a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
              byte[]&nbsp;key,
@@ -305,7 +313,7 @@
 <div class="block">Explicitly acquire a shared lock for the given key, denying exclusive locks.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code>default <a href="../../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/View.html#tryLockUpgradable-org.cojen.tupl.Transaction-byte:A-long-">tryLockUpgradable</a></span>(<a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
                  byte[]&nbsp;key,
@@ -314,7 +322,7 @@
  additional upgradable locks.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code>default boolean</code></td>
 <td class="colLast"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/View.html#update-org.cojen.tupl.Transaction-byte:A-byte:A-byte:A-">update</a></span>(<a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
       byte[]&nbsp;key,

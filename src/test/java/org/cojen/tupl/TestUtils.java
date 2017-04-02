@@ -310,6 +310,17 @@ class TestUtils {
         } while ((millis = end - System.currentTimeMillis()) > 0);
     }
 
+    static <T extends Thread> T startAndWaitUntilBlocked(T t) {
+        t.start();
+        while (true) {
+            Thread.State state = t.getState();
+            if (state != Thread.State.NEW && state != Thread.State.RUNNABLE) {
+                return t;
+            }
+            Thread.yield();
+        }
+    }
+
     static boolean is64bit() {
         return "amd64".equals(System.getProperty("os.arch"))
             || "64".equals(System.getProperty("sun.arch.data.model"));
