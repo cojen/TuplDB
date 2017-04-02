@@ -20,6 +20,7 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 import java.util.Arrays;
+import java.util.Comparator;
 
 /**
  * Mapping of keys to values, in no particular order. Subclasses and
@@ -33,6 +34,13 @@ public interface View {
      * Returns the key ordering for this view.
      */
     public Ordering getOrdering();
+
+    /**
+     * Returns a comparator for the ordering of this view, or null if unordered.
+     */
+    public default Comparator<byte[]> getComparator() {
+        return null;
+    }
 
     /**
      * @param txn optional transaction for Cursor to {@link Cursor#link link} to

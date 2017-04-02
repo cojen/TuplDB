@@ -22,6 +22,8 @@ import java.io.DataOutput;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
+import java.util.Comparator;
+
 import java.nio.charset.StandardCharsets;
 
 import java.util.concurrent.ThreadLocalRandom;
@@ -90,6 +92,11 @@ class Tree implements View, Index {
     @Override
     public final Ordering getOrdering() {
         return Ordering.ASCENDING;
+    }
+
+    @Override
+    public Comparator<byte[]> getComparator() {
+        return KeyComparator.THE;
     }
 
     @Override

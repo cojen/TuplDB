@@ -19,6 +19,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.Comparator;
+
 /**
  * 
  *
@@ -34,6 +36,11 @@ final class ReverseCursor implements Cursor {
     @Override
     public Ordering getOrdering() {
         return mSource.getOrdering().reverse();
+    }
+
+    @Override
+    public Comparator<byte[]> getComparator() {
+        return mSource.getComparator().reversed();
     }
 
     @Override

@@ -19,6 +19,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.Comparator;
+
 /**
  * Maintains a logical position in a {@link View}. Cursor instances can only be
  * safely used by one thread at a time, and they must be {@link #reset reset}
@@ -52,6 +54,13 @@ public interface Cursor {
      * Returns the key ordering for this cursor.
      */
     public Ordering getOrdering();
+
+    /**
+     * Returns a comparator for the ordering of this view, or null if unordered.
+     */
+    public default Comparator<byte[]> getComparator() {
+        return null;
+    }
 
     /**
      * Link to a transaction, which can be null for auto-commit mode. All

@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":18,"i1":18,"i2":18,"i3":6,"i4":18,"i5":18,"i6":18,"i7":6};
+var methods = {"i0":18,"i1":18,"i2":18,"i3":6,"i4":18,"i5":18,"i6":18,"i7":18,"i8":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -162,19 +162,25 @@ var activeTableTab = "activeTableTab";
 </td>
 </tr>
 <tr id="i5" class="rowColor">
+<td class="colFirst"><code>default <a href="http://docs.oracle.com/javase/8/docs/api/java/util/Comparator.html?is-external=true" title="class or interface in java.util">Comparator</a>&lt;byte[]&gt;</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transformer.html#transformedComparator-java.util.Comparator-">transformedComparator</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/Comparator.html?is-external=true" title="class or interface in java.util">Comparator</a>&lt;byte[]&gt;&nbsp;original)</code>
+<div class="block">Returns the view comparator, after transformation.</div>
+</td>
+</tr>
+<tr id="i6" class="altColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/Ordering.html" title="enum in org.cojen.tupl">Ordering</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transformer.html#transformedOrdering-org.cojen.tupl.Ordering-">transformedOrdering</a></span>(<a href="../../../org/cojen/tupl/Ordering.html" title="enum in org.cojen.tupl">Ordering</a>&nbsp;original)</code>
 <div class="block">Returns the natural ordering of keys, after they have been transformed.</div>
 </td>
 </tr>
-<tr id="i6" class="altColor">
+<tr id="i7" class="rowColor">
 <td class="colFirst"><code>default byte[]</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transformer.html#transformKey-byte:A-byte:A-">transformKey</a></span>(byte[]&nbsp;key,
             byte[]&nbsp;value)</code>
 <div class="block">Transform or filter out the given key.</div>
 </td>
 </tr>
-<tr id="i7" class="rowColor">
+<tr id="i8" class="altColor">
 <td class="colFirst"><code>byte[]</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transformer.html#transformValue-byte:A-byte:A-byte:A-">transformValue</a></span>(byte[]&nbsp;value,
               byte[]&nbsp;key,
@@ -345,7 +351,7 @@ var activeTableTab = "activeTableTab";
 <a name="transformedOrdering-org.cojen.tupl.Ordering-">
 <!--   -->
 </a>
-<ul class="blockListLast">
+<ul class="blockList">
 <li class="blockList">
 <h4>transformedOrdering</h4>
 <pre>default&nbsp;<a href="../../../org/cojen/tupl/Ordering.html" title="enum in org.cojen.tupl">Ordering</a>&nbsp;transformedOrdering(<a href="../../../org/cojen/tupl/Ordering.html" title="enum in org.cojen.tupl">Ordering</a>&nbsp;original)</pre>
@@ -354,6 +360,23 @@ var activeTableTab = "activeTableTab";
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>original</code> - natural ordering of view before transformation</dd>
+</dl>
+</li>
+</ul>
+<a name="transformedComparator-java.util.Comparator-">
+<!--   -->
+</a>
+<ul class="blockListLast">
+<li class="blockList">
+<h4>transformedComparator</h4>
+<pre>default&nbsp;<a href="http://docs.oracle.com/javase/8/docs/api/java/util/Comparator.html?is-external=true" title="class or interface in java.util">Comparator</a>&lt;byte[]&gt;&nbsp;transformedComparator(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/Comparator.html?is-external=true" title="class or interface in java.util">Comparator</a>&lt;byte[]&gt;&nbsp;original)</pre>
+<div class="block">Returns the view comparator, after transformation. Default implementation returns the
+ same comparator.</div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>original</code> - comparator of view before transformation</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if transformed view is unordered</dd>
 </dl>
 </li>
 </ul>

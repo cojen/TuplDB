@@ -19,6 +19,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.Comparator;
+
 /**
  * Abstract wrapper around another cursor. Subclass must implement the {@link #copy copy}
  * method, and it should also override the {@link #store store} and {@link #commit commit}
@@ -39,6 +41,14 @@ public abstract class WrappedCursor<C extends Cursor> implements Cursor {
     @Override
     public Ordering getOrdering() {
         return source.getOrdering();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Comparator<byte[]> getComparator() {
+        return source.getComparator();
     }
 
     /**

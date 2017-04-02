@@ -19,6 +19,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.Comparator;
+
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -40,7 +42,12 @@ final class TransformedCursor implements Cursor {
 
     @Override
     public Ordering getOrdering() {
-        return mSource.getOrdering();
+        return mTransformer.transformedOrdering(mSource.getOrdering());
+    }
+
+    @Override
+    public Comparator<byte[]> getComparator() {
+        return mTransformer.transformedComparator(mSource.getComparator());
     }
 
     @Override

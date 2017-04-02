@@ -19,6 +19,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.Comparator;
+
 /**
  * Interface which supports filtering and transforming the entries within a {@link
  * View}. For pure filtering, consider implementing a {@link Filter} instead.
@@ -123,6 +125,17 @@ public interface Transformer {
      * @param original natural ordering of view before transformation
      */
     public default Ordering transformedOrdering(Ordering original) {
+        return original;
+    }
+
+    /**
+     * Returns the view comparator, after transformation. Default implementation returns the
+     * same comparator.
+     *
+     * @param original comparator of view before transformation
+     * @throws IllegalStateException if transformed view is unordered
+     */
+    public default Comparator<byte[]> transformedComparator(Comparator<byte[]> original) {
         return original;
     }
 }
