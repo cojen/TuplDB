@@ -20,6 +20,7 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 import java.util.Arrays;
+import java.util.Comparator;
 
 /**
  * 
@@ -45,6 +46,11 @@ final class TransformedView implements View {
     @Override
     public Ordering getOrdering() {
         return mTransformer.transformedOrdering(mSource.getOrdering());
+    }
+
+    @Override
+    public Comparator<byte[]> getComparator() {
+        return mTransformer.transformedComparator(mSource.getComparator());
     }
 
     @Override

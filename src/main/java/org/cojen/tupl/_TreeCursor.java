@@ -20,6 +20,7 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.cojen.tupl.io.CauseCloseable;
@@ -66,6 +67,11 @@ class _TreeCursor implements CauseCloseable, Cursor {
     }
 
     @Override
+    public Comparator<byte[]> getComparator() {
+        return KeyComparator.THE;
+    }
+
+    @Override
     public final Transaction link(Transaction txn) {
         _LocalTransaction old = mTxn;
         mTxn = mTree.check(txn);
@@ -86,7 +92,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
     public final byte[] value() {
         return mValue;
     }
-    
+
     /**
      * Retrieves stats for the value at current cursor position.
      */

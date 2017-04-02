@@ -19,6 +19,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.Comparator;
+
 import static org.cojen.tupl.Utils.*;
 
 /**
@@ -85,6 +87,11 @@ final class BoundedView extends SubView {
     @Override
     public Ordering getOrdering() {
         return mSource.getOrdering();
+    }
+
+    @Override
+    public Comparator<byte[]> getComparator() {
+        return mSource.getComparator();
     }
 
     @Override
