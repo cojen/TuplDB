@@ -128,6 +128,56 @@ public class CrudTest {
     }
 
     @Test
+    public void testTouch() throws Exception {
+        View ix = openIndex("test");
+
+        byte[] k1 = "k1".getBytes();
+        byte[] k2 = "k2".getBytes();
+
+        ix.store(null, k2, "v2".getBytes());
+
+        assertEquals(LockResult.UNOWNED, ix.touch(null, k1));
+        assertEquals(LockResult.UNOWNED, ix.touch(null, k2));
+
+        {
+            LockMode[] modes = {
+                LockMode.UNSAFE, LockMode.READ_UNCOMMITTED, LockMode.READ_COMMITTED
+            };
+
+            for (LockMode mode : modes) {
+                Transaction txn = mDb.newTransaction();
+                txn.lockMode(mode);
+                assertEquals(LockResult.UNOWNED, ix.touch(txn, k1));
+                assertEquals(LockResult.UNOWNED, ix.lockCheck(txn, k1));
+                assertEquals(LockResult.UNOWNED, ix.touch(txn, k2));
+                assertEquals(LockResult.UNOWNED, ix.lockCheck(txn, k2));
+                txn.reset();
+            }
+        }
+
+        {
+            LockMode[] modes = {
+                LockMode.REPEATABLE_READ, LockMode.UPGRADABLE_READ
+            };
+
+            for (LockMode mode : modes) {
+                LockResult owned = LockResult.OWNED_SHARED;
+                if (mode == LockMode.UPGRADABLE_READ) {
+                    owned = LockResult.OWNED_UPGRADABLE;
+                }
+
+                Transaction txn = mDb.newTransaction();
+                txn.lockMode(mode);
+                assertEquals(LockResult.ACQUIRED, ix.touch(txn, k1));
+                assertEquals(owned, ix.lockCheck(txn, k1));
+                assertEquals(LockResult.ACQUIRED, ix.touch(txn, k2));
+                assertEquals(owned, ix.lockCheck(txn, k2));
+                txn.reset();
+            }
+        }
+    }
+
+    @Test
     public void testStoreBasic() throws Exception {
         testStoreBasic(null);
         testStoreBasic(Transaction.BOGUS);

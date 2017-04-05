@@ -110,6 +110,11 @@ final class TrimmedView implements View {
     }
 
     @Override
+    public LockResult touch(Transaction txn, byte[] key) throws LockFailureException {
+        return mSource.touch(txn, applyPrefix(key));
+    }
+
+    @Override
     public LockResult tryLockShared(Transaction txn, byte[] key, long nanosTimeout)
         throws DeadlockException, ViewConstraintException
     {

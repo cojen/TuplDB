@@ -448,6 +448,14 @@
 </td>
 </tr>
 <tr class="rowColor">
+<td class="colFirst"><code>default <a href="../../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
+<td class="colLast"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/View.html#touch-org.cojen.tupl.Transaction-byte:A-">touch</a></span>(<a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+     byte[]&nbsp;key)</code>
+<div class="block">Touch the given key as if calling <a href="../../../../org/cojen/tupl/View.html#load-org.cojen.tupl.Transaction-byte:A-"><code>load</code></a>, but instead only acquiring any
+ necessary locks.</div>
+</td>
+</tr>
+<tr class="altColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><span class="typeNameLabel">Transaction.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/Transaction.html#tryLockExclusive-long-byte:A-long-">tryLockExclusive</a></span>(long&nbsp;indexId,
                 byte[]&nbsp;key,
@@ -456,7 +464,7 @@
  additional locks.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code>default <a href="../../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/View.html#tryLockExclusive-org.cojen.tupl.Transaction-byte:A-long-">tryLockExclusive</a></span>(<a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
                 byte[]&nbsp;key,
@@ -465,7 +473,7 @@
  locks.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><span class="typeNameLabel">Transaction.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/Transaction.html#tryLockShared-long-byte:A-long-">tryLockShared</a></span>(long&nbsp;indexId,
              byte[]&nbsp;key,
@@ -474,7 +482,7 @@
  locks.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code>default <a href="../../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/View.html#tryLockShared-org.cojen.tupl.Transaction-byte:A-long-">tryLockShared</a></span>(<a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
              byte[]&nbsp;key,
@@ -482,7 +490,7 @@
 <div class="block">Explicitly acquire a shared lock for the given key, denying exclusive locks.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><span class="typeNameLabel">Transaction.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/Transaction.html#tryLockUpgradable-long-byte:A-long-">tryLockUpgradable</a></span>(long&nbsp;indexId,
                  byte[]&nbsp;key,
@@ -491,7 +499,7 @@
  exclusive and additional upgradable locks.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code>default <a href="../../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/View.html#tryLockUpgradable-org.cojen.tupl.Transaction-byte:A-long-">tryLockUpgradable</a></span>(<a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
                  byte[]&nbsp;key,
@@ -500,13 +508,13 @@
  additional upgradable locks.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code>static <a href="../../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><span class="typeNameLabel">LockResult.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/LockResult.html#valueOf-java.lang.String-">valueOf</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&nbsp;name)</code>
 <div class="block">Returns the enum constant of this type with the specified name.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code>static <a href="../../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>[]</code></td>
 <td class="colLast"><span class="typeNameLabel">LockResult.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/LockResult.html#values--">values</a></span>()</code>
 <div class="block">Returns an array containing the constants of this enum type, in

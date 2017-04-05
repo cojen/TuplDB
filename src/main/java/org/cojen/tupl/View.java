@@ -281,6 +281,51 @@ public interface View {
     }
 
     /**
+     * Touch the given key as if calling {@link #load load}, but instead only acquiring any
+     * necessary locks. Method may return {@link LockResult#UNOWNED UNOWNED} if the key isn't
+     * supported by this view, or if the transaction {@link LockMode} doesn't retain locks.
+     *
+     * <p>If the entry must be locked, ownership of the key instance is transferred. The key
+     * must not be modified after calling this method.
+     *
+     * @param txn optional transaction; pass null for {@link LockMode#READ_COMMITTED
+     * READ_COMMITTED} locking behavior
+     * @param key non-null key
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED ACQUIRED}, {@link
+     * LockResult#OWNED_SHARED OWNED_SHARED}, {@link LockResult#OWNED_UPGRADABLE
+     * OWNED_UPGRADABLE}, or {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
+     * @throws NullPointerException if key is null
+     * @throws IllegalArgumentException if transaction belongs to another database instance
+     */
+    public default LockResult touch(Transaction txn, byte[] key) throws LockFailureException {
+        // Default implementation isn't that great and should be overridden.
+
+        try {
+            LockMode mode;
+            if (txn == null) {
+                // There's no default way to lock/unlock a key when the transaction is null, so
+                // do an existence check and assume that a lock will be acquired and released.
+                exists(null, key);
+            } else if ((mode = txn.lockMode()) == LockMode.READ_COMMITTED) {
+                LockResult result = lockShared(txn, key);
+                if (result == LockResult.ACQUIRED) {
+                    txn.unlock();
+                }
+            } else if (!mode.noReadLock) {
+                if (mode == LockMode.UPGRADABLE_READ) {
+                    return lockUpgradable(txn, key);
+                } else {
+                    return lockShared(txn, key);
+                }
+            }
+        } catch (IOException e) {
+            // Suppress any failure to load or any ViewConstraintException.
+        }
+
+        return LockResult.UNOWNED;
+    }
+
+    /**
      * Explicitly acquire a shared lock for the given key, denying exclusive locks. Lock is
      * retained until the end of the transaction or scope.
      *

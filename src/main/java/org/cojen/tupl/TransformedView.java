@@ -80,16 +80,19 @@ final class TransformedView implements View {
             return mTransformer.transformValue(mSource.load(txn, key), key, tkey);
         }
 
-        txn.enter();
+        LockResult result = mSource.touch(txn, key);
         try {
             byte[] value = mSource.load(txn, key);
-            if (value == null || (value = mTransformer.transformValue(value, key, tkey)) != null) {
-                // Keep the lock if value doesn't exist or if allowed by transformer.
-                txn.commit();
+            if (value != null
+                && (value = mTransformer.transformValue(value, key, tkey)) == null
+                && result == LockResult.ACQUIRED)
+            {
+                // Release the lock if value exists but was disallowed by the transformer.
+                txn.unlock();
             }
             return value;
-        } finally {
-            txn.exit();
+        } catch (Throwable e) {
+            throw ViewUtils.lockCleanup(e, txn, result);
         }
     }
 
@@ -109,16 +112,19 @@ final class TransformedView implements View {
             return mTransformer.transformValue(mSource.load(txn, key), key, tkey) != null;
         }
 
-        txn.enter();
+        LockResult result = mSource.touch(txn, key);
         try {
             byte[] value = mSource.load(txn, key);
-            if (value == null || (value = mTransformer.transformValue(value, key, tkey)) != null) {
-                // Keep the lock if value doesn't exist or if allowed by transformer.
-                txn.commit();
+            if (value != null
+                && (value = mTransformer.transformValue(value, key, tkey)) == null
+                && result == LockResult.ACQUIRED)
+            {
+                // Release the lock if value exists but was disallowed by the transformer.
+                txn.unlock();
             }
             return value != null;
-        } finally {
-            txn.exit();
+        } catch (Throwable e) {
+            throw ViewUtils.lockCleanup(e, txn, result);
         }
     }
 
@@ -292,6 +298,12 @@ final class TransformedView implements View {
         }
 
         return condUpdate(txn, key, value, null);
+    }
+
+    @Override
+    public LockResult touch(Transaction txn, byte[] tkey) throws LockFailureException {
+        byte[] key = inverseTransformKey(tkey);
+        return key == null ? LockResult.UNOWNED : mSource.touch(txn, key);
     }
 
     @Override
