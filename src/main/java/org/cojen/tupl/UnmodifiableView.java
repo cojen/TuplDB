@@ -142,6 +142,11 @@ final class UnmodifiableView implements Index {
     }
 
     @Override
+    public LockResult touch(Transaction txn, byte[] key) throws LockFailureException {
+        return mSource.touch(txn, key);
+    }
+
+    @Override
     public long evict(Transaction txn, byte[] lowKey, byte[] highKey,
                       Filter evictionFilter, boolean autoload)
         throws IOException

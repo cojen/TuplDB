@@ -322,6 +322,17 @@ class ViewUtils {
         }
     }
 
+    static RuntimeException lockCleanup(Throwable e, Transaction txn, LockResult result) {
+        if (result == LockResult.ACQUIRED) {
+            try {
+                txn.unlock();
+            } catch (Throwable e2) {
+                Utils.suppress(e, e2);
+            }
+        }
+        throw Utils.rethrow(e);
+    }
+
     static final String toString(Index ix) {
         StringBuilder b = new StringBuilder();
         Utils.appendMiniString(b, ix);

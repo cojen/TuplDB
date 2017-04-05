@@ -21,6 +21,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
+import org.junit.*;
+import static org.junit.Assert.*;
+
 /**
  * Tests that operations against a basic filtered view still work.
  *
@@ -54,6 +57,42 @@ public class CrudBasicFilterTest extends CrudNonDurableTest {
     @Override
     protected boolean verify(View view) throws Exception {
         return mViews.get(view).verify(null);
+    }
+
+    @Test
+    public void lockRelease() throws Exception {
+        // Verifies that locks aren't retained for entries which are filtered out.
+
+        View view = openIndex("test");
+
+        byte[] filteredKey;
+        {
+            Index ix = mDb.findIndex("test");
+            Cursor c = ix.newCursor(null);
+            c.random(null, null);
+            filteredKey = c.key();
+            c.reset();
+        }
+
+        Transaction txn = mDb.newTransaction();
+        try {
+            assertNull(view.load(txn, filteredKey));
+            assertEquals(LockResult.UNOWNED, view.lockCheck(txn, filteredKey));
+            assertNull(view.load(txn, "foo".getBytes()));
+            assertEquals(LockResult.OWNED_UPGRADABLE, view.lockCheck(txn, "foo".getBytes()));
+        } finally {
+            txn.exit();
+        }
+
+        txn = mDb.newTransaction();
+        try {
+            assertFalse(view.exists(txn, filteredKey));
+            assertEquals(LockResult.UNOWNED, view.lockCheck(txn, filteredKey));
+            assertFalse(view.exists(txn, "foo".getBytes()));
+            assertEquals(LockResult.OWNED_UPGRADABLE, view.lockCheck(txn, "foo".getBytes()));
+        } finally {
+            txn.exit();
+        }
     }
 
     static void fillNew(Index ix) throws java.io.IOException {

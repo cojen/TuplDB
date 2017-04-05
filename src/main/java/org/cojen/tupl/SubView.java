@@ -119,6 +119,11 @@ abstract class SubView implements View {
     }
 
     @Override
+    public LockResult touch(Transaction txn, byte[] key) throws LockFailureException {
+        return inRange(key) ? mSource.touch(txn, key) : LockResult.UNOWNED;
+    }
+
+    @Override
     public LockResult tryLockShared(Transaction txn, byte[] key, long nanosTimeout)
         throws DeadlockException, ViewConstraintException
     {

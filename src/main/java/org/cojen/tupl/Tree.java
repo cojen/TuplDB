@@ -506,6 +506,32 @@ class Tree implements View, Index {
     }
 
     @Override
+    public LockResult touch(Transaction txn, byte[] key) throws LockFailureException {
+        LocalTransaction local = check(txn);
+
+        LockMode mode;
+        if (local == null || (mode = local.lockMode()) == LockMode.READ_COMMITTED) {
+            int hash = LockManager.hash(mId, key);
+            if (!isLockAvailable(local, key, hash)) {
+                // Acquire and release.
+                if (local == null) {
+                    lockSharedLocal(key, hash).unlock();
+                } else {
+                    LockResult result = local.lock(0, mId, key, hash, local.mLockTimeoutNanos);
+                    if (result == LockResult.ACQUIRED) {
+                        local.unlock();
+                    }
+                }
+            }
+        } else if (!mode.noReadLock) {
+            int hash = LockManager.hash(mId, key);
+            return local.lock(mode.repeatable, mId, key, hash, local.mLockTimeoutNanos);
+        }
+
+        return LockResult.UNOWNED;
+    }
+
+    @Override
     public final LockResult tryLockShared(Transaction txn, byte[] key, long nanosTimeout)
         throws DeadlockException
     {
