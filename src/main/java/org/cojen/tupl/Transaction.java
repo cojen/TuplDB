@@ -425,40 +425,49 @@ public interface Transaction {
     byte[] lastLockedKey();
 
     /**
-     * Fully releases last lock acquired, within the current scope. If the last lock operation
-     * was an upgrade, for a lock not immediately acquired, unlock is not allowed. Instead, an
-     * IllegalStateException is thrown.
-     *
-     * <p><i>Note: This method is intended for advanced use cases.</i>
-     *
-     * @throws IllegalStateException if no locks held, or if unlocking a non-immediate upgrade,
-     * or if crossing a scope boundary
-     */
-    void unlock();
-
-    /**
-     * Releases last lock acquired, within the current scope, retaining a shared lock. If the
-     * last lock operation was an upgrade, for a lock not immediately acquired, unlock is not
+     * Fully releases the last lock or group acquired, within the current scope. If the last
+     * lock operation was an upgrade, for a lock not immediately acquired, unlock is not
      * allowed. Instead, an IllegalStateException is thrown.
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @throws IllegalStateException if no locks held, or if too many shared locks, or if
-     * unlocking a non-immediate upgrade, or if unlocking a non-immediate upgrade, or if
-     * crossing a scope boundary
+     * @throws IllegalStateException if no locks held, or if crossing a scope boundary, or if
+     * unlocking a non-immediate upgrade
+     */
+    void unlock();
+
+    /**
+     * Releases the last lock or group acquired, within the current scope, retaining a shared
+     * lock. If the last lock operation was an upgrade, for a lock not immediately acquired,
+     * unlock is not allowed. Instead, an IllegalStateException is thrown.
+     *
+     * <p><i>Note: This method is intended for advanced use cases.</i>
+     *
+     * @throws IllegalStateException if no locks held, or if crossing a scope boundary, or if
+     * too many shared locks, or if unlocking a non-immediate upgrade
      */
     void unlockToShared();
 
     /**
-     * Releases last lock acquired or upgraded, within the current scope, retaining an
-     * upgradable lock.
+     * Releases the last lock or group acquired or upgraded, within the current scope,
+     * retaining an upgradable lock.
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @throws IllegalStateException if no locks held, or if last lock is shared, or if
-     * crossing a scope boundary
+     * @throws IllegalStateException if no locks held, or if crossing a scope boundary, or if
+     * last lock is shared
      */
     void unlockToUpgradable();
+
+    /**
+     * Combines the last lock acquired or upgraded into a group which can be unlocked together.
+     *
+     * <p><i>Note: This method is intended for advanced use cases.</i>
+     *
+     * @throws IllegalStateException if no locks held, or if crossing a scope boundary, or if
+     * combining an acquire with an upgrade
+     */
+    void unlockCombine();
 
     /**
      * Attach an arbitrary object to this transaction instance, for tracking it. Attachments

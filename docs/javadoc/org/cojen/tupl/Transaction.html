@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":18,"i1":18,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":6,"i8":6,"i9":6,"i10":6,"i11":6,"i12":6,"i13":6,"i14":6,"i15":6,"i16":6,"i17":6,"i18":6,"i19":6,"i20":6,"i21":6,"i22":6,"i23":6,"i24":6,"i25":6,"i26":6,"i27":18,"i28":6,"i29":6,"i30":6,"i31":6,"i32":6,"i33":6};
+var methods = {"i0":18,"i1":18,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":6,"i8":6,"i9":6,"i10":6,"i11":6,"i12":6,"i13":6,"i14":6,"i15":6,"i16":6,"i17":6,"i18":6,"i19":6,"i20":6,"i21":6,"i22":6,"i23":6,"i24":6,"i25":6,"i26":6,"i27":18,"i28":6,"i29":6,"i30":6,"i31":6,"i32":6,"i33":6,"i34":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -390,20 +390,27 @@ var activeTableTab = "activeTableTab";
 <tr id="i31" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#unlock--">unlock</a></span>()</code>
-<div class="block">Fully releases last lock acquired, within the current scope.</div>
+<div class="block">Fully releases the last lock or group acquired, within the current scope.</div>
 </td>
 </tr>
 <tr id="i32" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#unlockToShared--">unlockToShared</a></span>()</code>
-<div class="block">Releases last lock acquired, within the current scope, retaining a shared lock.</div>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#unlockCombine--">unlockCombine</a></span>()</code>
+<div class="block">Combines the last lock acquired or upgraded into a group which can be unlocked together.</div>
 </td>
 </tr>
 <tr id="i33" class="rowColor">
 <td class="colFirst"><code>void</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#unlockToShared--">unlockToShared</a></span>()</code>
+<div class="block">Releases the last lock or group acquired, within the current scope, retaining a shared
+ lock.</div>
+</td>
+</tr>
+<tr id="i34" class="altColor">
+<td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#unlockToUpgradable--">unlockToUpgradable</a></span>()</code>
-<div class="block">Releases last lock acquired or upgraded, within the current scope, retaining an
- upgradable lock.</div>
+<div class="block">Releases the last lock or group acquired or upgraded, within the current scope,
+ retaining an upgradable lock.</div>
 </td>
 </tr>
 </table>
@@ -1032,15 +1039,15 @@ var activeTableTab = "activeTableTab";
 <li class="blockList">
 <h4>unlock</h4>
 <pre>void&nbsp;unlock()</pre>
-<div class="block">Fully releases last lock acquired, within the current scope. If the last lock operation
- was an upgrade, for a lock not immediately acquired, unlock is not allowed. Instead, an
- IllegalStateException is thrown.
+<div class="block">Fully releases the last lock or group acquired, within the current scope. If the last
+ lock operation was an upgrade, for a lock not immediately acquired, unlock is not
+ allowed. Instead, an IllegalStateException is thrown.
 
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no locks held, or if unlocking a non-immediate upgrade,
- or if crossing a scope boundary</dd>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no locks held, or if crossing a scope boundary, or if
+ unlocking a non-immediate upgrade</dd>
 </dl>
 </li>
 </ul>
@@ -1051,16 +1058,15 @@ var activeTableTab = "activeTableTab";
 <li class="blockList">
 <h4>unlockToShared</h4>
 <pre>void&nbsp;unlockToShared()</pre>
-<div class="block">Releases last lock acquired, within the current scope, retaining a shared lock. If the
- last lock operation was an upgrade, for a lock not immediately acquired, unlock is not
- allowed. Instead, an IllegalStateException is thrown.
+<div class="block">Releases the last lock or group acquired, within the current scope, retaining a shared
+ lock. If the last lock operation was an upgrade, for a lock not immediately acquired,
+ unlock is not allowed. Instead, an IllegalStateException is thrown.
 
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no locks held, or if too many shared locks, or if
- unlocking a non-immediate upgrade, or if unlocking a non-immediate upgrade, or if
- crossing a scope boundary</dd>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no locks held, or if crossing a scope boundary, or if
+ too many shared locks, or if unlocking a non-immediate upgrade</dd>
 </dl>
 </li>
 </ul>
@@ -1071,14 +1077,31 @@ var activeTableTab = "activeTableTab";
 <li class="blockList">
 <h4>unlockToUpgradable</h4>
 <pre>void&nbsp;unlockToUpgradable()</pre>
-<div class="block">Releases last lock acquired or upgraded, within the current scope, retaining an
- upgradable lock.
+<div class="block">Releases the last lock or group acquired or upgraded, within the current scope,
+ retaining an upgradable lock.
 
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no locks held, or if last lock is shared, or if
- crossing a scope boundary</dd>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no locks held, or if crossing a scope boundary, or if
+ last lock is shared</dd>
+</dl>
+</li>
+</ul>
+<a name="unlockCombine--">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>unlockCombine</h4>
+<pre>void&nbsp;unlockCombine()</pre>
+<div class="block">Combines the last lock acquired or upgraded into a group which can be unlocked together.
+
+ <p><i>Note: This method is intended for advanced use cases.</i></div>
+<dl>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no locks held, or if crossing a scope boundary, or if
+ combining an acquire with an upgrade</dd>
 </dl>
 </li>
 </ul>

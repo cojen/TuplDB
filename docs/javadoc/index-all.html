@@ -2452,20 +2452,25 @@
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Transaction.html#unlock--">unlock()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
 <dd>
-<div class="block">Fully releases last lock acquired, within the current scope.</div>
+<div class="block">Fully releases the last lock or group acquired, within the current scope.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/RWLock.html#unlock--">unlock()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/RWLock.html" title="class in org.cojen.tupl.util">RWLock</a></dt>
 <dd>
 <div class="block">Releases the read lock.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Transaction.html#unlockCombine--">unlockCombine()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
+<dd>
+<div class="block">Combines the last lock acquired or upgraded into a group which can be unlocked together.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Transaction.html#unlockToShared--">unlockToShared()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
 <dd>
-<div class="block">Releases last lock acquired, within the current scope, retaining a shared lock.</div>
+<div class="block">Releases the last lock or group acquired, within the current scope, retaining a shared
+ lock.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Transaction.html#unlockToUpgradable--">unlockToUpgradable()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
 <dd>
-<div class="block">Releases last lock acquired or upgraded, within the current scope, retaining an
- upgradable lock.</div>
+<div class="block">Releases the last lock or group acquired or upgraded, within the current scope,
+ retaining an upgradable lock.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FileIO.html#unmap--">unmap()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io">FileIO</a></dt>
 <dd>
