@@ -1,6 +1,10 @@
 Changelog
 =========
 
+v1.3.12.2
+---------
+* Revert earlier change relating to storing unsupported keys into transformed views.
+
 v1.3.12.1 (2017-04-01)
 ---------
 * Fix stack overflow error when skipping by zero on a transformed view.
