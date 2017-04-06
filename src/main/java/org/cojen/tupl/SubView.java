@@ -39,7 +39,7 @@ abstract class SubView implements View {
     public void store(Transaction txn, byte[] key, byte[] value) throws IOException {
         if (inRange(key)) {
             mSource.store(txn, key, value);
-        } else {
+        } else if (value != null) {
             throw fail();
         }
     }
@@ -48,9 +48,11 @@ abstract class SubView implements View {
     public byte[] exchange(Transaction txn, byte[] key, byte[] value) throws IOException {
         if (inRange(key)) {
             return mSource.exchange(txn, key, value);
-        } else {
-            throw fail();
         }
+        if (value == null) {
+            return null;
+        }
+        throw fail();
     }
 
     @Override

@@ -93,6 +93,9 @@ final class TransformedView implements View {
         final byte[] key = inverseTransformKey(tkey);
 
         if (key == null) {
+            if (tvalue == null) {
+                return;
+            }
             throw fail();
         }
 
@@ -106,6 +109,9 @@ final class TransformedView implements View {
         final byte[] key = inverseTransformKey(tkey);
 
         if (key == null) {
+            if (tvalue == null) {
+                return null;
+            }
             throw fail();
         }
 
