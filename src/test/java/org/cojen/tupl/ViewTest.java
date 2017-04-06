@@ -75,6 +75,10 @@ public class ViewTest {
         } catch (ViewConstraintException e) {
         }
 
+        // Allowed.
+        view.store(null, key(start - 1), null);
+        assertNull(view.exchange(null, key(start - 1), null));
+
         view.store(null, key(start), key(start));
         if (start % 10 != 0) {
             assertTrue(view.delete(null, key(start)));
@@ -297,6 +301,10 @@ public class ViewTest {
             fail();
         } catch (ViewConstraintException e) {
         }
+
+        // Allowed.
+        view.store(null, key(end + 1), null);
+        assertNull(view.exchange(null, key(end + 1), null));
 
         view.store(null, key(end), key(end));
         if (end % 10 != 0) {
@@ -670,6 +678,10 @@ public class ViewTest {
         } catch (ViewConstraintException e) {
             // Key is outside allowed range.
         }
+
+        // Allowed.
+        view.store(null, "hello".getBytes(), null);
+        assertNull(view.exchange(null, "hello".getBytes(), null));
 
         view.store(null, "key-hello".getBytes(), "world".getBytes());
         fastAssertArrayEquals("world".getBytes(), view.load(null, "key-hello".getBytes()));
