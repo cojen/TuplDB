@@ -132,6 +132,11 @@ public interface View {
             c.autoload(false);
             c.find(key);
             c.store(value);
+        } catch (IllegalStateException e) {
+            if (c.key() == null) {
+                throw new ViewConstraintException();
+            }
+            throw e;
         } finally {
             c.reset();
         }
@@ -158,6 +163,11 @@ public interface View {
             byte[] old = c.value();
             c.store(value);
             return old;
+        } catch (IllegalStateException e) {
+            if (c.key() == null) {
+                throw new ViewConstraintException();
+            }
+            throw e;
         } finally {
             c.reset();
         }
@@ -206,6 +216,11 @@ public interface View {
             }
             c.store(value);
             return true;
+        } catch (IllegalStateException e) {
+            if (c.key() == null) {
+                throw new ViewConstraintException();
+            }
+            throw e;
         } finally {
             c.reset();
         }
@@ -236,8 +251,15 @@ public interface View {
             if (!Arrays.equals(c.value(), oldValue)) {
                 return false;
             }
-            c.store(newValue);
+            if (oldValue != null || newValue != null) {
+                c.store(newValue);
+            }
             return true;
+        } catch (IllegalStateException e) {
+            if (c.key() == null) {
+                throw new ViewConstraintException();
+            }
+            throw e;
         } finally {
             c.reset();
         }
