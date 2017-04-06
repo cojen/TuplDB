@@ -3,7 +3,7 @@ Changelog
 
 v1.3.12.2
 ---------
-* Revert earlier change relating to storing unsupported keys into transformed views.
+* Refined behavior when storing nulls into default and constrained views.
 
 v1.3.12.1 (2017-04-01)
 ---------
