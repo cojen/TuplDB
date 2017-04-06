@@ -492,7 +492,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     }
 
                     if (lock != null) {
-                        txn.push(lock, 0);
+                        txn.push(lock);
                     }
 
                     ix = getIndex(indexId);
@@ -533,7 +533,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
                 Index ix;
                 try {
                     if (lock != null) {
-                        txn.push(lock, 0);
+                        txn.push(lock);
                     }
 
                     ix = getIndex(indexId);
@@ -574,7 +574,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
                 Index ix;
                 try {
                     if (lock != null) {
-                        txn.push(lock, 0);
+                        txn.push(lock);
                     }
 
                     ix = getIndex(indexId);
@@ -624,7 +624,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
                 Index ix;
                 try {
                     if (lock != null) {
-                        txn.push(lock, 0);
+                        txn.push(lock);
                     }
 
                     ix = getIndex(indexId);
@@ -671,7 +671,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
             runTask(te, new Worker.Task() {
                 public void run() {
                     try {
-                        txn.push(lock, 0);
+                        txn.push(lock);
                     } catch (Throwable e) {
                         fail(e);
                         return;
@@ -696,7 +696,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
             runTask(te, new Worker.Task() {
                 public void run() {
                     try {
-                        txn.push(lock, 0);
+                        txn.push(lock);
                     } catch (Throwable e) {
                         fail(e);
                         return;
@@ -722,7 +722,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
             public void run() {
                 try {
                     if (lock != null) {
-                        txn.push(lock, 0);
+                        txn.push(lock);
                     }
 
                     txn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
@@ -771,7 +771,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
             public void run() {
                 try {
                     if (lock != null) {
-                        txn.push(lock, 0);
+                        txn.push(lock);
                     }
 
                     txn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
