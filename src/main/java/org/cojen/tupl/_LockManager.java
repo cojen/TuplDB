@@ -405,14 +405,14 @@ final class _LockManager {
                         releaseExclusive();
                     }
 
-                    locker.push(lock, 0);
+                    locker.push(lock);
                     return LockResult.ACQUIRED;
                 }
 
                 // Result of shared/upgradable attempt for existing _Lock.
 
                 if (result == ACQUIRED) {
-                    locker.push(lock, 0);
+                    locker.push(lock);
                 }
 
                 return result;
@@ -421,9 +421,9 @@ final class _LockManager {
             // Result of exclusive attempt for existing _Lock.
 
             if (result == ACQUIRED) {
-                locker.push(lock, 0);
+                locker.push(lock);
             } else if (result == UPGRADED) {
-                locker.push(lock, 1);
+                locker.pushUpgrade(lock);
             }
 
             return result;
@@ -469,14 +469,14 @@ final class _LockManager {
                     releaseExclusive();
                 }
 
-                locker.push(lock, 0);
+                locker.push(lock);
                 return LockResult.ACQUIRED;
             }
 
             if (result == ACQUIRED) {
-                locker.push(lock, 0);
+                locker.push(lock);
             } else if (result == UPGRADED) {
-                locker.push(lock, 1);
+                locker.pushUpgrade(lock);
             }
 
             return result;

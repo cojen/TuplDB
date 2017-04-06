@@ -779,21 +779,33 @@ class _Locker extends _LockOwner {
         mTailBlock = null;
     }
 
-    /**
-     * @param upgrade only 0 or 1 allowed
-     */
-    final void push(_Lock lock, int upgrade) {
+    final void push(_Lock lock) {
         Object tailObj = mTailBlock;
         if (tailObj == null) {
-            mTailBlock = upgrade == 0 ? lock : new Block(lock);
+            mTailBlock = lock;
+        } else if (tailObj instanceof _Lock) {
+            mTailBlock = new Block((_Lock) tailObj, lock);
+        } else {
+            ((Block) tailObj).pushLock(this, lock, 0);
+        }
+    }
+
+    final void pushUpgrade(_Lock lock) {
+        Object tailObj = mTailBlock;
+        if (tailObj == null) {
+            Block block = new Block(lock);
+            block.firstUpgrade();
+            mTailBlock = block;
         } else if (tailObj instanceof _Lock) {
             // Don't push lock upgrade if it applies to the last acquisition
             // within this scope. This is required for unlockLast.
             if (tailObj != lock || mParentScope != null) {
-                mTailBlock = new Block((_Lock) tailObj, lock, upgrade);
+                Block block = new Block((_Lock) tailObj, lock);
+                block.secondUpgrade();
+                mTailBlock = block;
             }
         } else {
-            ((Block) tailObj).pushLock(this, lock, upgrade);
+            ((Block) tailObj).pushLock(this, lock, 1);
         }
     }
 
@@ -824,24 +836,28 @@ class _Locker extends _LockOwner {
 
         private Block mPrev;
 
-        // Always creates first as an upgrade.
         Block(_Lock first) {
             (mLocks = new _Lock[FIRST_BLOCK_CAPACITY])[0] = first;
-            mUpgrades = 1;
             mSize = 1;
         }
 
-        // First is never an upgrade.
-        Block(_Lock first, _Lock second, int upgrade) {
+        Block(_Lock first, _Lock second) {
             _Lock[] locks = new _Lock[FIRST_BLOCK_CAPACITY];
             locks[0] = first;
             locks[1] = second;
             mLocks = locks;
-            mUpgrades = upgrade << 1;
             mSize = 2;
         }
 
-        private Block(Block prev, _Lock first, int upgrade) {
+        void firstUpgrade() {
+            mUpgrades = 1L;
+        }
+
+        void secondUpgrade() {
+            mUpgrades = 1L << 1;
+        }
+
+        private Block(Block prev, _Lock first, long upgrade) {
             mPrev = prev;
             int capacity = prev.mLocks.length;
             if (capacity < FIRST_BLOCK_CAPACITY) {
@@ -854,7 +870,7 @@ class _Locker extends _LockOwner {
             mSize = 1;
         }
 
-        void pushLock(_Locker locker, _Lock lock, int upgrade) {
+        void pushLock(_Locker locker, _Lock lock, long upgrade) {
             _Lock[] locks = mLocks;
             int size = mSize;
 
