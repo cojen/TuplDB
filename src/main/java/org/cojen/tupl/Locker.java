@@ -805,7 +805,7 @@ class Locker extends LockOwner {
                 mTailBlock = block;
             }
         } else {
-            ((Block) tailObj).pushLock(this, lock, 1);
+            ((Block) tailObj).pushLock(this, lock, 1L << 63);
         }
     }
 
@@ -850,13 +850,16 @@ class Locker extends LockOwner {
         }
 
         void firstUpgrade() {
-            mUpgrades = 1L;
+            mUpgrades = 1L << 63;
         }
 
         void secondUpgrade() {
-            mUpgrades = 1L << 1;
+            mUpgrades = 1L << 62;
         }
 
+        /**
+         * @param 0 or 1L << 63
+         */
         private Block(Block prev, Lock first, long upgrade) {
             mPrev = prev;
             int capacity = prev.mLocks.length;
@@ -870,6 +873,9 @@ class Locker extends LockOwner {
             mSize = 1;
         }
 
+        /**
+         * @param 0 or 1L << 63
+         */
         void pushLock(Locker locker, Lock lock, long upgrade) {
             Lock[] locks = mLocks;
             int size = mSize;
@@ -886,7 +892,7 @@ class Locker extends LockOwner {
 
             if (size < locks.length) {
                 locks[size] = lock;
-                mUpgrades |= ((long) upgrade) << size;
+                mUpgrades |= upgrade >>> size;
                 mSize = size + 1;
             } else {
                 locker.mTailBlock = new Block(this, lock, upgrade);
@@ -903,7 +909,7 @@ class Locker extends LockOwner {
                 size--;
 
                 long upgrades = block.mUpgrades;
-                long mask = 1L << size;
+                long mask = (1L << 63) >>> size;
                 if ((upgrades & mask) != 0) {
                     throw new IllegalStateException("Cannot unlock non-immediate upgrade");
                 }
@@ -943,7 +949,7 @@ class Locker extends LockOwner {
             while (true) {
                 size--;
 
-                long mask = 1L << size;
+                long mask = (1L << 63) >>> size;
                 if ((block.mUpgrades & mask) != 0) {
                     throw new IllegalStateException("Cannot unlock non-immediate upgrade");
                 }
@@ -976,7 +982,7 @@ class Locker extends LockOwner {
                 locker.mManager.unlockToUpgradable(locker, lock);
 
                 long upgrades = block.mUpgrades;
-                long mask = 1L << size;
+                long mask = (1L << 63) >>> size;
 
                 if ((upgrades & mask) == 0) {
                     if ((block.mUnlockGroup & mask) == 0) {
@@ -1017,19 +1023,19 @@ class Locker extends LockOwner {
             while (true) {
                 size--;
 
-                long mask = 1L << size;
+                long mask = (1L << 63) >>> size;
                 long upgrades = block.mUpgrades;
 
                 long prevMask;
                 if (size != 0) {
-                    prevMask = upgrades << 1;
+                    prevMask = upgrades >> 1;
                 } else {
                     Block prev = block.mPrev;
                     if (prev == null) {
                         // Group of one, so nothing to do.
                         return;
                     }
-                    prevMask = prev.mUpgrades >> (prev.mSize - 1);
+                    prevMask = prev.mUpgrades << (prev.mSize - 1);
                 }
 
                 if (((upgrades ^ prevMask) & mask) != 0) {
@@ -1069,7 +1075,7 @@ class Locker extends LockOwner {
                 Lock[] locks = mLocks;
                 LockManager manager = locker.mManager;
                 size--;
-                long mask = 1L << size;
+                long mask = (1L << 63) >>> size;
                 long upgrades = mUpgrades;
                 while (true) {
                     Lock lock = locks[size];
@@ -1083,9 +1089,9 @@ class Locker extends LockOwner {
                         break;
                     }
                     size--;
-                    mask >>>= 1;
+                    mask <<= 1;
                 }
-                mUpgrades = upgrades & ~(~0L << size);
+                mUpgrades = upgrades & ~(~0L >>> size);
                 mSize = size;
             }
         }
