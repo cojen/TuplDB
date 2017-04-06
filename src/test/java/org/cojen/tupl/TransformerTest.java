@@ -135,7 +135,13 @@ public class TransformerTest {
         fastAssertArrayEquals(key(23), view.load(null, key(23)));
 
         for (int i=10; i<=20; i+=10) {
-            view.store(null, key(i), null);
+            try {
+                view.store(null, key(i), null);
+                fail();
+            } catch (ViewConstraintException e) {
+                // Expected.
+            }
+
             try {
                 view.store(null, key(i), "world".getBytes());
                 fail();
@@ -143,7 +149,13 @@ public class TransformerTest {
                 // Expected.
             }
 
-            assertNull(view.exchange(null, key(i), null));
+            try {
+                view.exchange(null, key(i), null);
+                fail();
+            } catch (ViewConstraintException e) {
+                // Expected.
+            }
+
             try {
                 view.exchange(null, key(i), "world".getBytes());
                 fail();
@@ -151,7 +163,8 @@ public class TransformerTest {
                 // Expected.
             }
 
-            assertFalse(view.insert(null, key(i), null));
+            assertTrue(view.insert(null, key(i), null));
+
             try {
                 view.insert(null, key(i), "world".getBytes());
                 fail();
