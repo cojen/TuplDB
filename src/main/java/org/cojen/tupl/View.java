@@ -131,12 +131,13 @@ public interface View {
         try {
             c.autoload(false);
             c.find(key);
-            c.store(value);
-        } catch (IllegalStateException e) {
             if (c.key() == null) {
+                if (value == null) {
+                    return;
+                }
                 throw new ViewConstraintException();
             }
-            throw e;
+            c.store(value);
         } finally {
             c.reset();
         }
@@ -160,14 +161,15 @@ public interface View {
         Cursor c = newCursor(txn);
         try {
             c.find(key);
+            if (c.key() == null) {
+                if (value == null) {
+                    return null;
+                }
+                throw new ViewConstraintException();
+            }
             byte[] old = c.value();
             c.store(value);
             return old;
-        } catch (IllegalStateException e) {
-            if (c.key() == null) {
-                throw new ViewConstraintException();
-            }
-            throw e;
         } finally {
             c.reset();
         }
