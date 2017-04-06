@@ -1019,11 +1019,23 @@ class _Locker extends _LockOwner {
         }
 
         static void unlockCombine(Block block, _Locker locker) {
-            int size = block.mSize;
             while (true) {
-                size--;
+                // Find the combine position, by searching backwards for a zero bit.
 
-                long mask = (1L << 63) >>> size;
+                int size = block.mSize - 1;
+
+                // Set all unused rightmost bits to 1.
+                long mask = block.mUnlockGroup | (~(1L << 63) >>> size);
+
+                // Hacker's Delight section 2-1. Create word with a single 1-bit at the
+                // position of the rightmost 0-bit, producing 0 if none.
+                mask = ~mask & (mask + 1);
+
+                if (mask == 0) {
+                    block = block.mPrev;
+                    continue;
+                }
+
                 long upgrades = block.mUpgrades;
 
                 long prevMask;
@@ -1042,16 +1054,8 @@ class _Locker extends _LockOwner {
                     throw new IllegalStateException("Cannot combine an acquire with an upgrade");
                 }
 
-                long unlockGroup = block.mUnlockGroup;
-                if ((unlockGroup | mask) != unlockGroup) {
-                    block.mUnlockGroup = unlockGroup | mask;
-                    return;
-                }
-
-                if (size == 0) {
-                    block = block.mPrev;
-                    size = block.mSize;
-                }
+                block.mUnlockGroup |= mask;
+                return;
             }
         }
 
