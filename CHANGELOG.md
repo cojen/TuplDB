@@ -3,6 +3,7 @@ Changelog
 
 v1.3.12.2
 ---------
+* Fix illegal latch release during recovery.
 * Refined behavior when storing nulls into default and constrained views.
 
 v1.3.12.1 (2017-04-01)
