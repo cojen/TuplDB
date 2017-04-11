@@ -1206,7 +1206,6 @@ final class UndoLog implements DatabaseAccess {
                 // anyhow due to the OP_COMMIT_TRUNCATE having overwritten existing data.
                 if (mNode != null) {
                     mNode.makeEvictable();
-                    mNode.releaseExclusive();
                     mNode = null;
                     mNodeTopPos = 0;
                 }
