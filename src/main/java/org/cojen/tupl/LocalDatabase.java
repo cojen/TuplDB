@@ -1387,9 +1387,14 @@ final class LocalDatabase extends AbstractDatabase {
             try {
                 long start = System.nanoTime();
 
-                mTrashed.deleteAll();
-                Node root = mTrashed.close(true, false);
-                removeFromTrash(mTrashed, root);
+                if (mTrashed.deleteAll()) {
+                    Node root = mTrashed.close(true, false);
+                    removeFromTrash(mTrashed, root);
+                } else {
+                    // Database is closed.
+                    mTrashed = null;
+                    return;
+                }
 
                 if (mListener != null) {
                     double duration = (System.nanoTime() - start) / 1_000_000_000.0;
@@ -2236,8 +2241,22 @@ final class LocalDatabase extends AbstractDatabase {
                 for (TreeRef ref : trees) {
                     Tree tree = ref.get();
                     if (tree != null) {
-                        tree.close();
+                        tree.forceClose();
                     }
+                }
+
+                FragmentedTrash trash = mFragmentedTrash;
+                if (trash != null) {
+                    mFragmentedTrash = null;
+                    trash.mTrash.forceClose();
+                }
+
+                if (mRegistryKeyMap != null) {
+                    mRegistryKeyMap.forceClose();
+                }
+
+                if (mRegistry != null) {
+                    mRegistry.forceClose();
                 }
             }
 
@@ -2555,6 +2574,8 @@ final class LocalDatabase extends AbstractDatabase {
     {
         CommitLock.Shared shared = mCommitLock.acquireShared();
         try {
+            checkClosed();
+
             byte[] treeIdBytes = new byte[8];
             encodeLongBE(treeIdBytes, 0, treeId);
             byte[] rootIdBytes = mRegistry.load(Transaction.BOGUS, treeIdBytes);
