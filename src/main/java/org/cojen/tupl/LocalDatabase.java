@@ -235,8 +235,13 @@ final class LocalDatabase extends AbstractDatabase {
     static LocalDatabase open(DatabaseConfig config) throws IOException {
         config = config.clone();
         LocalDatabase db = new LocalDatabase(config, OPEN_REGULAR);
-        db.finishInit(config);
-        return db;
+        try {
+            db.finishInit(config);
+            return db;
+        } catch (Throwable e) {
+            closeQuietly(null, db);
+            throw e;
+        }
     }
 
     /**
@@ -250,8 +255,13 @@ final class LocalDatabase extends AbstractDatabase {
             throw new IllegalArgumentException("Cannot destroy read-only database");
         }
         LocalDatabase db = new LocalDatabase(config, OPEN_DESTROY);
-        db.finishInit(config);
-        return db;
+        try {
+            db.finishInit(config);
+            return db;
+        } catch (Throwable e) {
+            closeQuietly(null, db);
+            throw e;
+        }
     }
 
     /**
