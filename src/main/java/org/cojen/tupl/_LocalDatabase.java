@@ -3649,6 +3649,23 @@ final class _LocalDatabase extends AbstractDatabase {
     }
 
     /**
+     * Caller must hold commit lock and exclusive latch on node. Latch is always released by
+     * this method, even if an exception is thrown.
+     */
+    void deleteNode(_Node node) throws IOException {
+        deleteNode(node, true);
+    }
+
+    /**
+     * Caller must hold commit lock and exclusive latch on node. Latch is always released by
+     * this method, even if an exception is thrown.
+     */
+    void deleteNode(_Node node, boolean canRecycle) throws IOException {
+        prepareToDelete(node);
+        finishDeleteNode(node, canRecycle);
+    }
+
+    /**
      * Similar to markDirty method except no new page is reserved, and old page
      * is not immediately deleted. Caller must hold commit lock and exclusive
      * latch on node. Latch is never released by this method, unless an
@@ -3673,14 +3690,14 @@ final class _LocalDatabase extends AbstractDatabase {
      * prepareToDelete method must have been called first. Latch is always
      * released by this method, even if an exception is thrown.
      */
-    void deleteNode(_Node node) throws IOException {
-        deleteNode(node, true);
+    void finishDeleteNode(_Node node) throws IOException {
+        finishDeleteNode(node, true);
     }
 
     /**
      * @param canRecycle true if node's page can be immediately re-used
      */
-    void deleteNode(_Node node, boolean canRecycle) throws IOException {
+    void finishDeleteNode(_Node node, boolean canRecycle) throws IOException {
         try {
             long id = node.mId;
 
