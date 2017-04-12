@@ -90,8 +90,8 @@ final class _ReplRedoController extends _ReplRedoWriter {
             mCheckpointRedoWriter = redo;
             ReplicationManager.Writer writer = redo.mReplWriter;
             if (writer == null) {
-                mCheckpointPos = mEngine.decodePosition();
-                mCheckpointTxnId = mEngine.decodeTransactionId();
+                mCheckpointPos = mEngine.suspendedDecodePosition();
+                mCheckpointTxnId = mEngine.suspendedDecodeTransactionId();
             } else {
                 redo.acquireShared();
                 mCheckpointPos = redo.mLastCommitPos;
