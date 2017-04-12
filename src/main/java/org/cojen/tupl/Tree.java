@@ -658,7 +658,7 @@ class Tree implements View, Index {
 
     @Override
     public final void close() throws IOException {
-        close(false, false);
+        close(false, false, false);
     }
 
     /**
@@ -666,6 +666,23 @@ class Tree implements View, Index {
      * @return root node if forDelete; null if already closed
      */
     final Node close(boolean forDelete, final boolean rootLatched) throws IOException {
+        return close(forDelete, rootLatched, false);
+    }
+
+    /**
+     * Close any kind of index, even an internal one.
+     */
+    final void forceClose() throws IOException {
+        close(false, false, true);
+    }
+
+    /**
+     * @param rootLatched true if root node is already latched by the current thread
+     * @return root node if forDelete; null if already closed
+     */
+    private Node close(boolean forDelete, final boolean rootLatched, boolean force)
+        throws IOException
+    {
         Node root = mRoot;
 
         if (!rootLatched) {
@@ -678,7 +695,7 @@ class Tree implements View, Index {
                 return null;
             }
 
-            if (isInternal(mId)) {
+            if (!force && isInternal(mId)) {
                 throw new IllegalStateException("Cannot close an internal index");
             }
 
@@ -806,9 +823,11 @@ class Tree implements View, Index {
     /**
      * Non-transactionally deletes all entries in the tree. No other cursors or threads can be
      * active in the tree. The root node is prepared for deletion as a side effect.
+     *
+     * @return false if stopped because database is closed
      */
-    final void deleteAll() throws IOException {
-        new TreeCursor(this, Transaction.BOGUS).deleteAll();
+    final boolean deleteAll() throws IOException {
+        return new TreeCursor(this, Transaction.BOGUS).deleteAll();
     }
 
     @FunctionalInterface

@@ -3227,22 +3227,33 @@ class TreeCursor implements CauseCloseable, Cursor {
     /**
      * Non-transactionally deletes all entries in the tree. No other cursors or threads can be
      * active in the tree.
+     *
+     * @return false if stopped because database is closed
      */
-    final void deleteAll() throws IOException {
+    final boolean deleteAll() throws IOException {
         autoload(false);
-        firstAny();
 
         final LocalDatabase db = mTree.mDatabase;
         final CommitLock commitLock = db.commitLock();
 
+        CommitLock.Shared shared = commitLock.acquireShared();
+        try {
+            // Close check is required because this method is called by the trashed tree
+            // deletion task. The tree isn't registered as an open tree, and so closing the
+            // database doesn't close the tree before deleting the node instances.
+            if (db.isClosed()) {
+                return false;
+            }
+            firstAny();
+        } finally {
+            shared.release();
+        }
+
         while (true) {
-            CommitLock.Shared shared = commitLock.acquireShared();
+            shared = commitLock.acquireShared();
             try {
-                // Close check is required because this method is called by the trashed tree
-                // deletion task. The tree isn't registered as an open tree, and so closing the
-                // database doesn't close the tree before deleting the node instances.
                 if (db.isClosed()) {
-                    break;
+                    return false;
                 }
 
                 mLeaf.acquireExclusive();
@@ -3264,7 +3275,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                 } else if (!deleteLowestNode(mLeaf, node)) {
                     mLeaf = null;
                     reset();
-                    return;
+                    return true;
                 }
             } finally {
                 shared.release();
