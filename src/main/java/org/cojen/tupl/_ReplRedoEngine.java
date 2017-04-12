@@ -787,36 +787,40 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     /**
-     * Returns the position of the next operation to decode. Call suspend to capture a stable
-     * pairing of the position and transaction id.
+     * Returns the position of the next operation to decode. To avoid deadlocks, engine must
+     * not be suspended when calling this method. Instead, call suspendedDecodePosition.
      */
     long decodePosition() {
         mDecodeLatch.acquireShared();
         try {
-            ReplRedoDecoder decoder = mDecoder;
-            return decoder == null ? mManager.readPosition() : decoder.mDecodePosition;
+            return getDecodePosition();
         } finally {
             mDecodeLatch.releaseShared();
         }
     }
 
+    private long getDecodePosition() {
+        ReplRedoDecoder decoder = mDecoder;
+        return decoder == null ? mManager.readPosition() : decoder.mDecodePosition;
+    }
+
     /**
-     * Returns the last transaction id which was decoded. Call suspend to capture a stable
-     * pairing of the position and transaction id.
+     * Returns the position of the next operation to decode, while engine is suspended.
+     */
+    long suspendedDecodePosition() {
+        return getDecodePosition();
+    }
+
+    /**
+     * Returns the last transaction id which was decoded, while engine is suspended.
      *
      * @throws IllegalStateException if not decoding
      */
-    long decodeTransactionId() {
-        mDecodeLatch.acquireShared();
-        try {
-            ReplRedoDecoder decoder = mDecoder;
-            if (decoder != null) {
-                return decoder.mDecodeTransactionId;
-            }
-        } finally {
-            mDecodeLatch.releaseShared();
+    long suspendedDecodeTransactionId() {
+        ReplRedoDecoder decoder = mDecoder;
+        if (decoder != null) {
+            return decoder.mDecodeTransactionId;
         }
-
         throw new IllegalStateException("Not decoding");
     }
 
