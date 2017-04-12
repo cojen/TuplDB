@@ -3939,7 +3939,7 @@ final class _Node extends Latch implements _DatabaseAccess {
         // If right node was high extremity, left node now is.
         leftNode.type((byte) (leftNode.type() | (rightNode.type() & HIGH_EXTREMITY)));
 
-        tree.mDatabase.deleteNode(rightNode);
+        tree.mDatabase.finishDeleteNode(rightNode);
     }
 
     /**
@@ -4008,7 +4008,7 @@ final class _Node extends Latch implements _DatabaseAccess {
         // If right node was high extremity, left node now is.
         leftNode.type((byte) (leftNode.type() | (rightNode.type() & HIGH_EXTREMITY)));
 
-        tree.mDatabase.deleteNode(rightNode);
+        tree.mDatabase.finishDeleteNode(rightNode);
     }
 
     /**
@@ -4106,7 +4106,7 @@ final class _Node extends Latch implements _DatabaseAccess {
 
             // The node can be deleted earlier in the method, but doing it here might prevent
             // corruption if an unexpected exception occurs.
-            tree.mDatabase.deleteNode(child);
+            tree.mDatabase.finishDeleteNode(child);
         } finally {
             stub.releaseExclusive();
             releaseExclusive();
@@ -4465,7 +4465,8 @@ final class _Node extends Latch implements _DatabaseAccess {
         }
 
         try {
-            getDatabase().deleteNode(newNode);
+            // No need to prepare for delete because node contents are unreferenced.
+            getDatabase().finishDeleteNode(newNode);
         } catch (Throwable e) {
             Utils.suppress(cause, e);
             panic(cause);
