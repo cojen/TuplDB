@@ -1020,7 +1020,6 @@ final class _UndoLog implements _DatabaseAccess {
 
         if (delete) {
             _LocalDatabase db = mDatabase;
-            db.prepareToDelete(parent);
             // Safer to never recycle undo log nodes. Keep them until the next checkpoint, when
             // there's a guarantee that the master undo log will not reference them anymore.
             db.deleteNode(parent, false);

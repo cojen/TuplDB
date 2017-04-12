@@ -3226,7 +3226,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
 
     /**
      * Non-transactionally deletes all entries in the tree. No other cursors or threads can be
-     * active in the tree. The root node is prepared for deletion as a side effect.
+     * active in the tree.
      */
     final void deleteAll() throws IOException {
         autoload(false);
@@ -3284,8 +3284,6 @@ class _TreeCursor implements CauseCloseable, Cursor {
         node.mLastCursorFrame = null;
 
         _LocalDatabase db = mTree.mDatabase;
-        // Always prepare to delete, even though caller will delete the root.
-        db.prepareToDelete(node);
 
         if (node == mTree.mRoot) {
             try {
@@ -3296,6 +3294,8 @@ class _TreeCursor implements CauseCloseable, Cursor {
             return false;
         }
 
+        db.prepareToDelete(node);
+
         _CursorFrame parentFrame = frame.mParentFrame;
         _Node parentNode = parentFrame.acquireExclusive();
 
@@ -3303,7 +3303,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
             parentNode.deleteLeftChildRef(0);
         } else {
             if (!deleteLowestNode(parentFrame, parentNode)) {
-                db.deleteNode(node);
+                db.finishDeleteNode(node);
                 return false;
             }
             parentNode = parentFrame.acquireExclusive();
@@ -3325,7 +3325,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
         next.type((byte) (next.type() | _Node.LOW_EXTREMITY));
         next.releaseExclusive();
 
-        db.deleteNode(node);
+        db.finishDeleteNode(node);
 
         return true;
     }
