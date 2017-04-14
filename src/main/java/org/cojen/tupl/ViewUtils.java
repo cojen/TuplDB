@@ -275,6 +275,17 @@ class ViewUtils {
         }
     }
 
+    static void findNearbyNoLock(Cursor c, byte[] key) throws IOException {
+        final boolean auto = c.autoload(false);
+        final Transaction txn = c.link(Transaction.BOGUS);
+        try {
+            c.findNearby(key);
+        } finally {
+            c.link(txn);
+            c.autoload(auto);
+        }
+    }
+
     static void commit(Cursor c, byte[] value) throws IOException {
         try {
             c.store(value);

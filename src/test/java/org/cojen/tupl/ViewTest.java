@@ -128,7 +128,8 @@ public class ViewTest {
         }
 
         c.find(key(10));
-        assertNull(c.key());
+        fastAssertArrayEquals(key(10), c.key());
+        assertNull(c.value());
         c.find(key(35));
         assertNotNull(c.key());
         assertNull(c.value());
@@ -240,7 +241,8 @@ public class ViewTest {
         }
 
         c.find(key(10));
-        assertNull(c.key());
+        fastAssertArrayEquals(key(10), c.key());
+        assertNull(c.value());
         c.find(key(35));
         assertNotNull(c.key());
         assertNull(c.value());
@@ -355,7 +357,8 @@ public class ViewTest {
         }
 
         c.find(key(96));
-        assertNull(c.key());
+        fastAssertArrayEquals(key(96), c.key());
+        assertNull(c.value());
         c.find(key(35));
         assertNotNull(c.key());
         assertNull(c.value());
@@ -467,7 +470,8 @@ public class ViewTest {
         }
 
         c.find(key(96));
-        assertNull(c.key());
+        fastAssertArrayEquals(key(96), c.key());
+        assertNull(c.value());
         c.find(key(35));
         assertNotNull(c.key());
         assertNull(c.value());
