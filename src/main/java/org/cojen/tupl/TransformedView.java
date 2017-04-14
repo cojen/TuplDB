@@ -518,7 +518,7 @@ final class TransformedView implements View {
              mTransformer);
     }
 
-    private static ViewConstraintException fail() {
+    static ViewConstraintException fail() {
         return new ViewConstraintException("Unsupported key");
     }
 }

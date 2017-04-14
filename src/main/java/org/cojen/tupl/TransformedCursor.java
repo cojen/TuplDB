@@ -289,12 +289,13 @@ final class TransformedCursor implements Cursor {
 
     @Override
     public LockResult find(final byte[] tkey) throws IOException {
+        mKey = tkey;
         final byte[] key = inverseTransformKey(tkey);
         if (key == null) {
-            reset();
+            mValue = null;
+            mSource.reset();
             return LockResult.UNOWNED;
         }
-        mKey = tkey;
         mValue = NOT_LOADED;
         return transformCurrent(mSource.find(key), key, tkey);
     }
@@ -393,12 +394,13 @@ final class TransformedCursor implements Cursor {
 
     @Override
     public LockResult findNearby(final byte[] tkey) throws IOException {
+        mKey = tkey;
         final byte[] key = inverseTransformKey(tkey);
         if (key == null) {
-            reset();
+            mValue = null;
+            mSource.reset();
             return LockResult.UNOWNED;
         }
-        mKey = tkey;
         mValue = NOT_LOADED;
         return transformCurrent(mSource.findNearby(key), key, tkey);
     }
@@ -459,6 +461,9 @@ final class TransformedCursor implements Cursor {
 
     @Override
     public LockResult lock() throws IOException {
+        if (mKey != null && mSource.key() == null) {
+            throw TransformedView.fail();
+        }
         return mSource.lock();
     }
 
@@ -466,7 +471,9 @@ final class TransformedCursor implements Cursor {
     public LockResult load() throws IOException {
         final byte[] tkey = mKey;
         ViewUtils.positionCheck(tkey);
-        mKey = tkey;
+        if (mSource.key() == null) {
+            throw TransformedView.fail();
+        }
         mValue = NOT_LOADED;
         final Cursor c = mSource;
         return transformCurrent(c.load(), c.key(), tkey);
@@ -478,7 +485,9 @@ final class TransformedCursor implements Cursor {
         ViewUtils.positionCheck(tkey);
         final Cursor c = mSource;
         final byte[] key = c.key();
-        ViewUtils.positionCheck(key);
+        if (key == null) {
+            throw TransformedView.fail();
+        }
         c.store(mTransformer.inverseTransformValue(tvalue, key, tkey));
         mValue = tvalue;
     }
@@ -489,7 +498,9 @@ final class TransformedCursor implements Cursor {
         ViewUtils.positionCheck(tkey);
         final Cursor c = mSource;
         final byte[] key = c.key();
-        ViewUtils.positionCheck(key);
+        if (key == null) {
+            throw TransformedView.fail();
+        }
         c.commit(mTransformer.inverseTransformValue(tvalue, key, tkey));
         mValue = tvalue;
     }
