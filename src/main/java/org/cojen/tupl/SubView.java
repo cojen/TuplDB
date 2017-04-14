@@ -219,7 +219,7 @@ abstract class SubView implements View {
         }
     }
 
-    private static ViewConstraintException fail() {
+    static ViewConstraintException fail() {
         return new ViewConstraintException("Key is outside allowed range");
     }
 }
