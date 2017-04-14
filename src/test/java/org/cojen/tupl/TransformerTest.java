@@ -17,6 +17,8 @@
 
 package org.cojen.tupl;
 
+import java.nio.charset.StandardCharsets;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -178,6 +180,105 @@ public class TransformerTest {
             assertFalse(view.remove(null, key(i), "world".getBytes()));
             assertTrue(view.remove(null, key(i), null));
         }
+    }
+
+    @Test
+    public void unsupportedCursorKeys() throws Exception {
+        // Tests expected behavior when loading/storing unsupported keys with a cursor.
+
+        Index ix = fill();
+        View view = ix.viewTransformed(new OddKeys());
+
+        Transaction txn = mDb.newTransaction();
+        Cursor c = view.newCursor(txn);
+
+        assertEquals(LockResult.UNOWNED, c.find(key(20)));
+        fastAssertArrayEquals(key(20), c.key());
+        assertNull(c.value());
+
+        try {
+            c.lock();
+            fail();
+        } catch (ViewConstraintException e) {
+            // Expected.
+        }
+
+        try {
+            c.load();
+            fail();
+        } catch (ViewConstraintException e) {
+            // Expected.
+        }
+
+        try {
+            c.store("hello".getBytes());
+            fail();
+        } catch (ViewConstraintException e) {
+            // Expected.
+        }
+
+        try {
+            c.next();
+            fail();
+        } catch (IllegalStateException e) {
+            // Expected.
+        }
+
+        assertEquals(LockResult.ACQUIRED, c.find(key(23)));
+        fastAssertArrayEquals(key(23), c.key());
+        fastAssertArrayEquals(key(23), c.value());
+    }
+
+    @Test
+    public void unsupportedCursorValues() throws Exception {
+        // Tests expected behavior when accessing unsupported values with a cursor.
+
+        Index ix = mDb.openIndex("test");
+
+        byte[] key1 = "key1".getBytes();
+        byte[] value1 = "maG{1".getBytes(StandardCharsets.UTF_8);
+
+        byte[] key2 = "key2".getBytes();
+        byte[] value2 = "maG{2".getBytes(StandardCharsets.UTF_8);
+
+        byte[] key3 = "key3".getBytes();
+        byte[] value3 = "hello".getBytes(StandardCharsets.UTF_8);
+
+        ix.store(null, key1, value1);
+        ix.store(null, key2, value2);
+        ix.store(null, key3, value3);
+
+        View view = ix.viewTransformed(new CrudBasicFilterTest.BasicFilter());
+
+        Transaction txn = mDb.newTransaction();
+        Cursor c = view.newCursor(txn);
+
+        assertEquals(LockResult.UNOWNED, c.find(key1));
+        fastAssertArrayEquals(key1, c.key());
+        assertNull(c.value());
+
+        assertEquals(LockResult.ACQUIRED, c.lock());
+        assertEquals(LockResult.OWNED_UPGRADABLE, c.load());
+
+        try {
+            c.store(value2);
+            fail();
+        } catch (ViewConstraintException e) {
+            // Expected.
+        }
+
+        assertEquals(LockResult.OWNED_UPGRADABLE, ix.lockCheck(txn, c.key()));
+
+        c.store("world".getBytes());
+        assertEquals(LockResult.OWNED_EXCLUSIVE, c.skip(0));
+
+        fastAssertArrayEquals("world".getBytes(), ix.load(txn, c.key()));
+
+        assertEquals(LockResult.ACQUIRED, c.next());
+        fastAssertArrayEquals(key3, c.key());
+
+        c.reset();
+        txn.commit();
     }
 
     private Index fill() throws Exception {
