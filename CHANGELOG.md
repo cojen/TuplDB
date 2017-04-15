@@ -1,9 +1,12 @@
 Changelog
 =========
 
-v1.3.12.2
+v1.3.12.2 (2017-04-15)
 ---------
 * Fix illegal latch release during recovery.
+* Fix deadlock during replication subsystem checkpoint.
+* Fix race condition when dropping an index
+* Fix race conditions when accessing indexes while database is being closed.
 * Refined behavior when storing nulls into default and constrained views.
 
 v1.3.12.1 (2017-04-01)
