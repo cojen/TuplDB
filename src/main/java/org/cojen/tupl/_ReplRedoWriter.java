@@ -70,19 +70,22 @@ class _ReplRedoWriter extends _RedoWriter {
             mBufferLatch = null;
         } else {
             mBufferLatch = new Latch();
+
             // Acquire the latch here, to avoid any odd race conditions caused by launching a
             // thread from within a constructor. The consume method first acquires the latch
             // before doing anything.
             mBufferLatch.acquireExclusive();
-            mWritePos = writer.position();
-            mBuffer = new byte[65536];
-            mBufferLatch.releaseExclusive();
+            try {
+                mWritePos = writer.position();
+                mBuffer = new byte[65536];
 
-            Thread consumer = new Thread(this::consume);
-
-            consumer.setName("WriteConsumer-" + consumer.getId());
-            consumer.setDaemon(true);
-            consumer.start();
+                mConsumer = new Thread(this::consume);
+                mConsumer.setName("WriteConsumer-" + mConsumer.getId());
+                mConsumer.setDaemon(true);
+                mConsumer.start();
+            } finally {
+                mBufferLatch.releaseExclusive();
+            }
         }
     }
 
@@ -133,6 +136,8 @@ class _ReplRedoWriter extends _RedoWriter {
     }
 
     protected final void flipped(long commitPos) {
+        closeConsumerThread();
+
         _PendingTxnWaiter waiter;
         acquireExclusive();
         try {
@@ -373,6 +378,10 @@ class _ReplRedoWriter extends _RedoWriter {
             return;
         }
 
+        closeConsumerThread();
+    }
+
+    private void closeConsumerThread() {
         mBufferLatch.acquireExclusive();
         Thread consumer = mConsumer;
         mConsumer = null;
@@ -383,7 +392,7 @@ class _ReplRedoWriter extends _RedoWriter {
             try {
                 consumer.join();
             } catch (InterruptedException e) {
-                throw new InterruptedIOException();
+                // Ignore.
             }
         }
     }
@@ -403,7 +412,6 @@ class _ReplRedoWriter extends _RedoWriter {
      */
     private void consume() {
         mBufferLatch.acquireExclusive();
-        mConsumer = Thread.currentThread();
 
         final byte[] buffer = mBuffer;
 
