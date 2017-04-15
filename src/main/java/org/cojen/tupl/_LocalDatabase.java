@@ -2127,11 +2127,6 @@ final class _LocalDatabase extends AbstractDatabase {
         close(null, mPageDb.isDurable());
     }
 
-    @Override
-    protected void finalize() throws IOException {
-        close();
-    }
-
     private void close(Throwable cause, boolean shutdown) throws IOException {
         if (mClosed) {
             return;
