@@ -818,10 +818,26 @@ public class Latch {
     }
 
     static class Shared extends WaitNode {
+        /**
+         * @return <0 if thread should park; 0 if acquired and node should also be removed; >0
+         * if acquired and node should not be removed
+         */
         @Override
         final int acquire(Latch latch, boolean yield) {
+            // Note: If mWaiter is null, then handoff was fair. The shared count should already
+            // be correct, and this node won't be in the queue anymore.
+
+            WaitNode first = latch.mLatchFirst;
+            if (first != null && !(first instanceof Shared)) {
+                return mWaiter == null ? 1 : -1;
+            }
+
             int trials = 0;
             while (true) {
+                if (mWaiter == null) {
+                    return 1;
+                }
+
                 int state = latch.mLatchState;
                 if (state < 0) {
                     return state;
@@ -833,15 +849,9 @@ public class Latch {
                     if (waiter == null ||
                         !UNSAFE.compareAndSwapObject(this, WAITER_OFFSET, waiter, null))
                     {
-                        // Handoff was actually fair, and now an extra shared latch must be
-                        // released.
-                        if (state < 1) {
-                            throw new AssertionError(state);
-                        }
                         if (!UNSAFE.compareAndSwapInt(latch, STATE_OFFSET, state + 1, state)) {
                             UNSAFE.getAndAddInt(latch, STATE_OFFSET, -1);
                         }
-                        // Already removed from the queue.
                         return 1;
                     }
 
