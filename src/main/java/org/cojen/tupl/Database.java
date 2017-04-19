@@ -93,7 +93,7 @@ public interface Database extends CauseCloseable, Flushable {
         } catch (Throwable e2) {
             e1 = Utils.rootCause(e1);
             e2 = Utils.rootCause(e2);
-            if (e2 instanceof Error && !(e1 instanceof Error)) {
+            if (e1 == null || (e2 instanceof Error && !(e1 instanceof Error))) {
                 // Throw the second, considering it to be more severe.
                 Utils.suppress(e2, e1);
                 throw Utils.rethrow(e2);
