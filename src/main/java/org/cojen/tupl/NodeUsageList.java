@@ -21,7 +21,7 @@ import java.io.IOException;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-import org.cojen.tupl.util.Latch;
+import org.cojen.tupl.util.Clutch;
 
 import static org.cojen.tupl.Node.*;
 import static org.cojen.tupl.PageOps.*;
@@ -32,7 +32,7 @@ import static org.cojen.tupl.PageOps.*;
  * @author Brian S O'Neill
  */
 @SuppressWarnings("serial")
-final class NodeUsageList extends Latch {
+final class NodeUsageList extends Clutch.Pack {
     // Allocate an unevictable node.
     static final int MODE_UNEVICTABLE = 1;
 
@@ -47,9 +47,6 @@ final class NodeUsageList extends Latch {
     private Node mMostRecentlyUsed;
     private Node mLeastRecentlyUsed;
 
-    // Padding to prevent cache line sharing.
-    private long a0, a1, a2, a3;
-
     /**
      * @param usedRate must be power of 2 minus 1, and it determines the likelihood that
      * calling the used method actually moves the node in the usage list. The higher the used
@@ -59,6 +56,7 @@ final class NodeUsageList extends Latch {
      * a larger used rate value is recommended.
      */
     NodeUsageList(LocalDatabase db, long usedRate, int maxSize) {
+        super(64); // FIXME: configurable
         if (maxSize <= 0) {
             throw new IllegalArgumentException();
         }
