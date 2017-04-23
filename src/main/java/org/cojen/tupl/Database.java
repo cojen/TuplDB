@@ -79,25 +79,29 @@ public interface Database extends CauseCloseable, Flushable {
     public static Database open(DatabaseConfig config) throws IOException {
         Method m = config.directOpenMethod();
 
-        Throwable ex = null;
+        Throwable e1 = null;
         if (m != null) {
             try {
                 return (Database) m.invoke(null, config);
             } catch (Exception e) {
                 config.handleDirectException(e);
-                ex = e;
+                e1 = e;
             }
         }
 
         try {
             return LocalDatabase.open(config);
-        } catch (Throwable e) {
-            if (ex == null) {
-                throw e;
+        } catch (Throwable e2) {
+            e1 = Utils.rootCause(e1);
+            e2 = Utils.rootCause(e2);
+            if (e1 == null || (e2 instanceof Error && !(e1 instanceof Error))) {
+                // Throw the second, considering it to be more severe.
+                Utils.suppress(e2, e1);
+                throw Utils.rethrow(e2);
+            } else {
+                Utils.suppress(e1, e2);
+                throw Utils.rethrow(e1);
             }
-            ex = Utils.rootCause(ex);
-            Utils.suppress(ex, e);
-            throw Utils.rethrow(ex);
         }
     }
 
