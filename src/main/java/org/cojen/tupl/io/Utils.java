@@ -732,6 +732,9 @@ public class Utils {
      * @return non-null cause, unless given exception was null
      */
     public static Throwable rootCause(Throwable e) {
+        if (e == null) {
+            return null;
+        }
         while (true) {
             Throwable cause = e.getCause();
             if (cause == null) {
