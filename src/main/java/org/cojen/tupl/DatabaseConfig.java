@@ -528,7 +528,9 @@ public class DatabaseConfig implements Cloneable, Serializable {
         if (mMapDataFiles) {
             options.add(OpenOption.MAPPED);
         }
-        options.add(OpenOption.CREATE);
+        if (mMkdirs) {
+            options.add(OpenOption.CREATE);
+        }
         return options;
     }
 
