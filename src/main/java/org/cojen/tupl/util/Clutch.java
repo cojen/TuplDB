@@ -131,12 +131,18 @@ public abstract class Clutch extends Latch {
             return true;
         }
 
-        int slot = mContendedSlot;
-        if (slot < 0 || !getPack().tryAcquireShared(slot, this)) {
-            long start = System.nanoTime();
-            int result = weakAcquireSharedNanos(nanosTimeout);
-            if (result <= 0) {
-                if (result == 0) {
+        doAcquire: {
+            int slot = mContendedSlot;
+            if (slot >= 0) {
+                if (getPack().tryAcquireShared(slot, this)) {
+                    return true;
+                }
+            } else {
+                long start = System.nanoTime();
+                int result = weakAcquireSharedNanos(nanosTimeout);
+                if (result > 0) {
+                    break doAcquire;
+                } else if (result == 0) {
                     return false;
                 }
                 nanosTimeout -= (System.nanoTime() - start);
@@ -144,19 +150,23 @@ public abstract class Clutch extends Latch {
                     nanosTimeout = 0;
                 }
                 if (shouldSwitchToContendedMode()) {
+                    if (super.tryAcquireShared()) {
+                        break doAcquire;
+                    }
                     if (!super.tryAcquireExclusiveNanos(nanosTimeout)) {
                         return false;
                     }
                     contendedMode();
-                } else {
-                    if (!super.tryAcquireSharedNanos(nanosTimeout)) {
-                        return false;
-                    }
-                    uncontendedMode();
+                    return true;
                 }
+            }
+
+            if (!super.tryAcquireSharedNanos(nanosTimeout)) {
+                return false;
             }
         }
 
+        uncontendedMode();
         return true;
     }
 
@@ -187,32 +197,58 @@ public abstract class Clutch extends Latch {
 
     @Override
     public final void acquireShared() {
-        int slot = mContendedSlot;
-        if ((slot < 0 || !getPack().tryAcquireShared(slot, this)) && !weakAcquireShared()) {
-            if (shouldSwitchToContendedMode()) {
-                super.acquireExclusive();
-                contendedMode();
+        doAcquire: {
+            int slot = mContendedSlot;
+            if (slot >= 0) {
+                if (getPack().tryAcquireShared(slot, this)) {
+                    return;
+                }
             } else {
-                super.acquireShared();
-                uncontendedMode();
+                if (super.weakAcquireShared()) {
+                    break doAcquire;
+                }
+                if (shouldSwitchToContendedMode()) {
+                    if (super.tryAcquireShared()) {
+                        break doAcquire;
+                    }
+                    super.acquireExclusive();
+                    contendedMode();
+                    return;
+                }
             }
+
+            super.acquireShared();
         }
+
+        uncontendedMode();
     }
 
     @Override
     public final void acquireSharedInterruptibly() throws InterruptedException {
-        int slot = mContendedSlot;
-        if ((slot < 0 || !getPack().tryAcquireShared(slot, this))
-            && weakAcquireSharedNanos(-1) <= 0)
-        {
-            if (shouldSwitchToContendedMode()) {
-                super.acquireExclusiveInterruptibly();
-                contendedMode();
+        doAcquire: {
+            int slot = mContendedSlot;
+            if (slot >= 0) {
+                if (getPack().tryAcquireShared(slot, this)) {
+                    return;
+                }
             } else {
-                super.acquireSharedInterruptibly();
-                uncontendedMode();
+                if (super.weakAcquireSharedNanos(-1) > 0) {
+                    break doAcquire;
+                }
+                if (shouldSwitchToContendedMode()) {
+                    if (super.tryAcquireShared()) {
+                        break doAcquire;
+                    }
+                    super.acquireExclusiveInterruptibly();
+                    contendedMode();
+                    return;
+                }
             }
+
+            super.acquireSharedInterruptibly();
         }
+
+        uncontendedMode();
     }
 
     private static boolean shouldSwitchToContendedMode() {
@@ -293,9 +329,9 @@ public abstract class Clutch extends Latch {
 
     /**
      * Sharable object for supporting contended clutches. Memory overhead (in bytes) is
-     * approximately equal to {@code (number of slots) * (number of cores) * 4}. The number of
-     * slots should be at least 16, to minimize cache line contention. As a convenience, this
-     * class also extends the Latch class, but the latching features are not used here.
+     * proportional {@code (number of slots) * (number of cores)}. The number of slots should
+     * be at least 16, to minimize cache line contention. As a convenience, this class also
+     * extends the Latch class, but the latching features are not used here.
      */
     public static class Pack extends Latch {
         private static final int OBJECT_ARRAY_BASE;
@@ -320,11 +356,7 @@ public abstract class Clutch extends Latch {
         private final int mCores;
         private final Object[] mSlots;
         private final int[] mCounters;
-        private final ThreadLocal<Stripe> mThreadStripe = ThreadLocal.withInitial(Stripe::new);
-
-        static class Stripe {
-            int mValue;
-        }
+        private final int[] mThreadStripes;
 
         /**
          * @param numSlots amount of contended clutches that this pack can support
@@ -344,6 +376,7 @@ public abstract class Clutch extends Latch {
             mCores = cores;
             mSlots = new Object[numSlots];
             mCounters = new int[numSlots * cores];
+            mThreadStripes = new int[cores * 4];
         }
 
         /**
@@ -470,7 +503,7 @@ public abstract class Clutch extends Latch {
         }
 
         final void releaseShared(int slot) {
-            add(slot, -1, mThreadStripe.get().mValue);
+            add(slot, -1, threadStripe());
             Object entry = get(mSlots, slot);
             if (entry instanceof Thread && isZero(slot)) {
                 LockSupport.unpark((Thread) entry);
@@ -481,23 +514,35 @@ public abstract class Clutch extends Latch {
          * @return selected stripe
          */
         private int add(int slot, int delta) {
-            Stripe s = mThreadStripe.get();
-            int sv = s.mValue;
-            long offset = intArrayByteOffset(sv + slot);
+            int stripe = threadStripe();
+            long offset = intArrayByteOffset(slot + stripe);
             int[] counters = mCounters;
             int cv = UNSAFE.getIntVolatile(counters, offset);
 
             if (!UNSAFE.compareAndSwapInt(counters, offset, cv, cv + delta)) {
-                sv = ThreadLocalRandom.current().nextInt(mCores) * mSlots.length;
-                s.mValue = sv;
-                add(slot, delta, sv);
+                stripe = ThreadLocalRandom.current().nextInt(mCores) * mSlots.length;
+                int id = xorshift((int) Thread.currentThread().getId());
+                mThreadStripes[id & (mThreadStripes.length - 1)] = stripe;
+                add(slot, delta, stripe);
             }
 
-            return sv;
+            return stripe;
         }
 
         private void add(int slot, int delta, int stripe) {
-            UNSAFE.getAndAddInt(mCounters, intArrayByteOffset(stripe + slot), delta);
+            UNSAFE.getAndAddInt(mCounters, intArrayByteOffset(slot + stripe), delta);
+        }
+
+        private int threadStripe() {
+            int id = xorshift((int) Thread.currentThread().getId());
+            return mThreadStripes[id & (mThreadStripes.length - 1)];
+        }
+
+        private static int xorshift(int v) {
+            v ^= v << 13;
+            v ^= v >>> 17;
+            v ^= v << 5;
+            return v;
         }
 
         private boolean isZero(int slot) {
