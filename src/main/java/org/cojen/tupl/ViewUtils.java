@@ -344,6 +344,24 @@ class ViewUtils {
         throw Utils.rethrow(e);
     }
 
+    /**
+     * Closes the given resource, suppresses any new exception, and then throws the original
+     * exception.
+     *
+     * @param c optional
+     * @param e required
+     */
+    static RuntimeException fail(AutoCloseable c, Throwable e) {
+        if (c != null) {
+            try {
+                c.close();
+            } catch (Throwable e2) {
+                Utils.suppress(e, e2);
+            }
+        }
+        throw Utils.rethrow(e);
+    }
+
     static final String toString(Index ix) {
         StringBuilder b = new StringBuilder();
         Utils.appendMiniString(b, ix);

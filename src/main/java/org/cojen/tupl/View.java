@@ -50,6 +50,28 @@ public interface View {
     public Cursor newCursor(Transaction txn);
 
     /**
+     * Returns a new scanner over this view.
+     *
+     * @param txn optional transaction for Scanner to use
+     * @return a new scanner positioned at the first entry in the view
+     * @throws IllegalArgumentException if transaction belongs to another database instance
+     */
+    public default Scanner newScanner(Transaction txn) throws IOException {
+        return new ViewScanner(this, newCursor(txn));
+    }
+
+    /**
+     * Returns a new updater over this view.
+     *
+     * @param txn optional transaction for Updater to use
+     * @return a new updater positioned at the first entry in the view
+     * @throws IllegalArgumentException if transaction belongs to another database instance
+     */
+    public default Updater newUpdater(Transaction txn) throws IOException {
+        return new ViewUpdater(this, newCursor(txn));
+    }
+
+    /**
      * Returns a new transaction which is compatible with this view. If the provided durability
      * mode is null, a default mode is selected.
      *

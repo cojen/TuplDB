@@ -73,6 +73,8 @@
 </a>
 <h2 class="title">A</h2>
 <dl>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/EntryConsumer.html#accept-byte:A-byte:A-">accept(byte[], byte[])</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/EntryConsumer.html" title="interface in org.cojen.tupl">EntryConsumer</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Clutch.html#acquireExclusive--">acquireExclusive()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#acquireExclusive--">acquireExclusive()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
@@ -121,6 +123,12 @@
 <dd>
 <div class="block">Estimates the size of this index with a single random probe.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/EntryConsumer.html#andThen-org.cojen.tupl.EntryConsumer-">andThen(EntryConsumer)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/EntryConsumer.html" title="interface in org.cojen.tupl">EntryConsumer</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/EntryFunction.html#andThen-org.cojen.tupl.EntryFunction-">andThen(EntryFunction)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/EntryFunction.html" title="interface in org.cojen.tupl">EntryFunction</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/EntryFunction.html#apply-byte:A-byte:A-">apply(byte[], byte[])</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/EntryFunction.html" title="interface in org.cojen.tupl">EntryFunction</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#applyCachePrimer-java.io.InputStream-">applyCachePrimer(InputStream)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
 <div class="block">Prime the cache, from a set encoded <a href="org/cojen/tupl/Database.html#createCachePrimer-java.io.OutputStream-"><code>earlier</code></a>.</div>
@@ -340,6 +348,8 @@
 <dd>
 <div class="block">Closes a resource, which may throw a new exception.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Scanner.html#close--">close()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Snapshot.html#close--">close()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Snapshot.html" title="interface in org.cojen.tupl">Snapshot</a></dt>
 <dd>
 <div class="block">Can be called by another thread to abort the snapshot, causing any
@@ -849,11 +859,19 @@
 <dd>
 <div class="block">Enters a nested transaction scope.</div>
 </dd>
+<dt><a href="org/cojen/tupl/EntryConsumer.html" title="interface in org.cojen.tupl"><span class="typeNameLink">EntryConsumer</span></a> - Interface in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
+<dd>
+<div class="block">Represents an operation that accepts a key and value, just like a <a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/BiConsumer.html?is-external=true" title="class or interface in java.util.function"><code>BiConsumer</code></a>.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Index.Stats.html#entryCount">entryCount</a></span> - Variable in class org.cojen.tupl.<a href="org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Index.Stats.html#entryCount--">entryCount()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></dt>
 <dd>
 <div class="block">Returns the estimated number of index entries.</div>
+</dd>
+<dt><a href="org/cojen/tupl/EntryFunction.html" title="interface in org.cojen.tupl"><span class="typeNameLink">EntryFunction</span></a> - Interface in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
+<dd>
+<div class="block">Represents an operation that applies a key and value, just like a <a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/BiFunction.html?is-external=true" title="class or interface in java.util.function"><code>BiFunction</code></a>.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.Stats.html#equals-java.lang.Object-">equals(Object)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></dt>
 <dd>&nbsp;</dd>
@@ -1042,6 +1060,11 @@
 <dd>
 <div class="block">Flushes, but does not sync, all non-flushed transactions.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Updater.html#flush--">flush()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Updater.html" title="interface in org.cojen.tupl">Updater</a></dt>
+<dd>
+<div class="block">Ensures that any queued update operations are applied; flushing is automatically
+ performed when the updater is closed.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Index.Stats.html#freeBytes">freeBytes</a></span> - Variable in class org.cojen.tupl.<a href="org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Index.Stats.html#freeBytes--">freeBytes()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></dt>
@@ -1070,6 +1093,10 @@
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Cursor.html#getComparator--">getComparator()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
 <dd>
 <div class="block">Returns a comparator for the ordering of this view, or null if unordered.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Scanner.html#getComparator--">getComparator()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a></dt>
+<dd>
+<div class="block">Returns a comparator for the ordering of this scanner, or null if unordered.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/View.html#getComparator--">getComparator()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
 <dd>
@@ -1385,6 +1412,10 @@
 <dd>
 <div class="block">Returns an uncopied reference to the current key, or null if Cursor is
  unpositioned.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Scanner.html#key--">key()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a></dt>
+<dd>
+<div class="block">Returns an uncopied reference to the current key, or null if closed.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/WrappedCursor.html#key--">key()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></dt>
 <dd>
@@ -1705,6 +1736,10 @@
 <div class="block">Called to instantiate a <a href="http://docs.oracle.com/javase/8/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto"><code>Cipher</code></a> for encrypting and decrypting database pages,
  using the fixed instance <a href="org/cojen/tupl/CipherCrypto.html#algorithm--"><code>algorithm</code></a>.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/View.html#newScanner-org.cojen.tupl.Transaction-">newScanner(Transaction)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
+<dd>
+<div class="block">Returns a new scanner over this view.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/CipherCrypto.html#newStreamCipher--">newStreamCipher()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>
 <div class="block">Called to instantiate a <a href="http://docs.oracle.com/javase/8/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto"><code>Cipher</code></a> for encrypting and decrypting redo logs, using
@@ -1726,6 +1761,10 @@
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/View.html#newTransaction-org.cojen.tupl.DurabilityMode-">newTransaction(DurabilityMode)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
 <dd>
 <div class="block">Returns a new transaction which is compatible with this view.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/View.html#newUpdater-org.cojen.tupl.Transaction-">newUpdater(Transaction)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
+<dd>
+<div class="block">Returns a new updater over this view.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Cursor.html#next--">next()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
 <dd>
@@ -2115,6 +2154,14 @@
 </a>
 <h2 class="title">S</h2>
 <dl>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Scanner.html#scanAll-org.cojen.tupl.EntryConsumer-">scanAll(EntryConsumer)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a></dt>
+<dd>
+<div class="block">Calls the given action for each remaining entry, and then closes the scanner.</div>
+</dd>
+<dt><a href="org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Scanner</span></a> - Interface in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
+<dd>
+<div class="block">Scans through all entries in a view and passes them to a consumer.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/DatabaseConfig.html#secondaryCacheSize-long-">secondaryCacheSize(long)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
 <div class="block">Set the size of the secondary off-heap cache, which is empty by default.</div>
@@ -2214,6 +2261,14 @@
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Index.Stats.html#Stats-double-double-double-double-double-">Stats(double, double, double, double, double)</a></span> - Constructor for class org.cojen.tupl.<a href="org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Scanner.html#step--">step()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a></dt>
+<dd>
+<div class="block">Step to the next entry.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Scanner.html#step-long-">step(long)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a></dt>
+<dd>
+<div class="block">Steps over the requested amount of entries.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Cursor.html#store-byte:A-">store(byte[])</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
 <dd>
 <div class="block">Stores a value into the current entry, leaving the position
@@ -2463,6 +2518,14 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/UnsafeAccess.html#tryObtain--">tryObtain()</a></span> - Static method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/UnsafeAccess.html" title="class in org.cojen.tupl.io">UnsafeAccess</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Scanner.html#trySplit--">trySplit()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a></dt>
+<dd>
+<div class="block">Attempt to split the remaining set of entries between this scanner and a new one.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Updater.html#trySplit--">trySplit()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Updater.html" title="interface in org.cojen.tupl">Updater</a></dt>
+<dd>
+<div class="block">Attempt to split the remaining set of entries between this updater and a new one.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Clutch.html#tryUpgrade--">tryUpgrade()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#tryUpgrade--">tryUpgrade()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
@@ -2543,9 +2606,21 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/UnsafeAccess.html#UnsafeAccess--">UnsafeAccess()</a></span> - Constructor for class org.cojen.tupl.io.<a href="org/cojen/tupl/io/UnsafeAccess.html" title="class in org.cojen.tupl.io">UnsafeAccess</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Updater.html#update-byte:A-">update(byte[])</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Updater.html" title="interface in org.cojen.tupl">Updater</a></dt>
+<dd>
+<div class="block">Update the current value and then step to the next entry.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/View.html#update-org.cojen.tupl.Transaction-byte:A-byte:A-byte:A-">update(Transaction, byte[], byte[], byte[])</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
 <dd>
 <div class="block">Associates a value with the given key, but only if the given old value matches.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Updater.html#updateAll-org.cojen.tupl.EntryFunction-">updateAll(EntryFunction)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Updater.html" title="interface in org.cojen.tupl">Updater</a></dt>
+<dd>
+<div class="block">Applies the given updating action for each remaining entry, and then closes the updater.</div>
+</dd>
+<dt><a href="org/cojen/tupl/Updater.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Updater</span></a> - Interface in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
+<dd>
+<div class="block">Scans through all entries in a view, updating them along the way.</div>
 </dd>
 <dt><a href="org/cojen/tupl/io/Utils.html" title="class in org.cojen.tupl.io"><span class="typeNameLink">Utils</span></a> - Class in <a href="org/cojen/tupl/io/package-summary.html">org.cojen.tupl.io</a></dt>
 <dd>
@@ -2563,6 +2638,10 @@
 <dd>
 <div class="block">Returns an uncopied reference to the current value, which might be null
  or <a href="org/cojen/tupl/Cursor.html#NOT_LOADED"><code>Cursor.NOT_LOADED</code></a>.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Scanner.html#value--">value()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a></dt>
+<dd>
+<div class="block">Returns an uncopied reference to the current value, which might be null or <a href="org/cojen/tupl/Cursor.html#NOT_LOADED"><code>Cursor.NOT_LOADED</code></a>.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/WrappedCursor.html#value--">value()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></dt>
 <dd>
