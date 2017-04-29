@@ -334,7 +334,7 @@ class ViewUtils {
     }
 
     static RuntimeException lockCleanup(Throwable e, Transaction txn, LockResult result) {
-        if (result == LockResult.ACQUIRED) {
+        if (result.isAcquired()) {
             try {
                 txn.unlock();
             } catch (Throwable e2) {

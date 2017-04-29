@@ -113,4 +113,8 @@ public enum LockResult {
     public boolean alreadyOwned() {
         return mType == 3;
     }
+
+    boolean isAcquired() {
+        return mType == 2;
+    }
 }
