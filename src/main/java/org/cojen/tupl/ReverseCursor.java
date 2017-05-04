@@ -184,6 +184,26 @@ final class ReverseCursor implements Cursor {
     }
 
     @Override
+    public LockResult findNearbyGe(byte[] key) throws IOException {
+        return mSource.findNearbyGe(key);
+    }
+
+    @Override
+    public LockResult findNearbyGt(byte[] key) throws IOException {
+        return mSource.findNearbyGt(key);
+    }
+
+    @Override
+    public LockResult findNearbyLe(byte[] key) throws IOException {
+        return mSource.findNearbyLe(key);
+    }
+
+    @Override
+    public LockResult findNearbyLt(byte[] key) throws IOException {
+        return mSource.findNearbyLt(key);
+    }
+
+    @Override
     public LockResult random(byte[] lowKey, byte[] highKey) throws IOException {
         return mSource.random(ReverseView.appendZero(highKey), ReverseView.appendZero((lowKey)));
     }

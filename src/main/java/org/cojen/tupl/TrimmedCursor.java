@@ -197,6 +197,30 @@ final class TrimmedCursor implements Cursor {
     }
 
     @Override
+    public LockResult findNearbyGe(byte[] key) throws IOException {
+        mKey = null;
+        return mSource.findNearbyGe(mView.applyPrefix(key));
+    }
+
+    @Override
+    public LockResult findNearbyGt(byte[] key) throws IOException {
+        mKey = null;
+        return mSource.findNearbyGt(mView.applyPrefix(key));
+    }
+
+    @Override
+    public LockResult findNearbyLe(byte[] key) throws IOException {
+        mKey = null;
+        return mSource.findNearbyLe(mView.applyPrefix(key));
+    }
+
+    @Override
+    public LockResult findNearbyLt(byte[] key) throws IOException {
+        mKey = null;
+        return mSource.findNearbyLt(mView.applyPrefix(key));
+    }
+
+    @Override
     public LockResult random(byte[] lowKey, byte[] highKey) throws IOException {
         mKey = null;
         if (lowKey != null) {
