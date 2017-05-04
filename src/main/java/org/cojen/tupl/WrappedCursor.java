@@ -247,6 +247,38 @@ public abstract class WrappedCursor<C extends Cursor> implements Cursor {
      * {@inheritDoc}
      */
     @Override
+    public LockResult findNearbyGe(byte[] key) throws IOException {
+        return source.findNearbyGe(key);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public LockResult findNearbyGt(byte[] key) throws IOException {
+        return source.findNearbyGt(key);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public LockResult findNearbyLe(byte[] key) throws IOException {
+        return source.findNearbyLe(key);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public LockResult findNearbyLt(byte[] key) throws IOException {
+        return source.findNearbyLt(key);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public LockResult random(byte[] lowKey, byte[] highKey) throws IOException {
         return source.random(lowKey, highKey);
     }

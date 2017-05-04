@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":6,"i1":6,"i2":18,"i3":18,"i4":18,"i5":6,"i6":6,"i7":18,"i8":18,"i9":18,"i10":18,"i11":18,"i12":6,"i13":18,"i14":6,"i15":6,"i16":6,"i17":6,"i18":6,"i19":6,"i20":18,"i21":6,"i22":18,"i23":18,"i24":6,"i25":18,"i26":18,"i27":6,"i28":6,"i29":6,"i30":18,"i31":6,"i32":6};
+var methods = {"i0":6,"i1":6,"i2":18,"i3":18,"i4":18,"i5":6,"i6":6,"i7":18,"i8":18,"i9":18,"i10":18,"i11":18,"i12":18,"i13":18,"i14":18,"i15":18,"i16":6,"i17":18,"i18":6,"i19":6,"i20":6,"i21":6,"i22":6,"i23":6,"i24":18,"i25":6,"i26":18,"i27":18,"i28":6,"i29":18,"i30":18,"i31":6,"i32":6,"i33":6,"i34":18,"i35":6,"i36":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -245,101 +245,129 @@ var activeTableTab = "activeTableTab";
 </td>
 </tr>
 <tr id="i12" class="altColor">
+<td class="colFirst"><code>default <a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#findNearbyGe-byte:A-">findNearbyGe</a></span>(byte[]&nbsp;key)</code>
+<div class="block">Optimized version of the regular findGe method, which can perform fewer search steps if
+ the given key is in close proximity to the current one.</div>
+</td>
+</tr>
+<tr id="i13" class="rowColor">
+<td class="colFirst"><code>default <a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#findNearbyGt-byte:A-">findNearbyGt</a></span>(byte[]&nbsp;key)</code>
+<div class="block">Optimized version of the regular findGt method, which can perform fewer search steps if
+ the given key is in close proximity to the current one.</div>
+</td>
+</tr>
+<tr id="i14" class="altColor">
+<td class="colFirst"><code>default <a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#findNearbyLe-byte:A-">findNearbyLe</a></span>(byte[]&nbsp;key)</code>
+<div class="block">Optimized version of the regular findLe method, which can perform fewer search steps if
+ the given key is in close proximity to the current one.</div>
+</td>
+</tr>
+<tr id="i15" class="rowColor">
+<td class="colFirst"><code>default <a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#findNearbyLt-byte:A-">findNearbyLt</a></span>(byte[]&nbsp;key)</code>
+<div class="block">Optimized version of the regular findLt method, which can perform fewer search steps if
+ the given key is in close proximity to the current one.</div>
+</td>
+</tr>
+<tr id="i16" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#first--">first</a></span>()</code>
 <div class="block">Moves the Cursor to find the first available entry.</div>
 </td>
 </tr>
-<tr id="i13" class="rowColor">
+<tr id="i17" class="rowColor">
 <td class="colFirst"><code>default <a href="http://docs.oracle.com/javase/8/docs/api/java/util/Comparator.html?is-external=true" title="class or interface in java.util">Comparator</a>&lt;byte[]&gt;</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#getComparator--">getComparator</a></span>()</code>
 <div class="block">Returns a comparator for the ordering of this view, or null if unordered.</div>
 </td>
 </tr>
-<tr id="i14" class="altColor">
+<tr id="i18" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/Ordering.html" title="enum in org.cojen.tupl">Ordering</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#getOrdering--">getOrdering</a></span>()</code>
 <div class="block">Returns the key ordering for this cursor.</div>
 </td>
 </tr>
-<tr id="i15" class="rowColor">
+<tr id="i19" class="rowColor">
 <td class="colFirst"><code>byte[]</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#key--">key</a></span>()</code>
 <div class="block">Returns an uncopied reference to the current key, or null if Cursor is
  unpositioned.</div>
 </td>
 </tr>
-<tr id="i16" class="altColor">
+<tr id="i20" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#last--">last</a></span>()</code>
 <div class="block">Moves the Cursor to find the last available entry.</div>
 </td>
 </tr>
-<tr id="i17" class="rowColor">
+<tr id="i21" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#link--">link</a></span>()</code>
 <div class="block">Returns the transaction the cursor is currently linked to.</div>
 </td>
 </tr>
-<tr id="i18" class="altColor">
+<tr id="i22" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#link-org.cojen.tupl.Transaction-">link</a></span>(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code>
 <div class="block">Link to a transaction, which can be null for auto-commit mode.</div>
 </td>
 </tr>
-<tr id="i19" class="rowColor">
+<tr id="i23" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#load--">load</a></span>()</code>
 <div class="block">Loads or reloads the value at the cursor's current position.</div>
 </td>
 </tr>
-<tr id="i20" class="altColor">
+<tr id="i24" class="altColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#lock--">lock</a></span>()</code>
 <div class="block">Locks the current entry, as if by calling load.</div>
 </td>
 </tr>
-<tr id="i21" class="rowColor">
+<tr id="i25" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#next--">next</a></span>()</code>
 <div class="block">Moves to the Cursor to the next available entry.</div>
 </td>
 </tr>
-<tr id="i22" class="altColor">
+<tr id="i26" class="altColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#nextLe-byte:A-">nextLe</a></span>(byte[]&nbsp;limitKey)</code>
 <div class="block">Moves to the Cursor to the next available entry, but only when less than
  or equal to the given limit key.</div>
 </td>
 </tr>
-<tr id="i23" class="rowColor">
+<tr id="i27" class="rowColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#nextLt-byte:A-">nextLt</a></span>(byte[]&nbsp;limitKey)</code>
 <div class="block">Moves to the Cursor to the next available entry, but only when less than
  the given limit key.</div>
 </td>
 </tr>
-<tr id="i24" class="altColor">
+<tr id="i28" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#previous--">previous</a></span>()</code>
 <div class="block">Moves to the Cursor to the previous available entry.</div>
 </td>
 </tr>
-<tr id="i25" class="rowColor">
+<tr id="i29" class="rowColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#previousGe-byte:A-">previousGe</a></span>(byte[]&nbsp;limitKey)</code>
 <div class="block">Moves to the Cursor to the previous available entry, but only when
  greater than or equal to the given limit key.</div>
 </td>
 </tr>
-<tr id="i26" class="altColor">
+<tr id="i30" class="altColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#previousGt-byte:A-">previousGt</a></span>(byte[]&nbsp;limitKey)</code>
 <div class="block">Moves to the Cursor to the previous available entry, but only when
  greater than the given limit key.</div>
 </td>
 </tr>
-<tr id="i27" class="rowColor">
+<tr id="i31" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#random-byte:A-byte:A-">random</a></span>(byte[]&nbsp;lowKey,
       byte[]&nbsp;highKey)</code>
@@ -347,19 +375,19 @@ var activeTableTab = "activeTableTab";
  a uniform distribution.</div>
 </td>
 </tr>
-<tr id="i28" class="altColor">
+<tr id="i32" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#reset--">reset</a></span>()</code>
 <div class="block">Resets Cursor and moves it to an undefined position.</div>
 </td>
 </tr>
-<tr id="i29" class="rowColor">
+<tr id="i33" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#skip-long-">skip</a></span>(long&nbsp;amount)</code>
 <div class="block">Moves the Cursor by a relative amount of entries.</div>
 </td>
 </tr>
-<tr id="i30" class="altColor">
+<tr id="i34" class="altColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#skip-long-byte:A-boolean-">skip</a></span>(long&nbsp;amount,
     byte[]&nbsp;limitKey,
@@ -368,14 +396,14 @@ var activeTableTab = "activeTableTab";
  reached.</div>
 </td>
 </tr>
-<tr id="i31" class="rowColor">
+<tr id="i35" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#store-byte:A-">store</a></span>(byte[]&nbsp;value)</code>
 <div class="block">Stores a value into the current entry, leaving the position
  unchanged.</div>
 </td>
 </tr>
-<tr id="i32" class="altColor">
+<tr id="i36" class="altColor">
 <td class="colFirst"><code>byte[]</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#value--">value</a></span>()</code>
 <div class="block">Returns an uncopied reference to the current value, which might be null
@@ -894,6 +922,98 @@ var activeTableTab = "activeTableTab";
 <pre>default&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findNearby(byte[]&nbsp;key)
                        throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Optimized version of the regular find method, which can perform fewer search steps if
+ the given key is in close proximity to the current one. Even if not in close proximity,
+ the find outcome is identical, although it may perform more slowly.
+
+ <p>Ownership of the key instance transfers to the Cursor, and it must
+ not be modified after calling this method.</div>
+<dl>
+<dt><span class="returnLabel">Returns:</span></dt>
+<dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+</dl>
+</li>
+</ul>
+<a name="findNearbyGe-byte:A-">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>findNearbyGe</h4>
+<pre>default&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findNearbyGe(byte[]&nbsp;key)
+                         throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<div class="block">Optimized version of the regular findGe method, which can perform fewer search steps if
+ the given key is in close proximity to the current one. Even if not in close proximity,
+ the find outcome is identical, although it may perform more slowly.
+
+ <p>Ownership of the key instance transfers to the Cursor, and it must
+ not be modified after calling this method.</div>
+<dl>
+<dt><span class="returnLabel">Returns:</span></dt>
+<dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+</dl>
+</li>
+</ul>
+<a name="findNearbyGt-byte:A-">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>findNearbyGt</h4>
+<pre>default&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findNearbyGt(byte[]&nbsp;key)
+                         throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<div class="block">Optimized version of the regular findGt method, which can perform fewer search steps if
+ the given key is in close proximity to the current one. Even if not in close proximity,
+ the find outcome is identical, although it may perform more slowly.
+
+ <p>Ownership of the key instance transfers to the Cursor, and it must
+ not be modified after calling this method.</div>
+<dl>
+<dt><span class="returnLabel">Returns:</span></dt>
+<dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+</dl>
+</li>
+</ul>
+<a name="findNearbyLe-byte:A-">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>findNearbyLe</h4>
+<pre>default&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findNearbyLe(byte[]&nbsp;key)
+                         throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<div class="block">Optimized version of the regular findLe method, which can perform fewer search steps if
+ the given key is in close proximity to the current one. Even if not in close proximity,
+ the find outcome is identical, although it may perform more slowly.
+
+ <p>Ownership of the key instance transfers to the Cursor, and it must
+ not be modified after calling this method.</div>
+<dl>
+<dt><span class="returnLabel">Returns:</span></dt>
+<dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+</dl>
+</li>
+</ul>
+<a name="findNearbyLt-byte:A-">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>findNearbyLt</h4>
+<pre>default&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findNearbyLt(byte[]&nbsp;key)
+                         throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<div class="block">Optimized version of the regular findLt method, which can perform fewer search steps if
  the given key is in close proximity to the current one. Even if not in close proximity,
  the find outcome is identical, although it may perform more slowly.
 

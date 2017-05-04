@@ -410,6 +410,94 @@ public interface Cursor {
     }
 
     /**
+     * Optimized version of the regular findGe method, which can perform fewer search steps if
+     * the given key is in close proximity to the current one. Even if not in close proximity,
+     * the find outcome is identical, although it may perform more slowly.
+     *
+     * <p>Ownership of the key instance transfers to the Cursor, and it must
+     * not be modified after calling this method.
+     *
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
+     * @throws NullPointerException if key is null
+     */
+    public default LockResult findNearbyGe(byte[] key) throws IOException {
+        LockResult result = findNearby(key);
+        if (value() == null) {
+            if (result == LockResult.ACQUIRED) {
+                link().unlock();
+            }
+            result = next();
+        }
+        return result;
+    }
+
+    /**
+     * Optimized version of the regular findGt method, which can perform fewer search steps if
+     * the given key is in close proximity to the current one. Even if not in close proximity,
+     * the find outcome is identical, although it may perform more slowly.
+     *
+     * <p>Ownership of the key instance transfers to the Cursor, and it must
+     * not be modified after calling this method.
+     *
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
+     * @throws NullPointerException if key is null
+     */
+    public default LockResult findNearbyGt(byte[] key) throws IOException {
+        ViewUtils.findNearbyNoLock(this, key);
+        return next();
+    }
+
+    /**
+     * Optimized version of the regular findLe method, which can perform fewer search steps if
+     * the given key is in close proximity to the current one. Even if not in close proximity,
+     * the find outcome is identical, although it may perform more slowly.
+     *
+     * <p>Ownership of the key instance transfers to the Cursor, and it must
+     * not be modified after calling this method.
+     *
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
+     * @throws NullPointerException if key is null
+     */
+    public default LockResult findNearbyLe(byte[] key) throws IOException {
+        LockResult result = findNearby(key);
+        if (value() == null) {
+            if (result == LockResult.ACQUIRED) {
+                link().unlock();
+            }
+            result = previous();
+        }
+        return result;
+    }
+
+    /**
+     * Optimized version of the regular findLt method, which can perform fewer search steps if
+     * the given key is in close proximity to the current one. Even if not in close proximity,
+     * the find outcome is identical, although it may perform more slowly.
+     *
+     * <p>Ownership of the key instance transfers to the Cursor, and it must
+     * not be modified after calling this method.
+     *
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
+     * @throws NullPointerException if key is null
+     */
+    public default LockResult findNearbyLt(byte[] key) throws IOException {
+        ViewUtils.findNearbyNoLock(this, key);
+        return previous();
+    }
+
+    /**
      * Moves the Cursor to a random entry, but not guaranteed to be chosen from
      * a uniform distribution. Cursor key and value are set to null if no
      * entries exist, and position will be undefined.
