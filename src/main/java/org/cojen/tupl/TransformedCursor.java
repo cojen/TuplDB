@@ -300,6 +300,9 @@ final class TransformedCursor implements Cursor {
         return transformCurrent(mSource.find(key), key, tkey);
     }
 
+    // FIXME: For the findXx and findNearbyXx method variants, if the inverse key is null then
+    // call ViewUtils.seekXx to position the cursor.
+
     @Override
     public LockResult findGe(final byte[] tkey) throws IOException {
         byte[] key = inverseTransformKey(tkey);

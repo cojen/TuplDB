@@ -658,6 +658,73 @@ public interface View {
     }
 
     /**
+     * Returns a view which represents the <i>set union</i> of this view and a second one. A
+     * union eliminates duplicate keys, by relying on a combiner to decide how to deal with
+     * them. If the combiner chooses to {@link Combiner#discard discard} duplicate keys, then
+     * the returned view represents the <i>symmetric set difference</i> instead.
+     *
+     * <p>Storing entries in the union is permitted, if the combiner supports separation. The
+     * entire operation is transactional, and so stores to unions don't support the {@link
+     * Transaction#BOGUS "bogus"} transaction.
+     *
+     * @param combiner combines common entries together; pass null to always choose the first
+     * @param second required second view in the union
+     * @throws NullPointerException if second view is null
+     * @throws IllegalArgumentException if the views don't define a consistent ordering, as
+     * specified by their comparators
+     */
+    public default View viewUnion(Combiner combiner, View second) {
+        if (combiner == null) {
+            combiner = Combiner.first();
+        }
+        return new UnionView(combiner, this, second);
+    }
+
+    /**
+     * Returns a view which represents the <i>set intersection</i> of this view and a second
+     * one. An intersection eliminates duplicate keys, by relying on a combiner to decide how
+     * to deal with them.
+     *
+     * <p>Storing entries in the intersection is permitted, if the combiner supports
+     * separation. The entire operation is transactional, and so stores to intersections don't
+     * support the {@link Transaction#BOGUS "bogus"} transaction.
+     *
+     * @param combiner combines common entries together; pass null to always choose the first
+     * @param second required second view in the intersection
+     * @throws NullPointerException if second view is null
+     * @throws IllegalArgumentException if the views don't define a consistent ordering, as
+     * specified by their comparators
+     */
+    public default View viewIntersection(Combiner combiner, View second) {
+        if (combiner == null) {
+            combiner = Combiner.first();
+        }
+        return new IntersectionView(combiner, this, second);
+    }
+
+    /**
+     * Returns a view which represents the <i>set difference</i> of this view and a second
+     * one. A difference eliminates duplicate keys, by relying on a combiner to decide how to
+     * deal with them.
+     *
+     * <p>Storing entries in the difference is permitted, if the combiner supports separation.
+     * The entire operation is transactional, and so stores to differences don't support the
+     * {@link Transaction#BOGUS "bogus"} transaction.
+     *
+     * @param combiner combines common entries together; pass null to always choose the first
+     * @param second required second view in the difference
+     * @throws NullPointerException if second view is null
+     * @throws IllegalArgumentException if the views don't define a consistent ordering, as
+     * specified by their comparators
+     */
+    public default View viewDifference(Combiner combiner, View second) {
+        if (combiner == null) {
+            combiner = Combiner.discard();
+        }
+        return new DifferenceView(combiner, this, second);
+    }
+
+    /**
      * Returns a view, backed by this one, which only provides the keys. Values are always
      * represented as {@link Cursor#NOT_LOADED NOT_LOADED}, and attempting to store a value
      * other than null causes a {@link ViewConstraintException} to be thrown.
