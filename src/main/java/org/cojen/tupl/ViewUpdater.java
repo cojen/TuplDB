@@ -25,6 +25,11 @@ import java.io.IOException;
  * @author Brian S O'Neill
  */
 class ViewUpdater extends ViewScanner implements Updater {
+    // FIXME: If transaction is null or read-committed, then create an upgradable-read
+    // transaction which is reset when the updater is closed. Acquired locks for entries which
+    // are stepped over are unlocked just like a filter would do. Describe what a null
+    // transaction means in the javadocs for the newScanner and newUpdater methods.
+
     /**
      * @param cursor unpositioned cursor
      */

@@ -117,4 +117,23 @@ public enum LockResult {
     boolean isAcquired() {
         return mType == 2;
     }
+
+    /**
+     * Returns the lowest common owned level.
+     *
+     * UNOWNED < OWNED_SHARED < OWNED_UPGRADABLE < OWNED_EXCLUSIVE
+     */
+    LockResult commonOwned(LockResult other) {
+        if (this == UNOWNED) {
+            return this;
+        } else if (this == OWNED_SHARED) {
+            return other == UNOWNED ? other : this;
+        } else if (this == OWNED_UPGRADABLE) {
+            return (other == UNOWNED || other == OWNED_SHARED) ? other : this;
+        } else if (this == OWNED_EXCLUSIVE) {
+            return other;
+        } else {
+            throw new IllegalArgumentException();
+        }
+    }
 }
