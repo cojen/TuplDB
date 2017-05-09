@@ -50,7 +50,7 @@ public class SnapshotTest {
             .checkpointDelayThreshold(0, null)
             .durabilityMode(DurabilityMode.NO_FLUSH);
         decorate(config);
-        Database db = newTempDatabase(config);
+        Database db = newTempDatabase(getClass(), config);
 
         Index ix = db.openIndex("suspend");
 
@@ -59,7 +59,7 @@ public class SnapshotTest {
         sleep(rateMillis * 2);
         db.close();
 
-        db = reopenTempDatabase(db, config);
+        db = reopenTempDatabase(getClass(), db, config);
 
         ix = db.openIndex("suspend");
         assertNull(ix.load(null, "hello".getBytes()));
@@ -70,7 +70,7 @@ public class SnapshotTest {
         db.checkpoint();
         db.close();
         
-        db = reopenTempDatabase(db, config);
+        db = reopenTempDatabase(getClass(), db, config);
 
         ix = db.openIndex("suspend");
         fastAssertArrayEquals("world".getBytes(), ix.load(null, "hello".getBytes()));
@@ -89,7 +89,7 @@ public class SnapshotTest {
         sleep(rateMillis * 2);
         db.close();
 
-        db = reopenTempDatabase(db, config);
+        db = reopenTempDatabase(getClass(), db, config);
 
         ix = db.openIndex("suspend");
         fastAssertArrayEquals("world".getBytes(), ix.load(null, "hello".getBytes()));
@@ -103,20 +103,20 @@ public class SnapshotTest {
         sleep(rateMillis * 2);
         db.close();
 
-        db = reopenTempDatabase(db, config);
+        db = reopenTempDatabase(getClass(), db, config);
 
         ix = db.openIndex("suspend");
         fastAssertArrayEquals("universe".getBytes(), ix.load(null, "hello".getBytes()));
 
-        deleteTempDatabase(db);
+        deleteTempDatabase(getClass(), db);
     }
 
     @Test
     public void snapshot() throws Exception {
-        File base = newTempBaseFile();
-        File snapshotBase = newTempBaseFile();
+        File base = newTempBaseFile(getClass());
+        File snapshotBase = newTempBaseFile(getClass());
         snapshot(base, snapshotBase);
-        deleteTempDatabases();
+        deleteTempDatabases(getClass());
     }
 
     private void snapshot(File base, File snapshotBase) throws Exception {

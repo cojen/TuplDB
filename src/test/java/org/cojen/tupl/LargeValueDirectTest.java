@@ -32,6 +32,6 @@ public class LargeValueDirectTest extends LargeValueTest {
     @Before
     @Override
     public void createTempDb() throws Exception {
-        mDb = TestUtils.newTempDatabase(TestUtils.OpenMode.DIRECT);
+        mDb = TestUtils.newTempDatabase(getClass(), TestUtils.OpenMode.DIRECT);
     }
 }

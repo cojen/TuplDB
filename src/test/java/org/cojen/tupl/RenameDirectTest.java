@@ -34,6 +34,6 @@ public class RenameDirectTest extends RenameTest {
     public void createTempDb() throws Exception {
         mConfig = new DatabaseConfig().durabilityMode(DurabilityMode.NO_FLUSH);
         mConfig.directPageAccess(true);
-        mDb = TestUtils.newTempDatabase(mConfig);
+        mDb = TestUtils.newTempDatabase(getClass(), mConfig);
     }
 }

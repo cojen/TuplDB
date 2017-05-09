@@ -36,7 +36,7 @@ public class SnapshotMappedDirectTest extends SnapshotMappedTest {
 
     @After
     public void cleanup() throws Exception {
-        deleteTempDatabases();
+        deleteTempDatabases(getClass());
     }
 
     @Override
@@ -47,7 +47,7 @@ public class SnapshotMappedDirectTest extends SnapshotMappedTest {
 
     @Test
     public void fullyMapped() throws Exception {
-        Database db = newTempDatabase(50_000_000, TestUtils.OpenMode.DIRECT_MAPPED, 0);
+        Database db = newTempDatabase(getClass(), 50_000_000, TestUtils.OpenMode.DIRECT_MAPPED, 0);
 
         Index ix = db.openIndex("test");
         
@@ -73,7 +73,7 @@ public class SnapshotMappedDirectTest extends SnapshotMappedTest {
         long fullLength = s.length();
         assertTrue(fullLength > 20_000_000);
 
-        File snapshotBase = newTempBaseFile();
+        File snapshotBase = newTempBaseFile(getClass());
         File snapshot = new File(snapshotBase.getParentFile(), snapshotBase.getName() + ".db");
 
         final FileOutputStream out = new FileOutputStream(snapshot);

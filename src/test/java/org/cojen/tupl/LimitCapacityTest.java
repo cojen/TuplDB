@@ -36,12 +36,12 @@ public class LimitCapacityTest {
     public void createTempDb() throws Exception {
         mConfig = new DatabaseConfig().checkpointSizeThreshold(0);
         mConfig.directPageAccess(false);
-        mDb = newTempDatabase(mConfig);
+        mDb = newTempDatabase(getClass(), mConfig);
     }
 
     @After
     public void teardown() throws Exception {
-        deleteTempDatabases();
+        deleteTempDatabases(getClass());
         mDb = null;
     }
 
@@ -169,7 +169,7 @@ public class LimitCapacityTest {
         }
 
         // Reopen without capacity limit.
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
         ix = mDb.openIndex("test");
 
         // Value is still gone.
@@ -193,7 +193,7 @@ public class LimitCapacityTest {
         }
 
         // Reopen without capacity limit.
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
         ix = mDb.openIndex("test");
 
         // Value is still gone.

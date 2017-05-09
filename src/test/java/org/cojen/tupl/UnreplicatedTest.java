@@ -40,12 +40,12 @@ public class UnreplicatedTest {
             .checkpointRate(-1, null)
             .durabilityMode(DurabilityMode.SYNC) // need to wait for commit confirmation
             .replicate(mReplManager);
-        mDb = newTempDatabase(mConfig);
+        mDb = newTempDatabase(getClass(), mConfig);
     }
 
     @After
     public void teardown() throws Exception {
-        deleteTempDatabases();
+        deleteTempDatabases(getClass());
         mDb = null;
         mConfig = null;
     }

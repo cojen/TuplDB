@@ -36,12 +36,12 @@ public class RenameTest {
     public void createTempDb() throws Exception {
         mConfig = new DatabaseConfig()
             .directPageAccess(false).durabilityMode(DurabilityMode.NO_FLUSH);
-        mDb = newTempDatabase(mConfig);
+        mDb = newTempDatabase(getClass(), mConfig);
     }
 
     @After
     public void teardown() throws Exception {
-        deleteTempDatabases();
+        deleteTempDatabases(getClass());
         mDb = null;
         mConfig = null;
     }
@@ -104,7 +104,7 @@ public class RenameTest {
         ix1.store(null, "hello".getBytes(), "world".getBytes());
         mDb.renameIndex(ix1, "b");
 
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
 
         assertNull(mDb.findIndex("a"));
 

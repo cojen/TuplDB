@@ -44,12 +44,12 @@ public class CompactTest {
     }
 
     protected Database newTempDb() throws Exception {
-        return newTempDatabase();
+        return newTempDatabase(getClass());
     }
 
     @After
     public void teardown() throws Exception {
-        deleteTempDatabases();
+        deleteTempDatabases(getClass());
         mDb = null;
     }
 
@@ -125,7 +125,8 @@ public class CompactTest {
 
     @Test
     public void largeValues() throws Exception {
-        mDb = newTempDatabase(decorate(new DatabaseConfig()
+        mDb = newTempDatabase(getClass(),
+                              decorate(new DatabaseConfig()
                                        .pageSize(512)
                                        .minCacheSize(10000000)
                                        .durabilityMode(DurabilityMode.NO_FLUSH)));
@@ -353,7 +354,8 @@ public class CompactTest {
     }
 
     private void doStress() throws Exception {
-        mDb = newTempDatabase(decorate(new DatabaseConfig()
+        mDb = newTempDatabase(getClass(),
+                              decorate(new DatabaseConfig()
                                        .pageSize(512)
                                        .minCacheSize(100000000)
                                        .durabilityMode(DurabilityMode.NO_FLUSH)));
@@ -506,7 +508,8 @@ public class CompactTest {
         // Random inserts with a small cache size tends to create a lot of extra unused space
         // in the file. Verify compaction can reclaim the space.
 
-        mDb = newTempDatabase(decorate(new DatabaseConfig()
+        mDb = newTempDatabase(getClass(),
+                              decorate(new DatabaseConfig()
                                        .minCacheSize(1000000)
                                        .checkpointRate(-1, null)
                                        .durabilityMode(DurabilityMode.NO_FLUSH)));
@@ -553,7 +556,8 @@ public class CompactTest {
 
     @Test
     public void snapshotAbort() throws Exception {
-        mDb = newTempDatabase(decorate(new DatabaseConfig()
+        mDb = newTempDatabase(getClass(),
+                              decorate(new DatabaseConfig()
                                        .checkpointRate(-1, null)
                                        .durabilityMode(DurabilityMode.NO_FLUSH)));
 
@@ -577,7 +581,7 @@ public class CompactTest {
             assertFalse(mDb.compactFile(null, 0.9));
         }
 
-        File dbFile = new File(baseFileForTempDatabase(mDb).getPath() + ".db");
+        File dbFile = new File(baseFileForTempDatabase(getClass(), mDb).getPath() + ".db");
         assertTrue(dbFile.length() > 1_000_000);
 
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
@@ -586,11 +590,12 @@ public class CompactTest {
         assertTrue(mDb.compactFile(null, 0.9));
         assertTrue(dbFile.length() < 100_000);
 
-        deleteTempDatabase(mDb);
+        deleteTempDatabase(getClass(), mDb);
 
         ByteArrayInputStream bin = new ByteArrayInputStream(bout.toByteArray());
 
-        DatabaseConfig config = decorate(new DatabaseConfig().baseFile(newTempBaseFile()));
+        DatabaseConfig config = decorate(new DatabaseConfig()
+                                         .baseFile(newTempBaseFile(getClass())));
 
         mDb = Database.restoreFromSnapshot(config, bin);
 

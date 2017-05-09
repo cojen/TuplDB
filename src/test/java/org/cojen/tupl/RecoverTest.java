@@ -47,12 +47,12 @@ public class RecoverTest {
             .checkpointRate(-1, null)
             .durabilityMode(DurabilityMode.NO_FLUSH);
         decorate(mConfig);
-        mDb = newTempDatabase(mConfig);
+        mDb = newTempDatabase(getClass(), mConfig);
     }
 
     @After
     public void teardown() throws Exception {
-        deleteTempDatabases();
+        deleteTempDatabases(getClass());
         mDb = null;
         mConfig = null;
     }
@@ -114,13 +114,13 @@ public class RecoverTest {
         Index ix = mDb.openIndex("test");
         ix.store(Transaction.BOGUS, key, value);
 
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
         ix = mDb.openIndex("test");
         assertNull(ix.load(Transaction.BOGUS, key));
         ix.store(Transaction.BOGUS, key, value);
         mDb.checkpoint();
 
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
         ix = mDb.openIndex("test");
         assertArrayEquals(value, ix.load(Transaction.BOGUS, key));
     }
@@ -135,7 +135,7 @@ public class RecoverTest {
         ix.store(txn, key, value);
         txn.commit();
 
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
         ix = mDb.openIndex("test");
         txn = mDb.newTransaction(DurabilityMode.NO_REDO);
         assertNull(ix.load(txn, key));
@@ -143,7 +143,7 @@ public class RecoverTest {
         txn.commit();
         mDb.checkpoint();
 
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
         ix = mDb.openIndex("test");
         assertArrayEquals(value, ix.load(null, key));
     }
@@ -163,7 +163,7 @@ public class RecoverTest {
         txn = mDb.newTransaction();
         ix.store(txn, key, null);
 
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
         ix = mDb.openIndex("test");
         assertArrayEquals(value, ix.load(null, key));
 
@@ -171,7 +171,7 @@ public class RecoverTest {
         ix.store(txn, key, null);
         txn.commit();
 
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
         ix = mDb.openIndex("test");
         assertEquals(null, ix.load(null, key));
     }
@@ -194,7 +194,7 @@ public class RecoverTest {
         ix.store(txn, k1, value);
         txn.commit();
 
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
         ix = mDb.openIndex("test");
         assertArrayEquals(value, ix.load(null, k1));
         assertEquals(null, ix.load(null, k2));
@@ -268,7 +268,7 @@ public class RecoverTest {
             txn.commit();
         } txn.exit();
 
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
         ix = mDb.openIndex("test");
 
         assertArrayEquals("v1".getBytes(), ix.load(null, "a".getBytes()));
@@ -406,7 +406,7 @@ public class RecoverTest {
             mDb.checkpoint();
         }
 
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
         assertTrue(mDb.verify(null));
 
         ix1 = mDb.openIndex("test1");
@@ -484,7 +484,7 @@ public class RecoverTest {
         txn.reset();
 
         // Reopen, but delete the redo logs first.
-        mDb = reopenTempDatabase(mDb, mConfig, true);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig, true);
 
         ix1 = mDb.openIndex("test1");
         ix2 = mDb.openIndex("test2");
@@ -537,13 +537,13 @@ public class RecoverTest {
         ix.drop();
         assertNull(mDb.findIndex("drop"));
 
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
 
         // Verify drop redo.
         assertNull(mDb.findIndex("drop"));
 
         // Test again, but this time with NO_REDO.
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
 
         ix = mDb.openIndex("drop2");
         ix.store(null, "hello".getBytes(), "world".getBytes());
@@ -563,7 +563,7 @@ public class RecoverTest {
 
         assertNull(mDb.findIndex("drop2"));
 
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
 
         // Even though the delete operation was no-redo, the drop always is. It will ensure
         // everything is deleted first.
@@ -587,7 +587,7 @@ public class RecoverTest {
             txn.reset();
         }
 
-        File baseFile = baseFileForTempDatabase(mDb);
+        File baseFile = baseFileForTempDatabase(getClass(), mDb);
 
         File redoFile = null;
         for (File f : baseFile.getParentFile().listFiles()) {
@@ -677,7 +677,7 @@ public class RecoverTest {
         Index ix2 = mDb.openIndex("test2");
         ix2.store(null, "hello".getBytes(), "world".getBytes());
 
-        File primer = new File(baseFileForTempDatabase(mDb).getPath() + ".primer");
+        File primer = new File(baseFileForTempDatabase(getClass(), mDb).getPath() + ".primer");
         assertFalse(primer.exists());
 
         mDb.close();
@@ -685,13 +685,13 @@ public class RecoverTest {
 
         mConfig.cachePriming(true);
 
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
         assertFalse(primer.exists());
 
         mDb.close();
         assertTrue(primer.exists());
 
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
         assertFalse(primer.exists());
     }
 
@@ -707,7 +707,7 @@ public class RecoverTest {
         // Moves ix into the trash
         mDb.deleteIndex(ix);
 
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
         assertNull(mDb.findIndex("trash"));
     }
 
@@ -719,7 +719,7 @@ public class RecoverTest {
         mDb.checkpoint();
 
         // Re-opening will start background job to delete trashed index.
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
         assertNull(mDb.findIndex(ixname));
     }
 
@@ -740,7 +740,7 @@ public class RecoverTest {
         ix.store(t2, "hello".getBytes(), "world!!!".getBytes());
         t2.commit();
 
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
 
         ix = mDb.openIndex("trash");
         assertArrayEquals("world!!!".getBytes(), ix.load(null, "hello".getBytes()));
@@ -800,7 +800,7 @@ public class RecoverTest {
         // If t1 didn't issue a rollback, then recovery will deadlock or fail on the second
         // attempt to lock k2. A replicated log will deadlock, but a local redo log throws a
         // LockTimeoutException and aborts recovery.
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
 
         ix = mDb.openIndex("test");
         assertArrayEquals(k1, ix.load(null, k1));
@@ -823,7 +823,7 @@ public class RecoverTest {
 
         mDb.checkpoint();
 
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
 
         // Everything should have rolled back.
         ix = mDb.openIndex("test");
@@ -869,7 +869,7 @@ public class RecoverTest {
 
         txn.commit();
 
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
 
         // Everything should have committed.
 
@@ -896,7 +896,7 @@ public class RecoverTest {
         // open database with NonReplicationManager
         NonReplicationManager replMan = new NonReplicationManager();
         config.replicate(replMan);
-        Database db = newTempDatabase(config);
+        Database db = newTempDatabase(getClass(), config);
 
         // open index
         replMan.asLeader();

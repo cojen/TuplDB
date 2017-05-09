@@ -53,18 +53,18 @@ public class ReplicationTest {
             .customTransactionHandler(mLeaderHandler)
             .replicate(mLeaderMan);
 
-        mLeader = newTempDatabase(config);
+        mLeader = newTempDatabase(getClass(), config);
 
         config.customTransactionHandler(mReplicaHandler);
         config.replicate(mReplicaMan);
-        mReplica = newTempDatabase(config);
+        mReplica = newTempDatabase(getClass(), config);
 
         mLeaderMan.waitForLeadership();
     }
 
     @After
     public void teardown() throws Exception {
-        deleteTempDatabases();
+        deleteTempDatabases(getClass());
         mReplicaMan = null;
         mLeaderMan = null;
         mReplica = null;
