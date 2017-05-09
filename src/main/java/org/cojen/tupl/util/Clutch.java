@@ -491,19 +491,19 @@ public abstract class Clutch extends Latch {
          */
         final boolean tryAcquireShared(int slot, Clutch clutch) {
             int stripe = add(slot, +1);
-            Object entry = get(mSlots, slot);
-            if (entry == clutch) {
+            if (get(mSlots, slot) == clutch) {
                 return true;
             }
-            add(slot, -1, stripe);
-            if (entry instanceof Thread && isZero(slot)) {
-                LockSupport.unpark((Thread) entry);
-            }
+            releaseShared(slot, stripe);
             return false;
         }
 
         final void releaseShared(int slot) {
-            add(slot, -1, threadStripe());
+            releaseShared(slot, threadStripe());
+        }
+
+        private void releaseShared(int slot, int stripe) {
+            add(slot, -1, stripe);
             Object entry = get(mSlots, slot);
             if (entry instanceof Thread && isZero(slot)) {
                 LockSupport.unpark((Thread) entry);
