@@ -33,14 +33,14 @@ public interface Combiner {
      * Returns a Combiner that chooses the first value and discards the second value.
      */
     public static Combiner first() {
-        return Combiners.FIRST;
+        return (k, first, second) -> first;
     }
 
     /**
      * Returns a Combiner that chooses the second value and discards the first value.
      */
     public static Combiner second() {
-        return Combiners.SECOND;
+        return (k, first, second) -> second;
     }
 
     /**
@@ -64,13 +64,14 @@ public interface Combiner {
 
     /**
      * Separates a combined result, for use when storing a value into a view which uses this
-     * combiner. Throws ViewConstraintException by default.
+     * combiner. Returns null by default, which then causes a ViewConstraintException to be
+     * thrown.
      *
      * @param key non-null associated key
      * @param value non-null combined value
      * @return first and second value, neither of which can be null
      */
     public default byte[][] separate(byte[] key, byte[] value) throws IOException {
-        throw new ViewConstraintException();
+        return null;
     }
 }

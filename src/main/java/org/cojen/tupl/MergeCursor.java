@@ -109,41 +109,34 @@ abstract class MergeCursor implements Cursor {
      * Performs the given action with an appropriate lock mode.
      */
     private LockResult perform(Action action) throws IOException {
-        try {
-            Transaction txn = link();
-            if (txn == null) {
-                txn = mView.newTransaction(null);
-                try {
-                    link(txn);
-                    txn.lockMode(LockMode.REPEATABLE_READ);
-                    action.perform();
-                } finally {
-                    link(null);
-                    txn.reset();
-                }
-                return LockResult.UNOWNED;
-            } else if (txn.lockMode() == LockMode.READ_COMMITTED) {
-                LockResult result;
-                final LockMode original = txn.lockMode();
-                try {
-                    txn.lockMode(LockMode.REPEATABLE_READ);
-                    result = action.perform();
-                    if (result.isAcquired()) {
-                        txn.unlock();
-                        result = LockResult.UNOWNED;
-                    }
-                } finally {
-                    txn.lockMode(original);
-                }
-                return result;
-            } else {
-                return action.perform();
+        Transaction txn = link();
+        if (txn == null) {
+            txn = mView.newTransaction(null);
+            try {
+                link(txn);
+                txn.lockMode(LockMode.REPEATABLE_READ);
+                action.perform();
+            } finally {
+                link(null);
+                txn.reset();
             }
-        } catch (LockFailureException e) {
-            throw e;
-        } catch (Throwable e) {
-            reset();
-            throw e;
+            return LockResult.UNOWNED;
+        } else if (txn.lockMode() == LockMode.READ_COMMITTED) {
+            LockResult result;
+            final LockMode original = txn.lockMode();
+            try {
+                txn.lockMode(LockMode.REPEATABLE_READ);
+                result = action.perform();
+                if (result.isAcquired()) {
+                    txn.unlock();
+                    result = LockResult.UNOWNED;
+                }
+            } finally {
+                txn.lockMode(original);
+            }
+            return result;
+        } else {
+            return action.perform();
         }
     }
 
@@ -556,33 +549,28 @@ abstract class MergeCursor implements Cursor {
         byte[] key = key();
         ViewUtils.positionCheck(key);
 
-        try {
-            Transaction txn = link();
-            if (txn == null) {
-                txn = mView.newTransaction(null);
-                try {
-                    link(txn);
-                    doStore(key, value);
-                    txn.commit();
-                } finally {
-                    link(null);
-                    txn.reset();
-                }
-            } else {
-                txn.enter();
-                try {
-                    txn.lockMode(LockMode.UPGRADABLE_READ);
-                    doStore(key, value);
-                    txn.commit();
-                } finally {
-                    txn.exit();
-                }
+        Transaction txn = link();
+        if (txn == null) {
+            txn = mView.newTransaction(null);
+            try {
+                link(txn);
+                doStore(txn, key, value);
+                txn.commit();
+            } finally {
+                link(null);
+                txn.reset();
             }
-        } catch (LockFailureException e) {
-            throw e;
-        } catch (Throwable e) {
-            reset();
-            throw e;
+        } else if (txn.lockMode() != LockMode.UNSAFE) {
+            txn.enter();
+            try {
+                txn.lockMode(LockMode.UPGRADABLE_READ);
+                doStore(txn, key, value);
+                txn.commit();
+            } finally {
+                txn.exit();
+            }
+        } else {
+            doStore(txn, key, value);
         }
     }
 
@@ -638,7 +626,10 @@ abstract class MergeCursor implements Cursor {
      */
     protected abstract LockResult select(LockResult r1, LockResult r2) throws IOException;
 
-    protected abstract void doStore(byte[] key, byte[] value) throws IOException;
+    /**
+     * @param txn transaction with UPGRADABLE_READ or UNSAFE mode
+     */
+    protected abstract void doStore(Transaction txn, byte[] key, byte[] value) throws IOException;
 
     protected ViewConstraintException storeFail() {
         return new ViewConstraintException("Cannot separate value for " + mView.type() + " view");
