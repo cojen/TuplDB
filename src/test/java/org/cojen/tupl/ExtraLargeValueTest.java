@@ -42,12 +42,12 @@ public class ExtraLargeValueTest {
         // Use smaller page size so that more inode levels are required without
         // requiring super large arrays.
         config.pageSize(512);
-        mDb = newTempDatabase(config);
+        mDb = newTempDatabase(getClass(), config);
     }
 
     @After
     public void teardown() throws Exception {
-        deleteTempDatabases();
+        deleteTempDatabases(getClass());
         mDb = null;
     }
 

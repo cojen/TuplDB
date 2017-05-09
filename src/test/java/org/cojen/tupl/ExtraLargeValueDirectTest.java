@@ -38,7 +38,7 @@ public class ExtraLargeValueDirectTest extends LargeValueTest {
         // requiring super large arrays.
         config.pageSize(512);
         config.directPageAccess(true);
-        mDb = TestUtils.newTempDatabase(config);
+        mDb = TestUtils.newTempDatabase(getClass(), config);
     }
 
 }

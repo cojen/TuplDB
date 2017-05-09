@@ -47,7 +47,7 @@ public class EnduranceTest {
 
     @After
     public void teardown() throws Exception {
-        deleteTempDatabases();
+        deleteTempDatabases(getClass());
         mDb = null;
     }
 
@@ -70,7 +70,7 @@ public class EnduranceTest {
 
         decorate(config);
 
-        mDb = newTempDatabase(config);
+        mDb = newTempDatabase(getClass(), config);
         mIx = mDb.openIndex("test");
 
         // Only use row ids up to this value, then wrap around
@@ -159,7 +159,7 @@ public class EnduranceTest {
 
         decorate(config);
 
-        mDb = newTempDatabase(config);
+        mDb = newTempDatabase(getClass(), config);
         mIx = mDb.openIndex("test");
 
         int numWorkers = 5;
@@ -226,7 +226,7 @@ public class EnduranceTest {
 
         decorate(config);
 
-        mDb = newTempDatabase(config);
+        mDb = newTempDatabase(getClass(), config);
 
         for (int trial = 1; trial <= 5; trial++) {
             final Index ix = mDb.openIndex("write_evict");
@@ -365,7 +365,7 @@ public class EnduranceTest {
 
         decorate(config);
 
-        mDb = newTempDatabase(config);
+        mDb = newTempDatabase(getClass(), config);
         mIx = mDb.openIndex("test");
 
         AtomicBoolean stop = new AtomicBoolean();
@@ -427,7 +427,7 @@ public class EnduranceTest {
 
         decorate(config);
 
-        mDb = newTempDatabase(config);
+        mDb = newTempDatabase(getClass(), config);
         mIx = mDb.openIndex("test");
 
         int numWorkers = 5;

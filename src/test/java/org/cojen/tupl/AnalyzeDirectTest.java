@@ -32,6 +32,6 @@ public class AnalyzeDirectTest extends AnalyzeTest {
     @Before
     @Override
     public void createTempDb() throws Exception {
-        mDb = TestUtils.newTempDatabase(TestUtils.OpenMode.DIRECT);
+        mDb = TestUtils.newTempDatabase(getClass(), TestUtils.OpenMode.DIRECT);
     }
 }

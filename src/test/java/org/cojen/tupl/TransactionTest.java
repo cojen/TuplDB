@@ -42,12 +42,12 @@ public class TransactionTest {
 
     @After
     public void teardown() throws Exception {
-        deleteTempDatabases();
+        deleteTempDatabases(getClass());
         mDb = null;
     }
 
     protected Database newTempDatabase() throws Exception {
-        return TestUtils.newTempDatabase();
+        return TestUtils.newTempDatabase(getClass());
     }
 
     protected Database mDb;

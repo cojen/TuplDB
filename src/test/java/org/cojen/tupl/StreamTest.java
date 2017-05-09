@@ -42,12 +42,12 @@ public class StreamTest {
     @Before
     public void createTempDb() throws Exception {
         DatabaseConfig config = new DatabaseConfig().directPageAccess(false).pageSize(512);
-        mDb = newTempDatabase(config);
+        mDb = newTempDatabase(getClass(), config);
     }
 
     @After
     public void teardown() throws Exception {
-        deleteTempDatabases();
+        deleteTempDatabases(getClass());
         mDb = null;
     }
 
@@ -330,7 +330,7 @@ public class StreamTest {
     public void truncateNonFragmented() throws Exception {
         // Use large page to test 3-byte value header encoding.
         Database db = newTempDatabase
-            (new DatabaseConfig().directPageAccess(false).pageSize(32768));
+            (getClass(), new DatabaseConfig().directPageAccess(false).pageSize(32768));
 
         truncate(db, 10, 5);     // 1-byte header to 1
         truncate(db, 200, 50);   // 2-byte header to 1
@@ -373,7 +373,7 @@ public class StreamTest {
     public void writeNonFragmented() throws Exception {
         // Use large page to test 3-byte value header encoding.
         Database db = newTempDatabase
-            (new DatabaseConfig().directPageAccess(false).pageSize(32768));
+            (getClass(), new DatabaseConfig().directPageAccess(false).pageSize(32768));
 
         writeNonFragmented(db, 50);
         writeNonFragmented(db, 200);

@@ -46,7 +46,7 @@ public class CustomLogTest {
 
     @After
     public void teardown() throws Exception {
-        deleteTempDatabases();
+        deleteTempDatabases(getClass());
         mDb = null;
     }
 
@@ -55,7 +55,7 @@ public class CustomLogTest {
             .directPageAccess(false)
             .checkpointRate(-1, null)
             .customTransactionHandler(mHandler = new Handler());
-        return TestUtils.newTempDatabase(mConfig);
+        return TestUtils.newTempDatabase(getClass(), mConfig);
     }
 
     protected DatabaseConfig mConfig;
@@ -116,7 +116,7 @@ public class CustomLogTest {
         txn.customRedo(message2, 1234, key);
         txn.commit();
 
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
 
         assertEquals(2, mHandler.mRedoMessages.size());
         assertTrue(mHandler.mUndoMessages.isEmpty());
@@ -141,7 +141,7 @@ public class CustomLogTest {
         txn.customRedo(message, 0, null);
         txn.commit();
 
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
 
         assertEquals(1, mHandler.mRedoMessages.size());
 

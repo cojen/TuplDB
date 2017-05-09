@@ -99,12 +99,12 @@ public class CountTest {
             config.checkpointRate(-1, null);
         }
 
-        mDb = newTempDatabase(config);
+        mDb = newTempDatabase(getClass(), config);
     }
 
     @After
     public void teardown() throws Exception {
-        deleteTempDatabases();
+        deleteTempDatabases(getClass());
         mDb = null;
     }
 

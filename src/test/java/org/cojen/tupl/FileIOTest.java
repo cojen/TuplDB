@@ -42,7 +42,7 @@ public class FileIOTest {
 
     @Before
     public void setup() throws Exception {
-        file = newTempBaseFile();
+        file = newTempBaseFile(getClass());
     }
 
     @After

@@ -32,7 +32,8 @@ public class CloseDirectMappedTest extends CloseDirectTest {
     @Before
     @Override
     public void createTempDb() throws Exception {
-        mDb = TestUtils.newTempDatabase(100_000_000L, TestUtils.OpenMode.DIRECT_MAPPED);
+        mDb = TestUtils.newTempDatabase
+            (getClass(), 100_000_000L, TestUtils.OpenMode.DIRECT_MAPPED);
     }
 
     @Override

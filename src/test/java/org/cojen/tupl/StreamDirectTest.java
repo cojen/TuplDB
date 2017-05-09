@@ -35,6 +35,6 @@ public class StreamDirectTest extends StreamTest {
     public void createTempDb() throws Exception {
         DatabaseConfig config = new DatabaseConfig().pageSize(512);
         config.directPageAccess(true);
-        mDb = TestUtils.newTempDatabase(config);
+        mDb = TestUtils.newTempDatabase(getClass(), config);
     }
 }

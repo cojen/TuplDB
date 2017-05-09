@@ -35,6 +35,6 @@ public class CrudDirectMappedTest extends CrudDirectTest {
     @Before
     @Override
     public void createTempDb() throws Exception {
-        mDb = newTempDatabase(100_000_000, OpenMode.DIRECT_MAPPED);
+        mDb = newTempDatabase(getClass(), 100_000_000, OpenMode.DIRECT_MAPPED);
     }
 }

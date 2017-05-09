@@ -37,12 +37,12 @@ public class SmallCacheTest {
     @Before
     public void createTempDb() throws Exception {
         // Cache size is 100,000 bytes.
-        mDb = newTempDatabase(100000);
+        mDb = newTempDatabase(getClass(), 100000);
     }
 
     @After
     public void teardown() throws Exception {
-        deleteTempDatabases();
+        deleteTempDatabases(getClass());
         mDb = null;
     }
 

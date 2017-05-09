@@ -37,12 +37,12 @@ public class TempIndexTest {
         mConfig = new DatabaseConfig()
             .directPageAccess(false)
             .checkpointRate(-1, null);
-        mDb = newTempDatabase(mConfig);
+        mDb = newTempDatabase(getClass(), mConfig);
     }
 
     @After
     public void teardown() throws Exception {
-        deleteTempDatabases();
+        deleteTempDatabases(getClass());
         mDb = null;
         mConfig = null;
     }
@@ -111,7 +111,7 @@ public class TempIndexTest {
             mDb.checkpoint();
         }
 
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
 
         assertNull(mDb.indexById(temp.getId()));
 
@@ -152,7 +152,7 @@ public class TempIndexTest {
 
         mDb.deleteIndex(temp).run();
 
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
 
         Index temp2 = mDb.newTemporaryIndex();
 
@@ -169,7 +169,7 @@ public class TempIndexTest {
     @Test
     public void forReplica() throws Exception {
         mConfig.replicate(new NonReplicationManager());
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
 
         try {
             mDb.openIndex("test");
@@ -209,6 +209,6 @@ public class TempIndexTest {
         mDb.checkpoint();
 
         mConfig.replicate(new NonReplicationManager());
-        mDb = reopenTempDatabase(mDb, mConfig);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
     }
 }

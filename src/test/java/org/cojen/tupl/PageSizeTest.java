@@ -41,7 +41,7 @@ public class PageSizeTest {
 
     @After
     public void teardown() throws Exception {
-        deleteTempDatabases();
+        deleteTempDatabases(getClass());
     }
 
     @Test
@@ -50,7 +50,7 @@ public class PageSizeTest {
             .pageSize(512).durabilityMode(DurabilityMode.NO_FLUSH);
         config = decorate(config);
 
-        Database db = newTempDatabase(config);
+        Database db = newTempDatabase(getClass(), config);
         assertEquals(512, db.stats().pageSize());
         db.shutdown();
 
@@ -58,7 +58,7 @@ public class PageSizeTest {
         config = new DatabaseConfig().durabilityMode(DurabilityMode.NO_FLUSH);
         config = decorate(config);
 
-        db = reopenTempDatabase(db, config);
+        db = reopenTempDatabase(getClass(), db, config);
         assertEquals(512, db.stats().pageSize());
         db.shutdown();
 
@@ -69,7 +69,7 @@ public class PageSizeTest {
         config = decorate(config);
 
         try {
-            db = reopenTempDatabase(db, config);
+            db = reopenTempDatabase(getClass(), db, config);
             fail();
         } catch (DatabaseException e) {
             // Page size differs.
@@ -82,7 +82,7 @@ public class PageSizeTest {
             .pageSize(512).durabilityMode(DurabilityMode.NO_FLUSH);
         config = decorate(config);
 
-        Database db = newTempDatabase(config);
+        Database db = newTempDatabase(getClass(), config);
         assertEquals(512, db.stats().pageSize());
 
         Snapshot snap = db.beginSnapshot();
@@ -92,7 +92,7 @@ public class PageSizeTest {
 
         // Page size not explicitly set, so use existing page size.
         config = new DatabaseConfig()
-            .baseFile(baseFileForTempDatabase(db))
+            .baseFile(baseFileForTempDatabase(getClass(), db))
             .durabilityMode(DurabilityMode.NO_FLUSH);
         config = decorate(config);
 

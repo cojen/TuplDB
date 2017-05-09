@@ -54,7 +54,8 @@ public class EvictionDirectTest extends EvictionTest {
     @Before
     @Override
     public void createTempDb() throws Exception {
-        mDb = TestUtils.newTempDatabase(new DatabaseConfig().pageSize(2048)
+        mDb = TestUtils.newTempDatabase(getClass(),
+                                        new DatabaseConfig().pageSize(2048)
                                         .minCacheSize(1_000_000)
                                         .maxCacheSize(1_000_000)    // cacheSize ~ 500 nodes
                                         .durabilityMode(DurabilityMode.NO_FLUSH)

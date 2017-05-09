@@ -84,7 +84,8 @@ public class EvictionTest {
 
     @Before
     public void createTempDb() throws Exception {
-        mDb = newTempDatabase(new DatabaseConfig().pageSize(2048)
+        mDb = newTempDatabase(getClass(),
+                              new DatabaseConfig().pageSize(2048)
                               .minCacheSize(1_000_000)
                               .maxCacheSize(1_000_000)    // cacheSize ~ 500 nodes
                               .durabilityMode(DurabilityMode.NO_FLUSH)
@@ -93,7 +94,7 @@ public class EvictionTest {
 
     @After
     public void teardown() throws Exception {
-        deleteTempDatabases();
+        deleteTempDatabases(getClass());
         mDb = null;
     }
     

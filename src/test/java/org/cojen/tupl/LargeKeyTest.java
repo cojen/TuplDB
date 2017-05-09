@@ -41,7 +41,7 @@ public class LargeKeyTest {
 
     @After
     public void teardown() throws Exception {
-        deleteTempDatabases();
+        deleteTempDatabases(getClass());
     }
 
     @Test
@@ -151,7 +151,8 @@ public class LargeKeyTest {
 
     @Test
     public void veryLargeKeys() throws Exception {
-        Database db = newTempDatabase(decorate(new DatabaseConfig().checkpointRate(-1, null)));
+        Database db = newTempDatabase
+            (getClass(), decorate(new DatabaseConfig().checkpointRate(-1, null)));
         Index ix = db.openIndex("test");
 
         final int seed = 23423;
@@ -199,7 +200,7 @@ public class LargeKeyTest {
 
     @Test
     public void updateAgainstLargeKeys() throws Exception {
-        Database db = newTempDatabase(decorate(new DatabaseConfig()));
+        Database db = newTempDatabase(getClass(), decorate(new DatabaseConfig()));
         Index ix = db.openIndex("test");
 
         final int seed = 1234567;
@@ -241,7 +242,7 @@ public class LargeKeyTest {
         // Tests that large keys are stored fully expanded in the undo log. If not, the
         // database appears to be corrupt when trying to reconstruct the key.
 
-        Database db = newTempDatabase(decorate(new DatabaseConfig()));
+        Database db = newTempDatabase(getClass(), decorate(new DatabaseConfig()));
         Index ix = db.openIndex("test");
  
         Random rnd = new Random(18732);
