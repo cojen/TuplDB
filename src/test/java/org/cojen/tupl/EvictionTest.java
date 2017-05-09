@@ -37,6 +37,7 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
+@net.jcip.annotations.NotThreadSafe
 public class EvictionTest {
     public static void main(String[] args) throws Exception {
         org.junit.runner.JUnitCore.main(EvictionTest.class.getName());

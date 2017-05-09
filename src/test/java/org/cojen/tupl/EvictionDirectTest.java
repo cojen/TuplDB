@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Collection;
 
 import org.junit.Before;
+import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
@@ -29,6 +30,8 @@ import org.junit.runners.Parameterized.Parameters;
  *
  * @author Brian S O'Neill
  */
+@RunWith(Parameterized.class)
+@net.jcip.annotations.NotThreadSafe
 public class EvictionDirectTest extends EvictionTest {
     public static void main(String[] args) throws Exception {
         org.junit.runner.JUnitCore.main(EvictionDirectTest.class.getName());
