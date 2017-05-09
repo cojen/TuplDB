@@ -38,6 +38,7 @@ import static org.cojen.tupl.TestUtils.*;
  * @author Brian S O'Neill
  */
 @RunWith(Parameterized.class)
+@net.jcip.annotations.NotThreadSafe
 public class CountTest {
     public static void main(String[] args) throws Exception {
         org.junit.runner.JUnitCore.main(CountTest.class.getName());
