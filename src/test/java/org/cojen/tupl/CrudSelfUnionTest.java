@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2011-2017 Cojen.org
+ *  Copyright (C) 2017 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -17,13 +17,38 @@
 
 package org.cojen.tupl;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import org.junit.*;
+import static org.junit.Assert.*;
+
 /**
- * 
+ * Tests that operations against a self union view still work.
  *
  * @author Brian S O'Neill
  */
-class Combiners {
-    static final Combiner FIRST = new Combiner() {
+public class CrudSelfUnionTest extends CrudNonDurableTest {
+    public static void main(String[] args) throws Exception {
+        org.junit.runner.JUnitCore.main(CrudSelfUnionTest.class.getName());
+    }
+
+    private final Map<View, Index> mViews = new HashMap<>();
+
+    @Override
+    protected View openIndex(String name) throws Exception {
+        Index ix = mDb.openIndex(name);
+        View view = ix.viewUnion(new Self(), ix);
+        mViews.put(view, ix);
+        return view;
+    }
+
+    @Override
+    protected boolean verify(View view) throws Exception {
+        return mViews.get(view).verify(null);
+    }
+
+    static class Self implements Combiner {
         @Override
         public byte[] combine(byte[] key, byte[] first, byte[] second) {
             return first;
@@ -31,19 +56,7 @@ class Combiners {
 
         @Override
         public byte[][] separate(byte[] key, byte[] value) {
-            return new byte[][] {value, null};
+            return new byte[][] {value, value};
         }
-    };
-
-    static final Combiner SECOND = new Combiner() {
-        @Override
-        public byte[] combine(byte[] key, byte[] first, byte[] second) {
-            return second;
-        }
-
-        @Override
-        public byte[][] separate(byte[] key, byte[] value) {
-            return new byte[][] {null, value};
-        }
-    };
+    }
 }

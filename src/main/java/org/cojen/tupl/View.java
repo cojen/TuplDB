@@ -660,8 +660,8 @@ public interface View {
      * the returned view represents the <i>symmetric set difference</i> instead.
      *
      * <p>Storing entries in the union is permitted, if the combiner supports separation. The
-     * entire operation is transactional, and so stores to unions don't support the {@link
-     * Transaction#BOGUS "bogus"} transaction.
+     * separator must supply at least one non-null value, or else a ViewConstraintException
+     * will be thrown.
      *
      * @param combiner combines common entries together; pass null to always choose the first
      * @param second required second view in the union
@@ -682,8 +682,8 @@ public interface View {
      * to deal with them.
      *
      * <p>Storing entries in the intersection is permitted, if the combiner supports
-     * separation. The entire operation is transactional, and so stores to intersections don't
-     * support the {@link Transaction#BOGUS "bogus"} transaction.
+     * separation. The separator must supply two non-null values, or else a
+     * ViewConstraintException will be thrown.
      *
      * @param combiner combines common entries together; pass null to always choose the first
      * @param second required second view in the intersection
@@ -704,10 +704,10 @@ public interface View {
      * deal with them.
      *
      * <p>Storing entries in the difference is permitted, if the combiner supports separation.
-     * The entire operation is transactional, and so stores to differences don't support the
-     * {@link Transaction#BOGUS "bogus"} transaction.
+     * The separator must supply a non-null first value, or else a ViewConstraintException will
+     * be thrown.
      *
-     * @param combiner combines common entries together; pass null to always choose the first
+     * @param combiner combines common entries together; pass null to always discard them
      * @param second required second view in the difference
      * @throws NullPointerException if second view is null
      * @throws IllegalArgumentException if the views don't define a consistent ordering, as

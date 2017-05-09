@@ -95,7 +95,7 @@ final class UnionCursor extends MergeCursor {
     }
 
     @Override
-    protected void doStore(byte[] key, byte[] value) throws IOException {
+    protected void doStore(Transaction txn, byte[] key, byte[] value) throws IOException {
         if (value == null) {
             mFirst.store(null);
             mSecond.store(null);

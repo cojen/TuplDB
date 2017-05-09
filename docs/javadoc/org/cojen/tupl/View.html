@@ -1151,7 +1151,8 @@ var activeTableTab = "activeTableTab";
  the returned view represents the <i>symmetric set difference</i> instead.
 
  <p>Storing entries in the union is permitted, if the combiner supports separation. The
- entire operation is transactional, and so stores to unions don't support the <a href="../../../org/cojen/tupl/Transaction.html#BOGUS"><code>"bogus"</code></a> transaction.</div>
+ separator must supply at least one non-null value, or else a ViewConstraintException
+ will be thrown.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>combiner</code> - combines common entries together; pass null to always choose the first</dd>
@@ -1176,8 +1177,8 @@ var activeTableTab = "activeTableTab";
  to deal with them.
 
  <p>Storing entries in the intersection is permitted, if the combiner supports
- separation. The entire operation is transactional, and so stores to intersections don't
- support the <a href="../../../org/cojen/tupl/Transaction.html#BOGUS"><code>"bogus"</code></a> transaction.</div>
+ separation. The separator must supply two non-null values, or else a
+ ViewConstraintException will be thrown.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>combiner</code> - combines common entries together; pass null to always choose the first</dd>
@@ -1202,11 +1203,11 @@ var activeTableTab = "activeTableTab";
  deal with them.
 
  <p>Storing entries in the difference is permitted, if the combiner supports separation.
- The entire operation is transactional, and so stores to differences don't support the
- <a href="../../../org/cojen/tupl/Transaction.html#BOGUS"><code>"bogus"</code></a> transaction.</div>
+ The separator must supply a non-null first value, or else a ViewConstraintException will
+ be thrown.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>combiner</code> - combines common entries together; pass null to always choose the first</dd>
+<dd><code>combiner</code> - combines common entries together; pass null to always discard them</dd>
 <dd><code>second</code> - required second view in the difference</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if second view is null</dd>
