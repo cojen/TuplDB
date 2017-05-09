@@ -235,16 +235,14 @@ public interface View {
         try {
             c.autoload(false);
             c.find(key);
+            if (c.key() == null) {
+                throw new ViewConstraintException();
+            }
             if (c.value() == null) {
                 return false;
             }
             c.store(value);
             return true;
-        } catch (IllegalStateException e) {
-            if (c.key() == null) {
-                throw new ViewConstraintException();
-            }
-            throw e;
         } finally {
             c.reset();
         }
@@ -272,6 +270,9 @@ public interface View {
         try {
             c.autoload(oldValue != null);
             c.find(key);
+            if (c.key() == null) {
+                throw new ViewConstraintException();
+            }
             if (!Arrays.equals(c.value(), oldValue)) {
                 return false;
             }
@@ -279,11 +280,6 @@ public interface View {
                 c.store(newValue);
             }
             return true;
-        } catch (IllegalStateException e) {
-            if (c.key() == null) {
-                throw new ViewConstraintException();
-            }
-            throw e;
         } finally {
             c.reset();
         }
