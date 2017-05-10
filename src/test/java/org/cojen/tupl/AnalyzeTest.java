@@ -36,7 +36,11 @@ public class AnalyzeTest {
 
     @Before
     public void createTempDb() throws Exception {
-        mDb = newTempDatabase(getClass());
+        DatabaseConfig config = new DatabaseConfig();
+        config.durabilityMode(DurabilityMode.NO_FLUSH);
+        config.directPageAccess(false);
+        config.checkpointRate(-1, null);
+        mDb = newTempDatabase(getClass(), config);
     }
 
     @After
